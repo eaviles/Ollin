@@ -82,12 +82,12 @@ That builds the package and opens an 800×800 window running `HelloCircle`.
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/eaviles/ollin.git", branch: "main")
+    .package(url: "https://github.com/eaviles/Ollin.git", branch: "main")
 ],
 targets: [
     .executableTarget(
         name: "MySketch",
-        dependencies: [.product(name: "Ollin", package: "ollin")]
+        dependencies: [.product(name: "Ollin", package: "Ollin")]
     )
 ]
 ```
