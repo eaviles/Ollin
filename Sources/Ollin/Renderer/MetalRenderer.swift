@@ -121,14 +121,21 @@ final class MetalRenderer {
         return vertexBuffer
     }
 
-    /// Load the shader library that SwiftPM compiled from `Shaders.metal`.
+    /// Load the shader library for `Shaders.metal`.
     ///
-    /// SwiftPM compiles `.metal` sources into `default.metallib` inside the
-    /// target's resource bundle (`Bundle.module`). We fall back to the default
-    /// library if the layout ever differs (e.g. when embedded differently).
+    /// SwiftPM's resource rule copies `Shaders.metal` into `Bundle.module` as
+    /// *source* — it does not produce a precompiled `default.metallib`. So the
+    /// reliable path is to read that source and compile it at runtime. We still
+    /// try a precompiled `default.metallib` first in case a future build step
+    /// (e.g. a build-tool plugin) produces one.
     private static func loadLibrary(device: MTLDevice) throws -> MTLLibrary {
         if let library = try? device.makeDefaultLibrary(bundle: Bundle.module) {
             return library
+        }
+        if let url = Bundle.module.url(forResource: "Shaders", withExtension: "metal"),
+           let source = try? String(contentsOf: url, encoding: .utf8) {
+            // Let compile errors propagate: a bad shader should fail loudly here.
+            return try device.makeLibrary(source: source, options: nil)
         }
         if let library = device.makeDefaultLibrary() {
             return library

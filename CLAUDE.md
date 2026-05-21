@@ -43,6 +43,38 @@ facade the only path to a feature.**
 - Drawing methods live on `Sketch` (scoped to the instance), not true
   globals — keep it that way.
 
+## Shaders & the Metal back end
+
+The shader set is one `.metal` file today; it will grow. Decisions that are
+cheap now and expensive to retrofit:
+
+- **One source of truth for CPU↔GPU structs.** Types shared between Swift and
+  MSL (`Uniforms`, `OllinVertex`) are currently defined in both places and kept
+  in sync by hand (`// Mirrors Uniforms in Shaders.metal`). That silently
+  corrupts memory the day a field's layout disagrees. The moment a *second*
+  shared struct appears, move them into a shared C header (a small C target
+  using `simd` types) that Swift imports and the `.metal` file `#include`s.
+- **Runtime source compilation is a feature, keep it.** `loadLibrary` compiles
+  `Shaders.metal` from source at runtime (`makeLibrary(source:)`). For a
+  creative-coding framework that's the seam for shader hot-reload and
+  user-supplied shaders later — don't rip it out. Its costs are startup time
+  and *no build-time error checking*.
+- **Add a precompiled `default.metallib` when those costs bite, don't replace.**
+  A SwiftPM build-tool plugin that runs `metal`/`metallib` gives the built-in
+  shaders build-time validation and zero startup cost. `loadLibrary` already
+  prefers a precompiled `Bundle.module` metallib *before* the source path, so
+  this slots in with no API change; runtime compilation stays for dynamic
+  shaders. Note: SwiftPM's `.process(...)` resource rule copies the `.metal`
+  as *source* — it does not compile it — which is why the plugin is the path.
+- **Cache pipelines; don't grow `init`.** `MetalRenderer.init` builds one
+  `MTLRenderPipelineState` inline. A new pipeline (textured quads, a new blend
+  mode, compute) should be a new case in an enum-keyed pipeline cache, not more
+  code in the constructor.
+- **Don't hard-code the single-file assumption.** `loadLibrary` looks up
+  `Shaders.metal` by name. As shaders multiply, keep one umbrella file that
+  `#include`s the rest, or enumerate the `.metal` resources — decide before the
+  second file lands.
+
 ## Build, run, verify
 
 ```sh

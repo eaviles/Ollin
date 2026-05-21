@@ -7,9 +7,10 @@ import PackageDescription
 //   • Ollin       — the library you `import Ollin` in your sketches.
 //   • OllinSketch — an executable that boots a window and runs a Sketch.
 //
-// The `.metal` shader in Sources/Ollin/Renderer is compiled by SwiftPM into a
-// `default.metallib` inside the target's resource bundle. We load it at runtime
-// via `Bundle.module` (see MetalRenderer.loadLibrary).
+// The `.metal` shader in Sources/Ollin/Renderer is declared as a resource (see
+// the Ollin target below) so SwiftPM copies it into the target's resource
+// bundle and synthesizes `Bundle.module`. MetalRenderer.loadLibrary reads that
+// source from `Bundle.module` and compiles it at runtime.
 let package = Package(
     name: "Ollin",
     platforms: [
@@ -21,10 +22,16 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "Ollin"
-            // No explicit `resources:` entry is needed: SwiftPM detects the
-            // `.metal` source automatically, compiles it, and synthesizes
-            // `Bundle.module` so we can load the shader library at runtime.
+            name: "Ollin",
+            // Declaring the `.metal` file as a resource makes SwiftPM copy it
+            // into the target's resource bundle and synthesize `Bundle.module`,
+            // which MetalRenderer.loadLibrary uses to read and compile the shader
+            // source at runtime. (`.process` copies the `.metal` as source; it
+            // does not precompile a `default.metallib`.) Without this, the file
+            // is "unhandled" and `Bundle.module` is never generated.
+            resources: [
+                .process("Renderer/Shaders.metal")
+            ]
         ),
         .executableTarget(
             name: "OllinSketch",
