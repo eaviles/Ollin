@@ -18,9 +18,7 @@ they improve on the originals.
 - **Rendering:** Metal (`MTKView`, 4× MSAA), Foundation / SwiftUI / Metal / MetalKit / simd only — **no third-party dependencies**
 - **License:** MIT
 
-> Status: early. The win right now is "I can `swift run` and see a black circle
-> outline on white, with a continuous draw loop already humming underneath."
-> Then we iterate.
+> **Status: alpha — pre-1.0, built in public.** The win right now is "I can `swift run` and see a black circle outline on white, with a continuous draw loop already humming underneath." Then we iterate. Expect the API to change between commits, and no stability or support guarantees yet — see [Status & contributing](#status--contributing).
 
 ## Hello, circle
 
@@ -147,4 +145,12 @@ The first pass is deliberately just enough to draw and iterate. Next up:
   the whole point of Ollin is that things move.
 - **Single-file `swift-sh` scripting** for zero-ceremony sketches.
 
-Contributions and ideas welcome.
+## Status & contributing
+
+Ollin is **alpha and pre-1.0**, developed in the open. Practically, that means:
+
+- **The API will change.** Names, signatures, and structure can shift between commits; there's no tagged release or SemVer guarantee until 1.0.
+- **No support guarantee.** This is built nights-and-weekends — issues and discussions are read, but a response time isn't promised.
+- **macOS 14+ and a Metal-capable GPU are required**, by design. There's no Linux or Windows path.
+
+That said, contributions and ideas are genuinely welcome. The [roadmap](#roadmap) above is the best source of bite-size work — the *more primitives* line (`rect`, `line`, `ellipse`, …) in particular maps onto small, self-contained pull requests. For anything larger, please open an issue to discuss it before sending a big change.
