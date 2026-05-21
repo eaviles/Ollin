@@ -95,3 +95,29 @@ swift run OllinSketch   # boots an 800x800 window running the demo sketch
 - **Next, in priority order:** `Vector2` and `Color` value types as the
   geometry currency; more primitives (`rect`, `line`, `ellipse`); vector
   `Shape`/`Contour`; the extension/lifecycle seam; easing/animation helpers.
+
+## Follow-up: Swift Playgrounds & iOS (not started)
+
+Worth pursuing — the Swift Playgrounds app (Mac/iPad) App Projects (`.swiftpm`) are the closest Swift gets to the p5.js "open the editor and type, see it move" onboarding, and the same work unlocks iPad sketching and embedding in any SwiftUI app. On-brand for the "learn it in an afternoon" goal.
+
+- **The architecture is already most of the way there.** `SketchView` is a SwiftUI-embeddable view, cleanly separated from the macOS-only `OllinApp.run` (which owns `NSApplication`). Embedding in someone else's SwiftUI `App` — what a Playgrounds App Project needs — is exactly that seam.
+- **The blocker is iOS support.** Playgrounds App Projects build *iOS* apps, but Ollin only declares `.macOS(.v14)`. To make it importable: add `.iOS(...)` to `Package.swift`; make `SketchView` conditional (`NSViewRepresentable`/`AppKit` vs `UIViewRepresentable`/`UIKit` via `#if canImport(AppKit)` / `#if canImport(UIKit)`); guard `OllinApp.run` behind `#if os(macOS)`. The Metal renderer (`Metal`/`MetalKit`/`simd`) is already portable.
+- **Keep shaders Playgrounds-safe.** Swift Playgrounds' support for SwiftPM build-tool plugins is unreliable, so do not go plugin-*only* for shaders — keep runtime source compilation as a first-class loader (see [Shaders & the Metal back end](#shaders--the-metal-back-end)).
+- **Onboarding nicety:** ship a ready-made `.swiftpm` starter (Ollin pre-wired + a `HelloCircle`) so users don't hand-add the package URL.
+- **Caveats:** the Playgrounds sandbox restricts file I/O (matters for the export roadmap items, not for drawing); package-dependency UX is finicky; prefer the Swift Playgrounds app's App Projects over the semi-deprecated Xcode Playgrounds. iOS changes can't be verified in this environment — they need `xcodebuild -destination` with the iOS SDK on a Mac.
+
+## Follow-up: live reload — edit code, see it render (not started)
+
+The headline creative-coding feature, and Ollin's loop is unusually well-suited: `SketchRunner.draw(in:)` runs every frame holding a *persistent* `Sketch` instance and re-calls `performDraw()`, so state (instance properties, `time`, `frameCount`, `setup()` resources) survives between frames. Swapping the body of `draw()` in the running process means the next frame just runs the new code with state intact — no re-run, no reset. Three tiers, cheapest first:
+
+- **Tier 1 — live *shader* reload (nearly free; do first).** We already compile `Shaders.metal` from a bundled resource at runtime, so: file-watch it (`DispatchSource`/FSEvents), re-run `loadLibrary`, rebuild the pipeline, and the next frame uses the new shader. Self-contained, low-risk, on-brand. Cheap *because* of the runtime-compile decision (see [Shaders & the Metal back end](#shaders--the-metal-back-end)).
+- **Tier 2 — live *Swift* reload (the real feature).** Use InjectionIII + the `Inject`/`HotReloading` SPM package: a watcher recompiles the changed `.swift` into a `.dylib`, `dlopen`s it, and interposes the new method bodies. A swapped `draw()` shows up next frame. Fits Ollin's persistent-instance loop perfectly.
+- **Tier 3 — parameter live-tweak / GUI (complementary).** Sliders/values that mutate the running sketch with no recompile (OPENRNDR-style). Lighter, ties to the GUI item on the extension seam; not "change the code."
+
+Prep to bake in now so Tier 2 isn't a retrofit:
+
+- **A reload lifecycle hook (`onReload()`).** On injection you often want to optionally re-run `setup()` or reset the clock; `Inject` exposes `onInjection`. This lands exactly on the extension/lifecycle seam already on the roadmap — design that seam with reload in mind, don't bolt it on.
+- **Keep `Sketch`/`draw()` `open` (already true) — never `final`.** Modern InjectionIII handles plain Swift via the debug-only `-Xlinker -interposable` flag, so `@objc dynamic` likely isn't needed — but validate that first.
+- **Preserve the "loop re-calls `draw()` through the instance" model.** If a future change caches a closure to `draw` or snapshots it in the runner, injection breaks. The current `sketch.performDraw()`-every-frame call is what makes swapped code free.
+- **Decide a state-reset policy:** instance state survives naturally; default to letting `time`/`frameCount` keep running, with an opt-in reset.
+- **Caveats:** InjectionIII is debug-only, macOS/iOS, needs external tooling + build flags (smoothest in Xcode; terminal `swift run` is more DIY). Method-body edits are the sweet spot; changing stored-property layout or reallocating `setup()` GPU resources may need a relaunch. None of this is verifiable in this environment.
