@@ -120,7 +120,7 @@ fan/strip math.
 ## Build, run, verify
 
 ```sh
-swift run OllinSketch   # boots an 800x800 window running the demo sketch
+swift run Example-HelloCircle   # boots an 800x800 window running an example
 ```
 
 - **Requires macOS 14+ and a Metal-capable GPU.**

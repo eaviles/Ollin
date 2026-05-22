@@ -105,7 +105,8 @@ private func makeOllinMTKView(device: MTLDevice, size: CGSize) -> MTKView {
 // MARK: - SwiftUI host
 
 /// A SwiftUI view that hosts a running `Sketch`. Handy if you want to embed a
-/// sketch in a SwiftUI app; the `OllinSketch` demo uses `OllinApp.run` instead.
+/// sketch in a SwiftUI app; standalone `swift run` sketches use `OllinApp.run`
+/// (via `Sketch.main()`) instead.
 ///
 /// ```swift
 /// SketchView(HelloCircle())
@@ -140,11 +141,11 @@ public struct SketchView: NSViewRepresentable {
     }
 }
 
-// MARK: - Standalone app boot (for `swift run OllinSketch`)
+// MARK: - Standalone app boot (for `swift run`-ing a sketch)
 
 /// Boots a minimal AppKit app that runs a single sketch in a window. This is
-/// the path the `OllinSketch` executable uses, and it works from the terminal
-/// with `swift run OllinSketch` — no Xcode or app bundle required.
+/// the path each `Examples/` target uses (via `Sketch.main()`), and it works
+/// from the terminal with `swift run` — no Xcode or app bundle required.
 public enum OllinApp {
 
     public static func run(_ sketch: Sketch) {
@@ -223,7 +224,7 @@ public extension Sketch {
     /// `@main` invokes this inherited `main()` with `Self` bound to the
     /// concrete subclass, so `Self()` builds *that* sketch (which is why
     /// `Sketch.init()` is `required`) and `OllinApp.run` boots it. The
-    /// `Examples/` targets use this; `OllinSketch` boots via top-level code.
+    /// Each `Examples/` target uses this.
     static func main() {
         OllinApp.run(Self())
     }

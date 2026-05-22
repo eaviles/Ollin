@@ -3,9 +3,9 @@ import PackageDescription
 
 // Ollin — a motion-first creative coding framework for Swift + Metal.
 //
-// Two products:
-//   • Ollin       — the library you `import Ollin` in your sketches.
-//   • OllinSketch — an executable that boots a window and runs a Sketch.
+// One product: the `Ollin` library you `import Ollin` in your sketches.
+// Runnable sketches live as executable targets under `Examples/` — run one
+// with e.g. `swift run Example-HelloCircle`.
 //
 // The `.metal` shader in Sources/Ollin/Renderer is declared as a resource (see
 // the Ollin target below) so SwiftPM copies it into the target's resource
@@ -18,7 +18,6 @@ let package = Package(
     ],
     products: [
         .library(name: "Ollin", targets: ["Ollin"]),
-        .executable(name: "OllinSketch", targets: ["OllinSketch"]),
     ],
     targets: [
         .target(
@@ -33,11 +32,6 @@ let package = Package(
                 .process("Renderer/Shaders.metal")
             ]
         ),
-        .executableTarget(
-            name: "OllinSketch",
-            dependencies: ["Ollin"]
-        ),
-
         // Examples — one runnable sketch per executable target, grouped into
         // category folders (openFrameworks-style). Each example is a single
         // `@main` Sketch file; run one with e.g. `swift run Example-HelloCircle`.

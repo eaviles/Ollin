@@ -70,10 +70,10 @@ Plus `width` and `height` (logical points, updated live on resize), and
 From the terminal, no Xcode required:
 
 ```sh
-swift run OllinSketch
+swift run Example-HelloCircle
 ```
 
-That builds the package and opens an 800×800 window running `HelloCircle`.
+That builds the package and opens an 800×800 window running the `HelloCircle` example. More runnable sketches live in [`Examples/`](Examples/); `swift run` with no argument lists every example target.
 
 ## Add Ollin to your own package (SPM)
 
@@ -95,8 +95,9 @@ targets: [
 Creative coding lives or dies by how fast you can edit → see. A few options,
 fastest feedback first:
 
-1. **Edit & re-run.** Tweak a sketch and run `swift run OllinSketch`. Incremental
-   builds keep this snappy. This is the recommended default loop.
+1. **Edit & re-run.** Tweak an example (or your own sketch) and re-run, e.g.
+   `swift run Example-Breathing`. Incremental builds keep this snappy. This is the
+   recommended default loop.
 2. **Keep it open in Xcode.** `open Package.swift` (or just open the folder).
    Edit, ⌘R, repeat — with breakpoints and the debugger when you need them.
 3. **Single-file scripts (planned).** `SwiftProcessing` popularized a
