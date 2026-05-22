@@ -16,6 +16,8 @@ Examples/
     Orbits/Sketch.swift        — ten circles orbiting the center at rising speeds
   Color/
     ColorWaves/Sketch.swift    — a row of sin-colored circles flowing with `time`
+  Patterns/
+    DotGrid/Sketch.swift       — a grid of black/white dots woven by a modulo rule
 ```
 
 ## Running

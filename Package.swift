@@ -62,5 +62,10 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Color/ColorWaves"
         ),
+        .executableTarget(
+            name: "Example-DotGrid",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/DotGrid"
+        ),
     ]
 )
