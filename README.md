@@ -122,6 +122,21 @@ circle(x: Double, y: Double, radius: Double)
 `.gray`, `.red`, `.green`, `.blue`, `.clear`. Coordinates use a **top-left
 origin with y increasing downward**, matching p5 / Processing / OPENRNDR.
 
+## Math helpers
+
+A small, growing set of the familiar creative-coding math functions, callable
+bare in `draw()`:
+
+```swift
+map(_ value: Double, _ start1: Double, _ stop1: Double,
+    _ start2: Double, _ stop2: Double, clamp: Bool = false) -> Double
+```
+
+`map` linearly re-maps a number from one range onto another — e.g.
+`map(sin(time), -1, 1, 0, width)` turns the `-1...1` of `sin` into `0...width`.
+By default it extrapolates past the range; pass `clamp: true` to hold the result
+inside `start2...stop2`.
+
 ## How it works (one paragraph)
 
 `Sketch.draw()` calls the bare drawing functions, which forward to a `Drawer`
