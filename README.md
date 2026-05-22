@@ -15,7 +15,7 @@ learn-it-in-an-afternoon API names), and [openFrameworks](https://openframeworks
 they improve on the originals.
 
 - **Platform:** macOS 14+, Swift 5.9+
-- **Rendering:** Metal (`MTKView`, 4× MSAA), Foundation / SwiftUI / Metal / MetalKit / simd only — **no third-party dependencies**
+- **Rendering:** Metal (`MTKView`, 4× MSAA), built on Foundation / SwiftUI / Metal / MetalKit / simd — dependency-light (none today), adding a third-party package only when it clearly earns its place
 - **License:** MIT
 
 > **Status: alpha — pre-1.0, built in public.** The win right now is "I can `swift run` and see a black circle outline on white, with a continuous draw loop already humming underneath." Then we iterate. Expect the API to change between commits, and no stability or support guarantees yet — see [Status & contributing](#status--contributing).
