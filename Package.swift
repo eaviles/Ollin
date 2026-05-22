@@ -52,5 +52,10 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Motion/SineSweep"
         ),
+        .executableTarget(
+            name: "Example-ColorWaves",
+            dependencies: ["Ollin"],
+            path: "Examples/Color/ColorWaves"
+        ),
     ]
 )
