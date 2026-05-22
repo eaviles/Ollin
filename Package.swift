@@ -47,5 +47,10 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"
         ),
+        .executableTarget(
+            name: "Example-SineSweep",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/SineSweep"
+        ),
     ]
 )
