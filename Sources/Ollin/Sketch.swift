@@ -76,7 +76,9 @@ open class Sketch {
     /// Set by the runner so `loop()`/`noLoop()` can pause/resume the MTKView.
     var loopStateDidChange: ((Bool) -> Void)?
 
-    public init() {}
+    /// `required` so `Self()` works in the static `main()` entry point (see
+    /// `Sketch.main()`), letting a sketch file be `@main` with no boilerplate.
+    public required init() {}
 
     private func setLooping(_ value: Bool) {
         guard isLooping != value else { return }

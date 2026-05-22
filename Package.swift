@@ -37,5 +37,21 @@ let package = Package(
             name: "OllinSketch",
             dependencies: ["Ollin"]
         ),
+
+        // Examples — one runnable sketch per executable target, grouped into
+        // category folders (openFrameworks-style). Each example is a single
+        // `@main` Sketch file; run one with e.g. `swift run Example-HelloCircle`.
+        // Hand-written for now; generate these stanzas once the set grows
+        // (see CLAUDE.md: don't hand-maintain dozens of target blocks).
+        .executableTarget(
+            name: "Example-HelloCircle",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/HelloCircle"
+        ),
+        .executableTarget(
+            name: "Example-Breathing",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/Breathing"
+        ),
     ]
 )

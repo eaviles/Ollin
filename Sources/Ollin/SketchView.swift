@@ -209,6 +209,26 @@ public enum OllinApp {
     }
 }
 
+public extension Sketch {
+    /// Entry point that lets a single sketch file be `@main` with no
+    /// boilerplate:
+    ///
+    /// ```swift
+    /// @main
+    /// final class HelloCircle: Sketch {
+    ///     override func draw() { /* ... */ }
+    /// }
+    /// ```
+    ///
+    /// `@main` invokes this inherited `main()` with `Self` bound to the
+    /// concrete subclass, so `Self()` builds *that* sketch (which is why
+    /// `Sketch.init()` is `required`) and `OllinApp.run` boots it. The
+    /// `Examples/` targets use this; `OllinSketch` boots via top-level code.
+    static func main() {
+        OllinApp.run(Self())
+    }
+}
+
 private final class OllinAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true

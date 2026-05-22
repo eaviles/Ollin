@@ -1,21 +1,19 @@
+import Foundation
 import Ollin
 
-/// The hello-world of Ollin: a black circle outline on a white field.
+/// The hello-world of Ollin, breathing: a black circle outline on a white
+/// field whose radius oscillates with `time`.
 ///
-/// It's a still image — but the framework underneath is already running a
-/// continuous draw loop. To make it move, swap the radius for a function of
-/// `time`, e.g. `radius: 120 + sin(time) * 40`, and it just animates.
+/// `draw()` runs continuously at the display's refresh rate, so motion is the
+/// default — `radius: 120 + sin(time) * 40` is the whole animation. Swap it
+/// back to a constant for a still image, or call `noLoop()`.
 final class HelloCircle: Sketch {
-    override func setup() {
-        // optional one-time setup
-    }
-
     override func draw() {
         background(.white)
         noFill()
         stroke(.black)
         strokeWeight(3)
-        circle(x: width / 2, y: height / 2, radius: 120)
+        circle(x: width / 2, y: height / 2, radius: 120 + sin(time) * 40)
     }
 }
 
