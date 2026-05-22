@@ -155,17 +155,15 @@ final class Drawer {
     /// `2 * half`, offset perpendicular to the segment direction.
     private func appendSegment(from a: Vector2, to b: Vector2,
                                half: Double, color: SIMD4<Float>) {
-        let dx = b.x - a.x
-        let dy = b.y - a.y
-        let len = (dx * dx + dy * dy).squareRoot()
+        let d = b - a
+        let len = d.length
         guard len > 0 else { return }   // skip zero-length (repeated) points
         // Perpendicular to the segment, scaled to the half-width.
-        let nx = -dy / len * half
-        let ny =  dx / len * half
-        let a0 = SIMD2<Float>(Float(a.x + nx), Float(a.y + ny))
-        let a1 = SIMD2<Float>(Float(a.x - nx), Float(a.y - ny))
-        let b0 = SIMD2<Float>(Float(b.x + nx), Float(b.y + ny))
-        let b1 = SIMD2<Float>(Float(b.x - nx), Float(b.y - ny))
+        let n = Vector2(-d.y, d.x) / len * half
+        let a0 = (a + n).simd2
+        let a1 = (a - n).simd2
+        let b0 = (b + n).simd2
+        let b1 = (b - n).simd2
         // Quad (a0, b0, b1, a1) -> two triangles.
         vertices.append(OllinVertex(position: a0, color: color))
         vertices.append(OllinVertex(position: b0, color: color))
@@ -180,5 +178,13 @@ extension Color {
     /// GPU vertex-color representation.
     var simd4: SIMD4<Float> {
         SIMD4<Float>(Float(red), Float(green), Float(blue), Float(alpha))
+    }
+}
+
+extension Vector2 {
+    /// GPU-boundary representation: components narrowed to `Float`. Mirrors
+    /// `Color.simd4`; the renderer's vertices are `SIMD2<Float>` positions.
+    var simd2: SIMD2<Float> {
+        SIMD2<Float>(Float(x), Float(y))
     }
 }
