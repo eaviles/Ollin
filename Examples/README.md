@@ -13,6 +13,7 @@ Examples/
   Motion/
     Breathing/Sketch.swift     — the same circle, animated via `time`
     SineSweep/Sketch.swift     — a circle swept across the canvas by `sin(time)`
+    Orbits/Sketch.swift        — ten circles orbiting the center at rising speeds
   Color/
     ColorWaves/Sketch.swift    — a row of sin-colored circles flowing with `time`
 ```
