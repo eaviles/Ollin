@@ -22,3 +22,14 @@ public func map(_ value: Double,
     let hi = Swift.max(start2, stop2)
     return Swift.min(Swift.max(mapped, lo), hi)
 }
+
+/// Euclidean distance between two points.
+///
+/// ```swift
+/// let d = dist(x, y, mouseX, mouseY)
+/// ```
+public func dist(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) -> Double {
+    let dx = x2 - x1
+    let dy = y2 - y1
+    return (dx * dx + dy * dy).squareRoot()
+}

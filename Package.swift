@@ -67,5 +67,10 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Patterns/DotGrid"
         ),
+        .executableTarget(
+            name: "Example-RepelGrid",
+            dependencies: ["Ollin"],
+            path: "Examples/Input/RepelGrid"
+        ),
     ]
 )

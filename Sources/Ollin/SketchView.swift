@@ -92,8 +92,37 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
 
 // MARK: - Shared MTKView configuration
 
-private func makeOllinMTKView(device: MTLDevice, size: CGSize) -> MTKView {
-    let view = MTKView(frame: CGRect(origin: .zero, size: size), device: device)
+/// An `MTKView` that reports the cursor position to its `Sketch` as
+/// `mouseX`/`mouseY`, in sketch coordinates (points, top-left origin). AppKit's
+/// view space is y-up, so y is flipped.
+private final class OllinMTKView: MTKView {
+    weak var sketch: Sketch?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        // `.inVisibleRect` keeps the area sized to the view; `.mouseMoved`
+        // delivers moves even when no button is held.
+        addTrackingArea(NSTrackingArea(
+            rect: .zero,
+            options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil))
+    }
+
+    override func mouseMoved(with event: NSEvent) { reportPointer(event) }
+    override func mouseDragged(with event: NSEvent) { reportPointer(event) }
+    override func mouseDown(with event: NSEvent) { reportPointer(event) }
+
+    private func reportPointer(_ event: NSEvent) {
+        let p = convert(event.locationInWindow, from: nil)
+        sketch?.setMouse(x: Double(p.x), y: Double(bounds.height - p.y))
+    }
+}
+
+private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> MTKView {
+    let view = OllinMTKView(frame: CGRect(origin: .zero, size: size), device: device)
+    view.sketch = sketch
     view.colorPixelFormat = .bgra8Unorm
     view.sampleCount = 4                     // 4x MSAA -> anti-aliased outlines
     view.isPaused = false                    // run continuously...
@@ -127,7 +156,7 @@ public struct SketchView: NSViewRepresentable {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Ollin requires a Metal-capable GPU.")
         }
-        let view = makeOllinMTKView(device: device, size: sketch.preferredSize)
+        let view = makeOllinMTKView(device: device, size: sketch.preferredSize, sketch: sketch)
         let runner = SketchRunner(sketch: sketch, view: view, device: device)
         view.delegate = runner
         context.coordinator.runner = runner   // retain the runner
@@ -157,7 +186,7 @@ public enum OllinApp {
         }
 
         let size = sketch.preferredSize
-        let view = makeOllinMTKView(device: device, size: size)
+        let view = makeOllinMTKView(device: device, size: size, sketch: sketch)
         let runner = SketchRunner(sketch: sketch, view: view, device: device)
         view.delegate = runner
 
@@ -223,8 +252,8 @@ public extension Sketch {
     ///
     /// `@main` invokes this inherited `main()` with `Self` bound to the
     /// concrete subclass, so `Self()` builds *that* sketch (which is why
-    /// `Sketch.init()` is `required`) and `OllinApp.run` boots it. The
-    /// Each `Examples/` target uses this.
+    /// `Sketch.init()` is `required`) and `OllinApp.run` boots it. Each
+    /// `Examples/` target uses this.
     static func main() {
         OllinApp.run(Self())
     }

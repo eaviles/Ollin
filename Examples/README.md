@@ -18,6 +18,8 @@ Examples/
     ColorWaves/Sketch.swift    — a row of sin-colored circles flowing with `time`
   Patterns/
     DotGrid/Sketch.swift       — a grid of black/white dots woven by a modulo rule
+  Input/
+    RepelGrid/Sketch.swift     — a grid of dots that flee the cursor (`mouseX`/`mouseY`)
 ```
 
 ## Running

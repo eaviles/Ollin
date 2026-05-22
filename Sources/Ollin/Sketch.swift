@@ -44,6 +44,14 @@ open class Sketch {
     /// Smoothed frames-per-second estimate.
     public internal(set) var frameRate: Double = 0
 
+    // MARK: Pointer (input)
+
+    /// Cursor x in sketch coordinates (points, top-left origin). Updates as the
+    /// pointer moves over the canvas; `0` until the first movement.
+    public internal(set) var mouseX: Double = 0
+    /// Cursor y in sketch coordinates (points, top-left origin, y-down).
+    public internal(set) var mouseY: Double = 0
+
     // MARK: Configuration (override in subclasses)
 
     /// Window title used when booting via `OllinApp.run`.
@@ -103,6 +111,11 @@ open class Sketch {
     func setCanvasSize(width: Double, height: Double) {
         self.width = width
         self.height = height
+    }
+
+    func setMouse(x: Double, y: Double) {
+        mouseX = x
+        mouseY = y
     }
 
     func advance(time: Double, deltaTime: Double, frameRate: Double) {

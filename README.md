@@ -130,12 +130,23 @@ bare in `draw()`:
 ```swift
 map(_ value: Double, _ start1: Double, _ stop1: Double,
     _ start2: Double, _ stop2: Double, clamp: Bool = false) -> Double
+dist(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) -> Double
 ```
 
 `map` linearly re-maps a number from one range onto another — e.g.
 `map(sin(time), -1, 1, 0, width)` turns the `-1...1` of `sin` into `0...width`.
 By default it extrapolates past the range; pass `clamp: true` to hold the result
-inside `start2...stop2`.
+inside `start2...stop2`. `dist` is the Euclidean distance between two points.
+
+## Input
+
+`mouseX` / `mouseY` track the cursor in sketch coordinates (points, top-left
+origin, y-down), updated as the pointer moves over the canvas — `0` until the
+first movement:
+
+```swift
+let pct = map(dist(mouseX, mouseY, width / 2, height / 2), 0, 400, 1, 0, clamp: true)
+```
 
 ## How it works (one paragraph)
 
