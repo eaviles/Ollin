@@ -75,6 +75,48 @@ cheap now and expensive to retrofit:
   `#include`s the rest, or enumerate the `.metal` resources — decide before the
   second file lands.
 
+## Rendering performance (roadmap)
+
+The drawing model is *immediate-mode GPU*: every frame `Drawer` tessellates
+each primitive into one flat triangle array on the CPU, the renderer uploads it
+to a reused buffer, and issues a single `drawPrimitives`. This is the right
+shape — it's what NanoVG, Dear ImGui, and Processing's GL renderer do — so the
+"low-level" look is the cost of a Metal core, not accidental complexity. Don't
+trade it for Core Graphics / SwiftUI `Canvas` / SpriteKit: those are CPU
+rasterizers or retained-mode scene graphs, and adopting one as the substrate
+throws away the GPU + shader ceiling the whole vision rests on.
+
+Where it caps out, and the levers — in priority order, all *iterations on this
+pipeline, not rewrites*:
+
+- **CPU tessellation is the first bottleneck, not the GPU.** Re-tessellating
+  thousands of primitives every frame on the draw thread stalls long before the
+  GPU breaks a sweat. Everything below attacks that cost.
+- **Instancing is the biggest lever.** Upload one unit-circle mesh once and draw
+  it N times with a per-instance buffer (center, radius, color) via
+  `drawPrimitives(instanceCount:)`. CPU work per circle drops to a struct write;
+  this is the "10,000 circles at 60fps" path. It's a new `Pipeline` case
+  (`.instancedCircle`) plus a per-instance buffer — the cache seam already
+  exists for exactly this.
+- **SDF circles trade triangles for a fragment-shader formula — better quality
+  *and* often faster.** One quad per circle; compute coverage from the distance
+  to the center in the fragment shader. Crisp at any size, with fill + stroke +
+  anti-aliasing handled analytically (no reliance on MSAA). It doesn't
+  generalize to arbitrary polygons, so treat it as a circle/ellipse/rounded-rect
+  specialization, not a replacement for general fills.
+- **MSAA caps anti-aliasing at 4×.** Fine for now; SDF coverage (above) is the
+  upgrade path when thin strokes or large zoom reveal the limit.
+
+Seam already in place: `MetalRenderer` builds pipelines through an enum-keyed
+cache (`Pipeline` + `makePipeline(_:)`), so instanced/SDF pipelines slot in as
+new cases instead of more `init` code.
+
+One thing to *not* hand-roll: when vector `Shape`/`Contour` arrives (concave
+polygons, holes), use a real polygon triangulator — libtess2, the GLU
+tessellator lineage Processing/p5 descend from — rather than a bespoke
+ear-clipper. Convex shapes (circle, rect, ellipse) stay fine with the current
+fan/strip math.
+
 ## Build, run, verify
 
 ```sh
