@@ -105,6 +105,7 @@ open class Sketch {
     public func circle(x: Double, y: Double, radius: Double) {
         drawer.circle(x: x, y: y, radius: radius)
     }
+    public func polyline(_ points: [Vector2]) { drawer.polyline(points) }
 
     // MARK: Runner plumbing (called by SketchRunner)
 

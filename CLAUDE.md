@@ -131,12 +131,14 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
 ## Current state & roadmap
 
 - **Today:** `Sketch` base class; temporal state (`frameCount`, `time`,
-  `deltaTime`, `frameRate`); `Drawer` + Metal renderer (solid fills, stroked
-  outlines, 4x MSAA); the only shape is `circle`; colors are named constants
-  (`.white`, `.black`, …).
-- **Next, in priority order:** `Vector2` and `Color` value types as the
-  geometry currency; more primitives (`rect`, `line`, `ellipse`); vector
-  `Shape`/`Contour`; the extension/lifecycle seam; easing/animation helpers.
+  `deltaTime`, `frameRate`); mouse input (`mouseX`/`mouseY`); `Drawer` + Metal
+  renderer (solid fills, stroked outlines, 4x MSAA); shapes are `circle` and
+  `polyline` (open stroked paths); `Vector2` geometry value type; `Color` value
+  type with named constants (`.white`, `.black`, …); `map`/`dist` math helpers.
+- **Next, in priority order:** more primitives (`rect`, `line`, `ellipse`); the
+  vector `Shape`/`Contour` type (closed shapes + fills, which `polyline` folds
+  into); stroke joins/caps for fat lines; the extension/lifecycle seam;
+  easing/animation helpers.
 
 ## Follow-up: Swift Playgrounds & iOS (not started)
 

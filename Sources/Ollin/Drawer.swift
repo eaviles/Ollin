@@ -78,6 +78,23 @@ final class Drawer {
         }
     }
 
+    /// A connected open path through `points`, stroked with the current stroke
+    /// color and weight.
+    ///
+    /// Open (the last point is not joined back to the first) and stroke-only —
+    /// fills belong to closed shapes (a future `Shape`/`Contour`). Segments are
+    /// butt-jointed, so at the default thin weights the joins look seamless;
+    /// fat strokes will want real joins later. Needs at least two points and a
+    /// stroke to draw anything.
+    func polyline(_ points: [Vector2]) {
+        guard points.count >= 2, let stroke = strokeColor, strokeWidth > 0 else { return }
+        let color = stroke.simd4
+        let half = strokeWidth / 2
+        for k in 1..<points.count {
+            appendSegment(from: points[k - 1], to: points[k], half: half, color: color)
+        }
+    }
+
     // MARK: Tessellation helpers
 
     /// Pick a vertex count that keeps each edge segment ≲ 4 points long, so big
@@ -132,6 +149,30 @@ final class Drawer {
             vertices.append(OllinVertex(position: o1, color: c))
             vertices.append(OllinVertex(position: i1, color: c))
         }
+    }
+
+    /// One straight stroke segment as a rectangle (two triangles) of width
+    /// `2 * half`, offset perpendicular to the segment direction.
+    private func appendSegment(from a: Vector2, to b: Vector2,
+                               half: Double, color: SIMD4<Float>) {
+        let dx = b.x - a.x
+        let dy = b.y - a.y
+        let len = (dx * dx + dy * dy).squareRoot()
+        guard len > 0 else { return }   // skip zero-length (repeated) points
+        // Perpendicular to the segment, scaled to the half-width.
+        let nx = -dy / len * half
+        let ny =  dx / len * half
+        let a0 = SIMD2<Float>(Float(a.x + nx), Float(a.y + ny))
+        let a1 = SIMD2<Float>(Float(a.x - nx), Float(a.y - ny))
+        let b0 = SIMD2<Float>(Float(b.x + nx), Float(b.y + ny))
+        let b1 = SIMD2<Float>(Float(b.x - nx), Float(b.y - ny))
+        // Quad (a0, b0, b1, a1) -> two triangles.
+        vertices.append(OllinVertex(position: a0, color: color))
+        vertices.append(OllinVertex(position: b0, color: color))
+        vertices.append(OllinVertex(position: b1, color: color))
+        vertices.append(OllinVertex(position: a0, color: color))
+        vertices.append(OllinVertex(position: b1, color: color))
+        vertices.append(OllinVertex(position: a1, color: color))
     }
 }
 

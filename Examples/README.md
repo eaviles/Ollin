@@ -14,6 +14,7 @@ Examples/
     Breathing/Sketch.swift     — the same circle, animated via `time`
     SineSweep/Sketch.swift     — a circle swept across the canvas by `sin(time)`
     Orbits/Sketch.swift        — ten circles orbiting the center at rising speeds
+    Trail/Sketch.swift         — a Lissajous point traced by a 600-segment polyline
   Color/
     ColorWaves/Sketch.swift    — a row of sin-colored circles flowing with `time`
   Patterns/

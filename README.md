@@ -116,11 +116,14 @@ fill(_ color: Color) / noFill()         // filled interior, or not
 stroke(_ color: Color) / noStroke()     // outline color, or not
 strokeWeight(_ weight: Double)          // outline thickness in points
 circle(x: Double, y: Double, radius: Double)
+polyline(_ points: [Vector2])           // connected open path, stroked
 ```
 
 `Color` is RGBA floats (`0...1`) with familiar constants: `.white`, `.black`,
-`.gray`, `.red`, `.green`, `.blue`, `.clear`. Coordinates use a **top-left
-origin with y increasing downward**, matching p5 / Processing / OPENRNDR.
+`.gray`, `.red`, `.green`, `.blue`, `.clear`. `Vector2` is an `(x, y)` point in
+sketch points — the geometry type primitives like `polyline` take. Coordinates
+use a **top-left origin with y increasing downward**, matching p5 / Processing /
+OPENRNDR.
 
 ## Math helpers
 
@@ -162,7 +165,7 @@ The renderer is heavily commented because you'll be extending it.
 
 The first pass is deliberately just enough to draw and iterate. Next up:
 
-- **More primitives:** `rect`, `line`, `ellipse`, `point`, `triangle`, polylines.
+- **More primitives:** `rect`, `line`, `ellipse`, `point`, `triangle`.
 - **Fills & color:** richer color (hex/HSB), gradients, blend modes.
 - **Transforms:** `push()`/`pop()`, `translate()`, `rotate()`, `scale()` (matrix stack).
 - **Typography & images:** text, image loading and drawing.
