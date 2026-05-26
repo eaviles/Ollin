@@ -66,6 +66,9 @@ open class Sketch {
     open func setup() {}
     /// Called every frame. Do your drawing here.
     open func draw() {}
+    /// Called once each time a mouse button is pressed over the canvas. Override
+    /// to respond to clicks; `mouseX`/`mouseY` hold the press location.
+    open func mousePressed() {}
 
     // MARK: Loop control
 

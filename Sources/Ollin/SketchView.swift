@@ -116,7 +116,10 @@ private final class OllinMTKView: MTKView {
 
     override func mouseMoved(with event: NSEvent) { reportPointer(event) }
     override func mouseDragged(with event: NSEvent) { reportPointer(event) }
-    override func mouseDown(with event: NSEvent) { reportPointer(event) }
+    override func mouseDown(with event: NSEvent) {
+        reportPointer(event)
+        sketch?.mousePressed()
+    }
 
     /// Seed `mouseX`/`mouseY` from the cursor's current location, so a
     /// mouse-driven sketch reflects where the pointer actually is on the first

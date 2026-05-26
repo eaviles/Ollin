@@ -186,6 +186,9 @@ the canvas:
 let pct = map(dist(mouseX, mouseY, width / 2, height / 2), 0, 400, 1, 0, clamp: true)
 ```
 
+Override `mousePressed()` to respond to a click — `mouseX`/`mouseY` hold the
+press location. It's handy for regenerating an otherwise-static sketch on demand.
+
 ## How it works (one paragraph)
 
 `Sketch.draw()` calls the bare drawing functions, which forward to a `Drawer`
