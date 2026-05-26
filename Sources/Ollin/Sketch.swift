@@ -86,6 +86,9 @@ open class Sketch {
     /// Entropy-seeded by default, so unseeded sketches vary per run.
     var rng = SplitMix64(seed: .random(in: .min ... .max))
 
+    /// Backing field for `noise()` / `noiseSeed(_:)` (see Noise.swift).
+    var perlin = PerlinNoise(seed: .random(in: .min ... .max))
+
     /// Set by the runner so `loop()`/`noLoop()` can pause/resume the MTKView.
     var loopStateDidChange: ((Bool) -> Void)?
 

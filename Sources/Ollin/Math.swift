@@ -23,6 +23,11 @@ public func map(_ value: Double,
     return Swift.min(Swift.max(mapped, lo), hi)
 }
 
+public extension Double {
+    /// The circle constant τ = 2π — one full turn in radians.
+    static let tau = Double.pi * 2
+}
+
 /// Euclidean distance between two points.
 ///
 /// ```swift

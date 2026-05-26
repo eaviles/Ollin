@@ -152,6 +152,28 @@ dist(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) -> Double
 By default it extrapolates past the range; pass `clamp: true` to hold the result
 inside `start2...stop2`. `dist` is the Euclidean distance between two points.
 
+## Randomness & noise
+
+`random` and `noise` are seedable and live on the sketch (so two sketches never
+share hidden global state). Call them bare in `draw()`, like the math helpers:
+
+```swift
+random()                  // Double in 0..<1
+random(max)               // 0..<max
+random(min, max)          // min..<max (order-independent)
+randomSeed(_ seed: Int)   // reproducible runs
+
+noise(x)                  // 1D Perlin noise, in 0...1
+noise(x, y)               // 2D
+noise(x, y, z)            // 3D
+noiseSeed(_ seed: Int)
+```
+
+By default the seed is entropy-based, so an unseeded sketch differs each run;
+seed it for a reproducible image. These are Ollin's own implementations, so a
+seed reproduces *Ollin's* output, not p5's — a port captures the aesthetic, not
+the exact pixels. The full-turn constant is available as `Double.tau` (2π).
+
 ## Input
 
 `mouseX` / `mouseY` track the cursor in sketch coordinates (points, top-left
