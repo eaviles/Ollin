@@ -114,5 +114,10 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Recreations/VeraMolnar/DesOrdres"
         ),
+        .executableTarget(
+            name: "Example-BridgetRiley-Fragment3",
+            dependencies: ["Ollin"],
+            path: "Examples/Recreations/BridgetRiley/Fragment3"
+        ),
     ]
 )

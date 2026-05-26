@@ -11,3 +11,4 @@ Each sketch is a **recreation / homage** — *after* the artist, not a reproduct
 ## Artists
 
 - [**Vera Molnár**](VeraMolnar/) — order and disorder in algorithmic geometry.
+- [**Bridget Riley**](BridgetRiley/) — black-and-white Op art; optical movement from precise geometry.
