@@ -15,4 +15,10 @@ Learn more:
   swift run Example-VeraMolnar-Interruptions
   ```
 
+- [**NestedSquares**](NestedSquares/) — a 5×5 grid of concentric squares, each drawn only ~95% of the time so the orderly nesting frays into disorder; `mouseX` seeds the randomness, so moving the mouse scrubs the pattern. *After* Molnár, in the spirit of her concentric-square works (*(Dés)Ordres*, *Structures de carrés*).
+
+  ```sh
+  swift run Example-VeraMolnar-NestedSquares
+  ```
+
 These are homages *after* Vera Molnár — recreations made for learning, not reproductions of specific works, and not affiliated with or endorsed by the artist or her estate.

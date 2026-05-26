@@ -94,5 +94,10 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Recreations/VeraMolnar/Interruptions"
         ),
+        .executableTarget(
+            name: "Example-VeraMolnar-NestedSquares",
+            dependencies: ["Ollin"],
+            path: "Examples/Recreations/VeraMolnar/NestedSquares"
+        ),
     ]
 )

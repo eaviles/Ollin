@@ -25,6 +25,7 @@ Examples/
     RepelGrid/Sketch.swift     — a grid of dots that flee the cursor (`mouseX`/`mouseY`)
   Recreations/                 — recreating past computer artists, by artist
     VeraMolnar/Interruptions/Sketch.swift  — after Vera Molnár (`isolated`, `line`, `random`, `noise`)
+    VeraMolnar/NestedSquares/Sketch.swift  — after Vera Molnár; nested squares, ~5% disorder (`rect(center:)`)
 ```
 
 ## Running
