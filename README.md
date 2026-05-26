@@ -18,6 +18,8 @@ they improve on the originals.
 - **Rendering:** Metal (`MTKView`, 4× MSAA), built on Foundation / SwiftUI / Metal / MetalKit / simd — dependency-light (none today), adding a third-party package only when it clearly earns its place
 - **License:** MIT
 
+> **Built with AI, stated plainly.** Ollin's code is written by an AI coding assistant (Claude) from a human-authored design — the direction, the API taste, and every call about what belongs here are a person's; the AI is the implementer. It's a tool for *making* art, not a generative-art model, and it credits its influences without copying their source. See [Built with AI](#built-with-ai) and [Influences & attribution](#influences--attribution).
+
 > **Status: alpha — pre-1.0, built in public.** The win right now is "I can `swift run` and see a black circle outline on white, with a continuous draw loop already humming underneath." Then we iterate. Expect the API to change between commits, and no stability or support guarantees yet — see [Status & contributing](#status--contributing).
 
 ## Hello, circle
@@ -174,6 +176,28 @@ The first pass is deliberately just enough to draw and iterate. Next up:
 - **Capture for sharing:** video / GIF recording of animated sketches — because
   the whole point of Ollin is that things move.
 - **Single-file `swift-sh` scripting** for zero-ceremony sketches.
+
+## Built with AI
+
+Ollin's code is written by an AI coding assistant (Claude), working from a human-authored design: the direction, the API taste, the motion-first thesis, and every call about what belongs in the framework are mine. I'm the author and editor; the AI is the implementer.
+
+I'm saying this up front because the creative-coding community is rightly wary of AI, and that wariness deserves a straight answer rather than silence:
+
+- **This is a tool for making art, not a generative-art model.** The AI wrote the framework's plumbing — it doesn't make the work *you'll* make with it. No scraped images, training datasets, or generated artwork are involved.
+- **Sources are credited; licenses are respected.** Ollin is *inspired by* p5.js, OPENRNDR, and openFrameworks — it borrows their feel and vocabulary, not their source code. Where an example is ported from a specific sketch, that sketch and its author are named in the file. See [Influences & attribution](#influences--attribution).
+- **A human is accountable.** Bugs, design mistakes, and licensing questions are mine to answer. Scrutiny is welcome — [open an issue](https://github.com/eaviles/Ollin/issues).
+
+## Influences & attribution
+
+Ollin stands on the ideas of three creative-coding frameworks. It reimplements those ideas in Swift — it does **not** copy their source code, so none of their licenses attach to Ollin (which stays MIT):
+
+| Project | License | What Ollin takes — *influence only* |
+|---|---|---|
+| [p5.js](https://p5js.org) | LGPL-2.1 | Friendly, learn-it-in-an-afternoon API names and the `setup()` / `draw()` lifecycle |
+| [OPENRNDR](https://openrndr.org) | BSD-2-Clause | The typed `Program` / `Drawer` core and composable geometry |
+| [openFrameworks](https://openframeworks.cc) | MIT | Simple project structure and the per-example folder layout |
+
+*"Inspired by" means borrowing ideas and API vocabulary — not the same as copying code; Ollin's implementation is written independently.* Individual example sketches that are *ported* from a published source name that source, its author, and its license in the file header, and only sources whose licenses permit redistribution under MIT are used.
 
 ## Status & contributing
 

@@ -43,6 +43,18 @@ facade the only path to a feature.**
 - Drawing methods live on `Sketch` (scoped to the instance), not true
   globals — keep it that way.
 
+## Sourcing & attribution (load-bearing — it's the public face)
+
+This project is built with AI and says so openly (see the README's "Built with AI" and "Influences & attribution" sections). Getting attribution and license-compatibility right is the thing that earns the creative-coding community's trust — treat it as first priority, not a side chore.
+
+The framework is *inspired by* p5.js (LGPL-2.1), OPENRNDR (BSD-2-Clause), and openFrameworks (MIT): borrow their ideas and API vocabulary, write the implementation independently. **Never translate their source line-by-line** — a port of source is a derivative work that carries the original's license, and p5.js's LGPL is incompatible with Ollin shipping wholesale as MIT. "Inspired by" keeps Ollin MIT-clean; "ported from source" does not.
+
+For ported *example sketches* (the iterate-by-porting workflow), provenance is per-sketch and must be honored:
+
+- **Only port sketches whose license permits redistribution under MIT** — MIT, BSD, Apache-2.0, CC0/public domain, or CC-BY (with credit). For GPL/LGPL, CC-BY-NC, or CC-BY-SA sources, either get permission or rewrite the sketch as original work using the source only as inspiration (credit it as "inspired by").
+- **Name the source in the file header** — the specific sketch, its author, a URL, and its license. Template lives in `Examples/README.md`.
+- When unsure of a sketch's origin or license, **ask before committing it.** A trivial sketch (a plain dot grid) may fall below the copyright-originality bar, but crediting the inspiration is still the default.
+
 ## Shaders & the Metal back end
 
 The shader set is one `.metal` file today; it will grow. Decisions that are

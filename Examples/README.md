@@ -40,3 +40,18 @@ swift run Example-Breathing
 2. Add a matching `.executableTarget(name: "Example-<Name>", dependencies: ["Ollin"], path: "Examples/<Category>/<Name>")` in `Package.swift`.
 
 Convention: a feature isn't done until it has an example, and every example must compile. If a sketch is awkward to write, that's a signal the API needs work, not the example.
+
+## Attribution & sources
+
+Examples often *port* a sketch from elsewhere. When one does, credit it and respect its license:
+
+- Add a header at the top of `Sketch.swift` naming the source:
+
+  ```swift
+  //  Ported from "<sketch>" by <author> — <url>
+  //  Original license: <license>. Reworked for Ollin's API (Swift; Vector2/polyline).
+  ```
+
+- **Only port sources whose license permits redistribution under MIT** — MIT, BSD, Apache-2.0, CC0/public domain, or CC-BY (with credit). For GPL/LGPL, CC-BY-NC, or CC-BY-SA sources, rewrite the sketch as original work using the source only as inspiration, and credit it as "inspired by" instead.
+
+An original sketch (no specific source) needs no header, but a one-line "inspired by …" note is welcome when something sparked it.

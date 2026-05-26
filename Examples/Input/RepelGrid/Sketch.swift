@@ -1,3 +1,8 @@
+//  Ported from the p5.js sketch week-4/pattern-3 (MIT) in
+//  https://github.com/eaviles/rtp-sfpc-f21-p5 — itself a p5 port of Zach
+//  Lieberman's openFrameworks sample for the RTP class at SFPC, Fall 2021
+//  (https://github.com/ofZach/RTP_SFPC_F21). Reworked for Ollin's API.
+
 import Ollin
 
 /// A 30×30 grid of dots that flee the cursor: each dot is pushed away from
