@@ -1,6 +1,7 @@
-//  Recreation after Vera Molnár — in the spirit of her concentric-square works
-//  ("(Dés)Ordres", "Structures de carrés"): order and disorder in squares.
-//  A homage, not a reproduction.
+//  Recreation after Vera Molnár — "(Dés)Ordres" (1974), her plotter drawing of
+//  concentric squares randomly disrupted; a pun on "désordres" (disorders) and
+//  "des ordres" (some orders). A homage, not a reproduction.
+//  https://dam.org/museum/artists_ui/artists/molnar-vera/des-ordres/
 //
 //  Ported from the p5.js sketch week-1/vera-2 (MIT) in
 //  https://github.com/eaviles/rtp-sfpc-f21-p5 — itself a p5 port of Zach
@@ -9,15 +10,16 @@
 
 import Ollin
 
-/// A 5×5 grid of cells, each a stack of 10 concentric squares — but each square
-/// is drawn only ~95% of the time, so the orderly nesting frays into gaps.
-/// **Move the mouse**: `mouseX` seeds the randomness, so sliding it left↔right
-/// scrubs through different disorder patterns.
+/// "(Dés)Ordres" (Vera Molnár, 1974): a 5×5 grid of cells, each a stack of 10
+/// concentric squares — but each square is drawn only ~95% of the time, so the
+/// orderly nesting frays into gaps. The title's pun (disorders / some orders)
+/// is the idea: an underlying logic within the apparent disarray. **Move the
+/// mouse**: `mouseX` seeds the randomness, so sliding it scrubs the disorder.
 ///
 /// Demonstrates center-anchored `rect(center:width:height:)` and `randomSeed`
 /// driven by input. After Vera Molnár.
 @main
-final class NestedSquares: Sketch {
+final class DesOrdres: Sketch {
     override func setup() {
         strokeWeight(2)
         noFill()
