@@ -20,6 +20,7 @@ Examples/
   Patterns/
     DotGrid/Sketch.swift       — a grid of black/white dots woven by a modulo rule
     WarpGrid/Sketch.swift      — a checkerboard of rects warped under the mouse (`rect`)
+    EnergyGrid/Sketch.swift    — columns sized by a moving "energy" share (`translate`, `rect`)
   Input/
     RepelGrid/Sketch.swift     — a grid of dots that flee the cursor (`mouseX`/`mouseY`)
 ```

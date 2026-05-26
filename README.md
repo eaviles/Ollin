@@ -120,6 +120,8 @@ strokeWeight(_ weight: Double)          // outline thickness in points
 circle(x: Double, y: Double, radius: Double)
 rect(x: Double, y: Double, width: Double, height: Double)
 polyline(_ points: [Vector2])           // connected open path, stroked
+
+translate(x: Double, y: Double)         // shift the origin (resets each frame)
 ```
 
 `Color` is RGBA floats (`0...1`) with familiar constants: `.white`, `.black`,
@@ -173,7 +175,7 @@ The first pass is deliberately just enough to draw and iterate. Next up:
 
 - **More primitives:** `line`, `ellipse`, `point`, `triangle`.
 - **Fills & color:** richer color (hex/HSB), gradients, blend modes.
-- **Transforms:** `push()`/`pop()`, `translate()`, `rotate()`, `scale()` (matrix stack).
+- **Transforms:** `rotate()`, `scale()`, and scoped save/restore (`isolated { }` / `push()`/`pop()`) — `translate()` has landed; full matrix stack next.
 - **Typography & images:** text, image loading and drawing.
 - **Shaders:** user-supplied fragment/vertex shaders.
 - **Vector & raster export:** save frames to PNG / SVG / PDF.

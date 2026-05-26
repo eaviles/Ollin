@@ -82,5 +82,10 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Patterns/WarpGrid"
         ),
+        .executableTarget(
+            name: "Example-EnergyGrid",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/EnergyGrid"
+        ),
     ]
 )

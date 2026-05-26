@@ -35,6 +35,10 @@ final class Drawer {
 
     private(set) var vertices: [OllinVertex] = []
 
+    /// Current origin shift, added to every emitted vertex. Cumulative within a
+    /// frame and reset to none each frame, mirroring p5's per-frame matrix.
+    private var translation: SIMD2<Float> = .zero
+
     // MARK: State setters (mirrors the bare API on `Sketch`)
 
     /// Set the background/clear color. Like p5, this also wipes anything drawn
@@ -56,6 +60,16 @@ final class Drawer {
     /// by the runner before `Sketch.draw()`.
     func beginFrame() {
         vertices.removeAll(keepingCapacity: true)
+        translation = .zero
+    }
+
+    // MARK: Transforms
+
+    /// Shift the origin by `offset` (points) for subsequent drawing. Cumulative
+    /// within the frame and reset each frame, mirroring p5's per-frame matrix.
+    /// Translation only for now; rotate/scale and scoped save/restore come later.
+    func translate(_ offset: Vector2) {
+        translation += offset.simd2
     }
 
     // MARK: Primitives
@@ -112,6 +126,12 @@ final class Drawer {
 
     // MARK: Tessellation helpers
 
+    /// Append one tessellated vertex, shifted by the current translation. Every
+    /// primitive funnels through here, so the transform applies uniformly.
+    private func emit(_ position: SIMD2<Float>, color: SIMD4<Float>) {
+        vertices.append(OllinVertex(position: position + translation, color: color))
+    }
+
     /// Pick a vertex count that keeps each edge segment ≲ 4 points long, so big
     /// circles stay smooth and small ones stay cheap.
     private func circleSegments(for radius: Double) -> Int {
@@ -136,9 +156,9 @@ final class Drawer {
             let a1 = Double(i + 1) / Double(segments) * 2.0 * .pi
             let p0 = point(cx: cx, cy: cy, radius: radius, angle: a0)
             let p1 = point(cx: cx, cy: cy, radius: radius, angle: a1)
-            vertices.append(OllinVertex(position: center, color: c))
-            vertices.append(OllinVertex(position: p0, color: c))
-            vertices.append(OllinVertex(position: p1, color: c))
+            emit(center, color: c)
+            emit(p0, color: c)
+            emit(p1, color: c)
         }
     }
 
@@ -157,12 +177,12 @@ final class Drawer {
             let i1 = point(cx: cx, cy: cy, radius: inner, angle: a1)
             let o1 = point(cx: cx, cy: cy, radius: outer, angle: a1)
             // Quad (i0, o0, o1, i1) -> two triangles.
-            vertices.append(OllinVertex(position: i0, color: c))
-            vertices.append(OllinVertex(position: o0, color: c))
-            vertices.append(OllinVertex(position: o1, color: c))
-            vertices.append(OllinVertex(position: i0, color: c))
-            vertices.append(OllinVertex(position: o1, color: c))
-            vertices.append(OllinVertex(position: i1, color: c))
+            emit(i0, color: c)
+            emit(o0, color: c)
+            emit(o1, color: c)
+            emit(i0, color: c)
+            emit(o1, color: c)
+            emit(i1, color: c)
         }
     }
 
@@ -180,23 +200,23 @@ final class Drawer {
         let b0 = (b + n).simd2
         let b1 = (b - n).simd2
         // Quad (a0, b0, b1, a1) -> two triangles.
-        vertices.append(OllinVertex(position: a0, color: color))
-        vertices.append(OllinVertex(position: b0, color: color))
-        vertices.append(OllinVertex(position: b1, color: color))
-        vertices.append(OllinVertex(position: a0, color: color))
-        vertices.append(OllinVertex(position: b1, color: color))
-        vertices.append(OllinVertex(position: a1, color: color))
+        emit(a0, color: color)
+        emit(b0, color: color)
+        emit(b1, color: color)
+        emit(a0, color: color)
+        emit(b1, color: color)
+        emit(a1, color: color)
     }
 
     /// A quad with corners `a→b→c→d` (in order, either winding) as two triangles.
     private func appendQuad(_ a: SIMD2<Float>, _ b: SIMD2<Float>,
                             _ c: SIMD2<Float>, _ d: SIMD2<Float>, color: SIMD4<Float>) {
-        vertices.append(OllinVertex(position: a, color: color))
-        vertices.append(OllinVertex(position: b, color: color))
-        vertices.append(OllinVertex(position: c, color: color))
-        vertices.append(OllinVertex(position: a, color: color))
-        vertices.append(OllinVertex(position: c, color: color))
-        vertices.append(OllinVertex(position: d, color: color))
+        emit(a, color: color)
+        emit(b, color: color)
+        emit(c, color: color)
+        emit(a, color: color)
+        emit(c, color: color)
+        emit(d, color: color)
     }
 
     /// A rectangular outline as four bands between an outer rect (expanded by

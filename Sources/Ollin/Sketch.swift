@@ -111,6 +111,8 @@ open class Sketch {
     public func rect(x: Double, y: Double, width: Double, height: Double) {
         drawer.rect(Rectangle(x: x, y: y, width: width, height: height))
     }
+    public func translate(_ offset: Vector2) { drawer.translate(offset) }
+    public func translate(x: Double, y: Double) { drawer.translate(Vector2(x, y)) }
 
     // MARK: Runner plumbing (called by SketchRunner)
 
