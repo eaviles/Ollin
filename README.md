@@ -118,6 +118,7 @@ fill(_ color: Color) / noFill()         // filled interior, or not
 stroke(_ color: Color) / noStroke()     // outline color, or not
 strokeWeight(_ weight: Double)          // outline thickness in points
 circle(x: Double, y: Double, radius: Double)
+circle(center: Vector2, radius: Double)                 // same, via a Vector2 center
 rect(x: Double, y: Double, width: Double, height: Double)
 rect(corner: Vector2, width: Double, height: Double)    // same, via a Vector2 corner
 rect(center: Vector2, width: Double, height: Double)    // center-anchored (p5 rectMode CENTER)

@@ -116,6 +116,9 @@ open class Sketch {
     public func circle(x: Double, y: Double, radius: Double) {
         drawer.circle(x: x, y: y, radius: radius)
     }
+    public func circle(center: Vector2, radius: Double) {
+        drawer.circle(x: center.x, y: center.y, radius: radius)
+    }
     public func polyline(_ points: [Vector2]) { drawer.polyline(points) }
     public func rect(_ rectangle: Rectangle) { drawer.rect(rectangle) }
     public func rect(x: Double, y: Double, width: Double, height: Double) {

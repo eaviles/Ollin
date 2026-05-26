@@ -42,6 +42,11 @@ facade the only path to a feature.**
   GUI, or video export bolt on without bloating the core.
 - Drawing methods live on `Sketch` (scoped to the instance), not true
   globals — keep it that way.
+- **Consistent point arguments.** A primitive that takes a point offers both a
+  scalar form (`x:`/`y:`) and a `Vector2` form, with the `Vector2` label naming
+  the anchor: `circle(center:)`, `rect(corner:)`/`rect(center:)`, `line`,
+  `translate`. New point-taking primitives (`ellipse`, `point`, `triangle`, …)
+  should follow the same pattern.
 
 ## Sourcing & attribution (load-bearing — it's the public face)
 
