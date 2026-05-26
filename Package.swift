@@ -87,6 +87,11 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Patterns/EnergyGrid"
         ),
+        .executableTarget(
+            name: "Example-NoiseField",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/NoiseField"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
