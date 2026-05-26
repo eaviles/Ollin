@@ -77,5 +77,10 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Input/RepelGrid"
         ),
+        .executableTarget(
+            name: "Example-WarpGrid",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/WarpGrid"
+        ),
     ]
 )

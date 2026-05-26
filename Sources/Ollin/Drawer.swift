@@ -95,6 +95,21 @@ final class Drawer {
         }
     }
 
+    /// An axis-aligned `Rectangle`. Filled as two triangles if a fill is set;
+    /// the outline is stroked as a mitered frame of width `strokeWeight`
+    /// straddling the edges, if a stroke is set. Both feed the same solid-color
+    /// pipeline, so the MTKView's 4× MSAA gives the anti-aliased edge.
+    func rect(_ rect: Rectangle) {
+        guard rect.width > 0, rect.height > 0 else { return }
+        if let fill = fillColor {
+            appendQuad(rect.topLeft.simd2, rect.topRight.simd2,
+                       rect.bottomRight.simd2, rect.bottomLeft.simd2, color: fill.simd4)
+        }
+        if let stroke = strokeColor, strokeWidth > 0 {
+            appendRectFrame(rect, weight: strokeWidth, color: stroke.simd4)
+        }
+    }
+
     // MARK: Tessellation helpers
 
     /// Pick a vertex count that keeps each edge segment ≲ 4 points long, so big
@@ -171,6 +186,36 @@ final class Drawer {
         vertices.append(OllinVertex(position: a0, color: color))
         vertices.append(OllinVertex(position: b1, color: color))
         vertices.append(OllinVertex(position: a1, color: color))
+    }
+
+    /// A quad with corners `a→b→c→d` (in order, either winding) as two triangles.
+    private func appendQuad(_ a: SIMD2<Float>, _ b: SIMD2<Float>,
+                            _ c: SIMD2<Float>, _ d: SIMD2<Float>, color: SIMD4<Float>) {
+        vertices.append(OllinVertex(position: a, color: color))
+        vertices.append(OllinVertex(position: b, color: color))
+        vertices.append(OllinVertex(position: c, color: color))
+        vertices.append(OllinVertex(position: a, color: color))
+        vertices.append(OllinVertex(position: c, color: color))
+        vertices.append(OllinVertex(position: d, color: color))
+    }
+
+    /// A rectangular outline as four bands between an outer rect (expanded by
+    /// half the weight) and an inner rect (shrunk by half), giving clean mitered
+    /// corners. If the stroke is thicker than the rect, the inner edges collapse
+    /// to the center so the frame fills solid instead of inverting.
+    private func appendRectFrame(_ r: Rectangle, weight: Double, color: SIMD4<Float>) {
+        let half = weight / 2
+        let oL = r.corner.x - half, oR = r.corner.x + r.width + half
+        let oT = r.corner.y - half, oB = r.corner.y + r.height + half
+        var iL = r.corner.x + half, iR = r.corner.x + r.width - half
+        var iT = r.corner.y + half, iB = r.corner.y + r.height - half
+        if iL > iR { iL = r.center.x; iR = r.center.x }
+        if iT > iB { iT = r.center.y; iB = r.center.y }
+        func v(_ x: Double, _ y: Double) -> SIMD2<Float> { SIMD2<Float>(Float(x), Float(y)) }
+        appendQuad(v(oL, oT), v(oR, oT), v(oR, iT), v(oL, iT), color: color)  // top
+        appendQuad(v(oL, iB), v(oR, iB), v(oR, oB), v(oL, oB), color: color)  // bottom
+        appendQuad(v(oL, iT), v(iL, iT), v(iL, iB), v(oL, iB), color: color)  // left
+        appendQuad(v(iR, iT), v(oR, iT), v(oR, iB), v(iR, iB), color: color)  // right
     }
 }
 
