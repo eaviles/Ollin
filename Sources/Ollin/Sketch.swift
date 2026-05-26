@@ -121,6 +121,9 @@ open class Sketch {
     public func rect(x: Double, y: Double, width: Double, height: Double) {
         drawer.rect(Rectangle(x: x, y: y, width: width, height: height))
     }
+    public func rect(center: Vector2, width: Double, height: Double) {
+        drawer.rect(Rectangle(center: center, width: width, height: height))
+    }
     public func translate(_ offset: Vector2) { drawer.translate(offset) }
     public func translate(x: Double, y: Double) { drawer.translate(Vector2(x, y)) }
     public func line(_ a: Vector2, _ b: Vector2) { drawer.line(a, b) }

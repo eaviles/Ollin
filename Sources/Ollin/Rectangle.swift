@@ -23,6 +23,12 @@ public struct Rectangle: Equatable, Hashable, Sendable {
         self.init(corner: Vector2(x, y), width: width, height: height)
     }
 
+    /// Build a rectangle centered on `center` (p5's `rectMode(CENTER)`).
+    public init(center: Vector2, width: Double, height: Double) {
+        self.init(corner: Vector2(center.x - width / 2, center.y - height / 2),
+                  width: width, height: height)
+    }
+
     public var x: Double { corner.x }
     public var y: Double { corner.y }
 
