@@ -82,6 +82,10 @@ open class Sketch {
     /// The state machine + per-frame geometry recorder the bare API forwards to.
     let drawer = Drawer()
 
+    /// Backing generator for `random()` / `randomSeed(_:)` (see Random.swift).
+    /// Entropy-seeded by default, so unseeded sketches vary per run.
+    var rng = SplitMix64(seed: .random(in: .min ... .max))
+
     /// Set by the runner so `loop()`/`noLoop()` can pause/resume the MTKView.
     var loopStateDidChange: ((Bool) -> Void)?
 
