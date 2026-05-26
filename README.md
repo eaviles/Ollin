@@ -119,6 +119,7 @@ stroke(_ color: Color) / noStroke()     // outline color, or not
 strokeWeight(_ weight: Double)          // outline thickness in points
 circle(x: Double, y: Double, radius: Double)
 rect(x: Double, y: Double, width: Double, height: Double)
+line(x1: Double, y1: Double, x2: Double, y2: Double)
 polyline(_ points: [Vector2])           // connected open path, stroked
 
 translate(x: Double, y: Double)         // shift the origin (resets each frame)
@@ -173,7 +174,7 @@ The renderer is heavily commented because you'll be extending it.
 
 The first pass is deliberately just enough to draw and iterate. Next up:
 
-- **More primitives:** `line`, `ellipse`, `point`, `triangle`.
+- **More primitives:** `ellipse`, `point`, `triangle`.
 - **Fills & color:** richer color (hex/HSB), gradients, blend modes.
 - **Transforms:** `rotate()`, `scale()`, and scoped save/restore (`isolated { }` / `push()`/`pop()`) — `translate()` has landed; full matrix stack next.
 - **Typography & images:** text, image loading and drawing.

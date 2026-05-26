@@ -124,6 +124,13 @@ final class Drawer {
         }
     }
 
+    /// A straight line segment from `a` to `b`, stroked with the current stroke
+    /// color and weight. A single-segment `polyline`; needs a stroke to draw.
+    func line(_ a: Vector2, _ b: Vector2) {
+        guard let stroke = strokeColor, strokeWidth > 0 else { return }
+        appendSegment(from: a, to: b, half: strokeWidth / 2, color: stroke.simd4)
+    }
+
     // MARK: Tessellation helpers
 
     /// Append one tessellated vertex, shifted by the current translation. Every

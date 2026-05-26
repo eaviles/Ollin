@@ -113,6 +113,10 @@ open class Sketch {
     }
     public func translate(_ offset: Vector2) { drawer.translate(offset) }
     public func translate(x: Double, y: Double) { drawer.translate(Vector2(x, y)) }
+    public func line(_ a: Vector2, _ b: Vector2) { drawer.line(a, b) }
+    public func line(x1: Double, y1: Double, x2: Double, y2: Double) {
+        drawer.line(Vector2(x1, y1), Vector2(x2, y2))
+    }
 
     // MARK: Runner plumbing (called by SketchRunner)
 
