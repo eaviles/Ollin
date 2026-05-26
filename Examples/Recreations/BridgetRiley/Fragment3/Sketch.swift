@@ -9,15 +9,17 @@ import CoreGraphics
 import Ollin
 
 /// A field of black-and-white chevron stripes after Bridget Riley's Op-art
-/// "Fragment 3" (1965). Every band shares one zigzag offset, so the stripes stay
-/// parallel — but the zigzag's amplitude is modulated by a slow sine across the
-/// width, so the chevrons swell and compress (Riley's "altering angles" and the
-/// optical undulation), while the peaks stay sharp.
+/// "Fragment 3" (1965). They're straight-edged polygons; the *curved* look is an
+/// illusion built from two devices:
+///   1. the stripe **thickness swells toward the vertical center** (thin at top
+///      and bottom, thick in the middle), which reads as a bulging surface, and
+///   2. all stripes share one **zigzag** offset whose amplitude alters gently
+///      across the width, so each chevron column differs a little.
 ///
-/// Rendered by column rasterization: each thin vertical slice is the stack of
-/// black bands shifted by the offset, drawn as `rect`s. Ollin has no
-/// filled-polygon `Shape` yet, so fine columns approximate the diagonals. Static,
-/// so `setup()` calls `noLoop()`. The constants in `draw()` are the dials.
+/// Rendered by column rasterization: band boundaries are precomputed from the
+/// vertical thickness envelope, then each thin vertical slice draws the black
+/// bands shifted by the zigzag. Ollin has no filled-polygon `Shape` yet, so fine
+/// columns approximate the diagonals. Static, so `setup()` calls `noLoop()`.
 @main
 final class Fragment3: Sketch {
     override var preferredSize: CGSize { CGSize(width: 800, height: 600) }
@@ -32,28 +34,46 @@ final class Fragment3: Sketch {
         let inset = 80.0
         let left = inset, right = width - inset
         let top = inset, bottom = height - inset
+        let centerY = (top + bottom) / 2, halfHeight = (bottom - top) / 2
 
-        let bandHeight = 24.0       // stripe thickness
-        let baseAmplitude = 34.0    // how tall the zigzag swings (smaller = gentler, less spiky)
-        let period = 110.0          // chevron width (→ ~6 across)
-        let modDepth = 0.4          // how much the angle alters across the width (0 = uniform grid)
-        let modCycles = 1.0         // swells across the width (1 = one smooth progression, not lumpy)
-        let dx = 1.0                // column width (smaller = crisper diagonals)
+        // Zigzag (straight-leg chevrons); amplitude alters gently across x so
+        // each column differs.
+        let baseAmplitude = 30.0, period = 110.0, modDepth = 0.2, dx = 1.0
+        // Stripe thickness swells toward the vertical center — the bulge illusion.
+        let minThickness = 14.0, maxThickness = 38.0
 
-        let span = right - left
-        let maxAmplitude = baseAmplitude * (1 + modDepth)
+        func thickness(at y: Double) -> Double {
+            let v = max(-1, min(1, (y - centerY) / halfHeight))   // -1 top … 1 bottom
+            return minThickness + (maxThickness - minThickness) * cos(v * .pi / 2)
+        }
+        func offset(at x: Double) -> Double {
+            let amp = baseAmplitude * (1 + modDepth * sin(2 * .pi * (x - left) / (right - left)))
+            return amp * triangleWave((x - left) / period)
+        }
+
+        // Precompute band boundaries (variable thickness), extended past the
+        // block so the zigzag never exposes a gap at the masked edges.
+        let slack = baseAmplitude * (1 + modDepth) + maxThickness
+        var boundaries: [Double] = []
+        var cy = top - slack
+        while cy < bottom + slack {
+            boundaries.append(cy)
+            cy += thickness(at: cy)
+        }
+        boundaries.append(cy)
 
         fill(.black)
         var x = left
         while x < right {
             let w = min(dx, right - x)
-            let amplitude = baseAmplitude
-                * (1 + modDepth * sin(2 * .pi * modCycles * (x - left) / span))
-            let offset = amplitude * triangleWave((x - left) / period)
-            var y = top - maxAmplitude - 2 * bandHeight
-            while y < bottom + maxAmplitude + 2 * bandHeight {
-                rect(x: x, y: y + offset, width: w, height: bandHeight)
-                y += 2 * bandHeight
+            let dy = offset(at: x)
+            var k = 0
+            while k + 1 < boundaries.count {
+                if k % 2 == 0 {   // every other band is black; the rest is white paper
+                    rect(x: x, y: boundaries[k] + dy,
+                         width: w, height: boundaries[k + 1] - boundaries[k])
+                }
+                k += 1
             }
             x += dx
         }
