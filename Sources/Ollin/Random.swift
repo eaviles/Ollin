@@ -3,7 +3,7 @@ import Foundation
 /// A small, fast, seedable PRNG (SplitMix64) backing `Sketch.random` /
 /// `Sketch.randomSeed`. Lives on the `Sketch` instance rather than as global
 /// mutable state. The default seed is entropy-based, so an unseeded sketch
-/// varies per run (like p5); call `randomSeed(_:)` for reproducible output.
+/// varies per run; call `randomSeed(_:)` for reproducible output.
 struct SplitMix64: RandomNumberGenerator {
     private var state: UInt64
     init(seed: UInt64) { state = seed }
@@ -19,7 +19,7 @@ struct SplitMix64: RandomNumberGenerator {
 public extension Sketch {
     /// Seed the generator behind `random()` for reproducible runs — the same
     /// seed yields the same sequence. (Ollin's `random`/`noise` are their own
-    /// implementations, so a seed reproduces Ollin's output, not p5's.)
+    /// implementations, so a seed reproduces Ollin's output.)
     func randomSeed(_ seed: Int) {
         rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
     }

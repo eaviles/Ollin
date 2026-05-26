@@ -25,7 +25,7 @@ public struct Color: Equatable, Sendable {
     }
 }
 
-// A few familiar p5-style constants so `.white` / `.black` Just Work.
+// A few familiar named constants so `.white` / `.black` Just Work.
 public extension Color {
     static let white = Color(white: 1)
     static let black = Color(white: 0)

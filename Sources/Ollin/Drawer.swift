@@ -15,28 +15,28 @@ struct OllinVertex {
 
 /// The drawing state machine and per-frame geometry recorder.
 ///
-/// `Drawer` is p5/OPENRNDR-flavored: you set *state* (fill, stroke, weight,
+/// `Drawer` is a state machine: you set *state* (fill, stroke, weight,
 /// background) and then call *primitives* (circle, …). Each primitive is
 /// tessellated on the CPU into triangles and appended to `vertices`, which the
 /// renderer uploads and draws in a single pass.
 ///
-/// State (fill/stroke/weight/background) persists across frames, just like p5.
+/// State (fill/stroke/weight/background) persists across frames.
 /// Geometry does not: the runner calls `beginFrame()` each frame to clear it.
 final class Drawer {
     // MARK: Drawing state (persists across frames)
 
     /// The clear color for the frame. `nil`-fill / `nil`-stroke mean "don't draw".
     private(set) var backgroundColor: Color = .black
-    private var fillColor: Color? = .white     // p5 default: white fill
-    private var strokeColor: Color? = .black    // p5 default: black stroke
-    private var strokeWidth: Double = 1         // p5 default: 1px
+    private var fillColor: Color? = .white     // default: white fill
+    private var strokeColor: Color? = .black    // default: black stroke
+    private var strokeWidth: Double = 1         // default: 1px
 
     // MARK: Per-frame geometry (reset every frame)
 
     private(set) var vertices: [OllinVertex] = []
 
     /// Current affine transform (2D homogeneous), applied to every emitted
-    /// vertex. Reset to identity each frame, mirroring p5's per-frame matrix.
+    /// vertex. Reset to identity each frame.
     private var transform = matrix_identity_float3x3
 
     /// Saved (transform + style) snapshots for `push()`/`pop()` / `isolated`.
@@ -51,7 +51,7 @@ final class Drawer {
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
 
-    /// Set the background/clear color. Like p5, this also wipes anything drawn
+    /// Set the background/clear color. This also wipes anything drawn
     /// so far this frame (background paints over everything).
     func background(_ color: Color) {
         backgroundColor = color
@@ -77,7 +77,7 @@ final class Drawer {
     // MARK: Transforms & state stack
 
     /// Shift the origin by `offset` (points). Composes with the current
-    /// transform; reset each frame, mirroring p5's per-frame matrix.
+    /// transform; reset each frame.
     func translate(_ offset: Vector2) {
         transform = transform * Drawer.translation(Float(offset.x), Float(offset.y))
     }

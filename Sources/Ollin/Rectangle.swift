@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Like `Vector2`, `Rectangle` is a value you pass around and compose, not just
 /// a draw call — it's the typed currency the `Drawer`'s `rect` takes, with the
-/// bare `rect(x:y:width:height:)` as p5-style sugar over it.
+/// bare `rect(x:y:width:height:)` as sugar over it.
 public struct Rectangle: Equatable, Hashable, Sendable {
     /// Top-left corner (smallest x, smallest y).
     public let corner: Vector2
@@ -18,12 +18,12 @@ public struct Rectangle: Equatable, Hashable, Sendable {
         self.height = height
     }
 
-    /// Build from bare `x, y, width, height` (p5 argument order).
+    /// Build from bare `x, y, width, height`.
     public init(x: Double, y: Double, width: Double, height: Double) {
         self.init(corner: Vector2(x, y), width: width, height: height)
     }
 
-    /// Build a rectangle centered on `center` (p5's `rectMode(CENTER)`).
+    /// Build a rectangle centered on `center`.
     public init(center: Vector2, width: Double, height: Double) {
         self.init(corner: Vector2(center.x - width / 2, center.y - height / 2),
                   width: width, height: height)

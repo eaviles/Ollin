@@ -4,8 +4,7 @@ import CoreGraphics
 /// Base class for an Ollin sketch.
 ///
 /// Subclass it, override `setup()` (once) and `draw()` (every frame), and call
-/// the bare drawing functions (`background`, `stroke`, `circle`, …) just like
-/// you would in p5.js or Processing:
+/// the bare drawing functions (`background`, `stroke`, `circle`, …):
 ///
 /// ```swift
 /// final class HelloCircle: Sketch {
@@ -142,8 +141,8 @@ open class Sketch {
     public func push() { drawer.push() }
     public func pop() { drawer.pop() }
 
-    /// Run `body` with the current transform and style saved, then restored —
-    /// p5's `push()`/`pop()` as a scope. Prefer this over bare `push()`/`pop()`.
+    /// Run `body` with the current transform and style saved, then restored.
+    /// Prefer this scoped form over bare `push()`/`pop()`.
     public func isolated(_ body: () -> Void) {
         drawer.push()
         defer { drawer.pop() }

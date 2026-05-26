@@ -43,8 +43,8 @@ final class Interruptions: Sketch {
                 isolated {
                     translate(x: x, y: y)
                     rotate(random(0, .tau))
-                    // p5's threshold is 0.6; 0.7 reproduces that density against
-                    // Ollin's contrast-calibrated noise (same gate: raw < 0.2).
+                    // 0.7 (the source uses 0.6) keeps the intended density
+                    // against Ollin's contrast-calibrated noise: gate is raw < 0.2.
                     if noise(Double(i) * 0.1, Double(j) * 0.1) < 0.7 {
                         line(x1: -15, y1: 0, x2: 15, y2: 0)
                     }

@@ -2,8 +2,8 @@ import Foundation
 
 /// Seedable improved-Perlin noise (Ken Perlin's reference algorithm) backing
 /// `Sketch.noise` / `Sketch.noiseSeed`. Lives on the `Sketch` instance, not as
-/// global state. Output is mapped to `0...1` to match p5's range; it is Ollin's
-/// own implementation, so a seed reproduces Ollin's field, not p5's.
+/// global state. Output is contrast-calibrated and mapped to `0...1`; a seed
+/// yields a reproducible field.
 struct PerlinNoise {
     private var perm: [Int]   // 512 entries (a 0...255 permutation, doubled)
 
@@ -23,8 +23,8 @@ struct PerlinNoise {
     }
 
     /// Contrast gain applied to the raw Perlin value. Classic Perlin clusters
-    /// near the middle of its range; ~2.0 spreads it to fill black-to-white like
-    /// openFrameworks' `ofNoise`, with only a few percent clipped at the extremes.
+    /// near the middle of its range; ~2.0 spreads it to fill black-to-white, with
+    /// only a few percent clipped at the extremes.
     private static let gain = 2.0
 
     /// Unsigned noise in `0...1` (contrast-calibrated to fill the range).
@@ -32,8 +32,7 @@ struct PerlinNoise {
         (signedValue(x, y, z) + 1) / 2
     }
 
-    /// Signed noise in `-1...1` (oF's `ofSignedNoise` / OPENRNDR convention),
-    /// contrast-calibrated to fill the range.
+    /// Signed noise in `-1...1`, contrast-calibrated to fill the range.
     func signedValue(_ x: Double, _ y: Double, _ z: Double) -> Double {
         Swift.max(-1, Swift.min(1, rawValue(x, y, z) * PerlinNoise.gain))
     }
@@ -77,7 +76,7 @@ public extension Sketch {
     /// 3D Perlin noise at `(x, y, z)`, in `0...1`.
     func noise(_ x: Double, _ y: Double, _ z: Double) -> Double { perlin.value(x, y, z) }
 
-    /// 1D signed Perlin noise at `x`, in `-1...1` (oF's `ofSignedNoise` style).
+    /// 1D signed Perlin noise at `x`, in `-1...1`.
     func signedNoise(_ x: Double) -> Double { perlin.signedValue(x, 0, 0) }
     /// 2D signed Perlin noise at `(x, y)`, in `-1...1`.
     func signedNoise(_ x: Double, _ y: Double) -> Double { perlin.signedValue(x, y, 0) }
