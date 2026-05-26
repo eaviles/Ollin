@@ -38,9 +38,9 @@ final class Fragment3: Sketch {
 
         // Zigzag (straight-leg chevrons); amplitude alters gently across x so
         // each column differs.
-        let baseAmplitude = 30.0, period = 110.0, modDepth = 0.2, dx = 1.0
+        let baseAmplitude = 44.0, period = 58.0, modDepth = 0.4, dx = 1.0
         // Stripe thickness swells toward the vertical center — the bulge illusion.
-        let minThickness = 14.0, maxThickness = 38.0
+        let minThickness = 18.0, maxThickness = 30.0
 
         func thickness(at y: Double) -> Double {
             let v = max(-1, min(1, (y - centerY) / halfHeight))   // -1 top … 1 bottom
