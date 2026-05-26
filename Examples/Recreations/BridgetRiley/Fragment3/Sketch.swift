@@ -33,11 +33,11 @@ final class Fragment3: Sketch {
         let left = inset, right = width - inset
         let top = inset, bottom = height - inset
 
-        let bandHeight = 26.0       // stripe thickness
-        let baseAmplitude = 46.0    // how tall the zigzag swings
-        let period = 120.0          // chevron width (→ ~5 across)
-        let modDepth = 0.45         // how much the swing swells/shrinks (0 = uniform)
-        let modCycles = 2.0         // number of those swells across the width
+        let bandHeight = 24.0       // stripe thickness
+        let baseAmplitude = 34.0    // how tall the zigzag swings (smaller = gentler, less spiky)
+        let period = 110.0          // chevron width (→ ~6 across)
+        let modDepth = 0.4          // how much the angle alters across the width (0 = uniform grid)
+        let modCycles = 1.0         // swells across the width (1 = one smooth progression, not lumpy)
         let dx = 1.0                // column width (smaller = crisper diagonals)
 
         let span = right - left
