@@ -92,6 +92,16 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Patterns/NoiseField"
         ),
+        .executableTarget(
+            name: "Example-RandomBand",
+            dependencies: ["Ollin"],
+            path: "Examples/Randomness/RandomBand"
+        ),
+        .executableTarget(
+            name: "Example-NoiseWave",
+            dependencies: ["Ollin"],
+            path: "Examples/Randomness/NoiseWave"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
