@@ -18,7 +18,7 @@ they improve on the originals.
 - **Rendering:** Metal (`MTKView`, 4× MSAA), built on Foundation / SwiftUI / Metal / MetalKit / simd — dependency-light (none today), adding a third-party package only when it clearly earns its place
 - **License:** MIT
 
-> **Built with AI, stated plainly.** Ollin's code is written by an AI coding assistant (Claude) from a human-authored design — the direction, the API taste, and every call about what belongs here are a person's; the AI is the implementer. It's a tool for *making* art, not a generative-art model, and it credits its influences without copying their source. See [Built with AI](#built-with-ai) and [Influences & attribution](#influences--attribution).
+> **Built with AI, stated plainly.** Ollin's code is designed and written by an AI coding assistant (Claude) under human direction — a person sets the direction, makes the calls about what belongs, and is accountable; Claude proposes the API and implements it. It's a tool for *making* art, not a generative-art model, and it credits its influences without copying their source. See [Built with AI](#built-with-ai) and [Influences & attribution](#influences--attribution).
 
 > **Status: alpha — pre-1.0, built in public.** The win right now is "I can `swift run` and see a black circle outline on white, with a continuous draw loop already humming underneath." Then we iterate. Expect the API to change between commits, and no stability or support guarantees yet — see [Status & contributing](#status--contributing).
 
@@ -218,7 +218,7 @@ The first pass is deliberately just enough to draw and iterate. Next up:
 
 ## Built with AI
 
-Ollin's code is written by an AI coding assistant (Claude), working from a human-authored design: the direction, the API taste, the motion-first thesis, and every call about what belongs in the framework are mine. I'm the author and editor; the AI is the implementer.
+Ollin's code is designed and written by an AI coding assistant (Claude), working under my direction. The motion-first thesis and every call about what belongs in the framework are mine — I direct, decide, and am accountable — but the API shapes and much of the design are Claude's proposals that I steer, approve, or reject. So it isn't "a human designed it and the AI typed it up": it's closer to Claude proposing and building, with me as director and editor.
 
 I'm saying this up front because the creative-coding community is rightly wary of AI, and that wariness deserves a straight answer rather than silence:
 
