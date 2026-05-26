@@ -54,6 +54,7 @@ For ported *example sketches* (the iterate-by-porting workflow), provenance is p
 - **Only port sketches whose license permits redistribution under MIT** — MIT, BSD, Apache-2.0, CC0/public domain, or CC-BY (with credit). For GPL/LGPL, CC-BY-NC, or CC-BY-SA sources, either get permission or rewrite the sketch as original work using the source only as inspiration (credit it as "inspired by").
 - **Name the source in the file header** — the specific sketch, its author, a URL, and its license. Template lives in `Examples/README.md`.
 - When unsure of a sketch's origin or license, **ask before committing it.** A trivial sketch (a plain dot grid) may fall below the copyright-originality bar, but crediting the inspiration is still the default.
+- **Recreations** (`Examples/Recreations/`, organized by artist) carry a third credit on top of the code-lineage header: the artist, framed as a homage *after* them (not a reproduction, not endorsed), plus the SFPC "Recreating the Past" class that inspired the section. See `Examples/Recreations/README.md`.
 
 ## Shaders & the Metal back end
 
@@ -143,12 +144,14 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
 ## Current state & roadmap
 
 - **Today:** `Sketch` base class; temporal state (`frameCount`, `time`,
-  `deltaTime`, `frameRate`); mouse input (`mouseX`/`mouseY`); `Drawer` + Metal
+  `deltaTime`, `frameRate`); mouse input (`mouseX`/`mouseY`, `mousePressed()`); `Drawer` + Metal
   renderer (solid fills, stroked outlines, 4x MSAA); shapes are `circle`, `rect`,
   `line`, and `polyline` (open stroked paths); a per-frame transform stack
   (`translate`/`rotate`/`scale`, scoped via `isolated { }`); `Vector2` and
   `Rectangle` geometry value types; `Color` value
-  type with named constants (`.white`, `.black`, …); `map`/`dist` math helpers.
+  type with named constants (`.white`, `.black`, …); `map`/`dist` math helpers,
+  seedable `random`/`noise` and `Double.tau`; a maintained `Examples/` set,
+  including a `Recreations/` section (recreating past computer artists).
 - **Next, in priority order:** more primitives (`ellipse`); the
   vector `Shape`/`Contour` type (closed shapes + fills, which `polyline` folds
   into); stroke joins/caps for fat lines; the extension/lifecycle seam;
@@ -180,9 +183,11 @@ Prep to bake in now so Tier 2 isn't a retrofit:
 - **Decide a state-reset policy:** instance state survives naturally; default to letting `time`/`frameCount` keep running, with an opt-in reset.
 - **Caveats:** InjectionIII is debug-only, macOS/iOS, needs external tooling + build flags (smoothest in Xcode; terminal `swift run` is more DIY). Method-body edits are the sweet spot; changing stored-property layout or reallocating `setup()` GPU resources may need a relaunch. None of this is verifiable in this environment.
 
-## Follow-up: ship an `Examples/` folder (sample projects) (not started)
+## Follow-up: ship an `Examples/` folder (sample projects) (underway)
 
 Ship a curated `Examples/` directory of small, runnable sample projects in the Ollin repo itself, openFrameworks-style. These are the "learn it in an afternoon" on-ramp and the showroom — distinct from a personal sketchbook: examples are *maintained and versioned with the API* (they must always build against current Ollin), whereas throwaway sketches are not.
+
+**Status (built so far):** the set is live — per-example folder + generic `Sketch.swift`, single-file `@main` via `Sketch.main()`, category folders (`Basic`/`Motion`/`Color`/`Patterns`/`Input`), and a `Recreations/` section organized **by artist** (recreating past computer artists as homages *after* them, SFPC-inspired; see `Examples/Recreations/README.md`). Each new feature ships with an example. The main piece left is CI compile-testing.
 
 - **Layout: organized by topic, openFrameworks-style.** Group by feature so they read as a learning path — e.g. `hello`, `primitives`, `color`, `motion-and-time`, `transforms`, `shapes-contours`, `shaders`, `export`. Number or prefix for ordering. Each example is one minimal, focused sketch — show one idea well.
 - **File convention: per-example folder, generic `Sketch.swift`.** Each example lives in `Examples/<Category>/<Name>/` and its file is always named `Sketch.swift` (openFrameworks `ofApp.cpp`-style) rather than `<Name>.swift` — the example's identity lives in the folder name, not a repeated filename. The per-example folder is also each sketch's home for its own assets (fonts, images, shaders sit alongside `Sketch.swift`), which is the reason not to flatten the layout. (The public-facing version of this note in `Examples/README.md` omits the `ofApp.cpp` reference.)
