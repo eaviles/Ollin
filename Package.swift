@@ -90,7 +90,7 @@ let package = Package(
         .executableTarget(
             name: "Example-NoiseField",
             dependencies: ["Ollin"],
-            path: "Examples/Patterns/NoiseField"
+            path: "Examples/Randomness/NoiseField"
         ),
         .executableTarget(
             name: "Example-RandomBand",

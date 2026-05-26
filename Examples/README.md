@@ -21,8 +21,8 @@ Examples/
     DotGrid/Sketch.swift       — a grid of black/white dots woven by a modulo rule
     WarpGrid/Sketch.swift      — a checkerboard of rects warped under the mouse (`rect`)
     EnergyGrid/Sketch.swift    — columns sized by a moving "energy" share (`translate`, `rect`)
-    NoiseField/Sketch.swift    — an 80×80 grid shaded by 3D Perlin `noise`, scrubbed by the mouse
   Randomness/
+    NoiseField/Sketch.swift    — an 80×80 grid shaded by 3D Perlin `noise`, scrubbed by the mouse
     RandomBand/Sketch.swift    — 800 dots jittered by `random` (jagged); re-rolls with the mouse
     NoiseWave/Sketch.swift     — 800 dots offset by `signedNoise` (smooth); the noise counterpart
   Input/
