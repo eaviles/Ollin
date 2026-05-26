@@ -23,6 +23,8 @@ Examples/
     EnergyGrid/Sketch.swift    — columns sized by a moving "energy" share (`translate`, `rect`)
   Input/
     RepelGrid/Sketch.swift     — a grid of dots that flee the cursor (`mouseX`/`mouseY`)
+  Recreations/                 — recreating past computer artists, by artist
+    VeraMolnar/Interruptions/Sketch.swift  — after Vera Molnár (`isolated`, `line`, `random`, `noise`)
 ```
 
 ## Running
@@ -43,6 +45,16 @@ swift run Example-Breathing
 
 Convention: a feature isn't done until it has an example, and every example must compile. If a sketch is awkward to write, that's a signal the API needs work, not the example.
 
+## Recreations
+
+`Recreations/` is a special section: sketches that **recreate the work of past computer artists**, organized by artist, inspired by SFPC's [Recreating the Past](https://sfpc.io/recreatingthepast-spring2020/) class. Each is a homage *after* the artist (not a reproduction, not endorsed), with a short per-artist `README.md` introducing them. Their targets are namespaced by artist:
+
+```sh
+swift run Example-VeraMolnar-Interruptions
+```
+
+See [`Recreations/README.md`](Recreations/) for the full idea.
+
 ## Attribution & sources
 
 Examples often *port* a sketch from elsewhere. When one does, credit it and respect its license:
@@ -57,3 +69,5 @@ Examples often *port* a sketch from elsewhere. When one does, credit it and resp
 - **Only port sources whose license permits redistribution under MIT** — MIT, BSD, Apache-2.0, CC0/public domain, or CC-BY (with credit). For GPL/LGPL, CC-BY-NC, or CC-BY-SA sources, rewrite the sketch as original work using the source only as inspiration, and credit it as "inspired by" instead.
 
 An original sketch (no specific source) needs no header, but a one-line "inspired by …" note is welcome when something sparked it.
+
+For a **recreation** of a named artist's work (see `Recreations/`), also credit the artist in the header and the per-artist `README.md`, framed as a homage *after* them — not a reproduction, and not endorsed by the artist or their estate.

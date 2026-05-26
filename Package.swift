@@ -87,5 +87,12 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Patterns/EnergyGrid"
         ),
+        // Recreations — sketches recreating past computer artists, namespaced by
+        // artist (see Examples/Recreations/README.md).
+        .executableTarget(
+            name: "Example-VeraMolnar-Interruptions",
+            dependencies: ["Ollin"],
+            path: "Examples/Recreations/VeraMolnar/Interruptions"
+        ),
     ]
 )
