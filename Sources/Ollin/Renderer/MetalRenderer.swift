@@ -2,6 +2,7 @@ import Foundation
 import Metal
 import MetalKit
 import simd
+import CoreGraphics
 
 /// The Metal back end. Deliberately small: one command queue, an enum-keyed
 /// cache of render pipelines (just `.solid` — solid-color 2D triangles — for
@@ -88,25 +89,91 @@ final class MetalRenderer {
             return
         }
 
-        let vertices = drawer.vertices
-        if !vertices.isEmpty,
-           let buffer = vertexBuffer(for: vertices.count),
-           let solid = pipelines[.solid] {
-            vertices.withUnsafeBytes { raw in
-                buffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
-            }
-
-            var uniforms = Uniforms(viewport: viewport)
-
-            encoder.setRenderPipelineState(solid)
-            encoder.setVertexBuffer(buffer, offset: 0, index: 0)
-            encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
-            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
-        }
-
+        encode(drawer, viewport: viewport, into: encoder)
         encoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
+    }
+
+    /// Render `drawer`'s geometry off-screen to a `CGImage` of `width`×`height`
+    /// pixels — same pipeline, MSAA, and blending as on-screen — for frame export
+    /// (PNG, and later PNG sequences for video). Headless: needs no view or
+    /// window. Synchronous: waits for the GPU before reading back.
+    func image(of drawer: Drawer, viewport: SIMD2<Float>, width: Int, height: Int) -> CGImage? {
+        guard width > 0, height > 0 else { return nil }
+
+        // 4× MSAA color target + a single-sample resolve we can read back.
+        let msaaDesc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
+        msaaDesc.textureType = .type2DMultisample
+        msaaDesc.sampleCount = sampleCount
+        msaaDesc.usage = .renderTarget
+        msaaDesc.storageMode = .private
+
+        let resolveDesc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
+        resolveDesc.usage = .renderTarget
+        resolveDesc.storageMode = .private
+
+        guard let msaaTexture = device.makeTexture(descriptor: msaaDesc),
+              let resolveTexture = device.makeTexture(descriptor: resolveDesc) else { return nil }
+
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = msaaTexture
+        pass.colorAttachments[0].resolveTexture = resolveTexture
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
+        pass.colorAttachments[0].storeAction = .multisampleResolve
+
+        let bytesPerRow = width * 4
+        let byteCount = bytesPerRow * height
+
+        guard let readback = device.makeBuffer(length: byteCount, options: .storageModeShared),
+              let commandBuffer = commandQueue.makeCommandBuffer(),
+              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+
+        encode(drawer, viewport: viewport, into: encoder)
+        encoder.endEncoding()
+
+        // Copy the resolved texture into a CPU-readable buffer (works on every
+        // Mac GPU, unlike texture.getBytes on discrete cards).
+        guard let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
+        blit.copy(from: resolveTexture, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: width, height: height, depth: 1),
+                  to: readback, destinationOffset: 0,
+                  destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
+        blit.endEncoding()
+
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+
+        // BGRA8 bytes -> CGImage. Frames are opaque, so skip the alpha channel.
+        let data = Data(bytes: readback.contents(), count: byteCount)
+        guard let provider = CGDataProvider(data: data as CFData) else { return nil }
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue
+                                      | CGBitmapInfo.byteOrder32Little.rawValue)
+        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+                       bytesPerRow: bytesPerRow, space: CGColorSpaceCreateDeviceRGB(),
+                       bitmapInfo: bitmapInfo, provider: provider, decode: nil,
+                       shouldInterpolate: false, intent: .defaultIntent)
+    }
+
+    /// Upload `drawer`'s vertices and issue the solid-triangle draw into
+    /// `encoder`. Shared by the on-screen and off-screen (export) paths.
+    private func encode(_ drawer: Drawer, viewport: SIMD2<Float>, into encoder: MTLRenderCommandEncoder) {
+        let vertices = drawer.vertices
+        guard !vertices.isEmpty,
+              let buffer = vertexBuffer(for: vertices.count),
+              let solid = pipelines[.solid] else { return }
+        vertices.withUnsafeBytes { raw in
+            buffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+        }
+        var uniforms = Uniforms(viewport: viewport)
+        encoder.setRenderPipelineState(solid)
+        encoder.setVertexBuffer(buffer, offset: 0, index: 0)
+        encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
     }
 
     // MARK: Pipelines

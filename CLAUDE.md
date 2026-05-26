@@ -157,7 +157,8 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   `Rectangle` geometry value types; `Color` value
   type with named constants (`.white`, `.black`, …); `map`/`dist` math helpers,
   seedable `random`/`noise` and `Double.tau`; a maintained `Examples/` set,
-  including a `Recreations/` section (recreating past computer artists).
+  including a `Recreations/` section (recreating past computer artists); headless
+  single-frame PNG export (`--export` / `OllinApp.export`, off-screen MSAA render).
 - **Next, in priority order:** more primitives (`ellipse`); the
   vector `Shape`/`Contour` type (closed shapes + fills, which `polyline` folds
   into); stroke joins/caps for fat lines; the extension/lifecycle seam;

@@ -241,6 +241,47 @@ public enum OllinApp {
         app.run()
     }
 
+    /// Render one frame of `sketch` off-screen and write it as a PNG — no window.
+    /// Drives the sketch headlessly: `setup()`, then `draw()` advanced to `frame`
+    /// at `fps` (so animated/stateful sketches export the right moment). This is
+    /// the frame-grab seam, and the basis for PNG sequences → video.
+    public static func export(_ sketch: Sketch, to path: String, frame: Int = 0, fps: Double = 60) {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            fatalError("Ollin requires a Metal-capable GPU.")
+        }
+        let renderer: MetalRenderer
+        do {
+            renderer = try MetalRenderer(device: device, pixelFormat: .bgra8Unorm, sampleCount: 4)
+        } catch {
+            fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
+        }
+
+        let size = sketch.preferredSize
+        sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
+        sketch.setup()
+        for k in 0...max(0, frame) {                 // advance so frame N is correct
+            sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+            sketch.performDraw()
+        }
+
+        let width = Int(size.width.rounded()), height = Int(size.height.rounded())
+        guard let cgImage = renderer.image(of: sketch.drawer,
+                                           viewport: SIMD2<Float>(Float(size.width), Float(size.height)),
+                                           width: width, height: height) else {
+            fatalError("Ollin: failed to render the frame for export")
+        }
+
+        guard let data = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else {
+            fatalError("Ollin: failed to encode PNG")
+        }
+        do {
+            try data.write(to: URL(fileURLWithPath: path))
+            print("Ollin: exported frame \(frame) → \(path) (\(width)×\(height))")
+        } catch {
+            fatalError("Ollin: failed to write \(path): \(error)")
+        }
+    }
+
     private static func makeMenu(quitTitle: String) -> NSMenu {
         let mainMenu = NSMenu()
         let appItem = NSMenuItem()
@@ -278,6 +319,17 @@ public extension Sketch {
     /// `Sketch.init()` is `required`) and `OllinApp.run` boots it. Each
     /// `Examples/` target uses this.
     static func main() {
+        // `swift run Example-X --export <path> [--frame N]` writes a PNG and
+        // exits (no window); otherwise the sketch runs in a window as usual.
+        let args = CommandLine.arguments
+        if let i = args.firstIndex(of: "--export"), i + 1 < args.count {
+            var frame = 0
+            if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {
+                frame = Int(args[f + 1]) ?? 0
+            }
+            OllinApp.export(Self(), to: args[i + 1], frame: frame)
+            return
+        }
         OllinApp.run(Self())
     }
 }

@@ -203,6 +203,17 @@ and issues a single `drawPrimitives` call; a vertex shader maps points to clip
 space (flipping Y) and 4× MSAA on the `MTKView` gives the anti-aliased edge.
 The renderer is heavily commented because you'll be extending it.
 
+## Exporting frames
+
+Any sketch can render a frame to a PNG **headlessly** — no window — handy for grabbing a still to share, checking a sketch on a machine without a display, and as the basis for PNG sequences you can stitch into video:
+
+```sh
+swift run Example-HelloCircle --export frame.png
+swift run Example-Orbits --export frame.png --frame 120   # the 120th frame
+```
+
+It drives the sketch off-screen (`setup()`, then `draw()` advanced to the requested `--frame`) and writes a PNG at the sketch's size, rendered with the same 4× MSAA as the window. In code it's `OllinApp.export(sketch, to:frame:)`.
+
 ## Roadmap
 
 The first pass is deliberately just enough to draw and iterate. Next up:
@@ -211,7 +222,7 @@ The first pass is deliberately just enough to draw and iterate. Next up:
 - **Fills & color:** richer color (hex/HSB), gradients, blend modes.
 - **Typography & images:** text, image loading and drawing.
 - **Shaders:** user-supplied fragment/vertex shaders.
-- **Vector & raster export:** save frames to PNG / SVG / PDF.
+- **Vector & raster export:** single-frame PNG export has landed (`--export`); PNG *sequences*, SVG, and PDF are next.
 - **Capture for sharing:** video / GIF recording of animated sketches — because
   the whole point of Ollin is that things move.
 - **Single-file `swift-sh` scripting** for zero-ceremony sketches.
