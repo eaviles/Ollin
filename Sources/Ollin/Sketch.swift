@@ -46,8 +46,9 @@ open class Sketch {
 
     // MARK: Pointer (input)
 
-    /// Cursor x in sketch coordinates (points, top-left origin). Updates as the
-    /// pointer moves over the canvas; `0` until the first movement.
+    /// Cursor x in sketch coordinates (points, top-left origin). Seeded from the
+    /// cursor's actual position when the sketch opens, then updated as the
+    /// pointer moves over the canvas.
     public internal(set) var mouseX: Double = 0
     /// Cursor y in sketch coordinates (points, top-left origin, y-down).
     public internal(set) var mouseY: Double = 0

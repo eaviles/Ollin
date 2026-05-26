@@ -56,6 +56,10 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         if !didSetup {
             startTime = now
             lastTime = now
+            // Reflect where the cursor actually is before the first frame, so a
+            // mouse-driven sketch isn't stuck reading (0, 0) — and rendering a
+            // blank frame — until the pointer first moves over the window.
+            (view as? OllinMTKView)?.seedPointer()
             sketch.setup()
             didSetup = true
         }
@@ -114,8 +118,24 @@ private final class OllinMTKView: MTKView {
     override func mouseDragged(with event: NSEvent) { reportPointer(event) }
     override func mouseDown(with event: NSEvent) { reportPointer(event) }
 
+    /// Seed `mouseX`/`mouseY` from the cursor's current location, so a
+    /// mouse-driven sketch reflects where the pointer actually is on the first
+    /// frame instead of reading (0, 0) until the first move. Uses the real
+    /// cursor position even if it's currently outside the window; it
+    /// self-corrects the instant the pointer moves over the canvas.
+    func seedPointer() {
+        guard let window else { return }
+        report(windowPoint: window.mouseLocationOutsideOfEventStream)
+    }
+
     private func reportPointer(_ event: NSEvent) {
-        let p = convert(event.locationInWindow, from: nil)
+        report(windowPoint: event.locationInWindow)
+    }
+
+    /// Convert a point in window coordinates to sketch space (points, top-left
+    /// origin; AppKit is y-up, so y is flipped) and hand it to the sketch.
+    private func report(windowPoint: NSPoint) {
+        let p = convert(windowPoint, from: nil)
         sketch?.setMouse(x: Double(p.x), y: Double(bounds.height - p.y))
     }
 }

@@ -148,8 +148,10 @@ inside `start2...stop2`. `dist` is the Euclidean distance between two points.
 ## Input
 
 `mouseX` / `mouseY` track the cursor in sketch coordinates (points, top-left
-origin, y-down), updated as the pointer moves over the canvas — `0` until the
-first movement:
+origin, y-down). They're seeded from the cursor's actual position when the
+sketch window opens — so a mouse-driven sketch is alive on the first frame
+rather than waiting for the first move — then update as the pointer moves over
+the canvas:
 
 ```swift
 let pct = map(dist(mouseX, mouseY, width / 2, height / 2), 0, 400, 1, 0, clamp: true)
