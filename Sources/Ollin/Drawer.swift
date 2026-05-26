@@ -35,9 +35,19 @@ final class Drawer {
 
     private(set) var vertices: [OllinVertex] = []
 
-    /// Current origin shift, added to every emitted vertex. Cumulative within a
-    /// frame and reset to none each frame, mirroring p5's per-frame matrix.
-    private var translation: SIMD2<Float> = .zero
+    /// Current affine transform (2D homogeneous), applied to every emitted
+    /// vertex. Reset to identity each frame, mirroring p5's per-frame matrix.
+    private var transform = matrix_identity_float3x3
+
+    /// Saved (transform + style) snapshots for `push()`/`pop()` / `isolated`.
+    private var stateStack: [SavedState] = []
+
+    private struct SavedState {
+        var transform: matrix_float3x3
+        var fillColor: Color?
+        var strokeColor: Color?
+        var strokeWidth: Double
+    }
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
 
@@ -60,16 +70,41 @@ final class Drawer {
     /// by the runner before `Sketch.draw()`.
     func beginFrame() {
         vertices.removeAll(keepingCapacity: true)
-        translation = .zero
+        transform = matrix_identity_float3x3
+        stateStack.removeAll(keepingCapacity: true)
     }
 
-    // MARK: Transforms
+    // MARK: Transforms & state stack
 
-    /// Shift the origin by `offset` (points) for subsequent drawing. Cumulative
-    /// within the frame and reset each frame, mirroring p5's per-frame matrix.
-    /// Translation only for now; rotate/scale and scoped save/restore come later.
+    /// Shift the origin by `offset` (points). Composes with the current
+    /// transform; reset each frame, mirroring p5's per-frame matrix.
     func translate(_ offset: Vector2) {
-        translation += offset.simd2
+        transform = transform * Drawer.translation(Float(offset.x), Float(offset.y))
+    }
+
+    /// Rotate subsequent drawing by `radians` (clockwise, in Ollin's y-down space).
+    func rotate(_ radians: Double) {
+        transform = transform * Drawer.rotation(Float(radians))
+    }
+
+    /// Scale subsequent drawing by `(sx, sy)`.
+    func scale(_ sx: Double, _ sy: Double) {
+        transform = transform * Drawer.scaling(Float(sx), Float(sy))
+    }
+
+    /// Save the current transform and style (fill/stroke/weight).
+    func push() {
+        stateStack.append(SavedState(transform: transform, fillColor: fillColor,
+                                     strokeColor: strokeColor, strokeWidth: strokeWidth))
+    }
+
+    /// Restore the most recently pushed transform and style. No-op if unbalanced.
+    func pop() {
+        guard let s = stateStack.popLast() else { return }
+        transform = s.transform
+        fillColor = s.fillColor
+        strokeColor = s.strokeColor
+        strokeWidth = s.strokeWidth
     }
 
     // MARK: Primitives
@@ -136,7 +171,8 @@ final class Drawer {
     /// Append one tessellated vertex, shifted by the current translation. Every
     /// primitive funnels through here, so the transform applies uniformly.
     private func emit(_ position: SIMD2<Float>, color: SIMD4<Float>) {
-        vertices.append(OllinVertex(position: position + translation, color: color))
+        let p = transform * SIMD3<Float>(position.x, position.y, 1)
+        vertices.append(OllinVertex(position: SIMD2<Float>(p.x, p.y), color: color))
     }
 
     /// Pick a vertex count that keeps each edge segment ≲ 4 points long, so big
@@ -243,6 +279,25 @@ final class Drawer {
         appendQuad(v(oL, iB), v(oR, iB), v(oR, oB), v(oL, oB), color: color)  // bottom
         appendQuad(v(oL, iT), v(iL, iT), v(iL, iB), v(oL, iB), color: color)  // left
         appendQuad(v(iR, iT), v(oR, iT), v(oR, iB), v(iR, iB), color: color)  // right
+    }
+
+    // MARK: Affine matrix builders (column-major, 2D homogeneous)
+
+    private static func translation(_ tx: Float, _ ty: Float) -> matrix_float3x3 {
+        matrix_float3x3(columns: (SIMD3<Float>(1, 0, 0),
+                                  SIMD3<Float>(0, 1, 0),
+                                  SIMD3<Float>(tx, ty, 1)))
+    }
+    private static func rotation(_ a: Float) -> matrix_float3x3 {
+        let c = cos(a), s = sin(a)
+        return matrix_float3x3(columns: (SIMD3<Float>(c, s, 0),
+                                         SIMD3<Float>(-s, c, 0),
+                                         SIMD3<Float>(0, 0, 1)))
+    }
+    private static func scaling(_ sx: Float, _ sy: Float) -> matrix_float3x3 {
+        matrix_float3x3(columns: (SIMD3<Float>(sx, 0, 0),
+                                  SIMD3<Float>(0, sy, 0),
+                                  SIMD3<Float>(0, 0, 1)))
     }
 }
 

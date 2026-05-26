@@ -122,7 +122,11 @@ rect(x: Double, y: Double, width: Double, height: Double)
 line(x1: Double, y1: Double, x2: Double, y2: Double)
 polyline(_ points: [Vector2])           // connected open path, stroked
 
-translate(x: Double, y: Double)         // shift the origin (resets each frame)
+translate(x: Double, y: Double)         // shift the origin
+rotate(_ radians: Double)               // rotate (clockwise; y-down)
+scale(_ amount: Double)                 // scale (also scale(x:y:))
+isolated { … }                          // run a block with transform + style saved/restored
+push() / pop()                          // manual save/restore (isolated is the scoped form)
 ```
 
 `Color` is RGBA floats (`0...1`) with familiar constants: `.white`, `.black`,
@@ -176,7 +180,6 @@ The first pass is deliberately just enough to draw and iterate. Next up:
 
 - **More primitives:** `ellipse`, `point`, `triangle`.
 - **Fills & color:** richer color (hex/HSB), gradients, blend modes.
-- **Transforms:** `rotate()`, `scale()`, and scoped save/restore (`isolated { }` / `push()`/`pop()`) — `translate()` has landed; full matrix stack next.
 - **Typography & images:** text, image loading and drawing.
 - **Shaders:** user-supplied fragment/vertex shaders.
 - **Vector & raster export:** save frames to PNG / SVG / PDF.

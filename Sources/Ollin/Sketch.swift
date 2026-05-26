@@ -117,6 +117,19 @@ open class Sketch {
     public func line(x1: Double, y1: Double, x2: Double, y2: Double) {
         drawer.line(Vector2(x1, y1), Vector2(x2, y2))
     }
+    public func rotate(_ radians: Double) { drawer.rotate(radians) }
+    public func scale(_ amount: Double) { drawer.scale(amount, amount) }
+    public func scale(x: Double, y: Double) { drawer.scale(x, y) }
+    public func push() { drawer.push() }
+    public func pop() { drawer.pop() }
+
+    /// Run `body` with the current transform and style saved, then restored —
+    /// p5's `push()`/`pop()` as a scope. Prefer this over bare `push()`/`pop()`.
+    public func isolated(_ body: () -> Void) {
+        drawer.push()
+        defer { drawer.pop() }
+        body()
+    }
 
     // MARK: Runner plumbing (called by SketchRunner)
 
