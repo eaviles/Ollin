@@ -9,17 +9,16 @@ import CoreGraphics
 import Ollin
 
 /// A field of black-and-white chevron stripes after Bridget Riley's Op-art
-/// "Fragment 3" (1965). They're straight-edged polygons; the *curved* look is an
-/// illusion built from two devices:
+/// "Fragment 3" (1965). They're filled polygons; the *curved* look is an
+/// illusion from two devices:
 ///   1. the stripe **thickness swells toward the vertical center** (thin at top
 ///      and bottom, thick in the middle), which reads as a bulging surface, and
 ///   2. all stripes share one **zigzag** offset whose amplitude alters gently
 ///      across the width, so each chevron column differs a little.
 ///
-/// Rendered by column rasterization: band boundaries are precomputed from the
-/// vertical thickness envelope, then each thin vertical slice draws the black
-/// bands shifted by the zigzag. Ollin has no filled-polygon `Shape` yet, so fine
-/// columns approximate the diagonals. Static, so `setup()` calls `noLoop()`.
+/// Each black stripe is a chevron strip — one filled `polygon` (a quad) per
+/// zigzag segment, so the diagonal edges are true edges (MSAA-smoothed), not
+/// rasterized columns. Static, so `setup()` calls `noLoop()`.
 @main
 final class Fragment3: Sketch {
     override var preferredSize: CGSize { CGSize(width: 800, height: 600) }
@@ -36,11 +35,9 @@ final class Fragment3: Sketch {
         let top = inset, bottom = height - inset
         let centerY = (top + bottom) / 2, halfHeight = (bottom - top) / 2
 
-        // Zigzag (straight-leg chevrons); amplitude alters gently across x so
-        // each column differs.
-        let baseAmplitude = 44.0, period = 58.0, modDepth = 0.4, dx = 1.0
-        // Stripe thickness swells toward the vertical center — the bulge illusion.
+        let baseAmplitude = 44.0, period = 58.0, modDepth = 0.4
         let minThickness = 18.0, maxThickness = 30.0
+        let halfPeriod = period / 2
 
         func thickness(at y: Double) -> Double {
             let v = max(-1, min(1, (y - centerY) / halfHeight))   // -1 top … 1 bottom
@@ -51,8 +48,8 @@ final class Fragment3: Sketch {
             return amp * triangleWave((x - left) / period)
         }
 
-        // Precompute band boundaries (variable thickness), extended past the
-        // block so the zigzag never exposes a gap at the masked edges.
+        // Band boundaries from the variable thickness, extended past the block
+        // so the zigzag never exposes a gap at the masked edges.
         let slack = baseAmplitude * (1 + modDepth) + maxThickness
         var boundaries: [Double] = []
         var cy = top - slack
@@ -62,20 +59,30 @@ final class Fragment3: Sketch {
         }
         boundaries.append(cy)
 
+        // Zigzag bend points across the width (a peak/valley every half-period),
+        // ending at the right edge; the offset is sampled once per bend.
+        var xs: [Double] = []
+        var vx = left
+        while vx < right { xs.append(vx); vx += halfPeriod }
+        xs.append(right)
+        let offsets = xs.map { offset(at: $0) }
+
+        // Each black stripe is a chevron strip: one filled quad per segment.
         fill(.black)
-        var x = left
-        while x < right {
-            let w = min(dx, right - x)
-            let dy = offset(at: x)
-            var k = 0
-            while k + 1 < boundaries.count {
-                if k % 2 == 0 {   // every other band is black; the rest is white paper
-                    rect(x: x, y: boundaries[k] + dy,
-                         width: w, height: boundaries[k + 1] - boundaries[k])
+        var k = 0
+        while k + 1 < boundaries.count {
+            if k % 2 == 0 {   // every other band is black; the rest is white paper
+                let yTop = boundaries[k], yBot = boundaries[k + 1]
+                for i in 0 ..< (xs.count - 1) {
+                    polygon([
+                        Vector2(xs[i],     yTop + offsets[i]),
+                        Vector2(xs[i + 1], yTop + offsets[i + 1]),
+                        Vector2(xs[i + 1], yBot + offsets[i + 1]),
+                        Vector2(xs[i],     yBot + offsets[i]),
+                    ])
                 }
-                k += 1
             }
-            x += dx
+            k += 1
         }
 
         // Clean horizontal edges for the block: mask the zigzag overflow.

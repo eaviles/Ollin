@@ -124,6 +124,7 @@ rect(corner: Vector2, width: Double, height: Double)    // same, via a Vector2 c
 rect(center: Vector2, width: Double, height: Double)    // center-anchored (p5 rectMode CENTER)
 line(x1: Double, y1: Double, x2: Double, y2: Double)
 polyline(_ points: [Vector2])           // connected open path, stroked
+polygon(_ points: [Vector2])            // filled convex polygon (+ stroked outline)
 
 translate(x: Double, y: Double)         // shift the origin
 rotate(_ radians: Double)               // rotate (clockwise; y-down)

@@ -152,7 +152,7 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
 - **Today:** `Sketch` base class; temporal state (`frameCount`, `time`,
   `deltaTime`, `frameRate`); mouse input (`mouseX`/`mouseY`, `mousePressed()`); `Drawer` + Metal
   renderer (solid fills, stroked outlines, 4x MSAA); shapes are `circle`, `rect`,
-  `line`, and `polyline` (open stroked paths); a per-frame transform stack
+  `line`, `polyline` (open stroked paths), and convex `polygon`; a per-frame transform stack
   (`translate`/`rotate`/`scale`, scoped via `isolated { }`); `Vector2` and
   `Rectangle` geometry value types; `Color` value
   type with named constants (`.white`, `.black`, …); `map`/`dist` math helpers,

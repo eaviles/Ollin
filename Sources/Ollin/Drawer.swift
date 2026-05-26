@@ -166,6 +166,30 @@ final class Drawer {
         appendSegment(from: a, to: b, half: strokeWidth / 2, color: stroke.simd4)
     }
 
+    /// A filled, **convex** polygon through `points` (triangle fan), plus a
+    /// stroked closed outline if a stroke is set. Concave shapes render wrong
+    /// until a real `Shape`/triangulator arrives (see CLAUDE.md) — keep inputs
+    /// convex (triangles, quads, regular n-gons, or convex pieces of a shape).
+    func polygon(_ points: [Vector2]) {
+        guard points.count >= 3 else { return }
+        if let fill = fillColor {
+            let c = fill.simd4
+            let p0 = points[0].simd2
+            for i in 1..<(points.count - 1) {        // fan from the first vertex
+                emit(p0, color: c)
+                emit(points[i].simd2, color: c)
+                emit(points[i + 1].simd2, color: c)
+            }
+        }
+        if let stroke = strokeColor, strokeWidth > 0 {
+            let c = stroke.simd4
+            let half = strokeWidth / 2
+            for k in 0..<points.count {
+                appendSegment(from: points[k], to: points[(k + 1) % points.count], half: half, color: c)
+            }
+        }
+    }
+
     // MARK: Tessellation helpers
 
     /// Append one tessellated vertex, shifted by the current translation. Every

@@ -30,7 +30,7 @@ Examples/
   Recreations/                 — recreating past computer artists, by artist
     VeraMolnar/Interruptions/Sketch.swift  — after Vera Molnár (`isolated`, `line`, `random`, `noise`)
     VeraMolnar/DesOrdres/Sketch.swift      — after Molnár's "(Dés)Ordres" (1974); concentric squares, ~5% disorder (`rect(center:)`)
-    BridgetRiley/Fragment3/Sketch.swift    — after Riley's "Fragment 3" (1965); black/white chevron Op-art (`rect`, `noLoop`)
+    BridgetRiley/Fragment3/Sketch.swift    — after Riley's "Fragment 3" (1965); black/white chevron Op-art (`polygon`, `noLoop`)
 ```
 
 ## Running
