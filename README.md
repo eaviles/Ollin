@@ -166,9 +166,10 @@ random(max)               // 0..<max
 random(min, max)          // min..<max (order-independent)
 randomSeed(_ seed: Int)   // reproducible runs
 
-noise(x)                  // 1D Perlin noise, in 0...1
+noise(x)                  // 1D Perlin noise, in 0...1 (contrast-calibrated to fill the range)
 noise(x, y)               // 2D
 noise(x, y, z)            // 3D
+signedNoise(x[, y[, z]])  // the same field in -1...1 (oF ofSignedNoise / OPENRNDR convention)
 noiseSeed(_ seed: Int)
 ```
 

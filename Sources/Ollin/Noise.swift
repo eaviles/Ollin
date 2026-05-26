@@ -22,8 +22,24 @@ struct PerlinNoise {
         return p + p
     }
 
-    /// Perlin noise at `(x, y, z)`, mapped to `0...1`.
+    /// Contrast gain applied to the raw Perlin value. Classic Perlin clusters
+    /// near the middle of its range; ~2.0 spreads it to fill black-to-white like
+    /// openFrameworks' `ofNoise`, with only a few percent clipped at the extremes.
+    private static let gain = 2.0
+
+    /// Unsigned noise in `0...1` (contrast-calibrated to fill the range).
     func value(_ x: Double, _ y: Double, _ z: Double) -> Double {
+        (signedValue(x, y, z) + 1) / 2
+    }
+
+    /// Signed noise in `-1...1` (oF's `ofSignedNoise` / OPENRNDR convention),
+    /// contrast-calibrated to fill the range.
+    func signedValue(_ x: Double, _ y: Double, _ z: Double) -> Double {
+        Swift.max(-1, Swift.min(1, rawValue(x, y, z) * PerlinNoise.gain))
+    }
+
+    /// Raw improved-Perlin value — roughly `[-1, 1]`, but concentrated near 0.
+    private func rawValue(_ x: Double, _ y: Double, _ z: Double) -> Double {
         let xi = Int(floor(x)) & 255, yi = Int(floor(y)) & 255, zi = Int(floor(z)) & 255
         let xf = x - floor(x), yf = y - floor(y), zf = z - floor(z)
         let u = fade(xf), v = fade(yf), w = fade(zf)
@@ -31,15 +47,13 @@ struct PerlinNoise {
         let a = perm[xi] + yi, aa = perm[a] + zi, ab = perm[a + 1] + zi
         let b = perm[xi + 1] + yi, ba = perm[b] + zi, bb = perm[b + 1] + zi
 
-        let result = lerp(w,
+        return lerp(w,
             lerp(v,
                 lerp(u, grad(perm[aa], xf, yf, zf),         grad(perm[ba], xf - 1, yf, zf)),
                 lerp(u, grad(perm[ab], xf, yf - 1, zf),     grad(perm[bb], xf - 1, yf - 1, zf))),
             lerp(v,
                 lerp(u, grad(perm[aa + 1], xf, yf, zf - 1),     grad(perm[ba + 1], xf - 1, yf, zf - 1)),
                 lerp(u, grad(perm[ab + 1], xf, yf - 1, zf - 1), grad(perm[bb + 1], xf - 1, yf - 1, zf - 1))))
-
-        return Swift.min(1, Swift.max(0, (result + 1) / 2))   // ~[-1,1] -> [0,1]
     }
 
     private func fade(_ t: Double) -> Double { t * t * t * (t * (t * 6 - 15) + 10) }
@@ -62,4 +76,11 @@ public extension Sketch {
     func noise(_ x: Double, _ y: Double) -> Double { perlin.value(x, y, 0) }
     /// 3D Perlin noise at `(x, y, z)`, in `0...1`.
     func noise(_ x: Double, _ y: Double, _ z: Double) -> Double { perlin.value(x, y, z) }
+
+    /// 1D signed Perlin noise at `x`, in `-1...1` (oF's `ofSignedNoise` style).
+    func signedNoise(_ x: Double) -> Double { perlin.signedValue(x, 0, 0) }
+    /// 2D signed Perlin noise at `(x, y)`, in `-1...1`.
+    func signedNoise(_ x: Double, _ y: Double) -> Double { perlin.signedValue(x, y, 0) }
+    /// 3D signed Perlin noise at `(x, y, z)`, in `-1...1`.
+    func signedNoise(_ x: Double, _ y: Double, _ z: Double) -> Double { perlin.signedValue(x, y, z) }
 }
