@@ -121,6 +121,9 @@ open class Sketch {
     public func rect(x: Double, y: Double, width: Double, height: Double) {
         drawer.rect(Rectangle(x: x, y: y, width: width, height: height))
     }
+    public func rect(corner: Vector2, width: Double, height: Double) {
+        drawer.rect(Rectangle(corner: corner, width: width, height: height))
+    }
     public func rect(center: Vector2, width: Double, height: Double) {
         drawer.rect(Rectangle(center: center, width: width, height: height))
     }

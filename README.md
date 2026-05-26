@@ -119,6 +119,7 @@ stroke(_ color: Color) / noStroke()     // outline color, or not
 strokeWeight(_ weight: Double)          // outline thickness in points
 circle(x: Double, y: Double, radius: Double)
 rect(x: Double, y: Double, width: Double, height: Double)
+rect(corner: Vector2, width: Double, height: Double)    // same, via a Vector2 corner
 rect(center: Vector2, width: Double, height: Double)    // center-anchored (p5 rectMode CENTER)
 line(x1: Double, y1: Double, x2: Double, y2: Double)
 polyline(_ points: [Vector2])           // connected open path, stroked
