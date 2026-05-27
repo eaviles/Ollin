@@ -226,6 +226,17 @@ Ollin builds on the ideas of three creative-coding frameworks and reimplements t
 
 *"Inspired by" means borrowing ideas and API vocabulary, which is different from copying code; Ollin's implementation is written independently.* Individual example sketches that are ported from a published source name that source, its author, and its license in the file header. Only sources whose licenses permit redistribution under MIT are used.
 
+### Swift + Metal references
+
+The frameworks above shaped Ollin's API and ideas. Two more, written for the same Swift and Metal stack, are references for how the rendering layer is built:
+
+| Project | License | What Ollin studies it for |
+|---|---|---|
+| [swifty-creatives](https://github.com/yukiny0811/swifty-creatives) | Apache-2.0 | A Processing-style, immediate-mode framework on the same stack; a reference for cross-platform view setup and snapshot-testing of rendered output |
+| [AsyncGraphics](https://github.com/heestand-xyz/AsyncGraphics) | MIT | GPU image and video compositing; a reference for shader-library structure and a layered-effects model |
+
+As with the others, this is reading for ideas and engineering approach, which is different from copying code; Ollin's implementation is its own. Thanks to their authors, [@yukiny0811](https://github.com/yukiny0811) and [@heestand-xyz](https://github.com/heestand-xyz), for building in the open.
+
 ## Status & contributing
 
 Ollin is **alpha and pre-1.0**, developed in the open. Practically, that means:
