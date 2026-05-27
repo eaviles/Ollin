@@ -21,6 +21,12 @@ public struct Vector2: Equatable, Hashable, Sendable {
 
     /// The origin, `(0, 0)`.
     public static let zero = Vector2(0, 0)
+    /// `(1, 1)`.
+    public static let one = Vector2(1, 1)
+    /// The x-axis unit vector, `(1, 0)`.
+    public static let unitX = Vector2(1, 0)
+    /// The y-axis unit vector, `(0, 1)`.
+    public static let unitY = Vector2(0, 1)
 
     /// Euclidean length (distance from the origin).
     public var length: Double { (x * x + y * y).squareRoot() }

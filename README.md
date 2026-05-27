@@ -59,8 +59,9 @@ Every sketch gets temporal state out of the box:
 | `deltaTime`  | `Double` | seconds since the last frame     |
 | `frameRate`  | `Double` | smoothed frames per second       |
 
-Plus `width` and `height` (logical points, updated live on resize), and
-`noLoop()` / `loop()` for still images.
+Plus `width` and `height` (logical points, updated live on resize), `scale` (a
+resolution-relative factor, `min(width, height) / 1000`, so sizes hold their
+proportions at any canvas size), and `noLoop()` / `loop()` for still images.
 
 ## Run it
 
@@ -160,6 +161,8 @@ random(max)               // 0..<max
 random(min, max)          // min..<max (order-independent)
 randomGaussian()          // standard normal (mean 0, sd 1)
 randomGaussian(mean:deviation:)  // normal with the given mean and spread
+randomVector(in: rect)    // random point inside a Rectangle
+ring(innerRadius:outerRadius:)   // random point in an annulus (origin-centered)
 randomSeed(_ seed: Int)   // reproducible runs
 
 noise(x)                  // 1D Perlin noise, in 0...1 (contrast-calibrated to fill the range)
@@ -170,7 +173,7 @@ curlNoise(x, y)           // divergence-free 2D flow vector — flow fields
 noiseSeed(_ seed: Int)
 ```
 
-`randomGaussian` is normal-distributed, which reads as more natural scatter than the flat spread of `random`. `curlNoise` returns a divergence-free flow vector (the curl of the Perlin field), the usual basis for flow fields — `.normalized` gives just the direction. See the `Gaussian` and `FlowField` examples.
+`randomGaussian` is normal-distributed, which reads as more natural scatter than the flat spread of `random`. `randomVector` and `ring` scatter points too: a point inside a rectangle, or one in an annulus around the origin. `curlNoise` returns a divergence-free flow vector (the curl of the Perlin field), the usual basis for flow fields; take `.normalized` for just the direction. See the `Gaussian`, `Ring`, and `FlowField` examples.
 
 By default the seed is entropy-based, so an unseeded sketch differs each run; seed it for a reproducible image. These are Ollin's own implementations, so a seed reproduces Ollin's output rather than p5's. A port captures the aesthetic of the original, though not its exact pixels. The full-turn constant is available as `Double.tau` (2π).
 
@@ -186,6 +189,16 @@ custom.color(at: t)
 ```
 
 The formula is Inigo Quilez's (see [Influences & attribution](#influences--attribution)). The `Palettes` example sweeps all seven across the canvas.
+
+## Colormaps
+
+Perceptual colormaps map a value in `0...1` to color along a smooth, perceptually-even ramp, the standard way to turn a number (a height, a density, a field value) into legible color:
+
+```swift
+fill(Colormap.viridis.color(at: t))
+```
+
+Eight are built in: `viridis`, `magma`, `inferno`, `plasma`, `cividis`, `turbo`, `rocket`, and `mako`. The `Colormaps` example shows all eight; the data origins are credited under [Influences & attribution](#influences--attribution).
 
 ## Input
 
@@ -223,7 +236,7 @@ It drives the sketch off-screen (`setup()`, then `draw()` advanced to the reques
 The first pass is deliberately just enough to draw and iterate. Next up:
 
 - **More primitives:** `ellipse`, `point`, `triangle`.
-- **Fills & color:** richer color (hex/HSB), gradients, blend modes. Cosine-gradient `Palette` has landed; perceptual colormaps (viridis, magma, …) are a natural next step.
+- **Fills & color:** richer color (hex/HSB), gradients, blend modes. Cosine-gradient `Palette` and perceptual `Colormap`s have landed.
 - **Typography & images:** text, image loading and drawing.
 - **Shaders:** user-supplied fragment/vertex shaders.
 - **Vector & raster export:** single-frame PNG export has landed (`--export`); PNG *sequences*, SVG, and PDF are next.
@@ -270,6 +283,7 @@ A few helpers lean on well-known public techniques, reimplemented in Ollin and c
 - The cosine-gradient `Palette` uses [Inigo Quilez's palette formula](https://iquilezles.org/articles/palettes/).
 - `curlNoise` follows the curl-noise method for divergence-free flow (Robert Bridson and colleagues, "Curl-Noise for Procedural Fluid Flow", 2007).
 - `randomGaussian` uses the Marsaglia polar method for normal-distributed samples.
+- The `Colormap` ramps carry the canonical public colormap data: `viridis`/`magma`/`inferno`/`plasma`/`cividis` from [matplotlib](https://matplotlib.org) (CC0), `turbo` from Google (Apache-2.0), and `rocket`/`mako` from [seaborn](https://seaborn.pydata.org) (BSD-3).
 
 ## Status & contributing
 

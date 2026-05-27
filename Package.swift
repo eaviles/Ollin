@@ -90,6 +90,11 @@ let package = Package(
             path: "Examples/Color/Palettes"
         ),
         .executableTarget(
+            name: "Example-Colormaps",
+            dependencies: ["Ollin"],
+            path: "Examples/Color/Colormaps"
+        ),
+        .executableTarget(
             name: "Example-FlowField",
             dependencies: ["Ollin"],
             path: "Examples/Motion/FlowField"
@@ -98,6 +103,11 @@ let package = Package(
             name: "Example-Gaussian",
             dependencies: ["Ollin"],
             path: "Examples/Randomness/Gaussian"
+        ),
+        .executableTarget(
+            name: "Example-Ring",
+            dependencies: ["Ollin"],
+            path: "Examples/Randomness/Ring"
         ),
         .executableTarget(
             name: "Example-DotGrid",

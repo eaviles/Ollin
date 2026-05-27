@@ -32,6 +32,11 @@ open class Sketch {
     /// Current canvas height in points. Updates live on window resize.
     public internal(set) var height: Double = 0
 
+    /// A resolution-relative scale factor, `min(width, height) / 1000`. Multiply
+    /// sizes by it so a sketch authored against a ~1000pt reference keeps its
+    /// proportions at any canvas size (and scales up cleanly for hi-res export).
+    public var scale: Double { Swift.min(width, height) / 1000 }
+
     // MARK: Temporal state (motion is first-class)
 
     /// Number of frames drawn so far (1 during the first `draw()`).

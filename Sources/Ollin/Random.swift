@@ -63,4 +63,20 @@ public extension Sketch {
     func randomGaussian(mean: Double, deviation: Double) -> Double {
         mean + randomGaussian() * deviation
     }
+
+    /// A random point inside `rect` — each coordinate uniform within the bounds.
+    /// Handy for scattering: `randomVector(in: Rectangle(x: 0, y: 0, width: width, height: height))`.
+    func randomVector(in rect: Rectangle) -> Vector2 {
+        Vector2(random(rect.x, rect.x + rect.width),
+                random(rect.y, rect.y + rect.height))
+    }
+
+    /// A random point in the annulus (ring) between `innerRadius` and
+    /// `outerRadius`, centered on the origin. Add a center to place it: e.g.
+    /// `center + ring(innerRadius: 50, outerRadius: 100)`.
+    func ring(innerRadius: Double, outerRadius: Double) -> Vector2 {
+        let radius = random(innerRadius, outerRadius)
+        let angle = random(.tau)
+        return Vector2(cos(angle) * radius, sin(angle) * radius)
+    }
 }
