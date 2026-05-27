@@ -44,6 +44,14 @@ swift run Example-Breathing
 
 (Run `swift run` with no argument to list every runnable target.)
 
+Or browse them all in one window:
+
+```sh
+swift run OllinExamples
+```
+
+A sidebar lists every example; click one and it compiles and renders on the right.
+
 ## Adding an example
 
 1. Create `Examples/<Category>/<Name>/Sketch.swift` with an `@main final class <Name>: Sketch { … }`. No `OllinApp.run(...)` line; `Sketch.main()` boots it for you.
