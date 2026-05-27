@@ -91,12 +91,20 @@ targets: [
 
 In creative coding, the speed of the edit-then-see cycle matters more than almost anything. Here are a few options, with the fastest feedback first:
 
-1. **Edit & re-run.** Tweak an example (or your own sketch) and re-run, e.g.
-   `swift run Example-Breathing`. Incremental builds keep this snappy. This is the
-   recommended default loop.
-2. **Keep it open in Xcode.** `open Package.swift` (or just open the folder).
+1. **Live reload (`OllinLive`).** Run a sketch once and keep editing it. On each
+   save, Ollin recompiles that one file and swaps it into the running window, so
+   the window stays open and the change shows up right away:
+
+   ```sh
+   swift run OllinLive Examples/Basic/HelloCircle/Sketch.swift
+   ```
+
+   It takes a path to any sketch file, so there's no target to register first. Run it from the repo and it live-reloads `Shaders.metal` as well. Each reload starts the sketch fresh by default: `setup()` runs again and the clock resets. Pass `--keep-clock` to keep `time` and `frameCount` running across reloads, so an animation doesn't jump back to the start. There's an `onReload()` hook for work you want to run on each reload. If an edit doesn't compile, the error prints and the running sketch keeps going, so a typo won't close the window. `Scripts/ollin-watch <file>` is a short wrapper for the same command.
+2. **Edit & re-run.** Tweak an example (or your own sketch) and re-run, e.g.
+   `swift run Example-Breathing`. Incremental builds keep this snappy.
+3. **Keep it open in Xcode.** `open Package.swift` (or just open the folder).
    Edit, ⌘R, repeat, with breakpoints and the debugger when you need them.
-3. **Single-file scripts (planned).** `SwiftProcessing` popularized a
+4. **Single-file scripts (planned).** `SwiftProcessing` popularized a
    [`swift-sh`](https://github.com/mxcl/swift-sh)-style flow where one `.swift`
    file is also a runnable script. We want the same here so you can dash off a
    sketch without a package; it's on the roadmap below.

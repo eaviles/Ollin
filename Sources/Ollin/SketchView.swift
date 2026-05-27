@@ -16,10 +16,17 @@ import simd
 /// `loop()` toggling needed to animate.
 public final class SketchRunner: NSObject, MTKViewDelegate {
 
-    private let sketch: Sketch
+    private(set) var sketch: Sketch
     private let renderer: MetalRenderer
+    private weak var view: MTKView?
+    /// Set by `OllinApp.boot` so `reload(to:)` can refresh the window title on a
+    /// live swap. Nil when embedded via `SketchView`.
+    weak var window: NSWindow?
 
     private var didSetup = false
+    private var didReload = false        // call onReload() after the post-reload setup()
+    private var pendingSetupRerun = false // re-run setup() in place (e.g. an asset changed)
+    private var clockCarry: Double?      // seconds to continue `time` from across a reload
     private var startTime: CFTimeInterval = 0
     private var lastTime: CFTimeInterval = 0
     private var smoothedFrameRate: Double = 0
@@ -34,11 +41,55 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
         }
         super.init()
+        self.view = view
+        wireLoopControl(sketch)
+    }
 
-        // noLoop()/loop() pause and resume the view's display timer.
-        sketch.loopStateDidChange = { [weak view] looping in
-            view?.isPaused = !looping
+    /// Route a sketch's `noLoop()`/`loop()` to pausing/resuming the view's
+    /// display timer. Re-applied to each freshly reloaded sketch.
+    private func wireLoopControl(_ sketch: Sketch) {
+        sketch.loopStateDidChange = { [weak self] looping in
+            self?.view?.isPaused = !looping
         }
+    }
+
+    /// Swap in a freshly loaded sketch without tearing down the window or GPU
+    /// resources — the heart of live reload. The new instance starts clean:
+    /// `setup()` runs again and the clock resets on the next frame. **Call on the
+    /// main thread**, since the draw callback runs there and reads `sketch`.
+    /// - Parameter keepClock: when `true`, the new sketch keeps the old one's
+    ///   `time`/`frameCount` advancing across the swap instead of resetting to
+    ///   zero — so an animation's phase doesn't visibly jump on reload. Instance
+    ///   state still resets (it's a fresh instance either way).
+    public func reload(to newSketch: Sketch, keepClock: Bool = false) {
+        newSketch.setCanvasSize(width: sketch.width, height: sketch.height)
+        if keepClock {
+            newSketch.frameCount = sketch.frameCount
+            clockCarry = sketch.time      // continue `time` from here (see draw)
+        } else {
+            clockCarry = nil
+        }
+        wireLoopControl(newSketch)
+        sketch = newSketch
+        didSetup = false            // re-run setup() next frame
+        didReload = true            // ...then call onReload() once
+        view?.isPaused = false      // a prior noLoop() must not freeze the reload
+        window?.title = newSketch.title
+    }
+
+    /// Recompile the shader library from `source` and rebuild the pipelines for
+    /// the *running* sketch — live shader reload. Throws (leaving the current
+    /// shaders in place) if the source doesn't compile. **Call on the main
+    /// thread.**
+    public func reloadShaderLibrary(source: String) throws {
+        try renderer.reloadLibrary(source: source)
+    }
+
+    /// Re-run the current sketch's `setup()` on the next frame without swapping
+    /// the instance or resetting the clock — for when a co-located asset changes
+    /// and `setup()` is where it'd be (re)loaded. **Call on the main thread.**
+    public func rerunSetup() {
+        pendingSetupRerun = true
     }
 
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -54,7 +105,10 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         let now = CACurrentMediaTime()
 
         if !didSetup {
-            startTime = now
+            // Offset startTime so `time` continues across a keep-clock reload;
+            // otherwise start it now so a fresh reload resets to zero.
+            startTime = now - (clockCarry ?? 0)
+            clockCarry = nil
             lastTime = now
             // Reflect where the cursor actually is before the first frame, so a
             // mouse-driven sketch isn't stuck reading (0, 0) — and rendering a
@@ -62,6 +116,13 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             (view as? OllinMTKView)?.seedPointer()
             sketch.setup()
             didSetup = true
+            if didReload {            // setup() just ran on a hot-swapped sketch
+                didReload = false
+                sketch.onReload()
+            }
+        } else if pendingSetupRerun {
+            pendingSetupRerun = false
+            sketch.setup()            // in-place asset reload; clock keeps running
         }
 
         let dt = max(0, now - lastTime)
@@ -201,6 +262,18 @@ public struct SketchView: NSViewRepresentable {
 public enum OllinApp {
 
     public static func run(_ sketch: Sketch) {
+        _ = boot(sketch)
+        NSApplication.shared.run()
+    }
+
+    /// Build the window, view, and runner for `sketch` and wire up the app, but
+    /// *don't* start the run loop — the caller does that. `run` is just
+    /// `boot` + `NSApplication.shared.run()`; the live host (OllinLive) calls
+    /// `boot`, wires a file watcher to the returned runner's `reload(to:)`, and
+    /// then starts the run loop itself. Returns the runner so the caller can
+    /// drive live swaps.
+    @discardableResult
+    public static func boot(_ sketch: Sketch) -> SketchRunner {
         let app = NSApplication.shared
         app.setActivationPolicy(.regular)
 
@@ -223,22 +296,23 @@ public enum OllinApp {
         window.contentView = view
         window.center()
         window.makeKeyAndOrderFront(nil)
+        runner.window = window      // so reload(to:) can refresh the title
 
         // A tiny menu so Cmd-Q quits, and a delegate so closing the window ends
         // the process (and returns from `swift run`).
-        app.mainMenu = makeMenu(quitTitle: "Quit \(sketch.title)")
+        app.mainMenu = makeMenu(quitTitle: "Quit Ollin")
         let delegate = OllinAppDelegate()
         app.delegate = delegate
 
         // Keep strong references alive for the lifetime of the app: the
         // MTKView delegate is weak, and the window/delegate would otherwise be
-        // released as soon as `run()` is called.
+        // released as soon as the run loop starts.
         Retained.shared.runner = runner
         Retained.shared.window = window
         Retained.shared.delegate = delegate
 
         app.activate(ignoringOtherApps: true)
-        app.run()
+        return runner
     }
 
     /// Render one frame of `sketch` off-screen and write it as a PNG — no window.

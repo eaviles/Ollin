@@ -1,0 +1,16 @@
+#!/bin/zsh
+#
+# ollin-watch — run a sketch with live reload.
+#
+#   Scripts/ollin-watch Examples/Basic/HelloCircle/Sketch.swift
+#
+# Opens the sketch in a window, then recompiles and hot-swaps it on every save
+# (and live-reloads Shaders.metal when run from the repo). A thin convenience
+# wrapper around `swift run OllinLive`.
+
+if [[ -z "$1" ]]; then
+    echo "usage: Scripts/ollin-watch <path/to/Sketch.swift>" >&2
+    exit 2
+fi
+
+exec swift run OllinLive "$@"

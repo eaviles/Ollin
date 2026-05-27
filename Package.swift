@@ -20,6 +20,23 @@ let package = Package(
         .library(name: "Ollin", targets: ["Ollin"]),
     ],
     targets: [
+        // The live-reload host. `swift run OllinLive <path/to/Sketch.swift>`
+        // opens a window, then recompiles + hot-swaps that sketch on save —
+        // edit, save, see it update in place, without the window closing. The
+        // dylib-compile/dlopen/watch machinery lives here so the shipping Ollin
+        // library stays free of dev-only tooling.
+        .executableTarget(
+            name: "OllinLive",
+            dependencies: ["Ollin"],
+            path: "Sources/OllinLive",
+            // Export the host's symbols so a hot-swapped sketch `.dylib`
+            // (compiled with `-undefined dynamic_lookup`) resolves its Ollin
+            // symbols against *this* process at load. That keeps a single copy
+            // of `Sketch` et al., so the loaded sketch casts as `Ollin.Sketch`.
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-export_dynamic"])
+            ]
+        ),
         .target(
             name: "Ollin",
             // Declaring the `.metal` file as a resource makes SwiftPM copy it

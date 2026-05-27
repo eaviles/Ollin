@@ -192,7 +192,10 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   type with named constants (`.white`, `.black`, …); `map`/`dist` math helpers,
   seedable `random`/`noise` and `Double.tau`; a maintained `Examples/` set,
   including a `Recreations/` section (recreating past computer artists); headless
-  single-frame PNG export (`--export` / `OllinApp.export`, off-screen MSAA render).
+  single-frame PNG export (`--export` / `OllinApp.export`, off-screen MSAA render);
+  live reload (`swift run OllinLive <file>`) that recompiles + hot-swaps a sketch
+  on save and live-reloads `Shaders.metal` (with a `--keep-clock` flag and an
+  `onReload()` lifecycle hook; see the live-reload section).
 - **Next, in priority order:** more primitives (`ellipse`); the vector
   `Shape`/`Contour` type — concave fills via a real triangulator (convex
   `polygon` already landed); stroke joins/caps for fat lines; the
@@ -211,22 +214,25 @@ Worth pursuing — the Swift Playgrounds app (Mac/iPad) App Projects (`.swiftpm`
 - **Onboarding nicety:** ship a ready-made `.swiftpm` starter (Ollin pre-wired + a `HelloCircle`) so users don't hand-add the package URL.
 - **Caveats:** the Playgrounds sandbox restricts file I/O (matters for the export roadmap items, not for drawing); package-dependency UX is finicky; prefer the Swift Playgrounds app's App Projects over the semi-deprecated Xcode Playgrounds. iOS changes can't be verified in this environment — they need `xcodebuild -destination` with the iOS SDK on a Mac.
 
-## Follow-up: live reload — edit code, see it render (not started)
+## Live reload — edit code, see it render (shipped via `OllinLive`)
 
-The headline creative-coding feature, and Ollin's loop is unusually well-suited: `SketchRunner.draw(in:)` runs every frame holding a *persistent* `Sketch` instance and re-calls `performDraw()`, so state (instance properties, `time`, `frameCount`, `setup()` resources) survives between frames. Swapping the body of `draw()` in the running process means the next frame just runs the new code with state intact — no re-run, no reset. @eaviles flags the fast edit-save-see cycle as a priority direction: the whole point is to type, save, and see the result immediately. Tiers, cheapest first:
+The headline creative-coding feature, and it's built. `swift run OllinLive <path/to/Sketch.swift>` opens a window, watches the file, and on save recompiles *just that sketch* into a `.dylib` and hot-swaps it into the running loop — the window never closes. This is the Olive / canvas-sketch model (a persistent host owns the window; the sketch is the swappable unit), chosen over InjectionIII because that needs an external app and is finicky on the terminal `swift run` workflow Ollin lives in. Code is in `Sources/OllinLive/` (`main`, `SketchLoader`, `FileWatcher`, `LiveSession`, plus `--selftest`/`--watchtest` headless smoke tests); the runner-side swap is `SketchRunner.reload(to:)` in `SketchView.swift`. `Scripts/ollin-watch <file>` is a thin wrapper.
 
-- **Tier 0 — continuous build + relaunch (cheapest; ship this first).** A file-watcher (`watchexec`/`fswatch`/`entr`, or a small Swift `DispatchSource` watcher) that re-runs `swift build` and relaunches the app on save. Crude — it loses sketch state and pays a full compile + window relaunch every save — but it's a few lines, works today under `swift run`, and needs no external tooling. This is the documented default fast loop until Tier 2 lands, and the fallback when InjectionIII isn't wired up. A `swift run --watch`-style wrapper script in the repo would make it one command.
-- **Tier 1 — live *shader* reload (nearly free; do first).** We already compile `Shaders.metal` from a bundled resource at runtime, so: file-watch it (`DispatchSource`/FSEvents), re-run `loadLibrary`, rebuild the pipeline, and the next frame uses the new shader. Self-contained, low-risk, on-brand. Cheap *because* of the runtime-compile decision (see [Shaders & the Metal back end](#shaders--the-metal-back-end)).
-- **Tier 2 — live *Swift* reload (the real feature).** Use InjectionIII + the `Inject`/`HotReloading` SPM package: a watcher recompiles the changed `.swift` into a `.dylib`, `dlopen`s it, and interposes the new method bodies. A swapped `draw()` shows up next frame. Fits Ollin's persistent-instance loop perfectly.
-- **Tier 3 — parameter live-tweak / GUI (complementary).** Sliders/values that mutate the running sketch with no recompile (OPENRNDR-style). Lighter, ties to the GUI item on the extension seam; not "change the code."
+How it works, and the load-bearing decisions (most are cheap-to-forget, expensive-to-rediscover):
 
-Prep to bake in now so Tier 2 isn't a retrofit:
+- **Host + swappable sketch dylib.** `OllinApp.boot(_:)` (split out of `run`) builds the window/runner *without* starting the run loop, so OllinLive wires a watcher to `SketchRunner.reload(to:)` and then runs. `SketchRunner.sketch` is a `var`; the loop already calls `sketch.performDraw()` through the instance, so swapping the var means the next frame runs new code.
+- **`-undefined dynamic_lookup`, not a dynamic Ollin product.** The sketch dylib compiles with `-I <bin>/Modules` (to type-check `import Ollin`) and `-undefined dynamic_lookup` with *no* `-lOllin`; the host links `-Xlinker -export_dynamic` so the dylib's Ollin symbols resolve against the host at `dlopen`. One copy of `Sketch`, so the loaded object casts as `Ollin.Sketch`. **A `.dynamic` Ollin product does not fix this** — SwiftPM still links the target statically into the executable, giving two copies and a failed cast (verified the hard way). Each load uses a unique `-module-name` so repeated reloads of the same class don't collide in the objc runtime.
+- **A generated factory shim.** The loader regexes the `class …: Sketch` name and compiles a sibling `@_cdecl("ollin_make_sketch")` file alongside the user's source, so the user file is untouched and its `@main` is harmless (it compiles fine under `-emit-library`).
+- **FSEvents on the *directory*.** Editors save atomically (temp file + rename), which breaks fd-based watches; `FileWatcher` watches directories with `kFSEventStreamCreateFlagUseCFTypes | …FileEvents` (the UseCFTypes flag is required or the path-array cast crashes), debounced ~150ms. It dispatches by extension: `.swift` → recompile + swap; `.metal` → `MetalRenderer.reloadLibrary(source:)` (live shader reload — what used to be "Tier 1," now folded in, and active only when run from the repo); image assets → re-run `setup()` (a forward hook; image *loading* isn't a feature yet).
+- **Resilience + threading.** Recompile runs off the main thread (the window keeps drawing the old sketch); the swap is marshaled to the main queue. A compile error is printed and the running sketch is left alone — a typo never closes the window. `MetalRenderer.reloadLibrary` builds the new pipelines before committing, so a bad shader edit can't blank the renderer.
+- **State on reload: fresh restart by default; `--keep-clock` to continue.** `reload(to:keepClock:)` re-instantiates and re-runs `setup()`; by default it resets `time`/`frameCount`, and `--keep-clock` carries them forward (offsets `startTime` so `time` continues, copies `frameCount`) so an animation's phase doesn't jump. Either way instance state resets (fresh instance). `Sketch.onReload()` (lifecycle hook) fires once after the post-reload setup (never on first launch). Matches Olive/canvas-sketch.
+- **Keep `Sketch`/`draw()` `open`** (already true) — the dylib subclass must override them; never `final`.
 
-- **A reload lifecycle hook (`onReload()`).** On injection you often want to optionally re-run `setup()` or reset the clock; `Inject` exposes `onInjection`. This lands exactly on the extension/lifecycle seam already on the roadmap — design that seam with reload in mind, don't bolt it on.
-- **Keep `Sketch`/`draw()` `open` (already true) — never `final`.** Modern InjectionIII handles plain Swift via the debug-only `-Xlinker -interposable` flag, so `@objc dynamic` likely isn't needed — but validate that first.
-- **Preserve the "loop re-calls `draw()` through the instance" model.** If a future change caches a closure to `draw` or snapshots it in the runner, injection breaks. The current `sketch.performDraw()`-every-frame call is what makes swapped code free.
-- **Decide a state-reset policy:** instance state survives naturally; default to letting `time`/`frameCount` keep running, with an opt-in reset.
-- **Caveats:** InjectionIII is debug-only, macOS/iOS, needs external tooling + build flags (smoothest in Xcode; terminal `swift run` is more DIY). Method-body edits are the sweet spot; changing stored-property layout or reallocating `setup()` GPU resources may need a relaunch. None of this is verifiable in this environment.
+Window title: `"Ollin - <SketchName>"` (plain hyphen, not a middot). @eaviles ruled out FPS-in-the-title (the oF idiom); live FPS belongs in the GUI panel below, not the title bar.
+
+Still open:
+
+- **GUI / parameter knobs (the old "Tier 3").** Tune a live sketch with sliders, and surface live FPS here (the oF idiom, deliberately kept out of the title bar). Clean split: a typed parameter model in the `Ollin` core (a `@Param`-style wrapper / registry, à la OPENRNDR `@DoubleParameter`) and a SwiftUI inspector panel in the OllinLive host. The host owning the panel is the point — knob values *persist across reloads* (re-applied by name to the fresh instance). Ties to the extension/lifecycle seam. OllinLive's window is still plain `contentView = MTKView`; recompose it as a split/side-panel layout when this lands.
 
 ## Follow-up: layered effects & compositing (not started)
 

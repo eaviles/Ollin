@@ -43,7 +43,7 @@ final class MetalRenderer {
 
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
-    private let library: MTLLibrary
+    private var library: MTLLibrary
     private let pixelFormat: MTLPixelFormat
     private let sampleCount: Int
 
@@ -187,19 +187,39 @@ final class MetalRenderer {
         return built
     }
 
+    /// Recompile the shader library from `source` and rebuild the cached
+    /// pipelines against it — the renderer side of live shader reload. Builds the
+    /// replacements *before* committing, so a compile/link error leaves the
+    /// current library and pipelines untouched (it throws, and the caller reports
+    /// it); a bad shader edit never blanks or crashes the running sketch.
+    func reloadLibrary(source: String) throws {
+        let newLibrary = try device.makeLibrary(source: source, options: nil)
+        let kinds = pipelines.isEmpty ? [Pipeline.solid] : Array(pipelines.keys)
+        var rebuilt: [Pipeline: MTLRenderPipelineState] = [:]
+        for kind in kinds {
+            rebuilt[kind] = try makePipeline(kind, using: newLibrary)
+        }
+        library = newLibrary           // commit atomically once all rebuilt
+        pipelines = rebuilt
+    }
+
     /// The single place pipeline descriptors are constructed. Add a `case` here
     /// when you add a `Pipeline` — e.g. instanced/SDF circles get their own
     /// vertex/fragment functions and (for instancing) a per-instance buffer.
     private func makePipeline(_ kind: Pipeline) throws -> MTLRenderPipelineState {
+        try makePipeline(kind, using: library)
+    }
+
+    private func makePipeline(_ kind: Pipeline, using library: MTLLibrary) throws -> MTLRenderPipelineState {
         switch kind {
         case .solid:
-            return try makeSolidPipeline()
+            return try makeSolidPipeline(using: library)
         }
     }
 
     /// Solid-color 2D triangles with standard source-over alpha blending. Fills
     /// (triangle fans) and strokes (triangle-strip annuli) both go through this.
-    private func makeSolidPipeline() throws -> MTLRenderPipelineState {
+    private func makeSolidPipeline(using library: MTLLibrary) throws -> MTLRenderPipelineState {
         guard let vertexFunction = library.makeFunction(name: "ollin_vertex"),
               let fragmentFunction = library.makeFunction(name: "ollin_fragment") else {
             throw RendererError.shaderFunctions

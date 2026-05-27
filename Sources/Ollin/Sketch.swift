@@ -54,8 +54,13 @@ open class Sketch {
 
     // MARK: Configuration (override in subclasses)
 
-    /// Window title used when booting via `OllinApp.run`.
-    open var title: String { "Ollin" }
+    /// Window title used when booting via `OllinApp.run`. Defaults to
+    /// `"Ollin - <SketchType>"` (e.g. "Ollin - HelloCircle") so the window names
+    /// the running sketch; override for a custom title.
+    open var title: String {
+        let typeName = String(describing: type(of: self))
+        return typeName == "Sketch" ? "Ollin" : "Ollin - \(typeName)"
+    }
     /// Initial window size used when booting via `OllinApp.run`.
     open var preferredSize: CGSize { CGSize(width: 800, height: 800) }
 
@@ -68,6 +73,10 @@ open class Sketch {
     /// Called once each time a mouse button is pressed over the canvas. Override
     /// to respond to clicks; `mouseX`/`mouseY` hold the press location.
     open func mousePressed() {}
+    /// Called once after this sketch is hot-swapped in by the live-reload host,
+    /// right after its `setup()`. Override to do reload-specific work (the
+    /// default does nothing). Not called on the first launch — only on reloads.
+    open func onReload() {}
 
     // MARK: Loop control
 
