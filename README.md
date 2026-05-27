@@ -110,105 +110,17 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
    file is also a runnable script. We want the same here so you can dash off a
    sketch without a package; it's on the roadmap below.
 
-## The drawing API (small on purpose)
+## Documentation
 
-One of p5's strengths is that you can learn its whole drawing surface in an afternoon. Ollin keeps its surface small and the names familiar:
+The drawing surface is small and the names familiar. The full API reference lives in [`Docs/`](Docs/):
 
-```swift
-background(_ color: Color)              // clear color for the frame
-fill(_ color: Color) / noFill()         // filled interior, or not
-stroke(_ color: Color) / noStroke()     // outline color, or not
-strokeWeight(_ weight: Double)          // outline thickness in points
-circle(x: Double, y: Double, radius: Double)
-circle(center: Vector2, radius: Double)                 // same, via a Vector2 center
-rect(x: Double, y: Double, width: Double, height: Double)
-rect(corner: Vector2, width: Double, height: Double)    // same, via a Vector2 corner
-rect(center: Vector2, width: Double, height: Double)    // center-anchored (p5 rectMode CENTER)
-line(x1: Double, y1: Double, x2: Double, y2: Double)
-polyline(_ points: [Vector2])           // connected open path, stroked
-polygon(_ points: [Vector2])            // filled convex polygon (+ stroked outline)
+- [Drawing](Docs/Drawing.md) — `background`, `fill`/`stroke`, the shapes (`circle`, `rect`, `line`, `polyline`, `polygon`), and the transform stack (`translate`/`rotate`/`scale`, `isolated`).
+- [Color](Docs/Color.md) — the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
+- [Randomness & noise](Docs/Randomness.md) — `random`, `randomGaussian`, `randomVector`, `ring`, Perlin `noise`/`signedNoise`, and `curlNoise` flow fields.
+- [Math](Docs/Math.md) — `map`, `dist`.
+- [Input](Docs/Input.md) — mouse position and clicks.
 
-translate(x: Double, y: Double)         // shift the origin
-rotate(_ radians: Double)               // rotate (clockwise; y-down)
-scale(_ amount: Double)                 // scale (also scale(x:y:))
-isolated { … }                          // run a block with transform + style saved/restored
-push() / pop()                          // manual save/restore (isolated is the scoped form)
-```
-
-`Color` is RGBA floats (`0...1`) with familiar constants: `.white`, `.black`, `.gray`, `.red`, `.green`, `.blue`, and `.clear`. `Vector2` is an `(x, y)` point in sketch points, the geometry type that primitives like `polyline` take. `Rectangle` (a `corner` plus `width`/`height`) is the typed form `rect` takes, with `rect(x:y:width:height:)` as sugar over it. Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR.
-
-## Math helpers
-
-A small, growing set of the familiar creative-coding math functions, callable
-bare in `draw()`:
-
-```swift
-map(_ value: Double, _ start1: Double, _ stop1: Double,
-    _ start2: Double, _ stop2: Double, clamp: Bool = false) -> Double
-dist(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) -> Double
-```
-
-`map` linearly re-maps a number from one range onto another. For example, `map(sin(time), -1, 1, 0, width)` turns the `-1...1` of `sin` into `0...width`. By default it extrapolates past the range; pass `clamp: true` to hold the result inside `start2...stop2`. `dist` is the Euclidean distance between two points.
-
-## Randomness & noise
-
-`random` and `noise` are seedable and live on the sketch (so two sketches never
-share hidden global state). Call them bare in `draw()`, like the math helpers:
-
-```swift
-random()                  // Double in 0..<1
-random(max)               // 0..<max
-random(min, max)          // min..<max (order-independent)
-randomGaussian()          // standard normal (mean 0, sd 1)
-randomGaussian(mean:deviation:)  // normal with the given mean and spread
-randomVector(in: rect)    // random point inside a Rectangle
-ring(innerRadius:outerRadius:)   // random point in an annulus (origin-centered)
-randomSeed(_ seed: Int)   // reproducible runs
-
-noise(x)                  // 1D Perlin noise, in 0...1 (contrast-calibrated to fill the range)
-noise(x, y)               // 2D
-noise(x, y, z)            // 3D
-signedNoise(x[, y[, z]])  // the same field in -1...1 (oF ofSignedNoise / OPENRNDR convention)
-curlNoise(x, y)           // divergence-free 2D flow vector — flow fields
-noiseSeed(_ seed: Int)
-```
-
-`randomGaussian` is normal-distributed, which reads as more natural scatter than the flat spread of `random`. `randomVector` and `ring` scatter points too: a point inside a rectangle, or one in an annulus around the origin. `curlNoise` returns a divergence-free flow vector (the curl of the Perlin field), the usual basis for flow fields; take `.normalized` for just the direction. See the `Gaussian`, `Ring`, and `FlowField` examples.
-
-By default the seed is entropy-based, so an unseeded sketch differs each run; seed it for a reproducible image. These are Ollin's own implementations, so a seed reproduces Ollin's output rather than p5's. A port captures the aesthetic of the original, though not its exact pixels. The full-turn constant is available as `Double.tau` (2π).
-
-## Palettes
-
-`Palette` turns a single number into cycling color through a cosine-gradient formula. Reach for a built-in preset — `.rainbow`, `.dusk`, `.blush`, `.meadow`, `.sunset`, `.neon`, `.melon` (Inigo Quilez's seven example palettes) — or build your own from four `(r, g, b)` coefficient triples (center, amplitude, frequency, phase):
-
-```swift
-Palette.sunset.color(at: t)                    // t cycles over 0...1
-let custom = Palette(a: (0.5, 0.5, 0.5), b: (0.5, 0.5, 0.5),
-                     c: (1.0, 1.0, 1.0), d: (0.0, 0.10, 0.20))
-custom.color(at: t)
-```
-
-The formula is Inigo Quilez's (see [Influences & attribution](#influences--attribution)). The `Palettes` example sweeps all seven across the canvas.
-
-## Colormaps
-
-Perceptual colormaps map a value in `0...1` to color along a smooth, perceptually-even ramp, the standard way to turn a number (a height, a density, a field value) into legible color:
-
-```swift
-fill(Colormap.viridis.color(at: t))
-```
-
-Eight are built in: `viridis`, `magma`, `inferno`, `plasma`, `cividis`, `turbo`, `rocket`, and `mako`. The `Colormaps` example shows all eight; the data origins are credited under [Influences & attribution](#influences--attribution).
-
-## Input
-
-`mouseX` / `mouseY` track the cursor in sketch coordinates (points, top-left origin, y-down). They're seeded from the cursor's actual position when the sketch window opens, so a mouse-driven sketch is alive on the first frame instead of waiting for the first move. After that, they update as the pointer moves over the canvas:
-
-```swift
-let pct = map(dist(mouseX, mouseY, width / 2, height / 2), 0, 400, 1, 0, clamp: true)
-```
-
-Override `mousePressed()` to respond to a click; `mouseX`/`mouseY` hold the press location. It's handy for regenerating an otherwise-static sketch on demand.
+Coordinates use a top-left origin with y increasing downward, the same as p5, Processing, and OPENRNDR.
 
 ## How it works (one paragraph)
 
