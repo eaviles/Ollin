@@ -12,7 +12,8 @@ Reference for Ollin's drawing surface and helpers. The bare calls you write in `
 - [`Drawing`](./Drawing.md) - `background`, `fill`/`stroke`, the shapes, and the transform stack
 - [`Color`](./Color.md) - the `Color` type, cosine-gradient `Palette`s, and perceptual `Colormap`s
 - [`Geometry`](./Geometry.md) - the `Vector2` and `Rectangle` value types
-- [`Randomness`](./Randomness.md) - `random`, `randomGaussian`, Perlin `noise`, `curlNoise`, and scatter helpers
+- [`Random`](./Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers
+- [`Noise`](./Noise.md) - Perlin `noise`, `signedNoise`, and `curlNoise` flow fields
 - [`Math`](./Math.md) - `map` and `dist`
 - [`Input`](./Input.md) - mouse position and clicks
 

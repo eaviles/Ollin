@@ -29,3 +29,7 @@ Linearly re-map `value` from one range onto another. For example, `map(sin(time)
 ### `dist(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) -> Double`
 
 The Euclidean distance between two points.
+
+### Constants
+
+`Double.tau` is the full turn (2π), handy for angles.

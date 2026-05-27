@@ -107,7 +107,8 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`circle`, `rect`, `line`, `polyline`, `polygon`), and the transform stack (`translate`/`rotate`/`scale`, `isolated`).
 - [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
 - [Geometry](Docs/Geometry.md) - the `Vector2` and `Rectangle` value types.
-- [Randomness & noise](Docs/Randomness.md) - `random`, `randomGaussian`, `randomVector`, `ring`, Perlin `noise`/`signedNoise`, and `curlNoise` flow fields.
+- [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
+- [Noise](Docs/Noise.md) - Perlin `noise`/`signedNoise` and `curlNoise` flow fields.
 - [Math](Docs/Math.md) - `map`, `dist`.
 - [Input](Docs/Input.md) - mouse position and clicks.
 
