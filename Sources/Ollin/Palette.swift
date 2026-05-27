@@ -43,10 +43,33 @@ public struct Palette: Sendable {
     }
 }
 
+// Inigo Quilez's seven example palettes, named for how each one reads.
 public extension Palette {
-    /// A full, even hue sweep over `0...1` — Inigo Quilez's canonical palette.
-    static let rainbow = Palette(a: (0.5, 0.5, 0.5),
-                                 b: (0.5, 0.5, 0.5),
-                                 c: (1.0, 1.0, 1.0),
-                                 d: (0.0, 0.33, 0.67))
+    /// A full, even hue sweep over `0...1`.
+    static let rainbow = Palette(a: (0.5, 0.5, 0.5), b: (0.5, 0.5, 0.5),
+                                 c: (1.0, 1.0, 1.0), d: (0.0, 0.33, 0.67))
+
+    /// Warm cream and amber, through a dark middle, to cool blue.
+    static let dusk = Palette(a: (0.5, 0.5, 0.5), b: (0.5, 0.5, 0.5),
+                              c: (1.0, 1.0, 1.0), d: (0.0, 0.10, 0.20))
+
+    /// Soft rose and pink framed by teal.
+    static let blush = Palette(a: (0.5, 0.5, 0.5), b: (0.5, 0.5, 0.5),
+                               c: (1.0, 1.0, 1.0), d: (0.3, 0.20, 0.20))
+
+    /// Sunny gold-yellow easing into greens.
+    static let meadow = Palette(a: (0.5, 0.5, 0.5), b: (0.5, 0.5, 0.5),
+                                c: (1.0, 1.0, 0.5), d: (0.8, 0.90, 0.30))
+
+    /// Peach and salmon through mauve to gold.
+    static let sunset = Palette(a: (0.5, 0.5, 0.5), b: (0.5, 0.5, 0.5),
+                                c: (1.0, 0.7, 0.4), d: (0.0, 0.15, 0.20))
+
+    /// Vivid, high-saturation magenta, teal, and yellow.
+    static let neon = Palette(a: (0.5, 0.5, 0.5), b: (0.5, 0.5, 0.5),
+                              c: (2.0, 1.0, 0.0), d: (0.5, 0.20, 0.25))
+
+    /// Coral-red to mint-green, soft like watermelon.
+    static let melon = Palette(a: (0.8, 0.5, 0.4), b: (0.2, 0.4, 0.2),
+                               c: (2.0, 1.0, 1.0), d: (0.0, 0.25, 0.25))
 }

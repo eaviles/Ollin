@@ -176,16 +176,16 @@ By default the seed is entropy-based, so an unseeded sketch differs each run; se
 
 ## Palettes
 
-`Palette` turns a single number into cycling color through a cosine-gradient formula. Reach for the built-in `.rainbow`, or build your own from four `(r, g, b)` coefficient triples (center, amplitude, frequency, phase):
+`Palette` turns a single number into cycling color through a cosine-gradient formula. Reach for a built-in preset — `.rainbow`, `.dusk`, `.blush`, `.meadow`, `.sunset`, `.neon`, `.melon` (Inigo Quilez's seven example palettes) — or build your own from four `(r, g, b)` coefficient triples (center, amplitude, frequency, phase):
 
 ```swift
-Palette.rainbow.color(at: t)                   // t cycles over 0...1
-let warm = Palette(a: (0.5, 0.5, 0.5), b: (0.5, 0.5, 0.5),
-                   c: (1.0, 1.0, 1.0), d: (0.0, 0.10, 0.20))
-warm.color(at: t)
+Palette.sunset.color(at: t)                    // t cycles over 0...1
+let custom = Palette(a: (0.5, 0.5, 0.5), b: (0.5, 0.5, 0.5),
+                     c: (1.0, 1.0, 1.0), d: (0.0, 0.10, 0.20))
+custom.color(at: t)
 ```
 
-The formula is Inigo Quilez's (see [Influences & attribution](#influences--attribution)). The `Palettes` example sweeps both across the canvas.
+The formula is Inigo Quilez's (see [Influences & attribution](#influences--attribution)). The `Palettes` example sweeps all seven across the canvas.
 
 ## Input
 
