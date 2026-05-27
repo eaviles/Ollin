@@ -21,6 +21,7 @@ let p = center + ring(innerRadius: 50, outerRadius: 100)
 - [randomVector](#randomVector)
 - [ring](#ring)
 - [randomSeed](#randomSeed)
+- [seed](#seed)
 
 <a name="random"></a>
 
@@ -53,4 +54,10 @@ A random point in the annulus between the two radii, centered on the origin. Add
 
 ### `randomSeed(_ seed: Int)`
 
-Seed the generator behind `random*` for reproducible runs. The same seed yields the same sequence.
+Seed the generator behind `random*` for reproducible runs. The same seed yields the same sequence. To reseed `noise` as well, see [`seed`](#seed).
+
+<a name="seed"></a>
+
+### `seed(_ seed: Int)`
+
+Seed *both* `random` and `noise` from one value, locking the whole sketch's randomness so it reproduces exactly; reach for this when one seed should fully determine a piece. Use `randomSeed` or [`noiseSeed`](./Noise.md#noiseSeed) to reseed only one.

@@ -192,8 +192,8 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   type with named constants (`.white`, `.black`, …) plus a cosine-gradient
   `Palette` (iq's formula) and perceptual `Colormap`s (viridis/magma/turbo/…);
   `map`/`dist` math helpers, a resolution-relative `scale`, seedable
-  `random`/`noise` (incl. `randomGaussian`, `randomVector`, `ring`, and
-  `curlNoise` flow fields) and `Double.tau`; a maintained `Examples/` set,
+  `random`/`noise` (incl. `randomGaussian`, `randomVector`, `ring`, `curlNoise`
+  flow fields, and a master `seed()` that locks both) and `Double.tau`; a maintained `Examples/` set,
   including a `Recreations/` section (recreating past computer artists); headless
   single-frame PNG export (`--export` / `OllinApp.export`, off-screen MSAA render);
   live reload (`swift run OllinLive <file>`) that recompiles + hot-swaps a sketch

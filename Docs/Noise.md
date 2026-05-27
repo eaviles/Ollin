@@ -19,6 +19,7 @@ let flow = curlNoise(x * 0.003, y * 0.003).normalized
 - [signedNoise](#signedNoise)
 - [curlNoise](#curlNoise)
 - [noiseSeed](#noiseSeed)
+- [seed](#seed)
 
 <a name="noise"></a>
 
@@ -43,4 +44,10 @@ A divergence-free 2D flow vector (the curl of the Perlin field), the usual basis
 
 ### `noiseSeed(_ seed: Int)`
 
-Seed the Perlin field behind `noise` / `signedNoise` / `curlNoise`.
+Seed the Perlin field behind `noise` / `signedNoise` / `curlNoise`. To reseed `random` as well, see [`seed`](#seed).
+
+<a name="seed"></a>
+
+### `seed(_ seed: Int)`
+
+Seed *both* `noise` and `random` from one value, locking the whole sketch's randomness so it reproduces exactly. Use `noiseSeed` or [`randomSeed`](./Random.md#randomSeed) to reseed only one.

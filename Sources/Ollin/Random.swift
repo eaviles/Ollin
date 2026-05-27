@@ -25,6 +25,14 @@ public extension Sketch {
         gaussianSpare = nil   // so a reseed restarts a deterministic sequence
     }
 
+    /// Seed *both* `random` and `noise` from one value, locking the whole
+    /// sketch's randomness so it reproduces exactly. Use `randomSeed` or
+    /// `noiseSeed` to reseed just one.
+    func seed(_ seed: Int) {
+        randomSeed(seed)
+        noiseSeed(seed)
+    }
+
     /// A random `Double` in `0 ..< 1`.
     func random() -> Double { Double.random(in: 0 ..< 1, using: &rng) }
 
