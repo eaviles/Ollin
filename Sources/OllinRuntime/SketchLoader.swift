@@ -4,21 +4,28 @@ import Ollin
 /// Compiles a single sketch `.swift` file into a `.dylib` and loads the `Sketch`
 /// instance out of it. Each `load()` produces a fresh dylib at a unique path, so
 /// `dlopen` returns a new image rather than a cached one — that fresh-image swap
-/// is the mechanism behind live reload.
+/// is the mechanism behind live reload, and the way the examples gallery embeds
+/// a selected sketch.
 ///
-/// It works because the host (OllinLive) and the compiled dylib both link the
-/// *same* dynamic `libOllin.dylib`: the loaded object's `Sketch` is the host's
-/// `Sketch`, so the cast across the `dlopen` boundary succeeds.
-struct SketchLoader {
-    let sketchPath: String
+/// It works because the host process (OllinLive or OllinExamples) and the
+/// compiled dylib resolve to the *same* `Sketch`: the host links Ollin and
+/// exports its symbols (`-export_dynamic`), and the dylib is compiled with
+/// `-undefined dynamic_lookup` so its Ollin symbols bind to the host at load.
+/// The cast across the `dlopen` boundary therefore succeeds.
+public struct SketchLoader {
+    public let sketchPath: String
 
-    enum LoadError: Error, CustomStringConvertible {
+    public init(sketchPath: String) {
+        self.sketchPath = sketchPath
+    }
+
+    public enum LoadError: Error, CustomStringConvertible {
         case unreadable(String)
         case noSketchClass(String)
         case compileFailed(String)
         case loadFailed(String)
 
-        var description: String {
+        public var description: String {
             switch self {
             case .unreadable(let p): return "couldn't read sketch file: \(p)"
             case .noSketchClass(let p):
@@ -37,7 +44,7 @@ struct SketchLoader {
         (Bundle.main.executablePath! as NSString).deletingLastPathComponent
     }
 
-    func load() -> Result<Sketch, LoadError> {
+    public func load() -> Result<Sketch, LoadError> {
         guard let source = try? String(contentsOfFile: sketchPath, encoding: .utf8) else {
             return .failure(.unreadable(sketchPath))
         }
@@ -51,7 +58,7 @@ struct SketchLoader {
         // `HelloCircle` collides in the objc runtime and risks bad casts).
         let token = UUID().uuidString.replacingOccurrences(of: "-", with: "")
         let work = (NSTemporaryDirectory() as NSString)
-            .appendingPathComponent("OllinLive-\(token)")
+            .appendingPathComponent("OllinRuntime-\(token)")
         try? FileManager.default.createDirectory(
             atPath: work, withIntermediateDirectories: true)
 
@@ -80,7 +87,7 @@ struct SketchLoader {
         // keeping one shared copy of `Sketch` across the boundary.
         let result = run("/usr/bin/xcrun", [
             "swiftc", "-emit-library", "-o", dylibPath,
-            "-module-name", "OllinLiveSketch_\(token)",
+            "-module-name", "OllinRuntimeSketch_\(token)",
             sketchPath, factoryPath,
             "-I", (bin as NSString).appendingPathComponent("Modules"),
             "-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup",

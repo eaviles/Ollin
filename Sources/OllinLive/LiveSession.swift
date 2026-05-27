@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import Ollin
+import OllinRuntime
 
 /// Owns the running sketch and reacts to file changes: it watches the sketch's
 /// folder, and on a `.swift` save it recompiles the sketch off the main thread

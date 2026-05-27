@@ -1,5 +1,6 @@
 import Foundation
 import Ollin
+import OllinRuntime
 
 /// `swift run OllinLive --selftest` — a headless smoke test for the reload
 /// pipeline that needs no window. It writes a sketch, compiles + loads it via

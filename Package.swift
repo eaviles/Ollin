@@ -20,19 +20,38 @@ let package = Package(
         .library(name: "Ollin", targets: ["Ollin"]),
     ],
     targets: [
+        // Shared, runtime-side dev machinery used by the live host and the
+        // examples gallery: `SketchLoader` compiles a `Sketch.swift` into a
+        // dylib and loads it. Kept in its own library (not in shipping `Ollin`)
+        // so the framework stays free of dev-only tooling, but reusable by more
+        // than one executable.
+        .target(
+            name: "OllinRuntime",
+            dependencies: ["Ollin"]
+        ),
         // The live-reload host. `swift run OllinLive <path/to/Sketch.swift>`
         // opens a window, then recompiles + hot-swaps that sketch on save —
-        // edit, save, see it update in place, without the window closing. The
-        // dylib-compile/dlopen/watch machinery lives here so the shipping Ollin
-        // library stays free of dev-only tooling.
+        // edit, save, see it update in place, without the window closing.
         .executableTarget(
             name: "OllinLive",
-            dependencies: ["Ollin"],
+            dependencies: ["Ollin", "OllinRuntime"],
             path: "Sources/OllinLive",
             // Export the host's symbols so a hot-swapped sketch `.dylib`
             // (compiled with `-undefined dynamic_lookup`) resolves its Ollin
             // symbols against *this* process at load. That keeps a single copy
             // of `Sketch` et al., so the loaded sketch casts as `Ollin.Sketch`.
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-export_dynamic"])
+            ]
+        ),
+        // The examples gallery: a sidebar list of every Examples/ sketch; click
+        // one and it compiles + renders in the detail pane. Reuses OllinRuntime's
+        // loader and Ollin's SketchView. Needs -export_dynamic for the same
+        // reason OllinLive does.
+        .executableTarget(
+            name: "OllinExamples",
+            dependencies: ["Ollin", "OllinRuntime"],
+            path: "Sources/OllinExamples",
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
             ]

@@ -62,6 +62,8 @@ swift run Example-HelloCircle
 
 That builds the package and opens an 800×800 window running the `HelloCircle` example. More runnable sketches live in [`Examples/`](Examples/); `swift run` with no argument lists every example target.
 
+Or browse them all in one window: `swift run OllinExamples` opens a gallery with every example in a sidebar, and clicking one compiles and runs it on the right.
+
 ## Add Ollin to your own package (SPM)
 
 ```swift
