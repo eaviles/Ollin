@@ -127,7 +127,12 @@ cheap now and expensive to retrofit:
 
 The drawing model is *immediate-mode GPU*: every frame `Drawer` tessellates
 each primitive into one flat triangle array on the CPU, the renderer uploads it
-to a reused buffer, and issues a single `drawPrimitives`. This is the right
+to a **triple-buffered, semaphore-gated vertex-buffer ring**, and issues a single
+`drawPrimitives`. (That ring is load-bearing — never collapse it back to one
+shared buffer: writing a buffer the GPU is still reading for an in-flight frame
+tears the geometry on screen, e.g. gaps in a stroked ring. That was a real bug,
+fixed by the `maxFramesInFlight` ring + `frameBoundary` semaphore in
+`MetalRenderer`.) This is the right
 shape — it's what NanoVG, Dear ImGui, and Processing's GL renderer do — so the
 "low-level" look is the cost of a Metal core, not accidental complexity. Don't
 trade it for Core Graphics / SwiftUI `Canvas` / SpriteKit: those are CPU

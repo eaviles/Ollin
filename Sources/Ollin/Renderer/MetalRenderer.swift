@@ -52,8 +52,15 @@ final class MetalRenderer {
     /// more inline construction in `init` (see CLAUDE.md).
     private var pipelines: [Pipeline: MTLRenderPipelineState] = [:]
 
-    /// Reused across frames; grown on demand to avoid per-frame allocation.
-    private var vertexBuffer: MTLBuffer?
+    /// Triple-buffered vertex storage, gated by a semaphore so the CPU never
+    /// overwrites vertices the GPU is still reading. Writing one shared buffer
+    /// every frame with no synchronization tears the on-screen geometry (e.g.
+    /// gaps in a stroked ring) because the next frame stomps it mid-draw. Each
+    /// slot is grown on demand to keep steady-state frames allocation-free.
+    private static let maxFramesInFlight = 3
+    private let frameBoundary = DispatchSemaphore(value: MetalRenderer.maxFramesInFlight)
+    private var vertexBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    private var frameIndex = 0
 
     init(device: MTLDevice, pixelFormat: MTLPixelFormat, sampleCount: Int) throws {
         self.device = device
@@ -84,12 +91,20 @@ final class MetalRenderer {
         renderPass.colorAttachments[0].loadAction = .clear
         renderPass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
 
+        // Block until a vertex-buffer slot frees up, then advance to the next one
+        // in the ring — so this frame's upload can't stomp a buffer the GPU is
+        // still reading for an in-flight frame.
+        frameBoundary.wait()
+        frameIndex = (frameIndex + 1) % MetalRenderer.maxFramesInFlight
+
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
               let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPass) else {
+            frameBoundary.signal()   // nothing encoded; hand the slot back
             return
         }
+        commandBuffer.addCompletedHandler { [frameBoundary] _ in frameBoundary.signal() }
 
-        encode(drawer, viewport: viewport, into: encoder)
+        encode(drawer, viewport: viewport, into: encoder, bufferIndex: frameIndex)
         encoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
@@ -132,7 +147,7 @@ final class MetalRenderer {
               let commandBuffer = commandQueue.makeCommandBuffer(),
               let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
-        encode(drawer, viewport: viewport, into: encoder)
+        encode(drawer, viewport: viewport, into: encoder, bufferIndex: 0)
         encoder.endEncoding()
 
         // Copy the resolved texture into a CPU-readable buffer (works on every
@@ -161,10 +176,11 @@ final class MetalRenderer {
 
     /// Upload `drawer`'s vertices and issue the solid-triangle draw into
     /// `encoder`. Shared by the on-screen and off-screen (export) paths.
-    private func encode(_ drawer: Drawer, viewport: SIMD2<Float>, into encoder: MTLRenderCommandEncoder) {
+    private func encode(_ drawer: Drawer, viewport: SIMD2<Float>,
+                        into encoder: MTLRenderCommandEncoder, bufferIndex: Int) {
         let vertices = drawer.vertices
         guard !vertices.isEmpty,
-              let buffer = vertexBuffer(for: vertices.count),
+              let buffer = vertexBuffer(at: bufferIndex, for: vertices.count),
               let solid = pipelines[.solid] else { return }
         vertices.withUnsafeBytes { raw in
             buffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
@@ -247,17 +263,17 @@ final class MetalRenderer {
 
     // MARK: Helpers
 
-    /// Return a shared vertex buffer large enough for `count` vertices, growing
-    /// it (and rounding up) only when the frame needs more room.
-    private func vertexBuffer(for count: Int) -> MTLBuffer? {
+    /// Return the ring's vertex buffer at `index`, large enough for `count`
+    /// vertices, growing it (and rounding up) only when a frame needs more room.
+    private func vertexBuffer(at index: Int, for count: Int) -> MTLBuffer? {
         let needed = max(count, 1) * MemoryLayout<OllinVertex>.stride
-        if let buffer = vertexBuffer, buffer.length >= needed {
+        if let buffer = vertexBuffers[index], buffer.length >= needed {
             return buffer
         }
         // Over-allocate a little so steady-state frames stop reallocating.
         let capacity = needed + needed / 2
-        vertexBuffer = device.makeBuffer(length: capacity, options: .storageModeShared)
-        return vertexBuffer
+        vertexBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
+        return vertexBuffers[index]
     }
 
     /// Load the shader library for `Shaders.metal`.
