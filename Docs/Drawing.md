@@ -35,9 +35,9 @@ override func draw() {
 - [isolated](#isolated)
 - [push / pop](#push)
 
-### Geometry types
+### Types
 
-`Vector2` is an `(x, y)` point in sketch points — the type primitives like `polyline` take, and the value you pass around and compose (it has `.zero`/`.one`/`.unitX`/`.unitY`, `length`, `normalized`, and the arithmetic operators). `Rectangle` (a `corner` plus `width`/`height`) is the typed form `rect` takes, with `rect(x:y:width:height:)` as sugar over it. `Color` is covered in [Color](./Color.md).
+The point and rectangle types these calls take (`Vector2`, `Rectangle`) are documented in [Geometry](./Geometry.md); `Color` is in [Color](./Color.md).
 
 <a name="background"></a>
 

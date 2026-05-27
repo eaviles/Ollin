@@ -50,18 +50,7 @@ The loop is already animating underneath, so making the circle breathe takes a s
 circle(x: width / 2, y: height / 2, radius: 120 + sin(time) * 40)
 ```
 
-Every sketch gets temporal state out of the box:
-
-| Property     | Type     | Meaning                          |
-|--------------|----------|----------------------------------|
-| `frameCount` | `Int`    | frames drawn so far              |
-| `time`       | `Double` | seconds since the sketch started |
-| `deltaTime`  | `Double` | seconds since the last frame     |
-| `frameRate`  | `Double` | smoothed frames per second       |
-
-Plus `width` and `height` (logical points, updated live on resize), `scale` (a
-resolution-relative factor, `min(width, height) / 1000`, so sizes hold their
-proportions at any canvas size), and `noLoop()` / `loop()` for still images.
+Every sketch also gets temporal state out of the box (`frameCount`, `time`, `deltaTime`, `frameRate`), live `width`/`height`, a resolution-relative `scale`, and `noLoop()` / `loop()` for still images. The [`Sketch`](Docs/Sketch.md) reference covers them all.
 
 ## Run it
 
@@ -114,11 +103,13 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
 
 The drawing surface is small and the names familiar. The full API reference lives in [`Docs/`](Docs/):
 
-- [Drawing](Docs/Drawing.md) — `background`, `fill`/`stroke`, the shapes (`circle`, `rect`, `line`, `polyline`, `polygon`), and the transform stack (`translate`/`rotate`/`scale`, `isolated`).
-- [Color](Docs/Color.md) — the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
-- [Randomness & noise](Docs/Randomness.md) — `random`, `randomGaussian`, `randomVector`, `ring`, Perlin `noise`/`signedNoise`, and `curlNoise` flow fields.
-- [Math](Docs/Math.md) — `map`, `dist`.
-- [Input](Docs/Input.md) — mouse position and clicks.
+- [Sketch](Docs/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), canvas size, and loop control.
+- [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`circle`, `rect`, `line`, `polyline`, `polygon`), and the transform stack (`translate`/`rotate`/`scale`, `isolated`).
+- [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
+- [Geometry](Docs/Geometry.md) - the `Vector2` and `Rectangle` value types.
+- [Randomness & noise](Docs/Randomness.md) - `random`, `randomGaussian`, `randomVector`, `ring`, Perlin `noise`/`signedNoise`, and `curlNoise` flow fields.
+- [Math](Docs/Math.md) - `map`, `dist`.
+- [Input](Docs/Input.md) - mouse position and clicks.
 
 Coordinates use a top-left origin with y increasing downward, the same as p5, Processing, and OPENRNDR.
 
