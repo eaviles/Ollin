@@ -16,6 +16,10 @@ captures the design intent so work here stays coherent across sessions.
   opt-in — `radius: 120 + sin(time) * 40` just moves. `noLoop()` is the rare
   still-image escape hatch.
 
+## Platform scope
+
+Apple platforms only, by design. macOS is the focus today; iOS, tvOS, and visionOS are in scope as *future* targets (see the Swift Playgrounds / iOS follow-up and the 3D & visionOS follow-up). Linux and Windows are explicitly out of scope — not now, not later — so don't add cross-platform abstractions for them: lean on Metal, AppKit/UIKit, and SwiftUI freely. "No Linux/Windows" is not "macOS-only"; keep Apple-platform portability in mind (the `#if canImport(AppKit)`/`#if canImport(UIKit)` seams) so the iOS/visionOS work later isn't a retrofit.
+
 ## The architecture rule (load-bearing)
 
 **The bare p5-style API is sugar over a public, typed core. Never make the
@@ -62,6 +66,8 @@ For ported *example sketches* (the iterate-by-porting workflow), provenance is p
 - **Recreations** (`Examples/Recreations/`, organized by artist) credit the artist, framed as a homage *after* them (not a reproduction, not endorsed), plus the SFPC "Recreating the Past" class that inspired the section. Some are *ported* from a source sketch, so they also carry the code-lineage header (e.g. the Molnár ones, via the p5 repo); others are *original* Ollin interpretations built directly from the artwork, with no code lineage (e.g. the Riley one). Either way, name the artist and work and keep the homage framing. See `Examples/Recreations/README.md`.
 - **Keep framework names out of code.** The influence story (p5.js / OPENRNDR / openFrameworks) lives in this file, the README, and commit messages — *not* in `.swift` comments. Don't write comparison asides like `// p5 default` or `/// like oF's ofNoise`; keep the information, drop the name. The one *exception* is the per-example attribution header, which credits the actual source lineage. Source littered with running comparisons reads like a port and undercuts the "independent implementation, inspired-by not copied" stance.
 
+There's a second tier of influence worth distinguishing from the conceptual one. Where p5.js / OPENRNDR / openFrameworks shaped the *API and ideas*, two peer Swift+Metal frameworks were read for *engineering approach* on the same platform: **swifty-creatives** (Apache-2.0, Processing-style immediate-mode) and **AsyncGraphics** (MIT, GPU image/video compositing). They were studied, not ported — specific lessons are noted inline through this file (shader build, pipeline cache, SDF circle, iOS seam, easing, snapshot testing). Same rules apply: credit them in the README and commits, never in `.swift` comments, and write our own implementation. The public credit lives in the README's Influences & attribution. (PixelKit is AsyncGraphics's older node-graph predecessor; cite AsyncGraphics instead.)
+
 ## Shaders & the Metal back end
 
 The shader set is one `.metal` file today; it will grow. Decisions that are
@@ -79,16 +85,39 @@ cheap now and expensive to retrofit:
   user-supplied shaders later — don't rip it out. Its costs are startup time
   and *no build-time error checking*.
 - **Add a precompiled `default.metallib` when those costs bite, don't replace.**
-  A SwiftPM build-tool plugin that runs `metal`/`metallib` gives the built-in
-  shaders build-time validation and zero startup cost. `loadLibrary` already
-  prefers a precompiled `Bundle.module` metallib *before* the source path, so
-  this slots in with no API change; runtime compilation stays for dynamic
-  shaders. Note: SwiftPM's `.process(...)` resource rule copies the `.metal`
-  as *source* — it does not compile it — which is why the plugin is the path.
+  Build-time validation and zero startup cost need the built-in shaders compiled
+  ahead of time. `loadLibrary` already prefers a precompiled `Bundle.module`
+  metallib *before* the source path, so a precompiled lib slots in with no API
+  change; runtime compilation stays for dynamic shaders. Two facts settle *how*
+  to produce it (both verified on this toolchain — Swift 6.3, macOS):
+    - **`swift run` does not compile loose `.metal`.** Dropping a `.metal` in
+      the target as plain undeclared source only earns a `found 1 file(s) which
+      are unhandled` warning; no metallib is produced and
+      `makeDefaultLibrary(bundle: .module)` throws "no default library." That
+      auto-compile is an *Xcode*-build-system behavior — which is how peer
+      frameworks ship 100+ loose `.metal` files with no plugin, but it does not
+      carry over to Ollin's `swift run` workflow. (And `.process(...)`/`.copy`
+      on a `.metal` just copies it as *source*, never compiles it.)
+    - **A precompiled `default.metallib` shipped as a `.copy` resource loads
+      fine.** `xcrun metal` + `xcrun metallib` produce a `default.metallib`;
+      `.copy`-listed in the target, it's found by `makeDefaultLibrary(bundle:
+      .module)`. So under `swift run` the path is a SwiftPM build-tool plugin
+      that runs that compile and emits the metallib as a resource. (Playgrounds
+      plugin support is unreliable — see the iOS follow-up — so keep runtime
+      source compilation too; never go plugin-*only*.)
+- **A user-supplied shader-library seam is cheap.** Resolve the active library
+  as `customMetalLibrary ?? defaultMetalLibrary` so a user can drop in their own
+  compiled library without touching the built-ins; pairs with the runtime-source
+  loader for hot-reload. (Both peer Swift+Metal frameworks expose exactly this.)
 - **Cache pipelines; don't grow `init`.** `MetalRenderer.init` builds one
   `MTLRenderPipelineState` inline. A new pipeline (textured quads, a new blend
-  mode, compute) should be a new case in an enum-keyed pipeline cache, not more
-  code in the constructor.
+  mode, compute) should be a cache lookup, not more code in the constructor.
+  Key the cache on a `Hashable` descriptor struct (shader, blend mode, MSAA
+  sample count, pixel format), not a flat enum: pipeline variants are
+  *combinations* of those axes, and a struct key captures the product without an
+  enum case per combination. Folding blend mode into that descriptor also keeps
+  it a pipeline *parameter* — one pipeline factory — rather than a whole renderer
+  subclass per blend mode (the trap a peer framework fell into).
 - **Don't hard-code the single-file assumption.** `loadLibrary` looks up
   `Shaders.metal` by name. As shaders multiply, keep one umbrella file that
   `#include`s the rest, or enumerate the `.metal` resources — decide before the
@@ -122,13 +151,18 @@ pipeline, not rewrites*:
   to the center in the fragment shader. Crisp at any size, with fill + stroke +
   anti-aliasing handled analytically (no reliance on MSAA). It doesn't
   generalize to arbitrary polygons, so treat it as a circle/ellipse/rounded-rect
-  specialization, not a replacement for general fills.
+  specialization, not a replacement for general fills. A worked reference for
+  this exact technique — distance-to-center, analytic edge AA, a separate edge
+  color for stroke — exists in AsyncGraphics's circle fragment shader (MIT).
+  Study the approach; write our own, don't copy it.
 - **MSAA caps anti-aliasing at 4×.** Fine for now; SDF coverage (above) is the
   upgrade path when thin strokes or large zoom reveal the limit.
 
 Seam already in place: `MetalRenderer` builds pipelines through an enum-keyed
 cache (`Pipeline` + `makePipeline(_:)`), so instanced/SDF pipelines slot in as
-new cases instead of more `init` code.
+new cases instead of more `init` code. Once variants multiply across blend mode
+× MSAA × pixel format, migrate that enum key to a `Hashable` descriptor struct
+(see *Cache pipelines* above) rather than enumerating the product by hand.
 
 One thing to *not* hand-roll: when vector `Shape`/`Contour` arrives (concave
 polygons, holes), use a real polygon triangulator — libtess2, the GLU
@@ -162,22 +196,26 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
 - **Next, in priority order:** more primitives (`ellipse`); the vector
   `Shape`/`Contour` type — concave fills via a real triangulator (convex
   `polygon` already landed); stroke joins/caps for fat lines; the
-  extension/lifecycle seam; easing/animation helpers.
+  extension/lifecycle seam; easing/animation helpers. For easing, a clean shape
+  to borrow is a property wrapper holding a value + target that eases toward the
+  target each frame (`linear`/`easeOut`); swifty-creatives' `@SCAnimatable` is a
+  small worked reference.
 
 ## Follow-up: Swift Playgrounds & iOS (not started)
 
 Worth pursuing — the Swift Playgrounds app (Mac/iPad) App Projects (`.swiftpm`) are the closest Swift gets to the p5.js "open the editor and type, see it move" onboarding, and the same work unlocks iPad sketching and embedding in any SwiftUI app. On-brand for the "learn it in an afternoon" goal.
 
 - **The architecture is already most of the way there.** `SketchView` is a SwiftUI-embeddable view, cleanly separated from the macOS-only `OllinApp.run` (which owns `NSApplication`). Embedding in someone else's SwiftUI `App` — what a Playgrounds App Project needs — is exactly that seam.
-- **The blocker is iOS support.** Playgrounds App Projects build *iOS* apps, but Ollin only declares `.macOS(.v14)`. To make it importable: add `.iOS(...)` to `Package.swift`; make `SketchView` conditional (`NSViewRepresentable`/`AppKit` vs `UIViewRepresentable`/`UIKit` via `#if canImport(AppKit)` / `#if canImport(UIKit)`); guard `OllinApp.run` behind `#if os(macOS)`. The Metal renderer (`Metal`/`MetalKit`/`simd`) is already portable.
+- **The blocker is iOS support.** Playgrounds App Projects build *iOS* apps, but Ollin only declares `.macOS(.v14)`. To make it importable: add `.iOS(...)` to `Package.swift`; make `SketchView` conditional (`NSViewRepresentable`/`AppKit` vs `UIViewRepresentable`/`UIKit` via `#if canImport(AppKit)` / `#if canImport(UIKit)`); guard `OllinApp.run` behind `#if os(macOS)`. The Metal renderer (`Metal`/`MetalKit`/`simd`) is already portable. A working reference for this exact seam: swifty-creatives compiles for macOS/iOS/tvOS/visionOS from one source using a `ViewRepresentable` typealias (`NSViewRepresentable`/`UIViewRepresentable`) with `#if os(...)`-guarded `makeNSView`/`makeUIView` — worth reading when we do this.
 - **Keep shaders Playgrounds-safe.** Swift Playgrounds' support for SwiftPM build-tool plugins is unreliable, so do not go plugin-*only* for shaders — keep runtime source compilation as a first-class loader (see [Shaders & the Metal back end](#shaders--the-metal-back-end)).
 - **Onboarding nicety:** ship a ready-made `.swiftpm` starter (Ollin pre-wired + a `HelloCircle`) so users don't hand-add the package URL.
 - **Caveats:** the Playgrounds sandbox restricts file I/O (matters for the export roadmap items, not for drawing); package-dependency UX is finicky; prefer the Swift Playgrounds app's App Projects over the semi-deprecated Xcode Playgrounds. iOS changes can't be verified in this environment — they need `xcodebuild -destination` with the iOS SDK on a Mac.
 
 ## Follow-up: live reload — edit code, see it render (not started)
 
-The headline creative-coding feature, and Ollin's loop is unusually well-suited: `SketchRunner.draw(in:)` runs every frame holding a *persistent* `Sketch` instance and re-calls `performDraw()`, so state (instance properties, `time`, `frameCount`, `setup()` resources) survives between frames. Swapping the body of `draw()` in the running process means the next frame just runs the new code with state intact — no re-run, no reset. Three tiers, cheapest first:
+The headline creative-coding feature, and Ollin's loop is unusually well-suited: `SketchRunner.draw(in:)` runs every frame holding a *persistent* `Sketch` instance and re-calls `performDraw()`, so state (instance properties, `time`, `frameCount`, `setup()` resources) survives between frames. Swapping the body of `draw()` in the running process means the next frame just runs the new code with state intact — no re-run, no reset. @eaviles flags the fast edit-save-see cycle as a priority direction: the whole point is to type, save, and see the result immediately. Tiers, cheapest first:
 
+- **Tier 0 — continuous build + relaunch (cheapest; ship this first).** A file-watcher (`watchexec`/`fswatch`/`entr`, or a small Swift `DispatchSource` watcher) that re-runs `swift build` and relaunches the app on save. Crude — it loses sketch state and pays a full compile + window relaunch every save — but it's a few lines, works today under `swift run`, and needs no external tooling. This is the documented default fast loop until Tier 2 lands, and the fallback when InjectionIII isn't wired up. A `swift run --watch`-style wrapper script in the repo would make it one command.
 - **Tier 1 — live *shader* reload (nearly free; do first).** We already compile `Shaders.metal` from a bundled resource at runtime, so: file-watch it (`DispatchSource`/FSEvents), re-run `loadLibrary`, rebuild the pipeline, and the next frame uses the new shader. Self-contained, low-risk, on-brand. Cheap *because* of the runtime-compile decision (see [Shaders & the Metal back end](#shaders--the-metal-back-end)).
 - **Tier 2 — live *Swift* reload (the real feature).** Use InjectionIII + the `Inject`/`HotReloading` SPM package: a watcher recompiles the changed `.swift` into a `.dylib`, `dlopen`s it, and interposes the new method bodies. A swapped `draw()` shows up next frame. Fits Ollin's persistent-instance loop perfectly.
 - **Tier 3 — parameter live-tweak / GUI (complementary).** Sliders/values that mutate the running sketch with no recompile (OPENRNDR-style). Lighter, ties to the GUI item on the extension seam; not "change the code."
@@ -190,6 +228,34 @@ Prep to bake in now so Tier 2 isn't a retrofit:
 - **Decide a state-reset policy:** instance state survives naturally; default to letting `time`/`frameCount` keep running, with an opt-in reset.
 - **Caveats:** InjectionIII is debug-only, macOS/iOS, needs external tooling + build flags (smoothest in Xcode; terminal `swift run` is more DIY). Method-body edits are the sweet spot; changing stored-property layout or reallocating `setup()` GPU resources may need a relaunch. None of this is verifiable in this environment.
 
+## Follow-up: layered effects & compositing (not started)
+
+A direction @eaviles wants on the radar: OPENRNDR-style effects that compose in *layers* — draw into off-screen targets, run filters (blur, bloom, feedback, color grades) over them, and composite the results with blend modes. This is the natural home for post-processing, and it rhymes with the extension seam (effects are "after draw" passes) and with user-supplied shaders (each effect is a fragment shader over a texture).
+
+- **The plumbing is partly here.** The `--export` path already renders off-screen into a texture (MSAA → resolve). A render target a sketch can draw *into* and then sample is the same capability surfaced as API — that's the seam to build on, not a new substrate.
+- **Shape to aim for.** A render-target / layer value type (a texture you draw into), a `Filter` notion (a fragment shader from one texture to another, with parameters), and composite-with-blend-mode. Blend mode wants to be a pipeline parameter in the `Hashable` pipeline descriptor (see [Shaders & the Metal back end](#shaders--the-metal-back-end)), not a renderer subclass.
+- **Swift+Metal reference.** AsyncGraphics is the concrete study here: its `Graphic` *is* an `MTLTexture`, effects are functions returning new graphics, and it ships blend modes + a stack/layout layer model. The API paradigm (async, immutable) differs from Ollin's immediate-mode loop, so borrow the compositing/effects *architecture*, not the call shape. OPENRNDR's `Filter` / `compose {}` / `RenderTarget` is the conceptual model.
+- **Bigger than a primitive.** This touches the renderer (multiple render passes, target management) and the extension seam at once. Design it deliberately when the seam lands; don't bolt it on.
+
+## Follow-up: offline frame-sequence export (not started)
+
+Single-frame PNG export already works (`--export`, off-screen MSAA render). The next step is exporting a whole *sequence* — the thing that turns an animated sketch into a video.
+
+- **The load-bearing idea: decouple the simulation clock from wall-clock.** In the live loop, `time`/`deltaTime`/`frameCount` track real time at the display refresh rate (60fps respected). In *export* mode they don't: advance them by a fixed step (`deltaTime = 1/exportFPS`, `time = frameCount / exportFPS`) for each rendered frame, regardless of how long that frame takes to render. @eaviles is explicit that export is offline — taking 10–15 minutes of wall-clock to render a sequence is fine, as long as the frames assemble into a smooth 60fps video.
+- **So export mode is a fixed-timestep, deterministic render.** Constant `deltaTime`, no wall-clock reads, seeded `random`/`noise` (already deterministic), so frame N is identical every run. Anything in a sketch that reads real time instead of `time` would break determinism — the API should keep `time` the obvious thing to reach for.
+- **Output.** Numbered PNGs (`frame_00001.png …`) for a frame range or a duration × fps, written from the same off-screen MSAA render path `--export` uses. Optional ffmpeg assembly to mp4/mov at the target fps, or just emit frames and let the user run ffmpeg. GIF later.
+- **Where it hangs.** Drive it from the frame-grab lifecycle hook (the extension seam) over a headless render loop that steps the fixed clock, renders, writes, repeats — no window, no vsync.
+
+## Follow-up: 3D mode & visionOS (eventual; 2D stays primary)
+
+2D is the focus now and stays the default — Ollin is a 2D creative-coding framework first. But @eaviles wants a 3D mode eventually, with visionOS support, so keep the back end from foreclosing it.
+
+- **What 3D needs.** A camera (perspective/ortho) feeding view + projection matrices; a depth buffer (`depth32Float[_stencil8]`) plus depth-stencil state in the pipeline; the CTM stack generalized from 2D affine to `f4x4`; a `Vector3` and 3D primitives (box, sphere, mesh/`.obj`). The Hashable pipeline descriptor already anticipated this — it carries a `depth` axis (see [Shaders & the Metal back end](#shaders--the-metal-back-end)), so a depth-tested pipeline is a new descriptor, not a new renderer.
+- **visionOS is a different render loop.** Immersive rendering doesn't use `MTKView`/`SketchRunner.draw(in:)`; it uses CompositorServices (`LayerRenderer`) driven by a manual render thread, plus ARKit world tracking. Keep the per-frame loop behind a seam that either an `MTKViewDelegate` or a visionOS layer renderer can drive, rather than assuming `MTKView` everywhere.
+- **Reference.** swifty-creatives is the concrete study: it ships both a normal `MTKView` renderer and a visionOS `RendererBase` with a manual `renderLoop()` over `LayerRenderer`, and it's 3D-first (camera, depth, box/3D-text). Borrow the structure — camera + depth pipeline + dual render loop — and write our own.
+- **Don't 3D-tax the 2D path.** Most sketches stay 2D; don't make every draw call pay for a depth buffer or perspective divide. 3D is a mode you opt into, not a cost the 2D core carries. (Apple-only either way — see [Platform scope](#platform-scope).)
+- **Caveat:** visionOS is unverifiable in this environment without the visionOS SDK plus simulator or device.
+
 ## Follow-up: ship an `Examples/` folder (sample projects) (underway)
 
 Ship a curated `Examples/` directory of small, runnable sample projects in the Ollin repo itself, openFrameworks-style. These are the "learn it in an afternoon" on-ramp and the showroom — distinct from a personal sketchbook: examples are *maintained and versioned with the API* (they must always build against current Ollin), whereas throwaway sketches are not.
@@ -201,4 +267,5 @@ Ship a curated `Examples/` directory of small, runnable sample projects in the O
 - **Mechanism: the single-file `@main` sketch.** SwiftPM allows only one entry point per executable target, so each example is its own small executable target (likely generated/scripted as the set grows — don't hand-maintain dozens of target stanzas). Make a sketch file self-contained by adding `static func main()` to `Sketch` on the core (`extension Sketch { static func main() { OllinApp.run(Self()) } }`, needs a `required init`), so an example is just `@main final class HelloCircle: Sketch { … }` with zero boilerplate. Build it once on the core so any single-file sketch flow (examples, scripting, embedding) can reuse it.
 - **Convention: a feature isn't done until it has an example.** Each new primitive/capability ships with an example. Examples are also a forcing function for API quality — if the example is awkward to write, the API needs work (the p5-ergonomics test).
 - **Examples are compile-tested docs.** Build every example in the macOS CI (see the open-source prep) so they never rot — this is the main argument for keeping them in-repo and current.
+- **Next level: render-correctness snapshot testing.** Compile-testing proves an example *builds*; image-snapshot tests prove it *renders the same*. The off-screen MSAA render behind `--export` is the hard prerequisite, and it already exists — so this is cheap to reach. The shape: a frame-grab lifecycle hook (the extension seam) returns the rendered texture, and a test compares it against a committed reference image, per primitive. A peer Swift+Metal framework does exactly this (per-primitive snapshot tests via a `afterCommit(texture:)` hook gated behind `#if canImport(XCTest)`, using pointfree's swift-snapshot-testing) — a concrete model. Design the frame-grab hook with this in mind.
 - **Reuse the same samples elsewhere.** Examples can seed the Swift Playgrounds `.swiftpm` starter (see the Swift Playgrounds follow-up) and serve as starter templates for new sketches. Author once.
