@@ -100,6 +100,10 @@ open class Sketch {
     /// Backing field for `noise()` / `noiseSeed(_:)` (see Noise.swift).
     var perlin = PerlinNoise(seed: .random(in: .min ... .max))
 
+    /// Cached second sample for `randomGaussian()` — the polar method yields two
+    /// normals per pass, so the spare is held for the next call (see Random.swift).
+    var gaussianSpare: Double?
+
     /// Set by the runner so `loop()`/`noLoop()` can pause/resume the MTKView.
     var loopStateDidChange: ((Bool) -> Void)?
 

@@ -22,6 +22,7 @@ public extension Sketch {
     /// implementations, so a seed reproduces Ollin's output.)
     func randomSeed(_ seed: Int) {
         rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
+        gaussianSpare = nil   // so a reseed restarts a deterministic sequence
     }
 
     /// A random `Double` in `0 ..< 1`.
@@ -35,5 +36,31 @@ public extension Sketch {
         let lo = Swift.min(min, max), hi = Swift.max(min, max)
         guard lo < hi else { return lo }
         return Double.random(in: lo ..< hi, using: &rng)
+    }
+
+    /// A random `Double` from a standard normal distribution (mean `0`, standard
+    /// deviation `1`): most samples land within ±1, rarely past ±3. Uses the
+    /// Marsaglia polar method, which produces two normals at a time, so the spare
+    /// is cached for the next call.
+    func randomGaussian() -> Double {
+        if let spare = gaussianSpare {
+            gaussianSpare = nil
+            return spare
+        }
+        var v1 = 0.0, v2 = 0.0, s = 0.0
+        repeat {
+            v1 = 2 * random() - 1
+            v2 = 2 * random() - 1
+            s = v1 * v1 + v2 * v2
+        } while s >= 1 || s == 0
+        let multiplier = (-2 * log(s) / s).squareRoot()
+        gaussianSpare = v2 * multiplier
+        return v1 * multiplier
+    }
+
+    /// A random `Double` from a normal distribution with the given `mean` and
+    /// `deviation` (standard deviation).
+    func randomGaussian(mean: Double, deviation: Double) -> Double {
+        mean + randomGaussian() * deviation
     }
 }

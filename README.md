@@ -158,16 +158,34 @@ share hidden global state). Call them bare in `draw()`, like the math helpers:
 random()                  // Double in 0..<1
 random(max)               // 0..<max
 random(min, max)          // min..<max (order-independent)
+randomGaussian()          // standard normal (mean 0, sd 1)
+randomGaussian(mean:deviation:)  // normal with the given mean and spread
 randomSeed(_ seed: Int)   // reproducible runs
 
 noise(x)                  // 1D Perlin noise, in 0...1 (contrast-calibrated to fill the range)
 noise(x, y)               // 2D
 noise(x, y, z)            // 3D
 signedNoise(x[, y[, z]])  // the same field in -1...1 (oF ofSignedNoise / OPENRNDR convention)
+curlNoise(x, y)           // divergence-free 2D flow vector — flow fields
 noiseSeed(_ seed: Int)
 ```
 
+`randomGaussian` is normal-distributed, which reads as more natural scatter than the flat spread of `random`. `curlNoise` returns a divergence-free flow vector (the curl of the Perlin field), the usual basis for flow fields — `.normalized` gives just the direction. See the `Gaussian` and `FlowField` examples.
+
 By default the seed is entropy-based, so an unseeded sketch differs each run; seed it for a reproducible image. These are Ollin's own implementations, so a seed reproduces Ollin's output rather than p5's. A port captures the aesthetic of the original, though not its exact pixels. The full-turn constant is available as `Double.tau` (2π).
+
+## Palettes
+
+`Palette` turns a single number into cycling color through a cosine-gradient formula. Reach for the built-in `.rainbow`, or build your own from four `(r, g, b)` coefficient triples (center, amplitude, frequency, phase):
+
+```swift
+Palette.rainbow.color(at: t)                   // t cycles over 0...1
+let warm = Palette(a: (0.5, 0.5, 0.5), b: (0.5, 0.5, 0.5),
+                   c: (1.0, 1.0, 1.0), d: (0.0, 0.10, 0.20))
+warm.color(at: t)
+```
+
+The formula is Inigo Quilez's (see [Influences & attribution](#influences--attribution)). The `Palettes` example sweeps both across the canvas.
 
 ## Input
 
@@ -205,7 +223,7 @@ It drives the sketch off-screen (`setup()`, then `draw()` advanced to the reques
 The first pass is deliberately just enough to draw and iterate. Next up:
 
 - **More primitives:** `ellipse`, `point`, `triangle`.
-- **Fills & color:** richer color (hex/HSB), gradients, blend modes.
+- **Fills & color:** richer color (hex/HSB), gradients, blend modes. Cosine-gradient `Palette` has landed; perceptual colormaps (viridis, magma, …) are a natural next step.
 - **Typography & images:** text, image loading and drawing.
 - **Shaders:** user-supplied fragment/vertex shaders.
 - **Vector & raster export:** single-frame PNG export has landed (`--export`); PNG *sequences*, SVG, and PDF are next.
@@ -244,6 +262,14 @@ The frameworks above shaped Ollin's API and ideas. Two more, written for the sam
 | [AsyncGraphics](https://github.com/heestand-xyz/AsyncGraphics) | MIT | GPU image and video compositing; a reference for shader-library structure and a layered-effects model |
 
 As with the others, this is reading for ideas and engineering approach, which is different from copying code; Ollin's implementation is its own. Thanks to their authors, [@yukiny0811](https://github.com/yukiny0811) and [@heestand-xyz](https://github.com/heestand-xyz), for building in the open.
+
+### Techniques
+
+A few helpers lean on well-known public techniques, reimplemented in Ollin and credited here. They lean toward OPENRNDR-style ergonomics:
+
+- The cosine-gradient `Palette` uses [Inigo Quilez's palette formula](https://iquilezles.org/articles/palettes/).
+- `curlNoise` follows the curl-noise method for divergence-free flow (Robert Bridson and colleagues, "Curl-Noise for Procedural Fluid Flow", 2007).
+- `randomGaussian` uses the Marsaglia polar method for normal-distributed samples.
 
 ## Status & contributing
 

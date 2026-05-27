@@ -85,6 +85,21 @@ let package = Package(
             path: "Examples/Color/ColorWaves"
         ),
         .executableTarget(
+            name: "Example-Palettes",
+            dependencies: ["Ollin"],
+            path: "Examples/Color/Palettes"
+        ),
+        .executableTarget(
+            name: "Example-FlowField",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/FlowField"
+        ),
+        .executableTarget(
+            name: "Example-Gaussian",
+            dependencies: ["Ollin"],
+            path: "Examples/Randomness/Gaussian"
+        ),
+        .executableTarget(
             name: "Example-DotGrid",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/DotGrid"

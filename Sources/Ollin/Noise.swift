@@ -82,4 +82,18 @@ public extension Sketch {
     func signedNoise(_ x: Double, _ y: Double) -> Double { perlin.signedValue(x, y, 0) }
     /// 3D signed Perlin noise at `(x, y, z)`, in `-1...1`.
     func signedNoise(_ x: Double, _ y: Double, _ z: Double) -> Double { perlin.signedValue(x, y, z) }
+
+    /// A divergence-free 2D flow vector at `(x, y)` — the curl of the Perlin
+    /// field. Because it has no sources or sinks, it reads as smooth, swirling
+    /// flow, which makes it the go-to for flow fields. The returned `Vector2`
+    /// points along the flow; take `.normalized` for just the direction. Sample
+    /// on scaled-down coordinates (e.g. `x * 0.003`) for broad, gentle swirls.
+    func curlNoise(_ x: Double, _ y: Double) -> Vector2 {
+        let eps = 0.0001
+        let dfdx = (perlin.value(x + eps, y, 0) - perlin.value(x - eps, y, 0)) / (2 * eps)
+        let dfdy = (perlin.value(x, y + eps, 0) - perlin.value(x, y - eps, 0)) / (2 * eps)
+        return Vector2(dfdy, -dfdx)   // gradient rotated 90° = curl of a 2D field
+    }
+    /// `curlNoise` sampled at the point `p`.
+    func curlNoise(_ p: Vector2) -> Vector2 { curlNoise(p.x, p.y) }
 }
