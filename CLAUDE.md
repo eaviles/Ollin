@@ -216,7 +216,7 @@ Worth pursuing — the Swift Playgrounds app (Mac/iPad) App Projects (`.swiftpm`
 
 ## Live reload — edit code, see it render (shipped via `OllinLive`)
 
-The headline creative-coding feature, and it's built. `swift run OllinLive <path/to/Sketch.swift>` opens a window, watches the file, and on save recompiles *just that sketch* into a `.dylib` and hot-swaps it into the running loop — the window never closes. This is the Olive / canvas-sketch model (a persistent host owns the window; the sketch is the swappable unit), chosen over InjectionIII because that needs an external app and is finicky on the terminal `swift run` workflow Ollin lives in. Code is in `Sources/OllinLive/` (`main`, `SketchLoader`, `FileWatcher`, `LiveSession`, plus `--selftest`/`--watchtest` headless smoke tests); the runner-side swap is `SketchRunner.reload(to:)` in `SketchView.swift`. `Scripts/ollin-watch <file>` is a thin wrapper.
+The headline creative-coding feature, and it's built. `swift run OllinLive <path/to/Sketch.swift>` opens a window, watches the file, and on save recompiles *just that sketch* into a `.dylib` and hot-swaps it into the running loop — the window never closes. This is the Olive / canvas-sketch model (a persistent host owns the window; the sketch is the swappable unit), chosen over InjectionIII because that needs an external app and is finicky on the terminal `swift run` workflow Ollin lives in. Code is in `Sources/OllinLive/` (`main`, `SketchLoader`, `FileWatcher`, `LiveSession`, plus `--selftest`/`--watchtest` headless smoke tests); the runner-side swap is `SketchRunner.reload(to:)` in `SketchView.swift`.
 
 How it works, and the load-bearing decisions (most are cheap-to-forget, expensive-to-rediscover):
 

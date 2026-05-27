@@ -99,7 +99,7 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
    swift run OllinLive Examples/Basic/HelloCircle/Sketch.swift
    ```
 
-   It takes a path to any sketch file, so there's no target to register first. Run it from the repo and it live-reloads `Shaders.metal` as well. Each reload starts the sketch fresh by default: `setup()` runs again and the clock resets. Pass `--keep-clock` to keep `time` and `frameCount` running across reloads, so an animation doesn't jump back to the start. There's an `onReload()` hook for work you want to run on each reload. If an edit doesn't compile, the error prints and the running sketch keeps going, so a typo won't close the window. `Scripts/ollin-watch <file>` is a short wrapper for the same command.
+   It takes a path to any sketch file, so there's no target to register first. Run it from the repo and it live-reloads `Shaders.metal` as well. Each reload starts the sketch fresh by default: `setup()` runs again and the clock resets. Pass `--keep-clock` to keep `time` and `frameCount` running across reloads, so an animation doesn't jump back to the start. There's an `onReload()` hook for work you want to run on each reload. If an edit doesn't compile, the error prints and the running sketch keeps going, so a typo won't close the window.
 2. **Edit & re-run.** Tweak an example (or your own sketch) and re-run, e.g.
    `swift run Example-Breathing`. Incremental builds keep this snappy.
 3. **Keep it open in Xcode.** `open Package.swift` (or just open the folder).
