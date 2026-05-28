@@ -1,15 +1,18 @@
 import AppKit
+import OllinRuntime
 
 /// Activation + lifecycle hooks for the bundleless `swift run` executable: adopt
-/// a regular (foreground) activation policy and activate, and quit when the
-/// window closes.
+/// a regular (foreground) activation policy, then activate.
 ///
-/// Note: launched via `swift run` (no `.app` bundle) the window currently comes
-/// up behind the terminal and needs a Dock click to surface — a known launch
-/// quirk tracked for a later fix; the app is otherwise fully functional.
+/// `ensureInitialWindow()` works around a macOS 15 Sequoia SwiftUI regression
+/// where a `WindowGroup` app launched with a command-line argument (OllinLive
+/// always passes the sketch path) never opens its initial window. It's a
+/// temporary patch — see `SequoiaLaunchWindowWorkaround` for the full story and
+/// removal steps.
 final class LiveAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+        SequoiaLaunchWindowWorkaround.ensureInitialWindow()
         NSApp.activate(ignoringOtherApps: true)
     }
 
