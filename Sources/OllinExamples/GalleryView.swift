@@ -35,15 +35,15 @@ struct GalleryView: View {
         } detail: {
             detailPane
         }
-        .task(id: selection) { loadSelected() }
+        .task(id: selection) { await loadSelected() }
     }
 
     @ViewBuilder private var detailPane: some View {
         switch detail {
         case .empty:
-            ContentUnavailableViewCompat(
+            ContentUnavailableView(
                 "Pick an example", systemImage: "sidebar.left",
-                description: "Select a sketch from the list to run it here.")
+                description: Text("Select a sketch from the list to run it here."))
         case .loading(let name):
             ProgressView("Compiling \(name)…")
         case .loaded(let id, let sketch):
@@ -60,9 +60,11 @@ struct GalleryView: View {
     }
 
     /// Load the current selection: cached → instant; otherwise compile off the
-    /// main thread and update the detail state when it lands (ignoring the result
-    /// if the selection changed meanwhile).
-    private func loadSelected() {
+    /// main actor (the slow `swiftc`) and instantiate on the main actor. Driven by
+    /// `.task(id: selection)`, which cancels this when the selection changes — so
+    /// a stale compile's result is dropped rather than racing the new one in.
+    @MainActor
+    private func loadSelected() async {
         guard let id = selection, let example = examples.first(where: { $0.id == id }) else {
             detail = .empty
             return
@@ -73,41 +75,21 @@ struct GalleryView: View {
         }
         detail = .loading(example.name)
         let path = example.sketchPath
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = SketchLoader(sketchPath: path).load()
-            DispatchQueue.main.async {
-                guard selection == id else { return }   // user moved on while compiling
-                switch result {
-                case .success(let sketch):
-                    cache[id] = sketch
-                    detail = .loaded(id, sketch)
-                case .failure(let error):
-                    detail = .failed(String(describing: error))
-                }
+        let compiled = await Task.detached(priority: .userInitiated) {
+            SketchLoader(sketchPath: path).compile()
+        }.value
+        guard !Task.isCancelled else { return }   // user moved on while compiling
+        switch compiled {
+        case .success(let dylibPath):
+            switch SketchLoader(sketchPath: path).instantiate(dylibPath: dylibPath) {
+            case .success(let sketch):
+                cache[id] = sketch
+                detail = .loaded(id, sketch)
+            case .failure(let error):
+                detail = .failed(String(describing: error))
             }
+        case .failure(let error):
+            detail = .failed(String(describing: error))
         }
-    }
-}
-
-/// `ContentUnavailableView` is macOS 14+, but its labeled init varies across SDKs;
-/// this is a tiny, dependency-free placeholder for the empty state.
-private struct ContentUnavailableViewCompat: View {
-    let title: String
-    let systemImage: String
-    let description: String
-
-    init(_ title: String, systemImage: String, description: String) {
-        self.title = title
-        self.systemImage = systemImage
-        self.description = description
-    }
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: systemImage).font(.largeTitle).foregroundStyle(.secondary)
-            Text(title).font(.headline)
-            Text(description).font(.callout).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

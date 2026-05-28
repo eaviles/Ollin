@@ -20,6 +20,12 @@ import CoreGraphics
 /// You only touch this file when you need a *new pipeline* (e.g. instanced or
 /// SDF circles, textured quads for images, a new blend mode): add a `Pipeline`
 /// case and a branch in `makePipeline(_:)` — don't grow `init`.
+///
+/// Main-actor isolated: it's created and driven from the main thread (the
+/// `MTKViewDelegate` draw callback and the headless export path). The only work
+/// that intentionally runs off-actor is the GPU completed-handler, which signals
+/// `frameBoundary` (a `Sendable` semaphore) and touches nothing else.
+@MainActor
 final class MetalRenderer {
 
     enum RendererError: Error {
@@ -61,6 +67,13 @@ final class MetalRenderer {
     private let frameBoundary = DispatchSemaphore(value: MetalRenderer.maxFramesInFlight)
     private var vertexBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     private var frameIndex = 0
+
+    /// A separate vertex buffer for off-screen `image(of:)` renders, so headless
+    /// export never shares a slot with the on-screen ring. Export is synchronous
+    /// (it waits for the GPU before reading back), so one reusable buffer is
+    /// enough — no ring needed — but it must not be a ring slot the live loop
+    /// could still be reading for an in-flight frame.
+    private var exportBuffer: MTLBuffer?
 
     init(device: MTLDevice, pixelFormat: MTLPixelFormat, sampleCount: Int) throws {
         self.device = device
@@ -104,7 +117,8 @@ final class MetalRenderer {
         }
         commandBuffer.addCompletedHandler { [frameBoundary] _ in frameBoundary.signal() }
 
-        encode(drawer, viewport: viewport, into: encoder, bufferIndex: frameIndex)
+        encode(drawer, viewport: viewport, into: encoder,
+               buffer: vertexBuffer(at: frameIndex, for: drawer.vertices.count))
         encoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
@@ -147,7 +161,8 @@ final class MetalRenderer {
               let commandBuffer = commandQueue.makeCommandBuffer(),
               let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
-        encode(drawer, viewport: viewport, into: encoder, bufferIndex: 0)
+        encode(drawer, viewport: viewport, into: encoder,
+               buffer: exportVertexBuffer(for: drawer.vertices.count))
         encoder.endEncoding()
 
         // Copy the resolved texture into a CPU-readable buffer (works on every
@@ -177,11 +192,9 @@ final class MetalRenderer {
     /// Upload `drawer`'s vertices and issue the solid-triangle draw into
     /// `encoder`. Shared by the on-screen and off-screen (export) paths.
     private func encode(_ drawer: Drawer, viewport: SIMD2<Float>,
-                        into encoder: MTLRenderCommandEncoder, bufferIndex: Int) {
+                        into encoder: MTLRenderCommandEncoder, buffer: MTLBuffer?) {
         let vertices = drawer.vertices
-        guard !vertices.isEmpty,
-              let buffer = vertexBuffer(at: bufferIndex, for: vertices.count),
-              let solid = pipelines[.solid] else { return }
+        guard !vertices.isEmpty, let buffer, let solid = pipelines[.solid] else { return }
         vertices.withUnsafeBytes { raw in
             buffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
         }
@@ -274,6 +287,16 @@ final class MetalRenderer {
         let capacity = needed + needed / 2
         vertexBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
         return vertexBuffers[index]
+    }
+
+    /// The off-screen export buffer, grown on demand. Kept distinct from the
+    /// on-screen ring so a headless render can't stomp a buffer an in-flight
+    /// frame is still reading.
+    private func exportVertexBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinVertex>.stride
+        if let buffer = exportBuffer, buffer.length >= needed { return buffer }
+        exportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return exportBuffer
     }
 
     /// Load the shader library for `Shaders.metal`.

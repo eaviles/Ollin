@@ -8,6 +8,7 @@ import OllinRuntime
 /// it again, asserting the two renders differ. That proves the risky part —
 /// recompile → `dlopen` → instantiate → render — end to end (Metal required).
 enum SelfTest {
+    @MainActor
     static func run() -> Never {
         let dir = (NSTemporaryDirectory() as NSString)
             .appendingPathComponent("OllinLive-selftest")

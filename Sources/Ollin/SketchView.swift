@@ -14,6 +14,7 @@ import simd
 /// The MTKView is configured for continuous redraw (`isPaused = false`,
 /// `enableSetNeedsDisplay = false`), so this fires every display refresh — no
 /// `loop()` toggling needed to animate.
+@MainActor
 public final class SketchRunner: NSObject, MTKViewDelegate {
 
     private(set) var sketch: Sketch
@@ -22,6 +23,11 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// Set by `OllinApp.boot` so `reload(to:)` can refresh the window title on a
     /// live swap. Nil when embedded via `SketchView`.
     weak var window: NSWindow?
+
+    /// Optional hook for a host to observe the smoothed frame rate. Called a few
+    /// times a second (not every frame) so a live-FPS readout updates without
+    /// thrashing SwiftUI. Nil for standalone runs.
+    public var onFrameRate: (@MainActor (Double) -> Void)?
 
     private var didSetup = false
     private var didReload = false        // call onReload() after the post-reload setup()
@@ -137,6 +143,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
 
         sketch.advance(time: now - startTime, deltaTime: dt, frameRate: smoothedFrameRate)
+        if sketch.frameCount % 15 == 0 { onFrameRate?(smoothedFrameRate) }   // ~a few Hz
         sketch.performDraw()
 
         renderer.render(sketch.drawer,
@@ -204,6 +211,7 @@ private final class OllinMTKView: MTKView {
     }
 }
 
+@MainActor
 private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> MTKView {
     let view = OllinMTKView(frame: CGRect(origin: .zero, size: size), device: device)
     view.sketch = sketch
@@ -225,11 +233,17 @@ private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -
 /// SketchView(HelloCircle())
 ///     .frame(width: 800, height: 800)
 /// ```
+///
+/// Pass `onRunner` to receive the `SketchRunner` once the view is created — for
+/// hosts that need to drive it (live reload via `reload(to:)`, read its stats,
+/// toggle `loop()`/`noLoop()`). Plain embedders can ignore it.
 public struct SketchView: NSViewRepresentable {
     private let sketch: Sketch
+    private let onRunner: (@MainActor (SketchRunner) -> Void)?
 
-    public init(_ sketch: Sketch) {
+    public init(_ sketch: Sketch, onRunner: (@MainActor (SketchRunner) -> Void)? = nil) {
         self.sketch = sketch
+        self.onRunner = onRunner
     }
 
     public func makeCoordinator() -> Coordinator {
@@ -244,6 +258,7 @@ public struct SketchView: NSViewRepresentable {
         let runner = SketchRunner(sketch: sketch, view: view, device: device)
         view.delegate = runner
         context.coordinator.runner = runner   // retain the runner
+        onRunner?(runner)
         return view
     }
 
@@ -259,6 +274,10 @@ public struct SketchView: NSViewRepresentable {
 /// Boots a minimal AppKit app that runs a single sketch in a window. This is
 /// the path each `Examples/` target uses (via `Sketch.main()`), and it works
 /// from the terminal with `swift run` — no Xcode or app bundle required.
+///
+/// Main-actor isolated: it owns `NSApplication`/`NSWindow`/`MTKView`, all of
+/// which are main-actor types.
+@MainActor
 public enum OllinApp {
 
     public static func run(_ sketch: Sketch) {
@@ -369,6 +388,7 @@ public enum OllinApp {
     }
 
     /// Holds the few objects that must outlive `run()`.
+    @MainActor
     private final class Retained {
         static let shared = Retained()
         var runner: SketchRunner?
@@ -392,6 +412,7 @@ public extension Sketch {
     /// concrete subclass, so `Self()` builds *that* sketch (which is why
     /// `Sketch.init()` is `required`) and `OllinApp.run` boots it. Each
     /// `Examples/` target uses this.
+    @MainActor
     static func main() {
         // `swift run Example-X --export <path> [--frame N]` writes a PNG and
         // exits (no window); otherwise the sketch runs in a window as usual.

@@ -47,4 +47,14 @@ enum ExampleCatalog {
         var seen = Set<String>()
         return examples.compactMap { seen.insert($0.category).inserted ? $0.category : nil }
     }
+
+    /// Print the catalog grouped by category — backs `--list`.
+    static func printCatalog(_ examples: [Example]) {
+        for category in categories(of: examples) {
+            print(category)
+            for example in examples where example.category == category {
+                print("  \(example.displayName)")
+            }
+        }
+    }
 }

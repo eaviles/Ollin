@@ -12,14 +12,14 @@ import Ollin
 /// exports its symbols (`-export_dynamic`), and the dylib is compiled with
 /// `-undefined dynamic_lookup` so its Ollin symbols bind to the host at load.
 /// The cast across the `dlopen` boundary therefore succeeds.
-public struct SketchLoader {
+public struct SketchLoader: Sendable {
     public let sketchPath: String
 
     public init(sketchPath: String) {
         self.sketchPath = sketchPath
     }
 
-    public enum LoadError: Error, CustomStringConvertible {
+    public enum LoadError: Error, CustomStringConvertible, Sendable {
         case unreadable(String)
         case noSketchClass(String)
         case compileFailed(String)
@@ -44,7 +44,23 @@ public struct SketchLoader {
         (Bundle.main.executablePath! as NSString).deletingLastPathComponent
     }
 
+    /// Compile + instantiate in one step, on the main actor. Convenience for
+    /// callers already on the main thread (the initial load, the self-test); to
+    /// keep the slow `swiftc` off the main thread, call `compile()` off-main and
+    /// then `instantiate(dylibPath:)` on the main actor instead.
+    @MainActor
     public func load() -> Result<Sketch, LoadError> {
+        switch compile() {
+        case .success(let dylibPath): return instantiate(dylibPath: dylibPath)
+        case .failure(let error): return .failure(error)
+        }
+    }
+
+    /// Compile the sketch into a fresh `.dylib` and return its path — the slow
+    /// step (it shells out to `swiftc`). Safe to run **off the main thread**: it
+    /// touches no main-actor state, so the host window keeps drawing the old
+    /// sketch while this runs. Pair with `instantiate(dylibPath:)`.
+    public func compile() -> Result<String, LoadError> {
         guard let source = try? String(contentsOfFile: sketchPath, encoding: .utf8) else {
             return .failure(.unreadable(sketchPath))
         }
@@ -65,12 +81,17 @@ public struct SketchLoader {
         // A generated sibling file gives the dylib a stable C-ABI entry point that
         // builds the sketch — without touching (or even parsing beyond the class
         // name) the user's file. `@main` in the user file is harmless here.
+        // `Sketch.init` is main-actor isolated, so the factory asserts main-actor
+        // isolation (the host calls the C entry point from `instantiate`, which is
+        // `@MainActor`) to construct it synchronously across the C boundary.
         let factoryPath = (work as NSString).appendingPathComponent("__OllinFactory.swift")
         let factory = """
         import Ollin
         @_cdecl("ollin_make_sketch")
         public func ollin_make_sketch() -> UnsafeMutableRawPointer {
-            Unmanaged.passRetained(\(className)()).toOpaque()
+            MainActor.assumeIsolated {
+                Unmanaged.passRetained(\(className)()).toOpaque()
+            }
         }
         """
         do {
@@ -96,7 +117,16 @@ public struct SketchLoader {
             let log = result.stderr.isEmpty ? result.stdout : result.stderr
             return .failure(.compileFailed(log.trimmingCharacters(in: .whitespacesAndNewlines)))
         }
+        return .success(dylibPath)
+    }
 
+    /// `dlopen` the compiled dylib and build the `Sketch` from its factory entry
+    /// point. **Runs on the main actor**: `Sketch.init` is main-actor isolated, so
+    /// the factory's `MainActor.assumeIsolated` requires this to be called on the
+    /// main thread. `dlopen`/`dlsym` are cheap, so confining this step costs
+    /// nothing while `compile()` stays off-main.
+    @MainActor
+    public func instantiate(dylibPath: String) -> Result<Sketch, LoadError> {
         guard let handle = dlopen(dylibPath, RTLD_NOW) else {
             return .failure(.loadFailed(String(cString: dlerror())))
         }
@@ -138,7 +168,10 @@ public struct SketchLoader {
         } catch {
             return (-1, "", "couldn't launch \(launchPath): \(error)")
         }
-        var outData = Data()
+        // Drained on `drain` while we block reading stderr below; `drain.sync {}`
+        // establishes the happens-before before we read it, so the concurrent
+        // write is safe — which is what `nonisolated(unsafe)` vouches for.
+        nonisolated(unsafe) var outData = Data()
         let drain = DispatchQueue(label: "ollin.subprocess.stdout")
         drain.async { outData = outPipe.fileHandleForReading.readDataToEndOfFile() }
         let errData = errPipe.fileHandleForReading.readDataToEndOfFile()

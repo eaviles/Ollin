@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import PackageDescription
 
 // Ollin — a motion-first creative coding framework for Swift + Metal.
@@ -94,6 +94,11 @@ let package = Package(
             path: "Examples/Motion/Orbits"
         ),
         .executableTarget(
+            name: "Example-Parameters",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/Parameters"
+        ),
+        .executableTarget(
             name: "Example-Trail",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Trail"
@@ -180,5 +185,8 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Recreations/BridgetRiley/Fragment3"
         ),
-    ]
+    ],
+    // The whole package builds in the Swift 6 language mode, so data-race safety
+    // is enforced as errors everywhere — framework, hosts, and example sketches.
+    swiftLanguageModes: [.v6]
 )

@@ -23,6 +23,11 @@ import CoreGraphics
 /// to use without any setup: `frameCount`, `time`, `deltaTime`, `frameRate`.
 /// Swap `radius: 120` for `radius: 120 + sin(time) * 40` and it just animates.
 /// Use `noLoop()` for the rare still-image case.
+///
+/// Main-actor isolated: `setup()`/`draw()`/`mousePressed()` run on the main
+/// thread (the display-driven draw callback), so subclasses' overrides are
+/// main-actor too — which is what a sketch wants anyway.
+@MainActor
 open class Sketch {
 
     // MARK: Canvas size (logical points)
