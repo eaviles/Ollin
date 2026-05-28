@@ -15,8 +15,11 @@ Examples/
     SineSweep/Sketch.swift     — a circle swept across the canvas by `sin(time)`
     Orbits/Sketch.swift        — ten circles orbiting the center at rising speeds
     Trail/Sketch.swift         — a Lissajous point traced by a 600-segment polyline
+    FlowField/Sketch.swift     — a `curlNoise` flow field: short lines follow the divergence-free curl, drifting with `time`
   Color/
     ColorWaves/Sketch.swift    — a row of sin-colored circles flowing with `time`
+    Palettes/Sketch.swift      — seven cosine-gradient `Palette` presets, each swept across the canvas and scrolled
+    Colormaps/Sketch.swift     — the eight perceptual `Colormap` ramps as horizontal bands (value → color)
   Patterns/
     DotGrid/Sketch.swift       — a grid of black/white dots woven by a modulo rule
     WarpGrid/Sketch.swift      — a checkerboard of rects warped under the mouse (`rect`)
@@ -24,9 +27,13 @@ Examples/
   Randomness/
     NoiseField/Sketch.swift    — an 80×80 grid shaded by 3D Perlin `noise`, scrubbed by the mouse
     RandomBand/Sketch.swift    — a band of dots jittered by `random` (jagged); re-rolls with the mouse
+    Gaussian/Sketch.swift      — 2000 dots a frame placed by `randomGaussian`: the bell curve made visible
+    Ring/Sketch.swift          — dots scattered in an annulus by `ring()`, `scale`-relative so it holds its proportion
     NoiseWave/Sketch.swift     — a wave of dots offset by `signedNoise` (smooth); the noise counterpart
   Input/
     RepelGrid/Sketch.swift     — a grid of dots that flee the cursor (`mouseX`/`mouseY`)
+  Live/
+    Parameters/Sketch.swift    — tunable `@Param` knobs that become live inspector sliders under OllinLive
   Recreations/                 — recreating past computer artists, by artist
     VeraMolnar/Interruptions/Sketch.swift  — after Vera Molnár (`isolated`, `line`, `random`, `noise`)
     VeraMolnar/DesOrdres/Sketch.swift      — after Molnár's "(Dés)Ordres" (1974); concentric squares, ~5% disorder (`rect(center:)`)

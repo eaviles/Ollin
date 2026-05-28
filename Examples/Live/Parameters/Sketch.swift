@@ -4,7 +4,7 @@ import Ollin
 // Parameters — tunable knobs with @Param. Run it under the live host to get
 // live sliders in the inspector:
 //
-//   swift run OllinLive Examples/Motion/Parameters/Sketch.swift
+//   swift run OllinLive Examples/Live/Parameters/Sketch.swift
 //
 // Standalone (`swift run Example-Parameters`) just uses the default values.
 

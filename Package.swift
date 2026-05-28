@@ -96,7 +96,7 @@ let package = Package(
         .executableTarget(
             name: "Example-Parameters",
             dependencies: ["Ollin"],
-            path: "Examples/Motion/Parameters"
+            path: "Examples/Live/Parameters"
         ),
         .executableTarget(
             name: "Example-Trail",
