@@ -23,8 +23,8 @@ Examples/
     EnergyGrid/Sketch.swift    — columns sized by a moving "energy" share (`translate`, `rect`)
   Randomness/
     NoiseField/Sketch.swift    — an 80×80 grid shaded by 3D Perlin `noise`, scrubbed by the mouse
-    RandomBand/Sketch.swift    — 800 dots jittered by `random` (jagged); re-rolls with the mouse
-    NoiseWave/Sketch.swift     — 800 dots offset by `signedNoise` (smooth); the noise counterpart
+    RandomBand/Sketch.swift    — a band of dots jittered by `random` (jagged); re-rolls with the mouse
+    NoiseWave/Sketch.swift     — a wave of dots offset by `signedNoise` (smooth); the noise counterpart
   Input/
     RepelGrid/Sketch.swift     — a grid of dots that flee the cursor (`mouseX`/`mouseY`)
   Recreations/                 — recreating past computer artists, by artist

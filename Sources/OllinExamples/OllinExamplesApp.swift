@@ -1,4 +1,5 @@
 import SwiftUI
+import Ollin
 
 // OllinExamples — the examples gallery.
 //
@@ -30,6 +31,10 @@ struct OllinExamplesApp: App {
         WindowGroup("Ollin Examples") {
             GalleryView(examples: examples)
         }
-        .defaultSize(width: 1000, height: 680)
+        // Sidebar + a fixed square sketch; the window hugs that content (no free
+        // resize), and collapsing the sidebar narrows the window to the square.
+        .defaultSize(width: OllinApp.defaultWindowSize.width + GalleryView.sidebarWidth,
+                     height: OllinApp.defaultWindowSize.height)
+        .windowResizability(.contentSize)
     }
 }

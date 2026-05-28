@@ -5,12 +5,12 @@
 
 import Ollin
 
-/// 800 dots across the canvas, each offset vertically by `signedNoise` (Perlin
-/// noise in `-1...1`) — a smooth, correlated wave, where each dot stays close to
-/// its neighbors. `mouseX` slides the sample position, so the wave drifts as you
-/// move. The jagged counterpart is `RandomBand`; together they show random vs.
-/// noise. (The source faked signed noise with `map(noise(...), 0, 1, -1, 1)`;
-/// here `signedNoise` gives the `-1...1` range directly.)
+/// A dot per column across the canvas, each offset vertically by `signedNoise`
+/// (Perlin noise in `-1...1`) — a smooth, correlated wave, where each dot stays
+/// close to its neighbors. `mouseX` slides the sample position, so the wave
+/// drifts as you move. The jagged counterpart is `RandomBand`; together they show
+/// random vs. noise. (The source faked signed noise with `map(noise(...), 0, 1,
+/// -1, 1)`; here `signedNoise` gives the `-1...1` range directly.)
 @main
 final class NoiseWave: Sketch {
     override func setup() {
@@ -19,9 +19,12 @@ final class NoiseWave: Sketch {
 
     override func draw() {
         background(.black)
-        for i in 0..<800 {
-            let y = 400 + signedNoise(Double(i) * 0.01 + mouseX * 0.1) * 100
-            circle(x: Double(i), y: y, radius: 2)
+        // Sample the noise over a normalized span (≈8 humps across the canvas) and
+        // offset by ⅛ of the height, so the wave keeps its shape at any size.
+        for i in 0..<Int(width) {
+            let t = Double(i) / width                         // 0…1 across the canvas
+            let n = signedNoise(t * 8 + mouseX / width * 8)   // mouse scrolls the wave
+            circle(x: Double(i), y: height / 2 + n * height / 8, radius: 2 * scale)
         }
     }
 }

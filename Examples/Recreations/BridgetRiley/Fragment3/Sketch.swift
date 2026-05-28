@@ -5,7 +5,6 @@
 //  reproduction, and not affiliated with or endorsed by the artist.
 
 import Foundation
-import CoreGraphics
 import Ollin
 
 /// A field of black-and-white chevron stripes after Bridget Riley's Op-art
@@ -21,8 +20,6 @@ import Ollin
 /// rasterized columns. Static, so `setup()` calls `noLoop()`.
 @main
 final class Fragment3: Sketch {
-    override var preferredSize: CGSize { CGSize(width: 800, height: 600) }
-
     override func setup() {
         noStroke()
         noLoop()
@@ -30,13 +27,15 @@ final class Fragment3: Sketch {
 
     override func draw() {
         background(.white)
-        let inset = 80.0
+        // All lengths scale with the canvas (`scale` = min(width, height) / 1000),
+        // so the chevron field keeps its density at any square size.
+        let inset = 80 * scale
         let left = inset, right = width - inset
         let top = inset, bottom = height - inset
         let centerY = (top + bottom) / 2, halfHeight = (bottom - top) / 2
 
-        let baseAmplitude = 44.0, period = 58.0, modDepth = 0.4
-        let minThickness = 18.0, maxThickness = 30.0
+        let baseAmplitude = 44 * scale, period = 58 * scale, modDepth = 0.4
+        let minThickness = 18 * scale, maxThickness = 30 * scale
         let halfPeriod = period / 2
 
         func thickness(at y: Double) -> Double {

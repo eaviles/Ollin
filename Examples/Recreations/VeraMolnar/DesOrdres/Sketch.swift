@@ -21,21 +21,27 @@ import Ollin
 @main
 final class DesOrdres: Sketch {
     override func setup() {
-        strokeWeight(2)
+        strokeWeight(2 * scale)
         noFill()
     }
 
     override func draw() {
         background(.white)
         randomSeed(Int(mouseX))   // the pattern is stable per mouseX, scrubs as you move
+
+        // A 5×5 grid of centers inset ⅛ from each edge; each holds 10 nested
+        // squares, the outermost nearly filling its cell. All canvas-relative.
+        let side = min(width, height)
+        let lo = side * 0.125, hi = side * 0.875
+        let cell = (hi - lo) / 4
         for i in 0..<5 {
             for j in 0..<5 {
-                let x = map(Double(i), 0, 4, 100, 700)
-                let y = map(Double(j), 0, 4, 100, 700)
+                let center = Vector2(map(Double(i), 0, 4, lo, hi),
+                                     map(Double(j), 0, 4, lo, hi))
                 for k in 0..<10 {
-                    let size = map(Double(k), 0, 9, 5, 144)
+                    let size = map(Double(k), 0, 9, cell * 0.04, cell * 0.95)
                     if random() < 0.95 {
-                        rect(center: Vector2(x, y), width: size, height: size)
+                        rect(center: center, width: size, height: size)
                     }
                 }
             }

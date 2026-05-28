@@ -8,17 +8,15 @@ import CoreGraphics
 import Ollin
 
 /// Proportional "energy" distribution: 100 columns whose *widths* are shares of
-/// a moving total, so they always sum to 500 points. Each column's energy is a
-/// positive `sin(index + time)` value; dividing by the running total turns it
+/// a moving total, so they always sum to the block width. Each column's energy is
+/// a positive `sin(index + time)` value; dividing by the running total turns it
 /// into a fraction of the width. Every column is a vertical stack of 100 short
 /// rects in a black/white checkerboard.
 ///
 /// Demonstrates `translate` (a per-frame origin shift, used here to center the
-/// 500×500 block in the 700×700 canvas) alongside `rect`.
+/// block in the canvas) alongside `rect`.
 @main
 final class EnergyGrid: Sketch {
-    override var preferredSize: CGSize { CGSize(width: 700, height: 700) }
-
     override func setup() {
         noStroke()
     }
@@ -31,14 +29,17 @@ final class EnergyGrid: Sketch {
         let energy = (0..<100).map { map(sin(Double($0) * 0.1 + time), -1, 1, 0.01, 1.0) }
         let total = energy.reduce(0, +)
 
-        translate(x: 100, y: 100)   // center the 500×500 block in the 700 canvas
+        // A centered square block filling 80% of the canvas — a 10% margin all
+        // around, against the gray field.
+        let block = min(width, height) * 0.8
+        translate(x: (width - block) / 2, y: (height - block) / 2)
         var x = 0.0
         for i in 0..<100 {
-            let columnWidth = 500 * (energy[i] / total)
+            let columnWidth = block * (energy[i] / total)
             for j in 0..<100 {
-                let y = map(Double(j), 0, 100, 0, 500)
+                let y = map(Double(j), 0, 100, 0, block)
                 fill((i + j) % 2 == 0 ? .black : .white)
-                rect(x: x, y: y, width: columnWidth, height: 5)
+                rect(x: x, y: y, width: columnWidth, height: block / 100)
             }
             x += columnWidth
         }

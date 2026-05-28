@@ -227,7 +227,7 @@ private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -
 ///
 /// ```swift
 /// SketchView(HelloCircle())
-///     .frame(width: 800, height: 800)
+///     .frame(width: 1080, height: 1080)
 /// ```
 ///
 /// Pass `onRunner` to receive the `SketchRunner` once the view is created — for
@@ -250,7 +250,8 @@ public struct SketchView: NSViewRepresentable {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Ollin requires a Metal-capable GPU.")
         }
-        let view = makeOllinMTKView(device: device, size: sketch.preferredSize, sketch: sketch)
+        // Initial size only; SwiftUI resizes the view to its frame on layout.
+        let view = makeOllinMTKView(device: device, size: sketch.canvasSize, sketch: sketch)
         let runner = SketchRunner(sketch: sketch, view: view, device: device)
         view.delegate = runner
         context.coordinator.runner = runner   // retain the runner
@@ -290,6 +291,44 @@ public enum OllinApp {
         OllinSketchApp.main()
     }
 
+    /// The window size for `sketch`, resolved from its `windowMode`. `.auto` and
+    /// `.resizable` open at the screen-fit size (`.resizable` can then be dragged
+    /// from there); `.fixed(f)` is an explicit fraction of `canvasSize`.
+    public static func windowSize(for sketch: Sketch) -> CGSize {
+        switch sketch.windowMode {
+        case .auto, .resizable:
+            return windowSize(fitting: sketch.canvasSize)
+        case .fixed(let fraction):
+            return CGSize(width: sketch.canvasSize.width * fraction,
+                          height: sketch.canvasSize.height * fraction)
+        }
+    }
+
+    /// The auto-fit window size for an `export` resolution: 1:1 when the screen has
+    /// room, otherwise the largest clean fraction (¾, ½, …) that fits within ~90%
+    /// of the main screen, and an exact shrink-to-fit if even those are too big, so
+    /// it always fits. A 1080² sketch opens at 1080 on a large display and 810 on a
+    /// 14"/16" laptop. Falls back to ¾ when no screen is readable (e.g. headless).
+    public static func windowSize(fitting export: CGSize) -> CGSize {
+        guard let available = NSScreen.main?.visibleFrame.size else {
+            return CGSize(width: export.width * 0.75, height: export.height * 0.75)
+        }
+        let maxWidth = available.width * 0.9, maxHeight = available.height * 0.9
+        func fits(_ f: Double) -> Bool {
+            export.width * f <= maxWidth && export.height * f <= maxHeight
+        }
+        // Largest clean fraction that fits (1:1 when there's room, a comfortable
+        // step down otherwise); if none fit, an exact shrink so it always fits.
+        let fraction = [1.0, 0.75, 0.5, 0.375, 0.25].first(where: fits)
+            ?? min(maxWidth / export.width, maxHeight / export.height)
+        return CGSize(width: export.width * fraction, height: export.height * fraction)
+    }
+
+    /// The window size for a default (un-overridden) sketch — `Sketch.defaultSize`
+    /// fitted to the screen. Hosts with their own chrome (the gallery, the live
+    /// host) size their sketch pane to this.
+    public static var defaultWindowSize: CGSize { windowSize(fitting: Sketch.defaultSize) }
+
     /// Render one frame of `sketch` off-screen and write it as a PNG — no window.
     /// Drives the sketch headlessly: `setup()`, then `draw()` advanced to `frame`
     /// at `fps` (so animated/stateful sketches export the right moment). This is
@@ -305,7 +344,7 @@ public enum OllinApp {
             fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
         }
 
-        let size = sketch.preferredSize
+        let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.setup()
         for k in 0...max(0, frame) {                 // advance so frame N is correct
@@ -379,11 +418,32 @@ struct OllinSketchApp: App {
 
     init() { sketch = OllinApp.standaloneSketch! }
 
+    /// The window's initial size, resolved from the sketch's `windowMode`.
+    private var windowSize: CGSize { OllinApp.windowSize(for: sketch) }
+
+    /// `.resizable` sketches get a freely resizable window (canvas follows it);
+    /// `.auto`/`.fixed` get a window locked to `windowSize`.
+    private var isResizable: Bool {
+        if case .resizable = sketch.windowMode { return true }
+        return false
+    }
+
     var body: some Scene {
         Window(sketch.title, id: "ollin-sketch") {
-            SketchView(sketch)
+            if isResizable {
+                // Fill the window; the canvas tracks the resized view.
+                SketchView(sketch)
+                    .frame(minWidth: 200, maxWidth: .infinity,
+                           minHeight: 200, maxHeight: .infinity)
+            } else {
+                SketchView(sketch)
+                    .frame(width: windowSize.width, height: windowSize.height)
+            }
         }
-        .defaultSize(sketch.preferredSize)
+        .defaultSize(windowSize)
+        // Fixed modes lock the window to its content; `.resizable` allows free
+        // resize down to the content's minimum.
+        .windowResizability(isResizable ? .contentMinSize : .contentSize)
     }
 }
 

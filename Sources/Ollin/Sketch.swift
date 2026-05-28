@@ -1,6 +1,23 @@
 import Foundation
 import CoreGraphics
 
+/// How a sketch's preview window behaves and is sized, relative to its
+/// `canvasSize`. `.auto` and `.fixed` are fixed-size (export-first): the window
+/// is locked and the canvas matches it. `.resizable` is screen-first: the window
+/// is freely resizable and the canvas follows it.
+public enum WindowMode: Sendable {
+    /// Shrink `canvasSize` by the largest clean fraction (1, ¾, ½, …) that fits the
+    /// screen: 1:1 on a roomy display, smaller on a laptop. Not resizable. The default.
+    case auto
+    /// A fixed fraction of `canvasSize` (1 = actual size, 0.5 = half), regardless of
+    /// the screen. Not resizable. Use for a specific preview zoom.
+    case fixed(Double)
+    /// A freely resizable window; the canvas follows the window size live (drive it
+    /// with `scale` / `width` / `height`). Opens at the auto-fit size. For sketches
+    /// designed for the screen rather than a fixed export.
+    case resizable
+}
+
 /// Base class for an Ollin sketch.
 ///
 /// Subclass it, override `setup()` (once) and `draw()` (every frame), and call
@@ -71,8 +88,25 @@ open class Sketch {
         let typeName = String(describing: type(of: self))
         return typeName == "Sketch" ? "Ollin" : "Ollin - \(typeName)"
     }
-    /// Initial window size used when booting via `OllinApp.run`.
-    open var preferredSize: CGSize { CGSize(width: 800, height: 800) }
+    /// The default export resolution: 1080×1080 — a 1:1 square at the 1080-pixel
+    /// target common to square social/video export. The on-screen preview window
+    /// scales down from this to fit the screen (the *host* computes that, not the
+    /// sketch — see `OllinApp.windowSize(fitting:)`).
+    public static let defaultSize = CGSize.square1080
+
+    /// The render / single-frame PNG export size in pixels — the canonical
+    /// resolution the sketch is authored at. Defaults to `Sketch.defaultSize`
+    /// (1080² / square). **Override it** for higher-res masters at the standard
+    /// square tiers — 1440² ("2K"), 2160² ("4K"), 2880² ("5K") — or a non-square
+    /// aspect (e.g. 1080×1350 for a 4:5 portrait).
+    open var canvasSize: CGSize { Sketch.defaultSize }
+
+    /// How the preview window is sized, relative to `canvasSize`. Defaults to
+    /// `.auto`: it opens at 1:1 when the screen has room for the full `canvasSize`
+    /// and steps down to fit otherwise, so it always fits. Override with `.fixed(_)`
+    /// to pin a preview zoom. The window is never user-resizable. The screen-fit
+    /// itself lives in the host, so this stays pure data with no screen dependency.
+    open var windowMode: WindowMode { .auto }
 
     // MARK: Lifecycle (override in subclasses)
 

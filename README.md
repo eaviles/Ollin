@@ -60,9 +60,15 @@ From the terminal, no Xcode required:
 swift run Example-HelloCircle
 ```
 
-That builds the package and opens an 800×800 window running the `HelloCircle` example. More runnable sketches live in [`Examples/`](Examples/); `swift run` with no argument lists every example target.
+That builds the package and opens a 1080×1080 window running the `HelloCircle` example. More runnable sketches live in [`Examples/`](Examples/); `swift run` with no argument lists every example target.
 
 Or browse them all in one window: `swift run OllinExamples` opens a gallery with every example in a sidebar, and clicking one compiles and runs it on the right.
+
+## Canvas size and resolution
+
+The default canvas is a **1080×1080** square, the 1:1 size used for square social and video posts. That's the export resolution; the preview window opens smaller when it has to (about ¾, 810pt, on a 14"/16" laptop, full size on a larger display) and isn't resizable. A sketch can override `canvasSize` for a higher-resolution master or a different aspect.
+
+Write sketches relative to the canvas so they hold up at any size: multiply feature sizes by `scale` (a factor that tracks the canvas size) and use `width`/`height` fractions for layout. Because the window is a fraction of the export, a `scale`-based sketch previews exactly as it exports, which keeps the output consistent for video and Instagram. The [`Sketch` reference](Docs/Sketch.md#size-and-resolution-independence) has the details.
 
 ## Add Ollin to your own package (SPM)
 
@@ -135,7 +141,7 @@ swift run Example-HelloCircle --export frame.png
 swift run Example-Orbits --export frame.png --frame 120   # the 120th frame
 ```
 
-It drives the sketch off-screen (`setup()`, then `draw()` advanced to the requested `--frame`) and writes a PNG at the sketch's size, rendered with the same 4× MSAA as the window. In code it's `OllinApp.export(sketch, to:frame:)`.
+It drives the sketch off-screen (`setup()`, then `draw()` advanced to the requested `--frame`) and writes a PNG at the sketch's `canvasSize` (1080×1080 by default), rendered with the same 4× MSAA as the window. In code it's `OllinApp.export(sketch, to:frame:)`.
 
 ## Roadmap
 
@@ -148,6 +154,7 @@ The first pass is deliberately just enough to draw and iterate. Next up:
 - **Vector & raster export:** single-frame PNG export has landed (`--export`); PNG *sequences*, SVG, and PDF are next.
 - **Capture for sharing:** video and GIF recording of animated sketches, since motion is the whole reason Ollin exists.
 - **Single-file `swift-sh` scripting** for zero-ceremony sketches.
+- **Normalized `u, v` coordinates** (0…1 across the canvas) alongside points, so a sketch can place things without referring to `width`/`height`.
 
 ## Built with AI
 

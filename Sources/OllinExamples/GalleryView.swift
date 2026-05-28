@@ -6,6 +6,11 @@ import OllinRuntime
 /// sketch. Loading happens off the main thread (each compile is ~1s) and is
 /// cached, so re-selecting an example is instant.
 struct GalleryView: View {
+    /// Fixed sidebar width. The detail pane is pinned to the sketch's square, so
+    /// the window is exactly `square + sidebarWidth` wide and can't be resized;
+    /// collapsing the sidebar narrows it to just the square.
+    static let sidebarWidth: CGFloat = 230
+
     let examples: [Example]
 
     @State private var selection: Example.ID?
@@ -31,7 +36,7 @@ struct GalleryView: View {
                 }
             }
             .navigationTitle("Examples")
-            .frame(minWidth: 230)
+            .navigationSplitViewColumnWidth(Self.sidebarWidth)
         } detail: {
             detailPane
         }
@@ -39,24 +44,31 @@ struct GalleryView: View {
     }
 
     @ViewBuilder private var detailPane: some View {
-        switch detail {
-        case .empty:
-            ContentUnavailableView(
-                "Pick an example", systemImage: "sidebar.left",
-                description: Text("Select a sketch from the list to run it here."))
-        case .loading(let name):
-            ProgressView("Compiling \(name)…")
-        case .loaded(let id, let sketch):
-            SketchView(sketch).id(id)   // .id recreates (and tears down) on switch
-        case .failed(let message):
-            ScrollView {
-                Text(message)
-                    .font(.system(.callout, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
+        // Pin the detail pane to a fixed square so the sketch renders at its true
+        // size (never stretched to fill the pane) and the window stays square.
+        Group {
+            switch detail {
+            case .empty:
+                ContentUnavailableView(
+                    "Pick an example", systemImage: "sidebar.left",
+                    description: Text("Select a sketch from the list to run it here."))
+            case .loading(let name):
+                ProgressView("Compiling \(name)…")
+            case .loaded(let id, let sketch):
+                SketchView(sketch).id(id)   // .id recreates (and tears down) on switch
+                    .frame(width: OllinApp.windowSize(for: sketch).width,
+                           height: OllinApp.windowSize(for: sketch).height)
+            case .failed(let message):
+                ScrollView {
+                    Text(message)
+                        .font(.system(.callout, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
             }
         }
+        .frame(width: OllinApp.defaultWindowSize.width, height: OllinApp.defaultWindowSize.height)
     }
 
     /// Load the current selection: cached → instant; otherwise compile off the
