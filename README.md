@@ -60,15 +60,15 @@ From the terminal, no Xcode required:
 swift run Example-HelloCircle
 ```
 
-That builds the package and opens a 1080×1080 window running the `HelloCircle` example. More runnable sketches live in [`Examples/`](Examples/); `swift run` with no argument lists every example target.
+That builds the package and opens a window running the `HelloCircle` example (a 1080² canvas, fit to your screen). More runnable sketches live in [`Examples/`](Examples/); `swift run` with no argument lists every example target.
 
 Or browse them all in one window: `swift run OllinExamples` opens a gallery with every example in a sidebar, and clicking one compiles and runs it on the right.
 
 ## Canvas size and resolution
 
-The default canvas is a **1080×1080** square, the 1:1 size used for square social and video posts. That's the export resolution; the preview window opens smaller when it has to (about ¾, 810pt, on a 14"/16" laptop, full size on a larger display) and isn't resizable. A sketch can override `canvasSize` for a higher-resolution master or a different aspect.
+The default canvas is **1080×1080**, the 1:1 size for square social and video posts. `canvasSize` sets the resolution a sketch renders and exports at (override it for a hi-res master or a different aspect), and `windowMode` sizes the preview window relative to it (`.auto` fits the screen, `.fixed(_)` pins a zoom, `.resizable` follows the window live).
 
-Write sketches relative to the canvas so they hold up at any size: multiply feature sizes by `scale` (a factor that tracks the canvas size) and use `width`/`height` fractions for layout. Because the window is a fraction of the export, a `scale`-based sketch previews exactly as it exports, which keeps the output consistent for video and Instagram. The [`Sketch` reference](Docs/Sketch.md#size-and-resolution-independence) has the details.
+Write sketches relative to the canvas so they hold up at any size: multiply feature sizes by `scale` and lay out with `width`/`height` fractions. The [`Sketch` reference](Docs/Sketch.md#size-and-resolution-independence) has the presets and the rest.
 
 ## Add Ollin to your own package (SPM)
 
