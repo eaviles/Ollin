@@ -20,9 +20,6 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private(set) var sketch: Sketch
     private let renderer: MetalRenderer
     private weak var view: MTKView?
-    /// Set by `OllinApp.boot` so `reload(to:)` can refresh the window title on a
-    /// live swap. Nil when embedded via `SketchView`.
-    weak var window: NSWindow?
 
     /// Optional hook for a host to observe the smoothed frame rate. Called a few
     /// times a second (not every frame) so a live-FPS readout updates without
@@ -80,7 +77,6 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         didSetup = false            // re-run setup() next frame
         didReload = true            // ...then call onReload() once
         view?.isPaused = false      // a prior noLoop() must not freeze the reload
-        window?.title = newSketch.title
     }
 
     /// Recompile the shader library from `source` and rebuild the pipelines for
@@ -280,58 +276,18 @@ public struct SketchView: NSViewRepresentable {
 @MainActor
 public enum OllinApp {
 
+    /// The instance handed to `run`, read back by `OllinSketchApp` once SwiftUI
+    /// instantiates it. (SwiftUI builds the `App` itself, so the sketch is passed
+    /// out-of-band rather than through an initializer.)
+    fileprivate static var standaloneSketch: Sketch?
+
+    /// Boot a window running `sketch` and start the app; does not return. Hosts
+    /// the sketch in a `SketchView` inside a SwiftUI `App` (`OllinSketchApp`) —
+    /// the same lifecycle the live host and gallery use. This is the
+    /// `swift run Example-X` path, reached via `Sketch.main()`.
     public static func run(_ sketch: Sketch) {
-        _ = boot(sketch)
-        NSApplication.shared.run()
-    }
-
-    /// Build the window, view, and runner for `sketch` and wire up the app, but
-    /// *don't* start the run loop — the caller does that. `run` is just
-    /// `boot` + `NSApplication.shared.run()`; the live host (OllinLive) calls
-    /// `boot`, wires a file watcher to the returned runner's `reload(to:)`, and
-    /// then starts the run loop itself. Returns the runner so the caller can
-    /// drive live swaps.
-    @discardableResult
-    public static func boot(_ sketch: Sketch) -> SketchRunner {
-        let app = NSApplication.shared
-        app.setActivationPolicy(.regular)
-
-        guard let device = MTLCreateSystemDefaultDevice() else {
-            fatalError("Ollin requires a Metal-capable GPU.")
-        }
-
-        let size = sketch.preferredSize
-        let view = makeOllinMTKView(device: device, size: size, sketch: sketch)
-        let runner = SketchRunner(sketch: sketch, view: view, device: device)
-        view.delegate = runner
-
-        let window = NSWindow(
-            contentRect: CGRect(origin: .zero, size: size),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = sketch.title
-        window.contentView = view
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        runner.window = window      // so reload(to:) can refresh the title
-
-        // A tiny menu so Cmd-Q quits, and a delegate so closing the window ends
-        // the process (and returns from `swift run`).
-        app.mainMenu = makeMenu(quitTitle: "Quit Ollin")
-        let delegate = OllinAppDelegate()
-        app.delegate = delegate
-
-        // Keep strong references alive for the lifetime of the app: the
-        // MTKView delegate is weak, and the window/delegate would otherwise be
-        // released as soon as the run loop starts.
-        Retained.shared.runner = runner
-        Retained.shared.window = window
-        Retained.shared.delegate = delegate
-
-        app.activate(ignoringOtherApps: true)
-        return runner
+        standaloneSketch = sketch
+        OllinSketchApp.main()
     }
 
     /// Render one frame of `sketch` off-screen and write it as a PNG — no window.
@@ -375,26 +331,6 @@ public enum OllinApp {
         }
     }
 
-    private static func makeMenu(quitTitle: String) -> NSMenu {
-        let mainMenu = NSMenu()
-        let appItem = NSMenuItem()
-        mainMenu.addItem(appItem)
-        let appMenu = NSMenu()
-        appMenu.addItem(withTitle: quitTitle,
-                        action: #selector(NSApplication.terminate(_:)),
-                        keyEquivalent: "q")
-        appItem.submenu = appMenu
-        return mainMenu
-    }
-
-    /// Holds the few objects that must outlive `run()`.
-    @MainActor
-    private final class Retained {
-        static let shared = Retained()
-        var runner: SketchRunner?
-        var window: NSWindow?
-        var delegate: NSApplicationDelegate?
-    }
 }
 
 public extension Sketch {
@@ -429,7 +365,36 @@ public extension Sketch {
     }
 }
 
-private final class OllinAppDelegate: NSObject, NSApplicationDelegate {
+// MARK: - Standalone SwiftUI launcher
+
+/// SwiftUI `App` that runs a single `Sketch` in a window — the `swift run
+/// Example-X` launcher behind `Sketch.main()` / `OllinApp.run`. One `Window`
+/// hosting a `SketchView`, on the same SwiftUI lifecycle the live host and
+/// gallery use. The sketch comes from `OllinApp.standaloneSketch` because
+/// SwiftUI, not the caller, instantiates the `App`.
+@MainActor
+struct OllinSketchApp: App {
+    @NSApplicationDelegateAdaptor(StandaloneAppDelegate.self) private var delegate
+    private let sketch: Sketch
+
+    init() { sketch = OllinApp.standaloneSketch! }
+
+    var body: some Scene {
+        Window(sketch.title, id: "ollin-sketch") {
+            SketchView(sketch)
+        }
+        .defaultSize(sketch.preferredSize)
+    }
+}
+
+/// Bring the bundleless `swift run` window to the front, and quit when it
+/// closes so the terminal command returns.
+private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }
