@@ -149,6 +149,11 @@ let package = Package(
             path: "Examples/Motion/ArcField"
         ),
         .executableTarget(
+            name: "Example-ArcModes",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/ArcModes"
+        ),
+        .executableTarget(
             name: "Example-Gaussian",
             dependencies: ["Ollin"],
             path: "Examples/Randomness/Gaussian"

@@ -253,11 +253,21 @@ final class Drawer {
     /// `.open` leaves the curve open, `.chord` joins them with a straight line,
     /// `.pie` joins them through the center. A fill paints the enclosed region
     /// (segment for open/chord, wedge for pie); a stroke traces the outline.
+    ///
+    /// A *circular* arc (`rx == ry`) under less than a full turn is recorded as a
+    /// single SDF instance — analytic fill + stroke + anti-aliasing, crisp at any
+    /// size and effectively free. Elliptical arcs and full sweeps fall back to
+    /// CPU tessellation, which renders them exactly; both composite in draw order.
     func drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
                  start: Double, stop: Double, mode: ArcMode) {
         guard rx > 0, ry > 0 else { return }
         let sweep = stop - start
         guard abs(sweep) > 1e-9 else { return }
+
+        if abs(rx - ry) < 1e-6, abs(sweep) < Double.tau - 1e-4 {
+            appendArcSDF(center: Vector2(x, y), radius: rx, start: start, stop: stop, mode: mode)
+            return
+        }
 
         // Sample the arc, scaling the segment count to the swept fraction so a
         // short arc stays cheap and a near-full one stays smooth.
@@ -309,6 +319,32 @@ final class Drawer {
                 appendSegment(from: pts[pts.count - 1], to: center, half: half, color: c)
             }
         }
+    }
+
+    /// Record one circular arc as an SDF instance. The fragment evaluates the
+    /// pie / segment / arc-band field in a canonical frame where the arc's
+    /// bisector points to +Y: `param1` is `(cos, sin)` of the rotation that takes
+    /// it there, `param0` is `(sin, cos)` of the half-aperture, and `size.x` is
+    /// the radius. The arc spans the same angular set the tessellated path does,
+    /// so the two render identically.
+    private func appendArcSDF(center: Vector2, radius: Double,
+                              start: Double, stop: Double, mode: ArcMode) {
+        let shape: SDFShape
+        switch mode {
+        case .open:  shape = .arcOpen
+        case .chord: shape = .arcChord
+        case .pie:   shape = .arcPie
+        }
+        let halfAperture = abs(stop - start) / 2
+        let bisector = (start + stop) / 2
+        // Rotate local points by φ = π/2 − bisector so the bisector maps to +Y.
+        let phi = Double.pi / 2 - bisector
+        let r = Float(radius)
+        appendSDF(shape: shape, center: center,
+                  size: SIMD2<Float>(r, r),
+                  fill: fillColor, stroke: strokeColor,
+                  param0: SIMD2<Float>(Float(sin(halfAperture)), Float(cos(halfAperture))),
+                  param1: SIMD2<Float>(Float(cos(phi)), Float(sin(phi))))
     }
 
     /// A connected open path through `points`, stroked with the current stroke

@@ -140,6 +140,22 @@ static float sdSegment(float2 p, float2 a, float2 b) {
     return length(pa - ba * h);
 }
 
+// Pie (filled wedge) of radius r, symmetric about +Y, opening to a half-aperture
+// whose (sin, cos) is `sc`. Negative inside the wedge.
+static float sdPie(float2 p, float2 sc, float r) {
+    p.x = abs(p.x);
+    float l = length(p) - r;
+    float m = length(p - sc * clamp(dot(p, sc), 0.0, r));
+    return max(l, m * sign(sc.y * p.x - sc.x * p.y));
+}
+
+// Thick arc band: a slice of the circle of radius `ra`, half-thickness `rb`,
+// symmetric about +Y over a half-aperture `sc` = (sin, cos), with round ends.
+static float sdArc(float2 p, float2 sc, float ra, float rb) {
+    p.x = abs(p.x);
+    return ((sc.y * p.x > sc.x * p.y) ? length(p - sc * ra) : abs(length(p) - ra)) - rb;
+}
+
 // Fill + stroke coverage for a shape whose boundary is the zero level set of a
 // region SDF `d`: fill the inside (d < 0), stroke a band of half-width `hw`
 // straddling the boundary. `fwidth(d)` keeps the falloff ~1px under any
@@ -174,6 +190,42 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         float d = sdSegment(p, -in.param0, in.param0) - in.extra;
         float aa = max(fwidth(d), 1e-5);
         fillCov = 1.0 - smoothstep(-aa, aa, d);
+        break;
+    }
+    case 3u:     // arc, open
+    case 4u:     // arc, chord
+    case 5u: {   // arc, pie
+        // Rotate the local point so the arc's bisector points to +Y (param1 =
+        // (cos, sin) of the rotation), then evaluate in that canonical frame.
+        // param0 = (sin, cos) of the half-aperture; size.x = radius.
+        float2 q = float2(p.x * in.param1.x - p.y * in.param1.y,
+                          p.x * in.param1.y + p.y * in.param1.x);
+        float ra = in.size.x;
+        float2 sc = in.param0;
+        if (in.shape == 5u) {
+            // pie: filled wedge; the stroke band traces its whole outline (the
+            // two radii and the arc).
+            regionCoverage(sdPie(q, sc, ra), hw, in.strokeWidth, fillCov, strokeCov);
+        } else {
+            // chord & open share the circular-segment region for the fill: inside
+            // the disk and on the arc side of the chord (the chord lies at
+            // q.y = ra * sc.y, the line through the two arc endpoints).
+            float dSeg = max(length(q) - ra, ra * sc.y - q.y);
+            if (in.shape == 4u) {
+                // chord: the stroke traces the segment outline (curve + chord).
+                regionCoverage(dSeg, hw, in.strokeWidth, fillCov, strokeCov);
+            } else {
+                // open: fill the segment, but stroke only the curve via the
+                // thick-arc band, so the chord stays open (matches ArcMode.open).
+                float aa = max(fwidth(dSeg), 1e-5);
+                fillCov = 1.0 - smoothstep(0.0, aa, dSeg);
+                if (in.strokeWidth > 0.0) {
+                    float dArc = sdArc(q, sc, ra, hw);
+                    float aaA = max(fwidth(dArc), 1e-5);
+                    strokeCov = 1.0 - smoothstep(0.0, aaA, dArc);
+                }
+            }
+        }
         break;
     }
     default:     // 0: ellipse / circle

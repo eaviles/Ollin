@@ -9,6 +9,7 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | Example | What it shows |
 |---|---|
 | [ArcField](ArcField/Sketch.swift) | EllipseField's cousin: chord-closed `drawArc` crescents whose start and sweep also ride `signedNoise` |
+| [ArcModes](ArcModes/Sketch.swift) | the three `drawArc` closing modes — open, chord, pie — side by side under an animated sweep |
 | [Breathing](Breathing/Sketch.swift) | the same circle, animated via `time` |
 | [EllipseField](EllipseField/Sketch.swift) | rows of `drawEllipse` outlines in two columns, drifting and squashing via `signedNoise` |
 | [FlowField](FlowField/Sketch.swift) | a `curlNoise` flow field: short lines follow the divergence-free curl, drifting with `time` |
