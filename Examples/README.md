@@ -8,34 +8,18 @@ Small, runnable sketches that double as a learning path, openFrameworks-style. E
 
 ### Layout
 
-Examples are grouped into **category** folders, and each example gets its own folder inside its category (one example = one executable target, because SwiftPM allows a single `@main` entry point per target). The sketch file is always named `Sketch.swift`, at `Examples/<Category>/<Name>/Sketch.swift`, so the example's identity lives in the folder name and the filename stays generic. The folder is also each sketch's home for its own resources: fonts, images, and shaders sit alongside `Sketch.swift`.
+Examples are grouped into **category** folders, and each example gets its own folder inside its category (one example = one executable target, since SwiftPM allows a single `@main` per target). The sketch file is always `Sketch.swift`, at `Examples/<Category>/<Name>/Sketch.swift`, so the folder name is the example's identity and the folder also holds the sketch's own resources (fonts, images, shaders). Each category has its own README listing the sketches inside:
 
-| Category | Example | What it shows |
-|---|---|---|
-| Basic | HelloCircle | a still circle: the smallest program |
-| Motion | Breathing | the same circle, animated via `time` |
-| | SineSweep | a circle swept across the canvas by `sin(time)` |
-| | Orbits | ten circles orbiting the center at rising speeds |
-| | Trail | a Lissajous point traced by a 600-segment polyline |
-| | FlowField | a `curlNoise` flow field: short lines follow the divergence-free curl, drifting with `time` |
-| Color | ColorWaves | a row of sin-colored circles flowing with `time` |
-| | Palettes | seven cosine-gradient `Palette` presets, each swept across the canvas and scrolled |
-| | Colormaps | the eight perceptual `Colormap` ramps as horizontal bands (value → color) |
-| Patterns | DotGrid | a grid of black/white dots woven by a modulo rule |
-| | WarpGrid | a checkerboard of rects warped under the mouse (`drawRect`) |
-| | EnergyGrid | columns sized by a moving "energy" share (`translate`, `drawRect`) |
-| Randomness | NoiseField | an 80×80 grid shaded by 3D Perlin `noise`, scrubbed by the mouse |
-| | RandomBand | a band of dots jittered by `random` (jagged); re-rolls with the mouse |
-| | Gaussian | 2000 dots a frame placed by `randomGaussian`: the bell curve made visible |
-| | Ring | dots scattered in an annulus by `ring()`, `scale`-relative so it holds its proportion |
-| | NoiseWave | a wave of dots offset by `signedNoise` (smooth); the noise counterpart |
-| Input | RepelGrid | a grid of dots that flee the cursor (`mouseX`/`mouseY`) |
-| Live | Parameters | tunable `@Param` knobs that become live inspector sliders under OllinLive |
-| Recreations | VeraMolnar / Interruptions | after Vera Molnár (`withState`, `drawLine`, `random`, `noise`) |
-| | VeraMolnar / DesOrdres | after Molnár's "(Dés)Ordres" (1974); concentric squares, ~5% disorder (`drawRect(center:)`) |
-| | BridgetRiley / Fragment3 | after Riley's "Fragment 3" (1965); black/white chevron Op-art (`drawPolygon`, `noLoop`) |
-
-The `Recreations/` category is organized by artist (`Recreations/<Artist>/<Name>/`); see [Recreations](#recreations) below.
+| Category | What's inside |
+|---|---|
+| [Basic](Basic/) | the smallest starting point |
+| [Motion](Motion/) | animation driven by `time` |
+| [Color](Color/) | palettes, colormaps, and color over time |
+| [Patterns](Patterns/) | grids and rule-based repetition |
+| [Randomness](Randomness/) | `random`, `noise`, and scatter |
+| [Input](Input/) | mouse-driven sketches |
+| [Live](Live/) | tunable `@Param` knobs under OllinLive |
+| [Recreations](Recreations/) | homages to past computer artists, by artist |
 
 ### Running
 
@@ -60,6 +44,7 @@ A sidebar lists every example; click one and it compiles and renders on the righ
 
 1. Create `Examples/<Category>/<Name>/Sketch.swift` with an `@main final class <Name>: Sketch { … }`. No `OllinApp.run(...)` line; `Sketch.main()` boots it for you.
 2. Add a matching `.executableTarget(name: "Example-<Name>", dependencies: ["Ollin"], path: "Examples/<Category>/<Name>")` in `Package.swift`.
+3. Add a row to the category's `README.md` (and a new category gets its own `README.md` plus a row in the table above).
 
 Convention: a feature isn't considered done until it has an example, and every example must compile. If a sketch is awkward to write, treat that as a signal that the API needs work rather than the example.
 
