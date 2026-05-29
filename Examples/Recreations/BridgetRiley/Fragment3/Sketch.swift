@@ -8,92 +8,138 @@ import Foundation
 import Ollin
 
 /// A field of black-and-white chevron stripes after Bridget Riley's Op-art
-/// "Fragment 3" (1965). They're filled polygons; the *curved* look is an
-/// illusion from two devices:
+/// "Fragment 3" (1965). They're filled polygons; the *curved* look comes from a
+/// few devices:
 ///   1. the stripe **thickness swells toward the vertical center** (thin at top
-///      and bottom, thick in the middle), which reads as a bulging surface, and
-///   2. all stripes share one **zigzag** offset whose amplitude alters gently
-///      across the width, so each chevron column differs a little.
+///      and bottom, thick in the middle), which reads as a bulging surface,
+///   2. the zigzag **amplitude alters across the width**, so each chevron column
+///      differs a little, and
+///   3. each row's zigzag **slides** so the columns of peaks bow into curves
+///      rather than standing straight.
 ///
-/// Each black stripe is a chevron strip — one filled `polygon` (a quad) per
-/// zigzag segment, so the diagonal edges are true edges (MSAA-smoothed), not
-/// rasterized columns. Static, so `setup()` calls `noLoop()`.
+/// Riley's print is still, but the eye reads it as moving — so here the field is
+/// pinned to a fixed frame (the four corners stay put) and the *interior* sways
+/// on both axes:
+///   - **X sway**: pinned at the left and right edges, the columns bow side to
+///     side; the top and bottom edges are free to shift in X.
+///   - **Y sway**: pinned at the top and bottom edges, the rows bow up and down;
+///     the left and right edges are free to shift in Y.
+///
+/// Each sway tapers to zero at the edges it's pinned to, so the zigzag is
+/// anchored to the frame and stretches between the edges instead of sliding off
+/// behind them. Each black stripe is a chevron strip between two zigzag polylines
+/// — one filled `polygon` (a quad) per segment, so the diagonal edges are true
+/// (MSAA-smoothed) edges, and the bend *vertices* move so the peaks stay sharp.
+/// Tune the motion live with the `@Param` sliders.
 @main
 final class Fragment3: Sketch {
+    @Param(0...160) var xSway = 16.0  // how far the columns bow side to side (px)
+    @Param(0...6) var xSpeed = 0.6    // how fast the X sway oscillates
+    @Param(0...160) var ySway = 24.0  // how far the rows bow up and down (px)
+    @Param(0...6) var ySpeed = 0.5    // how fast the Y sway oscillates
+
     override func setup() {
         noStroke()
-        noLoop()
     }
 
     override func draw() {
         background(.white)
         // All lengths scale with the canvas (`scale` = min(width, height) / 1000),
-        // so the chevron field keeps its density at any square size.
-        let inset = 80 * scale
+        // so the chevron field keeps its density at any size.
+        let inset = 110 * scale
         let left = inset, right = width - inset
         let top = inset, bottom = height - inset
         let centerY = (top + bottom) / 2, halfHeight = (bottom - top) / 2
+        let span = right - left
 
-        let baseAmplitude = 44 * scale, period = 58 * scale, modDepth = 0.4
-        let minThickness = 18 * scale, maxThickness = 30 * scale
+        let baseAmplitude = 32 * scale, period = 60 * scale, modDepth = 0.12
+        let minThickness = 22 * scale, maxThickness = 32 * scale
         let halfPeriod = period / 2
+        let twist = 1.0                   // half-cycles of bow across the field
+        let xMag = xSway * scale          // the X-sway slider, in canvas pixels
+        let yMag = ySway * scale          // the Y-sway slider, in canvas pixels
 
         func thickness(at y: Double) -> Double {
             let v = max(-1, min(1, (y - centerY) / halfHeight))   // -1 top … 1 bottom
             return minThickness + (maxThickness - minThickness) * cos(v * .pi / 2)
         }
-        func offset(at x: Double) -> Double {
-            let amp = baseAmplitude * (1 + modDepth * sin(2 * .pi * (x - left) / (right - left)))
-            return amp * triangleWave((x - left) / period)
+        // Fixed in time: the amplitude only varies gently across the width, so the
+        // silhouette's peaks return to the same heights every frame.
+        func amplitude(atX x: Double) -> Double {
+            let u = (x - left) / span
+            return baseAmplitude * (1 + modDepth * sin(2 * .pi * 1.5 * u))
         }
 
-        // Band boundaries from the variable thickness, extended past the block
-        // so the zigzag never exposes a gap at the masked edges.
-        let slack = baseAmplitude * (1 + modDepth) + maxThickness
+        // The rows are inset by the silhouette's vertical reach (peak amplitude),
+        // so the top/bottom edges are the zigzag itself with a clean white margin
+        // above the highest peak and below the lowest valley.
+        let edgeReserve = baseAmplitude * (1 + modDepth)
+        let firstBaseline = top + edgeReserve
+        let lastBaseline = bottom - edgeReserve
+        let vSpan = lastBaseline - firstBaseline
+
+        // Tapers: 0 at the edge the sway is pinned to, 1 in the middle. The X sway
+        // is pinned at the left/right (tapered across the width); the Y sway is
+        // pinned at the top/bottom (tapered down the height). So the interior
+        // transforms while the frame stays put.
+        func hTaper(_ x: Double) -> Double { sin(.pi * (x - left) / span) }
+        func vTaper(_ y: Double) -> Double { sin(.pi * max(0, min(1, (y - firstBaseline) / vSpan))) }
+
+        // The sway magnitudes, before their tapers. Each varies across the field
+        // (so the bow curves) and oscillates over time.
+        func xShift(atY y: Double) -> Double {
+            let v = max(-1, min(1, (y - centerY) / halfHeight))
+            return xMag * sin(v * .pi * twist + time * xSpeed)
+        }
+        func yShift(atX x: Double) -> Double {
+            let u = (x - left) / span
+            return yMag * sin(u * .pi * twist + time * ySpeed)
+        }
+
+        // Row boundaries (the shared edges between bands), top to bottom.
         var boundaries: [Double] = []
-        var cy = top - slack
-        while cy < bottom + slack {
+        var cy = firstBaseline
+        while cy < lastBaseline {
             boundaries.append(cy)
             cy += thickness(at: cy)
         }
         boundaries.append(cy)
 
-        // Zigzag bend points across the width (a peak/valley every half-period),
-        // ending at the right edge; the offset is sampled once per bend.
-        var xs: [Double] = []
-        var vx = left
-        while vx < right { xs.append(vx); vx += halfPeriod }
-        xs.append(right)
-        let offsets = xs.map { offset(at: $0) }
+        // A grid of bend points landing exactly on the left and right edges, so
+        // those edges are pinned (the X sway tapers to zero there). An even count
+        // makes both edges share the same zigzag phase.
+        var nHalf = max(2, Int((span / halfPeriod).rounded()))
+        if nHalf % 2 == 1 { nHalf += 1 }
+        let hp = span / Double(nHalf)
 
-        // Each black stripe is a chevron strip: one filled quad per segment.
+        // Each boundary becomes a polyline of bend points; vertex j is a peak when
+        // j is even, a valley when odd. The peak/valley sign is the same in every
+        // row, so the chevrons stack. The amplitude is keyed to the fixed grid
+        // `baseX`, so a vertex's height doesn't wobble as the interior shifts.
+        let rows: [[Vector2]] = boundaries.map { by in
+            let rowXShift = xShift(atY: by)
+            let rowVTaper = vTaper(by)
+            return (0...nHalf).map { j -> Vector2 in
+                let baseX = left + Double(j) * hp
+                let x = baseX + rowXShift * hTaper(baseX)
+                let y = by + (j & 1 == 0 ? 1.0 : -1.0) * amplitude(atX: baseX)
+                      + yShift(atX: baseX) * rowVTaper
+                return Vector2(x, y)
+            }
+        }
+
+        // Each black band is the chevron strip between two boundary polylines.
+        // The two bow by different amounts, so the band leans — curved columns.
         fill(.black)
         var k = 0
         while k + 1 < boundaries.count {
             if k % 2 == 0 {   // every other band is black; the rest is white paper
-                let yTop = boundaries[k], yBot = boundaries[k + 1]
-                for i in 0 ..< (xs.count - 1) {
-                    polygon([
-                        Vector2(xs[i],     yTop + offsets[i]),
-                        Vector2(xs[i + 1], yTop + offsets[i + 1]),
-                        Vector2(xs[i + 1], yBot + offsets[i + 1]),
-                        Vector2(xs[i],     yBot + offsets[i]),
-                    ])
+                let topRow = rows[k], botRow = rows[k + 1]
+                for i in 0 ..< (topRow.count - 1) {
+                    polygon([topRow[i], topRow[i + 1], botRow[i + 1], botRow[i]])
                 }
             }
             k += 1
         }
-
-        // Clean horizontal edges for the block: mask the zigzag overflow.
-        fill(.white)
-        rect(x: 0, y: 0, width: width, height: top)
-        rect(x: 0, y: bottom, width: width, height: height - bottom)
-    }
-
-    /// Triangle wave in `-1...1`, period 1: -1 at 0, +1 at 0.5 — sharp peaks.
-    private func triangleWave(_ u: Double) -> Double {
-        var p = u.truncatingRemainder(dividingBy: 1)
-        if p < 0 { p += 1 }
-        return p < 0.5 ? (4 * p - 1) : (3 - 4 * p)
     }
 }
