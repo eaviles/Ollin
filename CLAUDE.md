@@ -283,14 +283,22 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   live reload (`swift run OllinLive <file>`) that recompiles + hot-swaps a sketch
   on save and live-reloads `Shaders.metal` (with a `--keep-clock` flag and an
   `onReload()` lifecycle hook; see the live-reload section).
-- **Next, in priority order:** more primitives (`drawPoint`, `drawTriangle`;
-  `drawEllipse` already landed); the vector
-  `Shape`/`Contour` type — concave fills via a real triangulator (convex
-  `drawPolygon` already landed); stroke joins/caps for fat lines; the
-  extension/lifecycle seam; easing/animation helpers. For easing, a clean shape
-  to borrow is a property wrapper holding a value + target that eases toward the
-  target each frame (`linear`/`easeOut`); swifty-creatives' `@SCAnimatable` is a
-  small worked reference.
+- **Next, in priority order:** finish Tier 2 by extending the SDF path to the
+  remaining analytic primitives — `drawArc` (SDF arc/pie), rounded-rect, and a
+  capsule SDF for `drawLine` — so they get the same crisp-AA, thousands-cheap
+  treatment circles/ellipses now have (the `.sdf` pipeline + batch ordering are
+  in place; see [Rendering performance](#rendering-performance-roadmap)); more
+  primitives (`drawPoint`, `drawTriangle`; `drawCircle`/`drawEllipse`/`drawArc`
+  already landed); the vector `Shape`/`Contour` type — concave fills via a real
+  triangulator (convex `drawPolygon` already landed); stroke joins/caps for fat
+  lines; the extension/lifecycle seam (load-bearing — unblocks snapshot testing,
+  the FPS-overlay HUD, layered effects, and frame-sequence export at once);
+  easing/animation helpers. Also now due: the shared-C-header migration for the
+  CPU↔GPU structs (`OllinVertex`/`Uniforms`/`SDFInstance` — three now,
+  hand-mirrored) and CI compile-testing for the examples. For easing, a clean
+  shape to borrow is a property wrapper holding a value + target that eases
+  toward the target each frame (`linear`/`easeOut`); swifty-creatives'
+  `@SCAnimatable` is a small worked reference.
 
 ## Follow-up: Swift Playgrounds & iOS (not started)
 
