@@ -2,18 +2,9 @@
 
 ---
 
-### Geometry
+## Geometry
 
 `Vector2` and `Rectangle` are Ollin's geometry value types: the data primitives take, and the values you pass around and compose. Coordinates use a top-left origin with y increasing downward.
-
-### Example
-
-```swift
-let a = Vector2(100, 100)
-let b = a + Vector2.unitX * 50          // (150, 100)
-let box = Rectangle(center: a, width: 80, height: 80)
-drawRect(box)
-```
 
 ### Contents
 
@@ -35,6 +26,13 @@ Vector2(x: Double, y: Double)
 - **Properties:** `length` (distance from the origin), `normalized` (scaled to length 1, or `.zero` if it has none).
 - **Operators:** `+`, `-`, unary `-`, `*` by a scalar (either side), `/` by a scalar.
 
+```swift
+let a = Vector2(100, 100)
+let b = a + Vector2.unitX * 50      // (150, 100)
+drawLine(a, b)
+let dir = (b - a).normalized        // unit direction from a to b
+```
+
 <a name="rectangle"></a>
 
 ### `Rectangle`
@@ -49,3 +47,9 @@ Rectangle(center: Vector2, width: Double, height: Double)
 
 - **Properties:** `corner`, `width`, `height`, `x`, `y`, `center`.
 - **Corners:** `topLeft`, `topRight`, `bottomRight`, `bottomLeft`.
+
+```swift
+let box = Rectangle(center: Vector2(width / 2, height / 2), width: 200, height: 120)
+drawRect(box)
+let p = randomVector(in: box)       // a random point inside it
+```

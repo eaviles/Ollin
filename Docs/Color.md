@@ -2,17 +2,9 @@
 
 ---
 
-### Color
+## Color
 
 `Color` is an RGBA color with `Double` components in `0...1`. Palettes and colormaps below both map a single number to a `Color`, which is the usual way to drive color from a value or from time.
-
-### Example
-
-```swift
-fill(Color(red: 0.2, green: 0.5, blue: 0.9))
-fill(Palette.sunset.color(at: time * 0.1))
-fill(Colormap.viridis.color(at: t))
-```
 
 ### Contents
 
@@ -31,6 +23,12 @@ Color(white: Double, alpha: Double = 1)
 
 Named constants: `.white`, `.black`, `.gray`, `.red`, `.green`, `.blue`, `.clear`.
 
+```swift
+background(.white)
+fill(Color(red: 0.2, green: 0.5, blue: 0.9))
+stroke(Color(white: 0.1))
+```
+
 <a name="palette"></a>
 
 ### `Palette`
@@ -47,6 +45,10 @@ Seven presets ship built in (Quilez's example palettes), named for how each read
 
 `.rainbow`, `.dusk`, `.blush`, `.meadow`, `.sunset`, `.neon`, `.melon`.
 
+```swift
+fill(Palette.sunset.color(at: time * 0.1))   // drift through the ramp over time
+```
+
 The `Palettes` example sweeps all seven. The formula is credited under [Influences & attribution](../README.md#influences--attribution).
 
 <a name="colormap"></a>
@@ -56,6 +58,7 @@ The `Palettes` example sweeps all seven. The formula is credited under [Influenc
 Perceptual colormaps: smooth, perceptually-even ramps that map a value in `0...1` to color, the standard choice for turning a number (a height, a density, a field value) into legible color. `color(at:)` linearly interpolates the 256-entry table and clamps `t`.
 
 ```swift
+let t = noise(x * 0.01, y * 0.01)            // 0...1
 fill(Colormap.magma.color(at: t))
 ```
 

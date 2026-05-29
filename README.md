@@ -68,7 +68,7 @@ Or browse them all in one window: `swift run OllinExamples` opens a gallery with
 
 The default canvas is **1080×1080**, the 1:1 size for square social and video posts. `canvasSize` sets the resolution a sketch renders and exports at (override it for a hi-res master or a different aspect), and `windowMode` sizes the preview window relative to it (`.auto` fits the screen, `.fixed(_)` pins a zoom, `.resizable` follows the window live).
 
-Write sketches relative to the canvas so they hold up at any size: multiply feature sizes by `scale` and lay out with `width`/`height` fractions. The [`Sketch` reference](Docs/Sketch.md#size-and-resolution-independence) has the presets and the rest.
+Write sketches relative to the canvas so they hold up at any size: multiply feature sizes by `scale` and lay out with `width`/`height` fractions. The [`Canvas` reference](Docs/Canvas.md#resolution-independence) has the presets and the rest.
 
 ## Add Ollin to your own package (SPM)
 
@@ -111,7 +111,8 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
 
 The drawing surface is small and the names familiar. The full API reference lives in [`Docs/`](Docs/):
 
-- [Sketch](Docs/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), canvas size, and loop control.
+- [Sketch](Docs/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), and loop control.
+- [Canvas](Docs/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
 - [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawRect`, `drawLine`, `drawPolyline`, `drawPolygon`), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
 - [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
 - [Geometry](Docs/Geometry.md) - the `Vector2` and `Rectangle` value types.

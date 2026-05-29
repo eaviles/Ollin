@@ -2,7 +2,7 @@
 
 ---
 
-### Sketch
+## Sketch
 
 A sketch is a subclass of `Sketch`. Override `setup()` and `draw()`, call the bare drawing functions, and the loop runs `draw()` continuously at the display's refresh rate, so motion is the default. Useful temporal state (`time`, `frameCount`, …) is ready with no setup.
 
@@ -24,11 +24,14 @@ final class HelloCircle: Sketch {
 
 - [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`, `onReload`
 - [Temporal state](#temporal-state) - `frameCount`, `time`, `deltaTime`, `frameRate`
-- [Canvas](#canvas) - `width`, `height`, `scale`
-- [Size and resolution independence](#size-and-resolution-independence) - `canvasSize`, the preview window, writing with `scale`
+- [Canvas](#canvas) - `width`, `height`
 - [Loop control](#loop-control) - `noLoop`, `loop`, `isLooping`
 - [Configuration](#configuration) - `title`, `canvasSize`, `windowMode`
 - [Running a sketch](#running-a-sketch)
+
+Canvas sizing, `scale`, export resolution, and the preview window have their own page: [Canvas](./Canvas.md).
+
+<a name="lifecycle"></a>
 
 ### Lifecycle
 
@@ -36,27 +39,48 @@ Override these on your subclass.
 
 <a name="setup"></a>
 
-### `setup()`
+#### `setup()`
 
 Called once, after the canvas size is known, before the first `draw()`. Optional.
 
+```swift
+override func setup() {
+    noLoop()   // render a single still frame
+}
+```
+
 <a name="draw"></a>
 
-### `draw()`
+#### `draw()`
 
 Called every frame. Do your drawing here.
 
+```swift
+override func draw() {
+    background(.white)
+    drawCircle(width / 2, height / 2, 100)
+}
+```
+
 <a name="mousePressed"></a>
 
-### `mousePressed()`
+#### `mousePressed()`
 
 Called once each time a mouse button is pressed over the canvas. See [Input](./Input.md).
 
+```swift
+override func mousePressed() {
+    randomSeed(frameCount)   // re-roll on click
+}
+```
+
 <a name="onReload"></a>
 
-### `onReload()`
+#### `onReload()`
 
 Called once after the live-reload host hot-swaps the sketch, right after its `setup()` (never on first launch). See the [iteration workflow](../README.md#iteration-workflow).
+
+<a name="temporal-state"></a>
 
 ### Temporal state
 
@@ -69,98 +93,70 @@ Read-only, and ready in any sketch with no setup:
 | `deltaTime` | `Double` | seconds since the previous frame |
 | `frameRate` | `Double` | smoothed frames per second |
 
+```swift
+let r = 120 + sin(time) * 40            // animate against the clock
+drawCircle(width / 2, height / 2, r)
+```
+
+<a name="canvas"></a>
+
 ### Canvas
 
 | Property | Type | Meaning |
 |---|---|---|
 | `width` / `height` | `Double` | canvas size in logical points; updates live on resize |
-| `scale` | `Double` | a factor that grows and shrinks with the canvas; multiply sizes by it so a sketch holds its proportions at any size |
-
-### Size and resolution independence
-
-Coordinates are in **logical points**, with a top-left origin and y increasing downward (the same as p5, Processing, and OPENRNDR). Inside `draw()`, `width` and `height` are the canvas size in those points.
-
-A sketch is drawn once but seen at more than one size: a preview window that fits your screen, and a fixed-resolution export. To keep a piece looking the same at every size, write it relative to the canvas instead of in fixed pixels. Two tools cover that:
-
-- **`scale`** grows and shrinks with the canvas, so multiplying a feature size by it holds that size's proportion at any canvas size. Pick the size you'd want on a roughly 1000-point canvas and multiply: a `12 * scale` dot, a `375 * scale` radius.
-- **`width` / `height` fractions** suit layout: `width * 0.8` for a centered block, `height / 8` for a wave's amplitude, `min(width, height) * 0.125` for an inset.
 
 ```swift
-override func draw() {
-    background(.black)
-    // Same composition at any canvas size.
-    fill(.white)
-    drawCircle(width / 2, height / 2, 300 * scale)
-}
+drawCircle(width / 2, height / 2, min(width, height) / 4)   // centered, proportional
 ```
 
-A bare `drawCircle(400, 400, 150)` ties the sketch to one canvas size, and the same call lands somewhere else once the canvas changes. Reach for `scale` and fractions instead.
+To keep a sketch looking the same at every canvas size, write it relative to the canvas with `scale` and `width`/`height` fractions. That, the `canvasSize` export presets, and the preview window are all on the [Canvas](./Canvas.md) page.
 
-<a name="export-size"></a>
-
-#### Export size
-
-`canvasSize` is the resolution a sketch renders and exports at, in pixels. It defaults to `.square1080` (1080×1080), a 1:1 square. Override it on a subclass with one of the named presets, or any `CGSize`:
-
-```swift
-override var canvasSize: CGSize { .uhd4K }            // 4K landscape master (3840×2160)
-override var canvasSize: CGSize { .uhd4K.portrait }   // 4K vertical (2160×3840)
-override var canvasSize: CGSize { .portrait1080 }     // 4:5 portrait (1080×1350)
-```
-
-The presets cover square (`square1080` / `square1440` / `square2160`), 16:9 (`hd720` / `fhd1080` / `qhd1440` / `uhd4K`, plus cinema `dci4K`), vertical 9:16 (`vertical1080`), and 4:5 (`portrait1080`). Use `.portrait` / `.landscape` to flip orientation. For social posts: square → `.square1080`, story or reel → `.vertical1080`, portrait feed → `.portrait1080`. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine.
-
-<a name="the-preview-window"></a>
-
-#### The preview window
-
-The on-screen window does not have to match `canvasSize`; a 1080² (or 4K) sketch would overflow a laptop. `windowMode` controls the window, relative to `canvasSize`:
-
-- **`.auto`** (the default) opens at 1:1 when the screen has room for the full `canvasSize`, and steps down to the largest clean fraction (¾, ½, …) that fits otherwise, so it always fits. A 1080² sketch opens at 1080 on a roomy or external display, and at ¾ (810pt) on a 14"/16" laptop.
-- **`.fixed(_)`** pins an explicit fraction of `canvasSize` and ignores the screen: `.fixed(0.5)` is always half size, `.fixed(1)` always 1:1.
-- **`.resizable`** opens a freely resizable window (at the auto-fit size) and lets the canvas follow it live, for sketches designed for the screen rather than a fixed export. Draw with `scale` / `width` / `height` and the piece adapts as you drag the window.
-
-`.auto` and `.fixed` lock the window; `.resizable` does not. (Resizing applies to the standalone `swift run` window today; the examples gallery and live host show the sketch at the auto-fit size with a collapsible sidebar.)
-
-Either way, a sketch written with `scale` composes the same at the preview size and the export size, so what you see while iterating matches the exported frame. That is what keeps the export dependable for video and Instagram.
-
-#### Retina and pixel density
-
-The preview is crisp on Retina displays with nothing to switch on: it renders at the screen's native pixel density. Export renders directly at `canvasSize`, so a 1080² export is exactly 1080×1080 pixels.
-
-#### Planned: normalized `u, v` coordinates
-
-A later addition may offer normalized `u, v` positions (0…1 across the canvas) alongside points, so a sketch can place things without referring to `width`/`height`. Until then, `scale` and `width`/`height` fractions are the way to stay resolution-independent.
+<a name="loop-control"></a>
 
 ### Loop control
 
 <a name="noLoop"></a>
 
-### `noLoop()` / `loop()`
+#### `noLoop()` / `loop()`
 
 Stop or resume the continuous draw loop; `isLooping` reads the current state. Motion is on by default, so `noLoop()` is the still-image escape hatch.
 
+```swift
+override func setup() {
+    noLoop()   // one frame, then hold
+}
+```
+
+<a name="configuration"></a>
+
 ### Configuration
 
-Override on your subclass to customize size and window.
+Override on your subclass to customize the window and size.
 
 <a name="title"></a>
 
-### `title: String`
+#### `title: String`
 
 Window title. Defaults to `"Ollin - <SketchType>"` (e.g. "Ollin - HelloCircle").
 
+```swift
+override var title: String { "Flow field" }
+```
+
 <a name="canvasSize"></a>
-
-### `canvasSize: CGSize`
-
-The render and PNG-export resolution, in pixels. Defaults to `Sketch.defaultSize` (1080×1080). Override for a higher-resolution master (1440²/2160²/2880²) or a non-square aspect (e.g. 1080×1350). See [Export size](#export-size).
-
 <a name="windowMode"></a>
 
-### `windowMode: WindowMode`
+#### `canvasSize: CGSize` / `windowMode: WindowMode`
 
-How the preview window behaves, relative to `canvasSize`: `.auto` (default) fits the screen, `.fixed(_)` pins a zoom (e.g. `.fixed(0.5)`), `.resizable` opens a freely resizable window whose canvas follows it. See [the preview window](#the-preview-window).
+The render/export resolution and how the preview window behaves. Both are documented, with the presets and modes, on the [Canvas](./Canvas.md) page.
+
+```swift
+override var canvasSize: CGSize { .uhd4K }            // 4K master
+override var windowMode: WindowMode { .fixed(0.5) }   // preview at half size
+```
+
+<a name="running-a-sketch"></a>
 
 ### Running a sketch
 
