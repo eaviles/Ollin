@@ -39,11 +39,18 @@ final class Drawer {
     /// vertex. Reset to identity each frame.
     private var transform = matrix_identity_float3x3
 
+    /// Tracks whether `transform` is still the identity, so `emit` can skip the
+    /// per-vertex matrix multiply for the common case of a sketch that never
+    /// translates/rotates/scales (the matmul runs hundreds of thousands of times
+    /// a frame otherwise).
+    private var transformIsIdentity = true
+
     /// Saved (transform + style) snapshots for `pushState()`/`popState()` / `withState`.
     private var stateStack: [SavedState] = []
 
     private struct SavedState {
         var transform: matrix_float3x3
+        var transformIsIdentity: Bool
         var fillColor: Color?
         var strokeColor: Color?
         var strokeWidth: Double
@@ -71,6 +78,7 @@ final class Drawer {
     func beginFrame() {
         vertices.removeAll(keepingCapacity: true)
         transform = matrix_identity_float3x3
+        transformIsIdentity = true
         stateStack.removeAll(keepingCapacity: true)
     }
 
@@ -80,28 +88,32 @@ final class Drawer {
     /// transform; reset each frame.
     func translate(_ offset: Vector2) {
         transform = transform * Drawer.translation(Float(offset.x), Float(offset.y))
+        transformIsIdentity = false
     }
 
     /// Rotate subsequent drawing by `radians` (clockwise, in Ollin's y-down space).
     func rotate(_ radians: Double) {
         transform = transform * Drawer.rotation(Float(radians))
+        transformIsIdentity = false
     }
 
     /// Scale subsequent drawing by `(sx, sy)`.
     func scale(_ sx: Double, _ sy: Double) {
         transform = transform * Drawer.scaling(Float(sx), Float(sy))
+        transformIsIdentity = false
     }
 
     /// Save the current transform and style (fill/stroke/weight).
     func pushState() {
-        stateStack.append(SavedState(transform: transform, fillColor: fillColor,
-                                     strokeColor: strokeColor, strokeWidth: strokeWidth))
+        stateStack.append(SavedState(transform: transform, transformIsIdentity: transformIsIdentity,
+                                     fillColor: fillColor, strokeColor: strokeColor, strokeWidth: strokeWidth))
     }
 
     /// Restore the most recently pushed transform and style. No-op if unbalanced.
     func popState() {
         guard let s = stateStack.popLast() else { return }
         transform = s.transform
+        transformIsIdentity = s.transformIsIdentity
         fillColor = s.fillColor
         strokeColor = s.strokeColor
         strokeWidth = s.strokeWidth
@@ -277,14 +289,20 @@ final class Drawer {
     /// Append one tessellated vertex, shifted by the current translation. Every
     /// primitive funnels through here, so the transform applies uniformly.
     private func emit(_ position: SIMD2<Float>, color: SIMD4<Float>) {
+        guard !transformIsIdentity else {
+            vertices.append(OllinVertex(position: position, color: color))
+            return
+        }
         let p = transform * SIMD3<Float>(position.x, position.y, 1)
         vertices.append(OllinVertex(position: SIMD2<Float>(p.x, p.y), color: color))
     }
 
-    /// Pick a vertex count that keeps each edge segment ≲ 4 points long, so big
-    /// circles stay smooth and small ones stay cheap.
+    /// Pick a vertex count that keeps each edge segment ≲ 8 points long, so big
+    /// circles stay smooth and small ones stay cheap. With 4× MSAA smoothing the
+    /// edges, an 8-point chord is visually indistinguishable from a finer one at
+    /// these sizes, for roughly half the tessellated vertices.
     private func circleSegments(for radius: Double) -> Int {
-        let targetEdgeLength = 4.0
+        let targetEdgeLength = 8.0
         let circumference = 2.0 * .pi * radius
         return max(24, Int((circumference / targetEdgeLength).rounded(.up)))
     }

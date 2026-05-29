@@ -370,6 +370,34 @@ public enum OllinApp {
         }
     }
 
+    /// Run `sketch`'s draw loop headlessly for `frames` frames — no window, no
+    /// GPU, no vsync — timing only the CPU cost of `setup()` + per-frame
+    /// `performDraw()` (the tessellation that builds `drawer.vertices`). Prints
+    /// ms/frame, vertices/frame, and the implied CPU-bound FPS ceiling, so a
+    /// rendering-performance change can be measured deterministically.
+    static func benchmark(_ sketch: Sketch, frames: Int = 600, fps: Double = 60) {
+        let n = max(1, frames)
+        let size = sketch.canvasSize
+        sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
+        sketch.setup()
+        // One warm-up frame so first-time buffer growth doesn't skew the average.
+        sketch.advance(time: 0, deltaTime: 1 / fps, frameRate: fps)
+        sketch.performDraw()
+
+        let start = CACurrentMediaTime()
+        var vertexTotal = 0
+        for k in 1...n {
+            sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+            sketch.performDraw()
+            vertexTotal += sketch.drawer.vertices.count
+        }
+        let elapsed = CACurrentMediaTime() - start
+        let msPerFrame = elapsed / Double(n) * 1000
+        let ceiling = msPerFrame > 0 ? 1000 / msPerFrame : 0
+        print(String(format: "Ollin bench: %d frames · %.0f verts/frame · %.3f ms/frame (CPU) · ~%.0f fps CPU ceiling",
+                     n, Double(vertexTotal) / Double(n), msPerFrame, ceiling))
+    }
+
 }
 
 public extension Sketch {
@@ -398,6 +426,12 @@ public extension Sketch {
                 frame = Int(args[f + 1]) ?? 0
             }
             OllinApp.export(Self(), to: args[i + 1], frame: frame)
+            return
+        }
+        if let i = args.firstIndex(of: "--bench") {
+            var frames = 600
+            if i + 1 < args.count, let f = Int(args[i + 1]) { frames = f }
+            OllinApp.benchmark(Self(), frames: frames)
             return
         }
         OllinApp.run(Self())
