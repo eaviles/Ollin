@@ -8,41 +8,34 @@ Small, runnable sketches that double as a learning path, openFrameworks-style. E
 
 ### Layout
 
-Examples are grouped into **category** folders, and each example gets its own folder inside its category (one example = one executable target, because SwiftPM allows a single `@main` entry point per target). The sketch file is always named `Sketch.swift`, and the example's identity lives in the folder name, so the filename stays generic instead of repeating it. The folder is also each sketch's home for its own resources: fonts, images, and shaders sit alongside `Sketch.swift`.
+Examples are grouped into **category** folders, and each example gets its own folder inside its category (one example = one executable target, because SwiftPM allows a single `@main` entry point per target). The sketch file is always named `Sketch.swift`, at `Examples/<Category>/<Name>/Sketch.swift`, so the example's identity lives in the folder name and the filename stays generic. The folder is also each sketch's home for its own resources: fonts, images, and shaders sit alongside `Sketch.swift`.
 
-```
-Examples/
-  Basic/
-    HelloCircle/Sketch.swift   — a still circle: the smallest program
-  Motion/
-    Breathing/Sketch.swift     — the same circle, animated via `time`
-    SineSweep/Sketch.swift     — a circle swept across the canvas by `sin(time)`
-    Orbits/Sketch.swift        — ten circles orbiting the center at rising speeds
-    Trail/Sketch.swift         — a Lissajous point traced by a 600-segment polyline
-    FlowField/Sketch.swift     — a `curlNoise` flow field: short lines follow the divergence-free curl, drifting with `time`
-  Color/
-    ColorWaves/Sketch.swift    — a row of sin-colored circles flowing with `time`
-    Palettes/Sketch.swift      — seven cosine-gradient `Palette` presets, each swept across the canvas and scrolled
-    Colormaps/Sketch.swift     — the eight perceptual `Colormap` ramps as horizontal bands (value → color)
-  Patterns/
-    DotGrid/Sketch.swift       — a grid of black/white dots woven by a modulo rule
-    WarpGrid/Sketch.swift      — a checkerboard of rects warped under the mouse (`drawRect`)
-    EnergyGrid/Sketch.swift    — columns sized by a moving "energy" share (`translate`, `drawRect`)
-  Randomness/
-    NoiseField/Sketch.swift    — an 80×80 grid shaded by 3D Perlin `noise`, scrubbed by the mouse
-    RandomBand/Sketch.swift    — a band of dots jittered by `random` (jagged); re-rolls with the mouse
-    Gaussian/Sketch.swift      — 2000 dots a frame placed by `randomGaussian`: the bell curve made visible
-    Ring/Sketch.swift          — dots scattered in an annulus by `ring()`, `scale`-relative so it holds its proportion
-    NoiseWave/Sketch.swift     — a wave of dots offset by `signedNoise` (smooth); the noise counterpart
-  Input/
-    RepelGrid/Sketch.swift     — a grid of dots that flee the cursor (`mouseX`/`mouseY`)
-  Live/
-    Parameters/Sketch.swift    — tunable `@Param` knobs that become live inspector sliders under OllinLive
-  Recreations/                 — recreating past computer artists, by artist
-    VeraMolnar/Interruptions/Sketch.swift  — after Vera Molnár (`withState`, `drawLine`, `random`, `noise`)
-    VeraMolnar/DesOrdres/Sketch.swift      — after Molnár's "(Dés)Ordres" (1974); concentric squares, ~5% disorder (`drawRect(center:)`)
-    BridgetRiley/Fragment3/Sketch.swift    — after Riley's "Fragment 3" (1965); black/white chevron Op-art (`drawPolygon`, `noLoop`)
-```
+| Category | Example | What it shows |
+|---|---|---|
+| Basic | HelloCircle | a still circle: the smallest program |
+| Motion | Breathing | the same circle, animated via `time` |
+| | SineSweep | a circle swept across the canvas by `sin(time)` |
+| | Orbits | ten circles orbiting the center at rising speeds |
+| | Trail | a Lissajous point traced by a 600-segment polyline |
+| | FlowField | a `curlNoise` flow field: short lines follow the divergence-free curl, drifting with `time` |
+| Color | ColorWaves | a row of sin-colored circles flowing with `time` |
+| | Palettes | seven cosine-gradient `Palette` presets, each swept across the canvas and scrolled |
+| | Colormaps | the eight perceptual `Colormap` ramps as horizontal bands (value → color) |
+| Patterns | DotGrid | a grid of black/white dots woven by a modulo rule |
+| | WarpGrid | a checkerboard of rects warped under the mouse (`drawRect`) |
+| | EnergyGrid | columns sized by a moving "energy" share (`translate`, `drawRect`) |
+| Randomness | NoiseField | an 80×80 grid shaded by 3D Perlin `noise`, scrubbed by the mouse |
+| | RandomBand | a band of dots jittered by `random` (jagged); re-rolls with the mouse |
+| | Gaussian | 2000 dots a frame placed by `randomGaussian`: the bell curve made visible |
+| | Ring | dots scattered in an annulus by `ring()`, `scale`-relative so it holds its proportion |
+| | NoiseWave | a wave of dots offset by `signedNoise` (smooth); the noise counterpart |
+| Input | RepelGrid | a grid of dots that flee the cursor (`mouseX`/`mouseY`) |
+| Live | Parameters | tunable `@Param` knobs that become live inspector sliders under OllinLive |
+| Recreations | VeraMolnar / Interruptions | after Vera Molnár (`withState`, `drawLine`, `random`, `noise`) |
+| | VeraMolnar / DesOrdres | after Molnár's "(Dés)Ordres" (1974); concentric squares, ~5% disorder (`drawRect(center:)`) |
+| | BridgetRiley / Fragment3 | after Riley's "Fragment 3" (1965); black/white chevron Op-art (`drawPolygon`, `noLoop`) |
+
+The `Recreations/` category is organized by artist (`Recreations/<Artist>/<Name>/`); see [Recreations](#recreations) below.
 
 ### Running
 
