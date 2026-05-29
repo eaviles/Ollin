@@ -133,6 +133,13 @@ static float sdRoundBox(float2 p, float2 b, float r) {
     return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
+// Distance to the segment a–b; a capsule of radius r is this minus r (round caps).
+static float sdSegment(float2 p, float2 a, float2 b) {
+    float2 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-12), 0.0, 1.0);
+    return length(pa - ba * h);
+}
+
 // Fill + stroke coverage for a shape whose boundary is the zero level set of a
 // region SDF `d`: fill the inside (d < 0), stroke a band of half-width `hw`
 // straddling the boundary. `fwidth(d)` keeps the falloff ~1px under any
@@ -160,6 +167,15 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
     case 1u:     // rounded box
         regionCoverage(sdRoundBox(p, in.size, in.extra), hw, in.strokeWidth, fillCov, strokeCov);
         break;
+    case 2u: {   // capsule (a line): solid fill in fillColor, round caps
+        // Centered AA keeps the line ~strokeWidth wide (it doesn't tile, so the
+        // inside bias the region fills use isn't needed here). param0 is the
+        // half-segment vector; extra is the cap radius (half the weight).
+        float d = sdSegment(p, -in.param0, in.param0) - in.extra;
+        float aa = max(fwidth(d), 1e-5);
+        fillCov = 1.0 - smoothstep(-aa, aa, d);
+        break;
+    }
     default:     // 0: ellipse / circle
         regionCoverage(sdEllipse(p, in.size), hw, in.strokeWidth, fillCov, strokeCov);
         break;

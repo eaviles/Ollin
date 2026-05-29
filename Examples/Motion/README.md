@@ -16,6 +16,7 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | [Orbits](Orbits/Sketch.swift) | ten circles orbiting the center at rising speeds |
 | [RectField](RectField/Sketch.swift) | Myriad's cousin: thousands of rounded rects, corner radius sweeping square→pill, each rotated on the SDF box path |
 | [SineSweep](SineSweep/Sketch.swift) | a circle swept across the canvas by `sin(time)` |
+| [Spokes](Spokes/Sketch.swift) | a sunburst of fat, round-capped `drawLine` spokes pulsing with `time` (capsule SDF) |
 | [Trail](Trail/Sketch.swift) | a Lissajous point traced by a 600-segment polyline |
 
 Run one with `swift run Example-<Name>`, e.g. `swift run Example-Breathing`.

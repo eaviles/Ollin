@@ -343,10 +343,19 @@ final class Drawer {
     }
 
     /// A straight line segment from `a` to `b`, stroked with the current stroke
-    /// color and weight. A single-segment `polyline`; needs a stroke to draw.
+    /// color and weight. Recorded as a single capsule SDF instance — the segment
+    /// fattened to `strokeWeight` with round caps — so it's crisp at any size and
+    /// effectively free per line. Needs a stroke to draw.
     func drawLine(_ a: Vector2, _ b: Vector2) {
         guard let stroke = strokeColor, strokeWidth > 0 else { return }
-        appendSegment(from: a, to: b, half: strokeWidth / 2, color: stroke.simd4)
+        let halfWidth = strokeWidth / 2
+        let center = (a + b) / 2
+        let e = (b - a) / 2   // half-segment vector, relative to the center
+        // AABB half-extent: the segment's reach plus the cap radius on each axis.
+        let bound = SIMD2<Float>(Float(abs(e.x) + halfWidth), Float(abs(e.y) + halfWidth))
+        appendSDF(shape: .capsule, center: center, size: bound,
+                  fill: stroke, stroke: nil,
+                  extra: Float(halfWidth), param0: e.simd2)
     }
 
     /// A filled, **convex** polygon through `points` (triangle fan), plus a

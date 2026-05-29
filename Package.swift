@@ -139,6 +139,11 @@ let package = Package(
             path: "Examples/Motion/RectField"
         ),
         .executableTarget(
+            name: "Example-Spokes",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/Spokes"
+        ),
+        .executableTarget(
             name: "Example-ArcField",
             dependencies: ["Ollin"],
             path: "Examples/Motion/ArcField"
