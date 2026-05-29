@@ -3,12 +3,13 @@ import Ollin
 /// Stacked rows of white ellipse outlines in two drifting columns. Each ring's
 /// horizontal position, size, and vertical squash are read from a `signedNoise`
 /// field sampled against its row `y` and `time`, so the whole field breathes and
-/// wanders without ever repeating. Stroke-only on black: overlapping outlines
-/// read as soft, shifting contours.
+/// wanders without ever repeating. The fill matches the background, so each
+/// ellipse's disk hides the rings behind it — overlapping outlines occlude
+/// front-to-back instead of all showing through.
 @main
 final class EllipseField: Sketch {
     override func setup() {
-        noFill()
+        fill(.black)   // opaque centers, so each ellipse occludes the ones behind it
         stroke(.white)
     }
 
@@ -22,7 +23,7 @@ final class EllipseField: Sketch {
         let margin = 0.125
         let minY = -height * margin
         let maxY = height * (1 + margin)
-        let rows = 14.0
+        let rows = 72.0
         let jump = (maxY - minY) / rows
 
         var y = minY
@@ -36,7 +37,7 @@ final class EllipseField: Sketch {
     /// One ellipse for a row. `seed` decorrelates the two columns by sampling
     /// different cells of the noise field; `offset` shifts the column sideways.
     private func ring(seed: Int, offset: Double, y: Double) {
-        let t = time * 0.2
+        let t = time * 0.12
 
         // Horizontal position: a slow wander across the middle band, plus a
         // finer, faster jitter layered on top.
