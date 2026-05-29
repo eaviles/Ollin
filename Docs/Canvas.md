@@ -69,6 +69,8 @@ strokeWeight(2 * scale)
 | `.vertical1080` | 1080 × 1920 | 9:16 | full-screen vertical: stories, reels, TikTok, Shorts |
 | `.portrait1080` | 1080 × 1350 | 4:5 | the portrait feed crop (e.g. Instagram) |
 
+Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine.
+
 To give a sketch a custom size, override `canvasSize` with any `CGSize`:
 
 ```swift
@@ -81,8 +83,6 @@ final class MySketch: Sketch {
     }
 }
 ```
-
-Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine.
 
 <a name="windowMode"></a>
 
