@@ -13,12 +13,12 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | Category | What's inside |
 |---|---|
 | [Basic](Basic/) | the smallest starting point |
-| [Motion](Motion/) | animation driven by `time` |
 | [Color](Color/) | palettes, colormaps, and color over time |
-| [Patterns](Patterns/) | grids and rule-based repetition |
-| [Randomness](Randomness/) | `random`, `noise`, and scatter |
 | [Input](Input/) | mouse-driven sketches |
 | [Live](Live/) | tunable `@Param` knobs under OllinLive |
+| [Motion](Motion/) | animation driven by `time` |
+| [Patterns](Patterns/) | grids and rule-based repetition |
+| [Randomness](Randomness/) | `random`, `noise`, and scatter |
 | [Recreations](Recreations/) | homages to past computer artists, by artist |
 
 ### Running

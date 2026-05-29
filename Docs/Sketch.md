@@ -88,10 +88,10 @@ Read-only, and ready in any sketch with no setup:
 
 | Property | Type | Meaning |
 |---|---|---|
-| `frameCount` | `Int` | frames drawn so far (1 during the first `draw()`) |
-| `time` | `Double` | seconds since the sketch started |
 | `deltaTime` | `Double` | seconds since the previous frame |
+| `frameCount` | `Int` | frames drawn so far (1 during the first `draw()`) |
 | `frameRate` | `Double` | smoothed frames per second |
+| `time` | `Double` | seconds since the sketch started |
 
 ```swift
 let r = 120 + sin(time) * 40            // animate against the clock
