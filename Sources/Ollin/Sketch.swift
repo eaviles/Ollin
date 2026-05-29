@@ -191,15 +191,17 @@ open class Sketch {
     }
     public func drawPolyline(_ points: [Vector2]) { drawer.drawPolyline(points) }
     public func drawPolygon(_ points: [Vector2]) { drawer.drawPolygon(points) }
-    public func drawRect(_ rectangle: Rectangle) { drawer.drawRect(rectangle) }
-    public func drawRect(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
-        drawer.drawRect(Rectangle(x: x, y: y, width: width, height: height))
+    public func drawRect(_ rectangle: Rectangle, cornerRadius: Double = 0) {
+        drawer.drawRect(rectangle, cornerRadius: cornerRadius)
     }
-    public func drawRect(corner: Vector2, width: Double, height: Double) {
-        drawer.drawRect(Rectangle(corner: corner, width: width, height: height))
+    public func drawRect(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0) {
+        drawer.drawRect(Rectangle(x: x, y: y, width: width, height: height), cornerRadius: cornerRadius)
     }
-    public func drawRect(center: Vector2, width: Double, height: Double) {
-        drawer.drawRect(Rectangle(center: center, width: width, height: height))
+    public func drawRect(corner: Vector2, width: Double, height: Double, cornerRadius: Double = 0) {
+        drawer.drawRect(Rectangle(corner: corner, width: width, height: height), cornerRadius: cornerRadius)
+    }
+    public func drawRect(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0) {
+        drawer.drawRect(Rectangle(center: center, width: width, height: height), cornerRadius: cornerRadius)
     }
     public func translate(_ offset: Vector2) { drawer.translate(offset) }
     public func translate(_ x: Double, _ y: Double) { drawer.translate(Vector2(x, y)) }

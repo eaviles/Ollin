@@ -40,7 +40,7 @@ final class MetalRenderer {
     /// here (plus a branch in `makePipeline(_:)`) — not more code in `init`.
     private enum Pipeline: Hashable {
         case solid   // tessellated triangles (rects, lines, polygons, arcs)
-        case sdf     // instanced SDF quads (circles, ellipses)
+        case sdf     // instanced SDF quads (circles, ellipses, rects, lines, arcs)
     }
 
     /// Mirrors `Uniforms` in Shaders.metal.
@@ -289,8 +289,9 @@ final class MetalRenderer {
             // Solid-color triangles: rects, lines, polygons, arcs.
             return try makePipeline(vertex: "ollin_vertex", fragment: "ollin_fragment", using: library)
         case .sdf:
-            // Instanced SDF quads: circles and ellipses. The fragment returns
-            // straight-alpha color, so it shares the solid pipeline's blend.
+            // Instanced SDF quads: circles, ellipses, rects, lines, arcs. The
+            // fragment returns straight-alpha color, so it shares the solid
+            // pipeline's blend.
             return try makePipeline(vertex: "ollin_sdf_vertex", fragment: "ollin_sdf_fragment", using: library)
         }
     }

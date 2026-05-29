@@ -13,21 +13,41 @@ struct OllinVertex {
     var color: SIMD4<Float>      // straight (non-premultiplied) RGBA, 0...1
 }
 
-/// One circle/ellipse, drawn as a single instanced quad whose fragment computes
+/// Which analytic shape an `SDFInstance` carries. The fragment shader switches
+/// on this tag and evaluates the matching signed-distance field, so one pipeline
+/// and one instance buffer serve every SDF primitive. Raw values must match the
+/// `shape` codes the fragment in `Shaders.metal` tests.
+enum SDFShape: UInt32 {
+    case ellipse  = 0   // size = (rx, ry); circle is rx == ry
+    case box      = 1   // size = (w/2, h/2); extra = corner radius
+    case capsule  = 2   // a line: param0 = (b-a)/2; extra = half-width; fill = line color
+    case arcOpen  = 3   // circular arc, open: size = (ra, ra)
+    case arcChord = 4   // circular arc, chord-closed
+    case arcPie   = 5   // circular arc, pie-closed
+}
+
+/// One analytic shape, drawn as a single instanced quad whose fragment computes
 /// fill + stroke + anti-aliasing from a signed-distance field — no CPU
 /// tessellation. The renderer draws a whole batch of these in one
 /// `drawPrimitives(instanceCount:)`.
 ///
-/// The memory layout must match `SDFInstance` in `Shaders.metal` (stride 112):
+/// A tagged union: `shape` picks the SDF and decides how the generic slots
+/// (`size`, `param0`, `param1`, `extra`) are read — see `SDFShape`.
+///
+/// The memory layout must match `SDFInstance` in `Shaders.metal` (stride 128):
 /// a `float3x3` (48 bytes, three 16-byte columns) followed by the rest under
 /// simd alignment. Keep them in sync if you add fields.
 struct SDFInstance {
     var transform: matrix_float3x3   // local sketch space -> sketch space (the CTM)
-    var center: SIMD2<Float>
-    var radii: SIMD2<Float>          // (rx, ry); circle is rx == ry
+    var center: SIMD2<Float>         // shape center, local sketch space
+    var size: SIMD2<Float>           // generic half-extent (see SDFShape)
     var fillColor: SIMD4<Float>      // straight RGBA; alpha 0 = no fill
     var strokeColor: SIMD4<Float>    // straight RGBA; alpha 0 = no stroke
+    var param0: SIMD2<Float>         // shape-specific (capsule half-segment / arc sin,cos)
+    var param1: SIMD2<Float>         // shape-specific (arc rotation cos,sin)
     var strokeWidth: Float           // points; 0 = no stroke
+    var extra: Float                 // shape-specific scalar (box corner radius / capsule half-width)
+    var shape: UInt32                // SDFShape.rawValue
 }
 
 /// Which pipeline a run of recorded geometry needs. Primitives are recorded in
@@ -36,7 +56,7 @@ struct SDFInstance {
 /// drew them (a later shape paints over an earlier one).
 enum GeometryKind {
     case triangles   // tessellated fills/strokes in `vertices`
-    case sdf         // instanced circles/ellipses in `sdfInstances`
+    case sdf         // instanced SDF shapes in `sdfInstances`
 }
 
 struct GeometryBatch {
@@ -67,7 +87,7 @@ final class Drawer {
 
     private(set) var vertices: [OllinVertex] = []
 
-    /// Instanced circles/ellipses recorded this frame (see `SDFInstance`).
+    /// Instanced SDF shapes recorded this frame (see `SDFInstance`).
     private(set) var sdfInstances: [SDFInstance] = []
 
     /// Recorded geometry split into call-ordered runs, so triangles and SDF
@@ -184,7 +204,9 @@ final class Drawer {
     /// what makes thousands of them cheap.
     func drawCircle(_ x: Double, _ y: Double, _ radius: Double) {
         guard radius > 0 else { return }
-        appendSDF(center: Vector2(x, y), rx: radius, ry: radius)
+        appendSDF(shape: .ellipse, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(radius), Float(radius)),
+                  fill: fillColor, stroke: strokeColor)
     }
 
     /// An axis-aligned ellipse centered at `(x, y)` with horizontal radius `rx`
@@ -195,23 +217,35 @@ final class Drawer {
     /// uniform-width stroke are derived analytically in the fragment shader.
     func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double) {
         guard rx > 0, ry > 0 else { return }
-        appendSDF(center: Vector2(x, y), rx: rx, ry: ry)
+        appendSDF(shape: .ellipse, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(rx), Float(ry)),
+                  fill: fillColor, stroke: strokeColor)
     }
 
-    /// Record one circle/ellipse as an SDF instance, carrying the current fill,
-    /// stroke, and transform. A `nil` fill/stroke becomes a zero-alpha color the
-    /// shader treats as "skip". No-op when there's nothing to draw.
-    private func appendSDF(center: Vector2, rx: Double, ry: Double) {
-        let hasStroke = strokeColor != nil && strokeWidth > 0
-        guard fillColor != nil || hasStroke else { return }
+    /// Record one analytic shape as an SDF instance, carrying the current
+    /// transform plus the given fill, stroke, and shape-specific slots. A `nil`
+    /// fill/stroke becomes a zero-alpha color the shader treats as "skip"; a
+    /// caller passes explicit colors (e.g. a line passes its stroke as `fill`).
+    /// No-op when there's nothing to draw.
+    private func appendSDF(shape: SDFShape, center: Vector2, size: SIMD2<Float>,
+                           fill: Color?, stroke: Color?, strokeWidth: Double? = nil,
+                           extra: Float = 0,
+                           param0: SIMD2<Float> = .zero, param1: SIMD2<Float> = .zero) {
+        let weight = strokeWidth ?? self.strokeWidth
+        let hasStroke = stroke != nil && weight > 0
+        guard fill != nil || hasStroke else { return }
         ensureBatch(.sdf)
         sdfInstances.append(SDFInstance(
             transform: transform,
             center: center.simd2,
-            radii: SIMD2<Float>(Float(rx), Float(ry)),
-            fillColor: fillColor?.simd4 ?? SIMD4<Float>(repeating: 0),
-            strokeColor: hasStroke ? strokeColor!.simd4 : SIMD4<Float>(repeating: 0),
-            strokeWidth: hasStroke ? Float(strokeWidth) : 0))
+            size: size,
+            fillColor: fill?.simd4 ?? SIMD4<Float>(repeating: 0),
+            strokeColor: hasStroke ? stroke!.simd4 : SIMD4<Float>(repeating: 0),
+            param0: param0,
+            param1: param1,
+            strokeWidth: hasStroke ? Float(weight) : 0,
+            extra: extra,
+            shape: shape.rawValue))
     }
 
     /// An elliptical arc centered at `(x, y)` with radii `rx`/`ry`, sweeping from
@@ -294,19 +328,18 @@ final class Drawer {
         }
     }
 
-    /// An axis-aligned `Rectangle`. Filled as two triangles if a fill is set;
-    /// the outline is stroked as a mitered frame of width `strokeWeight`
-    /// straddling the edges, if a stroke is set. Both feed the same solid-color
-    /// pipeline, so the MTKView's 4× MSAA gives the anti-aliased edge.
-    func drawRect(_ rect: Rectangle) {
+    /// An axis-aligned `Rectangle`. Recorded as a single SDF instance (a box
+    /// signed-distance field), not tessellated: the fragment derives fill, a
+    /// stroke straddling the edges (width `strokeWeight`), and anti-aliasing
+    /// analytically. `cornerRadius` rounds the corners (clamped to half the
+    /// shorter side); the default `0` is a sharp rectangle. Crisp at any size and
+    /// effectively free per rect, like `drawCircle`.
+    func drawRect(_ rect: Rectangle, cornerRadius: Double = 0) {
         guard rect.width > 0, rect.height > 0 else { return }
-        if let fill = fillColor {
-            appendQuad(rect.topLeft.simd2, rect.topRight.simd2,
-                       rect.bottomRight.simd2, rect.bottomLeft.simd2, color: fill.simd4)
-        }
-        if let stroke = strokeColor, strokeWidth > 0 {
-            appendRectFrame(rect, weight: strokeWidth, color: stroke.simd4)
-        }
+        let r = max(0, min(cornerRadius, min(rect.width, rect.height) / 2))
+        appendSDF(shape: .box, center: rect.center,
+                  size: SIMD2<Float>(Float(rect.width / 2), Float(rect.height / 2)),
+                  fill: fillColor, stroke: strokeColor, extra: Float(r))
     }
 
     /// A straight line segment from `a` to `b`, stroked with the current stroke
@@ -385,36 +418,6 @@ final class Drawer {
         emit(a0, color: color)
         emit(b1, color: color)
         emit(a1, color: color)
-    }
-
-    /// A quad with corners `a→b→c→d` (in order, either winding) as two triangles.
-    private func appendQuad(_ a: SIMD2<Float>, _ b: SIMD2<Float>,
-                            _ c: SIMD2<Float>, _ d: SIMD2<Float>, color: SIMD4<Float>) {
-        emit(a, color: color)
-        emit(b, color: color)
-        emit(c, color: color)
-        emit(a, color: color)
-        emit(c, color: color)
-        emit(d, color: color)
-    }
-
-    /// A rectangular outline as four bands between an outer rect (expanded by
-    /// half the weight) and an inner rect (shrunk by half), giving clean mitered
-    /// corners. If the stroke is thicker than the rect, the inner edges collapse
-    /// to the center so the frame fills solid instead of inverting.
-    private func appendRectFrame(_ r: Rectangle, weight: Double, color: SIMD4<Float>) {
-        let half = weight / 2
-        let oL = r.corner.x - half, oR = r.corner.x + r.width + half
-        let oT = r.corner.y - half, oB = r.corner.y + r.height + half
-        var iL = r.corner.x + half, iR = r.corner.x + r.width - half
-        var iT = r.corner.y + half, iB = r.corner.y + r.height - half
-        if iL > iR { iL = r.center.x; iR = r.center.x }
-        if iT > iB { iT = r.center.y; iB = r.center.y }
-        func v(_ x: Double, _ y: Double) -> SIMD2<Float> { SIMD2<Float>(Float(x), Float(y)) }
-        appendQuad(v(oL, oT), v(oR, oT), v(oR, iT), v(oL, iT), color: color)  // top
-        appendQuad(v(oL, iB), v(oR, iB), v(oR, oB), v(oL, oB), color: color)  // bottom
-        appendQuad(v(oL, iT), v(iL, iT), v(iL, iB), v(oL, iB), color: color)  // left
-        appendQuad(v(iR, iT), v(oR, iT), v(oR, iB), v(iR, iB), color: color)  // right
     }
 
     // MARK: Affine matrix builders (column-major, 2D homogeneous)

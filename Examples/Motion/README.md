@@ -14,6 +14,7 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | [FlowField](FlowField/Sketch.swift) | a `curlNoise` flow field: short lines follow the divergence-free curl, drifting with `time` |
 | [Myriad](Myriad/Sketch.swift) | 8,100 noise-driven circles on the SDF path — thousands of shapes at full speed |
 | [Orbits](Orbits/Sketch.swift) | ten circles orbiting the center at rising speeds |
+| [RectField](RectField/Sketch.swift) | Myriad's cousin: thousands of rounded rects, corner radius sweeping square→pill, each rotated on the SDF box path |
 | [SineSweep](SineSweep/Sketch.swift) | a circle swept across the canvas by `sin(time)` |
 | [Trail](Trail/Sketch.swift) | a Lissajous point traced by a 600-segment polyline |
 
