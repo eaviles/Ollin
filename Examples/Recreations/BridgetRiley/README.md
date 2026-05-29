@@ -1,4 +1,8 @@
-# Bridget Riley
+#### <sup>[Ollin](../../../README.md) → [Examples](../../README.md) → [Recreations](../README.md) → Bridget Riley</sup>
+
+---
+
+## Bridget Riley
 
 **Bridget Riley** (b. 1931) is a British painter and a central figure of **Op art**, best known for the black-and-white work of the 1960s, in which precise geometry produces vivid optical movement and shimmer. In 1965 her work featured in MoMA's landmark exhibition *The Responsive Eye*, which propelled Op art to international attention.
 
@@ -6,10 +10,10 @@ The **"Fragments" (1965)** were her first prints: a series of black-and-white sc
 
 Learn more:
 
-- [Bridget Riley — Wikipedia](https://en.wikipedia.org/wiki/Bridget_Riley)
-- [*Untitled (Fragment 1)* from *Fragments*, 1965 — MoMA](https://www.moma.org/collection/works/99701)
+- [Bridget Riley on Wikipedia](https://en.wikipedia.org/wiki/Bridget_Riley)
+- [*Untitled (Fragment 1)* from *Fragments*, 1965 (MoMA)](https://www.moma.org/collection/works/99701)
 
-## Recreations here
+### Recreations here
 
 - [**Fragment 3**](Fragment3/): a field of black-and-white chevron stripes (horizontal bands bent into a zigzag), after Riley's *Fragment 3* (1965).
 

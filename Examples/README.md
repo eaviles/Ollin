@@ -1,8 +1,12 @@
-# Ollin examples
+#### <sup>[Ollin](../README.md) → Examples</sup>
+
+---
+
+## Ollin examples
 
 Small, runnable sketches that double as a learning path, openFrameworks-style. Each example is one self-contained `@main` file showing a single idea, maintained and versioned with the API (they always build against current Ollin).
 
-## Layout
+### Layout
 
 Examples are grouped into **category** folders, and each example gets its own folder inside its category (one example = one executable target, because SwiftPM allows a single `@main` entry point per target). The sketch file is always named `Sketch.swift`, and the example's identity lives in the folder name, so the filename stays generic instead of repeating it. The folder is also each sketch's home for its own resources: fonts, images, and shaders sit alongside `Sketch.swift`.
 
@@ -22,8 +26,8 @@ Examples/
     Colormaps/Sketch.swift     — the eight perceptual `Colormap` ramps as horizontal bands (value → color)
   Patterns/
     DotGrid/Sketch.swift       — a grid of black/white dots woven by a modulo rule
-    WarpGrid/Sketch.swift      — a checkerboard of rects warped under the mouse (`rect`)
-    EnergyGrid/Sketch.swift    — columns sized by a moving "energy" share (`translate`, `rect`)
+    WarpGrid/Sketch.swift      — a checkerboard of rects warped under the mouse (`drawRect`)
+    EnergyGrid/Sketch.swift    — columns sized by a moving "energy" share (`translate`, `drawRect`)
   Randomness/
     NoiseField/Sketch.swift    — an 80×80 grid shaded by 3D Perlin `noise`, scrubbed by the mouse
     RandomBand/Sketch.swift    — a band of dots jittered by `random` (jagged); re-rolls with the mouse
@@ -35,12 +39,12 @@ Examples/
   Live/
     Parameters/Sketch.swift    — tunable `@Param` knobs that become live inspector sliders under OllinLive
   Recreations/                 — recreating past computer artists, by artist
-    VeraMolnar/Interruptions/Sketch.swift  — after Vera Molnár (`isolated`, `line`, `random`, `noise`)
-    VeraMolnar/DesOrdres/Sketch.swift      — after Molnár's "(Dés)Ordres" (1974); concentric squares, ~5% disorder (`rect(center:)`)
-    BridgetRiley/Fragment3/Sketch.swift    — after Riley's "Fragment 3" (1965); black/white chevron Op-art (`polygon`, `noLoop`)
+    VeraMolnar/Interruptions/Sketch.swift  — after Vera Molnár (`withState`, `drawLine`, `random`, `noise`)
+    VeraMolnar/DesOrdres/Sketch.swift      — after Molnár's "(Dés)Ordres" (1974); concentric squares, ~5% disorder (`drawRect(center:)`)
+    BridgetRiley/Fragment3/Sketch.swift    — after Riley's "Fragment 3" (1965); black/white chevron Op-art (`drawPolygon`, `noLoop`)
 ```
 
-## Running
+### Running
 
 Each example is its own target, prefixed `Example-`:
 
@@ -59,14 +63,14 @@ swift run OllinExamples
 
 A sidebar lists every example; click one and it compiles and renders on the right.
 
-## Adding an example
+### Adding an example
 
 1. Create `Examples/<Category>/<Name>/Sketch.swift` with an `@main final class <Name>: Sketch { … }`. No `OllinApp.run(...)` line; `Sketch.main()` boots it for you.
 2. Add a matching `.executableTarget(name: "Example-<Name>", dependencies: ["Ollin"], path: "Examples/<Category>/<Name>")` in `Package.swift`.
 
 Convention: a feature isn't considered done until it has an example, and every example must compile. If a sketch is awkward to write, treat that as a signal that the API needs work rather than the example.
 
-## Recreations
+### Recreations
 
 `Recreations/` is a special section: sketches that **recreate the work of past computer artists**, organized by artist, inspired by SFPC's [Recreating the Past](https://sfpc.io/recreatingthepast-spring2020/) class. Each one is a homage after the artist, not a reproduction and not endorsed by them, with a short per-artist `README.md` introducing them. Their targets are namespaced by artist:
 
@@ -76,7 +80,7 @@ swift run Example-VeraMolnar-Interruptions
 
 See [`Recreations/README.md`](Recreations/) for the full idea.
 
-## Attribution & sources
+### Attribution & sources
 
 Examples often *port* a sketch from elsewhere. When one does, credit it and respect its license:
 

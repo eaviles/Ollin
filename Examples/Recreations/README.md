@@ -1,4 +1,8 @@
-# Recreations
+#### <sup>[Ollin](../../README.md) → [Examples](../README.md) → Recreations</sup>
+
+---
+
+## Recreations
 
 Sketches that **recreate the work of past computer artists**: rebuilding a piece to learn from it, and seeing what a modern framework brings to it.
 
@@ -8,7 +12,7 @@ These differ from the rest of `Examples/`: the others are a *feature* learning p
 
 Each sketch is a **recreation and homage** made after the artist. It isn't a reproduction of a specific work, and it isn't affiliated with or endorsed by the artist or their estate. Folders are named for the artist; each has a `README.md` introducing them and where to learn more.
 
-## Artists
+### Artists
 
 - [**Vera Molnár**](VeraMolnar/). Order and disorder in algorithmic geometry.
 - [**Bridget Riley**](BridgetRiley/). Black-and-white Op art, with optical movement from precise geometry.

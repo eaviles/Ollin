@@ -54,15 +54,22 @@ strokeWeight(2 * scale)
 
 ### Export size
 
-`canvasSize` is the resolution a sketch renders and exports at, in pixels. It defaults to `.square1080` (1080×1080), a 1:1 square. Override it on a subclass with one of the named presets, or any `CGSize`:
+`canvasSize` is the resolution a sketch renders and exports at, in pixels. It defaults to `.square1080` (1080×1080), a 1:1 square. Override it on a subclass with one of the named presets below, or any `CGSize` (`override var canvasSize: CGSize { .uhd4K }`):
 
-```swift
-override var canvasSize: CGSize { .uhd4K }            // 4K landscape master (3840×2160)
-override var canvasSize: CGSize { .uhd4K.portrait }   // 4K vertical (2160×3840)
-override var canvasSize: CGSize { .portrait1080 }     // 4:5 portrait (1080×1350)
-```
+| Constant | Pixels | Aspect | Good for |
+|---|---|---|---|
+| `.square1080` | 1080 × 1080 | 1:1 | the default; square social and feed posts |
+| `.square1440` | 1440 × 1440 | 1:1 | a larger square |
+| `.square2160` | 2160 × 2160 | 1:1 | a 4K-class square master |
+| `.hd720` | 1280 × 720 | 16:9 | 720p / HD |
+| `.fhd1080` | 1920 × 1080 | 16:9 | 1080p / Full HD |
+| `.qhd1440` | 2560 × 1440 | 16:9 | 1440p / QHD |
+| `.uhd4K` | 3840 × 2160 | 16:9 | 4K / UHD, the usual "4K video" deliverable |
+| `.dci4K` | 4096 × 2160 | ~17:9 | cinema 4K (DCI), for film delivery |
+| `.vertical1080` | 1080 × 1920 | 9:16 | full-screen vertical: stories, reels, TikTok, Shorts |
+| `.portrait1080` | 1080 × 1350 | 4:5 | the portrait feed crop (e.g. Instagram) |
 
-The presets cover square (`square1080` / `square1440` / `square2160`), 16:9 (`hd720` / `fhd1080` / `qhd1440` / `uhd4K`, plus cinema `dci4K`), vertical 9:16 (`vertical1080`), and 4:5 (`portrait1080`). Use `.portrait` / `.landscape` to flip orientation. For social posts: square → `.square1080`, story or reel → `.vertical1080`, portrait feed → `.portrait1080`. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine.
+Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine.
 
 <a name="windowMode"></a>
 
