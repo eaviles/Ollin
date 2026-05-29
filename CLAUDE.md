@@ -107,6 +107,15 @@ For ported *example sketches* (the iterate-by-porting workflow), provenance is p
 
 There's a second tier of influence worth distinguishing from the conceptual one. Where p5.js / OPENRNDR / openFrameworks shaped the *API and ideas*, two peer Swift+Metal frameworks were read for *engineering approach* on the same platform: **swifty-creatives** (Apache-2.0, Processing-style immediate-mode) and **AsyncGraphics** (MIT, GPU image/video compositing). They were studied, not ported — specific lessons are noted inline through this file (shader build, pipeline cache, SDF circle, iOS seam, easing, snapshot testing). Same rules apply: credit them in the README and commits, never in `.swift` comments, and write our own implementation. The public credit lives in the README's Influences & attribution. (PixelKit is AsyncGraphics's older node-graph predecessor; cite AsyncGraphics instead.)
 
+A third tier names influences for *capabilities still ahead* — shader-function collections, shader-composition / livecoding APIs, and AR. **These are inspirations, not dependencies.** The intent is to *study how they work and reimplement our own*, never to vendor or depend on them — the standard inspired-by stance. It's especially clean for the shader-function collections, because those are mostly implementations of *known, published techniques* (SDFs, noise, blends, color-space math, domain repetition): peek at the approach, then write Ollin's own, preferring the canonical source of a technique over any one collection's expression of it. Licenses still drive the no-line-by-line-copy rule:
+
+- **LYGIA** (github.com/patriciogonzalezvivo/lygia, Patricio Gonzalez Vivo) — a large, well-organized, multi-language catalog of shader functions (GLSL/HLSL/WGSL/CUDA plus an *experimental, partial* MSL/Metal port: `sdf`, `sampler`, `blend`, parts of `distort`/`generative`/`math` done; `lighting`/`geometry`/`palette` not yet). The best *map* of which techniques exist and how they're commonly approached. Licensed **Prosperity Public License 3.0.0** (noncommercial) — since we reimplement rather than ship its code, that's not a bundling problem; it's the reason to never translate a LYGIA file line-by-line and to implement from the underlying technique instead. Use it to discover and understand, then write our own.
+- **Hydra** (github.com/ojack/hydra, Olivia Jack) — a web livecoding environment with a chainable, analog-video-synth shader API (`osc().rotate().modulate(noise())…`). The thing to mine is *how it makes combining and mixing visuals so fluid* — borrow that ergonomic direction. Licensed **AGPL-3.0** (strong network copyleft) → **inspiration only**, never ported or vendored, exactly like p5.js's LGPL.
+- **ShaderPark** (github.com/shader-park — `shader-park-core`, `shader-park-examples`, `shader-park-live-coding`, all **MIT**) — a JS→shader SDF "sculpting" library with composable combine/blend functions and its own livecoding environment; another reference for *how to compose and mix* shader-driven shapes. MIT, so it can be studied freely — still: write our own, credit it.
+- **Meta Spark** (Meta's discontinued AR studio, shut down Jan 2025 — no public source) — the *product* reference for an AR direction: its template-driven AR-effect authoring is the void @eaviles wants Ollin to fill on Apple platforms. Conceptual/product influence only; there's nothing to port. (Used in Zach Lieberman's AR class — keep that personal detail out of public files, see the AR follow-up.)
+
+Same rules as the other tiers: public credit in the README's Influences & attribution, named in commits, never in `.swift` comments, own implementation.
+
 ## Shaders & the Metal back end
 
 The shader set is one `.metal` file today; it will grow. Decisions that are
@@ -148,6 +157,22 @@ cheap now and expensive to retrofit:
   as `customMetalLibrary ?? defaultMetalLibrary` so a user can drop in their own
   compiled library without touching the built-ins; pairs with the runtime-source
   loader for hot-reload. (Both peer Swift+Metal frameworks expose exactly this.)
+- **Built-in shader functions are our own, written from the technique — not a
+  vendored library.** As the shader set grows past drawing (noise, SDF
+  primitives, blends, color-space conversions, domain repetition), implement each
+  from the *published technique*, then credit that source in the README's
+  Techniques list (as the cosine `Palette` and `curlNoise` already do). The
+  canonical sources to reach for, baked in here so we go straight to them:
+  **Inigo Quilez** for signed-distance functions (2D `iquilezles.org/articles/distfunctions2d`,
+  3D `/distfunctions`) and smooth-minimum, and the cosine palette (already used);
+  **hg_sdf** (`mercury.sexy/hg_sdf`) for domain operators — axis rotation, mirror,
+  and linear/polar repetition; **The Book of Shaders** for hashing and value
+  noise. LYGIA is a broad *catalog/map* of which techniques exist and how they're
+  approached — read it to discover, implement from the underlying technique,
+  never translate its files (Prosperity; see
+  [Sourcing & attribution](#sourcing--attribution-load-bearing--its-the-public-face)).
+  (Distinct from the user-supplied seam above, which is for a *user's* own
+  shaders, not for vendoring someone else's library into Ollin.)
 - **Cache pipelines; don't grow `init`.** `MetalRenderer.init` builds one
   `MTLRenderPipelineState` inline. A new pipeline (textured quads, a new blend
   mode, compute) should be a cache lookup, not more code in the constructor.
@@ -290,6 +315,13 @@ A direction @eaviles wants on the radar: OPENRNDR-style effects that compose in 
 - **Swift+Metal reference.** AsyncGraphics is the concrete study here: its `Graphic` *is* an `MTLTexture`, effects are functions returning new graphics, and it ships blend modes + a stack/layout layer model. The API paradigm (async, immutable) differs from Ollin's immediate-mode loop, so borrow the compositing/effects *architecture*, not the call shape. OPENRNDR's `Filter` / `compose {}` / `RenderTarget` is the conceptual model.
 - **Bigger than a primitive.** This touches the renderer (multiple render passes, target management) and the extension seam at once. Design it deliberately when the seam lands; don't bolt it on.
 
+## Follow-up: shader-composition API & livecoding performance / `OllinLiveCoding` (not started)
+
+Two linked directions @eaviles wants on the radar, both about *combining and mixing shader-driven visuals fluently* — and both distinct from `OllinLive`, which is dev-loop hot-reload, not a performance instrument.
+
+- **A composable shader / effect-mixing API.** The thing @eaviles values in Hydra and OPENRNDR: chaining and blending sources and transforms so visuals combine with almost no ceremony (`osc().rotate().modulate(noise())`). This is the call-shape *companion* to [layered effects & compositing](#follow-up-layered-effects--compositing-not-started): that follow-up is the *substrate* (render targets, filters, blend modes); this is the *fluent surface* over it. Study *how* Hydra and ShaderPark make mixing so fluid and borrow the direction (Hydra AGPL → inspiration only; ShaderPark MIT) — write our own. The underlying shader functions are ours too, written from the technique (LYGIA as a catalog, the canonical sources credited — see [Shaders & the Metal back end](#shaders--the-metal-back-end)). Keep it sugar over the typed core, per [the architecture rule](#the-architecture-rule-load-bearing).
+- **`OllinLiveCoding` — a performance livecoding environment.** @eaviles livecodes visuals in front of an audience (paired with someone livecoding the music) and has been bridging Hydra + openFrameworks to get both worlds; the goal is to do it all in Ollin. This is a *separate app* from `OllinLive`: a performance instrument — type expressions live, evaluate on the fly, project the output — not a file-watcher. Hydra is the direct model. It likely builds on the live-reload host, the shader-composition API above, and the GUI / parameter-knobs work. Apple-only.
+
 ## Follow-up: offline frame-sequence export (not started)
 
 Single-frame PNG export already works (`--export`, off-screen MSAA render). The next step is exporting a whole *sequence* — the thing that turns an animated sketch into a video.
@@ -308,6 +340,14 @@ Single-frame PNG export already works (`--export`, off-screen MSAA render). The 
 - **Reference.** swifty-creatives is the concrete study: it ships both a normal `MTKView` renderer and a visionOS `RendererBase` with a manual `renderLoop()` over `LayerRenderer`, and it's 3D-first (camera, depth, box/3D-text). Borrow the structure — camera + depth pipeline + dual render loop — and write our own.
 - **Don't 3D-tax the 2D path.** Most sketches stay 2D; don't make every draw call pay for a depth buffer or perspective divide. 3D is a mode you opt into, not a cost the 2D core carries. (Apple-only either way — see [Platform scope](#platform-scope).)
 - **Caveat:** visionOS is unverifiable in this environment without the visionOS SDK plus simulator or device.
+
+## Follow-up: AR mode & templates (eventual; the Meta Spark void)
+
+@eaviles wants Ollin to do AR sketches and offer a template-driven AR framework — explicitly to fill the void left when Meta Spark was discontinued (Jan 2025). Apple-only: ARKit + RealityKit/Metal on iOS/iPadOS, and the visionOS immersive path.
+
+- **It's a mode layered on the iOS and 3D/visionOS follow-ups, not a separate engine.** AR needs the iOS target (see [Swift Playgrounds & iOS](#follow-up-swift-playgrounds--ios-not-started)) and the 3D camera / depth pipeline (see [3D mode & visionOS](#follow-up-3d-mode--visionos-eventual-2d-stays-primary)) in place first.
+- **The Spark lesson is *templates*.** Spark's reach came from ready-made effect templates (face filters, world effects, plane/image tracking) people could start from. The Ollin version: AR-example sketches plus starter templates wired to ARKit anchors (face / world / image tracking), so an AR sketch is "fill in the `draw()`, the tracking is handed to you" — the same template-as-on-ramp idea as the `Examples/` and `.swiftpm` starters.
+- **Caveat:** AR is unverifiable in this environment — it needs ARKit on a device (the simulator has no AR camera).
 
 ## Follow-up: ship an `Examples/` folder (sample projects) (underway)
 

@@ -198,6 +198,18 @@ A few helpers lean on well-known public techniques, reimplemented in Ollin and c
 - `randomGaussian` uses the Marsaglia polar method for normal-distributed samples.
 - The `Colormap` ramps carry the canonical public colormap data: `viridis`/`magma`/`inferno`/`plasma`/`cividis` from [matplotlib](https://matplotlib.org) (CC0), `turbo` from Google (Apache-2.0), and `rocket`/`mako` from [seaborn](https://seaborn.pydata.org) (BSD-3).
 
+### Directions ahead
+
+These projects are inspirations for parts of Ollin that don't exist yet. Ollin studies how they work and reimplements the ideas rather than depending on them, the same as it treats the frameworks above. They're listed now so the influence is on record before the code lands.
+
+| Project | License | What Ollin studies it for |
+|---|---|---|
+| [LYGIA](https://github.com/patriciogonzalezvivo/lygia) | Prosperity PL 3.0.0 (noncommercial) | A catalog of shader functions for well-known techniques like SDFs, noise, blends, and color conversions. Ollin reads it to learn the approach, then writes its own and credits the original technique. |
+| [Hydra](https://github.com/ojack/hydra) | AGPL-3.0 | How a chainable, video-synth-style API makes mixing visuals feel easy. A direction for a future livecoding mode. |
+| [Shader Park](https://github.com/shader-park) | MIT | How to compose and blend SDF shapes, and its livecoding environment. |
+
+Meta Spark, the AR studio Meta has since discontinued, is the reference for an eventual AR mode. There's no source to credit, just the idea of starting from templates.
+
 ## Status & contributing
 
 Ollin is **alpha and pre-1.0**, developed in the open. Practically, that means:
