@@ -11,7 +11,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 ### Contents
 
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight)
-- **Shapes:** [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon)
+- **Shapes:** [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
@@ -149,12 +149,26 @@ drawPolyline(wave)
 
 #### `drawPolygon(_ points: [Vector2])`
 
-A filled convex polygon through `points` (plus a stroked outline). Convex only for now.
+A filled convex polygon through `points` (plus a stroked outline). The fan fill is convex-only; for concave outlines or holes, use `drawShape`.
 
 ```swift
 let triangle = [Vector2(200, 120), Vector2(280, 280), Vector2(120, 280)]
 fill(.black)
 drawPolygon(triangle)
+```
+
+<a name="shape"></a>
+
+#### `drawShape(_ shape: Shape)`
+
+A vector [`Shape`](Geometry.md#shape): a filled region that may be **concave** and may have **holes**, plus a stroked outline of each contour. The fill is triangulated (even-odd winding, so nested contours become holes); open contours are stroke-only.
+
+```swift
+// A square with a square hole — a frame.
+let outer = [Vector2(60, 60), Vector2(260, 60), Vector2(260, 260), Vector2(60, 260)]
+let hole  = [Vector2(120, 120), Vector2(200, 120), Vector2(200, 200), Vector2(120, 200)]
+fill(.black)
+drawShape(Shape(outer: outer, holes: [hole]))
 ```
 
 ### Transforms and state

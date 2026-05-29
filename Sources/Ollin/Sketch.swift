@@ -191,6 +191,7 @@ open class Sketch {
     }
     public func drawPolyline(_ points: [Vector2]) { drawer.drawPolyline(points) }
     public func drawPolygon(_ points: [Vector2]) { drawer.drawPolygon(points) }
+    public func drawShape(_ shape: Shape) { drawer.drawShape(shape) }
     public func drawRect(_ rectangle: Rectangle, cornerRadius: Double = 0) {
         drawer.drawRect(rectangle, cornerRadius: cornerRadius)
     }

@@ -4,12 +4,14 @@
 
 ## Geometry
 
-`Vector2` and `Rectangle` are Ollin's geometry value types: the data primitives take, and the values you pass around and compose. Coordinates use a top-left origin with y increasing downward.
+`Vector2`, `Rectangle`, `Contour`, and `Shape` are Ollin's geometry value types: the data primitives take, and the values you pass around and compose. Coordinates use a top-left origin with y increasing downward.
 
 ### Contents
 
 - [Vector2](#vector2)
 - [Rectangle](#rectangle)
+- [Contour](#contour)
+- [Shape](#shape)
 
 <a name="vector2"></a>
 
@@ -52,4 +54,33 @@ Rectangle(center: Vector2, width: Double, height: Double)
 let box = Rectangle(center: Vector2(width / 2, height / 2), width: 200, height: 120)
 drawRect(box)
 let p = randomVector(in: box)       // a random point inside it
+```
+
+<a name="contour"></a>
+
+### `Contour`
+
+One connected path: an ordered run of points, either open (a stroked path) or closed (a fillable outline). Polygonal — straight segments between the points. The building block of a `Shape`.
+
+```swift
+Contour(_ points: [Vector2], closed: Bool = true)
+```
+
+<a name="shape"></a>
+
+### `Shape`
+
+A fillable region of one or more `Contour`s. Unlike a convex `drawPolygon`, a `Shape` can be **concave** and can have **holes**: contours nested inside the outer one cut holes out of the fill (even-odd winding, so a contour's direction doesn't matter). Draw it with [`drawShape`](Drawing.md#shape).
+
+```swift
+Shape(_ points: [Vector2], closed: Bool = true)   // a single contour
+Shape(outer: [Vector2], holes: [[Vector2]])        // an outer boundary with holes
+Shape(contours: [Contour])                         // explicit contours
+```
+
+```swift
+let outer = [Vector2(60, 60), Vector2(260, 60), Vector2(260, 260), Vector2(60, 260)]
+let hole  = [Vector2(120, 120), Vector2(200, 120), Vector2(200, 200), Vector2(120, 200)]
+fill(.black)
+drawShape(Shape(outer: outer, holes: [hole]))      // a square frame
 ```

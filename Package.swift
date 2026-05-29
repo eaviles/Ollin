@@ -56,8 +56,22 @@ let package = Package(
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
             ]
         ),
+        // Vendored libtess2 (GLU-tessellator lineage), the polygon triangulator
+        // behind concave/holed `Shape` fills. Bundled third-party C source under
+        // its own SGI-B license — see Sources/CLibtess2/README.md and the
+        // repo-root THIRD-PARTY-NOTICES.md. Wrapped behind Ollin's own API; the
+        // C symbols are not part of Ollin's public surface. The upstream
+        // Source/ + Include/ split is preserved so its relative includes resolve;
+        // `publicHeadersPath: Include` exposes only tesselator.h.
+        .target(
+            name: "CLibtess2",
+            path: "External/CLibtess2",
+            exclude: ["LICENSE.txt", "README.md"],
+            publicHeadersPath: "Include"
+        ),
         .target(
             name: "Ollin",
+            dependencies: ["CLibtess2"],
             // Declaring the `.metal` file as a resource makes SwiftPM copy it
             // into the target's resource bundle and synthesize `Bundle.module`,
             // which MetalRenderer.loadLibrary uses to read and compile the shader
@@ -142,6 +156,11 @@ let package = Package(
             name: "Example-Spokes",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Spokes"
+        ),
+        .executableTarget(
+            name: "Example-Star",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/Star"
         ),
         .executableTarget(
             name: "Example-ArcField",

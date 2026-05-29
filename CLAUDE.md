@@ -97,6 +97,8 @@ This project is built with AI and says so openly (see the README's "Built with A
 
 The framework is *inspired by* p5.js (LGPL-2.1), OPENRNDR (BSD-2-Clause), and openFrameworks (MIT): borrow their ideas and API vocabulary, write the implementation independently. **Never translate their source line-by-line** — a port of source is a derivative work that carries the original's license, and p5.js's LGPL is incompatible with Ollin shipping wholesale as MIT. "Inspired by" keeps Ollin MIT-clean; "ported from source" does not.
 
+**One sanctioned exception: bundled third-party source (a distinct tier).** A library may be *vendored* — shipped as actual source in the repo — when it's a self-contained, permissively-licensed component that would be wasteful to reimplement, and it's wrapped behind Ollin's own API so the dependency stays swappable and off the public surface. This is the opposite of the inspired-by stance (it *is* their code), so it carries license obligations and a strict checklist: keep the upstream LICENSE + per-file headers **intact** in the vendored dir (the one exception to "no framework names in code" — those are the library's own headers, and stripping them breaks the license); record provenance (upstream URL, exact commit, date); list it in the repo-root `THIRD-PARTY-NOTICES.md`; add a *Bundled third-party code* line to the README's Influences section; and keep the root `LICENSE` pure MIT so GitHub's license detection (root-only, ignores subdirs) holds the "MIT" badge. Vendor under `External/`, not `Sources/`. The first and so far only instance is **libtess2** (`External/CLibtess2`, SGI-B), the triangulator behind `Shape`/`Contour`. Bundling a permissively-licensed library keeps Ollin MIT; this tier is *not* a license to vendor copyleft (LGPL/AGPL/GPL) code, which stays inspired-by-only.
+
 For ported *example sketches* (the iterate-by-porting workflow), provenance is per-sketch and must be honored:
 
 - **Only port sketches whose license permits redistribution under MIT** — MIT, BSD, Apache-2.0, CC0/public domain, or CC-BY (with credit). For GPL/LGPL, CC-BY-NC, or CC-BY-SA sources, either get permission or rewrite the sketch as original work using the source only as inspiration (credit it as "inspired by").
@@ -256,11 +258,17 @@ migration is overdue and the growing `SDFInstance` makes it riskier to defer; no
 the wrinkle that runtime `makeLibrary(source:)` has no include path for a bundled
 header, so the header content would need inlining.)
 
-One thing to *not* hand-roll: when vector `Shape`/`Contour` arrives (concave
-polygons, holes), use a real polygon triangulator — libtess2, the GLU
-tessellator lineage Processing/p5 descend from — rather than a bespoke
-ear-clipper. Convex shapes (circle, rect, ellipse) stay fine with the current
-fan/strip math.
+Triangulator — *shipped, not hand-rolled.* The vector `Shape`/`Contour` type
+(concave polygons, holes) fills via **vendored libtess2** (the GLU tessellator
+lineage Processing/p5 descend from), wrapped in `Shape.triangulatedFill()`
+(`ShapeTriangulator.swift`, `import CLibtess2`) and drawn by `drawShape` on the
+triangle path with even-odd winding (so nested contours become holes). libtess2
+is bundled, not reimplemented — see the bundled-third-party-source tier in
+[Sourcing & attribution](#sourcing--attribution-load-bearing--its-the-public-face)
+(`External/CLibtess2`, SGI-B). Convex shapes (circle, rect, ellipse) and convex
+`drawPolygon` stay on the current fan/strip math; don't route them through the
+triangulator. Still open on top of `Shape`: Bézier/curved contours (sample to
+points first), a `beginShape`/`vertex` builder, and real stroke joins/caps.
 
 ## Build, run, verify
 
@@ -281,10 +289,11 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   path and an instanced-SDF path; the SDF path (analytic fill+stroke+AA, thousands cheap) covers
   `drawCircle`/`drawEllipse`, `drawRect` (with `cornerRadius`), `drawLine` (round-capped capsule),
   and *circular* `drawArc` (open/chord/pie); the triangle path covers convex `drawPolygon`,
-  `drawPolyline` (open stroked paths), and *elliptical*/full-turn arcs (`drawArc` branches on
+  `drawPolyline` (open stroked paths), concave/holed `drawShape` (the vector `Shape`/`Contour`
+  type, triangulated via vendored libtess2), and *elliptical*/full-turn arcs (`drawArc` branches on
   `rx == ry`); recorded into call-ordered batches so the two paths composite in draw order; a per-frame transform stack
-  (`translate`/`rotate`/`scale`, scoped via `withState { }`); `Vector2` and
-  `Rectangle` geometry value types; `Color` value
+  (`translate`/`rotate`/`scale`, scoped via `withState { }`); `Vector2`,
+  `Rectangle`, and `Shape`/`Contour` geometry value types; `Color` value
   type with named constants (`.white`, `.black`, …) plus a cosine-gradient
   `Palette` (iq's formula) and perceptual `Colormap`s (viridis/magma/turbo/…);
   `map`/`dist` math helpers, a resolution-relative `scale`, seedable
@@ -298,11 +307,12 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
 - **Next, in priority order:** Tier 2 is done — the SDF path now covers circle,
   ellipse, rect (rounded), line (capsule), and circular arc (only arbitrary
   `drawPolygon`/`drawPolyline` and *elliptical*/full arcs stay tessellated, by
-  nature). Next: more primitives (`drawPoint`, `drawTriangle`;
-  `drawCircle`/`drawEllipse`/`drawArc`/`drawRect`/`drawLine` already landed); the
-  vector `Shape`/`Contour` type — concave fills via a real triangulator (convex
-  `drawPolygon` already landed); stroke joins/caps for fat lines (per-segment
-  capsules for `drawPolyline`, building on the line capsule); the
+  nature). The vector `Shape`/`Contour` type also landed — concave/holed fills
+  via vendored libtess2 (`drawShape`). Next: more primitives (`drawPoint`,
+  `drawTriangle`; `drawCircle`/`drawEllipse`/`drawArc`/`drawRect`/`drawLine`/`drawShape`
+  already landed); Bézier/curved contours and a `beginShape`/`vertex` builder on
+  top of `Shape`; stroke joins/caps for fat lines (per-segment capsules for
+  `drawPolyline`, building on the line capsule); the
   extension/lifecycle seam (load-bearing — unblocks snapshot testing, the
   FPS-overlay HUD, layered effects, and frame-sequence export at once);
   easing/animation helpers. Also now due (and riskier the longer it waits, since

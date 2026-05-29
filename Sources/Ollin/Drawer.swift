@@ -395,9 +395,10 @@ final class Drawer {
     }
 
     /// A filled, **convex** polygon through `points` (triangle fan), plus a
-    /// stroked closed outline if a stroke is set. Concave shapes render wrong
-    /// until a real `Shape`/triangulator arrives (see CLAUDE.md) — keep inputs
-    /// convex (triangles, quads, regular n-gons, or convex pieces of a shape).
+    /// stroked closed outline if a stroke is set. The fan only fills correctly
+    /// for convex inputs (triangles, quads, regular n-gons, convex pieces); for
+    /// concave outlines or holes, build a `Shape` and use `drawShape`, which
+    /// triangulates properly.
     func drawPolygon(_ points: [Vector2]) {
         guard points.count >= 3 else { return }
         if let fill = fillColor {
@@ -414,6 +415,36 @@ final class Drawer {
             let half = strokeWidth / 2
             for k in 0..<points.count {
                 appendSegment(from: points[k], to: points[(k + 1) % points.count], half: half, color: c)
+            }
+        }
+    }
+
+    /// A vector `Shape`: a filled region that may be **concave** and may have
+    /// **holes**, plus a stroked outline of each contour. The fill is
+    /// triangulated (even-odd winding, so nested contours cut holes); open
+    /// contours are stroke-only. Both fill and stroke go through the triangle
+    /// path, so a `Shape` composites in draw order with everything else.
+    func drawShape(_ shape: Shape) {
+        if let fill = fillColor {
+            let c = fill.simd4
+            let triangles = shape.triangulatedFill()
+            for i in stride(from: 0, to: triangles.count - 2, by: 3) {
+                emit(triangles[i].simd2, color: c)
+                emit(triangles[i + 1].simd2, color: c)
+                emit(triangles[i + 2].simd2, color: c)
+            }
+        }
+        if let stroke = strokeColor, strokeWidth > 0 {
+            let c = stroke.simd4
+            let half = strokeWidth / 2
+            for contour in shape.contours where contour.points.count >= 2 {
+                let pts = contour.points
+                for k in 1..<pts.count {
+                    appendSegment(from: pts[k - 1], to: pts[k], half: half, color: c)
+                }
+                if contour.isClosed {
+                    appendSegment(from: pts[pts.count - 1], to: pts[0], half: half, color: c)
+                }
             }
         }
     }

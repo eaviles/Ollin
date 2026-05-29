@@ -188,6 +188,14 @@ Ollin builds on the ideas of three creative-coding frameworks and reimplements t
 
 *"Inspired by" means borrowing ideas and API vocabulary, which is different from copying code; Ollin's implementation is written independently.* Individual example sketches that are ported from a published source name that source, its author, and its license in the file header. Only sources whose licenses permit redistribution under MIT are used.
 
+### Bundled third-party code
+
+Ollin bundles a small amount of third-party source in the repo. This is different from the projects above: it ships as actual code and keeps its own license. Right now that's one library:
+
+- **[libtess2](https://github.com/memononen/libtess2)** (SGI Free Software License B): the polygon triangulator behind concave and holed `Shape` fills, vendored under `External/CLibtess2/`.
+
+Everything bundled is listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), with each library's license kept next to its source. Ollin's own code stays MIT; bundling a permissively licensed library doesn't change that.
+
 ### Swift + Metal references
 
 The frameworks above shaped Ollin's API and ideas. Two more, written for the same Swift and Metal stack, are references for how the rendering layer is built:
