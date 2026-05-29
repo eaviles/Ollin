@@ -146,6 +146,69 @@ final class Drawer {
         }
     }
 
+    /// An elliptical arc centered at `(x, y)` with radii `rx`/`ry`, sweeping from
+    /// `start` to `stop` (radians, clockwise). `mode` decides how the ends close:
+    /// `.open` leaves the curve open, `.chord` joins them with a straight line,
+    /// `.pie` joins them through the center. A fill paints the enclosed region
+    /// (segment for open/chord, wedge for pie); a stroke traces the outline.
+    func drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
+                 start: Double, stop: Double, mode: ArcMode) {
+        guard rx > 0, ry > 0 else { return }
+        let sweep = stop - start
+        guard abs(sweep) > 1e-9 else { return }
+
+        // Sample the arc, scaling the segment count to the swept fraction so a
+        // short arc stays cheap and a near-full one stays smooth.
+        let full = circleSegments(for: max(rx, ry))
+        let segments = max(2, Int((Double(full) * abs(sweep) / (2.0 * .pi)).rounded(.up)))
+        var pts: [Vector2] = []
+        pts.reserveCapacity(segments + 1)
+        for i in 0...segments {
+            let a = start + sweep * (Double(i) / Double(segments))
+            pts.append(Vector2(x + cos(a) * rx, y + sin(a) * ry))
+        }
+        let center = Vector2(x, y)
+
+        if let fill = fillColor {
+            let c = fill.simd4
+            switch mode {
+            case .open, .chord:
+                // Circular segment — convex, so a fan from the first point fills it.
+                let p0 = pts[0].simd2
+                for i in 1..<(pts.count - 1) {
+                    emit(p0, color: c)
+                    emit(pts[i].simd2, color: c)
+                    emit(pts[i + 1].simd2, color: c)
+                }
+            case .pie:
+                // Wedge — fan from the center.
+                let cc = center.simd2
+                for i in 0..<(pts.count - 1) {
+                    emit(cc, color: c)
+                    emit(pts[i].simd2, color: c)
+                    emit(pts[i + 1].simd2, color: c)
+                }
+            }
+        }
+
+        if let stroke = strokeColor, strokeWidth > 0 {
+            let c = stroke.simd4
+            let half = strokeWidth / 2
+            for i in 1..<pts.count {
+                appendSegment(from: pts[i - 1], to: pts[i], half: half, color: c)
+            }
+            switch mode {
+            case .open:
+                break
+            case .chord:
+                appendSegment(from: pts[pts.count - 1], to: pts[0], half: half, color: c)
+            case .pie:
+                appendSegment(from: center, to: pts[0], half: half, color: c)
+                appendSegment(from: pts[pts.count - 1], to: center, half: half, color: c)
+            }
+        }
+    }
+
     /// A connected open path through `points`, stroked with the current stroke
     /// color and weight.
     ///

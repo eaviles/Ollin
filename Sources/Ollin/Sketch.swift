@@ -181,6 +181,14 @@ open class Sketch {
     public func drawEllipse(center: Vector2, rx: Double, ry: Double) {
         drawer.drawEllipse(center.x, center.y, rx, ry)
     }
+    public func drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
+                        start: Double, stop: Double, mode: ArcMode = .open) {
+        drawer.drawArc(x, y, rx, ry, start: start, stop: stop, mode: mode)
+    }
+    public func drawArc(center: Vector2, rx: Double, ry: Double,
+                        start: Double, stop: Double, mode: ArcMode = .open) {
+        drawer.drawArc(center.x, center.y, rx, ry, start: start, stop: stop, mode: mode)
+    }
     public func drawPolyline(_ points: [Vector2]) { drawer.drawPolyline(points) }
     public func drawPolygon(_ points: [Vector2]) { drawer.drawPolygon(points) }
     public func drawRect(_ rectangle: Rectangle) { drawer.drawRect(rectangle) }

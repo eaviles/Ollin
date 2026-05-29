@@ -11,7 +11,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 ### Contents
 
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight)
-- **Shapes:** [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon)
+- **Shapes:** [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
@@ -86,6 +86,22 @@ An ellipse, by scalar center (positional `x, y, rx, ry`) or a `Vector2` `center:
 ```swift
 drawEllipse(width / 2, height / 2, 160, 90)
 drawEllipse(center: Vector2(200, 200), rx: 60, ry: 90)
+```
+
+<a name="arc"></a>
+
+#### `drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double, start: Double, stop: Double, mode: ArcMode = .open)`
+#### `drawArc(center: Vector2, rx: Double, ry: Double, start: Double, stop: Double, mode: ArcMode = .open)`
+
+An elliptical arc sweeping from `start` to `stop` (radians, measured from the positive x-axis and increasing clockwise). `mode` decides how the ends close, which sets both the stroked outline and the filled region:
+
+- `.open` — stroke the curve only; a fill paints the segment cut off by the (un-stroked) chord.
+- `.chord` — close with a straight chord between the endpoints; the stroke traces it and the fill is that segment.
+- `.pie` — close through the center like a pie slice; the stroke traces both radii and the fill is the wedge.
+
+```swift
+drawArc(width / 2, height / 2, 160, 90, start: 0, stop: .pi)              // open half-arc
+drawArc(width / 2, height / 2, 120, 120, start: 0, stop: .pi / 2, mode: .pie)
 ```
 
 <a name="rect"></a>
