@@ -9,7 +9,7 @@ import Foundation
 ///     @Param(0...200) var radius = 120.0          // label "Radius", from the name
 ///     @Param("Speed", 0.1...4) var rate = 1.0     // explicit label
 ///     override func draw() {
-///         circle(x: width / 2, y: height / 2, radius: radius + sin(time * rate) * 40)
+///         circle(width / 2, height / 2, radius + sin(time * rate) * 40)
 ///     }
 /// }
 /// ```

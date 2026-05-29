@@ -14,7 +14,7 @@ override func draw() {
     noFill()
     stroke(.black)
     strokeWeight(3)
-    circle(x: width / 2, y: height / 2, radius: 120)
+    circle(width / 2, height / 2, 120)
 }
 ```
 
@@ -65,14 +65,14 @@ Outline thickness in points.
 
 <a name="circle"></a>
 
-### `circle(x: Double, y: Double, radius: Double)`
+### `circle(_ x: Double, _ y: Double, _ radius: Double)`
 ### `circle(center: Vector2, radius: Double)`
 
-A circle, by scalar center or a `Vector2` center.
+A circle, by scalar center (positional `x, y, radius`) or a `Vector2` `center:`.
 
 <a name="rect"></a>
 
-### `rect(x: Double, y: Double, width: Double, height: Double)`
+### `rect(_ x: Double, _ y: Double, _ width: Double, _ height: Double)`
 ### `rect(corner: Vector2, width: Double, height: Double)`
 ### `rect(center: Vector2, width: Double, height: Double)`
 ### `rect(_ rectangle: Rectangle)`
@@ -81,7 +81,7 @@ A rectangle, anchored by its top-left corner or its center (the center form matc
 
 <a name="line"></a>
 
-### `line(x1: Double, y1: Double, x2: Double, y2: Double)`
+### `line(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double)`
 ### `line(_ a: Vector2, _ b: Vector2)`
 
 A stroked line segment between two points.
@@ -100,7 +100,7 @@ A filled convex polygon through `points` (plus a stroked outline). Convex only f
 
 <a name="translate"></a>
 
-### `translate(x: Double, y: Double)` / `translate(_ offset: Vector2)`
+### `translate(_ x: Double, _ y: Double)` / `translate(_ offset: Vector2)`
 
 Shift the origin. Part of the per-frame transform stack.
 
@@ -112,7 +112,7 @@ Rotate the coordinate system (clockwise, since y is down).
 
 <a name="scale"></a>
 
-### `scale(_ amount: Double)` / `scale(x: Double, y: Double)`
+### `scale(_ amount: Double)` / `scale(_ x: Double, _ y: Double)`
 
 Scale the coordinate system, uniformly or per axis.
 

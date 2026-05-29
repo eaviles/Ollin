@@ -39,7 +39,7 @@ Vector2(x: Double, y: Double)
 
 ### `Rectangle`
 
-An axis-aligned rectangle: a `corner` plus `width` and `height`. The typed form `rect` takes (with `rect(x:y:width:height:)` as sugar over it).
+An axis-aligned rectangle: a `corner` plus `width` and `height`. The typed form `rect` takes (with the bare scalar `rect(x, y, width, height)` as sugar over it).
 
 ```swift
 Rectangle(corner: Vector2, width: Double, height: Double)

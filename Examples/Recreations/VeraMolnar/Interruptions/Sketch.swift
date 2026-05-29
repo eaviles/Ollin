@@ -41,12 +41,12 @@ final class Interruptions: Sketch {
                 let x = map(Double(i), 0, 39, 50, 750)
                 let y = map(Double(j), 0, 39, 50, 750)
                 isolated {
-                    translate(x: x, y: y)
+                    translate(x, y)
                     rotate(random(0, .tau))
                     // 0.7 (the source uses 0.6) keeps the intended density
                     // against Ollin's contrast-calibrated noise: gate is raw < 0.2.
                     if noise(Double(i) * 0.1, Double(j) * 0.1) < 0.7 {
-                        line(x1: -15, y1: 0, x2: 15, y2: 0)
+                        line(-15, 0, 15, 0)
                     }
                 }
             }

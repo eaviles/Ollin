@@ -8,7 +8,7 @@ captures the design intent so work here stays coherent across sessions.
 **p5.js ergonomics on an OPENRNDR-grade core, with motion as the default.**
 
 - The API people *type* should feel like p5: `setup()`/`draw()`, bare calls
-  like `background(.white)`, `stroke(.black)`, `circle(x:y:radius:)`. That
+  like `background(.white)`, `stroke(.black)`, `circle(x, y, radius)`. That
   familiarity is the point — don't sacrifice it.
 - The architecture they *grow into* should feel like OPENRNDR: typed value
   objects, an explicit `Drawer`, and composable geometry.
@@ -46,11 +46,19 @@ facade the only path to a feature.**
   GUI, or video export bolt on without bloating the core.
 - Drawing methods live on `Sketch` (scoped to the instance), not true
   globals — keep it that way.
-- **Consistent point arguments.** A primitive that takes a point offers both a
-  scalar form (`x:`/`y:`) and a `Vector2` form, with the `Vector2` label naming
-  the anchor: `circle(center:)`, `rect(corner:)`/`rect(center:)`, `line`,
-  `translate`. New point-taking primitives (`ellipse`, `point`, `triangle`, …)
-  should follow the same pattern.
+- **Consistent point arguments.** A primitive that takes a point offers a
+  *positional* scalar form and a *role-labeled* `Vector2` form: `circle(x, y, radius)`
+  beside `circle(center:radius:)`, `rect(x, y, width, height)` beside
+  `rect(corner:…)`/`rect(center:…)`, `line(x1, y1, x2, y2)` beside `line(_:_:)`,
+  `translate(x, y)` beside `translate(_ offset: Vector2)`. The rule: bare scalars
+  go positional — everyone knows the `x, y, radius` order, and labels on them are
+  pure stutter once call sites pass `x`/`y` variables (`circle(x: x, y: y, …)`).
+  The label is reserved for the value-object overload, where it names the *anchor*
+  (`center:` vs `corner:`) and so carries real information, never an echo. New
+  point-taking primitives (`ellipse`, `point`, `triangle`, …) follow the same
+  split. (Unlike Kotlin/OPENRNDR, Swift can't make one declaration callable both
+  positionally and by label, so don't double the overloads to fake "both" — pick
+  positional for the scalar form.)
 
 ## Sourcing & attribution (load-bearing — it's the public face)
 

@@ -17,7 +17,7 @@ final class Gaussian: Sketch {
         for _ in 0..<2000 {
             let x = width / 2 + randomGaussian() * 120
             let y = random(height)
-            circle(x: x, y: y, radius: 2)
+            circle(x, y, 2)
         }
     }
 }

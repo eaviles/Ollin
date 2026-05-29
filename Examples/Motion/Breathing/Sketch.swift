@@ -13,6 +13,6 @@ final class Breathing: Sketch {
         noFill()
         stroke(.black)
         strokeWeight(3)
-        circle(x: width / 2, y: height / 2, radius: 120 + sin(time) * 40)
+        circle(width / 2, height / 2, 120 + sin(time) * 40)
     }
 }

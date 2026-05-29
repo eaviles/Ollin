@@ -27,7 +27,7 @@ final class Orbits: Sketch {
             let angle = time * map(fi, 0, 10, 1, 10)
             let x = width / 2 + orbitRadius * cos(angle)
             let y = height / 2 + orbitRadius * sin(angle)
-            circle(x: x, y: y, radius: 20)
+            circle(x, y, 20)
         }
     }
 }

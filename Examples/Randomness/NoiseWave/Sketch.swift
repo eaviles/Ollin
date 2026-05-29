@@ -24,7 +24,7 @@ final class NoiseWave: Sketch {
         for i in 0..<Int(width) {
             let t = Double(i) / width                         // 0…1 across the canvas
             let n = signedNoise(t * 8 + mouseX / width * 8)   // mouse scrolls the wave
-            circle(x: Double(i), y: height / 2 + n * height / 8, radius: 2 * scale)
+            circle(Double(i), height / 2 + n * height / 8, 2 * scale)
         }
     }
 }

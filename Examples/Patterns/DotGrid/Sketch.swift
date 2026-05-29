@@ -24,7 +24,7 @@ final class DotGrid: Sketch {
             if offset > 4 { offset = 8 - offset }
             for x in 0...20 {
                 fill((x + offset) % 4 < 2 ? .white : .black)
-                circle(x: Double(x) * 30 + 100, y: Double(y) * 30 + 100, radius: 15)
+                circle(Double(x) * 30 + 100, Double(y) * 30 + 100, 15)
             }
         }
     }

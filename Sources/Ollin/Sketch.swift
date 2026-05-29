@@ -30,7 +30,7 @@ public enum WindowMode: Sendable {
 ///         noFill()
 ///         stroke(.black)
 ///         strokeWeight(3)
-///         circle(x: width / 2, y: height / 2, radius: 120)
+///         circle(width / 2, height / 2, 120)
 ///     }
 /// }
 /// ```
@@ -169,16 +169,16 @@ open class Sketch {
     public func stroke(_ color: Color) { drawer.stroke(color) }
     public func noStroke() { drawer.noStroke() }
     public func strokeWeight(_ weight: Double) { drawer.strokeWeight(weight) }
-    public func circle(x: Double, y: Double, radius: Double) {
-        drawer.circle(x: x, y: y, radius: radius)
+    public func circle(_ x: Double, _ y: Double, _ radius: Double) {
+        drawer.circle(x, y, radius)
     }
     public func circle(center: Vector2, radius: Double) {
-        drawer.circle(x: center.x, y: center.y, radius: radius)
+        drawer.circle(center.x, center.y, radius)
     }
     public func polyline(_ points: [Vector2]) { drawer.polyline(points) }
     public func polygon(_ points: [Vector2]) { drawer.polygon(points) }
     public func rect(_ rectangle: Rectangle) { drawer.rect(rectangle) }
-    public func rect(x: Double, y: Double, width: Double, height: Double) {
+    public func rect(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
         drawer.rect(Rectangle(x: x, y: y, width: width, height: height))
     }
     public func rect(corner: Vector2, width: Double, height: Double) {
@@ -188,14 +188,14 @@ open class Sketch {
         drawer.rect(Rectangle(center: center, width: width, height: height))
     }
     public func translate(_ offset: Vector2) { drawer.translate(offset) }
-    public func translate(x: Double, y: Double) { drawer.translate(Vector2(x, y)) }
+    public func translate(_ x: Double, _ y: Double) { drawer.translate(Vector2(x, y)) }
     public func line(_ a: Vector2, _ b: Vector2) { drawer.line(a, b) }
-    public func line(x1: Double, y1: Double, x2: Double, y2: Double) {
+    public func line(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) {
         drawer.line(Vector2(x1, y1), Vector2(x2, y2))
     }
     public func rotate(_ radians: Double) { drawer.rotate(radians) }
     public func scale(_ amount: Double) { drawer.scale(amount, amount) }
-    public func scale(x: Double, y: Double) { drawer.scale(x, y) }
+    public func scale(_ x: Double, _ y: Double) { drawer.scale(x, y) }
     public func push() { drawer.push() }
     public func pop() { drawer.pop() }
 

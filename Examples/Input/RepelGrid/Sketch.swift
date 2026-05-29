@@ -35,9 +35,9 @@ final class RepelGrid: Sketch {
                     dy /= distance
                 }
 
-                circle(x: x + dx * pct * 50,
-                       y: y + dy * pct * 50,
-                       radius: 5 + 8 * pct)
+                circle(x + dx * pct * 50,
+                       y + dy * pct * 50,
+                       5 + 8 * pct)
             }
         }
     }

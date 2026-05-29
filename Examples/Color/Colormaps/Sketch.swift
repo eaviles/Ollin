@@ -20,8 +20,8 @@ final class Colormaps: Sketch {
             for i in 0..<columns {
                 let t = Double(i) / Double(columns - 1)
                 fill(map.color(at: t))
-                rect(x: Double(i) * columnWidth, y: Double(row) * bandHeight,
-                     width: columnWidth + 1, height: bandHeight)
+                rect(Double(i) * columnWidth, Double(row) * bandHeight,
+                     columnWidth + 1, bandHeight)
             }
         }
     }

@@ -115,7 +115,7 @@ final class Drawer {
     /// set, the outline is emitted as a triangle-strip annulus (a ring of width
     /// `strokeWeight`). Both go through the same solid-color pipeline; the
     /// MTKView's 4× MSAA gives us the anti-aliased edge for free.
-    func circle(x: Double, y: Double, radius: Double) {
+    func circle(_ x: Double, _ y: Double, _ radius: Double) {
         guard radius > 0 else { return }
         let segments = circleSegments(for: radius)
         if let fill = fillColor {

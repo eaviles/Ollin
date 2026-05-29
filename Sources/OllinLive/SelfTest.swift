@@ -23,7 +23,7 @@ enum SelfTest {
                 override func draw() {
                     background(.white)
                     fill(.black)
-                    circle(x: width / 2, y: height / 2, radius: \(radius))
+                    circle(width / 2, height / 2, \(radius))
                 }
             }
             """

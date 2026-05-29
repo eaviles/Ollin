@@ -33,7 +33,7 @@ final class HelloCircle: Sketch {
         noFill()
         stroke(.black)
         strokeWeight(3)
-        circle(x: width / 2, y: height / 2, radius: 120)
+        circle(width / 2, height / 2, 120)
     }
 }
 
@@ -47,7 +47,7 @@ That draws a black circle outline about 3px wide, centered on white, and it's th
 The loop is already animating underneath, so making the circle breathe takes a single line. `time` (seconds since start) is ready to use in any sketch, with no setup needed:
 
 ```swift
-circle(x: width / 2, y: height / 2, radius: 120 + sin(time) * 40)
+circle(width / 2, height / 2, 120 + sin(time) * 40)
 ```
 
 Every sketch also gets temporal state out of the box (`frameCount`, `time`, `deltaTime`, `frameRate`), live `width`/`height`, a resolution-relative `scale`, and `noLoop()` / `loop()` for still images. The [`Sketch`](Docs/Sketch.md) reference covers them all.

@@ -33,6 +33,6 @@ final class Trail: Sketch {
 
         noStroke()
         fill(.white)
-        circle(x: head.x, y: head.y, radius: 12 * scale)
+        circle(head.x, head.y, 12 * scale)
     }
 }
