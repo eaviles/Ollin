@@ -20,7 +20,7 @@ final class Palettes: Sketch {
             for i in 0..<columns {
                 let t = Double(i) / Double(columns) + time * 0.1
                 fill(palette.color(at: t))
-                rect(Double(i) * columnWidth, Double(row) * bandHeight,
+                drawRect(Double(i) * columnWidth, Double(row) * bandHeight,
                      columnWidth + 1, bandHeight)
             }
         }

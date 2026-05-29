@@ -33,7 +33,7 @@ final class HelloCircle: Sketch {
         noFill()
         stroke(.black)
         strokeWeight(3)
-        circle(width / 2, height / 2, 120)
+        drawCircle(width / 2, height / 2, 120)
     }
 }
 
@@ -47,7 +47,7 @@ That draws a black circle outline about 3px wide, centered on white, and it's th
 The loop is already animating underneath, so making the circle breathe takes a single line. `time` (seconds since start) is ready to use in any sketch, with no setup needed:
 
 ```swift
-circle(width / 2, height / 2, 120 + sin(time) * 40)
+drawCircle(width / 2, height / 2, 120 + sin(time) * 40)
 ```
 
 Every sketch also gets temporal state out of the box (`frameCount`, `time`, `deltaTime`, `frameRate`), live `width`/`height`, a resolution-relative `scale`, and `noLoop()` / `loop()` for still images. The [`Sketch`](Docs/Sketch.md) reference covers them all.
@@ -112,7 +112,7 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
 The drawing surface is small and the names familiar. The full API reference lives in [`Docs/`](Docs/):
 
 - [Sketch](Docs/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), canvas size, and loop control.
-- [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`circle`, `rect`, `line`, `polyline`, `polygon`), and the transform stack (`translate`/`rotate`/`scale`, `isolated`).
+- [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawRect`, `drawLine`, `drawPolyline`, `drawPolygon`), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
 - [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
 - [Geometry](Docs/Geometry.md) - the `Vector2` and `Rectangle` value types.
 - [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
@@ -206,4 +206,4 @@ Ollin is **alpha and pre-1.0**, developed in the open. Practically, that means:
 - **No support guarantee.** This is built nights and weekends. Issues and discussions get read, but a response time isn't promised.
 - **macOS 14+ and a Metal-capable GPU are required**, by design. There's no Linux or Windows path.
 
-That said, contributions and ideas are genuinely welcome. The [roadmap](#roadmap) above is the best source of bite-size work; the *more primitives* line (`rect`, `line`, `ellipse`, …) in particular maps onto small, self-contained pull requests. For anything larger, please open an issue to discuss it before sending a big change.
+That said, contributions and ideas are genuinely welcome. The [roadmap](#roadmap) above is the best source of bite-size work; the *more primitives* line (`drawEllipse`, …) in particular maps onto small, self-contained pull requests. For anything larger, please open an issue to discuss it before sending a big change.

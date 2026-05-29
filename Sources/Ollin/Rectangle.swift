@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Like `Vector2`, `Rectangle` is a value you pass around and compose, not just
 /// a draw call — it's the typed currency the `Drawer`'s `rect` takes, with the
-/// bare scalar `rect(x, y, width, height)` as sugar over it.
+/// bare scalar `drawRect(x, y, width, height)` as sugar over it.
 public struct Rectangle: Equatable, Hashable, Sendable {
     /// Top-left corner (smallest x, smallest y).
     public let corner: Vector2

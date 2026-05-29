@@ -20,7 +20,7 @@ final class FlowField: Sketch {
             while x < width {
                 let flow = curlNoise(x * 0.003 + time * 0.05, y * 0.003).normalized
                 let p = Vector2(x, y)
-                line(p, p + flow * (step * 0.45))
+                drawLine(p, p + flow * (step * 0.45))
                 x += step
             }
             y += step

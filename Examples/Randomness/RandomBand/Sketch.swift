@@ -22,7 +22,7 @@ final class RandomBand: Sketch {
         randomSeed(Int(mouseX))
         let amplitude = height / 8        // dots jitter within ⅛ of the height
         for i in 0..<Int(width) {
-            circle(Double(i), height / 2 + random(-amplitude, amplitude), 2 * scale)
+            drawCircle(Double(i), height / 2 + random(-amplitude, amplitude), 2 * scale)
         }
     }
 }

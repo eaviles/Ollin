@@ -8,7 +8,7 @@ captures the design intent so work here stays coherent across sessions.
 **p5.js ergonomics on an OPENRNDR-grade core, with motion as the default.**
 
 - The API people *type* should feel like p5: `setup()`/`draw()`, bare calls
-  like `background(.white)`, `stroke(.black)`, `circle(x, y, radius)`. That
+  like `background(.white)`, `stroke(.black)`, `drawCircle(x, y, radius)`. That
   familiarity is the point — don't sacrifice it.
 - The architecture they *grow into* should feel like OPENRNDR: typed value
   objects, an explicit `Drawer`, and composable geometry.
@@ -26,7 +26,7 @@ Apple platforms only, by design. macOS is the focus today; iOS, tvOS, and vision
 facade the only path to a feature.**
 
 - `Sketch`'s bare methods forward to an internal `Drawer` (see
-  `Sources/Ollin/Sketch.swift`). Keep that split. Anything `circle(...)` can
+  `Sources/Ollin/Sketch.swift`). Keep that split. Anything `drawCircle(...)` can
   do, the `Drawer` should also do — with more control.
 - The day a capability is reachable *only* through the bare API, the ceiling
   is capped. Build the feature on the core first, then add the sugar.
@@ -39,26 +39,44 @@ facade the only path to a feature.**
   call sites multiply; retrofitting `x:y:` doubles into `Vector2` later is
   expensive.
 - **Swift-idiomatic, not a literal p5 port.** Enums for modes (not `"CENTER"`
-  strings), trailing-closure scoping (`isolated { }` / `pushStyle { }`) over
+  strings), trailing-closure scoping (`withState { }`) over
   leaky global state, value types, overloads. Borrow p5's feel, not its warts.
 - **Plan an extension seam.** OPENRNDR's strength is `extend(...)`. Keep a
   lifecycle hook (before/after `draw`, frame-grab) so screenshots, an FPS HUD,
   GUI, or video export bolt on without bloating the core.
 - Drawing methods live on `Sketch` (scoped to the instance), not true
   globals — keep it that way.
+- **Draw verbs, not nouns.** Geometry-emitting calls are imperative verb phrases
+  with a `draw` prefix — `drawCircle`, `drawRect`, `drawLine`, `drawPolygon`,
+  `drawPolyline` — not bare nouns (`circle`). They read as the commands they are
+  (side-effecting immediate-mode calls), which is what the Swift API Design
+  Guidelines want, and the prefix gives a clean rule: `draw*` emits geometry, while
+  state (`fill`/`stroke`/`background`) and transforms (`translate`/`rotate`/`scale`)
+  keep their own names. "Feels like p5" is the *shape* of the API — bare top-level
+  calls, terse positional args, motion by default — not p5's literal spelling, so
+  the verb prefix keeps the feel and is a good Swift citizen. New primitives take
+  the prefix too (`drawEllipse`, `drawTriangle`, …). (oF landed here the same way:
+  it deprecated `ofCircle` for `ofDrawCircle`.)
 - **Consistent point arguments.** A primitive that takes a point offers a
-  *positional* scalar form and a *role-labeled* `Vector2` form: `circle(x, y, radius)`
-  beside `circle(center:radius:)`, `rect(x, y, width, height)` beside
-  `rect(corner:…)`/`rect(center:…)`, `line(x1, y1, x2, y2)` beside `line(_:_:)`,
-  `translate(x, y)` beside `translate(_ offset: Vector2)`. The rule: bare scalars
-  go positional — everyone knows the `x, y, radius` order, and labels on them are
-  pure stutter once call sites pass `x`/`y` variables (`circle(x: x, y: y, …)`).
-  The label is reserved for the value-object overload, where it names the *anchor*
-  (`center:` vs `corner:`) and so carries real information, never an echo. New
-  point-taking primitives (`ellipse`, `point`, `triangle`, …) follow the same
-  split. (Unlike Kotlin/OPENRNDR, Swift can't make one declaration callable both
-  positionally and by label, so don't double the overloads to fake "both" — pick
-  positional for the scalar form.)
+  *positional* scalar form and a *role-labeled* `Vector2` form: `drawCircle(x, y, radius)`
+  beside `drawCircle(center:radius:)`, `drawRect(x, y, width, height)` beside
+  `drawRect(corner:…)`/`drawRect(center:…)`, `drawLine(x1, y1, x2, y2)` beside
+  `drawLine(_:_:)`, `translate(x, y)` beside `translate(_ offset: Vector2)`. The
+  rule: bare scalars go positional — everyone knows the `x, y, radius` order, and
+  labels on them are pure stutter once call sites pass `x`/`y` variables
+  (`drawCircle(x: x, y: y, …)`). The label is reserved for the value-object
+  overload, where it names the *anchor* (`center:` vs `corner:`) and so carries
+  real information, never an echo. New point-taking primitives (`drawEllipse`,
+  `drawPoint`, `drawTriangle`, …) follow the same split. (Unlike Kotlin/OPENRNDR,
+  Swift can't make one declaration callable both positionally and by label, so
+  don't double the overloads to fake "both" — pick positional for the scalar form.)
+- **State stack reads as Swift.** The drawing-state stack is `pushState()` /
+  `popState()` — the combined transform+style snapshot, mirroring Core Graphics'
+  `saveGState`/`restoreGState` — with `withState { }` as the scoped, exception-safe
+  primary form (the `with…{ }` idiom of `withAnimation`/`withTaskGroup`). Reach for
+  `withState { }`; the bare pair is the escape hatch. Combined (not split into
+  transform vs style) by design; a split push/pop can come later as `Drawer`-level
+  methods.
 
 ## Sourcing & attribution (load-bearing — it's the public face)
 
@@ -198,9 +216,9 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
 
 - **Today:** `Sketch` base class; temporal state (`frameCount`, `time`,
   `deltaTime`, `frameRate`); mouse input (`mouseX`/`mouseY`, `mousePressed()`); `Drawer` + Metal
-  renderer (solid fills, stroked outlines, 4x MSAA); shapes are `circle`, `rect`,
-  `line`, `polyline` (open stroked paths), and convex `polygon`; a per-frame transform stack
-  (`translate`/`rotate`/`scale`, scoped via `isolated { }`); `Vector2` and
+  renderer (solid fills, stroked outlines, 4x MSAA); shapes are `drawCircle`, `drawRect`,
+  `drawLine`, `drawPolyline` (open stroked paths), and convex `drawPolygon`; a per-frame transform stack
+  (`translate`/`rotate`/`scale`, scoped via `withState { }`); `Vector2` and
   `Rectangle` geometry value types; `Color` value
   type with named constants (`.white`, `.black`, …) plus a cosine-gradient
   `Palette` (iq's formula) and perceptual `Colormap`s (viridis/magma/turbo/…);
@@ -212,9 +230,9 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   live reload (`swift run OllinLive <file>`) that recompiles + hot-swaps a sketch
   on save and live-reloads `Shaders.metal` (with a `--keep-clock` flag and an
   `onReload()` lifecycle hook; see the live-reload section).
-- **Next, in priority order:** more primitives (`ellipse`); the vector
+- **Next, in priority order:** more primitives (`drawEllipse`); the vector
   `Shape`/`Contour` type — concave fills via a real triangulator (convex
-  `polygon` already landed); stroke joins/caps for fat lines; the
+  `drawPolygon` already landed); stroke joins/caps for fat lines; the
   extension/lifecycle seam; easing/animation helpers. For easing, a clean shape
   to borrow is a property wrapper holding a value + target that eases toward the
   target each frame (`linear`/`easeOut`); swifty-creatives' `@SCAnimatable` is a

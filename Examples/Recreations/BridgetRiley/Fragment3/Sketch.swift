@@ -136,7 +136,7 @@ final class Fragment3: Sketch {
             if k % 2 == 0 {   // every other band is black; the rest is white paper
                 let topRow = rows[k], botRow = rows[k + 1]
                 for i in 0 ..< (topRow.count - 1) {
-                    polygon([topRow[i], topRow[i + 1], botRow[i + 1], botRow[i]])
+                    drawPolygon([topRow[i], topRow[i + 1], botRow[i + 1], botRow[i]])
                 }
             }
             k += 1

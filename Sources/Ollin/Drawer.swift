@@ -39,7 +39,7 @@ final class Drawer {
     /// vertex. Reset to identity each frame.
     private var transform = matrix_identity_float3x3
 
-    /// Saved (transform + style) snapshots for `push()`/`pop()` / `isolated`.
+    /// Saved (transform + style) snapshots for `pushState()`/`popState()` / `withState`.
     private var stateStack: [SavedState] = []
 
     private struct SavedState {
@@ -93,13 +93,13 @@ final class Drawer {
     }
 
     /// Save the current transform and style (fill/stroke/weight).
-    func push() {
+    func pushState() {
         stateStack.append(SavedState(transform: transform, fillColor: fillColor,
                                      strokeColor: strokeColor, strokeWidth: strokeWidth))
     }
 
     /// Restore the most recently pushed transform and style. No-op if unbalanced.
-    func pop() {
+    func popState() {
         guard let s = stateStack.popLast() else { return }
         transform = s.transform
         fillColor = s.fillColor
@@ -115,7 +115,7 @@ final class Drawer {
     /// set, the outline is emitted as a triangle-strip annulus (a ring of width
     /// `strokeWeight`). Both go through the same solid-color pipeline; the
     /// MTKView's 4× MSAA gives us the anti-aliased edge for free.
-    func circle(_ x: Double, _ y: Double, _ radius: Double) {
+    func drawCircle(_ x: Double, _ y: Double, _ radius: Double) {
         guard radius > 0 else { return }
         let segments = circleSegments(for: radius)
         if let fill = fillColor {
@@ -135,7 +135,7 @@ final class Drawer {
     /// butt-jointed, so at the default thin weights the joins look seamless;
     /// fat strokes will want real joins later. Needs at least two points and a
     /// stroke to draw anything.
-    func polyline(_ points: [Vector2]) {
+    func drawPolyline(_ points: [Vector2]) {
         guard points.count >= 2, let stroke = strokeColor, strokeWidth > 0 else { return }
         let color = stroke.simd4
         let half = strokeWidth / 2
@@ -148,7 +148,7 @@ final class Drawer {
     /// the outline is stroked as a mitered frame of width `strokeWeight`
     /// straddling the edges, if a stroke is set. Both feed the same solid-color
     /// pipeline, so the MTKView's 4× MSAA gives the anti-aliased edge.
-    func rect(_ rect: Rectangle) {
+    func drawRect(_ rect: Rectangle) {
         guard rect.width > 0, rect.height > 0 else { return }
         if let fill = fillColor {
             appendQuad(rect.topLeft.simd2, rect.topRight.simd2,
@@ -161,7 +161,7 @@ final class Drawer {
 
     /// A straight line segment from `a` to `b`, stroked with the current stroke
     /// color and weight. A single-segment `polyline`; needs a stroke to draw.
-    func line(_ a: Vector2, _ b: Vector2) {
+    func drawLine(_ a: Vector2, _ b: Vector2) {
         guard let stroke = strokeColor, strokeWidth > 0 else { return }
         appendSegment(from: a, to: b, half: strokeWidth / 2, color: stroke.simd4)
     }
@@ -170,7 +170,7 @@ final class Drawer {
     /// stroked closed outline if a stroke is set. Concave shapes render wrong
     /// until a real `Shape`/triangulator arrives (see CLAUDE.md) — keep inputs
     /// convex (triangles, quads, regular n-gons, or convex pieces of a shape).
-    func polygon(_ points: [Vector2]) {
+    func drawPolygon(_ points: [Vector2]) {
         guard points.count >= 3 else { return }
         if let fill = fillColor {
             let c = fill.simd4

@@ -16,8 +16,8 @@ import Ollin
 ///
 /// The original is a static, seeded still image. Here `draw()` re-applies the
 /// seed every frame so it looks static, and `mousePressed()` bumps the seed —
-/// avoiding any need for `noLoop()`/`redraw()`. Demonstrates `isolated { }` with
-/// `translate`/`rotate`, plus `line`, `random`, and Perlin `noise`.
+/// avoiding any need for `noLoop()`/`redraw()`. Demonstrates `withState { }` with
+/// `translate`/`rotate`, plus `drawLine`, `random`, and Perlin `noise`.
 @main
 final class Interruptions: Sketch {
     var seed = 0
@@ -40,13 +40,13 @@ final class Interruptions: Sketch {
             for j in 0..<40 {
                 let x = map(Double(i), 0, 39, 50, 750)
                 let y = map(Double(j), 0, 39, 50, 750)
-                isolated {
+                withState {
                     translate(x, y)
                     rotate(random(0, .tau))
                     // 0.7 (the source uses 0.6) keeps the intended density
                     // against Ollin's contrast-calibrated noise: gate is raw < 0.2.
                     if noise(Double(i) * 0.1, Double(j) * 0.1) < 0.7 {
-                        line(-15, 0, 15, 0)
+                        drawLine(-15, 0, 15, 0)
                     }
                 }
             }

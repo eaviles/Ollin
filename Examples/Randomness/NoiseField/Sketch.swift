@@ -22,7 +22,7 @@ final class NoiseField: Sketch {
             for j in 0..<80 {
                 let shade = noise(Double(i) * 0.01, Double(j) * 0.01, mouseX * 0.1)
                 fill(Color(white: shade))
-                rect(Double(i) * 10, Double(j) * 10, 10, 10)
+                drawRect(Double(i) * 10, Double(j) * 10, 10, 10)
             }
         }
     }

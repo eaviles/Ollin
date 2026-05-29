@@ -11,7 +11,7 @@ import Ollin
 /// power (`pow`), so moving the cursor squeezes the columns to one side and
 /// stretches the rest — the checkerboard breathes horizontally under the mouse.
 ///
-/// Demonstrates `rect`: every cell is one `rect(x, y, width, height)`, filled
+/// Demonstrates `drawRect`: every cell is one `drawRect(x, y, width, height)`, filled
 /// black or white by an `(i + j)` parity rule. The columns sit at zero width
 /// until the mouse first moves (`mouseX` starts at 0, making the exponent 0).
 @main
@@ -33,7 +33,7 @@ final class WarpGrid: Sketch {
             for j in 0..<30 {
                 let y = map(Double(j), 0, 30, 0, width)
                 fill((i + j) % 2 == 0 ? .white : .black)
-                rect(left, y, right - left, cellHeight)
+                drawRect(left, y, right - left, cellHeight)
             }
         }
     }

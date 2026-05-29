@@ -12,7 +12,7 @@
 let a = Vector2(100, 100)
 let b = a + Vector2.unitX * 50          // (150, 100)
 let box = Rectangle(center: a, width: 80, height: 80)
-rect(box)
+drawRect(box)
 ```
 
 ### Contents
@@ -24,7 +24,7 @@ rect(box)
 
 ### `Vector2`
 
-An `(x, y)` point in sketch points. The type primitives like `polyline`, `circle(center:)`, and `line` take.
+An `(x, y)` point in sketch points. The type primitives like `drawPolyline`, `drawCircle(center:)`, and `drawLine` take.
 
 ```swift
 Vector2(_ x: Double, _ y: Double)
@@ -39,7 +39,7 @@ Vector2(x: Double, y: Double)
 
 ### `Rectangle`
 
-An axis-aligned rectangle: a `corner` plus `width` and `height`. The typed form `rect` takes (with the bare scalar `rect(x, y, width, height)` as sugar over it).
+An axis-aligned rectangle: a `corner` plus `width` and `height`. The typed form `drawRect` takes (with the bare scalar `drawRect(x, y, width, height)` as sugar over it).
 
 ```swift
 Rectangle(corner: Vector2, width: Double, height: Double)

@@ -29,10 +29,10 @@ final class Trail: Sketch {
 
         noFill()
         stroke(.white)
-        polyline(trail)
+        drawPolyline(trail)
 
         noStroke()
         fill(.white)
-        circle(head.x, head.y, 12 * scale)
+        drawCircle(head.x, head.y, 12 * scale)
     }
 }

@@ -16,6 +16,6 @@ final class SineSweep: Sketch {
     override func draw() {
         background(.black)
         let x = map(sin(time), -1, 1, 0, width)
-        circle(x, height / 2, 30)
+        drawCircle(x, height / 2, 30)
     }
 }

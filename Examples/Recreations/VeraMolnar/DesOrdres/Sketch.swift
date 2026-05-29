@@ -16,7 +16,7 @@ import Ollin
 /// is the idea: an underlying logic within the apparent disarray. **Move the
 /// mouse**: `mouseX` seeds the randomness, so sliding it scrubs the disorder.
 ///
-/// Demonstrates center-anchored `rect(center:width:height:)` and `randomSeed`
+/// Demonstrates center-anchored `drawRect(center:width:height:)` and `randomSeed`
 /// driven by input. After Vera Molnár.
 @main
 final class DesOrdres: Sketch {
@@ -41,7 +41,7 @@ final class DesOrdres: Sketch {
                 for k in 0..<10 {
                     let size = map(Double(k), 0, 9, cell * 0.04, cell * 0.95)
                     if random() < 0.95 {
-                        rect(center: center, width: size, height: size)
+                        drawRect(center: center, width: size, height: size)
                     }
                 }
             }

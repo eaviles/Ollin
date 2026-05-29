@@ -15,7 +15,7 @@ import Ollin
 final class HelloCircle: Sketch {
     override func draw() {
         background(.white)
-        circle(width / 2, height / 2, 120 + sin(time) * 40)
+        drawCircle(width / 2, height / 2, 120 + sin(time) * 40)
     }
 }
 ```
@@ -90,11 +90,11 @@ override func draw() {
     background(.black)
     // Same composition at any canvas size.
     fill(.white)
-    circle(width / 2, height / 2, 300 * scale)
+    drawCircle(width / 2, height / 2, 300 * scale)
 }
 ```
 
-A bare `circle(400, 400, 150)` ties the sketch to one canvas size, and the same call lands somewhere else once the canvas changes. Reach for `scale` and fractions instead.
+A bare `drawCircle(400, 400, 150)` ties the sketch to one canvas size, and the same call lands somewhere else once the canvas changes. Reach for `scale` and fractions instead.
 
 <a name="export-size"></a>
 

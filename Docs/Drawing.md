@@ -14,7 +14,7 @@ override func draw() {
     noFill()
     stroke(.black)
     strokeWeight(3)
-    circle(width / 2, height / 2, 120)
+    drawCircle(width / 2, height / 2, 120)
 }
 ```
 
@@ -24,16 +24,16 @@ override func draw() {
 - [fill / noFill](#fill)
 - [stroke / noStroke](#stroke)
 - [strokeWeight](#strokeWeight)
-- [circle](#circle)
-- [rect](#rect)
-- [line](#line)
-- [polyline](#polyline)
-- [polygon](#polygon)
+- [drawCircle](#circle)
+- [drawRect](#rect)
+- [drawLine](#line)
+- [drawPolyline](#polyline)
+- [drawPolygon](#polygon)
 - [translate](#translate)
 - [rotate](#rotate)
 - [scale](#scale)
-- [isolated](#isolated)
-- [push / pop](#push)
+- [withState](#isolated)
+- [pushState / popState](#push)
 
 ### Types
 
@@ -65,36 +65,36 @@ Outline thickness in points.
 
 <a name="circle"></a>
 
-### `circle(_ x: Double, _ y: Double, _ radius: Double)`
-### `circle(center: Vector2, radius: Double)`
+### `drawCircle(_ x: Double, _ y: Double, _ radius: Double)`
+### `drawCircle(center: Vector2, radius: Double)`
 
 A circle, by scalar center (positional `x, y, radius`) or a `Vector2` `center:`.
 
 <a name="rect"></a>
 
-### `rect(_ x: Double, _ y: Double, _ width: Double, _ height: Double)`
-### `rect(corner: Vector2, width: Double, height: Double)`
-### `rect(center: Vector2, width: Double, height: Double)`
-### `rect(_ rectangle: Rectangle)`
+### `drawRect(_ x: Double, _ y: Double, _ width: Double, _ height: Double)`
+### `drawRect(corner: Vector2, width: Double, height: Double)`
+### `drawRect(center: Vector2, width: Double, height: Double)`
+### `drawRect(_ rectangle: Rectangle)`
 
 A rectangle, anchored by its top-left corner or its center (the center form matches p5's `rectMode(CENTER)`), or from a `Rectangle` value.
 
 <a name="line"></a>
 
-### `line(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double)`
-### `line(_ a: Vector2, _ b: Vector2)`
+### `drawLine(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double)`
+### `drawLine(_ a: Vector2, _ b: Vector2)`
 
 A stroked line segment between two points.
 
 <a name="polyline"></a>
 
-### `polyline(_ points: [Vector2])`
+### `drawPolyline(_ points: [Vector2])`
 
 A connected open path through `points`, stroked.
 
 <a name="polygon"></a>
 
-### `polygon(_ points: [Vector2])`
+### `drawPolygon(_ points: [Vector2])`
 
 A filled convex polygon through `points` (plus a stroked outline). Convex only for now.
 
@@ -118,12 +118,12 @@ Scale the coordinate system, uniformly or per axis.
 
 <a name="isolated"></a>
 
-### `isolated(_ body: () -> Void)`
+### `withState(_ body: () -> Void)`
 
-Run `body` with the current transform and style saved, then restored. The scoped form of `push`/`pop`, and the one to reach for.
+Run `body` with the current transform and style saved, then restored. The scoped form of `pushState`/`popState`, and the one to reach for.
 
 <a name="push"></a>
 
-### `push()` / `pop()`
+### `pushState()` / `popState()`
 
-Manually save and restore the transform and style. Prefer `isolated { }` unless you need the calls separated.
+Manually save and restore the transform and style. Prefer `withState { }` unless you need the calls separated.

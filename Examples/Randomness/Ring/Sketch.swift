@@ -17,7 +17,7 @@ final class Ring: Sketch {
         let inner = 150 * scale
         let outer = 350 * scale
         for _ in 0..<1500 {
-            circle(center: center + ring(innerRadius: inner, outerRadius: outer),
+            drawCircle(center: center + ring(innerRadius: inner, outerRadius: outer),
                    radius: 2 * scale)
         }
     }

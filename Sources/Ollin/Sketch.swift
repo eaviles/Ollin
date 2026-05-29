@@ -30,7 +30,7 @@ public enum WindowMode: Sendable {
 ///         noFill()
 ///         stroke(.black)
 ///         strokeWeight(3)
-///         circle(width / 2, height / 2, 120)
+///         drawCircle(width / 2, height / 2, 120)
 ///     }
 /// }
 /// ```
@@ -169,41 +169,41 @@ open class Sketch {
     public func stroke(_ color: Color) { drawer.stroke(color) }
     public func noStroke() { drawer.noStroke() }
     public func strokeWeight(_ weight: Double) { drawer.strokeWeight(weight) }
-    public func circle(_ x: Double, _ y: Double, _ radius: Double) {
-        drawer.circle(x, y, radius)
+    public func drawCircle(_ x: Double, _ y: Double, _ radius: Double) {
+        drawer.drawCircle(x, y, radius)
     }
-    public func circle(center: Vector2, radius: Double) {
-        drawer.circle(center.x, center.y, radius)
+    public func drawCircle(center: Vector2, radius: Double) {
+        drawer.drawCircle(center.x, center.y, radius)
     }
-    public func polyline(_ points: [Vector2]) { drawer.polyline(points) }
-    public func polygon(_ points: [Vector2]) { drawer.polygon(points) }
-    public func rect(_ rectangle: Rectangle) { drawer.rect(rectangle) }
-    public func rect(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
-        drawer.rect(Rectangle(x: x, y: y, width: width, height: height))
+    public func drawPolyline(_ points: [Vector2]) { drawer.drawPolyline(points) }
+    public func drawPolygon(_ points: [Vector2]) { drawer.drawPolygon(points) }
+    public func drawRect(_ rectangle: Rectangle) { drawer.drawRect(rectangle) }
+    public func drawRect(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
+        drawer.drawRect(Rectangle(x: x, y: y, width: width, height: height))
     }
-    public func rect(corner: Vector2, width: Double, height: Double) {
-        drawer.rect(Rectangle(corner: corner, width: width, height: height))
+    public func drawRect(corner: Vector2, width: Double, height: Double) {
+        drawer.drawRect(Rectangle(corner: corner, width: width, height: height))
     }
-    public func rect(center: Vector2, width: Double, height: Double) {
-        drawer.rect(Rectangle(center: center, width: width, height: height))
+    public func drawRect(center: Vector2, width: Double, height: Double) {
+        drawer.drawRect(Rectangle(center: center, width: width, height: height))
     }
     public func translate(_ offset: Vector2) { drawer.translate(offset) }
     public func translate(_ x: Double, _ y: Double) { drawer.translate(Vector2(x, y)) }
-    public func line(_ a: Vector2, _ b: Vector2) { drawer.line(a, b) }
-    public func line(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) {
-        drawer.line(Vector2(x1, y1), Vector2(x2, y2))
+    public func drawLine(_ a: Vector2, _ b: Vector2) { drawer.drawLine(a, b) }
+    public func drawLine(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) {
+        drawer.drawLine(Vector2(x1, y1), Vector2(x2, y2))
     }
     public func rotate(_ radians: Double) { drawer.rotate(radians) }
     public func scale(_ amount: Double) { drawer.scale(amount, amount) }
     public func scale(_ x: Double, _ y: Double) { drawer.scale(x, y) }
-    public func push() { drawer.push() }
-    public func pop() { drawer.pop() }
+    public func pushState() { drawer.pushState() }
+    public func popState() { drawer.popState() }
 
     /// Run `body` with the current transform and style saved, then restored.
-    /// Prefer this scoped form over bare `push()`/`pop()`.
-    public func isolated(_ body: () -> Void) {
-        drawer.push()
-        defer { drawer.pop() }
+    /// Prefer this scoped form over bare `pushState()`/`popState()`.
+    public func withState(_ body: () -> Void) {
+        drawer.pushState()
+        defer { drawer.popState() }
         body()
     }
 

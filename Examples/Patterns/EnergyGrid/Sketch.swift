@@ -14,7 +14,7 @@ import Ollin
 /// rects in a black/white checkerboard.
 ///
 /// Demonstrates `translate` (a per-frame origin shift, used here to center the
-/// block in the canvas) alongside `rect`.
+/// block in the canvas) alongside `drawRect`.
 @main
 final class EnergyGrid: Sketch {
     override func setup() {
@@ -39,7 +39,7 @@ final class EnergyGrid: Sketch {
             for j in 0..<100 {
                 let y = map(Double(j), 0, 100, 0, block)
                 fill((i + j) % 2 == 0 ? .black : .white)
-                rect(x, y, columnWidth, block / 100)
+                drawRect(x, y, columnWidth, block / 100)
             }
             x += columnWidth
         }

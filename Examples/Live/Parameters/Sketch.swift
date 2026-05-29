@@ -25,7 +25,7 @@ final class Parameters: Sketch {
             let t = Double(i) / Double(count)
             let phase: Double = time * speed + t * .tau
             let r: Double = radius * (0.25 + t) + sin(phase) * 24
-            circle(width / 2, height / 2, r)
+            drawCircle(width / 2, height / 2, r)
         }
     }
 }
