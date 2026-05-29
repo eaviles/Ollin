@@ -20,7 +20,7 @@ final class ArcField: Sketch {
         let margin = 0.125
         let minY = -height * margin
         let maxY = height * (1 + margin)
-        let rows = 48.0
+        let rows = 160.0
         let jump = (maxY - minY) / rows
 
         var y = minY
@@ -34,7 +34,7 @@ final class ArcField: Sketch {
     /// One arc for a row. `seed` decorrelates the two columns by sampling
     /// different cells of the noise field; `offset` shifts the column sideways.
     private func arc(seed: Int, offset: Double, y: Double) {
-        let t = time * 0.12
+        let t = time * 0.07
 
         // Horizontal position: a slow wander across the middle band, plus a
         // finer, faster jitter layered on top.
