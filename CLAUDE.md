@@ -254,7 +254,7 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
 
 - **Today:** `Sketch` base class; temporal state (`frameCount`, `time`,
   `deltaTime`, `frameRate`); mouse input (`mouseX`/`mouseY`, `mousePressed()`); `Drawer` + Metal
-  renderer (solid fills, stroked outlines, 4x MSAA); shapes are `drawCircle`, `drawRect`,
+  renderer (solid fills, stroked outlines, 4x MSAA); shapes are `drawCircle`, `drawEllipse`, `drawRect`,
   `drawLine`, `drawPolyline` (open stroked paths), and convex `drawPolygon`; a per-frame transform stack
   (`translate`/`rotate`/`scale`, scoped via `withState { }`); `Vector2` and
   `Rectangle` geometry value types; `Color` value
@@ -268,7 +268,8 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   live reload (`swift run OllinLive <file>`) that recompiles + hot-swaps a sketch
   on save and live-reloads `Shaders.metal` (with a `--keep-clock` flag and an
   `onReload()` lifecycle hook; see the live-reload section).
-- **Next, in priority order:** more primitives (`drawEllipse`); the vector
+- **Next, in priority order:** more primitives (`drawPoint`, `drawTriangle`;
+  `drawEllipse` already landed); the vector
   `Shape`/`Contour` type — concave fills via a real triangulator (convex
   `drawPolygon` already landed); stroke joins/caps for fat lines; the
   extension/lifecycle seam; easing/animation helpers. For easing, a clean shape

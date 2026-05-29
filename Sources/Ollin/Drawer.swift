@@ -127,6 +127,25 @@ final class Drawer {
         }
     }
 
+    /// An axis-aligned ellipse centered at `(x, y)` with horizontal radius `rx`
+    /// and vertical radius `ry` (points). Like `drawCircle`, the arguments are
+    /// *radii*, not diameters — `drawEllipse(x, y, r, r)` is a circle.
+    ///
+    /// A fill is emitted as a triangle fan; a stroke as a uniform-width outline
+    /// whose offset follows the ellipse's true normal (so the ring keeps an even
+    /// thickness even when squashed), both through the solid-color pipeline.
+    func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double) {
+        guard rx > 0, ry > 0 else { return }
+        let segments = circleSegments(for: max(rx, ry))
+        if let fill = fillColor {
+            appendEllipseDisk(cx: x, cy: y, rx: rx, ry: ry, segments: segments, color: fill)
+        }
+        if let stroke = strokeColor, strokeWidth > 0 {
+            appendEllipseRing(cx: x, cy: y, rx: rx, ry: ry, weight: strokeWidth,
+                              segments: segments, color: stroke)
+        }
+    }
+
     /// A connected open path through `points`, stroked with the current stroke
     /// color and weight.
     ///
@@ -212,6 +231,11 @@ final class Drawer {
                      Float(cy + sin(angle) * radius))
     }
 
+    private func ellipsePoint(cx: Double, cy: Double, rx: Double, ry: Double, angle: Double) -> SIMD2<Float> {
+        SIMD2<Float>(Float(cx + cos(angle) * rx),
+                     Float(cy + sin(angle) * ry))
+    }
+
     /// Filled disk as a triangle fan, expanded into explicit triangles so the
     /// whole frame can be one `.triangle` draw call.
     private func appendDisk(cx: Double, cy: Double, radius: Double,
@@ -243,6 +267,59 @@ final class Drawer {
             let o0 = point(cx: cx, cy: cy, radius: outer, angle: a0)
             let i1 = point(cx: cx, cy: cy, radius: inner, angle: a1)
             let o1 = point(cx: cx, cy: cy, radius: outer, angle: a1)
+            // Quad (i0, o0, o1, i1) -> two triangles.
+            emit(i0, color: c)
+            emit(o0, color: c)
+            emit(o1, color: c)
+            emit(i0, color: c)
+            emit(o1, color: c)
+            emit(i1, color: c)
+        }
+    }
+
+    /// Filled ellipse as a triangle fan, expanded into explicit triangles. Same
+    /// shape as `appendDisk` with separate horizontal/vertical radii.
+    private func appendEllipseDisk(cx: Double, cy: Double, rx: Double, ry: Double,
+                                   segments: Int, color: Color) {
+        let c = color.simd4
+        let center = SIMD2<Float>(Float(cx), Float(cy))
+        for i in 0..<segments {
+            let a0 = Double(i)     / Double(segments) * 2.0 * .pi
+            let a1 = Double(i + 1) / Double(segments) * 2.0 * .pi
+            let p0 = ellipsePoint(cx: cx, cy: cy, rx: rx, ry: ry, angle: a0)
+            let p1 = ellipsePoint(cx: cx, cy: cy, rx: rx, ry: ry, angle: a1)
+            emit(center, color: c)
+            emit(p0, color: c)
+            emit(p1, color: c)
+        }
+    }
+
+    /// Stroked ellipse outline as a triangle strip between an inner and outer
+    /// boundary. Unlike a circle's radial offset, each boundary point is pushed
+    /// along the ellipse's outward normal `(ry·cosθ, rx·sinθ)`, so the stroke
+    /// keeps a uniform width instead of bunching at the flatter ends.
+    private func appendEllipseRing(cx: Double, cy: Double, rx: Double, ry: Double,
+                                   weight: Double, segments: Int, color: Color) {
+        let c = color.simd4
+        let half = weight / 2
+
+        func boundary(_ a: Double) -> (inner: SIMD2<Float>, outer: SIMD2<Float>) {
+            let px = cx + cos(a) * rx
+            let py = cy + sin(a) * ry
+            var nx = cos(a) * ry
+            var ny = sin(a) * rx
+            let len = (nx * nx + ny * ny).squareRoot()
+            if len > 0 { nx /= len; ny /= len }
+            let inner = SIMD2<Float>(Float(px - nx * half), Float(py - ny * half))
+            let outer = SIMD2<Float>(Float(px + nx * half), Float(py + ny * half))
+            return (inner, outer)
+        }
+
+        for i in 0..<segments {
+            let a0 = Double(i)     / Double(segments) * 2.0 * .pi
+            let a1 = Double(i + 1) / Double(segments) * 2.0 * .pi
+            let (i0, o0) = boundary(a0)
+            let (i1, o1) = boundary(a1)
             // Quad (i0, o0, o1, i1) -> two triangles.
             emit(i0, color: c)
             emit(o0, color: c)

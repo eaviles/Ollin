@@ -113,7 +113,7 @@ The drawing surface is small and the names familiar. The full API reference live
 
 - [Sketch](Docs/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), and loop control.
 - [Canvas](Docs/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
-- [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawRect`, `drawLine`, `drawPolyline`, `drawPolygon`), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
+- [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawEllipse`, `drawRect`, `drawLine`, `drawPolyline`, `drawPolygon`), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
 - [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
 - [Geometry](Docs/Geometry.md) - the `Vector2` and `Rectangle` value types.
 - [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
@@ -148,7 +148,7 @@ It drives the sketch off-screen (`setup()`, then `draw()` advanced to the reques
 
 The first pass is deliberately just enough to draw and iterate. Next up:
 
-- **More primitives:** `ellipse`, `point`, `triangle`.
+- **More primitives:** `drawEllipse` has landed; `drawPoint`, `drawTriangle` are next.
 - **Fills & color:** richer color (hex/HSB), gradients, blend modes. Cosine-gradient `Palette` and perceptual `Colormap`s have landed.
 - **Typography & images:** text, image loading and drawing.
 - **Shaders:** user-supplied fragment/vertex shaders.
@@ -219,4 +219,4 @@ Ollin is **alpha and pre-1.0**, developed in the open. Practically, that means:
 - **No support guarantee.** This is built nights and weekends. Issues and discussions get read, but a response time isn't promised.
 - **macOS 14+ and a Metal-capable GPU are required**, by design. There's no Linux or Windows path.
 
-That said, contributions and ideas are genuinely welcome. The [roadmap](#roadmap) above is the best source of bite-size work; the *more primitives* line (`drawEllipse`, …) in particular maps onto small, self-contained pull requests. For anything larger, please open an issue to discuss it before sending a big change.
+That said, contributions and ideas are genuinely welcome. The [roadmap](#roadmap) above is the best source of bite-size work; the *more primitives* line (`drawPoint`, `drawTriangle`, …) in particular maps onto small, self-contained pull requests. For anything larger, please open an issue to discuss it before sending a big change.

@@ -11,7 +11,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 ### Contents
 
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight)
-- **Shapes:** [drawCircle](#circle), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon)
+- **Shapes:** [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
@@ -74,6 +74,18 @@ A circle, by scalar center (positional `x, y, radius`) or a `Vector2` `center:`.
 ```swift
 drawCircle(width / 2, height / 2, 120)
 drawCircle(center: Vector2(200, 200), radius: 60)
+```
+
+<a name="ellipse"></a>
+
+#### `drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double)`
+#### `drawEllipse(center: Vector2, rx: Double, ry: Double)`
+
+An ellipse, by scalar center (positional `x, y, rx, ry`) or a `Vector2` `center:`. As with `drawCircle`, the size is given as *radii* (`rx`, `ry`), not diameters — equal radii draw a circle.
+
+```swift
+drawEllipse(width / 2, height / 2, 160, 90)
+drawEllipse(center: Vector2(200, 200), rx: 60, ry: 90)
 ```
 
 <a name="rect"></a>

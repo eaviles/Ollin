@@ -124,6 +124,11 @@ let package = Package(
             path: "Examples/Motion/FlowField"
         ),
         .executableTarget(
+            name: "Example-EllipseField",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/EllipseField"
+        ),
+        .executableTarget(
             name: "Example-Gaussian",
             dependencies: ["Ollin"],
             path: "Examples/Randomness/Gaussian"

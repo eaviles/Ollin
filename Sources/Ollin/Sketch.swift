@@ -175,6 +175,12 @@ open class Sketch {
     public func drawCircle(center: Vector2, radius: Double) {
         drawer.drawCircle(center.x, center.y, radius)
     }
+    public func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double) {
+        drawer.drawEllipse(x, y, rx, ry)
+    }
+    public func drawEllipse(center: Vector2, rx: Double, ry: Double) {
+        drawer.drawEllipse(center.x, center.y, rx, ry)
+    }
     public func drawPolyline(_ points: [Vector2]) { drawer.drawPolyline(points) }
     public func drawPolygon(_ points: [Vector2]) { drawer.drawPolygon(points) }
     public func drawRect(_ rectangle: Rectangle) { drawer.drawRect(rectangle) }
