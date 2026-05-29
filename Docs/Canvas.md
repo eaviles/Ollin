@@ -69,10 +69,17 @@ strokeWeight(2 * scale)
 | `.vertical1080` | 1080 × 1920 | 9:16 | full-screen vertical: stories, reels, TikTok, Shorts |
 | `.portrait1080` | 1080 × 1350 | 4:5 | the portrait feed crop (e.g. Instagram) |
 
-The presets are ordinary `CGSize` values, so any custom resolution works too:
+To give a sketch a custom size, override `canvasSize` with any `CGSize`:
 
 ```swift
-override var canvasSize: CGSize { CGSize(width: 1000, height: 1000) }   // a custom 1000×1000 canvas
+final class MySketch: Sketch {
+    override var canvasSize: CGSize { CGSize(width: 1000, height: 1000) }   // a custom 1000×1000 canvas
+
+    override func draw() {
+        background(.white)
+        drawCircle(width / 2, height / 2, 300)
+    }
+}
 ```
 
 Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine.
