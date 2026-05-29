@@ -77,6 +77,19 @@ facade the only path to a feature.**
   `withState { }`; the bare pair is the escape hatch. Combined (not split into
   transform vs style) by design; a split push/pop can come later as `Drawer`-level
   methods.
+- **Deprecation path is a 1.0 gate.** Pre-1.0 the public API churns freely with no
+  shims (the README disclaims stability) — there are no external sketches to protect
+  yet, so renames like the recent noun→verb (`circle`→`drawCircle`) and
+  `push`/`pop`/`isolated`→`pushState`/`popState`/`withState` ship unshimmed. *Before*
+  1.0, though, stand up the migration discipline that holds from 1.0 on: every public
+  rename/removal ships an `@available(*, deprecated, renamed: "…")` shim that forwards
+  to the new API, so Xcode offers a one-click fix-it. Gotchas to bake in: use the
+  *full selector* in `renamed:` when labels or arity differ
+  (`@available(*, deprecated, renamed: "drawCircle(_:_:_:)")`, not just `"drawCircle"`);
+  keep the deprecated members together (a `Deprecations.swift`) so they're easy to
+  audit and drop after a grace cycle; and have the shim *forward* to the new API
+  rather than duplicate it. This is a must-do gate, not a nice-to-have — the 1.0
+  stabilization pass is where the renames done freely during pre-1.0 get their shims.
 
 ## Sourcing & attribution (load-bearing — it's the public face)
 
