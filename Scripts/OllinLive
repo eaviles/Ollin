@@ -1,0 +1,28 @@
+#!/bin/zsh
+#
+# Scripts/OllinLive — run a sketch with live reload, release by default.
+#
+#   Scripts/OllinLive Examples/Motion/ArcField/Sketch.swift
+#   Scripts/OllinLive --debug Examples/Motion/ArcField/Sketch.swift
+#
+# Opens the sketch in a window, then recompiles and hot-swaps it on every save
+# (and live-reloads Shaders.metal when run from the repo). Defaults to a release
+# build so the framework's tessellation runs at full speed while you tweak;
+# hot-reloads stay fast because only the sketch file recompiles, not the host.
+# Pass --debug for a debug host (faster first build, slower runtime).
+#
+# Run from the repo root so the sketch path resolves and swift run finds the
+# package.
+
+config="release"
+if [[ "$1" == "--debug" ]]; then
+    config="debug"
+    shift
+fi
+
+if [[ -z "$1" ]]; then
+    echo "usage: Scripts/OllinLive [--debug] <path/to/Sketch.swift>" >&2
+    exit 2
+fi
+
+exec swift run -c "$config" OllinLive "$@"
