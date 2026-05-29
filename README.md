@@ -132,12 +132,15 @@ Coordinates use a top-left origin with y increasing downward, the same as p5, Pr
 ## How it works (one paragraph)
 
 `Sketch.draw()` calls the bare drawing functions, which forward to a `Drawer`
-state machine. The `Drawer` tessellates each primitive into triangles in
-sketch-space points (a circle outline becomes a triangle-strip annulus). Once a
-frame, `MetalRenderer` uploads those triangles, clears to the background color,
-and issues a single `drawPrimitives` call; a vertex shader maps points to clip
-space (flipping Y) and 4× MSAA on the `MTKView` gives the anti-aliased edge.
-The renderer is heavily commented because you'll be extending it.
+state machine. Most primitives (rects, lines, polygons, arcs) are tessellated
+into triangles in sketch-space points; circles and ellipses instead take a
+signed-distance-field path — one quad each, with fill, stroke, and
+anti-aliasing computed analytically in the fragment shader, so thousands of them
+stay cheap. The `Drawer` records both into call-ordered batches; once a frame,
+`MetalRenderer` uploads them and issues a draw per batch (the triangle pipeline,
+or the instanced-SDF one), so shapes composite in the order you drew them. A
+vertex shader maps points to clip space (flipping Y), and 4× MSAA covers the
+triangle path. The renderer is heavily commented because you'll be extending it.
 
 ## Exporting frames
 

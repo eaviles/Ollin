@@ -13,6 +13,38 @@ struct OllinVertex {
     var color: SIMD4<Float>      // straight (non-premultiplied) RGBA, 0...1
 }
 
+/// One circle/ellipse, drawn as a single instanced quad whose fragment computes
+/// fill + stroke + anti-aliasing from a signed-distance field — no CPU
+/// tessellation. The renderer draws a whole batch of these in one
+/// `drawPrimitives(instanceCount:)`.
+///
+/// The memory layout must match `SDFInstance` in `Shaders.metal` (stride 112):
+/// a `float3x3` (48 bytes, three 16-byte columns) followed by the rest under
+/// simd alignment. Keep them in sync if you add fields.
+struct SDFInstance {
+    var transform: matrix_float3x3   // local sketch space -> sketch space (the CTM)
+    var center: SIMD2<Float>
+    var radii: SIMD2<Float>          // (rx, ry); circle is rx == ry
+    var fillColor: SIMD4<Float>      // straight RGBA; alpha 0 = no fill
+    var strokeColor: SIMD4<Float>    // straight RGBA; alpha 0 = no stroke
+    var strokeWidth: Float           // points; 0 = no stroke
+}
+
+/// Which pipeline a run of recorded geometry needs. Primitives are recorded in
+/// call order; a `Batch` starts wherever the kind changes, so SDF shapes and
+/// tessellated triangles still composite front-to-back in the order the sketch
+/// drew them (a later shape paints over an earlier one).
+enum GeometryKind {
+    case triangles   // tessellated fills/strokes in `vertices`
+    case sdf         // instanced circles/ellipses in `sdfInstances`
+}
+
+struct GeometryBatch {
+    var kind: GeometryKind
+    var vertexStart: Int     // first vertex (triangle batches)
+    var instanceStart: Int   // first instance (sdf batches)
+}
+
 /// The drawing state machine and per-frame geometry recorder.
 ///
 /// `Drawer` is a state machine: you set *state* (fill, stroke, weight,
@@ -34,6 +66,23 @@ final class Drawer {
     // MARK: Per-frame geometry (reset every frame)
 
     private(set) var vertices: [OllinVertex] = []
+
+    /// Instanced circles/ellipses recorded this frame (see `SDFInstance`).
+    private(set) var sdfInstances: [SDFInstance] = []
+
+    /// Recorded geometry split into call-ordered runs, so triangles and SDF
+    /// shapes composite in draw order rather than in two unordered passes.
+    private(set) var batches: [GeometryBatch] = []
+    private var currentKind: GeometryKind?
+
+    /// Open a new batch when the geometry kind changes; a no-op while the kind
+    /// is unchanged, so it's cheap to call per primitive.
+    private func ensureBatch(_ kind: GeometryKind) {
+        guard currentKind != kind else { return }
+        currentKind = kind
+        batches.append(GeometryBatch(kind: kind, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count))
+    }
 
     /// Current affine transform (2D homogeneous), applied to every emitted
     /// vertex. Reset to identity each frame.
@@ -63,6 +112,9 @@ final class Drawer {
     func background(_ color: Color) {
         backgroundColor = color
         vertices.removeAll(keepingCapacity: true)
+        sdfInstances.removeAll(keepingCapacity: true)
+        batches.removeAll(keepingCapacity: true)
+        currentKind = nil
     }
 
     func fill(_ color: Color) { fillColor = color }
@@ -77,6 +129,9 @@ final class Drawer {
     /// by the runner before `Sketch.draw()`.
     func beginFrame() {
         vertices.removeAll(keepingCapacity: true)
+        sdfInstances.removeAll(keepingCapacity: true)
+        batches.removeAll(keepingCapacity: true)
+        currentKind = nil
         transform = matrix_identity_float3x3
         transformIsIdentity = true
         stateStack.removeAll(keepingCapacity: true)
@@ -123,39 +178,40 @@ final class Drawer {
 
     /// A circle centered at `(x, y)` with the given `radius` (points).
     ///
-    /// If a fill is set, the disk is emitted as a triangle fan. If a stroke is
-    /// set, the outline is emitted as a triangle-strip annulus (a ring of width
-    /// `strokeWeight`). Both go through the same solid-color pipeline; the
-    /// MTKView's 4× MSAA gives us the anti-aliased edge for free.
+    /// Recorded as a single SDF instance, not tessellated: the fragment shader
+    /// computes fill, stroke (width `strokeWeight`), and anti-aliasing
+    /// analytically. Crisp at any size and effectively free per circle, which is
+    /// what makes thousands of them cheap.
     func drawCircle(_ x: Double, _ y: Double, _ radius: Double) {
         guard radius > 0 else { return }
-        let segments = circleSegments(for: radius)
-        if let fill = fillColor {
-            appendDisk(cx: x, cy: y, radius: radius, segments: segments, color: fill)
-        }
-        if let stroke = strokeColor, strokeWidth > 0 {
-            appendRing(cx: x, cy: y, radius: radius, weight: strokeWidth,
-                       segments: segments, color: stroke)
-        }
+        appendSDF(center: Vector2(x, y), rx: radius, ry: radius)
     }
 
     /// An axis-aligned ellipse centered at `(x, y)` with horizontal radius `rx`
     /// and vertical radius `ry` (points). Like `drawCircle`, the arguments are
     /// *radii*, not diameters — `drawEllipse(x, y, r, r)` is a circle.
     ///
-    /// A fill is emitted as a triangle fan; a stroke as a uniform-width outline
-    /// whose offset follows the ellipse's true normal (so the ring keeps an even
-    /// thickness even when squashed), both through the solid-color pipeline.
+    /// Recorded as a single SDF instance (see `drawCircle`); fill and a
+    /// uniform-width stroke are derived analytically in the fragment shader.
     func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double) {
         guard rx > 0, ry > 0 else { return }
-        let segments = circleSegments(for: max(rx, ry))
-        if let fill = fillColor {
-            appendEllipseDisk(cx: x, cy: y, rx: rx, ry: ry, segments: segments, color: fill)
-        }
-        if let stroke = strokeColor, strokeWidth > 0 {
-            appendEllipseRing(cx: x, cy: y, rx: rx, ry: ry, weight: strokeWidth,
-                              segments: segments, color: stroke)
-        }
+        appendSDF(center: Vector2(x, y), rx: rx, ry: ry)
+    }
+
+    /// Record one circle/ellipse as an SDF instance, carrying the current fill,
+    /// stroke, and transform. A `nil` fill/stroke becomes a zero-alpha color the
+    /// shader treats as "skip". No-op when there's nothing to draw.
+    private func appendSDF(center: Vector2, rx: Double, ry: Double) {
+        let hasStroke = strokeColor != nil && strokeWidth > 0
+        guard fillColor != nil || hasStroke else { return }
+        ensureBatch(.sdf)
+        sdfInstances.append(SDFInstance(
+            transform: transform,
+            center: center.simd2,
+            radii: SIMD2<Float>(Float(rx), Float(ry)),
+            fillColor: fillColor?.simd4 ?? SIMD4<Float>(repeating: 0),
+            strokeColor: hasStroke ? strokeColor!.simd4 : SIMD4<Float>(repeating: 0),
+            strokeWidth: hasStroke ? Float(strokeWidth) : 0))
     }
 
     /// An elliptical arc centered at `(x, y)` with radii `rx`/`ry`, sweeping from
@@ -286,9 +342,11 @@ final class Drawer {
 
     // MARK: Tessellation helpers
 
-    /// Append one tessellated vertex, shifted by the current translation. Every
-    /// primitive funnels through here, so the transform applies uniformly.
+    /// Append one tessellated vertex, transformed by the current CTM. Every
+    /// triangle primitive funnels through here, so the transform applies
+    /// uniformly and the vertex joins the current triangle batch.
     private func emit(_ position: SIMD2<Float>, color: SIMD4<Float>) {
+        ensureBatch(.triangles)
         guard !transformIsIdentity else {
             vertices.append(OllinVertex(position: position, color: color))
             return
@@ -305,110 +363,6 @@ final class Drawer {
         let targetEdgeLength = 8.0
         let circumference = 2.0 * .pi * radius
         return max(24, Int((circumference / targetEdgeLength).rounded(.up)))
-    }
-
-    private func point(cx: Double, cy: Double, radius: Double, angle: Double) -> SIMD2<Float> {
-        SIMD2<Float>(Float(cx + cos(angle) * radius),
-                     Float(cy + sin(angle) * radius))
-    }
-
-    private func ellipsePoint(cx: Double, cy: Double, rx: Double, ry: Double, angle: Double) -> SIMD2<Float> {
-        SIMD2<Float>(Float(cx + cos(angle) * rx),
-                     Float(cy + sin(angle) * ry))
-    }
-
-    /// Filled disk as a triangle fan, expanded into explicit triangles so the
-    /// whole frame can be one `.triangle` draw call.
-    private func appendDisk(cx: Double, cy: Double, radius: Double,
-                            segments: Int, color: Color) {
-        let c = color.simd4
-        let center = SIMD2<Float>(Float(cx), Float(cy))
-        for i in 0..<segments {
-            let a0 = Double(i)     / Double(segments) * 2.0 * .pi
-            let a1 = Double(i + 1) / Double(segments) * 2.0 * .pi
-            let p0 = point(cx: cx, cy: cy, radius: radius, angle: a0)
-            let p1 = point(cx: cx, cy: cy, radius: radius, angle: a1)
-            emit(center, color: c)
-            emit(p0, color: c)
-            emit(p1, color: c)
-        }
-    }
-
-    /// Stroked outline as an annulus (ring) between an inner and outer radius,
-    /// expanded into triangles. The stroke straddles the geometric radius.
-    private func appendRing(cx: Double, cy: Double, radius: Double, weight: Double,
-                            segments: Int, color: Color) {
-        let c = color.simd4
-        let inner = max(0, radius - weight / 2)
-        let outer = radius + weight / 2
-        for i in 0..<segments {
-            let a0 = Double(i)     / Double(segments) * 2.0 * .pi
-            let a1 = Double(i + 1) / Double(segments) * 2.0 * .pi
-            let i0 = point(cx: cx, cy: cy, radius: inner, angle: a0)
-            let o0 = point(cx: cx, cy: cy, radius: outer, angle: a0)
-            let i1 = point(cx: cx, cy: cy, radius: inner, angle: a1)
-            let o1 = point(cx: cx, cy: cy, radius: outer, angle: a1)
-            // Quad (i0, o0, o1, i1) -> two triangles.
-            emit(i0, color: c)
-            emit(o0, color: c)
-            emit(o1, color: c)
-            emit(i0, color: c)
-            emit(o1, color: c)
-            emit(i1, color: c)
-        }
-    }
-
-    /// Filled ellipse as a triangle fan, expanded into explicit triangles. Same
-    /// shape as `appendDisk` with separate horizontal/vertical radii.
-    private func appendEllipseDisk(cx: Double, cy: Double, rx: Double, ry: Double,
-                                   segments: Int, color: Color) {
-        let c = color.simd4
-        let center = SIMD2<Float>(Float(cx), Float(cy))
-        for i in 0..<segments {
-            let a0 = Double(i)     / Double(segments) * 2.0 * .pi
-            let a1 = Double(i + 1) / Double(segments) * 2.0 * .pi
-            let p0 = ellipsePoint(cx: cx, cy: cy, rx: rx, ry: ry, angle: a0)
-            let p1 = ellipsePoint(cx: cx, cy: cy, rx: rx, ry: ry, angle: a1)
-            emit(center, color: c)
-            emit(p0, color: c)
-            emit(p1, color: c)
-        }
-    }
-
-    /// Stroked ellipse outline as a triangle strip between an inner and outer
-    /// boundary. Unlike a circle's radial offset, each boundary point is pushed
-    /// along the ellipse's outward normal `(ry·cosθ, rx·sinθ)`, so the stroke
-    /// keeps a uniform width instead of bunching at the flatter ends.
-    private func appendEllipseRing(cx: Double, cy: Double, rx: Double, ry: Double,
-                                   weight: Double, segments: Int, color: Color) {
-        let c = color.simd4
-        let half = weight / 2
-
-        func boundary(_ a: Double) -> (inner: SIMD2<Float>, outer: SIMD2<Float>) {
-            let px = cx + cos(a) * rx
-            let py = cy + sin(a) * ry
-            var nx = cos(a) * ry
-            var ny = sin(a) * rx
-            let len = (nx * nx + ny * ny).squareRoot()
-            if len > 0 { nx /= len; ny /= len }
-            let inner = SIMD2<Float>(Float(px - nx * half), Float(py - ny * half))
-            let outer = SIMD2<Float>(Float(px + nx * half), Float(py + ny * half))
-            return (inner, outer)
-        }
-
-        for i in 0..<segments {
-            let a0 = Double(i)     / Double(segments) * 2.0 * .pi
-            let a1 = Double(i + 1) / Double(segments) * 2.0 * .pi
-            let (i0, o0) = boundary(a0)
-            let (i1, o1) = boundary(a1)
-            // Quad (i0, o0, o1, i1) -> two triangles.
-            emit(i0, color: c)
-            emit(o0, color: c)
-            emit(o1, color: c)
-            emit(i0, color: c)
-            emit(o1, color: c)
-            emit(i1, color: c)
-        }
     }
 
     /// One straight stroke segment as a rectangle (two triangles) of width

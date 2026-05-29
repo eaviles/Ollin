@@ -129,6 +129,11 @@ let package = Package(
             path: "Examples/Motion/EllipseField"
         ),
         .executableTarget(
+            name: "Example-Myriad",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/Myriad"
+        ),
+        .executableTarget(
             name: "Example-ArcField",
             dependencies: ["Ollin"],
             path: "Examples/Motion/ArcField"

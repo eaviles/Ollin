@@ -39,7 +39,8 @@ final class MetalRenderer {
     /// circles, textured quads, or a new blend mode each become a new case
     /// here (plus a branch in `makePipeline(_:)`) — not more code in `init`.
     private enum Pipeline: Hashable {
-        case solid
+        case solid   // tessellated triangles (rects, lines, polygons, arcs)
+        case sdf     // instanced SDF quads (circles, ellipses)
     }
 
     /// Mirrors `Uniforms` in Shaders.metal.
@@ -66,6 +67,10 @@ final class MetalRenderer {
     private static let maxFramesInFlight = 3
     private let frameBoundary = DispatchSemaphore(value: MetalRenderer.maxFramesInFlight)
     private var vertexBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    /// Parallel ring for SDF instance data, advanced with `frameIndex` alongside
+    /// `vertexBuffers` (one semaphore gates both — they're written and read
+    /// together each frame).
+    private var sdfBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     private var frameIndex = 0
 
     /// A separate vertex buffer for off-screen `image(of:)` renders, so headless
@@ -74,6 +79,7 @@ final class MetalRenderer {
     /// enough — no ring needed — but it must not be a ring slot the live loop
     /// could still be reading for an in-flight frame.
     private var exportBuffer: MTLBuffer?
+    private var sdfExportBuffer: MTLBuffer?
 
     init(device: MTLDevice, pixelFormat: MTLPixelFormat, sampleCount: Int) throws {
         self.device = device
@@ -87,10 +93,11 @@ final class MetalRenderer {
 
         self.library = try MetalRenderer.loadLibrary(device: device)
 
-        // Build the pipeline(s) we know we need now; `pipeline(_:)` builds any
+        // Build the pipelines we know we need now; `pipeline(_:)` builds any
         // added later on first use. Building here surfaces shader errors at
         // startup rather than mid-frame.
         _ = try pipeline(.solid)
+        _ = try pipeline(.sdf)
     }
 
     /// Encode and present one frame's worth of recorded geometry.
@@ -118,7 +125,8 @@ final class MetalRenderer {
         commandBuffer.addCompletedHandler { [frameBoundary] _ in frameBoundary.signal() }
 
         encode(drawer, viewport: viewport, into: encoder,
-               buffer: vertexBuffer(at: frameIndex, for: drawer.vertices.count))
+               triangleBuffer: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
+               sdfBuffer: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count))
         encoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
@@ -162,7 +170,8 @@ final class MetalRenderer {
               let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
         encode(drawer, viewport: viewport, into: encoder,
-               buffer: exportVertexBuffer(for: drawer.vertices.count))
+               triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
+               sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count))
         encoder.endEncoding()
 
         // Copy the resolved texture into a CPU-readable buffer (works on every
@@ -189,20 +198,55 @@ final class MetalRenderer {
                        shouldInterpolate: false, intent: .defaultIntent)
     }
 
-    /// Upload `drawer`'s vertices and issue the solid-triangle draw into
-    /// `encoder`. Shared by the on-screen and off-screen (export) paths.
+    /// Upload `drawer`'s recorded geometry and issue its draws into `encoder`,
+    /// one per batch in call order so triangles and SDF shapes composite
+    /// front-to-back as the sketch drew them. Shared by the on-screen and
+    /// off-screen (export) paths.
     private func encode(_ drawer: Drawer, viewport: SIMD2<Float>,
-                        into encoder: MTLRenderCommandEncoder, buffer: MTLBuffer?) {
+                        into encoder: MTLRenderCommandEncoder,
+                        triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?) {
         let vertices = drawer.vertices
-        guard !vertices.isEmpty, let buffer, let solid = pipelines[.solid] else { return }
-        vertices.withUnsafeBytes { raw in
-            buffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+        let instances = drawer.sdfInstances
+        let batches = drawer.batches
+        guard !batches.isEmpty,
+              let solid = pipelines[.solid], let sdf = pipelines[.sdf] else { return }
+
+        if !vertices.isEmpty, let triangleBuffer {
+            vertices.withUnsafeBytes { raw in
+                triangleBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
         }
+        if !instances.isEmpty, let sdfBuffer {
+            instances.withUnsafeBytes { raw in
+                sdfBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
+
         var uniforms = Uniforms(viewport: viewport)
-        encoder.setRenderPipelineState(solid)
-        encoder.setVertexBuffer(buffer, offset: 0, index: 0)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+
+        let vertexStride = MemoryLayout<OllinVertex>.stride
+        let instanceStride = MemoryLayout<SDFInstance>.stride
+        for i in batches.indices {
+            let batch = batches[i]
+            let next = i + 1 < batches.count ? batches[i + 1] : nil
+            switch batch.kind {
+            case .triangles:
+                let end = next?.vertexStart ?? vertices.count
+                let count = end - batch.vertexStart
+                guard count > 0, let triangleBuffer else { continue }
+                encoder.setRenderPipelineState(solid)
+                encoder.setVertexBuffer(triangleBuffer, offset: batch.vertexStart * vertexStride, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+            case .sdf:
+                let end = next?.instanceStart ?? instances.count
+                let count = end - batch.instanceStart
+                guard count > 0, let sdfBuffer else { continue }
+                encoder.setRenderPipelineState(sdf)
+                encoder.setVertexBuffer(sdfBuffer, offset: batch.instanceStart * instanceStride, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
+            }
+        }
     }
 
     // MARK: Pipelines
@@ -242,15 +286,22 @@ final class MetalRenderer {
     private func makePipeline(_ kind: Pipeline, using library: MTLLibrary) throws -> MTLRenderPipelineState {
         switch kind {
         case .solid:
-            return try makeSolidPipeline(using: library)
+            // Solid-color triangles: rects, lines, polygons, arcs.
+            return try makePipeline(vertex: "ollin_vertex", fragment: "ollin_fragment", using: library)
+        case .sdf:
+            // Instanced SDF quads: circles and ellipses. The fragment returns
+            // straight-alpha color, so it shares the solid pipeline's blend.
+            return try makePipeline(vertex: "ollin_sdf_vertex", fragment: "ollin_sdf_fragment", using: library)
         }
     }
 
-    /// Solid-color 2D triangles with standard source-over alpha blending. Fills
-    /// (triangle fans) and strokes (triangle-strip annuli) both go through this.
-    private func makeSolidPipeline(using library: MTLLibrary) throws -> MTLRenderPipelineState {
-        guard let vertexFunction = library.makeFunction(name: "ollin_vertex"),
-              let fragmentFunction = library.makeFunction(name: "ollin_fragment") else {
+    /// Build a render pipeline from the named vertex/fragment functions with the
+    /// shared config: the view's MSAA sample count, the target pixel format, and
+    /// standard source-over alpha blending so translucent colors composite.
+    private func makePipeline(vertex: String, fragment: String,
+                              using library: MTLLibrary) throws -> MTLRenderPipelineState {
+        guard let vertexFunction = library.makeFunction(name: vertex),
+              let fragmentFunction = library.makeFunction(name: fragment) else {
             throw RendererError.shaderFunctions
         }
 
@@ -262,7 +313,6 @@ final class MetalRenderer {
 
         let attachment = descriptor.colorAttachments[0]!
         attachment.pixelFormat = pixelFormat
-        // Standard source-over alpha blending so translucent colors composite.
         attachment.isBlendingEnabled = true
         attachment.rgbBlendOperation = .add
         attachment.alphaBlendOperation = .add
@@ -297,6 +347,26 @@ final class MetalRenderer {
         if let buffer = exportBuffer, buffer.length >= needed { return buffer }
         exportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
         return exportBuffer
+    }
+
+    /// Return the SDF instance ring buffer at `index`, large enough for `count`
+    /// instances, grown on demand. Mirrors `vertexBuffer(at:for:)`.
+    private func sdfBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFInstance>.stride
+        if let buffer = sdfBuffers[index], buffer.length >= needed {
+            return buffer
+        }
+        let capacity = needed + needed / 2
+        sdfBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
+        return sdfBuffers[index]
+    }
+
+    /// The off-screen export buffer for SDF instances, grown on demand.
+    private func exportSDFBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFInstance>.stride
+        if let buffer = sdfExportBuffer, buffer.length >= needed { return buffer }
+        sdfExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdfExportBuffer
     }
 
     /// Load the shader library for `Shaders.metal`.

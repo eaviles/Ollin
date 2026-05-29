@@ -215,23 +215,35 @@ pipeline, not rewrites*:
   this is the "10,000 circles at 60fps" path. It's a new `Pipeline` case
   (`.instancedCircle`) plus a per-instance buffer — the cache seam already
   exists for exactly this.
-- **SDF circles trade triangles for a fragment-shader formula — better quality
-  *and* often faster.** One quad per circle; compute coverage from the distance
-  to the center in the fragment shader. Crisp at any size, with fill + stroke +
-  anti-aliasing handled analytically (no reliance on MSAA). It doesn't
-  generalize to arbitrary polygons, so treat it as a circle/ellipse/rounded-rect
-  specialization, not a replacement for general fills. A worked reference for
-  this exact technique — distance-to-center, analytic edge AA, a separate edge
-  color for stroke — exists in AsyncGraphics's circle fragment shader (MIT).
-  Study the approach; write our own, don't copy it.
-- **MSAA caps anti-aliasing at 4×.** Fine for now; SDF coverage (above) is the
-  upgrade path when thin strokes or large zoom reveal the limit.
+- **SDF circles/ellipses — *shipped*.** `drawCircle`/`drawEllipse` are no longer
+  tessellated: each is one instanced quad (`SDFInstance`, the `.sdf` `Pipeline`
+  case), and `ollin_sdf_fragment` computes fill + stroke + anti-aliasing
+  analytically from an approximate ellipse SDF (exact for a circle). Per-shape CPU
+  cost is one struct write — the `Myriad` example draws 8,100 circles at ~1,100 fps
+  CPU ceiling. Each instance carries its own CTM (a `float3x3`), so the fragment
+  evaluates the SDF in local space and AA stays ~1px under any transform
+  (`fwidth`); the quad covers radii + ½ stroke + a small margin. (Approach studied
+  from AsyncGraphics's circle shader, MIT — written independently.) **The
+  load-bearing piece is draw-order preservation:** `Drawer` records geometry into
+  call-ordered `GeometryBatch`es (a run is `.triangles` or `.sdf`), so SDF shapes
+  and tessellated triangles still composite front-to-back as the sketch drew them
+  — never collapse that back into two unordered passes (it would break occlusion,
+  e.g. EllipseField's black-fill ropes). Still open: SDF for `drawArc`/rounded-rect
+  and a capsule SDF for `drawLine`; arbitrary `drawPolygon`/`drawPolyline` stay on
+  the triangle path by nature.
+- **MSAA caps anti-aliasing at 4×** for the *triangle* path. SDF shapes already
+  bypass it (analytic coverage); extend SDF to the other analytic primitives when
+  thin strokes or large zoom reveal the triangle-path limit.
 
-Seam already in place: `MetalRenderer` builds pipelines through an enum-keyed
-cache (`Pipeline` + `makePipeline(_:)`), so instanced/SDF pipelines slot in as
-new cases instead of more `init` code. Once variants multiply across blend mode
-× MSAA × pixel format, migrate that enum key to a `Hashable` descriptor struct
-(see *Cache pipelines* above) rather than enumerating the product by hand.
+Seam in place and now exercised: `MetalRenderer` builds pipelines through an
+enum-keyed cache (`Pipeline` + `makePipeline(_:)`) — `.solid` and `.sdf` today —
+so further pipelines slot in as new cases instead of more `init` code. Once
+variants multiply across blend mode × MSAA × pixel format, migrate that enum key
+to a `Hashable` descriptor struct (see *Cache pipelines* above) rather than
+enumerating the product by hand. (A third shared CPU↔GPU struct now exists —
+`OllinVertex`, `Uniforms`, `SDFInstance`, all hand-mirrored — so the shared-C-header
+migration is overdue; note the wrinkle that runtime `makeLibrary(source:)` has no
+include path for a bundled header, so the header content would need inlining.)
 
 One thing to *not* hand-roll: when vector `Shape`/`Contour` arrives (concave
 polygons, holes), use a real polygon triangulator — libtess2, the GLU
@@ -254,8 +266,11 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
 
 - **Today:** `Sketch` base class; temporal state (`frameCount`, `time`,
   `deltaTime`, `frameRate`); mouse input (`mouseX`/`mouseY`, `mousePressed()`); `Drawer` + Metal
-  renderer (solid fills, stroked outlines, 4x MSAA); shapes are `drawCircle`, `drawEllipse`, `drawArc`
-  (open/chord/pie), `drawRect`, `drawLine`, `drawPolyline` (open stroked paths), and convex `drawPolygon`; a per-frame transform stack
+  renderer (solid fills, stroked outlines, 4x MSAA) with two pipelines — a tessellated-triangle
+  path and an instanced-SDF path; shapes are `drawCircle`/`drawEllipse` (SDF: analytic fill+stroke+AA,
+  thousands cheap), `drawArc` (open/chord/pie), `drawRect`, `drawLine`, `drawPolyline` (open stroked
+  paths), and convex `drawPolygon` (all tessellated); recorded into call-ordered batches so the two
+  paths composite in draw order; a per-frame transform stack
   (`translate`/`rotate`/`scale`, scoped via `withState { }`); `Vector2` and
   `Rectangle` geometry value types; `Color` value
   type with named constants (`.white`, `.black`, …) plus a cosine-gradient

@@ -375,7 +375,7 @@ public enum OllinApp {
     /// `performDraw()` (the tessellation that builds `drawer.vertices`). Prints
     /// ms/frame, vertices/frame, and the implied CPU-bound FPS ceiling, so a
     /// rendering-performance change can be measured deterministically.
-    static func benchmark(_ sketch: Sketch, frames: Int = 600, fps: Double = 60) {
+    static func benchmark(_ sketch: Sketch, frames: Int = 600, fps: Double = 60, gpu: Bool = false) {
         let n = max(1, frames)
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
@@ -384,18 +384,46 @@ public enum OllinApp {
         sketch.advance(time: 0, deltaTime: 1 / fps, frameRate: fps)
         sketch.performDraw()
 
+        // Optional end-to-end timing: render each frame off-screen on the GPU.
+        // Conservative — it also pays per-frame MSAA texture allocation and a
+        // full readback the live path doesn't — so the real headroom is higher.
+        if gpu {
+            guard let device = MTLCreateSystemDefaultDevice() else {
+                fatalError("Ollin requires a Metal-capable GPU.")
+            }
+            guard let renderer = try? MetalRenderer(device: device, pixelFormat: .bgra8Unorm, sampleCount: 4) else {
+                fatalError("Ollin: failed to initialize the Metal renderer.")
+            }
+            let w = Int(size.width.rounded()), h = Int(size.height.rounded())
+            let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
+            _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)  // warm GPU
+
+            let start = CACurrentMediaTime()
+            for k in 1...n {
+                sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+                sketch.performDraw()
+                _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)
+            }
+            let ms = (CACurrentMediaTime() - start) / Double(n) * 1000
+            print(String(format: "Ollin bench: %d frames · %.3f ms/frame (CPU+GPU, incl. readback) · ~%.0f fps",
+                         n, ms, ms > 0 ? 1000 / ms : 0))
+            return
+        }
+
         let start = CACurrentMediaTime()
         var vertexTotal = 0
+        var instanceTotal = 0
         for k in 1...n {
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
             sketch.performDraw()
             vertexTotal += sketch.drawer.vertices.count
+            instanceTotal += sketch.drawer.sdfInstances.count
         }
         let elapsed = CACurrentMediaTime() - start
         let msPerFrame = elapsed / Double(n) * 1000
         let ceiling = msPerFrame > 0 ? 1000 / msPerFrame : 0
-        print(String(format: "Ollin bench: %d frames · %.0f verts/frame · %.3f ms/frame (CPU) · ~%.0f fps CPU ceiling",
-                     n, Double(vertexTotal) / Double(n), msPerFrame, ceiling))
+        print(String(format: "Ollin bench: %d frames · %.0f verts + %.0f sdf/frame · %.3f ms/frame (CPU) · ~%.0f fps CPU ceiling",
+                     n, Double(vertexTotal) / Double(n), Double(instanceTotal) / Double(n), msPerFrame, ceiling))
     }
 
 }
@@ -431,7 +459,7 @@ public extension Sketch {
         if let i = args.firstIndex(of: "--bench") {
             var frames = 600
             if i + 1 < args.count, let f = Int(args[i + 1]) { frames = f }
-            OllinApp.benchmark(Self(), frames: frames)
+            OllinApp.benchmark(Self(), frames: frames, gpu: args.contains("--gpu"))
             return
         }
         OllinApp.run(Self())
