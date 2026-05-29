@@ -132,11 +132,11 @@ Coordinates use a top-left origin with y increasing downward, the same as p5, Pr
 ## How it works (one paragraph)
 
 `Sketch.draw()` calls the bare drawing functions, which forward to a `Drawer`
-state machine. Most primitives (rects, lines, polygons, arcs) are tessellated
-into triangles in sketch-space points; circles and ellipses instead take a
-signed-distance-field path — one quad each, with fill, stroke, and
-anti-aliasing computed analytically in the fragment shader, so thousands of them
-stay cheap. The `Drawer` records both into call-ordered batches; once a frame,
+state machine. Circles, ellipses, rectangles, lines, and circular arcs take a
+signed-distance-field path: one quad each, with fill, stroke, and anti-aliasing
+computed analytically in the fragment shader, so thousands of them stay cheap.
+The rest (polygons, polylines, and elliptical arcs) are tessellated into
+triangles in sketch-space points. The `Drawer` records both into call-ordered batches; once a frame,
 `MetalRenderer` uploads them and issues a draw per batch (the triangle pipeline,
 or the instanced-SDF one), so shapes composite in the order you drew them. A
 vertex shader maps points to clip space (flipping Y), and 4× MSAA covers the
@@ -204,6 +204,7 @@ As with the others, this is reading for ideas and engineering approach, which is
 A few helpers lean on well-known public techniques, reimplemented in Ollin and credited here. They lean toward OPENRNDR-style ergonomics:
 
 - The cosine-gradient `Palette` uses [Inigo Quilez's palette formula](https://iquilezles.org/articles/palettes/).
+- The signed-distance fields behind circles, ellipses, rectangles, lines, and circular arcs (box, capsule, pie, and arc) come from [Inigo Quilez's 2D distance functions](https://iquilezles.org/articles/distfunctions2d/).
 - `curlNoise` follows the curl-noise method for divergence-free flow (Robert Bridson and colleagues, "Curl-Noise for Procedural Fluid Flow", 2007).
 - `randomGaussian` uses the Marsaglia polar method for normal-distributed samples.
 - The `Colormap` ramps carry the canonical public colormap data: `viridis`/`magma`/`inferno`/`plasma`/`cividis` from [matplotlib](https://matplotlib.org) (CC0), `turbo` from Google (Apache-2.0), and `rocket`/`mako` from [seaborn](https://seaborn.pydata.org) (BSD-3).

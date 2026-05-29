@@ -106,16 +106,17 @@ drawArc(width / 2, height / 2, 120, 120, start: 0, stop: .pi / 2, mode: .pie)
 
 <a name="rect"></a>
 
-#### `drawRect(_ x: Double, _ y: Double, _ width: Double, _ height: Double)`
-#### `drawRect(corner: Vector2, width: Double, height: Double)`
-#### `drawRect(center: Vector2, width: Double, height: Double)`
-#### `drawRect(_ rectangle: Rectangle)`
+#### `drawRect(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0)`
+#### `drawRect(corner: Vector2, width: Double, height: Double, cornerRadius: Double = 0)`
+#### `drawRect(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0)`
+#### `drawRect(_ rectangle: Rectangle, cornerRadius: Double = 0)`
 
-A rectangle, anchored by its top-left corner or its center (the center form matches p5's `rectMode(CENTER)`), or from a `Rectangle` value.
+A rectangle, anchored by its top-left corner or its center (the center form matches p5's `rectMode(CENTER)`), or from a `Rectangle` value. `cornerRadius` rounds the corners, clamped to half the shorter side; the default `0` is a sharp rectangle.
 
 ```swift
 drawRect(40, 40, 120, 80)                                   // top-left corner
 drawRect(center: Vector2(width / 2, height / 2), width: 200, height: 120)
+drawRect(40, 40, 120, 80, cornerRadius: 16)                 // rounded corners
 ```
 
 <a name="line"></a>
@@ -123,7 +124,7 @@ drawRect(center: Vector2(width / 2, height / 2), width: 200, height: 120)
 #### `drawLine(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double)`
 #### `drawLine(_ a: Vector2, _ b: Vector2)`
 
-A stroked line segment between two points.
+A stroked line segment between two points, with round caps at both ends.
 
 ```swift
 stroke(.black)

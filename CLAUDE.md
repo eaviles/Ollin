@@ -215,35 +215,46 @@ pipeline, not rewrites*:
   this is the "10,000 circles at 60fps" path. It's a new `Pipeline` case
   (`.instancedCircle`) plus a per-instance buffer — the cache seam already
   exists for exactly this.
-- **SDF circles/ellipses — *shipped*.** `drawCircle`/`drawEllipse` are no longer
-  tessellated: each is one instanced quad (`SDFInstance`, the `.sdf` `Pipeline`
-  case), and `ollin_sdf_fragment` computes fill + stroke + anti-aliasing
-  analytically from an approximate ellipse SDF (exact for a circle). Per-shape CPU
-  cost is one struct write — the `Myriad` example draws 8,100 circles at ~1,100 fps
-  CPU ceiling. Each instance carries its own CTM (a `float3x3`), so the fragment
-  evaluates the SDF in local space and AA stays ~1px under any transform
-  (`fwidth`); the quad covers radii + ½ stroke + a small margin. (Approach studied
-  from AsyncGraphics's circle shader, MIT — written independently.) **The
-  load-bearing piece is draw-order preservation:** `Drawer` records geometry into
-  call-ordered `GeometryBatch`es (a run is `.triangles` or `.sdf`), so SDF shapes
-  and tessellated triangles still composite front-to-back as the sketch drew them
-  — never collapse that back into two unordered passes (it would break occlusion,
-  e.g. EllipseField's black-fill ropes). Still open: SDF for `drawArc`/rounded-rect
-  and a capsule SDF for `drawLine`; arbitrary `drawPolygon`/`drawPolyline` stay on
-  the triangle path by nature.
-- **MSAA caps anti-aliasing at 4×** for the *triangle* path. SDF shapes already
-  bypass it (analytic coverage); extend SDF to the other analytic primitives when
-  thin strokes or large zoom reveal the triangle-path limit.
+- **SDF analytic primitives (circle, ellipse, rect, line, circular arc) — *shipped*.**
+  `drawCircle`/`drawEllipse`/`drawRect`/`drawLine` and circular `drawArc` are no
+  longer tessellated: each is one instanced quad (`SDFInstance`, the `.sdf`
+  `Pipeline` case). `SDFInstance` is a *tagged union* — a `shape` tag plus generic
+  `size`/`param0`/`param1`/`extra` slots — and `ollin_sdf_fragment` switches on it
+  to evaluate the matching SDF (box, capsule, pie/segment/arc), then runs a shared
+  fill + stroke + anti-aliasing tail (iq's 2D distance functions, written from the
+  technique). Per-shape CPU cost is one struct write — the `Myriad` example draws
+  8,100 circles at ~1,100 fps CPU ceiling. Each instance carries its own CTM (a
+  `float3x3`), so the fragment evaluates the SDF in local space and AA stays ~1px
+  under any transform (`fwidth`); the quad covers `size` + ½ stroke + a small
+  margin. (Circle approach studied from AsyncGraphics's circle shader, MIT —
+  written independently.) Two coverage subtleties to keep: region fills (box,
+  ellipse, pie, chord) use an **inside-biased** ramp (full to the geometric edge,
+  AA halo only outside) so abutting fills — tiled grids, gradient bands — leave no
+  seam; the **capsule/line** uses a *centered* ramp so a line stays ~strokeWidth
+  wide. **The load-bearing piece is draw-order preservation:** `Drawer` records
+  geometry into call-ordered `GeometryBatch`es (a run is `.triangles` or `.sdf`),
+  so SDF shapes and tessellated triangles still composite front-to-back as the
+  sketch drew them — never collapse that back into two unordered passes (it would
+  break occlusion, e.g. EllipseField's black-fill ropes). Still on the triangle
+  path by nature: arbitrary `drawPolygon`/`drawPolyline`, and *elliptical* arcs +
+  full-turn arcs (`drawArc` runtime-branches `rx == ry` and sweep `< τ` to SDF,
+  else tessellates).
+- **MSAA caps anti-aliasing at 4×** for the *triangle* path. The SDF primitives
+  already bypass it (analytic coverage); the remaining triangle-path shapes
+  (polygon/polyline, elliptical/full arcs) are where thin strokes or large zoom
+  can still reveal that limit.
 
 Seam in place and now exercised: `MetalRenderer` builds pipelines through an
 enum-keyed cache (`Pipeline` + `makePipeline(_:)`) — `.solid` and `.sdf` today —
 so further pipelines slot in as new cases instead of more `init` code. Once
 variants multiply across blend mode × MSAA × pixel format, migrate that enum key
 to a `Hashable` descriptor struct (see *Cache pipelines* above) rather than
-enumerating the product by hand. (A third shared CPU↔GPU struct now exists —
-`OllinVertex`, `Uniforms`, `SDFInstance`, all hand-mirrored — so the shared-C-header
-migration is overdue; note the wrinkle that runtime `makeLibrary(source:)` has no
-include path for a bundled header, so the header content would need inlining.)
+enumerating the product by hand. (Three shared CPU↔GPU structs now exist —
+`OllinVertex`, `Uniforms`, and `SDFInstance` (now a stride-128 *tagged union* with
+several generic slots), all hand-mirrored field-by-field — so the shared-C-header
+migration is overdue and the growing `SDFInstance` makes it riskier to defer; note
+the wrinkle that runtime `makeLibrary(source:)` has no include path for a bundled
+header, so the header content would need inlining.)
 
 One thing to *not* hand-roll: when vector `Shape`/`Contour` arrives (concave
 polygons, holes), use a real polygon triangulator — libtess2, the GLU
@@ -267,10 +278,11 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
 - **Today:** `Sketch` base class; temporal state (`frameCount`, `time`,
   `deltaTime`, `frameRate`); mouse input (`mouseX`/`mouseY`, `mousePressed()`); `Drawer` + Metal
   renderer (solid fills, stroked outlines, 4x MSAA) with two pipelines — a tessellated-triangle
-  path and an instanced-SDF path; shapes are `drawCircle`/`drawEllipse` (SDF: analytic fill+stroke+AA,
-  thousands cheap), `drawArc` (open/chord/pie), `drawRect`, `drawLine`, `drawPolyline` (open stroked
-  paths), and convex `drawPolygon` (all tessellated); recorded into call-ordered batches so the two
-  paths composite in draw order; a per-frame transform stack
+  path and an instanced-SDF path; the SDF path (analytic fill+stroke+AA, thousands cheap) covers
+  `drawCircle`/`drawEllipse`, `drawRect` (with `cornerRadius`), `drawLine` (round-capped capsule),
+  and *circular* `drawArc` (open/chord/pie); the triangle path covers convex `drawPolygon`,
+  `drawPolyline` (open stroked paths), and *elliptical*/full-turn arcs (`drawArc` branches on
+  `rx == ry`); recorded into call-ordered batches so the two paths composite in draw order; a per-frame transform stack
   (`translate`/`rotate`/`scale`, scoped via `withState { }`); `Vector2` and
   `Rectangle` geometry value types; `Color` value
   type with named constants (`.white`, `.black`, …) plus a cosine-gradient
@@ -283,17 +295,18 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   live reload (`swift run OllinLive <file>`) that recompiles + hot-swaps a sketch
   on save and live-reloads `Shaders.metal` (with a `--keep-clock` flag and an
   `onReload()` lifecycle hook; see the live-reload section).
-- **Next, in priority order:** finish Tier 2 by extending the SDF path to the
-  remaining analytic primitives — `drawArc` (SDF arc/pie), rounded-rect, and a
-  capsule SDF for `drawLine` — so they get the same crisp-AA, thousands-cheap
-  treatment circles/ellipses now have (the `.sdf` pipeline + batch ordering are
-  in place; see [Rendering performance](#rendering-performance-roadmap)); more
-  primitives (`drawPoint`, `drawTriangle`; `drawCircle`/`drawEllipse`/`drawArc`
-  already landed); the vector `Shape`/`Contour` type — concave fills via a real
-  triangulator (convex `drawPolygon` already landed); stroke joins/caps for fat
-  lines; the extension/lifecycle seam (load-bearing — unblocks snapshot testing,
-  the FPS-overlay HUD, layered effects, and frame-sequence export at once);
-  easing/animation helpers. Also now due: the shared-C-header migration for the
+- **Next, in priority order:** Tier 2 is done — the SDF path now covers circle,
+  ellipse, rect (rounded), line (capsule), and circular arc (only arbitrary
+  `drawPolygon`/`drawPolyline` and *elliptical*/full arcs stay tessellated, by
+  nature). Next: more primitives (`drawPoint`, `drawTriangle`;
+  `drawCircle`/`drawEllipse`/`drawArc`/`drawRect`/`drawLine` already landed); the
+  vector `Shape`/`Contour` type — concave fills via a real triangulator (convex
+  `drawPolygon` already landed); stroke joins/caps for fat lines (per-segment
+  capsules for `drawPolyline`, building on the line capsule); the
+  extension/lifecycle seam (load-bearing — unblocks snapshot testing, the
+  FPS-overlay HUD, layered effects, and frame-sequence export at once);
+  easing/animation helpers. Also now due (and riskier the longer it waits, since
+  `SDFInstance` is a growing tagged union): the shared-C-header migration for the
   CPU↔GPU structs (`OllinVertex`/`Uniforms`/`SDFInstance` — three now,
   hand-mirrored) and CI compile-testing for the examples. For easing, a clean
   shape to borrow is a property wrapper holding a value + target that eases
