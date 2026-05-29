@@ -351,17 +351,12 @@ final class Drawer {
     /// color and weight.
     ///
     /// Open (the last point is not joined back to the first) and stroke-only —
-    /// fills belong to closed shapes (a future `Shape`/`Contour`). Segments are
-    /// butt-jointed, so at the default thin weights the joins look seamless;
-    /// fat strokes will want real joins later. Needs at least two points and a
-    /// stroke to draw anything.
+    /// fills belong to closed shapes (`drawShape`). Corners are mitered (bevel
+    /// past the miter limit), so fat strokes stay clean at sharp turns; the ends
+    /// are butt caps. Needs at least two points and a stroke to draw anything.
     func drawPolyline(_ points: [Vector2]) {
         guard points.count >= 2, let stroke = strokeColor, strokeWidth > 0 else { return }
-        let color = stroke.simd4
-        let half = strokeWidth / 2
-        for k in 1..<points.count {
-            appendSegment(from: points[k - 1], to: points[k], half: half, color: color)
-        }
+        appendStrokedPath(points, closed: false, half: strokeWidth / 2, color: stroke.simd4)
     }
 
     /// An axis-aligned `Rectangle`. Recorded as a single SDF instance (a box
@@ -411,11 +406,7 @@ final class Drawer {
             }
         }
         if let stroke = strokeColor, strokeWidth > 0 {
-            let c = stroke.simd4
-            let half = strokeWidth / 2
-            for k in 0..<points.count {
-                appendSegment(from: points[k], to: points[(k + 1) % points.count], half: half, color: c)
-            }
+            appendStrokedPath(points, closed: true, half: strokeWidth / 2, color: stroke.simd4)
         }
     }
 
@@ -438,13 +429,7 @@ final class Drawer {
             let c = stroke.simd4
             let half = strokeWidth / 2
             for contour in shape.contours where contour.points.count >= 2 {
-                let pts = contour.points
-                for k in 1..<pts.count {
-                    appendSegment(from: pts[k - 1], to: pts[k], half: half, color: c)
-                }
-                if contour.isClosed {
-                    appendSegment(from: pts[pts.count - 1], to: pts[0], half: half, color: c)
-                }
+                appendStrokedPath(contour.points, closed: contour.isClosed, half: half, color: c)
             }
         }
     }
@@ -494,6 +479,63 @@ final class Drawer {
         emit(a0, color: color)
         emit(b1, color: color)
         emit(a1, color: color)
+    }
+
+    /// Stroke a polyline or closed contour as butt-capped segment quads plus a
+    /// join filler at each shared vertex, so corners close cleanly instead of
+    /// leaving the gap two independent butt caps make. Joins are mitered (a sharp
+    /// point, what a star's tips want) up to `miterLimit`, then bevel off so a
+    /// very acute corner doesn't shoot out an unbounded spike. Open paths keep
+    /// butt ends; closed ones join every vertex. The inner side of a turn is
+    /// already covered by the overlapping segment quads, so only the outer gap is
+    /// filled.
+    private func appendStrokedPath(_ points: [Vector2], closed: Bool,
+                                   half: Double, color: SIMD4<Float>) {
+        guard half > 0 else { return }
+        // Drop repeated points; a zero-length segment has no direction.
+        var pts: [Vector2] = []
+        for p in points where (pts.last.map { ($0 - p).length > 1e-9 } ?? true) {
+            pts.append(p)
+        }
+        if closed, pts.count > 1, (pts[0] - pts[pts.count - 1]).length <= 1e-9 {
+            pts.removeLast()
+        }
+        let n = pts.count
+        guard n >= 2 else { return }
+
+        let segments = closed ? n : n - 1
+        for i in 0..<segments {
+            appendSegment(from: pts[i], to: pts[(i + 1) % n], half: half, color: color)
+        }
+
+        let miterLimit = 8.0
+        let joins = closed ? Array(0..<n) : Array(1..<(n - 1))
+        for v in joins {
+            let curr = pts[v]
+            let d0v = curr - pts[(v - 1 + n) % n]
+            let d1v = pts[(v + 1) % n] - curr
+            let l0 = d0v.length, l1 = d1v.length
+            guard l0 > 1e-9, l1 > 1e-9 else { continue }
+            let d0 = d0v / l0, d1 = d1v / l1
+            let n0 = Vector2(-d0.y, d0.x)   // unit left normals
+            let n1 = Vector2(-d1.y, d1.x)
+            let cross = d0.x * d1.y - d0.y * d1.x
+            guard abs(cross) > 1e-6 else { continue }   // collinear: no gap to fill
+            // Fill on the outer side of the turn (where the two quads diverge).
+            let side: Double = cross >= 0 ? -1 : 1
+            let cornerA = (curr + n0 * (side * half)).simd2
+            let cornerB = (curr + n1 * (side * half)).simd2
+            let bisector = n0 + n1
+            let bisectorLength = bisector.length
+            let cosHalf = bisectorLength > 1e-6 ? (bisector.x * n0.x + bisector.y * n0.y) / bisectorLength : 0
+            if cosHalf > 1e-4, 1 / cosHalf <= miterLimit {
+                let miter = (curr + bisector / bisectorLength * (side * half / cosHalf)).simd2
+                emit(curr.simd2, color: color); emit(cornerA, color: color); emit(miter, color: color)
+                emit(curr.simd2, color: color); emit(miter, color: color); emit(cornerB, color: color)
+            } else {
+                emit(curr.simd2, color: color); emit(cornerA, color: color); emit(cornerB, color: color)
+            }
+        }
     }
 
     // MARK: Affine matrix builders (column-major, 2D homogeneous)

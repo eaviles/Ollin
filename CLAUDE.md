@@ -267,8 +267,14 @@ is bundled, not reimplemented — see the bundled-third-party-source tier in
 [Sourcing & attribution](#sourcing--attribution-load-bearing--its-the-public-face)
 (`External/CLibtess2`, SGI-B). Convex shapes (circle, rect, ellipse) and convex
 `drawPolygon` stay on the current fan/strip math; don't route them through the
-triangulator. Still open on top of `Shape`: Bézier/curved contours (sample to
-points first), a `beginShape`/`vertex` builder, and real stroke joins/caps.
+triangulator. Polyline-family strokes (`drawPolyline`, `drawPolygon` outline,
+`drawShape` contours) now have **mitered joins** via `appendStrokedPath` (segment
+quads plus a per-vertex join filler; miter up to a limit, bevel past it — what
+keeps a star's sharp tips clean), so don't reach for `appendSegment` directly
+for multi-segment strokes. Still open on top of `Shape`: Bézier/curved contours
+(sample to points first), a `beginShape`/`vertex` builder, and a *configurable*
+join/cap style (round/bevel joins, and round/square caps for open ends, beyond
+today's miter-join + butt-cap default).
 
 ## Build, run, verify
 
@@ -311,8 +317,9 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   via vendored libtess2 (`drawShape`). Next: more primitives (`drawPoint`,
   `drawTriangle`; `drawCircle`/`drawEllipse`/`drawArc`/`drawRect`/`drawLine`/`drawShape`
   already landed); Bézier/curved contours and a `beginShape`/`vertex` builder on
-  top of `Shape`; stroke joins/caps for fat lines (per-segment capsules for
-  `drawPolyline`, building on the line capsule); the
+  top of `Shape`; a configurable stroke join/cap style (miter joins for the
+  polyline family already landed; round/bevel joins and round/square caps are
+  what's left); the
   extension/lifecycle seam (load-bearing — unblocks snapshot testing, the
   FPS-overlay HUD, layered effects, and frame-sequence export at once);
   easing/animation helpers. Also now due (and riskier the longer it waits, since
