@@ -521,3 +521,130 @@ Ship a curated `Examples/` directory of small, runnable sample projects in the O
 - **Examples are compile-tested docs.** Build every example in the macOS CI (see the open-source prep) so they never rot — this is the main argument for keeping them in-repo and current.
 - **Next level: render-correctness snapshot testing.** Compile-testing proves an example *builds*; image-snapshot tests prove it *renders the same*. The off-screen MSAA render behind `--export` is the hard prerequisite, and it already exists — so this is cheap to reach. The shape: a frame-grab lifecycle hook (the extension seam) returns the rendered texture, and a test compares it against a committed reference image, per primitive. A peer Swift+Metal framework does exactly this (per-primitive snapshot tests via a `afterCommit(texture:)` hook gated behind `#if canImport(XCTest)`, using pointfree's swift-snapshot-testing) — a concrete model. Design the frame-grab hook with this in mind.
 - **Reuse the same samples elsewhere.** Examples can seed the Swift Playgrounds `.swiftpm` starter (see the Swift Playgrounds follow-up) and serve as starter templates for new sketches. Author once.
+
+## Follow-up: developer experience — Swift-idiomatic ergonomics (partly shipped)
+
+A standing track, not a one-time task: keep mining Swift idioms to make the API
+read better than a literal p5 port would — the [Conventions](#conventions)
+stance applied continuously. "Feels like p5" is the *shape* (bare calls, terse
+positional args, motion by default), but Swift's type system lets the same call
+carry more meaning with no extra ceremony, and that's a differentiator worth
+pressing. The shipped exemplar to point at: the **`canvasSize` resolution
+presets** — `.uhd4K`, `.vertical1080`, `.square1080`, with `.portrait` /
+`.landscape` to flip orientation (`Resolutions.swift`) — which read as English,
+are discoverable by dot-completion, and beat a bare `createCanvas(3840, 2160)`
+on both clarity and correctness. More of *that*. Candidates, in rough order:
+
+- **`size(_:_:)` callable from `setup()` — the headline DX fix.** Today a custom
+  canvas means overriding a computed property
+  (`override var canvasSize: CGSize { CGSize(width: 1000, height: 1000) }`), which
+  the docs themselves show and which reads heavy beside p5's `createCanvas(1000,
+  1000)` in `setup()`. Add an imperative `size(_ width: Double, _ height: Double)`
+  (and a `size(_ preset: CGSize)` overload so `size(.uhd4K.portrait)` works)
+  callable from `setup()`. The constraint to respect: `setup()` runs *after* the
+  canvas size is resolved today (`Sketch.swift`), and `canvasSize` is deliberately
+  *pure data with no screen dependency* so headless `--export` stays deterministic
+  — so the move is to run `setup()` early enough that a `size(...)` call there
+  establishes the canvas *before* the first layout/`draw()`, while **keeping the
+  `canvasSize` override** as the equivalent declarative form (the two are the same
+  knob; `size()` just writes it from `setup()`). Don't break export determinism to
+  get the ergonomic win. (p5 `createCanvas(w, h)`.)
+- **Keep the presets pattern growing.** The orientation-flip trick (`.portrait` /
+  `.landscape` as computed properties on a value type) generalizes: look for other
+  places a bare tuple or magic number could become a named, dot-completable value
+  with helpers — angle units (`.degrees(45)` / `.turns(0.25)` beside raw radians),
+  named easing curves, named blend modes when they land.
+- **More idiom candidates.** Trailing-closure scoping beyond `withState { }`
+  (already the model); `ExpressibleByArrayLiteral` / `ExpressibleByIntegerLiteral`
+  conformances where they read naturally (e.g. a color from a literal); result
+  builders for a future `beginShape`/`vertex` path; `@dynamicMemberLookup` only
+  where it genuinely clarifies. The bar: an idiom earns its place when it makes the
+  call *clearer*, not just shorter — and never at the cost of the bare-call feel or
+  the typed-core split ([the architecture rule](#the-architecture-rule-load-bearing)).
+
+## Follow-up: project generator / sketch scaffolding (not started)
+
+An openFrameworks-style **project generator** — the on-ramp that turns "I want to
+start a sketch" into a ready-to-run folder, instead of hand-copying boilerplate.
+oF ships its `projectGenerator`; the Ollin version asks a few questions and emits
+a tailored starting point. This is the *generative* sibling of the maintained
+[`Examples/`](#follow-up-ship-an-examples-folder-sample-projects-underway) set and
+the [`.swiftpm` starter](#follow-up-swift-playgrounds--ios-not-started): examples
+are read-only showroom pieces; the generator produces a *new, editable* sketch.
+
+- **What it asks.** Capabilities the sketch will use, so the scaffold pre-wires
+  only what's needed and stays minimal otherwise: images? shaders? text?
+  parameters (`@Param` knobs)? export? a starting `canvasSize` preset (feeds the
+  `size()`/`canvasSize` DX item above) and orientation. Each "yes" adds the import,
+  a commented stub, and any per-sketch asset folder
+  ([per-example layout](#follow-up-ship-an-examples-folder-sample-projects-underway):
+  fonts/images/shaders live beside `Sketch.swift`).
+- **What it emits.** A folder with a single-file `@main` `Sketch.swift` (the
+  zero-boilerplate `Sketch.main()` form already on the core) plus, as chosen, an
+  assets dir, a `Shaders.metal` stub, a `@Param` block, and a README. The
+  single-executable-target mechanism is the same one the examples set already needs
+  scripted — build the target-stanza generation once and share it.
+- **Form factor.** Start as a CLI (`swift run OllinNew <name>` with flags or an
+  interactive prompt) — cheapest, scriptable, and reuses the runtime targets'
+  patterns. A GUI à la oF's projectGenerator is a later nicety; the SwiftUI hosts
+  (`OllinExamples`/`OllinLive`) are a reference if it's wanted. Ties to the
+  `.swiftpm` starter (one generated form is "a Playgrounds App Project").
+- **Why it matters.** It's the same "learn it in an afternoon" lever as the
+  examples and the live host — removes the blank-page tax, and the questions double
+  as a teaching tour of what Ollin can do.
+
+## Follow-up: a Swift primer for JavaScript / p5.js newcomers (not started)
+
+A short guide — `Docs/Swift.md`, slotted into the `Docs/` index
+(`Docs/README.md`) — that teaches *just enough* Swift to a p5.js sketcher coming
+from JavaScript. The audience is the creative coder, not the app developer: the
+goal is to get them productive in `draw()`, not to teach Swift wholesale. This is
+pure onboarding, on-brand with the "p5 ergonomics" vision — the language is the
+one barrier between a p5 user and Ollin, so lower it explicitly.
+
+- **Scope: the delta that bites a JS person, nothing more.** `let`/`var` and type
+  inference; that types are explicit but usually inferred; `Double` vs `Int` (and
+  why `1/2 == 0`); `func` and `override func draw()`; classes and `override`;
+  optionals at a glance; `for i in 0..<n` and array basics; trailing closures
+  (maps to JS callbacks, and to `withState { }`); string interpolation. Framed
+  side-by-side: "in p5 you wrote `let x = 5; function setup(){}` — here's the same
+  thing in Ollin."
+- **Anchor every point to an Ollin call.** Don't teach Swift in the abstract —
+  teach it through `drawCircle`, `time`, `width`/`height`, `@Param`, so each
+  language feature lands on something the reader will actually type. Reuse the
+  `Examples/` sketches as the worked code.
+- **Keep it short and link out for depth.** A primer, not a manual: cover the
+  delta, then point to Apple's Swift book for the rest. Lives beside the other
+  `Docs/` pages and is linked from the README's getting-started path.
+
+## Follow-up: p5.js sketch importer (parked — likely not worth it)
+
+@eaviles floated, but is **not sold on**, a tool that ports a p5.js sketch into
+an Ollin sketch — and the recommendation is **don't build it**, at least not as a
+real translator. Recorded here so the reasoning is on file rather than
+re-litigated later.
+
+- **Why it's a trap.** A faithful importer is a *JavaScript-to-Swift transpiler*
+  with a p5-to-Ollin API map bolted on — dynamic typing, JS scoping/`this`,
+  closures, and the long tail of p5's global functions (many of which Ollin
+  doesn't have yet: `text`, `loadImage`, `pixels[]`, DOM, `p5.sound`). It would be
+  perpetually partial, silently mistranslate the parts it doesn't cover, and set an
+  expectation ("my sketches just port") that the
+  [core-batteries gap](#follow-up-core-batteries--text-image-audio-keyboard-input-not-started)
+  guarantees it can't meet. High build cost, high maintenance, low and misleading
+  payoff.
+- **Sourcing wrinkle.** Mechanically translating a *specific* p5 sketch carries
+  that sketch's license (p5 itself is LGPL; community sketches vary) — the exact
+  line-by-line-port problem
+  [Sourcing & attribution](#sourcing--attribution-load-bearing--its-the-public-face)
+  warns against. An importer industrializes that risk.
+- **What's worth doing instead.** The *real* need behind the ask — "I know p5,
+  help me get there" — is better served by the
+  [Swift primer](#follow-up-a-swift-primer-for-javascript--p5js-newcomers-not-started)
+  and a **p5→Ollin API cheat-sheet** (`createCanvas`→`size`, `ellipse`→`drawCircle`,
+  `frameCount`/`mouseX` map straight across, `push`/`pop`→`withState`), plus the
+  [Examples/](#follow-up-ship-an-examples-folder-sample-projects-underway) acting as
+  "here's that idiom in Ollin." Those teach the mapping without pretending to
+  automate a translation that can't be trusted. Revisit a real importer only if
+  there's ever strong demand *and* the core has reached p5 feature parity — neither
+  is true today.
