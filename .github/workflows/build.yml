@@ -1,0 +1,56 @@
+name: Build
+
+# Compile-test the whole package on macOS: the Ollin library, the live/gallery
+# hosts, and every Examples/ sketch. Each example is an executable target in the
+# root package, so a single `swift build` compiles them all — and picks up new
+# examples automatically, with no list to maintain here (mirrors the no-hand-
+# maintained-stanzas rule the Package.swift follows). This is the guard that
+# keeps the examples building against the current API instead of rotting.
+#
+# It cannot run on Linux — Ollin is Swift + Metal, Apple-platforms only — so the
+# job runs on a macOS runner. The Metal shader is compiled at *runtime* from
+# source, so no GPU is needed at build time, only the macOS SDK.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# A newer push to the same branch/PR supersedes an in-flight run.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (macOS)
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Swift 6 language mode (Package.swift declares .v6) needs Xcode 16+. The
+      # macos-15 image already defaults to Xcode 16.x, so we don't pin a path
+      # (the exact Xcode_16.x.app name drifts as the image updates); just log
+      # the toolchain so a future Swift-version regression is easy to spot.
+      - name: Swift version
+        run: swift --version
+
+      # Cache the SwiftPM build directory, keyed on the manifest. A miss just
+      # means a clean build, never a wrong one.
+      - name: Cache SwiftPM build
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.swift') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      # Builds the library, OllinLive/OllinExamples hosts, and all Example-*
+      # targets. Warnings stay warnings; this fails only on a compile error.
+      - name: Build everything
+        run: swift build
