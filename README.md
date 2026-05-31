@@ -127,6 +127,8 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Math](Docs/Math.md) - `map`, `dist`.
 - [Input](Docs/Input.md) - mouse position and clicks.
 
+New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.
+
 Coordinates use a top-left origin with y increasing downward, the same as p5, Processing, and OPENRNDR.
 
 ## How it works (one paragraph)
