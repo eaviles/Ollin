@@ -241,6 +241,45 @@ pipeline, not rewrites*:
   path by nature: arbitrary `drawPolygon`/`drawPolyline`, and *elliptical* arcs +
   full-turn arcs (`drawArc` runtime-branches `rx == ry` and sweep `< τ` to SDF,
   else tessellates).
+- **More SDF primitives — the cheap catalog expansion (roadmap).** The tagged
+  union has a *fixed scalar budget* — `size`(2) + `param0`(2) + `param1`(2) +
+  `extra`(1) on top of the per-instance CTM/center/colors/stroke — so any shape
+  that's a *canonical form parameterized by a size + a ratio or two* drops in as
+  the same four touch-points (an `SDFShape` case, a `Drawer.draw*` builder, an
+  `sd*` function, a fragment `case`) with **no renderer/pipeline change**;
+  position/rotation/scale come free from the CTM. One constraint to remember:
+  `size` is *not* a free slot — the vertex shader uses it as the covering quad's
+  AABB half-extent, so it must carry the bounding extent and can't double as a
+  third geometry point. All from iq's 2D distance functions, implemented from the
+  technique and credited in the README's Techniques list (LYGIA is a *map* to
+  discover which exist — never translate its files, Prosperity license; **hg_sdf**
+  is the source for the *operator* track noted below). In priority order:
+    1. **Triangle, regular n-gon, star** — p5/oF `triangle()` parity plus shapes
+       they lack; each a single-scalar fit (`sdEquilateralTriangle`, `sdNgon`,
+       `sdStar`). Upgrades the tessellated `Star` example to analytic.
+    2. **Point / marker set** — pairs with `drawPoint` below; a small marker
+       vocabulary (circle/square/cross/x/diamond) via a marker tag in `extra`,
+       reusing existing fields — makes scatter/point-cloud sketches trivial.
+    3. **Rhombus, vesica, moon, cross/X, filled ring/annulus** — expressive,
+       near-zero cost each (`sdRhombus`, `sdVesica`, `sdMoon`, `sdCross`/
+       `sdRoundedX`, `opOnion`; the ring also generalizes to an outline-only mode
+       for any region shape).
+    4. **Trapezoid, parallelogram, egg, heart, cut disk, uneven capsule** — fill
+       out the catalog (`sdTrapezoid`, `sdParallelogram`, `sdEgg`, `sdHeart`,
+       `sdCutDisk`, `sdUnevenCapsule` — the last a tapered line extending the
+       capsule).
+  Two shapes are deliberately held back because they **break the fixed budget**
+  (3 free points / 6 scalars beside `size`-as-AABB): an **analytic quadratic
+  Bézier** stroke (`sdBezier` — the *fast* path for the roadmap's Bézier/curved
+  contours, exact AA, no tessellation) and a **general 3-point triangle**. These
+  are the forcing function for the **shared-C-header migration** (already flagged
+  overdue below): grow `SDFInstance` safely *there* first, then add them. Two
+  things stay *off* this list by nature: arbitrary polygon/polyline (variable
+  vertex count — they remain on the triangle path / libtess2), and SDF
+  *operators* (smooth-min, union/subtract, hg_sdf domain repetition) which
+  *combine* fields and so belong to
+  [shader-composition & layered effects](#follow-up-shader-composition-api--livecoding-performance--ollinlivecoding-not-started),
+  not the one-shape-per-instance primitive path.
 - **MSAA caps anti-aliasing at 4×** for the *triangle* path. The SDF primitives
   already bypass it (analytic coverage); the remaining triangle-path shapes
   (polygon/polyline, elliptical/full arcs) are where thin strokes or large zoom
@@ -316,7 +355,11 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   nature). The vector `Shape`/`Contour` type also landed — concave/holed fills
   via vendored libtess2 (`drawShape`). Next: more primitives (`drawPoint`,
   `drawTriangle`; `drawCircle`/`drawEllipse`/`drawArc`/`drawRect`/`drawLine`/`drawShape`
-  already landed); Bézier/curved contours and a `beginShape`/`vertex` builder on
+  already landed) — these kick off the **SDF catalog expansion** detailed under
+  [Rendering performance](#rendering-performance-roadmap) (triangle/n-gon/star →
+  point/markers → rhombus/vesica/moon/cross/ring → trapezoid/egg/heart/…), a cheap
+  run of analytic shapes that fit the existing tagged union; Bézier/curved contours
+  and a `beginShape`/`vertex` builder on
   top of `Shape`; a configurable stroke join/cap style (miter joins for the
   polyline family already landed; round/bevel joins and round/square caps are
   what's left); the
