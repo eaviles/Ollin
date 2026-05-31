@@ -328,7 +328,69 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   hand-mirrored) and CI compile-testing for the examples. For easing, a clean
   shape to borrow is a property wrapper holding a value + target that eases
   toward the target each frame (`linear`/`easeOut`); swifty-creatives'
-  `@SCAnimatable` is a small worked reference.
+  `@SCAnimatable` is a small worked reference. Separately tracked, and *not* on
+  the rendering-pipeline track above: the **core batteries** — text, image,
+  audio, and keyboard input — that p5/oF/OPENRNDR all ship and Ollin doesn't yet
+  (see [core batteries](#follow-up-core-batteries--text-image-audio-keyboard-input-not-started)).
+
+## Follow-up: core batteries — text, image, audio, keyboard input (not started)
+
+The pipeline roadmap above is about the *renderer* getting deeper. This is the
+orthogonal gap: the table-stakes capabilities p5.js, openFrameworks, and
+OPENRNDR all ship that Ollin doesn't have yet. A sketcher hits these before any
+flow-field — "put a word on screen," "load a JPEG," "react to a keypress" — so
+they matter out of proportion to their glamour. All four are **Apple-native by
+design** (Core Text, ImageIO, AVFoundation, AppKit/UIKit responders), per
+[Platform scope](#platform-scope) — no cross-platform abstractions. Each stays
+sugar over the typed core ([the architecture rule](#the-architecture-rule-load-bearing))
+and, where it emits geometry, takes the `draw` verb prefix
+([Conventions](#conventions)). In rough priority (cheapest-and-most-unblocking
+first):
+
+- **Keyboard input — smallest, do it first.** Mirror the mouse seam already in
+  place: `keyPressed()`/`keyReleased()` lifecycle hooks beside the existing
+  `mousePressed()`, plus `key`/`keyCode` state on `Sketch` beside
+  `mouseX`/`mouseY`. Wire it through `SketchView`'s responder chain
+  (`keyDown`/`keyUp` on the `MTKView`), behind the
+  `#if canImport(AppKit)`/`#if canImport(UIKit)` seam so the iOS follow-up gets
+  it for free. Days, not weeks, and it unblocks every interactive sketch. (p5
+  `keyPressed`/`key`, oF `keyPressed(int key)`.)
+- **Text / typography — the biggest *perceived* gap.** A `Font` value type
+  (`loadFont`/system font) plus a `drawText(_:x:y:)` verb (with the role-labeled
+  `drawText(_:at:)` `Vector2` overload, per the point-argument convention). Two
+  viable engines, both Apple-native: (a) **Core Text glyph outlines** —
+  `CTFontCreatePathForGlyph` → `Shape`/`Contour`, tessellated through the
+  *existing* libtess2 path, so vector text composes with everything and needs no
+  new pipeline; or (b) **SDF text atlases** — a glyph atlas sampled in a fragment
+  shader, which rhymes with the shipped `.sdf` pipeline and scales crisply under
+  zoom. Start with (a) for correctness and reuse, keep (b) as the performance
+  path when text volume bites. Typed-core first, `drawText` sugar second.
+  (p5 `text()`/`textFont()`/`textSize()`/`textAlign()`, oF `ofTrueTypeFont`,
+  OPENRNDR `loadFont`/`Writer`.)
+- **Image loading / textures — also unblocks compositing.** An `Image` value
+  type backed by an `MTLTexture` (decode via ImageIO/`CGImage`), drawn by a
+  `drawImage(_:…)` verb. The plumbing is *partly here already*: the `--export`
+  path renders off-screen into a texture, so sampling a texture is the same
+  capability surfaced inward. The new piece is a **textured-quad pipeline** —
+  one more `Pipeline` cache case (the seam exists; don't grow `init`), see
+  [Shaders & the Metal back end](#shaders--the-metal-back-end). This shares its
+  substrate with [layered effects & compositing](#follow-up-layered-effects--compositing-not-started)
+  (a render target *is* a drawable texture), so design the two together rather
+  than twice. Pixel-level read/write (`get`/`set`, p5 `pixels[]`) can come later.
+  (p5 `loadImage`/`image`, oF `ofImage`, OPENRNDR `loadImage`/`image`.)
+- **Audio — lowest priority, likely a separate module.** Least core to a
+  *drawing* framework, and the creative-coding use is mostly **audio-reactive
+  visuals**: playback plus amplitude/FFT analysis (AVFoundation / `AVAudioEngine`)
+  exposed as values a sketch reads in `draw()` to drive geometry. Keep it off the
+  core's critical path — a satellite target (like `OllinRuntime`/`OllinLive`) so
+  the drawing core stays free of `AVFoundation`. Synthesis is further out still.
+  (p5.sound, oF audio in/out + FFT, OPENRNDR's audio extensions.)
+
+Attribution note: any **bundled font or sample asset** carries the same
+provenance discipline as vendored code — permissive/redistributable license,
+credited in `THIRD-PARTY-NOTICES.md` and the README — see
+[Sourcing & attribution](#sourcing--attribution-load-bearing--its-the-public-face).
+Prefer system fonts and user-supplied assets over bundling where possible.
 
 ## Follow-up: Swift Playgrounds & iOS (not started)
 
