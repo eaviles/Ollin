@@ -210,13 +210,6 @@ static float sdCross(float2 p, float2 b, float r) {
     return sign(k) * length(max(w, 0.0)) + r;
 }
 
-// Diagonal cross (✕): the two diagonals of reach `w`, fattened to half-width `r`
-// (which also rounds the tips). Reaches w*0.5 + r on each axis.
-static float sdRoundedX(float2 p, float w, float r) {
-    p = abs(p);
-    return length(p - min(p.x + p.y, w) * 0.5) - r;
-}
-
 // Fill + stroke coverage for a shape whose boundary is the zero level set of a
 // region SDF `d`: fill the inside (d < 0), stroke a band of half-width `hw`
 // straddling the boundary. `fwidth(d)` keeps the falloff ~1px under any
@@ -285,8 +278,10 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
             d = sdRhombus(p, in.size);
         } else if (kind == 2u) {   // cross (+): arms reach ±h, half-width t
             d = sdCross(p, float2(h, t), 0.0);
-        } else {                   // x (✕): diagonals fattened to half-width t
-            d = sdRoundedX(p, 2.0 * (h - t), t);
+        } else {                   // x (✕): the sharp cross (+) rotated 45°
+            const float k = 0.70710678;   // cos 45° = sin 45°
+            float2 q = float2((p.x - p.y) * k, (p.x + p.y) * k);
+            d = sdCross(q, float2(h * 1.41421356 - t, t), 0.0);   // arm length set so the X still spans 2h
         }
         // Region coverage (fill-only — strokeWidth is 0 on the point path).
         regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
