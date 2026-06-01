@@ -1,6 +1,6 @@
 # Ollin design notes
 
-The engineering design intent behind the planned work in [`ROADMAP.md`](../ROADMAP.md). The roadmap is the short version (what's planned and how to help); this is the long version (how each piece would be built, the specific APIs involved, and why). A few shipped items are kept here where their design rationale is still useful, marked as shipped.
+The engineering design intent behind the planned work in [`ROADMAP.md`](ROADMAP.md). The roadmap is the short version (what's planned and how to help); this is the long version (how each piece would be built, the specific APIs involved, and why). A few shipped items are kept here where their design rationale is still useful, marked as shipped.
 
 These notes assume Ollin's two ground rules: it targets Apple platforms only (no cross-platform abstractions), and the bare p5-style API is sugar over a public, typed core, so a feature is built on the core first and given the bare call second. Geometry-emitting calls take a `draw` verb prefix (`drawCircle`, `drawRect`, and so on).
 

@@ -282,7 +282,7 @@ pipeline, not rewrites*:
   vertex count — they remain on the triangle path / libtess2), and SDF
   *operators* (smooth-min, union/subtract, hg_sdf domain repetition) which
   *combine* fields and so belong to
-  [shader-composition & layered effects](Docs/DESIGN-NOTES.md#shader-composition-and-live-coding-not-started),
+  [shader-composition & layered effects](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started),
   not the one-shape-per-instance primitive path.
 - **MSAA caps anti-aliasing at 4×** for the *triangle* path. The SDF primitives
   already bypass it (analytic coverage); the remaining triangle-path shapes
@@ -383,7 +383,7 @@ canvas itself.
   `@SCAnimatable` is a small worked reference. Separately tracked, and *not* on
   the rendering-pipeline track above: the **core batteries** — text, image,
   audio, and keyboard input — that p5/oF/OPENRNDR all ship and Ollin doesn't yet
-  (see [core batteries](Docs/DESIGN-NOTES.md#core-batteries-text-image-audio-keyboard-not-started)).
+  (see [core batteries](DESIGN-NOTES.md#core-batteries-text-image-audio-keyboard-not-started)).
 
 ## Live reload — edit code, see it render (shipped via `OllinLive`)
 
@@ -410,8 +410,14 @@ always-loaded guidance stays small:
 
 - [`ROADMAP.md`](ROADMAP.md) — the public, contributor-facing roadmap: what's
   planned and how to help.
-- [`Docs/DESIGN-NOTES.md`](Docs/DESIGN-NOTES.md) — the engineering design intent
+- [`DESIGN-NOTES.md`](DESIGN-NOTES.md) — the engineering design intent
   behind each planned item (the approach, the APIs involved, the reasoning).
+
+Both live at the repo root, alongside `README.md`. The convention: the root
+holds project meta and contributor docs (`README.md`, `ROADMAP.md`,
+`DESIGN-NOTES.md`, this file, `LICENSE`, `THIRD-PARTY-NOTICES.md`), while
+[`Docs/`](Docs/) is the user-facing API reference (`Sketch`, `Drawing`,
+`Color`, …) — and nothing else.
 
 Quick map, rough priority: more 2D/SDF primitives and the analytic shape catalog;
 keyboard input, then text, images, audio; a configurable stroke join/cap style;
