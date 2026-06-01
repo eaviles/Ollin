@@ -20,13 +20,20 @@ final class RepelGrid: Sketch {
 
     override func draw() {
         background(.black)
+        // Canvas-relative so the grid fills any canvas size and the cursor lines
+        // up with it: a 1/16 inset, a quarter-canvas cursor reach, and a push and
+        // dot radius scaled to that inset.
+        let s = min(width, height)
+        let margin = s * 0.0625
+        let reach = s * 0.25
+        let push = s * 0.0625
         for i in 0..<30 {
             for j in 0..<30 {
-                let x = map(Double(i), 0, 29, 50, 750)
-                let y = map(Double(j), 0, 29, 50, 750)
+                let x = map(Double(i), 0, 29, margin, width - margin)
+                let y = map(Double(j), 0, 29, margin, height - margin)
 
                 let distance = dist(x, y, mouseX, mouseY)
-                let pct = map(distance, 0, 200, 1, 0, clamp: true)
+                let pct = map(distance, 0, reach, 1, 0, clamp: true)
 
                 var dx = x - mouseX
                 var dy = y - mouseY
@@ -35,9 +42,9 @@ final class RepelGrid: Sketch {
                     dy /= distance
                 }
 
-                drawCircle(x + dx * pct * 50,
-                       y + dy * pct * 50,
-                       5 + 8 * pct)
+                drawCircle(x + dx * pct * push,
+                           y + dy * pct * push,
+                           margin * (0.1 + 0.16 * pct))
             }
         }
     }

@@ -19,12 +19,18 @@ final class DotGrid: Sketch {
 
     override func draw() {
         background(.gray)
+        // Canvas-relative layout: an eighth-of-canvas margin, with each dot half
+        // a cell wide, so it fills any canvas size.
+        let s = min(width, height)
+        let margin = s * 0.125
+        let step = (s - margin * 2) / 20
+        let radius = step / 2
         for y in 0...20 {
             var offset = y % 8
             if offset > 4 { offset = 8 - offset }
             for x in 0...20 {
                 fill((x + offset) % 4 < 2 ? .white : .black)
-                drawCircle(Double(x) * 30 + 100, Double(y) * 30 + 100, 15)
+                drawCircle(Double(x) * step + margin, Double(y) * step + margin, radius)
             }
         }
     }
