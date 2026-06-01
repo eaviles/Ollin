@@ -11,7 +11,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 ### Contents
 
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [pointSize](#pointSize), [pointMarker](#pointMarker)
-- **Shapes:** [drawPoint](#point), [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawTriangle](#triangle), [drawNgon](#ngon), [drawStar](#star), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
+- **Shapes:** [drawPoint](#point), [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawTriangle](#triangle), [drawNgon](#ngon), [drawStar](#star), [drawRect](#rect), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
@@ -195,6 +195,66 @@ A rectangle, anchored by its top-left corner or its center (the center form matc
 drawRect(40, 40, 120, 80)                                   // top-left corner
 drawRect(center: Vector2(width / 2, height / 2), width: 200, height: 120)
 drawRect(40, 40, 120, 80, cornerRadius: 16)                 // rounded corners
+```
+
+<a name="rhombus"></a>
+
+#### `drawRhombus(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0)`
+#### `drawRhombus(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0)`
+
+A rhombus (diamond) centered at `(x, y)`, `width` by `height` (the full diagonals), with a vertex at each end of those diagonals. `cornerRadius` rounds the corners while keeping the footprint — push it up and the diamond rounds toward a circle. An analytic SDF shape, crisp at any size; rotate it about its center with the transform stack.
+
+```swift
+drawRhombus(width / 2, height / 2, 160, 220)                 // a tall diamond
+drawRhombus(width / 2, height / 2, 180, 180, cornerRadius: 40)  // soft, near-circular
+```
+
+<a name="vesica"></a>
+
+#### `drawVesica(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0)`
+#### `drawVesica(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0)`
+
+A vesica — a pointed lens, the overlap of two circles — centered at `(x, y)`, `width` by `height`; the two tips lie along the longer axis (so a tall lens points up/down, a wide one left/right). `cornerRadius` rounds the tips while keeping the footprint, easing the lens toward an ellipse. An analytic SDF shape; rotate it with the transform stack for in-between angles.
+
+```swift
+drawVesica(width / 2, height / 2, 120, 240)                 // a vertical lens (points up/down)
+drawVesica(width / 2, height / 2, 240, 120, cornerRadius: 30)  // wide, with softened tips
+```
+
+<a name="moon"></a>
+
+#### `drawMoon(_ x: Double, _ y: Double, _ outerRadius: Double, _ innerRadius: Double, _ offset: Double, cornerRadius: Double = 0)`
+#### `drawMoon(center: Vector2, outerRadius: Double, innerRadius: Double, offset: Double, cornerRadius: Double = 0)`
+
+A crescent moon at `(x, y)`: the disk of `outerRadius` with a disk of `innerRadius` removed, the cut disk shifted `offset` toward +x. Keep `innerRadius` near `outerRadius` with a modest `offset` for a classic crescent; a larger `offset` opens it toward a half-moon. `cornerRadius` rounds the two cusps. An analytic SDF shape; rotate it with the transform stack to face the crescent any direction.
+
+```swift
+drawMoon(width / 2, height / 2, 140, 130, 90)               // a fat crescent, opening right
+withState { translate(width / 2, height / 2); rotate(time); drawMoon(0, 0, 120, 120, 80) }  // a slowly turning crescent
+```
+
+<a name="cross"></a>
+
+#### `drawCross(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double, cornerRadius: Double = 0)`
+#### `drawCross(center: Vector2, length: Double, thickness: Double, cornerRadius: Double = 0)`
+
+A plus-sign cross centered at `(x, y)`, spanning `length` tip-to-tip on both axes with arms `thickness` wide. `cornerRadius` rounds the outer corners (the inner notches stay sharp), the usual rounded-plus look. An analytic SDF shape — rotate it 45° with the transform stack for an ✕.
+
+```swift
+drawCross(width / 2, height / 2, 200, 70, cornerRadius: 16)  // a rounded plus
+withState { translate(width / 2, height / 2); rotate(.pi / 4); drawCross(0, 0, 200, 60) }  // an ✕
+```
+
+<a name="ring"></a>
+
+#### `drawRing(_ x: Double, _ y: Double, _ innerRadius: Double, _ outerRadius: Double)`
+#### `drawRing(center: Vector2, innerRadius: Double, outerRadius: Double)`
+
+A filled ring (annulus) centered at `(x, y)`, between `innerRadius` and `outerRadius`. It takes the current `fill` (not stroke); for two outlined circles instead, draw `drawCircle` twice with `noFill`. An analytic SDF shape, crisp at any size.
+
+```swift
+drawRing(width / 2, height / 2, 80, 120)                    // a fairly thin ring
+drawRing(width / 2, height / 2, 20, 120)                    // a thick one (small hole)
 ```
 
 <a name="line"></a>

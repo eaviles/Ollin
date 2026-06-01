@@ -65,7 +65,7 @@ struct SDFInstance {
     float2 param1;        // shape-specific
     float strokeWidth;    // points; 0 means no stroke
     float extra;          // shape-specific scalar
-    uint  shape;          // 0 ellipse, 1 box, 2 capsule, 3/4/5 arc open/chord/pie, 6 triangle, 7 star/ngon, 8 marker
+    uint  shape;          // 0 ellipse, 1 box, 2 capsule, 3/4/5 arc open/chord/pie, 6 triangle, 7 star/ngon, 8 marker, 9 rhombus, 10 vesica, 11 moon, 12 cross, 13 ring
 };
 
 struct SDFOut {
@@ -210,6 +210,31 @@ static float sdCross(float2 p, float2 b, float r) {
     return sign(k) * length(max(w, 0.0)) + r;
 }
 
+// Vesica (a pointed lens): the two tips lie on the y-axis at (0, ±a) where
+// a = sqrt(r*r - d*d), and the waist half-width is r - d. `r` is the radius of
+// the two generating circles, centered at (±d, 0). Exact signed distance,
+// negative inside.
+static float sdVesica(float2 p, float r, float d) {
+    p = abs(p);
+    float b = sqrt(r * r - d * d);
+    return ((p.y - b) * d > p.x * b)
+        ? length(p - float2(0.0, b)) * sign(d)
+        : length(p - float2(-d, 0.0)) - r;
+}
+
+// Crescent moon: the disk of radius `ra` at the origin with the disk of radius
+// `rb` subtracted, the latter centered at (d, 0). Symmetric about the x-axis,
+// opening toward +x. Exact signed distance, negative inside.
+static float sdMoon(float2 p, float d, float ra, float rb) {
+    p.y = abs(p.y);
+    float a = (ra * ra - rb * rb + d * d) / (2.0 * d);
+    float b = sqrt(max(ra * ra - a * a, 0.0));
+    if (d * (p.x * b - p.y * a) > d * d * max(b - p.y, 0.0)) {
+        return length(p - float2(a, b));
+    }
+    return max(length(p) - ra, -(length(p - float2(d, 0.0)) - rb));
+}
+
 // Fill + stroke coverage for a shape whose boundary is the zero level set of a
 // region SDF `d`: fill the inside (d < 0), stroke a band of half-width `hw`
 // straddling the boundary. `fwidth(d)` keeps the falloff ~1px under any
@@ -334,6 +359,46 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
                 }
             }
         }
+        break;
+    }
+    case 9u: {   // rhombus (diamond): size = (w/2, h/2) AABB; extra = corner radius.
+        // Inset the core by r and round by r, so the rounded shape keeps the
+        // (w, h) footprint (its tips still reach the size box). Region coverage
+        // (inside-biased) so a tiled diamond grid leaves no seam.
+        float r = in.extra;
+        float d = sdRhombus(p, max(in.size - r, float2(1e-4))) - r;
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 10u: {  // vesica (pointed lens): param0 = (circle radius, center offset);
+                 // param1.x = 1 for a horizontal lens; extra = corner radius (rounds
+                 // the tips). The builder insets so rounding keeps the footprint.
+        float2 q = (in.param1.x > 0.5) ? p.yx : p.xy;
+        float d = sdVesica(q, in.param0.x, in.param0.y) - in.extra;
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 11u: {  // moon (crescent): param0 = (outer radius, inner radius);
+                 // param1.x = offset; extra = corner radius (rounds the cusps).
+        float d = sdMoon(p, in.param1.x, in.param0.x, in.param0.y) - in.extra;
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 12u: {  // cross (plus): size.x = arm half-length (AABB); param0.x = arm
+                 // half-width; extra = corner radius. Union of two rounded boxes,
+                 // so the outer corners round (radius r) and the inner notches stay
+                 // sharp — the usual rounded-plus look.
+        float L = in.size.x;
+        float w = in.param0.x;
+        float r = in.extra;
+        float d = min(sdRoundBox(p, float2(L, w), r), sdRoundBox(p, float2(w, L), r));
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 13u: {  // ring (filled annulus): param0 = (mid radius, half thickness).
+                 // The disk SDF turned into a band (opOnion); fill only.
+        float d = abs(length(p) - in.param0.x) - in.param0.y;
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     default:     // 0: ellipse / circle / point

@@ -27,6 +27,11 @@ enum SDFShape: UInt32 {
     case triangle = 6   // isosceles: apex at center, size = (base/2, height), opens +y
     case star     = 7   // regular n-gon / star: size = (R, R); param0/param1/extra = fold angles
     case marker   = 8   // point marker: size = (h, h); extra = kind (0 square,1 diamond,2 cross,3 x); param0.x = arm half-width
+    case rhombus  = 9   // diamond: size = (w/2, h/2); extra = corner radius
+    case vesica   = 10  // pointed lens: param0 = (circle radius, offset); param1.x = horizontal flag; extra = corner radius
+    case moon     = 11  // crescent: param0 = (outer radius, inner radius); param1.x = offset; extra = corner radius
+    case cross    = 12  // plus: size.x = arm half-length; param0.x = arm half-width; extra = corner radius
+    case ring     = 13  // filled annulus: param0 = (mid radius, half thickness); fill only
 }
 
 /// One analytic shape, drawn as a single instanced quad whose fragment computes
@@ -321,6 +326,88 @@ final class Drawer {
     func drawStar(_ x: Double, _ y: Double, _ outerRadius: Double, _ innerRadius: Double, points: Int) {
         guard outerRadius > 0, innerRadius > 0, innerRadius <= outerRadius, points >= 3 else { return }
         appendStar(center: Vector2(x, y), outer: outerRadius, inner: innerRadius, points: points)
+    }
+
+    /// A rhombus (diamond) centered at `(x, y)`, `width` wide and `height` tall
+    /// (the full diagonals), with vertices at the four points of those diagonals.
+    /// `cornerRadius` rounds the corners while keeping the `width`×`height`
+    /// footprint. Recorded as a single SDF instance — analytic fill + stroke +
+    /// anti-aliasing, crisp at any size. Rotate via the transform stack.
+    func drawRhombus(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0) {
+        guard width > 0, height > 0 else { return }
+        let r = max(0, min(cornerRadius, min(width, height) / 2))
+        appendSDF(shape: .rhombus, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(width / 2), Float(height / 2)),
+                  fill: fillColor, stroke: strokeColor, extra: Float(r))
+    }
+
+    /// A vesica (a pointed lens / two-circle intersection) centered at `(x, y)`,
+    /// `width` by `height`; the tips lie along the longer axis. `cornerRadius`
+    /// rounds the tips while keeping the footprint. Recorded as a single SDF
+    /// instance. Rotate via the transform stack.
+    func drawVesica(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0) {
+        guard width > 0, height > 0 else { return }
+        let horizontal = width > height
+        let major = (horizontal ? width : height) / 2     // half-length toward the tips
+        let minor = (horizontal ? height : width) / 2     // waist half-width
+        let rr = max(0, min(cornerRadius, minor))
+        // Inset by the rounding radius so rounding keeps the footprint, then map
+        // the (along, across) half-extents to iq's circle radius + center offset:
+        //   r = (w + a²/w) / 2,  d = (a² − w²) / (2w)   (a ≥ w; a == w is a circle).
+        let a = major - rr
+        let w = max(minor - rr, 1e-4)
+        let rCircle = (w + a * a / w) / 2
+        let dOff = (a * a - w * w) / (2 * w)
+        appendSDF(shape: .vesica, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(width / 2), Float(height / 2)),
+                  fill: fillColor, stroke: strokeColor, extra: Float(rr),
+                  param0: SIMD2<Float>(Float(rCircle), Float(dOff)),
+                  param1: SIMD2<Float>(horizontal ? 1 : 0, 0))
+    }
+
+    /// A crescent moon centered at `(x, y)`: the disk of `outerRadius` with a disk
+    /// of `innerRadius` subtracted, the cut disk's center `offset` away (toward
+    /// +x). For a classic crescent keep `innerRadius` near `outerRadius` with a
+    /// modest `offset`. `cornerRadius` rounds the cusps (and slightly enlarges).
+    /// Recorded as a single SDF instance. Rotate via the transform stack to aim it.
+    func drawMoon(_ x: Double, _ y: Double, _ outerRadius: Double, _ innerRadius: Double,
+                  _ offset: Double, cornerRadius: Double = 0) {
+        guard outerRadius > 0, innerRadius > 0, offset > 0 else { return }
+        let rr = max(0, cornerRadius)
+        appendSDF(shape: .moon, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(outerRadius + rr), Float(outerRadius + rr)),
+                  fill: fillColor, stroke: strokeColor, extra: Float(rr),
+                  param0: SIMD2<Float>(Float(outerRadius), Float(innerRadius)),
+                  param1: SIMD2<Float>(Float(offset), 0))
+    }
+
+    /// A plus-sign cross centered at `(x, y)`, spanning `length` tip-to-tip on both
+    /// axes with arms `thickness` wide. `cornerRadius` rounds the outer corners
+    /// (the inner notches stay sharp). Recorded as a single SDF instance — analytic
+    /// fill + stroke + anti-aliasing. Rotate 45° via the transform stack for an ✕.
+    func drawCross(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double, cornerRadius: Double = 0) {
+        guard length > 0, thickness > 0 else { return }
+        let armHalfLength = length / 2
+        let armHalfWidth = min(thickness, length) / 2
+        let r = max(0, min(cornerRadius, armHalfWidth))
+        appendSDF(shape: .cross, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(armHalfLength), Float(armHalfLength)),
+                  fill: fillColor, stroke: strokeColor, extra: Float(r),
+                  param0: SIMD2<Float>(Float(armHalfWidth), 0))
+    }
+
+    /// A filled ring (annulus) centered at `(x, y)` between `innerRadius` and
+    /// `outerRadius`. Takes the current `fill` (not stroke); for two outlined
+    /// circles instead, draw `drawCircle` twice with `noFill`. Recorded as a single
+    /// SDF instance.
+    func drawRing(_ x: Double, _ y: Double, _ innerRadius: Double, _ outerRadius: Double) {
+        guard outerRadius > 0, innerRadius >= 0, innerRadius < outerRadius else { return }
+        let mid = (outerRadius + innerRadius) / 2
+        let half = (outerRadius - innerRadius) / 2
+        appendSDF(shape: .ring, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(outerRadius), Float(outerRadius)),
+                  fill: fillColor, stroke: nil,
+                  param0: SIMD2<Float>(Float(mid), Float(half)))
     }
 
     /// Shared builder for `drawNgon`/`drawStar`. Encodes the star into the SDF

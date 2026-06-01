@@ -211,6 +211,38 @@ open class Sketch {
     public func drawStar(center: Vector2, outerRadius: Double, innerRadius: Double, points: Int) {
         drawer.drawStar(center.x, center.y, outerRadius, innerRadius, points: points)
     }
+    public func drawRhombus(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0) {
+        drawer.drawRhombus(x, y, width, height, cornerRadius: cornerRadius)
+    }
+    public func drawRhombus(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0) {
+        drawer.drawRhombus(center.x, center.y, width, height, cornerRadius: cornerRadius)
+    }
+    public func drawVesica(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0) {
+        drawer.drawVesica(x, y, width, height, cornerRadius: cornerRadius)
+    }
+    public func drawVesica(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0) {
+        drawer.drawVesica(center.x, center.y, width, height, cornerRadius: cornerRadius)
+    }
+    public func drawMoon(_ x: Double, _ y: Double, _ outerRadius: Double, _ innerRadius: Double,
+                         _ offset: Double, cornerRadius: Double = 0) {
+        drawer.drawMoon(x, y, outerRadius, innerRadius, offset, cornerRadius: cornerRadius)
+    }
+    public func drawMoon(center: Vector2, outerRadius: Double, innerRadius: Double,
+                         offset: Double, cornerRadius: Double = 0) {
+        drawer.drawMoon(center.x, center.y, outerRadius, innerRadius, offset, cornerRadius: cornerRadius)
+    }
+    public func drawCross(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double, cornerRadius: Double = 0) {
+        drawer.drawCross(x, y, length, thickness, cornerRadius: cornerRadius)
+    }
+    public func drawCross(center: Vector2, length: Double, thickness: Double, cornerRadius: Double = 0) {
+        drawer.drawCross(center.x, center.y, length, thickness, cornerRadius: cornerRadius)
+    }
+    public func drawRing(_ x: Double, _ y: Double, _ innerRadius: Double, _ outerRadius: Double) {
+        drawer.drawRing(x, y, innerRadius, outerRadius)
+    }
+    public func drawRing(center: Vector2, innerRadius: Double, outerRadius: Double) {
+        drawer.drawRing(center.x, center.y, innerRadius, outerRadius)
+    }
     public func drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
                         start: Double, stop: Double, mode: ArcMode = .open) {
         drawer.drawArc(x, y, rx, ry, start: start, stop: stop, mode: mode)
