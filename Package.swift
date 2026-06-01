@@ -264,11 +264,6 @@ let package = Package(
             path: "Examples/Patterns/ShapeMenagerie"
         ),
         .executableTarget(
-            name: "Example-ShapeCabinet",
-            dependencies: ["Ollin"],
-            path: "Examples/Patterns/ShapeCabinet"
-        ),
-        .executableTarget(
             name: "Example-Primitives",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/Primitives"
