@@ -10,8 +10,8 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 
 ### Contents
 
-- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight)
-- **Shapes:** [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
+- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [pointSize](#pointSize)
+- **Shapes:** [drawPoint](#point), [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
@@ -62,7 +62,34 @@ strokeWeight(3)
 drawCircle(width / 2, height / 2, 120)
 ```
 
+<a name="pointSize"></a>
+
+#### `pointSize(_ size: Double)`
+
+Diameter of a [`drawPoint`](#point) dot, in points. State, like `strokeWeight` — set it once and it holds, with a per-call override on `drawPoint`.
+
+```swift
+pointSize(4)
+drawPoint(width / 2, height / 2)
+```
+
 ### Shapes
+
+<a name="point"></a>
+
+#### `drawPoint(_ x: Double, _ y: Double)` / `drawPoint(_ x: Double, _ y: Double, _ size: Double)`
+#### `drawPoint(_ p: Vector2)` / `drawPoint(_ p: Vector2, size: Double)`
+
+A filled dot: a tiny disk in the current `fill` color (it ignores stroke, so `noFill()` draws nothing). `size` is the on-screen *diameter*; without it, the current [`pointSize`](#pointSize) is used. Each point is a single SDF instance, so a field of thousands stays cheap.
+
+```swift
+fill(.black)
+pointSize(3)
+for p in cloud { drawPoint(p) }          // a scatter of dots
+drawPoint(width / 2, height / 2, 12)     // one bigger dot
+```
+
+**Sizes go all the way down.** Points, circles, and lines stay smooth at sub-pixel sizes: a dot or line thinner than a pixel fades by *area* instead of popping in, snapping to a 1px floor, or flickering as it moves. A field of tiny points or a hairline `drawLine` reads as a soft, even wash rather than hard speckle — so draw at whatever size the piece wants, down to a fraction of a pixel.
 
 <a name="circle"></a>
 

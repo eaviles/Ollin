@@ -173,6 +173,24 @@ static void regionCoverage(float d, float hw, float strokeWidth,
     strokeCov = (strokeWidth > 0.0) ? 1.0 - smoothstep(hw - aa, hw + aa, abs(d)) : 0.0;
 }
 
+// Disk (ellipse / circle / point) coverage with sub-pixel area conservation.
+// Unlike the inside-biased region ramp, a disk smaller than ~1px keeps a ~1px
+// screen footprint (so it can't fall between sample points and flicker) while
+// its alpha is scaled by the true/clamped *area* — total ink is conserved, so a
+// shrinking dot fades smoothly to nothing with no minimum-size floor. Disks
+// never tile edge-to-edge, so the region fills' seam-avoiding inside bias isn't
+// needed; a centered ramp gives crisp AA at any normal size. `px` is the pixel
+// footprint in local units (`fwidth`), so this holds under any transform.
+static void diskCoverage(float2 p, float2 ab, float hw, float strokeWidth,
+                         thread float &fillCov, thread float &strokeCov) {
+    float px = max(fwidth(sdEllipse(p, ab)), 1e-5);
+    float2 abE = max(ab, 0.5 * px);                      // keep >= ~½px radius on screen
+    float d = sdEllipse(p, abE);
+    float areaScale = (ab.x * ab.y) / (abE.x * abE.y);   // < 1 only when enlarged
+    fillCov = clamp(0.5 - d / px, 0.0, 1.0) * areaScale;
+    strokeCov = (strokeWidth > 0.0) ? 1.0 - smoothstep(hw - px, hw + px, abs(d)) : 0.0;
+}
+
 fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
     float2 p = in.local;
     float hw = in.strokeWidth * 0.5;
@@ -186,10 +204,14 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
     case 2u: {   // capsule (a line): solid fill in fillColor, round caps
         // Centered AA keeps the line ~strokeWidth wide (it doesn't tile, so the
         // inside bias the region fills use isn't needed here). param0 is the
-        // half-segment vector; extra is the cap radius (half the weight).
-        float d = sdSegment(p, -in.param0, in.param0) - in.extra;
-        float aa = max(fwidth(d), 1e-5);
-        fillCov = 1.0 - smoothstep(-aa, aa, d);
+        // half-segment vector; extra is the cap radius (half the weight). A
+        // sub-pixel width keeps a ~1px footprint and scales alpha linearly by the
+        // width ratio (a line's ink per unit length ∝ width), so a thin line
+        // fades smoothly instead of vanishing or snapping to 1px.
+        float s = sdSegment(p, -in.param0, in.param0);
+        float px = max(fwidth(s), 1e-5);
+        float hwE = max(in.extra, 0.5 * px);
+        fillCov = clamp(0.5 - (s - hwE) / px, 0.0, 1.0) * min(in.extra / hwE, 1.0);
         break;
     }
     case 3u:     // arc, open
@@ -228,8 +250,8 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         }
         break;
     }
-    default:     // 0: ellipse / circle
-        regionCoverage(sdEllipse(p, in.size), hw, in.strokeWidth, fillCov, strokeCov);
+    default:     // 0: ellipse / circle / point
+        diskCoverage(p, in.size, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
 

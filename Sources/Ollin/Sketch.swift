@@ -169,6 +169,11 @@ open class Sketch {
     public func stroke(_ color: Color) { drawer.stroke(color) }
     public func noStroke() { drawer.noStroke() }
     public func strokeWeight(_ weight: Double) { drawer.strokeWeight(weight) }
+    public func pointSize(_ size: Double) { drawer.pointSize(size) }
+    public func drawPoint(_ x: Double, _ y: Double) { drawer.drawPoint(x, y) }
+    public func drawPoint(_ x: Double, _ y: Double, _ size: Double) { drawer.drawPoint(x, y, size) }
+    public func drawPoint(_ p: Vector2) { drawer.drawPoint(p.x, p.y) }
+    public func drawPoint(_ p: Vector2, size: Double) { drawer.drawPoint(p.x, p.y, size) }
     public func drawCircle(_ x: Double, _ y: Double, _ radius: Double) {
         drawer.drawCircle(x, y, radius)
     }

@@ -143,6 +143,11 @@ let package = Package(
             path: "Examples/Motion/EllipseField"
         ),
         .executableTarget(
+            name: "Example-Attractor",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/Attractor"
+        ),
+        .executableTarget(
             name: "Example-Myriad",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Myriad"

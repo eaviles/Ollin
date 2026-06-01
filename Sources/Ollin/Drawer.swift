@@ -82,6 +82,7 @@ final class Drawer {
     private var fillColor: Color? = .white     // default: white fill
     private var strokeColor: Color? = .black    // default: black stroke
     private var strokeWidth: Double = 1         // default: 1px
+    private var pointDiameter: Double = 1       // default: 1px dot (see pointSize / drawPoint)
 
     // MARK: Per-frame geometry (reset every frame)
 
@@ -123,6 +124,7 @@ final class Drawer {
         var fillColor: Color?
         var strokeColor: Color?
         var strokeWidth: Double
+        var pointDiameter: Double
     }
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
@@ -142,6 +144,7 @@ final class Drawer {
     func stroke(_ color: Color) { strokeColor = color }
     func noStroke() { strokeColor = nil }
     func strokeWeight(_ weight: Double) { strokeWidth = max(0, weight) }
+    func pointSize(_ size: Double) { pointDiameter = max(0, size) }
 
     // MARK: Frame lifecycle
 
@@ -181,7 +184,8 @@ final class Drawer {
     /// Save the current transform and style (fill/stroke/weight).
     func pushState() {
         stateStack.append(SavedState(transform: transform, transformIsIdentity: transformIsIdentity,
-                                     fillColor: fillColor, strokeColor: strokeColor, strokeWidth: strokeWidth))
+                                     fillColor: fillColor, strokeColor: strokeColor,
+                                     strokeWidth: strokeWidth, pointDiameter: pointDiameter))
     }
 
     /// Restore the most recently pushed transform and style. No-op if unbalanced.
@@ -192,6 +196,7 @@ final class Drawer {
         fillColor = s.fillColor
         strokeColor = s.strokeColor
         strokeWidth = s.strokeWidth
+        pointDiameter = s.pointDiameter
     }
 
     // MARK: Primitives
@@ -221,6 +226,21 @@ final class Drawer {
                   size: SIMD2<Float>(Float(rx), Float(ry)),
                   fill: fillColor, stroke: strokeColor)
     }
+
+    /// A filled dot at `(x, y)`. `size` is the on-screen *diameter* (points); the
+    /// no-`size` form uses the current `pointSize`. A point is a tiny filled disk:
+    /// it takes the current `fill` color (not stroke) and ignores `strokeWeight`,
+    /// so `noFill()` draws nothing. Recorded as one SDF instance on the disk path,
+    /// so it's crisp and effectively free per point — and stays smooth down to
+    /// sub-pixel sizes, fading by area instead of popping or snapping to 1px.
+    func drawPoint(_ x: Double, _ y: Double, _ size: Double) {
+        guard size > 0, let fill = fillColor else { return }
+        let r = Float(size / 2)
+        appendSDF(shape: .ellipse, center: Vector2(x, y),
+                  size: SIMD2<Float>(r, r), fill: fill, stroke: nil)
+    }
+
+    func drawPoint(_ x: Double, _ y: Double) { drawPoint(x, y, pointDiameter) }
 
     /// Record one analytic shape as an SDF instance, carrying the current
     /// transform plus the given fill, stroke, and shape-specific slots. A `nil`
