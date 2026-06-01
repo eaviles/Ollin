@@ -170,6 +170,7 @@ open class Sketch {
     public func noStroke() { drawer.noStroke() }
     public func strokeWeight(_ weight: Double) { drawer.strokeWeight(weight) }
     public func pointSize(_ size: Double) { drawer.pointSize(size) }
+    public func pointMarker(_ marker: PointMarker) { drawer.pointMarker(marker) }
     public func drawPoint(_ x: Double, _ y: Double) { drawer.drawPoint(x, y) }
     public func drawPoint(_ x: Double, _ y: Double, _ size: Double) { drawer.drawPoint(x, y, size) }
     public func drawPoint(_ p: Vector2) { drawer.drawPoint(p.x, p.y) }

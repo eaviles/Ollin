@@ -237,6 +237,11 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Patterns/LifeQuilt"
         ),
+        .executableTarget(
+            name: "Example-Markers",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/Markers"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

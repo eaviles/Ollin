@@ -65,7 +65,7 @@ struct SDFInstance {
     float2 param1;        // shape-specific
     float strokeWidth;    // points; 0 means no stroke
     float extra;          // shape-specific scalar
-    uint  shape;          // 0 ellipse, 1 box, 2 capsule, 3/4/5 arc open/chord/pie, 6 triangle, 7 star/ngon
+    uint  shape;          // 0 ellipse, 1 box, 2 capsule, 3/4/5 arc open/chord/pie, 6 triangle, 7 star/ngon, 8 marker
 };
 
 struct SDFOut {
@@ -188,6 +188,35 @@ static float sdStar(float2 p, float r, float2 acs, float2 ecs, float an) {
     return length(p) * sign(p.x);
 }
 
+static float ndot(float2 a, float2 b) { return a.x * b.x - a.y * b.y; }
+
+// Rhombus (a diamond) with axis half-extents `b`: vertices at (±b.x, 0) and
+// (0, ±b.y). Exact signed distance, negative inside.
+static float sdRhombus(float2 p, float2 b) {
+    p = abs(p);
+    float h = clamp(ndot(b - 2.0 * p, b) / dot(b, b), -1.0, 1.0);
+    float d = length(p - 0.5 * b * float2(1.0 - h, 1.0 + h));
+    return d * sign(p.x * b.y + p.y * b.x - b.x * b.y);
+}
+
+// Plus sign (+): a cross of arm half-length `b.x` and arm half-width `b.y`
+// (with b.x >= b.y), corner rounding `r`. Reaches ±b.x on both axes.
+static float sdCross(float2 p, float2 b, float r) {
+    p = abs(p);
+    p = (p.y > p.x) ? p.yx : p.xy;
+    float2 q = p - b;
+    float k = max(q.y, q.x);
+    float2 w = (k > 0.0) ? q : float2(b.y - p.x, -k);
+    return sign(k) * length(max(w, 0.0)) + r;
+}
+
+// Diagonal cross (✕): the two diagonals of reach `w`, fattened to half-width `r`
+// (which also rounds the tips). Reaches w*0.5 + r on each axis.
+static float sdRoundedX(float2 p, float w, float r) {
+    p = abs(p);
+    return length(p - min(p.x + p.y, w) * 0.5) - r;
+}
+
 // Fill + stroke coverage for a shape whose boundary is the zero level set of a
 // region SDF `d`: fill the inside (d < 0), stroke a band of half-width `hw`
 // straddling the boundary. `fwidth(d)` keeps the falloff ~1px under any
@@ -242,6 +271,24 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         // sdStar's native vertex points along +Y, which is *down* in y-down space;
         // mirror Y so a vertex points up. Region coverage like the triangle/box.
         float d = sdStar(float2(p.x, -p.y), in.size.x, in.param0, in.param1, in.extra);
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 8u: {   // point marker: size = (h, h); extra = kind; param0.x = arm half-width
+        float h = in.size.x;
+        float t = in.param0.x;
+        uint kind = uint(in.extra + 0.5);
+        float d;
+        if (kind == 0u) {          // square: side 2h
+            d = sdRoundBox(p, in.size, 0.0);
+        } else if (kind == 1u) {   // diamond: a rhombus with diagonal 2h
+            d = sdRhombus(p, in.size);
+        } else if (kind == 2u) {   // cross (+): arms reach ±h, half-width t
+            d = sdCross(p, float2(h, t), 0.0);
+        } else {                   // x (✕): diagonals fattened to half-width t
+            d = sdRoundedX(p, 2.0 * (h - t), t);
+        }
+        // Region coverage (fill-only — strokeWidth is 0 on the point path).
         regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }

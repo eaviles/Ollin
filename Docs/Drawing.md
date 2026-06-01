@@ -10,7 +10,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 
 ### Contents
 
-- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [pointSize](#pointSize)
+- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [pointSize](#pointSize), [pointMarker](#pointMarker)
 - **Shapes:** [drawPoint](#point), [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawTriangle](#triangle), [drawNgon](#ngon), [drawStar](#star), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
 
@@ -73,6 +73,18 @@ pointSize(4)
 drawPoint(width / 2, height / 2)
 ```
 
+<a name="pointMarker"></a>
+
+#### `pointMarker(_ marker: PointMarker)`
+
+The glyph [`drawPoint`](#point) stamps: `.circle` (the default), `.square`, `.diamond`, `.cross` (a plus, `+`), or `.x` (a diagonal cross, `✕`). State, like `pointSize` — set it once and it holds. Every marker is sized by its on-screen diameter, so the footprint stays the same when you switch glyphs, and all take the current `fill` color (they ignore stroke).
+
+```swift
+pointMarker(.cross)
+pointSize(10)
+for p in cloud { drawPoint(p) }          // a scatter of plus signs
+```
+
 ### Shapes
 
 <a name="point"></a>
@@ -80,7 +92,7 @@ drawPoint(width / 2, height / 2)
 #### `drawPoint(_ x: Double, _ y: Double)` / `drawPoint(_ x: Double, _ y: Double, _ size: Double)`
 #### `drawPoint(_ p: Vector2)` / `drawPoint(_ p: Vector2, size: Double)`
 
-A filled dot: a tiny disk in the current `fill` color (it ignores stroke, so `noFill()` draws nothing). `size` is the on-screen *diameter*; without it, the current [`pointSize`](#pointSize) is used. Each point is a single SDF instance, so a field of thousands stays cheap.
+A filled marker in the current `fill` color (it ignores stroke, so `noFill()` draws nothing). The glyph is the current [`pointMarker`](#pointMarker) — a round dot by default. `size` is the on-screen *diameter*; without it, the current [`pointSize`](#pointSize) is used. Each point is a single SDF instance, so a field of thousands stays cheap.
 
 ```swift
 fill(.black)
@@ -89,7 +101,7 @@ for p in cloud { drawPoint(p) }          // a scatter of dots
 drawPoint(width / 2, height / 2, 12)     // one bigger dot
 ```
 
-**Sizes go all the way down.** Points, circles, and lines stay smooth at sub-pixel sizes: a dot or line thinner than a pixel fades by *area* instead of popping in, snapping to a 1px floor, or flickering as it moves. A field of tiny points or a hairline `drawLine` reads as a soft, even wash rather than hard speckle — so draw at whatever size the piece wants, down to a fraction of a pixel.
+**Sizes go all the way down.** Round points, circles, and lines stay smooth at sub-pixel sizes: a dot or line thinner than a pixel fades by *area* instead of popping in, snapping to a 1px floor, or flickering as it moves. A field of tiny points or a hairline `drawLine` reads as a soft, even wash rather than hard speckle — so draw at whatever size the piece wants, down to a fraction of a pixel.
 
 <a name="circle"></a>
 

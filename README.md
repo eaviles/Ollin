@@ -214,7 +214,7 @@ As with the others, this is reading for ideas and engineering approach, which is
 A few helpers lean on well-known public techniques, reimplemented in Ollin and credited here. They lean toward OPENRNDR-style ergonomics:
 
 - The cosine-gradient `Palette` uses [Inigo Quilez's palette formula](https://iquilezles.org/articles/palettes/).
-- The signed-distance fields behind circles, ellipses, rectangles, lines, circular arcs, and triangles (box, capsule, pie, arc, and isosceles triangle) come from [Inigo Quilez's 2D distance functions](https://iquilezles.org/articles/distfunctions2d/).
+- The signed-distance fields behind circles, ellipses, rectangles, lines, circular arcs, triangles, regular polygons and stars, and point markers (box, capsule, pie, arc, isosceles triangle, star, rhombus, and cross) come from [Inigo Quilez's 2D distance functions](https://iquilezles.org/articles/distfunctions2d/).
 - `curlNoise` follows the curl-noise method for divergence-free flow (Robert Bridson and colleagues, "Curl-Noise for Procedural Fluid Flow", 2007).
 - `randomGaussian` uses the Marsaglia polar method for normal-distributed samples.
 - The `Colormap` ramps carry the canonical public colormap data: `viridis`/`magma`/`inferno`/`plasma`/`cividis` from [matplotlib](https://matplotlib.org) (CC0), `turbo` from Google (Apache-2.0), and `rocket`/`mako` from [seaborn](https://seaborn.pydata.org) (BSD-3).
