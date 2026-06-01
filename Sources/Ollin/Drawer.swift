@@ -24,6 +24,7 @@ enum SDFShape: UInt32 {
     case arcOpen  = 3   // circular arc, open: size = (ra, ra)
     case arcChord = 4   // circular arc, chord-closed
     case arcPie   = 5   // circular arc, pie-closed
+    case triangle = 6   // isosceles: apex at center, size = (base/2, height), opens +y
 }
 
 /// One analytic shape, drawn as a single instanced quad whose fragment computes
@@ -241,6 +242,36 @@ final class Drawer {
     }
 
     func drawPoint(_ x: Double, _ y: Double) { drawPoint(x, y, pointDiameter) }
+
+    /// An equilateral triangle centered at `(x, y)`, point-up, with circumradius
+    /// `radius` (center-to-vertex distance, like `drawCircle`'s radius). Recorded
+    /// as a single SDF instance — analytic fill + stroke + anti-aliasing — so it's
+    /// crisp at any size and effectively free per triangle. Rotate via the
+    /// transform stack to aim it; rotation pivots on the center.
+    func drawTriangle(_ x: Double, _ y: Double, _ radius: Double) {
+        guard radius > 0 else { return }
+        let height = radius * 1.5                          // apex-to-base distance
+        let halfBase = radius * 0.8660254037844386         // radius * √3/2
+        // Anchor the centroid at (x, y); the apex (the SDF origin) sits `radius`
+        // above it (the centroid is ⅓ of the height up from the base).
+        appendSDF(shape: .triangle, center: Vector2(x, y - radius),
+                  size: SIMD2<Float>(Float(halfBase), Float(height)),
+                  fill: fillColor, stroke: strokeColor)
+    }
+
+    /// An isosceles triangle whose apex (tip) is at `(x, y)`, opening toward +y
+    /// (downward, in Ollin's y-down space) by `height`, with the given `base`
+    /// width. Recorded as a single SDF instance (see `drawTriangle(_:_:_:)`):
+    /// analytic, crisp at any size, effectively free. Rotate via the transform
+    /// stack to aim it; rotation pivots on the apex — so to spin a wedge about its
+    /// tip, `translate` to the tip, `rotate`, then draw with the apex at the
+    /// origin.
+    func drawTriangle(_ x: Double, _ y: Double, _ base: Double, _ height: Double) {
+        guard base > 0, height > 0 else { return }
+        appendSDF(shape: .triangle, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(base / 2), Float(height)),
+                  fill: fillColor, stroke: strokeColor)
+    }
 
     /// Record one analytic shape as an SDF instance, carrying the current
     /// transform plus the given fill, stroke, and shape-specific slots. A `nil`

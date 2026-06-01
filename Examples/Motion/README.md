@@ -20,5 +20,6 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | [Spokes](Spokes/Sketch.swift) | a sunburst of fat, round-capped `drawLine` spokes pulsing with `time` (capsule SDF) |
 | [Star](Star/Sketch.swift) | a concave star with a hole, filled via `drawShape` and the vector `Shape` type (a triangulated fill `drawPolygon` can't do) |
 | [Trail](Trail/Sketch.swift) | a Lissajous point traced by a 600-segment polyline |
+| [Triangles](Triangles/Sketch.swift) | the two `drawTriangle` forms side by side — equilateral pivoting on its center, isosceles wedge pivoting on its apex (SDF) |
 
 Run one with `swift run Example-<Name>`, e.g. `swift run Example-Breathing`.

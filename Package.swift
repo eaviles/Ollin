@@ -222,6 +222,16 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Randomness/NoiseWave"
         ),
+        .executableTarget(
+            name: "Example-Triangles",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/Triangles"
+        ),
+        .executableTarget(
+            name: "Example-LifeQuilt",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/LifeQuilt"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

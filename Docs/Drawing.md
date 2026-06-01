@@ -11,7 +11,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 ### Contents
 
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [pointSize](#pointSize)
-- **Shapes:** [drawPoint](#point), [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
+- **Shapes:** [drawPoint](#point), [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawTriangle](#triangle), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
@@ -129,6 +129,21 @@ An elliptical arc sweeping from `start` to `stop` (radians, measured from the po
 ```swift
 drawArc(width / 2, height / 2, 160, 90, start: 0, stop: .pi)              // open half-arc
 drawArc(width / 2, height / 2, 120, 120, start: 0, stop: .pi / 2, mode: .pie)
+```
+
+<a name="triangle"></a>
+
+#### `drawTriangle(_ x: Double, _ y: Double, _ radius: Double)`
+#### `drawTriangle(center: Vector2, radius: Double)`
+#### `drawTriangle(_ x: Double, _ y: Double, _ base: Double, _ height: Double)`
+#### `drawTriangle(apex: Vector2, base: Double, height: Double)`
+
+A triangle, in two forms. The three-argument form is an **equilateral** triangle *centered* at `(x, y)`, point-up, with circumradius `radius` (the center-to-vertex distance, like `drawCircle`'s radius) — rotating it spins it about that center. The four-argument form is an **isosceles** triangle whose *apex* (tip) is at `(x, y)`, opening toward +y (downward) by `height`, with the given `base` width — rotating it sweeps it about the apex. Both are analytic SDF shapes (crisp at any size, effectively free per triangle); aim them with the transform stack. For an arbitrary three-point triangle, use `drawPolygon([a, b, c])`.
+
+```swift
+drawTriangle(width / 2, height / 2, 120)              // equilateral, centered, point-up
+drawTriangle(width / 2, 100, 160, 240)               // isosceles, tip at (w/2, 100)
+withState { translate(300, 300); rotate(time); drawTriangle(0, 0, 80, 200) }  // wedge spinning on its tip
 ```
 
 <a name="rect"></a>

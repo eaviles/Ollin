@@ -186,6 +186,18 @@ open class Sketch {
     public func drawEllipse(center: Vector2, rx: Double, ry: Double) {
         drawer.drawEllipse(center.x, center.y, rx, ry)
     }
+    public func drawTriangle(_ x: Double, _ y: Double, _ radius: Double) {
+        drawer.drawTriangle(x, y, radius)
+    }
+    public func drawTriangle(center: Vector2, radius: Double) {
+        drawer.drawTriangle(center.x, center.y, radius)
+    }
+    public func drawTriangle(_ x: Double, _ y: Double, _ base: Double, _ height: Double) {
+        drawer.drawTriangle(x, y, base, height)
+    }
+    public func drawTriangle(apex: Vector2, base: Double, height: Double) {
+        drawer.drawTriangle(apex.x, apex.y, base, height)
+    }
     public func drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
                         start: Double, stop: Double, mode: ArcMode = .open) {
         drawer.drawArc(x, y, rx, ry, start: start, stop: stop, mode: mode)

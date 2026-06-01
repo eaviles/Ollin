@@ -65,7 +65,7 @@ struct SDFInstance {
     float2 param1;        // shape-specific
     float strokeWidth;    // points; 0 means no stroke
     float extra;          // shape-specific scalar
-    uint  shape;          // 0 ellipse, 1 box, 2 capsule, 3/4/5 arc open/chord/pie
+    uint  shape;          // 0 ellipse, 1 box, 2 capsule, 3/4/5 arc open/chord/pie, 6 triangle
 };
 
 struct SDFOut {
@@ -156,6 +156,19 @@ static float sdArc(float2 p, float2 sc, float ra, float rb) {
     return ((sc.y * p.x > sc.x * p.y) ? length(p - sc * ra) : abs(length(p) - ra)) - rb;
 }
 
+// Isosceles triangle: apex at the origin, base of half-width q.x centered at
+// y = q.y (it opens toward +Y). Symmetric about x = 0. Exact signed distance,
+// negative inside. An equilateral triangle is the special case q = (r*√3/2, r*3/2).
+static float sdTriangleIsosceles(float2 p, float2 q) {
+    p.x = abs(p.x);
+    float2 a = p - q * clamp(dot(p, q) / dot(q, q), 0.0, 1.0);
+    float2 b = p - q * float2(clamp(p.x / q.x, 0.0, 1.0), 1.0);
+    float k = sign(q.y);
+    float d = min(dot(a, a), dot(b, b));
+    float s = max(k * (p.x * q.y - p.y * q.x), k * (p.y - q.y));
+    return sqrt(d) * sign(s);
+}
+
 // Fill + stroke coverage for a shape whose boundary is the zero level set of a
 // region SDF `d`: fill the inside (d < 0), stroke a band of half-width `hw`
 // straddling the boundary. `fwidth(d)` keeps the falloff ~1px under any
@@ -200,6 +213,11 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
     switch (in.shape) {
     case 1u:     // rounded box
         regionCoverage(sdRoundBox(p, in.size, in.extra), hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    case 6u:     // isosceles triangle: apex at center, size = (base/2, height)
+        // Region coverage (inside-biased), so abutting triangles — the rotated
+        // wedges that tile a cell — meet at full coverage and leave no seam.
+        regionCoverage(sdTriangleIsosceles(p, in.size), hw, in.strokeWidth, fillCov, strokeCov);
         break;
     case 2u: {   // capsule (a line): solid fill in fillColor, round caps
         // Centered AA keeps the line ~strokeWidth wide (it doesn't tile, so the
