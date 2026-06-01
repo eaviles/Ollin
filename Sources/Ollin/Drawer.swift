@@ -343,23 +343,25 @@ final class Drawer {
 
     /// A vesica (a pointed lens / two-circle intersection) centered at `(x, y)`,
     /// `width` by `height`; the tips lie along the longer axis. `cornerRadius`
-    /// rounds the tips while keeping the footprint. Recorded as a single SDF
-    /// instance. Rotate via the transform stack.
+    /// rounds the tips (and slightly enlarges the lens, like `drawMoon`).
+    /// Recorded as a single SDF instance. Rotate via the transform stack.
     func drawVesica(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0) {
         guard width > 0, height > 0 else { return }
         let horizontal = width > height
-        let major = (horizontal ? width : height) / 2     // half-length toward the tips
-        let minor = (horizontal ? height : width) / 2     // waist half-width
-        let rr = max(0, min(cornerRadius, minor))
-        // Inset by the rounding radius so rounding keeps the footprint, then map
-        // the (along, across) half-extents to iq's circle radius + center offset:
-        //   r = (w + a²/w) / 2,  d = (a² − w²) / (2w)   (a ≥ w; a == w is a circle).
-        let a = major - rr
-        let w = max(minor - rr, 1e-4)
+        let a = (horizontal ? width : height) / 2     // half-length toward the tips
+        let w = max((horizontal ? height : width) / 2, 1e-4)   // waist half-width
+        let rr = max(0, cornerRadius)
+        // Map the (along, across) half-extents to iq's circle radius + center
+        // offset:  r = (w + a²/w) / 2,  d = (a² − w²) / (2w)  (a ≥ w; a == w is a
+        // circle). Derived from the *full* footprint, not an inset one, so r/d stay
+        // well-conditioned for any rounding (insetting toward a zero waist sends
+        // them to ~1e7 and the shader's sqrt(r²−d²) loses all precision). opRound
+        // (− rr) rounds the tips and grows the lens by rr, which the AABB accounts
+        // for.
         let rCircle = (w + a * a / w) / 2
         let dOff = (a * a - w * w) / (2 * w)
         appendSDF(shape: .vesica, center: Vector2(x, y),
-                  size: SIMD2<Float>(Float(width / 2), Float(height / 2)),
+                  size: SIMD2<Float>(Float(width / 2 + rr), Float(height / 2 + rr)),
                   fill: fillColor, stroke: strokeColor, extra: Float(rr),
                   param0: SIMD2<Float>(Float(rCircle), Float(dOff)),
                   param1: SIMD2<Float>(horizontal ? 1 : 0, 0))

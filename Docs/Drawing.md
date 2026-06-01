@@ -214,7 +214,7 @@ drawRhombus(width / 2, height / 2, 180, 180, cornerRadius: 40)  // soft, near-ci
 #### `drawVesica(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0)`
 #### `drawVesica(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0)`
 
-A vesica — a pointed lens, the overlap of two circles — centered at `(x, y)`, `width` by `height`; the two tips lie along the longer axis (so a tall lens points up/down, a wide one left/right). `cornerRadius` rounds the tips while keeping the footprint, easing the lens toward an ellipse. An analytic SDF shape; rotate it with the transform stack for in-between angles.
+A vesica — a pointed lens, the overlap of two circles — centered at `(x, y)`, `width` by `height`; the two tips lie along the longer axis (so a tall lens points up/down, a wide one left/right). `cornerRadius` rounds the tips (and slightly enlarges the lens, like `drawMoon`), easing it toward an ellipse. An analytic SDF shape; rotate it with the transform stack for in-between angles.
 
 ```swift
 drawVesica(width / 2, height / 2, 120, 240)                 // a vertical lens (points up/down)
