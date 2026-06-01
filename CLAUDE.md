@@ -1,20 +1,14 @@
 # Ollin — guidance for development
 
-Ollin is a creative-coding framework for Swift + Metal (macOS). This file
-captures the design intent so work here stays coherent across sessions.
+Ollin is a creative-coding framework for Swift + Metal (macOS). This file captures the design intent so work here stays coherent across sessions.
 
 ## Vision
 
 **p5.js ergonomics on an OPENRNDR-grade core, with motion as the default.**
 
-- The API people *type* should feel like p5: `setup()`/`draw()`, bare calls
-  like `background(.white)`, `stroke(.black)`, `drawCircle(x, y, radius)`. That
-  familiarity is the point — don't sacrifice it.
-- The architecture they *grow into* should feel like OPENRNDR: typed value
-  objects, an explicit `Drawer`, and composable geometry.
-- `draw()` runs continuously at the display refresh rate. Animation is not
-  opt-in — `radius: 120 + sin(time) * 40` just moves. `noLoop()` is the rare
-  still-image escape hatch.
+- The API people *type* should feel like p5: `setup()`/`draw()`, bare calls like `background(.white)`, `stroke(.black)`, `drawCircle(x, y, radius)`. That familiarity is the point — don't sacrifice it.
+- The architecture they *grow into* should feel like OPENRNDR: typed value objects, an explicit `Drawer`, and composable geometry.
+- `draw()` runs continuously at the display refresh rate. Animation is not opt-in — `radius: 120 + sin(time) * 40` just moves. `noLoop()` is the rare still-image escape hatch.
 
 ## Platform scope
 
@@ -22,82 +16,29 @@ Apple platforms only, by design. macOS is the focus today; iOS, tvOS, and vision
 
 ## The architecture rule (load-bearing)
 
-**The bare p5-style API is sugar over a public, typed core. Never make the
-facade the only path to a feature.**
+**The bare p5-style API is sugar over a public, typed core. Never make the facade the only path to a feature.**
 
-- `Sketch`'s bare methods forward to an internal `Drawer` (see
-  `Sources/Ollin/Sketch.swift`). Keep that split. Anything `drawCircle(...)` can
-  do, the `Drawer` should also do — with more control.
-- The day a capability is reachable *only* through the bare API, the ceiling
-  is capped. Build the feature on the core first, then add the sugar.
+- `Sketch`'s bare methods forward to an internal `Drawer` (see `Sources/Ollin/Sketch.swift`). Keep that split. Anything `drawCircle(...)` can do, the `Drawer` should also do — with more control.
+- The day a capability is reachable *only* through the bare API, the ceiling is capped. Build the feature on the core first, then add the sugar.
 
 ## Conventions
 
-- **Typed value objects early.** Geometry and color are data you pass around,
-  transform, and compose — not just immediate draw calls. Prefer adding
-  `Vector2`, `Rectangle`, and a vector `Shape`/`Contour` type *before* the
-  call sites multiply; retrofitting `x:y:` doubles into `Vector2` later is
-  expensive.
-- **Swift-idiomatic, not a literal p5 port.** Enums for modes (not `"CENTER"`
-  strings), trailing-closure scoping (`withState { }`) over
-  leaky global state, value types, overloads. Borrow p5's feel, not its warts.
-- **Plan an extension seam.** OPENRNDR's strength is `extend(...)`. Keep a
-  lifecycle hook (before/after `draw`, frame-grab) so screenshots, an FPS HUD,
-  GUI, or video export bolt on without bloating the core.
-- Drawing methods live on `Sketch` (scoped to the instance), not true
-  globals — keep it that way.
-- **Draw verbs, not nouns.** Geometry-emitting calls are imperative verb phrases
-  with a `draw` prefix — `drawCircle`, `drawRect`, `drawLine`, `drawPolygon`,
-  `drawPolyline` — not bare nouns (`circle`). They read as the commands they are
-  (side-effecting immediate-mode calls), which is what the Swift API Design
-  Guidelines want, and the prefix gives a clean rule: `draw*` emits geometry, while
-  state (`fill`/`stroke`/`background`) and transforms (`translate`/`rotate`/`scale`)
-  keep their own names. "Feels like p5" is the *shape* of the API — bare top-level
-  calls, terse positional args, motion by default — not p5's literal spelling, so
-  the verb prefix keeps the feel and is a good Swift citizen. New primitives take
-  the prefix too (`drawEllipse`, `drawTriangle`, …). (oF landed here the same way:
-  it deprecated `ofCircle` for `ofDrawCircle`.)
-- **Consistent point arguments.** A primitive that takes a point offers a
-  *positional* scalar form and a *role-labeled* `Vector2` form: `drawCircle(x, y, radius)`
-  beside `drawCircle(center:radius:)`, `drawRect(x, y, width, height)` beside
-  `drawRect(corner:…)`/`drawRect(center:…)`, `drawLine(x1, y1, x2, y2)` beside
-  `drawLine(_:_:)`, `translate(x, y)` beside `translate(_ offset: Vector2)`. The
-  rule: bare scalars go positional — everyone knows the `x, y, radius` order, and
-  labels on them are pure stutter once call sites pass `x`/`y` variables
-  (`drawCircle(x: x, y: y, …)`). The label is reserved for the value-object
-  overload, where it names the *anchor* (`center:` vs `corner:`) and so carries
-  real information, never an echo. New point-taking primitives (`drawEllipse`,
-  `drawPoint`, `drawTriangle`, …) follow the same split. (Unlike Kotlin/OPENRNDR,
-  Swift can't make one declaration callable both positionally and by label, so
-  don't double the overloads to fake "both" — pick positional for the scalar form.)
-- **State stack reads as Swift.** The drawing-state stack is `pushState()` /
-  `popState()` — the combined transform+style snapshot, mirroring Core Graphics'
-  `saveGState`/`restoreGState` — with `withState { }` as the scoped, exception-safe
-  primary form (the `with…{ }` idiom of `withAnimation`/`withTaskGroup`). Reach for
-  `withState { }`; the bare pair is the escape hatch. Combined (not split into
-  transform vs style) by design; a split push/pop can come later as `Drawer`-level
-  methods.
-- **Deprecation path is a 1.0 gate.** Pre-1.0 the public API churns freely with no
-  shims (the README disclaims stability) — there are no external sketches to protect
-  yet, so renames like the recent noun→verb (`circle`→`drawCircle`) and
-  `push`/`pop`/`isolated`→`pushState`/`popState`/`withState` ship unshimmed. *Before*
-  1.0, though, stand up the migration discipline that holds from 1.0 on: every public
-  rename/removal ships an `@available(*, deprecated, renamed: "…")` shim that forwards
-  to the new API, so Xcode offers a one-click fix-it. Gotchas to bake in: use the
-  *full selector* in `renamed:` when labels or arity differ
-  (`@available(*, deprecated, renamed: "drawCircle(_:_:_:)")`, not just `"drawCircle"`);
-  keep the deprecated members together (a `Deprecations.swift`) so they're easy to
-  audit and drop after a grace cycle; and have the shim *forward* to the new API
-  rather than duplicate it. This is a must-do gate, not a nice-to-have — the 1.0
-  stabilization pass is where the renames done freely during pre-1.0 get their shims.
+- **Typed value objects early.** Geometry and color are data you pass around, transform, and compose — not just immediate draw calls. Prefer adding `Vector2`, `Rectangle`, and a vector `Shape`/`Contour` type *before* the call sites multiply; retrofitting `x:y:` doubles into `Vector2` later is expensive.
+- **Swift-idiomatic, not a literal p5 port.** Enums for modes (not `"CENTER"` strings), trailing-closure scoping (`withState { }`) over leaky global state, value types, overloads. Borrow p5's feel, not its warts.
+- **Plan an extension seam.** OPENRNDR's strength is `extend(...)`. Keep a lifecycle hook (before/after `draw`, frame-grab) so screenshots, an FPS HUD, GUI, or video export bolt on without bloating the core.
+- Drawing methods live on `Sketch` (scoped to the instance), not true globals — keep it that way.
+- **Draw verbs, not nouns.** Geometry-emitting calls are imperative verb phrases with a `draw` prefix — `drawCircle`, `drawRect`, `drawLine`, `drawPolygon`, `drawPolyline`, never bare nouns (`circle`). They read as the side-effecting immediate-mode commands they are (what the Swift API Design Guidelines want), and the prefix gives a clean rule: `draw*` emits geometry; state (`fill`/`stroke`/`background`) and transforms (`translate`/`rotate`/`scale`) keep their own names. "Feels like p5" is the *shape* of the API — bare top-level calls, terse positional args, motion by default — not p5's literal spelling, so the prefix keeps the feel and stays a good Swift citizen. New primitives take it too (`drawEllipse`, `drawTriangle`, …). (oF landed here too: `ofCircle` → `ofDrawCircle`.)
+- **Consistent point arguments.** A primitive that takes a point offers a *positional* scalar form and a *role-labeled* `Vector2` form: `drawCircle(x, y, radius)` beside `drawCircle(center:radius:)`, `drawRect(x, y, width, height)` beside `drawRect(corner:…)`/`drawRect(center:…)`, `drawLine(x1, y1, x2, y2)` beside `drawLine(_:_:)`, `translate(x, y)` beside `translate(_ offset: Vector2)`. The rule: bare scalars go positional — everyone knows the `x, y, radius` order, and labels on them are pure stutter once call sites pass `x`/`y` variables (`drawCircle(x: x, y: y, …)`). The label is reserved for the value-object overload, where it names the *anchor* (`center:` vs `corner:`) and carries real information. New point-taking primitives (`drawEllipse`, `drawPoint`, `drawTriangle`, …) follow the same split. (Unlike Kotlin/OPENRNDR, Swift can't make one declaration callable both ways, so don't double the overloads to fake "both" — pick positional for the scalar form.)
+- **State stack reads as Swift.** The drawing-state stack is `pushState()` / `popState()` — the combined transform+style snapshot, mirroring Core Graphics' `saveGState`/`restoreGState` — with `withState { }` as the scoped, exception-safe primary form (the `with…{ }` idiom of `withAnimation`/`withTaskGroup`). Reach for `withState { }`; the bare pair is the escape hatch. Combined (not split into transform vs style) by design; a split push/pop can come later as `Drawer`-level methods.
+- **Deprecation path is a 1.0 gate.** Pre-1.0 the public API churns freely with no shims (the README disclaims stability) — no external sketches to protect yet, so renames like the noun→verb (`circle`→`drawCircle`) and `push`/`pop`/`isolated`→`pushState`/`popState`/`withState` ship unshimmed. *Before* 1.0, stand up the migration discipline that holds from 1.0 on: every public rename/removal ships an `@available(*, deprecated, renamed: "…")` shim that forwards to the new API, so Xcode offers a one-click fix-it. Gotchas: use the *full selector* in `renamed:` when labels or arity differ (`@available(*, deprecated, renamed: "drawCircle(_:_:_:)")`, not just `"drawCircle"`); keep deprecated members together (a `Deprecations.swift`) so they're easy to audit and drop after a grace cycle; have the shim *forward* to the new API, not duplicate it. A must-do gate, not a nice-to-have — the 1.0 stabilization pass is where the pre-1.0 renames get their shims.
 
 ## Sourcing & attribution (load-bearing — it's the public face)
 
-This project is built with AI and says so openly (see the README's "Built with AI" and "Influences & attribution" sections). Getting attribution and license-compatibility right is the thing that earns the creative-coding community's trust — treat it as first priority, not a side chore.
+This project is built with AI and says so openly (README's "Built with AI" and "Influences & attribution" sections). Getting attribution and license-compatibility right earns the creative-coding community's trust — treat it as first priority, not a side chore.
 
 The framework is *inspired by* p5.js (LGPL-2.1), OPENRNDR (BSD-2-Clause), and openFrameworks (MIT): borrow their ideas and API vocabulary, write the implementation independently. **Never translate their source line-by-line** — a port of source is a derivative work that carries the original's license, and p5.js's LGPL is incompatible with Ollin shipping wholesale as MIT. "Inspired by" keeps Ollin MIT-clean; "ported from source" does not.
 
-**One sanctioned exception: bundled third-party source (a distinct tier).** A library may be *vendored* — shipped as actual source in the repo — when it's a self-contained, permissively-licensed component that would be wasteful to reimplement, and it's wrapped behind Ollin's own API so the dependency stays swappable and off the public surface. This is the opposite of the inspired-by stance (it *is* their code), so it carries license obligations and a strict checklist: keep the upstream LICENSE + per-file headers **intact** in the vendored dir (the one exception to "no framework names in code" — those are the library's own headers, and stripping them breaks the license); record provenance (upstream URL, exact commit, date); list it in the repo-root `THIRD-PARTY-NOTICES.md`; add a *Bundled third-party code* line to the README's Influences section; and keep the root `LICENSE` pure MIT so GitHub's license detection (root-only, ignores subdirs) holds the "MIT" badge. Vendor under `External/`, not `Sources/`. The first and so far only instance is **libtess2** (`External/CLibtess2`, SGI-B), the triangulator behind `Shape`/`Contour`. Bundling a permissively-licensed library keeps Ollin MIT; this tier is *not* a license to vendor copyleft (LGPL/AGPL/GPL) code, which stays inspired-by-only.
+**One sanctioned exception: bundled third-party source (a distinct tier).** A library may be *vendored* — shipped as actual source — when it's a self-contained, permissively-licensed component wasteful to reimplement, wrapped behind Ollin's own API so it stays swappable and off the public surface. This is the opposite of inspired-by (it *is* their code), so it carries license obligations: keep the upstream LICENSE + per-file headers **intact** in the vendored dir (the one exception to "no framework names in code" — they're the library's own headers, and stripping them breaks the license); record provenance (upstream URL, commit, date); list it in the repo-root `THIRD-PARTY-NOTICES.md`; add a *Bundled third-party code* line to the README's Influences section; keep the root `LICENSE` pure MIT so GitHub's root-only license detection holds the "MIT" badge. Vendor under `External/`, not `Sources/`. The first and only instance is **libtess2** (`External/CLibtess2`, SGI-B), the triangulator behind `Shape`/`Contour`. This tier is *not* a license to vendor copyleft (LGPL/AGPL/GPL) code, which stays inspired-by-only.
 
 For ported *example sketches* (the iterate-by-porting workflow), provenance is per-sketch and must be honored:
 
@@ -109,224 +50,49 @@ For ported *example sketches* (the iterate-by-porting workflow), provenance is p
 
 There's a second tier of influence worth distinguishing from the conceptual one. Where p5.js / OPENRNDR / openFrameworks shaped the *API and ideas*, two peer Swift+Metal frameworks were read for *engineering approach* on the same platform: **swifty-creatives** (Apache-2.0, Processing-style immediate-mode) and **AsyncGraphics** (MIT, GPU image/video compositing). They were studied, not ported — specific lessons are noted inline through this file (shader build, pipeline cache, SDF circle, iOS seam, easing, snapshot testing). Same rules apply: credit them in the README and commits, never in `.swift` comments, and write our own implementation. The public credit lives in the README's Influences & attribution. (PixelKit is AsyncGraphics's older node-graph predecessor; cite AsyncGraphics instead.)
 
-A third tier names influences for *capabilities still ahead* — shader-function collections, shader-composition / livecoding APIs, and AR. **These are inspirations, not dependencies.** The intent is to *study how they work and reimplement our own*, never to vendor or depend on them — the standard inspired-by stance. It's especially clean for the shader-function collections, because those are mostly implementations of *known, published techniques* (SDFs, noise, blends, color-space math, domain repetition): peek at the approach, then write Ollin's own, preferring the canonical source of a technique over any one collection's expression of it. Licenses still drive the no-line-by-line-copy rule:
+A third tier names influences for *capabilities still ahead* — shader-function collections, shader-composition / livecoding APIs, and AR. **These are inspirations, not dependencies:** *study how they work and reimplement our own*, never vendor or depend on them. It's especially clean for the shader-function collections — mostly implementations of *known, published techniques* (SDFs, noise, blends, color-space math, domain repetition): peek at the approach, then write Ollin's own, preferring the canonical source of a technique over any one collection's expression. Licenses still drive the no-line-by-line-copy rule:
 
-- **LYGIA** (github.com/patriciogonzalezvivo/lygia, Patricio Gonzalez Vivo, who also created The Book of Shaders) — a large, well-organized, multi-language catalog of shader functions (GLSL/HLSL/WGSL/CUDA plus an *experimental, partial* MSL/Metal port: `sdf`, `sampler`, `blend`, parts of `distort`/`generative`/`math` done; `lighting`/`geometry`/`palette` not yet). The best *map* of which techniques exist and how they're commonly approached. Licensed **Prosperity Public License 3.0.0** (noncommercial) — since we reimplement rather than ship its code, that's not a bundling problem; it's the reason to never translate a LYGIA file line-by-line and to implement from the underlying technique instead. Use it to discover and understand, then write our own.
+- **LYGIA** (github.com/patriciogonzalezvivo/lygia, Patricio Gonzalez Vivo, who also created The Book of Shaders) — a large, multi-language catalog of shader functions (GLSL/HLSL/WGSL/CUDA plus an *experimental, partial* MSL/Metal port: `sdf`, `sampler`, `blend`, parts of `distort`/`generative`/`math` done; `lighting`/`geometry`/`palette` not yet). The best *map* of which techniques exist and how they're commonly approached. Licensed **Prosperity Public License 3.0.0** (noncommercial) — since we reimplement rather than ship its code, that's not a bundling problem; it's the reason to never translate a LYGIA file line-by-line and to implement from the underlying technique instead.
 - **Hydra** (github.com/ojack/hydra, Olivia Jack) — a web livecoding environment with a chainable, analog-video-synth shader API (`osc().rotate().modulate(noise())…`). The thing to mine is *how it makes combining and mixing visuals so fluid* — borrow that ergonomic direction. Licensed **AGPL-3.0** (strong network copyleft) → **inspiration only**, never ported or vendored, exactly like p5.js's LGPL.
 - **ShaderPark** (github.com/shader-park — `shader-park-core`, `shader-park-examples`, `shader-park-live-coding`, all **MIT**) — a JS→shader SDF "sculpting" library with composable combine/blend functions and its own livecoding environment; another reference for *how to compose and mix* shader-driven shapes. MIT, so it can be studied freely — still: write our own, credit it.
 - **Meta Spark** (Meta's discontinued AR studio, shut down Jan 2025 — no public source) — the *product* reference for an AR direction: its template-driven AR-effect authoring is the void @eaviles wants Ollin to fill on Apple platforms. Conceptual/product influence only; there's nothing to port. (Used in Zach Lieberman's AR class — keep that personal detail out of public files, see the AR follow-up.)
 
-Same rules as the other tiers: public credit in the README's Influences & attribution, named in commits, never in `.swift` comments, own implementation.
+Same rules as every tier: credit in the README's Influences & attribution and in commits, never in `.swift` comments, own implementation.
 
 ## Shaders & the Metal back end
 
-The shader set is one `.metal` file today; it will grow. Decisions that are
-cheap now and expensive to retrofit:
+The shader set is one `.metal` file today; it will grow. Decisions that are cheap now and expensive to retrofit:
 
-- **One source of truth for CPU↔GPU structs.** Types shared between Swift and
-  MSL are defined in both places and kept in sync by hand
-  (`// Mirrors Uniforms in Shaders.metal`), which silently corrupts memory the
-  day a field's layout disagrees. The threshold was "the moment a *second* shared
-  struct appears"; there are now **three** (`OllinVertex`, `Uniforms`, and
-  `SDFInstance` — the last a stride-128 *tagged union* that keeps growing), so the
-  migration is overdue and riskier to defer. Move them into a shared C header (a
-  small C target using `simd` types) that Swift imports and the `.metal` file
-  `#include`s. One wrinkle: runtime `makeLibrary(source:)` has no include path for
-  a bundled header, so that content would need inlining there.
-- **Runtime source compilation is a feature, keep it.** `loadLibrary` compiles
-  `Shaders.metal` from source at runtime (`makeLibrary(source:)`). For a
-  creative-coding framework that's the seam for shader hot-reload and
-  user-supplied shaders later — don't rip it out. Its costs are startup time
-  and *no build-time error checking*.
-- **Add a precompiled `default.metallib` when those costs bite, don't replace.**
-  Build-time validation and zero startup cost need the built-in shaders compiled
-  ahead of time. `loadLibrary` already prefers a precompiled `Bundle.module`
-  metallib *before* the source path, so a precompiled lib slots in with no API
-  change; runtime compilation stays for dynamic shaders. Two facts settle *how*
-  to produce it (both verified on this toolchain — Swift 6.3, macOS):
-    - **`swift run` does not compile loose `.metal`.** Dropping a `.metal` in
-      the target as plain undeclared source only earns a `found 1 file(s) which
-      are unhandled` warning; no metallib is produced and
-      `makeDefaultLibrary(bundle: .module)` throws "no default library." That
-      auto-compile is an *Xcode*-build-system behavior — which is how peer
-      frameworks ship 100+ loose `.metal` files with no plugin, but it does not
-      carry over to Ollin's `swift run` workflow. (And `.process(...)`/`.copy`
-      on a `.metal` just copies it as *source*, never compiles it.)
-    - **A precompiled `default.metallib` shipped as a `.copy` resource loads
-      fine.** `xcrun metal` + `xcrun metallib` produce a `default.metallib`;
-      `.copy`-listed in the target, it's found by `makeDefaultLibrary(bundle:
-      .module)`. So under `swift run` the path is a SwiftPM build-tool plugin
-      that runs that compile and emits the metallib as a resource. (Playgrounds
-      plugin support is unreliable — see the iOS follow-up — so keep runtime
-      source compilation too; never go plugin-*only*.)
-- **A user-supplied shader-library seam is cheap.** Resolve the active library
-  as `customMetalLibrary ?? defaultMetalLibrary` so a user can drop in their own
-  compiled library without touching the built-ins; pairs with the runtime-source
-  loader for hot-reload. (Both peer Swift+Metal frameworks expose exactly this.)
-- **Built-in shader functions are our own, written from the technique — not a
-  vendored library.** As the shader set grows past drawing (noise, SDF
-  primitives, blends, color-space conversions, domain repetition), implement each
-  from the *published technique*, then credit that source in the README's
-  Techniques list (as the cosine `Palette` and `curlNoise` already do). The
-  canonical sources to reach for, baked in here so we go straight to them:
-  **Inigo Quilez** for signed-distance functions (2D `iquilezles.org/articles/distfunctions2d`,
-  3D `/distfunctions`) and smooth-minimum, and the cosine palette (already used);
-  **hg_sdf** (`mercury.sexy/hg_sdf`) for domain operators — axis rotation, mirror,
-  and linear/polar repetition; **The Book of Shaders** for hashing and value
-  noise. LYGIA is a broad *catalog/map* of which techniques exist and how they're
-  approached — read it to discover, implement from the underlying technique,
-  never translate its files (Prosperity; see
-  [Sourcing & attribution](#sourcing--attribution-load-bearing--its-the-public-face)).
-  (Distinct from the user-supplied seam above, which is for a *user's* own
-  shaders, not for vendoring someone else's library into Ollin.)
-- **Cache pipelines; don't grow `init`.** `MetalRenderer.init` builds one
-  `MTLRenderPipelineState` inline. A new pipeline (textured quads, a new blend
-  mode, compute) should be a cache lookup, not more code in the constructor.
-  Key the cache on a `Hashable` descriptor struct (shader, blend mode, MSAA
-  sample count, pixel format), not a flat enum: pipeline variants are
-  *combinations* of those axes, and a struct key captures the product without an
-  enum case per combination. Folding blend mode into that descriptor also keeps
-  it a pipeline *parameter* — one pipeline factory — rather than a whole renderer
-  subclass per blend mode (the trap a peer framework fell into).
-- **Don't hard-code the single-file assumption.** `loadLibrary` looks up
-  `Shaders.metal` by name. As shaders multiply, keep one umbrella file that
-  `#include`s the rest, or enumerate the `.metal` resources — decide before the
-  second file lands.
+- **One source of truth for CPU↔GPU structs.** Types shared between Swift and MSL are defined in both places and hand-synced (`// Mirrors Uniforms in Shaders.metal`), which silently corrupts memory the day a field's layout disagrees. The threshold was "the moment a *second* shared struct appears"; there are now **three** (`OllinVertex`, `Uniforms`, and `SDFInstance` — the last a stride-128 *tagged union* that keeps growing), so the migration is overdue. Move them into a shared C header (a small C target using `simd` types) that Swift imports and the `.metal` file `#include`s. One wrinkle: runtime `makeLibrary(source:)` has no include path for a bundled header, so that content would need inlining there.
+- **Runtime source compilation is a feature, keep it.** `loadLibrary` compiles `Shaders.metal` from source at runtime (`makeLibrary(source:)`). For a creative-coding framework that's the seam for shader hot-reload and user-supplied shaders later — don't rip it out. Its costs are startup time and *no build-time error checking*.
+- **Add a precompiled `default.metallib` when those costs bite, don't replace.** Build-time validation and zero startup cost need the built-in shaders compiled ahead of time. `loadLibrary` already prefers a precompiled `Bundle.module` metallib *before* the source path, so a precompiled lib slots in with no API change; runtime compilation stays for dynamic shaders. Two facts settle *how* to produce it (both verified on this toolchain — Swift 6.3, macOS):
+    - **`swift run` does not compile loose `.metal`.** Dropping a `.metal` in the target as plain undeclared source only earns a `found 1 file(s) which are unhandled` warning; no metallib is produced and `makeDefaultLibrary(bundle: .module)` throws "no default library." That auto-compile is an *Xcode*-build-system behavior — how peer frameworks ship 100+ loose `.metal` files with no plugin — and it does not carry over to Ollin's `swift run` workflow. (And `.process(...)`/`.copy` on a `.metal` just copies it as *source*, never compiles it.)
+    - **A precompiled `default.metallib` shipped as a `.copy` resource loads fine.** `xcrun metal` + `xcrun metallib` produce a `default.metallib`; `.copy`-listed in the target, it's found by `makeDefaultLibrary(bundle: .module)`. So under `swift run` the path is a SwiftPM build-tool plugin that runs that compile and emits the metallib as a resource. (Playgrounds plugin support is unreliable — see the iOS follow-up — so keep runtime source compilation too; never go plugin-*only*.)
+- **A user-supplied shader-library seam is cheap.** Resolve the active library as `customMetalLibrary ?? defaultMetalLibrary` so a user can drop in their own compiled library without touching the built-ins; pairs with the runtime-source loader for hot-reload. (Both peer Swift+Metal frameworks expose exactly this.)
+- **Built-in shader functions are our own, written from the technique — not a vendored library.** As the shader set grows past drawing (noise, SDF primitives, blends, color-space conversions, domain repetition), implement each from the *published technique*, then credit that source in the README's Techniques list (as the cosine `Palette` and `curlNoise` already do). The canonical sources to reach for, baked in here so we go straight to them: **Inigo Quilez** for signed-distance functions (2D `iquilezles.org/articles/distfunctions2d`, 3D `/distfunctions`) and smooth-minimum, and the cosine palette (already used); **hg_sdf** (`mercury.sexy/hg_sdf`) for domain operators — axis rotation, mirror, and linear/polar repetition; **The Book of Shaders** for hashing and value noise. LYGIA is a broad *catalog/map* of which techniques exist and how they're approached — read it to discover, implement from the underlying technique, never translate its files (Prosperity; see [Sourcing & attribution](#sourcing--attribution-load-bearing--its-the-public-face)). (Distinct from the user-supplied seam above, which is for a *user's* own shaders, not for vendoring someone else's library into Ollin.)
+- **Cache pipelines; don't grow `init`.** `MetalRenderer.init` builds one `MTLRenderPipelineState` inline. A new pipeline (textured quads, a new blend mode, compute) should be a cache lookup, not more code in the constructor. Key the cache on a `Hashable` descriptor struct (shader, blend mode, MSAA sample count, pixel format), not a flat enum: pipeline variants are *combinations* of those axes, and a struct key captures the product without an enum case per combination. Folding blend mode into that descriptor also keeps it a pipeline *parameter* — one pipeline factory — rather than a whole renderer subclass per blend mode (the trap a peer framework fell into).
+- **Don't hard-code the single-file assumption.** `loadLibrary` looks up `Shaders.metal` by name. As shaders multiply, keep one umbrella file that `#include`s the rest, or enumerate the `.metal` resources — decide before the second file lands.
 
 ## Rendering performance (roadmap)
 
-The drawing model is *immediate-mode GPU*: every frame `Drawer` tessellates
-each primitive into one flat triangle array on the CPU, the renderer uploads it
-to a **triple-buffered, semaphore-gated vertex-buffer ring**, and issues a single
-`drawPrimitives`. (That ring is load-bearing — never collapse it back to one
-shared buffer: writing a buffer the GPU is still reading for an in-flight frame
-tears the geometry on screen, e.g. gaps in a stroked ring. That was a real bug,
-fixed by the `maxFramesInFlight` ring + `frameBoundary` semaphore in
-`MetalRenderer`.) This is the right
-shape — it's what NanoVG, Dear ImGui, and Processing's GL renderer do — so the
-"low-level" look is the cost of a Metal core, not accidental complexity. Don't
-trade it for Core Graphics / SwiftUI `Canvas` / SpriteKit: those are CPU
-rasterizers or retained-mode scene graphs, and adopting one as the substrate
-throws away the GPU + shader ceiling the whole vision rests on.
+The drawing model is *immediate-mode GPU*: every frame `Drawer` tessellates each primitive into one flat triangle array on the CPU, the renderer uploads it to a **triple-buffered, semaphore-gated vertex-buffer ring**, and issues a single `drawPrimitives`. (That ring is load-bearing — never collapse it back to one shared buffer: writing a buffer the GPU is still reading for an in-flight frame tears the geometry on screen, e.g. gaps in a stroked ring. That was a real bug, fixed by the `maxFramesInFlight` ring + `frameBoundary` semaphore in `MetalRenderer`.) This is the right shape — it's what NanoVG, Dear ImGui, and Processing's GL renderer do — so the "low-level" look is the cost of a Metal core, not accidental complexity. Don't trade it for Core Graphics / SwiftUI `Canvas` / SpriteKit: those are CPU rasterizers or retained-mode scene graphs, and adopting one as the substrate throws away the GPU + shader ceiling the whole vision rests on.
 
-Where it caps out, and the levers — in priority order, all *iterations on this
-pipeline, not rewrites*:
+Where it caps out, and the levers — in priority order, all *iterations on this pipeline, not rewrites*:
 
-- **CPU tessellation is the first bottleneck, not the GPU.** Re-tessellating
-  thousands of primitives every frame on the draw thread stalls long before the
-  GPU breaks a sweat. Everything below attacks that cost.
-- **Instancing is the biggest lever.** Upload one unit-circle mesh once and draw
-  it N times with a per-instance buffer (center, radius, color) via
-  `drawPrimitives(instanceCount:)`. CPU work per circle drops to a struct write;
-  this is the "10,000 circles at 60fps" path. It's a new `Pipeline` case
-  (`.instancedCircle`) plus a per-instance buffer — the cache seam already
-  exists for exactly this.
-- **SDF analytic primitives (point, circle, ellipse, rect, line, circular arc) — *shipped*.**
-  `drawPoint`/`drawCircle`/`drawEllipse`/`drawRect`/`drawLine` and circular `drawArc`
-  are no longer tessellated: each is one instanced quad (`SDFInstance`, the `.sdf`
-  `Pipeline` case). `SDFInstance` is a *tagged union* — a `shape` tag plus generic
-  `size`/`param0`/`param1`/`extra` slots — and `ollin_sdf_fragment` switches on it
-  to evaluate the matching SDF (box, capsule, pie/segment/arc), then runs a shared
-  fill + stroke + anti-aliasing tail (iq's 2D distance functions, written from the
-  technique). Per-shape CPU cost is one struct write — the `Myriad` example draws
-  8,100 circles at ~1,100 fps CPU ceiling. Each instance carries its own CTM (a
-  `float3x3`), so the fragment evaluates the SDF in local space and AA stays ~1px
-  under any transform (`fwidth`); the quad covers `size` + ½ stroke + a small
-  margin. (Circle approach studied from AsyncGraphics's circle shader, MIT —
-  written independently.) `drawPoint` is sugar over this path, not its own tag: a
-  point is a fill-only disk (the `.ellipse` shape, `size = pointSize/2`), so it
-  inherits the disk coverage below — the dedicated point/marker *vocabulary*
-  (square/cross/x/diamond) is still ahead (see *More SDF primitives* below).
-  **Coverage is split by whether a shape tiles, and it's load-bearing.** `box`,
-  `pie`, and `chord` fills use an **inside-biased** ramp (`regionCoverage`: full to
-  the geometric edge, AA halo only outside) so abutting fills — tiled grids,
-  gradient bands — leave no seam; never move them onto the centered ramp or the
-  seams come back. The **disk (ellipse/circle/point)** and **capsule/line** instead
-  use **area-conserving** coverage (`diskCoverage` and the capsule case): a centered
-  AA ramp, but any mark smaller than ~½px on screen keeps a ~1px footprint while its
-  alpha is scaled by the true/clamped **area** (disk) or **width** (line). That's
-  what makes sizes run from 0…n — tiny dots, small circles, and thin lines fade by
-  area instead of popping in, snapping to a 1px floor, or flickering as they move —
-  and it's safe precisely because disks and lines never tile edge-to-edge, so they
-  don't need the inside bias. **The other load-bearing piece is draw-order
-  preservation:** `Drawer` records
-  geometry into call-ordered `GeometryBatch`es (a run is `.triangles` or `.sdf`),
-  so SDF shapes and tessellated triangles still composite front-to-back as the
-  sketch drew them — never collapse that back into two unordered passes (it would
-  break occlusion, e.g. EllipseField's black-fill ropes). Still on the triangle
-  path by nature: arbitrary `drawPolygon`/`drawPolyline`, and *elliptical* arcs +
-  full-turn arcs (`drawArc` runtime-branches `rx == ry` and sweep `< τ` to SDF,
-  else tessellates).
-- **More SDF primitives — the cheap catalog expansion (roadmap).** The tagged
-  union has a *fixed scalar budget* — `size`(2) + `param0`(2) + `param1`(2) +
-  `extra`(1) on top of the per-instance CTM/center/colors/stroke — so any shape
-  that's a *canonical form parameterized by a size + a ratio or two* drops in as
-  the same four touch-points (an `SDFShape` case, a `Drawer.draw*` builder, an
-  `sd*` function, a fragment `case`) with **no renderer/pipeline change**;
-  position/rotation/scale come free from the CTM. One constraint to remember:
-  `size` is *not* a free slot — the vertex shader uses it as the covering quad's
-  AABB half-extent, so it must carry the bounding extent and can't double as a
-  third geometry point. All from iq's 2D distance functions, implemented from the
-  technique and credited in the README's Techniques list (the canonical-source and
-  no-line-by-line-copy rules are under *Built-in shader functions* above; **hg_sdf**
-  is the source for the *operator* track noted below). In priority order:
-    1. **Triangle, regular n-gon, star** — p5/oF `triangle()` parity plus shapes
-       they lack; each a single-scalar fit (`sdEquilateralTriangle`, `sdNgon`,
-       `sdStar`). Upgrades the tessellated `Star` example to analytic.
-    2. **Marker set** — the round `drawPoint` already shipped (a fill-only disk
-       over the `.ellipse` shape); what's left is the non-round marker
-       vocabulary (square/cross/x/diamond) via a marker tag in `extra`, reusing
-       existing fields — makes scatter/point-cloud sketches trivial.
-    3. **Rhombus, vesica, moon, cross/X, filled ring/annulus** — expressive,
-       near-zero cost each (`sdRhombus`, `sdVesica`, `sdMoon`, `sdCross`/
-       `sdRoundedX`, `opOnion`; the ring also generalizes to an outline-only mode
-       for any region shape).
-    4. **Trapezoid, parallelogram, egg, heart, cut disk, uneven capsule** — fill
-       out the catalog (`sdTrapezoid`, `sdParallelogram`, `sdEgg`, `sdHeart`,
-       `sdCutDisk`, `sdUnevenCapsule` — the last a tapered line extending the
-       capsule).
-  Two shapes are deliberately held back because they **break the fixed budget**
-  (3 free points / 6 scalars beside `size`-as-AABB): an **analytic quadratic
-  Bézier** stroke (`sdBezier` — the *fast* path for the roadmap's Bézier/curved
-  contours, exact AA, no tessellation) and a **general 3-point triangle**. These
-  are the forcing function for the **shared-C-header migration** (already flagged
-  overdue below): grow `SDFInstance` safely *there* first, then add them. Two
-  things stay *off* this list by nature: arbitrary polygon/polyline (variable
-  vertex count — they remain on the triangle path / libtess2), and SDF
-  *operators* (smooth-min, union/subtract, hg_sdf domain repetition) which
-  *combine* fields and so belong to
-  [shader-composition & layered effects](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started),
-  not the one-shape-per-instance primitive path.
-- **MSAA caps anti-aliasing at 4×** for the *triangle* path. The SDF primitives
-  already bypass it (analytic coverage); the remaining triangle-path shapes
-  (polygon/polyline, elliptical/full arcs) are where thin strokes or large zoom
-  can still reveal that limit.
+- **CPU tessellation is the first bottleneck, not the GPU.** Re-tessellating thousands of primitives every frame on the draw thread stalls long before the GPU breaks a sweat. Everything below attacks that cost.
+- **Instancing is the biggest lever.** Upload one unit-circle mesh once and draw it N times with a per-instance buffer (center, radius, color) via `drawPrimitives(instanceCount:)`. CPU work per circle drops to a struct write; this is the "10,000 circles at 60fps" path. It's a new `Pipeline` case (`.instancedCircle`) plus a per-instance buffer — the cache seam already exists for exactly this.
+- **SDF analytic primitives (point, circle, ellipse, rect, line, circular arc) — *shipped*.** `drawPoint`/`drawCircle`/`drawEllipse`/`drawRect`/`drawLine` and circular `drawArc` are no longer tessellated: each is one instanced quad (`SDFInstance`, the `.sdf` `Pipeline` case). `SDFInstance` is a *tagged union* — a `shape` tag plus generic `size`/`param0`/`param1`/`extra` slots — and `ollin_sdf_fragment` switches on it to evaluate the matching SDF (box, capsule, pie/segment/arc), then runs a shared fill + stroke + anti-aliasing tail (iq's 2D distance functions, written from the technique). Per-shape CPU cost is one struct write — `Myriad` draws 8,100 circles at ~1,100 fps CPU ceiling. Each instance carries its own CTM (`float3x3`), so the fragment evaluates the SDF in local space and AA stays ~1px under any transform (`fwidth`); the quad covers `size` + ½ stroke + a small margin. (Circle approach studied from AsyncGraphics's circle shader, MIT — written independently.) `drawPoint` is sugar, not its own tag: a fill-only disk (the `.ellipse` shape, `size = pointSize/2`) inheriting the disk coverage below; the non-round marker *vocabulary* (square/cross/x/diamond) is still ahead (see *More SDF primitives*). **Coverage is split by whether a shape tiles, and it's load-bearing.** `box`, `pie`, and `chord` fills use an **inside-biased** ramp (`regionCoverage`: full to the geometric edge, AA halo only outside) so abutting fills — tiled grids, gradient bands — leave no seam; never move them onto the centered ramp or the seams return. The **disk (ellipse/circle/point)** and **capsule/line** instead use **area-conserving** coverage (`diskCoverage` and the capsule case): a centered AA ramp, but any mark smaller than ~½px on screen keeps a ~1px footprint while its alpha scales by the true/clamped **area** (disk) or **width** (line). That makes sizes run from 0…n — tiny dots, small circles, and thin lines fade by area instead of popping in, snapping to a 1px floor, or flickering as they move — and it's safe because disks and lines never tile edge-to-edge, so they don't need the inside bias. **The other load-bearing piece is draw-order preservation:** `Drawer` records geometry into call-ordered `GeometryBatch`es (a run is `.triangles` or `.sdf`), so SDF shapes and tessellated triangles composite front-to-back as the sketch drew them — never collapse that into two unordered passes (it breaks occlusion, e.g. EllipseField's black-fill ropes). Still on the triangle path by nature: arbitrary `drawPolygon`/`drawPolyline`, and *elliptical* + full-turn arcs (`drawArc` runtime-branches `rx == ry` and sweep `< τ` to SDF, else tessellates).
+- **More SDF primitives — the cheap catalog expansion (roadmap).** The tagged union has a *fixed scalar budget* — `size`(2) + `param0`(2) + `param1`(2) + `extra`(1) on top of the per-instance CTM/center/colors/stroke — so any shape that's a *canonical form parameterized by a size + a ratio or two* drops in as the same four touch-points (an `SDFShape` case, a `Drawer.draw*` builder, an `sd*` function, a fragment `case`) with **no renderer/pipeline change**; position/rotation/scale come free from the CTM. One constraint: `size` is *not* a free slot — the vertex shader uses it as the covering quad's AABB half-extent, so it carries the bounding extent and can't double as a third geometry point. All from iq's 2D distance functions, implemented from the technique and credited in the README's Techniques list (canonical-source and no-copy rules under *Built-in shader functions* above; **hg_sdf** is the source for the *operator* track below). In priority order:
+    1. **Triangle, regular n-gon, star** — p5/oF `triangle()` parity plus shapes they lack; each a single-scalar fit (`sdEquilateralTriangle`, `sdNgon`, `sdStar`). Upgrades the tessellated `Star` example to analytic.
+    2. **Marker set** — the round `drawPoint` already shipped (a fill-only disk over the `.ellipse` shape); what's left is the non-round marker vocabulary (square/cross/x/diamond) via a marker tag in `extra`, reusing existing fields — makes scatter/point-cloud sketches trivial.
+    3. **Rhombus, vesica, moon, cross/X, filled ring/annulus** — expressive, near-zero cost each (`sdRhombus`, `sdVesica`, `sdMoon`, `sdCross`/`sdRoundedX`, `opOnion`; the ring also generalizes to an outline-only mode for any region shape).
+    4. **Trapezoid, parallelogram, egg, heart, cut disk, uneven capsule** — fill out the catalog (`sdTrapezoid`, `sdParallelogram`, `sdEgg`, `sdHeart`, `sdCutDisk`, `sdUnevenCapsule` — the last a tapered line extending the capsule).
+  Two shapes are deliberately held back because they **break the fixed budget** (3 free points / 6 scalars beside `size`-as-AABB): an **analytic quadratic Bézier** stroke (`sdBezier` — the *fast* path for the roadmap's Bézier/curved contours, exact AA, no tessellation) and a **general 3-point triangle**. These are the forcing function for the **shared-C-header migration** flagged overdue below: grow `SDFInstance` safely *there* first, then add them. Two things stay *off* this list by nature: arbitrary polygon/polyline (variable vertex count — they stay on the triangle path / libtess2), and SDF *operators* (smooth-min, union/subtract, hg_sdf domain repetition) which *combine* fields and so belong to [shader-composition & layered effects](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started), not the one-shape-per-instance primitive path.
+- **MSAA caps anti-aliasing at 4×** for the *triangle* path. The SDF primitives already bypass it (analytic coverage); the remaining triangle-path shapes (polygon/polyline, elliptical/full arcs) are where thin strokes or large zoom can still reveal that limit.
 
-Seam in place and now exercised: `MetalRenderer` builds pipelines through an
-enum-keyed cache (`Pipeline` + `makePipeline(_:)`) — `.solid` and `.sdf` today —
-so further pipelines slot in as new cases instead of more `init` code. Once
-variants multiply across blend mode × MSAA × pixel format, migrate that enum key
-to a `Hashable` descriptor struct (see *Cache pipelines* above) rather than
-enumerating the product by hand. (The CPU↔GPU structs feeding these pipelines are
-the shared-C-header migration flagged under *Shaders & the Metal back end*.)
+Seam in place and now exercised: `MetalRenderer` builds pipelines through an enum-keyed cache (`Pipeline` + `makePipeline(_:)`) — `.solid` and `.sdf` today — so further pipelines slot in as new cases instead of more `init` code. Once variants multiply across blend mode × MSAA × pixel format, migrate that enum key to a `Hashable` descriptor struct (see *Cache pipelines* above) rather than enumerating the product by hand. (The CPU↔GPU structs feeding these pipelines are the shared-C-header migration flagged under *Shaders & the Metal back end*.)
 
-Triangulator — *shipped, not hand-rolled.* The vector `Shape`/`Contour` type
-(concave polygons, holes) fills via **vendored libtess2** (the GLU tessellator
-lineage Processing/p5 descend from), wrapped in `Shape.triangulatedFill()`
-(`ShapeTriangulator.swift`, `import CLibtess2`) and drawn by `drawShape` on the
-triangle path with even-odd winding (so nested contours become holes). libtess2
-is bundled, not reimplemented — see the bundled-third-party-source tier in
-[Sourcing & attribution](#sourcing--attribution-load-bearing--its-the-public-face)
-(`External/CLibtess2`, SGI-B). Convex shapes (circle, rect, ellipse) and convex
-`drawPolygon` stay on the current fan/strip math; don't route them through the
-triangulator. Polyline-family strokes (`drawPolyline`, `drawPolygon` outline,
-`drawShape` contours) now have **mitered joins** via `appendStrokedPath` (segment
-quads plus a per-vertex join filler; miter up to a limit, bevel past it — what
-keeps a star's sharp tips clean), so don't reach for `appendSegment` directly
-for multi-segment strokes. Still open on top of `Shape`: Bézier/curved contours
-(sample to points first), a `beginShape`/`vertex` builder, and a *configurable*
-join/cap style (round/bevel joins, and round/square caps for open ends, beyond
-today's miter-join + butt-cap default).
+Triangulator — *shipped, not hand-rolled.* The vector `Shape`/`Contour` type (concave polygons, holes) fills via **vendored libtess2** (the GLU tessellator lineage Processing/p5 descend from), wrapped in `Shape.triangulatedFill()` (`ShapeTriangulator.swift`, `import CLibtess2`) and drawn by `drawShape` on the triangle path with even-odd winding (so nested contours become holes). libtess2 is bundled, not reimplemented — see the bundled-third-party-source tier in [Sourcing & attribution](#sourcing--attribution-load-bearing--its-the-public-face) (`External/CLibtess2`, SGI-B). Convex shapes (circle, rect, ellipse) and convex `drawPolygon` stay on the current fan/strip math; don't route them through the triangulator. Polyline-family strokes (`drawPolyline`, `drawPolygon` outline, `drawShape` contours) now have **mitered joins** via `appendStrokedPath` (segment quads plus a per-vertex join filler; miter up to a limit, bevel past it — what keeps a star's sharp tips clean), so don't reach for `appendSegment` directly for multi-segment strokes. Still open on top of `Shape`: Bézier/curved contours (sample to points first), a `beginShape`/`vertex` builder, and a *configurable* join/cap style (round/bevel joins, and round/square caps for open ends, beyond today's miter-join + butt-cap default).
 
 ## Build, run, verify
 
@@ -334,73 +100,15 @@ today's miter-join + butt-cap default).
 swift run Example-HelloCircle   # opens a window running an example
 ```
 
-The canvas is `1080×1080` by default (`canvasSize`, with named presets); the
-preview window is sized from the sketch's `windowMode` (`.auto` fits the screen,
-`.fixed`, or `.resizable`) — the window is a scaled view of the canvas, not the
-canvas itself.
+The canvas is `1080×1080` by default (`canvasSize`, with named presets); the preview window is sized from the sketch's `windowMode` (`.auto` fits the screen, `.fixed`, or `.resizable`) — the window is a scaled view of the canvas, not the canvas itself.
 
 - **Requires macOS 14+ and a Metal-capable GPU.**
-- **This cannot be compiled in the Linux web container** (no Swift toolchain,
-  no Metal). Changes here are unverified until built on a Mac — say so
-  explicitly rather than claiming a change works.
+- **This cannot be compiled in the Linux web container** (no Swift toolchain, no Metal). Changes here are unverified until built on a Mac — say so explicitly rather than claiming a change works.
 
 ## Current state & roadmap
 
-- **Today:** `Sketch` base class; temporal state (`frameCount`, `time`,
-  `deltaTime`, `frameRate`); mouse input (`mouseX`/`mouseY`, `mousePressed()`); `Drawer` + Metal
-  renderer (solid fills, stroked outlines, 4x MSAA) with two pipelines — a tessellated-triangle
-  path and an instanced-SDF path; the SDF path (analytic fill+stroke+AA, thousands cheap) covers
-  `drawPoint` (a fill-only disk + `pointSize` state), `drawCircle`/`drawEllipse`, `drawRect` (with
-  `cornerRadius`), `drawLine` (round-capped capsule), and *circular* `drawArc` (open/chord/pie),
-  with **area-conserving coverage** on the disk/line so sizes run from 0…n (sub-pixel dots and thin
-  lines fade by area, no 1px floor); the triangle path covers convex `drawPolygon`,
-  `drawPolyline` (open stroked paths), concave/holed `drawShape` (the vector `Shape`/`Contour`
-  type, triangulated via vendored libtess2), and *elliptical*/full-turn arcs (`drawArc` branches on
-  `rx == ry`); recorded into call-ordered batches so the two paths composite in draw order; a per-frame transform stack
-  (`translate`/`rotate`/`scale`, scoped via `withState { }`); `Vector2`,
-  `Rectangle`, and `Shape`/`Contour` geometry value types; `Color` value
-  type with named constants (`.white`, `.black`, …) plus a cosine-gradient
-  `Palette` (iq's formula) and perceptual `Colormap`s (viridis/magma/turbo/…);
-  `map`/`dist` math helpers, a resolution-relative `scale`, seedable
-  `random`/`noise` (incl. `randomGaussian`, `randomVector`, `ring`, `curlNoise`
-  flow fields, and a master `seed()` that locks both) and `Double.tau`; a `canvasSize`
-  (1080² default + named presets) sized into a preview by `windowMode`
-  (`.auto`/`.fixed`/`.resizable`); a maintained `Examples/` set,
-  including a `Recreations/` section (recreating past computer artists); headless
-  single-frame PNG export (`--export` / `OllinApp.export`, off-screen MSAA render);
-  live reload (`swift run OllinLive <file>`) that recompiles + hot-swaps a sketch
-  on save and live-reloads `Shaders.metal` (with a `--keep-clock` flag and an
-  `onReload()` lifecycle hook; see the live-reload section), with `@Param` knobs
-  surfaced as live sliders plus an FPS readout in the OllinLive inspector.
-- **Next, in priority order:** Tier 2 is done — the SDF path now covers circle,
-  ellipse, rect (rounded), line (capsule), and circular arc (only arbitrary
-  `drawPolygon`/`drawPolyline` and *elliptical*/full arcs stay tessellated, by
-  nature). The vector `Shape`/`Contour` type also landed — concave/holed fills
-  via vendored libtess2 (`drawShape`). `drawPoint` has now landed too (a round dot
-  over the disk path, with `pointSize` state and the area-conserving sub-pixel
-  sizing above). Next: more primitives (`drawTriangle` next;
-  `drawPoint`/`drawCircle`/`drawEllipse`/`drawArc`/`drawRect`/`drawLine`/`drawShape`
-  already landed) — these kick off the **SDF catalog expansion** detailed under
-  [Rendering performance](#rendering-performance-roadmap) (triangle/n-gon/star →
-  markers → rhombus/vesica/moon/cross/ring → trapezoid/egg/heart/…), a cheap
-  run of analytic shapes that fit the existing tagged union; Bézier/curved contours
-  and a `beginShape`/`vertex` builder on
-  top of `Shape`; a configurable stroke join/cap style (miter joins for the
-  polyline family already landed; round/bevel joins and round/square caps are
-  what's left); the
-  extension/lifecycle seam (load-bearing — unblocks snapshot testing, the
-  FPS-overlay HUD, layered effects, and frame-sequence export at once);
-  easing/animation helpers. Also now due (and riskier the longer it waits, since
-  `SDFInstance` is a growing tagged union): the shared-C-header migration for the
-  CPU↔GPU structs (`OllinVertex`/`Uniforms`/`SDFInstance` — three now,
-  hand-mirrored). (CI compile-testing for the examples has shipped — a macOS
-  `swift build` on push/PR, see `.github/workflows/build.yml`.) For easing, a clean
-  shape to borrow is a property wrapper holding a value + target that eases
-  toward the target each frame (`linear`/`easeOut`); swifty-creatives'
-  `@SCAnimatable` is a small worked reference. Separately tracked, and *not* on
-  the rendering-pipeline track above: the **core batteries** — text, image,
-  audio, and keyboard input — that p5/oF/OPENRNDR all ship and Ollin doesn't yet
-  (see [core batteries](DESIGN-NOTES.md#core-batteries-text-image-audio-keyboard-not-started)).
+- **Today:** `Sketch` base class; temporal state (`frameCount`, `time`, `deltaTime`, `frameRate`); mouse input (`mouseX`/`mouseY`, `mousePressed()`); `Drawer` + Metal renderer (solid fills, stroked outlines, 4x MSAA) with two pipelines — a tessellated-triangle path and an instanced-SDF path; the SDF path (analytic fill+stroke+AA, thousands cheap) covers `drawPoint` (a fill-only disk + `pointSize` state), `drawCircle`/`drawEllipse`, `drawRect` (with `cornerRadius`), `drawLine` (round-capped capsule), and *circular* `drawArc` (open/chord/pie), with **area-conserving coverage** on the disk/line so sizes run from 0…n (sub-pixel dots and thin lines fade by area, no 1px floor); the triangle path covers convex `drawPolygon`, `drawPolyline` (open stroked paths), concave/holed `drawShape` (the vector `Shape`/`Contour` type, triangulated via vendored libtess2), and *elliptical*/full-turn arcs (`drawArc` branches on `rx == ry`); recorded into call-ordered batches so the two paths composite in draw order; a per-frame transform stack (`translate`/`rotate`/`scale`, scoped via `withState { }`); `Vector2`, `Rectangle`, and `Shape`/`Contour` geometry value types; `Color` value type with named constants (`.white`, `.black`, …) plus a cosine-gradient `Palette` (iq's formula) and perceptual `Colormap`s (viridis/magma/turbo/…); `map`/`dist` math helpers, a resolution-relative `scale`, seedable `random`/`noise` (incl. `randomGaussian`, `randomVector`, `ring`, `curlNoise` flow fields, and a master `seed()` that locks both) and `Double.tau`; a `canvasSize` (1080² default + named presets) sized into a preview by `windowMode` (`.auto`/`.fixed`/`.resizable`); a maintained `Examples/` set, including a `Recreations/` section (recreating past computer artists); headless single-frame PNG export (`--export` / `OllinApp.export`, off-screen MSAA render); live reload (`swift run OllinLive <file>`) that recompiles + hot-swaps a sketch on save and live-reloads `Shaders.metal` (with a `--keep-clock` flag and an `onReload()` lifecycle hook; see the live-reload section), with `@Param` knobs surfaced as live sliders plus an FPS readout in the OllinLive inspector; and CI compile-tests the examples (macOS `swift build` on push/PR, `.github/workflows/build.yml`).
+- **Next, in priority order:** more primitives (`drawTriangle` next) — these kick off the **SDF catalog expansion** detailed under [Rendering performance](#rendering-performance-roadmap) (triangle/n-gon/star → markers → rhombus/vesica/moon/cross/ring → trapezoid/egg/heart/…), a cheap run of analytic shapes that fit the existing tagged union; Bézier/curved contours and a `beginShape`/`vertex` builder on top of `Shape`; a configurable stroke join/cap style (miter joins already landed; round/bevel joins and round/square caps are what's left); the extension/lifecycle seam (load-bearing — unblocks snapshot testing, the FPS-overlay HUD, layered effects, and frame-sequence export at once); easing/animation helpers. Also now due (and riskier the longer it waits, since `SDFInstance` is a growing tagged union): the shared-C-header migration for the CPU↔GPU structs (`OllinVertex`/`Uniforms`/`SDFInstance` — three now, hand-mirrored). For easing, a clean shape to borrow is a property wrapper holding a value + target that eases toward the target each frame (`linear`/`easeOut`); swifty-creatives' `@SCAnimatable` is a small worked reference. Separately tracked, and *not* on the rendering-pipeline track above: the **core batteries** — text, image, audio, and keyboard input — that p5/oF/OPENRNDR all ship and Ollin doesn't yet (see [core batteries](DESIGN-NOTES.md#core-batteries-text-image-audio-keyboard-not-started)).
 
 ## Live reload — edit code, see it render (shipped via `OllinLive`)
 
@@ -422,36 +130,13 @@ Window title: `"Ollin - <SketchName>"` (plain hyphen, not a middot). @eaviles ru
 
 ## Roadmap & design notes
 
-Planned, in-progress, and eventual work is documented outside this file so the
-always-loaded guidance stays small:
+Planned, in-progress, and eventual work is documented outside this file so the always-loaded guidance stays small:
 
-- [`ROADMAP.md`](ROADMAP.md) — the public, contributor-facing roadmap: what's
-  planned and how to help.
-- [`DESIGN-NOTES.md`](DESIGN-NOTES.md) — the engineering design intent
-  behind each planned item (the approach, the APIs involved, the reasoning).
+- [`ROADMAP.md`](ROADMAP.md) — the public, contributor-facing roadmap: what's planned and how to help.
+- [`DESIGN-NOTES.md`](DESIGN-NOTES.md) — the engineering design intent behind each planned item (the approach, the APIs involved, the reasoning).
 
-**When work ships, it leaves these two files.** Drop it from `ROADMAP.md` (the
-roadmap stays forward-looking — what's *planned*, not a changelog) and record it
-instead under *Current state* above. Remove it from `DESIGN-NOTES.md` too, unless
-its design rationale still guides future maintenance or evolution (e.g. the
-conventions for extending the examples set), in which case keep only that part,
-not the status narration. Anything fully done and self-contained belongs in its
-own `Docs/` page or this file — not the roadmap, not the design notes.
+**When work ships, it leaves these two files.** Drop it from `ROADMAP.md` (the roadmap stays forward-looking — what's *planned*, not a changelog) and record it instead under *Current state* above. Remove it from `DESIGN-NOTES.md` too, unless its design rationale still guides future maintenance or evolution (e.g. the conventions for extending the examples set), in which case keep only that part, not the status narration. Anything fully done and self-contained belongs in its own `Docs/` page or this file — not the roadmap, not the design notes.
 
-Both live at the repo root, alongside `README.md`. The convention: the root
-holds project meta and contributor docs (`README.md`, `ROADMAP.md`,
-`DESIGN-NOTES.md`, this file, `LICENSE`, `THIRD-PARTY-NOTICES.md`), while
-[`Docs/`](Docs/) is the user-facing API reference (`Sketch`, `Drawing`,
-`Color`, …) — and nothing else.
+Both live at the repo root, alongside `README.md`. The convention: the root holds project meta and contributor docs (`README.md`, `ROADMAP.md`, `DESIGN-NOTES.md`, this file, `LICENSE`, `THIRD-PARTY-NOTICES.md`), while [`Docs/`](Docs/) is the user-facing API reference (`Sketch`, `Drawing`, `Color`, …) — and nothing else.
 
-Quick map, rough priority: more 2D/SDF primitives and the analytic shape catalog;
-keyboard input, then text, images, audio; a configurable stroke join/cap style;
-easing helpers; `size()` from `setup()`; the shared C header for the CPU↔GPU
-structs; Bézier/curved contours and a `beginShape` builder; the
-extension/lifecycle seam; render-correctness snapshot tests. Integration and
-capability tiers: OSC and MIDI I/O, 2D physics, and Mac-native computer vision
-(with the iPhone as a sensor array as the depth/AR superset). Bigger bets:
-layered effects, a shader-composition API and a live-coding app, offline
-frame-sequence export, a project generator. Eventual: Swift Playgrounds & iOS, 3D & visionOS,
-AR. Shipped (so off the roadmap): the `Examples/` set + gallery + CI, the
-`Docs/Swift.md` primer, and the OllinLive parameter-knob inspector.
+Quick map, rough priority: more 2D/SDF primitives and the analytic shape catalog; keyboard input, then text, images, audio; a configurable stroke join/cap style; easing helpers; `size()` from `setup()`; the shared C header for the CPU↔GPU structs; Bézier/curved contours and a `beginShape` builder; the extension/lifecycle seam; render-correctness snapshot tests. Integration and capability tiers: OSC and MIDI I/O, 2D physics, and Mac-native computer vision (with the iPhone as a sensor array as the depth/AR superset). Bigger bets: layered effects, a shader-composition API and a live-coding app, offline frame-sequence export, a project generator. Eventual: Swift Playgrounds & iOS, 3D & visionOS, AR. Shipped (so off the roadmap): the `Examples/` set + gallery + CI, the `Docs/Swift.md` primer, and the OllinLive parameter-knob inspector.
