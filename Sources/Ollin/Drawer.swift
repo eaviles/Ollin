@@ -1,17 +1,10 @@
 import Foundation
 import simd
+import COllinShaders
 
-/// One vertex of stroked/filled geometry, as consumed by the Metal pipeline.
-///
-/// The memory layout of this struct must match `Vertex` in `Shaders.metal`:
-///   - `position` (float2) at offset 0
-///   - `color`    (float4) at offset 16 (float4 has 16-byte alignment)
-/// Both sides therefore have a stride of 32 bytes. Keep them in sync if you
-/// add fields.
-struct OllinVertex {
-    var position: SIMD2<Float>   // sketch-space, points, top-left origin, y-down
-    var color: SIMD4<Float>      // straight (non-premultiplied) RGBA, 0...1
-}
+// `OllinVertex`, `Uniforms`, and `SDFInstance` are imported from the
+// `COllinShaders` C module: one definition shared with `Shaders.metal`, so their
+// CPU/GPU memory layout can't drift. See Sources/Ollin/Renderer/OllinShaderTypes.h.
 
 /// Which analytic shape an `SDFInstance` carries. The fragment shader switches
 /// on this tag and evaluates the matching signed-distance field, so one pipeline
@@ -32,30 +25,6 @@ enum SDFShape: UInt32 {
     case moon     = 11  // crescent: param0 = (outer radius, inner radius); param1.x = offset; extra = corner radius
     case cross    = 12  // plus: size.x = arm half-length; param0.x = arm half-width; extra = corner radius
     case ring     = 13  // filled annulus: param0 = (mid radius, half thickness); fill only
-}
-
-/// One analytic shape, drawn as a single instanced quad whose fragment computes
-/// fill + stroke + anti-aliasing from a signed-distance field — no CPU
-/// tessellation. The renderer draws a whole batch of these in one
-/// `drawPrimitives(instanceCount:)`.
-///
-/// A tagged union: `shape` picks the SDF and decides how the generic slots
-/// (`size`, `param0`, `param1`, `extra`) are read — see `SDFShape`.
-///
-/// The memory layout must match `SDFInstance` in `Shaders.metal` (stride 128):
-/// a `float3x3` (48 bytes, three 16-byte columns) followed by the rest under
-/// simd alignment. Keep them in sync if you add fields.
-struct SDFInstance {
-    var transform: matrix_float3x3   // local sketch space -> sketch space (the CTM)
-    var center: SIMD2<Float>         // shape center, local sketch space
-    var size: SIMD2<Float>           // generic half-extent (see SDFShape)
-    var fillColor: SIMD4<Float>      // straight RGBA; alpha 0 = no fill
-    var strokeColor: SIMD4<Float>    // straight RGBA; alpha 0 = no stroke
-    var param0: SIMD2<Float>         // shape-specific (capsule half-segment / arc sin,cos)
-    var param1: SIMD2<Float>         // shape-specific (arc rotation cos,sin)
-    var strokeWidth: Float           // points; 0 = no stroke
-    var extra: Float                 // shape-specific scalar (box corner radius / capsule half-width)
-    var shape: UInt32                // SDFShape.rawValue
 }
 
 /// Which pipeline a run of recorded geometry needs. Primitives are recorded in

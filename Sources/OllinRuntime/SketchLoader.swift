@@ -106,13 +106,23 @@ public struct SketchLoader: Sendable {
         // `-undefined dynamic_lookup` (and *no* `-lOllin`) leaves Ollin symbols
         // unresolved at link time so they bind to the host process at `dlopen`,
         // keeping one shared copy of `Sketch` across the boundary.
-        let result = run("/usr/bin/xcrun", [
+        var args = [
             "swiftc", "-emit-library", "-o", dylibPath,
             "-module-name", "OllinRuntimeSketch_\(token)",
             sketchPath, factoryPath,
             "-I", (bin as NSString).appendingPathComponent("Modules"),
             "-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup",
-        ])
+        ]
+        // `import Ollin` transitively pulls in the C modules Ollin imports
+        // (`CLibtess2`, `COllinShaders`), whose clang module maps SwiftPM emits
+        // under `<bin>/<Target>.build/` — not in `Modules/` with the Swift
+        // modules — so without these search paths the compile fails with
+        // "missing required modules". Found by scanning, so a new C target needs
+        // no change here.
+        for path in cModuleMapSearchPaths() {
+            args.append(contentsOf: ["-I", path])
+        }
+        let result = run("/usr/bin/xcrun", args)
         guard result.status == 0 else {
             let log = result.stderr.isEmpty ? result.stdout : result.stderr
             return .failure(.compileFailed(log.trimmingCharacters(in: .whitespacesAndNewlines)))
@@ -140,6 +150,23 @@ public struct SketchLoader: Sendable {
             return .failure(.loadFailed("loaded object is not an Ollin.Sketch"))
         }
         return .success(sketch)
+    }
+
+    /// Directories holding the clang module maps for the C targets `import
+    /// Ollin` depends on. SwiftPM writes a C target's map to
+    /// `<bin>/<Target>.build/module.modulemap`; the Swift targets' generated
+    /// maps live a level deeper (`…/include/`), so matching only a direct
+    /// `module.modulemap` child selects exactly the C targets (and adding their
+    /// dirs to the header search path lets clang auto-discover the modules).
+    private func cModuleMapSearchPaths() -> [String] {
+        let fm = FileManager.default
+        guard let entries = try? fm.contentsOfDirectory(atPath: buildDir) else { return [] }
+        return entries.compactMap { name in
+            guard name.hasSuffix(".build") else { return nil }
+            let dir = (buildDir as NSString).appendingPathComponent(name)
+            let map = (dir as NSString).appendingPathComponent("module.modulemap")
+            return fm.fileExists(atPath: map) ? dir : nil
+        }
     }
 
     /// The name of the first `class …: Sketch` in the source (allowing a leading

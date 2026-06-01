@@ -69,17 +69,33 @@ let package = Package(
             exclude: ["LICENSE.txt", "README.md"],
             publicHeadersPath: "Include"
         ),
+        // The structs shared between Swift and the Metal shaders (`OllinVertex`,
+        // `Uniforms`, `SDFInstance`) are defined once in a C header so their
+        // memory layout can't drift between the two sides. This thin C module
+        // makes that header importable from Swift; its umbrella header
+        // re-includes the canonical file, which lives beside `Shaders.metal`
+        // (see Sources/Ollin/Renderer/OllinShaderTypes.h).
+        .target(
+            name: "COllinShaders",
+            path: "Sources/COllinShaders",
+            publicHeadersPath: "include"
+        ),
         .target(
             name: "Ollin",
-            dependencies: ["CLibtess2"],
+            dependencies: ["CLibtess2", "COllinShaders"],
             // Declaring the `.metal` file as a resource makes SwiftPM copy it
             // into the target's resource bundle and synthesize `Bundle.module`,
             // which MetalRenderer.loadLibrary uses to read and compile the shader
             // source at runtime. (`.process` copies the `.metal` as source; it
             // does not precompile a `default.metallib`.) Without this, the file
             // is "unhandled" and `Bundle.module` is never generated.
+            //
+            // `OllinShaderTypes.h` ships beside it: the runtime shader compiler
+            // has no include path, so MetalRenderer splices this header into the
+            // source in place of its `#include` directive.
             resources: [
-                .process("Renderer/Shaders.metal")
+                .process("Renderer/Shaders.metal"),
+                .copy("Renderer/OllinShaderTypes.h")
             ]
         ),
         // Examples — one runnable sketch per executable target, grouped into

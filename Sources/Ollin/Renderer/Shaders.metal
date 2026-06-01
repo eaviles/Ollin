@@ -1,20 +1,16 @@
 #include <metal_stdlib>
 using namespace metal;
 
+// The CPU/GPU shared structs (`OllinVertex`, `Uniforms`, `SDFInstance`) are
+// defined once in this header so their layout can't drift from the Swift side.
+// At runtime the shader compiler has no include path, so MetalRenderer splices
+// the header's text in here before compiling (see composeShaderSource).
+#include "OllinShaderTypes.h"
+
 // One pipeline draws everything for now: solid-color 2D triangles. Fills
 // (triangle fans) and strokes (triangle-strip annuli) are both tessellated on
 // the CPU into triangles and fed through here. Anti-aliasing comes from the
 // MTKView's 4x MSAA, so the shaders themselves stay trivial.
-
-// Must match `OllinVertex` in Drawer.swift (float2 @0, float4 @16, stride 32).
-struct Vertex {
-    float2 position;   // sketch-space, points, top-left origin, y-down
-    float4 color;      // straight (non-premultiplied) RGBA, 0...1
-};
-
-struct Uniforms {
-    float2 viewport;   // logical canvas size in points (width, height)
-};
 
 struct VertexOut {
     float4 position [[position]];
@@ -22,9 +18,9 @@ struct VertexOut {
 };
 
 vertex VertexOut ollin_vertex(uint vertexID [[vertex_id]],
-                              const device Vertex *vertices [[buffer(0)]],
+                              const device OllinVertex *vertices [[buffer(0)]],
                               constant Uniforms &uniforms [[buffer(1)]]) {
-    Vertex v = vertices[vertexID];
+    OllinVertex v = vertices[vertexID];
 
     // Map top-left / y-down point coordinates into clip space [-1, 1],
     // flipping Y so that y grows downward on screen (p5 / Processing style).
@@ -51,22 +47,11 @@ fragment float4 ollin_fragment(VertexOut in [[stage_in]]) {
 // all derived analytically (no reliance on MSAA). This is the "thousands of
 // shapes" path — per-shape CPU work is one struct write. The `shape` tag picks
 // the SDF; the generic slots (size/param0/param1/extra) are read per shape (see
-// `SDFShape` in Drawer.swift).
-
-// Must match `SDFInstance` in Drawer.swift (stride 128). float3x3 is 48 bytes
-// (three 16-byte-aligned columns); the rest follows simd alignment.
-struct SDFInstance {
-    float3x3 transform;   // local sketch space -> sketch space (the CTM)
-    float2 center;        // shape center, local sketch space
-    float2 size;          // generic half-extent (see SDFShape)
-    float4 fillColor;     // straight RGBA; alpha 0 means no fill
-    float4 strokeColor;   // straight RGBA; alpha 0 means no stroke
-    float2 param0;        // shape-specific
-    float2 param1;        // shape-specific
-    float strokeWidth;    // points; 0 means no stroke
-    float extra;          // shape-specific scalar
-    uint  shape;          // 0 ellipse, 1 box, 2 capsule, 3/4/5 arc open/chord/pie, 6 triangle, 7 star/ngon, 8 marker, 9 rhombus, 10 vesica, 11 moon, 12 cross, 13 ring
-};
+// `SDFShape` in Drawer.swift). `SDFInstance` itself is defined in
+// OllinShaderTypes.h (included above), so its layout stays in lockstep with the
+// Swift side; the shape-code mapping is `SDFShape`'s raw values:
+//   0 ellipse, 1 box, 2 capsule, 3/4/5 arc open/chord/pie, 6 triangle,
+//   7 star/ngon, 8 marker, 9 rhombus, 10 vesica, 11 moon, 12 cross, 13 ring.
 
 struct SDFOut {
     float4 position [[position]];

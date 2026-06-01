@@ -3,6 +3,7 @@ import Metal
 import MetalKit
 import simd
 import CoreGraphics
+import COllinShaders   // OllinVertex / Uniforms / SDFInstance, shared with Shaders.metal
 
 /// The Metal back end. Deliberately small: one command queue, an enum-keyed
 /// cache of render pipelines (just `.solid` — solid-color 2D triangles — for
@@ -41,11 +42,6 @@ final class MetalRenderer {
     private enum Pipeline: Hashable {
         case solid   // tessellated triangles (rects, lines, polygons, arcs)
         case sdf     // instanced SDF quads (circles, ellipses, rects, lines, arcs)
-    }
-
-    /// Mirrors `Uniforms` in Shaders.metal.
-    private struct Uniforms {
-        var viewport: SIMD2<Float>
     }
 
     private let device: MTLDevice
@@ -266,7 +262,7 @@ final class MetalRenderer {
     /// current library and pipelines untouched (it throws, and the caller reports
     /// it); a bad shader edit never blanks or crashes the running sketch.
     func reloadLibrary(source: String) throws {
-        let newLibrary = try device.makeLibrary(source: source, options: nil)
+        let newLibrary = try device.makeLibrary(source: MetalRenderer.composeShaderSource(source), options: nil)
         let kinds = pipelines.isEmpty ? [Pipeline.solid] : Array(pipelines.keys)
         var rebuilt: [Pipeline: MTLRenderPipelineState] = [:]
         for kind in kinds {
@@ -370,6 +366,23 @@ final class MetalRenderer {
         return sdfExportBuffer
     }
 
+    /// Splice the shared CPU/GPU type header into shader source for runtime
+    /// compilation. `makeLibrary(source:)` has no include search path, so the
+    /// `#include "OllinShaderTypes.h"` directive in `Shaders.metal` can't be
+    /// resolved the normal way; we replace it with the header's text (the header
+    /// ships beside the shader as a resource). A precompiled metallib resolves
+    /// the include at build time and never reaches this path.
+    ///
+    /// If the header resource is missing we leave the source untouched and let
+    /// the compiler report the undefined types — louder than a silent fallback.
+    static func composeShaderSource(_ source: String) -> String {
+        guard let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
+              let header = try? String(contentsOf: url, encoding: .utf8) else {
+            return source
+        }
+        return source.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
+    }
+
     /// Load the shader library for `Shaders.metal`.
     ///
     /// SwiftPM's resource rule copies `Shaders.metal` into `Bundle.module` as
@@ -384,7 +397,7 @@ final class MetalRenderer {
         if let url = Bundle.module.url(forResource: "Shaders", withExtension: "metal"),
            let source = try? String(contentsOf: url, encoding: .utf8) {
             // Let compile errors propagate: a bad shader should fail loudly here.
-            return try device.makeLibrary(source: source, options: nil)
+            return try device.makeLibrary(source: composeShaderSource(source), options: nil)
         }
         if let library = device.makeDefaultLibrary() {
             return library
