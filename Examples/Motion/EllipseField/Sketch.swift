@@ -1,3 +1,5 @@
+//  Based on elements of @eaviles's sketch 2023.023. Reworked for Ollin's API.
+
 import Ollin
 
 /// Stacked rows of white ellipse outlines in two drifting columns. Each ring's

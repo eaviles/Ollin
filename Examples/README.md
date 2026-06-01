@@ -73,4 +73,6 @@ Examples often *port* a sketch from elsewhere. When one does, credit it and resp
 
 An original sketch (no specific source) needs no header, but a one-line "inspired by …" note is welcome when something sparked it.
 
+A sketch drawn from the maintainer's own work is credited by **serial number** — naming the author and S/N, not the private sketchbook it came from. Use `// Ported from @eaviles's sketch 2025.003.` for a faithful port, or `// Based on elements of @eaviles's sketch 2023.023.` for a reduced or partial derivation — each followed by `Reworked for Ollin's API.`
+
 For a **recreation** of a named artist's work (see `Recreations/`), also credit the artist in the header and the per-artist `README.md`, framed as a homage after them, not a reproduction, and not endorsed by the artist or their estate.

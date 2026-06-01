@@ -1,3 +1,5 @@
+//  Based on elements of @eaviles's sketch 2023.023. Reworked for Ollin's API.
+
 import Ollin
 
 /// The arc cousin of EllipseField. Instead of whole ellipses, each row draws a
