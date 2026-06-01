@@ -147,14 +147,23 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                         in: view)
     }
 
-    /// Convert the drawable's pixel size into logical points (sketch space).
-    private func updateCanvasSize(from view: MTKView, drawableSize: CGSize) {
-        let scale = view.window?.backingScaleFactor
-            ?? view.layer?.contentsScale
-            ?? 1
-        let safeScale = scale == 0 ? 1 : scale
-        sketch.setCanvasSize(width: Double(drawableSize.width) / Double(safeScale),
-                             height: Double(drawableSize.height) / Double(safeScale))
+    /// Resolve the sketch's logical canvas, in points. For `.auto`/`.fixed` that's
+    /// `canvasSize` itself: the window is only a scaled preview of it, so the canvas
+    /// stays stable across displays and matches what `--export` renders. For
+    /// `.resizable` the canvas follows the window, so use the view's bounds (already
+    /// in points). We deliberately don't derive points from
+    /// `drawableSize / backingScale` — that scale is unreliable before the view
+    /// joins a window (it reads 1 on a Retina display), which silently doubled the
+    /// canvas and left mouse coordinates at half scale.
+    private func updateCanvasSize(from view: MTKView, drawableSize _: CGSize) {
+        if case .resizable = sketch.windowMode {
+            let pts = view.bounds.size
+            guard pts.width > 0, pts.height > 0 else { return }
+            sketch.setCanvasSize(width: Double(pts.width), height: Double(pts.height))
+        } else {
+            sketch.setCanvasSize(width: Double(sketch.canvasSize.width),
+                                 height: Double(sketch.canvasSize.height))
+        }
     }
 }
 
@@ -199,11 +208,18 @@ private final class OllinMTKView: MTKView {
         report(windowPoint: event.locationInWindow)
     }
 
-    /// Convert a point in window coordinates to sketch space (points, top-left
-    /// origin; AppKit is y-up, so y is flipped) and hand it to the sketch.
+    /// Convert a point in window coordinates to sketch space and hand it to the
+    /// sketch. The view's bounds are in points, but the logical canvas
+    /// (`sketch.width`/`height`) may be larger — e.g. a 1080 canvas shown in an
+    /// 810-pt preview window — so normalize by the bounds and rescale into canvas
+    /// space. AppKit is y-up, so y is flipped to the sketch's top-left origin.
     private func report(windowPoint: NSPoint) {
+        guard let sketch else { return }
         let p = convert(windowPoint, from: nil)
-        sketch?.setMouse(x: Double(p.x), y: Double(bounds.height - p.y))
+        let bw = Double(bounds.width), bh = Double(bounds.height)
+        let x = bw > 0 ? Double(p.x) / bw * sketch.width : Double(p.x)
+        let y = bh > 0 ? (bh - Double(p.y)) / bh * sketch.height : bh - Double(p.y)
+        sketch.setMouse(x: x, y: y)
     }
 }
 
