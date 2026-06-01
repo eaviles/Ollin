@@ -18,8 +18,13 @@ struct InspectorPanel: View {
                 LabeledContent("Reloads", value: "\(session.reloadCount)")
             }
             Section("Performance") {
-                LabeledContent("FPS", value: session.frameRate > 0
-                    ? String(format: "%.0f", session.frameRate) : "—")
+                let stats = session.stats
+                LabeledContent("FPS", value: stats.hasData
+                    ? String(format: "%.0f", stats.fps) : "—")
+                LabeledContent("CPU", value: stats.hasData
+                    ? String(format: "%.1f ms", stats.frameTimeMS) : "—")
+                LabeledContent("Geometry", value: stats.hasData
+                    ? "\(stats.vertexCount) v · \(stats.sdfCount) sdf" : "—")
             }
             if !session.params.isEmpty {
                 Section("Parameters") {

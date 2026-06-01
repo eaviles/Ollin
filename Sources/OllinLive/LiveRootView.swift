@@ -31,9 +31,13 @@ struct LiveRootView: View {
     @ViewBuilder private var detail: some View {
         Group {
             if let sketch = session.sketch {
-                SketchView(sketch) { runner in session.attach(runner) }
-                    .frame(width: OllinApp.windowSize(for: sketch).width,
-                           height: OllinApp.windowSize(for: sketch).height)
+                // No on-canvas overlay here: the inspector already shows these
+                // stats, so it'd just duplicate them.
+                SketchView(sketch, stats: session.stats, showsStatsOverlay: false) { runner in
+                    session.attach(runner)
+                }
+                .frame(width: OllinApp.windowSize(for: sketch).width,
+                       height: OllinApp.windowSize(for: sketch).height)
             } else if let error = session.errorMessage {
                 ContentUnavailableView {
                     Label("Compile error", systemImage: "exclamationmark.triangle")

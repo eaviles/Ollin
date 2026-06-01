@@ -23,6 +23,7 @@ override func draw() {
 - [scale](#scale)
 - [Export size](#canvasSize)
 - [The preview window](#windowMode)
+- [The performance overlay](#stats-overlay)
 - [Retina and pixel density](#retina)
 - [Planned: normalized u, v](#planned-uv)
 
@@ -101,6 +102,16 @@ override var windowMode: WindowMode { .fixed(0.5) }   // always half of canvasSi
 `.auto` and `.fixed` lock the window; `.resizable` does not. (Resizing applies to the standalone `swift run` window today; the examples gallery and live host show the sketch at the auto-fit size with a collapsible sidebar.)
 
 Either way, a sketch written with `scale` composes the same at the preview size and the export size, so what you see while iterating matches the exported frame. That is what keeps the export dependable for video and Instagram.
+
+<a name="stats-overlay"></a>
+
+### The performance overlay
+
+When a sketch feels slow, **View ▸ Show FPS** (⌘/) toggles a small readout in the corner of the canvas: frame rate, the CPU time spent building a frame, the geometry it emitted (tessellated vertices and instanced SDF shapes), the clock, and the canvas size. Drag it anywhere if it's in the way; toggle it back off the same way.
+
+It's a debug overlay, so it never appears in an exported frame — `--export` renders only the canvas. The CPU time is the cost of tessellating a frame on the draw thread, the first thing to climb when a sketch gets heavy, and it reads far lower in a release build (`swift run -c release`) than the default debug build.
+
+The live host (`OllinLive`) shows the same numbers in its inspector sidebar instead, so it leaves the overlay off.
 
 <a name="retina"></a>
 

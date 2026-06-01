@@ -21,10 +21,10 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private let renderer: MetalRenderer
     private weak var view: MTKView?
 
-    /// Optional hook for a host to observe the smoothed frame rate. Called a few
-    /// times a second (not every frame) so a live-FPS readout updates without
-    /// thrashing SwiftUI. Nil for standalone runs.
-    public var onFrameRate: (@MainActor (Double) -> Void)?
+    /// Where per-frame stats land for the overlay and the live inspector to read.
+    /// The runner refreshes it a few times a second (not every frame) so SwiftUI
+    /// doesn't thrash. `SketchView` wires this up; nil for headless runs.
+    var statsSink: FrameStats?
 
     private var didSetup = false
     private var didReload = false        // call onReload() after the post-reload setup()
@@ -33,6 +33,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private var startTime: CFTimeInterval = 0
     private var lastTime: CFTimeInterval = 0
     private var smoothedFrameRate: Double = 0
+    private var smoothedCPUMS: Double = 0
 
     public init(sketch: Sketch, view: MTKView, device: MTLDevice) {
         self.sketch = sketch
@@ -139,12 +140,27 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
 
         sketch.advance(time: now - startTime, deltaTime: dt, frameRate: smoothedFrameRate)
-        if sketch.frameCount % 15 == 0 { onFrameRate?(smoothedFrameRate) }   // ~a few Hz
+
+        // Time only the CPU tessellation (`performDraw`), not the render: the
+        // renderer blocks on the triple-buffer semaphore (the vsync wait), which
+        // would pin this to 1/fps and tell us nothing. CPU tessellation is the
+        // documented first bottleneck, so it's the headroom number worth showing.
+        let drawStart = CACurrentMediaTime()
         sketch.performDraw()
+        let cpuMS = (CACurrentMediaTime() - drawStart) * 1000
+        smoothedCPUMS = smoothedCPUMS == 0 ? cpuMS : smoothedCPUMS + (cpuMS - smoothedCPUMS) * 0.1
 
         renderer.render(sketch.drawer,
                         viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
                         in: view)
+
+        if sketch.frameCount % 15 == 0 {                  // refresh stats ~a few Hz
+            statsSink?.update(fps: smoothedFrameRate, frameTimeMS: smoothedCPUMS,
+                              frameCount: sketch.frameCount, time: sketch.time,
+                              vertexCount: sketch.drawer.vertices.count,
+                              sdfCount: sketch.drawer.sdfInstances.count,
+                              canvasWidth: sketch.width, canvasHeight: sketch.height)
+        }
     }
 
     /// Resolve the sketch's logical canvas, in points. For `.auto`/`.fixed` that's
@@ -247,37 +263,79 @@ private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -
 /// ```
 ///
 /// Pass `onRunner` to receive the `SketchRunner` once the view is created — for
-/// hosts that need to drive it (live reload via `reload(to:)`, read its stats,
-/// toggle `loop()`/`noLoop()`). Plain embedders can ignore it.
-public struct SketchView: NSViewRepresentable {
+/// hosts that need to drive it (live reload via `reload(to:)`, toggle
+/// `loop()`/`noLoop()`). Plain embedders can ignore it.
+///
+/// Pass `stats` to share the live `FrameStats` with another view (the live
+/// host's inspector does this so its readout and the overlay are one source of
+/// truth). Left nil, the view owns its own — enough for the on-canvas overlay.
+public struct SketchView: View {
     private let sketch: Sketch
+    private let injectedStats: FrameStats?
+    private let showsStatsOverlay: Bool
     private let onRunner: (@MainActor (SketchRunner) -> Void)?
 
-    public init(_ sketch: Sketch, onRunner: (@MainActor (SketchRunner) -> Void)? = nil) {
+    /// Owned stats for standalone/gallery hosts that don't inject their own.
+    @State private var ownedStats = FrameStats()
+    /// The shared toggle the "Show FPS" command flips.
+    @AppStorage(OllinHUD.showStatsKey) private var showStats = false
+
+    /// - Parameter showsStatsOverlay: whether this view honors the "Show FPS"
+    ///   toggle with the on-canvas overlay. The live host passes `false` because
+    ///   its inspector already shows the same stats, so the overlay would just
+    ///   duplicate them; standalone and gallery (no inspector) leave it on.
+    public init(_ sketch: Sketch,
+                stats: FrameStats? = nil,
+                showsStatsOverlay: Bool = true,
+                onRunner: (@MainActor (SketchRunner) -> Void)? = nil) {
         self.sketch = sketch
+        self.injectedStats = stats
+        self.showsStatsOverlay = showsStatsOverlay
         self.onRunner = onRunner
     }
 
-    public func makeCoordinator() -> Coordinator {
+    private var stats: FrameStats { injectedStats ?? ownedStats }
+
+    public var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            MetalCanvas(sketch: sketch, stats: stats, onRunner: onRunner)
+            if showStats && showsStatsOverlay {
+                StatsOverlay(stats: stats)
+            }
+        }
+    }
+}
+
+/// The `MTKView`-backed half of `SketchView`: it builds the renderer + runner and
+/// drives the per-frame loop. Kept private so the public surface is the SwiftUI
+/// `View` above (which layers the overlay on top); this stays the
+/// AppKit/UIKit-portability seam.
+private struct MetalCanvas: NSViewRepresentable {
+    let sketch: Sketch
+    let stats: FrameStats
+    let onRunner: (@MainActor (SketchRunner) -> Void)?
+
+    func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
-    public func makeNSView(context: Context) -> MTKView {
+    func makeNSView(context: Context) -> MTKView {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Ollin requires a Metal-capable GPU.")
         }
         // Initial size only; SwiftUI resizes the view to its frame on layout.
         let view = makeOllinMTKView(device: device, size: sketch.canvasSize, sketch: sketch)
         let runner = SketchRunner(sketch: sketch, view: view, device: device)
+        runner.statsSink = stats
         view.delegate = runner
         context.coordinator.runner = runner   // retain the runner
         onRunner?(runner)
         return view
     }
 
-    public func updateNSView(_ nsView: MTKView, context: Context) {}
+    func updateNSView(_ nsView: MTKView, context: Context) {}
 
-    public final class Coordinator {
+    final class Coordinator {
         var runner: SketchRunner?
     }
 }
@@ -522,6 +580,7 @@ struct OllinSketchApp: App {
         // Fixed modes lock the window to its content; `.resizable` allows free
         // resize down to the content's minimum.
         .windowResizability(isResizable ? .contentMinSize : .contentSize)
+        .commands { OllinHUDCommands() }
     }
 }
 

@@ -36,5 +36,6 @@ struct OllinExamplesApp: App {
         .defaultSize(width: OllinApp.defaultWindowSize.width + GalleryView.sidebarWidth,
                      height: OllinApp.defaultWindowSize.height)
         .windowResizability(.contentSize)
+        .commands { OllinHUDCommands() }
     }
 }

@@ -54,5 +54,7 @@ struct OllinLiveApp: App {
         .defaultSize(width: OllinApp.defaultWindowSize.width + LiveRootView.sidebarWidth,
                      height: OllinApp.defaultWindowSize.height)
         .windowResizability(.contentSize)
+        // No "Show FPS" command here: the inspector panel is the live host's
+        // stats display, so the floating overlay would only duplicate it.
     }
 }

@@ -43,9 +43,11 @@ final class LiveSession {
     private(set) var title = "Ollin Live"
     private(set) var status: Status = .compiling
     private(set) var reloadCount = 0
-    /// Smoothed frames-per-second of the running sketch, updated a few times a
-    /// second by the runner. Zero until the first frames draw.
-    private(set) var frameRate: Double = 0
+    /// Live performance numbers of the running sketch, refreshed a few times a
+    /// second by the runner. Shared with the on-canvas overlay (one source of
+    /// truth), so the inspector and overlay never disagree. The reference is
+    /// constant; its `@Observable` fields drive the inspector's updates.
+    @ObservationIgnored let stats = FrameStats()
     /// The running sketch's `@Param` knobs, surfaced as sliders in the inspector.
     private(set) var params: [ParamHandle] = []
 
@@ -98,7 +100,8 @@ final class LiveSession {
     /// the first successful compile makes `sketch` non-nil and the view mounts).
     func attach(_ runner: SketchRunner) {
         self.runner = runner
-        runner.onFrameRate = { [weak self] fps in self?.frameRate = fps }
+        // `stats` is wired into the runner by the `SketchView` (it's passed in as
+        // the shared instance), so there's nothing to hook up here.
     }
 
     private func startWatching() {
