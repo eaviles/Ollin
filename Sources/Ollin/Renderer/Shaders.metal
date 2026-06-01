@@ -51,7 +51,9 @@ fragment float4 ollin_fragment(VertexOut in [[stage_in]]) {
 // OllinShaderTypes.h (included above), so its layout stays in lockstep with the
 // Swift side; the shape-code mapping is `SDFShape`'s raw values:
 //   0 ellipse, 1 box, 2 capsule, 3/4/5 arc open/chord/pie, 6 triangle,
-//   7 star/ngon, 8 marker, 9 rhombus, 10 vesica, 11 moon, 12 cross, 13 ring.
+//   7 star/ngon, 8 marker, 9 rhombus, 10 vesica, 11 moon, 12 cross, 13 ring,
+//   14 trapezoid, 15 parallelogram, 16 egg, 17 heart, 18 cut disk,
+//   19 uneven capsule.
 
 struct SDFOut {
     float4 position [[position]];
@@ -220,6 +222,85 @@ static float sdMoon(float2 p, float d, float ra, float rb) {
     return max(length(p) - ra, -(length(p - float2(d, 0.0)) - rb));
 }
 
+static float dot2(float2 v) { return dot(v, v); }
+
+// Isosceles trapezoid symmetric about the y-axis, spanning y in [-he, he], with
+// half-width r1 at y = -he and r2 at y = +he. Exact signed distance, negative
+// inside. r1 == r2 is a rectangle; r2 == 0 is a triangle.
+static float sdTrapezoid(float2 p, float r1, float r2, float he) {
+    float2 k1 = float2(r2, he);
+    float2 k2 = float2(r2 - r1, 2.0 * he);
+    p.x = abs(p.x);
+    float2 ca = float2(p.x - min(p.x, (p.y < 0.0) ? r1 : r2), abs(p.y) - he);
+    float2 cb = p - k1 + k2 * clamp(dot(k1 - p, k2) / dot2(k2), 0.0, 1.0);
+    float s = (cb.x < 0.0 && ca.y < 0.0) ? -1.0 : 1.0;
+    return s * sqrt(min(dot2(ca), dot2(cb)));
+}
+
+// Parallelogram: base half-width `wi`, half-height `he`, top edge sheared `sk`
+// along x relative to the bottom. 180°-symmetric about the center. Exact signed
+// distance, negative inside.
+static float sdParallelogram(float2 p, float wi, float he, float sk) {
+    float2 e = float2(sk, he);
+    p = (p.y < 0.0) ? -p : p;
+    float2 w = p - e; w.x -= clamp(w.x, -wi, wi);
+    float2 d = float2(dot(w, w), -w.y);
+    float s = p.x * e.y - p.y * e.x;
+    p = (s < 0.0) ? -p : p;
+    float2 v = p - float2(wi, 0.0);
+    v -= e * clamp(dot(v, e) / dot2(e), -1.0, 1.0);
+    d = min(d, float2(dot(v, v), wi * he - abs(s)));
+    return sqrt(d.x) * sign(-d.y);
+}
+
+// Egg: a circle of radius `ra` at the origin tapering to a rounded tip of radius
+// `rb` above it (ra >= rb). Native orientation points +y. Exact signed distance,
+// negative inside.
+static float sdEgg(float2 p, float ra, float rb) {
+    const float k = 1.7320508;   // sqrt(3)
+    p.x = abs(p.x);
+    float r = ra - rb;
+    return ((p.y < 0.0)           ? length(float2(p.x, p.y))           - r :
+            (k * (p.x + r) < p.y) ? length(float2(p.x, p.y - k * r))       :
+                                    length(float2(p.x + r, p.y))       - 2.0 * r) - rb;
+}
+
+// Heart fitting the unit box (width ~1.2036, height ~1.0985): the point sits near
+// (0, 0), the two lobes peak near y = 1.1. Native orientation points +y (lobes
+// up). Signed distance, negative inside (very close to exact near the boundary).
+static float sdHeart(float2 p) {
+    p.x = abs(p.x);
+    if (p.y + p.x > 1.0) {
+        return sqrt(dot2(p - float2(0.25, 0.75))) - 0.35355339;   // sqrt(2)/4
+    }
+    return sqrt(min(dot2(p - float2(0.0, 1.0)),
+                    dot2(p - 0.5 * max(p.x + p.y, 0.0)))) * sign(p.x - p.y);
+}
+
+// Disk of radius `r` with a straight cut at y = h (-r < h < r): keeps the part
+// with y <= h. Exact signed distance, negative inside.
+static float sdCutDisk(float2 p, float r, float h) {
+    float w = sqrt(r * r - h * h);
+    p.x = abs(p.x);
+    float s = max((h - r) * p.x * p.x + w * w * (h + r - 2.0 * p.y), h * p.x - w * p.y);
+    return (s < 0.0) ? length(p) - r :
+           (p.x < w) ? h - p.y :
+                       length(p - float2(w, h));
+}
+
+// Uneven capsule: the convex hull of a circle of radius `r1` at the origin and a
+// circle of radius `r2` at (0, h) — a tapered, round-capped bar along +y. Exact
+// signed distance, negative inside. Needs h >= |r1 - r2|.
+static float sdUnevenCapsule(float2 p, float r1, float r2, float h) {
+    p.x = abs(p.x);
+    float b = (r1 - r2) / h;
+    float a = sqrt(1.0 - b * b);
+    float k = dot(p, float2(-b, a));
+    if (k < 0.0)   return length(p) - r1;
+    if (k > a * h) return length(p - float2(0.0, h)) - r2;
+    return dot(p, float2(a, b)) - r1;
+}
+
 // Fill + stroke coverage for a shape whose boundary is the zero level set of a
 // region SDF `d`: fill the inside (d < 0), stroke a band of half-width `hw`
 // straddling the boundary. `fwidth(d)` keeps the falloff ~1px under any
@@ -383,6 +464,53 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
     case 13u: {  // ring (filled annulus): param0 = (mid radius, half thickness).
                  // The disk SDF turned into a band (opOnion); fill only.
         float d = abs(length(p) - in.param0.x) - in.param0.y;
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 14u: {  // trapezoid: param0 = (top half-width, bottom half-width);
+                 // size.y = half-height. Symmetric in y, so no flip needed.
+        float d = sdTrapezoid(p, in.param0.x, in.param0.y, in.size.y);
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 15u: {  // parallelogram: param0.x = base half-width; size.y = half-height;
+                 // extra = skew. Flip Y so a positive skew leans the top edge +x.
+        float d = sdParallelogram(float2(p.x, -p.y), in.param0.x, in.size.y, in.extra);
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 16u: {  // egg: param0 = (bottom radius ra, top radius rb), ra >= rb.
+                 // Flip Y (fat end down) and recenter on the quad: the native
+                 // shape spans y in [-ra, A] with A the apex, center yc.
+        float ra = in.param0.x, rb = in.param0.y;
+        float A = 1.7320508 * (ra - rb) + rb;
+        float yc = (A - ra) * 0.5;
+        float d = sdEgg(float2(p.x, -p.y + yc), ra, rb);
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 17u: {  // heart: param0.x = unit->local scale. Flip Y (lobes up) and
+                 // recenter (the unit heart's center sits at y = 0.5538).
+        float s = in.param0.x;
+        float2 u = float2(p.x, -p.y) / s + float2(0.0, 0.5538);
+        float d = sdHeart(u) * s;
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 18u: {  // cut disk: param0 = (radius, cut height h). Flip Y so the flat
+                 // edge faces down (-y) and the dome bulges up; a positive cut
+                 // raises the chord toward the dome, keeping a smaller cap.
+        float d = sdCutDisk(float2(p.x, -p.y), in.param0.x, in.param0.y);
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 19u: {  // uneven capsule: param0 = (r1, r2); param1 = (cos, sin) of the
+                 // rotation into the capsule's axis frame (+y from a to b);
+                 // extra = end-to-end length. Shift the r1 end to the origin.
+        float2 q = float2(p.x * in.param1.x - p.y * in.param1.y,
+                          p.x * in.param1.y + p.y * in.param1.x);
+        q.y += in.extra * 0.5;
+        float d = sdUnevenCapsule(q, in.param0.x, in.param0.y, in.extra);
         regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }

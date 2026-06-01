@@ -25,6 +25,12 @@ enum SDFShape: UInt32 {
     case moon     = 11  // crescent: param0 = (outer radius, inner radius); param1.x = offset; extra = corner radius
     case cross    = 12  // plus: size.x = arm half-length; param0.x = arm half-width; extra = corner radius
     case ring     = 13  // filled annulus: param0 = (mid radius, half thickness); fill only
+    case trapezoid     = 14  // isosceles: param0 = (top half-width, bottom half-width); size.y = half-height
+    case parallelogram = 15  // param0.x = base half-width; size.y = half-height; extra = skew
+    case egg           = 16  // param0 = (bottom radius, top radius); points up
+    case heart         = 17  // param0.x = unit->local scale; lobes up
+    case cutDisk       = 18  // param0 = (radius, cut height); flat edge down
+    case unevenCapsule = 19  // tapered capsule: param0 = (r1, r2); param1 = (cos, sin) axis; extra = length
 }
 
 /// Which pipeline a run of recorded geometry needs. Primitives are recorded in
@@ -379,6 +385,93 @@ final class Drawer {
                   size: SIMD2<Float>(Float(outerRadius), Float(outerRadius)),
                   fill: fillColor, stroke: nil,
                   param0: SIMD2<Float>(Float(mid), Float(half)))
+    }
+
+    /// An isosceles trapezoid centered at `(x, y)`, `topWidth` across the top edge
+    /// and `bottomWidth` across the bottom, `height` tall. A rectangle when the two
+    /// widths match, a triangle when one is `0`. Recorded as a single SDF instance —
+    /// analytic fill + stroke + anti-aliasing. Rotate via the transform stack.
+    func drawTrapezoid(_ x: Double, _ y: Double, _ topWidth: Double, _ bottomWidth: Double, _ height: Double) {
+        guard height > 0, topWidth >= 0, bottomWidth >= 0, topWidth + bottomWidth > 0 else { return }
+        let halfMax = max(topWidth, bottomWidth) / 2
+        appendSDF(shape: .trapezoid, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(halfMax), Float(height / 2)),
+                  fill: fillColor, stroke: strokeColor,
+                  param0: SIMD2<Float>(Float(topWidth / 2), Float(bottomWidth / 2)))
+    }
+
+    /// A parallelogram centered at `(x, y)`, `width` wide and `height` tall, with the
+    /// top edge sheared `skew` points along +x relative to the bottom (`0` is a
+    /// rectangle). Recorded as a single SDF instance. Rotate via the transform stack.
+    func drawParallelogram(_ x: Double, _ y: Double, _ width: Double, _ height: Double, _ skew: Double) {
+        guard width > 0, height > 0 else { return }
+        appendSDF(shape: .parallelogram, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(width / 2 + abs(skew)), Float(height / 2)),
+                  fill: fillColor, stroke: strokeColor, extra: Float(skew),
+                  param0: SIMD2<Float>(Float(width / 2), 0))
+    }
+
+    /// An egg centered at `(x, y)`: a circle of `bottomRadius` at the fat lower end
+    /// tapering to a rounded tip of `topRadius` at the top, pointing up.
+    /// `bottomRadius` must be ≥ `topRadius` (equal is a circle). Recorded as a single
+    /// SDF instance. Rotate via the transform stack.
+    func drawEgg(_ x: Double, _ y: Double, _ bottomRadius: Double, _ topRadius: Double) {
+        guard bottomRadius > 0, topRadius > 0, topRadius <= bottomRadius else { return }
+        // Native span is y in [-bottomRadius, apex]; the fragment recenters on the
+        // quad, so size.y carries the symmetric half-height around that center.
+        let apex = 1.7320508075688772 * (bottomRadius - topRadius) + topRadius
+        let halfHeight = (apex + bottomRadius) / 2
+        appendSDF(shape: .egg, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(bottomRadius), Float(halfHeight)),
+                  fill: fillColor, stroke: strokeColor,
+                  param0: SIMD2<Float>(Float(bottomRadius), Float(topRadius)))
+    }
+
+    /// A heart centered at `(x, y)`, `size` points wide (a touch shorter than wide),
+    /// lobes up and point down. Recorded as a single SDF instance. Rotate via the
+    /// transform stack (45° spins it like a playing-card suit, 180° points it up).
+    func drawHeart(_ x: Double, _ y: Double, _ size: Double) {
+        guard size > 0 else { return }
+        // The unit heart spans width 1.2036, height 1.0985 (lobes up); scale so the
+        // width matches `size`. The fragment flips Y and recenters.
+        let s = size / 1.2036
+        appendSDF(shape: .heart, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(0.6018 * s), Float(0.54925 * s)),
+                  fill: fillColor, stroke: strokeColor,
+                  param0: SIMD2<Float>(Float(s), 0))
+    }
+
+    /// A disk of `radius` centered at `(x, y)` with a straight horizontal slice
+    /// removed — a dome, flat edge down and bulge up. `cut` is the signed offset of
+    /// the flat edge from the center (`-radius...radius`): `0` is a half disk,
+    /// positive raises the cut and keeps a smaller cap, negative keeps more than
+    /// half. Recorded as a single SDF instance. Rotate via the transform stack to
+    /// aim the flat edge.
+    func drawCutDisk(_ x: Double, _ y: Double, _ radius: Double, _ cut: Double) {
+        guard radius > 0, abs(cut) < radius else { return }
+        appendSDF(shape: .cutDisk, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(radius), Float(radius)),
+                  fill: fillColor, stroke: strokeColor,
+                  param0: SIMD2<Float>(Float(radius), Float(cut)))
+    }
+
+    /// A tapered capsule (a rounded bar with unequal end radii) from `a` (radius
+    /// `ra`) to `b` (radius `rb`) — `drawLine` with mismatched round caps, taking
+    /// fill + stroke like a shape. The end-to-end distance must be at least
+    /// `|ra − rb|` (otherwise one cap swallows the other). Recorded as a single SDF
+    /// instance.
+    func drawUnevenCapsule(_ a: Vector2, _ b: Vector2, _ ra: Double, _ rb: Double) {
+        guard ra > 0, rb > 0 else { return }
+        let d = b - a
+        let len = d.length
+        guard len > 1e-6, len >= abs(ra - rb) else { return }
+        let dir = d / len
+        let bound = len / 2 + max(ra, rb)
+        appendSDF(shape: .unevenCapsule, center: (a + b) / 2,
+                  size: SIMD2<Float>(Float(bound), Float(bound)),
+                  fill: fillColor, stroke: strokeColor, extra: Float(len),
+                  param0: SIMD2<Float>(Float(ra), Float(rb)),
+                  param1: SIMD2<Float>(Float(dir.y), Float(dir.x)))
     }
 
     /// Shared builder for `drawNgon`/`drawStar`. Encodes the star into the SDF

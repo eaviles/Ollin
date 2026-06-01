@@ -243,6 +243,42 @@ open class Sketch {
     public func drawRing(center: Vector2, innerRadius: Double, outerRadius: Double) {
         drawer.drawRing(center.x, center.y, innerRadius, outerRadius)
     }
+    public func drawTrapezoid(_ x: Double, _ y: Double, _ topWidth: Double, _ bottomWidth: Double, _ height: Double) {
+        drawer.drawTrapezoid(x, y, topWidth, bottomWidth, height)
+    }
+    public func drawTrapezoid(center: Vector2, topWidth: Double, bottomWidth: Double, height: Double) {
+        drawer.drawTrapezoid(center.x, center.y, topWidth, bottomWidth, height)
+    }
+    public func drawParallelogram(_ x: Double, _ y: Double, _ width: Double, _ height: Double, _ skew: Double) {
+        drawer.drawParallelogram(x, y, width, height, skew)
+    }
+    public func drawParallelogram(center: Vector2, width: Double, height: Double, skew: Double) {
+        drawer.drawParallelogram(center.x, center.y, width, height, skew)
+    }
+    public func drawEgg(_ x: Double, _ y: Double, _ bottomRadius: Double, _ topRadius: Double) {
+        drawer.drawEgg(x, y, bottomRadius, topRadius)
+    }
+    public func drawEgg(center: Vector2, bottomRadius: Double, topRadius: Double) {
+        drawer.drawEgg(center.x, center.y, bottomRadius, topRadius)
+    }
+    public func drawHeart(_ x: Double, _ y: Double, _ size: Double) {
+        drawer.drawHeart(x, y, size)
+    }
+    public func drawHeart(center: Vector2, size: Double) {
+        drawer.drawHeart(center.x, center.y, size)
+    }
+    public func drawCutDisk(_ x: Double, _ y: Double, _ radius: Double, _ cut: Double) {
+        drawer.drawCutDisk(x, y, radius, cut)
+    }
+    public func drawCutDisk(center: Vector2, radius: Double, cut: Double) {
+        drawer.drawCutDisk(center.x, center.y, radius, cut)
+    }
+    public func drawUnevenCapsule(_ a: Vector2, _ b: Vector2, _ ra: Double, _ rb: Double) {
+        drawer.drawUnevenCapsule(a, b, ra, rb)
+    }
+    public func drawUnevenCapsule(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ ra: Double, _ rb: Double) {
+        drawer.drawUnevenCapsule(Vector2(x1, y1), Vector2(x2, y2), ra, rb)
+    }
     public func drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
                         start: Double, stop: Double, mode: ArcMode = .open) {
         drawer.drawArc(x, y, rx, ry, start: start, stop: stop, mode: mode)

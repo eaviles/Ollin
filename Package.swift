@@ -263,6 +263,11 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Patterns/ShapeMenagerie"
         ),
+        .executableTarget(
+            name: "Example-ShapeCabinet",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/ShapeCabinet"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

@@ -11,7 +11,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 ### Contents
 
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [pointSize](#pointSize), [pointMarker](#pointMarker)
-- **Shapes:** [drawPoint](#point), [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawTriangle](#triangle), [drawNgon](#ngon), [drawStar](#star), [drawRect](#rect), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
+- **Shapes:** [drawPoint](#point), [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawTriangle](#triangle), [drawNgon](#ngon), [drawStar](#star), [drawRect](#rect), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
@@ -255,6 +255,78 @@ A filled ring (annulus) centered at `(x, y)`, between `innerRadius` and `outerRa
 ```swift
 drawRing(width / 2, height / 2, 80, 120)                    // a fairly thin ring
 drawRing(width / 2, height / 2, 20, 120)                    // a thick one (small hole)
+```
+
+<a name="trapezoid"></a>
+
+#### `drawTrapezoid(_ x: Double, _ y: Double, _ topWidth: Double, _ bottomWidth: Double, _ height: Double)`
+#### `drawTrapezoid(center: Vector2, topWidth: Double, bottomWidth: Double, height: Double)`
+
+An isosceles trapezoid centered at `(x, y)`, `topWidth` across the top edge and `bottomWidth` across the bottom, `height` tall. Equal widths give a rectangle; a zero width gives a triangle. An analytic SDF shape, crisp at any size; rotate it about its center with the transform stack.
+
+```swift
+drawTrapezoid(width / 2, height / 2, 120, 220, 160)         // narrow top, wide base
+drawTrapezoid(width / 2, height / 2, 200, 200, 120)         // equal widths — a rectangle
+```
+
+<a name="parallelogram"></a>
+
+#### `drawParallelogram(_ x: Double, _ y: Double, _ width: Double, _ height: Double, _ skew: Double)`
+#### `drawParallelogram(center: Vector2, width: Double, height: Double, skew: Double)`
+
+A parallelogram centered at `(x, y)`, `width` wide and `height` tall, with the top edge sheared `skew` points along +x relative to the bottom (`0` is a rectangle, negative leans the other way). An analytic SDF shape; rotate it about its center with the transform stack.
+
+```swift
+drawParallelogram(width / 2, height / 2, 240, 160, 80)      // a right-leaning slab
+drawParallelogram(width / 2, height / 2, 240, 160, -80)     // leaning the other way
+```
+
+<a name="egg"></a>
+
+#### `drawEgg(_ x: Double, _ y: Double, _ bottomRadius: Double, _ topRadius: Double)`
+#### `drawEgg(center: Vector2, bottomRadius: Double, topRadius: Double)`
+
+An egg centered at `(x, y)`: a circle of `bottomRadius` at the fat lower end tapering to a rounded tip of `topRadius` at the top, pointing up. `bottomRadius` must be at least `topRadius` (equal gives a circle). An analytic SDF shape; rotate it about its center with the transform stack to tip it over.
+
+```swift
+drawEgg(width / 2, height / 2, 120, 60)                     // a classic egg
+withState { translate(width / 2, height / 2); rotate(time); drawEgg(0, 0, 120, 40) }  // tumbling
+```
+
+<a name="heart"></a>
+
+#### `drawHeart(_ x: Double, _ y: Double, _ size: Double)`
+#### `drawHeart(center: Vector2, size: Double)`
+
+A heart centered at `(x, y)`, `size` points wide (a touch shorter than it is wide), lobes up and point down. An analytic SDF shape; rotate it with the transform stack (180° points it up, 45° tips it like a playing-card suit).
+
+```swift
+drawHeart(width / 2, height / 2, 220)
+withState { translate(width / 2, height / 2); rotate(sin(time) * 0.2); drawHeart(0, 0, 200) }  // a gentle wobble
+```
+
+<a name="cutdisk"></a>
+
+#### `drawCutDisk(_ x: Double, _ y: Double, _ radius: Double, _ cut: Double)`
+#### `drawCutDisk(center: Vector2, radius: Double, cut: Double)`
+
+A disk of `radius` centered at `(x, y)` with a straight horizontal slice removed — a dome, flat edge down and bulge up. `cut` (in `-radius...radius`) is the signed offset of the flat edge from the center: `0` is a half disk, positive raises the cut toward the dome and keeps a smaller cap, negative keeps more than half. An analytic SDF shape; rotate it with the transform stack to aim the flat edge.
+
+```swift
+drawCutDisk(width / 2, height / 2, 140, 0)                  // a half disk
+drawCutDisk(width / 2, height / 2, 140, -40)               // a bit more than half
+```
+
+<a name="unevencapsule"></a>
+
+#### `drawUnevenCapsule(_ a: Vector2, _ b: Vector2, _ ra: Double, _ rb: Double)`
+#### `drawUnevenCapsule(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ ra: Double, _ rb: Double)`
+
+A tapered capsule — like `drawLine` but with unequal round caps — from `a` (radius `ra`) to `b` (radius `rb`), taking fill and stroke like a shape. The end-to-end distance must be at least `|ra − rb|`, otherwise the smaller cap is swallowed. An analytic SDF shape, crisp at any size.
+
+```swift
+drawUnevenCapsule(Vector2(200, 200), Vector2(880, 880), 90, 24)   // a long taper
+drawUnevenCapsule(300, 540, 780, 540, 70, 70)                     // equal radii — a plain capsule
 ```
 
 <a name="line"></a>
