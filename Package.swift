@@ -168,6 +168,11 @@ let package = Package(
             path: "Examples/Motion/Star"
         ),
         .executableTarget(
+            name: "Example-Polygons",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/Polygons"
+        ),
+        .executableTarget(
             name: "Example-ArcField",
             dependencies: ["Ollin"],
             path: "Examples/Motion/ArcField"

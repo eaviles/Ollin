@@ -65,7 +65,7 @@ struct SDFInstance {
     float2 param1;        // shape-specific
     float strokeWidth;    // points; 0 means no stroke
     float extra;          // shape-specific scalar
-    uint  shape;          // 0 ellipse, 1 box, 2 capsule, 3/4/5 arc open/chord/pie, 6 triangle
+    uint  shape;          // 0 ellipse, 1 box, 2 capsule, 3/4/5 arc open/chord/pie, 6 triangle, 7 star/ngon
 };
 
 struct SDFOut {
@@ -169,6 +169,25 @@ static float sdTriangleIsosceles(float2 p, float2 q) {
     return sqrt(d) * sign(s);
 }
 
+// Regular polygon / star of circumradius `r` with one vertex along +Y. `acs` =
+// (cos, sin) of the half-sector angle `an` (= π / point-count); `ecs` = (cos, sin)
+// of the edge angle the inner radius sets (a star's "pointiness"; π/2 straightens
+// the points into a regular polygon's edges); `an` is that half-sector angle.
+// The plane folds into one half-sector, then it's the distance to the single
+// tip→valley edge. Exact signed distance, negative inside. The Drawer encodes a
+// regular n-gon as the star whose inner radius is the apothem.
+static float sdStar(float2 p, float r, float2 acs, float2 ecs, float an) {
+    // Fold into the half-sector. GLSL's mod returns 0..2*an; Metal's fmod truncates
+    // toward zero, so spell out the floor form to get the same wrap.
+    float a = atan2(p.x, p.y);
+    float twoAn = 2.0 * an;
+    float bn = (a - twoAn * floor(a / twoAn)) - an;
+    p = length(p) * float2(cos(bn), abs(sin(bn)));
+    p -= r * acs;
+    p += ecs * clamp(-dot(p, ecs), 0.0, r * acs.y / ecs.y);
+    return length(p) * sign(p.x);
+}
+
 // Fill + stroke coverage for a shape whose boundary is the zero level set of a
 // region SDF `d`: fill the inside (d < 0), stroke a band of half-width `hw`
 // straddling the boundary. `fwidth(d)` keeps the falloff ~1px under any
@@ -219,6 +238,13 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         // wedges that tile a cell — meet at full coverage and leave no seam.
         regionCoverage(sdTriangleIsosceles(p, in.size), hw, in.strokeWidth, fillCov, strokeCov);
         break;
+    case 7u: {   // regular polygon / star: size.x = outer radius (= AABB extent)
+        // sdStar's native vertex points along +Y, which is *down* in y-down space;
+        // mirror Y so a vertex points up. Region coverage like the triangle/box.
+        float d = sdStar(float2(p.x, -p.y), in.size.x, in.param0, in.param1, in.extra);
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
     case 2u: {   // capsule (a line): solid fill in fillColor, round caps
         // Centered AA keeps the line ~strokeWidth wide (it doesn't tile, so the
         // inside bias the region fills use isn't needed here). param0 is the

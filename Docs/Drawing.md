@@ -11,7 +11,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 ### Contents
 
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [pointSize](#pointSize)
-- **Shapes:** [drawPoint](#point), [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawTriangle](#triangle), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
+- **Shapes:** [drawPoint](#point), [drawCircle](#circle), [drawEllipse](#ellipse), [drawArc](#arc), [drawTriangle](#triangle), [drawNgon](#ngon), [drawStar](#star), [drawRect](#rect), [drawLine](#line), [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
@@ -144,6 +144,30 @@ A triangle, in two forms. The three-argument form is an **equilateral** triangle
 drawTriangle(width / 2, height / 2, 120)              // equilateral, centered, point-up
 drawTriangle(width / 2, 100, 160, 240)               // isosceles, tip at (w/2, 100)
 withState { translate(300, 300); rotate(time); drawTriangle(0, 0, 80, 200) }  // wedge spinning on its tip
+```
+
+<a name="ngon"></a>
+
+#### `drawNgon(_ x: Double, _ y: Double, _ radius: Double, sides: Int)`
+#### `drawNgon(center: Vector2, radius: Double, sides: Int)`
+
+A regular polygon centered at `(x, y)` with `sides` equal-length edges (3 or more) and circumradius `radius` (the center-to-vertex distance, like `drawCircle`'s radius), one vertex pointing up. An analytic SDF shape — crisp at any size, effectively free per shape; rotate it about its center with the transform stack. For an arbitrary, non-regular polygon, use `drawPolygon`.
+
+```swift
+drawNgon(width / 2, height / 2, 120, sides: 6)            // a hexagon
+withState { translate(300, 300); rotate(time); drawNgon(0, 0, 90, sides: 5) }  // a spinning pentagon
+```
+
+<a name="star"></a>
+
+#### `drawStar(_ x: Double, _ y: Double, _ outerRadius: Double, _ innerRadius: Double, points: Int)`
+#### `drawStar(center: Vector2, outerRadius: Double, innerRadius: Double, points: Int)`
+
+A star centered at `(x, y)` with `points` tips (3 or more), alternating between `outerRadius` (the tips) and `innerRadius` (the valleys), one tip pointing up. `innerRadius` runs `0...outerRadius` — smaller is spikier; at the apothem the points flatten into a regular polygon's edges (which is exactly how `drawNgon` is built). An analytic SDF shape — crisp at any size, effectively free; rotate it about its center with the transform stack.
+
+```swift
+drawStar(width / 2, height / 2, 160, 70, points: 5)       // a classic five-point star
+drawStar(width / 2, height / 2, 120, 96, points: 8)       // a gentler eight-point burst
 ```
 
 <a name="rect"></a>

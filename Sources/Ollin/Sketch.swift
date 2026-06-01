@@ -198,6 +198,18 @@ open class Sketch {
     public func drawTriangle(apex: Vector2, base: Double, height: Double) {
         drawer.drawTriangle(apex.x, apex.y, base, height)
     }
+    public func drawNgon(_ x: Double, _ y: Double, _ radius: Double, sides: Int) {
+        drawer.drawNgon(x, y, radius, sides: sides)
+    }
+    public func drawNgon(center: Vector2, radius: Double, sides: Int) {
+        drawer.drawNgon(center.x, center.y, radius, sides: sides)
+    }
+    public func drawStar(_ x: Double, _ y: Double, _ outerRadius: Double, _ innerRadius: Double, points: Int) {
+        drawer.drawStar(x, y, outerRadius, innerRadius, points: points)
+    }
+    public func drawStar(center: Vector2, outerRadius: Double, innerRadius: Double, points: Int) {
+        drawer.drawStar(center.x, center.y, outerRadius, innerRadius, points: points)
+    }
     public func drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
                         start: Double, stop: Double, mode: ArcMode = .open) {
         drawer.drawArc(x, y, rx, ry, start: start, stop: stop, mode: mode)

@@ -25,6 +25,7 @@ enum SDFShape: UInt32 {
     case arcChord = 4   // circular arc, chord-closed
     case arcPie   = 5   // circular arc, pie-closed
     case triangle = 6   // isosceles: apex at center, size = (base/2, height), opens +y
+    case star     = 7   // regular n-gon / star: size = (R, R); param0/param1/extra = fold angles
 }
 
 /// One analytic shape, drawn as a single instanced quad whose fragment computes
@@ -271,6 +272,50 @@ final class Drawer {
         appendSDF(shape: .triangle, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(base / 2), Float(height)),
                   fill: fillColor, stroke: strokeColor)
+    }
+
+    /// A regular polygon centered at `(x, y)` with `sides` equal-length edges and
+    /// circumradius `radius` (center-to-vertex, like `drawCircle`'s radius), one
+    /// vertex pointing up. `sides` is 3 (a triangle) or more. Recorded as a single
+    /// SDF instance — analytic fill + stroke + anti-aliasing, crisp at any size and
+    /// effectively free per shape. Rotate via the transform stack; rotation pivots
+    /// on the center.
+    func drawNgon(_ x: Double, _ y: Double, _ radius: Double, sides: Int) {
+        guard radius > 0, sides >= 3 else { return }
+        // A regular polygon is the special case of a star whose inner radius is the
+        // apothem (the edge midpoints), which straightens the points into edges.
+        appendStar(center: Vector2(x, y), outer: radius,
+                   inner: radius * cos(.pi / Double(sides)), points: sides)
+    }
+
+    /// A star centered at `(x, y)` with `points` outer points, alternating between
+    /// `outerRadius` (the tips) and `innerRadius` (the valleys), one tip pointing
+    /// up. `points` is 3 or more, and `innerRadius` is `0...outerRadius` (smaller is
+    /// spikier). Recorded as a single SDF instance — analytic fill + stroke +
+    /// anti-aliasing, crisp at any size. Rotate via the transform stack; rotation
+    /// pivots on the center.
+    func drawStar(_ x: Double, _ y: Double, _ outerRadius: Double, _ innerRadius: Double, points: Int) {
+        guard outerRadius > 0, innerRadius > 0, innerRadius <= outerRadius, points >= 3 else { return }
+        appendStar(center: Vector2(x, y), outer: outerRadius, inner: innerRadius, points: points)
+    }
+
+    /// Shared builder for `drawNgon`/`drawStar`. Encodes the star into the SDF
+    /// slots the way `sdStar` (in `Shaders.metal`) reads them: `size = (R, R)` (R is
+    /// both the outer radius and the bounding half-extent), `param0 = (cos, sin)` of
+    /// the half-sector angle `an = π/points`, `param1 = (cos, sin)` of the edge angle
+    /// `en`, and `extra = an`. The inner radius sets `en` via
+    /// `inner = R·(cos an − sin an / tan en)`, inverted here to
+    /// `en = atan2(sin an, cos an − inner/R)` (a regular polygon's apothem gives
+    /// `en = π/2`, i.e. straight edges).
+    private func appendStar(center: Vector2, outer: Double, inner: Double, points n: Int) {
+        let an = Double.pi / Double(n)
+        let acs = SIMD2<Float>(Float(cos(an)), Float(sin(an)))
+        let en = atan2(sin(an), cos(an) - inner / outer)
+        let ecs = SIMD2<Float>(Float(cos(en)), Float(sin(en)))
+        appendSDF(shape: .star, center: center,
+                  size: SIMD2<Float>(Float(outer), Float(outer)),
+                  fill: fillColor, stroke: strokeColor,
+                  extra: Float(an), param0: acs, param1: ecs)
     }
 
     /// Record one analytic shape as an SDF instance, carrying the current
