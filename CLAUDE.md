@@ -124,11 +124,15 @@ The shader set is one `.metal` file today; it will grow. Decisions that are
 cheap now and expensive to retrofit:
 
 - **One source of truth for CPU↔GPU structs.** Types shared between Swift and
-  MSL (`Uniforms`, `OllinVertex`) are currently defined in both places and kept
-  in sync by hand (`// Mirrors Uniforms in Shaders.metal`). That silently
-  corrupts memory the day a field's layout disagrees. The moment a *second*
-  shared struct appears, move them into a shared C header (a small C target
-  using `simd` types) that Swift imports and the `.metal` file `#include`s.
+  MSL are defined in both places and kept in sync by hand
+  (`// Mirrors Uniforms in Shaders.metal`), which silently corrupts memory the
+  day a field's layout disagrees. The threshold was "the moment a *second* shared
+  struct appears"; there are now **three** (`OllinVertex`, `Uniforms`, and
+  `SDFInstance` — the last a stride-128 *tagged union* that keeps growing), so the
+  migration is overdue and riskier to defer. Move them into a shared C header (a
+  small C target using `simd` types) that Swift imports and the `.metal` file
+  `#include`s. One wrinkle: runtime `makeLibrary(source:)` has no include path for
+  a bundled header, so that content would need inlining there.
 - **Runtime source compilation is a feature, keep it.** `loadLibrary` compiles
   `Shaders.metal` from source at runtime (`makeLibrary(source:)`). For a
   creative-coding framework that's the seam for shader hot-reload and
@@ -251,8 +255,8 @@ pipeline, not rewrites*:
   `size` is *not* a free slot — the vertex shader uses it as the covering quad's
   AABB half-extent, so it must carry the bounding extent and can't double as a
   third geometry point. All from iq's 2D distance functions, implemented from the
-  technique and credited in the README's Techniques list (LYGIA is a *map* to
-  discover which exist — never translate its files, Prosperity license; **hg_sdf**
+  technique and credited in the README's Techniques list (the canonical-source and
+  no-line-by-line-copy rules are under *Built-in shader functions* above; **hg_sdf**
   is the source for the *operator* track noted below). In priority order:
     1. **Triangle, regular n-gon, star** — p5/oF `triangle()` parity plus shapes
        they lack; each a single-scalar fit (`sdEquilateralTriangle`, `sdNgon`,
@@ -278,7 +282,7 @@ pipeline, not rewrites*:
   vertex count — they remain on the triangle path / libtess2), and SDF
   *operators* (smooth-min, union/subtract, hg_sdf domain repetition) which
   *combine* fields and so belong to
-  [shader-composition & layered effects](#follow-up-shader-composition-api--livecoding-performance--ollinlivecoding-not-started),
+  [shader-composition & layered effects](Docs/DESIGN-NOTES.md#shader-composition-and-live-coding-not-started),
   not the one-shape-per-instance primitive path.
 - **MSAA caps anti-aliasing at 4×** for the *triangle* path. The SDF primitives
   already bypass it (analytic coverage); the remaining triangle-path shapes
@@ -290,12 +294,8 @@ enum-keyed cache (`Pipeline` + `makePipeline(_:)`) — `.solid` and `.sdf` today
 so further pipelines slot in as new cases instead of more `init` code. Once
 variants multiply across blend mode × MSAA × pixel format, migrate that enum key
 to a `Hashable` descriptor struct (see *Cache pipelines* above) rather than
-enumerating the product by hand. (Three shared CPU↔GPU structs now exist —
-`OllinVertex`, `Uniforms`, and `SDFInstance` (now a stride-128 *tagged union* with
-several generic slots), all hand-mirrored field-by-field — so the shared-C-header
-migration is overdue and the growing `SDFInstance` makes it riskier to defer; note
-the wrinkle that runtime `makeLibrary(source:)` has no include path for a bundled
-header, so the header content would need inlining.)
+enumerating the product by hand. (The CPU↔GPU structs feeding these pipelines are
+the shared-C-header migration flagged under *Shaders & the Metal back end*.)
 
 Triangulator — *shipped, not hand-rolled.* The vector `Shape`/`Contour` type
 (concave polygons, holes) fills via **vendored libtess2** (the GLU tessellator
@@ -318,8 +318,13 @@ today's miter-join + butt-cap default).
 ## Build, run, verify
 
 ```sh
-swift run Example-HelloCircle   # boots an 800x800 window running an example
+swift run Example-HelloCircle   # opens a window running an example
 ```
+
+The canvas is `1080×1080` by default (`canvasSize`, with named presets); the
+preview window is sized from the sketch's `windowMode` (`.auto` fits the screen,
+`.fixed`, or `.resizable`) — the window is a scaled view of the canvas, not the
+canvas itself.
 
 - **Requires macOS 14+ and a Metal-capable GPU.**
 - **This cannot be compiled in the Linux web container** (no Swift toolchain,
@@ -343,12 +348,15 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   `Palette` (iq's formula) and perceptual `Colormap`s (viridis/magma/turbo/…);
   `map`/`dist` math helpers, a resolution-relative `scale`, seedable
   `random`/`noise` (incl. `randomGaussian`, `randomVector`, `ring`, `curlNoise`
-  flow fields, and a master `seed()` that locks both) and `Double.tau`; a maintained `Examples/` set,
+  flow fields, and a master `seed()` that locks both) and `Double.tau`; a `canvasSize`
+  (1080² default + named presets) sized into a preview by `windowMode`
+  (`.auto`/`.fixed`/`.resizable`); a maintained `Examples/` set,
   including a `Recreations/` section (recreating past computer artists); headless
   single-frame PNG export (`--export` / `OllinApp.export`, off-screen MSAA render);
   live reload (`swift run OllinLive <file>`) that recompiles + hot-swaps a sketch
   on save and live-reloads `Shaders.metal` (with a `--keep-clock` flag and an
-  `onReload()` lifecycle hook; see the live-reload section).
+  `onReload()` lifecycle hook; see the live-reload section), with `@Param` knobs
+  surfaced as live sliders plus an FPS readout in the OllinLive inspector.
 - **Next, in priority order:** Tier 2 is done — the SDF path now covers circle,
   ellipse, rect (rounded), line (capsule), and circular arc (only arbitrary
   `drawPolygon`/`drawPolyline` and *elliptical*/full arcs stay tessellated, by
@@ -375,76 +383,7 @@ swift run Example-HelloCircle   # boots an 800x800 window running an example
   `@SCAnimatable` is a small worked reference. Separately tracked, and *not* on
   the rendering-pipeline track above: the **core batteries** — text, image,
   audio, and keyboard input — that p5/oF/OPENRNDR all ship and Ollin doesn't yet
-  (see [core batteries](#follow-up-core-batteries--text-image-audio-keyboard-input-not-started)).
-
-## Follow-up: core batteries — text, image, audio, keyboard input (not started)
-
-The pipeline roadmap above is about the *renderer* getting deeper. This is the
-orthogonal gap: the table-stakes capabilities p5.js, openFrameworks, and
-OPENRNDR all ship that Ollin doesn't have yet. A sketcher hits these before any
-flow-field — "put a word on screen," "load a JPEG," "react to a keypress" — so
-they matter out of proportion to their glamour. All four are **Apple-native by
-design** (Core Text, ImageIO, AVFoundation, AppKit/UIKit responders), per
-[Platform scope](#platform-scope) — no cross-platform abstractions. Each stays
-sugar over the typed core ([the architecture rule](#the-architecture-rule-load-bearing))
-and, where it emits geometry, takes the `draw` verb prefix
-([Conventions](#conventions)). In rough priority (cheapest-and-most-unblocking
-first):
-
-- **Keyboard input — smallest, do it first.** Mirror the mouse seam already in
-  place: `keyPressed()`/`keyReleased()` lifecycle hooks beside the existing
-  `mousePressed()`, plus `key`/`keyCode` state on `Sketch` beside
-  `mouseX`/`mouseY`. Wire it through `SketchView`'s responder chain
-  (`keyDown`/`keyUp` on the `MTKView`), behind the
-  `#if canImport(AppKit)`/`#if canImport(UIKit)` seam so the iOS follow-up gets
-  it for free. Days, not weeks, and it unblocks every interactive sketch. (p5
-  `keyPressed`/`key`, oF `keyPressed(int key)`.)
-- **Text / typography — the biggest *perceived* gap.** A `Font` value type
-  (`loadFont`/system font) plus a `drawText(_:x:y:)` verb (with the role-labeled
-  `drawText(_:at:)` `Vector2` overload, per the point-argument convention). Two
-  viable engines, both Apple-native: (a) **Core Text glyph outlines** —
-  `CTFontCreatePathForGlyph` → `Shape`/`Contour`, tessellated through the
-  *existing* libtess2 path, so vector text composes with everything and needs no
-  new pipeline; or (b) **SDF text atlases** — a glyph atlas sampled in a fragment
-  shader, which rhymes with the shipped `.sdf` pipeline and scales crisply under
-  zoom. Start with (a) for correctness and reuse, keep (b) as the performance
-  path when text volume bites. Typed-core first, `drawText` sugar second.
-  (p5 `text()`/`textFont()`/`textSize()`/`textAlign()`, oF `ofTrueTypeFont`,
-  OPENRNDR `loadFont`/`Writer`.)
-- **Image loading / textures — also unblocks compositing.** An `Image` value
-  type backed by an `MTLTexture` (decode via ImageIO/`CGImage`), drawn by a
-  `drawImage(_:…)` verb. The plumbing is *partly here already*: the `--export`
-  path renders off-screen into a texture, so sampling a texture is the same
-  capability surfaced inward. The new piece is a **textured-quad pipeline** —
-  one more `Pipeline` cache case (the seam exists; don't grow `init`), see
-  [Shaders & the Metal back end](#shaders--the-metal-back-end). This shares its
-  substrate with [layered effects & compositing](#follow-up-layered-effects--compositing-not-started)
-  (a render target *is* a drawable texture), so design the two together rather
-  than twice. Pixel-level read/write (`get`/`set`, p5 `pixels[]`) can come later.
-  (p5 `loadImage`/`image`, oF `ofImage`, OPENRNDR `loadImage`/`image`.)
-- **Audio — lowest priority, likely a separate module.** Least core to a
-  *drawing* framework, and the creative-coding use is mostly **audio-reactive
-  visuals**: playback plus amplitude/FFT analysis (AVFoundation / `AVAudioEngine`)
-  exposed as values a sketch reads in `draw()` to drive geometry. Keep it off the
-  core's critical path — a satellite target (like `OllinRuntime`/`OllinLive`) so
-  the drawing core stays free of `AVFoundation`. Synthesis is further out still.
-  (p5.sound, oF audio in/out + FFT, OPENRNDR's audio extensions.)
-
-Attribution note: any **bundled font or sample asset** carries the same
-provenance discipline as vendored code — permissive/redistributable license,
-credited in `THIRD-PARTY-NOTICES.md` and the README — see
-[Sourcing & attribution](#sourcing--attribution-load-bearing--its-the-public-face).
-Prefer system fonts and user-supplied assets over bundling where possible.
-
-## Follow-up: Swift Playgrounds & iOS (not started)
-
-Worth pursuing — the Swift Playgrounds app (Mac/iPad) App Projects (`.swiftpm`) are the closest Swift gets to the p5.js "open the editor and type, see it move" onboarding, and the same work unlocks iPad sketching and embedding in any SwiftUI app. On-brand for the "learn it in an afternoon" goal.
-
-- **The architecture is already most of the way there.** `SketchView` is a SwiftUI-embeddable view, cleanly separated from the macOS-only `OllinApp.run` (the standalone `swift run Example-X` launcher — now a thin SwiftUI `App`, `OllinSketchApp`, hosting `SketchView`, with an AppKit delegate only for activation). Embedding in someone else's SwiftUI `App` — what a Playgrounds App Project needs — is exactly that seam.
-- **The blocker is iOS support.** Playgrounds App Projects build *iOS* apps, but Ollin only declares `.macOS(.v14)`. To make it importable: add `.iOS(...)` to `Package.swift`; make `SketchView` conditional (`NSViewRepresentable`/`AppKit` vs `UIViewRepresentable`/`UIKit` via `#if canImport(AppKit)` / `#if canImport(UIKit)`); guard `OllinApp.run` behind `#if os(macOS)`. The Metal renderer (`Metal`/`MetalKit`/`simd`) is already portable. A working reference for this exact seam: swifty-creatives compiles for macOS/iOS/tvOS/visionOS from one source using a `ViewRepresentable` typealias (`NSViewRepresentable`/`UIViewRepresentable`) with `#if os(...)`-guarded `makeNSView`/`makeUIView` — worth reading when we do this.
-- **Keep shaders Playgrounds-safe.** Swift Playgrounds' support for SwiftPM build-tool plugins is unreliable, so do not go plugin-*only* for shaders — keep runtime source compilation as a first-class loader (see [Shaders & the Metal back end](#shaders--the-metal-back-end)).
-- **Onboarding nicety:** ship a ready-made `.swiftpm` starter (Ollin pre-wired + a `HelloCircle`) so users don't hand-add the package URL.
-- **Caveats:** the Playgrounds sandbox restricts file I/O (matters for the export roadmap items, not for drawing); package-dependency UX is finicky; prefer the Swift Playgrounds app's App Projects over the semi-deprecated Xcode Playgrounds. iOS changes can't be verified in this environment — they need `xcodebuild -destination` with the iOS SDK on a Mac.
+  (see [core batteries](Docs/DESIGN-NOTES.md#core-batteries-text-image-audio-keyboard-not-started)).
 
 ## Live reload — edit code, see it render (shipped via `OllinLive`)
 
@@ -460,192 +399,28 @@ How it works, and the load-bearing decisions (most are cheap-to-forget, expensiv
 - **State on reload: fresh restart by default; `--keep-clock` to continue.** `reload(to:keepClock:)` re-instantiates and re-runs `setup()`; by default it resets `time`/`frameCount`, and `--keep-clock` carries them forward (offsets `startTime` so `time` continues, copies `frameCount`) so an animation's phase doesn't jump. Either way instance state resets (fresh instance). `Sketch.onReload()` (lifecycle hook) fires once after the post-reload setup (never on first launch). Matches Olive/canvas-sketch.
 - **Keep `Sketch`/`draw()` `open`** (already true) — the dylib subclass must override them; never `final`.
 
-Window title: `"Ollin - <SketchName>"` (plain hyphen, not a middot). @eaviles ruled out FPS-in-the-title (the oF idiom); live FPS belongs in the GUI panel below, not the title bar.
+Window title: `"Ollin - <SketchName>"` (plain hyphen, not a middot). @eaviles ruled out FPS-in-the-title (the oF idiom); live FPS lives in the inspector panel beside the canvas, not the title bar.
 
-Still open:
+**GUI / parameter knobs — shipped (the old "Tier 3").** A typed `@Param` wrapper/registry in the `Ollin` core (`Param.swift`, à la OPENRNDR `@DoubleParameter`) drives a SwiftUI `InspectorPanel` in the OllinLive host — a `NavigationSplitView` sidebar (`LiveRootView`) showing live FPS plus a slider per knob, replacing the old plain `contentView = MTKView`. Because the host owns the panel, knob values *persist across reloads*: `LiveSession` records user-tuned values by name and re-applies them to each freshly loaded sketch (`syncParams`), so a knob doesn't snap back. Ties to the extension/lifecycle seam.
 
-- **GUI / parameter knobs (the old "Tier 3").** Tune a live sketch with sliders, and surface live FPS here (the oF idiom, deliberately kept out of the title bar). Clean split: a typed parameter model in the `Ollin` core (a `@Param`-style wrapper / registry, à la OPENRNDR `@DoubleParameter`) and a SwiftUI inspector panel in the OllinLive host. The host owning the panel is the point — knob values *persist across reloads* (re-applied by name to the fresh instance). Ties to the extension/lifecycle seam. OllinLive's window is still plain `contentView = MTKView`; recompose it as a split/side-panel layout when this lands.
+## Roadmap & design notes
 
-## Follow-up: layered effects & compositing (not started)
+Planned, in-progress, and eventual work is documented outside this file so the
+always-loaded guidance stays small:
 
-A direction @eaviles wants on the radar: OPENRNDR-style effects that compose in *layers* — draw into off-screen targets, run filters (blur, bloom, feedback, color grades) over them, and composite the results with blend modes. This is the natural home for post-processing, and it rhymes with the extension seam (effects are "after draw" passes) and with user-supplied shaders (each effect is a fragment shader over a texture).
+- [`ROADMAP.md`](ROADMAP.md) — the public, contributor-facing roadmap: what's
+  planned and how to help.
+- [`Docs/DESIGN-NOTES.md`](Docs/DESIGN-NOTES.md) — the engineering design intent
+  behind each planned item (the approach, the APIs involved, the reasoning).
 
-- **The plumbing is partly here.** The `--export` path already renders off-screen into a texture (MSAA → resolve). A render target a sketch can draw *into* and then sample is the same capability surfaced as API — that's the seam to build on, not a new substrate.
-- **Shape to aim for.** A render-target / layer value type (a texture you draw into), a `Filter` notion (a fragment shader from one texture to another, with parameters), and composite-with-blend-mode. Blend mode wants to be a pipeline parameter in the `Hashable` pipeline descriptor (see [Shaders & the Metal back end](#shaders--the-metal-back-end)), not a renderer subclass.
-- **Swift+Metal reference.** AsyncGraphics is the concrete study here: its `Graphic` *is* an `MTLTexture`, effects are functions returning new graphics, and it ships blend modes + a stack/layout layer model. The API paradigm (async, immutable) differs from Ollin's immediate-mode loop, so borrow the compositing/effects *architecture*, not the call shape. OPENRNDR's `Filter` / `compose {}` / `RenderTarget` is the conceptual model.
-- **Bigger than a primitive.** This touches the renderer (multiple render passes, target management) and the extension seam at once. Design it deliberately when the seam lands; don't bolt it on.
-
-## Follow-up: shader-composition API & livecoding performance / `OllinLiveCoding` (not started)
-
-Two linked directions @eaviles wants on the radar, both about *combining and mixing shader-driven visuals fluently* — and both distinct from `OllinLive`, which is dev-loop hot-reload, not a performance instrument.
-
-- **A composable shader / effect-mixing API.** The thing @eaviles values in Hydra and OPENRNDR: chaining and blending sources and transforms so visuals combine with almost no ceremony (`osc().rotate().modulate(noise())`). This is the call-shape *companion* to [layered effects & compositing](#follow-up-layered-effects--compositing-not-started): that follow-up is the *substrate* (render targets, filters, blend modes); this is the *fluent surface* over it. Study *how* Hydra and ShaderPark make mixing so fluid and borrow the direction (Hydra AGPL → inspiration only; ShaderPark MIT) — write our own. The underlying shader functions are ours too, written from the technique (LYGIA as a catalog, the canonical sources credited — see [Shaders & the Metal back end](#shaders--the-metal-back-end)). Keep it sugar over the typed core, per [the architecture rule](#the-architecture-rule-load-bearing).
-- **`OllinLiveCoding` — a performance livecoding environment.** @eaviles livecodes visuals in front of an audience (paired with someone livecoding the music) and has been bridging Hydra + openFrameworks to get both worlds; the goal is to do it all in Ollin. This is a *separate app* from `OllinLive`: a performance instrument — type expressions live, evaluate on the fly, project the output — not a file-watcher. Hydra is the direct model. It likely builds on the live-reload host, the shader-composition API above, and the GUI / parameter-knobs work. Apple-only.
-
-## Follow-up: offline frame-sequence export (not started)
-
-Single-frame PNG export already works (`--export`, off-screen MSAA render). The next step is exporting a whole *sequence* — the thing that turns an animated sketch into a video.
-
-- **The load-bearing idea: decouple the simulation clock from wall-clock.** In the live loop, `time`/`deltaTime`/`frameCount` track real time at the display refresh rate (60fps respected). In *export* mode they don't: advance them by a fixed step (`deltaTime = 1/exportFPS`, `time = frameCount / exportFPS`) for each rendered frame, regardless of how long that frame takes to render. @eaviles is explicit that export is offline — taking 10–15 minutes of wall-clock to render a sequence is fine, as long as the frames assemble into a smooth 60fps video.
-- **So export mode is a fixed-timestep, deterministic render.** Constant `deltaTime`, no wall-clock reads, seeded `random`/`noise` (already deterministic), so frame N is identical every run. Anything in a sketch that reads real time instead of `time` would break determinism — the API should keep `time` the obvious thing to reach for.
-- **Output.** Numbered PNGs (`frame_00001.png …`) for a frame range or a duration × fps, written from the same off-screen MSAA render path `--export` uses. Optional ffmpeg assembly to mp4/mov at the target fps, or just emit frames and let the user run ffmpeg. GIF later.
-- **Where it hangs.** Drive it from the frame-grab lifecycle hook (the extension seam) over a headless render loop that steps the fixed clock, renders, writes, repeats — no window, no vsync.
-
-## Follow-up: 3D mode & visionOS (eventual; 2D stays primary)
-
-2D is the focus now and stays the default — Ollin is a 2D creative-coding framework first. But @eaviles wants a 3D mode eventually, with visionOS support, so keep the back end from foreclosing it.
-
-- **What 3D needs.** A camera (perspective/ortho) feeding view + projection matrices; a depth buffer (`depth32Float[_stencil8]`) plus depth-stencil state in the pipeline; the CTM stack generalized from 2D affine to `f4x4`; a `Vector3` and 3D primitives (box, sphere, mesh/`.obj`). The Hashable pipeline descriptor already anticipated this — it carries a `depth` axis (see [Shaders & the Metal back end](#shaders--the-metal-back-end)), so a depth-tested pipeline is a new descriptor, not a new renderer.
-- **visionOS is a different render loop.** Immersive rendering doesn't use `MTKView`/`SketchRunner.draw(in:)`; it uses CompositorServices (`LayerRenderer`) driven by a manual render thread, plus ARKit world tracking. Keep the per-frame loop behind a seam that either an `MTKViewDelegate` or a visionOS layer renderer can drive, rather than assuming `MTKView` everywhere.
-- **Reference.** swifty-creatives is the concrete study: it ships both a normal `MTKView` renderer and a visionOS `RendererBase` with a manual `renderLoop()` over `LayerRenderer`, and it's 3D-first (camera, depth, box/3D-text). Borrow the structure — camera + depth pipeline + dual render loop — and write our own.
-- **Don't 3D-tax the 2D path.** Most sketches stay 2D; don't make every draw call pay for a depth buffer or perspective divide. 3D is a mode you opt into, not a cost the 2D core carries. (Apple-only either way — see [Platform scope](#platform-scope).)
-- **Caveat:** visionOS is unverifiable in this environment without the visionOS SDK plus simulator or device.
-
-## Follow-up: AR mode & templates (eventual; the Meta Spark void)
-
-@eaviles wants Ollin to do AR sketches and offer a template-driven AR framework — explicitly to fill the void left when Meta Spark was discontinued (Jan 2025). Apple-only: ARKit + RealityKit/Metal on iOS/iPadOS, and the visionOS immersive path.
-
-- **It's a mode layered on the iOS and 3D/visionOS follow-ups, not a separate engine.** AR needs the iOS target (see [Swift Playgrounds & iOS](#follow-up-swift-playgrounds--ios-not-started)) and the 3D camera / depth pipeline (see [3D mode & visionOS](#follow-up-3d-mode--visionos-eventual-2d-stays-primary)) in place first.
-- **The Spark lesson is *templates*.** Spark's reach came from ready-made effect templates (face filters, world effects, plane/image tracking) people could start from. The Ollin version: AR-example sketches plus starter templates wired to ARKit anchors (face / world / image tracking), so an AR sketch is "fill in the `draw()`, the tracking is handed to you" — the same template-as-on-ramp idea as the `Examples/` and `.swiftpm` starters.
-- **Caveat:** AR is unverifiable in this environment — it needs ARKit on a device (the simulator has no AR camera).
-
-## Follow-up: ship an `Examples/` folder (sample projects) (underway)
-
-Ship a curated `Examples/` directory of small, runnable sample projects in the Ollin repo itself, openFrameworks-style. These are the "learn it in an afternoon" on-ramp and the showroom — distinct from a personal sketchbook: examples are *maintained and versioned with the API* (they must always build against current Ollin), whereas throwaway sketches are not.
-
-**Status (built so far):** the set is live — per-example folder + generic `Sketch.swift`, single-file `@main` via `Sketch.main()`, category folders (`Basic`/`Motion`/`Color`/`Patterns`/`Input`/`Randomness`), and a `Recreations/` section organized **by artist** (recreating past computer artists as homages *after* them, SFPC-inspired; see `Examples/Recreations/README.md`). Each new feature ships with an example. There's also an **`OllinExamples` gallery app** (`swift run OllinExamples`) — a sidebar of every sketch, click one to compile + render it on the right — built on `OllinRuntime`'s `SketchLoader` + the `SketchView` embedding seam (load-on-select; no live-edit yet). It scans the `Examples/` *source* tree (`ExampleCatalog`), so renamed/removed sketches never linger. CI compile-testing has now landed too — a macOS `swift build` on every push/PR (`.github/workflows/build.yml`) builds the library, both hosts, and all `Example-*` targets, so an API change that breaks an example fails CI.
-
-- **Layout: organized by topic, openFrameworks-style.** Group by feature so they read as a learning path — e.g. `hello`, `primitives`, `color`, `motion-and-time`, `transforms`, `shapes-contours`, `shaders`, `export`. Number or prefix for ordering. Each example is one minimal, focused sketch — show one idea well. The top `Examples/README.md` indexes only the *categories* (a table linking to each category folder); each category folder carries its own `README.md` listing its sketches (the `Docs/` index → page pattern), so the front page stays small as the set grows.
-- **File convention: per-example folder, generic `Sketch.swift`.** Each example lives in `Examples/<Category>/<Name>/` and its file is always named `Sketch.swift` (openFrameworks `ofApp.cpp`-style) rather than `<Name>.swift` — the example's identity lives in the folder name, not a repeated filename. The per-example folder is also each sketch's home for its own assets (fonts, images, shaders sit alongside `Sketch.swift`), which is the reason not to flatten the layout. (The public-facing version of this note in `Examples/README.md` omits the `ofApp.cpp` reference.)
-- **Mechanism: the single-file `@main` sketch.** SwiftPM allows only one entry point per executable target, so each example is its own small executable target (likely generated/scripted as the set grows — don't hand-maintain dozens of target stanzas). Make a sketch file self-contained by adding `static func main()` to `Sketch` on the core (`extension Sketch { static func main() { OllinApp.run(Self()) } }`, needs a `required init`), so an example is just `@main final class HelloCircle: Sketch { … }` with zero boilerplate. Build it once on the core so any single-file sketch flow (examples, scripting, embedding) can reuse it.
-- **Convention: a feature isn't done until it has an example.** Each new primitive/capability ships with an example. Examples are also a forcing function for API quality — if the example is awkward to write, the API needs work (the p5-ergonomics test).
-- **Examples are compile-tested docs.** A macOS CI build (`.github/workflows/build.yml`) compiles every example on each push/PR so they never rot — this is the main argument for keeping them in-repo and current. *(Shipped: a single `swift build` covers all `Example-*` targets.)*
-- **Next level: render-correctness snapshot testing.** Compile-testing proves an example *builds*; image-snapshot tests prove it *renders the same*. The off-screen MSAA render behind `--export` is the hard prerequisite, and it already exists — so this is cheap to reach. The shape: a frame-grab lifecycle hook (the extension seam) returns the rendered texture, and a test compares it against a committed reference image, per primitive. A peer Swift+Metal framework does exactly this (per-primitive snapshot tests via a `afterCommit(texture:)` hook gated behind `#if canImport(XCTest)`, using pointfree's swift-snapshot-testing) — a concrete model. Design the frame-grab hook with this in mind.
-- **Reuse the same samples elsewhere.** Examples can seed the Swift Playgrounds `.swiftpm` starter (see the Swift Playgrounds follow-up) and serve as starter templates for new sketches. Author once.
-
-## Follow-up: developer experience — Swift-idiomatic ergonomics (partly shipped)
-
-A standing track, not a one-time task: keep mining Swift idioms to make the API
-read better than a literal p5 port would — the [Conventions](#conventions)
-stance applied continuously. "Feels like p5" is the *shape* (bare calls, terse
-positional args, motion by default), but Swift's type system lets the same call
-carry more meaning with no extra ceremony, and that's a differentiator worth
-pressing. The shipped exemplar to point at: the **`canvasSize` resolution
-presets** — `.uhd4K`, `.vertical1080`, `.square1080`, with `.portrait` /
-`.landscape` to flip orientation (`Resolutions.swift`) — which read as English,
-are discoverable by dot-completion, and beat a bare `createCanvas(3840, 2160)`
-on both clarity and correctness. More of *that*. Candidates, in rough order:
-
-- **`size(_:_:)` callable from `setup()` — the headline DX fix.** Today a custom
-  canvas means overriding a computed property
-  (`override var canvasSize: CGSize { CGSize(width: 1000, height: 1000) }`), which
-  the docs themselves show and which reads heavy beside p5's `createCanvas(1000,
-  1000)` in `setup()`. Add an imperative `size(_ width: Double, _ height: Double)`
-  (and a `size(_ preset: CGSize)` overload so `size(.uhd4K.portrait)` works)
-  callable from `setup()`. The constraint to respect: `setup()` runs *after* the
-  canvas size is resolved today (`Sketch.swift`), and `canvasSize` is deliberately
-  *pure data with no screen dependency* so headless `--export` stays deterministic
-  — so the move is to run `setup()` early enough that a `size(...)` call there
-  establishes the canvas *before* the first layout/`draw()`, while **keeping the
-  `canvasSize` override** as the equivalent declarative form (the two are the same
-  knob; `size()` just writes it from `setup()`). Don't break export determinism to
-  get the ergonomic win. (p5 `createCanvas(w, h)`.)
-- **Keep the presets pattern growing.** The orientation-flip trick (`.portrait` /
-  `.landscape` as computed properties on a value type) generalizes: look for other
-  places a bare tuple or magic number could become a named, dot-completable value
-  with helpers — angle units (`.degrees(45)` / `.turns(0.25)` beside raw radians),
-  named easing curves, named blend modes when they land.
-- **More idiom candidates.** Trailing-closure scoping beyond `withState { }`
-  (already the model); `ExpressibleByArrayLiteral` / `ExpressibleByIntegerLiteral`
-  conformances where they read naturally (e.g. a color from a literal); result
-  builders for a future `beginShape`/`vertex` path; `@dynamicMemberLookup` only
-  where it genuinely clarifies. The bar: an idiom earns its place when it makes the
-  call *clearer*, not just shorter — and never at the cost of the bare-call feel or
-  the typed-core split ([the architecture rule](#the-architecture-rule-load-bearing)).
-
-## Follow-up: project generator / sketch scaffolding (not started)
-
-An openFrameworks-style **project generator** — the on-ramp that turns "I want to
-start a sketch" into a ready-to-run folder, instead of hand-copying boilerplate.
-oF ships its `projectGenerator`; the Ollin version asks a few questions and emits
-a tailored starting point. This is the *generative* sibling of the maintained
-[`Examples/`](#follow-up-ship-an-examples-folder-sample-projects-underway) set and
-the [`.swiftpm` starter](#follow-up-swift-playgrounds--ios-not-started): examples
-are read-only showroom pieces; the generator produces a *new, editable* sketch.
-
-- **What it asks.** Capabilities the sketch will use, so the scaffold pre-wires
-  only what's needed and stays minimal otherwise: images? shaders? text?
-  parameters (`@Param` knobs)? export? a starting `canvasSize` preset (feeds the
-  `size()`/`canvasSize` DX item above) and orientation. Each "yes" adds the import,
-  a commented stub, and any per-sketch asset folder
-  ([per-example layout](#follow-up-ship-an-examples-folder-sample-projects-underway):
-  fonts/images/shaders live beside `Sketch.swift`).
-- **What it emits.** A folder with a single-file `@main` `Sketch.swift` (the
-  zero-boilerplate `Sketch.main()` form already on the core) plus, as chosen, an
-  assets dir, a `Shaders.metal` stub, a `@Param` block, and a README. The
-  single-executable-target mechanism is the same one the examples set already needs
-  scripted — build the target-stanza generation once and share it.
-- **Form factor.** Start as a CLI (`swift run OllinNew <name>` with flags or an
-  interactive prompt) — cheapest, scriptable, and reuses the runtime targets'
-  patterns. A GUI à la oF's projectGenerator is a later nicety; the SwiftUI hosts
-  (`OllinExamples`/`OllinLive`) are a reference if it's wanted. Ties to the
-  `.swiftpm` starter (one generated form is "a Playgrounds App Project").
-- **Why it matters.** It's the same "learn it in an afternoon" lever as the
-  examples and the live host — removes the blank-page tax, and the questions double
-  as a teaching tour of what Ollin can do.
-
-## Follow-up: a Swift primer for JavaScript / p5.js newcomers (not started)
-
-A short guide — `Docs/Swift.md`, slotted into the `Docs/` index
-(`Docs/README.md`) — that teaches *just enough* Swift to a p5.js sketcher coming
-from JavaScript. The audience is the creative coder, not the app developer: the
-goal is to get them productive in `draw()`, not to teach Swift wholesale. This is
-pure onboarding, on-brand with the "p5 ergonomics" vision — the language is the
-one barrier between a p5 user and Ollin, so lower it explicitly.
-
-- **Scope: the delta that bites a JS person, nothing more.** `let`/`var` and type
-  inference; that types are explicit but usually inferred; `Double` vs `Int` (and
-  why `1/2 == 0`); `func` and `override func draw()`; classes and `override`;
-  optionals at a glance; `for i in 0..<n` and array basics; trailing closures
-  (maps to JS callbacks, and to `withState { }`); string interpolation. Framed
-  side-by-side: "in p5 you wrote `let x = 5; function setup(){}` — here's the same
-  thing in Ollin."
-- **Anchor every point to an Ollin call.** Don't teach Swift in the abstract —
-  teach it through `drawCircle`, `time`, `width`/`height`, `@Param`, so each
-  language feature lands on something the reader will actually type. Reuse the
-  `Examples/` sketches as the worked code.
-- **Keep it short and link out for depth.** A primer, not a manual: cover the
-  delta, then point to Apple's Swift book for the rest. Lives beside the other
-  `Docs/` pages and is linked from the README's getting-started path.
-
-## Follow-up: p5.js sketch importer (parked — likely not worth it)
-
-@eaviles floated, but is **not sold on**, a tool that ports a p5.js sketch into
-an Ollin sketch — and the recommendation is **don't build it**, at least not as a
-real translator. Recorded here so the reasoning is on file rather than
-re-litigated later.
-
-- **Why it's a trap.** A faithful importer is a *JavaScript-to-Swift transpiler*
-  with a p5-to-Ollin API map bolted on — dynamic typing, JS scoping/`this`,
-  closures, and the long tail of p5's global functions (many of which Ollin
-  doesn't have yet: `text`, `loadImage`, `pixels[]`, DOM, `p5.sound`). It would be
-  perpetually partial, silently mistranslate the parts it doesn't cover, and set an
-  expectation ("my sketches just port") that the
-  [core-batteries gap](#follow-up-core-batteries--text-image-audio-keyboard-input-not-started)
-  guarantees it can't meet. High build cost, high maintenance, low and misleading
-  payoff.
-- **Sourcing wrinkle.** Mechanically translating a *specific* p5 sketch carries
-  that sketch's license (p5 itself is LGPL; community sketches vary) — the exact
-  line-by-line-port problem
-  [Sourcing & attribution](#sourcing--attribution-load-bearing--its-the-public-face)
-  warns against. An importer industrializes that risk.
-- **What's worth doing instead.** The *real* need behind the ask — "I know p5,
-  help me get there" — is better served by the
-  [Swift primer](#follow-up-a-swift-primer-for-javascript--p5js-newcomers-not-started)
-  and a **p5→Ollin API cheat-sheet** (`createCanvas`→`size`, `ellipse`→`drawCircle`,
-  `frameCount`/`mouseX` map straight across, `push`/`pop`→`withState`), plus the
-  [Examples/](#follow-up-ship-an-examples-folder-sample-projects-underway) acting as
-  "here's that idiom in Ollin." Those teach the mapping without pretending to
-  automate a translation that can't be trusted. Revisit a real importer only if
-  there's ever strong demand *and* the core has reached p5 feature parity — neither
-  is true today.
+Quick map, rough priority: more 2D/SDF primitives and the analytic shape catalog;
+keyboard input, then text, images, audio; a configurable stroke join/cap style;
+easing helpers; `size()` from `setup()`; the shared C header for the CPU↔GPU
+structs; Bézier/curved contours and a `beginShape` builder; the
+extension/lifecycle seam; render-correctness snapshot tests. Integration and
+capability tiers: OSC and MIDI I/O, 2D physics, and Mac-native computer vision
+(with the iPhone as a sensor array as the depth/AR superset). Bigger bets:
+layered effects, a shader-composition API and a live-coding app, offline
+frame-sequence export, a project generator. Eventual: Swift Playgrounds & iOS, 3D & visionOS,
+AR. Shipped (so off the roadmap): the `Examples/` set + gallery + CI, the
+`Docs/Swift.md` primer, and the OllinLive parameter-knob inspector.
