@@ -463,10 +463,16 @@ public enum OllinApp {
     /// `startFrame`), ready for `ffmpeg`. One sketch instance and renderer are
     /// reused across the run, so stateful sketches evolve frame to frame.
     ///
+    /// `skipSeconds` runs the sketch (clock + `draw()`) for that long *before*
+    /// capturing, without writing — so a stateful sketch settles into motion
+    /// first; the captured clock then continues from `skipSeconds` onward, and
+    /// the written frames still number from `startFrame`.
+    ///
     /// For a *reproducible* sequence, seed the sketch (`seed(…)` in `setup()`);
     /// unseeded, it's internally consistent within a run but differs between runs.
     public static func exportSequence(_ sketch: Sketch, to directory: String,
-                                      frames: Int, fps: Double = 60, startFrame: Int = 1) {
+                                      frames: Int, fps: Double = 60,
+                                      startFrame: Int = 1, skipSeconds: Double = 0) {
         guard frames > 0 else { return }
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Ollin requires a Metal-capable GPU.")
@@ -490,11 +496,20 @@ public enum OllinApp {
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.setup()
 
-        print("Ollin: exporting \(frames) frames at \(Int(fps)) fps → \(directory) (\(width)×\(height))")
+        let skipFrames = max(0, Int((skipSeconds * fps).rounded()))
+        let skipNote = skipFrames > 0 ? String(format: " (after %gs warmup)", skipSeconds) : ""
+        print("Ollin: exporting \(frames) frames at \(Int(fps)) fps\(skipNote) → \(directory) (\(width)×\(height))")
         let wallStart = CACurrentMediaTime()
-        for k in 0..<frames {
+        for k in 0..<(skipFrames + frames) {
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
-            sketch.performDraw()
+            sketch.performDraw()                          // run every frame so state settles
+
+            if k < skipFrames {                           // warmup: don't render or write
+                FileHandle.standardError.write(Data(
+                    String(format: "\r  warming up %d/%d    ", k + 1, skipFrames).utf8))
+                continue
+            }
+
             guard let cgImage = renderer.image(of: sketch.drawer, viewport: viewport,
                                                width: width, height: height) else {
                 fatalError("Ollin: failed to render frame \(k)")
@@ -502,7 +517,8 @@ public enum OllinApp {
             guard let data = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else {
                 fatalError("Ollin: failed to encode PNG for frame \(k)")
             }
-            let name = String(format: "frame_%05d.png", startFrame + k)
+            let done = k - skipFrames + 1                  // 1-based count of written frames
+            let name = String(format: "frame-%05d.png", startFrame + done - 1)
             let path = (directory as NSString).appendingPathComponent(name)
             do {
                 try data.write(to: URL(fileURLWithPath: path))
@@ -511,7 +527,6 @@ public enum OllinApp {
             }
 
             // A single rewriting progress line: pct done · render throughput.
-            let done = k + 1
             let elapsed = CACurrentMediaTime() - wallStart
             let renderFPS = elapsed > 0 ? Double(done) / elapsed : 0
             let line = String(format: "\r  rendering %d/%d (%d%%) · %.0f fps    ",
@@ -524,7 +539,7 @@ public enum OllinApp {
         print(String(format: "Ollin: exported %d frames in %.1fs → %@", frames, elapsed, directory))
         print("Assemble with ffmpeg:")
         print("  ffmpeg -framerate \(Int(fps)) -start_number \(startFrame) \\")
-        print("    -i \(directory)/frame_%05d.png -c:v libx264 -pix_fmt yuv420p -crf 18 \\")
+        print("    -i \(directory)/frame-%05d.png -c:v libx264 -pix_fmt yuv420p -crf 18 \\")
         print("    \(directory)/out.mp4")
     }
 
@@ -620,12 +635,14 @@ public extension Sketch {
                 frames = Int((seconds * fps).rounded())
             }
             let start = value("--start").flatMap(Int.init) ?? 1
+            let skip = value("--skip").flatMap(Double.init) ?? 0
             guard frames > 0 else {
                 FileHandle.standardError.write(Data(
-                    "usage: --export-sequence <dir> (--frames N | --seconds S) [--fps F] [--start N]\n".utf8))
+                    "usage: --export-sequence <dir> (--frames N | --seconds S) [--fps F] [--skip S] [--start N]\n".utf8))
                 return
             }
-            OllinApp.exportSequence(Self(), to: dir, frames: frames, fps: fps, startFrame: start)
+            OllinApp.exportSequence(Self(), to: dir, frames: frames, fps: fps,
+                                    startFrame: start, skipSeconds: skip)
             return
         }
         if let i = args.firstIndex(of: "--export"), i + 1 < args.count {

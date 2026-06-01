@@ -160,10 +160,10 @@ It drives the sketch off-screen (`setup()`, then `draw()` advanced to the reques
 For an animation, `--export-sequence` writes a numbered PNG sequence you can stitch into video:
 
 ```sh
-swift run Example-Breathing --export-sequence frames/ --frames 600 --fps 60
+swift run Example-Breathing --export-sequence frames/ --skip 5 --seconds 20 --fps 60
 ```
 
-It advances the clock at a fixed timestep rather than wall-clock, so each frame renders the moment it should regardless of how long the render takes. A slow render still plays back smoothly, and the command prints an `ffmpeg` line to assemble the frames. In code it's `OllinApp.exportSequence(sketch, to:frames:fps:)`.
+It advances the clock at a fixed timestep rather than wall-clock, so each frame renders the moment it should regardless of how long the render takes. A slow render still plays back smoothly. Pass `--seconds` for a duration instead of `--frames`, and `--skip` to run the sketch a while first without writing, so a sketch that needs to settle into motion is already going when capture starts. Frames are written as `frame-00001.png`, `frame-00002.png`, and so on, and the command prints an `ffmpeg` line to assemble them. In code it's `OllinApp.exportSequence(sketch, to:frames:fps:skipSeconds:)`.
 
 ## Roadmap
 
