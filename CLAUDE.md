@@ -221,9 +221,9 @@ pipeline, not rewrites*:
   this is the "10,000 circles at 60fps" path. It's a new `Pipeline` case
   (`.instancedCircle`) plus a per-instance buffer — the cache seam already
   exists for exactly this.
-- **SDF analytic primitives (circle, ellipse, rect, line, circular arc) — *shipped*.**
-  `drawCircle`/`drawEllipse`/`drawRect`/`drawLine` and circular `drawArc` are no
-  longer tessellated: each is one instanced quad (`SDFInstance`, the `.sdf`
+- **SDF analytic primitives (point, circle, ellipse, rect, line, circular arc) — *shipped*.**
+  `drawPoint`/`drawCircle`/`drawEllipse`/`drawRect`/`drawLine` and circular `drawArc`
+  are no longer tessellated: each is one instanced quad (`SDFInstance`, the `.sdf`
   `Pipeline` case). `SDFInstance` is a *tagged union* — a `shape` tag plus generic
   `size`/`param0`/`param1`/`extra` slots — and `ollin_sdf_fragment` switches on it
   to evaluate the matching SDF (box, capsule, pie/segment/arc), then runs a shared
@@ -233,11 +233,23 @@ pipeline, not rewrites*:
   `float3x3`), so the fragment evaluates the SDF in local space and AA stays ~1px
   under any transform (`fwidth`); the quad covers `size` + ½ stroke + a small
   margin. (Circle approach studied from AsyncGraphics's circle shader, MIT —
-  written independently.) Two coverage subtleties to keep: region fills (box,
-  ellipse, pie, chord) use an **inside-biased** ramp (full to the geometric edge,
-  AA halo only outside) so abutting fills — tiled grids, gradient bands — leave no
-  seam; the **capsule/line** uses a *centered* ramp so a line stays ~strokeWidth
-  wide. **The load-bearing piece is draw-order preservation:** `Drawer` records
+  written independently.) `drawPoint` is sugar over this path, not its own tag: a
+  point is a fill-only disk (the `.ellipse` shape, `size = pointSize/2`), so it
+  inherits the disk coverage below — the dedicated point/marker *vocabulary*
+  (square/cross/x/diamond) is still ahead (see *More SDF primitives* below).
+  **Coverage is split by whether a shape tiles, and it's load-bearing.** `box`,
+  `pie`, and `chord` fills use an **inside-biased** ramp (`regionCoverage`: full to
+  the geometric edge, AA halo only outside) so abutting fills — tiled grids,
+  gradient bands — leave no seam; never move them onto the centered ramp or the
+  seams come back. The **disk (ellipse/circle/point)** and **capsule/line** instead
+  use **area-conserving** coverage (`diskCoverage` and the capsule case): a centered
+  AA ramp, but any mark smaller than ~½px on screen keeps a ~1px footprint while its
+  alpha is scaled by the true/clamped **area** (disk) or **width** (line). That's
+  what makes sizes run from 0…n — tiny dots, small circles, and thin lines fade by
+  area instead of popping in, snapping to a 1px floor, or flickering as they move —
+  and it's safe precisely because disks and lines never tile edge-to-edge, so they
+  don't need the inside bias. **The other load-bearing piece is draw-order
+  preservation:** `Drawer` records
   geometry into call-ordered `GeometryBatch`es (a run is `.triangles` or `.sdf`),
   so SDF shapes and tessellated triangles still composite front-to-back as the
   sketch drew them — never collapse that back into two unordered passes (it would
@@ -261,9 +273,10 @@ pipeline, not rewrites*:
     1. **Triangle, regular n-gon, star** — p5/oF `triangle()` parity plus shapes
        they lack; each a single-scalar fit (`sdEquilateralTriangle`, `sdNgon`,
        `sdStar`). Upgrades the tessellated `Star` example to analytic.
-    2. **Point / marker set** — pairs with `drawPoint` below; a small marker
-       vocabulary (circle/square/cross/x/diamond) via a marker tag in `extra`,
-       reusing existing fields — makes scatter/point-cloud sketches trivial.
+    2. **Marker set** — the round `drawPoint` already shipped (a fill-only disk
+       over the `.ellipse` shape); what's left is the non-round marker
+       vocabulary (square/cross/x/diamond) via a marker tag in `extra`, reusing
+       existing fields — makes scatter/point-cloud sketches trivial.
     3. **Rhombus, vesica, moon, cross/X, filled ring/annulus** — expressive,
        near-zero cost each (`sdRhombus`, `sdVesica`, `sdMoon`, `sdCross`/
        `sdRoundedX`, `opOnion`; the ring also generalizes to an outline-only mode
@@ -337,8 +350,10 @@ canvas itself.
   `deltaTime`, `frameRate`); mouse input (`mouseX`/`mouseY`, `mousePressed()`); `Drawer` + Metal
   renderer (solid fills, stroked outlines, 4x MSAA) with two pipelines — a tessellated-triangle
   path and an instanced-SDF path; the SDF path (analytic fill+stroke+AA, thousands cheap) covers
-  `drawCircle`/`drawEllipse`, `drawRect` (with `cornerRadius`), `drawLine` (round-capped capsule),
-  and *circular* `drawArc` (open/chord/pie); the triangle path covers convex `drawPolygon`,
+  `drawPoint` (a fill-only disk + `pointSize` state), `drawCircle`/`drawEllipse`, `drawRect` (with
+  `cornerRadius`), `drawLine` (round-capped capsule), and *circular* `drawArc` (open/chord/pie),
+  with **area-conserving coverage** on the disk/line so sizes run from 0…n (sub-pixel dots and thin
+  lines fade by area, no 1px floor); the triangle path covers convex `drawPolygon`,
   `drawPolyline` (open stroked paths), concave/holed `drawShape` (the vector `Shape`/`Contour`
   type, triangulated via vendored libtess2), and *elliptical*/full-turn arcs (`drawArc` branches on
   `rx == ry`); recorded into call-ordered batches so the two paths composite in draw order; a per-frame transform stack
@@ -361,11 +376,13 @@ canvas itself.
   ellipse, rect (rounded), line (capsule), and circular arc (only arbitrary
   `drawPolygon`/`drawPolyline` and *elliptical*/full arcs stay tessellated, by
   nature). The vector `Shape`/`Contour` type also landed — concave/holed fills
-  via vendored libtess2 (`drawShape`). Next: more primitives (`drawPoint`,
-  `drawTriangle`; `drawCircle`/`drawEllipse`/`drawArc`/`drawRect`/`drawLine`/`drawShape`
+  via vendored libtess2 (`drawShape`). `drawPoint` has now landed too (a round dot
+  over the disk path, with `pointSize` state and the area-conserving sub-pixel
+  sizing above). Next: more primitives (`drawTriangle` next;
+  `drawPoint`/`drawCircle`/`drawEllipse`/`drawArc`/`drawRect`/`drawLine`/`drawShape`
   already landed) — these kick off the **SDF catalog expansion** detailed under
   [Rendering performance](#rendering-performance-roadmap) (triangle/n-gon/star →
-  point/markers → rhombus/vesica/moon/cross/ring → trapezoid/egg/heart/…), a cheap
+  markers → rhombus/vesica/moon/cross/ring → trapezoid/egg/heart/…), a cheap
   run of analytic shapes that fit the existing tagged union; Bézier/curved contours
   and a `beginShape`/`vertex` builder on
   top of `Shape`; a configurable stroke join/cap style (miter joins for the
@@ -412,6 +429,14 @@ always-loaded guidance stays small:
   planned and how to help.
 - [`DESIGN-NOTES.md`](DESIGN-NOTES.md) — the engineering design intent
   behind each planned item (the approach, the APIs involved, the reasoning).
+
+**When work ships, it leaves these two files.** Drop it from `ROADMAP.md` (the
+roadmap stays forward-looking — what's *planned*, not a changelog) and record it
+instead under *Current state* above. Remove it from `DESIGN-NOTES.md` too, unless
+its design rationale still guides future maintenance or evolution (e.g. the
+conventions for extending the examples set), in which case keep only that part,
+not the status narration. Anything fully done and self-contained belongs in its
+own `Docs/` page or this file — not the roadmap, not the design notes.
 
 Both live at the repo root, alongside `README.md`. The convention: the root
 holds project meta and contributor docs (`README.md`, `ROADMAP.md`,
