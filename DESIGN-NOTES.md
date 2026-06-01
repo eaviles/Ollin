@@ -59,15 +59,6 @@ Two linked directions on the radar, both about combining and mixing shader-drive
 - **A composable shader and effect-mixing API.** What's compelling about Hydra and OPENRNDR: chaining and blending sources and transforms so visuals combine with almost no ceremony (`osc().rotate().modulate(noise())`). This is the call-shape companion to [layered effects and compositing](#layered-effects-and-compositing-not-started): that work is the substrate (render targets, filters, blend modes); this is the fluent surface over it. Study how Hydra and ShaderPark make mixing so fluid and borrow the direction (Hydra is AGPL, so inspiration only; ShaderPark is MIT). The underlying shader functions are written from the published techniques. Keep it sugar over the typed core.
 - **A performance live-coding environment.** A separate app from `OllinLive`: a performance instrument where you type expressions live, evaluate them on the fly, and project the output, rather than a file-watcher. The goal is to do natively what's today done by bridging Hydra and openFrameworks, with Hydra as the direct model. It likely builds on the live-reload host, the shader-composition API above, and the parameter-knob work. Apple-only. A working title for it is `OllinLiveCoding`.
 
-## Offline frame-sequence export (not started)
-
-Single-frame PNG export already works (`--export`, off-screen MSAA render). The next step is exporting a whole sequence, which is what turns an animated sketch into a video.
-
-- **The load-bearing idea: decouple the simulation clock from wall-clock.** In the live loop, `time`/`deltaTime`/`frameCount` track real time at the display refresh rate. In export mode they don't: advance them by a fixed step (`deltaTime = 1/exportFPS`, `time = frameCount / exportFPS`) for each rendered frame, regardless of how long that frame takes to render. Export is offline by design: taking ten or fifteen minutes of wall-clock to render a sequence is fine, as long as the frames assemble into a smooth 60fps video.
-- **So export mode is a fixed-timestep, deterministic render.** Constant `deltaTime`, no wall-clock reads, seeded `random`/`noise` (already deterministic), so frame N is identical every run. Anything in a sketch that reads real time instead of `time` would break determinism, so the API should keep `time` the obvious thing to reach for.
-- **Output.** Numbered PNGs (`frame_00001.png` and so on) for a frame range or a duration times fps, written from the same off-screen MSAA render path `--export` uses. Optional ffmpeg assembly to mp4 or mov at the target fps, or just emit frames and let the user run ffmpeg. GIF later.
-- **Where it hangs.** Drive it from the frame-grab lifecycle hook (the extension seam) over a headless render loop that steps the fixed clock, renders, writes, and repeats, with no window and no vsync.
-
 ## 3D mode and visionOS (eventual; 2D stays primary)
 
 2D is the focus now and stays the default; Ollin is a 2D creative-coding framework first. A 3D mode is planned eventually, with visionOS support, so the back end is kept from foreclosing it.

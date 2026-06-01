@@ -70,7 +70,7 @@ strokeWeight(2 * scale)
 | `.vertical1080` | 1080 × 1920 | 9:16 | full-screen vertical: stories, reels, TikTok, Shorts |
 | `.portrait1080` | 1080 × 1350 | 4:5 | the portrait feed crop (e.g. Instagram) |
 
-Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine.
+Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine; `--export-sequence <dir> --frames N` renders a deterministic numbered PNG sequence (fixed timestep, so it's reproducible and assembles into a smooth video — see [Sketch ▸ Running a sketch](./Sketch.md#running-a-sketch)).
 
 To give a sketch a custom size, override `canvasSize` with any `CGSize`:
 

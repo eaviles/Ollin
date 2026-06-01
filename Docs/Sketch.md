@@ -26,6 +26,7 @@ final class HelloCircle: Sketch {
 - [Temporal state](#temporal-state) - `frameCount`, `time`, `deltaTime`, `frameRate`
 - [Canvas](#canvas) - `width`, `height`
 - [Loop control](#loop-control) - `noLoop`, `loop`, `isLooping`
+- [Extensions](#extensions) - `extend`, and writing a `SketchExtension`
 - [Configuration](#configuration) - `title`, `canvasSize`, `windowMode`
 - [Running a sketch](#running-a-sketch)
 
@@ -128,6 +129,36 @@ override func setup() {
 }
 ```
 
+<a name="extensions"></a>
+
+### Extensions
+
+`extend(_:)` registers a `SketchExtension` — a reusable object whose hooks the loop calls around each frame, so cross-cutting behavior (overlays, guides, recorders) lives outside `draw()`. Every hook is optional:
+
+| Hook | When | For |
+|---|---|---|
+| `setup(_:)` | once, after the sketch's `setup()` | one-time prep |
+| `beforeDraw(_:)` | each frame, before `draw()` | set up per-frame state |
+| `afterDraw(_:)` | each frame, after `draw()`, before the render | draw *over* the sketch through the bare API |
+| `afterFrame(_:_:)` | each frame, after the render, with `FrameInfo` timing | observe (fps, frame time, geometry counts) without drawing |
+
+```swift
+final class Guides: SketchExtension {
+    func afterDraw(_ sketch: Sketch) {
+        sketch.withState {
+            sketch.stroke(Color(white: 0, alpha: 0.25))
+            sketch.drawLine(sketch.width / 2, 0, sketch.width / 2, sketch.height)
+        }
+    }
+}
+
+final class MySketch: Sketch {
+    override func setup() { extend(Guides()) }
+}
+```
+
+Extensions are per-instance, so register them in `setup()` — a fresh instance (including each live-reload swap) starts with none. A worked example is `Examples/Basic/Guides`.
+
 <a name="configuration"></a>
 
 ### Configuration
@@ -160,4 +191,4 @@ override var windowMode: WindowMode { .fixed(0.5) }   // preview at half size
 
 ### Running a sketch
 
-`OllinApp.run(MySketch())` boots a window. With `@main` on the subclass, the inherited `Sketch.main()` does that for you, so a single file is the whole program. To iterate with live reload, run it through the host instead: `swift run OllinLive path/to/Sketch.swift` (see the [iteration workflow](../README.md#iteration-workflow)). Any sketch can also render a frame headlessly with `--export` (see [exporting frames](../README.md#exporting-frames)).
+`OllinApp.run(MySketch())` boots a window. With `@main` on the subclass, the inherited `Sketch.main()` does that for you, so a single file is the whole program. To iterate with live reload, run it through the host instead: `swift run OllinLive path/to/Sketch.swift` (see the [iteration workflow](../README.md#iteration-workflow)). Any sketch can also render headlessly: a single frame with `--export`, or a deterministic numbered PNG sequence with `--export-sequence <dir> --frames N [--fps F]` (a fixed-timestep render that assembles into a video — see [exporting frames](../README.md#exporting-frames)).

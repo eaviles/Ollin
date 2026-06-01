@@ -24,7 +24,7 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 - **Easing and animation helpers.** A small set of easing curves, and a property wrapper that eases a value toward a target each frame.
 - **`size()` from `setup()`.** Today a custom canvas size means overriding a property. An imperative `size(width, height)` callable from `setup()` would read closer to p5's `createCanvas`, while keeping the declarative form too. The constraint is preserving deterministic headless export.
 - **Bézier and curved contours, and a `beginShape`/`vertex` builder.** Built on the existing vector `Shape`/`Contour` type.
-- **The extension and lifecycle seam.** A before/after-draw and frame-grab hook. This one unlocks several things at once: snapshot tests, layered effects, and frame-sequence export.
+- **The frame-grab hook.** The `extend(...)` lifecycle seam — register a `SketchExtension` for before/after-draw and after-frame hooks — is in place. What's left is handing an extension the *rendered* frame, which snapshot tests and screen recording both want.
 - **Render-correctness snapshot tests.** Compile-testing proves an example builds; snapshot tests prove it still renders the same. The off-screen render path already exists, so this mostly needs the frame-grab hook above.
 
 ## Core batteries
@@ -46,10 +46,6 @@ OPENRNDR-style effects that compose in layers: draw into off-screen targets, run
 ## Shader composition and live-coding
 
 Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
-
-## Offline frame-sequence export
-
-Render an animated sketch to a numbered PNG sequence (then assemble to video). The key idea is to advance the clock at a fixed timestep instead of wall-clock, so each frame renders deterministically no matter how long it takes; export is offline by design. See the [design notes](DESIGN-NOTES.md#offline-frame-sequence-export-not-started).
 
 ## Project generator
 

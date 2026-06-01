@@ -109,6 +109,11 @@ let package = Package(
             path: "Examples/Basic/HelloCircle"
         ),
         .executableTarget(
+            name: "Example-Guides",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Guides"
+        ),
+        .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"

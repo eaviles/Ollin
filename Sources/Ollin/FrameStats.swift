@@ -51,3 +51,23 @@ public final class FrameStats {
         self.canvasHeight = canvasHeight
     }
 }
+
+/// The built-in extension behind the stats overlay and the live inspector: it
+/// copies each frame's `FrameInfo` into a `FrameStats`, throttled to a few times
+/// a second so SwiftUI doesn't thrash. The runner owns it and re-attaches it
+/// across live-reload swaps, so the readout survives a reload even though a
+/// sketch's own extensions reset with the fresh instance — the seam's first
+/// customer, replacing the old inline `statsSink`.
+final class StatsExtension: SketchExtension {
+    let stats: FrameStats
+
+    init(stats: FrameStats) { self.stats = stats }
+
+    func afterFrame(_ sketch: Sketch, _ info: FrameInfo) {
+        guard sketch.frameCount % 15 == 0 else { return }   // ~a few Hz
+        stats.update(fps: info.frameRate, frameTimeMS: info.cpuDrawMS,
+                     frameCount: sketch.frameCount, time: sketch.time,
+                     vertexCount: info.vertexCount, sdfCount: info.sdfCount,
+                     canvasWidth: sketch.width, canvasHeight: sketch.height)
+    }
+}

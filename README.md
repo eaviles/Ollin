@@ -157,6 +157,14 @@ swift run Example-Orbits --export frame.png --frame 120   # the 120th frame
 
 It drives the sketch off-screen (`setup()`, then `draw()` advanced to the requested `--frame`) and writes a PNG at the sketch's `canvasSize` (1080×1080 by default), rendered with the same 4× MSAA as the window. In code it's `OllinApp.export(sketch, to:frame:)`.
 
+For an animation, `--export-sequence` writes a numbered PNG sequence you can stitch into video:
+
+```sh
+swift run Example-Breathing --export-sequence frames/ --frames 600 --fps 60
+```
+
+It advances the clock at a fixed timestep rather than wall-clock, so each frame renders the moment it should regardless of how long the render takes. A slow render still plays back smoothly, and the command prints an `ffmpeg` line to assemble the frames. In code it's `OllinApp.exportSequence(sketch, to:frames:fps:)`.
+
 ## Roadmap
 
 The first pass is deliberately just enough to draw and iterate. Next up:
@@ -165,7 +173,7 @@ The first pass is deliberately just enough to draw and iterate. Next up:
 - **Fills & color:** richer color (hex/HSB), gradients, blend modes. Cosine-gradient `Palette` and perceptual `Colormap`s have landed.
 - **Typography & images:** text, image loading and drawing.
 - **Shaders:** user-supplied fragment/vertex shaders.
-- **Vector & raster export:** single-frame PNG export has landed (`--export`); PNG *sequences*, SVG, and PDF are next.
+- **Vector & raster export:** single-frame and PNG-*sequence* export have landed (`--export` / `--export-sequence`); SVG and PDF are next.
 - **Capture for sharing:** video and GIF recording of animated sketches, since motion is the whole reason Ollin exists.
 - **Single-file `swift-sh` scripting** for zero-ceremony sketches.
 - **Normalized `u, v` coordinates** (0…1 across the canvas) alongside points, so a sketch can place things without referring to `width`/`height`.

@@ -21,10 +21,10 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private let renderer: MetalRenderer
     private weak var view: MTKView?
 
-    /// Where per-frame stats land for the overlay and the live inspector to read.
-    /// The runner refreshes it a few times a second (not every frame) so SwiftUI
-    /// doesn't thrash. `SketchView` wires this up; nil for headless runs.
-    var statsSink: FrameStats?
+    /// The built-in stats observer (overlay + inspector), kept here so it can be
+    /// re-attached to each freshly reloaded sketch — extensions otherwise reset
+    /// with the new instance. Set via `observeStats(into:)`; nil for headless runs.
+    private var statsExtension: StatsExtension?
 
     private var didSetup = false
     private var didReload = false        // call onReload() after the post-reload setup()
@@ -75,9 +75,20 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
         wireLoopControl(newSketch)
         sketch = newSketch
+        if let statsExtension { newSketch.extend(statsExtension) }   // re-attach stats observer
         didSetup = false            // re-run setup() next frame
         didReload = true            // ...then call onReload() once
         view?.isPaused = false      // a prior noLoop() must not freeze the reload
+    }
+
+    /// Start feeding per-frame stats into `stats` (for the overlay and the live
+    /// inspector). Installs the built-in `StatsExtension` on the current sketch
+    /// and remembers it, so `reload(to:)` can re-attach it to each swapped-in
+    /// sketch. **Call on the main thread.**
+    func observeStats(into stats: FrameStats) {
+        let ext = StatsExtension(stats: stats)
+        statsExtension = ext
+        sketch.extend(ext)
     }
 
     /// Recompile the shader library from `source` and rebuild the pipelines for
@@ -154,13 +165,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                         viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
                         in: view)
 
-        if sketch.frameCount % 15 == 0 {                  // refresh stats ~a few Hz
-            statsSink?.update(fps: smoothedFrameRate, frameTimeMS: smoothedCPUMS,
-                              frameCount: sketch.frameCount, time: sketch.time,
-                              vertexCount: sketch.drawer.vertices.count,
-                              sdfCount: sketch.drawer.sdfInstances.count,
-                              canvasWidth: sketch.width, canvasHeight: sketch.height)
-        }
+        // Hand the frame's timing to any extensions (the stats observer, a
+        // recorder). Counts are still valid here — the drawer clears next frame.
+        sketch.runAfterFrame(FrameInfo(deltaTime: dt, frameRate: smoothedFrameRate,
+                                       cpuDrawMS: smoothedCPUMS,
+                                       vertexCount: sketch.drawer.vertices.count,
+                                       sdfCount: sketch.drawer.sdfInstances.count))
     }
 
     /// Resolve the sketch's logical canvas, in points. For `.auto`/`.fixed` that's
@@ -326,7 +336,7 @@ private struct MetalCanvas: NSViewRepresentable {
         // Initial size only; SwiftUI resizes the view to its frame on layout.
         let view = makeOllinMTKView(device: device, size: sketch.canvasSize, sketch: sketch)
         let runner = SketchRunner(sketch: sketch, view: view, device: device)
-        runner.statsSink = stats
+        runner.observeStats(into: stats)
         view.delegate = runner
         context.coordinator.runner = runner   // retain the runner
         onRunner?(runner)
@@ -444,6 +454,80 @@ public enum OllinApp {
         }
     }
 
+    /// Render a deterministic PNG sequence of `sketch` into `directory` — no
+    /// window. Drives the sketch headlessly at a **fixed timestep**
+    /// (`deltaTime = 1/fps`, `time = frame/fps`), decoupled from wall-clock, so
+    /// every frame renders the exact moment it should no matter how long it takes
+    /// — a ten-minute render still assembles into a smooth `fps` video. Frames are
+    /// written as `frame_00001.png`, `frame_00002.png`, … (zero-padded from
+    /// `startFrame`), ready for `ffmpeg`. One sketch instance and renderer are
+    /// reused across the run, so stateful sketches evolve frame to frame.
+    ///
+    /// For a *reproducible* sequence, seed the sketch (`seed(…)` in `setup()`);
+    /// unseeded, it's internally consistent within a run but differs between runs.
+    public static func exportSequence(_ sketch: Sketch, to directory: String,
+                                      frames: Int, fps: Double = 60, startFrame: Int = 1) {
+        guard frames > 0 else { return }
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            fatalError("Ollin requires a Metal-capable GPU.")
+        }
+        let renderer: MetalRenderer
+        do {
+            renderer = try MetalRenderer(device: device, pixelFormat: .bgra8Unorm, sampleCount: 4)
+        } catch {
+            fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
+        }
+
+        let size = sketch.canvasSize
+        let width = Int(size.width.rounded()), height = Int(size.height.rounded())
+        let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
+        do {
+            try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        } catch {
+            fatalError("Ollin: failed to create \(directory): \(error)")
+        }
+
+        sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
+        sketch.setup()
+
+        print("Ollin: exporting \(frames) frames at \(Int(fps)) fps → \(directory) (\(width)×\(height))")
+        let wallStart = CACurrentMediaTime()
+        for k in 0..<frames {
+            sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+            sketch.performDraw()
+            guard let cgImage = renderer.image(of: sketch.drawer, viewport: viewport,
+                                               width: width, height: height) else {
+                fatalError("Ollin: failed to render frame \(k)")
+            }
+            guard let data = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else {
+                fatalError("Ollin: failed to encode PNG for frame \(k)")
+            }
+            let name = String(format: "frame_%05d.png", startFrame + k)
+            let path = (directory as NSString).appendingPathComponent(name)
+            do {
+                try data.write(to: URL(fileURLWithPath: path))
+            } catch {
+                fatalError("Ollin: failed to write \(path): \(error)")
+            }
+
+            // A single rewriting progress line: pct done · render throughput.
+            let done = k + 1
+            let elapsed = CACurrentMediaTime() - wallStart
+            let renderFPS = elapsed > 0 ? Double(done) / elapsed : 0
+            let line = String(format: "\r  rendering %d/%d (%d%%) · %.0f fps    ",
+                              done, frames, done * 100 / frames, renderFPS)
+            FileHandle.standardError.write(Data(line.utf8))
+        }
+        FileHandle.standardError.write(Data("\n".utf8))
+
+        let elapsed = CACurrentMediaTime() - wallStart
+        print(String(format: "Ollin: exported %d frames in %.1fs → %@", frames, elapsed, directory))
+        print("Assemble with ffmpeg:")
+        print("  ffmpeg -framerate \(Int(fps)) -start_number \(startFrame) \\")
+        print("    -i \(directory)/frame_%05d.png -c:v libx264 -pix_fmt yuv420p -crf 18 \\")
+        print("    \(directory)/out.mp4")
+    }
+
     /// Run `sketch`'s draw loop headlessly for `frames` frames — no window, no
     /// GPU, no vsync — timing only the CPU cost of `setup()` + per-frame
     /// `performDraw()` (the tessellation that builds `drawer.vertices`). Prints
@@ -522,6 +606,28 @@ public extension Sketch {
         // `swift run Example-X --export <path> [--frame N]` writes a PNG and
         // exits (no window); otherwise the sketch runs in a window as usual.
         let args = CommandLine.arguments
+        // `--export-sequence <dir> (--frames N | --seconds S) [--fps F] [--start N]`
+        // renders a deterministic numbered PNG sequence and exits.
+        if let i = args.firstIndex(of: "--export-sequence"), i + 1 < args.count {
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
+            }
+            let dir = args[i + 1]
+            let fps = value("--fps").flatMap(Double.init) ?? 60
+            var frames = value("--frames").flatMap(Int.init) ?? 0
+            if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
+                frames = Int((seconds * fps).rounded())
+            }
+            let start = value("--start").flatMap(Int.init) ?? 1
+            guard frames > 0 else {
+                FileHandle.standardError.write(Data(
+                    "usage: --export-sequence <dir> (--frames N | --seconds S) [--fps F] [--start N]\n".utf8))
+                return
+            }
+            OllinApp.exportSequence(Self(), to: dir, frames: frames, fps: fps, startFrame: start)
+            return
+        }
         if let i = args.firstIndex(of: "--export"), i + 1 < args.count {
             var frame = 0
             if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {

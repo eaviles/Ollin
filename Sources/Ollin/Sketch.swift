@@ -122,6 +122,17 @@ open class Sketch {
     /// default does nothing). Not called on the first launch — only on reloads.
     open func onReload() {}
 
+    // MARK: Extensions (the extend(...) seam)
+
+    /// Register a lifecycle extension. Its hooks fire around each frame (see
+    /// `SketchExtension`): before/after your `draw()`, and after the render with
+    /// timing. The usual place is `setup()`; registering later runs the
+    /// extension's `setup` immediately so it doesn't miss it.
+    public func extend(_ ext: SketchExtension) {
+        extensions.append(ext)
+        if extensionsDidSetup { ext.setup(self) }
+    }
+
     // MARK: Loop control
 
     /// Whether the draw loop is currently running.
@@ -136,6 +147,11 @@ open class Sketch {
 
     /// The state machine + per-frame geometry recorder the bare API forwards to.
     let drawer = Drawer()
+
+    /// Registered lifecycle extensions (the `extend(...)` seam), and whether
+    /// their one-time `setup` has run yet (lazily, on the first `performDraw`).
+    private var extensions: [SketchExtension] = []
+    private var extensionsDidSetup = false
 
     /// Backing generator for `random()` / `randomSeed(_:)` (see Random.swift).
     /// Entropy-seeded by default, so unseeded sketches vary per run.
@@ -342,7 +358,19 @@ open class Sketch {
     }
 
     func performDraw() {
+        if !extensionsDidSetup {                 // run extension setup once, lazily
+            extensionsDidSetup = true
+            for e in extensions { e.setup(self) }
+        }
         drawer.beginFrame()
+        for e in extensions { e.beforeDraw(self) }
         draw()
+        for e in extensions { e.afterDraw(self) }   // before the render — can draw
+    }
+
+    /// Fired by the runner after the frame renders, with its timing. Headless
+    /// paths (export) don't call this — there's no live frame rate to report.
+    func runAfterFrame(_ info: FrameInfo) {
+        for e in extensions { e.afterFrame(self, info) }
     }
 }
