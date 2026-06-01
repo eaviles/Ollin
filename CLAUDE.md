@@ -101,7 +101,7 @@ swift run Example-HelloCircle   # opens a window running an example
 The canvas is `1080×1080` by default (`canvasSize`, with named presets); the preview window is sized from the sketch's `windowMode` (`.auto` fits the screen, `.fixed`, or `.resizable`) — the window is a scaled view of the canvas, not the canvas itself.
 
 - **Requires macOS 14+ and a Metal-capable GPU.**
-- **This cannot be compiled in the Linux web container** (no Swift toolchain, no Metal). Changes here are unverified until built on a Mac — say so explicitly rather than claiming a change works.
+- **Check the environment before claiming you can't build.** Ollin needs the Swift toolchain and Metal, which exist on a Mac but *not* in the Linux web/iPhone container. These two run on different machines, so don't assume: if `swift --version` and `xcrun --find metal` succeed, you're on a Mac with the toolchain — **build, run, and verify directly** (`swift build`, `swift run <Example>`), and don't add caveats about being unable to compile. Only when that toolchain is genuinely absent (the Linux container) are changes unverifiable on this machine — say so then, and not before. Either way, the things that truly need a simulator or device (iOS/visionOS/AR) stay unverifiable here regardless.
 
 ## Current state & roadmap
 
