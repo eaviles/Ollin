@@ -23,11 +23,11 @@ final class Orbits: Sketch {
         background(.black)
         for i in 0..<10 {
             let fi = Double(i)
-            let orbitRadius = 100 + fi * 20
+            let orbitRadius = (125 + fi * 25) * scale
             let angle = time * map(fi, 0, 10, 1, 10)
             let x = width / 2 + orbitRadius * cos(angle)
             let y = height / 2 + orbitRadius * sin(angle)
-            drawCircle(x, y, 20)
+            drawCircle(x, y, 25 * scale)
         }
     }
 }

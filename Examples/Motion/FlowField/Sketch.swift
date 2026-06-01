@@ -8,12 +8,12 @@ import Ollin
 final class FlowField: Sketch {
     override func setup() {
         stroke(.white)
-        strokeWeight(1.5)
+        strokeWeight(2 * scale)
     }
 
     override func draw() {
         background(.black)
-        let step = 28.0
+        let step = 35 * scale
         var y = step / 2
         while y < height {
             var x = step / 2

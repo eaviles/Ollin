@@ -11,7 +11,7 @@ final class HelloCircle: Sketch {
         background(.white)
         noFill()
         stroke(.black)
-        strokeWeight(3)
-        drawCircle(width / 2, height / 2, 120)
+        strokeWeight(3.75 * scale)
+        drawCircle(width / 2, height / 2, 150 * scale)
     }
 }

@@ -27,7 +27,7 @@ final class ColorWaves: Sketch {
                        green: 0.5 + 0.5 * sin(i * 0.011),
                        blue:  0.5 + 0.5 * sin(i * 0.012)))
             let x = width / 2 + width / 4 * sin(time + i * 0.02)
-            let diameter = 50 + 50 * sin(time + i * 0.01)
+            let diameter = 62.5 * (1 + sin(time + i * 0.01)) * scale
             drawCircle(x, i, diameter / 2)
         }
     }

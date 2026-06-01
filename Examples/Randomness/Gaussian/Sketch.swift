@@ -15,9 +15,9 @@ final class Gaussian: Sketch {
     override func draw() {
         background(.black)
         for _ in 0..<2000 {
-            let x = width / 2 + randomGaussian() * 120
+            let x = width / 2 + randomGaussian() * 150 * scale
             let y = random(height)
-            drawCircle(x, y, 2)
+            drawCircle(x, y, 2.5 * scale)
         }
     }
 }

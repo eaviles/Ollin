@@ -10,7 +10,7 @@ import Ollin
 
 @main
 final class Parameters: Sketch {
-    @Param(10...300) var radius = 140.0   // "Radius"
+    @Param(10...375) var radius = 175.0   // "Radius" (reference px; drawn × scale)
     @Param(0...4) var speed = 1.0         // "Speed"
     @Param(1...12) var rings = 5.0        // "Rings"
 
@@ -18,13 +18,13 @@ final class Parameters: Sketch {
         background(.white)
         noFill()
         stroke(.black)
-        strokeWeight(2)
+        strokeWeight(2.5 * scale)
 
         let count = Int(rings)
         for i in 0..<count {
             let t = Double(i) / Double(count)
             let phase: Double = time * speed + t * .tau
-            let r: Double = radius * (0.25 + t) + sin(phase) * 24
+            let r: Double = (radius * (0.25 + t) + sin(phase) * 30) * scale
             drawCircle(width / 2, height / 2, r)
         }
     }
