@@ -126,7 +126,7 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
 - [Noise](Docs/Noise.md) - Perlin `noise`/`signedNoise` and `curlNoise` flow fields.
 - [Math](Docs/Math.md) - `map`, `dist`.
-- [Input](Docs/Input.md) - mouse position and clicks.
+- [Input](Docs/Input.md) - mouse and keyboard.
 
 New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.
 

@@ -224,6 +224,11 @@ let package = Package(
             path: "Examples/Input/RepelGrid"
         ),
         .executableTarget(
+            name: "Example-Keys",
+            dependencies: ["Ollin"],
+            path: "Examples/Input/Keys"
+        ),
+        .executableTarget(
             name: "Example-WarpGrid",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/WarpGrid"

@@ -27,6 +27,6 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 ### Helpers
 
 - [`Math`](./Math.md) - `map` and `dist`
-- [`Input`](./Input.md) - mouse position and clicks
+- [`Input`](./Input.md) - mouse and keyboard
 
 Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR.

@@ -22,7 +22,7 @@ final class HelloCircle: Sketch {
 
 ### Contents
 
-- [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`, `onReload`
+- [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`, `keyPressed`/`keyReleased`, `onReload`
 - [Temporal state](#temporal-state) - `frameCount`, `time`, `deltaTime`, `frameRate`
 - [Canvas](#canvas) - `width`, `height`
 - [Loop control](#loop-control) - `noLoop`, `loop`, `isLooping`
@@ -84,6 +84,23 @@ Called once each time a mouse button is pressed over the canvas. See [Input](./I
 ```swift
 override func mousePressed() {
     randomSeed(frameCount)   // re-roll on click
+}
+```
+
+<a name="keyPressed"></a>
+
+#### keyPressed / keyReleased
+
+```swift
+keyPressed()
+keyReleased()
+```
+
+Called once each time a key is pressed or released; `key`/`keyCode` hold the key. For movement while a key is *held*, poll `isKeyDown(_:)` in `draw()` instead. See [Input](./Input.md).
+
+```swift
+override func keyPressed() {
+    if key == " " { noLoop() }   // space pauses
 }
 ```
 

@@ -29,7 +29,7 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 
 ## Core batteries
 
-The table-stakes capabilities p5.js, openFrameworks, and OPENRNDR all ship and Ollin doesn't yet: **keyboard input** (the smallest, and a good first contribution), **text and typography**, **image loading**, and **audio** (lowest priority, mostly for audio-reactive visuals). A sketcher reaches for these early, so they matter more than their size suggests; all four are Apple-native and stay sugar over the typed core. Engines, APIs, and ordering are in the [design notes](DESIGN-NOTES.md#core-batteries-text-image-audio-keyboard-not-started).
+The table-stakes capabilities p5.js, openFrameworks, and OPENRNDR all ship and Ollin doesn't yet: **text and typography** (the biggest perceived gap), **image loading**, and **audio** (lowest priority, mostly for audio-reactive visuals). A sketcher reaches for these early, so they matter more than their size suggests; all three are Apple-native and stay sugar over the typed core. Engines, APIs, and ordering are in the [design notes](DESIGN-NOTES.md#core-batteries-text-image-audio-not-started).
 
 ## Integration and performance I/O
 

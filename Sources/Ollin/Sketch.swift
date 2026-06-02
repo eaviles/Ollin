@@ -79,6 +79,23 @@ open class Sketch {
     /// Cursor y in sketch coordinates (points, top-left origin, y-down).
     public internal(set) var mouseY: Double = 0
 
+    // MARK: Keyboard (input)
+
+    /// The character of the most recent key event — `"a"`, `" "`, `"5"` — or
+    /// `nil` for a key with no printing character (an arrow, a function key),
+    /// whose identity is in `keyCode` instead. Set on both press and release, so
+    /// `keyPressed()`/`keyReleased()` can read which key fired.
+    public internal(set) var key: Character?
+    /// The named key of the most recent key event for keys that don't produce a
+    /// character (`.leftArrow`, `.return`, `.escape`, …), or `nil` when the event
+    /// was an ordinary character key (read `key` then).
+    public internal(set) var keyCode: KeyCode?
+    /// Whether any key is currently held down. Poll it in `draw()` for
+    /// continuous response while a key is held (alongside `isKeyDown(_:)` for a
+    /// specific key); the `keyPressed()`/`keyReleased()` hooks fire once per
+    /// press, not continuously.
+    public internal(set) var keyIsPressed = false
+
     // MARK: Configuration (override in subclasses)
 
     /// Window title used when booting via `OllinApp.run`. Defaults to
@@ -117,6 +134,13 @@ open class Sketch {
     /// Called once each time a mouse button is pressed over the canvas. Override
     /// to respond to clicks; `mouseX`/`mouseY` hold the press location.
     open func mousePressed() {}
+    /// Called once each time a key is pressed (auto-repeat doesn't re-fire it).
+    /// Override to respond to keys; `key`/`keyCode` hold the key. For movement
+    /// while a key is held, poll `isKeyDown(_:)` in `draw()` instead.
+    open func keyPressed() {}
+    /// Called once each time a key is released; `key`/`keyCode` hold the released
+    /// key.
+    open func keyReleased() {}
     /// Called once after this sketch is hot-swapped in by the live-reload host,
     /// right after its `setup()`. Override to do reload-specific work (the
     /// default does nothing). Not called on the first launch — only on reloads.
@@ -143,6 +167,22 @@ open class Sketch {
     /// Resume the continuous draw loop.
     public func loop() { setLooping(true) }
 
+    // MARK: Keyboard queries
+
+    /// Whether `character` is currently held down — for continuous response while
+    /// a key is held (`if isKeyDown("w") { … }` in `draw()`), where the one-shot
+    /// `keyPressed()` hook won't do. Case-sensitive: `isKeyDown("w")` and
+    /// `isKeyDown("W")` differ by the Shift state at the time of the press.
+    public func isKeyDown(_ character: Character) -> Bool {
+        pressedKeys.contains(.character(character))
+    }
+
+    /// Whether the named `code` (an arrow, `.return`, …) is currently held down.
+    /// The space bar is a character, so poll it with `isKeyDown(" ")`.
+    public func isKeyDown(_ code: KeyCode) -> Bool {
+        pressedKeys.contains(.code(code))
+    }
+
     // MARK: - Internals
 
     /// The state machine + per-frame geometry recorder the bare API forwards to.
@@ -166,6 +206,11 @@ open class Sketch {
 
     /// Set by the runner so `loop()`/`noLoop()` can pause/resume the MTKView.
     var loopStateDidChange: ((Bool) -> Void)?
+
+    /// Keys currently held down, so `isKeyDown(_:)` can answer and `keyIsPressed`
+    /// tracks whether any key is down. The view inserts on press and removes on
+    /// release (see `handleKey`).
+    private var pressedKeys: Set<KeyToken> = []
 
     /// `required` so `Self()` works in the static `main()` entry point (see
     /// `Sketch.main()`), letting a sketch file be `@main` with no boilerplate.
@@ -397,6 +442,27 @@ open class Sketch {
     func setMouse(x: Double, y: Double) {
         mouseX = x
         mouseY = y
+    }
+
+    /// Record a key event from the view and update the held-key set. The view
+    /// passes exactly one of `character`/`code` (a printing key vs. a named one);
+    /// the other is `nil`. Updates `key`/`keyCode`/`keyIsPressed`, then the view
+    /// calls `keyPressed()`/`keyReleased()`.
+    func handleKey(character: Character?, code: KeyCode?, pressed: Bool) {
+        key = character
+        keyCode = code
+        let token: KeyToken? = character.map(KeyToken.character) ?? code.map(KeyToken.code)
+        if let token {
+            if pressed { pressedKeys.insert(token) } else { pressedKeys.remove(token) }
+        }
+        keyIsPressed = !pressedKeys.isEmpty
+    }
+
+    /// Drop all held keys — called when the canvas loses keyboard focus, so a key
+    /// held while focus leaves (no `keyUp` is delivered then) doesn't stick down.
+    func clearHeldKeys() {
+        pressedKeys.removeAll()
+        keyIsPressed = false
     }
 
     func advance(time: Double, deltaTime: Double, frameRate: Double) {

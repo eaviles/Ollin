@@ -216,8 +216,57 @@ private final class OllinMTKView: MTKView {
     override func mouseMoved(with event: NSEvent) { reportPointer(event) }
     override func mouseDragged(with event: NSEvent) { reportPointer(event) }
     override func mouseDown(with event: NSEvent) {
+        // A click reclaims keyboard focus (e.g. after a click on an inspector
+        // control moved first responder away), so the canvas keeps the keys.
+        window?.makeFirstResponder(self)
         reportPointer(event)
         sketch?.mousePressed()
+    }
+
+    // MARK: Keyboard
+
+    /// Required for the view to receive `keyDown`/`keyUp`.
+    override var acceptsFirstResponder: Bool { true }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        // Take keyboard focus once we're in a window, so a sketch reacts to keys
+        // without the user clicking the canvas first.
+        window?.makeFirstResponder(self)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        // Auto-repeat fires keyDown over and over while held; the hook is
+        // once-per-press, so ignore repeats (held-key response polls isKeyDown).
+        guard !event.isARepeat else { return }
+        dispatchKey(event, pressed: true)
+    }
+
+    override func keyUp(with event: NSEvent) {
+        dispatchKey(event, pressed: false)
+    }
+
+    /// Drop held keys when focus leaves; without a matching `keyUp` a key held
+    /// across a focus change would otherwise stay stuck down.
+    override func resignFirstResponder() -> Bool {
+        sketch?.clearHeldKeys()
+        return super.resignFirstResponder()
+    }
+
+    private func dispatchKey(_ event: NSEvent, pressed: Bool) {
+        guard let sketch else { return }
+        let (character, code) = Self.interpret(event)
+        sketch.handleKey(character: character, code: code, pressed: pressed)
+        if pressed { sketch.keyPressed() } else { sketch.keyReleased() }
+    }
+
+    /// Resolve an AppKit key event to Ollin's model: a named `KeyCode` for keys
+    /// with no useful character (arrows, the function row), otherwise the typed
+    /// character. Exactly one of the two is non-`nil`.
+    private static func interpret(_ event: NSEvent) -> (Character?, KeyCode?) {
+        if let code = KeyCode(event: event) { return (nil, code) }
+        if let character = event.charactersIgnoringModifiers?.first { return (character, nil) }
+        return (nil, nil)
     }
 
     /// Seed `mouseX`/`mouseY` from the cursor's current location, so a
@@ -246,6 +295,43 @@ private final class OllinMTKView: MTKView {
         let x = bw > 0 ? Double(p.x) / bw * sketch.width : Double(p.x)
         let y = bh > 0 ? (bh - Double(p.y)) / bh * sketch.height : bh - Double(p.y)
         sketch.setMouse(x: x, y: y)
+    }
+}
+
+/// Maps an AppKit key event to a named `KeyCode`, or `nil` for an ordinary
+/// character key (which the view reports through `key` instead). Lives here, on
+/// the AppKit side of the seam, so the `KeyCode` type itself stays free of
+/// AppKit for the eventual UIKit path.
+private extension KeyCode {
+    init?(event: NSEvent) {
+        if let special = event.specialKey {
+            switch special {
+            case .upArrow: self = .upArrow
+            case .downArrow: self = .downArrow
+            case .leftArrow: self = .leftArrow
+            case .rightArrow: self = .rightArrow
+            case .carriageReturn, .newline: self = .return
+            case .enter: self = .enter
+            case .tab: self = .tab
+            case .delete: self = .delete            // the Backspace key
+            case .deleteForward: self = .forwardDelete
+            case .home: self = .home
+            case .end: self = .end
+            case .pageUp: self = .pageUp
+            case .pageDown: self = .pageDown
+            default:
+                // The function row (F1…F35) sits in a contiguous block, so derive
+                // its number rather than enumerate every case.
+                let first = NSEvent.SpecialKey.f1.rawValue
+                let last = NSEvent.SpecialKey.f35.rawValue
+                guard (first...last).contains(special.rawValue) else { return nil }
+                self = .function(special.rawValue - first + 1)
+            }
+            return
+        }
+        // Escape isn't an NSEvent.SpecialKey; catch it by its hardware key code.
+        if event.keyCode == 53 { self = .escape; return }
+        return nil
     }
 }
 

@@ -4,10 +4,11 @@
 
 ## Input
 
-Mouse-driven sketches.
+Mouse- and keyboard-driven sketches.
 
 | Example | What it shows |
 |---|---|
 | [RepelGrid](RepelGrid/Sketch.swift) | a grid of dots that flee the cursor (`mouseX`/`mouseY`) |
+| [Keys](Keys/Sketch.swift) | steer a dot with the arrows or WASD (`isKeyDown`), space to recolor (`keyPressed`) |
 
 Run one with `swift run Example-<Name>`, e.g. `swift run Example-RepelGrid`.
