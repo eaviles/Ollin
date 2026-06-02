@@ -13,6 +13,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [pointSize](#pointSize), [pointMarker](#pointMarker)
 - **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawTriangle](#triangle), [drawArc](#arc)
 - **More shapes:** [drawNgon](#ngon), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
+- **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
 - **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
 
@@ -451,6 +452,103 @@ A tapered capsule — like `drawLine` but with unequal round caps — from `a` (
 ```swift
 drawUnevenCapsule(Vector2(200, 200), Vector2(880, 880), 90, 24)   // a long taper
 drawUnevenCapsule(300, 540, 780, 540, 70, 70)                     // equal radii — a plain capsule
+```
+
+### Novelty shapes
+
+A handful of less-common analytic forms — curves, cut-outs, and a couple of pure doodles — that ride the same instanced-SDF path as everything above (crisp at any size, effectively free, rotatable through the transform stack).
+
+#### drawHorseshoe
+
+```swift
+drawHorseshoe(_ x: Double, _ y: Double, _ radius: Double, _ thickness: Double, gap: Double)
+drawHorseshoe(center: Vector2, radius: Double, thickness: Double, gap: Double)
+```
+
+A horseshoe — a thick arc with a gap — centered at `(x, y)`: a band at mid-radius `radius`, `thickness` thick, with an opening that spans `gap` radians (the full angular gap, so a smaller `gap` is more nearly a closed ring). Rotate it with the transform stack to aim the opening.
+
+```swift
+drawHorseshoe(width / 2, height / 2, 160, 70, gap: 1.4)        // a classic open horseshoe
+withState { translate(width / 2, height / 2); rotate(time); drawHorseshoe(0, 0, 150, 60, gap: 1.0) }  // a turning, nearly-closed ring
+```
+
+#### drawParabola
+
+```swift
+drawParabola(_ x: Double, _ y: Double, _ width: Double, _ height: Double)
+drawParabola(center: Vector2, width: Double, height: Double)
+```
+
+A filled parabolic arch centered at `(x, y)`, `width` across the flat base and `height` tall, the curve peaking at the top — an exact parabola, with no tessellation. Rotate it with the transform stack.
+
+```swift
+drawParabola(width / 2, height / 2, 240, 240)                  // a rounded arch
+```
+
+#### drawRoundedX
+
+```swift
+drawRoundedX(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double)
+drawRoundedX(center: Vector2, length: Double, thickness: Double)
+```
+
+An X (saltire) centered at `(x, y)`, `length` tip-to-tip along each axis, with round-capped arms `thickness` wide — like `drawCross` turned 45°, but with rounded ends. Rotate it with the transform stack.
+
+```swift
+drawRoundedX(width / 2, height / 2, 240, 56)                   // a chunky rounded X
+```
+
+#### drawBlobbyCross
+
+```swift
+drawBlobbyCross(_ x: Double, _ y: Double, _ radius: Double, blobbiness: Double = 0.5)
+drawBlobbyCross(center: Vector2, radius: Double, blobbiness: Double = 0.5)
+```
+
+A blobby cross — a four-armed cross with concave, inward-curving sides — its tips reaching `radius` along each axis. `blobbiness` (`0...1`) sets how pinched the waist is: larger is more bulbous, smaller is spikier. Rotate it with the transform stack (45° gives a diagonal four-point pinwheel).
+
+```swift
+drawBlobbyCross(width / 2, height / 2, 150)                    // the default waist
+drawBlobbyCross(width / 2, height / 2, 150, blobbiness: 0.35)  // spikier arms
+```
+
+#### drawTunnel
+
+```swift
+drawTunnel(_ x: Double, _ y: Double, _ width: Double, _ height: Double)
+drawTunnel(center: Vector2, width: Double, height: Double)
+```
+
+A tunnel / archway centered at `(x, y)`: vertical walls and a flat base under a semicircular top, `width` wide and `height` tall overall. The arch radius is half the width, so `height` must be at least `width / 2`. Rotate it with the transform stack to aim the opening.
+
+```swift
+drawTunnel(width / 2, height / 2, 200, 260)                    // a doorway
+```
+
+#### drawStairs
+
+```swift
+drawStairs(_ x: Double, _ y: Double, _ stepWidth: Double, _ stepHeight: Double, steps: Int)
+drawStairs(center: Vector2, stepWidth: Double, stepHeight: Double, steps: Int)
+```
+
+A staircase centered at `(x, y)`: `steps` steps, each `stepWidth` wide and `stepHeight` tall, ascending to the right; the whole flight spans `stepWidth · steps` by `stepHeight · steps`. Rotate it with the transform stack.
+
+```swift
+drawStairs(width / 2, height / 2, 60, 60, steps: 4)            // a four-step flight
+```
+
+#### drawCoolS
+
+```swift
+drawCoolS(_ x: Double, _ y: Double, _ size: Double)
+drawCoolS(center: Vector2, size: Double)
+```
+
+The iconic hand-drawn "S" — the one off the back of every school notebook — centered at `(x, y)`, `size` points tall, drawn as its filled silhouette. Add a stroke to trace its outline, or rotate it with the transform stack.
+
+```swift
+drawCoolS(width / 2, height / 2, 360)                          // the doodle, filled
 ```
 
 ### Paths & custom shapes

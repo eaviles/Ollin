@@ -31,6 +31,13 @@ enum SDFShape: UInt32 {
     case heart         = 17  // param0.x = unit->local scale; lobes up
     case cutDisk       = 18  // param0 = (radius, cut height); flat edge down
     case unevenCapsule = 19  // tapered capsule: param0 = (r1, r2); param1 = (cos, sin) axis; extra = length
+    case horseshoe     = 20  // thick open arc: param0 = (cos, sin) half-gap; param1 = (cap half-len, half-thick); extra = mid radius
+    case parabola      = 21  // filled parabolic arch: param0 = (top half-width, height); opens up
+    case roundedX      = 22  // an X with round arms: param0.x = arm reach; extra = arm half-width
+    case blobbyCross   = 23  // 4-fold concave cross: param0 = (scale, blobbiness)
+    case tunnel        = 24  // archway (rounded top, flat base): param0 = (half-width, wall height)
+    case stairs        = 25  // staircase: param0 = (step width, step height); extra = step count
+    case coolS         = 26  // the iconic "S": param0.x = scale
 }
 
 /// Which pipeline a run of recorded geometry needs. Primitives are recorded in
@@ -472,6 +479,112 @@ final class Drawer {
                   fill: fillColor, stroke: strokeColor, extra: Float(len),
                   param0: SIMD2<Float>(Float(ra), Float(rb)),
                   param1: SIMD2<Float>(Float(dir.y), Float(dir.x)))
+    }
+
+    /// A horseshoe (a thick arc with a gap) centered at `(x, y)`: a band at mid-
+    /// radius `radius`, `thickness` thick, open across an arc of `gap` radians at
+    /// the bottom (a smaller `gap` is more nearly closed; `0` is a full ring with a
+    /// pinhole, `.pi` is a half-ring). Recorded as a single SDF instance — analytic
+    /// fill + stroke + anti-aliasing. Rotate via the transform stack to aim the
+    /// opening; rotation pivots on the center.
+    func drawHorseshoe(_ x: Double, _ y: Double, _ radius: Double, _ thickness: Double, gap: Double) {
+        guard radius > 0, thickness > 0 else { return }
+        // iq's `c` is the (cos, sin) of half the opening angle: the band then wraps
+        // the remaining 2·(π − gap/2), so `gap` is the full angular opening.
+        let an = min(max(gap / 2, 1e-3), Double.pi - 1e-3)
+        let w = Float(thickness / 2)
+        let bound = Float(radius + thickness)
+        appendSDF(shape: .horseshoe, center: Vector2(x, y),
+                  size: SIMD2<Float>(bound, bound),
+                  fill: fillColor, stroke: strokeColor, extra: Float(radius),
+                  param0: SIMD2<Float>(Float(cos(an)), Float(sin(an))),
+                  param1: SIMD2<Float>(w, w))
+    }
+
+    /// A filled parabolic arch centered at `(x, y)`, `width` across the flat base
+    /// and `height` tall, the curve peaking at the top (a parabola capping a
+    /// straight base). Recorded as a single SDF instance — analytic fill + stroke +
+    /// anti-aliasing. Rotate via the transform stack.
+    func drawParabola(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
+        guard width > 0, height > 0 else { return }
+        appendSDF(shape: .parabola, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(width / 2), Float(height / 2)),
+                  fill: fillColor, stroke: strokeColor,
+                  param0: SIMD2<Float>(Float(width / 2), Float(height)))
+    }
+
+    /// An X (saltire) centered at `(x, y)`, `length` tip-to-tip along each axis,
+    /// drawn with round-capped arms `thickness` wide. Like `drawCross` rotated 45°
+    /// but with rounded ends. Recorded as a single SDF instance — analytic fill +
+    /// stroke + anti-aliasing. Rotate via the transform stack.
+    func drawRoundedX(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double) {
+        guard length > 0, thickness > 0 else { return }
+        let r = thickness / 2
+        // The diagonal tips reach `w/2 + r/√2` per axis; invert to hit `length/2`.
+        let w = max(length - thickness * 0.7071067811865476, 0)
+        appendSDF(shape: .roundedX, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(length / 2 + r), Float(length / 2 + r)),
+                  fill: fillColor, stroke: strokeColor, extra: Float(r),
+                  param0: SIMD2<Float>(Float(w), 0))
+    }
+
+    /// A blobby cross centered at `(x, y)`: a four-armed cross with concave,
+    /// inward-curving sides, its tips reaching `radius` along each axis.
+    /// `blobbiness` (`0...1`, default `0.5`) sets how pinched the waist is — larger
+    /// is more bulbous. Recorded as a single SDF instance. Rotate via the transform
+    /// stack (45° gives a diagonal four-point pinwheel).
+    func drawBlobbyCross(_ x: Double, _ y: Double, _ radius: Double, blobbiness: Double = 0.5) {
+        guard radius > 0 else { return }
+        let he = min(max(blobbiness, 0.3), 0.6)
+        // The unit cross's tip lands at `tipUnit` along each axis; scale so it
+        // reaches `radius`. (Larger `he` → shorter tips / fatter arms, so `tipUnit`
+        // shrinks and the scale grows — the shape just gets blobbier at fixed reach.)
+        let tipUnit = 1 / (he * 2.0.squareRoot()) - 1
+        let s = radius / tipUnit
+        appendSDF(shape: .blobbyCross, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(radius * 1.08), Float(radius * 1.08)),
+                  fill: fillColor, stroke: strokeColor,
+                  param0: SIMD2<Float>(Float(s), Float(he)))
+    }
+
+    /// A tunnel / archway centered at `(x, y)`: vertical walls and a flat base under
+    /// a semicircular top, `width` wide and `height` tall overall (the arch radius is
+    /// half the width, so `height` must be at least `width / 2`). Recorded as a
+    /// single SDF instance. Rotate via the transform stack to aim the opening.
+    func drawTunnel(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
+        guard width > 0, height >= width / 2 else { return }
+        let whx = width / 2                 // half-width = arch radius
+        let why = height - whx              // straight-wall height
+        appendSDF(shape: .tunnel, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(width / 2), Float(height / 2)),
+                  fill: fillColor, stroke: strokeColor,
+                  param0: SIMD2<Float>(Float(whx), Float(why)))
+    }
+
+    /// A staircase centered at `(x, y)`: `steps` steps, each `stepWidth` wide and
+    /// `stepHeight` tall, ascending to the right. The whole flight spans
+    /// `stepWidth · steps` by `stepHeight · steps`. Recorded as a single SDF
+    /// instance. Rotate via the transform stack.
+    func drawStairs(_ x: Double, _ y: Double, _ stepWidth: Double, _ stepHeight: Double, steps: Int) {
+        guard stepWidth > 0, stepHeight > 0, steps >= 1 else { return }
+        let n = Double(steps)
+        appendSDF(shape: .stairs, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(stepWidth * n / 2), Float(stepHeight * n / 2)),
+                  fill: fillColor, stroke: strokeColor, extra: Float(steps),
+                  param0: SIMD2<Float>(Float(stepWidth), Float(stepHeight)))
+    }
+
+    /// The iconic hand-drawn "S" centered at `(x, y)`, `size` points tall.
+    /// Recorded as a single SDF instance — analytic fill + stroke + anti-aliasing.
+    /// Rotate via the transform stack.
+    func drawCoolS(_ x: Double, _ y: Double, _ size: Double) {
+        guard size > 0 else { return }
+        // The unit "S" spans about y in [-1.05, 1.05]; scale so `size` is its height.
+        let s = size / 2.1
+        appendSDF(shape: .coolS, center: Vector2(x, y),
+                  size: SIMD2<Float>(Float(size / 2 + s * 0.1), Float(size / 2 + s * 0.1)),
+                  fill: fillColor, stroke: strokeColor,
+                  param0: SIMD2<Float>(Float(s), 0))
     }
 
     /// Shared builder for `drawNgon`/`drawStar`. Encodes the star into the SDF

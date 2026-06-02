@@ -53,7 +53,8 @@ fragment float4 ollin_fragment(VertexOut in [[stage_in]]) {
 //   0 ellipse, 1 box, 2 capsule, 3/4/5 arc open/chord/pie, 6 triangle,
 //   7 star/ngon, 8 marker, 9 rhombus, 10 vesica, 11 moon, 12 cross, 13 ring,
 //   14 trapezoid, 15 parallelogram, 16 egg, 17 heart, 18 cut disk,
-//   19 uneven capsule.
+//   19 uneven capsule, 20 horseshoe, 21 parabola, 22 rounded X,
+//   23 blobby cross, 24 tunnel, 25 stairs, 26 cool S.
 
 struct SDFOut {
     float4 position [[position]];
@@ -301,6 +302,110 @@ static float sdUnevenCapsule(float2 p, float r1, float r2, float h) {
     return dot(p, float2(a, b)) - r1;
 }
 
+// Horseshoe (a thick arc with a gap): a band at mid-radius `r`, half-thickness
+// `w.y`, with end caps of tangential half-length `w.x`, opening downward. `c` is
+// the (cos, sin) of the half-angle from straight up to where the band starts.
+// Exact signed distance, negative inside.
+static float sdHorseshoe(float2 p, float2 c, float r, float2 w) {
+    p.x = abs(p.x);
+    float l = length(p);
+    p = float2x2(float2(-c.x, c.y), float2(c.y, c.x)) * p;
+    p = float2((p.y > 0.0 || p.x > 0.0) ? p.x : l * sign(-c.x),
+               (p.x > 0.0) ? p.y : l);
+    p = float2(p.x, abs(p.y - r)) - w;
+    return length(max(p, 0.0)) + min(0.0, max(p.x, p.y));
+}
+
+// Parabola segment: the region under the parabola through (±wi, 0) peaking at
+// (0, he), measured to the curve (the open base is clipped by the caller). The
+// sign is negative below the curve. Native orientation peaks toward +y.
+static float sdParabolaSegment(float2 pos, float wi, float he) {
+    pos.x = abs(pos.x);
+    float ik = wi * wi / he;
+    float p = ik * (he - pos.y - 0.5 * ik) / 3.0;
+    float q = pos.x * ik * ik / 4.0;
+    float h = q * q - p * p * p;
+    float x;
+    if (h > 0.0) { float r = pow(q + sqrt(h), 1.0 / 3.0); x = r + p / r; }
+    else         { float r = sqrt(p); x = 2.0 * r * cos(acos(q / (p * r)) / 3.0); }
+    x = min(x, wi);
+    return length(pos - float2(x, he - x * x / ik)) * sign(ik * (pos.y - he) + pos.x * pos.x);
+}
+
+// Rounded X (saltire): two crossed bars of half-width `r` reaching `w` along the
+// diagonal, with round ends. Exact signed distance, negative inside.
+static float sdRoundedX(float2 p, float w, float r) {
+    p = abs(p);
+    return length(p - min(p.x + p.y, w) * 0.5) - r;
+}
+
+// Blobby cross: a four-armed cross with concave, inward-curving sides, `he`
+// setting how pinched the waist is. Tips reach ~±1 along the axes. Signed
+// distance, negative inside (very close to exact near the boundary).
+static float sdBlobbyCross(float2 pos, float he) {
+    pos = abs(pos);
+    pos = float2(abs(pos.x - pos.y), 1.0 - pos.x - pos.y) / sqrt(2.0);
+    float p = (he - pos.y - 0.25 / he) / (6.0 * he);
+    float q = pos.x / (he * he * 16.0);
+    float h = q * q - p * p * p;
+    float x;
+    if (h > 0.0) { float r = sqrt(h); x = pow(q + r, 1.0 / 3.0) - pow(abs(q - r), 1.0 / 3.0) * sign(r - q); }
+    else         { float r = sqrt(p); x = 2.0 * r * cos(acos(q / (p * r)) / 3.0); }
+    x = min(x, sqrt(2.0) / 2.0);
+    float2 z = float2(x, he * (1.0 - 2.0 * x * x)) - pos;
+    return length(z) * sign(z.y);
+}
+
+// Tunnel / archway: vertical walls and a flat base under a semicircular top of
+// radius `wh.x`, the walls `wh.y` tall. Native rounded top toward +y. Exact
+// signed distance, negative inside.
+static float sdTunnel(float2 p, float2 wh) {
+    p.x = abs(p.x); p.y = -p.y;
+    float2 q = p - wh;
+    float d1 = dot2(float2(max(q.x, 0.0), q.y));
+    q.x = (p.y > 0.0) ? q.x : length(p) - wh.x;
+    float d2 = dot2(float2(q.x, max(q.y, 0.0)));
+    float d = sqrt(min(d1, d2));
+    return (max(q.x, q.y) < 0.0) ? -d : d;
+}
+
+// Staircase of `n` steps, each `wh.x` wide and `wh.y` tall, rising from the origin
+// toward +x/+y. The filled region is the solid under the step profile. Exact
+// signed distance, negative inside.
+static float sdStairs(float2 p, float2 wh, float n) {
+    float2 ba = wh * n;
+    float d = min(dot2(p - float2(clamp(p.x, 0.0, ba.x), 0.0)),
+                  dot2(p - float2(ba.x, clamp(p.y, 0.0, ba.y))));
+    float s = sign(max(-p.y, p.x - ba.x));
+    float dia = length(wh);
+    p = float2x2(float2(wh.x, -wh.y), float2(wh.y, wh.x)) * p / dia;
+    float id = clamp(round(p.x / dia), 0.0, n - 1.0);
+    p.x = p.x - id * dia;
+    p = float2x2(float2(wh.x, wh.y), float2(-wh.y, wh.x)) * p / dia;
+    float hh = wh.y / 2.0;
+    p.y -= hh;
+    if (p.y > hh * sign(p.x)) s = 1.0;
+    p = (id < 0.5 || p.x > 0.0) ? p : -p;
+    d = min(d, dot2(p - float2(0.0, clamp(p.y, -hh, hh))));
+    d = min(d, dot2(p - float2(clamp(p.x, 0.0, wh.x), hh)));
+    return sqrt(d) * s;
+}
+
+// The iconic hand-drawn "S", fit to roughly the unit box (180°-symmetric). Signed
+// distance, negative inside.
+static float sdCoolS(float2 p) {
+    float six = (p.y < 0.0) ? -p.x : p.x;
+    p.x = abs(p.x);
+    p.y = abs(p.y) - 0.2;
+    float rex = p.x - min(round(p.x / 0.4), 0.4);
+    float aby = abs(p.y - 0.2) - 0.6;
+    float d = dot2(float2(six, -p.y) - clamp(0.5 * (six - p.y), 0.0, 0.2));
+    d = min(d, dot2(float2(p.x, -aby) - clamp(0.5 * (p.x - aby), 0.0, 0.4)));
+    d = min(d, dot2(float2(rex, p.y - clamp(p.y, 0.0, 0.4))));
+    float s = 2.0 * p.x + aby + abs(aby + 0.4) - 0.4;
+    return sqrt(d) * sign(s);
+}
+
 // Fill + stroke coverage for a shape whose boundary is the zero level set of a
 // region SDF `d`: fill the inside (d < 0), stroke a band of half-width `hw`
 // straddling the boundary. `fwidth(d)` keeps the falloff ~1px under any
@@ -511,6 +616,56 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
                           p.x * in.param1.y + p.y * in.param1.x);
         q.y += in.extra * 0.5;
         float d = sdUnevenCapsule(q, in.param0.x, in.param0.y, in.extra);
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 20u: {  // horseshoe: param0 = (cos, sin) half-gap; param1 = (cap half-len,
+                 // half-thick); extra = mid radius. Flip Y so the opening faces down.
+        float d = sdHorseshoe(float2(p.x, -p.y), in.param0, in.extra, in.param1);
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 21u: {  // parabola arch: param0 = (top half-width wi, height he). Flip Y so
+                 // the curve peaks up; clip the open base with the y >= 0 half-plane.
+        float wi = in.param0.x, he = in.param0.y;
+        float2 u = float2(p.x, he * 0.5 - p.y);
+        float d = max(sdParabolaSegment(u, wi, he), -u.y);
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 22u: {  // rounded X: param0.x = arm reach w; extra = arm half-width r.
+        float d = sdRoundedX(p, in.param0.x, in.extra);
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 23u: {  // blobby cross: param0 = (scale s, blobbiness he). Evaluate the
+                 // unit shape and rescale the distance.
+        float s = in.param0.x, he = in.param0.y;
+        float d = sdBlobbyCross(p / s, he) * s;
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 24u: {  // tunnel / archway: param0 = (half-width wh.x, wall height wh.y).
+                 // Recenter on the quad and flip Y so the rounded top faces up.
+        float2 wh = in.param0;
+        float yc = (wh.x - wh.y) * 0.5;
+        float d = sdTunnel(float2(p.x, yc - p.y), wh);
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 25u: {  // staircase: param0 = (step width, step height); extra = step count.
+                 // Recenter on the quad and flip Y so it ascends upward to the right.
+        float2 wh = in.param0;
+        float n = in.extra;
+        float bx = wh.x * n, by = wh.y * n;
+        float2 u = float2(p.x + bx * 0.5, by * 0.5 - p.y);
+        float d = sdStairs(u, wh, n);
+        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        break;
+    }
+    case 26u: {  // cool S: param0.x = scale. 180°-symmetric, so no Y flip needed.
+        float s = in.param0.x;
+        float d = sdCoolS(p / s) * s;
         regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }

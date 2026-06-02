@@ -10,7 +10,7 @@ import Ollin
 @main
 final class Primitives: Sketch {
     let columns = 5
-    let count = 23
+    let count = 30
 
     override func setup() {
         noStroke()
@@ -91,10 +91,24 @@ final class Primitives: Sketch {
         case 19:
             drawUnevenCapsule(Vector2(-s * 0.7, s * 0.7), Vector2(s * 0.7, -s * 0.7), s * 0.5, s * 0.18)
         case 20:
+            drawHorseshoe(0, 0, s * 0.62, s * 0.42, gap: 1.4)
+        case 21:
+            drawParabola(0, 0, s * 1.7, s * 1.7)
+        case 22:
+            drawRoundedX(0, 0, s * 1.9, s * 0.42)
+        case 23:
+            drawBlobbyCross(0, 0, s)
+        case 24:
+            drawTunnel(0, 0, s * 1.5, s * 1.7)
+        case 25:
+            drawStairs(0, 0, s * 0.45, s * 0.45, steps: 4)
+        case 26:
+            drawCoolS(0, 0, s * 1.9)
+        case 27:
             stroke(color); strokeWeight(s * 0.18)
             drawPolyline([Vector2(-s, -s * 0.5), Vector2(-s * 0.33, s * 0.5),
                           Vector2(s * 0.33, -s * 0.5), Vector2(s, s * 0.5)])
-        case 21:
+        case 28:
             drawPolygon([Vector2(0, -s), Vector2(s * 0.95, -s * 0.1),
                          Vector2(s * 0.58, s), Vector2(-s * 0.58, s),
                          Vector2(-s * 0.95, -s * 0.1)])

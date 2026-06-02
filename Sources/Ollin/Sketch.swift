@@ -295,6 +295,48 @@ open class Sketch {
     public func drawUnevenCapsule(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ ra: Double, _ rb: Double) {
         drawer.drawUnevenCapsule(Vector2(x1, y1), Vector2(x2, y2), ra, rb)
     }
+    public func drawHorseshoe(_ x: Double, _ y: Double, _ radius: Double, _ thickness: Double, gap: Double) {
+        drawer.drawHorseshoe(x, y, radius, thickness, gap: gap)
+    }
+    public func drawHorseshoe(center: Vector2, radius: Double, thickness: Double, gap: Double) {
+        drawer.drawHorseshoe(center.x, center.y, radius, thickness, gap: gap)
+    }
+    public func drawParabola(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
+        drawer.drawParabola(x, y, width, height)
+    }
+    public func drawParabola(center: Vector2, width: Double, height: Double) {
+        drawer.drawParabola(center.x, center.y, width, height)
+    }
+    public func drawRoundedX(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double) {
+        drawer.drawRoundedX(x, y, length, thickness)
+    }
+    public func drawRoundedX(center: Vector2, length: Double, thickness: Double) {
+        drawer.drawRoundedX(center.x, center.y, length, thickness)
+    }
+    public func drawBlobbyCross(_ x: Double, _ y: Double, _ radius: Double, blobbiness: Double = 0.5) {
+        drawer.drawBlobbyCross(x, y, radius, blobbiness: blobbiness)
+    }
+    public func drawBlobbyCross(center: Vector2, radius: Double, blobbiness: Double = 0.5) {
+        drawer.drawBlobbyCross(center.x, center.y, radius, blobbiness: blobbiness)
+    }
+    public func drawTunnel(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
+        drawer.drawTunnel(x, y, width, height)
+    }
+    public func drawTunnel(center: Vector2, width: Double, height: Double) {
+        drawer.drawTunnel(center.x, center.y, width, height)
+    }
+    public func drawStairs(_ x: Double, _ y: Double, _ stepWidth: Double, _ stepHeight: Double, steps: Int) {
+        drawer.drawStairs(x, y, stepWidth, stepHeight, steps: steps)
+    }
+    public func drawStairs(center: Vector2, stepWidth: Double, stepHeight: Double, steps: Int) {
+        drawer.drawStairs(center.x, center.y, stepWidth, stepHeight, steps: steps)
+    }
+    public func drawCoolS(_ x: Double, _ y: Double, _ size: Double) {
+        drawer.drawCoolS(x, y, size)
+    }
+    public func drawCoolS(center: Vector2, size: Double) {
+        drawer.drawCoolS(center.x, center.y, size)
+    }
     public func drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
                         start: Double, stop: Double, mode: ArcMode = .open) {
         drawer.drawArc(x, y, rx, ry, start: start, stop: stop, mode: mode)
