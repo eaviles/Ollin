@@ -295,6 +295,11 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Recreations/OsamuSato/Totem"
         ),
+        .executableTarget(
+            name: "Example-OsamuSato-Alphabet",
+            dependencies: ["Ollin"],
+            path: "Examples/Recreations/OsamuSato/Alphabet"
+        ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety
     // is enforced as errors everywhere — framework, hosts, and example sketches.

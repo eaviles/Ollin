@@ -22,4 +22,10 @@ Learn more:
   swift run Example-OsamuSato-Totem
   ```
 
+- [**Alphabet**](Alphabet/): a type-specimen sheet of A–Z and 0–9 in a square-module font (each glyph a 5×7 grid of `drawRect` squares), after the shape-built alphabets of the book's "Squares" chapter. The squares shimmer on a travelling wave and a red accent sweeps through the glyphs.
+
+  ```sh
+  swift run Example-OsamuSato-Alphabet
+  ```
+
 These are homages after Osamu Sato, made for learning. They aren't reproductions of specific works, and they aren't affiliated with or endorsed by the artist.
