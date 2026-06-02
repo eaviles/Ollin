@@ -16,14 +16,16 @@ import Ollin
 /// ornaments, tapered `unevenCapsule` legs, and a `stairs` pedestal — around the
 /// core `circle`/`ring`/`moon`/`triangle` set.
 ///
-/// Sato's prints are still; Ollin's default is motion, so the totem only
-/// *breathes* — a slow scale pulse — and its eyes and bead-chains shimmer in
-/// place, keeping the icon composed. Everything is mirrored about the vertical
-/// axis, so the left and right halves are drawn once and reflected.
+/// Sato's prints are still; Ollin's default is motion, so the totem comes alive:
+/// it *breathes* (a slow scale pulse), its eyes pulse, and its bead-chain arms
+/// lift and *wave*. Everything is mirrored about the vertical axis — the left and
+/// right halves are drawn once and reflected — so it waves with both arms at once
+/// and stays symmetric. Tune the motion with the `breath` / `gaze` / `wave` knobs.
 @main
 final class Totem: Sketch {
     @Param(0...1) var breath = 0.5     // how much the figure breathes
     @Param(0...1) var gaze = 0.5       // how much the eyes pulse
+    @Param(0...1) var wave = 0.7       // how big the arms' wave is
 
     /// Sato's accent — a warm scarlet against black and white.
     let sato = Color(red: 0.85, green: 0.09, blue: 0.16)
@@ -120,15 +122,35 @@ final class Totem: Sketch {
         }
     }
 
-    /// Arms: a shimmering bead chain curving down-out from each shoulder to a ring
-    /// "hand".
+    /// Arms: each one a bead chain raised from the shoulder that *waves* — the
+    /// forearm sweeps from the elbow on a loop, ending in a ring "hand". Both arms
+    /// move in mirror, so the figure stays symmetric.
     private func arms(_ u: (Double) -> Double) {
         fill(ink)
+        // Forearm angle from straight up, swinging side to side over time.
+        let theta = 0.3 + 0.6 * wave * sin(time * 3.0)
+        let reach = 120.0
         for side in [-1.0, 1.0] {
-            let shoulder = Vector2(side * u(96), u(-30))
-            let hand = Vector2(side * u(250), u(150))
-            beadArc(u, from: shoulder, to: hand, count: 6, r0: 22, r1: 13)
-            eye(u, side * 250, 150, 30)
+            let shoulder = Vector2(side * 96, -30)
+            let elbow = Vector2(side * 232, -40)          // raised out to the side
+            let hand = Vector2(elbow.x + side * reach * sin(theta),
+                               elbow.y - reach * cos(theta))
+            wavingArm(u, shoulder: shoulder, elbow: elbow, hand: hand)
+            eye(u, hand.x, hand.y, 28)
+        }
+    }
+
+    /// Beads along the quadratic curve shoulder → elbow → hand, a ripple traveling
+    /// down the chain and the radius easing from a fat shoulder to a slim wrist.
+    private func wavingArm(_ u: (Double) -> Double, shoulder: Vector2, elbow: Vector2, hand: Vector2) {
+        let count = 7
+        for i in 0...count {
+            let t = Double(i) / Double(count)
+            let mt = 1 - t
+            let p = shoulder * (mt * mt) + elbow * (2 * mt * t) + hand * (t * t)
+            let shimmer = 1 + 0.1 * sin(time * 4 + t * 7)
+            let r = (22 + (12 - 22) * t) * shimmer
+            drawCircle(u(p.x), u(p.y), u(r))
         }
     }
 
@@ -172,15 +194,4 @@ final class Totem: Sketch {
         }
     }
 
-    /// A bead chain along a straight run from `a` to `b`, the radius easing from
-    /// `r0` to `r1` and shimmering along its length.
-    private func beadArc(_ u: (Double) -> Double, from a: Vector2, to b: Vector2, count: Int, r0: Double, r1: Double) {
-        for i in 0...count {
-            let t = Double(i) / Double(count)
-            let p = a + (b - a) * t
-            let shimmer = 1 + 0.12 * sin(time * 3 + t * 6)
-            let r = (r0 + (r1 - r0) * t) * shimmer
-            drawCircle(p.x, p.y, u(r))
-        }
-    }
 }
