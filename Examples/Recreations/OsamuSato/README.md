@@ -6,7 +6,7 @@
 
 **Osamu Sato** (佐藤理, b. 1960) is a Japanese multimedia artist, designer, and musician, known for surreal, dreamlike digital work — the PlayStation cult titles *LSD: Dream Emulator* (1998) and *Eastern Mind: The Lost Souls of Tong Nou* (1994), and his electronic music — built from a vocabulary of simple shapes and ancient-feeling symbols.
 
-His book **_The Art of Computer Designing: A Black and White Approach_** (1993, Graphic-Sha; reissued by Colpa Press) is a guide and compendium that builds designs entirely out of basic vector shapes — straight lines, curves, squares, and circles — in bold black and white with a single red accent. The original edition shipped with a **3.5″ floppy disk** of the work. The recreation here is after the book's **Chapter 4 ("Circles")**, where totemic figures and a "computer deity" are assembled from circles, crescents, and eyes.
+His book **_The Art of Computer Designing: A Black and White Approach_** (1993, Graphic-Sha; reissued by Colpa Press) is a guide and compendium that builds designs entirely out of basic vector shapes, a chapter to each family: straight lines, curves, squares, and circles, all in bold black and white with a single red accent. The original edition shipped with a **3.5″ floppy disk** of the work. The recreations here draw on two of its chapters: the totemic figures of "Circles", and the modular shape-alphabets of "Squares".
 
 Learn more:
 
