@@ -13,6 +13,7 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | [Breathing](Breathing/Sketch.swift) | the same circle, animated via `time` |
 | [EllipseField](EllipseField/Sketch.swift) | rows of `drawEllipse` outlines in two columns, drifting and squashing via `signedNoise` |
 | [FlowField](FlowField/Sketch.swift) | a `curlNoise` flow field: short lines follow the divergence-free curl, drifting with `time` |
+| [Mandala](Mandala/Sketch.swift) | nested, counter-rotating `hollow` shapes — each a framed band in one call — sliding into a moiré (`hollow`, SDF) |
 | [Myriad](Myriad/Sketch.swift) | 8,100 noise-driven circles on the SDF path — thousands of shapes at full speed |
 | [Orbits](Orbits/Sketch.swift) | ten circles orbiting the center at rising speeds |
 | [Polygons](Polygons/Sketch.swift) | regular `drawNgon` (3–8 sides) and a five-point `drawStar` relaxing from spiky to round as its inner radius grows, both turning (SDF) |

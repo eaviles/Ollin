@@ -278,6 +278,11 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Patterns/HollowShapes"
         ),
+        .executableTarget(
+            name: "Example-Mandala",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/Mandala"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
