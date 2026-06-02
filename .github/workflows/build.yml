@@ -54,3 +54,13 @@ jobs:
       # targets. Warnings stay warnings; this fails only on a compile error.
       - name: Build everything
         run: swift build
+
+      # Run the GPU-independent tests (the frame-grab seam's dispatch logic).
+      # The image-snapshot tests are skipped here on purpose: their reference
+      # PNGs are GPU-specific — recorded on a developer's machine — and a CI
+      # runner's GPU may anti-alias differently, so they run locally where the
+      # reference matches the renderer rather than risk a cross-GPU flake.
+      # (They'd also skip on their own via `.enabled(if: hasMetal)` when a
+      # runner has no Metal device; `--skip` removes the doubt either way.)
+      - name: Test (excluding GPU snapshots)
+        run: swift test --skip SnapshotTests

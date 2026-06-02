@@ -154,7 +154,7 @@ swift run Example-HelloCircle --export frame.png
 swift run Example-Orbits --export frame.png --frame 120   # the 120th frame
 ```
 
-It drives the sketch off-screen (`setup()`, then `draw()` advanced to the requested `--frame`) and writes a PNG at the sketch's `canvasSize` (1080×1080 by default), rendered with the same 4× MSAA as the window. In code it's `OllinApp.export(sketch, to:frame:)`.
+It drives the sketch off-screen (`setup()`, then `draw()` advanced to the requested `--frame`) and writes a PNG at the sketch's `canvasSize` (1080×1080 by default), rendered with the same 4× MSAA as the window. In code it's `OllinApp.export(sketch, to:frame:)`, or `OllinApp.image(of: sketch, frame:)` if you'd rather have the `CGImage` in memory than a file on disk. An extension can also grab each frame as it renders, through the `frameRendered` hook on the `extend(...)` seam — see [`Examples/Basic/Capture`](Examples/Basic/Capture/Sketch.swift).
 
 For an animation, `--export-sequence` writes a numbered PNG sequence you can stitch into video:
 

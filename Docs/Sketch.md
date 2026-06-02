@@ -179,6 +179,7 @@ override func setup() {
 | `beforeDraw(_:)` | each frame, before `draw()` | set up per-frame state |
 | `afterDraw(_:)` | each frame, after `draw()`, before the render | draw *over* the sketch through the bare API |
 | `afterFrame(_:_:)` | each frame, after the render, with `FrameInfo` timing | observe (fps, frame time, geometry counts) without drawing |
+| `frameRendered(_:_:)` | each frame, after the render, with the rendered `CGImage` | grab the rendered pixels — save, record, or snapshot |
 
 ```swift
 final class Guides: SketchExtension {
@@ -196,6 +197,8 @@ final class MySketch: Sketch {
 ```
 
 Extensions are per-instance, so register them in `setup()` — a fresh instance (including each live-reload swap) starts with none. A worked example is `Examples/Basic/Guides`.
+
+`frameRendered(_:_:)` hands over the rendered frame as a `CGImage`. Grabbing it costs a GPU→CPU readback, so it's off until an extension opts in by returning `true` from `wantsRenderedFrame` (read every frame, so capture can be armed and disarmed on the fly). `Examples/Basic/Capture` saves a frame to a PNG on a keypress this way. For a one-off without a window, `OllinApp.image(of: sketch, frame:)` renders a sketch headlessly and returns the `CGImage` directly — the same capture `--export` writes to disk, and what the render-correctness snapshot tests compare against committed references.
 
 <a name="configuration"></a>
 

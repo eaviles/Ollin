@@ -488,4 +488,16 @@ open class Sketch {
     func runAfterFrame(_ info: FrameInfo) {
         for e in extensions { e.afterFrame(self, info) }
     }
+
+    /// Whether any registered extension currently wants the rendered frame.
+    /// Computed live (not cached), so an extension can arm/disarm capture
+    /// between frames; the runner reads it each frame and only pays the
+    /// GPU→CPU readback when it's `true`.
+    var wantsRenderedFrames: Bool { extensions.contains { $0.wantsRenderedFrame } }
+
+    /// Fired by the runner after the render, handing the rendered frame to each
+    /// extension that asked for it (via `wantsRenderedFrame`).
+    func runFrameRendered(_ image: CGImage) {
+        for e in extensions where e.wantsRenderedFrame { e.frameRendered(self, image) }
+    }
 }

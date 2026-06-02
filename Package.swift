@@ -114,6 +114,11 @@ let package = Package(
             path: "Examples/Basic/Guides"
         ),
         .executableTarget(
+            name: "Example-Capture",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Capture"
+        ),
+        .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"
@@ -314,6 +319,15 @@ let package = Package(
             name: "Example-OsamuSato-Alphabet",
             dependencies: ["Ollin"],
             path: "Examples/Recreations/OsamuSato/Alphabet"
+        ),
+        // Render-correctness snapshot tests: render small deterministic sketches
+        // off-screen (the `--export` path) and diff them against committed
+        // reference PNGs in `References/`. Regenerate the references with
+        // `OLLIN_RECORD_SNAPSHOTS=1 swift test`. Skips when no Metal device.
+        .testTarget(
+            name: "OllinTests",
+            dependencies: ["Ollin"],
+            resources: [.copy("References")]
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety

@@ -171,6 +171,23 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                                        cpuDrawMS: smoothedCPUMS,
                                        vertexCount: sketch.drawer.vertices.count,
                                        sdfCount: sketch.drawer.sdfInstances.count))
+
+        // Frame-grab: if any extension asked for the rendered pixels, render the
+        // frame off-screen and hand it over. Gated on `wantsRenderedFrames` so a
+        // sketch that doesn't record pays nothing. We re-render off-screen (same
+        // pipeline/MSAA, so the pixels match `image(of:)`/`--export`) rather than
+        // read the on-screen drawable back — the drawable is `framebufferOnly`,
+        // and a re-render keeps this off the live present path. The drawer still
+        // holds this frame's geometry (it clears at the next `beginFrame`); an
+        // async drawable readback is a later optimization.
+        if sketch.wantsRenderedFrames {
+            let w = Int(sketch.width.rounded()), h = Int(sketch.height.rounded())
+            if let image = renderer.image(of: sketch.drawer,
+                                          viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
+                                          width: w, height: h) {
+                sketch.runFrameRendered(image)
+            }
+        }
     }
 
     /// Resolve the sketch's logical canvas, in points. For `.auto`/`.fixed` that's
@@ -499,21 +516,21 @@ public enum OllinApp {
     /// host) size their sketch pane to this.
     public static var defaultWindowSize: CGSize { windowSize(fitting: Sketch.defaultSize) }
 
-    /// Render one frame of `sketch` off-screen and write it as a PNG — no window.
-    /// Drives the sketch headlessly: `setup()`, then `draw()` advanced to `frame`
-    /// at `fps` (so animated/stateful sketches export the right moment). This is
-    /// the frame-grab seam, and the basis for PNG sequences → video.
-    public static func export(_ sketch: Sketch, to path: String, frame: Int = 0, fps: Double = 60) {
-        guard let device = MTLCreateSystemDefaultDevice() else {
-            fatalError("Ollin requires a Metal-capable GPU.")
+    /// Render one frame of `sketch` off-screen and return it as a `CGImage` — no
+    /// window, no display loop. Drives the sketch headlessly: `setup()`, then
+    /// `draw()` advanced to `frame` at `fps` (so an animated or stateful sketch
+    /// renders the right moment). Same pipeline, MSAA, and blending as the live
+    /// view and `--export`, so the pixels match.
+    ///
+    /// This is the headless frame-grab: `export` is this plus a PNG write, and
+    /// snapshot tests compare its result against a committed reference. Returns
+    /// `nil` if there's no Metal device or the render fails (a library-friendly
+    /// soft failure, unlike `export`'s hard exit).
+    public static func image(of sketch: Sketch, frame: Int = 0, fps: Double = 60) -> CGImage? {
+        guard let device = MTLCreateSystemDefaultDevice(),
+              let renderer = try? MetalRenderer(device: device, pixelFormat: .bgra8Unorm, sampleCount: 4) else {
+            return nil
         }
-        let renderer: MetalRenderer
-        do {
-            renderer = try MetalRenderer(device: device, pixelFormat: .bgra8Unorm, sampleCount: 4)
-        } catch {
-            fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
-        }
-
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.setup()
@@ -521,20 +538,27 @@ public enum OllinApp {
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
             sketch.performDraw()
         }
-
         let width = Int(size.width.rounded()), height = Int(size.height.rounded())
-        guard let cgImage = renderer.image(of: sketch.drawer,
-                                           viewport: SIMD2<Float>(Float(size.width), Float(size.height)),
-                                           width: width, height: height) else {
-            fatalError("Ollin: failed to render the frame for export")
-        }
+        return renderer.image(of: sketch.drawer,
+                              viewport: SIMD2<Float>(Float(size.width), Float(size.height)),
+                              width: width, height: height)
+    }
 
+    /// Render one frame of `sketch` off-screen and write it as a PNG — no window.
+    /// Drives the sketch headlessly: `setup()`, then `draw()` advanced to `frame`
+    /// at `fps` (so animated/stateful sketches export the right moment). The
+    /// headless frame-grab (`image(of:)`) plus a PNG write, and the basis for PNG
+    /// sequences → video.
+    public static func export(_ sketch: Sketch, to path: String, frame: Int = 0, fps: Double = 60) {
+        guard let cgImage = image(of: sketch, frame: frame, fps: fps) else {
+            fatalError("Ollin: failed to render the frame for export (no Metal device?)")
+        }
         guard let data = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else {
             fatalError("Ollin: failed to encode PNG")
         }
         do {
             try data.write(to: URL(fileURLWithPath: path))
-            print("Ollin: exported frame \(frame) → \(path) (\(width)×\(height))")
+            print("Ollin: exported frame \(frame) → \(path) (\(cgImage.width)×\(cgImage.height))")
         } catch {
             fatalError("Ollin: failed to write \(path): \(error)")
         }

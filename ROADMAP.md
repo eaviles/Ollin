@@ -24,8 +24,6 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 - **Easing and animation helpers.** A small set of easing curves, and a property wrapper that eases a value toward a target each frame.
 - **`size()` from `setup()`.** Today a custom canvas size means overriding a property. An imperative `size(width, height)` callable from `setup()` would read closer to p5's `createCanvas`, while keeping the declarative form too. The constraint is preserving deterministic headless export.
 - **Bézier and curved contours, and a `beginShape`/`vertex` builder.** Built on the existing vector `Shape`/`Contour` type.
-- **The frame-grab hook.** The `extend(...)` lifecycle seam — register a `SketchExtension` for before/after-draw and after-frame hooks — is in place. What's left is handing an extension the *rendered* frame, which snapshot tests and screen recording both want.
-- **Render-correctness snapshot tests.** Compile-testing proves an example builds; snapshot tests prove it still renders the same. The off-screen render path already exists, so this mostly needs the frame-grab hook above.
 
 ## Core batteries
 
