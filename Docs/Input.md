@@ -13,7 +13,7 @@ Pointer input lives on the sketch as plain properties and an overridable method.
 
 <a name="mouse"></a>
 
-#### mouseX / mouseY
+### mouseX / mouseY
 
 ```swift
 mouseX: Double
@@ -32,7 +32,7 @@ override func draw() {
 
 <a name="mousePressed"></a>
 
-#### mousePressed
+### mousePressed
 
 ```swift
 mousePressed()

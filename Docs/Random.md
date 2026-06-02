@@ -15,6 +15,8 @@
 - [randomSeed](#randomSeed)
 - [seed](#seed)
 
+### Generators
+
 <a name="random"></a>
 
 #### random

@@ -101,7 +101,7 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
 
    It takes a path to any sketch file, so there's no target to register first. Run it from the repo and it live-reloads `Shaders.metal` as well. Each reload starts the sketch fresh by default: `setup()` runs again and the clock resets. Pass `--keep-clock` to keep `time` and `frameCount` running across reloads, so an animation doesn't jump back to the start. There's an `onReload()` hook for work you want to run on each reload. If an edit doesn't compile, the error prints and the running sketch keeps going, so a typo won't close the window.
 
-   For a heavy sketch, build the host in release so the drawing runs at full speed while you tweak — hot-reloads stay fast because only the sketch file recompiles. `Scripts/OllinLive` does this for you (it's `swift run -c release OllinLive`, with `--debug` to opt out):
+   For a heavy sketch, build the host in release so the drawing runs at full speed while you tweak; hot-reloads stay fast because only the sketch file recompiles. `Scripts/OllinLive` does this for you (it's `swift run -c release OllinLive`, with `--debug` to opt out):
 
    ```sh
    Scripts/OllinLive Examples/Motion/ArcField/Sketch.swift
@@ -123,7 +123,7 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Canvas](Docs/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
 - [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawEllipse`, `drawArc`, `drawRect`, `drawLine`, `drawPolyline`, `drawPolygon`), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
 - [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
-- [Geometry](Docs/Geometry.md) - the `Vector2` and `Rectangle` value types.
+- [Geometry](Docs/Geometry.md) - the `Vector2`, `Rectangle`, and `Shape`/`Contour` value types.
 - [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
 - [Noise](Docs/Noise.md) - Perlin `noise`/`signedNoise` and `curlNoise` flow fields.
 - [Math](Docs/Math.md) - `map`, `dist`.
@@ -169,7 +169,7 @@ It advances the clock at a fixed timestep rather than wall-clock, so each frame 
 
 The first pass is deliberately just enough to draw and iterate. Next up:
 
-- **More primitives:** `drawEllipse` has landed; `drawPoint`, `drawTriangle` are next.
+- **More primitives:** a broad catalog of SDF shapes has landed (points, triangles, n-gons, stars, rings, and more); an outline-only stroke mode and Bézier curves are next.
 - **Fills & color:** richer color (hex/HSB), gradients, blend modes. Cosine-gradient `Palette` and perceptual `Colormap`s have landed.
 - **Typography & images:** text, image loading and drawing.
 - **Shaders:** user-supplied fragment/vertex shaders.
@@ -249,4 +249,4 @@ Ollin is **alpha and pre-1.0**, developed in the open. Practically, that means:
 - **No support guarantee.** This is built nights and weekends. Issues and discussions get read, but a response time isn't promised.
 - **macOS 14+ and a Metal-capable GPU are required.** That's the trade described up top, not a gap to be filled later: no Linux or Windows path, by design.
 
-That said, contributions and ideas are genuinely welcome. The [roadmap](#roadmap) above is the best source of bite-size work; the *more primitives* line (`drawPoint`, `drawTriangle`, …) in particular maps onto small, self-contained pull requests. For anything larger, please open an issue to discuss it before sending a big change.
+That said, contributions and ideas are genuinely welcome. The [roadmap](#roadmap) above is the best source of bite-size work; the *more primitives* line in particular maps onto small, self-contained pull requests. For anything larger, please open an issue to discuss it before sending a big change.

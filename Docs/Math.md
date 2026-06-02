@@ -14,7 +14,7 @@ A small, growing set of the familiar creative-coding math functions, callable ba
 
 <a name="map"></a>
 
-#### map
+### map
 
 ```swift
 map(_ value: Double, _ start1: Double, _ stop1: Double, _ start2: Double, _ stop2: Double, clamp: Bool = false) -> Double
@@ -29,7 +29,7 @@ drawCircle(width / 2, height / 2, r)      // a breathing circle
 
 <a name="dist"></a>
 
-#### dist
+### dist
 
 ```swift
 dist(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) -> Double

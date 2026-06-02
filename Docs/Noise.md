@@ -14,6 +14,8 @@ Perlin `noise` is coherent: nearby inputs give nearby outputs, which reads as sm
 - [noiseSeed](#noiseSeed)
 - [seed](#seed)
 
+### Functions
+
 <a name="noise"></a>
 
 #### noise
