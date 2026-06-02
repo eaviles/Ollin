@@ -40,6 +40,22 @@ enum SDFShape: UInt32 {
     case coolS         = 26  // the iconic "S": param0.x = scale
 }
 
+extension SDFShape {
+    /// Whether this shape honors `hollow` mode — a closed region whose interior
+    /// can be turned into a constant-width band (opOnion). Point markers, lines,
+    /// and arcs aren't closed regions; the ring is already a band; so they ignore
+    /// it. (The disk/`ellipse` honors it, becoming an elliptical ring; the
+    /// round-dot point path opts out separately, since it shares the tag.)
+    var honorsHollow: Bool {
+        switch self {
+        case .capsule, .marker, .arcOpen, .arcChord, .arcPie, .ring:
+            return false
+        default:
+            return true
+        }
+    }
+}
+
 /// Which pipeline a run of recorded geometry needs. Primitives are recorded in
 /// call order; a `Batch` starts wherever the kind changes, so SDF shapes and
 /// tessellated triangles still composite front-to-back in the order the sketch
@@ -74,6 +90,7 @@ final class Drawer {
     private var strokeWidth: Double = 1         // default: 1px
     private var pointDiameter: Double = 1       // default: 1px dot (see pointSize / drawPoint)
     private var marker: PointMarker = .circle   // default: round dot (see pointMarker / drawPoint)
+    private var hollowWidth: Double = 0         // 0 = solid fill; > 0 = hollow band (see hollow / solid)
 
     // MARK: Per-frame geometry (reset every frame)
 
@@ -117,6 +134,7 @@ final class Drawer {
         var strokeWidth: Double
         var pointDiameter: Double
         var marker: PointMarker
+        var hollowWidth: Double
     }
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
@@ -138,6 +156,15 @@ final class Drawer {
     func strokeWeight(_ weight: Double) { strokeWidth = max(0, weight) }
     func pointSize(_ size: Double) { pointDiameter = max(0, size) }
     func pointMarker(_ marker: PointMarker) { self.marker = marker }
+
+    /// Draw region shapes as a constant-width band hugging their outline instead
+    /// of a solid interior: the `fill` color paints the band, and an active
+    /// `stroke` borders both of its edges (the way `drawRing` can be stroked).
+    /// `width` is the band thickness, centered on the shape's edge.
+    func hollow(_ width: Double) { hollowWidth = max(0, width) }
+
+    /// Return to solid fills (the default).
+    func solid() { hollowWidth = 0 }
 
     // MARK: Frame lifecycle
 
@@ -179,7 +206,7 @@ final class Drawer {
         stateStack.append(SavedState(transform: transform, transformIsIdentity: transformIsIdentity,
                                      fillColor: fillColor, strokeColor: strokeColor,
                                      strokeWidth: strokeWidth, pointDiameter: pointDiameter,
-                                     marker: marker))
+                                     marker: marker, hollowWidth: hollowWidth))
     }
 
     /// Restore the most recently pushed transform and style. No-op if unbalanced.
@@ -192,6 +219,7 @@ final class Drawer {
         strokeWidth = s.strokeWidth
         pointDiameter = s.pointDiameter
         marker = s.marker
+        hollowWidth = s.hollowWidth
     }
 
     // MARK: Primitives
@@ -237,8 +265,9 @@ final class Drawer {
         switch marker {
         case .circle:
             // The disk path: its own SDF shape, with sub-pixel area conservation.
+            // A point is a point — opt out of hollow mode (it shares `.ellipse`).
             appendSDF(shape: .ellipse, center: Vector2(x, y),
-                      size: SIMD2<Float>(h, h), fill: fill, stroke: nil)
+                      size: SIMD2<Float>(h, h), fill: fill, stroke: nil, applyHollow: false)
             return
         case .square:  kind = 0
         case .diamond: kind = 1
@@ -614,10 +643,14 @@ final class Drawer {
     private func appendSDF(shape: SDFShape, center: Vector2, size: SIMD2<Float>,
                            fill: Color?, stroke: Color?, strokeWidth: Double? = nil,
                            extra: Float = 0,
-                           param0: SIMD2<Float> = .zero, param1: SIMD2<Float> = .zero) {
+                           param0: SIMD2<Float> = .zero, param1: SIMD2<Float> = .zero,
+                           applyHollow: Bool = true) {
         let weight = strokeWidth ?? self.strokeWidth
         let hasStroke = stroke != nil && weight > 0
         guard fill != nil || hasStroke else { return }
+        // Hollow mode applies only to region shapes the fragment can onion; the
+        // round-dot point path shares the `.ellipse` tag, so it opts out here.
+        let band = (applyHollow && shape.honorsHollow) ? Float(hollowWidth) : 0
         ensureBatch(.sdf)
         sdfInstances.append(SDFInstance(
             transform: transform,
@@ -629,6 +662,7 @@ final class Drawer {
             param1: param1,
             strokeWidth: hasStroke ? Float(weight) : 0,
             extra: extra,
+            bandWidth: band,
             shape: shape.rawValue))
     }
 

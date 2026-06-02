@@ -52,7 +52,8 @@ typedef struct {
 // (size/param0/param1/extra) are read.
 //
 // float3x3 is 48 bytes (three 16-byte columns); the rest follows simd alignment
-// for a stride of 128.
+// for a stride of 128. `bandWidth` fits in the 4 bytes of tail padding the
+// 16-byte alignment already reserved, so the stride stays 128.
 typedef struct {
     simd_float3x3 transform;   // local sketch space -> sketch space (the CTM)
     simd_float2 center;        // shape center, local sketch space
@@ -63,6 +64,7 @@ typedef struct {
     simd_float2 param1;        // shape-specific
     float strokeWidth;         // points; 0 means no stroke
     float extra;               // shape-specific scalar
+    float bandWidth;           // hollow-band width (points); 0 means solid fill
     unsigned int shape;        // SDFShape.rawValue (32-bit on Apple platforms)
 } SDFInstance;
 

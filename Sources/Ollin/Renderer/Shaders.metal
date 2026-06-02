@@ -66,6 +66,7 @@ struct SDFOut {
     float2 param1;
     float strokeWidth;
     float extra;
+    float bandWidth;
     uint  shape [[flat]]; // constant per instance; never interpolate an integer tag
 };
 
@@ -80,8 +81,9 @@ vertex SDFOut ollin_sdf_vertex(uint vid [[vertex_id]],
                                 float2(-1, -1), float2(1, 1), float2(-1, 1) };
     // Cover the shape plus half the stroke plus a small margin for the AA falloff.
     // `size` is the shape's axis-aligned half-extent, so this bounds every shape
-    // (the capsule folds its half-width into `size`).
-    float2 extent = inst.size + inst.strokeWidth * 0.5 + 2.0;
+    // (the capsule folds its half-width into `size`). A hollow band straddles the
+    // outline, so its outer rim sits half the band width beyond `size`.
+    float2 extent = inst.size + inst.bandWidth * 0.5 + inst.strokeWidth * 0.5 + 2.0;
     float2 local = corners[vid] * extent;
     float3 sketch = inst.transform * float3(inst.center + local, 1.0);
 
@@ -99,6 +101,7 @@ vertex SDFOut ollin_sdf_vertex(uint vid [[vertex_id]],
     out.param1 = inst.param1;
     out.strokeWidth = inst.strokeWidth;
     out.extra = inst.extra;
+    out.bandWidth = inst.bandWidth;
     out.shape = inst.shape;
     return out;
 }
@@ -423,6 +426,17 @@ static void regionCoverage(float d, float hw, float strokeWidth,
     strokeCov = (strokeWidth > 0.0) ? 1.0 - smoothstep(hw - aa, hw + aa, abs(d)) : 0.0;
 }
 
+// `regionCoverage` with optional hollow mode: when `bandWidth` > 0 the region's
+// interior is turned into a constant-width band hugging its boundary (opOnion,
+// `abs(d) - bandWidth/2`, the same trick the ring uses) before coverage is
+// computed — so the fill paints the band and a stroke borders both of its edges.
+// `bandWidth` == 0 is the ordinary solid fill.
+static void regionFill(float d, float bandWidth, float hw, float strokeWidth,
+                       thread float &fillCov, thread float &strokeCov) {
+    if (bandWidth > 0.0) d = abs(d) - bandWidth * 0.5;
+    regionCoverage(d, hw, strokeWidth, fillCov, strokeCov);
+}
+
 // Disk (ellipse / circle / point) coverage with sub-pixel area conservation.
 // Unlike the inside-biased region ramp, a disk smaller than ~1px keeps a ~1px
 // screen footprint (so it can't fall between sample points and flicker) while
@@ -449,18 +463,18 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
 
     switch (in.shape) {
     case 1u:     // rounded box
-        regionCoverage(sdRoundBox(p, in.size, in.extra), hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(sdRoundBox(p, in.size, in.extra), in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     case 6u:     // isosceles triangle: apex at center, size = (base/2, height)
         // Region coverage (inside-biased), so abutting triangles — the rotated
         // wedges that tile a cell — meet at full coverage and leave no seam.
-        regionCoverage(sdTriangleIsosceles(p, in.size), hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(sdTriangleIsosceles(p, in.size), in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     case 7u: {   // regular polygon / star: size.x = outer radius (= AABB extent)
         // sdStar's native vertex points along +Y, which is *down* in y-down space;
         // mirror Y so a vertex points up. Region coverage like the triangle/box.
         float d = sdStar(float2(p.x, -p.y), in.size.x, in.param0, in.param1, in.extra);
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 8u: {   // point marker: size = (h, h); extra = kind; param0.x = arm half-width
@@ -480,7 +494,7 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
             d = sdCross(q, float2(h * 1.41421356 - t, t), 0.0);   // arm length set so the X still spans 2h
         }
         // Region coverage (fill-only — strokeWidth is 0 on the point path).
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 2u: {   // capsule (a line): solid fill in fillColor, round caps
@@ -538,7 +552,7 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         // (inside-biased) so a tiled diamond grid leaves no seam.
         float r = in.extra;
         float d = sdRhombus(p, max(in.size - r, float2(1e-4))) - r;
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 10u: {  // vesica (pointed lens): param0 = (circle radius, center offset);
@@ -546,13 +560,13 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
                  // the tips). The builder insets so rounding keeps the footprint.
         float2 q = (in.param1.x > 0.5) ? p.yx : p.xy;
         float d = sdVesica(q, in.param0.x, in.param0.y) - in.extra;
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 11u: {  // moon (crescent): param0 = (outer radius, inner radius);
                  // param1.x = offset; extra = corner radius (rounds the cusps).
         float d = sdMoon(p, in.param1.x, in.param0.x, in.param0.y) - in.extra;
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 12u: {  // cross (plus): size.x = arm half-length (AABB); param0.x = arm
@@ -563,25 +577,25 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         float w = in.param0.x;
         float r = in.extra;
         float d = min(sdRoundBox(p, float2(L, w), r), sdRoundBox(p, float2(w, L), r));
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 13u: {  // ring (filled annulus): param0 = (mid radius, half thickness).
                  // The disk SDF turned into a band (opOnion); fill only.
         float d = abs(length(p) - in.param0.x) - in.param0.y;
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 14u: {  // trapezoid: param0 = (top half-width, bottom half-width);
                  // size.y = half-height. Symmetric in y, so no flip needed.
         float d = sdTrapezoid(p, in.param0.x, in.param0.y, in.size.y);
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 15u: {  // parallelogram: param0.x = base half-width; size.y = half-height;
                  // extra = skew. Flip Y so a positive skew leans the top edge +x.
         float d = sdParallelogram(float2(p.x, -p.y), in.param0.x, in.size.y, in.extra);
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 16u: {  // egg: param0 = (bottom radius ra, top radius rb), ra >= rb.
@@ -591,7 +605,7 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         float A = 1.7320508 * (ra - rb) + rb;
         float yc = (A - ra) * 0.5;
         float d = sdEgg(float2(p.x, -p.y + yc), ra, rb);
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 17u: {  // heart: param0.x = unit->local scale. Flip Y (lobes up) and
@@ -599,14 +613,14 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         float s = in.param0.x;
         float2 u = float2(p.x, -p.y) / s + float2(0.0, 0.5538);
         float d = sdHeart(u) * s;
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 18u: {  // cut disk: param0 = (radius, cut height h). Flip Y so the flat
                  // edge faces down (-y) and the dome bulges up; a positive cut
                  // raises the chord toward the dome, keeping a smaller cap.
         float d = sdCutDisk(float2(p.x, -p.y), in.param0.x, in.param0.y);
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 19u: {  // uneven capsule: param0 = (r1, r2); param1 = (cos, sin) of the
@@ -616,13 +630,13 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
                           p.x * in.param1.y + p.y * in.param1.x);
         q.y += in.extra * 0.5;
         float d = sdUnevenCapsule(q, in.param0.x, in.param0.y, in.extra);
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 20u: {  // horseshoe: param0 = (cos, sin) half-gap; param1 = (cap half-len,
                  // half-thick); extra = mid radius. Flip Y so the opening faces down.
         float d = sdHorseshoe(float2(p.x, -p.y), in.param0, in.extra, in.param1);
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 21u: {  // parabola arch: param0 = (top half-width wi, height he). Flip Y so
@@ -630,19 +644,19 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         float wi = in.param0.x, he = in.param0.y;
         float2 u = float2(p.x, he * 0.5 - p.y);
         float d = max(sdParabolaSegment(u, wi, he), -u.y);
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 22u: {  // rounded X: param0.x = arm reach w; extra = arm half-width r.
         float d = sdRoundedX(p, in.param0.x, in.extra);
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 23u: {  // blobby cross: param0 = (scale s, blobbiness he). Evaluate the
                  // unit shape and rescale the distance.
         float s = in.param0.x, he = in.param0.y;
         float d = sdBlobbyCross(p / s, he) * s;
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 24u: {  // tunnel / archway: param0 = (half-width wh.x, wall height wh.y).
@@ -650,7 +664,7 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         float2 wh = in.param0;
         float yc = (wh.x - wh.y) * 0.5;
         float d = sdTunnel(float2(p.x, yc - p.y), wh);
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 25u: {  // staircase: param0 = (step width, step height); extra = step count.
@@ -660,17 +674,23 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         float bx = wh.x * n, by = wh.y * n;
         float2 u = float2(p.x + bx * 0.5, by * 0.5 - p.y);
         float d = sdStairs(u, wh, n);
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     case 26u: {  // cool S: param0.x = scale. 180°-symmetric, so no Y flip needed.
         float s = in.param0.x;
         float d = sdCoolS(p / s) * s;
-        regionCoverage(d, hw, in.strokeWidth, fillCov, strokeCov);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
         break;
     }
     default:     // 0: ellipse / circle / point
-        diskCoverage(p, in.size, hw, in.strokeWidth, fillCov, strokeCov);
+        // Solid disks use area-conserving coverage (smooth sub-pixel dots); a
+        // hollow disk is an elliptical ring, so onion the ellipse SDF instead.
+        if (in.bandWidth > 0.0) {
+            regionFill(sdEllipse(p, in.size), in.bandWidth, hw, in.strokeWidth, fillCov, strokeCov);
+        } else {
+            diskCoverage(p, in.size, hw, in.strokeWidth, fillCov, strokeCov);
+        }
         break;
     }
 

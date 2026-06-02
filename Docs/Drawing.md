@@ -10,7 +10,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 
 ### Contents
 
-- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [pointSize](#pointSize), [pointMarker](#pointMarker)
+- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker)
 - **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawTriangle](#triangle), [drawArc](#arc)
 - **More shapes:** [drawNgon](#ngon), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
@@ -81,6 +81,26 @@ Outline thickness in points.
 stroke(.black)
 strokeWeight(3)
 drawCircle(width / 2, height / 2, 120)
+```
+
+<a name="hollow"></a>
+
+#### hollow / solid
+
+```swift
+hollow(_ width: Double)
+solid()
+```
+
+Draw region shapes (circle, rect, star, triangle, heart, …) as a constant-width band hugging their outline instead of a solid interior — the same shape `drawRing` is to a circle, for every shape. The `fill` color paints the band, and an active `stroke` borders *both* of its edges, so you can frame a hollow shape in a second color (something a stroke alone can't do, since that would be the only band). `width` is the band thickness, centered on the edge. State, like `fill` and `stroke`; `solid()` returns to filled shapes. Points, lines, and `drawRing` (already a band) ignore it.
+
+```swift
+hollow(16)
+fill(.cyan)
+stroke(.black)
+strokeWeight(2)
+drawStar(width / 2, height / 2, 140, 70, points: 5)   // cyan ring-star, black edges
+solid()                                                // back to solid fills
 ```
 
 <a name="pointSize"></a>

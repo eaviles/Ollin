@@ -273,6 +273,11 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Patterns/Primitives"
         ),
+        .executableTarget(
+            name: "Example-HollowShapes",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/HollowShapes"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

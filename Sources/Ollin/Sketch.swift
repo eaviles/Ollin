@@ -185,6 +185,13 @@ open class Sketch {
     public func stroke(_ color: Color) { drawer.stroke(color) }
     public func noStroke() { drawer.noStroke() }
     public func strokeWeight(_ weight: Double) { drawer.strokeWeight(weight) }
+    /// Draw region shapes as a constant-width band along their outline instead of
+    /// a solid interior (the `fill` color paints the band; an active `stroke`
+    /// borders both edges). `width` is the band thickness, centered on the edge.
+    /// Call `solid()` to return to filled shapes. Points, lines, and rings ignore it.
+    public func hollow(_ width: Double) { drawer.hollow(width) }
+    /// Return to solid fills (the default), undoing `hollow(_:)`.
+    public func solid() { drawer.solid() }
     public func pointSize(_ size: Double) { drawer.pointSize(size) }
     public func pointMarker(_ marker: PointMarker) { drawer.pointMarker(marker) }
     public func drawPoint(_ x: Double, _ y: Double) { drawer.drawPoint(x, y) }
