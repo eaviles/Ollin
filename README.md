@@ -15,8 +15,7 @@ Where those three are cross-platform, Ollin isn't, and that's on purpose. Bettin
 - **Platform:** macOS 14+, Swift 6+
 - **Rendering:** Metal (`MTKView`, 4× MSAA), built on Foundation / SwiftUI / Metal / MetalKit / simd. It stays dependency-light (none today), and takes on a third-party package only when one clearly earns its place
 - **License:** MIT
-
-> **Built with AI.** Ollin's code is designed and written by an AI coding assistant (Claude) working under the direction of [@eaviles](https://github.com/eaviles), who guides what belongs in the framework and is accountable for it, while Claude proposes the API and implements it. Ollin is a tool for making art rather than a generative-art model, and it credits its influences without copying their source. See [Built with AI](#built-with-ai) and [Influences & attribution](#influences--attribution).
+- **Built with:** an AI coding assistant (Claude) under [@eaviles](https://github.com/eaviles)'s direction; see [Built with AI](#built-with-ai)
 
 > **Status: alpha, pre-1.0, built in public.** Right now the goal is modest: run `swift run`, see a black circle outline on white, and notice the continuous draw loop already humming underneath. From there it grows. Expect the API to change between commits, and don't count on stability or support guarantees yet. See [Status & contributing](#status--contributing).
 
@@ -180,13 +179,15 @@ The first pass is deliberately just enough to draw and iterate. Next up:
 
 ## Built with AI
 
-Ollin's code is designed and written by an AI coding assistant (Claude), working under the direction of [@eaviles](https://github.com/eaviles). The motion-first idea and the calls about what belongs in the framework come from @eaviles, who steers, approves, or reworks Claude's proposals for the API and the design. So this isn't a case of a human designing it and the AI typing it up. It's closer to Claude proposing and building, with @eaviles guiding and editing along the way.
+Ollin is [@eaviles](https://github.com/eaviles)'s project. The motion-first idea, the decisions about what belongs in the framework, and the responsibility for it are his. The code is written with an AI coding assistant (Claude) that proposes APIs and implements them, which @eaviles reviews, reworks, or rejects. A fair description: Claude does much of the proposing and most of the typing, and @eaviles does the deciding.
 
-@eaviles wants to be up front about this, because the creative-coding community is rightly wary of AI, and that wariness deserves a clear answer:
+It's worth saying plainly, because the creative-coding community has good reasons to be careful about AI. A few specifics about how Ollin uses it:
 
-- **It's a tool for making art, not a generative-art model.** The AI wrote the framework's plumbing, but it doesn't make the work you create with it. No scraped images, training datasets, or generated artwork go into it.
-- **Sources are credited and licenses are respected.** Ollin is inspired by p5.js, OPENRNDR, and openFrameworks. It borrows their feel and vocabulary while writing its own implementation rather than copying their source. Where an example is ported from a specific sketch, that sketch and its author are named in the file. See [Influences & attribution](#influences--attribution).
-- **A human is accountable.** Bugs, design mistakes, and licensing questions are for @eaviles to answer. Scrutiny is welcome, so please [open an issue](https://github.com/eaviles/Ollin/issues).
+- **It's a tool for making art.** The AI helped build the framework's plumbing. It has no hand in the work you make with Ollin, and no scraped images, training data, or generated artwork go into it. Ollin is not a generative-art model.
+- **Influences are credited, licenses respected.** Ollin borrows the feel and vocabulary of p5.js, OPENRNDR, and openFrameworks while writing its own implementation. Ported example sketches name their source, author, and license in the file. See [Influences & attribution](#influences--attribution).
+- **A person is accountable.** Bugs, design mistakes, and licensing questions are @eaviles's to answer. Scrutiny is welcome, so please [open an issue](https://github.com/eaviles/Ollin/issues).
+
+The work people make with it is the real test.
 
 ## Influences & attribution
 
