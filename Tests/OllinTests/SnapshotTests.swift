@@ -24,6 +24,14 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: MixedPipelines(), against: "mixed-pipelines")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func easedValuesMatchReference() throws {
+        // Rendered mid-tween (frame 30), so the per-frame auto-advance has run and
+        // the three curves have pulled the dots to different positions.
+        let diff = try Snapshot.meanDifference(of: EasedDots(), against: "eased-dots", frame: 30)
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -58,5 +66,30 @@ private final class MixedPipelines: Sketch {
         drawPolygon([Vector2(40, 40), Vector2(220, 70), Vector2(120, 220)])
         fill(Color(red: 1.0, green: 0.85, blue: 0.2))
         drawStar(width * 0.5, height * 0.46, width * 0.22, width * 0.1, points: 5)
+    }
+}
+
+/// Three `@Eased` values easing toward the same target (set in `setup`) on
+/// different curves, so mid-tween the dots sit at different positions. Exercises
+/// the sketch's per-frame auto-advance and that each curve shapes motion its own
+/// way. Large flat white field, so edge pixels stay a small fraction.
+private final class EasedDots: Sketch {
+    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+
+    @Eased(duration: 1, curve: .linear)  var a = 0.0
+    @Eased(duration: 1, curve: .easeIn)  var b = 0.0
+    @Eased(duration: 1, curve: .easeOut) var c = 0.0
+
+    override func setup() { a = 1; b = 1; c = 1 }
+
+    override func draw() {
+        background(.white)
+        noStroke()
+        fill(.black)
+        let left = width * 0.18, right = width * 0.82
+        for (i, t) in [a, b, c].enumerated() {
+            let y = height * (0.3 + Double(i) * 0.2)
+            drawCircle(left + (right - left) * t, y, width * 0.06)
+        }
     }
 }

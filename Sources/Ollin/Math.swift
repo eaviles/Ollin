@@ -23,6 +23,19 @@ public func map(_ value: Double,
     return Swift.min(Swift.max(mapped, lo), hi)
 }
 
+/// Linear interpolation: the point `t` of the way from `a` to `b`.
+///
+/// ```swift
+/// let x = lerp(left, right, 0.5)        // midpoint
+/// let y = lerp(top, bottom, Easing.easeInOut(progress))   // eased
+/// ```
+///
+/// `t` is not clamped — `t` outside `0...1` extrapolates past the ends. Reshape
+/// it with an ``Easing`` curve for non-linear motion.
+public func lerp(_ a: Double, _ b: Double, _ t: Double) -> Double {
+    a + (b - a) * t
+}
+
 public extension Double {
     /// The circle constant τ = 2π — one full turn in radians.
     static let tau = Double.pi * 2

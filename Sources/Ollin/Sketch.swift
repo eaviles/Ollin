@@ -193,6 +193,10 @@ open class Sketch {
     private var extensions: [SketchExtension] = []
     private var extensionsDidSetup = false
 
+    /// The `@Eased` properties on this sketch, discovered once via reflection
+    /// (the stored set is fixed at compile time) and advanced each frame.
+    private var easedValues: [Eased]?
+
     /// Backing generator for `random()` / `randomSeed(_:)` (see Random.swift).
     /// Entropy-seeded by default, so unseeded sketches vary per run.
     var rng = SplitMix64(seed: .random(in: .min ... .max))
@@ -470,6 +474,23 @@ open class Sketch {
         self.time = time
         self.deltaTime = deltaTime
         self.frameRate = frameRate
+        for eased in collectEasedValues() { eased.advance(by: deltaTime) }
+    }
+
+    /// The `@Eased` properties on this sketch, collected once (the stored set is
+    /// fixed) by walking the mirror up the class hierarchy, then cached.
+    private func collectEasedValues() -> [Eased] {
+        if let cached = easedValues { return cached }
+        var found: [Eased] = []
+        var mirror: Mirror? = Mirror(reflecting: self)
+        while let current = mirror {
+            for child in current.children {
+                if let eased = child.value as? Eased { found.append(eased) }
+            }
+            mirror = current.superclassMirror
+        }
+        easedValues = found
+        return found
     }
 
     func performDraw() {

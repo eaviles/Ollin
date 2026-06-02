@@ -129,6 +129,11 @@ let package = Package(
             path: "Examples/Motion/SineSweep"
         ),
         .executableTarget(
+            name: "Example-Easing",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/Easing"
+        ),
+        .executableTarget(
             name: "Example-Orbits",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Orbits"
