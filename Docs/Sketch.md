@@ -40,7 +40,11 @@ Override these on your subclass.
 
 <a name="setup"></a>
 
-#### `setup()`
+#### setup
+
+```swift
+setup()
+```
 
 Called once, after the canvas size is known, before the first `draw()`. Optional.
 
@@ -52,7 +56,11 @@ override func setup() {
 
 <a name="draw"></a>
 
-#### `draw()`
+#### draw
+
+```swift
+draw()
+```
 
 Called every frame. Do your drawing here.
 
@@ -65,7 +73,11 @@ override func draw() {
 
 <a name="mousePressed"></a>
 
-#### `mousePressed()`
+#### mousePressed
+
+```swift
+mousePressed()
+```
 
 Called once each time a mouse button is pressed over the canvas. See [Input](./Input.md).
 
@@ -77,7 +89,11 @@ override func mousePressed() {
 
 <a name="onReload"></a>
 
-#### `onReload()`
+#### onReload
+
+```swift
+onReload()
+```
 
 Called once after the live-reload host hot-swaps the sketch, right after its `setup()` (never on first launch). See the [iteration workflow](../README.md#iteration-workflow).
 
@@ -119,7 +135,12 @@ To keep a sketch looking the same at every canvas size, write it relative to the
 
 <a name="noLoop"></a>
 
-#### `noLoop()` / `loop()`
+#### noLoop / loop
+
+```swift
+noLoop()
+loop()
+```
 
 Stop or resume the continuous draw loop; `isLooping` reads the current state. Motion is on by default, so `noLoop()` is the still-image escape hatch.
 
@@ -167,7 +188,11 @@ Override on your subclass to customize the window and size.
 
 <a name="title"></a>
 
-#### `title: String`
+#### title
+
+```swift
+title: String
+```
 
 Window title. Defaults to `"Ollin - <SketchType>"` (e.g. "Ollin - HelloCircle").
 
@@ -178,7 +203,12 @@ override var title: String { "Flow field" }
 <a name="canvasSize"></a>
 <a name="windowMode"></a>
 
-#### `canvasSize: CGSize` / `windowMode: WindowMode`
+#### canvasSize / windowMode
+
+```swift
+canvasSize: CGSize
+windowMode: WindowMode
+```
 
 The render/export resolution and how the preview window behaves. Both are documented, with the presets and modes, on the [Canvas](./Canvas.md) page.
 

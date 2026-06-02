@@ -42,7 +42,11 @@ A bare `drawCircle(400, 400, 150)` ties the sketch to one canvas size, and the s
 
 <a name="scale"></a>
 
-#### `scale: Double`
+#### scale
+
+```swift
+scale: Double
+```
 
 A read-only factor that grows and shrinks with the canvas; multiply sizes by it so a sketch holds its proportions at any size. (Distinct from the `scale(_:)` transform in [Drawing](./Drawing.md), which scales the coordinate system.)
 

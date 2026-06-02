@@ -16,7 +16,11 @@ Perlin `noise` is coherent: nearby inputs give nearby outputs, which reads as sm
 
 <a name="noise"></a>
 
-#### `noise(_ x: Double[, _ y: Double[, _ z: Double]]) -> Double`
+#### noise
+
+```swift
+noise(_ x: Double[, _ y: Double[, _ z: Double]]) -> Double
+```
 
 1D/2D/3D Perlin noise in `0...1`, contrast-calibrated to fill the range.
 
@@ -27,7 +31,11 @@ drawCircle(x, y, n * 20)
 
 <a name="signedNoise"></a>
 
-#### `signedNoise(_ x: Double[, _ y: Double[, _ z: Double]]) -> Double`
+#### signedNoise
+
+```swift
+signedNoise(_ x: Double[, _ y: Double[, _ z: Double]]) -> Double
+```
 
 The same field in `-1...1` (the `ofSignedNoise` / OPENRNDR convention), handy for offsets that swing both ways.
 
@@ -38,8 +46,12 @@ drawCircle(width / 2 + dx, height / 2, 30)
 
 <a name="curlNoise"></a>
 
-#### `curlNoise(_ x: Double, _ y: Double) -> Vector2`
-#### `curlNoise(_ p: Vector2) -> Vector2`
+#### curlNoise
+
+```swift
+curlNoise(_ x: Double, _ y: Double) -> Vector2
+curlNoise(_ p: Vector2) -> Vector2
+```
 
 A divergence-free 2D flow vector (the curl of the Perlin field), the usual basis for flow fields. Take `.normalized` for just the direction; sample on scaled-down coordinates (e.g. `x * 0.003`) for broad swirls. See the `FlowField` example.
 
@@ -56,7 +68,11 @@ for _ in 0..<100 {                         // trace a streamline through the fie
 
 <a name="noiseSeed"></a>
 
-#### `noiseSeed(_ seed: Int)`
+#### noiseSeed
+
+```swift
+noiseSeed(_ seed: Int)
+```
 
 Seed the Perlin field behind `noise` / `signedNoise` / `curlNoise`. To reseed `random` as well, see [`seed`](#seed).
 
@@ -66,7 +82,11 @@ noiseSeed(7)
 
 <a name="seed"></a>
 
-#### `seed(_ seed: Int)`
+#### seed
+
+```swift
+seed(_ seed: Int)
+```
 
 Seed *both* `noise` and `random` from one value, locking the whole sketch's randomness so it reproduces exactly. Use `noiseSeed` or [`randomSeed`](./Random.md#randomSeed) to reseed only one.
 
