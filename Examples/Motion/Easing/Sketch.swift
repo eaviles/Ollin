@@ -5,11 +5,12 @@ import Ollin
 /// motion with no update step to call. Here four dots race the same flip on
 /// their own curve, so the shapes pull apart as they travel.
 ///
-/// The target flips every 1.5s between the two ends. Assigning the value it's
-/// already heading for is a no-op, so setting the target every frame is fine —
-/// only the flip restarts a tween. The curves diverge in flight: `.linear` holds
-/// one speed, `.easeIn` lags then rushes, `.easeOut` leaps then settles,
-/// `.easeInOut` eases at both ends.
+/// The target flips between the two ends every 1.2s — matched to the tween
+/// duration, so the dots reach one end and immediately ease back, bouncing
+/// continuously. Assigning the value it's already heading for is a no-op, so
+/// setting the target every frame is fine — only the flip restarts a tween. The
+/// curves diverge in flight: `.linear` holds one speed, `.easeIn` lags then
+/// rushes, `.easeOut` leaps then settles, `.easeInOut` eases at both ends.
 @main
 final class EasingCurves: Sketch {
     @Eased(duration: 1.2, curve: .linear)    var linearX = 0.0
@@ -20,8 +21,9 @@ final class EasingCurves: Sketch {
     override func draw() {
         background(.white)
 
-        // Flip the shared target between the track ends every 1.5 seconds.
-        let goal = Int(time / 1.5) % 2 == 0 ? 0.85 : 0.15
+        // Flip the shared target between the track ends every 1.2s — the same as
+        // the tween duration, so the dots bounce back the moment they arrive.
+        let goal = Int(time / 1.2) % 2 == 0 ? 0.85 : 0.15
         linearX = goal; easeInX = goal; easeOutX = goal; easeInOutX = goal
 
         let left = width * 0.14, right = width * 0.86
