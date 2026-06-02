@@ -12,6 +12,7 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | [ArcModes](ArcModes/Sketch.swift) | the three `drawArc` closing modes — open, chord, pie — side by side under an animated sweep |
 | [Breathing](Breathing/Sketch.swift) | the same circle, animated via `time` |
 | [Easing](Easing/Sketch.swift) | four dots race one target flip on different `@Eased` curves — linear, ease-in, ease-out, ease-in-out — pulling apart in flight |
+| [EasingGallery](EasingGallery/Sketch.swift) | all thirty named `Easing` curves plotted in a grid, each with a dot riding its shape — the back, elastic, and bounce rows overshoot their cells |
 | [EllipseField](EllipseField/Sketch.swift) | rows of `drawEllipse` outlines in two columns, drifting and squashing via `signedNoise` |
 | [FlowField](FlowField/Sketch.swift) | a `curlNoise` flow field: short lines follow the divergence-free curl, drifting with `time` |
 | [Mandala](Mandala/Sketch.swift) | nested, counter-rotating `hollow` shapes — each a framed band in one call — sliding into a moiré (`hollow`, SDF) |

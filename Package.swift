@@ -134,6 +134,11 @@ let package = Package(
             path: "Examples/Motion/Easing"
         ),
         .executableTarget(
+            name: "Example-EasingGallery",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/EasingGallery"
+        ),
+        .executableTarget(
             name: "Example-Orbits",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Orbits"

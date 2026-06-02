@@ -228,6 +228,7 @@ A few helpers lean on well-known public techniques, reimplemented in Ollin and c
 - The signed-distance fields behind circles, ellipses, rectangles, lines, circular arcs, triangles, regular polygons and stars, rhombuses, vesicas, moons, crosses, rings, trapezoids, parallelograms, eggs, hearts, cut disks, uneven capsules, and point markers (box, capsule, pie, arc, isosceles triangle, star, rhombus, vesica, moon, cross, trapezoid, parallelogram, egg, heart, cut disk, uneven capsule, and the onion operator for rings) come from [Inigo Quilez's 2D distance functions](https://iquilezles.org/articles/distfunctions2d/).
 - `curlNoise` follows the curl-noise method for divergence-free flow (Robert Bridson and colleagues, "Curl-Noise for Procedural Fluid Flow", 2007).
 - `randomGaussian` uses the Marsaglia polar method for normal-distributed samples.
+- The named `Easing` curves are Robert Penner's easing equations, written from the formulas catalogued at [easings.net](https://easings.net) (Andrey Sitnik and Ivan Solovev).
 - The `Colormap` ramps carry the canonical public colormap data: `viridis`/`magma`/`inferno`/`plasma`/`cividis` from [matplotlib](https://matplotlib.org) (CC0), `turbo` from Google (Apache-2.0), and `rocket`/`mako` from [seaborn](https://seaborn.pydata.org) (BSD-3).
 
 ### Directions ahead
