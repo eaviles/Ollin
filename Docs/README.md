@@ -26,7 +26,8 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 
 ### Helpers
 
-- [`Math`](./Math.md) - `map` and `dist`
+- [`Math`](./Math.md) - `map`, `dist`, and `lerp`
+- [`Animation`](./Animation.md) - the `Easing` curves and `@Eased`, for motion that eases instead of snapping
 - [`Input`](./Input.md) - mouse and keyboard
 
 Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR.

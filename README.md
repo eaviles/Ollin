@@ -125,7 +125,8 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Geometry](Docs/Geometry.md) - the `Vector2`, `Rectangle`, and `Shape`/`Contour` value types.
 - [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
 - [Noise](Docs/Noise.md) - Perlin `noise`/`signedNoise` and `curlNoise` flow fields.
-- [Math](Docs/Math.md) - `map`, `dist`.
+- [Math](Docs/Math.md) - `map`, `dist`, `lerp`.
+- [Animation](Docs/Animation.md) - the `Easing` curves and the `@Eased` value that tweens toward a target.
 - [Input](Docs/Input.md) - mouse and keyboard.
 
 New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.

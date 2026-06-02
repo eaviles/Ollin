@@ -10,6 +10,7 @@ A small, growing set of the familiar creative-coding math functions, callable ba
 
 - [map](#map)
 - [dist](#dist)
+- [lerp](#lerp)
 - [Constants](#constants)
 
 <a name="map"></a>
@@ -41,6 +42,20 @@ The Euclidean distance between two points.
 let d = dist(mouseX, mouseY, width / 2, height / 2)
 let r = map(d, 0, 400, 80, 10, clamp: true) // large at the center, small toward the edges
 drawCircle(width / 2, height / 2, r)
+```
+
+<a name="lerp"></a>
+
+### lerp
+
+```swift
+lerp(_ a: Double, _ b: Double, _ t: Double) -> Double
+```
+
+The point `t` of the way from `a` to `b`. `t` is not clamped, so values outside `0...1` extrapolate past the ends. Reshape `t` with an [`Easing`](./Animation.md) curve for non-linear motion.
+
+```swift
+let x = lerp(120, width - 120, Easing.easeInOut(progress))
 ```
 
 <a name="constants"></a>
