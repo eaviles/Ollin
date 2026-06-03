@@ -15,6 +15,7 @@ Grids and rule-based repetition.
 | [Markers](Markers/Sketch.swift) | the five `drawPoint` markers, one per row, swept across sizes (`pointMarker`, SDF) |
 | [Primitives](Primitives/Sketch.swift) | every `draw*` primitive, one per cell, turning slowly — a reference sheet for the whole drawing vocabulary |
 | [ShapeMenagerie](ShapeMenagerie/Sketch.swift) | rhombus, vesica, moon, cross, and ring, one per row, with corner radius breathing (`drawRhombus`/`drawVesica`/`drawMoon`/`drawCross`/`drawRing`, SDF) |
+| [StrokeAlignment](StrokeAlignment/Sketch.swift) | the same shapes stroked inside, centered, and outside their outline, weight pulsing (`strokeAlign`, SDF) |
 | [WarpGrid](WarpGrid/Sketch.swift) | a checkerboard of rects warped under the mouse (`drawRect`) |
 
 Run one with `swift run Example-<Name>`, e.g. `swift run Example-DotGrid`.

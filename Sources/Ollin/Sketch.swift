@@ -241,6 +241,12 @@ open class Sketch {
     public func hollow(_ width: Double) { drawer.hollow(width) }
     /// Return to solid fills (the default), undoing `hollow(_:)`.
     public func solid() { drawer.solid() }
+    /// Set where a shape's stroke sits on its outline: `.center` (default, half
+    /// inside / half outside), `.inside`, or `.outside`. Inside keeps the shape's
+    /// footprint fixed; outside grows it by the stroke weight. Applies to the
+    /// analytic SDF shapes; lines, point markers, and the tessellated paths
+    /// (`drawPolyline`/`drawPolygon`/`drawShape`) stay centered. See `StrokeAlign`.
+    public func strokeAlign(_ align: StrokeAlign) { drawer.strokeAlign(align) }
     public func pointSize(_ size: Double) { drawer.pointSize(size) }
     public func pointMarker(_ marker: PointMarker) { drawer.pointMarker(marker) }
     public func drawPoint(_ x: Double, _ y: Double) { drawer.drawPoint(x, y) }

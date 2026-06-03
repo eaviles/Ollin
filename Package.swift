@@ -304,6 +304,11 @@ let package = Package(
             path: "Examples/Patterns/HollowShapes"
         ),
         .executableTarget(
+            name: "Example-StrokeAlignment",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/StrokeAlignment"
+        ),
+        .executableTarget(
             name: "Example-Mandala",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Mandala"

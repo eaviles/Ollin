@@ -32,6 +32,12 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: EasedDots(), against: "eased-dots", frame: 30)
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func strokeAlignmentMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: StrokeAligned(), against: "stroke-aligned")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -90,6 +96,27 @@ private final class EasedDots: Sketch {
         for (i, t) in [a, b, c].enumerated() {
             let y = height * (0.3 + Double(i) * 0.2)
             drawCircle(left + (right - left) * t, y, width * 0.06)
+        }
+    }
+}
+
+/// A disk and a region shape (rect) stroked under each `StrokeAlign` — one row
+/// per alignment — so the test pins the stroke-band bias on both coverage ramps
+/// (`diskCoverage` and `regionCoverage`). Static, so it's deterministic at frame 0.
+private final class StrokeAligned: Sketch {
+    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+
+    override func draw() {
+        background(.white)
+        fill(Color(white: 0.6))
+        stroke(.black)
+        strokeWeight(12)
+        let aligns: [StrokeAlign] = [.inside, .center, .outside]
+        for (i, align) in aligns.enumerated() {
+            strokeAlign(align)
+            let y = height * (0.22 + Double(i) * 0.28)
+            drawCircle(width * 0.3, y, width * 0.09)
+            drawRect(center: Vector2(width * 0.7, y), width: width * 0.18, height: width * 0.18)
         }
     }
 }

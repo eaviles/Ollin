@@ -91,6 +91,7 @@ final class Drawer {
     private var pointDiameter: Double = 1       // default: 1px dot (see pointSize / drawPoint)
     private var marker: PointMarker = .circle   // default: round dot (see pointMarker / drawPoint)
     private var hollowWidth: Double = 0         // 0 = solid fill; > 0 = hollow band (see hollow / solid)
+    private var strokeAlignment: StrokeAlign = .center   // where the stroke sits on the outline (see strokeAlign)
 
     // MARK: Per-frame geometry (reset every frame)
 
@@ -135,6 +136,7 @@ final class Drawer {
         var pointDiameter: Double
         var marker: PointMarker
         var hollowWidth: Double
+        var strokeAlignment: StrokeAlign
     }
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
@@ -165,6 +167,11 @@ final class Drawer {
 
     /// Return to solid fills (the default).
     func solid() { hollowWidth = 0 }
+
+    /// Set where a shape's stroke sits relative to its outline (see `StrokeAlign`):
+    /// `.center` (default), `.inside`, or `.outside`. Affects the analytic SDF
+    /// shapes; lines, point markers, and the tessellated paths stay centered.
+    func strokeAlign(_ align: StrokeAlign) { strokeAlignment = align }
 
     // MARK: Frame lifecycle
 
@@ -206,7 +213,8 @@ final class Drawer {
         stateStack.append(SavedState(transform: transform, transformIsIdentity: transformIsIdentity,
                                      fillColor: fillColor, strokeColor: strokeColor,
                                      strokeWidth: strokeWidth, pointDiameter: pointDiameter,
-                                     marker: marker, hollowWidth: hollowWidth))
+                                     marker: marker, hollowWidth: hollowWidth,
+                                     strokeAlignment: strokeAlignment))
     }
 
     /// Restore the most recently pushed transform and style. No-op if unbalanced.
@@ -220,6 +228,7 @@ final class Drawer {
         pointDiameter = s.pointDiameter
         marker = s.marker
         hollowWidth = s.hollowWidth
+        strokeAlignment = s.strokeAlignment
     }
 
     // MARK: Primitives
@@ -663,7 +672,9 @@ final class Drawer {
             strokeWidth: hasStroke ? Float(weight) : 0,
             extra: extra,
             bandWidth: band,
-            shape: shape.rawValue))
+            // Stroke alignment rides in the shape tag's high bits (the tag itself
+            // is < 256), so it costs no room in the instance.
+            shape: shape.rawValue | (strokeAlignment.shaderCode << 8)))
     }
 
     /// An elliptical arc centered at `(x, y)` with radii `rx`/`ry`, sweeping from

@@ -10,7 +10,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 
 ### Contents
 
-- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker)
+- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker)
 - **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawTriangle](#triangle), [drawArc](#arc)
 - **More shapes:** [drawNgon](#ngon), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
@@ -82,6 +82,24 @@ stroke(.black)
 strokeWeight(3)
 drawCircle(width / 2, height / 2, 120)
 ```
+
+<a name="strokeAlign"></a>
+
+#### strokeAlign
+
+```swift
+strokeAlign(_ align: StrokeAlign)   // .center (default), .inside, .outside
+```
+
+Where the stroke sits relative to a shape's outline. `.center` straddles the edge — half the weight inside, half outside — which is the default and what p5 / Processing do. `.inside` keeps the whole stroke within the shape, so its footprint doesn't change as the weight grows (handy for tiled grids, where an outward border would overlap its neighbors); `.outside` puts the stroke entirely beyond the edge. State, like `strokeWeight`; it holds until changed.
+
+```swift
+fill(.gray); stroke(.black); strokeWeight(20)
+strokeAlign(.inside)
+drawCircle(width / 2, height / 2, 120)   // outline grows inward; radius-120 footprint kept
+```
+
+It applies to the analytic shapes — circles, ellipses, rectangles, the polygon/star family, and the rest of the SDF catalog — where the inset/outset is a geometrically exact offset of the outline. Shapes with no inside/outside keep a centered stroke: lines, point markers, the open `drawArc`, and the tessellated `drawPolyline` / `drawPolygon` / `drawShape`. With `hollow`, the band already has two edges to stroke, so alignment doesn't apply there.
 
 <a name="hollow"></a>
 
