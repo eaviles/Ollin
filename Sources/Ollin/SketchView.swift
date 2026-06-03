@@ -818,11 +818,22 @@ struct OllinSketchApp: App {
 }
 
 /// Bring the bundleless `swift run` window to the front, and quit when it
-/// closes so the terminal command returns.
+/// closes so the terminal command returns. A standalone example is a single
+/// window run from the terminal, so a stray Cmd+W (Close) should end the run
+/// like Cmd+Q — the full `OllinLive` host and examples gallery are actual apps
+/// and keep the normal close-doesn't-quit behavior.
 private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+        // SwiftUI's single `Window` scene doesn't reliably honor
+        // `applicationShouldTerminateAfterLastWindowClosed`, so quit explicitly
+        // when the sketch window closes — Cmd+W then ends the run like Cmd+Q.
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated { NSApp.terminate(nil) }
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
