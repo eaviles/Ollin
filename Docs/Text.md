@@ -114,7 +114,25 @@ textFont(blocks)
 drawText("AI", width / 2, height / 2)
 ```
 
-A Playdate `.fnt` loader (the other common pixel-font format) is planned next; see the [roadmap](../ROADMAP.md#core-batteries).
+#### Loading a Playdate `.fnt`
+
+Ollin also reads the **Playdate `.fnt`** format — a line-oriented metrics file (per-glyph widths, `tracking`, and kerning pairs) paired with a 1-bit glyph strike, either embedded in the file as base64 or sitting beside it as a `<name>-table-<width>-<height>.png`. It's a common pixel-font format, with a large pool of free community fonts to draw from. Kerning pairs in the file are applied automatically during layout.
+
+```swift
+let url = Bundle.module.url(forResource: "MyFont", withExtension: "fnt")!
+if let font = BitmapFont(fntContentsOf: url) {
+    textFont(font)
+}
+```
+
+`BitmapFont(fntContentsOf:)` handles both forms — it finds the sibling `-table` PNG when the strike is external. If you already have the text (say, fetched over the network), `BitmapFont(fnt:)` parses the self-contained embedded form directly:
+
+```swift
+let text = try String(contentsOf: someURL, encoding: .utf8)
+if let font = BitmapFont(fnt: text) { textFont(font) }
+```
+
+Ollin bundles only the *loader*, not a library of `.fnt` fonts — drop your own beside your sketch (the `PlaydateFont` example does exactly this). Free, redistributable pixel fonts are easy to find; the public-domain set at [playdate-arcade-fonts](https://github.com/idleberg/playdate-arcade-fonts) is one source.
 
 ---
 

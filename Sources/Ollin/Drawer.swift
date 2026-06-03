@@ -919,7 +919,9 @@ final class Drawer {
             case .right:  penX = x - lineWidth
             }
 
+            var previous: Character? = nil
             for ch in line {
+                if let prev = previous { penX += Double(font.kerning(between: prev, ch)) * module }
                 if let glyph = font.glyph(for: ch) {
                     let cellLeft = penX + Double(glyph.xOffset) * module
                     let cellTop = lineTop + Double(glyph.yOffset) * module
@@ -935,6 +937,7 @@ final class Drawer {
                     }
                 }
                 penX += Double(font.advance(for: ch)) * module
+                previous = ch
             }
         }
     }

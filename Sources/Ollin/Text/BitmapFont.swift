@@ -62,6 +62,18 @@ public extension BitmapGlyph {
     }
 }
 
+/// An ordered pair of characters, the key for a font's kerning table — the extra
+/// pen offset (usually negative) applied between `left` and `right` when they sit
+/// side by side.
+public struct GlyphPair: Hashable, Sendable {
+    public let left: Character
+    public let right: Character
+    public init(_ left: Character, _ right: Character) {
+        self.left = left
+        self.right = right
+    }
+}
+
 /// A bitmap (pixel-grid) font: a table of `BitmapGlyph`s plus the metrics needed
 /// to lay them out. Drawn by `drawText`, which stamps one square per lit pixel on
 /// the instanced-SDF path — no rasterization, no new pipeline.
@@ -91,14 +103,20 @@ public struct BitmapFont: Equatable, Sendable {
     public let lineHeight: Int
     /// Pen advance for a space, in font pixels (used when `" "` has no glyph).
     public let spaceAdvance: Int
+    /// Per-pair pen adjustments, in font pixels — the extra offset applied between
+    /// two adjacent glyphs (usually negative, tucking them closer). Empty for fonts
+    /// without kerning; loaders that carry it (the Playdate `.fnt` loader) fill it.
+    public let kerning: [GlyphPair: Int]
 
     public init(glyphs: [Character: BitmapGlyph], pixelHeight: Int,
-                baseline: Int? = nil, lineHeight: Int? = nil, spaceAdvance: Int? = nil) {
+                baseline: Int? = nil, lineHeight: Int? = nil, spaceAdvance: Int? = nil,
+                kerning: [GlyphPair: Int] = [:]) {
         self.glyphs = glyphs
         self.pixelHeight = pixelHeight
         self.baseline = baseline ?? pixelHeight
         self.lineHeight = lineHeight ?? (pixelHeight + 1)
         self.spaceAdvance = spaceAdvance ?? ((glyphs.values.first?.width ?? pixelHeight) + 1)
+        self.kerning = kerning
     }
 
     /// The glyph for `character`, if the font has one.
@@ -112,6 +130,12 @@ public struct BitmapFont: Equatable, Sendable {
         return 0
     }
 
+    /// The kerning adjustment between `left` and `right`, in font pixels — 0 unless
+    /// the font has a pair for them.
+    public func kerning(between left: Character, _ right: Character) -> Int {
+        kerning[GlyphPair(left, right)] ?? 0
+    }
+
     /// The width of `string`'s widest line, in font pixels — the inked extent (the
     /// rightmost lit column across the line). Backs alignment and `textWidth`.
     public func inkWidth(of string: String) -> Int {
@@ -119,9 +143,12 @@ public struct BitmapFont: Equatable, Sendable {
         for line in string.split(separator: "\n", omittingEmptySubsequences: false) {
             var penX = 0
             var right = 0
+            var previous: Character? = nil
             for ch in line {
+                if let prev = previous { penX += kerning(between: prev, ch) }
                 if let g = glyphs[ch] { right = Swift.max(right, penX + g.xOffset + g.width) }
                 penX += advance(for: ch)
+                previous = ch
             }
             maxWidth = Swift.max(maxWidth, right)
         }

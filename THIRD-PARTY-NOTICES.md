@@ -54,3 +54,15 @@ redistributed inside this repository.
 > this software and associated documentation files (the "Software"), to deal in the
 > Software without restriction… (see `Cozette-LICENSE.txt` for the full text,
 > including the warranty disclaimer).
+
+---
+
+## Marble Madness (example font)
+
+- **Used for:** the `PlaydateFont` example sketch only — a sample Playdate `.fnt` font, loaded at runtime to demonstrate the loader. Not part of the Ollin framework; Ollin bundles no `.fnt` fonts itself.
+- **Location in this repo:** [`Examples/Text/PlaydateFont/MarbleMadness.fnt`](Examples/Text/PlaydateFont/MarbleMadness.fnt)
+- **Upstream:** https://github.com/idleberg/playdate-arcade-fonts (an original homage to classic arcade typography)
+- **License:** CC0 1.0 (Public Domain Dedication) — https://creativecommons.org/publicdomain/zero/1.0/
+
+> The fonts in playdate-arcade-fonts are released into the public domain under CC0,
+> which carries no attribution requirement; the credit above is given freely.

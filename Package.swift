@@ -328,6 +328,14 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Text/HelloText"
         ),
+        .executableTarget(
+            name: "Example-PlaydateFont",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/PlaydateFont",
+            // The font lives beside the sketch (the per-example asset convention)
+            // and loads at runtime through the Playdate `.fnt` loader.
+            resources: [.copy("MarbleMadness.fnt")]
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
