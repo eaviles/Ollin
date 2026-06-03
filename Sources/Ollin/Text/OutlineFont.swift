@@ -127,6 +127,63 @@ public struct OutlineFont: @unchecked Sendable {
         s.lowercased().filter { !$0.isWhitespace }
     }
 
+    // MARK: Variable fonts
+
+    /// A copy of this font with **variation axes** set — for a variable font, the
+    /// continuous design axes (weight, width, optical size, slant, …). Keys are the
+    /// 4-character axis tags; values are in the font's own axis units (a variable
+    /// font's ranges are font-specific, so query the font's specimen or use
+    /// `variationAxes`). Non-variable fonts ignore it.
+    ///
+    /// ```swift
+    /// let skia = OutlineFont(name: "Skia")!
+    /// textFont(skia.variation(["wght": 2.6, "wdth": 1.2]))   // heavy, a touch wide
+    /// ```
+    public func variation(_ axes: [String: Double]) -> OutlineFont {
+        guard !axes.isEmpty else { return self }
+        var settings: [NSNumber: NSNumber] = [:]
+        for (tag, value) in axes {
+            settings[NSNumber(value: OutlineFont.fourCharCode(tag))] = NSNumber(value: value)
+        }
+        let attributes = [kCTFontVariationAttribute as String: settings] as CFDictionary
+        let descriptor = CTFontDescriptorCreateWithAttributes(attributes)
+        return OutlineFont(ctFont: CTFontCreateCopyWithAttributes(ctFont, 1.0, nil, descriptor))
+    }
+
+    /// A copy with the weight axis (`wght`) set. Convenience for one axis; combine
+    /// several in one call with `variation(_:)` so they don't reset each other.
+    public func weight(_ value: Double) -> OutlineFont { variation(["wght": value]) }
+    /// A copy with the width axis (`wdth`) set.
+    public func width(_ value: Double) -> OutlineFont { variation(["wdth": value]) }
+    /// A copy with the optical-size axis (`opsz`) set.
+    public func opticalSize(_ value: Double) -> OutlineFont { variation(["opsz": value]) }
+    /// A copy with the slant axis (`slnt`) set.
+    public func slant(_ value: Double) -> OutlineFont { variation(["slnt": value]) }
+
+    /// The font's variation axes — `(tag, name, min, max, default)` per axis, empty
+    /// for a non-variable font. Use it to discover what a font exposes and its
+    /// ranges.
+    public var variationAxes: [(tag: String, name: String, min: Double, max: Double, default: Double)] {
+        guard let raw = CTFontCopyVariationAxes(ctFont) as? [[String: Any]] else { return [] }
+        return raw.map { axis in
+            let id = (axis[kCTFontVariationAxisIdentifierKey as String] as? Int) ?? 0
+            var tag = ""
+            for shift in [24, 16, 8, 0] { tag.append(Character(UnicodeScalar(UInt8((id >> shift) & 0xFF)))) }
+            return (tag: tag,
+                    name: (axis[kCTFontVariationAxisNameKey as String] as? String) ?? "",
+                    min: (axis[kCTFontVariationAxisMinimumValueKey as String] as? Double) ?? 0,
+                    max: (axis[kCTFontVariationAxisMaximumValueKey as String] as? Double) ?? 0,
+                    default: (axis[kCTFontVariationAxisDefaultValueKey as String] as? Double) ?? 0)
+        }
+    }
+
+    /// Pack a 4-character axis tag (`"wght"`) into the integer id Core Text uses.
+    private static func fourCharCode(_ tag: String) -> Int {
+        var code = 0
+        for byte in tag.utf8.prefix(4) { code = (code << 8) | Int(byte) }
+        return code
+    }
+
     // MARK: Metrics
 
     /// The em-units-to-points scale for a given on-screen text size.

@@ -19,15 +19,18 @@ final class TextOnPath: Sketch {
         textSize(46 * scale)
         textAlign(.left, .baseline)
 
-        // A gentle undulating path across the canvas, breathing over time. Kept
-        // broad on purpose: where a path curves tighter than the text is tall,
-        // glyphs crowd on the concave side (inherent to text-on-path), so the
-        // radius stays comfortably larger than the cap height.
+        // A gentle undulating path. It runs off both edges (the overhang) so
+        // glyphs enter and leave past the screen instead of popping in at the
+        // border — the on-screen motion stays smooth. Kept broad on purpose:
+        // where a path curves tighter than the text is tall, glyphs crowd on the
+        // concave side (inherent to text-on-path), so the radius stays
+        // comfortably larger than the cap height.
+        let overhang = width * 0.2
         let path = Path { p in
-            let segments = 80
+            let segments = 100
             for i in 0...segments {
                 let f = Double(i) / Double(segments)
-                let point = Vector2(f * width,
+                let point = Vector2(-overhang + f * (width + 2 * overhang),
                                     height / 2 + sin(f * .pi * 2 + time * 0.7) * (height * 0.13))
                 if i == 0 { p.move(to: point) } else { p.curve(to: point) }
             }

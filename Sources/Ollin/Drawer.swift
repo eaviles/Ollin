@@ -1073,6 +1073,51 @@ final class Drawer {
         return Rectangle(x: left, y: top, width: w, height: blockHeight)
     }
 
+    /// Draw `string` wrapped into `rect`: words break to the next line at the box
+    /// width, and `textAlign` positions the wrapped block within the box —
+    /// horizontal `.left`/`.center`/`.right` against the box edges, vertical
+    /// `.top`/`.middle`/`.bottom`. Explicit `\n`s start new paragraphs. The text
+    /// overflows below the box if it's too tall (no vertical clip yet).
+    func drawText(_ string: String, in rect: Rectangle) {
+        guard textPixelSize > 0, !string.isEmpty, rect.width > 0 else { return }
+        let wrapped = wrapToWidth(string, rect.width)
+        let anchorX: Double
+        switch textAlignH {
+        case .left:   anchorX = rect.x
+        case .center: anchorX = rect.center.x
+        case .right:  anchorX = rect.x + rect.width
+        }
+        let anchorY: Double
+        switch textAlignV {
+        case .top, .baseline: anchorY = rect.y   // a box anchors the block's top edge
+        case .middle:         anchorY = rect.center.y
+        case .bottom:         anchorY = rect.y + rect.height
+        }
+        drawText(wrapped, anchorX, anchorY)
+    }
+
+    /// Greedily break `string` into lines no wider than `maxWidth` at the current
+    /// font/size, breaking on spaces (a word wider than the box keeps its own
+    /// line). Existing `\n`s are kept as paragraph breaks. Returns the rewrapped
+    /// string for the normal `drawText` to lay out.
+    private func wrapToWidth(_ string: String, _ maxWidth: Double) -> String {
+        var lines: [String] = []
+        for paragraph in string.split(separator: "\n", omittingEmptySubsequences: false) {
+            var current = ""
+            for word in paragraph.split(separator: " ", omittingEmptySubsequences: true) {
+                let candidate = current.isEmpty ? String(word) : current + " " + String(word)
+                if current.isEmpty || textWidth(candidate) <= maxWidth {
+                    current = candidate
+                } else {
+                    lines.append(current)
+                    current = String(word)
+                }
+            }
+            lines.append(current)
+        }
+        return lines.joined(separator: "\n")
+    }
+
     /// Draw `string` glyph by glyph, handing each to `perGlyph` so you can give it
     /// its own transform or color before stamping it (`TextGlyph.draw()`). Laid out
     /// on a single line with the active `textFont` / `textSize` / `textAlign`; you

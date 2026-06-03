@@ -351,6 +351,16 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Text/TextOnPath"
         ),
+        .executableTarget(
+            name: "Example-TextBox",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/TextBox"
+        ),
+        .executableTarget(
+            name: "Example-VariableFont",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/VariableFont"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

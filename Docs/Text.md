@@ -19,8 +19,10 @@ A font is ready out of the box — `BitmapFont.builtin` is **[Cozette](https://g
 - [textFont](#textfont), [textSize](#textsize), [textAlign](#textalign) — text state
 - [textWidth](#textwidth) — measure a string
 - [Outline fonts](#outlinefont) — `OutlineFont`, loading a `.ttf`/`.otf` from anywhere
+- [Variable fonts](#variable) — animate weight, width, and other axes
 - [Per-glyph drawText](#perglyph) — give each letter its own transform and color
 - [Text on a path](#onpath) — lay glyphs along a curve
+- [Box layout](#box) — wrap a paragraph into a rectangle
 - [textToShapes](#texttoshapes) — text as first-class geometry
 - [Metrics](#metrics) — `textAscent` / `textDescent` / `textLeading` / `textBounds`
 - [BitmapFont](#bitmapfont) — the bitmap font value type, and authoring your own
@@ -143,6 +145,30 @@ OutlineFont.systemMono
 
 Ollin ships no `.ttf`/`.otf` of its own — you bring the font (installed, bundled, or fetched). Layout goes through Core Text, so kerning, ligatures, and fallback for missing glyphs come for free.
 
+<a name="variable"></a>
+
+### Variable fonts
+
+A variable font packs a family's continuous design axes — weight, width, optical size, slant — into one file. `OutlineFont` exposes them: `variation(_:)` returns a copy with axes set, and `variationAxes` lists what a font offers and its ranges.
+
+```swift
+let skia = OutlineFont(name: "Skia")!
+print(skia.variationAxes)   // [(tag: "wght", name: "Weight", min: 0.48, max: 3.2, default: 1), …]
+
+textFont(skia.variation(["wght": 2.6, "wdth": 1.2]))   // heavy, a touch wide
+```
+
+Keys are the 4-character axis tags (`"wght"`, `"wdth"`, `"opsz"`, `"slnt"`); values are in the font's **own** axis units (ranges are font-specific — read them from `variationAxes`). The one-axis conveniences `weight`, `width`, `opticalSize`, and `slant` set a single axis; combine several in one `variation(_:)` call so they don't reset each other.
+
+A varied font is just another `OutlineFont`, so you can animate the axes — a word that breathes from thin to heavy:
+
+```swift
+textFont(skia.variation(["wght": map(sin(time), -1, 1, 0.5, 3.1)]))
+drawText("ollin", width / 2, height / 2)
+```
+
+(A non-variable font ignores variation and returns an empty `variationAxes`.)
+
 <a name="perglyph"></a>
 
 ### Per-glyph drawText
@@ -202,6 +228,27 @@ let path = Path { p in
 fill(.white)
 drawText("text on a curve · ", along: path, offset: -time * 120)   // scrolling
 ```
+
+(Where a path bends tighter than the text is tall, glyphs crowd on the concave side — that's inherent to text-on-path, so keep curves broad relative to the text size.)
+
+<a name="box"></a>
+
+### Box layout
+
+```swift
+drawText(_ string: String, in rect: Rectangle)
+```
+
+Wrap `string` into a [`Rectangle`](Geometry.md#rectangle): words break to the next line at the box width, and `textAlign` positions the wrapped block within the box — horizontal `.left`/`.center`/`.right` against the box edges, vertical `.top`/`.middle`/`.bottom`. Explicit `\n`s start new paragraphs. Works for bitmap and outline fonts.
+
+```swift
+textSize(42); textAlign(.left, .top)
+let box = Rectangle(center: Vector2(width / 2, height / 2), width: 600, height: 700)
+fill(.white)
+drawText(paragraph, in: box)
+```
+
+Measuring and wrapping happen every frame, so the text reflows live if the box (or the size) changes. Text taller than the box overflows below it (no vertical clip yet).
 
 <a name="texttoshapes"></a>
 

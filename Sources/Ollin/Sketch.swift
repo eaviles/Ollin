@@ -526,6 +526,12 @@ open class Sketch {
     public func textBounds(_ string: String, at position: Vector2) -> Rectangle {
         drawer.textBounds(string, position.x, position.y)
     }
+    /// Draw `string` wrapped into `rect`: words break at the box width and
+    /// `textAlign` positions the block within the box. Explicit `\n`s start new
+    /// paragraphs. Works for bitmap and outline fonts.
+    public func drawText(_ string: String, in rect: Rectangle) {
+        drawer.drawText(string, in: rect)
+    }
     /// Draw `string` glyph by glyph, handing each glyph to `perGlyph` for its own
     /// transform or color before you stamp it with `TextGlyph.draw()`. Single line,
     /// using the current `textFont`/`textSize`/`textAlign`. Per-letter waves,
