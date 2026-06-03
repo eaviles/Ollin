@@ -331,6 +331,11 @@ let package = Package(
             path: "Examples/Recreations/BridgetRiley/Fragment3"
         ),
         .executableTarget(
+            name: "Example-BridgetRiley-Current",
+            dependencies: ["Ollin"],
+            path: "Examples/Recreations/BridgetRiley/Current"
+        ),
+        .executableTarget(
             name: "Example-OsamuSato-Totem",
             dependencies: ["Ollin"],
             path: "Examples/Recreations/OsamuSato/Totem"

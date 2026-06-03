@@ -3,9 +3,9 @@ import Foundation
 /// One connected path: an ordered run of points that's either open (a stroked
 /// path) or closed (an outline you can fill). The building block of a `Shape`.
 ///
-/// A `Contour` is polygonal — straight segments between its points. (Curved
-/// segments are a later addition; a curve becomes a contour by sampling it into
-/// points first.)
+/// A `Contour` is polygonal — straight segments between its points. To author a
+/// *curved* outline, trace it with `Path` (or `Contour(curveThrough:)`), which
+/// samples the curve into points for you.
 public struct Contour: Equatable, Sendable {
     public var points: [Vector2]
 

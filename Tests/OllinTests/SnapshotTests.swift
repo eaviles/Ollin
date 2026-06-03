@@ -44,6 +44,12 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: ThreePointShapes(), against: "three-point-shapes")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func curvedPathsMatchReference() throws {
+        let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -152,5 +158,38 @@ private final class ThreePointShapes: Sketch {
         // Collinear control points → the straight-line fallback (bottom).
         stroke(.black); strokeWeight(6)
         drawBezier(Vector2(25, 240), Vector2(128, 240), Vector2(231, 240))
+    }
+}
+
+/// The `Path` builder and `drawCurve` (sample-to-points curved contours): a
+/// closed, filled blob whose outline is a smooth Catmull-Rom `curve` run; an open
+/// outline built from an explicit `quadCurve` + `cubicCurve`; and an open
+/// `drawCurve` wiggle straight from points. Static, so it's deterministic at
+/// frame 0.
+private final class CurvedPaths: Sketch {
+    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+
+    override func draw() {
+        background(.white)
+        // Closed filled blob through points (curve = Catmull-Rom) + stroked outline.
+        fill(Color(red: 0.2, green: 0.6, blue: 0.9)); stroke(.black); strokeWeight(4)
+        drawShape { p in
+            p.move(to: Vector2(55, 45))
+            p.curve(to: Vector2(150, 55))
+            p.curve(to: Vector2(165, 120))
+            p.curve(to: Vector2(85, 110))
+            p.close()
+        }
+        // Open outline from an explicit quadratic + cubic Bézier, stroke-only.
+        noFill(); stroke(Color(red: 0.9, green: 0.3, blue: 0.2)); strokeWeight(6)
+        drawShape { p in
+            p.move(to: Vector2(28, 158))
+            p.quadCurve(to: Vector2(128, 150), control: Vector2(78, 100))
+            p.cubicCurve(to: Vector2(230, 165), control1: Vector2(168, 120), control2: Vector2(188, 205))
+        }
+        // A smooth open wiggle straight from a list of points.
+        stroke(.black); strokeWeight(4)
+        drawCurve([Vector2(25, 228), Vector2(80, 200), Vector2(130, 236),
+                   Vector2(180, 200), Vector2(232, 230)])
     }
 }

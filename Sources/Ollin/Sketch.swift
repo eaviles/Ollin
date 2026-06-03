@@ -417,6 +417,33 @@ open class Sketch {
     public func drawPolyline(_ points: [Vector2]) { drawer.drawPolyline(points) }
     public func drawPolygon(_ points: [Vector2]) { drawer.drawPolygon(points) }
     public func drawShape(_ shape: Shape) { drawer.drawShape(shape) }
+
+    /// Build a curved or straight outline inline and draw it: trace it with the
+    /// pen methods on `Path` (`move`/`line`/`curve`/`quadCurve`/`cubicCurve`/`close`),
+    /// then it fills (if closed) and strokes like any `Shape`.
+    ///
+    /// ```swift
+    /// drawShape { p in
+    ///     p.move(to: Vector2(200, 300))
+    ///     p.curve(to: Vector2(400, 200))   // smooth through the points
+    ///     p.curve(to: Vector2(600, 360))
+    ///     p.close()
+    /// }
+    /// ```
+    public func drawShape(_ build: (inout Path) -> Void) {
+        var path = Path()
+        build(&path)
+        drawer.drawShape(path.shape)
+    }
+
+    /// A smooth curve through `points` — a Catmull-Rom spline that passes through
+    /// each point with tangents derived from its neighbours. `closed: false` (the
+    /// default) draws an open, stroked "wiggle"; `closed: true` makes a closed,
+    /// fillable loop. Sugar over `Path` + `curve(to:)`.
+    public func drawCurve(_ points: [Vector2], closed: Bool = false) {
+        guard points.count >= 2 else { return }
+        drawer.drawShape(Shape(curveThrough: points, closed: closed))
+    }
     public func drawRect(_ rectangle: Rectangle, cornerRadius: Double = 0) {
         drawer.drawRect(rectangle, cornerRadius: cornerRadius)
     }

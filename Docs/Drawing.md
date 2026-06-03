@@ -14,7 +14,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 - **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawTriangle](#triangle), [drawArc](#arc), [drawBezier](#bezier)
 - **More shapes:** [drawNgon](#ngon), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
-- **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
+- **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape), [drawCurve](#curve)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
@@ -662,6 +662,37 @@ let outer = [Vector2(60, 60), Vector2(260, 60), Vector2(260, 260), Vector2(60, 2
 let hole  = [Vector2(120, 120), Vector2(200, 120), Vector2(200, 200), Vector2(120, 200)]
 fill(.black)
 drawShape(Shape(outer: outer, holes: [hole]))
+```
+
+There's also a closure form that builds a curved or straight outline inline with a [`Path`](Geometry.md#path) — trace it with the pen methods (`move`/`line`/`curve`/`quadCurve`/`cubicCurve`/`close`) and it fills (if closed) and strokes like any `Shape`:
+
+```swift
+drawShape { p in
+    p.move(to: Vector2(200, 600))
+    p.curve(to: Vector2(400, 480))     // smooth through the points
+    p.curve(to: Vector2(600, 560))
+    p.quadCurve(to: Vector2(820, 360), control: Vector2(720, 620))
+    p.close()
+}
+```
+
+<a name="curve"></a>
+
+#### drawCurve
+
+```swift
+drawCurve(_ points: [Vector2], closed: Bool = false)
+```
+
+A **smooth curve through `points`** — a Catmull-Rom spline that passes through each point with tangents derived from its neighbours, so you draw a "wiggle" straight from a list of points with no control points to place. `closed: false` (the default) is an open, stroked line; `closed: true` makes a closed, fillable loop. It's sugar over [`Path`](Geometry.md#path) + `curve(to:)`.
+
+```swift
+let pts = (0...8).map { i in
+    Vector2(120 + Double(i) * 100, height / 2 + sin(time + Double(i)) * 80)
+}
+stroke(.black)
+strokeWeight(3)
+drawCurve(pts)            // a smooth wave that animates with `time`
 ```
 
 ### Transforms and state
