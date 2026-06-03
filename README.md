@@ -121,7 +121,7 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Sketch](Docs/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), and loop control.
 - [Canvas](Docs/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
 - [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawEllipse`, `drawArc`, `drawRect`, `drawLine`, `drawPolyline`, `drawPolygon`, `drawShape`, `drawCurve`), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
-- [Text](Docs/Text.md) - `drawText` with bitmap fonts (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`), loading BDF and Playdate `.fnt` pixel fonts.
+- [Text](Docs/Text.md) - `drawText` with bitmap *and* outline (`.ttf`/`.otf`) fonts (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`/`OutlineFont`), `textToShapes` for text as geometry, and loading BDF and Playdate `.fnt` pixel fonts.
 - [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
 - [Geometry](Docs/Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines).
 - [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.

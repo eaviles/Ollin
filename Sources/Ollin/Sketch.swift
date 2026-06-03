@@ -467,9 +467,14 @@ open class Sketch {
     public func drawRect(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0) {
         drawer.drawRect(Rectangle(center: center, width: width, height: height), cornerRadius: cornerRadius)
     }
-    /// Set the active text font for `drawText` (a `BitmapFont`). Defaults to
-    /// `.builtin`, Ollin's bundled 5×7 pixel font, so text works with no setup.
+    /// Set the active text font for `drawText` to a bitmap (pixel-grid) font.
+    /// Defaults to `.builtin`, Ollin's bundled Cozette pixel font, so text works
+    /// with no setup.
     public func textFont(_ font: BitmapFont) { drawer.textFont(font) }
+    /// Set the active text font for `drawText` to an outline (vector `.ttf`/`.otf`)
+    /// font — `OutlineFont(name:)`, `.system`, a file, or bundled data. One load
+    /// draws at any `textSize`, and each glyph is a `Shape` (fill *and* stroke).
+    public func textFont(_ font: OutlineFont) { drawer.textFont(font) }
     /// Set the rendered text height in points — the height one line of glyphs
     /// occupies on screen. Defaults to 24.
     public func textSize(_ size: Double) { drawer.textSize(size) }
@@ -492,6 +497,35 @@ open class Sketch {
     /// The on-screen width of `string`'s widest line, in points, at the current
     /// `textFont`/`textSize` — for laying text out.
     public func textWidth(_ string: String) -> Double { drawer.textWidth(string) }
+    /// The glyphs of `string` as vector `Shape`s positioned at `(x, y)` with the
+    /// current `textFont`/`textSize`/`textAlign` — text as first-class geometry to
+    /// fill, stroke, warp, sample, or animate. An outline font returns one `Shape`
+    /// per glyph; a bitmap font returns its lit pixels as squares.
+    public func textToShapes(_ string: String, _ x: Double, _ y: Double) -> [Shape] {
+        drawer.textToShapes(string, x, y)
+    }
+    /// `textToShapes` anchored at `position` — the `Vector2` form.
+    public func textToShapes(_ string: String, at position: Vector2) -> [Shape] {
+        drawer.textToShapes(string, position.x, position.y)
+    }
+    /// Distance from the baseline to the top of the tallest glyphs, in points, at
+    /// the current `textFont`/`textSize`.
+    public func textAscent() -> Double { drawer.textAscent() }
+    /// Distance from the baseline to the bottom of the lowest descenders, in
+    /// points, at the current `textFont`/`textSize`.
+    public func textDescent() -> Double { drawer.textDescent() }
+    /// The baseline-to-baseline distance a new line advances by, in points, at the
+    /// current `textFont`/`textSize`.
+    public func textLeading() -> Double { drawer.textLeading() }
+    /// The bounding box `string` occupies if drawn at `(x, y)` with the current
+    /// text state (widest line by full block height).
+    public func textBounds(_ string: String, _ x: Double, _ y: Double) -> Rectangle {
+        drawer.textBounds(string, x, y)
+    }
+    /// `textBounds` anchored at `position` — the `Vector2` form.
+    public func textBounds(_ string: String, at position: Vector2) -> Rectangle {
+        drawer.textBounds(string, position.x, position.y)
+    }
     public func translate(_ offset: Vector2) { drawer.translate(offset) }
     public func translate(_ x: Double, _ y: Double) { drawer.translate(Vector2(x, y)) }
     public func drawLine(_ a: Vector2, _ b: Vector2) { drawer.drawLine(a, b) }

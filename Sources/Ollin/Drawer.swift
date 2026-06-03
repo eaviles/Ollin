@@ -96,7 +96,7 @@ final class Drawer {
     private var strokeAlignment: StrokeAlign = .center   // where the stroke sits on the outline (see strokeAlign)
     private var strokeJoinStyle: StrokeJoin = .miter     // how stroked-path corners turn (see strokeJoin)
     private var strokeCapStyle: StrokeCap = .butt        // how open stroked-path ends finish (see strokeCap)
-    private var currentFont: BitmapFont = .builtin       // active text font (see textFont / drawText)
+    private var currentFont: ActiveFont = .bitmap(.builtin)   // active text font (see textFont / drawText)
     private var textPixelSize: Double = 24               // rendered glyph height in points (see textSize)
     private var textAlignH: TextAlignH = .left           // horizontal text anchor (see textAlign)
     private var textAlignV: TextAlignV = .baseline       // vertical text anchor (see textAlign)
@@ -147,7 +147,7 @@ final class Drawer {
         var strokeAlignment: StrokeAlign
         var strokeJoinStyle: StrokeJoin
         var strokeCapStyle: StrokeCap
-        var currentFont: BitmapFont
+        var currentFont: ActiveFont
         var textPixelSize: Double
         var textAlignH: TextAlignH
         var textAlignV: TextAlignV
@@ -197,8 +197,12 @@ final class Drawer {
     /// (`drawPolyline`, open `drawShape` contours); closed outlines have no ends.
     func strokeCap(_ cap: StrokeCap) { strokeCapStyle = cap }
 
-    /// Set the active text font (see `BitmapFont`). Defaults to `.builtin`.
-    func textFont(_ font: BitmapFont) { currentFont = font }
+    /// Set the active text font to a bitmap (pixel-grid) font. Defaults to
+    /// `.builtin`.
+    func textFont(_ font: BitmapFont) { currentFont = .bitmap(font) }
+
+    /// Set the active text font to an outline (vector `.ttf`/`.otf`) font.
+    func textFont(_ font: OutlineFont) { currentFont = .outline(font) }
 
     /// Set the rendered text height in points — the height one line of glyphs
     /// occupies on screen (`drawText`). Defaults to 24.
@@ -883,19 +887,52 @@ final class Drawer {
 
     // MARK: Text
 
-    /// Draw `string` at `(x, y)` in the current `fill` color, using the active
-    /// `textFont` / `textSize` / `textAlign`. Each lit pixel of each glyph is
-    /// stamped as one square on the SDF path (no rasterization), so text rides the
-    /// transform stack and stays crisp at any size. `\n` starts a new line. Text
-    /// takes the `fill` color — `noFill()` draws nothing — and unknown characters
-    /// advance the pen but draw nothing.
+    /// Draw `string` at `(x, y)` using the active `textFont` / `textSize` /
+    /// `textAlign`. `\n` starts a new line; text rides the transform stack and
+    /// stays crisp at any size. A **bitmap** font stamps each lit pixel as a fill
+    /// color square on the SDF path; an **outline** font draws each glyph as a
+    /// vector `Shape`, so — like every other shape — it takes the current `fill`
+    /// *and* an active `stroke` (call `noStroke()` for plain filled text, or
+    /// `noFill()` for outline-only text). Unknown characters advance the pen but
+    /// draw nothing.
     func drawText(_ string: String, _ x: Double, _ y: Double) {
-        guard let fill = fillColor, textPixelSize > 0, !string.isEmpty else { return }
-        let font = currentFont
+        guard textPixelSize > 0, !string.isEmpty else { return }
+        switch currentFont {
+        case .bitmap(let font):  drawBitmapText(string, x, y, font: font)
+        case .outline(let font): drawOutlineText(string, x, y, font: font)
+        }
+    }
+
+    /// Bitmap path: one fill color square per lit pixel (see `forEachBitmapPixel`).
+    private func drawBitmapText(_ string: String, _ x: Double, _ y: Double, font: BitmapFont) {
+        guard let fill = fillColor else { return }
+        forEachBitmapPixel(string, x, y, font: font) { center, module in
+            let half = SIMD2<Float>(Float(module / 2), Float(module / 2))
+            // Fill-only square; opt out of hollow so a set band doesn't turn each
+            // pixel into a ring.
+            appendSDF(shape: .box, center: center, size: half,
+                      fill: fill, stroke: nil, applyHollow: false)
+        }
+    }
+
+    /// Outline path: each glyph is a vector `Shape`, drawn through `drawShape` so
+    /// it fills, strokes, and composites exactly like any other shape.
+    private func drawOutlineText(_ string: String, _ x: Double, _ y: Double, font: OutlineFont) {
+        guard fillColor != nil || (strokeColor != nil && strokeWidth > 0) else { return }
+        for shape in font.glyphShapes(for: string, size: textPixelSize,
+                                      alignH: textAlignH, alignV: textAlignV, at: Vector2(x, y)) {
+            drawShape(shape)
+        }
+    }
+
+    /// Walk the lit pixels of `string`, laid out with the active text state,
+    /// calling `body` with each pixel's center (canvas space) and module size (its
+    /// on-screen side). Shared by `drawBitmapText` and `textToShapes` so the
+    /// bitmap layout lives in one place.
+    private func forEachBitmapPixel(_ string: String, _ x: Double, _ y: Double,
+                                    font: BitmapFont, _ body: (Vector2, Double) -> Void) {
         guard font.pixelHeight > 0 else { return }
         let module = textPixelSize / Double(font.pixelHeight)
-        let half = SIMD2<Float>(Float(module / 2), Float(module / 2))
-
         let lines = string.split(separator: "\n", omittingEmptySubsequences: false)
         let blockHeight = Double((lines.count - 1) * font.lineHeight + font.pixelHeight) * module
 
@@ -929,10 +966,7 @@ final class Drawer {
                         for col in 0..<glyph.width where glyph.isSet(col, row) {
                             let cx = cellLeft + (Double(col) + 0.5) * module
                             let cy = cellTop + (Double(row) + 0.5) * module
-                            // Fill-only square; opt out of hollow so a set band
-                            // doesn't turn each pixel into a ring.
-                            appendSDF(shape: .box, center: Vector2(cx, cy), size: half,
-                                      fill: fill, stroke: nil, applyHollow: false)
+                            body(Vector2(cx, cy), module)
                         }
                     }
                 }
@@ -942,12 +976,101 @@ final class Drawer {
         }
     }
 
-    /// The on-screen width of `string`'s widest line, in points, at the current
+    /// The glyph geometry of `string` as `Shape`s positioned at `(x, y)` with the
+    /// active `textFont` / `textSize` / `textAlign` — text as first-class geometry
+    /// you can fill, stroke, warp, sample, or animate. An **outline** font returns
+    /// one `Shape` per glyph (a letter with a counter keeps its hole); a **bitmap**
+    /// font returns its lit pixels as little squares.
+    func textToShapes(_ string: String, _ x: Double, _ y: Double) -> [Shape] {
+        guard textPixelSize > 0, !string.isEmpty else { return [] }
+        switch currentFont {
+        case .outline(let font):
+            return font.glyphShapes(for: string, size: textPixelSize,
+                                    alignH: textAlignH, alignV: textAlignV, at: Vector2(x, y))
+        case .bitmap(let font):
+            var squares: [Contour] = []
+            forEachBitmapPixel(string, x, y, font: font) { center, module in
+                let h = module / 2
+                squares.append(Contour([
+                    Vector2(center.x - h, center.y - h), Vector2(center.x + h, center.y - h),
+                    Vector2(center.x + h, center.y + h), Vector2(center.x - h, center.y + h),
+                ], closed: true))
+            }
+            return squares.isEmpty ? [] : [Shape(contours: squares)]
+        }
+    }
+
+    /// The on-screen width of `string`'s widest line, in points, at the active
     /// `textFont` / `textSize` — for laying text out.
     func textWidth(_ string: String) -> Double {
-        guard currentFont.pixelHeight > 0 else { return 0 }
-        let module = textPixelSize / Double(currentFont.pixelHeight)
-        return Double(currentFont.inkWidth(of: string)) * module
+        switch currentFont {
+        case .bitmap(let font):
+            guard font.pixelHeight > 0 else { return 0 }
+            let module = textPixelSize / Double(font.pixelHeight)
+            return Double(font.inkWidth(of: string)) * module
+        case .outline(let font):
+            return font.width(of: string, size: textPixelSize)
+        }
+    }
+
+    /// Distance from the baseline up to the top of the tallest glyphs, in points,
+    /// at the active font and size.
+    func textAscent() -> Double {
+        switch currentFont {
+        case .bitmap(let font):
+            guard font.pixelHeight > 0 else { return 0 }
+            return Double(font.baseline) * (textPixelSize / Double(font.pixelHeight))
+        case .outline(let font):
+            return font.ascent * textPixelSize
+        }
+    }
+
+    /// Distance from the baseline down to the bottom of the lowest descenders, in
+    /// points, at the active font and size.
+    func textDescent() -> Double {
+        switch currentFont {
+        case .bitmap(let font):
+            guard font.pixelHeight > 0 else { return 0 }
+            let module = textPixelSize / Double(font.pixelHeight)
+            return Double(font.pixelHeight - font.baseline) * module
+        case .outline(let font):
+            return font.descent * textPixelSize
+        }
+    }
+
+    /// The baseline-to-baseline distance for a new line, in points, at the active
+    /// font and size (what `\n` advances by).
+    func textLeading() -> Double {
+        switch currentFont {
+        case .bitmap(let font):
+            guard font.pixelHeight > 0 else { return 0 }
+            return Double(font.lineHeight) * (textPixelSize / Double(font.pixelHeight))
+        case .outline(let font):
+            return (font.ascent + font.descent + font.leading) * textPixelSize
+        }
+    }
+
+    /// The bounding box `string` occupies if drawn at `(x, y)` with the active text
+    /// state — width is the widest line, height spans the whole block.
+    func textBounds(_ string: String, _ x: Double, _ y: Double) -> Rectangle {
+        let w = textWidth(string)
+        let ascent = textAscent(), descent = textDescent(), advance = textLeading()
+        let lineCount = string.split(separator: "\n", omittingEmptySubsequences: false).count
+        let blockHeight = Double(max(0, lineCount - 1)) * advance + ascent + descent
+        let top: Double
+        switch textAlignV {
+        case .top:      top = y
+        case .baseline: top = y - ascent
+        case .middle:   top = y - blockHeight / 2
+        case .bottom:   top = y - blockHeight
+        }
+        let left: Double
+        switch textAlignH {
+        case .left:   left = x
+        case .center: left = x - w / 2
+        case .right:  left = x - w
+        }
+        return Rectangle(x: left, y: top, width: w, height: blockHeight)
     }
 
     /// A straight line segment from `a` to `b`, stroked with the current stroke

@@ -336,6 +336,11 @@ let package = Package(
             // and loads at runtime through the Playdate `.fnt` loader.
             resources: [.copy("MarbleMadness.fnt")]
         ),
+        .executableTarget(
+            name: "Example-OutlineText",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/OutlineText"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
