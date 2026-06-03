@@ -42,7 +42,7 @@ drawText("ollin", width / 2, height / 2)
 textFont(_ font: BitmapFont)
 ```
 
-Set the active font. Defaults to `.builtin`. (See [BitmapFont](#bitmapfont) to build your own.)
+Set the active font. Defaults to `.builtin`, so `textFont(.builtin)` switches back to the bundled Cozette at any time. Like the other drawing state, the active font is part of the [push/pop stack](./Drawing.md#withstate), so `withState { textFont(custom); … }` restores the previous font automatically on exit. (See [BitmapFont](#bitmapfont) to load or build your own.)
 
 <a name="textsize"></a>
 
@@ -119,13 +119,13 @@ drawText("AI", width / 2, height / 2)
 Ollin also reads the **Playdate `.fnt`** format — a line-oriented metrics file (per-glyph widths, `tracking`, and kerning pairs) paired with a 1-bit glyph strike, either embedded in the file as base64 or sitting beside it as a `<name>-table-<width>-<height>.png`. It's a common pixel-font format, with a large pool of free community fonts to draw from. Kerning pairs in the file are applied automatically during layout.
 
 ```swift
-let url = Bundle.module.url(forResource: "MyFont", withExtension: "fnt")!
-if let font = BitmapFont(fntContentsOf: url) {
-    textFont(font)
-}
+let font = BitmapFont(resource: "MyFont.fnt", in: .module) ?? .builtin
+textFont(font)
 ```
 
-`BitmapFont(fntContentsOf:)` handles both forms — it finds the sibling `-table` PNG when the strike is external. If you already have the text (say, fetched over the network), `BitmapFont(fnt:)` parses the self-contained embedded form directly:
+`BitmapFont(resource:in:)` is the easy path for a font bundled beside your sketch: pass the filename (the loader picks BDF or `.fnt` from the extension) and the bundle it lives in — `.module` for a `swift run` sketch's own resources, or the default `.main` for an app. It returns `nil` if the resource is missing, so the `?? .builtin` falls back to the default font.
+
+Under it, `BitmapFont(fntContentsOf:)` takes a file URL and handles both strike forms — it finds the sibling `-table` PNG when the strike is external. If you already have the text (say, fetched over the network), `BitmapFont(fnt:)` parses the self-contained embedded form directly:
 
 ```swift
 let text = try String(contentsOf: someURL, encoding: .utf8)

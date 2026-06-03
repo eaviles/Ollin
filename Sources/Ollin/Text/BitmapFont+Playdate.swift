@@ -13,8 +13,7 @@ import ImageIO
 ///
 /// ```swift
 /// // Bundled beside a sketch (the usual case — an embedded-strike .fnt is one file):
-/// let url = Bundle.module.url(forResource: "MyFont", withExtension: "fnt")!
-/// let font = BitmapFont(fntContentsOf: url)!
+/// let font = BitmapFont(resource: "MyFont.fnt", in: .module) ?? .builtin
 /// textFont(font)
 /// drawText("hello", x, y)
 ///

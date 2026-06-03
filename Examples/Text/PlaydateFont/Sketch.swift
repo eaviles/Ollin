@@ -13,17 +13,11 @@ import Ollin
 /// score that ticks, a blinking prompt, and the character set scrolling under it.
 @main
 final class PlaydateFont: Sketch {
-    var arcade = BitmapFont.builtin   // replaced in setup() with the loaded .fnt
+    // The font sits beside this sketch; one call loads it (the loader picks the
+    // format from the file extension), falling back to the built-in font if it's
+    // missing. `.module` is this target's own resource bundle.
+    let arcade = BitmapFont(resource: "MarbleMadness.fnt", in: .module) ?? .builtin
     let charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789   "
-
-    override func setup() {
-        // The single self-contained file (its glyph strike is embedded), loaded the
-        // way a user would load a font dropped beside their sketch.
-        if let url = Bundle.module.url(forResource: "MarbleMadness", withExtension: "fnt"),
-           let font = BitmapFont(fntContentsOf: url) {
-            arcade = font
-        }
-    }
 
     override func draw() {
         background(Color(white: 0.05))
