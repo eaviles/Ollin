@@ -309,6 +309,11 @@ let package = Package(
             path: "Examples/Patterns/StrokeAlignment"
         ),
         .executableTarget(
+            name: "Example-StrokeJoinsAndCaps",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/StrokeJoinsAndCaps"
+        ),
+        .executableTarget(
             name: "Example-Mandala",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Mandala"

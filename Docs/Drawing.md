@@ -10,7 +10,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 
 ### Contents
 
-- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker)
+- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [strokeJoin](#strokeJoin), [strokeCap](#strokeCap), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker)
 - **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawTriangle](#triangle), [drawArc](#arc), [drawBezier](#bezier)
 - **More shapes:** [drawNgon](#ngon), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
@@ -100,6 +100,40 @@ drawCircle(width / 2, height / 2, 120)   // outline grows inward; radius-120 foo
 ```
 
 It applies to the analytic shapes — circles, ellipses, rectangles, the polygon/star family, and the rest of the SDF catalog — where the inset/outset is a geometrically exact offset of the outline. Shapes with no inside/outside keep a centered stroke: lines, point markers, the open `drawArc`, and the tessellated `drawPolyline` / `drawPolygon` / `drawShape`. With `hollow`, the band already has two edges to stroke, so alignment doesn't apply there.
+
+<a name="strokeJoin"></a>
+
+#### strokeJoin
+
+```swift
+strokeJoin(_ join: StrokeJoin)   // .miter (default), .bevel, .round
+```
+
+How a stroked path turns its corners. `.miter` extends the two outer edges until they meet at a sharp point — what keeps a chevron or a star's tips crisp — and falls back to a flat bevel when a corner is acute enough that the point would shoot out into a long spike. `.bevel` always cuts the corner off with a straight edge; `.round` fills it with an arc, for a smooth bend. State, like `strokeWeight`; it holds until changed.
+
+```swift
+stroke(.black); strokeWeight(20); strokeJoin(.round)
+drawPolyline([Vector2(120, 360), Vector2(540, 120), Vector2(960, 360)])   // a rounded peak
+```
+
+It applies to the tessellated stroked paths — `drawPolyline`, the `drawPolygon` outline, and `drawShape` contours. The analytic SDF shapes draw their own outlines, and `drawLine` / `drawBezier` are single round-capped segments, so none of those have joins to style.
+
+<a name="strokeCap"></a>
+
+#### strokeCap
+
+```swift
+strokeCap(_ cap: StrokeCap)   // .butt (default), .round, .square
+```
+
+How the open ends of a stroked path are finished. `.butt` ends the stroke flat at the endpoint — its footprint stops exactly where the path does. `.round` adds a half-disk over each end (a rounded tip), and `.square` adds a flat extension half the stroke weight past the endpoint, so both `.round` and `.square` reach beyond the path's end by half the weight. State, like `strokeWeight`; it holds until changed.
+
+```swift
+stroke(.black); strokeWeight(24); strokeCap(.round)
+drawPolyline([Vector2(300, 540), Vector2(780, 540)])   // rounded tips past each end
+```
+
+It applies to the open tessellated stroked paths — `drawPolyline` and any open `drawShape` contour. Closed outlines (the `drawPolygon` outline, a closed contour) have no ends to cap, and `drawLine` / `drawBezier` are their own round-capped segments, unaffected by this setting.
 
 <a name="hollow"></a>
 
@@ -620,7 +654,7 @@ drawCoolS(width / 2, height / 2, 360)                          // the doodle, fi
 drawPolyline(_ points: [Vector2])
 ```
 
-A connected open path through `points`, stroked.
+A connected open path through `points`, stroked. Its corners follow [strokeJoin](#strokeJoin) and its ends follow [strokeCap](#strokeCap).
 
 ```swift
 let wave = stride(from: 0.0, through: width, by: 8).map { x in

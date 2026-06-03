@@ -247,6 +247,17 @@ open class Sketch {
     /// analytic SDF shapes; lines, point markers, and the tessellated paths
     /// (`drawPolyline`/`drawPolygon`/`drawShape`) stay centered. See `StrokeAlign`.
     public func strokeAlign(_ align: StrokeAlign) { drawer.strokeAlign(align) }
+    /// Set how a stroked path turns its corners: `.miter` (default, a sharp point
+    /// that bevels off past the miter limit), `.bevel` (always flat), or `.round`
+    /// (arced). Applies to the tessellated stroked paths — `drawPolyline`, the
+    /// `drawPolygon` outline, and `drawShape` contours. See `StrokeJoin`.
+    public func strokeJoin(_ join: StrokeJoin) { drawer.strokeJoin(join) }
+    /// Set how the open ends of a stroked path finish: `.butt` (default, flat at
+    /// the endpoint), `.round` (a half-disk tip), or `.square` (a flat extension
+    /// half the weight past the end). Applies to open tessellated paths
+    /// (`drawPolyline`, open `drawShape` contours); closed outlines and the
+    /// round-capped `drawLine` / `drawBezier` aren't affected. See `StrokeCap`.
+    public func strokeCap(_ cap: StrokeCap) { drawer.strokeCap(cap) }
     public func pointSize(_ size: Double) { drawer.pointSize(size) }
     public func pointMarker(_ marker: PointMarker) { drawer.pointMarker(marker) }
     public func drawPoint(_ x: Double, _ y: Double) { drawer.drawPoint(x, y) }

@@ -94,6 +94,8 @@ final class Drawer {
     private var marker: PointMarker = .circle   // default: round dot (see pointMarker / drawPoint)
     private var hollowWidth: Double = 0         // 0 = solid fill; > 0 = hollow band (see hollow / solid)
     private var strokeAlignment: StrokeAlign = .center   // where the stroke sits on the outline (see strokeAlign)
+    private var strokeJoinStyle: StrokeJoin = .miter     // how stroked-path corners turn (see strokeJoin)
+    private var strokeCapStyle: StrokeCap = .butt        // how open stroked-path ends finish (see strokeCap)
 
     // MARK: Per-frame geometry (reset every frame)
 
@@ -139,6 +141,8 @@ final class Drawer {
         var marker: PointMarker
         var hollowWidth: Double
         var strokeAlignment: StrokeAlign
+        var strokeJoinStyle: StrokeJoin
+        var strokeCapStyle: StrokeCap
     }
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
@@ -174,6 +178,16 @@ final class Drawer {
     /// `.center` (default), `.inside`, or `.outside`. Affects the analytic SDF
     /// shapes; lines, point markers, and the tessellated paths stay centered.
     func strokeAlign(_ align: StrokeAlign) { strokeAlignment = align }
+
+    /// Set how a stroked path turns its corners (see `StrokeJoin`): `.miter`
+    /// (default), `.bevel`, or `.round`. Affects the tessellated stroked paths
+    /// (`drawPolyline`, the `drawPolygon` outline, `drawShape` contours).
+    func strokeJoin(_ join: StrokeJoin) { strokeJoinStyle = join }
+
+    /// Set how the open ends of a stroked path finish (see `StrokeCap`): `.butt`
+    /// (default), `.round`, or `.square`. Affects open tessellated paths
+    /// (`drawPolyline`, open `drawShape` contours); closed outlines have no ends.
+    func strokeCap(_ cap: StrokeCap) { strokeCapStyle = cap }
 
     // MARK: Frame lifecycle
 
@@ -216,7 +230,9 @@ final class Drawer {
                                      fillColor: fillColor, strokeColor: strokeColor,
                                      strokeWidth: strokeWidth, pointDiameter: pointDiameter,
                                      marker: marker, hollowWidth: hollowWidth,
-                                     strokeAlignment: strokeAlignment))
+                                     strokeAlignment: strokeAlignment,
+                                     strokeJoinStyle: strokeJoinStyle,
+                                     strokeCapStyle: strokeCapStyle))
     }
 
     /// Restore the most recently pushed transform and style. No-op if unbalanced.
@@ -231,6 +247,8 @@ final class Drawer {
         marker = s.marker
         hollowWidth = s.hollowWidth
         strokeAlignment = s.strokeAlignment
+        strokeJoinStyle = s.strokeJoinStyle
+        strokeCapStyle = s.strokeCapStyle
     }
 
     // MARK: Primitives
@@ -811,9 +829,10 @@ final class Drawer {
     /// color and weight.
     ///
     /// Open (the last point is not joined back to the first) and stroke-only —
-    /// fills belong to closed shapes (`drawShape`). Corners are mitered (bevel
-    /// past the miter limit), so fat strokes stay clean at sharp turns; the ends
-    /// are butt caps. Needs at least two points and a stroke to draw anything.
+    /// fills belong to closed shapes (`drawShape`). Corners turn per `strokeJoin`
+    /// (mitered by default, so fat strokes stay clean at sharp turns) and the ends
+    /// finish per `strokeCap` (butt by default). Needs at least two points and a
+    /// stroke to draw anything.
     func drawPolyline(_ points: [Vector2]) {
         guard points.count >= 2, let stroke = strokeColor, strokeWidth > 0 else { return }
         appendStrokedPath(points, closed: false, half: strokeWidth / 2, color: stroke.simd4)
@@ -972,14 +991,15 @@ final class Drawer {
         emit(a1, color: color)
     }
 
-    /// Stroke a polyline or closed contour as butt-capped segment quads plus a
-    /// join filler at each shared vertex, so corners close cleanly instead of
-    /// leaving the gap two independent butt caps make. Joins are mitered (a sharp
-    /// point, what a star's tips want) up to `miterLimit`, then bevel off so a
-    /// very acute corner doesn't shoot out an unbounded spike. Open paths keep
-    /// butt ends; closed ones join every vertex. The inner side of a turn is
-    /// already covered by the overlapping segment quads, so only the outer gap is
-    /// filled.
+    /// Stroke a polyline or closed contour as butt segment quads plus a join
+    /// filler at each shared vertex, so corners close cleanly instead of leaving
+    /// the gap two independent butt ends make. The join style (`strokeJoin`)
+    /// decides each corner: `.miter` extends the outer edges to a point (bevel
+    /// past `miterLimit` so an acute corner doesn't spike), `.bevel` always cuts
+    /// it flat, `.round` fills it with an arc. Open paths finish their ends with
+    /// the cap style (`strokeCap`); closed ones join every vertex and have no
+    /// ends. The inner side of a turn is already covered by the overlapping
+    /// segment quads, so only the outer gap is filled.
     private func appendStrokedPath(_ points: [Vector2], closed: Bool,
                                    half: Double, color: SIMD4<Float>) {
         guard half > 0 else { return }
@@ -1014,18 +1034,89 @@ final class Drawer {
             guard abs(cross) > 1e-6 else { continue }   // collinear: no gap to fill
             // Fill on the outer side of the turn (where the two quads diverge).
             let side: Double = cross >= 0 ? -1 : 1
-            let cornerA = (curr + n0 * (side * half)).simd2
-            let cornerB = (curr + n1 * (side * half)).simd2
-            let bisector = n0 + n1
-            let bisectorLength = bisector.length
-            let cosHalf = bisectorLength > 1e-6 ? (bisector.x * n0.x + bisector.y * n0.y) / bisectorLength : 0
-            if cosHalf > 1e-4, 1 / cosHalf <= miterLimit {
-                let miter = (curr + bisector / bisectorLength * (side * half / cosHalf)).simd2
-                emit(curr.simd2, color: color); emit(cornerA, color: color); emit(miter, color: color)
-                emit(curr.simd2, color: color); emit(miter, color: color); emit(cornerB, color: color)
-            } else {
-                emit(curr.simd2, color: color); emit(cornerA, color: color); emit(cornerB, color: color)
+            let cornerA = curr + n0 * (side * half)
+            let cornerB = curr + n1 * (side * half)
+            switch strokeJoinStyle {
+            case .round:
+                // Arc the outer gap from one corner to the other about `curr`,
+                // sweeping the short (minor) way between them.
+                let va = cornerA - curr, vb = cornerB - curr
+                let startAngle = atan2(va.y, va.x)
+                let sweep = atan2(va.x * vb.y - va.y * vb.x, va.x * vb.x + va.y * vb.y)
+                appendArcFan(center: curr, radius: half,
+                             startAngle: startAngle, sweep: sweep, color: color)
+            case .bevel:
+                emit(curr.simd2, color: color); emit(cornerA.simd2, color: color); emit(cornerB.simd2, color: color)
+            case .miter:
+                let bisector = n0 + n1
+                let bisectorLength = bisector.length
+                let cosHalf = bisectorLength > 1e-6 ? (bisector.x * n0.x + bisector.y * n0.y) / bisectorLength : 0
+                if cosHalf > 1e-4, 1 / cosHalf <= miterLimit {
+                    let miter = (curr + bisector / bisectorLength * (side * half / cosHalf)).simd2
+                    emit(curr.simd2, color: color); emit(cornerA.simd2, color: color); emit(miter, color: color)
+                    emit(curr.simd2, color: color); emit(miter, color: color); emit(cornerB.simd2, color: color)
+                } else {
+                    emit(curr.simd2, color: color); emit(cornerA.simd2, color: color); emit(cornerB.simd2, color: color)
+                }
             }
+        }
+
+        // Cap the two open ends (closed paths have none). The cap direction points
+        // outward — away from the path — along the end segment.
+        guard !closed else { return }
+        let dStart = pts[1] - pts[0]
+        if dStart.length > 1e-9 {
+            appendCap(at: pts[0], outward: dStart / dStart.length * -1, half: half, color: color)
+        }
+        let dEnd = pts[n - 1] - pts[n - 2]
+        if dEnd.length > 1e-9 {
+            appendCap(at: pts[n - 1], outward: dEnd / dEnd.length, half: half, color: color)
+        }
+    }
+
+    /// Finish one open end of a stroked path per `strokeCap`. `outward` is the
+    /// unit direction pointing away from the path; `.butt` adds nothing, `.round`
+    /// caps with a half-disk, `.square` extends a flat quad `half` past the end.
+    private func appendCap(at point: Vector2, outward: Vector2,
+                           half: Double, color: SIMD4<Float>) {
+        let perp = Vector2(-outward.y, outward.x)   // unit, across the stroke
+        switch strokeCapStyle {
+        case .butt:
+            return
+        case .round:
+            // Half-disk: a π sweep from one edge to the other, bulging outward.
+            // `perp` is 90° from `outward`, so sweeping −π routes through it.
+            appendArcFan(center: point, radius: half,
+                         startAngle: atan2(perp.y, perp.x), sweep: -.pi, color: color)
+        case .square:
+            let n = perp * half
+            let ext = outward * half
+            let a0 = (point + n).simd2
+            let a1 = (point - n).simd2
+            let b0 = (point + n + ext).simd2
+            let b1 = (point - n + ext).simd2
+            emit(a0, color: color); emit(b0, color: color); emit(b1, color: color)
+            emit(a0, color: color); emit(b1, color: color); emit(a1, color: color)
+        }
+    }
+
+    /// Triangle-fan an arc of `radius` about `center`, starting at `startAngle`
+    /// and sweeping `sweep` radians (signed). The step count scales with the arc
+    /// length, so round joins and caps stay smooth without over-tessellating.
+    private func appendArcFan(center: Vector2, radius: Double,
+                              startAngle: Double, sweep: Double, color: SIMD4<Float>) {
+        guard radius > 0, abs(sweep) > 1e-6 else { return }
+        let full = Double(circleSegments(for: radius))
+        let steps = max(1, Int((abs(sweep) / (2 * .pi) * full).rounded(.up)))
+        let c = center.simd2
+        var prev = SIMD2<Float>(Float(center.x + cos(startAngle) * radius),
+                                Float(center.y + sin(startAngle) * radius))
+        for i in 1...steps {
+            let a = startAngle + sweep * Double(i) / Double(steps)
+            let curr = SIMD2<Float>(Float(center.x + cos(a) * radius),
+                                    Float(center.y + sin(a) * radius))
+            emit(c, color: color); emit(prev, color: color); emit(curr, color: color)
+            prev = curr
         }
     }
 

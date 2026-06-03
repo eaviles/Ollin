@@ -50,6 +50,12 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func strokeJoinsAndCapsMatchReference() throws {
+        let diff = try Snapshot.meanDifference(of: StrokeJoinsCaps(), against: "stroke-joins-caps")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -191,5 +197,32 @@ private final class CurvedPaths: Sketch {
         stroke(.black); strokeWeight(4)
         drawCurve([Vector2(25, 228), Vector2(80, 200), Vector2(130, 236),
                    Vector2(180, 200), Vector2(232, 230)])
+    }
+}
+
+/// Each `strokeJoin` on a sharp chevron (top three) and each `strokeCap` on an
+/// open segment (bottom three), so the corner and end geometry are exercised on
+/// the tessellated stroke path. Static, so it's deterministic at frame 0.
+private final class StrokeJoinsCaps: Sketch {
+    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+
+    override func draw() {
+        background(.white)
+        stroke(.black); strokeWeight(22)
+
+        let joins: [StrokeJoin] = [.miter, .bevel, .round]
+        for (i, join) in joins.enumerated() {
+            let cy = 32.0 + Double(i) * 36
+            strokeJoin(join)
+            drawPolyline([Vector2(40, cy + 14), Vector2(128, cy - 14), Vector2(216, cy + 14)])
+        }
+
+        let caps: [StrokeCap] = [.butt, .round, .square]
+        strokeJoin(.miter)
+        for (i, cap) in caps.enumerated() {
+            let cy = 160.0 + Double(i) * 32
+            strokeCap(cap)
+            drawPolyline([Vector2(70, cy), Vector2(186, cy)])
+        }
     }
 }
