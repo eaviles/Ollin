@@ -56,6 +56,12 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: StrokeJoinsCaps(), against: "stroke-joins-caps")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func bitmapTextMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: TextSpecimen(), against: "bitmap-text")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -223,6 +229,36 @@ private final class StrokeJoinsCaps: Sketch {
             let cy = 160.0 + Double(i) * 32
             strokeCap(cap)
             drawPolyline([Vector2(70, cy), Vector2(186, cy)])
+        }
+    }
+}
+
+/// The bitmap-font `drawText` with the bundled Cozette font: capitals, lowercase,
+/// digits, the Spanish set (accented vowels, ñ/ü, inverted punctuation), Japanese
+/// kana (hiragana + katakana), descenders (`g j p q y`), the alignments, and a
+/// rotated line that exercises text on the transform stack. Black on white, static.
+private final class TextSpecimen: Sketch {
+    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+
+    override func draw() {
+        background(.white)
+        fill(.black)
+        textAlign(.left, .top)
+        textSize(24)
+        drawText("¡Hola! Ñ", 14, 12)
+        textSize(22)
+        drawText("ABCxyz 0123", 14, 42)
+        drawText("áéíóú ñ ü ¿?", 14, 70)
+        textSize(20)
+        drawText("こんにちは", 14, 98)        // hiragana
+        drawText("ハロー gjpqy", 14, 126)      // katakana + descenders
+        // Centered + rotated, through the transform stack.
+        textAlign(.center, .middle)
+        drawText("centered", width / 2, 172)
+        withState {
+            translate(width / 2, 212)
+            rotate(0.16)
+            drawText("rotated", 0, 0)
         }
     }
 }

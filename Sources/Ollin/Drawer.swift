@@ -96,6 +96,10 @@ final class Drawer {
     private var strokeAlignment: StrokeAlign = .center   // where the stroke sits on the outline (see strokeAlign)
     private var strokeJoinStyle: StrokeJoin = .miter     // how stroked-path corners turn (see strokeJoin)
     private var strokeCapStyle: StrokeCap = .butt        // how open stroked-path ends finish (see strokeCap)
+    private var currentFont: BitmapFont = .builtin       // active text font (see textFont / drawText)
+    private var textPixelSize: Double = 24               // rendered glyph height in points (see textSize)
+    private var textAlignH: TextAlignH = .left           // horizontal text anchor (see textAlign)
+    private var textAlignV: TextAlignV = .baseline       // vertical text anchor (see textAlign)
 
     // MARK: Per-frame geometry (reset every frame)
 
@@ -143,6 +147,10 @@ final class Drawer {
         var strokeAlignment: StrokeAlign
         var strokeJoinStyle: StrokeJoin
         var strokeCapStyle: StrokeCap
+        var currentFont: BitmapFont
+        var textPixelSize: Double
+        var textAlignH: TextAlignH
+        var textAlignV: TextAlignV
     }
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
@@ -189,6 +197,21 @@ final class Drawer {
     /// (`drawPolyline`, open `drawShape` contours); closed outlines have no ends.
     func strokeCap(_ cap: StrokeCap) { strokeCapStyle = cap }
 
+    /// Set the active text font (see `BitmapFont`). Defaults to `.builtin`.
+    func textFont(_ font: BitmapFont) { currentFont = font }
+
+    /// Set the rendered text height in points — the height one line of glyphs
+    /// occupies on screen (`drawText`). Defaults to 24.
+    func textSize(_ size: Double) { textPixelSize = max(0, size) }
+
+    /// Set the text anchor relative to the `drawText` position (see `TextAlignH` /
+    /// `TextAlignV`): horizontal `.left`/`.center`/`.right`, vertical
+    /// `.top`/`.middle`/`.baseline`/`.bottom`.
+    func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
+        textAlignH = horizontal
+        textAlignV = vertical
+    }
+
     // MARK: Frame lifecycle
 
     /// Drop last frame's geometry but keep drawing state. Called once per frame
@@ -232,7 +255,9 @@ final class Drawer {
                                      marker: marker, hollowWidth: hollowWidth,
                                      strokeAlignment: strokeAlignment,
                                      strokeJoinStyle: strokeJoinStyle,
-                                     strokeCapStyle: strokeCapStyle))
+                                     strokeCapStyle: strokeCapStyle,
+                                     currentFont: currentFont, textPixelSize: textPixelSize,
+                                     textAlignH: textAlignH, textAlignV: textAlignV))
     }
 
     /// Restore the most recently pushed transform and style. No-op if unbalanced.
@@ -249,6 +274,10 @@ final class Drawer {
         strokeAlignment = s.strokeAlignment
         strokeJoinStyle = s.strokeJoinStyle
         strokeCapStyle = s.strokeCapStyle
+        currentFont = s.currentFont
+        textPixelSize = s.textPixelSize
+        textAlignH = s.textAlignH
+        textAlignV = s.textAlignV
     }
 
     // MARK: Primitives
@@ -850,6 +879,72 @@ final class Drawer {
         appendSDF(shape: .box, center: rect.center,
                   size: SIMD2<Float>(Float(rect.width / 2), Float(rect.height / 2)),
                   fill: fillColor, stroke: strokeColor, extra: Float(r))
+    }
+
+    // MARK: Text
+
+    /// Draw `string` at `(x, y)` in the current `fill` color, using the active
+    /// `textFont` / `textSize` / `textAlign`. Each lit pixel of each glyph is
+    /// stamped as one square on the SDF path (no rasterization), so text rides the
+    /// transform stack and stays crisp at any size. `\n` starts a new line. Text
+    /// takes the `fill` color — `noFill()` draws nothing — and unknown characters
+    /// advance the pen but draw nothing.
+    func drawText(_ string: String, _ x: Double, _ y: Double) {
+        guard let fill = fillColor, textPixelSize > 0, !string.isEmpty else { return }
+        let font = currentFont
+        guard font.pixelHeight > 0 else { return }
+        let module = textPixelSize / Double(font.pixelHeight)
+        let half = SIMD2<Float>(Float(module / 2), Float(module / 2))
+
+        let lines = string.split(separator: "\n", omittingEmptySubsequences: false)
+        let blockHeight = Double((lines.count - 1) * font.lineHeight + font.pixelHeight) * module
+
+        // First line's top edge, from the vertical anchor.
+        let topY0: Double
+        switch textAlignV {
+        case .top:      topY0 = y
+        case .baseline: topY0 = y - Double(font.baseline) * module
+        case .middle:   topY0 = y - blockHeight / 2
+        case .bottom:   topY0 = y - blockHeight
+        }
+
+        for (lineIndex, line) in lines.enumerated() {
+            let lineTop = topY0 + Double(lineIndex * font.lineHeight) * module
+            let lineWidth = Double(font.inkWidth(of: String(line))) * module
+            // Left edge of this line, from the horizontal anchor.
+            var penX: Double
+            switch textAlignH {
+            case .left:   penX = x
+            case .center: penX = x - lineWidth / 2
+            case .right:  penX = x - lineWidth
+            }
+
+            for ch in line {
+                if let glyph = font.glyph(for: ch) {
+                    let cellLeft = penX + Double(glyph.xOffset) * module
+                    let cellTop = lineTop + Double(glyph.yOffset) * module
+                    for row in 0..<glyph.height {
+                        for col in 0..<glyph.width where glyph.isSet(col, row) {
+                            let cx = cellLeft + (Double(col) + 0.5) * module
+                            let cy = cellTop + (Double(row) + 0.5) * module
+                            // Fill-only square; opt out of hollow so a set band
+                            // doesn't turn each pixel into a ring.
+                            appendSDF(shape: .box, center: Vector2(cx, cy), size: half,
+                                      fill: fill, stroke: nil, applyHollow: false)
+                        }
+                    }
+                }
+                penX += Double(font.advance(for: ch)) * module
+            }
+        }
+    }
+
+    /// The on-screen width of `string`'s widest line, in points, at the current
+    /// `textFont` / `textSize` — for laying text out.
+    func textWidth(_ string: String) -> Double {
+        guard currentFont.pixelHeight > 0 else { return 0 }
+        let module = textPixelSize / Double(currentFont.pixelHeight)
+        return Double(currentFont.inkWidth(of: string)) * module
     }
 
     /// A straight line segment from `a` to `b`, stroked with the current stroke

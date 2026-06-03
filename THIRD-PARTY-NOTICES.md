@@ -35,3 +35,22 @@ redistributed inside this repository.
 >
 > (The software is provided "as is", without warranty of any kind. See `LICENSE.txt`
 > for the full text, including the warranty disclaimer and the trademark clause.)
+
+---
+
+## Cozette
+
+- **Used for:** the bundled default bitmap font (`BitmapFont.builtin`), loaded at runtime from its BDF by the font loader and rendered by `drawText`.
+- **Location in this repo:** [`Sources/Ollin/Resources/cozette.bdf`](Sources/Ollin/Resources/cozette.bdf)
+- **Upstream:** https://github.com/the-moonwitch/Cozette
+- **Version:** v1.30.0
+- **License:** MIT — full text at [`Sources/Ollin/Resources/Cozette-LICENSE.txt`](Sources/Ollin/Resources/Cozette-LICENSE.txt)
+
+> MIT License
+>
+> Copyright (c) 2020 Samhain &lt;samhain@moonwit.ch&gt; & contributors &lt;https://github.com/the-moonwitch/Cozette/contributors&gt;
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy of
+> this software and associated documentation files (the "Software"), to deal in the
+> Software without restriction… (see `Cozette-LICENSE.txt` for the full text,
+> including the warranty disclaimer).

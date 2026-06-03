@@ -121,6 +121,7 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Sketch](Docs/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), and loop control.
 - [Canvas](Docs/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
 - [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawEllipse`, `drawArc`, `drawRect`, `drawLine`, `drawPolyline`, `drawPolygon`, `drawShape`, `drawCurve`), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
+- [Text](Docs/Text.md) - `drawText` with the bitmap font (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`).
 - [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
 - [Geometry](Docs/Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines).
 - [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
@@ -204,9 +205,10 @@ Ollin builds on the ideas of three creative-coding frameworks and reimplements t
 
 ### Bundled third-party code
 
-Ollin bundles a small amount of third-party source in the repo. This is different from the projects above: it ships as actual code and keeps its own license. Right now that's one library:
+Ollin bundles a small amount of third-party source in the repo. This is different from the projects above: it ships as actual code and keeps its own license. Right now that's:
 
 - **[libtess2](https://github.com/memononen/libtess2)** (SGI Free Software License B): the polygon triangulator behind concave and holed `Shape` fills, vendored under `External/CLibtess2/`.
+- **[Cozette](https://github.com/the-moonwitch/Cozette)** by Ines (MIT): the bundled default bitmap font for `drawText`, vendored as a BDF under `Sources/Ollin/Resources/`.
 
 Everything bundled is listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), with each library's license kept next to its source. Ollin's own code stays MIT; bundling a permissively licensed library doesn't change that.
 

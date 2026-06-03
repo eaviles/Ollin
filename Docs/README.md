@@ -16,6 +16,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 ### Drawing
 
 - [`Drawing`](./Drawing.md) - `background`, `fill`/`stroke`, the shapes, and the transform stack
+- [`Text`](./Text.md) - `drawText` and the bitmap-font `BitmapFont`
 - [`Color`](./Color.md) - the `Color` type, cosine-gradient `Palette`s, and perceptual `Colormap`s
 - [`Geometry`](./Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines)
 

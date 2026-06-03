@@ -19,6 +19,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Motion](Motion/) | animation driven by `time` |
 | [Patterns](Patterns/) | grids and rule-based repetition |
 | [Randomness](Randomness/) | `random`, `noise`, and scatter |
+| [Text](Text/) | drawing text with the bitmap-font `drawText` |
 | [Recreations](Recreations/) | homages to past computer artists, by artist |
 
 ### Running

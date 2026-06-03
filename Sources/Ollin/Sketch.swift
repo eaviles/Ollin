@@ -467,6 +467,31 @@ open class Sketch {
     public func drawRect(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0) {
         drawer.drawRect(Rectangle(center: center, width: width, height: height), cornerRadius: cornerRadius)
     }
+    /// Set the active text font for `drawText` (a `BitmapFont`). Defaults to
+    /// `.builtin`, Ollin's bundled 5×7 pixel font, so text works with no setup.
+    public func textFont(_ font: BitmapFont) { drawer.textFont(font) }
+    /// Set the rendered text height in points — the height one line of glyphs
+    /// occupies on screen. Defaults to 24.
+    public func textSize(_ size: Double) { drawer.textSize(size) }
+    /// Set how `drawText` anchors text to its position: horizontal
+    /// `.left`/`.center`/`.right` and vertical `.top`/`.middle`/`.baseline`/`.bottom`
+    /// (default `.left`, `.baseline`). See `TextAlignH` / `TextAlignV`.
+    public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
+        drawer.textAlign(horizontal, vertical)
+    }
+    /// Draw `string` at `(x, y)` in the current `fill` color, using the active
+    /// `textFont`/`textSize`/`textAlign`. `\n` starts a new line; text rides the
+    /// transform stack (so it rotates/scales). `noFill()` draws nothing.
+    public func drawText(_ string: String, _ x: Double, _ y: Double) {
+        drawer.drawText(string, x, y)
+    }
+    /// Draw `string` anchored at `position` — the `Vector2` form of `drawText`.
+    public func drawText(_ string: String, at position: Vector2) {
+        drawer.drawText(string, position.x, position.y)
+    }
+    /// The on-screen width of `string`'s widest line, in points, at the current
+    /// `textFont`/`textSize` — for laying text out.
+    public func textWidth(_ string: String) -> Double { drawer.textWidth(string) }
     public func translate(_ offset: Vector2) { drawer.translate(offset) }
     public func translate(_ x: Double, _ y: Double) { drawer.translate(Vector2(x, y)) }
     public func drawLine(_ a: Vector2, _ b: Vector2) { drawer.drawLine(a, b) }

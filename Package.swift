@@ -95,7 +95,12 @@ let package = Package(
             // source in place of its `#include` directive.
             resources: [
                 .process("Renderer/Shaders.metal"),
-                .copy("Renderer/OllinShaderTypes.h")
+                .copy("Renderer/OllinShaderTypes.h"),
+                // Cozette (MIT) — the bundled default bitmap font, loaded at
+                // runtime by BitmapFont.builtin via the BDF parser. License kept
+                // beside it; see THIRD-PARTY-NOTICES.md.
+                .copy("Resources/cozette.bdf"),
+                .copy("Resources/Cozette-LICENSE.txt")
             ]
         ),
         // Examples — one runnable sketch per executable target, grouped into
@@ -317,6 +322,11 @@ let package = Package(
             name: "Example-Mandala",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Mandala"
+        ),
+        .executableTarget(
+            name: "Example-HelloText",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/HelloText"
         ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
