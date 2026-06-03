@@ -4,14 +4,15 @@
 
 ## Text
 
-Ollin draws text in two kinds of font, both behind the same `drawText` / `textFont` / `textSize` / `textAlign` surface:
+Ollin draws text in three kinds of font, all behind the same `drawText` / `textFont` / `textSize` / `textAlign` surface:
 
 - A **bitmap font** — a glyph is a small grid of pixels, each lit pixel stamped as one square on the same instanced-SDF path the shapes use. No rasterizer, no separate pipeline. The default font is a bitmap font, so text works with zero setup.
 - An **outline font** — a real TrueType/OpenType (`.ttf`/`.otf`) face, each glyph stored as vector contours and drawn as a [`Shape`](./Geometry.md#shape). One load draws crisp at *any* size, the type takes both `fill` and `stroke`, and the glyph geometry is yours to manipulate.
+- A **stroke font** — a single-line (plotter) face whose glyphs are open pen paths with *no fill*, drawn with the current `stroke`. The kind of letterform a pen plotter draws. Hershey Sans comes bundled.
 
-Either way, text rides the [transform stack](./Drawing.md#translate), composites in draw order with everything else, and stays crisp at any size.
+All three ride the [transform stack](./Drawing.md#translate), composite in draw order with everything else, and stay crisp at any size.
 
-A font is ready out of the box — `BitmapFont.builtin` is **[Cozette](https://github.com/the-moonwitch/Cozette)** by Ines (MIT), a 13px pixel font bundled with Ollin — so `drawText` works with zero setup. It covers a wide range: Latin (including the Spanish accents `á é í ó ú`, `ñ`, `ü`, `¿`, `¡`), Cyrillic, Greek, and Japanese kana. Call these bare inside `draw()`; they forward to the `Drawer`. Bitmap text takes the current [`fill`](./Drawing.md#fill) color.
+The default font, `BitmapFont.builtin`, is **[Cozette](https://github.com/the-moonwitch/Cozette)**, a 13px pixel font bundled with Ollin, so `drawText` works with zero setup. It covers a wide range: Latin (including the Spanish accents `á é í ó ú`, `ñ`, `ü`, `¿`, `¡`), Cyrillic, Greek, and Japanese kana. Call these bare inside `draw()`; they forward to the `Drawer`. Bitmap text takes the current [`fill`](./Drawing.md#fill) color.
 
 ### Contents
 
@@ -20,6 +21,7 @@ A font is ready out of the box — `BitmapFont.builtin` is **[Cozette](https://g
 - [textWidth](#textwidth) — measure a string
 - [Outline fonts](#outlinefont) — `OutlineFont`, loading a `.ttf`/`.otf` from anywhere
 - [Variable fonts](#variable) — animate weight, width, and other axes
+- [Stroke fonts](#strokefont) — `StrokeFont`, single-line / plotter type
 - [Per-glyph drawText](#perglyph) — give each letter its own transform and color
 - [Text on a path](#onpath) — lay glyphs along a curve
 - [Box layout](#box) — wrap a paragraph into a rectangle
@@ -53,9 +55,10 @@ drawText("ollin", width / 2, height / 2)
 ```swift
 textFont(_ font: BitmapFont)
 textFont(_ font: OutlineFont)
+textFont(_ font: StrokeFont)
 ```
 
-Set the active font — a bitmap (pixel-grid) font or an outline (`.ttf`/`.otf`) font. Defaults to `.builtin`, so `textFont(.builtin)` switches back to the bundled Cozette at any time. Like the other drawing state, the active font is part of the [push/pop stack](./Drawing.md#withstate), so `withState { textFont(custom); … }` restores the previous font automatically on exit. (See [BitmapFont](#bitmapfont) to load or build a bitmap font, or [Outline fonts](#outlinefont) for a `.ttf`/`.otf`.)
+Set the active font — a bitmap (pixel-grid), outline (`.ttf`/`.otf`), or stroke (single-line) font. The default is `BitmapFont.builtin` (Cozette); write `textFont(BitmapFont.builtin)` to switch back to it. Like the other drawing state, the active font is part of the [push/pop stack](./Drawing.md#withstate), so `withState { textFont(custom); … }` restores the previous font automatically on exit. (See [BitmapFont](#bitmapfont) to load or build a bitmap font, [Outline fonts](#outlinefont) for a `.ttf`/`.otf`, or [Stroke fonts](#strokefont) for single-line type.)
 
 <a name="textsize"></a>
 
@@ -168,6 +171,36 @@ drawText("ollin", width / 2, height / 2)
 ```
 
 (A non-variable font ignores variation and returns an empty `variationAxes`.)
+
+<a name="strokefont"></a>
+
+### Stroke fonts
+
+```swift
+textFont(_ font: StrokeFont)
+```
+
+A `StrokeFont` is a **single-line** font: each glyph is a set of open pen paths with no interior. Where a bitmap font stamps pixels and an outline font fills contours, a stroke font is *stroked* — so it draws with the current `stroke` (weight, join, cap) and **ignores `fill`**, the mirror image of outline text. It's the letterform a pen plotter wants, and it pairs naturally with thin, even line weights.
+
+```swift
+textFont(StrokeFont.builtin)        // Hershey Sans, bundled
+textSize(160)
+textAlign(.center, .middle)
+stroke(.white); strokeWeight(2)
+strokeCap(.round); strokeJoin(.round)   // a softer, drawn line
+drawText("ollin", width / 2, height / 2)
+```
+
+The bundled default is **Hershey Sans**, from the public-domain [Hershey vector fonts](https://paulbourke.net/dataformats/hershey/). Because the glyphs are open paths, `textToShapes` hands them back as open contours (stroke or warp them — don't fill), and they flow through the same [per-glyph](#perglyph) and [text-on-a-path](#onpath) surface as the other kinds.
+
+**Loading more single-line fonts:** Ollin reads the Hershey `.jhf` format, so you can drop in any of the many Hershey faces (serif, script, gothic, Cyrillic, Greek):
+
+```swift
+let serif = StrokeFont(resource: "rowmans.jhf", in: .module) ?? .builtin
+textFont(serif)
+```
+
+`StrokeFont(resource:in:)` loads one bundled beside your sketch (pass `.module` for a `swift run` sketch's resources); `StrokeFont(jhfContentsOf:)` takes any file URL, and `StrokeFont(jhf:)` parses `.jhf` text you already have. The Hershey faces live in many public-domain mirrors (e.g. [kamalmostafa/hershey-fonts](https://github.com/kamalmostafa/hershey-fonts)); for the wider world of single-line type, [Golan Levin's single-line-font resources](https://github.com/golanlevin/p5-single-line-font-resources) is a good map (mind the per-font licenses there). Ollin ships only the parser and the one Hershey default.
 
 <a name="perglyph"></a>
 
@@ -304,6 +337,8 @@ if let mine = BitmapFont(bdfContentsOf: url) {
     textFont(mine)
 }
 ```
+
+BDF fonts are easy to come by: the classic [X11 bitmap fonts](https://github.com/toitlang/pkg-font-x11-adobe) (Adobe/DEC, permissively licensed) and the large [u8g2 font collection](https://github.com/olikraus/u8g2/wiki/fntlistall) are good places to look (check each font's own license). Drop the `.bdf` beside your sketch and load it with `BitmapFont(resource:in:)`.
 
 Or hand-author a fixed-cell font from ASCII art with the grid initializer — `#` marks a lit pixel:
 

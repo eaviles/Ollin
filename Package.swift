@@ -100,7 +100,12 @@ let package = Package(
                 // runtime by BitmapFont.builtin via the BDF parser. License kept
                 // beside it; see THIRD-PARTY-NOTICES.md.
                 .copy("Resources/cozette.bdf"),
-                .copy("Resources/Cozette-LICENSE.txt")
+                .copy("Resources/Cozette-LICENSE.txt"),
+                // Hershey Sans (futural) — the bundled default stroke font, loaded
+                // at runtime by StrokeFont.builtin via the .jhf parser. Public
+                // domain; provenance recorded beside it and in THIRD-PARTY-NOTICES.
+                .copy("Resources/futural.jhf"),
+                .copy("Resources/Hershey-NOTICE.txt")
             ]
         ),
         // Examples — one runnable sketch per executable target, grouped into
@@ -360,6 +365,11 @@ let package = Package(
             name: "Example-VariableFont",
             dependencies: ["Ollin"],
             path: "Examples/Text/VariableFont"
+        ),
+        .executableTarget(
+            name: "Example-StrokeText",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/StrokeText"
         ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).

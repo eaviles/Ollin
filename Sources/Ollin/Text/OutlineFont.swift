@@ -375,12 +375,21 @@ public struct OutlineFont: @unchecked Sendable {
     }
 }
 
-/// The active text font — a bitmap (pixel-grid) or an outline (vector) face.
-/// `drawText` and the text metrics dispatch on this; `textFont(_:)` sets it from
-/// either a `BitmapFont` or an `OutlineFont`.
+/// The active text font — a bitmap (pixel-grid), an outline (vector) face, or a
+/// stroke (single-line / plotter) face. `drawText` and the text metrics dispatch
+/// on this; `textFont(_:)` sets it from a `BitmapFont`, `OutlineFont`, or
+/// `StrokeFont`.
 enum ActiveFont {
     case bitmap(BitmapFont)
     case outline(OutlineFont)
+    case stroke(StrokeFont)
+
+    /// Whether the active font draws as stroked pen paths (so `drawText` strokes
+    /// open polylines rather than filling glyph shapes).
+    var isStroke: Bool {
+        if case .stroke = self { return true }
+        return false
+    }
 }
 
 /// Per-font cache of glyph outlines. Glyph paths are created once by Core Text

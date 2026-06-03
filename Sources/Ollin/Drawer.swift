@@ -204,6 +204,9 @@ final class Drawer {
     /// Set the active text font to an outline (vector `.ttf`/`.otf`) font.
     func textFont(_ font: OutlineFont) { currentFont = .outline(font) }
 
+    /// Set the active text font to a stroke (single-line / plotter) font.
+    func textFont(_ font: StrokeFont) { currentFont = .stroke(font) }
+
     /// Set the rendered text height in points — the height one line of glyphs
     /// occupies on screen (`drawText`). Defaults to 24.
     func textSize(_ size: Double) { textPixelSize = max(0, size) }
@@ -900,6 +903,60 @@ final class Drawer {
         switch currentFont {
         case .bitmap(let font):  drawBitmapText(string, x, y, font: font)
         case .outline(let font): drawOutlineText(string, x, y, font: font)
+        case .stroke(let font):  drawStrokeText(string, x, y, font: font)
+        }
+    }
+
+    /// Stroke path: each glyph is a set of open pen polylines, drawn with the
+    /// current `stroke` (weight, join, cap). Fill is ignored — the inverse of
+    /// outline text.
+    private func drawStrokeText(_ string: String, _ x: Double, _ y: Double, font: StrokeFont) {
+        guard strokeColor != nil, strokeWidth > 0 else { return }
+        forEachStrokeGlyphPolyline(string, x, y, font: font) { polyline in
+            drawPolyline(polyline)
+        }
+    }
+
+    /// Walk the pen polylines of `string`, laid out with the active text state,
+    /// calling `body` with each polyline in canvas space. Shared by
+    /// `drawStrokeText` and `textToShapes` so the stroke layout lives in one place.
+    private func forEachStrokeGlyphPolyline(_ string: String, _ x: Double, _ y: Double,
+                                            font: StrokeFont, _ body: ([Vector2]) -> Void) {
+        guard font.unitsPerEm > 0 else { return }
+        let scale = textPixelSize / font.unitsPerEm
+        let ascent = font.ascentUnits * scale
+        let descent = font.descentUnits * scale
+        let leading = (font.ascent + font.descent + font.leading) * textPixelSize   // baseline-to-baseline
+        let lines = string.split(separator: "\n", omittingEmptySubsequences: false)
+        let blockHeight = Double(lines.count - 1) * leading + ascent + descent
+
+        // First line's baseline, from the vertical anchor.
+        let firstBaseline: Double
+        switch textAlignV {
+        case .top:      firstBaseline = y + ascent
+        case .baseline: firstBaseline = y
+        case .middle:   firstBaseline = y - blockHeight / 2 + ascent
+        case .bottom:   firstBaseline = y - blockHeight + ascent
+        }
+
+        for (lineIndex, line) in lines.enumerated() {
+            let baselineY = firstBaseline + Double(lineIndex) * leading
+            let lineWidth = font.lineAdvanceUnits(of: line) * scale
+            // Left edge of this line, from the horizontal anchor.
+            var penX: Double
+            switch textAlignH {
+            case .left:   penX = x
+            case .center: penX = x - lineWidth / 2
+            case .right:  penX = x - lineWidth
+            }
+            for ch in line {
+                if let glyph = font.glyph(for: ch) {
+                    for polyline in glyph.polylines {
+                        body(polyline.map { Vector2(penX + $0.x * scale, baselineY + $0.y * scale) })
+                    }
+                }
+                penX += font.advanceUnits(for: ch) * scale
+            }
         }
     }
 
@@ -997,6 +1054,14 @@ final class Drawer {
                 ], closed: true))
             }
             return squares.isEmpty ? [] : [Shape(contours: squares)]
+        case .stroke(let font):
+            // A stroke font's geometry is open pen polylines (no fill) — stroke
+            // them, or warp and re-stroke.
+            var strokes: [Contour] = []
+            forEachStrokeGlyphPolyline(string, x, y, font: font) { polyline in
+                strokes.append(Contour(polyline, closed: false))
+            }
+            return strokes.isEmpty ? [] : [Shape(contours: strokes)]
         }
     }
 
@@ -1010,6 +1075,8 @@ final class Drawer {
             return Double(font.inkWidth(of: string)) * module
         case .outline(let font):
             return font.width(of: string, size: textPixelSize)
+        case .stroke(let font):
+            return font.width(of: string, size: textPixelSize)
         }
     }
 
@@ -1021,6 +1088,8 @@ final class Drawer {
             guard font.pixelHeight > 0 else { return 0 }
             return Double(font.baseline) * (textPixelSize / Double(font.pixelHeight))
         case .outline(let font):
+            return font.ascent * textPixelSize
+        case .stroke(let font):
             return font.ascent * textPixelSize
         }
     }
@@ -1035,6 +1104,8 @@ final class Drawer {
             return Double(font.pixelHeight - font.baseline) * module
         case .outline(let font):
             return font.descent * textPixelSize
+        case .stroke(let font):
+            return font.descent * textPixelSize
         }
     }
 
@@ -1046,6 +1117,8 @@ final class Drawer {
             guard font.pixelHeight > 0 else { return 0 }
             return Double(font.lineHeight) * (textPixelSize / Double(font.pixelHeight))
         case .outline(let font):
+            return (font.ascent + font.descent + font.leading) * textPixelSize
+        case .stroke(let font):
             return (font.ascent + font.descent + font.leading) * textPixelSize
         }
     }
@@ -1142,6 +1215,9 @@ final class Drawer {
         case .middle:   baselineY = y + (ascent - descent) / 2
         case .bottom:   baselineY = y - descent
         }
+        // A stroke font's glyph geometry is open pen paths: stroke them rather than
+        // fill (the same split `drawText` makes between the font kinds).
+        let strokesGlyphs = currentFont.isStroke
 
         for (index, item) in run.enumerated() {
             let origin = Vector2(startX + item.penX, baselineY)
@@ -1150,7 +1226,14 @@ final class Drawer {
                                    width: item.advance, height: ascent + descent)
             let glyph = TextGlyph(character: item.character, index: index, count: run.count,
                                   position: origin, bounds: bounds, shapes: shapes,
-                                  drawThunk: { [weak self] in shapes.forEach { self?.drawShape($0) } })
+                                  drawThunk: { [weak self] in
+                                      guard let self else { return }
+                                      if strokesGlyphs {
+                                          shapes.forEach { $0.contours.forEach { self.drawPolyline($0.points) } }
+                                      } else {
+                                          shapes.forEach { self.drawShape($0) }
+                                      }
+                                  })
             perGlyph(glyph)
         }
     }
@@ -1174,6 +1257,7 @@ final class Drawer {
         for i in 1..<points.count { cumulative.append(cumulative[i - 1] + (points[i] - points[i - 1]).length) }
         let total = cumulative.last ?? 0
         guard total > 0 else { return }
+        let strokesGlyphs = currentFont.isStroke   // stroke open pen paths, don't fill
 
         for item in run {
             let distance = offset + item.penX + item.advance / 2
@@ -1188,7 +1272,11 @@ final class Drawer {
                     return Vector2(anchor.x + lx * cosA - ly * sinA,
                                    anchor.y + lx * sinA + ly * cosA)
                 }
-                drawShape(placed)
+                if strokesGlyphs {
+                    placed.contours.forEach { drawPolyline($0.points) }
+                } else {
+                    drawShape(placed)
+                }
             }
         }
     }
@@ -1216,7 +1304,30 @@ final class Drawer {
         switch currentFont {
         case .outline(let font): return font.glyphRun(for: string, size: textPixelSize)
         case .bitmap(let font):  return bitmapGlyphRun(string, font: font)
+        case .stroke(let font):  return strokeGlyphRun(string, font: font)
         }
+    }
+
+    /// A stroke font's single-line glyph run — each glyph's pen polylines as local
+    /// open `Contour`s (pen origin at the origin, baseline at `y = 0`).
+    private func strokeGlyphRun(_ string: String, font: StrokeFont) -> [GlyphRunItem] {
+        guard font.unitsPerEm > 0, textPixelSize > 0 else { return [] }
+        let scale = textPixelSize / font.unitsPerEm
+        var items: [GlyphRunItem] = []
+        var penX = 0.0
+        for ch in string.replacingOccurrences(of: "\n", with: " ") {
+            var contours: [Contour] = []
+            if let glyph = font.glyph(for: ch) {
+                for polyline in glyph.polylines {
+                    contours.append(Contour(polyline.map { Vector2($0.x * scale, $0.y * scale) }, closed: false))
+                }
+            }
+            let advance = font.advanceUnits(for: ch) * scale
+            items.append(GlyphRunItem(character: ch, penX: penX, advance: advance,
+                                      localShapes: contours.isEmpty ? [] : [Shape(contours: contours)]))
+            penX += advance
+        }
+        return items
     }
 
     /// A bitmap font's single-line glyph run — each glyph's lit pixels as local

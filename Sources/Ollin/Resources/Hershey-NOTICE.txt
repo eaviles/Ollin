@@ -1,0 +1,20 @@
+Hershey vector fonts — public domain
+=====================================
+
+futural.jhf is "Hershey Sans" (a single-stroke sans), one of the Hershey vector
+fonts originally created by Dr. A. V. Hershey while working at the U.S. National
+Bureau of Standards. The Hershey fonts are in the public domain.
+
+This file is the ".jhf" (James Hershey Font) per-face form, with one glyph record
+per printable ASCII character. It is bundled as the default for Ollin's
+StrokeFont (single-line / plotter text) and loaded at runtime by the .jhf parser.
+
+Provenance:
+  - Author: A. V. Hershey / U.S. National Bureau of Standards
+  - Distribution: the widely mirrored public-domain Hershey data
+    (e.g. https://github.com/kamalmostafa/hershey-fonts and
+     https://paulbourke.net/dataformats/hershey/)
+  - Status: public domain (no license required)
+
+The public domain imposes no obligations; this notice records provenance for the
+bundled asset, consistent with how Ollin documents everything it ships.

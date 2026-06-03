@@ -57,6 +57,20 @@ redistributed inside this repository.
 
 ---
 
+## Hershey fonts
+
+- **Used for:** the bundled default stroke (single-line) font (`StrokeFont.builtin`, "Hershey Sans" / `futural`), loaded at runtime from its `.jhf` by the stroke-font parser and drawn by `drawText`.
+- **Location in this repo:** [`Sources/Ollin/Resources/futural.jhf`](Sources/Ollin/Resources/futural.jhf) (provenance in [`Sources/Ollin/Resources/Hershey-NOTICE.txt`](Sources/Ollin/Resources/Hershey-NOTICE.txt))
+- **Upstream:** the public-domain Hershey data, as widely mirrored (e.g. https://github.com/kamalmostafa/hershey-fonts and https://paulbourke.net/dataformats/hershey/)
+- **License:** public domain.
+
+> The Hershey vector fonts were originally created by Dr. A. V. Hershey while
+> working at the U.S. National Bureau of Standards, and are in the public domain.
+> The public domain carries no attribution requirement; the credit above is given
+> freely, and provenance is recorded for the bundled asset.
+
+---
+
 ## Marble Madness (example font)
 
 - **Used for:** the `PlaydateFont` example sketch only — a sample Playdate `.fnt` font, loaded at runtime to demonstrate the loader. Not part of the Ollin framework; Ollin bundles no `.fnt` fonts itself.

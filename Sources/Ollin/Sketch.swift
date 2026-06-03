@@ -475,6 +475,10 @@ open class Sketch {
     /// font — `OutlineFont(name:)`, `.system`, a file, or bundled data. One load
     /// draws at any `textSize`, and each glyph is a `Shape` (fill *and* stroke).
     public func textFont(_ font: OutlineFont) { drawer.textFont(font) }
+    /// Set the active text font for `drawText` to a stroke (single-line / plotter)
+    /// font — `StrokeFont.builtin` (Hershey Sans) or a loaded `.jhf`. Glyphs are
+    /// open pen paths drawn with the current `stroke`; `fill` is ignored.
+    public func textFont(_ font: StrokeFont) { drawer.textFont(font) }
     /// Set the rendered text height in points — the height one line of glyphs
     /// occupies on screen. Defaults to 24.
     public func textSize(_ size: Double) { drawer.textSize(size) }

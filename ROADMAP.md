@@ -24,7 +24,7 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 
 ## Core batteries
 
-The table-stakes capabilities p5.js, openFrameworks, and OPENRNDR all ship: **text and typography** (the biggest perceived gap), **image loading**, and **audio** (lowest priority, mostly for audio-reactive visuals). A sketcher reaches for these early, so they matter more than their size suggests; all three are Apple-native and stay sugar over the typed core. Text comes in kinds worth taking one at a time; the kind still ahead is single-line/stroke fonts (pen paths, the natural fit for plotters). Engines, APIs, the font tracks, and ordering are in the [design notes](DESIGN-NOTES.md#core-batteries-text-image-audio-not-started).
+The table-stakes capabilities p5.js, openFrameworks, and OPENRNDR all ship: **image loading** and **audio** (lowest priority, mostly for audio-reactive visuals). A sketcher reaches for these early, so they matter more than their size suggests; both are Apple-native and stay sugar over the typed core. Engines, APIs, and ordering are in the [design notes](DESIGN-NOTES.md#core-batteries-text-image-audio-not-started).
 
 ## Vector and plotter output
 
