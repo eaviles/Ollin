@@ -157,6 +157,13 @@ public struct Easing: Sendable {
     public static let smoothStep = Easing { t in t * t * (3 - 2 * t) }
 }
 
+/// A property-wrapper value the sketch advances once per frame — the `@Eased`
+/// tween and the `@Smoothed` filter. The sketch collects these via reflection
+/// (like `@Param`) and steps each one with the frame's `deltaTime`.
+protocol FrameAdvancing: AnyObject {
+    func advance(by dt: Double)
+}
+
 /// The bounce-out shaping function, shared by the three bounce curves.
 private func bounceOut(_ t: Double) -> Double {
     let n1 = 7.5625, d1 = 2.75
@@ -197,7 +204,7 @@ private func bounceOut(_ t: Double) -> Double {
 /// value currently is. The tween is timed in seconds, so it runs the same at any
 /// frame rate.
 @propertyWrapper
-public final class Eased {
+public final class Eased: FrameAdvancing {
     private var current: Double
     private var start: Double
     private var targetValue: Double

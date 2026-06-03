@@ -126,7 +126,7 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
 - [Noise](Docs/Noise.md) - Perlin `noise`/`signedNoise` and `curlNoise` flow fields.
 - [Math](Docs/Math.md) - `map`, `dist`, `lerp`.
-- [Animation](Docs/Animation.md) - the `Easing` curves and the `@Eased` value that tweens toward a target.
+- [Animation](Docs/Animation.md) - the `Easing` curves, the `@Eased` value that tweens toward a target, and `@Smoothed` for cleaning up a noisy signal.
 - [Input](Docs/Input.md) - mouse and keyboard.
 
 New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.
@@ -230,6 +230,7 @@ A few helpers lean on well-known public techniques, reimplemented in Ollin and c
 - `curlNoise` follows the curl-noise method for divergence-free flow (Robert Bridson and colleagues, "Curl-Noise for Procedural Fluid Flow", 2007).
 - `randomGaussian` uses the Marsaglia polar method for normal-distributed samples.
 - The named `Easing` curves are Robert Penner's easing equations, written from the formulas catalogued at [easings.net](https://easings.net) (Andrey Sitnik and Ivan Solovev).
+- `@Smoothed` and `OneEuroFilter` implement the [1€ filter](https://gery.casiez.net/1euro/) for adaptive input smoothing (Géry Casiez, Nicolas Roussel, and Daniel Vogel, *1€ Filter: A Simple Speed-based Low-pass Filter for Noisy Input in Interactive Systems*, CHI 2012), written from the paper.
 - The `Colormap` ramps carry the canonical public colormap data: `viridis`/`magma`/`inferno`/`plasma`/`cividis` from [matplotlib](https://matplotlib.org) (CC0), `turbo` from Google (Apache-2.0), and `rocket`/`mako` from [seaborn](https://seaborn.pydata.org) (BSD-3).
 
 ### Directions ahead

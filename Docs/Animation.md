@@ -4,13 +4,14 @@
 
 ## Animation
 
-Motion is the default in Ollin, so most movement falls out of a `time`-driven term in `draw()`. When you want a value to *ease* between states instead of snapping or moving at a constant rate, there are two pieces: the `Easing` curves, which shape a `0...1` progress, and `@Eased`, a value that eases toward whatever you assign it.
+Motion is the default in Ollin, so most movement falls out of a `time`-driven term in `draw()`. When you want a value to *ease* between states instead of snapping or moving at a constant rate, there are two pieces: the `Easing` curves, which shape a `0...1` progress, and `@Eased`, a value that eases toward whatever you assign it. And when the value comes from a noisy live signal rather than a target you set, `@Smoothed` cleans it up as it arrives.
 
 ### Contents
 
 - [Easing curves](#easing)
 - [The curve catalog](#catalog)
 - [`@Eased`](#eased)
+- [`@Smoothed`](#smoothed)
 
 <a name="easing"></a>
 
@@ -88,3 +89,43 @@ $x.set(200)        // jump straight there, no animation
 ```
 
 The [Easing example](../Examples/Motion/Easing/Sketch.swift) races four dots toward the same target on different curves, so you can watch the curves pull apart in flight.
+
+<a name="smoothed"></a>
+
+### `@Smoothed`
+
+`@Eased` glides toward a target you *know*. When instead you have a noisy live signal whose true value you *don't* know — a jittery `mouseX`/`mouseY`, or the input that arrives once OSC, MIDI, computer vision, and the phone sensors land — reach for `@Smoothed`. It cleans the stream with the [1€ filter](https://gery.casiez.net/1euro/), an adaptive low-pass that stays responsive when the signal moves fast and steady when it's slow, something a fixed low-pass can't manage at both ends.
+
+Assign the raw value each frame and read back a clean one. Like `@Eased`, the sketch advances it for you, so there's no update step to call:
+
+```swift
+final class Cursor: Sketch {
+    @Smoothed var p = Vector2.zero
+
+    override func draw() {
+        background(.white)
+        p = Vector2(mouseX, mouseY)                 // feed the jittery input
+        drawCircle(center: p, radius: 40 * scale)   // read the smoothed value
+    }
+}
+```
+
+It works on a `Double` or a `Vector2`. Two knobs tune the feel:
+
+- **`minCutoff`** (default `1`) — lower it to cut jitter while the signal is slow, at the cost of a little more lag.
+- **`beta`** (default `0.007`) — raise it to cut lag while the signal moves fast.
+
+```swift
+@Smoothed(minCutoff: 0.5, beta: 0.02) var angle = 0.0
+```
+
+Both are reachable live through the projected value (`$angle.beta = …`), so a `@Param` knob can dial them in by feel. The projected value also gives you `$p.rawValue` (the last unsmoothed input) and `$p.set(v)` (jump there with no glide). Because the filter is timed in seconds, it behaves the same at any frame rate.
+
+To smooth a value that isn't a sketch property, the `OneEuroFilter<Value>` underneath is public — own the state and step it yourself:
+
+```swift
+var filter = OneEuroFilter<Double>(minCutoff: 1, beta: 0.02)
+let clean = filter.filter(noisy, dt: deltaTime)
+```
+
+The [Smoothing example](../Examples/Motion/Smoothing/Sketch.swift) shakes jitter onto a moving target so you can watch the filter glide through the noise.

@@ -193,9 +193,9 @@ open class Sketch {
     private var extensions: [SketchExtension] = []
     private var extensionsDidSetup = false
 
-    /// The `@Eased` properties on this sketch, discovered once via reflection
-    /// (the stored set is fixed at compile time) and advanced each frame.
-    private var easedValues: [Eased]?
+    /// The `@Eased` / `@Smoothed` properties on this sketch, discovered once via
+    /// reflection (the stored set is fixed at compile time) and advanced each frame.
+    private var advancingValues: [FrameAdvancing]?
 
     /// Backing generator for `random()` / `randomSeed(_:)` (see Random.swift).
     /// Entropy-seeded by default, so unseeded sketches vary per run.
@@ -474,22 +474,23 @@ open class Sketch {
         self.time = time
         self.deltaTime = deltaTime
         self.frameRate = frameRate
-        for eased in collectEasedValues() { eased.advance(by: deltaTime) }
+        for value in collectAdvancingValues() { value.advance(by: deltaTime) }
     }
 
-    /// The `@Eased` properties on this sketch, collected once (the stored set is
-    /// fixed) by walking the mirror up the class hierarchy, then cached.
-    private func collectEasedValues() -> [Eased] {
-        if let cached = easedValues { return cached }
-        var found: [Eased] = []
+    /// The `@Eased` / `@Smoothed` properties on this sketch, collected once (the
+    /// stored set is fixed) by walking the mirror up the class hierarchy, then
+    /// cached.
+    private func collectAdvancingValues() -> [FrameAdvancing] {
+        if let cached = advancingValues { return cached }
+        var found: [FrameAdvancing] = []
         var mirror: Mirror? = Mirror(reflecting: self)
         while let current = mirror {
             for child in current.children {
-                if let eased = child.value as? Eased { found.append(eased) }
+                if let advancing = child.value as? FrameAdvancing { found.append(advancing) }
             }
             mirror = current.superclassMirror
         }
-        easedValues = found
+        advancingValues = found
         return found
     }
 

@@ -21,6 +21,7 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | [Polygons](Polygons/Sketch.swift) | regular `drawNgon` (3–8 sides) and a five-point `drawStar` relaxing from spiky to round as its inner radius grows, both turning (SDF) |
 | [RectField](RectField/Sketch.swift) | Myriad's cousin: thousands of rounded rects, corner radius sweeping square→pill, each rotated on the SDF box path |
 | [SineSweep](SineSweep/Sketch.swift) | a circle swept across the canvas by `sin(time)` |
+| [Smoothing](Smoothing/Sketch.swift) | `@Smoothed` cleans a jittery figure-eight signal with the 1€ filter — faint raw dots, a smooth tracking trail |
 | [Spokes](Spokes/Sketch.swift) | a sunburst of fat, round-capped `drawLine` spokes pulsing with `time` (capsule SDF) |
 | [Star](Star/Sketch.swift) | a concave star with a hole, filled via `drawShape` and the vector `Shape` type (a triangulated fill `drawPolygon` can't do) |
 | [Trail](Trail/Sketch.swift) | a Lissajous point traced by a 600-segment polyline |
