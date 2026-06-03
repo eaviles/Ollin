@@ -526,6 +526,24 @@ open class Sketch {
     public func textBounds(_ string: String, at position: Vector2) -> Rectangle {
         drawer.textBounds(string, position.x, position.y)
     }
+    /// Draw `string` glyph by glyph, handing each glyph to `perGlyph` for its own
+    /// transform or color before you stamp it with `TextGlyph.draw()`. Single line,
+    /// using the current `textFont`/`textSize`/`textAlign`. Per-letter waves,
+    /// rainbows, springs — effects p5/oF have no direct hook for.
+    public func drawText(_ string: String, _ x: Double, _ y: Double, perGlyph: (TextGlyph) -> Void) {
+        drawer.drawText(string, x, y, perGlyph: perGlyph)
+    }
+    /// `drawText(perGlyph:)` anchored at `position` — the `Vector2` form.
+    public func drawText(_ string: String, at position: Vector2, perGlyph: (TextGlyph) -> Void) {
+        drawer.drawText(string, position.x, position.y, perGlyph: perGlyph)
+    }
+    /// Draw `string` with its glyphs riding `path` — each glyph centered on the
+    /// curve at its distance along the run (plus `offset`) and rotated to the
+    /// tangent. Animate `offset` to flow the text along the path. Single line,
+    /// takes `fill`/`stroke` like `drawText`.
+    public func drawText(_ string: String, along path: Path, offset: Double = 0) {
+        drawer.drawText(string, along: path, offset: offset)
+    }
     public func translate(_ offset: Vector2) { drawer.translate(offset) }
     public func translate(_ x: Double, _ y: Double) { drawer.translate(Vector2(x, y)) }
     public func drawLine(_ a: Vector2, _ b: Vector2) { drawer.drawLine(a, b) }

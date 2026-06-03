@@ -19,6 +19,8 @@ A font is ready out of the box — `BitmapFont.builtin` is **[Cozette](https://g
 - [textFont](#textfont), [textSize](#textsize), [textAlign](#textalign) — text state
 - [textWidth](#textwidth) — measure a string
 - [Outline fonts](#outlinefont) — `OutlineFont`, loading a `.ttf`/`.otf` from anywhere
+- [Per-glyph drawText](#perglyph) — give each letter its own transform and color
+- [Text on a path](#onpath) — lay glyphs along a curve
 - [textToShapes](#texttoshapes) — text as first-class geometry
 - [Metrics](#metrics) — `textAscent` / `textDescent` / `textLeading` / `textBounds`
 - [BitmapFont](#bitmapfont) — the bitmap font value type, and authoring your own
@@ -140,6 +142,66 @@ OutlineFont.systemMono
 `init(name:)` returns `nil` if no installed font matches, so a typo fails loudly instead of silently substituting another face — pair it with a fallback: `OutlineFont(name: "Futura") ?? .system`. A remote `https://` URL needs an asynchronous download, which can't run on the draw thread: fetch it in `setup()` (or ahead of time) and pass the bytes to `init(data:)`.
 
 Ollin ships no `.ttf`/`.otf` of its own — you bring the font (installed, bundled, or fetched). Layout goes through Core Text, so kerning, ligatures, and fallback for missing glyphs come for free.
+
+<a name="perglyph"></a>
+
+### Per-glyph drawText
+
+```swift
+drawText(_ string: String, _ x: Double, _ y: Double, perGlyph: (TextGlyph) -> Void)
+drawText(_ string: String, at position: Vector2, perGlyph: (TextGlyph) -> Void)
+```
+
+A trailing-closure form of `drawText` that hands you each glyph as a `TextGlyph` instead of drawing the string for you. Give each letter its own transform or color, then stamp it with `g.draw()`. It's the hook for per-letter waves, rainbows, and springs — effects p5 and openFrameworks have no direct API for. Single line.
+
+```swift
+textAlign(.center, .middle)
+drawText("ollin", at: center) { g in
+    fill(palette.color(at: g.t))                 // a hue per letter
+    withState {
+        translate(0, sin(time * 3 - Double(g.index) * 0.7) * 60)   // bob on a wave
+        g.draw()
+    }
+}
+```
+
+A `TextGlyph` carries:
+
+- `character` — the source `Character`; `index` and `count` — its place in the run; `t` — the normalized position `0...1` across the run (handy for a gradient or a phase).
+- `position` — the pen origin (left edge, on the baseline) in canvas space; `center` — the natural pivot for rotating the glyph in place; `bounds` — its advance box.
+- `shapes` — the glyph geometry in canvas space (for text-as-geometry per letter).
+- `draw()` — stamp the glyph with the current `fill` / `stroke`, through your transform.
+
+To rotate a glyph about its own center, pivot on `center`:
+
+```swift
+withState {
+    translate(g.center); rotate(angle); translate(g.center * -1)
+    g.draw()
+}
+```
+
+<a name="onpath"></a>
+
+### Text on a path
+
+```swift
+drawText(_ string: String, along path: Path, offset: Double = 0)
+```
+
+Lay each glyph along a [`Path`](./Geometry.md#path), rotated to the path's tangent so the baseline follows the curve. Each glyph is centered on the point `offset` plus its distance along the run, measured as arc length from the path's start. Glyphs that fall before the start or past the end are **skipped**, so animating `offset` flows the text on and off the ends. Single line; takes `fill` and `stroke` like `drawText`.
+
+```swift
+let path = Path { p in
+    p.move(to: Vector2(0, height / 2))
+    for i in 1...60 {
+        let f = Double(i) / 60
+        p.curve(to: Vector2(f * width, height / 2 + sin(f * .pi * 3) * 160))
+    }
+}
+fill(.white)
+drawText("text on a curve · ", along: path, offset: -time * 120)   // scrolling
+```
 
 <a name="texttoshapes"></a>
 

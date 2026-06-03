@@ -341,6 +341,16 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Text/OutlineText"
         ),
+        .executableTarget(
+            name: "Example-GlyphWave",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/GlyphWave"
+        ),
+        .executableTarget(
+            name: "Example-TextOnPath",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/TextOnPath"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

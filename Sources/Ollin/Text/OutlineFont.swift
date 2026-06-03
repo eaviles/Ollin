@@ -194,10 +194,49 @@ public struct OutlineFont: @unchecked Sendable {
 
     // MARK: Core Text layout
 
-    /// One glyph placed on a line: its source font (after fallback), glyph id, and
-    /// pen position in em units (y-up, baseline at 0, x increasing from the line's
-    /// start).
-    private struct PlacedGlyph { let font: CTFont; let glyph: CGGlyph; let x: Double; let y: Double }
+    /// One glyph placed on a line: its source font (after fallback), glyph id, pen
+    /// position in em units (y-up, baseline at 0, x increasing from the line's
+    /// start), and the source character's UTF-16 offset in the string.
+    private struct PlacedGlyph {
+        let font: CTFont; let glyph: CGGlyph; let x: Double; let y: Double; let stringIndex: Int
+    }
+
+    /// A single-line run of glyphs for per-glyph drawing and text-on-a-path: each
+    /// glyph's character, pen metrics in canvas units (at `size`), and geometry in
+    /// a local frame (pen origin at the origin, baseline at `y = 0`). Newlines are
+    /// treated as spaces — these effects are single-line by nature.
+    func glyphRun(for string: String, size: Double) -> [GlyphRunItem] {
+        guard size > 0, !string.isEmpty else { return [] }
+        let line = string.replacingOccurrences(of: "\n", with: " ")
+        let (placed, width) = layoutLine(line)
+        guard !placed.isEmpty else { return [] }
+
+        var items: [GlyphRunItem] = []
+        items.reserveCapacity(placed.count)
+        for (i, g) in placed.enumerated() {
+            let penX = g.x * size
+            let nextX = (i + 1 < placed.count) ? placed[i + 1].x * size : width * size
+            let advance = Swift.max(0, nextX - penX)
+            var shapes: [Shape] = []
+            if let path = cache.path(for: g.glyph, font: g.font) {
+                let contours = OutlineFont.flatten(path, scale: size, originX: 0, originY: 0)
+                if !contours.isEmpty { shapes = [Shape(contours: contours)] }
+            }
+            items.append(GlyphRunItem(character: OutlineFont.character(in: line, atUTF16: g.stringIndex),
+                                      penX: penX, advance: advance, localShapes: shapes))
+        }
+        return items
+    }
+
+    /// The `Character` at a UTF-16 offset in `string` (a space if out of range) —
+    /// maps a Core Text glyph's string index back to a Swift character.
+    private static func character(in string: String, atUTF16 offset: Int) -> Character {
+        let u = string.utf16
+        guard offset >= 0,
+              let idx = u.index(u.startIndex, offsetBy: offset, limitedBy: u.endIndex),
+              idx < u.endIndex, let s = idx.samePosition(in: string) else { return " " }
+        return string[s]
+    }
 
     /// One laid-out line: its glyphs (em units) and typographic advance width (em).
     private func layoutLine(_ string: String) -> (glyphs: [PlacedGlyph], width: Double) {
@@ -224,11 +263,14 @@ public struct OutlineFont: @unchecked Sendable {
 
             var gids = [CGGlyph](repeating: 0, count: count)
             var positions = [CGPoint](repeating: .zero, count: count)
+            var indices = [CFIndex](repeating: 0, count: count)
             CTRunGetGlyphs(run, CFRange(location: 0, length: 0), &gids)
             CTRunGetPositions(run, CFRange(location: 0, length: 0), &positions)
+            CTRunGetStringIndices(run, CFRange(location: 0, length: 0), &indices)
             for k in 0..<count {
                 glyphs.append(PlacedGlyph(font: runFont, glyph: gids[k],
-                                          x: Double(positions[k].x), y: Double(positions[k].y)))
+                                          x: Double(positions[k].x), y: Double(positions[k].y),
+                                          stringIndex: indices[k]))
             }
         }
         return (glyphs, width)

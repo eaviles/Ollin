@@ -1073,6 +1073,148 @@ final class Drawer {
         return Rectangle(x: left, y: top, width: w, height: blockHeight)
     }
 
+    /// Draw `string` glyph by glyph, handing each to `perGlyph` so you can give it
+    /// its own transform or color before stamping it (`TextGlyph.draw()`). Laid out
+    /// on a single line with the active `textFont` / `textSize` / `textAlign`; you
+    /// do the drawing, so `fill` / `stroke` and any transform apply per glyph.
+    func drawText(_ string: String, _ x: Double, _ y: Double, perGlyph: (TextGlyph) -> Void) {
+        guard textPixelSize > 0, !string.isEmpty else { return }
+        let run = glyphRun(string)
+        guard !run.isEmpty else { return }
+
+        let runWidth = (run.last?.penX ?? 0) + (run.last?.advance ?? 0)
+        let startX: Double
+        switch textAlignH {
+        case .left:   startX = x
+        case .center: startX = x - runWidth / 2
+        case .right:  startX = x - runWidth
+        }
+        let ascent = textAscent(), descent = textDescent()
+        let baselineY: Double
+        switch textAlignV {
+        case .top:      baselineY = y + ascent
+        case .baseline: baselineY = y
+        case .middle:   baselineY = y + (ascent - descent) / 2
+        case .bottom:   baselineY = y - descent
+        }
+
+        for (index, item) in run.enumerated() {
+            let origin = Vector2(startX + item.penX, baselineY)
+            let shapes = item.localShapes.map { shifted($0, by: origin) }
+            let bounds = Rectangle(x: origin.x, y: origin.y - ascent,
+                                   width: item.advance, height: ascent + descent)
+            let glyph = TextGlyph(character: item.character, index: index, count: run.count,
+                                  position: origin, bounds: bounds, shapes: shapes,
+                                  drawThunk: { [weak self] in shapes.forEach { self?.drawShape($0) } })
+            perGlyph(glyph)
+        }
+    }
+
+    /// Draw `string` with its glyphs riding `path`: each glyph is centered on the
+    /// point `offset + (its distance along the run)` measured as arc length from the
+    /// path's start, and rotated to the path's tangent there (its baseline sits on
+    /// the curve). Glyphs that fall before the start or past the end are skipped, so
+    /// animating `offset` flows the text on and off the ends. Single-line; takes
+    /// `fill` and `stroke` like `drawText`.
+    func drawText(_ string: String, along path: Path, offset: Double) {
+        guard textPixelSize > 0, !string.isEmpty else { return }
+        guard fillColor != nil || (strokeColor != nil && strokeWidth > 0) else { return }
+        let run = glyphRun(string)
+        let points = path.contour.points
+        guard run.count > 0, points.count >= 2 else { return }
+
+        // Cumulative arc length along the flattened path.
+        var cumulative: [Double] = [0]
+        cumulative.reserveCapacity(points.count)
+        for i in 1..<points.count { cumulative.append(cumulative[i - 1] + (points[i] - points[i - 1]).length) }
+        let total = cumulative.last ?? 0
+        guard total > 0 else { return }
+
+        for item in run {
+            let distance = offset + item.penX + item.advance / 2
+            guard distance >= 0, distance <= total else { continue }   // off the path: skip
+            let (anchor, angle) = pointAndTangent(points: points, cumulative: cumulative, at: distance)
+            let cosA = cos(angle), sinA = sin(angle)
+            for shape in item.localShapes {
+                let placed = Shape(contours: shape.contours.map { contour in
+                    Contour(contour.points.map { q in
+                        // Center the glyph on its anchor, then rotate to the tangent.
+                        let lx = q.x - item.advance / 2
+                        let ly = q.y
+                        return Vector2(anchor.x + lx * cosA - ly * sinA,
+                                       anchor.y + lx * sinA + ly * cosA)
+                    }, closed: contour.isClosed)
+                })
+                drawShape(placed)
+            }
+        }
+    }
+
+    /// The point and tangent angle at arc-length `distance` along a flattened path.
+    private func pointAndTangent(points: [Vector2], cumulative: [Double],
+                                 at distance: Double) -> (Vector2, Double) {
+        let d = min(max(distance, 0), cumulative.last ?? 0)
+        var i = 1
+        while i < cumulative.count, cumulative[i] < d { i += 1 }
+        guard i < points.count else {
+            let dir = points[points.count - 1] - points[points.count - 2]
+            return (points[points.count - 1], atan2(dir.y, dir.x))
+        }
+        let segmentLength = cumulative[i] - cumulative[i - 1]
+        let t = segmentLength > 0 ? (d - cumulative[i - 1]) / segmentLength : 0
+        let a = points[i - 1], b = points[i]
+        let dir = b - a
+        return (a + dir * t, atan2(dir.y, dir.x))
+    }
+
+    /// The active font's single-line glyph run (see `GlyphRunItem`), dispatched on
+    /// the font kind.
+    private func glyphRun(_ string: String) -> [GlyphRunItem] {
+        switch currentFont {
+        case .outline(let font): return font.glyphRun(for: string, size: textPixelSize)
+        case .bitmap(let font):  return bitmapGlyphRun(string, font: font)
+        }
+    }
+
+    /// A bitmap font's single-line glyph run — each glyph's lit pixels as local
+    /// square `Contour`s (pen origin at the origin, baseline at `y = 0`).
+    private func bitmapGlyphRun(_ string: String, font: BitmapFont) -> [GlyphRunItem] {
+        guard font.pixelHeight > 0, textPixelSize > 0 else { return [] }
+        let module = textPixelSize / Double(font.pixelHeight)
+        let baselineLocal = Double(font.baseline) * module
+        var items: [GlyphRunItem] = []
+        var penX = 0.0
+        var previous: Character? = nil
+        for ch in string.replacingOccurrences(of: "\n", with: " ") {
+            if let prev = previous { penX += Double(font.kerning(between: prev, ch)) * module }
+            var squares: [Contour] = []
+            if let glyph = font.glyph(for: ch) {
+                let cellLeft = Double(glyph.xOffset) * module
+                let cellTop = Double(glyph.yOffset) * module - baselineLocal   // baseline at y = 0
+                for row in 0..<glyph.height {
+                    for col in 0..<glyph.width where glyph.isSet(col, row) {
+                        let cx = cellLeft + (Double(col) + 0.5) * module
+                        let cy = cellTop + (Double(row) + 0.5) * module
+                        let h = module / 2
+                        squares.append(Contour([Vector2(cx - h, cy - h), Vector2(cx + h, cy - h),
+                                                Vector2(cx + h, cy + h), Vector2(cx - h, cy + h)], closed: true))
+                    }
+                }
+            }
+            let advance = Double(font.advance(for: ch)) * module
+            items.append(GlyphRunItem(character: ch, penX: penX, advance: advance,
+                                      localShapes: squares.isEmpty ? [] : [Shape(contours: squares)]))
+            penX += advance
+            previous = ch
+        }
+        return items
+    }
+
+    /// A `Shape` with every contour point shifted by `offset`.
+    private func shifted(_ shape: Shape, by offset: Vector2) -> Shape {
+        Shape(contours: shape.contours.map { Contour($0.points.map { $0 + offset }, closed: $0.isClosed) })
+    }
+
     /// A straight line segment from `a` to `b`, stroked with the current stroke
     /// color and weight. Recorded as a single capsule SDF instance — the segment
     /// fattened to `strokeWeight` with round caps — so it's crisp at any size and
