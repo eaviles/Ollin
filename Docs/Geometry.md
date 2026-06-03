@@ -88,6 +88,15 @@ fill(.black)
 drawShape(Shape(outer: outer, holes: [hole]))      // a square frame
 ```
 
+**Fill winding.** A `Shape` carries a `winding` rule (`FillWinding`) that decides which regions are inside the fill — `.evenOdd` by default (a contour's direction doesn't matter; the simple rule for hand-built shapes), or `.nonZero` (direction *does* matter, and a self-overlapping outline still fills — the rule font outlines use, so glyph shapes from [`textToShapes`](Text.md#texttoshapes) set it). Pass it to `Shape(contours:winding:)`.
+
+**Transforming a shape.** `mapPoints(_:)` returns a copy with every contour point passed through a closure, keeping the `winding` rule and open/closed flags — the safe way to move or warp a shape (a glyph from `textToShapes`, say) without dropping its winding:
+
+```swift
+let wobbled = shape.mapPoints { $0 + Vector2(0, signedNoise($0.x * 0.01, time) * 20) }
+drawShape(wobbled)
+```
+
 <a name="path"></a>
 
 ### `Path`

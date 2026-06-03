@@ -47,17 +47,16 @@ final class OutlineText: Sketch {
         for (index, shape) in shapes.enumerated() {
             let hue = Double(index) / Double(max(1, shapes.count - 1))
             fill(palette.color(at: 0.15 + hue * 0.7))
-            let warped = Shape(contours: shape.contours.map { contour in
-                Contour(contour.points.map { point in
-                    // A bounded, smooth displacement field — signed noise per axis,
-                    // so every outline point moves a little (never a lot), which
-                    // ripples the letterforms without folding them into spikes.
-                    let n = point * 0.004
-                    let dx = signedNoise(n.x, n.y, time * 0.3)
-                    let dy = signedNoise(n.x + 40, n.y - 40, time * 0.3)
-                    return point + Vector2(dx, dy) * (14 * scale)
-                }, closed: contour.isClosed)
-            })
+            // A bounded, smooth displacement field — signed noise per axis, so
+            // every outline point moves a little (never a lot), which ripples the
+            // letterforms without folding them into spikes. `mapPoints` keeps the
+            // glyph's fill winding intact through the warp.
+            let warped = shape.mapPoints { point in
+                let n = point * 0.004
+                let dx = signedNoise(n.x, n.y, time * 0.3)
+                let dy = signedNoise(n.x + 40, n.y - 40, time * 0.3)
+                return point + Vector2(dx, dy) * (14 * scale)
+            }
             drawShape(warped)
         }
 

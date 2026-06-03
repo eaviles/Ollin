@@ -3,9 +3,9 @@ import CLibtess2
 extension Shape {
     /// Triangulated fill geometry: a flat array of triangle vertices (every three
     /// is one triangle), ready for the renderer's triangle path. Closed contours
-    /// are tessellated together with even-odd winding, so nested contours become
-    /// holes. Open contours don't contribute to the fill. Returns empty when
-    /// there's nothing fillable.
+    /// are tessellated together with the shape's `winding` rule, so nested
+    /// contours become holes. Open contours don't contribute to the fill. Returns
+    /// empty when there's nothing fillable.
     ///
     /// Re-evaluated per call, matching the immediate-mode model (like the convex
     /// `drawPolygon` fan). The heavy lifting is libtess2's; see CLibtess2.
@@ -30,9 +30,10 @@ extension Shape {
             }
         }
 
-        // Tessellate into triangles (polySize 3), 2D, even-odd winding.
+        // Tessellate into triangles (polySize 3), 2D, with the shape's fill rule.
+        let rule = winding == .nonZero ? TESS_WINDING_NONZERO : TESS_WINDING_ODD
         let ok = tessTesselate(tess,
-                               Int32(TESS_WINDING_ODD.rawValue),
+                               Int32(rule.rawValue),
                                Int32(TESS_POLYGONS.rawValue),
                                3, 2, nil)
         guard ok == 1,

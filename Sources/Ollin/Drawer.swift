@@ -1136,15 +1136,13 @@ final class Drawer {
             let (anchor, angle) = pointAndTangent(points: points, cumulative: cumulative, at: distance)
             let cosA = cos(angle), sinA = sin(angle)
             for shape in item.localShapes {
-                let placed = Shape(contours: shape.contours.map { contour in
-                    Contour(contour.points.map { q in
-                        // Center the glyph on its anchor, then rotate to the tangent.
-                        let lx = q.x - item.advance / 2
-                        let ly = q.y
-                        return Vector2(anchor.x + lx * cosA - ly * sinA,
-                                       anchor.y + lx * sinA + ly * cosA)
-                    }, closed: contour.isClosed)
-                })
+                let placed = shape.mapPoints { q in
+                    // Center the glyph on its anchor, then rotate to the tangent.
+                    let lx = q.x - item.advance / 2
+                    let ly = q.y
+                    return Vector2(anchor.x + lx * cosA - ly * sinA,
+                                   anchor.y + lx * sinA + ly * cosA)
+                }
                 drawShape(placed)
             }
         }
@@ -1210,9 +1208,9 @@ final class Drawer {
         return items
     }
 
-    /// A `Shape` with every contour point shifted by `offset`.
+    /// A `Shape` with every contour point shifted by `offset` (winding preserved).
     private func shifted(_ shape: Shape, by offset: Vector2) -> Shape {
-        Shape(contours: shape.contours.map { Contour($0.points.map { $0 + offset }, closed: $0.isClosed) })
+        shape.mapPoints { $0 + offset }
     }
 
     /// A straight line segment from `a` to `b`, stroked with the current stroke

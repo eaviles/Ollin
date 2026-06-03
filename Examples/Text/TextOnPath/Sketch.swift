@@ -19,13 +19,16 @@ final class TextOnPath: Sketch {
         textSize(46 * scale)
         textAlign(.left, .baseline)
 
-        // An undulating path across the canvas, breathing over time.
+        // A gentle undulating path across the canvas, breathing over time. Kept
+        // broad on purpose: where a path curves tighter than the text is tall,
+        // glyphs crowd on the concave side (inherent to text-on-path), so the
+        // radius stays comfortably larger than the cap height.
         let path = Path { p in
             let segments = 80
             for i in 0...segments {
                 let f = Double(i) / Double(segments)
                 let point = Vector2(f * width,
-                                    height / 2 + sin(f * .pi * 3 + time * 0.8) * (height * 0.18))
+                                    height / 2 + sin(f * .pi * 2 + time * 0.7) * (height * 0.13))
                 if i == 0 { p.move(to: point) } else { p.curve(to: point) }
             }
         }

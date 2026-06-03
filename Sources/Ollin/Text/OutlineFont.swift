@@ -186,7 +186,8 @@ public struct OutlineFont: @unchecked Sendable {
                 let glyphOriginY = baselineY - placed.y * size
                 let contours = OutlineFont.flatten(path, scale: size,
                                                    originX: glyphOriginX, originY: glyphOriginY)
-                if !contours.isEmpty { shapes.append(Shape(contours: contours)) }
+                // Glyph outlines are authored for nonzero winding.
+                if !contours.isEmpty { shapes.append(Shape(contours: contours, winding: .nonZero)) }
             }
         }
         return shapes
@@ -220,7 +221,7 @@ public struct OutlineFont: @unchecked Sendable {
             var shapes: [Shape] = []
             if let path = cache.path(for: g.glyph, font: g.font) {
                 let contours = OutlineFont.flatten(path, scale: size, originX: 0, originY: 0)
-                if !contours.isEmpty { shapes = [Shape(contours: contours)] }
+                if !contours.isEmpty { shapes = [Shape(contours: contours, winding: .nonZero)] }
             }
             items.append(GlyphRunItem(character: OutlineFont.character(in: line, atUTF16: g.stringIndex),
                                       penX: penX, advance: advance, localShapes: shapes))
