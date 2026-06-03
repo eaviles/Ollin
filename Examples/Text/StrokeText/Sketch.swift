@@ -41,16 +41,29 @@ final class StrokeText: Sketch {
         drawText("HERSHEY · SINGLE-LINE · PLOTTER TYPE", width / 2, height * 0.6)
 
         // A line of text scrolling along a gentle wave (text-on-path parity).
+        // Overhang the path past both screen edges so marquee glyphs enter and
+        // leave off-canvas, instead of tilting to the steep end-tangent and
+        // vanishing at the visible edge.
+        let margin = 220.0 * scale
+        let span = width + margin * 2
         let wave = Path { p in
             let y = height * 0.78
-            p.move(to: Vector2(0, y))
-            for i in 1...80 {
-                let f = Double(i) / 80
-                p.curve(to: Vector2(f * width, y + sin(f * .pi * 2 + time) * 60 * scale))
+            p.move(to: Vector2(-margin, y))
+            for i in 1...100 {
+                let f = Double(i) / 100
+                p.curve(to: Vector2(-margin + f * span, y + sin(f * .pi * 2 + time) * 60 * scale))
             }
         }
+        // A seamless marquee: repeat the phrase so it overflows the path, then
+        // wrap the scroll offset by one phrase width so it loops forever instead of
+        // scrolling off the left and never coming back.
         textSize(40 * scale)
         strokeWeight(2 * scale)
-        drawText("drawn with a pen, not a brush · ", along: wave, offset: -time * 90 * scale)
+        let phrase = "drawn with a pen, not a brush · "
+        let unit = textWidth(phrase)
+        let reps = Int((span / max(unit, 1)).rounded(.up)) + 2
+        let marquee = String(repeating: phrase, count: reps)
+        let scroll = -(time * 90 * scale).truncatingRemainder(dividingBy: unit)
+        drawText(marquee, along: wave, offset: scroll)
     }
 }
