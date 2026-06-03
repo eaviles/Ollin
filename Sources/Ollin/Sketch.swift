@@ -277,6 +277,13 @@ open class Sketch {
     public func drawTriangle(apex: Vector2, base: Double, height: Double) {
         drawer.drawTriangle(apex.x, apex.y, base, height)
     }
+    public func drawTriangle(_ a: Vector2, _ b: Vector2, _ c: Vector2) {
+        drawer.drawTriangle(a, b, c)
+    }
+    public func drawTriangle(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double,
+                             _ x3: Double, _ y3: Double) {
+        drawer.drawTriangle(x1, y1, x2, y2, x3, y3)
+    }
     public func drawNgon(_ x: Double, _ y: Double, _ radius: Double, sides: Int) {
         drawer.drawNgon(x, y, radius, sides: sides)
     }
@@ -427,6 +434,13 @@ open class Sketch {
     public func drawLine(_ a: Vector2, _ b: Vector2) { drawer.drawLine(a, b) }
     public func drawLine(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) {
         drawer.drawLine(Vector2(x1, y1), Vector2(x2, y2))
+    }
+    public func drawBezier(_ start: Vector2, _ control: Vector2, _ end: Vector2) {
+        drawer.drawBezier(start, control, end)
+    }
+    public func drawBezier(_ x1: Double, _ y1: Double, _ cx: Double, _ cy: Double,
+                           _ x2: Double, _ y2: Double) {
+        drawer.drawBezier(x1, y1, cx, cy, x2, y2)
     }
     public func rotate(_ radians: Double) { drawer.rotate(radians) }
     public func scale(_ amount: Double) { drawer.scale(amount, amount) }

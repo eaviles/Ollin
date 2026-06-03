@@ -38,6 +38,8 @@ enum SDFShape: UInt32 {
     case tunnel        = 24  // archway (rounded top, flat base): param0 = (half-width, wall height)
     case stairs        = 25  // staircase: param0 = (step width, step height); extra = step count
     case coolS         = 26  // the iconic "S": param0.x = scale
+    case triangle3     = 27  // general triangle: param0/param1/param2 = the three corners (rel. center)
+    case bezier        = 28  // quadratic Bézier stroke: param0/param1/param2 = (start, control, end); extra = half-width
 }
 
 extension SDFShape {
@@ -48,7 +50,7 @@ extension SDFShape {
     /// round-dot point path opts out separately, since it shares the tag.)
     var honorsHollow: Bool {
         switch self {
-        case .capsule, .marker, .arcOpen, .arcChord, .arcPie, .ring:
+        case .capsule, .marker, .arcOpen, .arcChord, .arcPie, .ring, .bezier:
             return false
         default:
             return true
@@ -321,6 +323,33 @@ final class Drawer {
         appendSDF(shape: .triangle, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(base / 2), Float(height)),
                   fill: fillColor, stroke: strokeColor)
+    }
+
+    /// A triangle through three arbitrary corners `a`, `b`, `c` (any winding). Unlike
+    /// the equilateral `drawTriangle(_:_:_:)` (circumradius) and isosceles
+    /// `drawTriangle(_:_:_:_:)` (apex + base + height) forms, this places the corners
+    /// directly, so any triangle is one call. Recorded as a single SDF instance —
+    /// analytic fill + stroke + anti-aliasing, crisp at any size and effectively free.
+    /// Honors `strokeAlign` and `hollow`. A degenerate (zero-area) triangle draws
+    /// nothing.
+    func drawTriangle(_ a: Vector2, _ b: Vector2, _ c: Vector2) {
+        let area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+        guard abs(area) > 1e-9 else { return }
+        let lo = Vector2(min(a.x, min(b.x, c.x)), min(a.y, min(b.y, c.y)))
+        let hi = Vector2(max(a.x, max(b.x, c.x)), max(a.y, max(b.y, c.y)))
+        let center = (lo + hi) / 2
+        let half = (hi - lo) / 2
+        appendSDF(shape: .triangle3, center: center,
+                  size: SIMD2<Float>(Float(half.x), Float(half.y)),
+                  fill: fillColor, stroke: strokeColor,
+                  param0: (a - center).simd2, param1: (b - center).simd2, param2: (c - center).simd2)
+    }
+
+    /// A triangle through three corners given as scalar coordinates — the positional
+    /// form of `drawTriangle(_:_:_:)`.
+    func drawTriangle(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double,
+                      _ x3: Double, _ y3: Double) {
+        drawTriangle(Vector2(x1, y1), Vector2(x2, y2), Vector2(x3, y3))
     }
 
     /// A regular polygon centered at `(x, y)` with `sides` equal-length edges and
@@ -653,6 +682,7 @@ final class Drawer {
                            fill: Color?, stroke: Color?, strokeWidth: Double? = nil,
                            extra: Float = 0,
                            param0: SIMD2<Float> = .zero, param1: SIMD2<Float> = .zero,
+                           param2: SIMD2<Float> = .zero,
                            applyHollow: Bool = true) {
         let weight = strokeWidth ?? self.strokeWidth
         let hasStroke = stroke != nil && weight > 0
@@ -669,6 +699,7 @@ final class Drawer {
             strokeColor: hasStroke ? stroke!.simd4 : SIMD4<Float>(repeating: 0),
             param0: param0,
             param1: param1,
+            param2: param2,
             strokeWidth: hasStroke ? Float(weight) : 0,
             extra: extra,
             bandWidth: band,
@@ -816,6 +847,37 @@ final class Drawer {
         appendSDF(shape: .capsule, center: center, size: bound,
                   fill: stroke, stroke: nil,
                   extra: Float(halfWidth), param0: e.simd2)
+    }
+
+    /// A quadratic Bézier curve stroked with the current stroke color and weight:
+    /// from `start` to `end`, bending toward the single control point `control`.
+    /// Recorded as one SDF instance — the exact distance to the curve, fattened to
+    /// `strokeWeight` with round caps — so it's crisp at any size and effectively
+    /// free, with no tessellation. Stroke-only: a curve has no interior, so it takes
+    /// the current stroke (not fill). For a cubic curve (two control points), sample
+    /// it into a `Shape` contour. Needs a stroke to draw.
+    func drawBezier(_ start: Vector2, _ control: Vector2, _ end: Vector2) {
+        guard let stroke = strokeColor, strokeWidth > 0 else { return }
+        let halfWidth = strokeWidth / 2
+        // The curve stays within the convex hull of its control points, so their
+        // AABB (grown by the stroke half-width) bounds the stroked curve — the same
+        // size-folds-in-the-cap trick `drawLine` uses for the capsule.
+        let lo = Vector2(min(start.x, min(control.x, end.x)), min(start.y, min(control.y, end.y)))
+        let hi = Vector2(max(start.x, max(control.x, end.x)), max(start.y, max(control.y, end.y)))
+        let center = (lo + hi) / 2
+        let half = (hi - lo) / 2
+        appendSDF(shape: .bezier, center: center,
+                  size: SIMD2<Float>(Float(half.x + halfWidth), Float(half.y + halfWidth)),
+                  fill: stroke, stroke: nil, extra: Float(halfWidth),
+                  param0: (start - center).simd2, param1: (control - center).simd2,
+                  param2: (end - center).simd2)
+    }
+
+    /// A quadratic Bézier curve through scalar coordinates — the positional form of
+    /// `drawBezier(_:_:_:)`: `(x1, y1)` start, `(cx, cy)` control, `(x2, y2)` end.
+    func drawBezier(_ x1: Double, _ y1: Double, _ cx: Double, _ cy: Double,
+                    _ x2: Double, _ y2: Double) {
+        drawBezier(Vector2(x1, y1), Vector2(cx, cy), Vector2(x2, y2))
     }
 
     /// A filled, **convex** polygon through `points` (triangle fan), plus a

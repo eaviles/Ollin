@@ -11,7 +11,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 ### Contents
 
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker)
-- **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawTriangle](#triangle), [drawArc](#arc)
+- **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawTriangle](#triangle), [drawArc](#arc), [drawBezier](#bezier)
 - **More shapes:** [drawNgon](#ngon), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
 - **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape)
@@ -252,13 +252,16 @@ drawTriangle(_ x: Double, _ y: Double, _ radius: Double)
 drawTriangle(center: Vector2, radius: Double)
 drawTriangle(_ x: Double, _ y: Double, _ base: Double, _ height: Double)
 drawTriangle(apex: Vector2, base: Double, height: Double)
+drawTriangle(_ a: Vector2, _ b: Vector2, _ c: Vector2)
+drawTriangle(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ x3: Double, _ y3: Double)
 ```
 
-A triangle, in two forms. The three-argument form is an **equilateral** triangle *centered* at `(x, y)`, point-up, with circumradius `radius` (the center-to-vertex distance, like `drawCircle`'s radius) — rotating it spins it about that center. The four-argument form is an **isosceles** triangle whose *apex* (tip) is at `(x, y)`, opening toward +y (downward) by `height`, with the given `base` width — rotating it sweeps it about the apex. Both are analytic SDF shapes (crisp at any size, effectively free per triangle); aim them with the transform stack. For an arbitrary three-point triangle, use `drawPolygon([a, b, c])`.
+A triangle, in three forms. The three-argument form is an **equilateral** triangle *centered* at `(x, y)`, point-up, with circumradius `radius` (the center-to-vertex distance, like `drawCircle`'s radius) — rotating it spins it about that center. The four-argument form is an **isosceles** triangle whose *apex* (tip) is at `(x, y)`, opening toward +y (downward) by `height`, with the given `base` width — rotating it sweeps it about the apex. The **three-point** form places the corners directly, so any triangle is one call (the corners may be in any winding order; a zero-area triangle draws nothing). All are analytic SDF shapes — crisp at any size, effectively free per triangle, and they honor `strokeAlign` and `hollow`; aim them with the transform stack.
 
 ```swift
 drawTriangle(width / 2, height / 2, 120)              // equilateral, centered, point-up
 drawTriangle(width / 2, 100, 160, 240)               // isosceles, tip at (w/2, 100)
+drawTriangle(Vector2(80, 360), Vector2(300, 280), Vector2(180, 120))  // any three corners
 withState { translate(300, 300); rotate(time); drawTriangle(0, 0, 80, 200) }  // wedge spinning on its tip
 ```
 
@@ -280,6 +283,24 @@ An elliptical arc sweeping from `start` to `stop` (radians, measured from the po
 ```swift
 drawArc(width / 2, height / 2, 160, 90, start: 0, stop: .pi)              // open half-arc
 drawArc(width / 2, height / 2, 120, 120, start: 0, stop: .pi / 2, mode: .pie)
+```
+
+<a name="bezier"></a>
+
+#### drawBezier
+
+```swift
+drawBezier(_ start: Vector2, _ control: Vector2, _ end: Vector2)
+drawBezier(_ x1: Double, _ y1: Double, _ cx: Double, _ cy: Double, _ x2: Double, _ y2: Double)
+```
+
+A **quadratic** Bézier curve, stroked from `start` to `end` and bending toward the single control point `control`. It takes the current `stroke` color and `strokeWeight` (a curve has no interior, so there's no fill), with round caps at the ends — like a curved `drawLine`. It's one analytic SDF stroke, so it's exact and crisp at any size with no tessellation, and stays smooth down to sub-pixel widths.
+
+For a **cubic** curve (two control points) or a chain of joined curves, sample the curve into a `Shape` contour and use `drawShape` — that path takes any number of points and can be filled.
+
+```swift
+stroke(.black); strokeWeight(4)
+drawBezier(Vector2(100, 400), Vector2(width / 2, 80), Vector2(width - 100, 400))
 ```
 
 ### More shapes

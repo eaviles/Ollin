@@ -4,13 +4,13 @@ import Ollin
 /// for the whole `draw*` vocabulary. Each shape is filled from a perceptual
 /// colormap and turns slowly in place, so the sheet doubles as a check that every
 /// primitive composites and anti-aliases under the transform stack. Most are
-/// single instanced SDF quads; `drawLine`/`drawPolyline` are stroked, and
-/// `drawPolygon`/`drawShape` go through the tessellated triangle path (the last
-/// one a square with a circular hole, via the concave/holed `Shape`).
+/// single instanced SDF quads; `drawLine`/`drawBezier`/`drawPolyline` are stroked,
+/// and `drawPolygon`/`drawShape` go through the tessellated triangle path (the
+/// last one a square with a circular hole, via the concave/holed `Shape`).
 @main
 final class Primitives: Sketch {
     let columns = 5
-    let count = 30
+    let count = 32
 
     override func setup() {
         noStroke()
@@ -105,10 +105,19 @@ final class Primitives: Sketch {
         case 26:
             drawCoolS(0, 0, s * 1.9)
         case 27:
+            // A scalene triangle from three free corners (distinct from the
+            // equilateral cell 5).
+            drawTriangle(Vector2(-s, s * 0.7), Vector2(s * 0.95, s * 0.25),
+                         Vector2(s * 0.1, -s))
+        case 28:
+            // A quadratic Bézier arc: one analytic SDF stroke, round caps.
+            stroke(color); strokeWeight(s * 0.2)
+            drawBezier(Vector2(-s, s * 0.6), Vector2(0, -s * 1.7), Vector2(s, s * 0.6))
+        case 29:
             stroke(color); strokeWeight(s * 0.18)
             drawPolyline([Vector2(-s, -s * 0.5), Vector2(-s * 0.33, s * 0.5),
                           Vector2(s * 0.33, -s * 0.5), Vector2(s, s * 0.5)])
-        case 28:
+        case 30:
             drawPolygon([Vector2(0, -s), Vector2(s * 0.95, -s * 0.1),
                          Vector2(s * 0.58, s), Vector2(-s * 0.58, s),
                          Vector2(-s * 0.95, -s * 0.1)])

@@ -51,9 +51,13 @@ typedef struct {
 // Drawer.swift) picks the SDF and decides how the generic slots
 // (size/param0/param1/extra) are read.
 //
-// float3x3 is 48 bytes (three 16-byte columns); the rest follows simd alignment
-// for a stride of 128. `bandWidth` fits in the 4 bytes of tail padding the
-// 16-byte alignment already reserved, so the stride stays 128.
+// float3x3 is 48 bytes (three 16-byte columns); the rest follows simd alignment.
+// The three `param*` slots plus `size`/`extra` give shapes their geometry; a
+// shape parameterized by three free points (a general triangle's corners, a
+// quadratic Bézier's control points) fills `param0`/`param1`/`param2` — `size`
+// is reserved as the covering quad's AABB half-extent and can't double as a
+// point. Adding `param2` takes the stride to 144 (still 16-aligned), leaving 8
+// bytes of tail padding for future fields.
 typedef struct {
     simd_float3x3 transform;   // local sketch space -> sketch space (the CTM)
     simd_float2 center;        // shape center, local sketch space
@@ -62,6 +66,7 @@ typedef struct {
     simd_float4 strokeColor;   // straight RGBA; alpha 0 means no stroke
     simd_float2 param0;        // shape-specific
     simd_float2 param1;        // shape-specific
+    simd_float2 param2;        // shape-specific
     float strokeWidth;         // points; 0 means no stroke
     float extra;               // shape-specific scalar
     float bandWidth;           // hollow-band width (points); 0 means solid fill

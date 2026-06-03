@@ -54,7 +54,10 @@ fragment float4 ollin_fragment(VertexOut in [[stage_in]]) {
 //   7 star/ngon, 8 marker, 9 rhombus, 10 vesica, 11 moon, 12 cross, 13 ring,
 //   14 trapezoid, 15 parallelogram, 16 egg, 17 heart, 18 cut disk,
 //   19 uneven capsule, 20 horseshoe, 21 parabola, 22 rounded X,
-//   23 blobby cross, 24 tunnel, 25 stairs, 26 cool S.
+//   23 blobby cross, 24 tunnel, 25 stairs, 26 cool S, 27 triangle (3-point),
+//   28 quadratic Bézier stroke.
+// 27 and 28 are the first shapes parameterized by three free points, so they
+// read corners / control points from param0/param1/param2 (see SDFInstance).
 // The shape tag occupies the low byte; bits 8-9 carry the stroke alignment
 // (0 center, 1 inside, 2 outside), so the vertex shader masks before the switch.
 
@@ -66,6 +69,7 @@ struct SDFOut {
     float4 strokeColor;
     float2 param0;
     float2 param1;
+    float2 param2;
     float strokeWidth;
     float extra;
     float bandWidth;
@@ -106,6 +110,7 @@ vertex SDFOut ollin_sdf_vertex(uint vid [[vertex_id]],
     out.strokeColor = inst.strokeColor;
     out.param0 = inst.param0;
     out.param1 = inst.param1;
+    out.param2 = inst.param2;
     out.strokeWidth = inst.strokeWidth;
     out.extra = inst.extra;
     out.bandWidth = inst.bandWidth;
@@ -417,6 +422,59 @@ static float sdCoolS(float2 p) {
     return sqrt(d) * sign(s);
 }
 
+// General triangle through three arbitrary corners `a`, `b`, `c` (any winding).
+// Exact signed distance, negative inside.
+static float sdTriangle(float2 p, float2 a, float2 b, float2 c) {
+    float2 e0 = b - a, e1 = c - b, e2 = a - c;
+    float2 v0 = p - a, v1 = p - b, v2 = p - c;
+    float2 pq0 = v0 - e0 * clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0);
+    float2 pq1 = v1 - e1 * clamp(dot(v1, e1) / dot(e1, e1), 0.0, 1.0);
+    float2 pq2 = v2 - e2 * clamp(dot(v2, e2) / dot(e2, e2), 0.0, 1.0);
+    float s = sign(e0.x * e2.y - e0.y * e2.x);
+    float2 d = min(min(float2(dot(pq0, pq0), s * (v0.x * e0.y - v0.y * e0.x)),
+                       float2(dot(pq1, pq1), s * (v1.x * e1.y - v1.y * e1.x))),
+                       float2(dot(pq2, pq2), s * (v2.x * e2.y - v2.y * e2.x)));
+    return -sqrt(d.x) * sign(d.y);
+}
+
+// Unsigned distance to the quadratic Bézier curve with control points A, B, C
+// (B is the off-curve handle). The cubic that locates the nearest parameter has
+// one or three real roots; both branches are handled. Stroked by thresholding
+// this distance against the half-width (round caps fall out of the unsigned form).
+static float sdBezier(float2 pos, float2 A, float2 B, float2 C) {
+    float2 a = B - A;
+    float2 b = A - 2.0 * B + C;
+    float2 c = a * 2.0;
+    float2 d = A - pos;
+    // Collinear control points collapse `b` to zero (the curve is a straight
+    // line); fall back to the segment A–C so 1/dot(b,b) can't blow up to NaN.
+    if (dot(b, b) < 1e-4) { return sdSegment(pos, A, C); }
+    float kk = 1.0 / dot(b, b);
+    float kx = kk * dot(a, b);
+    float ky = kk * (2.0 * dot(a, a) + dot(d, b)) / 3.0;
+    float kz = kk * dot(d, a);
+    float res = 0.0;
+    float p = ky - kx * kx;
+    float q = kx * (2.0 * kx * kx - 3.0 * ky) + kz;
+    float h = q * q + 4.0 * p * p * p;
+    if (h >= 0.0) {
+        h = sqrt(h);
+        float2 x = (float2(h, -h) - q) / 2.0;
+        float2 uv = sign(x) * pow(abs(x), float2(1.0 / 3.0));
+        float t = clamp(uv.x + uv.y - kx, 0.0, 1.0);
+        res = dot2(d + (c + b * t) * t);
+    } else {
+        float z = sqrt(-p);
+        float v = acos(q / (p * z * 2.0)) / 3.0;
+        float m = cos(v);
+        float n = sin(v) * 1.7320508;
+        float3 t = clamp(float3(m + m, -n - m, n - m) * z - kx, 0.0, 1.0);
+        res = min(dot2(d + (c + b * t.x) * t.x),
+                  dot2(d + (c + b * t.y) * t.y));
+    }
+    return sqrt(res);
+}
+
 // Fill + stroke coverage for a shape whose boundary is the zero level set of a
 // region SDF `d`: fill the inside (d < 0), stroke a band of half-width `hw`
 // straddling the boundary. `fwidth(d)` keeps the falloff ~1px under any
@@ -697,6 +755,23 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         float s = in.param0.x;
         float d = sdCoolS(p / s) * s;
         regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        break;
+    }
+    case 27u: {  // general triangle: param0/param1/param2 = the three corners,
+                 // relative to center. Region coverage like the isosceles form.
+        float d = sdTriangle(p, in.param0, in.param1, in.param2);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        break;
+    }
+    case 28u: {  // quadratic Bézier stroke: param0/param1/param2 = (start, control,
+                 // end) relative to center; extra = half stroke width; fill = stroke
+                 // color. Stroke-only (a curve has no interior), so it uses the
+                 // capsule's centered, area-conserving fade rather than regionFill —
+                 // a sub-pixel-thin curve fades by width instead of vanishing.
+        float s = sdBezier(p, in.param0, in.param1, in.param2);
+        float px = max(fwidth(s), 1e-5);
+        float hwE = max(in.extra, 0.5 * px);
+        fillCov = clamp(0.5 - (s - hwE) / px, 0.0, 1.0) * min(in.extra / hwE, 1.0);
         break;
     }
     default:     // 0: ellipse / circle / point

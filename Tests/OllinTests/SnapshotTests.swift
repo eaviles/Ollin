@@ -38,6 +38,12 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: StrokeAligned(), against: "stroke-aligned")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func threePointShapesMatchReference() throws {
+        let diff = try Snapshot.meanDifference(of: ThreePointShapes(), against: "three-point-shapes")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -118,5 +124,33 @@ private final class StrokeAligned: Sketch {
             drawCircle(width * 0.3, y, width * 0.09)
             drawRect(center: Vector2(width * 0.7, y), width: width * 0.18, height: width * 0.18)
         }
+    }
+}
+
+/// The two three-point shapes that drove the `SDFInstance` widening (the `param2`
+/// slot): a general scalene `drawTriangle(a, b, c)` — filled+stroked, then drawn
+/// hollow (it honors both) — and a quadratic `drawBezier` stroke, plus a Bézier
+/// with collinear control points that exercises the straight-line fallback.
+/// Static, so it's deterministic at frame 0.
+private final class ThreePointShapes: Sketch {
+    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+
+    override func draw() {
+        background(.white)
+        // Filled + stroked scalene triangle (top-left).
+        fill(Color(red: 0.2, green: 0.6, blue: 0.9))
+        stroke(.black); strokeWeight(6)
+        drawTriangle(Vector2(30, 95), Vector2(115, 35), Vector2(90, 135))
+        // Hollow triangle — a constant-width band (top-right).
+        noStroke(); fill(Color(red: 0.9, green: 0.4, blue: 0.2))
+        hollow(10)
+        drawTriangle(Vector2(145, 45), Vector2(228, 75), Vector2(165, 125))
+        solid()
+        // Quadratic Bézier curve (a smile across the middle).
+        stroke(Color(red: 0.1, green: 0.5, blue: 0.2)); strokeWeight(10)
+        drawBezier(Vector2(25, 205), Vector2(128, 145), Vector2(231, 205))
+        // Collinear control points → the straight-line fallback (bottom).
+        stroke(.black); strokeWeight(6)
+        drawBezier(Vector2(25, 240), Vector2(128, 240), Vector2(231, 240))
     }
 }
