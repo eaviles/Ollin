@@ -109,10 +109,10 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
    `swift run Example-Breathing`. Incremental builds keep this snappy.
 3. **Keep it open in Xcode.** `open Package.swift` (or just open the folder).
    Edit, ⌘R, repeat, with breakpoints and the debugger when you need them.
-4. **Single-file scripts (planned).** `SwiftProcessing` popularized a
-   [`swift-sh`](https://github.com/mxcl/swift-sh)-style flow where one `.swift`
-   file is also a runnable script. We want the same here so you can dash off a
-   sketch without a package; it's on the roadmap below.
+4. **Single-file scripts (planned).** [`swift-sh`](https://github.com/mxcl/swift-sh)
+   made one `.swift` file double as a runnable script, dependencies and all. We
+   want the same here, so you can dash off a sketch without setting up a package.
+   It's on the roadmap below.
 
 ## Documentation
 
@@ -202,6 +202,8 @@ Ollin builds on the ideas of three creative-coding frameworks and reimplements t
 | [p5.js](https://p5js.org) | LGPL-2.1 | Friendly, learn-it-in-an-afternoon API names and the `setup()` / `draw()` lifecycle |
 | [OPENRNDR](https://openrndr.org) | BSD-2-Clause | The typed `Program` / `Drawer` core and composable geometry |
 | [openFrameworks](https://openframeworks.cc) | MIT | Simple project structure and the per-example folder layout |
+
+That `setup()` / `draw()` vocabulary started in [Processing](https://processing.org), the Java project p5.js grew out of. Ollin follows p5's spelling because that's the version most people coming to it already know.
 
 *"Inspired by" means borrowing ideas and API vocabulary, which is different from copying code; Ollin's implementation is written independently.* Individual example sketches that are ported from a published source name that source, its author, and its license in the file header. Only sources whose licenses permit redistribution under MIT are used.
 
