@@ -59,7 +59,7 @@ strokeWeight(2 * scale)
 
 ### Export size
 
-`canvasSize` is the resolution a sketch renders and exports at, in pixels. It defaults to `.square1080` (1080×1080), a 1:1 square. Override it on a subclass with one of the named presets below, or any `CGSize` (`override var canvasSize: CGSize { .uhd4K }`):
+`canvasSize` is the resolution a sketch renders and exports at, in whole pixels (a canvas is an integer grid). Its type is `CanvasSize`, and it defaults to `.square1080` (1080×1080), a 1:1 square. Override it on a subclass with one of the named presets below (`override var canvasSize: CanvasSize { .uhd4K }`):
 
 | Constant | Pixels | Aspect | Good for |
 |---|---|---|---|
@@ -76,11 +76,12 @@ strokeWeight(2 * scale)
 
 Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine; `--export-sequence <dir> --frames N` renders a deterministic numbered PNG sequence (fixed timestep, so it's reproducible and assembles into a smooth video — see [Sketch ▸ Running a sketch](./Sketch.md#running-a-sketch)).
 
-To give a sketch a custom size, override `canvasSize` with any `CGSize`:
+For a custom size, override `canvasSize` with `.square(_)` (a square) or `.size(_, _)` (any rectangle):
 
 ```swift
 final class MySketch: Sketch {
-    override var canvasSize: CGSize { CGSize(width: 1000, height: 1000) }   // a custom 1000×1000 canvas
+    override var canvasSize: CanvasSize { .square(1000) }    // a 1000×1000 canvas
+    // override var canvasSize: CanvasSize { .size(1000, 600) }   // or any rectangle
 
     override func draw() {
         background(.white)

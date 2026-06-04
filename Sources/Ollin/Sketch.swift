@@ -109,14 +109,17 @@ open class Sketch {
     /// target common to square social/video export. The on-screen preview window
     /// scales down from this to fit the screen (the *host* computes that, not the
     /// sketch — see `OllinApp.windowSize(fitting:)`).
-    public static let defaultSize = CGSize.square1080
+    public static let defaultSize = CanvasSize.square1080
 
     /// The render / single-frame PNG export size in pixels — the canonical
     /// resolution the sketch is authored at. Defaults to `Sketch.defaultSize`
-    /// (1080² / square). **Override it** for higher-res masters at the standard
-    /// square tiers — 1440² ("2K"), 2160² ("4K"), 2880² ("5K") — or a non-square
-    /// aspect (e.g. 1080×1350 for a 4:5 portrait).
-    open var canvasSize: CGSize { Sketch.defaultSize }
+    /// (1080² / square). **Override it** with `.square(n)`, an explicit
+    /// `.size(width, height)`, or a named preset (`.uhd4K`, `.portrait1080`, …):
+    ///
+    /// ```swift
+    /// override var canvasSize: CanvasSize { .size(1000, 600) }
+    /// ```
+    open var canvasSize: CanvasSize { Sketch.defaultSize }
 
     /// How the preview window is sized, relative to `canvasSize`. Defaults to
     /// `.auto`: it opens at 1:1 when the screen has room for the full `canvasSize`

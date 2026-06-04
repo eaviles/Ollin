@@ -69,7 +69,7 @@ struct SnapshotTests {
 /// A few solid SDF fills on white — large flat regions, so anti-aliased edges
 /// are a small fraction of the frame. Pure SDF pipeline.
 private final class SolidShapes: Sketch {
-    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+    override var canvasSize: CanvasSize { .square(256) }
 
     override func draw() {
         background(.white)
@@ -87,7 +87,7 @@ private final class SolidShapes: Sketch {
 /// (the SDF pipeline), so the test covers both paths and that they composite in
 /// draw order.
 private final class MixedPipelines: Sketch {
-    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+    override var canvasSize: CanvasSize { .square(256) }
 
     override func draw() {
         background(Color(white: 0.1))
@@ -104,7 +104,7 @@ private final class MixedPipelines: Sketch {
 /// the sketch's per-frame auto-advance and that each curve shapes motion its own
 /// way. Large flat white field, so edge pixels stay a small fraction.
 private final class EasedDots: Sketch {
-    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+    override var canvasSize: CanvasSize { .square(256) }
 
     @Eased(duration: 1, curve: .linear)  var a = 0.0
     @Eased(duration: 1, curve: .easeIn)  var b = 0.0
@@ -128,7 +128,7 @@ private final class EasedDots: Sketch {
 /// per alignment — so the test pins the stroke-band bias on both coverage ramps
 /// (`diskCoverage` and `regionCoverage`). Static, so it's deterministic at frame 0.
 private final class StrokeAligned: Sketch {
-    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+    override var canvasSize: CanvasSize { .square(256) }
 
     override func draw() {
         background(.white)
@@ -151,7 +151,7 @@ private final class StrokeAligned: Sketch {
 /// with collinear control points that exercises the straight-line fallback.
 /// Static, so it's deterministic at frame 0.
 private final class ThreePointShapes: Sketch {
-    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+    override var canvasSize: CanvasSize { .square(256) }
 
     override func draw() {
         background(.white)
@@ -179,7 +179,7 @@ private final class ThreePointShapes: Sketch {
 /// `drawCurve` wiggle straight from points. Static, so it's deterministic at
 /// frame 0.
 private final class CurvedPaths: Sketch {
-    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+    override var canvasSize: CanvasSize { .square(256) }
 
     override func draw() {
         background(.white)
@@ -210,7 +210,7 @@ private final class CurvedPaths: Sketch {
 /// open segment (bottom three), so the corner and end geometry are exercised on
 /// the tessellated stroke path. Static, so it's deterministic at frame 0.
 private final class StrokeJoinsCaps: Sketch {
-    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+    override var canvasSize: CanvasSize { .square(256) }
 
     override func draw() {
         background(.white)
@@ -238,7 +238,7 @@ private final class StrokeJoinsCaps: Sketch {
 /// kana (hiragana + katakana), descenders (`g j p q y`), the alignments, and a
 /// rotated line that exercises text on the transform stack. Black on white, static.
 private final class TextSpecimen: Sketch {
-    override var canvasSize: CGSize { CGSize(width: 256, height: 256) }
+    override var canvasSize: CanvasSize { .square(256) }
 
     override func draw() {
         background(.white)

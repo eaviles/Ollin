@@ -226,14 +226,15 @@ override var title: String { "Flow field" }
 #### canvasSize / windowMode
 
 ```swift
-canvasSize: CGSize
+canvasSize: CanvasSize
 windowMode: WindowMode
 ```
 
 The render/export resolution and how the preview window behaves. Both are documented, with the presets and modes, on the [Canvas](./Canvas.md) page.
 
 ```swift
-override var canvasSize: CGSize { .uhd4K }            // 4K master
+override var canvasSize: CanvasSize { .uhd4K }        // 4K master
+override var canvasSize: CanvasSize { .square(1000) } // a custom square
 override var windowMode: WindowMode { .fixed(0.5) }   // preview at half size
 ```
 

@@ -437,7 +437,7 @@ private struct MetalCanvas: NSViewRepresentable {
             fatalError("Ollin requires a Metal-capable GPU.")
         }
         // Initial size only; SwiftUI resizes the view to its frame on layout.
-        let view = makeOllinMTKView(device: device, size: sketch.canvasSize, sketch: sketch)
+        let view = makeOllinMTKView(device: device, size: sketch.canvasSize.cgSize, sketch: sketch)
         let runner = SketchRunner(sketch: sketch, view: view, device: device)
         runner.observeStats(into: stats)
         view.delegate = runner
@@ -484,10 +484,10 @@ public enum OllinApp {
     public static func windowSize(for sketch: Sketch) -> CGSize {
         switch sketch.windowMode {
         case .auto, .resizable:
-            return windowSize(fitting: sketch.canvasSize)
+            return windowSize(fitting: sketch.canvasSize.cgSize)
         case .fixed(let fraction):
-            return CGSize(width: sketch.canvasSize.width * fraction,
-                          height: sketch.canvasSize.height * fraction)
+            let canvas = sketch.canvasSize.cgSize
+            return CGSize(width: canvas.width * fraction, height: canvas.height * fraction)
         }
     }
 
@@ -514,7 +514,7 @@ public enum OllinApp {
     /// The window size for a default (un-overridden) sketch — `Sketch.defaultSize`
     /// fitted to the screen. Hosts with their own chrome (the gallery, the live
     /// host) size their sketch pane to this.
-    public static var defaultWindowSize: CGSize { windowSize(fitting: Sketch.defaultSize) }
+    public static var defaultWindowSize: CGSize { windowSize(fitting: Sketch.defaultSize.cgSize) }
 
     /// Render one frame of `sketch` off-screen and return it as a `CGImage` — no
     /// window, no display loop. Drives the sketch headlessly: `setup()`, then
@@ -538,7 +538,7 @@ public enum OllinApp {
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
             sketch.performDraw()
         }
-        let width = Int(size.width.rounded()), height = Int(size.height.rounded())
+        let width = size.width, height = size.height
         return renderer.image(of: sketch.drawer,
                               viewport: SIMD2<Float>(Float(size.width), Float(size.height)),
                               width: width, height: height)
@@ -595,7 +595,7 @@ public enum OllinApp {
         }
 
         let size = sketch.canvasSize
-        let width = Int(size.width.rounded()), height = Int(size.height.rounded())
+        let width = size.width, height = size.height
         let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
         do {
             try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
@@ -677,7 +677,7 @@ public enum OllinApp {
             guard let renderer = try? MetalRenderer(device: device, pixelFormat: .bgra8Unorm, sampleCount: 4) else {
                 fatalError("Ollin: failed to initialize the Metal renderer.")
             }
-            let w = Int(size.width.rounded()), h = Int(size.height.rounded())
+            let w = size.width, h = size.height
             let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
             _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)  // warm GPU
 
