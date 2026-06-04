@@ -174,6 +174,11 @@ let package = Package(
             path: "Examples/Motion/Linkage"
         ),
         .executableTarget(
+            name: "Example-Petals",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/Petals"
+        ),
+        .executableTarget(
             name: "Example-Parameters",
             dependencies: ["Ollin"],
             path: "Examples/Live/Parameters"

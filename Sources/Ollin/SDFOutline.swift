@@ -142,6 +142,16 @@ enum SDFOutline {
         }
     }
 
+    /// The oriented vesica in its own frame: tips on the local x-axis at
+    /// `(±halfLength, 0)`, bulging to `halfWidth` across the y-axis. The Drawer
+    /// rotates these into place between the two tip points.
+    static func orientedVesica(halfLength a: Double, halfWidth w: Double) -> [Vector2] {
+        let ww = max(w, 1e-4)
+        let rCircle = (ww + a * a / ww) / 2
+        let dOff = (a * a - ww * ww) / (2 * ww)
+        return trace(halfX: a, halfY: ww) { sdVesica(Vector2($0.y, $0.x), rCircle, dOff) }
+    }
+
     static func moon(outerRadius: Double, innerRadius: Double, offset: Double, cornerRadius rr: Double) -> [Vector2] {
         trace(halfX: outerRadius + rr, halfY: outerRadius + rr) {
             sdMoon($0, offset, outerRadius, innerRadius) - rr

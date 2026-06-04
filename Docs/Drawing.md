@@ -12,7 +12,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [strokeJoin](#strokeJoin), [strokeCap](#strokeCap), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker)
 - **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawOrientedBox](#orientedbox), [drawTriangle](#triangle), [drawArc](#arc), [drawBezier](#bezier)
-- **More shapes:** [drawNgon](#ngon) (+ `drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
+- **More shapes:** [drawNgon](#ngon) (+ `drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawOrientedVesica](#orientedvesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
 - **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape), [drawCurve](#curve)
 - **Batches:** [drawCircles](#batches), [drawPoints](#batches), [drawRects](#batches)
@@ -430,6 +430,23 @@ A vesica — a pointed lens, the overlap of two circles — centered at `(x, y)`
 ```swift
 drawVesica(width / 2, height / 2, 120, 240)                 // a vertical lens (points up/down)
 drawVesica(width / 2, height / 2, 240, 120, cornerRadius: 30)  // wide, with softened tips
+```
+
+<a name="orientedvesica"></a>
+
+#### drawOrientedVesica
+
+```swift
+drawOrientedVesica(_ a: Vector2, _ b: Vector2, width: Double)
+drawOrientedVesica(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, width: Double)
+```
+
+A vesica placed by its two tip points `a` and `b`, bulging to `width` across the middle — the oriented analog of `drawVesica`, the way [`drawOrientedBox`](#orientedbox) is to `drawRect`. Because both tips are placed (rather than a center plus a rotation), spanning a moving pair of points takes one call with no trigonometry. It's a filled region (`fill`, an outline `stroke`, `strokeAlign`, and `hollow` all apply). `width` is the full waist width; keep it below the tip distance for a lens, equal to it for a circle. A zero-length span (`a == b`) or a non-positive width draws nothing.
+
+```swift
+fill(.black)
+drawOrientedVesica(Vector2(100, 200), Vector2(400, 260), width: 90)   // lens between two points
+drawOrientedVesica(100, 200, 400, 260, width: 90)                     // same, scalar form
 ```
 
 <a name="moon"></a>

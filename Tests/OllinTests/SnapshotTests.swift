@@ -52,6 +52,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func orientedVesicasMatchReference() throws {
+        let diff = try Snapshot.meanDifference(of: OrientedVesicas(), against: "oriented-vesicas")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -207,6 +213,32 @@ private final class OrientedBoxes: Sketch {
         fill(Color(red: 0.1, green: 0.5, blue: 0.2))
         stroke(.black); strokeWeight(6); strokeAlign(.outside)
         drawOrientedBox(Vector2(50, 210), Vector2(206, 226), thickness: 30)
+        strokeAlign(.center)
+    }
+}
+
+/// `drawOrientedVesica` — a pointed lens placed by its two tip points plus a
+/// waist width. Exercises the region features it inherits: a filled + stroked lens
+/// (diagonal), a hollow lens (a constant-width band, top), and an outside-aligned
+/// stroke (bottom). Static, so it's deterministic at frame 0.
+private final class OrientedVesicas: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.white)
+        // Filled + stroked diagonal lens.
+        fill(Color(red: 0.2, green: 0.6, blue: 0.9))
+        stroke(.black); strokeWeight(6)
+        drawOrientedVesica(Vector2(40, 70), Vector2(216, 140), width: 70)
+        // Hollow lens — a constant-width band hugging the outline (top).
+        noStroke(); fill(Color(red: 0.9, green: 0.4, blue: 0.2))
+        hollow(8)
+        drawOrientedVesica(Vector2(40, 32), Vector2(216, 32), width: 44)
+        solid()
+        // Outside-aligned stroke — the outline sits fully outside the fill (bottom).
+        fill(Color(red: 0.1, green: 0.5, blue: 0.2))
+        stroke(.black); strokeWeight(5); strokeAlign(.outside)
+        drawOrientedVesica(Vector2(50, 224), Vector2(206, 224), width: 40)
         strokeAlign(.center)
     }
 }

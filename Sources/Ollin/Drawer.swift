@@ -41,6 +41,7 @@ enum SDFShape: UInt32 {
     case triangle3     = 27  // general triangle: param0/param1/param2 = the three corners (rel. center)
     case bezier        = 28  // quadratic Bézier stroke: param0/param1/param2 = (start, control, end); extra = half-width
     case orientedBox   = 29  // box between two points: param0/param1 = centerline endpoints (rel. center); extra = thickness
+    case orientedVesica = 30 // lens between two points: param0/param1 = tip endpoints (rel. center); extra = waist half-width
 }
 
 extension SDFShape {
@@ -1750,6 +1751,44 @@ final class Drawer {
     /// `drawOrientedBox(_:_:thickness:)`: the centerline from `(x1, y1)` to `(x2, y2)`.
     func drawOrientedBox(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, thickness: Double) {
         drawOrientedBox(Vector2(x1, y1), Vector2(x2, y2), thickness: thickness)
+    }
+
+    /// A vesica (a pointed lens) whose two tips are placed at `a` and `b`, bulging
+    /// to `width` across the middle. Like `drawOrientedBox`, it's positioned by its
+    /// two endpoints rather than a center and rotation, so spanning a moving pair of
+    /// points is one call. It's a filled region (takes `fill`, an outline `stroke`,
+    /// `strokeAlign`, and `hollow`). `width` is the full waist width; keeping it
+    /// below the tip distance gives a lens, equal to it gives a circle. A zero-length
+    /// span (`a == b`) or non-positive width draws nothing. Recorded as a single
+    /// analytic SDF instance — crisp at any size and effectively free.
+    func drawOrientedVesica(_ a: Vector2, _ b: Vector2, width: Double) {
+        guard width > 0, (b - a).length > 1e-9 else { return }
+        let center = (a + b) / 2
+        let dir = (b - a) / (b - a).length
+        let halfLen = (b - a).length / 2
+        let halfWidth = width / 2
+        // The lens is inscribed in the oriented box of half-length `halfLen` (along
+        // the tip axis) and half-width `halfWidth` (across it), so its AABB is the
+        // same as that box's (see drawOrientedBox).
+        let half = SIMD2<Float>(
+            Float(halfLen * abs(dir.x) + halfWidth * abs(dir.y)),
+            Float(halfLen * abs(dir.y) + halfWidth * abs(dir.x)))
+        if svgRecorder != nil {
+            let perp = Vector2(-dir.y, dir.x)
+            let local = SDFOutline.orientedVesica(halfLength: halfLen, halfWidth: halfWidth)
+            svgRecord(.polygon(local.map { center + dir * $0.x + perp * $0.y }),
+                      fill: fillColor, stroke: strokeColor)
+            return
+        }
+        appendSDF(shape: .orientedVesica, center: center, size: half,
+                  fill: fillColor, stroke: strokeColor, extra: Float(halfWidth),
+                  param0: (a - center).simd2, param1: (b - center).simd2)
+    }
+
+    /// An oriented vesica through scalar tip coordinates — the positional form of
+    /// `drawOrientedVesica(_:_:width:)`: tips at `(x1, y1)` and `(x2, y2)`.
+    func drawOrientedVesica(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, width: Double) {
+        drawOrientedVesica(Vector2(x1, y1), Vector2(x2, y2), width: width)
     }
 
     /// A quadratic Bézier curve stroked with the current stroke color and weight:

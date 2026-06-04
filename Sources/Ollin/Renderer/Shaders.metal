@@ -282,6 +282,22 @@ static float sdVesica(float2 p, float r, float d) {
         : length(p - float2(-d, 0.0)) - r;
 }
 
+// Oriented vesica: the pointed lens whose two tips are at `a` and `b`, bulging to
+// a waist half-width `w` across the middle. `a`/`b` arrive relative to the shape
+// center, so their midpoint is the origin. The plane is rotated into the lens's
+// own frame, then it's the canonical vesica. Exact signed distance, negative
+// inside.
+static float sdOrientedVesica(float2 p, float2 a, float2 b, float w) {
+    w = max(w, 1e-4);
+    float r = 0.5 * length(b - a);
+    float d = 0.5 * (r * r - w * w) / w;
+    float2 v = (b - a) / r;
+    float2 pc = p - (a + b) * 0.5;
+    float2 q = 0.5 * abs(float2(v.y * pc.x - v.x * pc.y, v.x * pc.x + v.y * pc.y));
+    float3 h = (r * q.x < d * (q.y - r)) ? float3(0.0, r, 0.0) : float3(-d, 0.0, d + w);
+    return length(q - h.xy) - h.z;
+}
+
 // Crescent moon: the disk of radius `ra` at the origin with the disk of radius
 // `rb` subtracted, the latter centered at (d, 0). Symmetric about the x-axis,
 // opening toward +x. Exact signed distance, negative inside.
@@ -833,6 +849,12 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
     case 29u: {  // oriented box: param0/param1 = centerline endpoints (rel. center);
                  // extra = thickness. Region coverage like the rounded box.
         float d = sdOrientedBox(p, in.param0, in.param1, in.extra);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        break;
+    }
+    case 30u: {  // oriented vesica: param0/param1 = tip endpoints (rel. center);
+                 // extra = waist half-width. Region coverage like the vesica.
+        float d = sdOrientedVesica(p, in.param0, in.param1, in.extra);
         regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
