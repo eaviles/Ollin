@@ -49,7 +49,7 @@ let document = OllinApp.svg(of: MySketch(), frame: 0)   // -> String
 OllinApp.exportSVG(MySketch(), to: "/tmp/shapes.svg")   // writes the file
 ```
 
-This is the path for **pen plotters** (an AxiDraw plots an SVG through its own tooling) and for any tool that consumes vector art. Stroke-based sketches map most naturally, since a plotter draws with a pen — the single-line [stroke fonts](./Text.md) and stroked geometry are exactly what it plots.
+The output is **standard, general-purpose SVG** — native `<circle>`/`<ellipse>`/`<rect>`, `<polygon>`, and `<path>` with fills, opacity, and transforms preserved — so it opens cleanly in a browser, Inkscape, or Illustrator, and works as scalable vector art in its own right. A **pen plotter** is a common consumer (an AxiDraw plots an SVG through its own tooling), and stroke-based sketches map most naturally there since a pen has no fill — the single-line [stroke fonts](./Text.md) and stroked geometry are exactly what it plots — but the export isn't limited to plotting.
 
 ### What SVG export records
 

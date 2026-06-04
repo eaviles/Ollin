@@ -1,22 +1,24 @@
 import Ollin
 
 /// Vector (SVG) export: the same draw calls that rasterize to a PNG can instead
-/// be serialized as vector paths, so a sketch can drive a pen plotter or feed any
-/// vector pipeline. Export one frame with no window and no GPU:
+/// be serialized as standard SVG, so a sketch can feed any vector pipeline — a
+/// browser, Inkscape/Illustrator, or a pen plotter. The output is general-purpose
+/// (fills, color, opacity, and transforms are all preserved); a plotter is just a
+/// common consumer. Export one frame with no window and no GPU:
 ///
 /// ```sh
 /// swift run Example-VectorExport --export-svg /tmp/shapes.svg
 /// ```
 ///
-/// This sampler draws a grid of the shape catalog (filled + stroked) so the SVG
-/// matches what the renderer shows on screen — circles and rects become native
-/// `<circle>`/`<rect>`, polygons become `<polygon>`, and the curved analytic
-/// shapes are traced to `<path>` outlines.
+/// This sampler draws the shape catalog as **stroke-only outlines** — the plotter
+/// idiom, since a pen has no fill — purely as a style choice; filled shapes export
+/// just as faithfully (circles and rects become native `<circle>`/`<rect>`,
+/// polygons `<polygon>`, and the curved analytic shapes are traced to `<path>`).
 @main
 final class VectorExport: Sketch {
     private let columns = 6
     private let rows = 5
-    private let labelFont = OutlineFont.systemBold   // outline fonts take fill *and* stroke
+    private let labelFont = OutlineFont.systemBold   // outline glyphs are Shapes, so they stroke (bitmap pixels are fill-only)
 
     override func draw() {
         background(.white)
@@ -31,7 +33,7 @@ final class VectorExport: Sketch {
             let y = (Double(row) + 0.5) * ch
             withState {
                 translate(x, y)
-                fill(Color(white: 0.85))
+                noFill()                 // stroke-only: the plotter idiom (fills export too)
                 stroke(.black)
                 strokeWeight(2 * scale)
                 drawShapeNumber(index, r: r)
@@ -54,8 +56,7 @@ final class VectorExport: Sketch {
         case 9:  drawCross(0, 0, r * 2, r * 0.7, cornerRadius: r * 0.15)
         case 10:
             // `drawRing` is fill-only (it ignores stroke), so an outlined ring is
-            // two `noFill` circles instead — which is what the black stroke shows here.
-            noFill()
+            // just two circles.
             drawCircle(0, 0, r)
             drawCircle(0, 0, r * 0.5)
         case 11: drawTrapezoid(0, 0, r, r * 1.8, r * 1.4)
@@ -79,8 +80,8 @@ final class VectorExport: Sketch {
         case 28: drawPolygon([Vector2(0, -r), Vector2(r * 0.9, r * 0.6),
                               Vector2(-r * 0.9, r * 0.6)])
         default:
-            // An outline font draws each glyph as a `Shape`, so the text takes both
-            // `fill` and `stroke` — unlike the bitmap font, whose pixels are fill-only.
+            // An outline font draws each glyph as a `Shape`, so the text can be
+            // stroked (and filled) — unlike the bitmap font, whose pixels are fill-only.
             textFont(labelFont)
             textSize(r * 0.7)
             textAlign(.center, .middle)
