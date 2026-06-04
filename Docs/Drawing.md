@@ -12,7 +12,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [strokeJoin](#strokeJoin), [strokeCap](#strokeCap), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker)
 - **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawTriangle](#triangle), [drawArc](#arc), [drawBezier](#bezier)
-- **More shapes:** [drawNgon](#ngon), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
+- **More shapes:** [drawNgon](#ngon) (+ `drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
 - **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape), [drawCurve](#curve)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
@@ -353,6 +353,13 @@ A regular polygon centered at `(x, y)` with `sides` equal-length edges (3 or mor
 ```swift
 drawNgon(width / 2, height / 2, 120, sides: 6)            // a hexagon
 withState { translate(300, 300); rotate(time); drawNgon(0, 0, 90, sides: 5) }  // a spinning pentagon
+```
+
+For the polygons people name often there are convenience helpers — `drawPentagon`, `drawHexagon`, `drawHeptagon`, `drawOctagon` — each just `drawNgon` with its side count fixed, the way `drawCircle` reads better than an equal-radii `drawEllipse`. They take the same `(x, y, radius)` and `(center:, radius:)` forms. For any other side count, reach for `drawNgon`.
+
+```swift
+drawHexagon(width / 2, height / 2, 120)                   // same as drawNgon(…, sides: 6)
+drawOctagon(center: middle, radius: 90)
 ```
 
 <a name="star"></a>

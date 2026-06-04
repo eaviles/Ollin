@@ -304,6 +304,11 @@ let package = Package(
             path: "Examples/Patterns/Markers"
         ),
         .executableTarget(
+            name: "Example-NamedPolygons",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/NamedPolygons"
+        ),
+        .executableTarget(
             name: "Example-ShapeMenagerie",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/ShapeMenagerie"

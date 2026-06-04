@@ -13,6 +13,7 @@ Grids and rule-based repetition.
 | [HollowShapes](HollowShapes/Sketch.swift) | a grid of shapes breathing from solid into framed hollow rings (`hollow`/`solid`, SDF) |
 | [LifeQuilt](LifeQuilt/Sketch.swift) | a four-layer Game of Life filling cells with triangular wedges, colored by a radial cosine palette (`drawTriangle`, SDF) |
 | [Markers](Markers/Sketch.swift) | the five `drawPoint` markers, one per row, swept across sizes (`pointMarker`, SDF) |
+| [NamedPolygons](NamedPolygons/Sketch.swift) | the named regular polygons turning in a labeled row (`drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`, SDF) |
 | [Primitives](Primitives/Sketch.swift) | every `draw*` primitive, one per cell, turning slowly — a reference sheet for the whole drawing vocabulary |
 | [ShapeMenagerie](ShapeMenagerie/Sketch.swift) | rhombus, vesica, moon, cross, and ring, one per row, with corner radius breathing (`drawRhombus`/`drawVesica`/`drawMoon`/`drawCross`/`drawRing`, SDF) |
 | [StrokeAlignment](StrokeAlignment/Sketch.swift) | the same shapes stroked inside, centered, and outside their outline, weight pulsing (`strokeAlign`, SDF) |

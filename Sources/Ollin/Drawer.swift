@@ -515,6 +515,15 @@ final class Drawer {
                    inner: radius * cos(.pi / Double(sides)), points: sides)
     }
 
+    /// Named regular polygons — sugar over `drawNgon` with a fixed side count, the
+    /// way `drawCircle` reads better than an equal-radii `drawEllipse`. Same
+    /// arguments and behavior: circumradius `radius`, one vertex up, the same
+    /// analytic SDF shape. For other side counts, call `drawNgon` directly.
+    func drawPentagon(_ x: Double, _ y: Double, _ radius: Double) { drawNgon(x, y, radius, sides: 5) }
+    func drawHexagon(_ x: Double, _ y: Double, _ radius: Double)  { drawNgon(x, y, radius, sides: 6) }
+    func drawHeptagon(_ x: Double, _ y: Double, _ radius: Double) { drawNgon(x, y, radius, sides: 7) }
+    func drawOctagon(_ x: Double, _ y: Double, _ radius: Double)  { drawNgon(x, y, radius, sides: 8) }
+
     /// A star centered at `(x, y)` with `points` outer points, alternating between
     /// `outerRadius` (the tips) and `innerRadius` (the valleys), one tip pointing
     /// up. `points` is 3 or more, and `innerRadius` is `0...outerRadius` (smaller is

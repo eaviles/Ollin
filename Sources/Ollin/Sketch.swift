@@ -310,6 +310,30 @@ open class Sketch {
     public func drawStar(center: Vector2, outerRadius: Double, innerRadius: Double, points: Int) {
         drawer.drawStar(center.x, center.y, outerRadius, innerRadius, points: points)
     }
+    public func drawPentagon(_ x: Double, _ y: Double, _ radius: Double) {
+        drawer.drawPentagon(x, y, radius)
+    }
+    public func drawPentagon(center: Vector2, radius: Double) {
+        drawer.drawPentagon(center.x, center.y, radius)
+    }
+    public func drawHexagon(_ x: Double, _ y: Double, _ radius: Double) {
+        drawer.drawHexagon(x, y, radius)
+    }
+    public func drawHexagon(center: Vector2, radius: Double) {
+        drawer.drawHexagon(center.x, center.y, radius)
+    }
+    public func drawHeptagon(_ x: Double, _ y: Double, _ radius: Double) {
+        drawer.drawHeptagon(x, y, radius)
+    }
+    public func drawHeptagon(center: Vector2, radius: Double) {
+        drawer.drawHeptagon(center.x, center.y, radius)
+    }
+    public func drawOctagon(_ x: Double, _ y: Double, _ radius: Double) {
+        drawer.drawOctagon(x, y, radius)
+    }
+    public func drawOctagon(center: Vector2, radius: Double) {
+        drawer.drawOctagon(center.x, center.y, radius)
+    }
     public func drawRhombus(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0) {
         drawer.drawRhombus(x, y, width, height, cornerRadius: cornerRadius)
     }
