@@ -55,16 +55,26 @@ public extension Vector2 {
 }
 
 public extension Vector2 {
+    /// Component-wise sum.
     static func + (a: Vector2, b: Vector2) -> Vector2 { Vector2(a.x + b.x, a.y + b.y) }
+    /// Component-wise difference.
     static func - (a: Vector2, b: Vector2) -> Vector2 { Vector2(a.x - b.x, a.y - b.y) }
+    /// Negation (the opposite vector).
     static prefix func - (v: Vector2) -> Vector2 { Vector2(-v.x, -v.y) }
+    /// Scale by a scalar.
     static func * (v: Vector2, s: Double) -> Vector2 { Vector2(v.x * s, v.y * s) }
+    /// Scale by a scalar.
     static func * (s: Double, v: Vector2) -> Vector2 { Vector2(v.x * s, v.y * s) }
+    /// Divide each component by a scalar.
     static func / (v: Vector2, s: Double) -> Vector2 { Vector2(v.x / s, v.y / s) }
 
+    /// Add `b` in place (the `pos += vel` idiom).
     static func += (a: inout Vector2, b: Vector2) { a = a + b }
+    /// Subtract `b` in place.
     static func -= (a: inout Vector2, b: Vector2) { a = a - b }
+    /// Scale in place.
     static func *= (v: inout Vector2, s: Double) { v = v * s }
+    /// Divide in place.
     static func /= (v: inout Vector2, s: Double) { v = v / s }
 }
 
