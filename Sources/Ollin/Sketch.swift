@@ -336,9 +336,14 @@ open class Sketch {
     public func drawCross(center: Vector2, length: Double, thickness: Double, cornerRadius: Double = 0) {
         drawer.drawCross(center.x, center.y, length, thickness, cornerRadius: cornerRadius)
     }
+    /// A filled ring (annulus) between `innerRadius` and `outerRadius`. Unlike the
+    /// other region shapes it's **fill-only**: it takes the current `fill` and
+    /// ignores `stroke`. For an outlined ring, draw two `drawCircle`s with `noFill()`.
     public func drawRing(_ x: Double, _ y: Double, _ innerRadius: Double, _ outerRadius: Double) {
         drawer.drawRing(x, y, innerRadius, outerRadius)
     }
+    /// A filled ring (annulus). **Fill-only** — takes `fill`, ignores `stroke`; for
+    /// an outlined ring, draw two `drawCircle`s with `noFill()`.
     public func drawRing(center: Vector2, innerRadius: Double, outerRadius: Double) {
         drawer.drawRing(center.x, center.y, innerRadius, outerRadius)
     }
@@ -513,9 +518,11 @@ open class Sketch {
     public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
         drawer.textAlign(horizontal, vertical)
     }
-    /// Draw `string` at `(x, y)` in the current `fill` color, using the active
-    /// `textFont`/`textSize`/`textAlign`. `\n` starts a new line; text rides the
-    /// transform stack (so it rotates/scales). `noFill()` draws nothing.
+    /// Draw `string` at `(x, y)` using the active `textFont`/`textSize`/`textAlign`.
+    /// How it paints follows the font kind: a **bitmap** font (the default) uses
+    /// `fill` only (it ignores `stroke`); an **outline** (`.ttf`/`.otf`) font takes
+    /// `fill` *and* `stroke`; a **stroke** (single-line) font uses `stroke` only.
+    /// `\n` starts a new line; text rides the transform stack (so it rotates/scales).
     public func drawText(_ string: String, _ x: Double, _ y: Double) {
         drawer.drawText(string, x, y)
     }

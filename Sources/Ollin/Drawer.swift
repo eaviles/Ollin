@@ -1172,8 +1172,9 @@ final class Drawer {
     /// color square on the SDF path; an **outline** font draws each glyph as a
     /// vector `Shape`, so — like every other shape — it takes the current `fill`
     /// *and* an active `stroke` (call `noStroke()` for plain filled text, or
-    /// `noFill()` for outline-only text). Unknown characters advance the pen but
-    /// draw nothing.
+    /// `noFill()` for outline-only text); a **stroke** (single-line) font draws each
+    /// glyph as open pen paths with the current `stroke` and no fill. Unknown
+    /// characters advance the pen but draw nothing.
     func drawText(_ string: String, _ x: Double, _ y: Double) {
         guard textPixelSize > 0, !string.isEmpty else { return }
         switch currentFont {
