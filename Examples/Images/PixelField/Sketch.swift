@@ -43,7 +43,7 @@ final class PixelField: Sketch {
 
         // Animated tint: a warm↔cool wash whose alpha pulses, so the image fades
         // toward the background and back.
-        let k = 0.5 + 0.5 * sin(time * 0.6)
+        let k = 0.5 + 0.5 * sin(time * 2.4)
         withState {
             tint(Color(red: 0.7 + 0.3 * k, green: 0.85, blue: 1.0 - 0.3 * k,
                        alpha: 0.55 + 0.45 * k))
