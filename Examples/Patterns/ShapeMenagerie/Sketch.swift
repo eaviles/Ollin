@@ -10,20 +10,25 @@ import Ollin
 final class ShapeMenagerie: Sketch {
     let rows = 5
     let columns = 9
+    let names = ["Rhombus", "Vesica", "Moon", "Cross", "Ring"]
 
     override func setup() {
         noStroke()
+        textFont(OutlineFont.system)
     }
 
     override func draw() {
         background(Color(white: 0.08))
+        let gutter = width * 0.16                 // left column reserved for labels
         let rowGap = height / Double(rows + 1)
-        let colGap = width / Double(columns + 1)
+        let colGap = (width - gutter) / Double(columns + 1)
+        textSize(24 * scale)
+        textAlign(.right, .middle)
 
         for row in 0..<rows {
             let y = rowGap * Double(row + 1)
             for col in 0..<columns {
-                let x = colGap * Double(col + 1)
+                let x = gutter + colGap * Double(col + 1)
                 let t = Double(col) / Double(columns - 1)
                 fill(Colormap.turbo.color(at: t))
 
@@ -48,6 +53,8 @@ final class ShapeMenagerie: Sketch {
                     drawRing(x, y, outer * (0.25 + 0.5 * round), outer)
                 }
             }
+            fill(.white)
+            drawText(names[row], gutter - 24 * scale, y)
         }
     }
 }

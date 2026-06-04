@@ -13,6 +13,12 @@ import Ollin
 final class StrokeJoinsAndCaps: Sketch {
     let joins: [StrokeJoin] = [.miter, .bevel, .round]
     let caps: [StrokeCap] = [.butt, .round, .square]
+    let joinNames = ["miter", "bevel", "round"]
+    let capNames = ["butt", "round", "square"]
+
+    override func setup() {
+        textFont(OutlineFont.system)
+    }
 
     override func draw() {
         background(Color(white: 0.1))
@@ -37,6 +43,7 @@ final class StrokeJoinsAndCaps: Sketch {
             stroke(rowColor(i, of: rows)); strokeWeight(weight); strokeJoin(join)
             drawPolyline(pts)
             drawReference(pts)
+            rowLabel(joinNames[i], cy, margin: margin)
         }
 
         // Caps — a straight segment, so the end style is what changes.
@@ -47,6 +54,16 @@ final class StrokeJoinsAndCaps: Sketch {
             stroke(rowColor(i, of: rows)); strokeWeight(weight); strokeCap(cap)
             drawPolyline(pts)
             drawReference(pts)
+            rowLabel(capNames[j], cy, margin: margin)
+        }
+    }
+
+    /// A row label in the left gutter, drawn unstroked so the pulsing stroke weight
+    /// doesn't reach the text. Scoped so it leaks no state into the next row.
+    func rowLabel(_ text: String, _ cy: Double, margin: Double) {
+        withState {
+            noStroke(); fill(.white); textAlign(.right, .middle); textSize(24 * scale)
+            drawText(text, margin - 28 * scale, cy)
         }
     }
 

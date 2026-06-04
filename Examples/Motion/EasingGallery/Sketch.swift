@@ -22,6 +22,22 @@ final class EasingGallery: Sketch {
         .easeInElastic, .easeOutElastic, .easeInOutElastic,
         .easeInBounce, .easeOutBounce, .easeInOutBounce,
     ]
+    let names = [
+        "easeInSine", "easeOutSine", "easeInOutSine",
+        "easeInQuad", "easeOutQuad", "easeInOutQuad",
+        "easeInCubic", "easeOutCubic", "easeInOutCubic",
+        "easeInQuart", "easeOutQuart", "easeInOutQuart",
+        "easeInQuint", "easeOutQuint", "easeInOutQuint",
+        "easeInExpo", "easeOutExpo", "easeInOutExpo",
+        "easeInCirc", "easeOutCirc", "easeInOutCirc",
+        "easeInBack", "easeOutBack", "easeInOutBack",
+        "easeInElastic", "easeOutElastic", "easeInOutElastic",
+        "easeInBounce", "easeOutBounce", "easeInOutBounce",
+    ]
+
+    override func setup() {
+        textFont(OutlineFont.system)
+    }
 
     override func draw() {
         background(Color(white: 0.08))
@@ -63,6 +79,10 @@ final class EasingGallery: Sketch {
             // The dot riding it at the current phase.
             noStroke(); fill(tint)
             drawCircle(center: point(phase), radius: 8 * scale)
+
+            // The curve's name, tucked into the cell's top-left above the plot.
+            fill(Color(white: 0.7)); textAlign(.left, .top); textSize(13 * scale)
+            drawText(names[i], ox + inset * 0.5, oy + inset * 0.35)
         }
     }
 }

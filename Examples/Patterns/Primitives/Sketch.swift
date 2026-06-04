@@ -11,16 +11,28 @@ import Ollin
 final class Primitives: Sketch {
     let columns = 5
     let count = 32
+    let names = [
+        "Point", "Line", "Circle", "Ellipse", "Arc",
+        "Triangle", "Rect", "Ngon", "Star", "Rhombus",
+        "Trapezoid", "Parallelogram", "Cross", "Vesica", "Moon",
+        "Egg", "Heart", "Cut Disk", "Ring", "Uneven Capsule",
+        "Horseshoe", "Parabola", "Rounded X", "Blobby Cross", "Tunnel",
+        "Stairs", "Cool S", "Triangle 3-pt", "Bézier", "Polyline",
+        "Polygon", "Shape",
+    ]
 
     override func setup() {
         noStroke()
+        textFont(OutlineFont.system)
     }
 
     override func draw() {
         background(Color(white: 0.1))
         let rows = (count + columns - 1) / columns
         let cellW = width / Double(columns)
-        let cellH = height / Double(rows)
+        // A top/bottom margin so the last row's label clears the canvas edge.
+        let vMargin = height * 0.04
+        let cellH = (height - vMargin * 2) / Double(rows)
         let s = min(cellW, cellH) * 0.34
 
         for index in 0..<count {
@@ -29,7 +41,7 @@ final class Primitives: Sketch {
             // Center a short final row under the full ones above it.
             let itemsInRow = min(columns, count - row * columns)
             let x = cellW * (Double(col) + 0.5) + Double(columns - itemsInRow) * cellW / 2
-            let y = cellH * (Double(row) + 0.5)
+            let y = vMargin + cellH * (Double(row) + 0.5)
             // Start a little into the ramp so the first cells clear turbo's darkest end.
             let t = 0.08 + 0.92 * Double(index) / Double(count - 1)
             let color = Colormap.turbo.color(at: t)
@@ -40,6 +52,10 @@ final class Primitives: Sketch {
                 rotate(time * 0.25)
                 drawCell(index, s: s, color: color)
             }
+
+            // Name under each cell, in screen space (not turned with the shape).
+            fill(.white); textAlign(.center, .top); textSize(14 * scale)
+            drawText(names[index], x, y + cellH * 0.40)
         }
     }
 

@@ -11,7 +11,12 @@ import Ollin
 @main
 final class StrokeAlignment: Sketch {
     let aligns: [StrokeAlign] = [.inside, .center, .outside]
+    let names = ["inside", "center", "outside"]
     let rows = 3
+
+    override func setup() {
+        textFont(OutlineFont.system)
+    }
 
     override func draw() {
         background(Color(white: 0.1))
@@ -27,6 +32,12 @@ final class StrokeAlignment: Sketch {
             strokeAlign(align)
             let cx = colGap * (Double(col) + 0.5)
             stroke(Colormap.turbo.color(at: Double(col) / Double(aligns.count - 1)))
+
+            // Column header (drawn unstroked so the pulsing weight doesn't reach it).
+            withState {
+                noStroke(); fill(.white); textAlign(.center, .middle); textSize(30 * scale)
+                drawText(names[col], cx, rowGap * 0.45)
+            }
 
             for row in 0..<rows {
                 let cy = rowGap * Double(row + 1)
