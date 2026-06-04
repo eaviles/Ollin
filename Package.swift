@@ -129,6 +129,11 @@ let package = Package(
             path: "Examples/Basic/Capture"
         ),
         .executableTarget(
+            name: "Example-VectorExport",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/VectorExport"
+        ),
+        .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"

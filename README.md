@@ -130,6 +130,7 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Math](Docs/Math.md) - `map`, `dist`, `lerp`.
 - [Animation](Docs/Animation.md) - the `Easing` curves, the `@Eased` value that tweens toward a target, and `@Smoothed` for cleaning up a noisy signal.
 - [Input](Docs/Input.md) - mouse and keyboard.
+- [Export](Docs/Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters).
 
 New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.
 
@@ -234,7 +235,7 @@ As with the others, this is reading for ideas and engineering approach, which is
 A few helpers lean on well-known public techniques, reimplemented in Ollin and credited here. They lean toward OPENRNDR-style ergonomics:
 
 - The cosine-gradient `Palette` uses [Inigo Quilez's palette formula](https://iquilezles.org/articles/palettes/).
-- The signed-distance fields behind Ollin's analytic shapes (circles, ellipses, rectangles, lines, arcs, triangles, n-gons and stars, quadratic Bézier curves, point markers, and the rest of the catalog) come from [Inigo Quilez's 2D distance functions](https://iquilezles.org/articles/distfunctions2d/), including the onion operator behind rings and the `hollow`/`solid` band mode.
+- The signed-distance fields behind Ollin's analytic shapes (circles, ellipses, rectangles, lines, arcs, triangles, n-gons and stars, quadratic Bézier curves, point markers, and the rest of the catalog) come from [Inigo Quilez's 2D distance functions](https://iquilezles.org/articles/distfunctions2d/), including the onion operator behind rings and the `hollow`/`solid` band mode. SVG export traces these same functions on the CPU (marching squares) to turn each curved shape into a vector outline.
 - `curlNoise` follows the curl-noise method for divergence-free flow (Robert Bridson and colleagues, "Curl-Noise for Procedural Fluid Flow", 2007).
 - `randomGaussian` uses the Marsaglia polar method for normal-distributed samples.
 - The named `Easing` curves are Robert Penner's easing equations, written from the formulas catalogued at [easings.net](https://easings.net) (Andrey Sitnik and Ivan Solovev).

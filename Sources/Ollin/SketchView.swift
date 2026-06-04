@@ -763,6 +763,16 @@ public extension Sketch {
             OllinApp.export(Self(), to: args[i + 1], frame: frame)
             return
         }
+        // `swift run Example-X --export-svg <path> [--frame N]` writes a vector SVG
+        // of one frame and exits (no window, no GPU).
+        if let i = args.firstIndex(of: "--export-svg"), i + 1 < args.count {
+            var frame = 0
+            if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {
+                frame = Int(args[f + 1]) ?? 0
+            }
+            OllinApp.exportSVG(Self(), to: args[i + 1], frame: frame)
+            return
+        }
         if let i = args.firstIndex(of: "--bench") {
             var frames = 600
             if i + 1 < args.count, let f = Int(args[i + 1]) { frames = f }

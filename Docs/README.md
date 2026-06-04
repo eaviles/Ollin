@@ -32,4 +32,8 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 - [`Animation`](./Animation.md) - the `Easing` curves, `@Eased`, and `@Smoothed` — easing toward a target, and smoothing a noisy signal
 - [`Input`](./Input.md) - mouse and keyboard
 
+### Output
+
+- [`Export`](./Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters)
+
 Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR.

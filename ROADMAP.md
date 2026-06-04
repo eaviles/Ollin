@@ -25,13 +25,17 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 
 The remaining table-stakes capability p5.js, openFrameworks, and OPENRNDR all ship: **audio** (lowest priority, mostly for audio-reactive visuals — playback plus amplitude and FFT a sketch reads in `draw()`). A sketcher reaches for it early, so it matters more than its size suggests; it's Apple-native (AVFoundation) and stays sugar over the typed core. Engines, APIs, and ordering are in the [design notes](DESIGN-NOTES.md#core-batteries-text-and-audio-not-started).
 
-## Vector and plotter output
+## Plotter hatching fills
 
-Today's export writes raster frames (PNG and video, off-screen MSAA). A second output mode would serialize a frame's *geometry* as vector paths rather than pixels, so a sketch can drive a **pen plotter** (the AxiDraw being the common one, which plots an SVG through its own tooling) or feed any vector pipeline. It records the same draw calls as paths instead of rasterizing them, so it's a new serializer over the typed core, not a renderer change. It pairs naturally with the single-line/stroke fonts in [core batteries](#core-batteries) — stroke geometry is exactly what a plotter draws. Design in the [design notes](DESIGN-NOTES.md#vector-and-plotter-output-not-started).
+SVG export records a filled shape as a filled path, but a **pen plotter** has only a pen — it can't fill. Mapping a fill to a **hatching pattern** (parallel or cross-hatch lines clipped to the shape, density tied to the fill's tone) would let solid sketches plot as shaded line work. It builds on the vector exporter as another transform over the recorded geometry, and pairs naturally with the single-line/stroke fonts in [core batteries](#core-batteries) — stroke geometry is exactly what a plotter draws. Design in the [design notes](DESIGN-NOTES.md#plotter-hatching-fills-not-started).
 
 ## Integration and performance I/O
 
 Wiring a sketch into an installation or performance rig: **OSC** (Open Sound Control) for networked messages to and from TouchDesigner, Max/MSP, Ableton, Resolume, and lighting desks, built on `Network.framework` since OSC is just UDP or TCP; and **MIDI** through Core MIDI, for control surfaces and knobs driving parameters, clock and notes in, messages out, pairing naturally with the `@Param` knobs. Both are Apple-native at the transport layer and stay sugar over the typed core. See the [design notes](DESIGN-NOTES.md#integration-and-performance-io-osc-and-midi-not-started).
+
+## Live visual interop (Syphon)
+
+Sharing live visuals between Ollin and the other apps on a Mac, the way a performance rig already passes frames around. Syphon is the macOS standard for sharing GPU textures between running apps in real time, and the creative-coding ecosystem speaks it — openFrameworks through `ofxSyphon`, plus Resolume, MadMapper, and VDMX. Ollin would publish its rendered Metal texture as a Syphon source and consume an external Syphon texture as an input, so an Ollin sketch and an openFrameworks sketch (or any Syphon app) run side by side and trade visuals live, paired with [OSC](#integration-and-performance-io) for control in both directions. A consumed texture is exactly what the [layered effects](#layered-effects-and-compositing) graph takes as input. Apple-only and Metal-compatible, so it fits the core stance. Design in the [design notes](DESIGN-NOTES.md#live-visual-interop-syphon-not-started).
 
 ## Physics
 
