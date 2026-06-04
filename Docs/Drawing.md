@@ -11,7 +11,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 ### Contents
 
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [strokeJoin](#strokeJoin), [strokeCap](#strokeCap), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker)
-- **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawTriangle](#triangle), [drawArc](#arc), [drawBezier](#bezier)
+- **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawOrientedBox](#orientedbox), [drawTriangle](#triangle), [drawArc](#arc), [drawBezier](#bezier)
 - **More shapes:** [drawNgon](#ngon) (+ `drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
 - **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape), [drawCurve](#curve)
@@ -280,6 +280,23 @@ A rectangle, anchored by its top-left corner or its center (the center form matc
 drawRect(40, 40, 120, 80)                                   // top-left corner
 drawRect(center: Vector2(width / 2, height / 2), width: 200, height: 120)
 drawRect(40, 40, 120, 80, cornerRadius: 16)                 // rounded corners
+```
+
+<a name="orientedbox"></a>
+
+#### drawOrientedBox
+
+```swift
+drawOrientedBox(_ a: Vector2, _ b: Vector2, thickness: Double)
+drawOrientedBox(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, thickness: Double)
+```
+
+A rectangle placed by its two centerline endpoints `a` and `b` with the given `thickness` across it — a thick bar between two points, with square (not round) ends. Where `drawRect` is axis-aligned and you'd rotate it about its own center, this is positioned by *both* of its ends, so connecting a pair of moving points (a linkage, a truss, an edge between nodes) is one call with no trigonometry. It's a filled region: it takes `fill`, an outline `stroke`, `strokeAlign`, and `hollow` — where `drawLine` is a round-capped stroke with no interior. A zero-length bar (`a == b`) or a non-positive thickness draws nothing.
+
+```swift
+fill(.black)
+drawOrientedBox(Vector2(100, 100), Vector2(400, 260), thickness: 40)   // bar between two points
+drawOrientedBox(100, 100, 400, 260, thickness: 40)                     // same, scalar form
 ```
 
 <a name="triangle"></a>

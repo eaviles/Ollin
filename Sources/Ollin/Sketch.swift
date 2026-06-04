@@ -636,6 +636,12 @@ open class Sketch {
     public func drawLine(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) {
         drawer.drawLine(Vector2(x1, y1), Vector2(x2, y2))
     }
+    public func drawOrientedBox(_ a: Vector2, _ b: Vector2, thickness: Double) {
+        drawer.drawOrientedBox(a, b, thickness: thickness)
+    }
+    public func drawOrientedBox(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, thickness: Double) {
+        drawer.drawOrientedBox(x1, y1, x2, y2, thickness: thickness)
+    }
     public func drawBezier(_ start: Vector2, _ control: Vector2, _ end: Vector2) {
         drawer.drawBezier(start, control, end)
     }

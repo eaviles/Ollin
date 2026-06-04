@@ -178,6 +178,21 @@ static float sdRoundBox(float2 p, float2 b, float r) {
     return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
+// Oriented box: the rectangle whose centerline runs from `a` to `b` with full
+// width (thickness) `th`. `a`/`b` arrive relative to the shape center, so their
+// midpoint is the origin. The plane is rotated into the box's own frame (x along
+// the centerline, y across it), then it's an axis-aligned box. Exact signed
+// distance, negative inside.
+static float sdOrientedBox(float2 p, float2 a, float2 b, float th) {
+    float2 ba = b - a;
+    float l = length(ba);
+    float2 d = ba / l;
+    float2 q = p - (a + b) * 0.5;
+    q = float2(dot(q, d), dot(q, float2(-d.y, d.x)));
+    q = abs(q) - float2(l, th) * 0.5;
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+}
+
 // Distance to the segment a–b; a capsule of radius r is this minus r (round caps).
 static float sdSegment(float2 p, float2 a, float2 b) {
     float2 pa = p - a, ba = b - a;
@@ -813,6 +828,12 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         float px = max(fwidth(s), 1e-5);
         float hwE = max(in.extra, 0.5 * px);
         fillCov = clamp(0.5 - (s - hwE) / px, 0.0, 1.0) * min(in.extra / hwE, 1.0);
+        break;
+    }
+    case 29u: {  // oriented box: param0/param1 = centerline endpoints (rel. center);
+                 // extra = thickness. Region coverage like the rounded box.
+        float d = sdOrientedBox(p, in.param0, in.param1, in.extra);
+        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     default:     // 0: ellipse / circle / point

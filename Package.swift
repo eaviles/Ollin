@@ -169,6 +169,11 @@ let package = Package(
             path: "Examples/Motion/Orbits"
         ),
         .executableTarget(
+            name: "Example-Linkage",
+            dependencies: ["Ollin"],
+            path: "Examples/Motion/Linkage"
+        ),
+        .executableTarget(
             name: "Example-Parameters",
             dependencies: ["Ollin"],
             path: "Examples/Live/Parameters"

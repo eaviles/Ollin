@@ -46,6 +46,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func orientedBoxesMatchReference() throws {
+        let diff = try Snapshot.meanDifference(of: OrientedBoxes(), against: "oriented-boxes")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -176,6 +182,32 @@ private final class ThreePointShapes: Sketch {
         // Collinear control points → the straight-line fallback (bottom).
         stroke(.black); strokeWeight(6)
         drawBezier(Vector2(25, 240), Vector2(128, 240), Vector2(231, 240))
+    }
+}
+
+/// `drawOrientedBox` — a box placed by its two centerline endpoints plus a
+/// thickness. Exercises the region features it inherits: a filled + stroked bar
+/// (diagonal), a hollow bar (a constant-width band, top), and an outside-aligned
+/// stroke (bottom). Static, so it's deterministic at frame 0.
+private final class OrientedBoxes: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.white)
+        // Filled + stroked diagonal bar.
+        fill(Color(red: 0.2, green: 0.6, blue: 0.9))
+        stroke(.black); strokeWeight(6)
+        drawOrientedBox(Vector2(40, 60), Vector2(216, 130), thickness: 34)
+        // Hollow bar — a constant-width band hugging the outline (top).
+        noStroke(); fill(Color(red: 0.9, green: 0.4, blue: 0.2))
+        hollow(8)
+        drawOrientedBox(Vector2(40, 30), Vector2(216, 30), thickness: 28)
+        solid()
+        // Outside-aligned stroke — the outline sits fully outside the fill (bottom).
+        fill(Color(red: 0.1, green: 0.5, blue: 0.2))
+        stroke(.black); strokeWeight(6); strokeAlign(.outside)
+        drawOrientedBox(Vector2(50, 210), Vector2(206, 226), thickness: 30)
+        strokeAlign(.center)
     }
 }
 

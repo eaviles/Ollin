@@ -40,6 +40,7 @@ enum SDFShape: UInt32 {
     case coolS         = 26  // the iconic "S": param0.x = scale
     case triangle3     = 27  // general triangle: param0/param1/param2 = the three corners (rel. center)
     case bezier        = 28  // quadratic Bézier stroke: param0/param1/param2 = (start, control, end); extra = half-width
+    case orientedBox   = 29  // box between two points: param0/param1 = centerline endpoints (rel. center); extra = thickness
 }
 
 extension SDFShape {
@@ -1709,6 +1710,46 @@ final class Drawer {
         appendSDF(shape: .capsule, center: center, size: bound,
                   fill: stroke, stroke: nil,
                   extra: Float(halfWidth), param0: e.simd2)
+    }
+
+    /// A rectangle whose long axis runs from `a` to `b` with the given `thickness`
+    /// across it — a thick bar between two points, with square (not round) ends.
+    /// Unlike `drawRect`, which is axis-aligned and rotated via the transform stack,
+    /// this places the bar by its two endpoints, so connecting a pair of moving
+    /// points is one call. It's a filled region (takes `fill`, an outline `stroke`,
+    /// `strokeAlign`, and `hollow`), where `drawLine` is a round-capped stroke.
+    /// Recorded as a single analytic SDF instance — crisp at any size and
+    /// effectively free. A zero-length bar (`a == b`) or non-positive thickness
+    /// draws nothing.
+    func drawOrientedBox(_ a: Vector2, _ b: Vector2, thickness: Double) {
+        guard thickness > 0, (b - a).length > 1e-9 else { return }
+        let center = (a + b) / 2
+        let dir = (b - a) / (b - a).length
+        let halfLen = (b - a).length / 2
+        let halfThick = thickness / 2
+        // AABB half-extent of the rotated box: each axis is reached by the
+        // corner that combines the box's half-length along `dir` and half-thickness
+        // along the perpendicular (|perp.x| == |dir.y|, |perp.y| == |dir.x|).
+        let half = SIMD2<Float>(
+            Float(halfLen * abs(dir.x) + halfThick * abs(dir.y)),
+            Float(halfLen * abs(dir.y) + halfThick * abs(dir.x)))
+        if svgRecorder != nil {
+            let perp = Vector2(-dir.y, dir.x)
+            let along = dir * halfLen, across = perp * halfThick
+            svgRecord(.polygon([center + along + across, center + along - across,
+                                center - along - across, center - along + across]),
+                      fill: fillColor, stroke: strokeColor)
+            return
+        }
+        appendSDF(shape: .orientedBox, center: center, size: half,
+                  fill: fillColor, stroke: strokeColor, extra: Float(thickness),
+                  param0: (a - center).simd2, param1: (b - center).simd2)
+    }
+
+    /// An oriented box through scalar endpoint coordinates — the positional form of
+    /// `drawOrientedBox(_:_:thickness:)`: the centerline from `(x1, y1)` to `(x2, y2)`.
+    func drawOrientedBox(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, thickness: Double) {
+        drawOrientedBox(Vector2(x1, y1), Vector2(x2, y2), thickness: thickness)
     }
 
     /// A quadratic Bézier curve stroked with the current stroke color and weight:
