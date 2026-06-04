@@ -134,6 +134,11 @@ let package = Package(
             path: "Examples/Basic/VectorExport"
         ),
         .executableTarget(
+            name: "Example-Hatching",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Hatching"
+        ),
+        .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"

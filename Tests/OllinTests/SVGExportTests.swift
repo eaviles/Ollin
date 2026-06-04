@@ -91,4 +91,62 @@ struct SVGExportTests {
         // No GPU, fixed timestep — the same frame serializes identically.
         #expect(OllinApp.svg(of: Fixture(), frame: 3) == OllinApp.svg(of: Fixture(), frame: 3))
     }
+
+    // MARK: - Hatching
+
+    /// A single black circle on white, for the hatching transform.
+    final class Disk: Sketch {
+        override var canvasSize: CanvasSize { .square(100) }
+        override func draw() {
+            background(.white)
+            noStroke()
+            fill(.black)
+            drawCircle(50, 50, 30)
+        }
+    }
+
+    @Test func hatchingTurnsFillsIntoLines() {
+        let plain = OllinApp.svg(of: Disk())
+        let hatched = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6))
+        // The plain export is a filled circle; the hatched one is line work.
+        #expect(plain.contains("<circle cx=\"50\" cy=\"50\" r=\"30\" fill=\"rgb(0,0,0)\""))
+        #expect(!hatched.contains("fill=\"rgb(0,0,0)\""))   // the fill is gone
+        #expect(hatched.contains("<polyline"))              // replaced by hatch lines
+    }
+
+    @Test func hatchingKeepsTheOutline() {
+        let hatched = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, keepOutline: true))
+        // The circle survives as a stroked, unfilled outline.
+        #expect(hatched.contains("<circle cx=\"50\" cy=\"50\" r=\"30\" fill=\"none\" stroke="))
+        let dropped = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, keepOutline: false))
+        #expect(!dropped.contains("<circle"))
+    }
+
+    @Test func crossHatchAddsLines() {
+        func lineCount(_ svg: String) -> Int { svg.components(separatedBy: "<polyline").count - 1 }
+        let single = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, crossHatch: false))
+        let cross = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, crossHatch: true))
+        #expect(lineCount(cross) > lineCount(single))
+    }
+
+    @Test func toneDensitySkipsLightFills() {
+        // A near-white fill drops out of the hatch entirely.
+        final class Faint: Sketch {
+            override var canvasSize: CanvasSize { .square(100) }
+            override func draw() {
+                background(.white); noStroke()
+                fill(Color(white: 0.98)); drawCircle(50, 50, 30)
+            }
+        }
+        let hatched = OllinApp.svg(of: Faint(), hatching: Hatching(spacing: 6, keepOutline: false))
+        #expect(!hatched.contains("<polyline"))   // too light to hatch
+    }
+
+    @Test func lineGeometryFillsAShape() {
+        // The public core: hatch lines for a 50-radius circle at spacing 10.
+        let lines = Hatching(spacing: 10, angle: 0).lines(filling: Circle(x: 0, y: 0, radius: 50))
+        #expect(!lines.isEmpty)
+        #expect(lines.allSatisfy { $0.count == 2 })                 // each is a segment
+        #expect(lines.allSatisfy { $0[0].length <= 50.01 && $0[1].length <= 50.01 })  // inside the disk
+    }
 }

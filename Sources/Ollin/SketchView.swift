@@ -764,13 +764,25 @@ public extension Sketch {
             return
         }
         // `swift run Example-X --export-svg <path> [--frame N]` writes a vector SVG
-        // of one frame and exits (no window, no GPU).
+        // of one frame and exits (no window, no GPU). Add `--hatch` (or
+        // `--cross-hatch`) to plot solid fills as pen line work:
+        // `--hatch-spacing N` and `--hatch-angle DEG` tune it.
         if let i = args.firstIndex(of: "--export-svg"), i + 1 < args.count {
-            var frame = 0
-            if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {
-                frame = Int(args[f + 1]) ?? 0
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
             }
-            OllinApp.exportSVG(Self(), to: args[i + 1], frame: frame)
+            var frame = 0
+            if let f = value("--frame").flatMap(Int.init) { frame = f }
+            var hatching: Hatching?
+            if args.contains("--hatch") || args.contains("--cross-hatch") {
+                var h = Hatching()
+                if let s = value("--hatch-spacing").flatMap(Double.init) { h.spacing = s }
+                if let a = value("--hatch-angle").flatMap(Double.init) { h.angle = a * .pi / 180 }
+                if args.contains("--cross-hatch") { h.crossHatch = true }
+                hatching = h
+            }
+            OllinApp.exportSVG(Self(), to: args[i + 1], frame: frame, hatching: hatching)
             return
         }
         if let i = args.firstIndex(of: "--bench") {

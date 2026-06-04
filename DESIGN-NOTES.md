@@ -13,13 +13,6 @@ The renderer roadmap is about the rendering pipeline getting deeper. This is the
 
 Any bundled font or sample asset carries the same provenance discipline as vendored code: a permissive, redistributable license, credited in `THIRD-PARTY-NOTICES.md` and the README. System fonts and user-supplied assets are preferred over bundling where possible. The bitmap-font defaults make this concrete: the Adobe/DEC X11 bitmap fonts (`helvB08` and kin) are under a permissive, MIT-style license, so they're bundle-clean — keep the copyright notice intact and mind that "Helvetica" is a Linotype trademark — while share-alike fonts stay out of the bundle the way other copyleft does (a u8g2 pick like `haxrcorp4089` is CC BY-SA, as many FontStruct fonts are; the BDF parser lets a user load those themselves). Hershey (public domain) is the clean single-line default. This is the same "ship the parser, bundle only what's permissive" split that keeps the root `LICENSE` pure MIT.
 
-## Plotter hatching fills (not started)
-
-SVG export serializes a frame's geometry as vector paths (the `Drawer`'s draw calls recorded before tessellation), which a pen plotter plots through its own tooling. But a plotter draws with a pen — it has no fill. A filled shape currently exports as a filled path, which a plotter would outline, not shade.
-
-- **Fill → hatching.** The missing piece is mapping a fill to a **hatching pattern**: parallel lines (or cross-hatch) clipped to the shape's outline, with spacing tied to the fill's tone, so a solid sketch plots as shaded line work. It's another transform over the already-recorded vector geometry, not a renderer change — clip a set of scan lines against each filled path and emit them as polylines.
-- **Pairs with stroke geometry.** Hatching is stroke output, so it sits naturally beside the single-line / stroke fonts (`StrokeFont`) and stroked shapes — all the things a plotter draws directly. References: OPENRNDR's vector `Composition`, plotter hatching libraries generally.
-
 ## Integration and performance I/O: OSC and MIDI (not started)
 
 The surface for wiring a sketch into an installation or performance rig: sending and receiving control messages to and from the other tools on stage. Both stay sugar over the typed core, and both are Apple-native at the transport layer.

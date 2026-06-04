@@ -25,10 +25,6 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 
 The remaining table-stakes capability p5.js, openFrameworks, and OPENRNDR all ship: **audio** (lowest priority, mostly for audio-reactive visuals — playback plus amplitude and FFT a sketch reads in `draw()`). A sketcher reaches for it early, so it matters more than its size suggests; it's Apple-native (AVFoundation) and stays sugar over the typed core. Engines, APIs, and ordering are in the [design notes](DESIGN-NOTES.md#core-batteries-text-and-audio-not-started).
 
-## Plotter hatching fills
-
-SVG export records a filled shape as a filled path, but a **pen plotter** has only a pen — it can't fill. Mapping a fill to a **hatching pattern** (parallel or cross-hatch lines clipped to the shape, density tied to the fill's tone) would let solid sketches plot as shaded line work. It builds on the vector exporter as another transform over the recorded geometry, and pairs naturally with the single-line/stroke fonts in [core batteries](#core-batteries) — stroke geometry is exactly what a plotter draws. Design in the [design notes](DESIGN-NOTES.md#plotter-hatching-fills-not-started).
-
 ## Integration and performance I/O
 
 Wiring a sketch into an installation or performance rig: **OSC** (Open Sound Control) for networked messages to and from TouchDesigner, Max/MSP, Ableton, Resolume, and lighting desks, built on `Network.framework` since OSC is just UDP or TCP; and **MIDI** through Core MIDI, for control surfaces and knobs driving parameters, clock and notes in, messages out, pairing naturally with the `@Param` knobs. Both are Apple-native at the transport layer and stay sugar over the typed core. See the [design notes](DESIGN-NOTES.md#integration-and-performance-io-osc-and-midi-not-started).

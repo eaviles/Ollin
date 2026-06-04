@@ -12,5 +12,6 @@ The smallest starting point: a single still shape, the shape of a sketch, and th
 | [Guides](Guides/Sketch.swift) | the `extend(...)` seam: an overlay that draws over the sketch |
 | [Capture](Capture/Sketch.swift) | the frame-grab seam: an extension that saves the rendered frame to a PNG (press **S**) |
 | [VectorExport](VectorExport/Sketch.swift) | SVG export: the shape catalog serialized to vector paths (`--export-svg`) |
+| [Hatching](Hatching/Sketch.swift) | filled shapes shaded as pen line work for a plotter (`--export-svg --hatch`) |
 
 Run one with `swift run Example-<Name>`, e.g. `swift run Example-HelloCircle`.

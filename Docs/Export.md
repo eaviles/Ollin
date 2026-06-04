@@ -13,6 +13,7 @@ Most exports are reached by a command-line flag on any example's executable; the
 - [Raster: PNG and sequences](#raster-png-and-sequences) — `--export`, `--export-sequence`
 - [Vector: SVG](#vector-svg) — `--export-svg`, `OllinApp.svg` / `exportSVG`
 - [What SVG export records](#what-svg-export-records) — the shape mapping and the limits
+- [Hatching: solid fills for a pen plotter](#hatching-solid-fills-for-a-pen-plotter) — `--hatch`, `Hatching`
 
 ---
 
@@ -76,3 +77,40 @@ A few things the vector format can't express exactly, and how they're handled:
 - **`strokeAlign(.inside` / `.outside)`** falls back to a centered stroke (SVG strokes are always centered on the path).
 - **`hollow(_:)`** band fills are approximated by a centered stroke of the band width.
 - Curves and the analytic SDF-only shapes are emitted as fine polyline/path **approximations** of their outline (visually identical at print scale).
+
+### Hatching: solid fills for a pen plotter
+
+A pen plotter draws with a pen, so it has no fill — a solid shape would plot as a bare outline. **Hatching** turns each fill into line work: parallel (or cross-hatch) lines clipped to the shape's outline, spaced by the fill's tone, so the plotter shades it. Add `--hatch` to the SVG export:
+
+```sh
+swift run Example-Hatching --export-svg /tmp/hatched.svg --hatch
+swift run Example-Hatching --export-svg /tmp/hatched.svg --cross-hatch --hatch-angle 30
+```
+
+The flags:
+
+| Flag | Effect |
+|---|---|
+| `--hatch` | turn fills into hatch lines (defaults: 4 pt spacing, 45°) |
+| `--cross-hatch` | add a second, perpendicular set of lines |
+| `--hatch-spacing N` | line spacing in canvas points for a solid black fill |
+| `--hatch-angle DEG` | hatch direction in degrees |
+
+Darker, more opaque fills hatch **densely**; lighter ones **sparsely**; a near-white fill drops out. Each shape keeps its outline as a stroke so the border stays clean. Stroke-only geometry (lines, curves, stroke fonts) passes through unchanged — it's already what a plotter draws.
+
+The same thing is available as a value:
+
+```swift
+OllinApp.exportSVG(MySketch(), to: "/tmp/hatched.svg",
+                   hatching: Hatching(spacing: 6, angle: .pi / 4, crossHatch: true))
+```
+
+And because hatching is a transform over geometry, not a render trick, a sketch can ask for the lines directly and draw them on the canvas (or feed them anywhere):
+
+```swift
+for line in Hatching(spacing: 8).lines(filling: someShape) {
+    drawPolyline(line)
+}
+```
+
+`lines(filling:)` takes a `Shape`, `Rectangle`, or `Circle` and returns the hatch lines as open polylines in that shape's coordinates; the shape's `winding` rule decides which regions are interior, so holes and concavities are respected. The [Hatching example](../Examples/Basic/Hatching/Sketch.swift) draws this live.

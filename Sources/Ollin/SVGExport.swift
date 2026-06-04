@@ -51,6 +51,113 @@ final class SVGRecorder {
     var skippedImages = 0
 }
 
+// MARK: - Hatching transform
+
+/// Replace each filled command with hatch line work (and, optionally, its
+/// outline) so the frame plots on a pen — see `Hatching`. Stroke-only geometry
+/// (lines, curves, polylines, and unfilled shapes) passes through untouched.
+///
+/// The hatch is computed in *device* space — each fill's outline is pushed
+/// through its CTM first — so the line spacing is uniform on the page regardless
+/// of a sketch's transforms; the emitted polylines carry the identity transform.
+func applyHatching(_ commands: [RecordedSVG], _ options: Hatching) -> [RecordedSVG] {
+    var out: [RecordedSVG] = []
+    for command in commands {
+        guard let fill = command.style.fill,
+              let (contours, winding) = fillContours(command.geometry) else {
+            out.append(command)                  // nothing to fill — leave as-is
+            continue
+        }
+        // Tone → density: a darker, more opaque fill hatches more tightly.
+        let spacing = options.toneDensity ? toneSpacing(options.spacing, fill) : options.spacing
+        if let spacing {
+            let device = contours.map { $0.map { transformed($0, command.transform) } }
+            let pen = SVGStyle(fill: nil, stroke: opaque(fill), strokeWidth: options.penWidth,
+                               join: .miter, cap: .butt)
+            for line in hatchLines(device, winding: winding, spacing: spacing,
+                                   angle: options.angle, crossHatch: options.crossHatch) {
+                out.append(RecordedSVG(geometry: .polyline(line), style: pen,
+                                       transform: matrix_identity_float3x3))
+            }
+        }
+        if options.keepOutline {
+            var style = command.style          // keep the original border as a stroke
+            style.fill = nil
+            if style.stroke == nil {
+                style.stroke = opaque(fill)
+                style.strokeWidth = options.penWidth
+            }
+            out.append(RecordedSVG(geometry: command.geometry, style: style,
+                                   transform: command.transform))
+        }
+    }
+    return out
+}
+
+/// A fill's outline as one or more closed contours in its local space, or `nil`
+/// when the geometry has no fillable region (lines, curves, open polylines).
+private func fillContours(_ geometry: SVGGeometry) -> (contours: [[Vector2]], winding: FillWinding)? {
+    switch geometry {
+    case let .ellipse(center, rx, ry):
+        let n = max(48, Int((max(rx, ry) * 0.8).rounded(.up)))
+        let pts = (0..<n).map { k -> Vector2 in
+            let a = 2 * Double.pi * Double(k) / Double(n)
+            return center + Vector2(cos(a) * rx, sin(a) * ry)
+        }
+        return ([pts], .evenOdd)
+    case let .rect(corner, w, h, r):
+        return ([roundedRect(corner: corner, width: w, height: h, radius: r)], .evenOdd)
+    case let .polygon(points):
+        return points.count >= 3 ? ([points], .evenOdd) : nil
+    case let .path(shape):
+        let contours = shape.contours.filter(\.isClosed).map(\.points).filter { $0.count >= 3 }
+        return contours.isEmpty ? nil : (contours, shape.winding)
+    case .line, .quad, .polyline:
+        return nil
+    }
+}
+
+/// A rectangle contour, with quarter-arc corners when `radius > 0`.
+private func roundedRect(corner: Vector2, width w: Double, height h: Double, radius r: Double) -> [Vector2] {
+    let x0 = corner.x, y0 = corner.y, x1 = corner.x + w, y1 = corner.y + h
+    let rr = min(r, min(w, h) / 2)
+    guard rr > 0 else { return [Vector2(x0, y0), Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1)] }
+    let seg = 8
+    func arc(cx: Double, cy: Double, from: Double, to: Double) -> [Vector2] {
+        (0...seg).map { k -> Vector2 in
+            let a = from + (to - from) * Double(k) / Double(seg)
+            return Vector2(cx + cos(a) * rr, cy + sin(a) * rr)
+        }
+    }
+    var pts: [Vector2] = []
+    pts += arc(cx: x1 - rr, cy: y0 + rr, from: -.pi / 2, to: 0)        // top-right
+    pts += arc(cx: x1 - rr, cy: y1 - rr, from: 0, to: .pi / 2)         // bottom-right
+    pts += arc(cx: x0 + rr, cy: y1 - rr, from: .pi / 2, to: .pi)       // bottom-left
+    pts += arc(cx: x0 + rr, cy: y0 + rr, from: .pi, to: 3 * .pi / 2)   // top-left
+    return pts
+}
+
+/// Hatch spacing scaled by a fill's tone: darker and more opaque fills hatch
+/// tighter, a near-white or near-transparent fill returns `nil` (no hatch). Tone
+/// is perceived darkness times alpha; `base` is the spacing at full tone.
+private func toneSpacing(_ base: Double, _ fill: Color) -> Double? {
+    let luminance = 0.2126 * fill.red + 0.7152 * fill.green + 0.0722 * fill.blue
+    let tone = (1 - luminance) * fill.alpha
+    guard tone > 0.03 else { return nil }
+    return base / tone
+}
+
+/// A fully-opaque copy of a color — the hatch lines are solid pen strokes; their
+/// spacing, not their alpha, carries the fill's tone.
+private func opaque(_ c: Color) -> Color { Color(red: c.red, green: c.green, blue: c.blue) }
+
+/// Apply a 2D homogeneous CTM to a point (the same `M · (x, y, 1)` the renderer
+/// uses), in `Double`.
+private func transformed(_ p: Vector2, _ m: simd_float3x3) -> Vector2 {
+    let v = m * SIMD3<Float>(Float(p.x), Float(p.y), 1)
+    return Vector2(Double(v.x), Double(v.y))
+}
+
 // MARK: - Serialization
 
 /// Render recorded primitives into an SVG document string.
@@ -207,7 +314,12 @@ public extension OllinApp {
     ///
     /// Curves and the analytic SDF-only shapes are emitted as fine polyline/path
     /// approximations; raster `drawImage` calls are skipped (noted as a comment).
-    static func svg(of sketch: Sketch, frame: Int = 0, fps: Double = 60) -> String {
+    ///
+    /// Pass `hatching` to plot solid fills as line work: each fill becomes
+    /// parallel (or cross-hatch) lines clipped to its outline, spaced by tone, so
+    /// a pen plotter can shade it (see `Hatching`).
+    static func svg(of sketch: Sketch, frame: Int = 0, fps: Double = 60,
+                    hatching: Hatching? = nil) -> String {
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.setup()
@@ -218,14 +330,17 @@ public extension OllinApp {
             sketch.performDraw()
         }
         sketch.drawer.svgRecorder = nil
-        return serializeSVG(recorder.commands, background: sketch.drawer.backgroundColor,
+        let commands = hatching.map { applyHatching(recorder.commands, $0) } ?? recorder.commands
+        return serializeSVG(commands, background: sketch.drawer.backgroundColor,
                             width: size.width, height: size.height, skippedImages: recorder.skippedImages)
     }
 
     /// Render one frame of `sketch` and write it as an SVG file — no window, no GPU.
     /// The vector counterpart of `export`; the basis for the `--export-svg` flag.
-    static func exportSVG(_ sketch: Sketch, to path: String, frame: Int = 0, fps: Double = 60) {
-        let document = svg(of: sketch, frame: frame, fps: fps)
+    /// Pass `hatching` to plot solid fills as pen line work (see `svg(of:)`).
+    static func exportSVG(_ sketch: Sketch, to path: String, frame: Int = 0, fps: Double = 60,
+                          hatching: Hatching? = nil) {
+        let document = svg(of: sketch, frame: frame, fps: fps, hatching: hatching)
         do {
             try document.write(toFile: path, atomically: true, encoding: .utf8)
             print("Ollin: exported frame \(frame) → \(path) (SVG)")
