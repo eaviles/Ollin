@@ -24,17 +24,23 @@ An `(x, y)` point in sketch points. The type primitives like `drawPolyline`, `dr
 ```swift
 Vector2(_ x: Double, _ y: Double)
 Vector2(x: Double, y: Double)
+Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle` radians
 ```
 
 - **Constants:** `.zero`, `.one`, `.unitX`, `.unitY`.
-- **Properties:** `length` (distance from the origin), `normalized` (scaled to length 1, or `.zero` if it has none).
-- **Operators:** `+`, `-`, unary `-`, `*` by a scalar (either side), `/` by a scalar.
+- **Properties:** `length` / `lengthSquared` (distance from the origin; the squared form is cheaper when you only compare), `normalized` (scaled to length 1, or `.zero` if it has none), `angle` (direction in radians, `atan2(y, x)`), `perpendicular` (turned 90° counter-clockwise).
+- **Geometry:** `dot(_:)`, `cross(_:)` (the 2D perp-dot — the signed parallelogram area), `distance(to:)` / `distanceSquared(to:)`, `angle(to:)` (signed angle between two vectors, `-π…π`), `lerp(to:_:)` (interpolate by `t`, `0`…`1`), `rotated(by:)` and `rotated(by:around:)`, `limited(to:)` (clamp the length, keeping direction), `projected(onto:)`, and `with(x:)` / `with(y:)` (a copy with one component replaced).
+- **Operators:** `+`, `-`, unary `-`, `*` by a scalar (either side), `/` by a scalar, and the in-place `+=`, `-=`, `*=`, `/=`.
 
 ```swift
 let a = Vector2(100, 100)
-let b = a + Vector2.unitX * 50      // (150, 100)
+let b = a + Vector2(angle: .pi / 4, length: 80)   // 80 units out at 45°
 drawLine(a, b)
+
 let dir = (b - a).normalized        // unit direction from a to b
+let mid = a.lerp(to: b, 0.5)        // the midpoint
+var p = a
+p += dir * 10                       // step 10 units toward b
 ```
 
 <a name="rectangle"></a>
