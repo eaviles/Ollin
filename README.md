@@ -13,7 +13,7 @@ they improve on the originals.
 Where those three are cross-platform, Ollin isn't, and that's on purpose. Betting on one family of hardware is what buys the depth: the same p5 feel and typed core sit straight on Metal, not WebGL or the JVM, so the rendering ceiling is whatever the GPU can do. Staying native is also what keeps the harder things in reach later, like vision on the Neural Engine, ARKit and visionOS, or an iPhone's depth sensors feeding a sketch the Mac renders. A tool that runs everywhere has to leave those on the table. Most of that is still ahead (the [roadmap](#roadmap) has it); for now the point is that the core is built to grow into them rather than get retrofitted.
 
 - **Platform:** macOS 14+, Swift 6+
-- **Rendering:** Metal (`MTKView`, 4× MSAA), built on Foundation / SwiftUI / Metal / MetalKit / simd. It stays dependency-light (none today), and takes on a third-party package only when one clearly earns its place
+- **Rendering:** Metal (`MTKView`, 4× MSAA), built on Foundation / SwiftUI / Metal / MetalKit / simd. It stays dependency-light (no package dependencies today; just a little vendored source, see [Bundled third-party code](#bundled-third-party-code)) and takes on a package only when one clearly earns its place
 - **License:** MIT
 - **Built with:** an AI coding assistant (Claude) under [@eaviles](https://github.com/eaviles)'s direction; see [Built with AI](#built-with-ai)
 
@@ -120,8 +120,8 @@ The drawing surface is small and the names familiar. The full API reference live
 
 - [Sketch](Docs/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), and loop control.
 - [Canvas](Docs/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
-- [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawEllipse`, `drawArc`, `drawRect`, `drawLine`, `drawPolyline`, `drawPolygon`, `drawShape`, `drawCurve`), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
-- [Text](Docs/Text.md) - `drawText` with bitmap *and* outline (`.ttf`/`.otf`) fonts (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`/`OutlineFont`), `textToShapes` for text as geometry, and loading BDF and Playdate `.fnt` pixel fonts.
+- [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawRect`, `drawLine`, `drawShape`, and a full catalog of analytic SDF shapes — see the reference), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
+- [Text](Docs/Text.md) - `drawText` with bitmap, outline (`.ttf`/`.otf`), and single-line/plotter (Hershey) fonts (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`/`OutlineFont`/`StrokeFont`), `textToShapes` for text as geometry, and loading BDF, Playdate `.fnt`, and Hershey `.jhf` fonts.
 - [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
 - [Geometry](Docs/Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines).
 - [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
@@ -137,9 +137,10 @@ Coordinates use a top-left origin with y increasing downward, the same as p5, Pr
 ## How it works (one paragraph)
 
 `Sketch.draw()` calls the bare drawing functions, which forward to a `Drawer`
-state machine. Circles, ellipses, rectangles, lines, and circular arcs take a
-signed-distance-field path: one quad each, with fill, stroke, and anti-aliasing
-computed analytically in the fragment shader, so thousands of them stay cheap.
+state machine. Most primitives (circles, ellipses, rectangles, lines, circular
+arcs, and a broad catalog of analytic shapes) take a signed-distance-field path:
+one quad each, with fill, stroke, and anti-aliasing computed analytically in the
+fragment shader, so thousands of them stay cheap.
 The rest (polygons, polylines, and elliptical arcs) are tessellated into
 triangles in sketch-space points. The `Drawer` records both into call-ordered batches; once a frame,
 `MetalRenderer` uploads them and issues a draw per batch (the triangle pipeline,
@@ -170,9 +171,9 @@ It advances the clock at a fixed timestep rather than wall-clock, so each frame 
 
 The first pass is deliberately just enough to draw and iterate. Next up:
 
-- **More primitives:** a broad catalog of SDF shapes has landed (points, triangles, n-gons, stars, rings, and more); an outline-only stroke mode and Bézier curves are next.
+- **More primitives:** a broad catalog of SDF shapes has landed (points, triangles, n-gons, stars, rings, Bézier curves, an outline-only band mode, and more), and it keeps growing.
 - **Fills & color:** richer color (hex/HSB), gradients, blend modes. Cosine-gradient `Palette` and perceptual `Colormap`s have landed.
-- **Typography & images:** text, image loading and drawing.
+- **Images:** image loading and drawing. Text has landed (bitmap, outline, and single-line/plotter fonts).
 - **Shaders:** user-supplied fragment/vertex shaders.
 - **Vector & raster export:** single-frame and PNG-*sequence* export have landed (`--export` / `--export-sequence`); SVG and PDF are next.
 - **Capture for sharing:** video and GIF recording of animated sketches, since motion is the whole reason Ollin exists.
@@ -230,7 +231,7 @@ As with the others, this is reading for ideas and engineering approach, which is
 A few helpers lean on well-known public techniques, reimplemented in Ollin and credited here. They lean toward OPENRNDR-style ergonomics:
 
 - The cosine-gradient `Palette` uses [Inigo Quilez's palette formula](https://iquilezles.org/articles/palettes/).
-- The signed-distance fields behind circles, ellipses, rectangles, lines, circular arcs, triangles, regular polygons and stars, rhombuses, vesicas, moons, crosses, rings, trapezoids, parallelograms, eggs, hearts, cut disks, uneven capsules, and point markers (box, capsule, pie, arc, isosceles triangle, star, rhombus, vesica, moon, cross, trapezoid, parallelogram, egg, heart, cut disk, uneven capsule, and the onion operator for rings) come from [Inigo Quilez's 2D distance functions](https://iquilezles.org/articles/distfunctions2d/).
+- The signed-distance fields behind Ollin's analytic shapes (circles, ellipses, rectangles, lines, arcs, triangles, n-gons and stars, quadratic Bézier curves, point markers, and the rest of the catalog) come from [Inigo Quilez's 2D distance functions](https://iquilezles.org/articles/distfunctions2d/), including the onion operator behind rings and the `hollow`/`solid` band mode.
 - `curlNoise` follows the curl-noise method for divergence-free flow (Robert Bridson and colleagues, "Curl-Noise for Procedural Fluid Flow", 2007).
 - `randomGaussian` uses the Marsaglia polar method for normal-distributed samples.
 - The named `Easing` curves are Robert Penner's easing equations, written from the formulas catalogued at [easings.net](https://easings.net) (Andrey Sitnik and Ivan Solovev).
