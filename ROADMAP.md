@@ -20,7 +20,6 @@ If you're coming from p5.js or JavaScript, [`Docs/Swift.md`](Docs/Swift.md) cove
 Near-term, fairly self-contained pieces. Each is small and well-scoped, which is what makes them good first contributions.
 
 - **More 2D primitives and the SDF shape catalog.** More analytic shapes drop into the existing instanced-SDF path at near-zero per-shape cost — anything that's a canonical form parameterized by a size and a ratio or two. Each is a small, well-scoped addition (a shape tag, a builder, a distance function, and a fragment case), so they're a good way in.
-- **`size()` from `setup()`.** Today a custom canvas size means overriding a property. An imperative `size(width, height)` callable from `setup()` would read closer to p5's `createCanvas`, while keeping the declarative form too. The constraint is preserving deterministic headless export.
 
 ## Core batteries
 
