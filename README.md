@@ -122,7 +122,7 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Canvas](Docs/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
 - [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawRect`, `drawLine`, `drawShape`, and a full catalog of analytic SDF shapes — see the reference), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
 - [Text](Docs/Text.md) - `drawText` with bitmap, outline (`.ttf`/`.otf`), and single-line/plotter (Hershey) fonts (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`/`OutlineFont`/`StrokeFont`), `textToShapes` for text as geometry, and loading BDF, Playdate `.fnt`, and Hershey `.jhf` fonts.
-- [Images](Docs/Images.md) - `loadImage` and `drawImage` for raster images (PNG, JPEG, HEIC, …), drawn at native size, scaled, or transformed.
+- [Images](Docs/Images.md) - `loadImage` / `drawImage` for raster images (PNG, JPEG, HEIC, …), with `tint` recoloring and an `Image[x, y]` pixel subscript for sampling or authoring.
 - [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
 - [Geometry](Docs/Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines).
 - [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
@@ -174,7 +174,7 @@ The first pass is deliberately just enough to draw and iterate. Next up:
 
 - **More primitives:** a broad catalog of SDF shapes has landed (points, triangles, n-gons, stars, rings, Bézier curves, an outline-only band mode, and more), and it keeps growing.
 - **Fills & color:** richer color (hex/HSB), gradients, blend modes. Cosine-gradient `Palette` and perceptual `Colormap`s have landed.
-- **Images:** image loading and drawing. Text has landed (bitmap, outline, and single-line/plotter fonts).
+- **Images:** loading, drawing, `tint`, and pixel get/set have landed. Text too (bitmap, outline, and single-line/plotter fonts).
 - **Shaders:** user-supplied fragment/vertex shaders.
 - **Vector & raster export:** single-frame and PNG-*sequence* export have landed (`--export` / `--export-sequence`); SVG and PDF are next.
 - **Capture for sharing:** video and GIF recording of animated sketches, since motion is the whole reason Ollin exists.

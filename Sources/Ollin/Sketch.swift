@@ -485,6 +485,13 @@ open class Sketch {
     public func drawImage(_ image: Image, in rect: Rectangle) {
         drawer.drawImage(image, in: rect)
     }
+    /// Tint every following `drawImage`: each texel is multiplied by `color`, so
+    /// its RGB recolors the image and its alpha fades it. White at full alpha (the
+    /// default) leaves the image unchanged. Like other state, it's saved and
+    /// restored by `withState { }`.
+    public func tint(_ color: Color) { drawer.tint(color) }
+    /// Stop tinting images — draw them unchanged again (the default), undoing `tint(_:)`.
+    public func noTint() { drawer.noTint() }
     /// Set the active text font for `drawText` to a bitmap (pixel-grid) font.
     /// Defaults to `.builtin`, Ollin's bundled Cozette pixel font, so text works
     /// with no setup.

@@ -14,6 +14,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 |---|---|
 | [Basic](Basic/) | the smallest starting point |
 | [Color](Color/) | palettes, colormaps, and color over time |
+| [Images](Images/) | loading, drawing, tinting, and authoring images |
 | [Input](Input/) | mouse-driven sketches |
 | [Live](Live/) | tunable `@Param` knobs under OllinLive |
 | [Motion](Motion/) | animation driven by `time` |

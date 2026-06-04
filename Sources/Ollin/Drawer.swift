@@ -106,6 +106,7 @@ final class Drawer {
     private var textPixelSize: Double = 24               // rendered glyph height in points (see textSize)
     private var textAlignH: TextAlignH = .left           // horizontal text anchor (see textAlign)
     private var textAlignV: TextAlignV = .baseline       // vertical text anchor (see textAlign)
+    private var tintColor: Color? = nil                  // multiplies drawImage texels; nil = untinted (see tint / noTint)
 
     // MARK: Per-frame geometry (reset every frame)
 
@@ -174,6 +175,7 @@ final class Drawer {
         var textPixelSize: Double
         var textAlignH: TextAlignH
         var textAlignV: TextAlignV
+        var tintColor: Color?
     }
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
@@ -205,6 +207,14 @@ final class Drawer {
 
     /// Return to solid fills (the default).
     func solid() { hollowWidth = 0 }
+
+    /// Tint subsequent `drawImage` calls: every texel is multiplied by `color`,
+    /// so its RGB recolors the image and its alpha fades it. The default (no tint)
+    /// is the image unchanged.
+    func tint(_ color: Color) { tintColor = color }
+
+    /// Stop tinting images — back to drawing them unchanged (the default).
+    func noTint() { tintColor = nil }
 
     /// Set where a shape's stroke sits relative to its outline (see `StrokeAlign`):
     /// `.center` (default), `.inside`, or `.outside`. Affects the analytic SDF
@@ -289,7 +299,8 @@ final class Drawer {
                                      strokeJoinStyle: strokeJoinStyle,
                                      strokeCapStyle: strokeCapStyle,
                                      currentFont: currentFont, textPixelSize: textPixelSize,
-                                     textAlignH: textAlignH, textAlignV: textAlignV))
+                                     textAlignH: textAlignH, textAlignV: textAlignV,
+                                     tintColor: tintColor))
     }
 
     /// Restore the most recently pushed transform and style. No-op if unbalanced.
@@ -310,6 +321,7 @@ final class Drawer {
         textPixelSize = s.textPixelSize
         textAlignH = s.textAlignH
         textAlignV = s.textAlignV
+        tintColor = s.tintColor
     }
 
     // MARK: Primitives
@@ -927,7 +939,7 @@ final class Drawer {
         // The four corners with their UVs: (0,0) top-left … (1,1) bottom-right.
         // The texture's origin is top-left and sketch space is y-down, so uv.y and
         // screen y run the same way — no flip.
-        let tint = SIMD4<Float>(1, 1, 1, 1)   // white = the image unchanged (tint() is future state)
+        let tint = tintColor?.simd4 ?? SIMD4<Float>(1, 1, 1, 1)   // nil tint = the image unchanged
         let tl = imageVertex(x0, y0, 0, 0, tint)
         let tr = imageVertex(x1, y0, 1, 0, tint)
         let br = imageVertex(x1, y1, 1, 1, tint)

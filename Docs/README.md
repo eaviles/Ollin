@@ -17,7 +17,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 
 - [`Drawing`](./Drawing.md) - `background`, `fill`/`stroke`, the shapes, and the transform stack
 - [`Text`](./Text.md) - `drawText` with bitmap *and* outline (`.ttf`/`.otf`) fonts, plus `textToShapes` (text as geometry)
-- [`Images`](./Images.md) - `loadImage` and `drawImage` - load a raster image and draw it, scaled or transformed
+- [`Images`](./Images.md) - `loadImage`, `drawImage`, `tint`, and pixel access - load or author a raster image, draw it scaled or transformed, recolor it
 - [`Color`](./Color.md) - the `Color` type, cosine-gradient `Palette`s, and perceptual `Colormap`s
 - [`Geometry`](./Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines)
 

@@ -371,6 +371,11 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Text/StrokeText"
         ),
+        .executableTarget(
+            name: "Example-PixelField",
+            dependencies: ["Ollin"],
+            path: "Examples/Images/PixelField"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

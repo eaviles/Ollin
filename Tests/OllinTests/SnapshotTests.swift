@@ -62,6 +62,12 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: TextSpecimen(), against: "bitmap-text")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func tintedImageMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: TintedImage(), against: "tinted-image")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -259,6 +265,46 @@ private final class TextSpecimen: Sketch {
             translate(width / 2, 212)
             rotate(0.16)
             drawText("rotated", 0, 0)
+        }
+    }
+}
+
+/// An image authored from scratch (`Image(width:height:)` + pixel `set`), drawn
+/// once untinted and once under `tint(_:)`, with a row of `get`-sampled swatches
+/// below. Pins the whole image-extras path: the texture upload from edited pixels,
+/// the tint multiply, top-left pixel orientation (the black corner marker), and
+/// that `get` reads the authored colors regardless of tint. Static at frame 0.
+private final class TintedImage: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var img: Image?
+
+    override func setup() {
+        let n = 16
+        let image = Image(width: n, height: n)
+        for y in 0..<n {
+            for x in 0..<n {
+                image[x, y] = (x + y) % 2 == 0
+                    ? Color(red: 0.9, green: 0.35, blue: 0.2)
+                    : Color(red: 0.2, green: 0.45, blue: 0.9)
+            }
+        }
+        image[0, 0] = .black   // top-left marker — must land at the drawn top-left
+        img = image
+    }
+
+    override func draw() {
+        background(.white)
+        guard let img else { return }
+        noTint()
+        drawImage(img, 18, 18, 100, 100)
+        tint(Color(red: 1, green: 0.7, blue: 0.3, alpha: 0.85))
+        drawImage(img, 138, 18, 100, 100)
+        // get-sampled swatches of the top row, in true (untinted) color.
+        noTint()
+        noStroke()
+        for i in 0..<8 {
+            fill(img[i * 2, 0])
+            drawRect(18 + Double(i) * 28, 150, 24, 80)
         }
     }
 }
