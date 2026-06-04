@@ -42,6 +42,7 @@ final class MetalRenderer {
     private enum Pipeline: Hashable {
         case solid   // tessellated triangles (rects, lines, polygons, arcs)
         case sdf     // instanced SDF quads (circles, ellipses, rects, lines, arcs)
+        case image   // textured quads (images), premultiplied-alpha blend
     }
 
     private let device: MTLDevice
@@ -77,6 +78,14 @@ final class MetalRenderer {
     private var exportBuffer: MTLBuffer?
     private var sdfExportBuffer: MTLBuffer?
 
+    /// Parallel ring + export buffer for textured-quad (image) vertices, advanced
+    /// with `frameIndex` like the others.
+    private var imageBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    private var imageExportBuffer: MTLBuffer?
+
+    /// Sampler for the image pipeline: linear filtering, clamp to edge. Built once.
+    private let imageSampler: MTLSamplerState?
+
     init(device: MTLDevice, pixelFormat: MTLPixelFormat, sampleCount: Int) throws {
         self.device = device
         self.pixelFormat = pixelFormat
@@ -87,6 +96,13 @@ final class MetalRenderer {
         }
         self.commandQueue = queue
 
+        let samplerDesc = MTLSamplerDescriptor()
+        samplerDesc.minFilter = .linear
+        samplerDesc.magFilter = .linear
+        samplerDesc.sAddressMode = .clampToEdge
+        samplerDesc.tAddressMode = .clampToEdge
+        self.imageSampler = device.makeSamplerState(descriptor: samplerDesc)
+
         self.library = try MetalRenderer.loadLibrary(device: device)
 
         // Build the pipelines we know we need now; `pipeline(_:)` builds any
@@ -94,6 +110,7 @@ final class MetalRenderer {
         // startup rather than mid-frame.
         _ = try pipeline(.solid)
         _ = try pipeline(.sdf)
+        _ = try pipeline(.image)
     }
 
     /// Encode and present one frame's worth of recorded geometry.
@@ -122,7 +139,8 @@ final class MetalRenderer {
 
         encode(drawer, viewport: viewport, into: encoder,
                triangleBuffer: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
-               sdfBuffer: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count))
+               sdfBuffer: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count),
+               imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count))
         encoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
@@ -167,7 +185,8 @@ final class MetalRenderer {
 
         encode(drawer, viewport: viewport, into: encoder,
                triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
-               sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count))
+               sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
+               imageBuffer: exportImageBuffer(for: drawer.imageVertices.count))
         encoder.endEncoding()
 
         // Copy the resolved texture into a CPU-readable buffer (works on every
@@ -200,12 +219,14 @@ final class MetalRenderer {
     /// off-screen (export) paths.
     private func encode(_ drawer: Drawer, viewport: SIMD2<Float>,
                         into encoder: MTLRenderCommandEncoder,
-                        triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?) {
+                        triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?,
+                        imageBuffer: MTLBuffer?) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
+        let imageVertices = drawer.imageVertices
         let batches = drawer.batches
-        guard !batches.isEmpty,
-              let solid = pipelines[.solid], let sdf = pipelines[.sdf] else { return }
+        guard !batches.isEmpty, let solid = pipelines[.solid], let sdf = pipelines[.sdf],
+              let image = pipelines[.image] else { return }
 
         if !vertices.isEmpty, let triangleBuffer {
             vertices.withUnsafeBytes { raw in
@@ -217,12 +238,18 @@ final class MetalRenderer {
                 sdfBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
             }
         }
+        if !imageVertices.isEmpty, let imageBuffer {
+            imageVertices.withUnsafeBytes { raw in
+                imageBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
 
         var uniforms = Uniforms(viewport: viewport)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
 
         let vertexStride = MemoryLayout<OllinVertex>.stride
         let instanceStride = MemoryLayout<SDFInstance>.stride
+        let imageStride = MemoryLayout<OllinImageVertex>.stride
         for i in batches.indices {
             let batch = batches[i]
             let next = i + 1 < batches.count ? batches[i + 1] : nil
@@ -241,6 +268,16 @@ final class MetalRenderer {
                 encoder.setRenderPipelineState(sdf)
                 encoder.setVertexBuffer(sdfBuffer, offset: batch.instanceStart * instanceStride, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
+            case .image:
+                let end = next?.imageStart ?? imageVertices.count
+                let count = end - batch.imageStart
+                guard count > 0, let imageBuffer, let source = batch.image,
+                      let texture = source.texture(for: device) else { continue }
+                encoder.setRenderPipelineState(image)
+                encoder.setVertexBuffer(imageBuffer, offset: batch.imageStart * imageStride, index: 0)
+                encoder.setFragmentTexture(texture, index: 0)
+                encoder.setFragmentSamplerState(imageSampler, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             }
         }
     }
@@ -289,14 +326,23 @@ final class MetalRenderer {
             // fragment returns straight-alpha color, so it shares the solid
             // pipeline's blend.
             return try makePipeline(vertex: "ollin_sdf_vertex", fragment: "ollin_sdf_fragment", using: library)
+        case .image:
+            // Textured quads. The texture keeps the CGImage's premultiplied alpha,
+            // so this pipeline blends premultiplied (source factor .one) rather than
+            // by source alpha.
+            return try makePipeline(vertex: "ollin_image_vertex", fragment: "ollin_image_fragment",
+                                    using: library, premultiplied: true)
         }
     }
 
     /// Build a render pipeline from the named vertex/fragment functions with the
     /// shared config: the view's MSAA sample count, the target pixel format, and
-    /// standard source-over alpha blending so translucent colors composite.
+    /// alpha blending so translucent colors composite. `premultiplied` selects the
+    /// source factor — `.one` for premultiplied color (the image path), `.sourceAlpha`
+    /// for straight-alpha color (solid + SDF).
     private func makePipeline(vertex: String, fragment: String,
-                              using library: MTLLibrary) throws -> MTLRenderPipelineState {
+                              using library: MTLLibrary,
+                              premultiplied: Bool = false) throws -> MTLRenderPipelineState {
         guard let vertexFunction = library.makeFunction(name: vertex),
               let fragmentFunction = library.makeFunction(name: fragment) else {
             throw RendererError.shaderFunctions
@@ -313,7 +359,7 @@ final class MetalRenderer {
         attachment.isBlendingEnabled = true
         attachment.rgbBlendOperation = .add
         attachment.alphaBlendOperation = .add
-        attachment.sourceRGBBlendFactor = .sourceAlpha
+        attachment.sourceRGBBlendFactor = premultiplied ? .one : .sourceAlpha
         attachment.sourceAlphaBlendFactor = .one
         attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
         attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
@@ -364,6 +410,26 @@ final class MetalRenderer {
         if let buffer = sdfExportBuffer, buffer.length >= needed { return buffer }
         sdfExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
         return sdfExportBuffer
+    }
+
+    /// Return the image-vertex ring buffer at `index`, grown on demand. Mirrors
+    /// `vertexBuffer(at:for:)`.
+    private func imageBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinImageVertex>.stride
+        if let buffer = imageBuffers[index], buffer.length >= needed {
+            return buffer
+        }
+        let capacity = needed + needed / 2
+        imageBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
+        return imageBuffers[index]
+    }
+
+    /// The off-screen export buffer for image vertices, grown on demand.
+    private func exportImageBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinImageVertex>.stride
+        if let buffer = imageExportBuffer, buffer.length >= needed { return buffer }
+        imageExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return imageExportBuffer
     }
 
     /// Splice the shared CPU/GPU type header into shader source for runtime

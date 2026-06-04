@@ -39,6 +39,47 @@ fragment float4 ollin_fragment(VertexOut in [[stage_in]]) {
     return in.color;
 }
 
+// MARK: - Textured quads (images)
+//
+// One pipeline samples a 2D texture over a quad whose four corners arrive already
+// transformed into sketch space (the CTM is applied on the CPU, like the solid
+// path). The texture comes from MTKTextureLoader, which keeps the CGImage's
+// premultiplied alpha, so the image pipeline blends premultiplied (source factor
+// .one) — see makePipeline in MetalRenderer.
+
+struct ImageOut {
+    float4 position [[position]];
+    float2 uv;
+    float4 tint;
+};
+
+vertex ImageOut ollin_image_vertex(uint vertexID [[vertex_id]],
+                                   const device OllinImageVertex *vertices [[buffer(0)]],
+                                   constant Uniforms &uniforms [[buffer(1)]]) {
+    OllinImageVertex v = vertices[vertexID];
+    float2 ndc;
+    ndc.x = (v.position.x / uniforms.viewport.x) * 2.0 - 1.0;
+    ndc.y = 1.0 - (v.position.y / uniforms.viewport.y) * 2.0;
+
+    ImageOut out;
+    out.position = float4(ndc, 0.0, 1.0);
+    out.uv = v.uv;
+    out.tint = v.tint;
+    return out;
+}
+
+fragment float4 ollin_image_fragment(ImageOut in [[stage_in]],
+                                     texture2d<float> tex [[texture(0)]],
+                                     sampler samp [[sampler(0)]]) {
+    float4 c = tex.sample(samp, in.uv);   // premultiplied (alpha already folded in)
+    // Apply the straight-alpha tint to a premultiplied color: scale the color by
+    // the tint's RGB, and scale the whole texel (color and alpha) by the tint's
+    // alpha, so the result stays premultiplied. White opaque tint = no change.
+    c.rgb *= in.tint.rgb;
+    c *= in.tint.a;
+    return c;
+}
+
 // MARK: - SDF instanced shapes
 //
 // Circles, ellipses, rectangles, lines, and circular arcs skip CPU

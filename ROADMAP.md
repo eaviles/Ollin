@@ -23,7 +23,7 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 
 ## Core batteries
 
-The table-stakes capabilities p5.js, openFrameworks, and OPENRNDR all ship: **image loading** and **audio** (lowest priority, mostly for audio-reactive visuals). A sketcher reaches for these early, so they matter more than their size suggests; both are Apple-native and stay sugar over the typed core. Engines, APIs, and ordering are in the [design notes](DESIGN-NOTES.md#core-batteries-text-image-audio-not-started).
+The remaining table-stakes capability p5.js, openFrameworks, and OPENRNDR all ship: **audio** (lowest priority, mostly for audio-reactive visuals — playback plus amplitude and FFT a sketch reads in `draw()`). A sketcher reaches for it early, so it matters more than its size suggests; it's Apple-native (AVFoundation) and stays sugar over the typed core. Engines, APIs, and ordering are in the [design notes](DESIGN-NOTES.md#core-batteries-text-image-audio-not-started).
 
 ## Vector and plotter output
 

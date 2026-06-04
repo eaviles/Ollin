@@ -65,12 +65,18 @@ extension SDFShape {
 enum GeometryKind {
     case triangles   // tessellated fills/strokes in `vertices`
     case sdf         // instanced SDF shapes in `sdfInstances`
+    case image       // one textured quad in `imageVertices`, sampling `image`
 }
 
 struct GeometryBatch {
     var kind: GeometryKind
     var vertexStart: Int     // first vertex (triangle batches)
-    var instanceStart: Int   // first instance (sdf batches)
+    var instanceStart: Int   // first image vertex / SDF instance
+    var imageStart: Int = 0  // first image vertex (image batches)
+    /// Texture source for an `.image` batch — `nil` for triangle/sdf batches.
+    /// Each image draw is its own batch (one texture per draw call), so it never
+    /// merges with a neighbour.
+    var image: Image?
 }
 
 /// The drawing state machine and per-frame geometry recorder.
@@ -108,6 +114,11 @@ final class Drawer {
     /// Instanced SDF shapes recorded this frame (see `SDFInstance`).
     private(set) var sdfInstances: [SDFInstance] = []
 
+    /// Textured-quad vertices recorded this frame (see `drawImage`). Each image
+    /// draw appends 6 vertices (two triangles) and opens its own `.image` batch,
+    /// which carries the texture.
+    private(set) var imageVertices: [OllinImageVertex] = []
+
     /// Recorded geometry split into call-ordered runs, so triangles and SDF
     /// shapes composite in draw order rather than in two unordered passes.
     private(set) var batches: [GeometryBatch] = []
@@ -119,7 +130,19 @@ final class Drawer {
         guard currentKind != kind else { return }
         currentKind = kind
         batches.append(GeometryBatch(kind: kind, vertexStart: vertices.count,
-                                     instanceStart: sdfInstances.count))
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count))
+    }
+
+    /// Open a fresh `.image` batch carrying `image` as its texture. Unlike
+    /// `ensureBatch`, this always appends — each image draw binds its own texture,
+    /// so two consecutive images can't share a batch. Resets `currentKind` so a
+    /// following triangle/SDF primitive reopens its own batch.
+    private func beginImageBatch(_ image: Image) {
+        currentKind = .image
+        batches.append(GeometryBatch(kind: .image, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count, image: image))
     }
 
     /// Current affine transform (2D homogeneous), applied to every emitted
@@ -161,6 +184,7 @@ final class Drawer {
         backgroundColor = color
         vertices.removeAll(keepingCapacity: true)
         sdfInstances.removeAll(keepingCapacity: true)
+        imageVertices.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
     }
@@ -226,6 +250,7 @@ final class Drawer {
     func beginFrame() {
         vertices.removeAll(keepingCapacity: true)
         sdfInstances.removeAll(keepingCapacity: true)
+        imageVertices.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
         transform = matrix_identity_float3x3
@@ -886,6 +911,41 @@ final class Drawer {
         appendSDF(shape: .box, center: rect.center,
                   size: SIMD2<Float>(Float(rect.width / 2), Float(rect.height / 2)),
                   fill: fillColor, stroke: strokeColor, extra: Float(r))
+    }
+
+    // MARK: Images
+
+    /// Draw `image` into `rect` (sketch space), stretched to fit. The image rides
+    /// the transform stack like everything else, so `translate`/`rotate`/`scale`
+    /// move and warp it. Recorded as one textured quad with its own batch, so it
+    /// composites in draw order with the shapes around it. A zero-area rect or a
+    /// non-uploadable image draws nothing.
+    func drawImage(_ image: Image, in rect: Rectangle) {
+        guard rect.width > 0, rect.height > 0, image.width > 0, image.height > 0 else { return }
+        let x0 = Float(rect.x), y0 = Float(rect.y)
+        let x1 = Float(rect.x + rect.width), y1 = Float(rect.y + rect.height)
+        // The four corners with their UVs: (0,0) top-left … (1,1) bottom-right.
+        // The texture's origin is top-left and sketch space is y-down, so uv.y and
+        // screen y run the same way — no flip.
+        let tint = SIMD4<Float>(1, 1, 1, 1)   // white = the image unchanged (tint() is future state)
+        let tl = imageVertex(x0, y0, 0, 0, tint)
+        let tr = imageVertex(x1, y0, 1, 0, tint)
+        let br = imageVertex(x1, y1, 1, 1, tint)
+        let bl = imageVertex(x0, y1, 0, 1, tint)
+        beginImageBatch(image)
+        imageVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
+    }
+
+    /// Build one textured-quad vertex, transforming its position by the current
+    /// CTM (mirrors `emit` for the triangle path).
+    private func imageVertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float,
+                             _ tint: SIMD4<Float>) -> OllinImageVertex {
+        var position = SIMD2<Float>(x, y)
+        if !transformIsIdentity {
+            let p = transform * SIMD3<Float>(x, y, 1)
+            position = SIMD2<Float>(p.x, p.y)
+        }
+        return OllinImageVertex(position: position, uv: SIMD2<Float>(u, v), tint: tint)
     }
 
     // MARK: Text

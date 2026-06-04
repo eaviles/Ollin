@@ -470,6 +470,21 @@ open class Sketch {
     public func drawRect(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0) {
         drawer.drawRect(Rectangle(center: center, width: width, height: height), cornerRadius: cornerRadius)
     }
+    /// Draw `image` at its native pixel size with its top-left corner at `(x, y)`.
+    /// Load it once with `loadImage` (in `setup()`); it rides the transform stack,
+    /// so `translate`/`rotate`/`scale` move and warp it, and composites in draw order.
+    public func drawImage(_ image: Image, _ x: Double, _ y: Double) {
+        drawer.drawImage(image, in: Rectangle(x: x, y: y,
+                                              width: Double(image.width), height: Double(image.height)))
+    }
+    /// Draw `image` scaled to fill a `width`×`height` box with its top-left at `(x, y)`.
+    public func drawImage(_ image: Image, _ x: Double, _ y: Double, _ width: Double, _ height: Double) {
+        drawer.drawImage(image, in: Rectangle(x: x, y: y, width: width, height: height))
+    }
+    /// Draw `image` stretched into `rect` — the `Rectangle` form of `drawImage`.
+    public func drawImage(_ image: Image, in rect: Rectangle) {
+        drawer.drawImage(image, in: rect)
+    }
     /// Set the active text font for `drawText` to a bitmap (pixel-grid) font.
     /// Defaults to `.builtin`, Ollin's bundled Cozette pixel font, so text works
     /// with no setup.

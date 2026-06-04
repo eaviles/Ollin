@@ -122,6 +122,7 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Canvas](Docs/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
 - [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawRect`, `drawLine`, `drawShape`, and a full catalog of analytic SDF shapes — see the reference), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
 - [Text](Docs/Text.md) - `drawText` with bitmap, outline (`.ttf`/`.otf`), and single-line/plotter (Hershey) fonts (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`/`OutlineFont`/`StrokeFont`), `textToShapes` for text as geometry, and loading BDF, Playdate `.fnt`, and Hershey `.jhf` fonts.
+- [Images](Docs/Images.md) - `loadImage` and `drawImage` for raster images (PNG, JPEG, HEIC, …), drawn at native size, scaled, or transformed.
 - [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
 - [Geometry](Docs/Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines).
 - [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.

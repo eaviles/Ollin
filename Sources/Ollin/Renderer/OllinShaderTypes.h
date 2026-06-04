@@ -45,6 +45,16 @@ typedef struct {
     simd_float2 viewport;   // logical canvas size in points (width, height)
 } Uniforms;
 
+// One vertex of a textured quad (the image pipeline). Position is already in
+// sketch space (the CTM is applied on the CPU, like OllinVertex), `uv` samples
+// the image (0,0 top-left … 1,1 bottom-right), and `tint` multiplies the
+// sampled color. Stride 32: float2 @0, float2 @8, float4 @16.
+typedef struct {
+    simd_float2 position;   // sketch-space, points, top-left origin, y-down
+    simd_float2 uv;         // texture coordinates, 0...1
+    simd_float4 tint;       // straight RGBA multiplier (white = unchanged)
+} OllinImageVertex;
+
 // One analytic shape for the instanced-SDF pipeline, drawn as a single quad
 // whose fragment computes fill + stroke + anti-aliasing from a signed-distance
 // field (no CPU tessellation). A tagged union: `shape` (see `SDFShape` in
