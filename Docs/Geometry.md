@@ -4,12 +4,13 @@
 
 ## Geometry
 
-`Vector2`, `Rectangle`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types: the data primitives take, and the values you pass around and compose. Coordinates use a top-left origin with y increasing downward.
+`Vector2`, `Rectangle`, `Circle`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types: the data primitives take, and the values you pass around and compose. Coordinates use a top-left origin with y increasing downward.
 
 ### Contents
 
 - [Vector2](#vector2)
 - [Rectangle](#rectangle)
+- [Circle](#circle)
 - [Contour](#contour)
 - [Shape](#shape)
 - [Path](#path)
@@ -55,6 +56,26 @@ Rectangle(center: Vector2, width: Double, height: Double)
 let box = Rectangle(center: Vector2(width / 2, height / 2), width: 200, height: 120)
 drawRect(box)
 let p = randomVector(in: box)       // a random point inside it
+```
+
+<a name="circle"></a>
+
+### `Circle`
+
+A circle: a `center` plus a `radius`. The typed form `drawCircle(_:)` takes (with the bare scalar `drawCircle(x, y, radius)` as sugar over it), and what the [`drawCircles`](./Drawing.md#batches) batch call draws an array of.
+
+```swift
+Circle(center: Vector2, radius: Double)
+Circle(x: Double, y: Double, radius: Double)
+```
+
+- **Properties:** `center`, `radius`, `x`, `y`, `diameter`, `bounds` (the bounding `Rectangle`).
+- **Test:** `contains(_ point: Vector2)`.
+
+```swift
+let dot = Circle(center: Vector2(width / 2, height / 2), radius: 60)
+drawCircle(dot)
+if dot.contains(Vector2(mouseX, mouseY)) { /* pointer is inside */ }
 ```
 
 <a name="contour"></a>

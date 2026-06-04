@@ -254,6 +254,11 @@ let package = Package(
             path: "Examples/Patterns/DotGrid"
         ),
         .executableTarget(
+            name: "Example-Phyllotaxis",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/Phyllotaxis"
+        ),
+        .executableTarget(
             name: "Example-RepelGrid",
             dependencies: ["Ollin"],
             path: "Examples/Input/RepelGrid"

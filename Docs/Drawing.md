@@ -15,6 +15,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 - **More shapes:** [drawNgon](#ngon) (+ `drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
 - **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape), [drawCurve](#curve)
+- **Batches:** [drawCircles](#batches), [drawPoints](#batches), [drawRects](#batches)
 - **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
@@ -233,14 +234,18 @@ drawLine(0, 0, width, height)           // corner to corner
 ```swift
 drawCircle(_ x: Double, _ y: Double, _ radius: Double)
 drawCircle(center: Vector2, radius: Double)
+drawCircle(_ circle: Circle)
 ```
 
-A circle, by scalar center (positional `x, y, radius`) or a `Vector2` `center:`.
+A circle, by scalar center (positional `x, y, radius`), a `Vector2` `center:`, or a [`Circle`](./Geometry.md#circle) value.
 
 ```swift
 drawCircle(width / 2, height / 2, 120)
 drawCircle(center: Vector2(200, 200), radius: 60)
+drawCircle(Circle(x: 200, y: 200, radius: 60))
 ```
+
+To draw a whole array at once, see [batches](#batches).
 
 <a name="ellipse"></a>
 
@@ -735,6 +740,36 @@ stroke(.black)
 strokeWeight(3)
 drawCurve(pts)            // a smooth wave that animates with `time`
 ```
+
+<a name="batches"></a>
+
+### Batches
+
+```swift
+drawCircles(_ circles: [Circle])
+drawCircles(_ centers: [Vector2], radius: Double)
+drawPoints(_ points: [Vector2])
+drawPoints(_ points: [Vector2], size: Double)
+drawRects(_ rectangles: [Rectangle], cornerRadius: Double = 0)
+```
+
+Collection-call sugar: one Swift call draws a whole array. The current `fill`, `stroke`, and transform apply to every shape in the array, so reach for these when the shapes share a style — a point cloud, a scatter, a grid. Each shape is still its own instanced quad, so a batch costs the same as the loop it replaces; it's the call site that gets shorter, not the GPU work.
+
+```swift
+let seeds = (0..<800).map { i -> Circle in
+    let a = Double(i) * 2.39996                 // the golden angle
+    let r = 8 * Double(i).squareRoot()
+    return Circle(x: cos(a) * r, y: sin(a) * r, radius: 4)
+}
+fill(.white)
+noStroke()
+withState {
+    translate(width / 2, height / 2)
+    drawCircles(seeds)                          // a sunflower, in one call
+}
+```
+
+To vary the style per shape — a different color or radius each — drop back to the single-shape call in a loop (`for c in circles { fill(...); drawCircle(c) }`); the batch forms are for when one style covers the whole array.
 
 ### Transforms and state
 

@@ -363,6 +363,9 @@ final class Drawer {
                   fill: fillColor, stroke: strokeColor)
     }
 
+    /// The same circle, given as a `Circle` value.
+    func drawCircle(_ c: Circle) { drawCircle(c.center.x, c.center.y, c.radius) }
+
     /// An axis-aligned ellipse centered at `(x, y)` with horizontal radius `rx`
     /// and vertical radius `ry` (points). Like `drawCircle`, the arguments are
     /// *radii*, not diameters — `drawEllipse(x, y, r, r)` is a circle.
@@ -1132,6 +1135,39 @@ final class Drawer {
         appendSDF(shape: .box, center: rect.center,
                   size: SIMD2<Float>(Float(rect.width / 2), Float(rect.height / 2)),
                   fill: fillColor, stroke: strokeColor, extra: Float(r))
+    }
+
+    // MARK: Batches
+
+    // Collection-call sugar over the single-shape primitives: one Swift call
+    // emits the whole array. The current fill/stroke/transform applies to every
+    // shape (vary them per shape with the single-shape calls in a loop instead).
+    // Each shape is still its own instanced quad, so the array draws at the same
+    // per-shape cost as the loop it replaces.
+
+    /// Draw every circle in `circles`.
+    func drawCircles(_ circles: [Circle]) {
+        for c in circles { drawCircle(c.center.x, c.center.y, c.radius) }
+    }
+
+    /// Draw a circle of the same `radius` at each center in `centers`.
+    func drawCircles(_ centers: [Vector2], radius: Double) {
+        for c in centers { drawCircle(c.x, c.y, radius) }
+    }
+
+    /// Draw a `pointSize` marker at each point in `points`.
+    func drawPoints(_ points: [Vector2]) {
+        for p in points { drawPoint(p.x, p.y) }
+    }
+
+    /// Draw a marker of the same `size` at each point in `points`.
+    func drawPoints(_ points: [Vector2], size: Double) {
+        for p in points { drawPoint(p.x, p.y, size) }
+    }
+
+    /// Draw every rectangle in `rectangles`, each with the same `cornerRadius`.
+    func drawRects(_ rectangles: [Rectangle], cornerRadius: Double = 0) {
+        for r in rectangles { drawRect(r, cornerRadius: cornerRadius) }
     }
 
     // MARK: Images

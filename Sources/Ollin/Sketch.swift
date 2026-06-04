@@ -273,6 +273,9 @@ open class Sketch {
     public func drawCircle(center: Vector2, radius: Double) {
         drawer.drawCircle(center.x, center.y, radius)
     }
+    public func drawCircle(_ circle: Circle) {
+        drawer.drawCircle(circle)
+    }
     public func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double) {
         drawer.drawEllipse(x, y, rx, ry)
     }
@@ -499,6 +502,23 @@ open class Sketch {
     public func drawRect(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0) {
         drawer.drawRect(Rectangle(center: center, width: width, height: height), cornerRadius: cornerRadius)
     }
+
+    /// Draw every circle in `circles` in one call (all share the current
+    /// fill/stroke/transform; each is still its own instanced quad).
+    public func drawCircles(_ circles: [Circle]) { drawer.drawCircles(circles) }
+    /// Draw a circle of the same `radius` at each center in `centers`.
+    public func drawCircles(_ centers: [Vector2], radius: Double) {
+        drawer.drawCircles(centers, radius: radius)
+    }
+    /// Draw a `pointSize` marker at each point in `points`.
+    public func drawPoints(_ points: [Vector2]) { drawer.drawPoints(points) }
+    /// Draw a marker of the same `size` at each point in `points`.
+    public func drawPoints(_ points: [Vector2], size: Double) { drawer.drawPoints(points, size: size) }
+    /// Draw every rectangle in `rectangles`, each with the same `cornerRadius`.
+    public func drawRects(_ rectangles: [Rectangle], cornerRadius: Double = 0) {
+        drawer.drawRects(rectangles, cornerRadius: cornerRadius)
+    }
+
     /// Draw `image` at its native pixel size with its top-left corner at `(x, y)`.
     /// Load it once with `loadImage` (in `setup()`); it rides the transform stack,
     /// so `translate`/`rotate`/`scale` move and warp it, and composites in draw order.
