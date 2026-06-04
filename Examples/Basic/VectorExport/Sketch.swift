@@ -16,6 +16,7 @@ import Ollin
 final class VectorExport: Sketch {
     private let columns = 6
     private let rows = 5
+    private let labelFont = OutlineFont.systemBold   // outline fonts take fill *and* stroke
 
     override func draw() {
         background(.white)
@@ -51,7 +52,12 @@ final class VectorExport: Sketch {
         case 7:  drawVesica(0, 0, r * 1.9, r * 1.2)
         case 8:  drawMoon(0, 0, r, r * 0.95, r * 0.5)
         case 9:  drawCross(0, 0, r * 2, r * 0.7, cornerRadius: r * 0.15)
-        case 10: drawRing(0, 0, r * 0.5, r)
+        case 10:
+            // `drawRing` is fill-only (it ignores stroke), so an outlined ring is
+            // two `noFill` circles instead — which is what the black stroke shows here.
+            noFill()
+            drawCircle(0, 0, r)
+            drawCircle(0, 0, r * 0.5)
         case 11: drawTrapezoid(0, 0, r, r * 1.8, r * 1.4)
         case 12: drawParallelogram(0, 0, r * 1.6, r * 1.3, r * 0.5)
         case 13: drawEgg(0, 0, r * 0.85, r * 0.4)
@@ -72,7 +78,13 @@ final class VectorExport: Sketch {
                                Vector2(r * 0.3, r * 0.4), Vector2(r, -r * 0.6)])
         case 28: drawPolygon([Vector2(0, -r), Vector2(r * 0.9, r * 0.6),
                               Vector2(-r * 0.9, r * 0.6)])
-        default: drawText("Ollin", -r, 0)
+        default:
+            // An outline font draws each glyph as a `Shape`, so the text takes both
+            // `fill` and `stroke` — unlike the bitmap font, whose pixels are fill-only.
+            textFont(labelFont)
+            textSize(r * 0.7)
+            textAlign(.center, .middle)
+            drawText("Ollin", 0, 0)
         }
     }
 }
