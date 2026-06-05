@@ -402,6 +402,26 @@ let package = Package(
             path: "Examples/Text/StrokeText"
         ),
         .executableTarget(
+            name: "Example-TextMetrics",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/TextMetrics"
+        ),
+        .executableTarget(
+            name: "Example-GlyphContours",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/GlyphContours"
+        ),
+        .executableTarget(
+            name: "Example-PointShimmer",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/PointShimmer"
+        ),
+        .executableTarget(
+            name: "Example-JitterType",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/JitterType"
+        ),
+        .executableTarget(
             name: "Example-PixelField",
             dependencies: ["Ollin"],
             path: "Examples/Images/PixelField"
