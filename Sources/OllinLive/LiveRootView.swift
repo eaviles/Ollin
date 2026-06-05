@@ -2,11 +2,20 @@ import SwiftUI
 import AppKit
 import Ollin
 
-/// Shared opacity for the live host's frosted-chrome tints — the sidebar scrim
-/// and the reload toast — so they read as one translucency. It's the tint's
-/// alpha over the material blur: higher is more opaque (less see-through).
+/// Shared chrome tokens for the live host.
 private enum LiveChrome {
+    /// Opacity for the frosted-chrome tints — the sidebar scrim and the reload
+    /// toast — so they read as one translucency. It's the tint's alpha over the
+    /// material blur: higher is more opaque (less see-through).
     static let tintOpacity: Double = 0.55
+
+    /// `--win-bg`: the stage fill behind the full-stage transient screens
+    /// (compiling, compile error). Opaque, since they cover the canvas.
+    static func stageBackground(_ scheme: ColorScheme) -> SwiftUI.Color {
+        scheme == .dark
+            ? SwiftUI.Color(red: 0x1C / 255, green: 0x1C / 255, blue: 0x1E / 255)
+            : SwiftUI.Color(red: 0xEC / 255, green: 0xEC / 255, blue: 0xEE / 255)
+    }
 }
 
 /// The live host's window: the sketch renders in the detail pane; the sidebar
@@ -191,14 +200,6 @@ struct LiveRootView: View {
 private struct CompilingState: View {
     @Environment(\.colorScheme) private var colorScheme
 
-    /// `--win-bg`: the stage fill the compiling screen sits on (it covers the
-    /// canvas, so it's opaque).
-    private var stageBackground: SwiftUI.Color {
-        colorScheme == .dark
-            ? SwiftUI.Color(red: 0x1C / 255, green: 0x1C / 255, blue: 0x1E / 255)
-            : SwiftUI.Color(red: 0xEC / 255, green: 0xEC / 255, blue: 0xEE / 255)
-    }
-
     var body: some View {
         VStack(spacing: 16) {
             RingSpinner()
@@ -212,7 +213,7 @@ private struct CompilingState: View {
         }
         .padding(30)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(stageBackground)
+        .background(LiveChrome.stageBackground(colorScheme))
     }
 }
 
@@ -244,32 +245,55 @@ private struct RingSpinner: View {
 /// sidebar). On a reload it floats over the dimmed last good frame.
 private struct CompileErrorState: View {
     let message: String
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 16) {
             ZStack {
                 SwiftUI.Circle().fill(OllinInspector.red.opacity(0.15)).frame(width: 46, height: 46)
                 SwiftUI.Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 20)).foregroundStyle(OllinInspector.red)
+                    .font(.system(size: 22)).foregroundStyle(OllinInspector.red)
             }
             Text("Compile failed").font(.system(size: 15, weight: .semibold))
-            Text(message)
+            Text(formattedError)
                 .font(.system(size: 11.5, design: .monospaced))
                 .textSelection(.enabled)
                 .multilineTextAlignment(.leading)
-                .padding(12)
+                .lineSpacing(4)
+                .frame(maxWidth: 640, alignment: .leading)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
                 .background(OllinInspector.red.opacity(0.07),
                             in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .strokeBorder(OllinInspector.red.opacity(0.25), lineWidth: 0.5))
-            Text("Last good frame held until the next save.")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
         }
-        .padding(26)
-        .frame(maxWidth: 440)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(0.3), radius: 18, y: 6)
-        .padding(24)
+        .padding(30)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(LiveChrome.stageBackground(colorScheme))
+    }
+
+    /// Tidy the raw `swiftc` dump into the design's diagnostic: drop the redundant
+    /// "compile failed —" lead, show paths as the bare filename (not the absolute
+    /// path), and append the reassurance trailer — with `error:` in red and the
+    /// trailer dimmed.
+    private var formattedError: AttributedString {
+        var text = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        text = text.replacingOccurrences(of: #"^compile failed\s*—\s*"#, with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"/\S+/([^/\s]+\.swift)"#, with: "$1", options: .regularExpression)
+        text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let trailer = "Last good frame held until the next save."
+        var attr = AttributedString(text + "\n\n" + trailer)
+        var cursor = attr.startIndex
+        while let range = attr[cursor...].range(of: "error:") {
+            attr[range].foregroundColor = OllinInspector.red
+            cursor = range.upperBound
+        }
+        if let range = attr.range(of: trailer) {
+            attr[range].foregroundColor = .secondary
+        }
+        return attr
     }
 }
 
