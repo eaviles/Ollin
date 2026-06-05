@@ -9,6 +9,12 @@
 ### Contents
 
 - [Vector2](#vector2)
+  - [Constants](#v2-constants)
+  - [Length & direction](#v2-length)
+  - [Arithmetic](#v2-arithmetic)
+  - [Measuring between two vectors](#v2-measuring)
+  - [Producing new vectors](#v2-producing)
+  - [Putting it together](#v2-together)
 - [Rectangle](#rectangle)
 - [Circle](#circle)
 - [Contour](#contour)
@@ -27,6 +33,8 @@ Vector2(x: Double, y: Double)
 Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle` radians
 ```
 
+<a name="v2-constants"></a>
+
 **Constants:** `.zero` `(0, 0)`, `.one` `(1, 1)`, `.unitX` `(1, 0)`, `.unitY` `(0, 1)`.
 
 **A note on orientation.** Ollin's y-axis points down (top-left origin), the opposite of the math-class convention where y points up. The formulas are the same, but the direction of rotation looks flipped on screen: a positive angle, and anything the usual math convention calls "counter-clockwise", turns clockwise as you watch it. The diagrams below are drawn in screen space (y down) to match what you see.
@@ -39,6 +47,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
     ▼
    +y
 ```
+
+<a name="v2-length"></a>
 
 #### Length & direction
 
@@ -89,6 +99,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
     ● v.perpendicular = (0, 3)
 ```
 
+<a name="v2-arithmetic"></a>
+
 #### Arithmetic
 
 **`+`, `-`, unary `-`** — add two vectors *head to tail*; subtract to get the step between two points. (Plus the in-place `+=` / `-=`, the `pos += vel` idiom.)
@@ -109,6 +121,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
   ●──►v        ●──────►v * 2        ◄──● v * -1
               (twice as long)      (flipped)
 ```
+
+<a name="v2-measuring"></a>
 
 #### Measuring between two vectors
 
@@ -137,14 +151,18 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 **`cross(_:)`** — the 2D "perp-dot", `ax·by − ay·bx`, also one number. Its *magnitude* is the area of the parallelogram the two vectors span; its *sign* tells you the turn direction from `a` to `b`.
 
 ```
-  a.cross(b)
+  a.cross(b) = ax·by − ay·bx     (a single number)
 
-       ┌────────┐
-      ╱        ╱     |a.cross(b)| = area of this parallelogram
-     ╱        ╱                     (spanned by a and b)
-    └────────┘
-  sign = the turn from a to b
-  (with y down: cross > 0 when b is clockwise from a)
+         b ●───────────● a+b
+          ╱           ╱
+         ╱           ╱          a and b are two vectors from O;
+        ╱           ╱           |a.cross(b)| = the AREA of the
+   O ●───────────►  a           parallelogram they span
+
+  The SIGN tells which side b lies on (the turn from a to b):
+     cross > 0   b is clockwise from a          (on screen, y-down)
+     cross < 0   b is counter-clockwise from a
+     cross = 0   a and b are parallel  →  area 0
 ```
 
 **`angle(to:)`** — the *signed* angle from `a` to `b`, in `−π…π` (it's `atan2(cross, dot)`). Unlike `b.angle − a.angle`, it never wraps and tells you which way to turn.
@@ -157,6 +175,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
      ╲θ              < 0 the other
       ◄ b
 ```
+
+<a name="v2-producing"></a>
 
 #### Producing new vectors
 
@@ -207,6 +227,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 ```
 
 **`with(x:)` / `with(y:)`** — a copy with one component replaced (the other kept). `p.with(y: 0)` flattens a point onto the top edge, for instance.
+
+<a name="v2-together"></a>
 
 #### Putting it together
 

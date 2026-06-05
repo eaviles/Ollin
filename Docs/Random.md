@@ -86,15 +86,23 @@ ring(innerRadius: Double, outerRadius: Double) -> Vector2
 A random point in the annulus between the two radii, centered on the origin. Add a center to place it. See the `Ring` example.
 
 ```
-  ring(innerRadius: r, outerRadius: R) — a uniform point in the band
-  between the two radii, centered on the origin (O):
+  ring(innerRadius: r, outerRadius: R) — a uniform random point whose
+  distance from the origin O lands between r and R (a ring / annulus).
 
-         ___________
-       ╱   _______   ╲
-      ╱   ╱  hole ╲   ╲     • lands anywhere in the shaded band
-     │   │    ·O   │   │      (farther than r, closer than R)
-      ╲   ╲_______╱   ╱     • never inside the inner hole
-       ╲___r____R____╱
+  By distance from O (a ray pointing outward):
+
+     O ●────── r ──────○════════════○
+                  inner edge     outer edge (R)
+
+     a point lands on the ═══ band: farther than r, out to R.
+
+  As a ring centered on O:
+        ___________
+      ╱   _______   ╲
+     │   ╱       ╲   │      hole = closer than r        (no points)
+     │  │    O    │  │      band = between the circles   (points here)
+      ╲   ╲_____╱   ╱
+        ‾‾‾‾‾‾‾‾‾‾‾
 
    add a center to place it:  center + ring(innerRadius: r, outerRadius: R)
 ```
