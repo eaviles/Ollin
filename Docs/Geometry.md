@@ -65,7 +65,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
     ▼    ● (3, 4)
    +y
 
-  lengthSquared = 3² + 4² = 25     (skips the √ — use it when you only compare)
+  lengthSquared = 3² + 4² = 25     (skip the √ when you only compare)
 ```
 
 **`normalized`** — the same direction rescaled to length exactly 1 (a "unit vector"). Handy when you want a pure heading and will set the length yourself. Returns `.zero` if `v` has no length to scale.

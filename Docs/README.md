@@ -17,7 +17,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 
 - [`Drawing`](./Drawing.md) - `background`, `fill`/`stroke`, the shapes, and the transform stack
 - [`Text`](./Text.md) - `drawText` with bitmap *and* outline (`.ttf`/`.otf`) fonts, plus `textToShapes` (text as geometry)
-- [`Images`](./Images.md) - `loadImage`, `drawImage`, `tint`, and pixel access - load or author a raster image, draw it scaled or transformed, recolor it
+- [`Images`](./Images.md) - `loadImage`, `drawImage`, `tint`, and pixel access: load or author a raster image, draw it scaled or transformed, recolor it
 - [`Color`](./Color.md) - the `Color` type, cosine-gradient `Palette`s, and perceptual `Colormap`s
 - [`Geometry`](./Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines)
 
@@ -29,7 +29,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 ### Helpers
 
 - [`Math`](./Math.md) - `map`, `dist`, and `lerp`
-- [`Animation`](./Animation.md) - the `Easing` curves, `@Eased`, and `@Smoothed` — easing toward a target, and smoothing a noisy signal
+- [`Animation`](./Animation.md) - the `Easing` curves, `@Eased` (ease toward a target), and `@Smoothed` (smooth a noisy signal)
 - [`Input`](./Input.md) - mouse and keyboard
 
 ### Output

@@ -84,7 +84,7 @@ Set how text is anchored to the `drawText` position.
 - Vertical (`TextAlignV`): `.baseline` (default, like p5) sits the first line's baseline on the y; `.top` / `.bottom` align the block's top / bottom edge; `.middle` centers the whole block.
 
 ```
-  textAlign(h, v) — how the text anchors to the (x, y) you pass (● = that point).
+  textAlign(h, v): how text anchors to the (x, y) you pass (● = that point).
 
   Horizontal (● marks the x):
      .left     ●Hello        text starts at the x
@@ -145,6 +145,7 @@ noFill(); stroke(.white); strokeWeight(2)
 drawText("outline", width / 2, 480)
 ```
 
+> [!NOTE]
 > Outline text honors `stroke` like every other shape, so the default 1px stroke will outline your glyphs — call `noStroke()` for plain filled text.
 
 **Loading a font, from anywhere:**
@@ -325,6 +326,7 @@ for shape in textToShapes("ollin", width / 2, height / 2) {
 }
 ```
 
+> [!WARNING]
 > Displacing outline points by a *large or uneven* amount can fold a contour over itself, which the fill renders as a spike. Keep warps **bounded and smooth** (e.g. `signedNoise`, which stays in `-1...1`) rather than raw `curlNoise`, whose magnitude is unbounded — see the `OutlineText` example.
 
 <a name="metrics"></a>

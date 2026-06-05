@@ -251,7 +251,8 @@ for p in cloud { drawPoint(p) }          // a scatter of dots
 drawPoint(width / 2, height / 2, 12)     // one bigger dot
 ```
 
-**Sizes go all the way down.** Round points, circles, and lines stay smooth at sub-pixel sizes: a dot or line thinner than a pixel fades by *area* instead of popping in, snapping to a 1px floor, or flickering as it moves. A field of tiny points or a hairline `drawLine` reads as a soft, even wash rather than hard speckle — so draw at whatever size the piece wants, down to a fraction of a pixel.
+> [!TIP]
+> **Sizes go all the way down.** Round points, circles, and lines stay smooth at sub-pixel sizes: a dot or line thinner than a pixel fades by *area* instead of popping in, snapping to a 1px floor, or flickering as it moves. A field of tiny points or a hairline `drawLine` reads as a soft, even wash rather than hard speckle — so draw at whatever size the piece wants, down to a fraction of a pixel.
 
 <a name="line"></a>
 
@@ -971,10 +972,10 @@ Run `body` with the current transform and style saved, then restored. The scoped
 ```
   withState { } saves the whole transform + style, runs the body, restores:
 
-   state A ──save──► copy A'  (translate/rotate/fill… apply here) ──restore──► state A
-                        the changes stay inside the braces
+   save A ─►  work on a copy: translate / rotate / fill …  ─►  restore A
+              the changes stay inside the braces
 
-  Like scribbling on a fresh sheet laid over your drawing, then lifting it off.
+  Like scribbling on a sheet laid over your drawing, then lifting it off.
 ```
 
 ```swift
