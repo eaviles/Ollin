@@ -19,7 +19,7 @@
 
 ### `Vector2`
 
-An `(x, y)` point in sketch points. The type primitives like `drawPolyline`, `drawCircle(center:)`, and `drawLine` take.
+An `(x, y)` point in sketch points. The type primitives like `drawPolyline`, `drawCircle(center:)`, and `drawLine` take. A `Vector2` doubles as a **point** (a location) and a **vector** (an arrow with a direction and a length); the methods below lean on whichever reading fits.
 
 ```swift
 Vector2(_ x: Double, _ y: Double)
@@ -27,10 +27,188 @@ Vector2(x: Double, y: Double)
 Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle` radians
 ```
 
-- **Constants:** `.zero`, `.one`, `.unitX`, `.unitY`.
-- **Properties:** `length` / `lengthSquared` (distance from the origin; the squared form is cheaper when you only compare), `normalized` (scaled to length 1, or `.zero` if it has none), `angle` (direction in radians, `atan2(y, x)`), `perpendicular` (turned 90° counter-clockwise).
-- **Geometry:** `dot(_:)`, `cross(_:)` (the 2D perp-dot — the signed parallelogram area), `distance(to:)` / `distanceSquared(to:)`, `angle(to:)` (signed angle between two vectors, `-π…π`), `lerp(to:_:)` (interpolate by `t`, `0`…`1`), `rotated(by:)` and `rotated(by:around:)`, `limited(to:)` (clamp the length, keeping direction), `projected(onto:)`, and `with(x:)` / `with(y:)` (a copy with one component replaced).
-- **Operators:** `+`, `-`, unary `-`, `*` by a scalar (either side), `/` by a scalar, and the in-place `+=`, `-=`, `*=`, `/=`.
+**Constants:** `.zero` `(0, 0)`, `.one` `(1, 1)`, `.unitX` `(1, 0)`, `.unitY` `(0, 1)`.
+
+**A note on orientation.** Ollin's y-axis points down (top-left origin), the opposite of the math-class convention where y points up. The formulas are the same, but the direction of rotation looks flipped on screen: a positive angle, and anything the usual math convention calls "counter-clockwise", turns clockwise as you watch it. The diagrams below are drawn in screen space (y down) to match what you see.
+
+```
+  (0,0)
+    +──────────────►  +x      x grows to the RIGHT
+    │                         y grows DOWNWARD
+    │                         (top-left origin)
+    ▼
+   +y
+```
+
+#### Length & direction
+
+**`length` / `lengthSquared`** — how far the point is from the origin, i.e. how long the arrow is. It's the Pythagorean theorem: the hypotenuse of the right triangle with sides `x` and `y`.
+
+```
+  v = (3, 4)
+
+  (0,0)
+    ●───────►  +x
+    │ ╲
+    │  ╲        length = √(3² + 4²) = √25 = 5
+    │   ╲
+    ▼    ● (3, 4)
+   +y
+
+  lengthSquared = 3² + 4² = 25     (skips the √ — use it when you only compare)
+```
+
+**`normalized`** — the same direction rescaled to length exactly 1 (a "unit vector"). Handy when you want a pure heading and will set the length yourself. Returns `.zero` if `v` has no length to scale.
+
+```
+  v = (3, 4), length 5        v.normalized = (0.6, 0.8), length 1
+
+    ●═══════════►               ●══►
+        same heading, divided by its own length
+```
+
+**`angle`** — the direction as one number: the angle of the arrow from the `+x` axis, in radians (`atan2(y, x)`). `Vector2(angle:length:)` is the inverse, building an arrow from an angle and a length.
+
+```
+  v.angle = atan2(y, x)
+
+    ●───────────►  +x      angle 0 points along +x
+    │ ╲ )                  the angle grows CLOCKWISE on screen
+    ▼   ● v                (because +y points down)
+   +y
+```
+
+**`perpendicular`** — a quarter turn, swapping and negating the components: `(x, y) → (−y, x)`. Useful for offsetting to the side of a line (e.g. giving a stroke its width).
+
+```
+  v.perpendicular = (−y, x)
+
+    ●──────────►  v = (3, 0)
+    │  ⌐ 90°               a quarter turn from v
+    ▼                      (clockwise on screen, y-down)
+    ● v.perpendicular = (0, 3)
+```
+
+#### Arithmetic
+
+**`+`, `-`, unary `-`** — add two vectors *head to tail*; subtract to get the step between two points. (Plus the in-place `+=` / `-=`, the `pos += vel` idiom.)
+
+```
+  a + b : walk a, then walk b from where a ended (head-to-tail)
+
+           a            b
+    start ●─────►●─────►● a + b
+
+  a − b : the step that goes FROM b TO a   (so (a − b) + b = a)
+  −v    : same length, opposite direction
+```
+
+**`*` / `/` by a scalar** — stretch or shrink the arrow, keeping its heading (negative flips it). The scalar can sit on either side. (Plus the in-place `*=` / `/=`.)
+
+```
+  ●──►v        ●──────►v * 2        ◄──● v * -1
+              (twice as long)      (flipped)
+```
+
+#### Measuring between two vectors
+
+**`distance(to:)` / `distanceSquared(to:)`** — straight-line distance between two points. (Same Pythagoras as `length`, applied to `a − b`; the squared form skips the `√` for comparisons.)
+
+```
+  a.distance(to: b)
+
+    a ●╲
+       ╲        = (a − b).length
+        ╲       = √((ax − bx)² + (ay − by)²)
+         ● b
+```
+
+**`dot(_:)`** — one number measuring how much two vectors point the *same way*: `ax·bx + ay·by`, which equals `|a|·|b|·cos θ`. Its sign alone tells you the rough relationship.
+
+```
+  a.dot(b)
+
+        a
+    ●─────►        θ < 90°  → dot > 0   (aim similar ways)
+     ╲θ            θ = 90°  → dot = 0   (perpendicular)
+      ◄ b          θ > 90°  → dot < 0   (aim opposite ways)
+```
+
+**`cross(_:)`** — the 2D "perp-dot", `ax·by − ay·bx`, also one number. Its *magnitude* is the area of the parallelogram the two vectors span; its *sign* tells you the turn direction from `a` to `b`.
+
+```
+  a.cross(b)
+
+       ┌────────┐
+      ╱        ╱     |a.cross(b)| = area of this parallelogram
+     ╱        ╱                     (spanned by a and b)
+    └────────┘
+  sign = the turn from a to b
+  (with y down: cross > 0 when b is clockwise from a)
+```
+
+**`angle(to:)`** — the *signed* angle from `a` to `b`, in `−π…π` (it's `atan2(cross, dot)`). Unlike `b.angle − a.angle`, it never wraps and tells you which way to turn.
+
+```
+  a.angle(to: b)
+
+        a
+    ●─────►          > 0 turns one way on screen,
+     ╲θ              < 0 the other
+      ◄ b
+```
+
+#### Producing new vectors
+
+**`lerp(to:_:)`** — slide from `a` toward `b` by a fraction `t` (`0` = `a`, `1` = `b`). `t = 0.5` is the midpoint; `t` past `0…1` extrapolates.
+
+```
+  a.lerp(to: b, t)
+
+    a ●────●────●────●────● b
+      0   .25  .5   .75   1
+               ↑
+            midpoint at t = 0.5
+```
+
+**`rotated(by:)` / `rotated(by:around:)`** — spin the arrow by an angle, about the origin or about a given pivot point.
+
+```
+  v.rotated(by: θ)             spins v about the origin (0, 0)
+  v.rotated(by: θ, around: p)  spins v about the point p
+
+    p ●─────────► v
+      │ ╲θ
+      ▼   ╲
+            ► result        (positive θ turns clockwise, y-down)
+```
+
+**`limited(to:)`** — clamp the length to a maximum, keeping the direction. Shorter vectors pass through untouched (e.g. a velocity cap).
+
+```
+  v.limited(to: m)
+
+    len ≤ m :  ●─────►v           returned unchanged
+    len > m :  ●──────────►v  →   ●─────► length m
+```
+
+**`projected(onto:)`** — the part of `a` that lies along `b`: `a`'s shadow cast straight down onto `b`'s line.
+
+```
+  a.projected(onto: b)
+
+         a
+        ╱┆
+       ╱ ┆  drop a perpendicular onto b's line
+      ╱  ▼
+    ●─────●──────────► b
+    └──┬──┘
+   projected(onto: b)
+```
+
+**`with(x:)` / `with(y:)`** — a copy with one component replaced (the other kept). `p.with(y: 0)` flattens a point onto the top edge, for instance.
+
+#### Putting it together
 
 ```swift
 let a = Vector2(100, 100)
