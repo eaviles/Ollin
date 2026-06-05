@@ -2,6 +2,13 @@ import SwiftUI
 import AppKit
 import Ollin
 
+/// Shared opacity for the live host's frosted-chrome tints — the sidebar scrim
+/// and the reload toast — so they read as one translucency. It's the tint's
+/// alpha over the material blur: higher is more opaque (less see-through).
+private enum LiveChrome {
+    static let tintOpacity: Double = 0.55
+}
+
 /// The live host's window: the sketch renders in the detail pane; the sidebar
 /// holds the monitor card + parameter knobs. The reload status sits in the
 /// toolbar, and the transient states (compiling, compile error, just-reloaded)
@@ -36,11 +43,11 @@ struct LiveRootView: View {
 
     /// A scrim laid over the sidebar vibrancy so the panel reads over a bright
     /// background. Tints toward the design's solid sidebar tone (dark `#232325`,
-    /// light `#F4F4F5`) but keeps some translucency.
+    /// light `#F4F4F5`) at the shared chrome translucency.
     private var sidebarScrim: SwiftUI.Color {
         colorScheme == .dark
-            ? SwiftUI.Color(red: 0x23 / 255, green: 0x23 / 255, blue: 0x25 / 255).opacity(0.72)
-            : SwiftUI.Color(red: 0xF4 / 255, green: 0xF4 / 255, blue: 0xF5 / 255).opacity(0.72)
+            ? SwiftUI.Color(red: 0x23 / 255, green: 0x23 / 255, blue: 0x25 / 255).opacity(LiveChrome.tintOpacity)
+            : SwiftUI.Color(red: 0xF4 / 255, green: 0xF4 / 255, blue: 0xF5 / 255).opacity(LiveChrome.tintOpacity)
     }
 
     // A sidebar + sketch row under the redesign's tall gradient title bar. The bar
@@ -136,8 +143,9 @@ struct LiveRootView: View {
                     session.attach(runner)
                 }
 
-                // Transient states play over the live canvas, holding the last
-                // good frame behind them.
+                // Transient states play over the stage. Compiling covers it with
+                // the design's clean rebuild screen; a compile error shows the
+                // diagnostic. (Both also flip the title-bar status chip.)
                 if session.inspectorStatus == .compiling {
                     CompilingState().transition(.opacity)
                 } else if let error = session.errorMessage {
@@ -145,7 +153,7 @@ struct LiveRootView: View {
                 }
 
                 if showReloadedToast {
-                    ReloadedToast(count: session.reloadCount)
+                    ReloadedToast(count: session.reloadCount, buildSeconds: session.lastBuildSeconds)
                         .frame(maxHeight: .infinity, alignment: .top)
                         .padding(.top, 18)
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -158,7 +166,7 @@ struct LiveRootView: View {
                 if let error = session.errorMessage {
                     CompileErrorState(message: error)
                 } else {
-                    CompilingState(firstCompile: true, name: session.displayName)
+                    CompilingState()
                 }
             }
             .frame(width: OllinApp.defaultWindowSize.width, height: OllinApp.defaultWindowSize.height)
@@ -168,7 +176,7 @@ struct LiveRootView: View {
     private func flashReloadedToast() {
         withAnimation { showReloadedToast = true }
         Task {
-            try? await Task.sleep(for: .seconds(1.6))
+            try? await Task.sleep(for: .seconds(2.5))
             withAnimation { showReloadedToast = false }
         }
     }
@@ -176,28 +184,59 @@ struct LiveRootView: View {
 
 // MARK: - Transient states
 
-/// Centered spinner shown while a build is in flight. On the first compile it
-/// owns the stage; on a reload it floats as a frosted card over the held frame.
+/// The "Compiling…" screen (the design's `.o-state`): a ring spinner, title, and
+/// subtitle centered on the stage background, covering the canvas while a build is
+/// in flight. Shown both at first launch (empty stage) and on every reload; the
+/// title-bar status chip turns amber in concert.
 private struct CompilingState: View {
-    var firstCompile = false
-    var name = ""
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// `--win-bg`: the stage fill the compiling screen sits on (it covers the
+    /// canvas, so it's opaque).
+    private var stageBackground: SwiftUI.Color {
+        colorScheme == .dark
+            ? SwiftUI.Color(red: 0x1C / 255, green: 0x1C / 255, blue: 0x1E / 255)
+            : SwiftUI.Color(red: 0xEC / 255, green: 0xEC / 255, blue: 0xEE / 255)
+    }
 
     var body: some View {
-        VStack(spacing: 14) {
-            ProgressView().controlSize(.large)
+        VStack(spacing: 16) {
+            RingSpinner()
             Text("Compiling…").font(.system(size: 15, weight: .semibold))
-            if firstCompile {
-                Text("Building \(name) — the window stays open and your tuned values are preserved across the reload.")
-                    .font(.system(size: 12.5))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 280)
-            }
+            Text("Rebuilding the sketch. The window stays open — your tuned values are preserved across the reload.")
+                .font(.system(size: 12.5))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .frame(maxWidth: 280)
         }
-        .padding(26)
-        .background(firstCompile ? AnyShapeStyle(.clear) : AnyShapeStyle(.regularMaterial),
-                    in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(firstCompile ? 0 : 0.25), radius: 16, y: 6)
+        .padding(30)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(stageBackground)
+    }
+}
+
+/// A thin ring spinner — a faint track ring with a rotating accent arc — matching
+/// the design's `.o-spinner` (the macOS `ProgressView` is a different idiom).
+private struct RingSpinner: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var spinning = false
+
+    private var track: SwiftUI.Color {
+        colorScheme == .dark ? .white.opacity(0.12) : .black.opacity(0.10)
+    }
+
+    var body: some View {
+        ZStack {
+            SwiftUI.Circle().stroke(track, lineWidth: 2.5)
+            SwiftUI.Circle()
+                .trim(from: 0, to: 0.28)
+                .stroke(.purple, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+        }
+        .frame(width: 30, height: 30)
+        .rotationEffect(.degrees(spinning ? 360 : 0))
+        .animation(.linear(duration: 0.8).repeatForever(autoreverses: false), value: spinning)
+        .onAppear { spinning = true }
     }
 }
 
@@ -328,24 +367,54 @@ private struct TitlebarAccessory<Content: View>: NSViewRepresentable {
     }
 }
 
-/// A brief frosted confirmation after a hot reload, top-center of the stage.
+/// A brief frosted confirmation after a hot reload, top-center of the stage:
+/// a green check, "Reloaded", and a muted `build {x}s · #{n}` readout — the
+/// design's `.o-toast` (a `--hud` frosted rounded-rect with a hairline edge).
 private struct ReloadedToast: View {
     let count: Int
+    var buildSeconds: Double?
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// `--hud`, dialed translucent at the shared chrome opacity: a dark tint over
+    /// the material blur, light enough that the frosted blur reads through (the
+    /// 0.78 design token looks opaque over a bright sketch).
+    private var hudTint: SwiftUI.Color {
+        colorScheme == .dark
+            ? SwiftUI.Color(red: 20 / 255, green: 20 / 255, blue: 22 / 255).opacity(LiveChrome.tintOpacity)
+            : SwiftUI.Color(red: 248 / 255, green: 248 / 255, blue: 250 / 255).opacity(LiveChrome.tintOpacity)
+    }
+
+    /// `--glass-stroke`: the hairline edge on the frosted surface.
+    private var glassStroke: SwiftUI.Color {
+        colorScheme == .dark ? .white.opacity(0.12) : .white.opacity(0.7)
+    }
+
+    private var subtitle: String {
+        if let buildSeconds { return String(format: "build %.2fs · #%d", buildSeconds, count) }
+        return "#\(count)"
+    }
 
     var body: some View {
-        HStack(spacing: 9) {
+        let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+        return HStack(spacing: 9) {
             ZStack {
                 SwiftUI.Circle().fill(OllinInspector.green).frame(width: 16, height: 16)
                 SwiftUI.Image(systemName: "checkmark")
                     .font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
             }
             Text("Reloaded").font(.system(size: 12.5, weight: .medium))
-            Text("#\(count)")
+            Text(subtitle)
                 .font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 14)
+        .padding(.leading, 11)
+        .padding(.trailing, 14)
         .padding(.vertical, 9)
-        .background(.regularMaterial, in: Capsule())
-        .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
+        .background {
+            shape.fill(.ultraThinMaterial)
+                .overlay(shape.fill(hudTint))
+                .overlay(shape.strokeBorder(glassStroke, lineWidth: 0.5))
+        }
+        .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
     }
 }

@@ -43,6 +43,9 @@ final class LiveSession {
     private(set) var title = "OllinLive"
     private(set) var status: Status = .compiling
     private(set) var reloadCount = 0
+    /// Wall-clock seconds of the last successful hot reload (compile + load),
+    /// shown in the "Reloaded" toast. `nil` until the first reload.
+    private(set) var lastBuildSeconds: Double?
     /// Live performance numbers of the running sketch, refreshed a few times a
     /// second by the runner. Shared with the on-canvas overlay (one source of
     /// truth), so the inspector and overlay never disagree. The reference is
@@ -155,6 +158,7 @@ final class LiveSession {
         let loader = self.loader
         let keepClock = self.keepClock
         Task {
+            let started = Date()
             let compiled = await Task.detached(priority: .userInitiated) {
                 loader.compile()
             }.value
@@ -164,6 +168,7 @@ final class LiveSession {
                 case .success(let newSketch):
                     self.syncParams(newSketch)   // re-apply tuned knobs before it draws
                     if let runner = self.runner {
+                        self.lastBuildSeconds = Date().timeIntervalSince(started)
                         runner.reload(to: newSketch, keepClock: keepClock)
                         self.reloadCount += 1
                         print("OllinLive: reloaded \(type(of: newSketch)) ✓")
