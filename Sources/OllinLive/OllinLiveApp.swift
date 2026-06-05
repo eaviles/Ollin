@@ -49,8 +49,9 @@ struct OllinLiveApp: App {
         WindowGroup {
             LiveRootView(session: session)
         }
-        // Inspector sidebar + a fixed square sketch; the window hugs that content
-        // (no free resize), and collapsing the sidebar narrows it to the square.
+        // The root is a fixed-size `HStack` (sidebar + sketch), so `.contentSize`
+        // sizes the window exactly to it, disables user resize, and shrinks it to
+        // just the sketch when the sidebar is collapsed.
         .defaultSize(width: OllinApp.defaultWindowSize.width + LiveRootView.sidebarWidth,
                      height: OllinApp.defaultWindowSize.height)
         .windowResizability(.contentSize)

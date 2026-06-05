@@ -1,55 +1,300 @@
 import SwiftUI
+import AppKit
 import Ollin
 
 /// The live host's window: the sketch renders in the detail pane; the sidebar
-/// inspector shows reload status. The sketch's `SketchRunner` is created here
-/// (the detail view owns the `MTKView`) and handed to the session so the
-/// watcher can drive hot-swaps.
+/// holds the monitor card + parameter knobs. The reload status sits in the
+/// toolbar, and the transient states (compiling, compile error, just-reloaded)
+/// play out over the stage so the last good frame stays visible behind them.
+/// The sketch's `SketchRunner` is created here (the detail view owns the
+/// `MTKView`) and handed to the session so the watcher can drive hot-swaps.
 struct LiveRootView: View {
-    /// Fixed inspector width. The detail pane is pinned to the sketch's square, so
-    /// the window is exactly `square + sidebarWidth` wide and can't be resized;
-    /// collapsing the inspector narrows it to just the square.
-    static let sidebarWidth: CGFloat = 280
+    /// Fixed inspector width (matches the redesign's 296pt sidebar). The detail
+    /// pane is pinned to the sketch's square, so the window is exactly
+    /// `square + sidebarWidth` wide; collapsing the inspector narrows it.
+    static let sidebarWidth: CGFloat = 296
 
     let session: LiveSession
 
+    /// Briefly shown after a successful hot reload.
+    @State private var showReloadedToast = false
+    /// Whether the inspector sidebar is shown. Owned here (not NavigationSplitView,
+    /// which sizes the window from its own ideal and won't hug the sketch) so a
+    /// plain `HStack` + `.windowResizability(.contentSize)` makes the window exactly
+    /// the sketch (+ sidebar), non-resizable, and shrinks it to just the sketch on
+    /// collapse.
+    @State private var sidebarShown = true
+
+    /// The sketch's on-screen size (or the default before one loads). The sidebar
+    /// and sketch are framed to this height so the layout is rigid and
+    /// `.windowResizability(.contentSize)` makes the window exactly that — no
+    /// margin — and narrows it to just the sketch when the sidebar hides.
+    private var sketchDisplaySize: CGSize {
+        session.sketch.map { OllinApp.windowSize(for: $0) } ?? OllinApp.defaultWindowSize
+    }
+
+    // A sidebar + sketch row, sized to its content. The native title bar carries
+    // the sidebar toggle (leading) and status chip (trailing) as accessories; the
+    // sidebar is a translucent vibrancy panel. (A custom gradient title bar was
+    // attempted but a SwiftUI `WindowGroup` won't release the native title-bar
+    // height — see the note in `CustomTitleBarWindow` history — so the native bar
+    // stays, which keeps the traffic lights aligned and avoids dead space.)
     var body: some View {
-        NavigationSplitView {
-            InspectorPanel(session: session)
-                .navigationSplitViewColumnWidth(Self.sidebarWidth)
-        } detail: {
-            detail.navigationTitle(session.title)
+        HStack(spacing: 0) {
+            if sidebarShown {
+                InspectorPanel(session: session)
+                    .frame(width: Self.sidebarWidth, height: sketchDisplaySize.height)
+                    .background(SidebarVibrancy())
+                    .overlay(alignment: .trailing) {
+                        SwiftUI.Rectangle().fill(.separator).frame(width: 0.5)
+                    }
+            }
+            detail
         }
+        .navigationTitle(session.title)
+        .background(TitlebarAccessory(attribute: .leading) {
+            Button { sidebarShown.toggle() } label: {
+                SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .padding(.leading, 8)
+            .frame(maxHeight: .infinity)
+        })
+        .background(TitlebarAccessory(attribute: .trailing) {
+            HStack(spacing: 0) {
+                StatusChip(status: session.inspectorStatus)
+                SwiftUI.Color.clear.frame(width: 14, height: 1)
+            }
+            .padding(.leading, 12)
+            .frame(maxHeight: .infinity)
+        })
         .task { session.start() }
+        .onChange(of: session.reloadCount) { _, _ in flashReloadedToast() }
     }
 
     // Lightweight until the first compile lands: a plain SwiftUI placeholder, not
     // a Metal view (mounting an MTKView at launch kept the window from surfacing).
-    // Once `sketch` is set, the SketchView mounts and creates the runner.
-    // Pinned to a fixed square so the sketch renders at its true size (never
-    // stretched to fill the pane) and the window stays square across reloads.
+    // Once `sketch` is set, the SketchView mounts and creates the runner. The
+    // detail pane is sized *exactly* to the sketch (no surrounding margin), so the
+    // right side of the window is just the sketch — and collapsing the sidebar
+    // leaves the window showing only it.
     @ViewBuilder private var detail: some View {
-        Group {
-            if let sketch = session.sketch {
-                // No on-canvas overlay here: the inspector already shows these
-                // stats, so it'd just duplicate them.
-                SketchView(sketch, stats: session.stats, showsStatsOverlay: false) { runner in
+        if let sketch = session.sketch {
+            let size = OllinApp.windowSize(for: sketch)
+            ZStack {
+                // No detached panel here: the sidebar already shows these stats,
+                // so it'd just duplicate them.
+                SketchView(sketch, stats: session.stats, showsInspectorPanel: false) { runner in
                     session.attach(runner)
                 }
-                .frame(width: OllinApp.windowSize(for: sketch).width,
-                       height: OllinApp.windowSize(for: sketch).height)
-            } else if let error = session.errorMessage {
-                ContentUnavailableView {
-                    Label("Compile error", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text(error)
-                        .font(.system(.caption, design: .monospaced))
-                        .textSelection(.enabled)
+
+                // Transient states play over the live canvas, holding the last
+                // good frame behind them.
+                if session.inspectorStatus == .compiling {
+                    CompilingState().transition(.opacity)
+                } else if let error = session.errorMessage {
+                    CompileErrorState(message: error).transition(.opacity)
                 }
-            } else {
-                ProgressView("Compiling \(session.displayName)…")
+
+                if showReloadedToast {
+                    ReloadedToast(count: session.reloadCount)
+                        .frame(maxHeight: .infinity, alignment: .top)
+                        .padding(.top, 18)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .frame(width: size.width, height: size.height)
+            .animation(.easeInOut(duration: 0.18), value: session.inspectorStatus)
+        } else {
+            Group {
+                if let error = session.errorMessage {
+                    CompileErrorState(message: error)
+                } else {
+                    CompilingState(firstCompile: true, name: session.displayName)
+                }
+            }
+            .frame(width: OllinApp.defaultWindowSize.width, height: OllinApp.defaultWindowSize.height)
+        }
+    }
+
+    private func flashReloadedToast() {
+        withAnimation { showReloadedToast = true }
+        Task {
+            try? await Task.sleep(for: .seconds(1.6))
+            withAnimation { showReloadedToast = false }
+        }
+    }
+}
+
+// MARK: - Transient states
+
+/// Centered spinner shown while a build is in flight. On the first compile it
+/// owns the stage; on a reload it floats as a frosted card over the held frame.
+private struct CompilingState: View {
+    var firstCompile = false
+    var name = ""
+
+    var body: some View {
+        VStack(spacing: 14) {
+            ProgressView().controlSize(.large)
+            Text("Compiling…").font(.system(size: 15, weight: .semibold))
+            if firstCompile {
+                Text("Building \(name) — the window stays open and your tuned values are preserved across the reload.")
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 280)
             }
         }
-        .frame(width: OllinApp.defaultWindowSize.width, height: OllinApp.defaultWindowSize.height)
+        .padding(26)
+        .background(firstCompile ? AnyShapeStyle(.clear) : AnyShapeStyle(.regularMaterial),
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: .black.opacity(firstCompile ? 0 : 0.25), radius: 16, y: 6)
+    }
+}
+
+/// The compile-error state: the diagnostic lives here in the canvas (never the
+/// sidebar). On a reload it floats over the dimmed last good frame.
+private struct CompileErrorState: View {
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                SwiftUI.Circle().fill(OllinInspector.red.opacity(0.15)).frame(width: 46, height: 46)
+                SwiftUI.Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 20)).foregroundStyle(OllinInspector.red)
+            }
+            Text("Compile failed").font(.system(size: 15, weight: .semibold))
+            Text(message)
+                .font(.system(size: 11.5, design: .monospaced))
+                .textSelection(.enabled)
+                .multilineTextAlignment(.leading)
+                .padding(12)
+                .background(OllinInspector.red.opacity(0.07),
+                            in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(OllinInspector.red.opacity(0.25), lineWidth: 0.5))
+            Text("Last good frame held until the next save.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+        }
+        .padding(26)
+        .frame(maxWidth: 440)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: .black.opacity(0.3), radius: 18, y: 6)
+        .padding(24)
+    }
+}
+
+// MARK: - Window chrome
+
+/// A translucent vibrancy panel — the native sidebar look (sampling what's behind
+/// the window), used as the inspector sidebar's background.
+private struct SidebarVibrancy: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .sidebar
+        view.blendingMode = .behindWindow
+        view.state = .followsWindowActiveState
+        return view
+    }
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {}
+}
+
+/// Hosts a SwiftUI view as a leading or trailing title-bar accessory — a real spot
+/// in the title bar with no toolbar-item button chrome. It owns its `NSHostingView`
+/// so any view holding the window can update the content in place, keeping it a
+/// single instance per edge even if SwiftUI re-creates the representable.
+private final class TitlebarAccessoryVC: NSTitlebarAccessoryViewController {
+    let tag: NSUserInterfaceItemIdentifier
+    private let host = NSHostingView(rootView: AnyView(EmptyView()))
+
+    /// Title-bar height, so the content's `maxHeight: .infinity` centers vertically.
+    var titleBarHeight: CGFloat = 28 { didSet { resize() } }
+
+    init(attribute: NSLayoutConstraint.Attribute, tag: NSUserInterfaceItemIdentifier) {
+        self.tag = tag
+        super.init(nibName: nil, bundle: nil)
+        layoutAttribute = attribute
+        host.identifier = tag
+        view = host
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func update(_ content: AnyView) {
+        host.rootView = content
+        resize()
+    }
+
+    private func resize() {
+        host.setFrameSize(NSSize(width: host.fittingSize.width, height: titleBarHeight))
+    }
+}
+
+/// Mounts a SwiftUI view as a leading or trailing title-bar accessory. The host is
+/// invisible (zero-size); attach with `.background(...)`. Idempotent at the window
+/// level: one accessory per edge, updated in place.
+private struct TitlebarAccessory<Content: View>: NSViewRepresentable {
+    var attribute: NSLayoutConstraint.Attribute = .trailing
+    @ViewBuilder var content: Content
+
+    private var tag: NSUserInterfaceItemIdentifier {
+        NSUserInterfaceItemIdentifier(attribute == .leading ? "ollin.titlebar.leading" : "ollin.titlebar.trailing")
+    }
+
+    func makeNSView(context: Context) -> NSView { NSView(frame: .zero) }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        sync(near: nsView, content: AnyView(content), attempt: 0)
+    }
+
+    @MainActor
+    private func sync(near nsView: NSView, content: AnyView, attempt: Int) {
+        let window = nsView.window ?? NSApp.windows.first {
+            $0.isVisible && !($0 is NSPanel) && $0.styleMask.contains(.titled)
+        }
+        guard let window else {
+            guard attempt < 10 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak nsView] in
+                guard let nsView else { return }
+                sync(near: nsView, content: content, attempt: attempt + 1)
+            }
+            return
+        }
+        let titleBarHeight = max(28, window.frame.height - window.contentLayoutRect.height)
+        let tag = self.tag
+        if let existing = window.titlebarAccessoryViewControllers
+            .compactMap({ $0 as? TitlebarAccessoryVC }).first(where: { $0.tag == tag }) {
+            existing.titleBarHeight = titleBarHeight
+            existing.update(content)
+        } else {
+            let accessory = TitlebarAccessoryVC(attribute: attribute, tag: tag)
+            accessory.titleBarHeight = titleBarHeight
+            accessory.update(content)
+            window.addTitlebarAccessoryViewController(accessory)
+        }
+    }
+}
+
+/// A brief frosted confirmation after a hot reload, top-center of the stage.
+private struct ReloadedToast: View {
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 9) {
+            ZStack {
+                SwiftUI.Circle().fill(OllinInspector.green).frame(width: 16, height: 16)
+                SwiftUI.Image(systemName: "checkmark")
+                    .font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
+            }
+            Text("Reloaded").font(.system(size: 12.5, weight: .medium))
+            Text("#\(count)")
+                .font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .background(.regularMaterial, in: Capsule())
+        .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
     }
 }

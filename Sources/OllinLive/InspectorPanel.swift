@@ -1,81 +1,26 @@
 import SwiftUI
 import Ollin
 
-/// Sidebar inspector for the live host: sketch identity, reload status, live
-/// FPS, the running sketch's `@Param` knobs as sliders, and the last compile
-/// error when a reload fails.
+/// Sidebar inspector for the live host: the shared monitor card (sketch
+/// identity · Frame/Reloads · timecode clock · performance strip) over the
+/// running sketch's `@Param` knobs. The card and parameter list are the same
+/// views the standalone detached panel uses, so the two never drift. The
+/// reload status lives in the window toolbar (see `LiveRootView`), and a compile
+/// error shows in the canvas — neither is repeated here.
 struct InspectorPanel: View {
     let session: LiveSession
 
     var body: some View {
-        Form {
-            Section("Sketch") {
-                LabeledContent("Name", value: session.title)
-                LabeledContent("File", value: session.displayName)
-            }
-            Section("Live reload") {
-                LabeledContent("Status", value: session.status.label)
-                LabeledContent("Reloads", value: "\(session.reloadCount)")
-            }
-            Section("Performance") {
-                let stats = session.stats
-                LabeledContent("FPS", value: stats.hasData
-                    ? String(format: "%.0f", stats.fps) : "—")
-                LabeledContent("CPU", value: stats.hasData
-                    ? String(format: "%.1f ms", stats.frameTimeMS) : "—")
-                LabeledContent("Geometry", value: stats.hasData
-                    ? "\(stats.vertexCount) v · \(stats.sdfCount) sdf" : "—")
-            }
-            if !session.params.isEmpty {
-                Section("Parameters") {
-                    ForEach(session.params) { handle in
-                        ParamSliderRow(handle: handle) { session.recordParam(handle.name, $0) }
-                            // Recreate (resetting local state) when the underlying
-                            // param instance changes — i.e. on reload.
-                            .id(ObjectIdentifier(handle.param))
-                    }
+        ScrollView {
+            VStack(spacing: 16) {
+                MonitorCardView(
+                    identity: MonitorIdentity(name: session.fileName, folder: session.folder),
+                    stats: session.stats)
+                ParametersListView(params: session.params) { name, value in
+                    session.recordParam(name, value)
                 }
             }
-            if let error = session.errorMessage {
-                Section("Last error") {
-                    Text(error)
-                        .font(.system(.caption, design: .monospaced))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-        }
-        .formStyle(.grouped)
-    }
-}
-
-/// One labelled slider for a `@Param`. Local `@State` drives smooth dragging and
-/// the live readout; `onChange` pushes the value into the live sketch and records
-/// it for persistence. The parent re-creates this view (fresh state) on reload.
-private struct ParamSliderRow: View {
-    let handle: ParamHandle
-    let onChange: (Double) -> Void
-    @State private var value: Double
-
-    init(handle: ParamHandle, onChange: @escaping (Double) -> Void) {
-        self.handle = handle
-        self.onChange = onChange
-        _value = State(initialValue: handle.param.wrappedValue)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(handle.label).font(.callout)
-                Spacer()
-                Text(value, format: .number.precision(.fractionLength(2)))
-                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-            }
-            Slider(value: $value, in: handle.param.range)
-        }
-        .onChange(of: value) { _, newValue in
-            handle.param.wrappedValue = newValue
-            onChange(newValue)
+            .padding(14)
         }
     }
 }

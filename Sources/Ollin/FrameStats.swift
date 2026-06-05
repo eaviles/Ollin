@@ -1,11 +1,15 @@
 import Observation
 
-/// Shared keys for the on-canvas stats overlay.
+/// Shared keys for the detached stats/inspector panel.
 public enum OllinHUD {
-    /// `UserDefaults`/`@AppStorage` key the "Show FPS" command and the overlay
-    /// both bind to, so toggling the menu shows the overlay in any run mode and
-    /// the choice persists across launches.
+    /// `UserDefaults`/`@AppStorage` key the "Show FPS" command and the detached
+    /// panel both bind to, so toggling the menu summons the panel in any run mode
+    /// and the choice persists across launches.
     public static let showStatsKey = "ollin.hud.showStats"
+    /// Window identifier for the floating stats panel, so the standalone app
+    /// delegate can tell it apart from the sketch window (and not quit when only
+    /// the panel is closed).
+    public static let statsPanelID = "ollin.stats.panel"
 }
 
 /// A live snapshot of how the running sketch is performing: frame rate, the CPU
@@ -64,7 +68,7 @@ final class StatsExtension: SketchExtension {
     init(stats: FrameStats) { self.stats = stats }
 
     func afterFrame(_ sketch: Sketch, _ info: FrameInfo) {
-        guard sketch.frameCount % 15 == 0 else { return }   // ~a few Hz
+        guard sketch.frameCount % 6 == 0 else { return }   // ~10 Hz at 60fps (frame-count based, so it scales with the refresh rate)
         stats.update(fps: info.frameRate, frameTimeMS: info.cpuDrawMS,
                      frameCount: sketch.frameCount, time: sketch.time,
                      vertexCount: info.vertexCount, sdfCount: info.sdfCount,

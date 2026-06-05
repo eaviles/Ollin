@@ -385,37 +385,44 @@ private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -
 public struct SketchView: View {
     private let sketch: Sketch
     private let injectedStats: FrameStats?
-    private let showsStatsOverlay: Bool
+    private let showsInspectorPanel: Bool
     private let onRunner: (@MainActor (SketchRunner) -> Void)?
 
     /// Owned stats for standalone/gallery hosts that don't inject their own.
     @State private var ownedStats = FrameStats()
+    /// The floating "Show FPS" inspector panel, summoned by the menu toggle.
+    @State private var statsPanel = StatsPanelController()
     /// The shared toggle the "Show FPS" command flips.
     @AppStorage(OllinHUD.showStatsKey) private var showStats = false
 
-    /// - Parameter showsStatsOverlay: whether this view honors the "Show FPS"
-    ///   toggle with the on-canvas overlay. The live host passes `false` because
-    ///   its inspector already shows the same stats, so the overlay would just
-    ///   duplicate them; standalone and gallery (no inspector) leave it on.
+    /// - Parameter showsInspectorPanel: whether this view honors the "Show FPS"
+    ///   toggle by summoning the detached inspector panel. The live host passes
+    ///   `false` because its sidebar already shows the same content, so the panel
+    ///   would just duplicate it; standalone and gallery (no sidebar) leave it on.
     public init(_ sketch: Sketch,
                 stats: FrameStats? = nil,
-                showsStatsOverlay: Bool = true,
+                showsInspectorPanel: Bool = true,
                 onRunner: (@MainActor (SketchRunner) -> Void)? = nil) {
         self.sketch = sketch
         self.injectedStats = stats
-        self.showsStatsOverlay = showsStatsOverlay
+        self.showsInspectorPanel = showsInspectorPanel
         self.onRunner = onRunner
     }
 
     private var stats: FrameStats { injectedStats ?? ownedStats }
 
     public var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            MetalCanvas(sketch: sketch, stats: stats, onRunner: onRunner)
-            if showStats && showsStatsOverlay {
-                StatsOverlay(stats: stats)
-            }
-        }
+        MetalCanvas(sketch: sketch, stats: stats, onRunner: onRunner)
+            .onAppear { syncPanel() }
+            .onChange(of: showStats) { _, _ in syncPanel() }
+            .onDisappear { statsPanel.close() }
+    }
+
+    /// Reflect the "Show FPS" toggle onto the floating panel. A no-op for hosts
+    /// that opt out (the live host), which have their own inspector.
+    private func syncPanel() {
+        guard showsInspectorPanel else { return }
+        statsPanel.sync(visible: showStats, sketch: sketch, stats: stats)
     }
 }
 
@@ -851,10 +858,17 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
         // SwiftUI's single `Window` scene doesn't reliably honor
         // `applicationShouldTerminateAfterLastWindowClosed`, so quit explicitly
         // when the sketch window closes — Cmd+W then ends the run like Cmd+Q.
+        // Quit only when no real window is left: the floating "Show FPS" panel is
+        // an `NSPanel` (closing *it* mustn't quit), and opening it spins up and
+        // tears down transient helper windows whose close must be ignored too. So
+        // react after the close settles and check what's still on screen.
         NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification, object: nil, queue: .main
         ) { _ in
-            MainActor.assumeIsolated { NSApp.terminate(nil) }
+            DispatchQueue.main.async {
+                let realWindowsLeft = NSApp.windows.contains { $0.isVisible && !($0 is NSPanel) }
+                if !realWindowsLeft { NSApp.terminate(nil) }
+            }
         }
     }
 

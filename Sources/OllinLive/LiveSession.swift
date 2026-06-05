@@ -57,6 +57,23 @@ final class LiveSession {
         return nil
     }
 
+    /// The watcher state mapped onto the shared inspector chip.
+    var inspectorStatus: InspectorStatus {
+        switch status {
+        case .compiling: return .compiling
+        case .watching: return .watching
+        case .error: return .error
+        }
+    }
+
+    /// The source file's name (`Sketch.swift`) for the monitor card header.
+    var fileName: String { (sketchPath as NSString).lastPathComponent }
+
+    /// The source file's folder, home-abbreviated (`~/Live/Parameters`).
+    var folder: String {
+        ((sketchPath as NSString).deletingLastPathComponent as NSString).abbreviatingWithTildeInPath
+    }
+
     @ObservationIgnored private let loader: SketchLoader
     @ObservationIgnored private let sketchPath: String
     @ObservationIgnored private let keepClock: Bool
