@@ -56,18 +56,21 @@ struct LiveRootView: View {
         }
         .navigationTitle(session.title)
         .background(TitlebarAccessory(attribute: .leading) {
-            Button { sidebarShown.toggle() } label: {
-                SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
+            HStack(spacing: 10) {
+                SwiftUI.Rectangle().fill(.separator).frame(width: 1, height: 22)   // divider after the traffic lights
+                Button { sidebarShown.toggle() } label: {
+                    SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
             }
-            .buttonStyle(.borderless)
-            .foregroundStyle(.secondary)
             .padding(.leading, 8)
             .frame(maxHeight: .infinity)
         })
         .background(TitlebarAccessory(attribute: .trailing) {
             HStack(spacing: 0) {
                 StatusChip(status: session.inspectorStatus)
-                SwiftUI.Color.clear.frame(width: 14, height: 1)
+                SwiftUI.Color.clear.frame(width: 22, height: 1)
             }
             .padding(.leading, 12)
             .frame(maxHeight: .infinity)
@@ -76,8 +79,15 @@ struct LiveRootView: View {
         // is the toolbar background. (The taller bar comes from the unified toolbar
         // style in `OllinLiveApp`.)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text(session.title).font(.system(size: 13.5, weight: .semibold))
+            if #available(macOS 26.0, *) {
+                ToolbarItem(placement: .principal) {
+                    Text(session.title).font(.system(size: 13.5, weight: .semibold))
+                }
+                .sharedBackgroundVisibility(.hidden)   // drop the Tahoe glass capsule around the title
+            } else {
+                ToolbarItem(placement: .principal) {
+                    Text(session.title).font(.system(size: 13.5, weight: .semibold))
+                }
             }
         }
         .toolbarBackground(OllinInspector.titleBarGradient(colorScheme), for: .windowToolbar)
@@ -275,6 +285,9 @@ private struct TitlebarAccessory<Content: View>: NSViewRepresentable {
             }
             return
         }
+        // A hairline under the title bar, so it reads as distinct from the sidebar
+        // below (both are similar dark tones).
+        window.titlebarSeparatorStyle = .line
         let titleBarHeight = max(28, window.frame.height - window.contentLayoutRect.height)
         let tag = self.tag
         if let existing = window.titlebarAccessoryViewControllers
