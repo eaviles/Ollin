@@ -27,6 +27,22 @@ drawCircle(x, height / 2, 40 * scale)
 
 The input `t` is clamped to `0...1` first, so values past the ends hold flat. The output is *not* clamped: the back, elastic, and bounce curves overshoot the range on purpose and settle exactly on the endpoints.
 
+```
+  Each curve reshapes a 0→1 progress (x) into a 0→1 output (y):
+
+   linear          easeIn          easeOut         easeInOut
+    │     ╱          │     ╱         │   ╭───        │     ╭─
+    │   ╱            │    ╱          │  ╱            │    ╱
+    │ ╱              │  ╱            │ ╱             │  ╱
+    ●────            ●─╯──           ●────           ●╯───
+   constant rate    slow → fast     fast → slow     slow-fast-slow
+
+  back, elastic, and bounce overshoot past 0 and 1 before settling:
+    back     dips below 0, then overshoots past 1
+    elastic  springs around the target before resting
+    bounce   settles onto the end in shrinking hops
+```
+
 Build a custom curve from any closure:
 
 ```swift

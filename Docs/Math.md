@@ -23,6 +23,19 @@ map(_ value: Double, _ start1: Double, _ stop1: Double, _ start2: Double, _ stop
 
 Linearly re-map `value` from one range onto another. By default it extrapolates past the range; pass `clamp: true` to hold the result inside `start2...stop2`.
 
+```
+  map keeps value at the same FRACTION along, in the new range:
+
+   start1 ├──────────●────────────────┤ stop1     value sits 30% along
+                    30%
+                     │ same fraction
+                     ▼
+   start2 ├──────────●────────────────┤ stop2     result is 30% along
+
+   map(sin(time), -1, 1, 60, 200):   -1 → 60,   0 → 130,   1 → 200
+   with clamp: true, results past the ends hold at start2 / stop2
+```
+
 ```swift
 let r = map(sin(time), -1, 1, 60, 200)   // -1...1 → 60...200
 drawCircle(width / 2, height / 2, r)      // a breathing circle

@@ -83,6 +83,23 @@ Set how text is anchored to the `drawText` position.
 - Horizontal (`TextAlignH`): `.left` (default) starts the text at the x, `.center` centers it, `.right` ends it at the x.
 - Vertical (`TextAlignV`): `.baseline` (default, like p5) sits the first line's baseline on the y; `.top` / `.bottom` align the block's top / bottom edge; `.middle` centers the whole block.
 
+```
+  textAlign(h, v) — how the text anchors to the (x, y) you pass (● = that point).
+
+  Horizontal (● marks the x):
+     .left     ●Hello        text starts at the x
+     .center    Hel●lo       text is centered on the x
+     .right     Hello●       text ends at the x
+
+  Vertical (● marks the y), shown on a two-line block:
+     ┌─●─ .top      block's top edge on the y
+     │ first line
+     ●   .middle    block centered on the y
+     │ second line
+     └─●─ .bottom   block's bottom edge on the y
+     .baseline (default): the first line's baseline sits on the y
+```
+
 ```swift
 textAlign(.center, .top)
 drawText("two\nlines", width / 2, 100)   // centered, growing downward from y = 100
@@ -320,6 +337,20 @@ textDescent() -> Double     // baseline down to the bottom of the lowest descend
 textLeading() -> Double     // baseline-to-baseline distance (what `\n` advances by)
 textBounds(_ string: String, _ x: Double, _ y: Double) -> Rectangle
 textBounds(_ string: String, at position: Vector2) -> Rectangle
+```
+
+```
+  Type metrics, measured from the baseline (the y you pass to drawText):
+
+        ┌─────────────────────────  ascender line
+        │   A b k l d            (tops of the tall glyphs)
+   ─────┼─────────────────────────  baseline  ← drawText's y sits here
+        │   g p y q             (bottoms of the descenders)
+        └─────────────────────────  descender line
+
+   textAscent()   baseline → ascender line    (height above)
+   textDescent()  baseline → descender line   (depth below)
+   textLeading()  baseline → next baseline    (line spacing; one '\n')
 ```
 
 All in points at the current `textFont` / `textSize`, for both font kinds. `textBounds` returns the box `string` would occupy if drawn at `(x, y)` with the current alignment — handy for backings, layout, and hit-testing.

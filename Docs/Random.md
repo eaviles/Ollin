@@ -45,6 +45,16 @@ randomGaussian(mean: Double, deviation: Double) -> Double
 
 A normally-distributed random `Double` (Marsaglia polar method): standard normal, or with the given mean and standard deviation. Reads as more natural scatter than the flat spread of `random`. See the `Gaussian` example.
 
+```
+  Bell-curve scatter: samples cluster near the mean, thin out farther away.
+
+            ▁▄█▄▁
+          ▁▄█████▄▁          ~68% land within 1 deviation (d) of the mean
+        ▁▄█████████▄▁        ~95% within 2 deviations
+      ────┼────┼────┼────
+         m−d   m   m+d
+```
+
 ```swift
 let x = randomGaussian(mean: width / 2, deviation: 80)  // clustered near the middle
 drawCircle(x, height / 2, 4)
@@ -74,6 +84,20 @@ ring(innerRadius: Double, outerRadius: Double) -> Vector2
 ```
 
 A random point in the annulus between the two radii, centered on the origin. Add a center to place it. See the `Ring` example.
+
+```
+  ring(innerRadius: r, outerRadius: R) — a uniform point in the band
+  between the two radii, centered on the origin (O):
+
+         ___________
+       ╱   _______   ╲
+      ╱   ╱  hole ╲   ╲     • lands anywhere in the shaded band
+     │   │    ·O   │   │      (farther than r, closer than R)
+      ╲   ╲_______╱   ╱     • never inside the inner hole
+       ╲___r____R____╱
+
+   add a center to place it:  center + ring(innerRadius: r, outerRadius: R)
+```
 
 ```swift
 let center = Vector2(width / 2, height / 2)

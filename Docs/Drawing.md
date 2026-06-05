@@ -94,6 +94,16 @@ strokeAlign(_ align: StrokeAlign)   // .center (default), .inside, .outside
 
 Where the stroke sits relative to a shape's outline. `.center` straddles the edge — half the weight inside, half outside — which is the default and what p5 / Processing do. `.inside` keeps the whole stroke within the shape, so its footprint doesn't change as the weight grows (handy for tiled grids, where an outward border would overlap its neighbors); `.outside` puts the stroke entirely beyond the edge. State, like `strokeWeight`; it holds until changed.
 
+```
+  strokeAlign — where the stroke weight sits across the shape's edge:
+
+            inside │ outside
+   .center    ▓▓▓▓▓│▓▓▓▓▓     straddles the edge (default, like p5)
+   .inside    ▓▓▓▓▓│          all weight inward; footprint unchanged
+   .outside        │▓▓▓▓▓     all weight outward
+                shape edge
+```
+
 ```swift
 fill(.gray); stroke(.black); strokeWeight(20)
 strokeAlign(.inside)
@@ -112,6 +122,19 @@ strokeJoin(_ join: StrokeJoin)   // .miter (default), .bevel, .round
 
 How a stroked path turns its corners. `.miter` extends the two outer edges until they meet at a sharp point — what keeps a chevron or a star's tips crisp — and falls back to a flat bevel when a corner is acute enough that the point would shoot out into a long spike. `.bevel` always cuts the corner off with a straight edge; `.round` fills it with an arc, for a smooth bend. State, like `strokeWeight`; it holds until changed.
 
+```
+  strokeJoin — how a stroked path turns a corner:
+
+     .miter            .bevel            .round
+       ╱╲               ╱──╲              ╱‾‾╲
+      ╱  ╲             ╱    ╲            ╱    ╲
+   sharp point      corner cut off    corner filled
+   where edges meet  with a flat edge  with an arc
+
+   .miter falls back to a bevel on very sharp corners, so the point
+   can't shoot out into a long spike.
+```
+
 ```swift
 stroke(.black); strokeWeight(20); strokeJoin(.round)
 drawPolyline([Vector2(120, 360), Vector2(540, 120), Vector2(960, 360)])   // a rounded peak
@@ -128,6 +151,15 @@ strokeCap(_ cap: StrokeCap)   // .butt (default), .round, .square
 ```
 
 How the open ends of a stroked path are finished. `.butt` ends the stroke flat at the endpoint — its footprint stops exactly where the path does. `.round` adds a half-disk over each end (a rounded tip), and `.square` adds a flat extension half the stroke weight past the endpoint, so both `.round` and `.square` reach beyond the path's end by half the weight. State, like `strokeWeight`; it holds until changed.
+
+```
+  strokeCap — how the open ENDS of a stroked path finish:
+
+   path  ●━━━━━━━━━┫ endpoint
+   .butt           ┃     flat at the endpoint (no overshoot)
+   .round          ┃)    rounded — reaches ½ the weight past the end
+   .square         ┃]    squared off — ½ the weight past the end
+```
 
 ```swift
 stroke(.black); strokeWeight(24); strokeCap(.round)
@@ -146,6 +178,16 @@ solid()
 ```
 
 Draw region shapes (circle, rect, star, triangle, heart, …) as a constant-width band hugging their outline instead of a solid interior — the same shape `drawRing` is to a circle, for every shape. The `fill` color paints the band, and an active `stroke` borders *both* of its edges, so you can frame a hollow shape in a second color (something a stroke alone can't do, since that would be the only band). `width` is the band thickness, centered on the edge. State, like `fill` and `stroke`; `solid()` returns to filled shapes. Points, lines, and `drawRing` (already a band) ignore it.
+
+```
+  hollow(w) — draw a region shape as a band of width w hugging the
+  outline, instead of a solid interior (what drawRing is to a circle):
+
+   solid()           hollow(w)
+    ▓▓▓▓▓              ▓▓▓▓▓
+    ▓▓▓▓▓              ▓   ▓     fill paints the band;
+    ▓▓▓▓▓              ▓▓▓▓▓     an active stroke borders BOTH edges
+```
 
 ```swift
 hollow(16)
@@ -314,6 +356,20 @@ drawTriangle(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ x3: Doubl
 
 A triangle, in three forms. The three-argument form is an **equilateral** triangle *centered* at `(x, y)`, point-up, with circumradius `radius` (the center-to-vertex distance, like `drawCircle`'s radius) — rotating it spins it about that center. The four-argument form is an **isosceles** triangle whose *apex* (tip) is at `(x, y)`, opening toward +y (downward) by `height`, with the given `base` width — rotating it sweeps it about the apex. The **three-point** form places the corners directly, so any triangle is one call (the corners may be in any winding order; a zero-area triangle draws nothing). All are analytic SDF shapes — crisp at any size, effectively free per triangle, and they honor `strokeAlign` and `hollow`; aim them with the transform stack.
 
+```
+  The three forms differ by which point anchors the triangle:
+
+   3-arg equilateral      4-arg isosceles       3-point
+   centered on (x, y),    apex at (x, y),        corners a, b, c
+   circumradius r         opens down by height   placed directly
+          ▲                   ●(x, y)              a ●
+         ╱ ╲                 ╱   ╲                  ╱ ╲
+        ╱ ●(x,y)            ╱     ╲                ╱   ╲
+       ╱──r──╲             ╱─ base ─╲           b ●─────● c
+   rotate spins it       rotate sweeps it      any triangle,
+   about the center      about the apex        any corner order
+```
+
 ```swift
 drawTriangle(width / 2, height / 2, 120)              // equilateral, centered, point-up
 drawTriangle(width / 2, 100, 160, 240)               // isosceles, tip at (w/2, 100)
@@ -336,6 +392,22 @@ An elliptical arc sweeping from `start` to `stop` (radians, measured from the po
 - `.chord` — close with a straight chord between the endpoints; the stroke traces it and the fill is that segment.
 - `.pie` — close through the center like a pie slice; the stroke traces both radii and the fill is the wedge.
 
+```
+  Angles are measured from +x and increase CLOCKWISE (because y is down):
+
+          0 = +x axis
+  (cx,cy) ●──────────►
+          │╲  start
+          │ ╲
+          ▼  ╲ sweeps to stop  ↘ (increasing angle)
+          y
+
+  mode — how the two ends close (this sets both the stroke and the fill):
+   .open    stroke the curve only; the fill is the segment under the chord
+   .chord   a straight chord joins the two endpoints
+   .pie     close through the center — a pie wedge
+```
+
 ```swift
 drawArc(width / 2, height / 2, 160, 90, start: 0, stop: .pi)              // open half-arc
 drawArc(width / 2, height / 2, 120, 120, start: 0, stop: .pi / 2, mode: .pie)
@@ -351,6 +423,16 @@ drawBezier(_ x1: Double, _ y1: Double, _ cx: Double, _ cy: Double, _ x2: Double,
 ```
 
 A **quadratic** Bézier curve, stroked from `start` to `end` and bending toward the single control point `control`. It takes the current `stroke` color and `strokeWeight` (a curve has no interior, so there's no fill), with round caps at the ends — like a curved `drawLine`. It's one analytic SDF stroke, so it's exact and crisp at any size with no tessellation, and stays smooth down to sub-pixel widths.
+
+```
+  drawBezier(start, control, end) — a quadratic curve from start to end,
+  bent toward the one control point (it leans toward it, never reaches it):
+
+               ● control
+             ·     ·
+           ·         ·        the curve only touches
+   start ●·            ·● end   start and end
+```
 
 For a **cubic** curve (two control points) or a chain of joined curves, sample the curve into a `Shape` contour and use `drawShape` — that path takes any number of points and can be filled.
 
@@ -807,6 +889,26 @@ To vary the style per shape — a different color or radius each — drop back t
 
 ### Transforms and state
 
+Transforms move, turn, and stretch the **coordinate system**, not the shapes you've already drawn — every draw call *after* one is measured in the new frame. They stack (each builds on the previous), and they reset every frame, so `draw()` always starts from the top-left origin. Wrap them in [`withState { }`](#isolated) to keep a transform local.
+
+```
+  A transform moves the coordinate FRAME; later drawing rides along.
+
+  translate(tx, ty): origin shifts        rotate(θ): axes turn (CW, y-down)
+     (0,0)──►x                              (0,0)──►x
+        ╲                                      │╲ θ
+         ↘ +──►x'   drawCircle(0,0)            ▼ ╲
+           │        now lands at (tx,ty)       y  ►x'
+
+  scale(s): one unit becomes s units
+     ●──►            ●──────►
+
+  Order matters — the LAST transform is the one nearest the shape:
+     translate(p); rotate(θ)  →  move to p, then spin in place   (a top)
+     rotate(θ); translate(p)  →  spin the frame, then move along
+                                 its now-tilted axes              (an orbit)
+```
+
 <a name="translate"></a>
 
 #### translate
@@ -865,6 +967,15 @@ withState(_ body: () -> Void)
 ```
 
 Run `body` with the current transform and style saved, then restored. The scoped form of `pushState`/`popState`, and the one to reach for.
+
+```
+  withState { } saves the whole transform + style, runs the body, restores:
+
+   state A ──save──► copy A'  (translate/rotate/fill… apply here) ──restore──► state A
+                        the changes stay inside the braces
+
+  Like scribbling on a fresh sheet laid over your drawing, then lifting it off.
+```
 
 ```swift
 withState {
