@@ -34,6 +34,15 @@ struct LiveRootView: View {
         session.sketch.map { OllinApp.windowSize(for: $0) } ?? OllinApp.defaultWindowSize
     }
 
+    /// A scrim laid over the sidebar vibrancy so the panel reads over a bright
+    /// background. Tints toward the design's solid sidebar tone (dark `#232325`,
+    /// light `#F4F4F5`) but keeps some translucency.
+    private var sidebarScrim: SwiftUI.Color {
+        colorScheme == .dark
+            ? SwiftUI.Color(red: 0x23 / 255, green: 0x23 / 255, blue: 0x25 / 255).opacity(0.72)
+            : SwiftUI.Color(red: 0xF4 / 255, green: 0xF4 / 255, blue: 0xF5 / 255).opacity(0.72)
+    }
+
     // A sidebar + sketch row under the redesign's tall gradient title bar. The bar
     // is a *unified* window toolbar (see `OllinLiveApp`) — genuinely taller, so
     // macOS centers the traffic lights and `.contentSize` accounts for it with no
@@ -47,12 +56,27 @@ struct LiveRootView: View {
             if sidebarShown {
                 InspectorPanel(session: session)
                     .frame(width: Self.sidebarWidth, height: sketchDisplaySize.height)
-                    .background(SidebarVibrancy())
+                    .background {
+                        // Vibrancy keeps the translucent feel, but a scrim toward
+                        // the design's solid sidebar tone keeps the panel readable
+                        // when the window sits over a bright background (the
+                        // `.behindWindow` material alone washes out over white).
+                        ZStack {
+                            SidebarVibrancy()
+                            sidebarScrim
+                        }
+                    }
                     .overlay(alignment: .trailing) {
-                        SwiftUI.Rectangle().fill(.separator).frame(width: 0.5)
+                        SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(width: 0.5)
                     }
             }
             detail
+        }
+        // A hairline under the title bar, framing the content off the gradient
+        // bar (the design's title-bar border-bottom). It reads over the dark
+        // sidebar; over a light sketch the canvas edge already separates them.
+        .overlay(alignment: .top) {
+            SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
         }
         .navigationTitle(session.title)
         .background(TitlebarAccessory(attribute: .leading) {
@@ -285,9 +309,10 @@ private struct TitlebarAccessory<Content: View>: NSViewRepresentable {
             }
             return
         }
-        // A hairline under the title bar, so it reads as distinct from the sidebar
-        // below (both are similar dark tones).
-        window.titlebarSeparatorStyle = .line
+        // We draw our own hairline under the title bar (the content's top overlay
+        // in `body`), in the design's `--sep` tone — so suppress the system one,
+        // which doesn't read against the custom gradient and would risk a double line.
+        window.titlebarSeparatorStyle = .none
         let titleBarHeight = max(28, window.frame.height - window.contentLayoutRect.height)
         let tag = self.tag
         if let existing = window.titlebarAccessoryViewControllers

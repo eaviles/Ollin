@@ -77,6 +77,14 @@ public enum OllinInspector {
         return LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom)
     }
 
+    /// The hairline separator color from the design tokens (`--sep`): dark
+    /// `rgba(255,255,255,0.085)`, light `rgba(0,0,0,0.09)`. The card-internal
+    /// rules use it; exposed so the live host draws the same window-chrome
+    /// hairlines (under the title bar, at the sidebar's edge).
+    public static func separator(_ scheme: ColorScheme) -> SwiftUI.Color {
+        Palette.resolve(scheme).separator
+    }
+
     /// `HH:MM:SS.x` — the clock hero. Tenths match the ~4 Hz stats refresh.
     public static func timecode(_ seconds: Double) -> String {
         let s = max(0, seconds)
