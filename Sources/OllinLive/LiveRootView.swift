@@ -24,6 +24,7 @@ struct LiveRootView: View {
     /// the sketch (+ sidebar), non-resizable, and shrinks it to just the sketch on
     /// collapse.
     @State private var sidebarShown = true
+    @Environment(\.colorScheme) private var colorScheme
 
     /// The sketch's on-screen size (or the default before one loads). The sidebar
     /// and sketch are framed to this height so the layout is rigid and
@@ -33,12 +34,14 @@ struct LiveRootView: View {
         session.sketch.map { OllinApp.windowSize(for: $0) } ?? OllinApp.defaultWindowSize
     }
 
-    // A sidebar + sketch row, sized to its content. The native title bar carries
-    // the sidebar toggle (leading) and status chip (trailing) as accessories; the
-    // sidebar is a translucent vibrancy panel. (A custom gradient title bar was
-    // attempted but a SwiftUI `WindowGroup` won't release the native title-bar
-    // height — see the note in `CustomTitleBarWindow` history — so the native bar
-    // stays, which keeps the traffic lights aligned and avoids dead space.)
+    // A sidebar + sketch row under the redesign's tall gradient title bar. The bar
+    // is a *unified* window toolbar (see `OllinLiveApp`) — genuinely taller, so
+    // macOS centers the traffic lights and `.contentSize` accounts for it with no
+    // dead space (hiding the native bar instead leaves its height reserved). The
+    // toggle (leading) and status chip (trailing) ride as title-bar accessories so
+    // they avoid the toolbar's button capsule; the title is the toolbar's principal
+    // item; the gradient is the toolbar background. The sidebar is a translucent
+    // vibrancy panel.
     var body: some View {
         HStack(spacing: 0) {
             if sidebarShown {
@@ -69,6 +72,16 @@ struct LiveRootView: View {
             .padding(.leading, 12)
             .frame(maxHeight: .infinity)
         })
+        // The centered title is the unified toolbar's principal item; the gradient
+        // is the toolbar background. (The taller bar comes from the unified toolbar
+        // style in `OllinLiveApp`.)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(session.title).font(.system(size: 13.5, weight: .semibold))
+            }
+        }
+        .toolbarBackground(OllinInspector.titleBarGradient(colorScheme), for: .windowToolbar)
+        .toolbarBackground(.visible, for: .windowToolbar)
         .task { session.start() }
         .onChange(of: session.reloadCount) { _, _ in flashReloadedToast() }
     }

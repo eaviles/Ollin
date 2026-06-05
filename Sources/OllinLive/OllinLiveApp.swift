@@ -55,6 +55,10 @@ struct OllinLiveApp: App {
         .defaultSize(width: OllinApp.defaultWindowSize.width + LiveRootView.sidebarWidth,
                      height: OllinApp.defaultWindowSize.height)
         .windowResizability(.contentSize)
+        // A unified (taller) title bar for the redesign's gradient bar: macOS
+        // centers the traffic lights and `.contentSize` accounts for the height, so
+        // there's no reserved dead space (hiding the native bar leaves it behind).
+        .windowToolbarStyle(.unified(showsTitle: false))
         // No "Show FPS" command here: the inspector panel is the live host's
         // stats display, so the floating overlay would only duplicate it.
     }

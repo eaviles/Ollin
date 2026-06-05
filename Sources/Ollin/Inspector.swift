@@ -63,6 +63,20 @@ public enum OllinInspector {
     public static let amber = SwiftUI.Color(red: 0xFF / 255, green: 0x9F / 255, blue: 0x0A / 255)
     public static let red = SwiftUI.Color(red: 0xFF / 255, green: 0x45 / 255, blue: 0x3A / 255)
 
+    /// The title-bar gradient from the design tokens (dark `#2B2B2D`→`#262628`,
+    /// light `#E6E6E8`→`#EDEDEF`).
+    public static func titleBarGradient(_ scheme: ColorScheme) -> LinearGradient {
+        let top: SwiftUI.Color, bottom: SwiftUI.Color
+        if scheme == .dark {
+            top = SwiftUI.Color(red: 0x2B / 255, green: 0x2B / 255, blue: 0x2D / 255)
+            bottom = SwiftUI.Color(red: 0x26 / 255, green: 0x26 / 255, blue: 0x28 / 255)
+        } else {
+            top = SwiftUI.Color(red: 0xE6 / 255, green: 0xE6 / 255, blue: 0xE8 / 255)
+            bottom = SwiftUI.Color(red: 0xED / 255, green: 0xED / 255, blue: 0xEF / 255)
+        }
+        return LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom)
+    }
+
     /// `HH:MM:SS.x` — the clock hero. Tenths match the ~4 Hz stats refresh.
     public static func timecode(_ seconds: Double) -> String {
         let s = max(0, seconds)
