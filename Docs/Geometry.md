@@ -68,6 +68,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
   lengthSquared = 3² + 4² = 25     (skip the √ when you only compare)
 ```
 
+**In a sketch:** turn a distance or a speed into something you can see — a dot that grows as the mouse nears, or a trail that reacts to how fast it moves (`velocity.length`).
+
 **`normalized`** — the same direction rescaled to length exactly 1 (a "unit vector"). Handy when you want a pure heading and will set the length yourself. Returns `.zero` if `v` has no length to scale.
 
 ```
@@ -76,6 +78,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
     ●═══════════►               ●══►
         same heading, divided by its own length
 ```
+
+**In a sketch:** the move-toward-a-target trick — `pos += (target - pos).normalized * speed` steps a fixed amount the right way, however far the target is.
 
 **`angle`** — the direction as one number: the angle of the arrow from the `+x` axis, in radians (`atan2(y, x)`). `Vector2(angle:length:)` is the inverse, building an arrow from an angle and a length.
 
@@ -88,6 +92,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
    +y
 ```
 
+**In a sketch:** point a shape the way it's heading — `rotate(velocity.angle)` before you draw, so an arrow or a fish faces where it's going.
+
 **`perpendicular`** — a quarter turn, swapping and negating the components: `(x, y) → (−y, x)`. Useful for offsetting to the side of a line (e.g. giving a stroke its width).
 
 ```
@@ -98,6 +104,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
     ▼                      (clockwise on screen, y-down)
     ● v.perpendicular = (0, 3)
 ```
+
+**In a sketch:** the sideways direction — give a freehand line real thickness by stepping out both ways, or make a thing strafe or orbit.
 
 <a name="v2-arithmetic"></a>
 
@@ -115,12 +123,16 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
   −v    : same length, opposite direction
 ```
 
+**In a sketch:** `target - pos` is the arrow pointing from one point to another — the seed of every chase, spring, and look-at. `pos += velocity` is how anything moves.
+
 **`*` / `/` by a scalar** — stretch or shrink the arrow, keeping its heading (negative flips it). The scalar can sit on either side. (Plus the in-place `*=` / `/=`.)
 
 ```
   ●──►v        ●──────►v * 2        ◄──● v * -1
               (twice as long)      (flipped)
 ```
+
+**In a sketch:** set how big a step is — `direction * speed` to go faster, or `* deltaTime` so motion runs the same on any machine.
 
 <a name="v2-measuring"></a>
 
@@ -137,6 +149,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
          ● b
 ```
 
+**In a sketch:** proximity effects — connect dots closer than N, fade things by how near they are, or push neighbours apart when they crowd. (Use the squared form inside big loops to skip the slow `√`.)
+
 **`dot(_:)`** — one number measuring how much two vectors point the *same way*: `ax·bx + ay·by`, which equals `|a|·|b|·cos θ`. Its sign alone tells you the rough relationship.
 
 ```
@@ -147,6 +161,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
      ╲θ            θ = 90°  → dot = 0   (perpendicular)
       ◄ b          θ > 90°  → dot < 0   (aim opposite ways)
 ```
+
+**In a sketch:** "same way or opposite?" and "in front of me or behind?" — the basis of simple lighting (how squarely a surface faces the light) and field-of-view checks.
 
 **`cross(_:)`** — the 2D "perp-dot", `ax·by − ay·bx`, also one number. Its *magnitude* is the area of the parallelogram the two vectors span; its *sign* tells you the turn direction from `a` to `b`.
 
@@ -165,6 +181,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
      cross = 0   a and b are parallel  →  area 0
 ```
 
+**In a sketch (2D):** the sign answers "is the target on my left or my right?", so a creature can turn the short way toward it. Summed around a shape's points it gives the area and which way the shape winds.
+
 **`angle(to:)`** — the *signed* angle from `a` to `b`, in `−π…π` (it's `atan2(cross, dot)`). Unlike `b.angle − a.angle`, it never wraps and tells you which way to turn.
 
 ```
@@ -175,6 +193,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
      ╲θ              < 0 the other
       ◄ b
 ```
+
+**In a sketch:** swivel to face something smoothly — rotate by a fraction of `heading.angle(to: toTarget)` each frame and a creature tracks the mouse.
 
 <a name="v2-producing"></a>
 
@@ -191,6 +211,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
             midpoint at t = 0.5
 ```
 
+**In a sketch:** the easiest smooth-follow there is — `pos = pos.lerp(to: target, 0.1)` makes anything glide after the mouse with a soft lag. Also midpoints and in-betweens.
+
 **`rotated(by:)` / `rotated(by:around:)`** — spin the arrow by an angle, about the origin or about a given pivot point.
 
 ```
@@ -203,6 +225,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
             ► result        (positive θ turns clockwise, y-down)
 ```
 
+**In a sketch:** lay things out in a ring, orbit a moon around a planet, or swing a clock hand with `rotated(by:around:)` about its pivot.
+
 **`limited(to:)`** — clamp the length to a maximum, keeping the direction. Shorter vectors pass through untouched (e.g. a velocity cap).
 
 ```
@@ -211,6 +235,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
     len ≤ m :  ●─────►v           returned unchanged
     len > m :  ●──────────►v  →   ●─────► length m
 ```
+
+**In a sketch:** keep speeds from blowing up — `vel = vel.limited(to: maxSpeed)` is the staple that keeps flocking and steering stable.
 
 **`projected(onto:)`** — the part of `a` that lies along `b`: `a`'s shadow cast straight down onto `b`'s line.
 
@@ -226,7 +252,11 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
    projected(onto: b)
 ```
 
+**In a sketch:** snap a point onto a guide line, find the nearest spot on a path, or split a bounce into "along the wall" and "into the wall".
+
 **`with(x:)` / `with(y:)`** — a copy with one component replaced (the other kept). `p.with(y: 0)` flattens a point onto the top edge, for instance.
+
+**In a sketch:** pin one axis — drop points to the top edge with `.with(y: 0)`, or let x scroll while y holds still.
 
 <a name="v2-together"></a>
 
