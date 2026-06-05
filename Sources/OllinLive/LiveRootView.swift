@@ -5,9 +5,9 @@ import Ollin
 /// Shared chrome tokens for the live host.
 private enum LiveChrome {
     /// Opacity for the frosted-chrome tints — the sidebar scrim and the reload
-    /// toast — so they read as one translucency. It's the tint's alpha over the
-    /// material blur: higher is more opaque (less see-through).
-    static let tintOpacity: Double = 0.55
+    /// toast. Shared with the standalone stats panel via `OllinInspector`, so the
+    /// live host and the panel read as one translucency.
+    static let tintOpacity = OllinInspector.chromeTintOpacity
 
     /// `--win-bg`: the stage fill behind the full-stage transient screens
     /// (compiling, compile error). Opaque, since they cover the canvas.

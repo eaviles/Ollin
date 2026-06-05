@@ -63,6 +63,11 @@ public enum OllinInspector {
     public static let amber = SwiftUI.Color(red: 0xFF / 255, green: 0x9F / 255, blue: 0x0A / 255)
     public static let red = SwiftUI.Color(red: 0xFF / 255, green: 0x45 / 255, blue: 0x3A / 255)
 
+    /// Shared opacity for the host chrome's frosted tints — the live host's sidebar
+    /// scrim and reload toast, and the standalone stats panel — so they read as one
+    /// translucency. The tint's alpha over the material blur: higher is more opaque.
+    public static let chromeTintOpacity: Double = 0.55
+
     /// The title-bar gradient from the design tokens (dark `#2B2B2D`→`#262628`,
     /// light `#E6E6E8`→`#EDEDEF`).
     public static func titleBarGradient(_ scheme: ColorScheme) -> LinearGradient {
@@ -169,15 +174,17 @@ public struct StatusChip: View {
 
 // MARK: - Monitor card
 
-/// Identity for the card header: the source filename and its folder. The
-/// detached panel for a standalone sketch has no source file, so both are
-/// optional — pass just a name (the sketch title) and the path line is dropped.
+/// Identity for the card header: the source filename and its folder. The folder
+/// is optional (its line is dropped when nil), as is the leading `icon` — pass
+/// `nil` to omit it (e.g. the standalone panel names the app, not a file).
 public struct MonitorIdentity {
     var name: String
     var folder: String?
-    public init(name: String, folder: String? = nil) {
+    var icon: String?
+    public init(name: String, folder: String? = nil, icon: String? = "doc") {
         self.name = name
         self.folder = folder
+        self.icon = icon
     }
 }
 
@@ -231,16 +238,18 @@ public struct MonitorCardView: View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    SwiftUI.Image(systemName: "doc")
-                        .font(.system(size: 11))
-                        .foregroundStyle(palette.textTertiary)
+                    if let icon = identity.icon {
+                        SwiftUI.Image(systemName: icon)
+                            .font(.system(size: 11))
+                            .foregroundStyle(palette.textTertiary)
+                    }
                     Text(identity.name)
                         .font(.system(size: 13, weight: .semibold))
                         .lineLimit(1)
                 }
                 if let folder = identity.folder {
                     Text(folder)
-                        .font(.system(size: 10.5, design: .monospaced))
+                        .font(.system(size: 10.5))
                         .foregroundStyle(palette.textTertiary)
                         .lineLimit(1)
                         .truncationMode(.middle)

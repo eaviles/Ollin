@@ -9,25 +9,41 @@ import AppKit
 // live. Used in the panel-less run modes (standalone `swift run`, gallery); the
 // live host omits it because its inspector already shows the same content.
 
-/// The detached panel's body: the monitor card (clock · stats) and the sketch's
-/// parameters, with a steady-green `Running` chip (the panel has no file watcher,
-/// so the watch/compile lifecycle doesn't apply). Frosted via `Material`.
+/// The detached panel's body: below a "Parameters" title bar, the same monitor
+/// card (clock · stats) and parameter list as the OllinLive sidebar — a 1:1
+/// mirror, built from the same shared views so the two never drift. Frosted via
+/// `Material`.
 struct DetachedInspectorView: View {
     let identity: MonitorIdentity
     let stats: FrameStats
     let params: [ParamHandle]
 
+    @Environment(\.colorScheme) private var scheme
+
+    /// A scrim toward the design's `--glass` tone, at the shared chrome opacity, so
+    /// the frosted panel isn't too see-through over a bright sketch (the bare
+    /// `Material` alone is).
+    private var panelScrim: SwiftUI.Color {
+        scheme == .dark
+            ? SwiftUI.Color(red: 44 / 255, green: 42 / 255, blue: 48 / 255).opacity(OllinInspector.chromeTintOpacity)
+            : SwiftUI.Color(red: 246 / 255, green: 246 / 255, blue: 248 / 255).opacity(OllinInspector.chromeTintOpacity)
+    }
+
     var body: some View {
-        VStack(spacing: 14) {
-            HStack {
-                Spacer()
-                StatusChip(status: .running)
-            }
+        // Below the native "Parameters"-less title bar (just the sketch title +
+        // its hairline, the window's own `titlebarSeparatorStyle`), the OllinLive
+        // sidebar's content verbatim: the same monitor card and parameter list,
+        // same spacing and padding. The top inset clears the title bar; the
+        // Material (+ scrim) fills behind it.
+        VStack(spacing: 16) {
             MonitorCardView(identity: identity, stats: stats)
             ParametersListView(params: params)
         }
-        .padding(13)
+        .padding(.horizontal, 14)
+        .padding(.top, 8)      // tight under the title bar (safe area already insets the rest)
+        .padding(.bottom, 14)
         .frame(width: 300)
+        .background(panelScrim)
         .background(.regularMaterial)
     }
 }
@@ -46,7 +62,11 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
     func sync(visible: Bool, sketch: Sketch, stats: FrameStats) {
         guard visible else { panel?.orderOut(nil); return }
 
-        let identity = MonitorIdentity(name: sketch.title)   // standalone: no source file
+        // The card identifies the run by app name over the Ollin version (a
+        // standalone sketch has no watched source file + path to name like the live
+        // host does); the window title carries the sketch's own title.
+        let identity = MonitorIdentity(name: ProcessInfo.processInfo.processName,
+                                       folder: "Ollin \(OllinVersion.current)", icon: nil)
         let rootView = DetachedInspectorView(identity: identity, stats: stats,
                                              params: sketch.parameters())
         if let host {
@@ -54,6 +74,7 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
         } else {
             buildPanel(rootView)
         }
+        panel?.title = sketch.title          // window title: "Ollin - <Sketch>"
         panel?.orderFront(nil)
     }
 
@@ -68,10 +89,13 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
         self.host = host
 
         let panel = NSPanel(contentViewController: host)
-        panel.styleMask = [.titled, .closable, .utilityWindow, .nonactivatingPanel]
+        // `.fullSizeContentView` so the content (and its `Material`) fills the whole
+        // panel, *including under the title bar* — without it that top strip is the
+        // panel's clear background showing through (a see-through title bar).
+        panel.styleMask = [.titled, .closable, .utilityWindow, .nonactivatingPanel, .fullSizeContentView]
         panel.titlebarAppearsTransparent = true        // the Material shows through
-        panel.titleVisibility = .visible
-        panel.title = rootView.identity.name
+        panel.titlebarSeparatorStyle = .line           // hairline under the title bar
+        panel.titleVisibility = .visible               // title set per-sketch in `sync`
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.hidesOnDeactivate = false
@@ -83,14 +107,40 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
         panel.delegate = self
         self.panel = panel
 
-        // Float top-right of the main screen, inset 16pt (matches the mockup).
+        // Place it beside the sketch window by default; once the user drags it, the
+        // frame autosave remembers that spot (so we only auto-place when there's no
+        // saved position).
         panel.layoutIfNeeded()
-        if let screen = NSScreen.main {
-            let area = screen.visibleFrame
-            let size = panel.frame.size
-            panel.setFrameOrigin(CGPoint(x: area.maxX - size.width - 16,
-                                         y: area.maxY - size.height - 16))
+        let autosaveName = "ollin.statsPanel.frame"
+        if !panel.setFrameUsingName(autosaveName) {
+            positionBesideSketch(panel)
         }
+        panel.setFrameAutosaveName(autosaveName)
+    }
+
+    /// Default placement: just off the sketch window's right edge, top-aligned
+    /// (flipping to the left edge if there's no room), and the screen's top-right as
+    /// a fallback if the sketch window can't be found.
+    private func positionBesideSketch(_ panel: NSPanel) {
+        let size = panel.frame.size
+        let gap: CGFloat = 12
+        guard let sketch = NSApp.windows.first(where: {
+            $0 !== panel && $0.isVisible && !($0 is NSPanel) && $0.styleMask.contains(.titled)
+        }) else {
+            if let area = NSScreen.main?.visibleFrame {
+                panel.setFrameOrigin(CGPoint(x: area.maxX - size.width - 16,
+                                             y: area.maxY - size.height - 16))
+            }
+            return
+        }
+        let frame = sketch.frame
+        let area = (sketch.screen ?? NSScreen.main)?.visibleFrame
+        var x = frame.maxX + gap
+        if let area, x + size.width > area.maxX {
+            x = frame.minX - gap - size.width   // no room on the right → go left
+        }
+        let y = frame.maxY - size.height        // top-aligned with the sketch window
+        panel.setFrameOrigin(CGPoint(x: x, y: y))
     }
 
     /// The user clicked the panel's close button — keep the menu toggle in sync
@@ -101,7 +151,7 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
     }
 }
 
-/// The "Show FPS" menu command. Add it to a host's scene with
+/// The "Show Inspector" menu command. Add it to a host's scene with
 /// `.commands { OllinHUDCommands() }`; it binds to the shared preference the
 /// detached panel reads, so the menu and panel stay in sync across run modes
 /// (standalone, gallery) and the choice persists.
@@ -112,7 +162,7 @@ public struct OllinHUDCommands: Commands {
 
     public var body: some Commands {
         CommandGroup(after: .toolbar) {
-            Toggle("Show FPS", isOn: $showStats)
+            Toggle("Show Inspector", isOn: $showStats)
                 .keyboardShortcut("/", modifiers: .command)
         }
     }
