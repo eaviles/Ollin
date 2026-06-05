@@ -40,7 +40,7 @@ final class LiveSession {
     /// detail view then builds the runner with it). Later reloads swap inside the
     /// runner, not through this.
     private(set) var sketch: Sketch?
-    private(set) var title = "Ollin Live"
+    private(set) var title = "OllinLive"
     private(set) var status: Status = .compiling
     private(set) var reloadCount = 0
     /// Live performance numbers of the running sketch, refreshed a few times a
@@ -171,7 +171,13 @@ final class LiveSession {
                         self.sketch = newSketch   // first success: the view mounts the runner
                         print("OllinLive: running \(type(of: newSketch)).")
                     }
-                    self.title = newSketch.title
+                    // The live host names its window "OllinLive - <Sketch>" (the
+                    // sketch's own `title` is "Ollin - <Sketch>", which the
+                    // standalone/gallery windows keep).
+                    let sketchTitle = newSketch.title
+                    self.title = sketchTitle.hasPrefix("Ollin")
+                        ? "OllinLive" + sketchTitle.dropFirst("Ollin".count)
+                        : sketchTitle
                     self.status = .watching
                 case .failure(let error):
                     self.fail(error)
