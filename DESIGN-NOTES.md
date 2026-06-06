@@ -49,6 +49,15 @@ Worth pursuing. Swift Playgrounds app (Mac and iPad) App Projects (`.swiftpm`) a
 - **Onboarding nicety:** ship a ready-made `.swiftpm` starter (Ollin pre-wired plus a `HelloCircle`) so users don't hand-add the package URL.
 - **Caveats:** the Playgrounds sandbox restricts file I/O (which matters for the export items, not for drawing); package-dependency UX is finicky; prefer the Swift Playgrounds app's App Projects over the semi-deprecated Xcode Playgrounds. iOS changes need `xcodebuild -destination` with the iOS SDK on a Mac to verify.
 
+## Rendering precision (HDR/float pipeline) (not started)
+
+A 16-bit float linear render target as the compositing substrate, with a final pass that tone-maps and encodes to the 8-bit screen drawable.
+
+- **Why float.** A fixed 8-bit target bands on smooth gradients and clamps every value to [0, 1]. A `rgba16Float` linear intermediate removes both limits: the precision kills banding outright, and values above 1.0 survive, which is the prerequisite for bloom/glow and any HDR-style effect.
+- **The shape.** Draw the frame into an off-screen `rgba16Float` color target, then a single fullscreen pass reads it, applies a tone-map, and writes the sRGB-encoded drawable. The existing pipelines render into the float target unchanged; only the final present pass is new.
+- **Substrate for layered effects.** This is the same off-screen-target capability [layered effects and compositing](#layered-effects-and-compositing-not-started) needs — a texture a sketch draws into and samples — so build the float target first and let the effect graph compose over it.
+- **Cost note.** MSAA tile memory grows fast at float precision (8 samples × 8 bytes per pixel of color), so the MSAA sample count is a real decision at this precision in a way it isn't at 8-bit.
+
 ## Layered effects and compositing (not started)
 
 A planned direction: OPENRNDR-style effects that compose in layers. Draw into off-screen targets, run filters (blur, bloom, feedback, color grades) over them, and composite the results with blend modes. This is the natural home for post-processing, and it fits the extension seam (effects are after-draw passes) and user-supplied shaders (each effect is a fragment shader over a texture).

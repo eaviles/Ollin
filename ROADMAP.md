@@ -37,6 +37,10 @@ Sharing live visuals between Ollin and the other apps on a Mac, the way a perfor
 
 Lightweight 2D physics so motion can come from simulation instead of hand-tuned values: particles, springs, Verlet integration, and simple rigid bodies. No clean Apple-native substrate fits (SpriteKit is a retained-mode scene graph, too heavy to build on), so it's either a small from-scratch particle and Verlet system or a vendored permissively-licensed 2D engine. See the [design notes](DESIGN-NOTES.md#physics-not-started).
 
+## Rendering precision (HDR/float pipeline)
+
+Render into a 16-bit float (`rgba16Float`), linear-light intermediate, then tone-map and encode to the screen in a final pass. Two payoffs: smooth gradients with no 8-bit banding (a float buffer carries precision a fixed 8-bit target can't), and color values above 1.0, which bloom, glow, and HDR-style effects rely on. It's also the precise substrate the [layered effects](#layered-effects-and-compositing) graph wants — off-screen targets a sketch draws into and samples — so the natural order is precision first, the effect graph on top. See the [design notes](DESIGN-NOTES.md#rendering-precision-hdrfloat-pipeline-not-started).
+
 ## Layered effects and compositing
 
 OPENRNDR-style effects that compose in layers: draw into off-screen targets, run filters (blur, bloom, feedback, color grades) over them, and composite with blend modes. The natural home for post-processing, building on the off-screen render path the exporter already uses. Shape, references, and the design are in the [design notes](DESIGN-NOTES.md#layered-effects-and-compositing-not-started).
