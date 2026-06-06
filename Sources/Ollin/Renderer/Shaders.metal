@@ -7,10 +7,60 @@ using namespace metal;
 // the header's text in here before compiling (see composeShaderSource).
 #include "OllinShaderTypes.h"
 
+// MARK: - Color management & dithering
+//
+// The render targets are sRGB-encoded 8-bit, so the hardware blends and resolves
+// MSAA in *linear* light: fragments output linear color and the target encodes
+// to sRGB on store. Incoming colors arrive sRGB-encoded (their on-screen 0–1
+// tones), so they're linearized before compositing — anti-aliased edges and
+// translucent stacks then composite physically, without the too-dark fringes a
+// gamma-space blend leaves behind.
+//
+// A small triangular-PDF dither is then applied in the *output* (sRGB) space,
+// just before the hardware quantizes to 8 bits, to break up the banding that
+// smooth gradients otherwise show at 8-bit. It's a deterministic function of the
+// pixel position, so renders stay reproducible (snapshot tests).
+
+static inline float3 srgbToLinear(float3 c) {
+    float3 lo = c * (1.0 / 12.92);
+    float3 hi = pow(max((c + 0.055) * (1.0 / 1.055), 0.0), float3(2.4));
+    return select(lo, hi, c > 0.04045);
+}
+
+static inline float3 linearToSrgb(float3 c) {
+    c = clamp(c, 0.0, 1.0);
+    float3 lo = c * 12.92;
+    float3 hi = 1.055 * pow(c, float3(1.0 / 2.4)) - 0.055;
+    return select(lo, hi, c > 0.0031308);
+}
+
+// Hash a pixel coordinate to [0, 1) (Dave Hoskins' hash, written from the
+// technique — a few fract/dot rounds, no texture lookup).
+static inline float hash12(float2 p) {
+    float3 p3 = fract(float3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+// Triangular-PDF dither in [-1, 1]: the difference of two uniform samples, the
+// right noise shape for de-banding a quantizer.
+static inline float ditherTriangle(float2 fragCoord) {
+    return hash12(fragCoord) - hash12(fragCoord + 17.0);
+}
+
+// Apply ~1 LSB of dither to a linear straight-alpha color in 8-bit sRGB output
+// space, returning linear (the sRGB target re-encodes, so the round-trip lands
+// the dither exactly where the quantization happens).
+static inline float4 finalizeColor(float4 linearColor, float2 fragCoord) {
+    float3 enc = linearToSrgb(linearColor.rgb);
+    enc = clamp(enc + ditherTriangle(fragCoord) * (1.0 / 255.0), 0.0, 1.0);
+    return float4(srgbToLinear(enc), linearColor.a);
+}
+
 // One pipeline draws everything for now: solid-color 2D triangles. Fills
 // (triangle fans) and strokes (triangle-strip annuli) are both tessellated on
-// the CPU into triangles and fed through here. Anti-aliasing comes from the
-// MTKView's 4x MSAA, so the shaders themselves stay trivial.
+// the CPU into triangles and fed through here. Anti-aliasing of the triangle
+// path comes from the MTKView's MSAA, so the shaders themselves stay trivial.
 
 struct VertexOut {
     float4 position [[position]];
@@ -35,8 +85,10 @@ vertex VertexOut ollin_vertex(uint vertexID [[vertex_id]],
 }
 
 fragment float4 ollin_fragment(VertexOut in [[stage_in]]) {
-    // Straight-alpha color; the pipeline's blend state composites it.
-    return in.color;
+    // Linearize the sRGB tone, dither, and let the blend state composite it in
+    // linear light (the target is sRGB-encoded).
+    float3 lin = srgbToLinear(in.color.rgb);
+    return finalizeColor(float4(lin, in.color.a), in.position.xy);
 }
 
 // MARK: - Textured quads (images)
@@ -71,11 +123,14 @@ vertex ImageOut ollin_image_vertex(uint vertexID [[vertex_id]],
 fragment float4 ollin_image_fragment(ImageOut in [[stage_in]],
                                      texture2d<float> tex [[texture(0)]],
                                      sampler samp [[sampler(0)]]) {
-    float4 c = tex.sample(samp, in.uv);   // premultiplied (alpha already folded in)
+    // The texture is sRGB, so the sample is already linear and premultiplied.
+    float4 c = tex.sample(samp, in.uv);
     // Apply the straight-alpha tint to a premultiplied color: scale the color by
-    // the tint's RGB, and scale the whole texel (color and alpha) by the tint's
-    // alpha, so the result stays premultiplied. White opaque tint = no change.
-    c.rgb *= in.tint.rgb;
+    // the tint's (linearized) RGB, and scale the whole texel (color and alpha) by
+    // the tint's alpha, so the result stays premultiplied. White opaque = no
+    // change. No dither here — the source pixels are the image's own, and the
+    // premultiplied path would need it applied unpremultiplied.
+    c.rgb *= srgbToLinear(in.tint.rgb);
     c *= in.tint.a;
     return c;
 }
@@ -872,10 +927,13 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
     float fillA = in.fillColor.a * fillCov;
     float strokeA = in.strokeColor.a * strokeCov;
 
-    // Composite stroke over fill in premultiplied space, then return straight
-    // alpha so the same source-over blend as the solid pipeline applies.
-    float3 premul = in.strokeColor.rgb * strokeA + in.fillColor.rgb * fillA * (1.0 - strokeA);
+    // Linearize the sRGB fill/stroke tones, composite stroke over fill in
+    // premultiplied *linear* space, then return dithered straight-alpha linear so
+    // the same source-over blend as the solid pipeline applies.
+    float3 fillLin = srgbToLinear(in.fillColor.rgb);
+    float3 strokeLin = srgbToLinear(in.strokeColor.rgb);
+    float3 premul = strokeLin * strokeA + fillLin * fillA * (1.0 - strokeA);
     float a = strokeA + fillA * (1.0 - strokeA);
     if (a <= 0.0) { return float4(0.0); }
-    return float4(premul / a, a);
+    return finalizeColor(float4(premul / a, a), in.position.xy);
 }

@@ -352,12 +352,26 @@ private extension KeyCode {
     }
 }
 
+/// The color format every render target uses: 8-bit BGRA, **sRGB-encoded**, so
+/// the GPU blends and resolves MSAA in linear light (the shaders output linear
+/// color and the target encodes on store). Shared by the live view and the
+/// off-screen export paths so their pixels match.
+let ollinColorPixelFormat: MTLPixelFormat = .bgra8Unorm_srgb
+
+/// MSAA sample count for the triangle path — 8× where the device supports it (it
+/// sharpens thin strokes, polygon/curve outlines, and tessellated text), else
+/// the universally-supported 4×. The SDF path is analytically anti-aliased and
+/// doesn't depend on this.
+func ollinPreferredSampleCount(_ device: MTLDevice) -> Int {
+    device.supportsTextureSampleCount(8) ? 8 : 4
+}
+
 @MainActor
 private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> MTKView {
     let view = OllinMTKView(frame: CGRect(origin: .zero, size: size), device: device)
     view.sketch = sketch
-    view.colorPixelFormat = .bgra8Unorm
-    view.sampleCount = 4                     // 4x MSAA -> anti-aliased outlines
+    view.colorPixelFormat = ollinColorPixelFormat
+    view.sampleCount = ollinPreferredSampleCount(device)
     view.isPaused = false                    // run continuously...
     view.enableSetNeedsDisplay = false       // ...driven by the display timer
     view.preferredFramesPerSecond = NSScreen.main?.maximumFramesPerSecond ?? 60
@@ -535,7 +549,8 @@ public enum OllinApp {
     /// soft failure, unlike `export`'s hard exit).
     public static func image(of sketch: Sketch, frame: Int = 0, fps: Double = 60) -> CGImage? {
         guard let device = MTLCreateSystemDefaultDevice(),
-              let renderer = try? MetalRenderer(device: device, pixelFormat: .bgra8Unorm, sampleCount: 4) else {
+              let renderer = try? MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
+                                                sampleCount: ollinPreferredSampleCount(device)) else {
             return nil
         }
         let size = sketch.canvasSize
@@ -596,7 +611,8 @@ public enum OllinApp {
         }
         let renderer: MetalRenderer
         do {
-            renderer = try MetalRenderer(device: device, pixelFormat: .bgra8Unorm, sampleCount: 4)
+            renderer = try MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
+                                         sampleCount: ollinPreferredSampleCount(device))
         } catch {
             fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
         }
@@ -681,7 +697,8 @@ public enum OllinApp {
             guard let device = MTLCreateSystemDefaultDevice() else {
                 fatalError("Ollin requires a Metal-capable GPU.")
             }
-            guard let renderer = try? MetalRenderer(device: device, pixelFormat: .bgra8Unorm, sampleCount: 4) else {
+            guard let renderer = try? MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
+                                                    sampleCount: ollinPreferredSampleCount(device)) else {
                 fatalError("Ollin: failed to initialize the Metal renderer.")
             }
             let w = size.width, h = size.height

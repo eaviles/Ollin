@@ -153,7 +153,7 @@ final class MetalRenderer {
     func image(of drawer: Drawer, viewport: SIMD2<Float>, width: Int, height: Int) -> CGImage? {
         guard width > 0, height > 0 else { return nil }
 
-        // 4× MSAA color target + a single-sample resolve we can read back.
+        // MSAA color target + a single-sample resolve we can read back.
         let msaaDesc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
         msaaDesc.textureType = .type2DMultisample
@@ -473,8 +473,18 @@ final class MetalRenderer {
 }
 
 extension Color {
-    /// Background/clear-color representation for a render pass.
+    /// Background/clear-color representation for a render pass. The render targets
+    /// are sRGB-encoded and Metal treats a clear value as *linear* (encoding it on
+    /// store), so the RGB is linearized here to land the author's sRGB tone in the
+    /// framebuffer — matching the shaders, which linearize their colors too. Alpha
+    /// isn't gamma-encoded, so it passes through.
     var mtlClearColor: MTLClearColor {
-        MTLClearColorMake(red, green, blue, alpha)
+        MTLClearColorMake(Color.srgbToLinear(red), Color.srgbToLinear(green),
+                          Color.srgbToLinear(blue), alpha)
+    }
+
+    /// sRGB → linear for a single 0–1 component (the standard piecewise curve).
+    static func srgbToLinear(_ c: Double) -> Double {
+        c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
     }
 }

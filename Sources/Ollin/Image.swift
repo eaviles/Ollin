@@ -124,11 +124,11 @@ public final class Image {
         // edited buffer; otherwise upload the original decode unchanged.
         let source = (pixelsModified ? bufferBackedCGImage() : nil) ?? cgImage
         let loader = MTKTextureLoader(device: device)
-        // `.SRGB: false` matches the renderer's non-color-managed pixel format
-        // (raw bytes in, raw bytes out), so the image's tones aren't gamma-shifted
-        // relative to the solid colors drawn beside it.
+        // `.SRGB: true` makes the texture sRGB, so the GPU decodes each sample to
+        // linear on read — matching the renderer's linear-light blending, where
+        // the shaders also linearize the solid colors drawn beside the image.
         let options: [MTKTextureLoader.Option: Any] = [
-            .SRGB: false,
+            .SRGB: true,
             .textureUsage: NSNumber(value: MTLTextureUsage.shaderRead.rawValue),
             .textureStorageMode: NSNumber(value: MTLStorageMode.private.rawValue),
         ]
