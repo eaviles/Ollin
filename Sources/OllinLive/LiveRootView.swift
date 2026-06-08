@@ -356,10 +356,18 @@ private final class TitlebarAccessoryVC: NSTitlebarAccessoryViewController {
     }
 }
 
+// Diagnostic: forces a clear `does not conform to 'View'` error if the
+// representable below ever stops being seen as a View, instead of the masked
+// "no exact matches in call to 'background'" the use site would otherwise report.
+@MainActor private func _requireTitlebarAccessoryIsView() {
+    func require<V: View>(_: V) {}
+    require(TitlebarAccessory(content: AnyView(SwiftUI.EmptyView())))
+}
+
 /// Mounts a SwiftUI view as a leading or trailing title-bar accessory. The host is
 /// invisible (zero-size); attach with `.background(...)`. Idempotent at the window
 /// level: one accessory per edge, updated in place.
-private struct TitlebarAccessory: NSViewRepresentable {
+@MainActor private struct TitlebarAccessory: NSViewRepresentable {
     var attribute: NSLayoutConstraint.Attribute = .trailing
     // A type-erased, eagerly built `AnyView` rather than a generic `@ViewBuilder`
     // closure: the caller wraps its content with `AnyView(...)` in the (main-actor)
