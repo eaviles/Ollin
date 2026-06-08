@@ -85,8 +85,21 @@ public struct SketchLoader: Sendable {
         // isolation (the host calls the C entry point from `instantiate`, which is
         // `@MainActor`) to construct it synchronously across the C boundary.
         let factoryPath = (work as NSString).appendingPathComponent("__OllinFactory.swift")
+        // A `Bundle.module` resolving to the sketch's own folder, so a loaded
+        // sketch reaches assets sitting beside it through `resource:in:.module`
+        // (the per-example asset convention). A loose compile has no
+        // SwiftPM-synthesized accessor, so without this `.module` doesn't even
+        // compile — it binds to Ollin's *internal* one — and a font/image sketch
+        // that bundles a resource can't load it. Pointed at the source directory,
+        // a flat-directory `Bundle` finds the file by name.
+        let sketchDir = escapedForSwiftLiteral(
+            (sketchPath as NSString).deletingLastPathComponent)
         let factory = """
+        import Foundation
         import Ollin
+        extension Bundle {
+            static let module: Bundle = Bundle(path: "\(sketchDir)") ?? .main
+        }
         @_cdecl("ollin_make_sketch")
         public func ollin_make_sketch() -> UnsafeMutableRawPointer {
             MainActor.assumeIsolated {
@@ -167,6 +180,14 @@ public struct SketchLoader: Sendable {
             let map = (dir as NSString).appendingPathComponent("module.modulemap")
             return fm.fileExists(atPath: map) ? dir : nil
         }
+    }
+
+    /// Escape a string so it's safe to splice into a Swift `"…"` literal in the
+    /// generated factory (backslashes and quotes). Filesystem paths can in
+    /// principle contain either.
+    private func escapedForSwiftLiteral(_ s: String) -> String {
+        s.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
     }
 
     /// The name of the first `class …: Sketch` in the source (allowing a leading
