@@ -252,6 +252,19 @@ private final class OllinMTKView: MTKView {
         window?.makeFirstResponder(self)
     }
 
+    /// Hand first-responder status back to the window before we leave it, so a
+    /// torn-down canvas can't linger in the window's responder chain. Without this,
+    /// switching sketches (the gallery rebuilds the canvas per example) frees a view
+    /// that's still the window's first responder, and the next responder-chain walk
+    /// — e.g. clicking another example in the sidebar — dereferences the freed view
+    /// and crashes (EXC_BAD_ACCESS in `-[NSResponder nextResponder]`).
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        super.viewWillMove(toWindow: newWindow)
+        if newWindow == nil, window?.firstResponder === self {
+            window?.makeFirstResponder(nil)
+        }
+    }
+
     override func keyDown(with event: NSEvent) {
         // Auto-repeat fires keyDown over and over while held; the hook is
         // once-per-press, so ignore repeats (held-key response polls isKeyDown).
