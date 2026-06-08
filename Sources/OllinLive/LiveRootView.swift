@@ -350,8 +350,18 @@ private final class TitlebarAccessoryVC: NSTitlebarAccessoryViewController {
 /// invisible (zero-size); attach with `.background(...)`. Idempotent at the window
 /// level: one accessory per edge, updated in place.
 private struct TitlebarAccessory<Content: View>: NSViewRepresentable {
-    var attribute: NSLayoutConstraint.Attribute = .trailing
-    @ViewBuilder var content: Content
+    var attribute: NSLayoutConstraint.Attribute
+    var content: Content
+
+    // An explicit `@ViewBuilder` initializer, not the synthesized memberwise one:
+    // older Swift compilers don't propagate `@ViewBuilder` from a stored property
+    // to the memberwise init's closure parameter, so `TitlebarAccessory { ... }`
+    // wouldn't type-check there. Spelling it out keeps the trailing-closure call
+    // valid across compiler versions.
+    init(attribute: NSLayoutConstraint.Attribute = .trailing, @ViewBuilder content: () -> Content) {
+        self.attribute = attribute
+        self.content = content()
+    }
 
     private var tag: NSUserInterfaceItemIdentifier {
         NSUserInterfaceItemIdentifier(attribute == .leading ? "ollin.titlebar.leading" : "ollin.titlebar.trailing")
