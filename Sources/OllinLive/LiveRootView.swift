@@ -144,6 +144,11 @@ struct LiveRootView: View {
         // is the toolbar background. (The taller bar comes from the unified toolbar
         // style in `OllinLiveApp`.)
         .toolbar {
+            // `.sharedBackgroundVisibility` is a macOS 26 SDK symbol, so it can't even
+            // be *referenced* when building against an older SDK (the CI toolchain's) —
+            // `if #available` only gates runtime, not the symbol's existence. Gate it at
+            // compile time on the toolchain that ships the macOS 26 SDK (Swift 6.2+).
+            #if compiler(>=6.2)
             if #available(macOS 26.0, *) {
                 ToolbarItem(placement: .principal) {
                     Text(session.title).font(.system(size: 13.5, weight: .semibold))
@@ -154,6 +159,11 @@ struct LiveRootView: View {
                     Text(session.title).font(.system(size: 13.5, weight: .semibold))
                 }
             }
+            #else
+            ToolbarItem(placement: .principal) {
+                Text(session.title).font(.system(size: 13.5, weight: .semibold))
+            }
+            #endif
         }
         .toolbarBackground(OllinInspector.titleBarGradient(colorScheme), for: .windowToolbar)
         .toolbarBackground(.visible, for: .windowToolbar)
