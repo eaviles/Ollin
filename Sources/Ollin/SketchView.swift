@@ -469,6 +469,17 @@ private struct MetalCanvas: NSViewRepresentable {
 
     func updateNSView(_ nsView: MTKView, context: Context) {}
 
+    /// Stop the old view's loop when SwiftUI removes it — notably when the gallery
+    /// swaps one example for another (the detail pane is keyed by example `id`, so
+    /// each switch dismantles the previous `MetalCanvas`). Pausing the display
+    /// timer and dropping the delegate keeps an abandoned view from ticking after
+    /// it leaves the hierarchy, and releases the runner (and its renderer).
+    static func dismantleNSView(_ nsView: MTKView, coordinator: Coordinator) {
+        nsView.isPaused = true
+        nsView.delegate = nil
+        coordinator.runner = nil
+    }
+
     final class Coordinator {
         var runner: SketchRunner?
     }
