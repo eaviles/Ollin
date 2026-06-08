@@ -28,6 +28,10 @@ let package = Package(
         // Network.framework (UDP); the OSC wire format is implemented from the
         // spec. Kept out of `Ollin` so the drawing core stays free of networking.
         .library(name: "OllinOSC", targets: ["OllinOSC"]),
+        // MIDI as a satellite library: `import OllinMIDI` to receive from and send
+        // to MIDI gear (control surfaces, keyboards, sequencers) over Core MIDI.
+        // Kept out of `Ollin` so the drawing core stays free of Core MIDI.
+        .library(name: "OllinMIDI", targets: ["OllinMIDI"]),
     ],
     targets: [
         // Shared, runtime-side dev machinery used by the live host and the
@@ -44,10 +48,10 @@ let package = Package(
         // edit, save, see it update in place, without the window closing.
         .executableTarget(
             name: "OllinLive",
-            // OllinAudio and OllinOSC are linked (not used by the host) so a
-            // hot-swapped sketch that `import`s them resolves its symbols against
-            // this process at load, the same way it resolves Ollin's.
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC"],
+            // OllinAudio, OllinOSC, and OllinMIDI are linked (not used by the host)
+            // so a hot-swapped sketch that `import`s them resolves its symbols
+            // against this process at load, the same way it resolves Ollin's.
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI"],
             path: "Sources/OllinLive",
             // Export the host's symbols so a hot-swapped sketch `.dylib`
             // (compiled with `-undefined dynamic_lookup`) resolves its Ollin
@@ -63,9 +67,9 @@ let package = Package(
         // reason OllinLive does.
         .executableTarget(
             name: "OllinExamples",
-            // Links OllinAudio and OllinOSC so gallery sketches that `import`
-            // them resolve at load (same reason as OllinLive above).
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC"],
+            // Links OllinAudio, OllinOSC, and OllinMIDI so gallery sketches that
+            // `import` them resolve at load (same reason as OllinLive above).
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI"],
             path: "Sources/OllinExamples",
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
@@ -99,6 +103,15 @@ let package = Package(
         // only to bind an incoming address onto a `@Param` knob.
         .target(
             name: "OllinOSC",
+            dependencies: ["Ollin"]
+        ),
+        // MIDI: receive from and send to MIDI gear over Core MIDI, with the MIDI
+        // 1.0 message format parsed/encoded from the spec (no vendored library). A
+        // satellite library (like OllinOSC) so the drawing core stays free of Core
+        // MIDI; sketches opt in with `import OllinMIDI`. Depends on Ollin only to
+        // bind an incoming control onto a `@Param` knob.
+        .target(
+            name: "OllinMIDI",
             dependencies: ["Ollin"]
         ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
@@ -496,6 +509,20 @@ let package = Package(
             dependencies: ["Ollin", "OllinOSC"],
             path: "Examples/Integration/OSCMonitor"
         ),
+        // Self-contained: a virtual-source output sends animated MIDI to itself and
+        // the input draws it back, so it runs with no hardware (like OSCLoopback).
+        .executableTarget(
+            name: "Example-MIDILoopback",
+            dependencies: ["Ollin", "OllinMIDI"],
+            path: "Examples/Integration/MIDILoopback"
+        ),
+        // Listens to every MIDI source and prints/draws what arrives — connect a
+        // controller and discover what each knob/pad sends just by touching it.
+        .executableTarget(
+            name: "Example-MIDIMonitor",
+            dependencies: ["Ollin", "OllinMIDI"],
+            path: "Examples/Integration/MIDIMonitor"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
@@ -550,6 +577,14 @@ let package = Package(
         .testTarget(
             name: "OllinOSCTests",
             dependencies: ["OllinOSC"]
+        ),
+        // MIDI correctness: MIDI 1.0 / UMP parse+encode round-trips (every message
+        // kind, malformed/non-1.0 words rejected without trapping) — Core MIDI-free,
+        // so it runs in CI. The loopback self-test needs the Core MIDI server and
+        // skips when it's unavailable.
+        .testTarget(
+            name: "OllinMIDITests",
+            dependencies: ["OllinMIDI"]
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety

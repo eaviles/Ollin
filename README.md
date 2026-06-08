@@ -132,6 +132,7 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Input](Docs/Input.md) - mouse and keyboard.
 - [Audio](Docs/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`, `spectrum`, and band values (`bass`/`mid`/`treble`) a sketch reads in `draw()`.
 - [OSC](Docs/OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`.
+- [MIDI](Docs/MIDI.md) - `import OllinMIDI` to read from and send to MIDI controllers and keyboards over Core MIDI, read in `draw()` or bound to a `@Param`.
 - [Export](Docs/Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters).
 
 New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.
@@ -247,6 +248,7 @@ A few helpers lean on well-known public techniques, reimplemented in Ollin and c
 - `@Smoothed` and `OneEuroFilter` implement the [1€ filter](https://gery.casiez.net/1euro/) for adaptive input smoothing (Géry Casiez, Nicolas Roussel, and Daniel Vogel, *1€ Filter: A Simple Speed-based Low-pass Filter for Noisy Input in Interactive Systems*, CHI 2012), written from the paper.
 - The `Colormap` ramps carry the canonical public colormap data: `viridis`/`magma`/`inferno`/`plasma`/`cividis` from [matplotlib](https://matplotlib.org) (CC0), `turbo` from Google (Apache-2.0), and `rocket`/`mako` from [seaborn](https://seaborn.pydata.org) (BSD-3).
 - OSC (`OllinOSC`) implements the [OSC 1.0 wire format](https://opensoundcontrol.stanford.edu/spec-1_0.html) from the specification, over UDP on `Network.framework`. Its API takes after openFrameworks' `ofxOsc` and OPENRNDR's `orx-osc`, read for approach and written independently; no OSC library is vendored.
+- MIDI (`OllinMIDI`) speaks the MIDI 1.0 message format, parsed and encoded from the specification, over Apple's Core MIDI. Its API takes after openFrameworks' `ofxMidi` and OPENRNDR's `orx-midi`, read for approach and written independently; no MIDI library is vendored.
 
 ### Directions ahead
 

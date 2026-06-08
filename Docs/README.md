@@ -36,6 +36,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 ### Integration
 
 - [`OSC`](./OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (to and from TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`
+- [`MIDI`](./MIDI.md) - `import OllinMIDI` to read from and send to MIDI controllers and keyboards over Core MIDI, read in `draw()` or bound to a `@Param`
 
 ### Output
 

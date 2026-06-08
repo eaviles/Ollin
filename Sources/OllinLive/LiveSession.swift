@@ -199,7 +199,9 @@ final class LiveSession {
     private func syncParams(_ sketch: Sketch) {
         let handles = sketch.parameters()
         for handle in handles where paramValues[handle.name] != nil {
-            handle.param.wrappedValue = paramValues[handle.name]!
+            // Restore instantly (a smoothed knob shouldn't glide in from its
+            // default on every reload — it's resuming where it was, not retargeting).
+            handle.param.set(paramValues[handle.name]!)
         }
         params = handles
     }

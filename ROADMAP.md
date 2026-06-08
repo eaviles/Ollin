@@ -21,10 +21,6 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 
 - **More 2D primitives and the SDF shape catalog.** More analytic shapes drop into the existing instanced-SDF path at near-zero per-shape cost — anything that's a canonical form parameterized by a size and a ratio or two. Each is a small, well-scoped addition (a shape tag, a builder, a distance function, and a fragment case), so they're a good way in.
 
-## Integration and performance I/O
-
-Wiring a sketch into an installation or performance rig with **MIDI**, through Core MIDI: control surfaces and knobs driving parameters, clock and notes in, messages out, pairing naturally with the `@Param` knobs (a hardware fader and an inspector slider can drive the same parameter, the way an [OSC](Docs/OSC.md) address already binds to one). Apple-native at the transport layer and sugar over the typed core. See the [design notes](DESIGN-NOTES.md#integration-and-performance-io-midi-not-started).
-
 ## Live visual interop (Syphon)
 
 Sharing live visuals between Ollin and the other apps on a Mac, the way a performance rig already passes frames around. Syphon is the macOS standard for sharing GPU textures between running apps in real time, and the creative-coding ecosystem speaks it — openFrameworks through `ofxSyphon`, plus Resolume, MadMapper, and VDMX. Ollin would publish its rendered Metal texture as a Syphon source and consume an external Syphon texture as an input, so an Ollin sketch and an openFrameworks sketch (or any Syphon app) run side by side and trade visuals live, paired with [OSC](Docs/OSC.md) for control in both directions. A consumed texture is exactly what the [layered effects](#layered-effects-and-compositing) graph takes as input. Apple-only and Metal-compatible, so it fits the core stance. Design in the [design notes](DESIGN-NOTES.md#live-visual-interop-syphon-not-started).
