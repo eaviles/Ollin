@@ -448,6 +448,11 @@ let package = Package(
             dependencies: ["Ollin", "OllinAudio"],
             path: "Examples/Audio/Spectrum"
         ),
+        .executableTarget(
+            name: "Example-Microphone",
+            dependencies: ["Ollin", "OllinAudio"],
+            path: "Examples/Audio/Microphone"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

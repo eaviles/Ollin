@@ -32,24 +32,32 @@ public final class AudioInput: AudioSource {
     ///   - fftSize: FFT window length (see `AudioAnalyzer`).
     ///   - smoothing: response damping, `0...1`.
     public init(fftSize: Int = 1024, smoothing: Float = 0.8) {
-        let sampleRate = engine.inputNode.inputFormat(forBus: 0).sampleRate
-        self.analyzer = AudioAnalyzer(
-            fftSize: fftSize,
-            sampleRate: sampleRate > 0 ? sampleRate : 44100,
-            smoothing: smoothing
-        )
+        // Don't read the input node's format here — touching the capture device
+        // before permission is granted can trip the system. Modern Macs run the
+        // input at 48 kHz; the band-query Hz mapping uses this, while the tap
+        // itself binds to the device's real format whatever it is.
+        self.analyzer = AudioAnalyzer(fftSize: fftSize, sampleRate: 48000, smoothing: smoothing)
         self.tapBufferSize = UInt32(max(256, fftSize))
     }
 
-    /// Begins capturing and analyzing input. Requests microphone access on first
-    /// use. Throws if the audio engine can't start.
+    /// Begins capturing and analyzing input. Gates on microphone permission: if
+    /// it's already granted, capture starts now; if it hasn't been asked yet, the
+    /// system prompts and capture starts once the user allows it; if it's denied,
+    /// nothing starts (the level stays silent). Touching the input device before
+    /// permission is granted is what trips the system, so it's deferred to here.
     public func start() throws {
         guard !isRunning else { return }
-        requestAccessIfNeeded()
-        installAnalyzerTap(on: engine.inputNode, bufferSize: tapBufferSize, analyzer: analyzer)
-        engine.prepare()
-        try engine.start()
-        isRunning = true
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            try startEngine()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .audio) { granted in
+                guard granted else { return }
+                Task { @MainActor in try? self.startEngine() }
+            }
+        default:
+            break   // denied or restricted — stay silent
+        }
     }
 
     /// Stops capturing. Safe to call when not running.
@@ -60,9 +68,10 @@ public final class AudioInput: AudioSource {
         isRunning = false
     }
 
-    private func requestAccessIfNeeded() {
-        if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
-            AVCaptureDevice.requestAccess(for: .audio) { _ in }
-        }
+    private func startEngine() throws {
+        installAnalyzerTap(on: engine.inputNode, bufferSize: tapBufferSize, analyzer: analyzer)
+        engine.prepare()
+        try engine.start()
+        isRunning = true
     }
 }
