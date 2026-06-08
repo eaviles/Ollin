@@ -17,7 +17,7 @@ import OllinAudio
 @main
 final class FilePlayer: Sketch {
     var player: AudioPlayer?
-    let bars = 96
+    let bars = 64
 
     override func setup() {
         noStroke()
@@ -39,16 +39,17 @@ final class FilePlayer: Sketch {
     }
 
     override func draw() {
-        background(Color(white: 0.06))
+        // Whole-canvas flash on each detected beat (the violin's bowed onsets).
+        let pulse = Double(player?.beat ?? 0)
+        background(Color(white: 0.06 + 0.10 * pulse))
 
-        let spectrum = player?.spectrum ?? []
+        let levels = player?.bands(bars) ?? []
         let waveform = player?.waveform ?? []
 
-        // Frequency spectrum: bars rising from the bottom.
+        // Frequency spectrum: normalized bands as bars rising from the bottom.
         let barWidth = width / Double(bars)
-        for i in 0..<min(bars, spectrum.count) {
-            let mag = Double(spectrum[i])
-            let h = min(sqrt(mag) * 1500 * scale, height * 0.55)
+        for i in 0..<levels.count {
+            let h = Double(levels[i]) * height * 0.55
             fill(Colormap.viridis.color(at: Double(i) / Double(bars - 1)))
             drawRect(Double(i) * barWidth, height - h, barWidth * 0.82, h)
         }

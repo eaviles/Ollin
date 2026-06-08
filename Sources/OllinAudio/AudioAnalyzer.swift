@@ -39,6 +39,16 @@ public final class AudioAnalyzer: @unchecked Sendable {
     private var imagp: [Float]
     private var magnitudes: [Float]
 
+    // Onset/beat-detection scratch (audio thread, serial). Spectral flux is the
+    // sum of positive bin-to-bin magnitude increases; an onset is a flux spike
+    // above a running average, gated by a minimum gap (a refractory period
+    // counted in *samples*, so detection is deterministic and clock-free).
+    private var prevMagnitudes: [Float]
+    private var fluxAverage: Float = 0
+    private var samplesSeen: Int = 0
+    private var lastBeatSample: Int = -1_000_000
+    private let minBeatSamples: Int
+
     // MARK: Published state (read on main, written on the audio thread)
 
     private struct State {
@@ -46,6 +56,14 @@ public final class AudioAnalyzer: @unchecked Sendable {
         var spectrum: [Float]
         var waveform: [Float]
         var smoothing: Float
+        // Beat detection.
+        var beatCount: Int = 0
+        var lastBeatTime: Double = 0          // systemUptime seconds; 0 = none yet
+        var beatSensitivity: Float = 1.5
+        // bands(_:) ergonomics — normalized, log-spaced, attack/release envelope.
+        var bandEnvelope: [Float] = []
+        var bandPeak: Float = 1e-4
+        var bandCount: Int = 0
     }
     private let stateLock: OSAllocatedUnfairLock<State>
 
@@ -73,6 +91,9 @@ public final class AudioAnalyzer: @unchecked Sendable {
         self.realp = [Float](repeating: 0, count: size / 2)
         self.imagp = [Float](repeating: 0, count: size / 2)
         self.magnitudes = [Float](repeating: 0, count: size / 2)
+        self.prevMagnitudes = [Float](repeating: 0, count: size / 2)
+        // ~120 ms minimum between beats, so a single hit can't double-trigger.
+        self.minBeatSamples = Int(0.12 * sampleRate)
 
         self.stateLock = OSAllocatedUnfairLock(
             initialState: State(
@@ -124,6 +145,86 @@ public final class AudioAnalyzer: @unchecked Sendable {
     /// Energy in the high band (2000–8000 Hz).
     public var treble: Float { magnitude(in: 2000...8000) }
 
+    // MARK: Bands (normalized, log-spaced — the ready-to-draw spectrum)
+
+    /// `count` frequency bands spread *logarithmically* (octave-like) from ~40 Hz
+    /// up toward the Nyquist, each value normalized to roughly `0...1` by an
+    /// adaptive gain and smoothed with a fast-attack / slow-release envelope. This
+    /// is the spectrum shaped for drawing: spaced the way hearing is, auto-scaled
+    /// so you don't hand-tune a gain, and steady enough to map straight to bar
+    /// heights. Call it once per frame with a fixed `count`.
+    public func bands(_ count: Int) -> [Float] {
+        let count = max(1, count)
+        let loHz = 40.0
+        let hiHz = min(16000.0, sampleRate * 0.5 * 0.98)
+        let ratio = hiHz / loHz
+
+        return stateLock.withLock { state in
+            if state.bandCount != count {
+                state.bandCount = count
+                state.bandEnvelope = [Float](repeating: 0, count: count)
+                state.bandPeak = 1e-4
+            }
+
+            var raw = [Float](repeating: 0, count: count)
+            var rawMax: Float = 0
+            for b in 0..<count {
+                let f0 = loHz * pow(ratio, Double(b) / Double(count))
+                let f1 = loHz * pow(ratio, Double(b + 1) / Double(count))
+                var lo = Int((f0 / binWidth).rounded(.down))
+                var hi = Int((f1 / binWidth).rounded(.up))
+                lo = max(0, min(binCount - 1, lo))
+                hi = max(lo, min(binCount - 1, hi))
+                var power: Float = 0
+                for i in lo...hi { let m = state.spectrum[i]; power += m * m }
+                let value = (power / Float(hi - lo + 1)).squareRoot()   // band RMS
+                raw[b] = value
+                if value > rawMax { rawMax = value }
+            }
+
+            // Adaptive normalization against a slowly-decaying peak, then a
+            // fast-up / slow-down envelope so bars rise sharply and fall gently.
+            state.bandPeak = max(max(state.bandPeak * 0.999, rawMax), 1e-4)
+            for b in 0..<count {
+                let target = min(raw[b] / state.bandPeak, 1)
+                let cur = state.bandEnvelope[b]
+                let coeff: Float = target > cur ? 0.5 : 0.12
+                state.bandEnvelope[b] = cur + (target - cur) * coeff
+            }
+            return state.bandEnvelope
+        }
+    }
+
+    // MARK: Beat (onset detection)
+
+    /// How many beats (onsets) have been detected since the analyzer started.
+    /// Compare it to a stored value to fire once per beat:
+    /// `if source.beatCount > last { last = source.beatCount; … }`.
+    public var beatCount: Int { stateLock.withLock { $0.beatCount } }
+
+    /// Seconds since the last detected beat (very large if none yet) — drive a
+    /// decaying flash from it, or read `beat` for a ready-made 0…1 pulse.
+    public var timeSinceBeat: Double {
+        let last = stateLock.withLock { $0.lastBeatTime }
+        guard last > 0 else { return .greatestFiniteMagnitude }
+        return ProcessInfo.processInfo.systemUptime - last
+    }
+
+    /// A 0…1 pulse that snaps to 1 on each beat and decays over ~0.25 s — the
+    /// p5-friendly "make it throb on the beat" value.
+    public var beat: Float {
+        let t = timeSinceBeat
+        guard t.isFinite else { return 0 }
+        return Float(max(0, 1 - t / 0.25))
+    }
+
+    /// Beat-detection threshold: flux must exceed its running average times this
+    /// to count as an onset. Higher = fewer, stronger beats. Default 1.5.
+    public var beatSensitivity: Float {
+        get { stateLock.withLock { $0.beatSensitivity } }
+        set { let v = max(1, newValue); stateLock.withLock { $0.beatSensitivity = v } }
+    }
+
     // MARK: Processing (audio thread, serial)
 
     /// Analyze a buffer of mono float samples. Called from the audio render
@@ -163,6 +264,21 @@ public final class AudioAnalyzer: @unchecked Sendable {
             }
         }
 
+        // Spectral flux: the sum of positive bin-to-bin increases since the last
+        // buffer. A sudden broadband rise (a drum hit, a plucked note) spikes it.
+        let n2 = n / 2
+        var flux: Float = 0
+        for i in 0..<n2 {
+            let d = magnitudes[i] - prevMagnitudes[i]
+            if d > 0 { flux += d }
+            prevMagnitudes[i] = magnitudes[i]
+        }
+        samplesSeen += take
+        let fluxValue = flux
+        let fluxAverageLocal = fluxAverage
+        let canBeat = (samplesSeen - lastBeatSample) >= minBeatSamples
+        let loudEnough = rms > 0.01
+
         // Snapshot the new values into Sendable locals: the lock body is
         // `@Sendable`, so it can't reach a raw pointer or a mutated local var.
         let rmsValue = rms
@@ -171,15 +287,27 @@ public final class AudioAnalyzer: @unchecked Sendable {
         for i in 0..<take { wave[i] = samples[i] }
         let waveSnapshot = wave
 
-        // Publish, smoothing toward the new values.
-        stateLock.withLock { state in
+        // Publish, smoothing toward the new values, and register a beat if the
+        // flux spiked past the running average × sensitivity. The closure is
+        // `@Sendable`, so it returns the onset rather than mutating an outer var.
+        let onset = stateLock.withLock { state -> Bool in
             let a = state.smoothing
             state.amplitude = a * state.amplitude + (1 - a) * rmsValue
             for i in 0..<state.spectrum.count {
                 state.spectrum[i] = a * state.spectrum[i] + (1 - a) * mags[i]
             }
             state.waveform = waveSnapshot
+
+            if canBeat && loudEnough && fluxValue > fluxAverageLocal * state.beatSensitivity {
+                state.beatCount += 1
+                state.lastBeatTime = ProcessInfo.processInfo.systemUptime
+                return true
+            }
+            return false
         }
+        if onset { lastBeatSample = samplesSeen }
+        // Track the flux average last, so a beat is judged against its history.
+        fluxAverage = fluxAverage * 0.95 + flux * 0.05
     }
 
     /// Convenience over an `AVAudioPCMBuffer`: averages channels to mono and

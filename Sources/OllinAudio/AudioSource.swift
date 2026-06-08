@@ -49,4 +49,20 @@ extension AudioSource {
     public func magnitude(in range: ClosedRange<Double>) -> Float {
         analyzer.magnitude(in: range)
     }
+
+    /// `count` normalized, log-spaced frequency bands ready to draw — see
+    /// `AudioAnalyzer.bands(_:)`. Call once per frame with a fixed `count`.
+    public func bands(_ count: Int) -> [Float] { analyzer.bands(count) }
+
+    /// Beats detected so far (compare to a stored value to fire once per beat).
+    public var beatCount: Int { analyzer.beatCount }
+    /// Seconds since the last beat (huge if none yet).
+    public var timeSinceBeat: Double { analyzer.timeSinceBeat }
+    /// A 0…1 pulse that hits 1 on each beat and decays over ~0.25 s.
+    public var beat: Float { analyzer.beat }
+    /// Onset threshold (higher = fewer, stronger beats). Default 1.5.
+    public var beatSensitivity: Float {
+        get { analyzer.beatSensitivity }
+        set { analyzer.beatSensitivity = newValue }
+    }
 }

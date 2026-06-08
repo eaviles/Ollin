@@ -34,6 +34,7 @@ final class Pulse: Sketch {
 - [AudioPlayer](#audioplayer) — play and analyze an audio file
 - [Tone](#tone) — generate (and analyze) an oscillator
 - [Reading audio](#reading-audio) — `amplitude`, `spectrum`, `waveform`, and band queries
+- [bands & beats](#bands-and-beats) — the ready-to-draw spectrum, and onset detection
 - [AudioAnalyzer](#audioanalyzer) — the typed DSP core every source feeds
 
 <a name="audioinput"></a>
@@ -126,7 +127,44 @@ func magnitude(in range: ClosedRange<Double>) -> Float   // average over a Hz ra
 var smoothing: Float                        // response damping, 0...1
 ```
 
-`spectrum` has `fftSize / 2` bins, each spanning `sampleRate / fftSize` Hz, from 0 up toward the Nyquist frequency. The magnitudes are smoothed but unnormalized, so scale them to taste for drawing. `smoothing` (0 = raw and twitchy, near 1 = heavily damped) trades responsiveness for steadiness and can be changed live.
+`spectrum` has `fftSize / 2` bins, each spanning `sampleRate / fftSize` Hz, from 0 up toward the Nyquist frequency. The magnitudes are smoothed but unnormalized, so scale them to taste for drawing — or reach for [`bands`](#bands-and-beats) below, which does that shaping for you. `smoothing` (0 = raw and twitchy, near 1 = heavily damped) trades responsiveness for steadiness and can be changed live.
+
+<a name="bands-and-beats"></a>
+
+### bands & beats
+
+Two higher-level reads sit on top of the raw spectrum — the ones you usually want for audio-reactive visuals.
+
+```swift
+func bands(_ count: Int) -> [Float]   // normalized, log-spaced frequency bars (each ~0...1)
+var beatCount: Int                     // beats detected so far
+var timeSinceBeat: Double              // seconds since the last beat
+var beat: Float                        // a 0...1 pulse that hits 1 on a beat and decays
+var beatSensitivity: Float             // onset threshold; higher = fewer beats (default 1.5)
+```
+
+**`bands(count)`** is the spectrum shaped for drawing: `count` bars spread *logarithmically* (the way pitch is heard, so low notes aren't crammed into a few bins), each normalized to roughly `0...1` by an adaptive gain and smoothed with a fast-attack / slow-release envelope. So a bar height is just a map to pixels — no hand-tuned gain. Call it once per frame with a fixed `count`.
+
+```swift
+for (i, level) in source.bands(48).enumerated() {
+    let h = Double(level) * 300 * scale          // level is already 0...1
+    drawRect(Double(i) * w, height - h, w * 0.8, h)
+}
+```
+
+**Beats** come from spectral-flux onset detection (a sudden broadband rise — a drum hit, a plucked string). The easiest use is `beat`, a ready-made pulse:
+
+```swift
+drawCircle(width / 2, height / 2, (40 + Double(source.beat) * 200) * scale)   // throbs on the beat
+```
+
+…or fire something exactly once per beat by watching `beatCount`:
+
+```swift
+if source.beatCount > lastBeat { lastBeat = source.beatCount; spawnRipple() }
+```
+
+Raise `beatSensitivity` if it triggers too eagerly, lower it if it misses beats. Beats are gated by a short refractory period, so a single hit won't double-fire.
 
 ```swift
 let lows = tone.bass
