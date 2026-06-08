@@ -381,6 +381,11 @@ let package = Package(
             path: "Examples/Text/HelloText"
         ),
         .executableTarget(
+            name: "Example-TextVolume",
+            dependencies: ["Ollin"],
+            path: "Examples/Text/TextVolume"
+        ),
+        .executableTarget(
             name: "Example-PlaydateFont",
             dependencies: ["Ollin"],
             path: "Examples/Text/PlaydateFont",

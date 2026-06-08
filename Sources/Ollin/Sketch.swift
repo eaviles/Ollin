@@ -562,6 +562,11 @@ open class Sketch {
     public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
         drawer.textAlign(horizontal, vertical)
     }
+    /// Set how outline text is rendered: `.outline` (default, per-glyph vector fill
+    /// — takes `fill` *and* `stroke`) or `.atlas` (the SDF-atlas scale path for
+    /// paragraphs and large glyph counts — far cheaper per glyph, still crisp under
+    /// magnification, fill-only). A no-op for bitmap and stroke fonts. See `TextMode`.
+    public func textMode(_ mode: TextMode) { drawer.textMode(mode) }
     /// Draw `string` at `(x, y)` using the active `textFont`/`textSize`/`textAlign`.
     /// How it paints follows the font kind: a **bitmap** font (the default) uses
     /// `fill` only (it ignores `stroke`); an **outline** (`.ttf`/`.otf`) font takes

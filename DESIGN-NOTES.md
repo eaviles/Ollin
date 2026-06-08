@@ -4,12 +4,6 @@ The engineering design intent behind the planned work in [`ROADMAP.md`](ROADMAP.
 
 These notes assume Ollin's two ground rules: it targets Apple platforms only (no cross-platform abstractions), and the bare p5-style API is sugar over a public, typed core, so a feature is built on the core first and given the bare call second. Geometry-emitting calls take a `draw` verb prefix (`drawCircle`, `drawRect`, and so on).
 
-## Text volume: an SDF glyph atlas (not started)
-
-The renderer roadmap is about the rendering pipeline getting deeper; this is the orthogonal scale path for text, which is otherwise in. Per-glyph outline tessellation (Core Text outlines → `Shape` → libtess2) is fine for display and body text. When text *volume* bites — paragraphs, thousands of glyphs re-tessellated per frame — the performance path is an SDF glyph atlas sampled in a fragment shader, which rhymes with the existing `.sdf` pipeline and stays crisp under zoom. It layers under the existing outline rendering as a scale path, not a replacement; it stays sugar over the typed core like the rest of the text surface.
-
-Any bundled font or sample asset carries the same provenance discipline as vendored code: a permissive, redistributable license, credited in `THIRD-PARTY-NOTICES.md` and the README. System fonts and user-supplied assets are preferred over bundling where possible. The bitmap-font defaults make this concrete: the Adobe/DEC X11 bitmap fonts (`helvB08` and kin) are under a permissive, MIT-style license, so they're bundle-clean — keep the copyright notice intact and mind that "Helvetica" is a Linotype trademark — while share-alike fonts stay out of the bundle the way other copyleft does (a u8g2 pick like `haxrcorp4089` is CC BY-SA, as many FontStruct fonts are; the BDF parser lets a user load those themselves). Hershey (public domain) is the clean single-line default. This is the same "ship the parser, bundle only what's permissive" split that keeps the root `LICENSE` pure MIT.
-
 ## Integration and performance I/O: OSC and MIDI (not started)
 
 The surface for wiring a sketch into an installation or performance rig: sending and receiving control messages to and from the other tools on stage. Both stay sugar over the typed core, and both are Apple-native at the transport layer.

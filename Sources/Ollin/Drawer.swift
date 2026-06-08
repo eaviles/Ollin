@@ -65,20 +65,25 @@ extension SDFShape {
 /// tessellated triangles still composite front-to-back in the order the sketch
 /// drew them (a later shape paints over an earlier one).
 enum GeometryKind {
-    case triangles   // tessellated fills/strokes in `vertices`
-    case sdf         // instanced SDF shapes in `sdfInstances`
-    case image       // one textured quad in `imageVertices`, sampling `image`
+    case triangles    // tessellated fills/strokes in `vertices`
+    case sdf          // instanced SDF shapes in `sdfInstances`
+    case image        // one textured quad in `imageVertices`, sampling `image`
+    case glyphAtlas   // SDF-atlas text quads in `glyphVertices`, sampling `atlas`
 }
 
 struct GeometryBatch {
     var kind: GeometryKind
     var vertexStart: Int     // first vertex (triangle batches)
-    var instanceStart: Int   // first image vertex / SDF instance
+    var instanceStart: Int   // first SDF instance (sdf batches)
     var imageStart: Int = 0  // first image vertex (image batches)
-    /// Texture source for an `.image` batch — `nil` for triangle/sdf batches.
-    /// Each image draw is its own batch (one texture per draw call), so it never
-    /// merges with a neighbour.
+    var glyphStart: Int = 0  // first glyph vertex (glyphAtlas batches)
+    /// Texture source for an `.image` batch — `nil` otherwise. Each image draw is
+    /// its own batch (one texture per draw call), so it never merges with a
+    /// neighbour.
     var image: Image?
+    /// SDF atlas for a `.glyphAtlas` batch — `nil` otherwise. One `drawText` call
+    /// is one batch (a paragraph's glyphs all sample the same atlas).
+    var atlas: GlyphAtlas?
 }
 
 /// The drawing state machine and per-frame geometry recorder.
@@ -108,6 +113,7 @@ final class Drawer {
     private var textPixelSize: Double = 24               // rendered glyph height in points (see textSize)
     private var textAlignH: TextAlignH = .left           // horizontal text anchor (see textAlign)
     private var textAlignV: TextAlignV = .baseline       // vertical text anchor (see textAlign)
+    private var textRenderMode: TextMode = .outline      // outline vs SDF-atlas text (see textMode)
     private var tintColor: Color? = nil                  // multiplies drawImage texels; nil = untinted (see tint / noTint)
 
     // MARK: Per-frame geometry (reset every frame)
@@ -121,6 +127,11 @@ final class Drawer {
     /// draw appends 6 vertices (two triangles) and opens its own `.image` batch,
     /// which carries the texture.
     private(set) var imageVertices: [OllinImageVertex] = []
+
+    /// SDF-atlas text quads recorded this frame (see `drawAtlasText`). Each glyph
+    /// is 6 vertices (two triangles) sampling the font's atlas; reuses the image
+    /// vertex layout (position + uv + `tint` as the fill color).
+    private(set) var glyphVertices: [OllinImageVertex] = []
 
     /// Recorded geometry split into call-ordered runs, so triangles and SDF
     /// shapes composite in draw order rather than in two unordered passes.
@@ -139,7 +150,8 @@ final class Drawer {
         currentKind = kind
         batches.append(GeometryBatch(kind: kind, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
-                                     imageStart: imageVertices.count))
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count))
     }
 
     /// Open a fresh `.image` batch carrying `image` as its texture. Unlike
@@ -150,7 +162,19 @@ final class Drawer {
         currentKind = .image
         batches.append(GeometryBatch(kind: .image, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
-                                     imageStart: imageVertices.count, image: image))
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count, image: image))
+    }
+
+    /// Open a fresh `.glyphAtlas` batch carrying `atlas` as its texture. One
+    /// `drawText` call opens one batch (all its glyphs sample the same atlas);
+    /// resets `currentKind` so a following primitive reopens its own batch.
+    private func beginGlyphBatch(_ atlas: GlyphAtlas) {
+        currentKind = .glyphAtlas
+        batches.append(GeometryBatch(kind: .glyphAtlas, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count, atlas: atlas))
     }
 
     /// Record one vector primitive for SVG export, snapshotting the current style
@@ -197,6 +221,7 @@ final class Drawer {
         var textPixelSize: Double
         var textAlignH: TextAlignH
         var textAlignV: TextAlignV
+        var textRenderMode: TextMode
         var tintColor: Color?
     }
 
@@ -209,6 +234,7 @@ final class Drawer {
         vertices.removeAll(keepingCapacity: true)
         sdfInstances.removeAll(keepingCapacity: true)
         imageVertices.removeAll(keepingCapacity: true)
+        glyphVertices.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
     }
@@ -275,6 +301,11 @@ final class Drawer {
         textAlignV = vertical
     }
 
+    /// Set how outline text is rendered (see `TextMode`): `.outline` (default,
+    /// per-glyph vector fill) or `.atlas` (the SDF-atlas scale path). A no-op for
+    /// bitmap and stroke fonts.
+    func textMode(_ mode: TextMode) { textRenderMode = mode }
+
     // MARK: Frame lifecycle
 
     /// Drop last frame's geometry but keep drawing state. Called once per frame
@@ -283,6 +314,7 @@ final class Drawer {
         vertices.removeAll(keepingCapacity: true)
         sdfInstances.removeAll(keepingCapacity: true)
         imageVertices.removeAll(keepingCapacity: true)
+        glyphVertices.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
         transform = matrix_identity_float3x3
@@ -322,6 +354,7 @@ final class Drawer {
                                      strokeCapStyle: strokeCapStyle,
                                      currentFont: currentFont, textPixelSize: textPixelSize,
                                      textAlignH: textAlignH, textAlignV: textAlignV,
+                                     textRenderMode: textRenderMode,
                                      tintColor: tintColor))
     }
 
@@ -343,6 +376,7 @@ final class Drawer {
         textPixelSize = s.textPixelSize
         textAlignH = s.textAlignH
         textAlignV = s.textAlignV
+        textRenderMode = s.textRenderMode
         tintColor = s.tintColor
     }
 
@@ -1226,7 +1260,14 @@ final class Drawer {
         guard textPixelSize > 0, !string.isEmpty else { return }
         switch currentFont {
         case .bitmap(let font):  drawBitmapText(string, x, y, font: font)
-        case .outline(let font): drawOutlineText(string, x, y, font: font)
+        case .outline(let font):
+            // The atlas path is opt-in and raster, so SVG export keeps the vector
+            // outline path; everything else honors `textMode`.
+            if textRenderMode == .atlas, svgRecorder == nil {
+                drawAtlasText(string, x, y, font: font)
+            } else {
+                drawOutlineText(string, x, y, font: font)
+            }
         case .stroke(let font):  drawStrokeText(string, x, y, font: font)
         }
     }
@@ -1334,6 +1375,35 @@ final class Drawer {
                                       closed: contour.isClosed, half: half, color: c)
                 }
             }
+        }
+    }
+
+    /// Atlas path (`textMode(.atlas)`): each glyph is one textured quad sampling
+    /// the font's SDF atlas, so a paragraph costs a handful of vertex writes per
+    /// glyph instead of a flatten + triangulation. Fill-only (the volume case is
+    /// filled body text); the outline path keeps fill + stroke. The whole call is
+    /// one batch — all glyphs share the atlas texture.
+    private func drawAtlasText(_ string: String, _ x: Double, _ y: Double, font: OutlineFont) {
+        guard let fill = fillColor else { return }
+        let placed = font.placedAtlasGlyphs(for: string, size: textPixelSize,
+                                            alignH: textAlignH, alignV: textAlignV, at: Vector2(x, y))
+        guard !placed.isEmpty else { return }
+
+        let tint = fill.simd4
+        beginGlyphBatch(font.atlas)
+        for g in placed {
+            guard let slot = font.atlas.slot(for: g.glyph, font: g.font) else { continue }   // space / unplaced
+            // Cell rect (em, y-up) → canvas: x grows with em-x, canvas-y falls as
+            // em-y rises (font y-up vs Ollin y-down).
+            let left = Float(g.origin.x + slot.emLeft * textPixelSize)
+            let right = Float(g.origin.x + slot.emRight * textPixelSize)
+            let top = Float(g.origin.y - slot.emTop * textPixelSize)
+            let bottom = Float(g.origin.y - slot.emBottom * textPixelSize)
+            let tl = imageVertex(left, top, slot.u0, slot.v0, tint)
+            let tr = imageVertex(right, top, slot.u1, slot.v0, tint)
+            let br = imageVertex(right, bottom, slot.u1, slot.v1, tint)
+            let bl = imageVertex(left, bottom, slot.u0, slot.v1, tint)
+            glyphVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
         }
     }
 

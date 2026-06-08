@@ -154,6 +154,29 @@ fragment float4 ollin_image_fragment(ImageOut in [[stage_in]],
     return c;
 }
 
+// MARK: - SDF glyph atlas (textMode(.atlas))
+//
+// The volume path for outline text. Each glyph is a textured quad sampling a
+// single-channel SDF atlas (r8Unorm, NOT sRGB — it stores distance, not color),
+// where 0.5 is the glyph edge and > 0.5 is inside. The fragment turns the sampled
+// distance into screen-space anti-aliased coverage (fwidth) and emits the glyph's
+// straight color scaled by it, so it blends by source alpha like the solid path.
+// `tint` carries the fill color (vertex reuses ollin_image_vertex).
+
+fragment float4 ollin_glyph_fragment(ImageOut in [[stage_in]],
+                                     texture2d<float> atlas [[texture(0)]],
+                                     sampler samp [[sampler(0)]]) {
+    float sd = atlas.sample(samp, in.uv).r;   // normalized distance, 0.5 = edge
+    float d = sd - 0.5;
+    float aa = fwidth(d);
+    float cov = (aa > 0.0) ? smoothstep(-aa, aa, d) : step(0.0, d);
+    // Remap coverage to perceptual alpha so thin stems / small body text stay
+    // evenly dark in linear light (the same carve-out strokes and dots use).
+    cov = perceptualCoverage(clamp(cov, 0.0, 1.0));
+    float3 lin = srgbToLinear(in.tint.rgb);
+    return finalizeColor(float4(lin, in.tint.a * cov), in.position.xy);
+}
+
 // MARK: - SDF instanced shapes
 //
 // Circles, ellipses, rectangles, lines, and circular arcs skip CPU

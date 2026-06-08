@@ -40,9 +40,10 @@ final class MetalRenderer {
     /// circles, textured quads, or a new blend mode each become a new case
     /// here (plus a branch in `makePipeline(_:)`) — not more code in `init`.
     private enum Pipeline: Hashable {
-        case solid   // tessellated triangles (rects, lines, polygons, arcs)
-        case sdf     // instanced SDF quads (circles, ellipses, rects, lines, arcs)
-        case image   // textured quads (images), premultiplied-alpha blend
+        case solid        // tessellated triangles (rects, lines, polygons, arcs)
+        case sdf          // instanced SDF quads (circles, ellipses, rects, lines, arcs)
+        case image        // textured quads (images), premultiplied-alpha blend
+        case glyphAtlas   // SDF-atlas text quads, straight-alpha coverage blend
     }
 
     private let device: MTLDevice
@@ -83,6 +84,11 @@ final class MetalRenderer {
     private var imageBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     private var imageExportBuffer: MTLBuffer?
 
+    /// Parallel ring + export buffer for SDF-atlas text quads (also
+    /// `OllinImageVertex`), advanced with `frameIndex` like the others.
+    private var glyphBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    private var glyphExportBuffer: MTLBuffer?
+
     /// Sampler for the image pipeline: linear filtering, clamp to edge. Built once.
     private let imageSampler: MTLSamplerState?
 
@@ -111,6 +117,7 @@ final class MetalRenderer {
         _ = try pipeline(.solid)
         _ = try pipeline(.sdf)
         _ = try pipeline(.image)
+        _ = try pipeline(.glyphAtlas)
     }
 
     /// Encode and present one frame's worth of recorded geometry.
@@ -140,7 +147,8 @@ final class MetalRenderer {
         encode(drawer, viewport: viewport, into: encoder,
                triangleBuffer: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
                sdfBuffer: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count),
-               imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count))
+               imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
+               glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count))
         encoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
@@ -186,7 +194,8 @@ final class MetalRenderer {
         encode(drawer, viewport: viewport, into: encoder,
                triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
                sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
-               imageBuffer: exportImageBuffer(for: drawer.imageVertices.count))
+               imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
+               glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count))
         encoder.endEncoding()
 
         // Copy the resolved texture into a CPU-readable buffer (works on every
@@ -220,13 +229,14 @@ final class MetalRenderer {
     private func encode(_ drawer: Drawer, viewport: SIMD2<Float>,
                         into encoder: MTLRenderCommandEncoder,
                         triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?,
-                        imageBuffer: MTLBuffer?) {
+                        imageBuffer: MTLBuffer?, glyphBuffer: MTLBuffer?) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
         let imageVertices = drawer.imageVertices
+        let glyphVertices = drawer.glyphVertices
         let batches = drawer.batches
         guard !batches.isEmpty, let solid = pipelines[.solid], let sdf = pipelines[.sdf],
-              let image = pipelines[.image] else { return }
+              let image = pipelines[.image], let glyph = pipelines[.glyphAtlas] else { return }
 
         if !vertices.isEmpty, let triangleBuffer {
             vertices.withUnsafeBytes { raw in
@@ -241,6 +251,11 @@ final class MetalRenderer {
         if !imageVertices.isEmpty, let imageBuffer {
             imageVertices.withUnsafeBytes { raw in
                 imageBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
+        if !glyphVertices.isEmpty, let glyphBuffer {
+            glyphVertices.withUnsafeBytes { raw in
+                glyphBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
             }
         }
 
@@ -275,6 +290,16 @@ final class MetalRenderer {
                       let texture = source.texture(for: device) else { continue }
                 encoder.setRenderPipelineState(image)
                 encoder.setVertexBuffer(imageBuffer, offset: batch.imageStart * imageStride, index: 0)
+                encoder.setFragmentTexture(texture, index: 0)
+                encoder.setFragmentSamplerState(imageSampler, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+            case .glyphAtlas:
+                let end = next?.glyphStart ?? glyphVertices.count
+                let count = end - batch.glyphStart
+                guard count > 0, let glyphBuffer, let atlas = batch.atlas,
+                      let texture = atlas.texture(for: device) else { continue }
+                encoder.setRenderPipelineState(glyph)
+                encoder.setVertexBuffer(glyphBuffer, offset: batch.glyphStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
@@ -332,6 +357,12 @@ final class MetalRenderer {
             // by source alpha.
             return try makePipeline(vertex: "ollin_image_vertex", fragment: "ollin_image_fragment",
                                     using: library, premultiplied: true)
+        case .glyphAtlas:
+            // SDF-atlas text. Reuses the image vertex (position + uv + color); the
+            // fragment turns the sampled distance into coverage and emits straight
+            // color, so it blends by source alpha like the solid/SDF paths.
+            return try makePipeline(vertex: "ollin_image_vertex", fragment: "ollin_glyph_fragment",
+                                    using: library, premultiplied: false)
         }
     }
 
@@ -430,6 +461,26 @@ final class MetalRenderer {
         if let buffer = imageExportBuffer, buffer.length >= needed { return buffer }
         imageExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
         return imageExportBuffer
+    }
+
+    /// Return the glyph-vertex ring buffer at `index`, grown on demand. Mirrors
+    /// `imageBuffer(at:for:)` (glyph quads reuse `OllinImageVertex`).
+    private func glyphBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinImageVertex>.stride
+        if let buffer = glyphBuffers[index], buffer.length >= needed {
+            return buffer
+        }
+        let capacity = needed + needed / 2
+        glyphBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
+        return glyphBuffers[index]
+    }
+
+    /// The off-screen export buffer for glyph vertices, grown on demand.
+    private func exportGlyphBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinImageVertex>.stride
+        if let buffer = glyphExportBuffer, buffer.length >= needed { return buffer }
+        glyphExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return glyphExportBuffer
     }
 
     /// Splice the shared CPU/GPU type header into shader source for runtime

@@ -20,6 +20,7 @@ The default font, `BitmapFont.builtin`, is **[Cozette](https://github.com/the-mo
 - [textFont](#textfont), [textSize](#textsize), [textAlign](#textalign) — text state
 - [textWidth](#textwidth) — measure a string
 - [Outline fonts](#outlinefont) — `OutlineFont`, loading a `.ttf`/`.otf` from anywhere
+- [Rendering at volume](#textmode) — `textMode(.atlas)` for paragraphs and large glyph counts
 - [Variable fonts](#variable) — animate weight, width, and other axes
 - [Stroke fonts](#strokefont) — `StrokeFont`, single-line / plotter type
 - [Per-glyph drawText](#perglyph) — give each letter its own transform and color
@@ -165,6 +166,31 @@ OutlineFont.systemMono
 `init(name:)` returns `nil` if no installed font matches, so a typo fails loudly instead of silently substituting another face — pair it with a fallback: `OutlineFont(name: "Futura") ?? .system`. A remote `https://` URL needs an asynchronous download, which can't run on the draw thread: fetch it in `setup()` (or ahead of time) and pass the bytes to `init(data:)`.
 
 Ollin ships no `.ttf`/`.otf` of its own — you bring the font (installed, bundled, or fetched). Layout goes through Core Text, so kerning, ligatures, and fallback for missing glyphs come for free.
+
+<a name="textmode"></a>
+
+### Rendering at volume
+
+By default each outline glyph is filled as a vector shape — highest quality, and it takes `fill` *and* `stroke`. That's the right choice for headlines and body text, but a paragraph of thousands of glyphs re-tessellated every frame gets expensive. `textMode(.atlas)` switches outline text to a signed-distance-field atlas instead: each glyph is rasterized once into a shared texture and drawn as a single quad sampling it, so the per-glyph cost drops to a handful of vertex writes. It stays crisp under magnification, and one raster serves every `textSize`.
+
+```swift
+textFont(OutlineFont.systemMono)
+textSize(18)
+textMode(.atlas)              // the default is .outline
+
+for (i, line) in paragraph.enumerated() {
+    drawText(line, margin, top + Double(i) * lineHeight)
+}
+```
+
+`textMode` is drawing state, like `textSize` and `textAlign` — it persists until you change it and scopes with `withState { }`, so you can keep big headlines on the crisp `.outline` path and switch to `.atlas` for the wall of small text:
+
+```swift
+textMode(.outline); textSize(120); drawText("Title", x, y)
+textMode(.atlas);   textSize(16);  drawText(bodyText, x, y2)
+```
+
+Two things to know. The atlas path is **fill-only** (it ignores `stroke` — the volume case is filled text; reach for `.outline` when you want stroked glyphs), and the single-channel field rounds *very* sharp corners at extreme magnification, which is invisible at the body and display sizes this path is for. `textMode` is a no-op for bitmap and stroke fonts, which have no atlas. See the [TextVolume example](../Examples/Text/TextVolume).
 
 <a name="variable"></a>
 

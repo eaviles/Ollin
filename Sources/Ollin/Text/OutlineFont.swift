@@ -49,6 +49,11 @@ public struct OutlineFont: @unchecked Sendable {
     /// type so copies of the value share it.
     private let geometryCache: GlyphGeometryCache
 
+    /// Shared, lazily-filled SDF atlas for the `textMode(.atlas)` volume path —
+    /// each glyph rasterized once into a distance field and drawn as a textured
+    /// quad. A reference type so value copies share it (like the caches above).
+    let atlas: GlyphAtlas
+
     // MARK: Construction
 
     /// Wrap an existing `CTFont` (assumed to be at point size 1).
@@ -60,6 +65,7 @@ public struct OutlineFont: @unchecked Sendable {
         self.name = CTFontCopyFullName(ctFont) as String
         self.cache = GlyphPathCache()
         self.geometryCache = GlyphGeometryCache()
+        self.atlas = GlyphAtlas()
     }
 
     /// Load an installed font by name — a family (`"Helvetica Neue"`), full name,
@@ -265,6 +271,60 @@ public struct OutlineFont: @unchecked Sendable {
             }
         }
         return placedGlyphs
+    }
+
+    /// One glyph placed for the SDF-atlas path: its pen origin in canvas space and
+    /// the source glyph id + run font (after fallback) the atlas keys its slot on.
+    /// Lighter than `PlacedGlyphGeometry` — no flatten or triangulation, since the
+    /// atlas path draws a textured quad rather than a vector fill.
+    struct PlacedAtlasGlyph {
+        let origin: Vector2
+        let glyph: CGGlyph
+        let font: CTFont
+    }
+
+    /// The glyphs of `string`, each placed (pen origin + glyph id/font) as if drawn
+    /// at `origin` with `size`, `alignH`, and `alignV` — the layout behind the
+    /// `textMode(.atlas)` fast path. Same line/alignment math as `placedGlyphs`,
+    /// without building any geometry; the drawer turns each into a quad sampling
+    /// the atlas. Spaces are kept (the atlas returns no slot for them).
+    func placedAtlasGlyphs(for string: String, size: Double,
+                           alignH: TextAlignH, alignV: TextAlignV,
+                           at origin: Vector2) -> [PlacedAtlasGlyph] {
+        guard size > 0, !string.isEmpty else { return [] }
+        let ascentP = ascent * size
+        let descentP = descent * size
+        let lineHeightP = (ascent + descent + leading) * size
+
+        let rawLines = string.split(separator: "\n", omittingEmptySubsequences: false)
+        let laidOut = rawLines.map { layoutLine(String($0)) }
+        let blockHeight = Double(rawLines.count - 1) * lineHeightP + ascentP + descentP
+
+        let topY0: Double
+        switch alignV {
+        case .top:      topY0 = origin.y
+        case .baseline: topY0 = origin.y - ascentP
+        case .middle:   topY0 = origin.y - blockHeight / 2
+        case .bottom:   topY0 = origin.y - blockHeight
+        }
+
+        var result: [PlacedAtlasGlyph] = []
+        for (index, line) in laidOut.enumerated() {
+            let baselineY = topY0 + Double(index) * lineHeightP + ascentP
+            let lineWidth = line.width * size
+            let startX: Double
+            switch alignH {
+            case .left:   startX = origin.x
+            case .center: startX = origin.x - lineWidth / 2
+            case .right:  startX = origin.x - lineWidth
+            }
+            for placed in line.glyphs {
+                result.append(PlacedAtlasGlyph(
+                    origin: Vector2(startX + placed.x * size, baselineY - placed.y * size),
+                    glyph: placed.glyph, font: placed.font))
+            }
+        }
+        return result
     }
 
     /// The glyphs of `string`, each as a positioned `Shape` of vector contours, as

@@ -11,6 +11,7 @@ Drawing text with `drawText` — bitmap (pixel-grid) and outline (`.ttf`/`.otf`)
 | [HelloText](HelloText/Sketch.swift) | a breathing title, a multi-line caption, and the character set marqueeing along the bottom (`drawText`, `textSize`/`textAlign`/`textWidth`) |
 | [PlaydateFont](PlaydateFont/Sketch.swift) | loading a Playdate `.fnt` pixel font bundled beside the sketch — an arcade attract screen (`BitmapFont(fntContentsOf:)`, `textFont`) |
 | [OutlineText](OutlineText/Sketch.swift) | a real `.ttf`/`.otf` face drawn at display size, with the word's glyph outlines pulled out as `Shape`s and rippled — text as geometry (`OutlineFont`, `textToShapes`, fill + stroke) |
+| [TextVolume](TextVolume/Sketch.swift) | a screen-filling wall of body text redrawn every frame through the SDF glyph atlas, a brightness wave rolling down the rows — the volume scale path (`textMode(.atlas)`) |
 | [GlyphWave](GlyphWave/Sketch.swift) | each letter bobbing on a travelling wave, tilting into the motion, with its own hue — the per-glyph `drawText` closure (`drawText(_:at:) { g in … }`, `TextGlyph`) |
 | [TextOnPath](TextOnPath/Sketch.swift) | a message riding an undulating curve, each glyph rotated to the tangent and scrolling along it (`drawText(_:along:offset:)`) |
 | [TextBox](TextBox/Sketch.swift) | a paragraph wrapping inside a box whose width breathes, reflowing every frame (`drawText(_:in:)`, word wrap + box alignment) |

@@ -21,10 +21,6 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 
 - **More 2D primitives and the SDF shape catalog.** More analytic shapes drop into the existing instanced-SDF path at near-zero per-shape cost — anything that's a canonical form parameterized by a size and a ratio or two. Each is a small, well-scoped addition (a shape tag, a builder, a distance function, and a fragment case), so they're a good way in.
 
-## Text rendering at volume
-
-Text is in (bitmap, outline, and single-line fonts, with text as geometry); this is its performance scale path. Per-glyph outline tessellation is fine for display and body text, but paragraphs of thousands of glyphs re-tessellated per frame get expensive. The fix is an SDF glyph atlas sampled in a fragment shader — it rhymes with the existing SDF shape pipeline and stays crisp under zoom — layered under the current outline rendering, not replacing it. See the [design notes](DESIGN-NOTES.md#text-volume-an-sdf-glyph-atlas-not-started).
-
 ## Integration and performance I/O
 
 Wiring a sketch into an installation or performance rig: **OSC** (Open Sound Control) for networked messages to and from TouchDesigner, Max/MSP, Ableton, Resolume, and lighting desks, built on `Network.framework` since OSC is just UDP or TCP; and **MIDI** through Core MIDI, for control surfaces and knobs driving parameters, clock and notes in, messages out, pairing naturally with the `@Param` knobs. Both are Apple-native at the transport layer and stay sugar over the typed core. See the [design notes](DESIGN-NOTES.md#integration-and-performance-io-osc-and-midi-not-started).
