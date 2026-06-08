@@ -59,6 +59,34 @@ struct LiveRootView: View {
             : SwiftUI.Color(red: 0xF4 / 255, green: 0xF4 / 255, blue: 0xF5 / 255).opacity(LiveChrome.tintOpacity)
     }
 
+    /// The leading title-bar accessory: a divider after the traffic lights and the
+    /// sidebar toggle. Hoisted out of `body` (rather than inlined in the title-bar
+    /// `.background`) so the nested view-builder closures stay shallow — deeply
+    /// nested builders with leading-dot style inference (`.separator`, `.borderless`)
+    /// can defeat the type-checker on older compilers, collapsing to an empty closure.
+    @ViewBuilder private var leadingTitlebarAccessory: some View {
+        HStack(spacing: 10) {
+            SwiftUI.Rectangle().fill(.separator).frame(width: 1, height: 22)   // divider after the traffic lights
+            Button { sidebarShown.toggle() } label: {
+                SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+        }
+        .padding(.leading, 8)
+        .frame(maxHeight: .infinity)
+    }
+
+    /// The trailing title-bar accessory: the inspector status chip.
+    @ViewBuilder private var trailingTitlebarAccessory: some View {
+        HStack(spacing: 0) {
+            StatusChip(status: session.inspectorStatus)
+            SwiftUI.Color.clear.frame(width: 22, height: 1)
+        }
+        .padding(.leading, 12)
+        .frame(maxHeight: .infinity)
+    }
+
     // A sidebar + sketch row under the redesign's tall gradient title bar. The bar
     // is a *unified* window toolbar (see `OllinLiveApp`) — genuinely taller, so
     // macOS centers the traffic lights and `.contentSize` accounts for it with no
@@ -96,28 +124,10 @@ struct LiveRootView: View {
         }
         .navigationTitle(session.title)
         .background {
-            TitlebarAccessory(attribute: .leading) {
-                HStack(spacing: 10) {
-                    SwiftUI.Rectangle().fill(.separator).frame(width: 1, height: 22)   // divider after the traffic lights
-                    Button { sidebarShown.toggle() } label: {
-                        SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
-                    }
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(.secondary)
-                }
-                .padding(.leading, 8)
-                .frame(maxHeight: .infinity)
-            }
+            TitlebarAccessory(attribute: .leading) { leadingTitlebarAccessory }
         }
         .background {
-            TitlebarAccessory(attribute: .trailing) {
-                HStack(spacing: 0) {
-                    StatusChip(status: session.inspectorStatus)
-                    SwiftUI.Color.clear.frame(width: 22, height: 1)
-                }
-                .padding(.leading, 12)
-                .frame(maxHeight: .infinity)
-            }
+            TitlebarAccessory(attribute: .trailing) { trailingTitlebarAccessory }
         }
         // The centered title is the unified toolbar's principal item; the gradient
         // is the toolbar background. (The taller bar comes from the unified toolbar
