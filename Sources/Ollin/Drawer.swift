@@ -1296,13 +1296,44 @@ final class Drawer {
         }
     }
 
-    /// Outline path: each glyph is a vector `Shape`, drawn through `drawShape` so
-    /// it fills, strokes, and composites exactly like any other shape.
+    /// Outline path: each glyph fills (and strokes) like any other shape. The
+    /// per-glyph flatten + triangulation are cached in local space and reused, so a
+    /// redrawn label only translates cached vertices — the same geometry a
+    /// `glyphShapes` + `drawShape` pass would emit, without re-tessellating every
+    /// frame. SVG export keeps the `drawShape` path (its recorder wants `Shape`s).
     private func drawOutlineText(_ string: String, _ x: Double, _ y: Double, font: OutlineFont) {
-        guard fillColor != nil || (strokeColor != nil && strokeWidth > 0) else { return }
-        for shape in font.glyphShapes(for: string, size: textPixelSize,
-                                      alignH: textAlignH, alignV: textAlignV, at: Vector2(x, y)) {
-            drawShape(shape)
+        let hasFill = fillColor != nil
+        let hasStroke = strokeColor != nil && strokeWidth > 0
+        guard hasFill || hasStroke else { return }
+
+        if svgRecorder != nil {
+            for shape in font.glyphShapes(for: string, size: textPixelSize,
+                                          alignH: textAlignH, alignV: textAlignV, at: Vector2(x, y)) {
+                drawShape(shape)
+            }
+            return
+        }
+
+        for glyph in font.placedGlyphs(for: string, size: textPixelSize,
+                                       alignH: textAlignH, alignV: textAlignV, at: Vector2(x, y)) {
+            let origin = glyph.origin
+            if hasFill, let fill = fillColor {
+                let c = fill.simd4
+                let tri = glyph.localFill
+                for i in stride(from: 0, to: tri.count - 2, by: 3) {
+                    emit((tri[i] + origin).simd2, color: c)
+                    emit((tri[i + 1] + origin).simd2, color: c)
+                    emit((tri[i + 2] + origin).simd2, color: c)
+                }
+            }
+            if hasStroke, let stroke = strokeColor {
+                let c = stroke.simd4
+                let half = strokeWidth / 2
+                for contour in glyph.localContours where contour.points.count >= 2 {
+                    appendStrokedPath(contour.points.map { $0 + origin },
+                                      closed: contour.isClosed, half: half, color: c)
+                }
+            }
         }
     }
 

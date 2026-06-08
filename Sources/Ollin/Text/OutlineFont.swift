@@ -44,6 +44,11 @@ public struct OutlineFont: @unchecked Sendable {
     /// font and glyph id. A reference type so copies of the value share it.
     private let cache: GlyphPathCache
 
+    /// Shared, lazily-filled cache of flattened + triangulated glyph geometry at a
+    /// given size (the per-frame cost of redrawing static text). Also a reference
+    /// type so copies of the value share it.
+    private let geometryCache: GlyphGeometryCache
+
     // MARK: Construction
 
     /// Wrap an existing `CTFont` (assumed to be at point size 1).
@@ -54,6 +59,7 @@ public struct OutlineFont: @unchecked Sendable {
         self.leading = Double(CTFontGetLeading(ctFont))
         self.name = CTFontCopyFullName(ctFont) as String
         self.cache = GlyphPathCache()
+        self.geometryCache = GlyphGeometryCache()
     }
 
     /// Load an installed font by name — a family (`"Helvetica Neue"`), full name,
@@ -201,14 +207,25 @@ public struct OutlineFont: @unchecked Sendable {
 
     // MARK: Glyph geometry
 
-    /// The glyphs of `string`, each as a `Shape` of vector contours, positioned in
-    /// Ollin canvas space (y-down) as if drawn at `origin` with `size`, `alignH`,
-    /// and `alignV`. One `Shape` per glyph (a letter with a counter — `o`, `e`,
-    /// `a` — keeps its hole via even-odd winding). The geometry behind `drawText`
-    /// and the public `outlines(of:)`.
-    func glyphShapes(for string: String, size: Double,
-                     alignH: TextAlignH, alignV: TextAlignV,
-                     at origin: Vector2) -> [Shape] {
+    /// One glyph placed for drawing: where its pen origin lands in canvas space,
+    /// plus its cached *local* geometry — flattened contours and triangulated fill
+    /// with the pen at the origin. The caller translates by `origin` to place it.
+    /// Flattening and triangulating are the per-frame cost of outline text, so
+    /// caching them (keyed by font/glyph/size) turns a redrawn label into a
+    /// translate of cached vertices.
+    struct PlacedGlyphGeometry {
+        let origin: Vector2
+        let localContours: [Contour]
+        let localFill: [Vector2]
+    }
+
+    /// The glyphs of `string`, each placed (origin + cached local geometry) as if
+    /// drawn at `origin` with `size`, `alignH`, and `alignV`. The shared layout
+    /// behind `drawText`'s fast fill path and `glyphShapes`. Glyphs with no
+    /// contours (spaces) are skipped.
+    func placedGlyphs(for string: String, size: Double,
+                      alignH: TextAlignH, alignV: TextAlignV,
+                      at origin: Vector2) -> [PlacedGlyphGeometry] {
         guard size > 0, !string.isEmpty else { return [] }
         let ascentP = ascent * size
         let descentP = descent * size
@@ -227,7 +244,7 @@ public struct OutlineFont: @unchecked Sendable {
         case .bottom:   topY0 = origin.y - blockHeight
         }
 
-        var shapes: [Shape] = []
+        var placedGlyphs: [PlacedGlyphGeometry] = []
         for (index, line) in laidOut.enumerated() {
             let baselineY = topY0 + Double(index) * lineHeightP + ascentP
             let lineWidth = line.width * size
@@ -238,16 +255,49 @@ public struct OutlineFont: @unchecked Sendable {
             case .right:  startX = origin.x - lineWidth
             }
             for placed in line.glyphs {
-                guard let path = cache.path(for: placed.glyph, font: placed.font) else { continue }
+                let local = geometry(for: placed.glyph, font: placed.font, size: size)
+                if local.contours.isEmpty { continue }
                 let glyphOriginX = startX + placed.x * size
                 let glyphOriginY = baselineY - placed.y * size
-                let contours = OutlineFont.flatten(path, scale: size,
-                                                   originX: glyphOriginX, originY: glyphOriginY)
-                // Glyph outlines are authored for nonzero winding.
-                if !contours.isEmpty { shapes.append(Shape(contours: contours, winding: .nonZero)) }
+                placedGlyphs.append(PlacedGlyphGeometry(
+                    origin: Vector2(glyphOriginX, glyphOriginY),
+                    localContours: local.contours, localFill: local.fill))
             }
         }
-        return shapes
+        return placedGlyphs
+    }
+
+    /// The glyphs of `string`, each as a positioned `Shape` of vector contours, as
+    /// if drawn at `origin` with `size`, `alignH`, and `alignV`. One `Shape` per
+    /// glyph (a letter with a counter — `o`, `e`, `a` — keeps its hole via nonzero
+    /// winding). The geometry behind the public `outlines(of:)` and `textToShapes`;
+    /// `drawText` itself takes the lighter `placedGlyphs` path. Built by
+    /// translating each glyph's cached local contours, so it shares the cache.
+    func glyphShapes(for string: String, size: Double,
+                     alignH: TextAlignH, alignV: TextAlignV,
+                     at origin: Vector2) -> [Shape] {
+        placedGlyphs(for: string, size: size, alignH: alignH, alignV: alignV, at: origin).map { g in
+            // Glyph outlines are authored for nonzero winding.
+            Shape(contours: g.localContours.map {
+                Contour($0.points.map { $0 + g.origin }, closed: $0.isClosed)
+            }, winding: .nonZero)
+        }
+    }
+
+    /// Cached local geometry (flattened contours + triangulated fill, pen at the
+    /// origin) for one glyph at `size`. Built on first use through the per-font
+    /// `geometryCache`.
+    private func geometry(for glyph: CGGlyph, font: CTFont,
+                          size: Double) -> GlyphGeometryCache.Local {
+        geometryCache.geometry(for: glyph, font: font, size: size) {
+            guard let path = cache.path(for: glyph, font: font) else {
+                return GlyphGeometryCache.Local(contours: [], fill: [])
+            }
+            let contours = OutlineFont.flatten(path, scale: size, originX: 0, originY: 0)
+            let fill = contours.isEmpty
+                ? [] : Shape(contours: contours, winding: .nonZero).triangulatedFill()
+            return GlyphGeometryCache.Local(contours: contours, fill: fill)
+        }
     }
 
     // MARK: Core Text layout
@@ -412,5 +462,47 @@ private final class GlyphPathCache: @unchecked Sendable {
         if let created { entry.paths[glyph] = created }
         fonts.append(entry)
         return created
+    }
+}
+
+/// Per-font cache of a glyph's *flattened and triangulated* geometry at a given
+/// on-screen size, in a local frame (pen at the origin). Flattening the outline
+/// and triangulating the fill (libtess2) are the per-frame cost of drawing
+/// outline text; caching them lets a redrawn label become a translate of cached
+/// vertices. Keyed by the run font, glyph id, and `size` — the geometry depends
+/// on size (both the flatten density and the scale track it). The size key is the
+/// exact `Double` bit pattern, so a sketch redrawing text at a constant size hits
+/// every frame; text whose size animates continuously won't hit (and pays the
+/// usual cost), with the total bounded by clearing past a cap.
+private final class GlyphGeometryCache: @unchecked Sendable {
+    struct Local { let contours: [Contour]; let fill: [Vector2] }
+    private struct Key: Hashable { let glyph: CGGlyph; let sizeBits: UInt64 }
+    private var fonts: [(font: CTFont, glyphs: [Key: Local])] = []
+    private var count = 0
+    /// Bound memory for text whose size animates (each size is a distinct key).
+    private static let cap = 8192
+
+    /// Cached local geometry for `glyph` at `size`, built via `make` on first use.
+    func geometry(for glyph: CGGlyph, font: CTFont, size: Double,
+                  make: () -> Local) -> Local {
+        let key = Key(glyph: glyph, sizeBits: size.bitPattern)
+        for index in fonts.indices where CFEqual(fonts[index].font, font) {
+            if let hit = fonts[index].glyphs[key] { return hit }
+            let made = make()
+            fonts[index].glyphs[key] = made
+            note()
+            return made
+        }
+        let made = make()
+        fonts.append((font: font, glyphs: [key: made]))
+        note()
+        return made
+    }
+
+    /// Count a new entry; clear everything if the cache has grown past the cap (a
+    /// blunt bound — fine since size-animating text is the only way to reach it).
+    private func note() {
+        count += 1
+        if count > Self.cap { fonts.removeAll(); count = 0 }
     }
 }
