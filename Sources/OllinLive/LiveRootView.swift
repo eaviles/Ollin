@@ -124,10 +124,10 @@ struct LiveRootView: View {
         }
         .navigationTitle(session.title)
         .background {
-            TitlebarAccessory(attribute: .leading) { leadingTitlebarAccessory }
+            TitlebarAccessory(attribute: .leading, content: AnyView(leadingTitlebarAccessory))
         }
         .background {
-            TitlebarAccessory(attribute: .trailing) { trailingTitlebarAccessory }
+            TitlebarAccessory(attribute: .trailing, content: AnyView(trailingTitlebarAccessory))
         }
         // The centered title is the unified toolbar's principal item; the gradient
         // is the toolbar background. (The taller bar comes from the unified toolbar
@@ -359,19 +359,15 @@ private final class TitlebarAccessoryVC: NSTitlebarAccessoryViewController {
 /// Mounts a SwiftUI view as a leading or trailing title-bar accessory. The host is
 /// invisible (zero-size); attach with `.background(...)`. Idempotent at the window
 /// level: one accessory per edge, updated in place.
-private struct TitlebarAccessory<Content: View>: NSViewRepresentable {
-    var attribute: NSLayoutConstraint.Attribute
-    var content: Content
-
-    // An explicit `@ViewBuilder` initializer, not the synthesized memberwise one:
-    // older Swift compilers don't propagate `@ViewBuilder` from a stored property
-    // to the memberwise init's closure parameter, so `TitlebarAccessory { ... }`
-    // wouldn't type-check there. Spelling it out keeps the trailing-closure call
-    // valid across compiler versions.
-    init(attribute: NSLayoutConstraint.Attribute = .trailing, @ViewBuilder content: () -> Content) {
-        self.attribute = attribute
-        self.content = content()
-    }
+private struct TitlebarAccessory: NSViewRepresentable {
+    var attribute: NSLayoutConstraint.Attribute = .trailing
+    // A type-erased, eagerly built `AnyView` rather than a generic `@ViewBuilder`
+    // closure: the caller wraps its content with `AnyView(...)` in the (main-actor)
+    // `body`, so this type carries no generic `Content` to infer and no deferred
+    // closure whose isolation the type-checker has to reason about. Older compilers
+    // (the CI toolchain) choked on the generic builder form inside `.background`,
+    // collapsing it to an empty closure; the erased value sidesteps that entirely.
+    var content: AnyView
 
     private var tag: NSUserInterfaceItemIdentifier {
         NSUserInterfaceItemIdentifier(attribute == .leading ? "ollin.titlebar.leading" : "ollin.titlebar.trailing")
@@ -380,7 +376,7 @@ private struct TitlebarAccessory<Content: View>: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView(frame: .zero) }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        sync(near: nsView, content: AnyView(content), attempt: 0)
+        sync(near: nsView, content: content, attempt: 0)
     }
 
     @MainActor
