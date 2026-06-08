@@ -71,6 +71,7 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
                                              params: sketch.parameters())
         if let host {
             host.rootView = rootView
+            sizeToFit()                      // re-fit: the new sketch may have a different parameter count
         } else {
             buildPanel(rootView)
         }
@@ -85,7 +86,12 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
 
     private func buildPanel(_ rootView: DetachedInspectorView) {
         let host = NSHostingController(rootView: rootView)
-        host.sizingOptions = [.preferredContentSize]   // panel adopts the SwiftUI size
+        // Size the panel ourselves (see `sizeToFit`), *not* continuously from the
+        // SwiftUI content: `.preferredContentSize` resizes the window every time the
+        // content's ideal size changes, and the live stats update ~10 Hz — enough to
+        // drive the window's update-constraints pass into an exception loop that
+        // hangs the app. We re-fit only when the hosted sketch changes.
+        host.sizingOptions = []
         self.host = host
 
         let panel = NSPanel(contentViewController: host)
@@ -107,15 +113,28 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
         panel.delegate = self
         self.panel = panel
 
-        // Place it beside the sketch window by default; once the user drags it, the
-        // frame autosave remembers that spot (so we only auto-place when there's no
-        // saved position).
-        panel.layoutIfNeeded()
+        // Size to the content once, then place beside the sketch window by default;
+        // once the user drags it, the frame autosave remembers that spot (so we only
+        // auto-place when there's no saved position).
+        sizeToFit()
         let autosaveName = "ollin.statsPanel.frame"
         if !panel.setFrameUsingName(autosaveName) {
             positionBesideSketch(panel)
         }
         panel.setFrameAutosaveName(autosaveName)
+    }
+
+    /// Size the panel to its content's fitting size — once, on build and whenever
+    /// the hosted sketch changes (its parameter count sets the height; the width is
+    /// fixed). Deliberately not driven by the per-frame stats updates: letting the
+    /// window track the SwiftUI content's size live (`.preferredContentSize`) thrashed
+    /// the update-constraints pass into an exception loop.
+    private func sizeToFit() {
+        guard let panel, let host else { return }
+        host.view.layoutSubtreeIfNeeded()
+        let fit = host.view.fittingSize
+        guard fit.width > 0, fit.height > 0 else { return }
+        panel.setContentSize(fit)
     }
 
     /// Default placement: just off the sketch window's right edge, top-aligned
