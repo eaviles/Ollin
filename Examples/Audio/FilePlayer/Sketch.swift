@@ -2,16 +2,16 @@ import Foundation
 import Ollin
 import OllinAudio
 
-/// Reacts to a playing audio file. By default it loops a bundled CC0 clip — a
-/// short excerpt of Bach's *Open Goldberg Variations* (Kimiko Ishizaka, public
-/// domain) — so it runs out of the box. Pass a path on launch to play your own
-/// track instead:
+/// Reacts to a playing audio file. By default it loops a bundled clip — a
+/// recording of *El Fandanguito*, a traditional Mexican *son huasteco* for solo
+/// violin (performed by Cynthia Molina, CC BY-SA) — so it runs out of the box.
+/// Pass a path on launch to play your own track instead:
 ///
 /// ```
 /// swift run Example-FilePlayer /path/to/your/track.mp3
 /// ```
 ///
-/// Solo piano spreads energy across the spectrum: the bars along the bottom are
+/// The violin spreads energy across the spectrum: the bars along the bottom are
 /// the frequency `spectrum`, and the line through the middle is the raw
 /// `waveform` (an oscilloscope), both straight from `AudioPlayer`.
 @main
@@ -35,7 +35,7 @@ final class FilePlayer: Sketch {
         }) {
             return try? AudioPlayer(path: path)
         }
-        return try? AudioPlayer(resource: "goldberg", withExtension: "m4a", in: .module)
+        return try? AudioPlayer(resource: "fandanguito", withExtension: "m4a", in: .module)
     }
 
     override func draw() {
@@ -70,6 +70,6 @@ final class FilePlayer: Sketch {
         fill(.white)
         textAlign(.center, .top)
         textSize(15 * scale)
-        drawText("Bach · Open Goldberg Variations (CC0)", width / 2, 34 * scale)
+        drawText("El Fandanguito · son huasteco (CC BY-SA)", width / 2, 34 * scale)
     }
 }

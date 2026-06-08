@@ -457,9 +457,9 @@ let package = Package(
             name: "Example-FilePlayer",
             dependencies: ["Ollin", "OllinAudio"],
             path: "Examples/Audio/FilePlayer",
-            // The bundled CC0 clip the sketch loads via Bundle.module (a launch
-            // path overrides it). Provenance is in THIRD-PARTY-NOTICES.md.
-            resources: [.copy("goldberg.m4a")]
+            // The bundled clip the sketch loads via Bundle.module (a launch path
+            // overrides it). CC BY-SA, provenance in THIRD-PARTY-NOTICES.md.
+            resources: [.copy("fandanguito.m4a")]
         ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).

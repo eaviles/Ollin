@@ -83,14 +83,17 @@ redistributed inside this repository.
 
 ---
 
-## Open Goldberg Variations (example audio)
+## El Fandanguito (example audio)
 
 - **Used for:** the `FilePlayer` example sketch only — a sample audio clip, to demonstrate `AudioPlayer` reacting to a file. Not part of the Ollin framework; Ollin (and `OllinAudio`) bundle no audio themselves.
-- **Location in this repo:** [`Examples/Audio/FilePlayer/goldberg.m4a`](Examples/Audio/FilePlayer/goldberg.m4a)
-- **Work:** J.S. Bach, *Goldberg Variations*, BWV 988 (an ~18-second excerpt of Variation 4), performed by Kimiko Ishizaka.
-- **Upstream:** https://archive.org/details/OpenGoldbergVariations — the Open Goldberg Variations project (https://opengoldbergvariations.org)
-- **License:** CC0 1.0 (Public Domain Dedication) — https://creativecommons.org/publicdomain/zero/1.0/
+- **Location in this repo:** [`Examples/Audio/FilePlayer/fandanguito.m4a`](Examples/Audio/FilePlayer/fandanguito.m4a)
+- **Work:** *El Fandanguito*, a traditional Mexican *son huasteco* (the composition is traditional / public domain). Performed on violin by Cynthia Molina; recorded and edited by Wikimedia Commons users Emropa and ClawisJM (students of Tec de Monterrey).
+- **Upstream:** https://commons.wikimedia.org/wiki/File:Viol%C3%ADn_SonHuasteco_ELFandanguito.ogg
+- **License:** CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0
 
-> The Open Goldberg Variations recording was deliberately released into the public
-> domain under CC0, which carries no attribution requirement; the credit above is
-> given freely. The bundled file is a short excerpt, trimmed and re-encoded to AAC.
+> Licensed CC BY-SA 4.0 (Attribution-ShareAlike). Attribution is given above as
+> required. **Changes:** the original Ogg Vorbis file was transcoded to AAC (with
+> short fades) for AVFoundation playback; no other edits. As a ShareAlike work
+> this clip remains under CC BY-SA 4.0 — that obligation rides on the audio file
+> and its adaptations, not on Ollin's source, which stays MIT (the clip is merely
+> bundled alongside it). The root [`LICENSE`](LICENSE) is unaffected.
