@@ -88,17 +88,19 @@ struct LiveRootView: View {
     }
 
     /// The invisible representable hosts that mount the two accessories into the
-    /// window title bar. The return type is the *concrete* `ZStack<TitlebarAccessory>`,
-    /// not an opaque `some View`: the CI compiler (6.1.2) can't see through an opaque
-    /// (or bare-representable) closure result to pick `.background`'s view-builder
-    /// overload — it falls through to the ShapeStyle one — but resolves a concrete
-    /// composite type fine (as the sidebar's `.background { ZStack { ... } }` does).
-    private var leadingTitlebarHost: ZStack<TitlebarAccessory> {
-        ZStack { TitlebarAccessory(attribute: .leading, content: AnyView(leadingTitlebarAccessory)) }
+    /// window title bar, type-erased to `AnyView`. The erasure is load-bearing: the
+    /// CI compiler (6.1.2) fails to resolve `.background`'s view-builder overload
+    /// whenever the closure's result type mentions `TitlebarAccessory` (bare, or
+    /// wrapped in `ZStack`/`some View`) — it falls through to the ShapeStyle overload.
+    /// Returning `AnyView` keeps the representable out of the closure's result type
+    /// entirely, so resolution sees a plain `() -> AnyView`. (The local 6.3.2 toolchain
+    /// resolves every form, which is why this never reproduced here.)
+    private var leadingTitlebarHost: AnyView {
+        AnyView(TitlebarAccessory(attribute: .leading, content: AnyView(leadingTitlebarAccessory)))
     }
 
-    private var trailingTitlebarHost: ZStack<TitlebarAccessory> {
-        ZStack { TitlebarAccessory(attribute: .trailing, content: AnyView(trailingTitlebarAccessory)) }
+    private var trailingTitlebarHost: AnyView {
+        AnyView(TitlebarAccessory(attribute: .trailing, content: AnyView(trailingTitlebarAccessory)))
     }
 
     // A sidebar + sketch row under the redesign's tall gradient title bar. The bar
