@@ -489,6 +489,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinOSC"],
             path: "Examples/Integration/OSCLoopback"
         ),
+        // Listens for OSC and prints/draws every message — point a phone or any
+        // OSC source at this Mac to discover what its controls send.
+        .executableTarget(
+            name: "Example-OSCMonitor",
+            dependencies: ["Ollin", "OllinOSC"],
+            path: "Examples/Integration/OSCMonitor"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

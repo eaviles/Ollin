@@ -177,8 +177,8 @@ On the receiving side a bundle's messages flow into the same latest-value cache 
 
 You can exercise OSC with nothing but the Mac in front of you by running both ends on `127.0.0.1`: a sender and a receiver in the same sketch. The **OSCLoopback** example (`Examples/Integration/OSCLoopback`) does exactly that: it sends an animated position to itself and draws the dot from what it reads back, so the picture you see is the round-trip itself.
 
-To bring in real gear, point a phone running TouchOSC (or any OSC source) at this Mac's IP and the receiver's port, sending the addresses your sketch reads. To watch what a sketch emits, aim a monitor like Protokol at the sender's port, or use `oscdump` from the command line.
+To bring in real gear, point a phone running TouchOSC (or any OSC source) at this Mac's IP and the receiver's port, sending the addresses your sketch reads. The **OSCMonitor** example (`Examples/Integration/OSCMonitor`) listens on a port and prints and draws every message it receives, so you can discover the addresses each control sends just by touching them. To watch what a sketch emits, aim a monitor like Protokol at the sender's port, or use `oscdump` from the command line.
 
 ---
 
-See the **OSCLoopback** example for a self-contained send-and-receive sketch that needs no second app to run.
+See the **OSCLoopback** example for a self-contained send-and-receive sketch that needs no second app to run, and **OSCMonitor** for inspecting messages from a phone or controller.
