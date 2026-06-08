@@ -34,6 +34,25 @@ static inline float3 linearToSrgb(float3 c) {
     return select(lo, hi, c > 0.0031308);
 }
 
+// Linear-light blending makes a partially-covered dark mark on a light ground
+// read lighter than its coverage (a 50%-covered black pixel composites to sRGB
+// ~0.74, not 0.5). For strokes and small dots that turns correctly-conserved ink
+// into a faint, "beaded" look: as a diagonal 1px line marches, its ink shifts
+// between sitting in one pixel (dark) and splitting across two (each ~50%, so each
+// light), and the eye reads the alternation as dashes. This remaps geometric AA
+// coverage to the alpha that, blended in linear light over a light ground, lands
+// at the perceptual (gamma-space) darkness the coverage implies — so a 1px stroke
+// reads evenly dark at any angle and a sub-pixel mark still fades smoothly from n
+// to 0. It is applied to *stroke* coverage and the disk fill (marks that should
+// stay visible when thin/small), never to region *fills* — those keep plain linear
+// coverage so abutting edges stay seamless and solid fills merge in linear light.
+// It only touches partial coverage: perceptualCoverage(1) == 1 (solid interiors)
+// and perceptualCoverage(0) == 0, and it never touches a shape's own fill/stroke
+// alpha, so overlap blending stays linear.
+static inline float perceptualCoverage(float c) {
+    return 1.0 - srgbToLinear(float3(1.0 - c)).x;
+}
+
 // Hash a pixel coordinate to [0, 1) (Dave Hoskins' hash, written from the
 // technique — a few fract/dot rounds, no texture lookup).
 static inline float hash12(float2 p) {
@@ -618,8 +637,11 @@ static float sdBezier(float2 pos, float2 A, float2 B, float2 C) {
 static void regionCoverage(float d, float hw, float strokeWidth, float strokeBias,
                            thread float &fillCov, thread float &strokeCov) {
     float aa = max(fwidth(d), 1e-5);
+    // The fill stays linear (abutting fills must meet seamlessly); the stroke band
+    // is a mark, so it gets perceptual coverage like the line/disk strokes — a thin
+    // outline reads evenly dark at any angle instead of beading.
     fillCov = 1.0 - smoothstep(0.0, aa, d);
-    strokeCov = (strokeWidth > 0.0) ? 1.0 - smoothstep(hw - aa, hw + aa, abs(d - strokeBias)) : 0.0;
+    strokeCov = (strokeWidth > 0.0) ? perceptualCoverage(1.0 - smoothstep(hw - aa, hw + aa, abs(d - strokeBias))) : 0.0;
 }
 
 // `regionCoverage` with optional hollow mode: when `bandWidth` > 0 the region's
@@ -642,15 +664,33 @@ static void regionFill(float d, float bandWidth, float hw, float strokeWidth, fl
 // shrinking dot fades smoothly to nothing with no minimum-size floor. Disks
 // never tile edge-to-edge, so the region fills' seam-avoiding inside bias isn't
 // needed; a centered ramp gives crisp AA at any normal size. `px` is the pixel
-// footprint in local units (`fwidth`), so this holds under any transform.
+// footprint in local units (`fwidth`), so this holds under any transform. The
+// conserved coverage is remapped to perceptual alpha (see perceptualCoverage) so a
+// small dot reads as dark as its area warrants instead of washing out in linear.
 static void diskCoverage(float2 p, float2 ab, float hw, float strokeWidth, float strokeBias,
                          thread float &fillCov, thread float &strokeCov) {
     float px = max(fwidth(sdEllipse(p, ab)), 1e-5);
     float2 abE = max(ab, 0.5 * px);                      // keep >= ~½px radius on screen
     float d = sdEllipse(p, abE);
     float areaScale = (ab.x * ab.y) / (abE.x * abE.y);   // < 1 only when enlarged
-    fillCov = clamp(0.5 - d / px, 0.0, 1.0) * areaScale;
-    strokeCov = (strokeWidth > 0.0) ? 1.0 - smoothstep(hw - px, hw + px, abs(d - strokeBias)) : 0.0;
+    fillCov = perceptualCoverage(clamp(0.5 - d / px, 0.0, 1.0) * areaScale);
+    strokeCov = (strokeWidth > 0.0) ? perceptualCoverage(1.0 - smoothstep(hw - px, hw + px, abs(d - strokeBias))) : 0.0;
+}
+
+// Coverage for a thin round-capped stroke (line / quadratic curve): `s` is the
+// unsigned distance to the centerline, `hw` the half-weight. The footprint is the
+// L2 gradient length, not fwidth: this is a unit-gradient distance field, so
+// length(grad) is the true per-pixel step at any orientation, where fwidth's L1
+// norm overshoots by up to sqrt(2) at 45 degrees and would fade a ~1px diagonal
+// line as if it were sub-pixel. A sub-pixel-thin stroke keeps a ~1px footprint
+// and scales by the width ratio (ink per unit length is proportional to width),
+// so it fades smoothly from n to 0 with no minimum-width floor; the result is then
+// remapped to perceptual coverage so the conserved ink reads evenly dark.
+static inline float capsuleCoverage(float s, float hw) {
+    float px = max(length(float2(dfdx(s), dfdy(s))), 1e-5);
+    float hwE = max(hw, 0.5 * px);
+    float c = clamp(0.5 - (s - hwE) / px, 0.0, 1.0) * min(hw / hwE, 1.0);
+    return perceptualCoverage(c);
 }
 
 fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
@@ -705,10 +745,11 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         // sub-pixel width keeps a ~1px footprint and scales alpha linearly by the
         // width ratio (a line's ink per unit length ∝ width), so a thin line
         // fades smoothly instead of vanishing or snapping to 1px.
+        // Area-conserving coverage via the L2 gradient footprint (orientation-
+        // invariant — see capsuleCoverage). param0 = half-segment vector; extra =
+        // cap radius (half the weight).
         float s = sdSegment(p, -in.param0, in.param0);
-        float px = max(fwidth(s), 1e-5);
-        float hwE = max(in.extra, 0.5 * px);
-        fillCov = clamp(0.5 - (s - hwE) / px, 0.0, 1.0) * min(in.extra / hwE, 1.0);
+        fillCov = capsuleCoverage(s, in.extra);
         break;
     }
     case 3u:     // arc, open
@@ -896,9 +937,7 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
                  // capsule's centered, area-conserving fade rather than regionFill —
                  // a sub-pixel-thin curve fades by width instead of vanishing.
         float s = sdBezier(p, in.param0, in.param1, in.param2);
-        float px = max(fwidth(s), 1e-5);
-        float hwE = max(in.extra, 0.5 * px);
-        fillCov = clamp(0.5 - (s - hwE) / px, 0.0, 1.0) * min(in.extra / hwE, 1.0);
+        fillCov = capsuleCoverage(s, in.extra);   // same coverage as the line
         break;
     }
     case 29u: {  // oriented box: param0/param1 = centerline endpoints (rel. center);
