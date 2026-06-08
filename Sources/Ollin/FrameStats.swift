@@ -1,4 +1,5 @@
 import Observation
+import Dispatch
 
 /// Shared keys for the detached stats/inspector panel.
 public enum OllinHUD {
@@ -69,9 +70,22 @@ final class StatsExtension: SketchExtension {
 
     func afterFrame(_ sketch: Sketch, _ info: FrameInfo) {
         guard sketch.frameCount % 6 == 0 else { return }   // ~10 Hz at 60fps (frame-count based, so it scales with the refresh rate)
-        stats.update(fps: info.frameRate, frameTimeMS: info.cpuDrawMS,
-                     frameCount: sketch.frameCount, time: sketch.time,
-                     vertexCount: info.vertexCount, sdfCount: info.sdfCount,
-                     canvasWidth: sketch.width, canvasHeight: sketch.height)
+        // Snapshot the numbers now, but publish them to the `@Observable` on the
+        // next main-loop turn rather than here. This runs inline in the MTKView
+        // draw — inside AppKit's display cycle — and mutating an observed value
+        // there drives a *re-entrant* SwiftUI layout pass (the overlay/inspector
+        // react synchronously), which can throw a constraint-update exception that
+        // unwinds through Swift frames and crashes. Hopping off the render call
+        // stack lets the observers update at a safe time.
+        let stats = stats
+        let fps = info.frameRate, frameTimeMS = info.cpuDrawMS
+        let frameCount = sketch.frameCount, time = sketch.time
+        let vertexCount = info.vertexCount, sdfCount = info.sdfCount
+        let canvasWidth = sketch.width, canvasHeight = sketch.height
+        DispatchQueue.main.async {
+            stats.update(fps: fps, frameTimeMS: frameTimeMS, frameCount: frameCount,
+                         time: time, vertexCount: vertexCount, sdfCount: sdfCount,
+                         canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+        }
     }
 }
