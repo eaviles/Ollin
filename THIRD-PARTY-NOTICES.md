@@ -80,3 +80,17 @@ redistributed inside this repository.
 
 > The fonts in playdate-arcade-fonts are released into the public domain under CC0,
 > which carries no attribution requirement; the credit above is given freely.
+
+---
+
+## Open Goldberg Variations (example audio)
+
+- **Used for:** the `FilePlayer` example sketch only — a sample audio clip, to demonstrate `AudioPlayer` reacting to a file. Not part of the Ollin framework; Ollin (and `OllinAudio`) bundle no audio themselves.
+- **Location in this repo:** [`Examples/Audio/FilePlayer/goldberg.m4a`](Examples/Audio/FilePlayer/goldberg.m4a)
+- **Work:** J.S. Bach, *Goldberg Variations*, BWV 988 (an ~18-second excerpt of Variation 4), performed by Kimiko Ishizaka.
+- **Upstream:** https://archive.org/details/OpenGoldbergVariations — the Open Goldberg Variations project (https://opengoldbergvariations.org)
+- **License:** CC0 1.0 (Public Domain Dedication) — https://creativecommons.org/publicdomain/zero/1.0/
+
+> The Open Goldberg Variations recording was deliberately released into the public
+> domain under CC0, which carries no attribution requirement; the credit above is
+> given freely. The bundled file is a short excerpt, trimmed and re-encoded to AAC.

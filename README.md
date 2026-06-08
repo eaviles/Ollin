@@ -217,6 +217,7 @@ Ollin bundles a small amount of third-party source in the repo. This is differen
 - **[Cozette](https://github.com/the-moonwitch/Cozette)** by Ines (MIT): the bundled default bitmap font for `drawText`, vendored as a BDF under `Sources/Ollin/Resources/`.
 - **[Hershey fonts](https://paulbourke.net/dataformats/hershey/)** (public domain): "Hershey Sans" (`futural`), the bundled default stroke (single-line / plotter) font for `drawText`, vendored as a `.jhf` under `Sources/Ollin/Resources/`. Created by A. V. Hershey at the U.S. National Bureau of Standards.
 - **[Marble Madness](https://github.com/idleberg/playdate-arcade-fonts)** (CC0 / public domain): a sample Playdate `.fnt` font used only by the `PlaydateFont` example to demonstrate the loader, bundled beside that sketch — not in the framework. Ollin ships the `.fnt` loader, not a library of fonts.
+- **[Open Goldberg Variations](https://archive.org/details/OpenGoldbergVariations)** (CC0 / public domain): a short excerpt of Bach's *Goldberg Variations* performed by Kimiko Ishizaka, used only by the `FilePlayer` example to demonstrate `AudioPlayer`, bundled beside that sketch — not in the framework. Ollin bundles no audio of its own.
 
 Everything bundled is listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), with each library's license kept next to its source. Ollin's own code stays MIT; bundling a permissively licensed library doesn't change that.
 
