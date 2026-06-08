@@ -18,6 +18,10 @@ let package = Package(
     ],
     products: [
         .library(name: "Ollin", targets: ["Ollin"]),
+        // Audio as a satellite library: `import OllinAudio` for microphone, file,
+        // and oscillator sources analyzed into values a sketch reads in `draw()`.
+        // Kept out of `Ollin` so the drawing core stays free of AVFoundation.
+        .library(name: "OllinAudio", targets: ["OllinAudio"]),
     ],
     targets: [
         // Shared, runtime-side dev machinery used by the live host and the
@@ -34,7 +38,10 @@ let package = Package(
         // edit, save, see it update in place, without the window closing.
         .executableTarget(
             name: "OllinLive",
-            dependencies: ["Ollin", "OllinRuntime"],
+            // OllinAudio is linked (not used by the host) so a hot-swapped sketch
+            // that `import`s it resolves its symbols against this process at load,
+            // the same way it resolves Ollin's.
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio"],
             path: "Sources/OllinLive",
             // Export the host's symbols so a hot-swapped sketch `.dylib`
             // (compiled with `-undefined dynamic_lookup`) resolves its Ollin
@@ -50,7 +57,9 @@ let package = Package(
         // reason OllinLive does.
         .executableTarget(
             name: "OllinExamples",
-            dependencies: ["Ollin", "OllinRuntime"],
+            // Links OllinAudio so gallery sketches that `import` it resolve at
+            // load (same reason as OllinLive above).
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio"],
             path: "Sources/OllinExamples",
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
@@ -68,6 +77,14 @@ let package = Package(
             path: "External/CLibtess2",
             exclude: ["LICENSE.txt", "README.md"],
             publicHeadersPath: "Include"
+        ),
+        // Audio: amplitude + FFT analysis (Accelerate/vDSP) of microphone, file,
+        // and oscillator sources over AVAudioEngine, plus modest tone generation.
+        // A satellite library (like OllinRuntime) so the drawing core stays free
+        // of AVFoundation; sketches opt in with `import OllinAudio`.
+        .target(
+            name: "OllinAudio",
+            dependencies: ["Ollin"]
         ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
@@ -426,6 +443,11 @@ let package = Package(
             dependencies: ["Ollin"],
             path: "Examples/Images/PixelField"
         ),
+        .executableTarget(
+            name: "Example-Spectrum",
+            dependencies: ["Ollin", "OllinAudio"],
+            path: "Examples/Audio/Spectrum"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
@@ -466,6 +488,13 @@ let package = Package(
             name: "OllinTests",
             dependencies: ["Ollin"],
             resources: [.copy("References")]
+        ),
+        // DSP correctness for the audio analyzer: feed synthesized signals and
+        // check amplitude and the spectrum peak bin. GPU-independent, so it runs
+        // in CI alongside the rest of the GPU-free tests.
+        .testTarget(
+            name: "OllinAudioTests",
+            dependencies: ["OllinAudio"]
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety

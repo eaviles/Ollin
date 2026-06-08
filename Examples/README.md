@@ -12,6 +12,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 
 | Category | What's inside |
 |---|---|
+| [Audio](Audio/) | sound-reactive sketches (`import OllinAudio`) |
 | [Basic](Basic/) | the smallest starting point |
 | [Color](Color/) | palettes, colormaps, and color over time |
 | [Images](Images/) | loading, drawing, tinting, and authoring images |

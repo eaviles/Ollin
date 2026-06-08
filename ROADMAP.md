@@ -21,9 +21,9 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 
 - **More 2D primitives and the SDF shape catalog.** More analytic shapes drop into the existing instanced-SDF path at near-zero per-shape cost — anything that's a canonical form parameterized by a size and a ratio or two. Each is a small, well-scoped addition (a shape tag, a builder, a distance function, and a fragment case), so they're a good way in.
 
-## Core batteries
+## Text rendering at volume
 
-The remaining table-stakes capability p5.js, openFrameworks, and OPENRNDR all ship: **audio** (lowest priority, mainly for audio-reactive visuals — playback plus amplitude and FFT a sketch reads in `draw()` — with a modest generation side too: tones/oscillators and simple synthesis, short of a full audio framework). A sketcher reaches for it early, so it matters more than its size suggests; it's Apple-native (AVFoundation) and stays sugar over the typed core. Engines, APIs, and ordering are in the [design notes](DESIGN-NOTES.md#core-batteries-text-and-audio-not-started).
+Text is in (bitmap, outline, and single-line fonts, with text as geometry); this is its performance scale path. Per-glyph outline tessellation is fine for display and body text, but paragraphs of thousands of glyphs re-tessellated per frame get expensive. The fix is an SDF glyph atlas sampled in a fragment shader — it rhymes with the existing SDF shape pipeline and stays crisp under zoom — layered under the current outline rendering, not replacing it. See the [design notes](DESIGN-NOTES.md#text-volume-an-sdf-glyph-atlas-not-started).
 
 ## Integration and performance I/O
 
