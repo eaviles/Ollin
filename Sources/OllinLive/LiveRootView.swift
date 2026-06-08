@@ -123,11 +123,15 @@ struct LiveRootView: View {
             SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
         }
         .navigationTitle(session.title)
+        // The accessory is wrapped in a `ZStack` rather than handed to `.background`
+        // bare: the CI toolchain (Swift 6.1.2) mis-resolves `.background { someBare
+        // NSViewRepresentable }` to the ShapeStyle overload, but resolves a
+        // container-wrapped view fine (as the sidebar `.background` above already does).
         .background {
-            TitlebarAccessory(attribute: .leading, content: AnyView(leadingTitlebarAccessory))
+            ZStack { TitlebarAccessory(attribute: .leading, content: AnyView(leadingTitlebarAccessory)) }
         }
         .background {
-            TitlebarAccessory(attribute: .trailing, content: AnyView(trailingTitlebarAccessory))
+            ZStack { TitlebarAccessory(attribute: .trailing, content: AnyView(trailingTitlebarAccessory)) }
         }
         // The centered title is the unified toolbar's principal item; the gradient
         // is the toolbar background. (The taller bar comes from the unified toolbar
