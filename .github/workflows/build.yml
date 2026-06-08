@@ -28,15 +28,17 @@ permissions:
 jobs:
   build:
     name: Build (macOS)
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Swift 6 language mode (Package.swift declares .v6) needs Xcode 16+. The
-      # macos-15 image already defaults to Xcode 16.x, so we don't pin a path
-      # (the exact Xcode_16.x.app name drifts as the image updates); just log
-      # the toolchain so a future Swift-version regression is easy to spot.
+      # The macos-26 image matches the development toolchain (Xcode 26 / the
+      # macOS 26 SDK), so what builds locally builds here — including macOS 26
+      # SDK symbols the older macos-15 image (Xcode 16 / Swift 6.1.2) couldn't
+      # even reference. We don't pin an Xcode path (the exact Xcode_26.x.app name
+      # drifts as the image updates); just log the toolchain so a future
+      # Swift-version regression is easy to spot.
       - name: Swift version
         run: swift --version
 
