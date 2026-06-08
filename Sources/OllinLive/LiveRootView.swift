@@ -95,26 +95,30 @@ struct LiveRootView: View {
             SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
         }
         .navigationTitle(session.title)
-        .background(TitlebarAccessory(attribute: .leading) {
-            HStack(spacing: 10) {
-                SwiftUI.Rectangle().fill(.separator).frame(width: 1, height: 22)   // divider after the traffic lights
-                Button { sidebarShown.toggle() } label: {
-                    SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
+        .background {
+            TitlebarAccessory(attribute: .leading) {
+                HStack(spacing: 10) {
+                    SwiftUI.Rectangle().fill(.separator).frame(width: 1, height: 22)   // divider after the traffic lights
+                    Button { sidebarShown.toggle() } label: {
+                        SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
+                .padding(.leading, 8)
+                .frame(maxHeight: .infinity)
             }
-            .padding(.leading, 8)
-            .frame(maxHeight: .infinity)
-        })
-        .background(TitlebarAccessory(attribute: .trailing) {
-            HStack(spacing: 0) {
-                StatusChip(status: session.inspectorStatus)
-                SwiftUI.Color.clear.frame(width: 22, height: 1)
+        }
+        .background {
+            TitlebarAccessory(attribute: .trailing) {
+                HStack(spacing: 0) {
+                    StatusChip(status: session.inspectorStatus)
+                    SwiftUI.Color.clear.frame(width: 22, height: 1)
+                }
+                .padding(.leading, 12)
+                .frame(maxHeight: .infinity)
             }
-            .padding(.leading, 12)
-            .frame(maxHeight: .infinity)
-        })
+        }
         // The centered title is the unified toolbar's principal item; the gradient
         // is the toolbar background. (The taller bar comes from the unified toolbar
         // style in `OllinLiveApp`.)
