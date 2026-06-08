@@ -139,8 +139,13 @@ struct LiveRootView: View {
             SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
         }
         .navigationTitle(session.title)
-        .background { leadingTitlebarHost }
-        .background { trailingTitlebarHost }
+        // The `.background` closure body must be a literal view expression, not a
+        // bare property reference: Swift 6.1.2 (CI) resolves `.background`'s
+        // view-builder overload for `{ ZStack { ... } }` but not for `{ aProperty }`,
+        // falling through to the ShapeStyle overload. So wrap each pre-built host in a
+        // `ZStack` literal — the same shape as the sidebar `.background` above.
+        .background { ZStack { leadingTitlebarHost } }
+        .background { ZStack { trailingTitlebarHost } }
         // The centered title is the unified toolbar's principal item; the gradient
         // is the toolbar background. (The taller bar comes from the unified toolbar
         // style in `OllinLiveApp`.)
