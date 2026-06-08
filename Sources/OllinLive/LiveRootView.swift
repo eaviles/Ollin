@@ -88,15 +88,16 @@ struct LiveRootView: View {
     }
 
     /// The invisible representable hosts that mount the two accessories into the
-    /// window title bar. Built here, in a typed `some View` return position, rather
-    /// than inline in the `.background` closures: that keeps the representable
-    /// construction out of `.background`'s overloaded view-builder closure, where
-    /// the CI compiler (6.1.2) otherwise fails to resolve it.
-    private var leadingTitlebarHost: some View {
+    /// window title bar. The return type is the *concrete* `ZStack<TitlebarAccessory>`,
+    /// not an opaque `some View`: the CI compiler (6.1.2) can't see through an opaque
+    /// (or bare-representable) closure result to pick `.background`'s view-builder
+    /// overload — it falls through to the ShapeStyle one — but resolves a concrete
+    /// composite type fine (as the sidebar's `.background { ZStack { ... } }` does).
+    private var leadingTitlebarHost: ZStack<TitlebarAccessory> {
         ZStack { TitlebarAccessory(attribute: .leading, content: AnyView(leadingTitlebarAccessory)) }
     }
 
-    private var trailingTitlebarHost: some View {
+    private var trailingTitlebarHost: ZStack<TitlebarAccessory> {
         ZStack { TitlebarAccessory(attribute: .trailing, content: AnyView(trailingTitlebarAccessory)) }
     }
 
