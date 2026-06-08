@@ -139,13 +139,7 @@ struct LiveRootView: View {
             SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
         }
         .navigationTitle(session.title)
-        // The `.background` closure body must be a literal view expression, not a
-        // bare property reference: Swift 6.1.2 (CI) resolves `.background`'s
-        // view-builder overload for `{ ZStack { ... } }` but not for `{ aProperty }`,
-        // falling through to the ShapeStyle overload. So wrap each pre-built host in a
-        // `ZStack` literal — the same shape as the sidebar `.background` above.
-        .background { ZStack { leadingTitlebarHost } }
-        .background { ZStack { trailingTitlebarHost } }
+        .titlebarAccessoryHosts(leading: leadingTitlebarHost, trailing: trailingTitlebarHost)
         // The centered title is the unified toolbar's principal item; the gradient
         // is the toolbar background. (The taller bar comes from the unified toolbar
         // style in `OllinLiveApp`.)
@@ -370,6 +364,19 @@ private final class TitlebarAccessoryVC: NSTitlebarAccessoryViewController {
 
     private func resize() {
         host.setFrameSize(NSSize(width: host.fittingSize.width, height: titleBarHeight))
+    }
+}
+
+private extension View {
+    /// Mounts both invisible title-bar accessory hosts via `.background`. Kept off
+    /// `LiveRootView.body`'s long modifier chain on purpose: Swift 6.1.2 (the CI
+    /// toolchain) fails to resolve `.background`'s view-builder overload when the call
+    /// sits deep in a large chained `body` expression — collapsing it to the wrong
+    /// overload — but resolves it fine in this short, isolated context. (The local
+    /// 6.3.2 toolchain resolves it inline, which is why it never reproduced here.)
+    func titlebarAccessoryHosts(leading: AnyView, trailing: AnyView) -> some View {
+        background { ZStack { leading } }
+            .background { ZStack { trailing } }
     }
 }
 
