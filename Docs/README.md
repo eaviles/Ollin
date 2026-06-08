@@ -33,6 +33,10 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 - [`Input`](./Input.md) - mouse and keyboard
 - [`Audio`](./Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`/`spectrum`/band values you read in `draw()`
 
+### Integration
+
+- [`OSC`](./OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (to and from TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`
+
 ### Output
 
 - [`Export`](./Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters)

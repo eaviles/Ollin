@@ -22,6 +22,12 @@ let package = Package(
         // and oscillator sources analyzed into values a sketch reads in `draw()`.
         // Kept out of `Ollin` so the drawing core stays free of AVFoundation.
         .library(name: "OllinAudio", targets: ["OllinAudio"]),
+        // OSC (Open Sound Control) as a satellite library: `import OllinOSC` to
+        // send and receive networked control messages to and from the other tools
+        // in a performance rig (TouchOSC, Max/MSP, TouchDesigner, …). Built on
+        // Network.framework (UDP); the OSC wire format is implemented from the
+        // spec. Kept out of `Ollin` so the drawing core stays free of networking.
+        .library(name: "OllinOSC", targets: ["OllinOSC"]),
     ],
     targets: [
         // Shared, runtime-side dev machinery used by the live host and the
@@ -38,10 +44,10 @@ let package = Package(
         // edit, save, see it update in place, without the window closing.
         .executableTarget(
             name: "OllinLive",
-            // OllinAudio is linked (not used by the host) so a hot-swapped sketch
-            // that `import`s it resolves its symbols against this process at load,
-            // the same way it resolves Ollin's.
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio"],
+            // OllinAudio and OllinOSC are linked (not used by the host) so a
+            // hot-swapped sketch that `import`s them resolves its symbols against
+            // this process at load, the same way it resolves Ollin's.
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC"],
             path: "Sources/OllinLive",
             // Export the host's symbols so a hot-swapped sketch `.dylib`
             // (compiled with `-undefined dynamic_lookup`) resolves its Ollin
@@ -57,9 +63,9 @@ let package = Package(
         // reason OllinLive does.
         .executableTarget(
             name: "OllinExamples",
-            // Links OllinAudio so gallery sketches that `import` it resolve at
-            // load (same reason as OllinLive above).
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio"],
+            // Links OllinAudio and OllinOSC so gallery sketches that `import`
+            // them resolve at load (same reason as OllinLive above).
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC"],
             path: "Sources/OllinExamples",
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
@@ -84,6 +90,15 @@ let package = Package(
         // of AVFoundation; sketches opt in with `import OllinAudio`.
         .target(
             name: "OllinAudio",
+            dependencies: ["Ollin"]
+        ),
+        // OSC: send/receive OSC messages over UDP via Network.framework, with the
+        // OSC 1.0 wire format implemented from the spec (no vendored library). A
+        // satellite library (like OllinAudio) so the drawing core stays free of
+        // networking; sketches opt in with `import OllinOSC`. Depends on Ollin
+        // only to bind an incoming address onto a `@Param` knob.
+        .target(
+            name: "OllinOSC",
             dependencies: ["Ollin"]
         ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
@@ -466,6 +481,14 @@ let package = Package(
             // overrides it). CC BY-SA, provenance in THIRD-PARTY-NOTICES.md.
             resources: [.copy("fandanguito.m4a")]
         ),
+        // Integration tier — OSC, and (later) MIDI/Syphon. Self-contained: the
+        // sketch sends OSC to itself on loopback and visualizes what it receives,
+        // so it needs no external app to run.
+        .executableTarget(
+            name: "Example-OSCLoopback",
+            dependencies: ["Ollin", "OllinOSC"],
+            path: "Examples/Integration/OSCLoopback"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
@@ -513,6 +536,13 @@ let package = Package(
         .testTarget(
             name: "OllinAudioTests",
             dependencies: ["OllinAudio"]
+        ),
+        // OSC correctness: wire-format encode/decode round-trips (every arg type,
+        // padding edges, malformed input rejected without trapping) plus an
+        // in-process UDP loopback. GPU-independent, so it runs in CI too.
+        .testTarget(
+            name: "OllinOSCTests",
+            dependencies: ["OllinOSC"]
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety

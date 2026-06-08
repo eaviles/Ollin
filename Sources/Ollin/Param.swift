@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// A tunable parameter the live host surfaces as a slider. Declare it on a
 /// sketch and read it like a normal property; the live host discovers it, shows
@@ -16,17 +17,25 @@ import Foundation
 ///
 /// The value is always clamped to its range. Pass a label to override the one
 /// derived from the property name.
+///
+/// The value is safe to read and write from any thread: the live inspector
+/// drives it from the main thread, and an external control source (a hardware
+/// fader, a networked message) may drive the same knob from its own thread, so
+/// the storage is guarded by a lock and the type is `Sendable`.
 @propertyWrapper
-public final class Param {
-    private var stored: Double
+public final class Param: @unchecked Sendable {
+    private let storage: OSAllocatedUnfairLock<Double>
     /// The allowed range; the value is clamped to it.
     public let range: ClosedRange<Double>
     /// An explicit display label, or `nil` to derive one from the property name.
     public let label: String?
 
     public var wrappedValue: Double {
-        get { stored }
-        set { stored = Swift.min(Swift.max(newValue, range.lowerBound), range.upperBound) }
+        get { storage.withLock { $0 } }
+        set {
+            let clamped = Swift.min(Swift.max(newValue, range.lowerBound), range.upperBound)
+            storage.withLock { $0 = clamped }
+        }
     }
 
     /// The parameter itself, via `$radius` — handy for passing it around.
@@ -35,13 +44,15 @@ public final class Param {
     public init(wrappedValue: Double, _ range: ClosedRange<Double>) {
         self.range = range
         self.label = nil
-        self.stored = Swift.min(Swift.max(wrappedValue, range.lowerBound), range.upperBound)
+        self.storage = OSAllocatedUnfairLock(
+            initialState: Swift.min(Swift.max(wrappedValue, range.lowerBound), range.upperBound))
     }
 
     public init(wrappedValue: Double, _ label: String, _ range: ClosedRange<Double>) {
         self.range = range
         self.label = label
-        self.stored = Swift.min(Swift.max(wrappedValue, range.lowerBound), range.upperBound)
+        self.storage = OSAllocatedUnfairLock(
+            initialState: Swift.min(Swift.max(wrappedValue, range.lowerBound), range.upperBound))
     }
 }
 
