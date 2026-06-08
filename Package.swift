@@ -14,7 +14,7 @@ import PackageDescription
 let package = Package(
     name: "Ollin",
     platforms: [
-        .macOS(.v14)
+        .macOS("26.0")
     ],
     products: [
         .library(name: "Ollin", targets: ["Ollin"]),

@@ -59,50 +59,6 @@ struct LiveRootView: View {
             : SwiftUI.Color(red: 0xF4 / 255, green: 0xF4 / 255, blue: 0xF5 / 255).opacity(LiveChrome.tintOpacity)
     }
 
-    /// The leading title-bar accessory: a divider after the traffic lights and the
-    /// sidebar toggle. Hoisted out of `body` (rather than inlined in the title-bar
-    /// `.background`) so the nested view-builder closures stay shallow — deeply
-    /// nested builders with leading-dot style inference (`.separator`, `.borderless`)
-    /// can defeat the type-checker on older compilers, collapsing to an empty closure.
-    @ViewBuilder private var leadingTitlebarAccessory: some View {
-        HStack(spacing: 10) {
-            SwiftUI.Rectangle().fill(.separator).frame(width: 1, height: 22)   // divider after the traffic lights
-            Button { sidebarShown.toggle() } label: {
-                SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
-            }
-            .buttonStyle(.borderless)
-            .foregroundStyle(.secondary)
-        }
-        .padding(.leading, 8)
-        .frame(maxHeight: .infinity)
-    }
-
-    /// The trailing title-bar accessory: the inspector status chip.
-    @ViewBuilder private var trailingTitlebarAccessory: some View {
-        HStack(spacing: 0) {
-            StatusChip(status: session.inspectorStatus)
-            SwiftUI.Color.clear.frame(width: 22, height: 1)
-        }
-        .padding(.leading, 12)
-        .frame(maxHeight: .infinity)
-    }
-
-    /// The invisible representable hosts that mount the two accessories into the
-    /// window title bar, type-erased to `AnyView`. The erasure is load-bearing: the
-    /// CI compiler (6.1.2) fails to resolve `.background`'s view-builder overload
-    /// whenever the closure's result type mentions `TitlebarAccessory` (bare, or
-    /// wrapped in `ZStack`/`some View`) — it falls through to the ShapeStyle overload.
-    /// Returning `AnyView` keeps the representable out of the closure's result type
-    /// entirely, so resolution sees a plain `() -> AnyView`. (The local 6.3.2 toolchain
-    /// resolves every form, which is why this never reproduced here.)
-    private var leadingTitlebarHost: AnyView {
-        AnyView(TitlebarAccessory(attribute: .leading, content: AnyView(leadingTitlebarAccessory)))
-    }
-
-    private var trailingTitlebarHost: AnyView {
-        AnyView(TitlebarAccessory(attribute: .trailing, content: AnyView(trailingTitlebarAccessory)))
-    }
-
     // A sidebar + sketch row under the redesign's tall gradient title bar. The bar
     // is a *unified* window toolbar (see `OllinLiveApp`) — genuinely taller, so
     // macOS centers the traffic lights and `.contentSize` accounts for it with no
@@ -139,31 +95,34 @@ struct LiveRootView: View {
             SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
         }
         .navigationTitle(session.title)
-        .titlebarAccessoryHosts(leading: leadingTitlebarHost, trailing: trailingTitlebarHost)
+        .background(TitlebarAccessory(attribute: .leading) {
+            HStack(spacing: 10) {
+                SwiftUI.Rectangle().fill(.separator).frame(width: 1, height: 22)   // divider after the traffic lights
+                Button { sidebarShown.toggle() } label: {
+                    SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+            }
+            .padding(.leading, 8)
+            .frame(maxHeight: .infinity)
+        })
+        .background(TitlebarAccessory(attribute: .trailing) {
+            HStack(spacing: 0) {
+                StatusChip(status: session.inspectorStatus)
+                SwiftUI.Color.clear.frame(width: 22, height: 1)
+            }
+            .padding(.leading, 12)
+            .frame(maxHeight: .infinity)
+        })
         // The centered title is the unified toolbar's principal item; the gradient
         // is the toolbar background. (The taller bar comes from the unified toolbar
         // style in `OllinLiveApp`.)
         .toolbar {
-            // `.sharedBackgroundVisibility` is a macOS 26 SDK symbol, so it can't even
-            // be *referenced* when building against an older SDK (the CI toolchain's) —
-            // `if #available` only gates runtime, not the symbol's existence. Gate it at
-            // compile time on the toolchain that ships the macOS 26 SDK (Swift 6.2+).
-            #if compiler(>=6.2)
-            if #available(macOS 26.0, *) {
-                ToolbarItem(placement: .principal) {
-                    Text(session.title).font(.system(size: 13.5, weight: .semibold))
-                }
-                .sharedBackgroundVisibility(.hidden)   // drop the Tahoe glass capsule around the title
-            } else {
-                ToolbarItem(placement: .principal) {
-                    Text(session.title).font(.system(size: 13.5, weight: .semibold))
-                }
-            }
-            #else
             ToolbarItem(placement: .principal) {
                 Text(session.title).font(.system(size: 13.5, weight: .semibold))
             }
-            #endif
+            .sharedBackgroundVisibility(.hidden)   // drop the Tahoe glass capsule around the title
         }
         .toolbarBackground(OllinInspector.titleBarGradient(colorScheme), for: .windowToolbar)
         .toolbarBackground(.visible, for: .windowToolbar)
@@ -377,31 +336,12 @@ private final class TitlebarAccessoryVC: NSTitlebarAccessoryViewController {
     }
 }
 
-private extension View {
-    /// Mounts both invisible title-bar accessory hosts via `.background`. Kept off
-    /// `LiveRootView.body`'s long modifier chain on purpose: Swift 6.1.2 (the CI
-    /// toolchain) fails to resolve `.background`'s view-builder overload when the call
-    /// sits deep in a large chained `body` expression — collapsing it to the wrong
-    /// overload — but resolves it fine in this short, isolated context. (The local
-    /// 6.3.2 toolchain resolves it inline, which is why it never reproduced here.)
-    func titlebarAccessoryHosts(leading: AnyView, trailing: AnyView) -> some View {
-        background { ZStack { leading } }
-            .background { ZStack { trailing } }
-    }
-}
-
 /// Mounts a SwiftUI view as a leading or trailing title-bar accessory. The host is
 /// invisible (zero-size); attach with `.background(...)`. Idempotent at the window
 /// level: one accessory per edge, updated in place.
-@MainActor private struct TitlebarAccessory: NSViewRepresentable {
+private struct TitlebarAccessory<Content: View>: NSViewRepresentable {
     var attribute: NSLayoutConstraint.Attribute = .trailing
-    // A type-erased, eagerly built `AnyView` rather than a generic `@ViewBuilder`
-    // closure: the caller wraps its content with `AnyView(...)` in the (main-actor)
-    // `body`, so this type carries no generic `Content` to infer and no deferred
-    // closure whose isolation the type-checker has to reason about. Older compilers
-    // (the CI toolchain) choked on the generic builder form inside `.background`,
-    // collapsing it to an empty closure; the erased value sidesteps that entirely.
-    var content: AnyView
+    @ViewBuilder var content: Content
 
     private var tag: NSUserInterfaceItemIdentifier {
         NSUserInterfaceItemIdentifier(attribute == .leading ? "ollin.titlebar.leading" : "ollin.titlebar.trailing")
@@ -410,7 +350,7 @@ private extension View {
     func makeNSView(context: Context) -> NSView { NSView(frame: .zero) }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        sync(near: nsView, content: content, attempt: 0)
+        sync(near: nsView, content: AnyView(content), attempt: 0)
     }
 
     @MainActor

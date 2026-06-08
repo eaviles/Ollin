@@ -8,7 +8,7 @@ The full development guidance lives in [`CLAUDE.md`](CLAUDE.md). It's the single
 
 ## Build and verify
 
-Building and running needs **macOS 14+ and a Metal-capable GPU**. The Swift toolchain and Metal are the hard requirements, so changes are verified on a Mac.
+Building and running needs **macOS 26+ and a Metal-capable GPU**. The Swift toolchain and Metal are the hard requirements, so changes are verified on a Mac.
 
 ```sh
 swift build                       # compile the framework and examples

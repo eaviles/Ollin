@@ -8,7 +8,7 @@ For how the framework works and the conventions behind it, see the guides in [`D
 
 A few things worth knowing before you pick something up:
 
-- Building and running needs macOS 14+ and a Metal-capable GPU. There's no way around the Swift toolchain and Metal, so changes are verified on a Mac.
+- Building and running needs macOS 26+ and a Metal-capable GPU. There's no way around the Swift toolchain and Metal, so changes are verified on a Mac.
 - New drawing features are built on the typed core first (the `Drawer` and the value types), then given the bare p5-style call as sugar. Anything the bare API can do, the core should be able to do too, with more control.
 - A feature isn't considered done until it has an example. Examples live in [`Examples/`](Examples/), one idea per sketch, and they're compile-tested in CI so they don't rot. Writing the example is also how the API gets a sanity check: if it's awkward to write, the API probably needs work.
 - The items under [Up next](#up-next) are the most self-contained, so they tend to make the best first contributions.
