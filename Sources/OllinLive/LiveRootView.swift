@@ -87,6 +87,19 @@ struct LiveRootView: View {
         .frame(maxHeight: .infinity)
     }
 
+    /// The invisible representable hosts that mount the two accessories into the
+    /// window title bar. Built here, in a typed `some View` return position, rather
+    /// than inline in the `.background` closures: that keeps the representable
+    /// construction out of `.background`'s overloaded view-builder closure, where
+    /// the CI compiler (6.1.2) otherwise fails to resolve it.
+    private var leadingTitlebarHost: some View {
+        ZStack { TitlebarAccessory(attribute: .leading, content: AnyView(leadingTitlebarAccessory)) }
+    }
+
+    private var trailingTitlebarHost: some View {
+        ZStack { TitlebarAccessory(attribute: .trailing, content: AnyView(trailingTitlebarAccessory)) }
+    }
+
     // A sidebar + sketch row under the redesign's tall gradient title bar. The bar
     // is a *unified* window toolbar (see `OllinLiveApp`) — genuinely taller, so
     // macOS centers the traffic lights and `.contentSize` accounts for it with no
@@ -123,16 +136,8 @@ struct LiveRootView: View {
             SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
         }
         .navigationTitle(session.title)
-        // The accessory is wrapped in a `ZStack` rather than handed to `.background`
-        // bare: the CI toolchain (Swift 6.1.2) mis-resolves `.background { someBare
-        // NSViewRepresentable }` to the ShapeStyle overload, but resolves a
-        // container-wrapped view fine (as the sidebar `.background` above already does).
-        .background {
-            ZStack { TitlebarAccessory(attribute: .leading, content: AnyView(leadingTitlebarAccessory)) }
-        }
-        .background {
-            ZStack { TitlebarAccessory(attribute: .trailing, content: AnyView(trailingTitlebarAccessory)) }
-        }
+        .background { leadingTitlebarHost }
+        .background { trailingTitlebarHost }
         // The centered title is the unified toolbar's principal item; the gradient
         // is the toolbar background. (The taller bar comes from the unified toolbar
         // style in `OllinLiveApp`.)
@@ -358,14 +363,6 @@ private final class TitlebarAccessoryVC: NSTitlebarAccessoryViewController {
     private func resize() {
         host.setFrameSize(NSSize(width: host.fittingSize.width, height: titleBarHeight))
     }
-}
-
-// Diagnostic: forces a clear `does not conform to 'View'` error if the
-// representable below ever stops being seen as a View, instead of the masked
-// "no exact matches in call to 'background'" the use site would otherwise report.
-@MainActor private func _requireTitlebarAccessoryIsView() {
-    func require<V: View>(_: V) {}
-    require(TitlebarAccessory(content: AnyView(SwiftUI.EmptyView())))
 }
 
 /// Mounts a SwiftUI view as a leading or trailing title-bar accessory. The host is
