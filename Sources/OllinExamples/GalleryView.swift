@@ -78,9 +78,13 @@ struct GalleryView: View {
     @MainActor
     private func loadSelected() async {
         guard let id = selection, let example = examples.first(where: { $0.id == id }) else {
+            CrashReporter.setCurrentExample(nil)
             detail = .empty
             return
         }
+        // Name the example for the crash reporter as soon as it's the selection, so
+        // a fault while it loads or runs is attributed to it.
+        CrashReporter.setCurrentExample(example.displayName)
         if let cached = cache[id] {
             detail = .loaded(id, cached)
             return

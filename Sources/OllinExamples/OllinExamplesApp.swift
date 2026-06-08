@@ -18,6 +18,10 @@ struct OllinExamplesApp: App {
     private let examples: [Example]
 
     init() {
+        // Surface in-process sketch faults (a native signal or an uncaught ObjC
+        // exception) with the example named and a backtrace, instead of the window
+        // just vanishing. Installed first, before anything can fault.
+        CrashReporter.install()
         let examples = ExampleCatalog.discover()
         // `--list` prints the catalog and exits (no window) — a quick check.
         if CommandLine.arguments.dropFirst().contains("--list") {
