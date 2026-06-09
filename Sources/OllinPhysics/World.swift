@@ -85,6 +85,9 @@ public final class World {
     /// Every rigid `Body` in the simulation, in the order added.
     public private(set) var bodies: [Body] = []
 
+    /// Every `Joint` between rigid bodies, in the order added.
+    public private(set) var joints: [Joint] = []
+
     /// The timestep used on the previous `step`, for time-corrected Verlet (so a
     /// variable frame rate doesn't change how fast things move).
     private var lastTimestep: Double = 0
@@ -96,6 +99,9 @@ public final class World {
     /// The static body carrying the `bounds` walls in the rigid world, rebuilt
     /// when `bounds` changes.
     private var wallBodyId: b2BodyId?
+
+    /// A dummy static body that grab (mouse) joints anchor against.
+    private var mouseGroundId: b2BodyId?
 
     /// Solver sub-steps per rigid step. Four is Box2D's recommended default.
     private let rigidSubSteps: Int32 = 4
@@ -145,6 +151,9 @@ public final class World {
     public func removeAll() {
         particles.removeAll()
         springs.removeAll()
+        // Joints before bodies: destroying a body would invalidate its joints.
+        for joint in joints { b2DestroyJoint(joint.id) }
+        joints.removeAll()
         for body in bodies { b2DestroyBody(body.id) }
         bodies.removeAll()
     }
@@ -340,6 +349,99 @@ public final class World {
         let body = Body(world: self, id: bodyId)
         bodies.append(body)
         return body
+    }
+
+    /// Link two rigid bodies with a `Joint` and return it — a hinge, rod, weld, or
+    /// slider (see `JointKind`). Anchors are world points at the moment of
+    /// connecting.
+    @discardableResult
+    public func connect(_ a: Body, _ b: Body, _ kind: JointKind) -> Joint {
+        let worldId = ensureRigidWorld()
+        let jointId: b2JointId
+
+        switch kind {
+        case .revolute(let at):
+            var def = b2DefaultRevoluteJointDef()
+            def.bodyIdA = a.id
+            def.bodyIdB = b.id
+            def.localAnchorA = b2Body_GetLocalPoint(a.id, meters(from: at))
+            def.localAnchorB = b2Body_GetLocalPoint(b.id, meters(from: at))
+            jointId = b2CreateRevoluteJoint(worldId, &def)
+
+        case .distance(let from, let to, let length, let stiffness):
+            var def = b2DefaultDistanceJointDef()
+            def.bodyIdA = a.id
+            def.bodyIdB = b.id
+            def.localAnchorA = b2Body_GetLocalPoint(a.id, meters(from: from))
+            def.localAnchorB = b2Body_GetLocalPoint(b.id, meters(from: to))
+            def.length = meters(from: length ?? from.distance(to: to))
+            if stiffness < 1 {
+                def.enableSpring = true
+                def.hertz = Float(1 + Swift.max(0, stiffness) * 8)   // soft … firm
+                def.dampingRatio = 0.5
+            }
+            jointId = b2CreateDistanceJoint(worldId, &def)
+
+        case .weld:
+            var def = b2DefaultWeldJointDef()
+            def.bodyIdA = a.id
+            def.bodyIdB = b.id
+            let mid = (a.position + b.position) / 2
+            def.localAnchorA = b2Body_GetLocalPoint(a.id, meters(from: mid))
+            def.localAnchorB = b2Body_GetLocalPoint(b.id, meters(from: mid))
+            def.referenceAngle = Float(b.angle - a.angle)
+            jointId = b2CreateWeldJoint(worldId, &def)
+
+        case .prismatic(let at, let axis):
+            var def = b2DefaultPrismaticJointDef()
+            def.bodyIdA = a.id
+            def.bodyIdB = b.id
+            def.localAnchorA = b2Body_GetLocalPoint(a.id, meters(from: at))
+            def.localAnchorB = b2Body_GetLocalPoint(b.id, meters(from: at))
+            let unit = axis.normalized
+            def.localAxisA = b2Body_GetLocalVector(a.id, b2Vec2(x: Float(unit.x), y: Float(unit.y)))
+            jointId = b2CreatePrismaticJoint(worldId, &def)
+        }
+
+        let joint = Joint(world: self, id: jointId)
+        joints.append(joint)
+        return joint
+    }
+
+    /// Grab a rigid body and pull it toward a moving world point — the cursor-drag
+    /// joint. Update the returned joint's `target` each frame, and `remove()` it to
+    /// let go.
+    @discardableResult
+    public func grab(_ body: Body, at point: Vector2) -> Joint {
+        let worldId = ensureRigidWorld()
+        var def = b2DefaultMouseJointDef()
+        def.bodyIdA = mouseGround(in: worldId)
+        def.bodyIdB = body.id
+        def.target = meters(from: point)
+        def.hertz = 5
+        def.dampingRatio = 0.7
+        def.maxForce = Float(1000 * Swift.max(0.001, body.mass))
+        let jointId = b2CreateMouseJoint(worldId, &def)
+        let joint = Joint(world: self, id: jointId, isGrab: true)
+        joint.target = point
+        joints.append(joint)
+        return joint
+    }
+
+    /// Destroy a joint (called by `Joint.remove()`).
+    func removeJoint(_ joint: Joint) {
+        b2DestroyJoint(joint.id)
+        joints.removeAll { $0 === joint }
+    }
+
+    /// The shared static anchor body for grab joints, created on demand.
+    private func mouseGround(in worldId: b2WorldId) -> b2BodyId {
+        if let id = mouseGroundId { return id }
+        var def = b2DefaultBodyDef()
+        def.type = b2_staticBody
+        let id = b2CreateBody(worldId, &def)
+        mouseGroundId = id
+        return id
     }
 
     /// Create the Box2D world on demand (with the current gravity and walls) the
