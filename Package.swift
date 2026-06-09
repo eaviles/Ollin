@@ -569,6 +569,11 @@ let package = Package(
             dependencies: ["Ollin", "OllinPhysics"],
             path: "Examples/Physics/Blobs"
         ),
+        .executableTarget(
+            name: "Example-Stack",
+            dependencies: ["Ollin", "OllinPhysics"],
+            path: "Examples/Physics/Stack"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

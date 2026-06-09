@@ -1,5 +1,6 @@
 import Foundation
 import Ollin
+import CBox2D
 
 /// The simulation: a bag of `Particle`s and the `Spring`s between them, plus the
 /// global rules they live under — gravity, drag, an optional container, and
@@ -50,8 +51,13 @@ public final class World {
     public var iterations: Int = 8
 
     /// An optional rectangle particles are kept inside. `nil` lets them leave the
-    /// canvas. Particles collide with the walls accounting for their `radius`.
-    public var bounds: Rectangle?
+    /// canvas. Particles collide with the walls accounting for their `radius`. The
+    /// rigid `Body` sub-system also collides with these walls.
+    public var bounds: Rectangle? {
+        didSet {
+            if let id = rigidWorldId { rebuildWalls(in: id) }
+        }
+    }
 
     /// Wall restitution, `0…1`: how much speed a particle keeps when it bounces
     /// off `bounds`. `0` sticks, `1` bounces with no loss.
@@ -70,11 +76,35 @@ public final class World {
     /// runs a little slow through a hitch rather than exploding.
     public var maxTimestep: Double = 1.0 / 30
 
+    /// Sketch points (the unit particles use) per simulated meter for the rigid
+    /// `Body` sub-system. Box2D is tuned for objects roughly 0.1–10 m, so the
+    /// default of 100 puts a 100-point shape at 1 m — its sweet spot. The Verlet
+    /// particle/spring side works directly in points and ignores this.
+    public var pixelsPerMeter: Double = 100
+
+    /// Every rigid `Body` in the simulation, in the order added.
+    public private(set) var bodies: [Body] = []
+
     /// The timestep used on the previous `step`, for time-corrected Verlet (so a
     /// variable frame rate doesn't change how fast things move).
     private var lastTimestep: Double = 0
 
+    /// The Box2D world backing the rigid `Body` sub-system, created lazily on the
+    /// first `addBody` so a pure particle/spring sketch never spins one up.
+    private var rigidWorldId: b2WorldId?
+
+    /// The static body carrying the `bounds` walls in the rigid world, rebuilt
+    /// when `bounds` changes.
+    private var wallBodyId: b2BodyId?
+
+    /// Solver sub-steps per rigid step. Four is Box2D's recommended default.
+    private let rigidSubSteps: Int32 = 4
+
     public init() {}
+
+    deinit {
+        if let id = rigidWorldId { b2DestroyWorld(id) }
+    }
 
     // MARK: Building the world
 
@@ -115,6 +145,8 @@ public final class World {
     public func removeAll() {
         particles.removeAll()
         springs.removeAll()
+        for body in bodies { b2DestroyBody(body.id) }
+        bodies.removeAll()
     }
 
     // MARK: Stepping
@@ -138,6 +170,12 @@ public final class World {
             if bounds != nil {
                 for particle in particles { constrainToBounds(particle) }
             }
+        }
+
+        // Advance the rigid Body sub-system, if any, over the same clamped step.
+        if let id = rigidWorldId {
+            b2World_SetGravity(id, meters(from: gravity))
+            b2World_Step(id, Float(h), rigidSubSteps)
         }
     }
 
@@ -247,5 +285,95 @@ public final class World {
 
         p.position = position
         p.previous = previous
+    }
+
+    // MARK: Rigid bodies
+
+    /// Add a rigid `Body` with `collider` at `position` and return it. Unlike a
+    /// `Particle` (a soft Verlet point), a `Body` has orientation, rotates, stacks
+    /// stably, and bounces with real contact response — it's backed by Box2D. It
+    /// shares the world's `gravity`, `bounds` (as walls), and `bounce` (used as
+    /// the wall and default contact restitution).
+    /// - Parameters:
+    ///   - kind: `.dynamic` (default) is moved by forces; `.static` is immovable.
+    ///   - density: mass per area; heavier bodies shove lighter ones.
+    ///   - friction: surface friction, `0` slick … `1` grippy.
+    ///   - restitution: bounciness `0…1`; defaults to the world's `bounce`.
+    @discardableResult
+    public func addBody(_ collider: Collider, at position: Vector2,
+                        kind: Body.Kind = .dynamic, density: Double = 1,
+                        friction: Double = 0.3, restitution: Double? = nil) -> Body {
+        let worldId = ensureRigidWorld()
+
+        var bodyDef = b2DefaultBodyDef()
+        bodyDef.type = kind.b2Type
+        bodyDef.position = meters(from: position)
+        bodyDef.linearDamping = Float(Swift.max(0, drag))
+        let bodyId = b2CreateBody(worldId, &bodyDef)
+
+        var shapeDef = b2DefaultShapeDef()
+        shapeDef.density = Float(Swift.max(0.0001, density))
+        shapeDef.material.friction = Float(friction)
+        shapeDef.material.restitution = Float(restitution ?? bounce)
+        switch collider {
+        case .circle(let r):
+            var circle = b2Circle(center: b2Vec2(x: 0, y: 0), radius: meters(from: r))
+            _ = b2CreateCircleShape(bodyId, &shapeDef, &circle)
+        case .box(let w, let h):
+            var poly = b2MakeBox(meters(from: w / 2), meters(from: h / 2))
+            _ = b2CreatePolygonShape(bodyId, &shapeDef, &poly)
+        }
+
+        let body = Body(world: self, id: bodyId)
+        bodies.append(body)
+        return body
+    }
+
+    /// Create the Box2D world on demand (with the current gravity and walls) the
+    /// first time a rigid body is added.
+    private func ensureRigidWorld() -> b2WorldId {
+        if let id = rigidWorldId { return id }
+        var def = b2DefaultWorldDef()
+        def.gravity = meters(from: gravity)
+        let id = b2CreateWorld(&def)
+        rigidWorldId = id
+        rebuildWalls(in: id)
+        return id
+    }
+
+    /// (Re)build the static walls from `bounds` as four segments around its edges.
+    private func rebuildWalls(in worldId: b2WorldId) {
+        if let wall = wallBodyId { b2DestroyBody(wall); wallBodyId = nil }
+        guard let b = bounds else { return }
+
+        var bodyDef = b2DefaultBodyDef()
+        bodyDef.type = b2_staticBody
+        let wall = b2CreateBody(worldId, &bodyDef)
+        wallBodyId = wall
+
+        var shapeDef = b2DefaultShapeDef()
+        shapeDef.material.restitution = Float(bounce)
+
+        let corners = [
+            b2Vec2(x: meters(from: b.x), y: meters(from: b.y)),
+            b2Vec2(x: meters(from: b.x + b.width), y: meters(from: b.y)),
+            b2Vec2(x: meters(from: b.x + b.width), y: meters(from: b.y + b.height)),
+            b2Vec2(x: meters(from: b.x), y: meters(from: b.y + b.height))
+        ]
+        for i in 0 ..< 4 {
+            var segment = b2Segment(point1: corners[i], point2: corners[(i + 1) % 4])
+            _ = b2CreateSegmentShape(wall, &shapeDef, &segment)
+        }
+    }
+
+    // Point ↔ meter conversion for the rigid sub-system (points = meters · ppm).
+    func meters(from p: Vector2) -> b2Vec2 {
+        b2Vec2(x: Float(p.x / pixelsPerMeter), y: Float(p.y / pixelsPerMeter))
+    }
+    func meters(from s: Double) -> Float {
+        Float(s / pixelsPerMeter)
+    }
+    func points(from v: b2Vec2) -> Vector2 {
+        Vector2(Double(v.x) * pixelsPerMeter, Double(v.y) * pixelsPerMeter)
     }
 }
