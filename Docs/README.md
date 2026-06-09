@@ -35,7 +35,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 
 ### Simulation
 
-- [`Physics`](./Physics.md) - `import OllinPhysics` for a Verlet `World` of particles, springs, and disk collisions, stepped each frame so motion comes from simulation
+- [`Physics`](./Physics.md) - `import OllinPhysics` for a `World` you step each frame so motion comes from simulation: a soft Verlet side (particles, springs, disk collisions) and a rigid side (bodies, colliders, joints, backed by Box2D)
 
 ### Integration
 

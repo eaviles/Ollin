@@ -12,14 +12,6 @@ Where [OSC](Docs/OSC.md) and [MIDI](Docs/MIDI.md) carry control into and out of 
 - **Pairs with OSC, both directions.** Visuals over Syphon and control over OSC is how installation and performance setups wire heterogeneous tools together, so the two land naturally as a pair: an Ollin sketch can drive and be driven by an openFrameworks sketch at the same time.
 - **Stays Apple-native and wrapped.** Syphon is macOS-only, Metal-compatible, and permissively licensed, so it fits the core stance; wrap it behind Ollin's own API the way every integration stays swappable and off the public surface. NDI is the cross-machine cousin — frames over the network rather than a local IOSurface — worth noting as a later option, though its SDK carries stricter redistribution terms than Syphon's. References: oF `ofxSyphon`, the Syphon framework.
 
-## Physics
-
-Heavier rigid-body dynamics extend the particle/spring/disk-collision `World` when they're wanted, staying in its value-type, immediate-mode idiom so a sketch's `World`/`Particle`/`Spring` code is unaffected.
-
-Box and polygon colliders with rotation, joints, and stable stacking are past what a position-projection Verlet solver does well. The pragmatic route is to vendor a mature, permissively-licensed 2D engine — Box2D or Chipmunk2D, both MIT-style — the way libtess2 already is: under `External/`, wrapped behind the `World` API so the dependency stays swappable and off the public surface, with the upstream LICENSE and per-file headers kept intact, provenance recorded, and an entry in `THIRD-PARTY-NOTICES.md` and the README. Behind the same wrapper, swapping what solves underneath leaves the public surface untouched.
-
-References: oF `ofxBox2d`, p5 / matter.js. SpriteKit isn't the substrate — a retained-mode scene graph with its own node tree and render loop is the wrong shape under the immediate-mode draw loop.
-
 ## Swift Playgrounds and iOS (not started)
 
 Worth pursuing. Swift Playgrounds app (Mac and iPad) App Projects (`.swiftpm`) are the closest Swift gets to the p5.js "open the editor and type, see it move" onboarding, and the same work unlocks iPad sketching and embedding in any SwiftUI app. On-brand for the "learn it in an afternoon" goal.
