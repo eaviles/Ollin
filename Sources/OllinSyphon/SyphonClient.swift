@@ -1,0 +1,143 @@
+import Foundation
+import Metal
+import Ollin
+import CSyphon
+
+/// A Syphon source currently published on the system — what
+/// ``SyphonClient/availableServers()`` returns. Carries the displayable name and
+/// host-app name, and the underlying description used to open a client.
+public struct SyphonServerInfo {
+    /// The source's human-readable name (may be empty or absent).
+    public let name: String?
+    /// The name of the app publishing the source (e.g. `"Ollin"`, `"Resolume"`).
+    public let appName: String?
+    /// The raw Syphon server description, used to open a ``SyphonClient``.
+    let description: [String: Any]
+
+    init(description: [String: Any]) {
+        self.description = description
+        self.name = description[SyphonServerDescriptionNameKey] as? String
+        self.appName = description[SyphonServerDescriptionAppNameKey] as? String
+    }
+
+    /// A friendly one-line label, e.g. `"Composition (Resolume)"`.
+    public var label: String {
+        let n = (name?.isEmpty == false) ? name : nil
+        switch (n, appName) {
+        case let (n?, a?): return "\(n) (\(a))"
+        case let (n?, nil): return n
+        case let (nil, a?): return a
+        default: return "Syphon source"
+        }
+    }
+}
+
+/// Receives live visuals from a **Syphon source** — another app on the Mac
+/// (openFrameworks, Resolume, MadMapper, VDMX, or another Ollin sketch) — as an
+/// ``Image`` you draw with `drawImage`.
+///
+/// ```swift
+/// final class Viewer: Sketch {
+///     let feed = SyphonClient()                  // first available source
+///     override func draw() {
+///         background(.black)
+///         if let frame = feed.newFrame() {
+///             drawImage(frame, 0, 0, width, height)
+///         }
+///     }
+/// }
+/// ```
+///
+/// `newFrame()` returns a texture-backed `Image` that wraps the source's live GPU
+/// texture directly (no copy). It connects on the system's default Metal device,
+/// which matches the sketch's renderer on a single-GPU Mac.
+@MainActor
+public final class SyphonClient {
+
+    private let device: MTLDevice?
+    private var client: SyphonMetalClient?
+
+    /// The connected source's name, if any.
+    public private(set) var serverName: String?
+    /// The connected source's host-app name, if any.
+    public private(set) var appName: String?
+
+    /// Connect to the first available Syphon source on the system.
+    public convenience init() {
+        self.init(named: nil, appName: nil)
+    }
+
+    /// Connect to a source matching `name` and/or `appName` (pass `nil` to leave
+    /// either unspecified; both `nil` takes the first available source).
+    public init(named name: String? = nil, appName: String? = nil) {
+        device = MTLCreateSystemDefaultDevice()
+        connect(named: name, appName: appName)
+    }
+
+    /// Connect to a specific source discovered via ``availableServers()``.
+    public init(source: SyphonServerInfo) {
+        device = MTLCreateSystemDefaultDevice()
+        connect(to: source.description)
+    }
+
+    /// Whether the client has a live connection to a source. Once `false`, no
+    /// further frames will arrive (the source went away) — call ``reconnect()``.
+    public var isActive: Bool { client?.isValid ?? false }
+
+    /// Whether a new frame has arrived since the last ``newFrame()`` call.
+    public var hasNewFrame: Bool { client?.hasNewFrame ?? false }
+
+    /// The latest frame as a texture-backed ``Image``, or `nil` if not connected
+    /// or no frame has arrived yet. Call it each frame in `draw()` and `drawImage`
+    /// the result; don't hold the returned image across frames.
+    public func newFrame() -> Image? {
+        guard let texture = client?.newFrameImage() else { return nil }
+        return Image(texture: texture)
+    }
+
+    /// Drop the current connection and look for a source again (e.g. after the
+    /// source app restarts, or to switch sources).
+    public func reconnect(named name: String? = nil, appName: String? = nil) {
+        client?.stop()
+        client = nil
+        connect(named: name, appName: appName)
+    }
+
+    /// Stop receiving frames and release the connection. Optional — releasing the
+    /// client has the same effect.
+    public func stop() {
+        client?.stop()
+        client = nil
+    }
+
+    /// Every Syphon source currently available on the system.
+    public static func availableServers() -> [SyphonServerInfo] {
+        SyphonServerDirectory.shared().servers.compactMap { entry in
+            coerceStringDict(entry).map(SyphonServerInfo.init(description:))
+        }
+    }
+
+    // MARK: Private
+
+    private func connect(named name: String?, appName: String?) {
+        let match = SyphonClient.availableServers().first { info in
+            (name == nil || info.name == name) && (appName == nil || info.appName == appName)
+        }
+        guard let match else { return }
+        connect(to: match.description)
+    }
+
+    private func connect(to description: [String: Any]) {
+        guard let device else { return }
+        serverName = description[SyphonServerDescriptionNameKey] as? String
+        appName = description[SyphonServerDescriptionAppNameKey] as? String
+        client = SyphonMetalClient(serverDescription: description, device: device,
+                                   options: nil, newFrameHandler: nil)
+    }
+
+    /// Bridge a Syphon description (an `NSDictionary` of `id<NSCoding>` values) to
+    /// a `[String: Any]` the client init and info struct can use.
+    private static func coerceStringDict(_ value: Any) -> [String: Any]? {
+        value as? [String: Any]
+    }
+}

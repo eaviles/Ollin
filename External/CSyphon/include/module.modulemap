@@ -1,0 +1,4 @@
+module CSyphon {
+    umbrella header "CSyphon.h"
+    export *
+}

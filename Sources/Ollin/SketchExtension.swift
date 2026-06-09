@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import Metal
 
 /// Per-frame timing handed to an extension's `afterFrame(_:_:)` — the wall-clock
 /// numbers the runner measures *around* a frame, which the in-frame hooks can't
@@ -52,6 +53,20 @@ public protocol SketchExtension: AnyObject {
     /// `wantsRenderedFrame` is `true`. Use it to save a snapshot, feed a video
     /// encoder, or compare against a reference.
     func frameRendered(_ sketch: Sketch, _ image: CGImage)
+
+    /// Whether this extension wants the rendered frame delivered as a Metal
+    /// *texture* to `frameRendered(_:texture:)`. The GPU-side companion to
+    /// `wantsRenderedFrame`: read every frame (so it can arm/disarm), defaults to
+    /// `false`. When `true`, the loop re-renders the frame off-screen and hands
+    /// over the texture — for sharing the live frame on the GPU (Syphon) with no
+    /// CPU round-trip. Independent of `wantsRenderedFrame`; an extension can want
+    /// either, both, or neither.
+    var wantsRenderedTexture: Bool { get }
+    /// The rendered frame as a Metal texture (the resolved canvas pixels, sRGB),
+    /// after it's drawn. Only delivered when `wantsRenderedTexture` is `true`. The
+    /// texture is the loop's to reuse after this call returns, so copy from it
+    /// (e.g. publish it) rather than retaining it across frames.
+    func frameRendered(_ sketch: Sketch, texture: MTLTexture)
 }
 
 public extension SketchExtension {
@@ -61,4 +76,6 @@ public extension SketchExtension {
     func afterFrame(_ sketch: Sketch, _ info: FrameInfo) {}
     var wantsRenderedFrame: Bool { false }
     func frameRendered(_ sketch: Sketch, _ image: CGImage) {}
+    var wantsRenderedTexture: Bool { false }
+    func frameRendered(_ sketch: Sketch, texture: MTLTexture) {}
 }

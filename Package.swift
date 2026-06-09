@@ -44,6 +44,13 @@ let package = Package(
         // and more — surfaced as typed values a sketch reads in `draw()`. Kept out
         // of `Ollin` so the drawing core stays free of AVFoundation / Vision.
         .library(name: "OllinVision", targets: ["OllinVision"]),
+        // Syphon as a satellite library: `import OllinSyphon` to share live
+        // visuals with the other apps on a Mac (openFrameworks via ofxSyphon,
+        // Resolume, MadMapper, VDMX, …) — publish the sketch's rendered frames as
+        // a Syphon source and consume an external Syphon texture as an input.
+        // Built on the vendored Syphon Framework (Metal subset, BSD 2-Clause);
+        // kept out of `Ollin` so the drawing core stays free of that dependency.
+        .library(name: "OllinSyphon", targets: ["OllinSyphon"]),
     ],
     targets: [
         // Shared, runtime-side dev machinery used by the live host and the
@@ -64,7 +71,7 @@ let package = Package(
             // are linked (not used by the host) so a hot-swapped sketch that
             // `import`s them resolves its symbols against this process at load,
             // the same way it resolves Ollin's.
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision"],
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinSyphon"],
             path: "Sources/OllinLive",
             // Export the host's symbols so a hot-swapped sketch `.dylib`
             // (compiled with `-undefined dynamic_lookup`) resolves its Ollin
@@ -83,7 +90,7 @@ let package = Package(
             // Links the satellite libraries (OllinAudio/OllinOSC/OllinMIDI/
             // OllinPhysics) so gallery sketches that `import` them resolve at load
             // (same reason as OllinLive above).
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision"],
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinSyphon"],
             path: "Sources/OllinExamples",
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
@@ -118,6 +125,39 @@ let package = Package(
             publicHeadersPath: "include",
             cSettings: [
                 .headerSearchPath("include")
+            ]
+        ),
+        // Vendored Syphon Framework (Metal subset) — the IOSurface-backed GPU
+        // frame-sharing engine behind `OllinSyphon`. Bundled third-party
+        // Objective-C source under its own BSD 2-Clause license — see
+        // External/CSyphon/README.md and the repo-root THIRD-PARTY-NOTICES.md.
+        // Wrapped behind Ollin's own API; the `Syphon*` symbols are not part of
+        // Ollin's public surface. `include/` holds a curated umbrella +
+        // module.modulemap exposing only the Metal server/client + directory;
+        // the implementation headers sit in the target root (found via the `.`
+        // header search path). The upstream `Syphon_Prefix.pch` is supplied with
+        // `-include` (it defines SYPHONLOG and imports Cocoa for every `.m`) and
+        // excluded from the source set. Syphon is ARC, so no `-fno-objc-arc`.
+        .target(
+            name: "CSyphon",
+            path: "External/CSyphon",
+            exclude: ["License.txt", "README.md", "Syphon_Prefix.pch"],
+            publicHeadersPath: "include",
+            cSettings: [
+                .headerSearchPath("."),
+                .headerSearchPath("include"),
+                // `-include` the prefix (SYPHONLOG + Cocoa for every `.m`).
+                // `-UDEBUG` undefines the debug-build DEBUG macro *for Syphon only*,
+                // so its SYPHONLOG connection-lifecycle NSLogs stay quiet in a
+                // `swift run`/`swift test` debug build (they'd otherwise spam).
+                .unsafeFlags(["-include", "Syphon_Prefix.pch", "-UDEBUG"])
+            ],
+            linkerSettings: [
+                .linkedFramework("Metal"),
+                .linkedFramework("IOSurface"),
+                .linkedFramework("CoreVideo"),
+                .linkedFramework("IOKit"),
+                .linkedFramework("Cocoa")
             ]
         ),
         // Audio: amplitude + FFT analysis (Accelerate/vDSP) of microphone, file,
@@ -163,6 +203,14 @@ let package = Package(
         .target(
             name: "OllinVision",
             dependencies: ["Ollin"]
+        ),
+        // Syphon: publish/consume live GPU frames to/from other Mac apps over the
+        // vendored Syphon Framework, wrapped behind Ollin's own SyphonServer /
+        // SyphonClient. A satellite (like OllinOSC) so the drawing core stays free
+        // of the dependency; depends on Ollin for the extension seam + `Image`.
+        .target(
+            name: "OllinSyphon",
+            dependencies: ["Ollin", "CSyphon"]
         ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
@@ -573,6 +621,21 @@ let package = Package(
             dependencies: ["Ollin", "OllinMIDI"],
             path: "Examples/Integration/MIDIMonitor"
         ),
+        // Self-contained: publishes its own frames as a Syphon source and
+        // subscribes to them, so the feedback inset is the round-trip (like
+        // OSCLoopback). Open Syphon's Simple Client to see it cross-app.
+        .executableTarget(
+            name: "Example-SyphonLoopback",
+            dependencies: ["Ollin", "OllinSyphon"],
+            path: "Examples/Integration/SyphonLoopback"
+        ),
+        // Subscribes to any external Syphon source (openFrameworks, Resolume, …)
+        // and draws it letterboxed — the "see what's out there" viewer.
+        .executableTarget(
+            name: "Example-SyphonViewer",
+            dependencies: ["Ollin", "OllinSyphon"],
+            path: "Examples/Integration/SyphonViewer"
+        ),
         // Physics — a Verlet world stepped each frame. Packing is a field of
         // colliding discs; Blobs are spring-built soft bodies that squish.
         .executableTarget(
@@ -728,6 +791,14 @@ let package = Package(
         .testTarget(
             name: "OllinVisionTests",
             dependencies: ["Ollin", "OllinVision"]
+        ),
+        // Syphon correctness: a directory smoke test (always on) plus a
+        // Metal-gated in-process publish→discover→receive loopback that
+        // soft-skips if the announcement doesn't surface (Mach-restricted
+        // sandbox). Uses the vendored CSyphon to stand up the publisher.
+        .testTarget(
+            name: "OllinSyphonTests",
+            dependencies: ["Ollin", "OllinSyphon", "CSyphon"]
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety

@@ -188,6 +188,19 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                 sketch.runFrameRendered(image)
             }
         }
+
+        // GPU-texture frame hook: same off-screen re-render, but the texture is
+        // handed over without a CPU read-back — for live frame-sharing (Syphon).
+        // Gated on `wantsRenderedTextures` so a sketch that isn't sharing pays
+        // nothing; armed live, so a sharer can start/stop between frames.
+        if sketch.wantsRenderedTextures {
+            let w = Int(sketch.width.rounded()), h = Int(sketch.height.rounded())
+            if let texture = renderer.texture(of: sketch.drawer,
+                                              viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
+                                              width: w, height: h) {
+                sketch.runFrameRendered(texture: texture)
+            }
+        }
     }
 
     /// Resolve the sketch's logical canvas, in points. For `.auto`/`.fixed` that's

@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import Metal
 
 /// How a sketch's preview window behaves and is sized, relative to its
 /// `canvasSize`. `.auto` and `.fixed` are fixed-size (export-first): the window
@@ -766,5 +767,19 @@ open class Sketch {
     /// extension that asked for it (via `wantsRenderedFrame`).
     func runFrameRendered(_ image: CGImage) {
         for e in extensions where e.wantsRenderedFrame { e.frameRendered(self, image) }
+    }
+
+    /// Whether any registered extension currently wants the rendered frame as a
+    /// GPU texture (via `wantsRenderedTexture`). Computed live like
+    /// `wantsRenderedFrames`, so a recorder/sharer can arm/disarm between frames;
+    /// the runner only pays the off-screen re-render when it's `true`.
+    var wantsRenderedTextures: Bool { extensions.contains { $0.wantsRenderedTexture } }
+
+    /// Fired by the runner after the render, handing the rendered frame as a Metal
+    /// texture to each extension that asked (via `wantsRenderedTexture`). The
+    /// GPU-side companion to `runFrameRendered(_:)` — for sharing the live frame
+    /// without a CPU round-trip (Syphon, and later the effects graph).
+    func runFrameRendered(texture: MTLTexture) {
+        for e in extensions where e.wantsRenderedTexture { e.frameRendered(self, texture: texture) }
     }
 }

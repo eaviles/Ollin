@@ -21,10 +21,6 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 
 - **More 2D primitives and the SDF shape catalog.** More analytic shapes drop into the existing instanced-SDF path at near-zero per-shape cost — anything that's a canonical form parameterized by a size and a ratio or two. Each is a small, well-scoped addition (a shape tag, a builder, a distance function, and a fragment case), so they're a good way in.
 
-## Live visual interop (Syphon)
-
-Sharing live visuals between Ollin and the other apps on a Mac, the way a performance rig already passes frames around. Syphon is the macOS standard for sharing GPU textures between running apps in real time, and the creative-coding ecosystem speaks it — openFrameworks through `ofxSyphon`, plus Resolume, MadMapper, and VDMX. Ollin would publish its rendered Metal texture as a Syphon source and consume an external Syphon texture as an input, so an Ollin sketch and an openFrameworks sketch (or any Syphon app) run side by side and trade visuals live, paired with [OSC](Docs/OSC.md) for control in both directions. A consumed texture is exactly what the [layered effects](#layered-effects-and-compositing) graph takes as input. Apple-only and Metal-compatible, so it fits the core stance. Design in the [design notes](DESIGN-NOTES.md#live-visual-interop-syphon-not-started).
-
 ## Rendering precision (HDR/float pipeline)
 
 Render into a 16-bit float (`rgba16Float`), linear-light intermediate, then tone-map and encode to the screen in a final pass. Two payoffs: smooth gradients with no 8-bit banding (a float buffer carries precision a fixed 8-bit target can't), and color values above 1.0, which bloom, glow, and HDR-style effects rely on. It's also the precise substrate the [layered effects](#layered-effects-and-compositing) graph wants — off-screen targets a sketch draws into and samples — so the natural order is precision first, the effect graph on top. See the [design notes](DESIGN-NOTES.md#rendering-precision-hdrfloat-pipeline-not-started).

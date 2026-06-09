@@ -49,6 +49,13 @@ public final class Image {
     private var cachedTexture: MTLTexture?
     private var cachedDeviceID: ObjectIdentifier?
 
+    /// A live, externally-owned texture this image wraps directly (see
+    /// `init(texture:)`). When set, the image *is* this texture: `texture(for:)`
+    /// hands it back as-is and the CPU pixel paths are inert. Used to draw a GPU
+    /// frame that changes every frame (a Syphon feed; later an effects layer)
+    /// through `drawImage` without a CPU round-trip.
+    private var externalTexture: MTLTexture?
+
     /// CPU pixel buffer for `subscript` get/set, materialized lazily on first
     /// pixel access (RGBA8, premultiplied alpha, row-major, top-left origin).
     private var pixelBytes: [UInt8]?
@@ -63,6 +70,30 @@ public final class Image {
         self.width = cgImage.width
         self.height = cgImage.height
     }
+
+    /// Wrap a live Metal `texture` so it can be drawn with `drawImage` — for a GPU
+    /// frame that's produced fresh each frame (a Syphon feed; later an effects
+    /// layer) and composited like any other image, riding the transform stack and
+    /// `tint`. The texture is used as-is by the renderer (no upload, no copy), so
+    /// it must live on the same Metal device the sketch renders on (true on a
+    /// single-GPU Mac). The CPU paths — pixel `subscript`, `cgImage`,
+    /// `currentCGImage()` — aren't meaningful for a live texture and are inert
+    /// (reads return `.clear`; `cgImage` is a 1×1 placeholder).
+    public init(texture: MTLTexture) {
+        self.externalTexture = texture
+        self.width = texture.width
+        self.height = texture.height
+        self.cgImage = Image.placeholderCGImage
+    }
+
+    /// A 1×1 transparent `CGImage`, the `cgImage` stand-in for a texture-backed
+    /// image (which has no CPU-side decode).
+    private static let placeholderCGImage: CGImage =
+        CGImage(width: 1, height: 1, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                provider: CGDataProvider(data: Data([0, 0, 0, 0]) as CFData)!,
+                decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
 
     /// Create a blank `width`×`height` image filled with `color` (transparent by
     /// default), ready to author pixel by pixel via `image[x, y] = …`. The way to
@@ -128,6 +159,10 @@ public final class Image {
     /// The Metal texture for this image on `device`, built and cached on first
     /// use. Called by the renderer on the main thread during encoding.
     func texture(for device: MTLDevice) -> MTLTexture? {
+        // A texture-backed image hands its live texture straight through (it's
+        // already on the GPU; the renderer composites it as-is each frame).
+        if let externalTexture { return externalTexture }
+
         let id = ObjectIdentifier(device)
         if let cachedTexture, cachedDeviceID == id { return cachedTexture }
 
@@ -164,6 +199,8 @@ public final class Image {
     public subscript(x: Int, y: Int) -> Color {
         get {
             guard x >= 0, x < width, y >= 0, y < height else { return .clear }
+            // A texture-backed image has no CPU pixels to read.
+            if externalTexture != nil { return .clear }
             let buffer = materializePixels()
             let i = (y * width + x) * 4
             let a = Double(buffer[i + 3]) / 255
@@ -176,6 +213,7 @@ public final class Image {
         }
         set {
             guard x >= 0, x < width, y >= 0, y < height else { return }
+            if externalTexture != nil { return }   // texture-backed: no CPU pixels to write
             _ = materializePixels()
             let (r, g, b, a) = Image.premultipliedBytes(newValue)
             let i = (y * width + x) * 4

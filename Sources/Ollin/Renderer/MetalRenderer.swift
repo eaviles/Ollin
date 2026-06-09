@@ -89,6 +89,15 @@ final class MetalRenderer {
     private var glyphBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     private var glyphExportBuffer: MTLBuffer?
 
+    /// Off-screen target for the GPU-texture frame hook (`texture(of:)`), kept and
+    /// reused across frames — rebuilt only when the canvas size changes, so live
+    /// frame-sharing (Syphon) doesn't allocate a texture every frame. The MSAA
+    /// target resolves into `textureResolve`, which is what's handed out
+    /// (single-sample, `.shaderRead` so a consumer can sample/copy it).
+    private var textureTargetMSAA: MTLTexture?
+    private var textureResolve: MTLTexture?
+    private var textureTargetSize = (width: 0, height: 0)
+
     /// Sampler for the image pipeline: linear filtering, clamp to edge. Built once.
     private let imageSampler: MTLSamplerState?
 
@@ -220,6 +229,63 @@ final class MetalRenderer {
                        bytesPerRow: bytesPerRow, space: CGColorSpaceCreateDeviceRGB(),
                        bitmapInfo: bitmapInfo, provider: provider, decode: nil,
                        shouldInterpolate: false, intent: .defaultIntent)
+    }
+
+    /// Render `drawer`'s geometry off-screen and return the resolved color texture
+    /// (single-sample, sRGB, `.shaderRead`) — same pipeline, MSAA, and blending as
+    /// on-screen and as `image(of:)`, but **without** the CPU read-back. The
+    /// GPU-only companion to `image(of:)`, for handing the live frame to a consumer
+    /// that stays on the GPU (Syphon publishing; later the effects graph).
+    ///
+    /// The returned texture is reused on the next call (the target is cached and
+    /// only rebuilt on a size change), so a consumer must *copy* from it during the
+    /// call, not retain it across frames. Synchronous: waits for the GPU so the
+    /// texture is complete on return.
+    func texture(of drawer: Drawer, viewport: SIMD2<Float>, width: Int, height: Int) -> MTLTexture? {
+        guard width > 0, height > 0 else { return nil }
+
+        if textureTargetSize != (width, height) || textureTargetMSAA == nil || textureResolve == nil {
+            let msaaDesc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
+            msaaDesc.textureType = .type2DMultisample
+            msaaDesc.sampleCount = sampleCount
+            msaaDesc.usage = .renderTarget
+            msaaDesc.storageMode = .private
+
+            let resolveDesc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
+            // `.shaderRead` so a consumer (e.g. Syphon's server renderer) can
+            // sample it; `.renderTarget` because it's the MSAA resolve destination.
+            resolveDesc.usage = [.renderTarget, .shaderRead]
+            resolveDesc.storageMode = .private
+
+            guard let msaa = device.makeTexture(descriptor: msaaDesc),
+                  let resolve = device.makeTexture(descriptor: resolveDesc) else { return nil }
+            textureTargetMSAA = msaa
+            textureResolve = resolve
+            textureTargetSize = (width, height)
+        }
+        guard let msaaTexture = textureTargetMSAA, let resolveTexture = textureResolve else { return nil }
+
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = msaaTexture
+        pass.colorAttachments[0].resolveTexture = resolveTexture
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
+        pass.colorAttachments[0].storeAction = .multisampleResolve
+
+        guard let commandBuffer = commandQueue.makeCommandBuffer(),
+              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+
+        encode(drawer, viewport: viewport, into: encoder,
+               triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
+               sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
+               imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
+               glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count))
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        return resolveTexture
     }
 
     /// Upload `drawer`'s recorded geometry and issue its draws into `encoder`,

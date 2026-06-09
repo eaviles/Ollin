@@ -4,14 +4,6 @@ The engineering design intent behind the planned work in [`ROADMAP.md`](ROADMAP.
 
 These notes assume Ollin's two ground rules: it targets Apple platforms only (no cross-platform abstractions), and the bare p5-style API is sugar over a public, typed core, so a feature is built on the core first and given the bare call second. Geometry-emitting calls take a `draw` verb prefix (`drawCircle`, `drawRect`, and so on).
 
-## Live visual interop: Syphon (not started)
-
-Where [OSC](Docs/OSC.md) and [MIDI](Docs/MIDI.md) carry control into and out of a sketch, this carries *visuals*: sharing rendered GPU frames with the other apps on a Mac in real time. Syphon is the established macOS mechanism — IOSurface-backed texture sharing with a Metal implementation — and the creative-coding ecosystem already speaks it: openFrameworks through `ofxSyphon`, plus Resolume, MadMapper, and VDMX. So this is the literal "consume openFrameworks sketches and vice versa" at runtime: two apps alive at once, trading frames, rather than one embedding the other.
-
-- **Two directions, both textures.** A *server* publishes Ollin's rendered Metal texture as a Syphon source other apps can read; a *client* consumes an external Syphon texture as an input Ollin can sample. The off-screen render path the exporter already uses is the seam for publishing, and a consumed texture is exactly what the [layered effects](#layered-effects-and-compositing-not-started) graph takes as a `Filter` input, so an external feed becomes a compositable layer rather than a one-off feature.
-- **Pairs with OSC, both directions.** Visuals over Syphon and control over OSC is how installation and performance setups wire heterogeneous tools together, so the two land naturally as a pair: an Ollin sketch can drive and be driven by an openFrameworks sketch at the same time.
-- **Stays Apple-native and wrapped.** Syphon is macOS-only, Metal-compatible, and permissively licensed, so it fits the core stance; wrap it behind Ollin's own API the way every integration stays swappable and off the public surface. NDI is the cross-machine cousin — frames over the network rather than a local IOSurface — worth noting as a later option, though its SDK carries stricter redistribution terms than Syphon's. References: oF `ofxSyphon`, the Syphon framework.
-
 ## Swift Playgrounds and iOS (not started)
 
 Worth pursuing. Swift Playgrounds app (Mac and iPad) App Projects (`.swiftpm`) are the closest Swift gets to the p5.js "open the editor and type, see it move" onboarding, and the same work unlocks iPad sketching and embedding in any SwiftUI app. On-brand for the "learn it in an afternoon" goal.

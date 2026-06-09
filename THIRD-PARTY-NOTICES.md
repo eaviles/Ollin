@@ -57,6 +57,24 @@ redistributed inside this repository.
 
 ---
 
+## Syphon Framework
+
+- **Used for:** sharing live GPU frames with other apps on the Mac (openFrameworks via `ofxSyphon`, Resolume, MadMapper, VDMX, …), behind `OllinSyphon`'s `SyphonServer`/`SyphonClient` API. Only the Metal portion is vendored; the OpenGL path is omitted.
+- **Location in this repo:** [`External/CSyphon/`](External/CSyphon/)
+- **Upstream:** https://github.com/Syphon/Syphon-Framework
+- **Version:** commit `71351d4b484cd2d1917867f7846a5cdca724552d` (2025-10-06)
+- **License:** BSD 2-Clause — full text at [`External/CSyphon/License.txt`](External/CSyphon/License.txt)
+- **Local changes:** the framework-style `<Syphon/…>` imports were rewritten to quoted includes for the flat SwiftPM target, and `SyphonServerRendererMetal.m` was changed to compile its (unchanged) blit shader from embedded source at runtime instead of loading a precompiled metallib from a bundle (the `swift run` build produces no metallib). Both are documented in [`External/CSyphon/README.md`](External/CSyphon/README.md); the per-file copyright headers are intact.
+
+> Copyright 2010-2023 bangnoise (Tom Butterworth), vade (Anton Marini), Maxime
+> Touroute & Philippe Chaurand. All rights reserved.
+>
+> Redistribution and use in source and binary forms, with or without modification,
+> are permitted provided that the conditions of the BSD 2-Clause license are met
+> (see `License.txt` for the full text, including the warranty disclaimer).
+
+---
+
 ## Cozette
 
 - **Used for:** the bundled default bitmap font (`BitmapFont.builtin`), loaded at runtime from its BDF by the font loader and rendered by `drawText`.
