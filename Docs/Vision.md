@@ -41,6 +41,8 @@ final class Faces: Sketch {
 - [Face](#face) — one detected face, and reading its parts
 - [ContourDetector](#contourdetector) — trace edges into vector contours
 - [DetectedContours](#detectedcontours) — contours as `Contour`s and `Shape`s
+- [HandTracker](#handtracker) — find hands and their 21-joint skeletons
+- [Hand](#hand) — one detected hand, its joints and fingers
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
 - [Permission](#permission) — the camera prompt
@@ -156,6 +158,52 @@ struct DetectedContours {
 ```
 
 The result of a contour trace: a tree of closed outlines, where a contour can contain nested contours (a shape with a hole, a ring inside a disk). `contours(in:)` flattens the tree to closed `Contour`s mapped onto the canvas (for line work); `shapes(in:)` collects each top-level contour and its descendants into one even-odd `Shape`, so the nesting reads correctly when filled, hatched, or exported.
+
+<a name="handtracker"></a>
+
+### HandTracker
+
+```swift
+HandTracker(_ camera: Camera, maximumHandCount: Int = 2)
+var hands: [Hand] { get }
+var count: Int { get }
+static func detect(in: Image, maximumHandCount: Int = 2) async throws -> [Hand]
+```
+
+Finds hands and their 21-joint skeletons — the most expressive tracker for gesture work. Read `hands` in `draw()`. Joints Vision isn't confident about (occluded, off-frame) are dropped, so what you get back is what it actually saw.
+
+```swift
+let camera = Camera()
+let hands = HandTracker(camera)
+override func draw() {
+    if let frame = camera.frame { drawImage(frame, in: bounds) }
+    for hand in hands.hands {
+        for (a, b) in hand.bones(in: bounds) { drawLine(a, b) }
+    }
+}
+```
+
+Gestures fall out of a few joints: the distance between `.thumbTip` and `.indexTip` is a pinch, `.indexTip` alone is a cursor, the spread of the fingertips is an open or closed hand.
+
+<a name="hand"></a>
+
+### Hand
+
+```swift
+struct Hand {
+    var chirality: Chirality        // .left, .right, or .unknown
+    var confidence: Double
+    func has(_: HandJoint) -> Bool
+    func point(_: HandJoint, in: Rectangle, mirrored: Bool = false) -> Vector2?
+    func points(in: Rectangle, mirrored: Bool = false) -> [HandJoint: Vector2]
+    func finger(_: Finger, in: Rectangle, mirrored: Bool = false) -> [Vector2]
+    func bones(in: Rectangle, mirrored: Bool = false) -> [(Vector2, Vector2)]
+}
+```
+
+One detected hand. `point(_:in:)` maps a single joint (or `nil` if it wasn't seen); `points(in:)` maps them all; `finger(_:in:)` returns one finger's chain as a polyline (wrist to tip); `bones(in:)` returns the whole skeleton as line segments, breaking a chain at any missing joint rather than drawing across the gap.
+
+The joints are `HandJoint` — `.wrist` plus four per finger (`.indexMCP`, `.indexPIP`, `.indexDIP`, `.indexTip`, and so on), with `HandJoint.tips` for the five fingertips. A `Finger` (`.thumb`, `.index`, `.middle`, `.ring`, `.little`) has a `.chain` of its joints.
 
 <a name="coordinate-mapping"></a>
 

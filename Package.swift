@@ -620,6 +620,12 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/ContourTrace"
         ),
+        // Hand skeletons (21 joints, up to two hands) drawn over the live feed.
+        .executableTarget(
+            name: "Example-HandTracking",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/HandTracking"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
