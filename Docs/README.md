@@ -42,6 +42,10 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 - [`OSC`](./OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (to and from TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`
 - [`MIDI`](./MIDI.md) - `import OllinMIDI` to read from and send to MIDI controllers and keyboards over Core MIDI, read in `draw()` or bound to a `@Param`
 
+### Vision
+
+- [`Vision`](./Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception — face tracking with landmarks today, surfaced as typed results you read in `draw()`
+
 ### Output
 
 - [`Export`](./Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters)

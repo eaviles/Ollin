@@ -74,15 +74,15 @@ Ollin aims to support AR sketches and offer a template-driven AR framework, fill
 - **The Spark lesson is templates.** Spark's reach came from ready-made effect templates (face filters, world effects, plane and image tracking) people could start from. The Ollin version: AR-example sketches plus starter templates wired to ARKit anchors (face, world, image tracking), so an AR sketch is "fill in the `draw()`, the tracking is handed to you", the same template-as-on-ramp idea as the examples and `.swiftpm` starters.
 - **Caveat:** AR needs ARKit on a device to verify (the simulator has no AR camera).
 
-## Computer vision (not started)
+## Computer vision (in progress)
 
-Image understanding as a first-class Mac capability, not something that requires the phone. Apple ships the whole computer-vision stack on macOS, hardware-accelerated on the M-series Neural Engine, so a sketch can grab the Mac's own webcam (or a Continuity Camera) and run real perception locally:
+Image understanding as a first-class Mac capability, not something that requires the phone. Apple ships the whole computer-vision stack on macOS, hardware-accelerated on the M-series Neural Engine, so a sketch can grab the Mac's own webcam (or a Continuity Camera) and run real perception locally. Over the camera frame source and the composable-tracker spine, the capabilities still to add:
 
-- **Vision** for face, body, and hand pose, person and subject segmentation, optical flow, contour and rectangle detection, text recognition (OCR), object tracking, and saliency.
+- **Vision** for hand and body pose (2D and 3D from a single camera), person and subject segmentation, optical flow, contour and rectangle detection, text recognition (OCR), barcodes, image classification, object and trajectory tracking, and saliency.
 - **Core ML** to run any converted model, **Core Image** for filters and the legacy `CIDetector`, **vImage and Accelerate** for fast low-level pixel work, and **Create ML** for training custom models.
 - **AVFoundation** for capture: the built-in camera, an external webcam, or a Continuity Camera iPhone used purely as a webcam.
 
-The shape: a capture source feeding frames, Vision and Core ML requests run per frame (or throttled to a slower cadence), and the results exposed as typed values a sketch reads in `draw()`, such as face landmarks, a segmentation matte as a texture, a flow field, or detected rectangles. It stays sugar over the typed core, and the heavier per-pixel results (mattes, flow fields) arrive as textures, which is what the [layered effects](#layered-effects-and-compositing-not-started) graph already consumes.
+The shape each tracker follows: a request run per frame (or throttled to a slower cadence) over the camera's frames, and the results exposed as typed values a sketch reads in `draw()`, such as hand joints, a segmentation matte as a texture, a flow field, or detected rectangles. It stays sugar over the typed core, and the heavier per-pixel results (mattes, flow fields) arrive as textures, which is what the [layered effects](#layered-effects-and-compositing-not-started) graph already consumes.
 
 **The Mac and iPhone split, drawn explicitly.** The Mac does image understanding natively: anything that takes a 2D camera frame and infers from it runs on the Mac with no phone. What the Mac cannot do is depth and AR sensing; there is no LiDAR, no TrueDepth front sensor, and no ARKit world or anchor tracking on a Mac. Those need the iPhone, which is the [iPhone as a sensor array](#iphone-as-a-sensor-array-not-started) section. So computer vision is available two ways: standalone on the Mac for image understanding, and as the depth-and-AR superset over the phone link. The phone can run these same Vision and Core ML models on its own Neural Engine too, but the reason to reach for it is the sensors the Mac lacks, not the understanding the Mac already does. References: oF `ofxCv`.
 

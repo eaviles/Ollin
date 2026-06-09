@@ -37,8 +37,11 @@ public final class Image {
     /// Pixel height of the decoded image.
     public let height: Int
 
-    /// The decoded source. The texture is built from this on first draw.
-    let cgImage: CGImage
+    /// The decoded source. The texture is built from this on first draw; also the
+    /// interop seam for frameworks that take a `CGImage` (Core Image, Vision, …).
+    /// This is the original decode — pixel edits made through the `[x, y]`
+    /// subscript aren't reflected here.
+    public let cgImage: CGImage
 
     /// The GPU texture, built once on first draw and cached. Paired with the
     /// device it was made on so a different device (rare) rebuilds rather than

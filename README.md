@@ -134,6 +134,7 @@ The drawing surface is small and the names familiar. The full API reference live
 - [OSC](Docs/OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`.
 - [MIDI](Docs/MIDI.md) - `import OllinMIDI` to read from and send to MIDI controllers and keyboards over Core MIDI, read in `draw()` or bound to a `@Param`.
 - [Physics](Docs/Physics.md) - `import OllinPhysics` for a `World` you step each frame, so motion comes from simulation instead of hand-tuned values: a soft Verlet side (particles, springs, disk collisions) and a rigid side (bodies, colliders, and joints, backed by Box2D).
+- [Vision](Docs/Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results a sketch reads in `draw()`: face tracking with landmarks, head pose, and capture quality today.
 - [Export](Docs/Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters).
 
 New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.
@@ -252,6 +253,7 @@ A few helpers lean on well-known public techniques, reimplemented in Ollin and c
 - OSC (`OllinOSC`) implements the [OSC 1.0 wire format](https://opensoundcontrol.stanford.edu/spec-1_0.html) from the specification, over UDP on `Network.framework`. Its API takes after openFrameworks' `ofxOsc` and OPENRNDR's `orx-osc`, read for approach and written independently; no OSC library is vendored.
 - MIDI (`OllinMIDI`) speaks the MIDI 1.0 message format, parsed and encoded from the specification, over Apple's Core MIDI. Its API takes after openFrameworks' `ofxMidi` and OPENRNDR's `orx-midi`, read for approach and written independently; no MIDI library is vendored.
 - Physics (`OllinPhysics`) has two sides. The soft side (particles, springs, soft bodies) is a from-scratch Verlet solver with position-based constraint relaxation, following the approach in Thomas Jakobsen's ["Advanced Character Physics"](https://www.cs.cmu.edu/afs/cs/academic/class/15462-s13/www/lec_slides/Jakobsen.pdf) (GDC 2001). The rigid side (bodies with rotation, polygon colliders, joints, and stable stacking) is backed by the vendored [Box2D](https://github.com/erincatto/box2d) engine (see [Bundled third-party code](#bundled-third-party-code)), wrapped behind the same `World`. The API takes after openFrameworks' `ofxBox2d` and p5 / matter.js.
+- Computer vision (`OllinVision`) runs on Apple's own on-device stack — [Vision](https://developer.apple.com/documentation/vision) and Core ML for the perception, [AVFoundation](https://developer.apple.com/documentation/avfoundation) for camera capture — hardware-accelerated on the Neural Engine where present. No computer-vision library is vendored; the framework calls the OS. Its sketch-facing ergonomics (results as typed values you read in `draw()`) take after openFrameworks' [`ofxCv`](https://github.com/kylemcdonald/ofxCv), read for approach and written independently.
 
 ### Directions ahead
 

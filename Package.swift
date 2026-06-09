@@ -38,6 +38,12 @@ let package = Package(
         // A satellite (like the others) to keep it opt-in; it needs no framework
         // beyond Ollin's own geometry types.
         .library(name: "OllinPhysics", targets: ["OllinPhysics"]),
+        // Computer vision as a satellite library: `import OllinVision` for the
+        // Mac's camera (built-in, Continuity, or external) plus Apple Vision /
+        // Core ML perception — face/hand/body tracking, segmentation, contours,
+        // and more — surfaced as typed values a sketch reads in `draw()`. Kept out
+        // of `Ollin` so the drawing core stays free of AVFoundation / Vision.
+        .library(name: "OllinVision", targets: ["OllinVision"]),
     ],
     targets: [
         // Shared, runtime-side dev machinery used by the live host and the
@@ -58,7 +64,7 @@ let package = Package(
             // are linked (not used by the host) so a hot-swapped sketch that
             // `import`s them resolves its symbols against this process at load,
             // the same way it resolves Ollin's.
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics"],
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision"],
             path: "Sources/OllinLive",
             // Export the host's symbols so a hot-swapped sketch `.dylib`
             // (compiled with `-undefined dynamic_lookup`) resolves its Ollin
@@ -77,7 +83,7 @@ let package = Package(
             // Links the satellite libraries (OllinAudio/OllinOSC/OllinMIDI/
             // OllinPhysics) so gallery sketches that `import` them resolve at load
             // (same reason as OllinLive above).
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics"],
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision"],
             path: "Sources/OllinExamples",
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
@@ -147,6 +153,16 @@ let package = Package(
         .target(
             name: "OllinPhysics",
             dependencies: ["Ollin", "CBox2D"]
+        ),
+        // Computer vision: the Mac's camera over AVFoundation plus Apple Vision /
+        // Core ML perception, wrapped behind Ollin's own typed trackers and result
+        // values (the Vision substrate stays private and swappable). A satellite
+        // (like OllinAudio) so the drawing core stays free of AVFoundation/Vision;
+        // sketches opt in with `import OllinVision`. Depends on Ollin for the
+        // `Image`/`Vector2`/`Rectangle` types results map onto.
+        .target(
+            name: "OllinVision",
+            dependencies: ["Ollin"]
         ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
@@ -584,6 +600,19 @@ let package = Package(
             dependencies: ["Ollin", "OllinPhysics"],
             path: "Examples/Physics/Chain"
         ),
+        // Vision — the Mac's camera plus Apple Vision perception. WebcamFeed draws
+        // the live feed; FaceTracking overlays detected faces and landmarks. Both
+        // need a camera and grant camera permission on first run.
+        .executableTarget(
+            name: "Example-WebcamFeed",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/WebcamFeed"
+        ),
+        .executableTarget(
+            name: "Example-FaceTracking",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/FaceTracking"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
@@ -654,6 +683,14 @@ let package = Package(
         .testTarget(
             name: "OllinPhysicsTests",
             dependencies: ["OllinPhysics", "CBox2D"]
+        ),
+        // Vision correctness: the normalized↔canvas coordinate mapping (pure, runs
+        // everywhere) plus a soft-skipping still-image face detection (renders a
+        // simple synthetic image and tolerates a no-detection result, so it never
+        // fails CI but verifies the path end-to-end when the model is present).
+        .testTarget(
+            name: "OllinVisionTests",
+            dependencies: ["Ollin", "OllinVision"]
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety
