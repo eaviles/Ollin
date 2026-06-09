@@ -27,7 +27,7 @@ Sharing live visuals between Ollin and the other apps on a Mac, the way a perfor
 
 ## Physics
 
-Lightweight 2D physics so motion can come from simulation instead of hand-tuned values: particles, springs, Verlet integration, and simple rigid bodies. No clean Apple-native substrate fits (SpriteKit is a retained-mode scene graph, too heavy to build on), so it's either a small from-scratch particle and Verlet system or a vendored permissively-licensed 2D engine. See the [design notes](DESIGN-NOTES.md#physics-not-started).
+Heavier 2D rigid-body dynamics on top of the existing particle/spring/collision `World`: box and polygon colliders with rotation, joints, and stable stacking. The pragmatic route is to vendor a permissively-licensed 2D engine (Box2D or Chipmunk2D) behind the same `World` wrapper rather than grow the from-scratch solver. See the [design notes](DESIGN-NOTES.md#physics).
 
 ## Rendering precision (HDR/float pipeline)
 

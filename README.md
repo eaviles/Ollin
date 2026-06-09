@@ -133,6 +133,7 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Audio](Docs/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`, `spectrum`, and band values (`bass`/`mid`/`treble`) a sketch reads in `draw()`.
 - [OSC](Docs/OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`.
 - [MIDI](Docs/MIDI.md) - `import OllinMIDI` to read from and send to MIDI controllers and keyboards over Core MIDI, read in `draw()` or bound to a `@Param`.
+- [Physics](Docs/Physics.md) - `import OllinPhysics` for a Verlet `World` of particles, springs, and disk collisions you step each frame, so motion comes from simulation instead of hand-tuned values.
 - [Export](Docs/Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters).
 
 New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.
@@ -249,6 +250,7 @@ A few helpers lean on well-known public techniques, reimplemented in Ollin and c
 - The `Colormap` ramps carry the canonical public colormap data: `viridis`/`magma`/`inferno`/`plasma`/`cividis` from [matplotlib](https://matplotlib.org) (CC0), `turbo` from Google (Apache-2.0), and `rocket`/`mako` from [seaborn](https://seaborn.pydata.org) (BSD-3).
 - OSC (`OllinOSC`) implements the [OSC 1.0 wire format](https://opensoundcontrol.stanford.edu/spec-1_0.html) from the specification, over UDP on `Network.framework`. Its API takes after openFrameworks' `ofxOsc` and OPENRNDR's `orx-osc`, read for approach and written independently; no OSC library is vendored.
 - MIDI (`OllinMIDI`) speaks the MIDI 1.0 message format, parsed and encoded from the specification, over Apple's Core MIDI. Its API takes after openFrameworks' `ofxMidi` and OPENRNDR's `orx-midi`, read for approach and written independently; no MIDI library is vendored.
+- Physics (`OllinPhysics`) is a from-scratch Verlet solver with position-based constraint relaxation, following the approach in Thomas Jakobsen's ["Advanced Character Physics"](https://www.cs.cmu.edu/afs/cs/academic/class/15462-s13/www/lec_slides/Jakobsen.pdf) (GDC 2001). Its API takes after openFrameworks' `ofxBox2d` and p5 / matter.js, read for approach and written independently; no physics engine is vendored.
 
 ### Directions ahead
 

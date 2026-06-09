@@ -32,6 +32,12 @@ let package = Package(
         // to MIDI gear (control surfaces, keyboards, sequencers) over Core MIDI.
         // Kept out of `Ollin` so the drawing core stays free of Core MIDI.
         .library(name: "OllinMIDI", targets: ["OllinMIDI"]),
+        // Physics as a satellite library: `import OllinPhysics` for a small
+        // Verlet world — particles, springs, and disk collisions — that a sketch
+        // steps each frame so motion comes from simulation, not hand-tuned values.
+        // A satellite (like the others) to keep it opt-in; it needs no framework
+        // beyond Ollin's own geometry types.
+        .library(name: "OllinPhysics", targets: ["OllinPhysics"]),
     ],
     targets: [
         // Shared, runtime-side dev machinery used by the live host and the
@@ -48,10 +54,11 @@ let package = Package(
         // edit, save, see it update in place, without the window closing.
         .executableTarget(
             name: "OllinLive",
-            // OllinAudio, OllinOSC, and OllinMIDI are linked (not used by the host)
-            // so a hot-swapped sketch that `import`s them resolves its symbols
-            // against this process at load, the same way it resolves Ollin's.
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI"],
+            // The satellite libraries (OllinAudio/OllinOSC/OllinMIDI/OllinPhysics)
+            // are linked (not used by the host) so a hot-swapped sketch that
+            // `import`s them resolves its symbols against this process at load,
+            // the same way it resolves Ollin's.
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics"],
             path: "Sources/OllinLive",
             // Export the host's symbols so a hot-swapped sketch `.dylib`
             // (compiled with `-undefined dynamic_lookup`) resolves its Ollin
@@ -67,9 +74,10 @@ let package = Package(
         // reason OllinLive does.
         .executableTarget(
             name: "OllinExamples",
-            // Links OllinAudio, OllinOSC, and OllinMIDI so gallery sketches that
-            // `import` them resolve at load (same reason as OllinLive above).
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI"],
+            // Links the satellite libraries (OllinAudio/OllinOSC/OllinMIDI/
+            // OllinPhysics) so gallery sketches that `import` them resolve at load
+            // (same reason as OllinLive above).
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics"],
             path: "Sources/OllinExamples",
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
@@ -112,6 +120,14 @@ let package = Package(
         // bind an incoming control onto a `@Param` knob.
         .target(
             name: "OllinMIDI",
+            dependencies: ["Ollin"]
+        ),
+        // Physics: a small Verlet world — particles, springs, and disk collisions
+        // — stepped each frame so motion can come from simulation. A satellite
+        // library (like OllinAudio) so it stays opt-in; it depends on Ollin only
+        // for the `Vector2`/`Rectangle` geometry types, no other framework.
+        .target(
+            name: "OllinPhysics",
             dependencies: ["Ollin"]
         ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
@@ -523,6 +539,18 @@ let package = Package(
             dependencies: ["Ollin", "OllinMIDI"],
             path: "Examples/Integration/MIDIMonitor"
         ),
+        // Physics — a Verlet world stepped each frame. Packing is a field of
+        // colliding discs; Blobs are spring-built soft bodies that squish.
+        .executableTarget(
+            name: "Example-Packing",
+            dependencies: ["Ollin", "OllinPhysics"],
+            path: "Examples/Physics/Packing"
+        ),
+        .executableTarget(
+            name: "Example-Blobs",
+            dependencies: ["Ollin", "OllinPhysics"],
+            path: "Examples/Physics/Blobs"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
@@ -585,6 +613,14 @@ let package = Package(
         .testTarget(
             name: "OllinMIDITests",
             dependencies: ["OllinMIDI"]
+        ),
+        // Physics correctness: Verlet integration (a body falls the expected
+        // distance under gravity), spring rest-length restoration, pinned bodies
+        // staying put, disk collisions separating overlap, and wall bounce. No
+        // GPU, so it runs in CI.
+        .testTarget(
+            name: "OllinPhysicsTests",
+            dependencies: ["OllinPhysics"]
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety

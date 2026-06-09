@@ -33,6 +33,10 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 - [`Input`](./Input.md) - mouse and keyboard
 - [`Audio`](./Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`/`spectrum`/band values you read in `draw()`
 
+### Simulation
+
+- [`Physics`](./Physics.md) - `import OllinPhysics` for a Verlet `World` of particles, springs, and disk collisions, stepped each frame so motion comes from simulation
+
 ### Integration
 
 - [`OSC`](./OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (to and from TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`

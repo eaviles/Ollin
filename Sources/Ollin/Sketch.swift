@@ -59,6 +59,13 @@ open class Sketch {
     /// proportions at any canvas size (and scales up cleanly for hi-res export).
     public var scale: Double { Swift.min(width, height) / 1000 }
 
+    /// The centre of the canvas, `(width / 2, height / 2)`.
+    public var center: Vector2 { Vector2(width / 2, height / 2) }
+
+    /// The canvas as a `Rectangle`, `(0, 0, width, height)` — terse for a physics
+    /// `World`'s bounds, clamping, or hit-testing.
+    public var bounds: Rectangle { Rectangle(x: 0, y: 0, width: width, height: height) }
+
     // MARK: Temporal state (motion is first-class)
 
     /// Number of frames drawn so far (1 during the first `draw()`).

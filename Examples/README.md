@@ -20,6 +20,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Live](Live/) | tunable `@Param` knobs under OllinLive |
 | [Motion](Motion/) | animation driven by `time` |
 | [Patterns](Patterns/) | grids and rule-based repetition |
+| [Physics](Physics/) | simulated motion (`import OllinPhysics`) |
 | [Randomness](Randomness/) | `random`, `noise`, and scatter |
 | [Text](Text/) | drawing text with the bitmap-font `drawText` |
 | [Recreations](Recreations/) | homages to past computer artists, by artist |

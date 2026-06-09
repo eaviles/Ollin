@@ -12,16 +12,13 @@ Where [OSC](Docs/OSC.md) and [MIDI](Docs/MIDI.md) carry control into and out of 
 - **Pairs with OSC, both directions.** Visuals over Syphon and control over OSC is how installation and performance setups wire heterogeneous tools together, so the two land naturally as a pair: an Ollin sketch can drive and be driven by an openFrameworks sketch at the same time.
 - **Stays Apple-native and wrapped.** Syphon is macOS-only, Metal-compatible, and permissively licensed, so it fits the core stance; wrap it behind Ollin's own API the way every integration stays swappable and off the public surface. NDI is the cross-machine cousin — frames over the network rather than a local IOSurface — worth noting as a later option, though its SDK carries stricter redistribution terms than Syphon's. References: oF `ofxSyphon`, the Syphon framework.
 
-## Physics (not started)
+## Physics
 
-Lightweight 2D physics so motion can come from simulation rather than hand-animated values: particles, springs, Verlet integration, and simple rigid bodies. The use is creative, not a game engine, so the bar is "a few hundred bodies that feel right", not exact physical accuracy.
+Heavier rigid-body dynamics extend the particle/spring/disk-collision `World` when they're wanted, staying in its value-type, immediate-mode idiom so a sketch's `World`/`Particle`/`Spring` code is unaffected.
 
-There is no clean Apple-native substrate to build on. SpriteKit is the closest, but it is a retained-mode scene graph with its own node tree and render loop, the wrong shape under Ollin's immediate-mode draw loop and too heavy to sit beneath it. So there are two realistic options:
+Box and polygon colliders with rotation, joints, and stable stacking are past what a position-projection Verlet solver does well. The pragmatic route is to vendor a mature, permissively-licensed 2D engine — Box2D or Chipmunk2D, both MIT-style — the way libtess2 already is: under `External/`, wrapped behind the `World` API so the dependency stays swappable and off the public surface, with the upstream LICENSE and per-file headers kept intact, provenance recorded, and an entry in `THIRD-PARTY-NOTICES.md` and the README. Behind the same wrapper, swapping what solves underneath leaves the public surface untouched.
 
-- **A small from-scratch system.** A particle and Verlet integrator with springs and constraints is a few hundred lines, stays fully in Ollin's value-type, immediate-mode idiom, and covers the common creative cases (flocking, cloth, soft bodies, particle fields). No dependency and no vendoring obligations.
-- **Vendor a 2D engine.** For real rigid-body dynamics (collisions, joints, stacking), a mature engine is the pragmatic choice. Box2D and Chipmunk2D are both permissively licensed (MIT-style), so either is vendorable the way libtess2 already is: under `External/`, wrapped behind Ollin's own API so the dependency stays swappable and off the public surface, with the upstream LICENSE and per-file headers kept intact, provenance recorded, and an entry in `THIRD-PARTY-NOTICES.md` and the README.
-
-No engine is settled on; weigh from-scratch simplicity against a vendored engine's completeness during design, and a likely path is the small Verlet system first, a vendored rigid-body engine later behind the same wrapper. Either way it stays sugar over a typed core (a `World` with bodies and forces) that a sketch steps each frame and reads in `draw()`. References: oF `ofxBox2d`, p5 / matter.js.
+References: oF `ofxBox2d`, p5 / matter.js. SpriteKit isn't the substrate — a retained-mode scene graph with its own node tree and render loop is the wrong shape under the immediate-mode draw loop.
 
 ## Swift Playgrounds and iOS (not started)
 
