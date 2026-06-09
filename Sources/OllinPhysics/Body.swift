@@ -115,12 +115,17 @@ extension Body.Kind {
     }
 }
 
-/// The shape of a rigid `Body`. More forms (polygon, capsule) land as the rigid
-/// catalog grows; position and rotation come from the `Body`, so a collider is
-/// just its local size.
+/// The shape of a rigid `Body`. Position and rotation come from the `Body`, so a
+/// collider is just its local geometry (centred on the body's origin).
 public enum Collider {
     /// A disk of the given radius (points).
     case circle(radius: Double)
     /// An axis-aligned box of the given size (points), before the body's rotation.
     case box(width: Double, height: Double)
+    /// A capsule (stadium): a line between two local-space points, thickened to
+    /// `radius` with rounded ends.
+    case capsule(from: Vector2, to: Vector2, radius: Double)
+    /// A convex polygon from local-space points (its convex hull is taken, up to
+    /// 8 vertices). Pass at least three points.
+    case polygon([Vector2])
 }

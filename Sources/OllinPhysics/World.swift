@@ -322,6 +322,19 @@ public final class World {
         case .box(let w, let h):
             var poly = b2MakeBox(meters(from: w / 2), meters(from: h / 2))
             _ = b2CreatePolygonShape(bodyId, &shapeDef, &poly)
+        case .capsule(let from, let to, let r):
+            var capsule = b2Capsule(center1: meters(from: from), center2: meters(from: to),
+                                    radius: meters(from: r))
+            _ = b2CreateCapsuleShape(bodyId, &shapeDef, &capsule)
+        case .polygon(let points):
+            let verts = points.map { meters(from: $0) }
+            var hull = verts.withUnsafeBufferPointer { buffer in
+                b2ComputeHull(buffer.baseAddress, Int32(buffer.count))
+            }
+            if hull.count >= 3 {
+                var poly = b2MakePolygon(&hull, 0)
+                _ = b2CreatePolygonShape(bodyId, &shapeDef, &poly)
+            }
         }
 
         let body = Body(world: self, id: bodyId)
