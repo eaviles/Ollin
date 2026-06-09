@@ -632,6 +632,12 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/BodyPose"
         ),
+        // Rectangular shapes (paper, screens, cards) highlighted as quads.
+        .executableTarget(
+            name: "Example-RectangleScan",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/RectangleScan"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

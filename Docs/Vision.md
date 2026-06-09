@@ -44,6 +44,7 @@ final class Faces: Sketch {
 - [HandTracker](#handtracker) — find hands and their 21-joint skeletons
 - [Hand](#hand) — one detected hand, its joints and fingers
 - [BodyTracker](#bodytracker) — find people and their pose skeletons
+- [RectangleDetector](#rectangledetector) — find rectangular shapes and their corners
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
 - [Availability](#availability) — when a model can't run on a Mac
@@ -232,6 +233,32 @@ override func draw() {
 ```
 
 `Body` mirrors `Hand`: `point(_:in:)` maps a single `BodyJoint` (or `nil`), `points(in:)` maps them all, and `bones(in:)` returns the skeleton as line segments (`Body.skeleton` is the joint-pair list — head, spine, arms, legs). Note that body pose is a heavier model — see [Availability](#availability).
+
+<a name="rectangledetector"></a>
+
+### RectangleDetector
+
+```swift
+RectangleDetector(_ camera: Camera, minimumAspectRatio: Float = 0.2,
+                  maximumAspectRatio: Float = 1.0, minimumSize: Float = 0.1,
+                  minimumConfidence: Float = 0.6, maximumCount: Int = 8)
+var rectangles: [DetectedRectangle] { get }
+static func detect(in: Image, …) async throws -> [DetectedRectangle]
+```
+
+Finds rectangular shapes — a sheet of paper, a screen, a card, a sign — even seen at an angle, and reports their four corners. Unlike the pose and segmentation models, this is a *classical* detector (no ML), so it runs on any Mac. The aspect/size/confidence knobs tune what counts as a rectangle.
+
+```swift
+let camera = Camera()
+let rects = RectangleDetector(camera)
+override func draw() {
+    if let frame = camera.frame { drawImage(frame, in: bounds) }
+    noFill(); stroke(.green)
+    for r in rects.rectangles { drawPolygon(r.corners(in: bounds)) }
+}
+```
+
+A `DetectedRectangle` is `corners(in:)` (the four corners in perimeter order, ready to `drawPolygon` as a closed quad), `center(in:)`, and a `confidence`. The corners come back in perspective, which is exactly what a document scanner uses to warp a page flat.
 
 <a name="coordinate-mapping"></a>
 

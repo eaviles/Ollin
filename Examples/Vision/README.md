@@ -13,5 +13,6 @@ Computer vision on the Mac. Vision lives in a separate library — add `import O
 | [ContourTrace](ContourTrace/Sketch.swift) | the camera's edges traced into vector contours and drawn as black line art over a faint feed — each is an Ollin `Shape`, so it could be filled, hatched, or sent to a plotter (`ContourDetector`, `shapes(in:)`) |
 | [HandTracking](HandTracking/Sketch.swift) | up to two hands drawn as 21-joint skeletons over the feed — finger bones, joint dots, and highlighted fingertips, tinted by which hand it is (`HandTracker`, `Hand`, `bones(in:)`) |
 | [BodyPose](BodyPose/Sketch.swift) | a person's 2D pose drawn as a stick figure over the feed; shows an on-canvas message when the body-pose model can't run on the Mac instead of failing silently (`BodyTracker`, `Body`, `isAvailable`) |
+| [RectangleScan](RectangleScan/Sketch.swift) | rectangular shapes (paper, screens, cards) highlighted as four-corner quads over the feed, perspective and all — a classical detector, so it runs on any Mac (`RectangleDetector`, `corners(in:)`) |
 
 These examples need a camera and grant camera permission on first run (the system prompts from `swift run`). Run one with `swift run Example-<Name>`, e.g. `swift run Example-WebcamFeed`.
