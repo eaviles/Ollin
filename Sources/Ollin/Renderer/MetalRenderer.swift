@@ -255,8 +255,10 @@ final class MetalRenderer {
             let resolveDesc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
             // `.shaderRead` so a consumer (e.g. Syphon's server renderer) can
-            // sample it; `.renderTarget` because it's the MSAA resolve destination.
-            resolveDesc.usage = [.renderTarget, .shaderRead]
+            // sample it; `.renderTarget` because it's the MSAA resolve destination;
+            // `.pixelFormatView` so a consumer can reinterpret its sRGB bytes
+            // through a non-sRGB view (Syphon exchanges display-ready bytes).
+            resolveDesc.usage = [.renderTarget, .shaderRead, .pixelFormatView]
             resolveDesc.storageMode = .private
 
             guard let msaa = device.makeTexture(descriptor: msaaDesc),

@@ -96,6 +96,11 @@
         if (surface != nil)
         {
             MTLTextureDescriptor* descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:IOSurfaceGetWidth(surface) height:IOSurfaceGetHeight(surface) mipmapped:NO];
+            // Ollin vendoring patch: allow a pixel-format-reinterpreting view so the
+            // consumer can read the surface's display-ready bytes as sRGB (Ollin's
+            // image pipeline shades in linear and expects sRGB textures to decode on
+            // sample). See External/CSyphon/README.md.
+            descriptor.usage = MTLTextureUsageShaderRead | MTLTextureUsagePixelFormatView;
             _frame = [_device newTextureWithDescriptor:descriptor iosurface:surface plane:0];
 
             CFRelease(surface);

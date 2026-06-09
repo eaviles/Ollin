@@ -92,7 +92,14 @@ public final class SyphonClient {
     /// the result; don't hold the returned image across frames.
     public func newFrame() -> Image? {
         guard let texture = client?.newFrameImage() else { return nil }
-        return Image(texture: texture)
+        // The surface holds display-ready (sRGB-encoded) bytes, but Syphon hands it
+        // over as a non-sRGB texture. Ollin's image pipeline shades in linear and
+        // expects an sRGB texture to decode on sample, so read it through an sRGB
+        // view (falling back to the raw texture if a view can't be made).
+        let srgb = texture.makeTextureView(pixelFormat: .bgra8Unorm_srgb) ?? texture
+        // Syphon textures follow the GL/Syphon bottom-left origin convention, so
+        // flip vertically to land upright in Ollin's top-left image space.
+        return Image(texture: srgb, flippedVertically: true)
     }
 
     /// Drop the current connection and look for a source again (e.g. after the

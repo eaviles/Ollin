@@ -1222,13 +1222,15 @@ final class Drawer {
         let x0 = Float(rect.x), y0 = Float(rect.y)
         let x1 = Float(rect.x + rect.width), y1 = Float(rect.y + rect.height)
         // The four corners with their UVs: (0,0) top-left … (1,1) bottom-right.
-        // The texture's origin is top-left and sketch space is y-down, so uv.y and
-        // screen y run the same way — no flip.
+        // A CPU-decoded texture's origin is top-left and sketch space is y-down, so
+        // uv.y and screen y run the same way — no flip. A vertically-flipped image
+        // (a GL/Syphon-origin texture) swaps the top and bottom V so it lands upright.
+        let (vTop, vBot): (Float, Float) = image.flipsVertically ? (1, 0) : (0, 1)
         let tint = tintColor?.simd4 ?? SIMD4<Float>(1, 1, 1, 1)   // nil tint = the image unchanged
-        let tl = imageVertex(x0, y0, 0, 0, tint)
-        let tr = imageVertex(x1, y0, 1, 0, tint)
-        let br = imageVertex(x1, y1, 1, 1, tint)
-        let bl = imageVertex(x0, y1, 0, 1, tint)
+        let tl = imageVertex(x0, y0, 0, vTop, tint)
+        let tr = imageVertex(x1, y0, 1, vTop, tint)
+        let br = imageVertex(x1, y1, 1, vBot, tint)
+        let bl = imageVertex(x0, y1, 0, vBot, tint)
         beginImageBatch(image)
         imageVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
     }

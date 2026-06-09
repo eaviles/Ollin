@@ -46,6 +46,10 @@ SwiftPM `swift run` build and are noted here so the copy stays auditable:
    texture-blit shader from `SyphonMetalShaders.metal` is therefore embedded as a
    source string and compiled at runtime — the same approach Ollin's own
    renderer uses. The change is marked inline in that file.
+3. **Pixel-format-view usage** (`SyphonMetalClient.m`). The client's frame texture
+   is created with `MTLTextureUsagePixelFormatView` added, so the consumer can read
+   the surface's display-ready bytes through an sRGB view (Ollin shades in linear
+   and expects sRGB textures to decode on sample). The change is marked inline.
 
 Added files (not upstream source): `include/CSyphon.h` (a curated umbrella
 exposing only the Metal API) and `include/module.modulemap` (so Swift can

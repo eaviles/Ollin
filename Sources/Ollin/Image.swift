@@ -56,6 +56,12 @@ public final class Image {
     /// through `drawImage` without a CPU round-trip.
     private var externalTexture: MTLTexture?
 
+    /// Draw a texture-backed image with its rows flipped (V coordinate inverted).
+    /// Syphon textures follow the GL/Syphon bottom-left origin convention, the
+    /// opposite of Ollin's top-left image space, so a consumed feed sets this to
+    /// land upright. Honored by `Drawer.drawImage`; ignored for CPU-decoded images.
+    private(set) var flipsVertically = false
+
     /// CPU pixel buffer for `subscript` get/set, materialized lazily on first
     /// pixel access (RGBA8, premultiplied alpha, row-major, top-left origin).
     private var pixelBytes: [UInt8]?
@@ -79,8 +85,14 @@ public final class Image {
     /// single-GPU Mac). The CPU paths — pixel `subscript`, `cgImage`,
     /// `currentCGImage()` — aren't meaningful for a live texture and are inert
     /// (reads return `.clear`; `cgImage` is a 1×1 placeholder).
-    public init(texture: MTLTexture) {
+    ///
+    /// Set `flippedVertically` for a texture that follows the GL/Syphon bottom-left
+    /// origin convention (a consumed Syphon feed), so it draws upright in Ollin's
+    /// top-left space. Leave it `false` for a texture already in Ollin's
+    /// orientation (e.g. one Ollin rendered itself).
+    public init(texture: MTLTexture, flippedVertically: Bool = false) {
         self.externalTexture = texture
+        self.flipsVertically = flippedVertically
         self.width = texture.width
         self.height = texture.height
         self.cgImage = Image.placeholderCGImage

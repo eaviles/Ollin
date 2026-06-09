@@ -70,11 +70,21 @@ public final class SyphonServer: SketchExtension {
         }
         guard let server, let queue, let commandBuffer = queue.makeCommandBuffer() else { return }
 
-        let region = NSRect(x: 0, y: 0, width: texture.width, height: texture.height)
-        // `flipped: false` — Ollin's render target is a normal top-left-origin
-        // Metal texture, i.e. not vertically flipped in Metal coordinates.
-        server.publishFrameTexture(texture, on: commandBuffer,
-                                   imageRegion: region, flipped: false)
+        // Publish the frame's bytes verbatim. Ollin renders into an sRGB target, so
+        // its bytes are already sRGB-encoded display pixels — what the Syphon
+        // ecosystem exchanges. But Syphon's server samples the source texture, and a
+        // sRGB-tagged texture would be decoded to linear (washing the colors out), so
+        // hand it a non-sRGB *view* of the same bytes: sampled raw, stored raw.
+        let publishTexture = texture.makeTextureView(pixelFormat: .bgra8Unorm) ?? texture
+        let region = NSRect(x: 0, y: 0, width: publishTexture.width, height: publishTexture.height)
+        // `flipped: true` — Ollin's render target is top-left origin, which Syphon
+        // treats as vertically flipped relative to its GL/bottom-left convention.
+        // Passing true makes standard consumers (Syphon's Simple Client, ofxSyphon,
+        // Resolume, …) show the frame upright; Ollin's own SyphonClient flips back
+        // on its side (Image(texture:flippedVertically:)), so the loopback and
+        // viewing a standard source both land upright too.
+        server.publishFrameTexture(publishTexture, on: commandBuffer,
+                                   imageRegion: region, flipped: true)
         commandBuffer.commit()
         isPublishing = true
     }

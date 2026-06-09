@@ -141,7 +141,7 @@ A published frame is the rendered canvas, handed over on the GPU with no CPU rou
 
 Sharing happens on the sketch's own Metal device, and a client connects on the system's default device. On a single-GPU Mac (the common case) those are the same, which is what every consumer expects. On a multi-GPU machine they can differ; that case isn't handled yet.
 
-Frame orientation follows the usual Metal convention (top-left origin). If a particular consumer shows the image flipped, that's the known orientation seam to check.
+Orientation and color are handled so the frame looks right both in another app and back in Ollin: frames are published with the vertical flip Syphon's convention wants (so consumers like Simple Client, `ofxSyphon`, and Resolume show them upright), and a feed read by `SyphonClient` is flipped back to Ollin's top-left space. Color is carried as display-ready (sRGB-encoded) bytes, the Syphon convention, so tones match across apps. (A small residual difference between Ollin's own window and another app is normal — each app presents the shared surface through its own display color handling.)
 
 <a name="testing-without-a-second-app"></a>
 
