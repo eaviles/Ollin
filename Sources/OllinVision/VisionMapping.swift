@@ -55,6 +55,33 @@ public enum VisionSpace {
                          width: abs(b.x - a.x), height: abs(b.y - a.y))
     }
 
+    /// The inverse of `point(_:in:mirrored:)`: take a point you drew (canvas
+    /// space, inside `rect`) back to normalized coordinates (`0…1`, lower-left
+    /// origin) — what a tracker wants when you seed it from where something is on
+    /// the canvas. Pass the **same rect** you drew the frame into.
+    public static func normalizedPoint(_ canvasPoint: Vector2, in rect: Rectangle,
+                                       mirrored: Bool = false) -> Vector2 {
+        guard rect.width > 0, rect.height > 0 else { return .zero }
+        let u = (canvasPoint.x - rect.x) / rect.width   // 0…1 left→right
+        let v = (canvasPoint.y - rect.y) / rect.height  // 0…1 top→bottom
+        return Vector2(mirrored ? 1 - u : u, 1 - v)     // top-left → lower-left
+    }
+
+    /// The inverse of `rectangle(_:in:mirrored:)`: take a canvas rectangle back to
+    /// normalized coordinates (lower-left origin). Mapping two opposite corners and
+    /// taking their extent keeps it correct whether or not it's mirrored — handy to
+    /// seed an `ObjectTracker` from a box you drew (or from another detection's
+    /// `bounds(in:)`).
+    public static func normalizedRectangle(_ canvasRect: Rectangle, in rect: Rectangle,
+                                           mirrored: Bool = false) -> Rectangle {
+        let a = normalizedPoint(canvasRect.corner, in: rect, mirrored: mirrored)
+        let b = normalizedPoint(Vector2(canvasRect.x + canvasRect.width,
+                                        canvasRect.y + canvasRect.height),
+                                in: rect, mirrored: mirrored)
+        return Rectangle(x: min(a.x, b.x), y: min(a.y, b.y),
+                         width: abs(b.x - a.x), height: abs(b.y - a.y))
+    }
+
     /// The largest rectangle of `imageSize`'s aspect ratio centered inside
     /// `container` — the letterboxed box to draw a frame into (and map results
     /// into) when you don't want it stretched. Returns `container` unchanged for a

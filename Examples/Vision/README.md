@@ -16,5 +16,6 @@ Computer vision on the Mac. Vision lives in a separate library — add `import O
 | [RectangleScan](RectangleScan/Sketch.swift) | rectangular shapes (paper, screens, cards) highlighted as four-corner quads over the feed, perspective and all — a classical detector, so it runs on any Mac (`RectangleDetector`, `corners(in:)`) |
 | [BarcodeReader](BarcodeReader/Sketch.swift) | barcodes and QR codes outlined with their decoded payload printed above them — point a phone showing a QR code at the camera; also classical, runs on any Mac (`BarcodeScanner`, `payload`) |
 | [TextScan](TextScan/Sketch.swift) | text read out of the feed (OCR) — each line boxed with the recognized text printed above it; point the camera at a sign, label, or page (`TextRecognizer`, `DetectedText`) |
+| [ObjectTracking](ObjectTracking/Sketch.swift) | follow whatever you point at — click to lock onto the patch under the cursor and an `ObjectTracker` tracks it frame to frame, the box fading as confidence drops; classical, so it runs on any Mac (`ObjectTracker`, `trackedObject`) |
 
 These examples need a camera and grant camera permission on first run (the system prompts from `swift run`). Run one with `swift run Example-<Name>`, e.g. `swift run Example-WebcamFeed`.

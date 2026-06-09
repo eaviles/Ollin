@@ -55,4 +55,29 @@ import Ollin
         #expect(fitted.x == 0)
         #expect(fitted.y == 25)
     }
+
+    @Test func normalizedPointInvertsPoint() {
+        let offset = Rectangle(x: 200, y: 50, width: 400, height: 200)
+        for mirrored in [false, true] {
+            for n in [Vector2(0, 0), Vector2(0.5, 0.5), Vector2(0.25, 0.8), Vector2(1, 1)] {
+                let canvas = VisionSpace.point(n, in: offset, mirrored: mirrored)
+                let back = VisionSpace.normalizedPoint(canvas, in: offset, mirrored: mirrored)
+                #expect(abs(back.x - n.x) < 1e-9)
+                #expect(abs(back.y - n.y) < 1e-9)
+            }
+        }
+    }
+
+    @Test func normalizedRectangleInvertsRectangle() {
+        let offset = Rectangle(x: 200, y: 50, width: 400, height: 200)
+        let n = Rectangle(x: 0.2, y: 0.3, width: 0.4, height: 0.25)
+        for mirrored in [false, true] {
+            let canvas = VisionSpace.rectangle(n, in: offset, mirrored: mirrored)
+            let back = VisionSpace.normalizedRectangle(canvas, in: offset, mirrored: mirrored)
+            #expect(abs(back.x - n.x) < 1e-9)
+            #expect(abs(back.y - n.y) < 1e-9)
+            #expect(abs(back.width - n.width) < 1e-9)
+            #expect(abs(back.height - n.height) < 1e-9)
+        }
+    }
 }

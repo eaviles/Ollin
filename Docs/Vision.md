@@ -47,6 +47,8 @@ final class Faces: Sketch {
 - [RectangleDetector](#rectangledetector) — find rectangular shapes and their corners
 - [BarcodeScanner](#barcodescanner) — read barcodes and QR codes
 - [TextRecognizer](#textrecognizer) — read text (OCR) from the feed
+- [ObjectTracker](#objecttracker) — follow a patch you point at across frames
+- [TrackedObject](#trackedobject) — the tracked box and its confidence
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
 - [Availability](#availability) — when a model can't run on a Mac
@@ -315,6 +317,59 @@ override func draw() {
 
 A `DetectedText` is its `text`, a `confidence`, and `corners(in:)` / `bounds(in:)` for where the line sits. `reader.text` joins every line into one block.
 
+<a name="objecttracker"></a>
+
+### ObjectTracker
+
+```swift
+ObjectTracker(_ camera: Camera)
+func track(_ region: Rectangle, in frameRect: Rectangle, mirrored: Bool = false)
+func track(centeredAt: Vector2, size: Double, in frameRect: Rectangle, mirrored: Bool = false)
+func track(normalized: Rectangle)
+func stop()
+var trackedObject: TrackedObject? { get }
+var isTracking: Bool { get }
+static func track(_ seed: Rectangle, across: [Image]) async throws -> [TrackedObject]
+```
+
+The other trackers *detect* — they find faces or rectangles on their own. This one *tracks*: you hand it a box (where something is right now) and it follows that same patch frame to frame as it moves, so you can keep tabs on an object the recognizers have no model for. It's a classical tracker (no neural model), so it runs on any Mac.
+
+Seed it from a click with `track(centeredAt:size:in:)`, from a box you drew with `track(_:in:)`, or from another detector's result by passing its `bounds(in:)` — then read `trackedObject` each frame. Call a `track(…)` method again to re-target, or `stop()` to let go.
+
+```swift
+let camera = Camera()
+lazy var tracker = ObjectTracker(camera)
+var view = Rectangle(x: 0, y: 0, width: 1, height: 1)
+
+override func draw() {
+    guard let frame = camera.frame else { return }
+    view = camera.fittedRect(in: bounds) ?? bounds
+    drawImage(frame, in: view)
+    if let object = tracker.trackedObject {
+        noFill(); stroke(.green)
+        drawRect(object.bounds(in: view))
+    }
+}
+
+override func mousePressed() {
+    tracker.track(centeredAt: Vector2(mouseX, mouseY), size: 160, in: view)
+}
+```
+
+The static `track(_:across:)` follows a patch through an ordered array of frames with no camera — handy for a recorded clip.
+
+<a name="trackedobject"></a>
+
+### TrackedObject
+
+```swift
+var confidence: Double { get }
+func bounds(in: Rectangle, mirrored: Bool = false) -> Rectangle
+func center(in: Rectangle, mirrored: Bool = false) -> Vector2
+```
+
+Where the tracked patch is now and how sure the tracker is. `confidence` stays high while the patch is clearly in view and falls as it's occluded, leaves the frame, or moves too fast — a good value to fade an overlay by, or to threshold on to decide the object's been lost (then `track(…)` again to re-lock).
+
 <a name="coordinate-mapping"></a>
 
 ### Coordinate mapping
@@ -341,6 +396,13 @@ VisionSpace.rectangle(_ normalized: Rectangle, in: Rectangle, mirrored: Bool = f
 VisionSpace.fittedRect(imageSize: Vector2, in container: Rectangle) -> Rectangle
 ```
 
+The inverse goes the other way — a point or box you drew (canvas space) back to normalized coordinates, which is how `ObjectTracker` is seeded from where something sits on the canvas:
+
+```swift
+VisionSpace.normalizedPoint(_ canvasPoint: Vector2, in: Rectangle, mirrored: Bool = false) -> Vector2
+VisionSpace.normalizedRectangle(_ canvasRect: Rectangle, in: Rectangle, mirrored: Bool = false) -> Rectangle
+```
+
 <a name="still-images"></a>
 
 ### Still images
@@ -352,6 +414,8 @@ let image = loadImage("crowd.jpg")!
 let found = try await FaceTracker.detect(in: image)
 print("\(found.count) faces")
 ```
+
+`ObjectTracker` is the exception — tracking needs more than one frame — so its camera-free form takes an ordered sequence instead: `ObjectTracker.track(seed, across: frames)`.
 
 <a name="availability"></a>
 

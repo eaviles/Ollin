@@ -70,7 +70,7 @@ Ollin aims to support AR sketches and offer a template-driven AR framework, fill
 
 Image understanding as a first-class Mac capability, not something that requires the phone. Apple ships the whole computer-vision stack on macOS, hardware-accelerated on the M-series Neural Engine, so a sketch can grab the Mac's own webcam (or a Continuity Camera) and run real perception locally. Over the camera frame source and the composable-tracker spine, the capabilities still to add:
 
-- **Vision** for hand and body pose (2D and 3D from a single camera), person and subject segmentation, optical flow, contour and rectangle detection, text recognition (OCR), barcodes, image classification, object and trajectory tracking, and saliency.
+- **Vision** for hand and body pose (2D and 3D from a single camera), person and subject segmentation, optical flow, contour and rectangle detection, text recognition (OCR), barcodes, image classification, trajectory tracking, and saliency.
 - **Core ML** to run any converted model, **Core Image** for filters and the legacy `CIDetector`, **vImage and Accelerate** for fast low-level pixel work, and **Create ML** for training custom models.
 - **AVFoundation** for capture: the built-in camera, an external webcam, or a Continuity Camera iPhone used purely as a webcam.
 

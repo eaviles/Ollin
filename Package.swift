@@ -713,6 +713,12 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/TextScan"
         ),
+        // Object tracking — click to lock onto a patch and follow it across frames.
+        .executableTarget(
+            name: "Example-ObjectTracking",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/ObjectTracking"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

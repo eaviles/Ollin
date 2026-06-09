@@ -45,7 +45,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 
 ### Vision
 
-- [`Vision`](./Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception — face tracking with landmarks, hand and body pose (joint skeletons), rectangle, barcode/QR, and text (OCR) detection, and contour tracing (camera frame → vector `Shape`s), surfaced as typed results you read in `draw()`
+- [`Vision`](./Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception — face tracking with landmarks, hand and body pose (joint skeletons), rectangle, barcode/QR, and text (OCR) detection, contour tracing (camera frame → vector `Shape`s), and object tracking (follow a patch you point at), surfaced as typed results you read in `draw()`
 
 ### Output
 
