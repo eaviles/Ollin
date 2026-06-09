@@ -95,11 +95,18 @@ public final class ContourDetector: VisionTracking, @unchecked Sendable {
     public let contrastAdjustment: Float
 
     private let lock = OSAllocatedUnfairLock<DetectedContours>(initialState: .empty)
+    private let status = VisionStatus("contour detection")
 
     /// The contours found in the most recent analyzed frame.
     public var latest: DetectedContours { lock.withLock { $0 } }
     /// How many contours were found, nesting included.
     public var count: Int { lock.withLock { $0.count } }
+
+    /// Whether contour detection can run on this Mac (`false` only if it has no
+    /// compute device here); `unavailableReason` explains a `false`.
+    public var isAvailable: Bool { status.isAvailable }
+    /// Why contour detection can't run here, or `nil` when it can.
+    public var unavailableReason: String? { status.reason }
 
     /// The contours mapped into `rect` (canvas space) — see
     /// `DetectedContours.contours(in:)`.
@@ -138,12 +145,17 @@ public final class ContourDetector: VisionTracking, @unchecked Sendable {
     func analyze(_ cgImage: CGImage, size: CGSize) async {
         // Cap the working resolution: full-res contour detection is slow, and a
         // live feed doesn't need every pixel of edge detail.
+        guard status.isAvailable else { return }
         let request = ContourDetector.makeRequest(darkOnLight: detectsDarkOnLight,
                                                   contrast: contrastAdjustment,
                                                   maxDimension: 512)
-        guard let observation = try? await request.perform(on: cgImage) else { return }
-        let decoded = ContourDetector.decode(observation)
-        lock.withLock { $0 = decoded }
+        do {
+            let observation = try await request.perform(on: cgImage)
+            status.recordSuccess()
+            lock.withLock { $0 = ContourDetector.decode(observation) }
+        } catch {
+            status.recordFailure(error)
+        }
     }
 
     // MARK: Helpers

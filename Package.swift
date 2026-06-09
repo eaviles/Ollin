@@ -626,6 +626,12 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/HandTracking"
         ),
+        // A person's 2D pose drawn as a stick figure over the live feed.
+        .executableTarget(
+            name: "Example-BodyPose",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/BodyPose"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

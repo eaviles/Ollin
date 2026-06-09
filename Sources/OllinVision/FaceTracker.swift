@@ -96,6 +96,7 @@ public enum FaceLandmark: Sendable, CaseIterable {
 public final class FaceTracker: VisionTracking, @unchecked Sendable {
 
     private let faceLock = OSAllocatedUnfairLock<[Face]>(initialState: [])
+    private let status = VisionStatus("face tracking")
 
     /// The faces seen in the most recent analyzed frame (empty when none). Read it
     /// in `draw()`.
@@ -103,6 +104,12 @@ public final class FaceTracker: VisionTracking, @unchecked Sendable {
 
     /// How many faces are present right now.
     public var count: Int { faceLock.withLock { $0.count } }
+
+    /// Whether face tracking can run on this Mac (`false` only if the Vision model
+    /// has no compute device here); `unavailableReason` explains a `false`.
+    public var isAvailable: Bool { status.isAvailable }
+    /// Why face tracking can't run here, or `nil` when it can.
+    public var unavailableReason: String? { status.reason }
 
     /// Track faces in `camera`'s live feed. Registers with the camera; results
     /// arrive in `faces` as frames are analyzed.
@@ -123,12 +130,17 @@ public final class FaceTracker: VisionTracking, @unchecked Sendable {
     // MARK: VisionTracking
 
     func analyze(_ cgImage: CGImage, size: CGSize) async {
+        guard status.isAvailable else { return }
         let request = DetectFaceLandmarksRequest()
         // A transient failure leaves the previous results in place; an empty
         // success (no faces) clears them, which is what a sketch wants.
-        guard let observations = try? await request.perform(on: cgImage) else { return }
-        let faces = FaceTracker.decode(observations, imageSize: size)
-        faceLock.withLock { $0 = faces }
+        do {
+            let observations = try await request.perform(on: cgImage)
+            status.recordSuccess()
+            faceLock.withLock { $0 = FaceTracker.decode(observations, imageSize: size) }
+        } catch {
+            status.recordFailure(error)
+        }
     }
 
     // MARK: Decoding

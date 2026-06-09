@@ -118,11 +118,18 @@ public final class HandTracker: VisionTracking, @unchecked Sendable {
     private static let minimumJointConfidence: Float = 0.3
 
     private let lock = OSAllocatedUnfairLock<[Hand]>(initialState: [])
+    private let status = VisionStatus("hand tracking")
 
     /// The hands seen in the most recent analyzed frame.
     public var hands: [Hand] { lock.withLock { $0 } }
     /// How many hands are present right now.
     public var count: Int { lock.withLock { $0.count } }
+
+    /// Whether hand tracking can run on this Mac (`false` only if the Vision model
+    /// has no compute device here); `unavailableReason` explains a `false`.
+    public var isAvailable: Bool { status.isAvailable }
+    /// Why hand tracking can't run here, or `nil` when it can.
+    public var unavailableReason: String? { status.reason }
 
     /// Track hands in `camera`'s live feed.
     @MainActor
@@ -142,11 +149,16 @@ public final class HandTracker: VisionTracking, @unchecked Sendable {
     // MARK: VisionTracking
 
     func analyze(_ cgImage: CGImage, size: CGSize) async {
+        guard status.isAvailable else { return }
         var request = DetectHumanHandPoseRequest()
         request.maximumHandCount = maximumHandCount
-        guard let observations = try? await request.perform(on: cgImage) else { return }
-        let hands = HandTracker.decode(observations)
-        lock.withLock { $0 = hands }
+        do {
+            let observations = try await request.perform(on: cgImage)
+            status.recordSuccess()
+            lock.withLock { $0 = HandTracker.decode(observations) }
+        } catch {
+            status.recordFailure(error)
+        }
     }
 
     // MARK: Decoding

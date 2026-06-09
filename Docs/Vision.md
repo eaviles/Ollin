@@ -43,8 +43,10 @@ final class Faces: Sketch {
 - [DetectedContours](#detectedcontours) — contours as `Contour`s and `Shape`s
 - [HandTracker](#handtracker) — find hands and their 21-joint skeletons
 - [Hand](#hand) — one detected hand, its joints and fingers
+- [BodyTracker](#bodytracker) — find people and their pose skeletons
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
+- [Availability](#availability) — when a model can't run on a Mac
 - [Permission](#permission) — the camera prompt
 
 <a name="camera"></a>
@@ -205,6 +207,32 @@ One detected hand. `point(_:in:)` maps a single joint (or `nil` if it wasn't see
 
 The joints are `HandJoint` — `.wrist` plus four per finger (`.indexMCP`, `.indexPIP`, `.indexDIP`, `.indexTip`, and so on), with `HandJoint.tips` for the five fingertips. A `Finger` (`.thumb`, `.index`, `.middle`, `.ring`, `.little`) has a `.chain` of its joints.
 
+<a name="bodytracker"></a>
+
+### BodyTracker
+
+```swift
+BodyTracker(_ camera: Camera)
+var bodies: [Body] { get }
+var count: Int { get }
+static func detect(in: Image) async throws -> [Body]
+```
+
+Finds people and their 2D pose skeletons — 19 joints from head to ankles. Where `HandTracker` is the close-up tool, this is the whole-body one: reach, lean, jump, and silhouette all read from the joints. Joints out of view (often the legs at a desk) are dropped, so the figure is whatever Vision can see.
+
+```swift
+let camera = Camera()
+let bodies = BodyTracker(camera)
+override func draw() {
+    if let frame = camera.frame { drawImage(frame, in: bounds) }
+    for body in bodies.bodies {
+        for (a, b) in body.bones(in: bounds) { drawLine(a, b) }
+    }
+}
+```
+
+`Body` mirrors `Hand`: `point(_:in:)` maps a single `BodyJoint` (or `nil`), `points(in:)` maps them all, and `bones(in:)` returns the skeleton as line segments (`Body.skeleton` is the joint-pair list — head, spine, arms, legs). Note that body pose is a heavier model — see [Availability](#availability).
+
 <a name="coordinate-mapping"></a>
 
 ### Coordinate mapping
@@ -242,6 +270,20 @@ let image = loadImage("crowd.jpg")!
 let found = try await FaceTracker.detect(in: image)
 print("\(found.count) faces")
 ```
+
+<a name="availability"></a>
+
+### Availability
+
+Some Vision models — body pose especially — need a compute device (a Neural Engine or a capable GPU) that not every Mac has. On a Mac without one, the model can't run, and rather than silently reporting nothing, a tracker tells you:
+
+```swift
+if !bodies.isAvailable {
+    drawText(bodies.unavailableReason ?? "Unavailable", width / 2, height / 2)
+}
+```
+
+`isAvailable` is `false` only when the model genuinely can't run here (a transient error doesn't flip it); `unavailableReason` is a short human-readable explanation. The tracker also logs the reason once to the console. Face, hands, and contours run on nearly any Mac; body pose and the heavier models want Apple silicon.
 
 <a name="permission"></a>
 

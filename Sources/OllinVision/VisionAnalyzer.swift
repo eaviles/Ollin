@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 import os
 
 /// One captured frame, carried across threads. The `CGImage` is immutable once
@@ -34,6 +35,65 @@ final class FrameStore: @unchecked Sendable {
 /// behind its own lock and is `Sendable`.
 protocol VisionTracking: AnyObject, Sendable {
     func analyze(_ cgImage: CGImage, size: CGSize) async
+}
+
+/// Tracks whether a tracker's Vision request can actually run on this machine,
+/// so the live path doesn't fail *silently*.
+///
+/// Some Vision models (body pose, segmentation, …) need a compute device — a
+/// Neural Engine or a capable GPU — that not every Mac has. When `perform` fails
+/// with that, a sketch would otherwise just see empty results forever with no
+/// explanation. Each tracker owns one of these: it records the failure, exposes
+/// it to the sketch (`isAvailable` / `unavailableReason`), and logs it once so
+/// it's also visible from `swift run`.
+final class VisionStatus: @unchecked Sendable {
+
+    private struct State {
+        var reason: String?
+        var logged = false
+    }
+    private let state = OSAllocatedUnfairLock(initialState: State())
+    private let label: String
+
+    init(_ label: String) { self.label = label }
+
+    /// Whether the tracker's model has run (it starts assumed available; a
+    /// capability failure flips it).
+    var isAvailable: Bool { state.withLock { $0.reason == nil } }
+
+    /// A human-readable reason the tracker can't run here, or `nil` when it can.
+    var reason: String? { state.withLock { $0.reason } }
+
+    /// A successful run clears any prior unavailability (a one-off error recovers).
+    func recordSuccess() {
+        state.withLock { if $0.reason != nil { $0.reason = nil } }
+    }
+
+    /// A failed run. A permanent-capability error (no compute device) marks the
+    /// tracker unavailable and logs once; a transient error (a bad frame) is
+    /// ignored, so a single hiccup doesn't flip the flag.
+    func recordFailure(_ error: Error) {
+        guard let reason = VisionStatus.capabilityReason(error, label: label) else { return }
+        let shouldLog = state.withLock { state -> Bool in
+            state.reason = reason
+            if state.logged { return false }
+            state.logged = true
+            return true
+        }
+        if shouldLog {
+            FileHandle.standardError.write(Data("⚠️ OllinVision: \(reason)\n".utf8))
+        }
+    }
+
+    /// A friendly reason for a permanent capability failure, or `nil` for an error
+    /// treated as transient.
+    private static func capabilityReason(_ error: Error, label: String) -> String? {
+        let text = (String(describing: error) + " " + error.localizedDescription).lowercased()
+        if text.contains("compute device") {
+            return "\(label) can't run on this Mac — the Vision model needs a Neural Engine or a more capable GPU (it runs on Apple silicon)."
+        }
+        return nil
+    }
 }
 
 /// Runs the registered trackers over the camera's frames.
