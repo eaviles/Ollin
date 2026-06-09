@@ -39,6 +39,8 @@ final class Faces: Sketch {
 - [Camera](#camera) — capture the webcam (built-in, Continuity, or external)
 - [FaceTracker](#facetracker) — find faces, landmarks, and head pose
 - [Face](#face) — one detected face, and reading its parts
+- [ContourDetector](#contourdetector) — trace edges into vector contours
+- [DetectedContours](#detectedcontours) — contours as `Contour`s and `Shape`s
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
 - [Permission](#permission) — the camera prompt
@@ -112,6 +114,48 @@ for face in faces.faces {
     for p in face.landmarks(.leftPupil, in: rect) { drawCircle(p.x, p.y, 3) }
 }
 ```
+
+<a name="contourdetector"></a>
+
+### ContourDetector
+
+```swift
+ContourDetector(_ camera: Camera, detectsDarkOnLight: Bool = true, contrastAdjustment: Float = 1)
+var latest: DetectedContours { get }
+var count: Int { get }
+func contours(in: Rectangle, mirrored: Bool = false) -> [Contour]
+func shapes(in: Rectangle, mirrored: Bool = false) -> [Shape]
+static func detect(in: Image, …) async throws -> DetectedContours
+```
+
+Where the other trackers find *things*, this one finds *edges* — the boundaries between light and dark — and hands them back as Ollin geometry. That makes a live camera frame **vector**: the traced `Shape`s ride the same path as any other geometry, so `drawShape`, [SVG export](./Export.md), and the hatching transform all work on them, the kind of thing a pen plotter wants.
+
+```swift
+let camera = Camera()
+let contours = ContourDetector(camera)
+override func draw() {
+    background(.white)
+    noFill(); stroke(.black)
+    for shape in contours.shapes(in: bounds) { drawShape(shape) }
+}
+```
+
+`detectsDarkOnLight` (the default) traces dark shapes on a light background — good for line art and documents. `contrastAdjustment` (`0…3`) boosts faint edges at the cost of more noise. Point the camera at high-contrast subjects for the cleanest result. Like every tracker it also runs one-shot on a still image (`ContourDetector.detect(in:)`).
+
+<a name="detectedcontours"></a>
+
+### DetectedContours
+
+```swift
+struct DetectedContours {
+    var topLevel: [Node]      // each Node has points + nested children
+    var count: Int
+    func contours(in: Rectangle, mirrored: Bool = false) -> [Contour]
+    func shapes(in: Rectangle, mirrored: Bool = false) -> [Shape]
+}
+```
+
+The result of a contour trace: a tree of closed outlines, where a contour can contain nested contours (a shape with a hole, a ring inside a disk). `contours(in:)` flattens the tree to closed `Contour`s mapped onto the canvas (for line work); `shapes(in:)` collects each top-level contour and its descendants into one even-odd `Shape`, so the nesting reads correctly when filled, hatched, or exported.
 
 <a name="coordinate-mapping"></a>
 

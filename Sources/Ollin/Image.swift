@@ -117,6 +117,14 @@ public final class Image {
         self.init(contentsOf: url)
     }
 
+    /// The current pixels as a `CGImage`, reflecting edits made through the
+    /// `[x, y]` subscript (and the contents of a blank image authored in memory).
+    /// Unlike `cgImage` — which is always the original decode — this is what
+    /// interop that must see the *live* pixels (Vision, Core Image) should use.
+    public func currentCGImage() -> CGImage {
+        (pixelsModified ? bufferBackedCGImage() : nil) ?? cgImage
+    }
+
     /// The Metal texture for this image on `device`, built and cached on first
     /// use. Called by the renderer on the main thread during encoding.
     func texture(for device: MTLDevice) -> MTLTexture? {

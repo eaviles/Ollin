@@ -116,7 +116,7 @@ public final class FaceTracker: VisionTracking, @unchecked Sendable {
     /// tests exercise detection.
     public static func detect(in image: Image) async throws -> [Face] {
         let request = DetectFaceLandmarksRequest()
-        let observations = try await request.perform(on: image.cgImage)
+        let observations = try await request.perform(on: image.currentCGImage())
         return decode(observations, imageSize: CGSize(width: image.width, height: image.height))
     }
 

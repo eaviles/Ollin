@@ -613,6 +613,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/FaceTracking"
         ),
+        // Traces the camera's edges into vector contours (Shapes); self-contained,
+        // falling back to a generated pattern when there's no camera.
+        .executableTarget(
+            name: "Example-ContourTrace",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/ContourTrace"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
