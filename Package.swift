@@ -96,6 +96,24 @@ let package = Package(
             exclude: ["LICENSE.txt", "README.md"],
             publicHeadersPath: "Include"
         ),
+        // Vendored Box2D (Erin Catto's 2D rigid-body engine, v3 — pure C),
+        // the solver behind OllinPhysics' rigid-body `World`/`Body`. Bundled
+        // third-party C source under its own MIT license — see
+        // External/CBox2D/README.md and the repo-root THIRD-PARTY-NOTICES.md.
+        // Wrapped behind Ollin's own API; the `b2*` symbols are not part of
+        // Ollin's public surface. The upstream src/ + include/ split is
+        // preserved so its `#include "box2d/…"` directives resolve;
+        // `include/module.modulemap` exposes the `box2d/box2d.h` umbrella, and
+        // the upstream CMakeLists/natvis are excluded from the build.
+        .target(
+            name: "CBox2D",
+            path: "External/CBox2D",
+            exclude: ["LICENSE", "README.md", "src/CMakeLists.txt", "src/box2d.natvis"],
+            publicHeadersPath: "include",
+            cSettings: [
+                .headerSearchPath("include")
+            ]
+        ),
         // Audio: amplitude + FFT analysis (Accelerate/vDSP) of microphone, file,
         // and oscillator sources over AVAudioEngine, plus modest tone generation.
         // A satellite library (like OllinRuntime) so the drawing core stays free
@@ -128,7 +146,7 @@ let package = Package(
         // for the `Vector2`/`Rectangle` geometry types, no other framework.
         .target(
             name: "OllinPhysics",
-            dependencies: ["Ollin"]
+            dependencies: ["Ollin", "CBox2D"]
         ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
@@ -620,7 +638,7 @@ let package = Package(
         // GPU, so it runs in CI.
         .testTarget(
             name: "OllinPhysicsTests",
-            dependencies: ["OllinPhysics"]
+            dependencies: ["OllinPhysics", "CBox2D"]
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety

@@ -1,0 +1,4 @@
+module CBox2D {
+    umbrella header "box2d/box2d.h"
+    export *
+}

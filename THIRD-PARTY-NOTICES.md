@@ -38,6 +38,25 @@ redistributed inside this repository.
 
 ---
 
+## Box2D
+
+- **Used for:** the rigid-body solver behind `OllinPhysics` — bodies with rotation, polygon colliders, joints, and stable stacking — wrapped behind Ollin's own `World`/`Body` API.
+- **Location in this repo:** [`External/CBox2D/`](External/CBox2D/)
+- **Upstream:** https://github.com/erincatto/box2d
+- **Version:** v3.1.1 — commit `8c661469c9507d3ad6fbd2fea3f1aa71669c2fe3`
+- **License:** MIT — full text at [`External/CBox2D/LICENSE`](External/CBox2D/LICENSE)
+
+> MIT License
+>
+> Copyright (c) 2022 Erin Catto
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy of
+> this software and associated documentation files (the "Software"), to deal in the
+> Software without restriction… (see `LICENSE` for the full text, including the
+> warranty disclaimer).
+
+---
+
 ## Cozette
 
 - **Used for:** the bundled default bitmap font (`BitmapFont.builtin`), loaded at runtime from its BDF by the font loader and rendered by `drawText`.
