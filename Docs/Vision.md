@@ -45,6 +45,7 @@ final class Faces: Sketch {
 - [Hand](#hand) — one detected hand, its joints and fingers
 - [BodyTracker](#bodytracker) — find people and their pose skeletons
 - [RectangleDetector](#rectangledetector) — find rectangular shapes and their corners
+- [BarcodeScanner](#barcodescanner) — read barcodes and QR codes
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
 - [Availability](#availability) — when a model can't run on a Mac
@@ -259,6 +260,32 @@ override func draw() {
 ```
 
 A `DetectedRectangle` is `corners(in:)` (the four corners in perimeter order, ready to `drawPolygon` as a closed quad), `center(in:)`, and a `confidence`. The corners come back in perspective, which is exactly what a document scanner uses to warp a page flat.
+
+<a name="barcodescanner"></a>
+
+### BarcodeScanner
+
+```swift
+BarcodeScanner(_ camera: Camera)
+var barcodes: [DetectedBarcode] { get }
+static func detect(in: Image) async throws -> [DetectedBarcode]
+```
+
+Reads barcodes and QR codes and decodes their payload. Also classical, so it runs on any Mac. Point it at a QR code to pull a URL or a bit of text out of the world and into a sketch — a simple way to hand a running piece some input.
+
+```swift
+let camera = Camera()
+let codes = BarcodeScanner(camera)
+override func draw() {
+    if let frame = camera.frame { drawImage(frame, in: bounds) }
+    for code in codes.barcodes {
+        drawPolygon(code.corners(in: bounds))
+        if let payload = code.payload { drawText(payload, code.center(in: bounds)) }
+    }
+}
+```
+
+A `DetectedBarcode` is its `payload` (the decoded text or URL, or `nil`), its `symbology` (`"QR"`, `"EAN13"`, …), a `confidence`, and `corners(in:)` / `center(in:)` for where it is.
 
 <a name="coordinate-mapping"></a>
 

@@ -638,6 +638,12 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/RectangleScan"
         ),
+        // Barcodes / QR codes outlined and their payload printed.
+        .executableTarget(
+            name: "Example-BarcodeReader",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/BarcodeReader"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
