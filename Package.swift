@@ -644,6 +644,12 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/BarcodeReader"
         ),
+        // OCR — text read from the feed, each line boxed and printed.
+        .executableTarget(
+            name: "Example-TextScan",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/TextScan"
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(

@@ -46,6 +46,7 @@ final class Faces: Sketch {
 - [BodyTracker](#bodytracker) — find people and their pose skeletons
 - [RectangleDetector](#rectangledetector) — find rectangular shapes and their corners
 - [BarcodeScanner](#barcodescanner) — read barcodes and QR codes
+- [TextRecognizer](#textrecognizer) — read text (OCR) from the feed
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
 - [Availability](#availability) — when a model can't run on a Mac
@@ -286,6 +287,33 @@ override func draw() {
 ```
 
 A `DetectedBarcode` is its `payload` (the decoded text or URL, or `nil`), its `symbology` (`"QR"`, `"EAN13"`, …), a `confidence`, and `corners(in:)` / `center(in:)` for where it is.
+
+<a name="textrecognizer"></a>
+
+### TextRecognizer
+
+```swift
+TextRecognizer(_ camera: Camera, level: Level = .fast)
+var lines: [DetectedText] { get }
+var text: String { get }            // all lines joined
+static func detect(in: Image, level: Level = .accurate) async throws -> [DetectedText]
+```
+
+Reads text out of the feed — Apple's OCR, the same engine behind Live Text, with its language coverage. Each line comes back with its text and position. `level` trades speed for thoroughness: `.fast` keeps up with a live feed, `.accurate` reads more (the default for still images).
+
+```swift
+let camera = Camera()
+let reader = TextRecognizer(camera)
+override func draw() {
+    if let frame = camera.frame { drawImage(frame, in: bounds) }
+    for line in reader.lines {
+        drawRect(line.bounds(in: bounds))
+        drawText(line.text, line.bounds(in: bounds).corner)
+    }
+}
+```
+
+A `DetectedText` is its `text`, a `confidence`, and `corners(in:)` / `bounds(in:)` for where the line sits. `reader.text` joins every line into one block.
 
 <a name="coordinate-mapping"></a>
 
