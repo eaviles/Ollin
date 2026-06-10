@@ -18,6 +18,14 @@ struct OllinExamplesApp: App {
     private let examples: [Example]
 
     init() {
+        // Stop AppKit from reading any stray command-line argument as a
+        // file-open request, which suppresses the scene's automatic initial
+        // window on a bundleless launch (the same misread the live host hits
+        // with its sketch-path argument; see `OllinLiveApp.init`). The gallery
+        // takes no positional argument today — this keeps it robust if one
+        // ever appears.
+        UserDefaults.standard.register(defaults: ["NSTreatUnknownArgumentsAsOpen": "NO"])
+
         // Surface in-process sketch faults (a native signal or an uncaught ObjC
         // exception) with the example named and a backtrace, instead of the window
         // just vanishing. Installed first, before anything can fault.
