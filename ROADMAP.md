@@ -19,7 +19,19 @@ If you're coming from p5.js or JavaScript, [`Docs/Swift.md`](Docs/Swift.md) cove
 
 Near-term, fairly self-contained pieces. Each is small and well-scoped, which is what makes them good first contributions.
 
-- **More 2D primitives and the SDF shape catalog.** More analytic shapes drop into the existing instanced-SDF path at near-zero per-shape cost — anything that's a canonical form parameterized by a size and a ratio or two. Each is a small, well-scoped addition (a shape tag, a builder, a distance function, and a fragment case), so they're a good way in.
+- **Hex and HSB color.** `Color` initializers for hex strings (`"#ff0066"`) and hue/saturation/brightness, beside the existing RGB components and named constants. Small, useful, and a gentle way into the codebase.
+- **Gradient fills and blend modes.** Richer fills than a flat color, and compositing modes beyond source-over. Blend mode wants to land as a parameter in the pipeline descriptor rather than a separate renderer path (see the [layered effects notes](DESIGN-NOTES.md#layered-effects-and-compositing-not-started)).
+- **User-supplied shaders.** A way for a sketch to bring its own Metal shader functions, resolved ahead of the built-ins, with hot-reload through the runtime source compiler. The fluent mixing layer above this is [shader composition and live-coding](#shader-composition-and-live-coding).
+- **Normalized `u, v` coordinates.** A 0…1 coordinate space across the canvas alongside points, so a sketch can place things without referring to `width`/`height`.
+- **Sub-pixel region outlines.** Disks and lines already fade by area below ~1px instead of vanishing; the stroke band on region shapes (rect, star, triangle) doesn't yet. Closing that gap would make every outline honor sizes from 0 up. See the [render-scale notes](DESIGN-NOTES.md#supersampled-render-scale--the-crispness-dial-not-started).
+- **PDF export beside SVG.** The vector serializer already records every draw call as geometry; Core Graphics can write the same geometry to PDF for print.
+- **Single-file sketches.** A zero-ceremony way to run one `.swift` file as a sketch, in the spirit of `swift-sh`, so dashing off an idea doesn't require setting up a package.
+- **Retained geometry buffers.** Every frame currently re-uploads everything; keeping static geometry (a large point cloud, a fixed background) in a persistent buffer would drop its per-frame cost to zero.
+- **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
+
+## Video and GIF capture
+
+One command from an animated sketch to a file you can post. The PNG-sequence exporter already renders deterministic frames at a fixed timestep; this adds the encoding step (video through `AVAssetWriter`, GIF through ImageIO), so sharing motion no longer requires an `ffmpeg` install and a stitching step. Motion is the point of the framework, which makes this the export path that matters most. See the [design notes](DESIGN-NOTES.md#video-and-gif-capture-not-started).
 
 ## Rendering precision (HDR/float pipeline)
 
@@ -43,7 +55,7 @@ An openFrameworks-style generator that scaffolds a ready-to-run sketch folder fr
 
 ## Computer vision
 
-Image understanding on the Mac itself: a `Camera` grabs the webcam (or a Continuity Camera), and trackers run Apple's on-device perception over its frames, surfaced as typed values a sketch reads in `draw()`. Over that foundation comes the rest of the catalog — hand and body tracking (2D and 3D from a single camera), person and subject segmentation, optical flow, contour and rectangle detection, OCR, barcodes, image classification, custom Core ML models, and trajectory tracking — hardware-accelerated on the Neural Engine, with vectorized results (contours → `Shape`, flow → a field) feeding the plotter and physics paths. A first-class Mac capability with no phone required, built on Vision, Core ML, Core Image, vImage and Accelerate, and AVFoundation. The one thing the Mac can't do is depth and AR sensing (LiDAR, TrueDepth face mesh, ARKit world tracking); that is the [iPhone as a sensor array](#iphone-as-a-sensor-array) section, the depth and AR superset over the same models. See the [design notes](DESIGN-NOTES.md#computer-vision-in-progress).
+Image understanding on the Mac itself: a `Camera` grabs the webcam (or a Continuity Camera), and trackers run Apple's on-device perception over its frames, surfaced as typed values a sketch reads in `draw()`. Over that foundation comes the rest of the catalog — body pose in 3D from a single camera, person and subject segmentation, optical flow, image classification, custom Core ML models, trajectory tracking, and saliency — hardware-accelerated on the Neural Engine, with the per-pixel results (mattes, flow fields) arriving as textures the effects path can consume, and a flow field feeding the physics path. A first-class Mac capability with no phone required, built on Vision, Core ML, Core Image, vImage and Accelerate, and AVFoundation. The one thing the Mac can't do is depth and AR sensing (LiDAR, TrueDepth face mesh, ARKit world tracking); that is the [iPhone as a sensor array](#iphone-as-a-sensor-array) section, the depth and AR superset over the same models. See the [design notes](DESIGN-NOTES.md#computer-vision-in-progress).
 
 ## iPhone as a sensor array
 

@@ -13,7 +13,7 @@ they improve on the originals.
 Where those three are cross-platform, Ollin isn't, and that's on purpose. Betting on one family of hardware is what buys the depth: the same p5 feel and typed core sit straight on Metal, not WebGL or the JVM, so the rendering ceiling is whatever the GPU can do. Staying native is also what keeps the harder things in reach later, like vision on the Neural Engine, ARKit and visionOS, or an iPhone's depth sensors feeding a sketch the Mac renders. A tool that runs everywhere has to leave those on the table. Most of that is still ahead (the [roadmap](#roadmap) has it); for now the point is that the core is built to grow into them rather than get retrofitted.
 
 - **Platform:** macOS 26+, Swift 6+
-- **Rendering:** Metal (`MTKView`, 4× MSAA), built on Foundation / SwiftUI / Metal / MetalKit / simd. It stays dependency-light (no package dependencies today; just a little vendored source, see [Bundled third-party code](#bundled-third-party-code)) and takes on a package only when one clearly earns its place
+- **Rendering:** Metal (`MTKView`, up to 8× MSAA), built on Foundation / SwiftUI / Metal / MetalKit / simd. It stays dependency-light (no package dependencies today; just a little vendored source, see [Bundled third-party code](#bundled-third-party-code)) and takes on a package only when one clearly earns its place
 - **License:** MIT
 - **Built with:** an AI coding assistant (Claude) under [@eaviles](https://github.com/eaviles)'s direction; see [Built with AI](#built-with-ai)
 
@@ -112,7 +112,7 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
 4. **Single-file scripts (planned).** [`swift-sh`](https://github.com/mxcl/swift-sh)
    made one `.swift` file double as a runnable script, dependencies and all. We
    want the same here, so you can dash off a sketch without setting up a package.
-   It's on the roadmap below.
+   It's on the [roadmap](ROADMAP.md).
 
 ## Documentation
 
@@ -153,8 +153,8 @@ The rest (polygons, polylines, and elliptical arcs) are tessellated into
 triangles in sketch-space points. The `Drawer` records both into call-ordered batches; once a frame,
 `MetalRenderer` uploads them and issues a draw per batch (the triangle pipeline,
 or the instanced-SDF one), so shapes composite in the order you drew them. A
-vertex shader maps points to clip space (flipping Y), and 4× MSAA covers the
-triangle path. The renderer is heavily commented because you'll be extending it.
+vertex shader maps points to clip space (flipping Y), and MSAA (8× where the
+GPU supports it) covers the triangle path. The renderer is heavily commented because you'll be extending it.
 
 ## Exporting frames
 
@@ -165,7 +165,7 @@ swift run Example-HelloCircle --export frame.png
 swift run Example-Orbits --export frame.png --frame 120   # the 120th frame
 ```
 
-It drives the sketch off-screen (`setup()`, then `draw()` advanced to the requested `--frame`) and writes a PNG at the sketch's `canvasSize` (1080×1080 by default), rendered with the same 4× MSAA as the window. In code it's `OllinApp.export(sketch, to:frame:)`, or `OllinApp.image(of: sketch, frame:)` if you'd rather have the `CGImage` in memory than a file on disk. An extension can also grab each frame as it renders, through the `frameRendered` hook on the `extend(...)` seam — see [`Examples/Basic/Capture`](Examples/Basic/Capture/Sketch.swift).
+It drives the sketch off-screen (`setup()`, then `draw()` advanced to the requested `--frame`) and writes a PNG at the sketch's `canvasSize` (1080×1080 by default), rendered with the same MSAA as the window. In code it's `OllinApp.export(sketch, to:frame:)`, or `OllinApp.image(of: sketch, frame:)` if you'd rather have the `CGImage` in memory than a file on disk. An extension can also grab each frame as it renders, through the `frameRendered` hook on the `extend(...)` seam — see [`Examples/Basic/Capture`](Examples/Basic/Capture/Sketch.swift).
 
 For an animation, `--export-sequence` writes a numbered PNG sequence you can stitch into video:
 
@@ -177,16 +177,7 @@ It advances the clock at a fixed timestep rather than wall-clock, so each frame 
 
 ## Roadmap
 
-The first pass is deliberately just enough to draw and iterate. Next up:
-
-- **More primitives:** a broad catalog of SDF shapes has landed (points, triangles, n-gons, stars, rings, Bézier curves, an outline-only band mode, and more), and it keeps growing.
-- **Fills & color:** richer color (hex/HSB), gradients, blend modes. Cosine-gradient `Palette` and perceptual `Colormap`s have landed.
-- **Images:** loading, drawing, `tint`, and pixel get/set have landed. Text too (bitmap, outline, and single-line/plotter fonts).
-- **Shaders:** user-supplied fragment/vertex shaders.
-- **Vector & raster export:** single-frame and PNG-*sequence* export have landed (`--export` / `--export-sequence`); SVG and PDF are next.
-- **Capture for sharing:** video and GIF recording of animated sketches, since motion is the whole reason Ollin exists.
-- **Single-file `swift-sh` scripting** for zero-ceremony sketches.
-- **Normalized `u, v` coordinates** (0…1 across the canvas) alongside points, so a sketch can place things without referring to `width`/`height`.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: video and GIF capture, an HDR float pipeline, layered effects and compositing, shader composition and a live-coding mode, virtual camera output, the rest of the computer-vision catalog, the iPhone as a sensor array, a project generator, and eventually iOS, 3D, and AR.
 
 ## Built with AI
 
@@ -278,4 +269,4 @@ Ollin is **alpha and pre-1.0**, developed in the open. Practically, that means:
 - **No support guarantee.** This is built nights and weekends. Issues and discussions get read, but a response time isn't promised.
 - **macOS 26+ and a Metal-capable GPU are required.** That's the trade described up top, not a gap to be filled later: no Linux or Windows path, by design.
 
-That said, contributions and ideas are genuinely welcome. The [roadmap](#roadmap) above is the best source of bite-size work; the *more primitives* line in particular maps onto small, self-contained pull requests. For anything larger, please open an issue to discuss it before sending a big change.
+That said, contributions and ideas are genuinely welcome. [`ROADMAP.md`](ROADMAP.md) is the best source of bite-size work; its [Up next](ROADMAP.md#up-next) section maps onto small, self-contained pull requests. For anything larger, please open an issue to discuss it before sending a big change.
