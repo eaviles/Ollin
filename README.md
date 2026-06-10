@@ -170,7 +170,7 @@ It advances the clock at a fixed timestep rather than wall-clock, so each frame 
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: video and GIF capture, an HDR float pipeline, layered effects and compositing, shader composition and a live-coding mode, virtual camera output, the rest of the computer-vision catalog, the iPhone as a sensor array, a project generator, and eventually iOS, 3D, and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: video and GIF capture, video playback as an input, shape booleans and offsets, an HDR float pipeline, layered effects and compositing, shader composition and a live-coding mode, virtual camera output, the rest of the computer-vision catalog, the iPhone as a sensor array, a 3D mode, a project generator, and eventually iOS, visionOS, and AR.
 
 ## Built with AI
 

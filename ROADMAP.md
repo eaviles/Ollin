@@ -33,6 +33,14 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 
 One command from an animated sketch to a file you can post. The PNG-sequence exporter already renders deterministic frames at a fixed timestep; this adds the encoding step (video through `AVAssetWriter`, GIF through ImageIO), so sharing motion no longer requires an `ffmpeg` install and a stitching step. Motion is the point of the framework, which makes this the export path that matters most. See the [design notes](DESIGN-NOTES.md#video-and-gif-capture-not-started).
 
+## Video playback
+
+The input-side companion to capture: a `VideoPlayer` that plays a video file into a sketch as a live image. Each decoded frame arrives as a GPU texture drawn through `drawImage`, riding the transform stack and `tint` like any other image, and the same frames can feed the vision trackers, so face tracking or contour tracing runs over recorded footage the way it runs over the webcam. Planned as a small satellite library (`import OllinVideo`), keeping AVFoundation out of the drawing core the way audio does. See the [design notes](DESIGN-NOTES.md#video-playback-not-started).
+
+## Shape booleans and offsets
+
+Set operations on `Shape`: union, intersection, subtraction, and symmetric difference, plus inset/outset offsetting with the existing join styles. Curved contours flatten through the `Path` sampler first, so results stay plain polygonal shapes that fill, stroke, hatch, and export like any other. This turns the vector side into real computational geometry: clipping hatching to a region, hidden-line removal for plotters, pen-width compensation, and pattern-making by combining forms. Robust polygon clipping is notoriously hard to get right, so the likely path is vendoring a proven permissively-licensed clipper behind Ollin's own API, the same tier as libtess2 and Box2D. See the [design notes](DESIGN-NOTES.md#shape-booleans-and-offsets-not-started).
+
 ## Rendering precision (HDR/float pipeline)
 
 Render into a 16-bit float (`rgba16Float`), linear-light intermediate, then tone-map and encode to the screen in a final pass. Two payoffs: smooth gradients with no 8-bit banding (a float buffer carries precision a fixed 8-bit target can't), and color values above 1.0, which bloom, glow, and HDR-style effects rely on. It's also the precise substrate the [layered effects](#layered-effects-and-compositing) graph wants — off-screen targets a sketch draws into and samples — so the natural order is precision first, the effect graph on top. See the [design notes](DESIGN-NOTES.md#rendering-precision-hdrfloat-pipeline-not-started).
@@ -61,12 +69,16 @@ Image understanding on the Mac itself: a `Camera` grabs the webcam (or a Continu
 
 A Mac has no depth camera, inertial sensors, or spare Neural Engine for live perception; a tethered iPhone has all three. The idea: let the phone act as a sensor and on-device ML co-processor for a sketch that still renders on the Mac, capturing and perceiving (LiDAR point clouds, face and body tracking, segmentation, device motion, and more) and streaming typed results the sketch reads in `draw()`. The first slice is a live RGBD point cloud, the kind an Intel RealSense once fed openFrameworks. The wire protocol, the sensor catalog, and the build order are in the [design notes](DESIGN-NOTES.md#iphone-as-a-sensor-array-not-started).
 
+## 3D mode
+
+2D stays the default, and a real 3D mode is part of the plan: a perspective or orthographic camera, a depth buffer, `Vector3` and the transform stack generalized to 4×4, 3D primitives (box, sphere, cylinder, plane, torus), meshes built in code or loaded from file, and a simple light and material model. It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode-not-started).
+
 ## On the horizon
 
 Larger, later directions. 2D on macOS stays the focus; these don't change that.
 
 - **Swift Playgrounds and iOS.** Swift Playgrounds App Projects are the closest Swift gets to the p5.js "open the editor and type, watch it move" experience, and the same work unlocks iPad sketching and embedding in any SwiftUI app. The view layer is already SwiftUI-embeddable; the main blocker is declaring an iOS target and making the view conditional across AppKit and UIKit. The Metal renderer is already portable. [Design notes.](DESIGN-NOTES.md#swift-playgrounds-and-ios-not-started)
-- **3D mode and visionOS.** 2D stays the default, but the back end is kept from foreclosing 3D: a camera, a depth buffer, the transform stack generalized to 4x4, a `Vector3`, and 3D primitives. visionOS uses a different, immersive render loop, so the per-frame loop is kept behind a seam that either a normal view or a visionOS layer renderer can drive. [Design notes.](DESIGN-NOTES.md#3d-mode-and-visionos-eventual-2d-stays-primary)
+- **visionOS.** Immersive rendering uses a different render loop (CompositorServices rather than `MTKView`), so the per-frame loop stays behind a seam that either a normal view or a visionOS layer renderer can drive. It builds on the [3D mode](#3d-mode) and the iOS target. [Design notes.](DESIGN-NOTES.md#3d-mode-not-started)
 - **AR mode and templates.** AR sketches on Apple platforms, with ready-made templates for face, world, and image tracking, so an AR sketch becomes "fill in the `draw()`, the tracking is handed to you". It's layered on the iOS and 3D work rather than a separate engine, and aims at the gap left by discontinued template-driven AR tools. [Design notes.](DESIGN-NOTES.md#ar-mode-and-templates-eventual-the-meta-spark-gap)
 
 These three can't be verified in every environment; iOS, visionOS, and AR need the right SDKs, a simulator, or a device.
