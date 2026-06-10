@@ -411,19 +411,34 @@ public struct ParametersListView: View {
 
 /// One labelled slider: a label and an editable mono value pill on top, a thin
 /// tinted slider below. Local state drives smooth dragging and the readout;
-/// every change is written into the live `Param` and reported to `onChange`.
+/// a user edit is written into the live `Param` and reported to `onChange`.
+///
+/// The row is not the param's only writer — a MIDI/OSC binding, a smoothing
+/// glide, or the sketch itself may drive the same knob — so it also *follows*:
+/// a ~10 Hz pull (the stats cadence) reflects the live value back into the
+/// thumb and pill, paused while the user is dragging or typing.
 private struct ParamSliderRow: View {
     let handle: ParamHandle
     let palette: OllinInspector.Palette
     let onChange: (Double) -> Void
 
     @State private var value: Double
+    /// The last value this row knows the param to hold — seeded at init, updated
+    /// by every sync pull and user edit. `onChange(of: value)` compares against
+    /// it to tell a sync echo (skip) from a real user edit (write + record).
+    @State private var lastKnown: Double
+    /// True while the slider thumb is held; parks the sync pull.
+    @State private var isDragging = false
+    /// True while the value pill has keyboard focus; parks the sync pull.
+    @FocusState private var isTyping: Bool
 
     init(handle: ParamHandle, palette: OllinInspector.Palette, onChange: @escaping (Double) -> Void) {
         self.handle = handle
         self.palette = palette
         self.onChange = onChange
-        _value = State(initialValue: handle.param.wrappedValue)
+        let current = handle.param.wrappedValue
+        _value = State(initialValue: current)
+        _lastKnown = State(initialValue: current)
     }
 
     var body: some View {
@@ -434,6 +449,7 @@ private struct ParamSliderRow: View {
                 Spacer()
                 TextField("", value: $value, format: .number.precision(.fractionLength(2)))
                     .textFieldStyle(.plain)
+                    .focused($isTyping)
                     .multilineTextAlignment(.trailing)
                     .font(.system(size: 12, design: .monospaced))
                     // Hug the number (don't stretch across the row) so the pill is
@@ -446,7 +462,7 @@ private struct ParamSliderRow: View {
                     .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
                         .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
             }
-            Slider(value: $value, in: handle.param.range)
+            Slider(value: $value, in: handle.param.range) { isDragging = $0 }
                 .controlSize(.small)
                 .tint(.purple)
                 // The native slider carries internal vertical inset; trim it so the
@@ -457,8 +473,21 @@ private struct ParamSliderRow: View {
         .padding(.top, 11)
         .padding(.bottom, 11)
         .onChange(of: value) { _, newValue in
+            guard newValue != lastKnown else { return }   // the sync pull's own echo
+            lastKnown = newValue
             handle.param.wrappedValue = newValue
             onChange(newValue)
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !isDragging, !isTyping else { continue }
+                let live = handle.param.wrappedValue
+                if live != value {
+                    lastKnown = live
+                    value = live
+                }
+            }
         }
     }
 }
