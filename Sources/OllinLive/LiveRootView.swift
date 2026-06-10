@@ -9,8 +9,9 @@ private enum LiveChrome {
     /// live host and the panel read as one translucency.
     static let tintOpacity = OllinInspector.chromeTintOpacity
 
-    /// `--win-bg`: the stage fill behind the full-stage transient screens
-    /// (compiling, compile error). Opaque, since they cover the canvas.
+    /// `--win-bg`: the stage fill behind the transient screens. Opaque under the
+    /// first-build states (nothing behind them yet); the reload-error state lays
+    /// it over the last good frame at reduced opacity, as a dimming scrim.
     static func stageBackground(_ scheme: ColorScheme) -> SwiftUI.Color {
         scheme == .dark
             ? SwiftUI.Color(red: 0x1C / 255, green: 0x1C / 255, blue: 0x1E / 255)
@@ -20,8 +21,10 @@ private enum LiveChrome {
 
 /// The live host's window: the sketch renders in the detail pane; the sidebar
 /// holds the monitor card + parameter knobs. The reload status sits in the
-/// toolbar, and the transient states (compiling, compile error, just-reloaded)
-/// play out over the stage so the last good frame stays visible behind them.
+/// toolbar. A reload compile leaves the canvas alone — the last good sketch
+/// keeps animating while the chip pulses amber — and a compile error floats
+/// its diagnostic over the dimmed last good frame. The full-stage "Compiling…"
+/// screen shows only before the first frame, when the stage is empty.
 /// The sketch's `SketchRunner` is created here (the detail view owns the
 /// `MTKView`) and handed to the session so the watcher can drive hot-swaps.
 struct LiveRootView: View {
@@ -146,13 +149,13 @@ struct LiveRootView: View {
                     session.attach(runner)
                 }
 
-                // Transient states play over the stage. Compiling covers it with
-                // the design's clean rebuild screen; a compile error shows the
-                // diagnostic. (Both also flip the title-bar status chip.)
-                if session.inspectorStatus == .compiling {
-                    CompilingState().transition(.opacity)
-                } else if let error = session.errorMessage {
-                    CompileErrorState(message: error).transition(.opacity)
+                // A reload compile leaves the canvas alone — the last good
+                // sketch keeps animating while the title-bar chip pulses amber.
+                // Only a compile error interrupts, floating the diagnostic over
+                // the dimmed last frame; the full-stage "Compiling…" screen is
+                // reserved for before the first frame (the `else` branch below).
+                if let error = session.errorMessage {
+                    CompileErrorState(message: error, dimsStage: true).transition(.opacity)
                 }
 
                 if showReloadedToast {
@@ -188,9 +191,9 @@ struct LiveRootView: View {
 // MARK: - Transient states
 
 /// The "Compiling…" screen (the design's `.o-state`): a ring spinner, title, and
-/// subtitle centered on the stage background, covering the canvas while a build is
-/// in flight. Shown both at first launch (empty stage) and on every reload; the
-/// title-bar status chip turns amber in concert.
+/// subtitle centered on the stage background. Shown only before the first frame,
+/// while the stage is still empty — reload compiles leave the canvas to the
+/// running sketch, with the amber title-bar chip as the signal.
 private struct CompilingState: View {
     @Environment(\.colorScheme) private var colorScheme
 
@@ -198,7 +201,7 @@ private struct CompilingState: View {
         VStack(spacing: 16) {
             RingSpinner()
             Text("Compiling…").font(.system(size: 15, weight: .semibold))
-            Text("Rebuilding the sketch. The window stays open — your tuned values are preserved across the reload.")
+            Text("Building the sketch. Once it's running, edits hot-reload without closing the window.")
                 .font(.system(size: 12.5))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -236,17 +239,34 @@ private struct RingSpinner: View {
 }
 
 /// The compile-error state: the diagnostic lives here in the canvas (never the
-/// sidebar). On a reload it floats over the dimmed last good frame.
+/// sidebar). Over a running sketch (`dimsStage`) it floats on a scrim that dims
+/// the last good frame instead of hiding it; before the first frame it covers
+/// the empty stage outright.
 private struct CompileErrorState: View {
     let message: String
+    /// Float over the dimmed last good frame (a reload error) rather than
+    /// covering the stage (a first-build error, with nothing behind it).
+    var dimsStage = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 16) {
             ZStack {
-                SwiftUI.Circle().fill(OllinInspector.red.opacity(0.15)).frame(width: 46, height: 46)
+                // The code block's surface recipe, as a disc: opaque stage
+                // backing (the dimmed frame shouldn't ghost through), the same
+                // red tint, and the same hairline border.
+                SwiftUI.Circle()
+                    .fill(LiveChrome.stageBackground(colorScheme))
+                    .overlay(SwiftUI.Circle().fill(OllinInspector.red.opacity(0.07)))
+                    .overlay(SwiftUI.Circle().strokeBorder(OllinInspector.red.opacity(0.25), lineWidth: 0.5))
+                    .frame(width: 46, height: 46)
                 SwiftUI.Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 22)).foregroundStyle(OllinInspector.red)
+                    // Optical correction, not layout: a triangle's visual mass
+                    // sits at ⅓ height, so the geometrically centered symbol
+                    // reads as sunken in the disc. (Verified centered by pixel
+                    // measurement; the nudge is purely perceptual.)
+                    .offset(y: -2)
             }
             Text("Compile failed").font(.system(size: 15, weight: .semibold))
             Text(formattedError)
@@ -257,14 +277,20 @@ private struct CompileErrorState: View {
                 .frame(maxWidth: 640, alignment: .leading)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
-                .background(OllinInspector.red.opacity(0.07),
-                            in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                // An opaque stage-colored backing under the red tint, so the
+                // diagnostic stays readable when the dimmed frame ghosts through
+                // the scrim around it.
+                .background {
+                    let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    shape.fill(LiveChrome.stageBackground(colorScheme))
+                        .overlay(shape.fill(OllinInspector.red.opacity(0.07)))
+                }
                 .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .strokeBorder(OllinInspector.red.opacity(0.25), lineWidth: 0.5))
         }
         .padding(30)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(LiveChrome.stageBackground(colorScheme))
+        .background(LiveChrome.stageBackground(colorScheme).opacity(dimsStage ? 0.88 : 1))
     }
 
     /// Tidy the raw `swiftc` dump into the design's diagnostic: drop the redundant
