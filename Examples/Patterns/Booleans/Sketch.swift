@@ -24,10 +24,10 @@ final class Booleans_Example: Sketch {
             ("symmetricDifference", { $0.symmetricDifference($1) }, Color(red: 0.55, green: 0.3, blue: 0.75, alpha: 0.85)),
         ]
 
-        let r = min(width, height) * 0.16
+        let r = min(width, height) * 0.15
         for (i, op) in ops.enumerated() {
             let cell = Vector2((Double(i % 2) + 0.5) * width / 2,
-                               (Double(i / 2) + 0.5) * height / 2 - 24 * scale)
+                               (Double(i / 2) + 0.5) * height / 2 - 40 * scale)
 
             // The sources are *baked* into canvas coordinates (mapPoints, not
             // the transform stack): a boolean combines geometry, so both
@@ -49,7 +49,9 @@ final class Booleans_Example: Sketch {
             noFill(); stroke(Color(white: 0.1)); strokeWeight(2.2 * scale)
             drawShape(result)
 
-            caption(op.name, at: Vector2(cell.x, cell.y + r * 1.9))
+            // Anchored to the cell's bottom edge, not a radius multiple — the
+            // bottom row's captions must land inside the canvas.
+            caption(op.name, at: Vector2(cell.x, (Double(i / 2) + 1) * height / 2 - 30 * scale))
         }
     }
 
