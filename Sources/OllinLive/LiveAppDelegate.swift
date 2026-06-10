@@ -1,18 +1,15 @@
 import AppKit
-import OllinRuntime
 
 /// Activation + lifecycle hooks for the bundleless `swift run` executable: adopt
 /// a regular (foreground) activation policy, then activate.
 ///
-/// `ensureInitialWindow()` works around a macOS 15 Sequoia SwiftUI regression
-/// where a `WindowGroup` app launched with a command-line argument (OllinLive
-/// always passes the sketch path) never opens its initial window. It's a
-/// temporary patch — see `SequoiaLaunchWindowWorkaround` for the full story and
-/// removal steps.
+/// The initial window needs no recovery here: launching with the sketch-path
+/// argument used to suppress it (AppKit read the argument as a file-open
+/// request), but `OllinLiveApp.init` now registers
+/// `NSTreatUnknownArgumentsAsOpen = NO`, which removes the misread at its root.
 final class LiveAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
-        SequoiaLaunchWindowWorkaround.ensureInitialWindow()
         NSApp.activate(ignoringOtherApps: true)
     }
 

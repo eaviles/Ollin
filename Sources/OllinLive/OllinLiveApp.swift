@@ -16,6 +16,14 @@ struct OllinLiveApp: App {
     @State private var session: LiveSession
 
     init() {
+        // Stop AppKit from reading the sketch-path argument as a file-open
+        // request — that misread is what suppresses the scene's automatic
+        // initial window when a bundleless host launches with an argument
+        // (the Sequoia regression; a `Window` scene has no New Window menu
+        // item, so the old fire-⌘N recovery can't help it). Registered here in
+        // `init` so it lands before AppKit parses the arguments at launch.
+        UserDefaults.standard.register(defaults: ["NSTreatUnknownArgumentsAsOpen": "NO"])
+
         setvbuf(stdout, nil, _IONBF, 0)   // unbuffered: reload messages show immediately
 
         let arguments = Array(CommandLine.arguments.dropFirst())
@@ -46,7 +54,11 @@ struct OllinLiveApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        // A `Window` (not `WindowGroup`): the live host is one window by design.
+        // A second window would share the single `LiveSession` — its runner
+        // would clobber the first's on attach — and the title-bar accessories
+        // assume one window to bind to, so don't offer File ▸ New Window at all.
+        Window("OllinLive", id: "main") {
             LiveRootView(session: session)
         }
         // The root is a fixed-size `HStack` (sidebar + sketch), so `.contentSize`
