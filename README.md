@@ -114,7 +114,7 @@ The names are familiar and the calls are short. The full API reference lives in 
 - [Text](Docs/Text.md) - `drawText` with bitmap, outline (`.ttf`/`.otf`), and single-line/plotter (Hershey) fonts (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`/`OutlineFont`/`StrokeFont`), `textToShapes` for text as geometry, and loading BDF, Playdate `.fnt`, and Hershey `.jhf` fonts.
 - [Images](Docs/Images.md) - `loadImage` / `drawImage` for raster images (PNG, JPEG, HEIC, …), with `tint` recoloring and an `Image[x, y]` pixel subscript for sampling or authoring.
 - [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
-- [Geometry](Docs/Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines).
+- [Geometry](Docs/Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines, shape booleans, and offsetting).
 - [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
 - [Noise](Docs/Noise.md) - Perlin `noise`/`signedNoise` and `curlNoise` flow fields.
 - [Math](Docs/Math.md) - `map`, `dist`, `lerp`.
@@ -181,7 +181,7 @@ In code they're `OllinApp.exportVideo(...)` and `OllinApp.exportGIF(...)`; codec
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: shape booleans and offsets, an HDR float pipeline, layered effects and compositing, shader composition and a live-coding mode, virtual camera output, the rest of the computer-vision catalog, the iPhone as a sensor array, a 3D mode, a project generator, and eventually iOS, visionOS, and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: an HDR float pipeline, layered effects and compositing, shader composition and a live-coding mode, virtual camera output, the rest of the computer-vision catalog, the iPhone as a sensor array, a 3D mode, a project generator, and eventually iOS, visionOS, and AR.
 
 ## Built with AI
 
@@ -215,6 +215,7 @@ Ollin bundles a small amount of third-party source in the repo. This is differen
 
 - **[libtess2](https://github.com/memononen/libtess2)** (SGI Free Software License B): the polygon triangulator behind concave and holed `Shape` fills, vendored under `External/CLibtess2/`.
 - **[Box2D](https://github.com/erincatto/box2d)** by Erin Catto (MIT): the 2D rigid-body engine behind `OllinPhysics`' rigid `Body` side (rotation, polygon colliders, joints, stacking), vendored under `External/CBox2D/` and wrapped behind Ollin's own `World`/`Body` API.
+- **[Clipper2](https://github.com/AngusJohnson/Clipper2)** by Angus Johnson (Boost Software License 1.0): the polygon clipping and offsetting engine behind `Shape`'s boolean set operations and `offset(by:join:)`, vendored under `External/CClipper2/` and wrapped behind Ollin's own `Shape` API.
 - **[Syphon Framework](https://github.com/Syphon/Syphon-Framework)** by Tom Butterworth, Anton Marini, Maxime Touroute & Philippe Chaurand (BSD 2-Clause): the IOSurface-backed GPU frame-sharing engine behind `OllinSyphon`, vendored (Metal portion only) under `External/CSyphon/` and wrapped behind Ollin's own `SyphonServer`/`SyphonClient` API.
 - **[Cozette](https://github.com/the-moonwitch/Cozette)** by Ines (MIT): the bundled default bitmap font for `drawText`, vendored as a BDF under `Sources/Ollin/Resources/`.
 - **[Hershey fonts](https://paulbourke.net/dataformats/hershey/)** (public domain): "Hershey Sans" (`futural`), the bundled default stroke (single-line / plotter) font for `drawText`, vendored as a `.jhf` under `Sources/Ollin/Resources/`. Created by A. V. Hershey at the U.S. National Bureau of Standards.

@@ -57,6 +57,24 @@ redistributed inside this repository.
 
 ---
 
+## Clipper2
+
+- **Used for:** polygon clipping and offsetting, behind `Shape`'s boolean set operations (`union`, `intersection`, `subtracting`, `symmetricDifference`) and `Shape.offset(by:join:)` — wrapped behind Ollin's own API.
+- **Location in this repo:** [`External/CClipper2/`](External/CClipper2/)
+- **Upstream:** https://github.com/AngusJohnson/Clipper2
+- **Version:** v2.0.1 — tag `Clipper2_2.0.1`, commit `21ebba05db8894f0c7217ad35ea518080f324946` (2026-06-10)
+- **License:** Boost Software License 1.0 — full text at [`External/CClipper2/LICENSE`](External/CClipper2/LICENSE)
+
+> Boost Software License - Version 1.0 - August 17th, 2003
+>
+> Permission is hereby granted, free of charge, to any person or organization
+> obtaining a copy of the software and accompanying documentation covered by
+> this license (the "Software") to use, reproduce, display, distribute,
+> execute, and transmit the Software… (see `LICENSE` for the full text,
+> including the warranty disclaimer.)
+
+---
+
 ## Syphon Framework
 
 - **Used for:** sharing live GPU frames with other apps on the Mac (openFrameworks via `ofxSyphon`, Resolume, MadMapper, VDMX, …), behind `OllinSyphon`'s `SyphonServer`/`SyphonClient` API. Only the Metal portion is vendored; the OpenGL path is omitted.

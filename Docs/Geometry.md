@@ -19,6 +19,8 @@
 - [Circle](#circle)
 - [Contour](#contour)
 - [Shape](#shape)
+  - [Set operations](#shape-booleans)
+  - [Offsetting](#shape-offset)
 - [Path](#path)
 
 <a name="vector2"></a>
@@ -353,6 +355,62 @@ drawShape(Shape(outer: outer, holes: [hole]))      // a square frame
 let wobbled = shape.mapPoints { $0 + Vector2(0, signedNoise($0.x * 0.01, time) * 20) }
 drawShape(wobbled)
 ```
+
+<a name="shape-booleans"></a>
+
+**Set operations.** Two shapes combine like sets, each call returning a new `Shape`:
+
+```swift
+func union(_ other: Shape) -> Shape                // covered by either
+func intersection(_ other: Shape) -> Shape         // covered by both
+func subtracting(_ other: Shape) -> Shape          // this one, with `other` cut away
+func symmetricDifference(_ other: Shape) -> Shape  // covered by exactly one
+```
+
+Take `a`, the square `(0, 0)`–`(100, 100)`, and `b`, the square `(50, 50)`–`(150, 150)`; they share the 50×50 patch in the middle:
+
+```
+(0,0)
+  ┌─────────┐               a.union(b)                the whole figure, one contour
+  │ a       │               a.intersection(b)         just the 50×50 overlap
+  │    ┌────┼────┐          a.subtracting(b)          a with a square bite at its corner
+  │    │////│    │          a.symmetricDifference(b)  both squares minus the overlap
+  └────┼────┘    │
+       │       b │
+       └─────────┘ (150,150)
+```
+
+The operations work on the **filled region**: each side first resolves under its own `winding` rule (so self-overlaps and holes mean exactly what they mean when the shape draws), closed contours take part, and open contours sit out. The result is an ordinary `Shape` — fill it, stroke it, hatch it, offset it, export it — whose outer boundaries and holes come back oppositely wound, marked `.nonZero`. Where regions don't touch, the result simply holds more than one contour; where nothing remains (say, intersecting shapes that don't overlap), `contours` comes back empty and drawing it is a no-op.
+
+```swift
+let bite = star.subtracting(disc)     // a star with a bite taken out
+fill(.black)
+drawShape(bite)
+```
+
+The `Examples/Patterns/Booleans` sketch shows all four operations side by side over the same two moving shapes.
+
+<a name="shape-offset"></a>
+
+**Offsetting.** Grow or shrink the filled region by a uniform distance, in points:
+
+```swift
+func offset(by delta: Double, join: StrokeJoin = .miter) -> Shape
+```
+
+Positive `delta` grows, negative shrinks. Holes move the opposite way — offsetting a ring outward thickens the band on both edges. Shrinking past a region's narrowest waist pinches it apart (one contour can split into several) and eventually leaves nothing, which is what makes repeated insets read as topographic contour lines:
+
+```swift
+var ring = blob
+while !ring.contours.isEmpty {        // inset until the region pinches out
+    drawShape(ring)
+    ring = ring.offset(by: -12, join: .round)
+}
+```
+
+`join` decides the corners with the same vocabulary as [`strokeJoin(_:)`](Drawing.md#strokeJoin): `.miter` keeps them sharp (falling back to a flat bevel past the same spike limit the stroked path uses), `.bevel` always cuts them flat, `.round` arcs around them. Open contours sit out here too — `offset` moves a region's edge, not a stroked line.
+
+The `Examples/Patterns/Topography` sketch is the inset loop above, drawn live.
 
 <a name="path"></a>
 

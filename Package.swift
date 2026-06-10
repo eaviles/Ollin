@@ -115,6 +115,28 @@ let package = Package(
             exclude: ["LICENSE.txt", "README.md"],
             publicHeadersPath: "Include"
         ),
+        // Vendored Clipper2 (Angus Johnson's polygon clipping + offsetting
+        // library, C++), the engine behind `Shape`'s booleans (union/
+        // intersection/subtracting/symmetricDifference) and `offset(by:join:)`.
+        // Bundled third-party C++ source under its own Boost Software License —
+        // see External/CClipper2/README.md and the repo-root
+        // THIRD-PARTY-NOTICES.md. Wrapped behind Ollin's own API; Swift imports
+        // only the thin C shim in include/ (no C++ interop), so the
+        // `Clipper2Lib` symbols stay off Ollin's public surface. The upstream
+        // include/ + src/ layout is preserved under Clipper2Lib/ so its
+        // `#include "clipper2/…"` directives resolve.
+        .target(
+            name: "CClipper2",
+            path: "External/CClipper2",
+            exclude: ["LICENSE", "README.md"],
+            publicHeadersPath: "include",
+            cxxSettings: [
+                .headerSearchPath("Clipper2Lib/include")
+            ],
+            linkerSettings: [
+                .linkedLibrary("c++")
+            ]
+        ),
         // Vendored Box2D (Erin Catto's 2D rigid-body engine, v3 — pure C),
         // the solver behind OllinPhysics' rigid-body `World`/`Body`. Bundled
         // third-party C source under its own MIT license — see
@@ -240,7 +262,7 @@ let package = Package(
         ),
         .target(
             name: "Ollin",
-            dependencies: ["CLibtess2", "COllinShaders"],
+            dependencies: ["CLibtess2", "CClipper2", "COllinShaders"],
             // Declaring the `.metal` file as a resource makes SwiftPM copy it
             // into the target's resource bundle and synthesize `Bundle.module`,
             // which MetalRenderer.loadLibrary uses to read and compile the shader
@@ -495,6 +517,16 @@ let package = Package(
             name: "Example-Primitives",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/Primitives"
+        ),
+        .executableTarget(
+            name: "Example-Booleans",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/Booleans"
+        ),
+        .executableTarget(
+            name: "Example-Topography",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/Topography"
         ),
         .executableTarget(
             name: "Example-HollowShapes",
@@ -841,5 +873,8 @@ let package = Package(
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety
     // is enforced as errors everywhere — framework, hosts, and example sketches.
-    swiftLanguageModes: [.v6]
+    swiftLanguageModes: [.v6],
+    // Vendored Clipper2 (External/CClipper2) is C++17; this only affects how
+    // C++ sources compile, nothing about the Swift side.
+    cxxLanguageStandard: .cxx17
 )

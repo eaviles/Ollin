@@ -25,13 +25,10 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 - **Normalized `u, v` coordinates.** A 0…1 coordinate space across the canvas alongside points, so a sketch can place things without referring to `width`/`height`.
 - **Sub-pixel region outlines.** Disks and lines already fade by area below ~1px instead of vanishing; the stroke band on region shapes (rect, star, triangle) doesn't yet. Closing that gap would make every outline honor sizes from 0 up. See the [render-scale notes](DESIGN-NOTES.md#supersampled-render-scale--the-crispness-dial-not-started).
 - **PDF export beside SVG.** The vector serializer already records every draw call as geometry; Core Graphics can write the same geometry to PDF for print.
+- **Stroke as shape.** Offsetting an *open* path turns a stroked polyline into a closed outline region — a thick stroke that exports as a filled SVG region, hatches for the plotter, or feeds the shape booleans. The offsetting engine already does this for closed regions; the work is the open-path surface (end caps, and where the API lives).
 - **Single-file sketches.** A zero-ceremony way to run one `.swift` file as a sketch, in the spirit of `swift-sh`, so dashing off an idea doesn't require setting up a package.
 - **Retained geometry buffers.** Every frame currently re-uploads everything; keeping static geometry (a large point cloud, a fixed background) in a persistent buffer would drop its per-frame cost to zero.
 - **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
-
-## Shape booleans and offsets
-
-Set operations on `Shape`: union, intersection, subtraction, and symmetric difference, plus inset/outset offsetting with the existing join styles. Curved contours flatten through the `Path` sampler first, so results stay plain polygonal shapes that fill, stroke, hatch, and export like any other. This turns the vector side into real computational geometry: clipping hatching to a region, hidden-line removal for plotters, pen-width compensation, and pattern-making by combining forms. Robust polygon clipping is notoriously hard to get right, so the likely path is vendoring a proven permissively-licensed clipper behind Ollin's own API, the same tier as libtess2 and Box2D. See the [design notes](DESIGN-NOTES.md#shape-booleans-and-offsets-not-started).
 
 ## Rendering precision (HDR/float pipeline)
 
