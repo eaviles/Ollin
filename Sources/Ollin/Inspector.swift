@@ -473,9 +473,17 @@ private struct ParamSliderRow: View {
         .padding(.bottom, 11)
         .onChange(of: value) { _, newValue in
             guard newValue != lastKnown else { return }   // the sync pull's own echo
-            lastKnown = newValue
-            handle.param.wrappedValue = newValue
-            onChange(newValue)
+            // A typed value can land outside the range (the slider can't).
+            // Clamp here so the pill, the param, and the host's persisted
+            // record all agree — the param clamps internally anyway, but a raw
+            // out-of-range value displayed or recorded would lie about what
+            // the sketch actually runs with.
+            let range = handle.param.range
+            let clamped = Swift.min(Swift.max(newValue, range.lowerBound), range.upperBound)
+            if clamped != newValue { value = clamped }   // snap the pill back into range
+            lastKnown = clamped
+            handle.param.wrappedValue = clamped
+            onChange(clamped)
         }
         .task {
             while !Task.isCancelled {
