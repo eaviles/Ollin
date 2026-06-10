@@ -108,6 +108,13 @@ struct LiveRootView: View {
             SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
         }
         .navigationTitle(session.title)
+        .background(WindowCustomizer { window in
+            // We draw our own hairline under the title bar (the top overlay
+            // above), in the design's `--sep` tone — suppress the system
+            // separator, which doesn't read against the custom gradient and
+            // would double the line.
+            window.titlebarSeparatorStyle = .none
+        })
         .background(TitlebarAccessory(attribute: .leading) {
             HStack(spacing: 10) {
                 // Divider after the traffic lights, in the same separator token
@@ -231,8 +238,11 @@ private struct CompilingState: View {
 
 /// A thin ring spinner — a faint track ring with a rotating accent arc — matching
 /// the design's `.o-spinner` (the macOS `ProgressView` is a different idiom).
+/// Under Reduce Motion the arc holds still: a static progress glyph instead of
+/// a rotating one.
 private struct RingSpinner: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var spinning = false
 
     private var track: SwiftUI.Color {
@@ -248,8 +258,9 @@ private struct RingSpinner: View {
         }
         .frame(width: 30, height: 30)
         .rotationEffect(.degrees(spinning ? 360 : 0))
-        .animation(.linear(duration: 0.8).repeatForever(autoreverses: false), value: spinning)
-        .onAppear { spinning = true }
+        .animation(reduceMotion ? nil : .linear(duration: 0.8).repeatForever(autoreverses: false),
+                   value: spinning)
+        .onAppear { if !reduceMotion { spinning = true } }
     }
 }
 
@@ -377,9 +388,38 @@ private final class TitlebarAccessoryVC: NSTitlebarAccessoryViewController {
     }
 }
 
+/// A zero-size view that reports when it lands in (or moves between) windows —
+/// AppKit's own signal for "the window exists now", replacing any need to poll
+/// for it. Shared by the accessory mount and the window customizer below.
+private final class WindowAttachmentView: NSView {
+    var onAttach: ((NSWindow) -> Void)?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let window { onAttach?(window) }
+    }
+}
+
+/// Runs window-level configuration when the hosting window appears. The
+/// explicit home for window side effects — nothing window-wide hides inside a
+/// generic component. Attach with `.background(...)`.
+private struct WindowCustomizer: NSViewRepresentable {
+    let configure: @MainActor (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = WindowAttachmentView(frame: .zero)
+        view.onAttach = configure
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
 /// Mounts a SwiftUI view as a leading or trailing title-bar accessory. The host is
 /// invisible (zero-size); attach with `.background(...)`. Idempotent at the window
-/// level: one accessory per edge, updated in place.
+/// level: one accessory per edge, updated in place. Installation happens on the
+/// view's own `viewDidMoveToWindow` (and on every content update once the window
+/// exists), so there is no window lookup and nothing to poll.
 private struct TitlebarAccessory<Content: View>: NSViewRepresentable {
     var attribute: NSLayoutConstraint.Attribute = .trailing
     @ViewBuilder var content: Content
@@ -388,31 +428,35 @@ private struct TitlebarAccessory<Content: View>: NSViewRepresentable {
         NSUserInterfaceItemIdentifier(attribute == .leading ? "ollin.titlebar.leading" : "ollin.titlebar.trailing")
     }
 
-    func makeNSView(context: Context) -> NSView { NSView(frame: .zero) }
+    final class Coordinator {
+        var latest = AnyView(EmptyView())
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = WindowAttachmentView(frame: .zero)
+        let coordinator = context.coordinator
+        let attribute = self.attribute
+        let tag = self.tag
+        view.onAttach = { window in
+            Self.install(coordinator.latest, in: window, attribute: attribute, tag: tag)
+        }
+        return view
+    }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        sync(near: nsView, content: AnyView(content), attempt: 0)
+        context.coordinator.latest = AnyView(content)
+        if let window = nsView.window {
+            Self.install(context.coordinator.latest, in: window, attribute: attribute, tag: tag)
+        }
     }
 
     @MainActor
-    private func sync(near nsView: NSView, content: AnyView, attempt: Int) {
-        let window = nsView.window ?? NSApp.windows.first {
-            $0.isVisible && !($0 is NSPanel) && $0.styleMask.contains(.titled)
-        }
-        guard let window else {
-            guard attempt < 10 else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak nsView] in
-                guard let nsView else { return }
-                sync(near: nsView, content: content, attempt: attempt + 1)
-            }
-            return
-        }
-        // We draw our own hairline under the title bar (the content's top overlay
-        // in `body`), in the design's `--sep` tone — so suppress the system one,
-        // which doesn't read against the custom gradient and would risk a double line.
-        window.titlebarSeparatorStyle = .none
+    private static func install(_ content: AnyView, in window: NSWindow,
+                                attribute: NSLayoutConstraint.Attribute,
+                                tag: NSUserInterfaceItemIdentifier) {
         let titleBarHeight = max(28, window.frame.height - window.contentLayoutRect.height)
-        let tag = self.tag
         if let existing = window.titlebarAccessoryViewControllers
             .compactMap({ $0 as? TitlebarAccessoryVC }).first(where: { $0.tag == tag }) {
             existing.titleBarHeight = titleBarHeight

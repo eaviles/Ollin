@@ -508,6 +508,8 @@ private struct ParamSliderRow: View {
                 .tint(OllinInspector.accent)
                 // The native slider carries internal vertical inset; trim it so the
                 // track-to-separator gap matches the pill's top gap (balanced row).
+                // The -3 is tied to AppKit's private metrics — re-verify the row
+                // spacing on each macOS major.
                 .padding(.vertical, -3)
         }
         .padding(.horizontal, 12)
