@@ -29,13 +29,9 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 - **Retained geometry buffers.** Every frame currently re-uploads everything; keeping static geometry (a large point cloud, a fixed background) in a persistent buffer would drop its per-frame cost to zero.
 - **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
 
-## Video and GIF capture
-
-One command from an animated sketch to a file you can post. The PNG-sequence exporter already renders deterministic frames at a fixed timestep; this adds the encoding step (video through `AVAssetWriter`, GIF through ImageIO), so sharing motion no longer requires an `ffmpeg` install and a stitching step. Motion is the point of the framework, which makes this the export path that matters most. See the [design notes](DESIGN-NOTES.md#video-and-gif-capture-not-started).
-
 ## Video playback
 
-The input-side companion to capture: a `VideoPlayer` that plays a video file into a sketch as a live image. Each decoded frame arrives as a GPU texture drawn through `drawImage`, riding the transform stack and `tint` like any other image, and the same frames can feed the vision trackers, so face tracking or contour tracing runs over recorded footage the way it runs over the webcam. Planned as a small satellite library (`import OllinVideo`), keeping AVFoundation out of the drawing core the way audio does. See the [design notes](DESIGN-NOTES.md#video-playback-not-started).
+The input-side companion to video export: a `VideoPlayer` that plays a video file into a sketch as a live image. Each decoded frame arrives as a GPU texture drawn through `drawImage`, riding the transform stack and `tint` like any other image, and the same frames can feed the vision trackers, so face tracking or contour tracing runs over recorded footage the way it runs over the webcam. Planned as a small satellite library (`import OllinVideo`), keeping AVFoundation out of the drawing core the way audio does. See the [design notes](DESIGN-NOTES.md#video-playback-not-started).
 
 ## Shape booleans and offsets
 

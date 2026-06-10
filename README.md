@@ -168,9 +168,18 @@ swift run Example-Breathing --export-sequence frames/ --skip 5 --seconds 20 --fp
 
 It advances the clock at a fixed timestep rather than wall-clock, so each frame renders the moment it should regardless of how long the render takes. A slow render still plays back smoothly. Pass `--seconds` for a duration instead of `--frames`, and `--skip` to run the sketch a while first without writing, so a sketch that needs to settle into motion is already going when capture starts. Frames are written as `frame-00001.png`, `frame-00002.png`, and so on, and the command prints an `ffmpeg` line to assemble them. In code it's `OllinApp.exportSequence(sketch, to:frames:fps:skipSeconds:)`.
 
+For a file you can share directly, `--export-video` encodes the same deterministic render straight to `.mp4` or `.mov` (H.264 by default; HEVC and ProRes via `--codec`, `--bitrate` as the file-size dial), and `--export-gif` writes a short looping GIF (`--gif-width` to shrink it). No external tool needed:
+
+```sh
+swift run Example-Breathing --export-video breathing.mp4 --seconds 6
+swift run Example-Breathing --export-gif breathing.gif --seconds 4 --gif-width 540
+```
+
+In code they're `OllinApp.exportVideo(...)` and `OllinApp.exportGIF(...)`; codec choice, size and quality control, and the GIF timing details are in [`Docs/Export.md`](Docs/Export.md).
+
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: video and GIF capture, video playback as an input, shape booleans and offsets, an HDR float pipeline, layered effects and compositing, shader composition and a live-coding mode, virtual camera output, the rest of the computer-vision catalog, the iPhone as a sensor array, a 3D mode, a project generator, and eventually iOS, visionOS, and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: video playback as an input, shape booleans and offsets, an HDR float pipeline, layered effects and compositing, shader composition and a live-coding mode, virtual camera output, the rest of the computer-vision catalog, the iPhone as a sensor array, a 3D mode, a project generator, and eventually iOS, visionOS, and AR.
 
 ## Built with AI
 

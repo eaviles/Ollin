@@ -49,6 +49,6 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 
 ### Output
 
-- [`Export`](./Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters)
+- [`Export`](./Export.md) - save frames as raster (PNG, sequences), motion (video, animated GIF), or vector (SVG, for pen plotters)
 
 Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR.

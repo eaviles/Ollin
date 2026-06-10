@@ -643,6 +643,49 @@ public enum OllinApp {
                                       frames: Int, fps: Double = 60,
                                       startFrame: Int = 1, skipSeconds: Double = 0) {
         guard frames > 0 else { return }
+        do {
+            try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        } catch {
+            fatalError("Ollin: failed to create \(directory): \(error)")
+        }
+
+        let size = sketch.canvasSize
+        let skipFrames = max(0, Int((skipSeconds * fps).rounded()))
+        let skipNote = skipFrames > 0 ? String(format: " (after %gs warmup)", skipSeconds) : ""
+        print("Ollin: exporting \(frames) frames at \(Int(fps)) fps\(skipNote) → \(directory) (\(size.width)×\(size.height))")
+
+        let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds) { cgImage, index in
+            guard let data = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else {
+                fatalError("Ollin: failed to encode PNG for frame \(index)")
+            }
+            let name = String(format: "frame-%05d.png", startFrame + index)
+            let path = (directory as NSString).appendingPathComponent(name)
+            do {
+                try data.write(to: URL(fileURLWithPath: path))
+            } catch {
+                fatalError("Ollin: failed to write \(path): \(error)")
+            }
+        }
+
+        print(String(format: "Ollin: exported %d frames in %.1fs → %@", frames, elapsed, directory))
+        print("Assemble with ffmpeg (or use --export-video / --export-gif directly):")
+        print("  ffmpeg -framerate \(Int(fps)) -start_number \(startFrame) \\")
+        print("    -i \(directory)/frame-%05d.png -c:v libx264 -pix_fmt yuv420p -crf 18 \\")
+        print("    \(directory)/out.mp4")
+    }
+
+    /// Drive `sketch` headlessly at a **fixed timestep** (`time = frame/fps`,
+    /// `deltaTime = 1/fps` — never wall-clock) and hand each rendered frame to
+    /// `write` with its 0-based index. The shared engine behind the
+    /// PNG-sequence, video, and GIF exports: one sketch instance and renderer
+    /// are reused across the run (stateful sketches evolve frame to frame),
+    /// `skipSeconds` runs the sketch that long *before* capturing (the captured
+    /// clock continues from there), and a single rewriting progress line shows
+    /// pct done · render throughput. Returns the elapsed wall-clock seconds.
+    @discardableResult
+    static func renderFrames(_ sketch: Sketch, frames: Int, fps: Double,
+                             skipSeconds: Double,
+                             write: (CGImage, Int) -> Void) -> Double {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Ollin requires a Metal-capable GPU.")
         }
@@ -657,18 +700,10 @@ public enum OllinApp {
         let size = sketch.canvasSize
         let width = size.width, height = size.height
         let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
-        do {
-            try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
-        } catch {
-            fatalError("Ollin: failed to create \(directory): \(error)")
-        }
-
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.setup()
 
         let skipFrames = max(0, Int((skipSeconds * fps).rounded()))
-        let skipNote = skipFrames > 0 ? String(format: " (after %gs warmup)", skipSeconds) : ""
-        print("Ollin: exporting \(frames) frames at \(Int(fps)) fps\(skipNote) → \(directory) (\(width)×\(height))")
         let wallStart = CACurrentMediaTime()
         for k in 0..<(skipFrames + frames) {
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
@@ -684,17 +719,8 @@ public enum OllinApp {
                                                width: width, height: height) else {
                 fatalError("Ollin: failed to render frame \(k)")
             }
-            guard let data = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else {
-                fatalError("Ollin: failed to encode PNG for frame \(k)")
-            }
             let done = k - skipFrames + 1                  // 1-based count of written frames
-            let name = String(format: "frame-%05d.png", startFrame + done - 1)
-            let path = (directory as NSString).appendingPathComponent(name)
-            do {
-                try data.write(to: URL(fileURLWithPath: path))
-            } catch {
-                fatalError("Ollin: failed to write \(path): \(error)")
-            }
+            write(cgImage, done - 1)
 
             // A single rewriting progress line: pct done · render throughput.
             let elapsed = CACurrentMediaTime() - wallStart
@@ -704,13 +730,7 @@ public enum OllinApp {
             FileHandle.standardError.write(Data(line.utf8))
         }
         FileHandle.standardError.write(Data("\n".utf8))
-
-        let elapsed = CACurrentMediaTime() - wallStart
-        print(String(format: "Ollin: exported %d frames in %.1fs → %@", frames, elapsed, directory))
-        print("Assemble with ffmpeg:")
-        print("  ffmpeg -framerate \(Int(fps)) -start_number \(startFrame) \\")
-        print("    -i \(directory)/frame-%05d.png -c:v libx264 -pix_fmt yuv420p -crf 18 \\")
-        print("    \(directory)/out.mp4")
+        return CACurrentMediaTime() - wallStart
     }
 
     /// Run `sketch`'s draw loop headlessly for `frames` frames — no window, no
@@ -814,6 +834,64 @@ public extension Sketch {
             }
             OllinApp.exportSequence(Self(), to: dir, frames: frames, fps: fps,
                                     startFrame: start, skipSeconds: skip)
+            return
+        }
+        // `--export-video <path> (--frames N | --seconds S) [--fps F] [--skip S]
+        // [--codec h264|hevc|prores422|prores4444] [--bitrate MBPS] [--quality 0..1]`
+        // encodes a video (.mp4/.mov) and exits.
+        if let i = args.firstIndex(of: "--export-video"), i + 1 < args.count {
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
+            }
+            let fps = value("--fps").flatMap(Double.init) ?? 60
+            var frames = value("--frames").flatMap(Int.init) ?? 0
+            if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
+                frames = Int((seconds * fps).rounded())
+            }
+            let skip = value("--skip").flatMap(Double.init) ?? 0
+            var codec = VideoCodec.h264
+            if let name = value("--codec") {
+                guard let parsed = VideoCodec(rawValue: name) else {
+                    FileHandle.standardError.write(Data(
+                        "unknown codec '\(name)' — one of: \(VideoCodec.allCases.map(\.rawValue).joined(separator: ", "))\n".utf8))
+                    return
+                }
+                codec = parsed
+            }
+            let bitrate = value("--bitrate").flatMap(Double.init).map { Int($0 * 1_000_000) }
+            let quality = value("--quality").flatMap(Double.init)
+            guard frames > 0 else {
+                FileHandle.standardError.write(Data(
+                    "usage: --export-video <path> (--frames N | --seconds S) [--fps F] [--skip S] [--codec C] [--bitrate MBPS] [--quality 0..1]\n".utf8))
+                return
+            }
+            OllinApp.exportVideo(Self(), to: args[i + 1], frames: frames, fps: fps,
+                                 codec: codec, bitsPerSecond: bitrate, quality: quality,
+                                 skipSeconds: skip)
+            return
+        }
+        // `--export-gif <path> (--frames N | --seconds S) [--fps F] [--skip S]
+        // [--gif-width PX]` writes a looping animated GIF and exits.
+        if let i = args.firstIndex(of: "--export-gif"), i + 1 < args.count {
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
+            }
+            let fps = value("--fps").flatMap(Double.init) ?? 25
+            var frames = value("--frames").flatMap(Int.init) ?? 0
+            if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
+                frames = Int((seconds * fps).rounded())
+            }
+            let skip = value("--skip").flatMap(Double.init) ?? 0
+            let width = value("--gif-width").flatMap(Int.init)
+            guard frames > 0 else {
+                FileHandle.standardError.write(Data(
+                    "usage: --export-gif <path> (--frames N | --seconds S) [--fps F] [--skip S] [--gif-width PX]\n".utf8))
+                return
+            }
+            OllinApp.exportGIF(Self(), to: args[i + 1], frames: frames, fps: fps,
+                               width: width, skipSeconds: skip)
             return
         }
         if let i = args.firstIndex(of: "--export"), i + 1 < args.count {

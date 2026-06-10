@@ -4,13 +4,15 @@
 
 ## Export
 
-Save what a sketch draws — as raster (PNG frames and image sequences) or as **vector** (SVG, for pen plotters and any vector pipeline). Export runs the sketch *headlessly*: it calls `setup()`, advances the clock to the frame you ask for, runs `draw()`, and writes the result. No window opens, so the same call works from a script or a render farm.
+Save what a sketch draws — as raster (PNG frames and image sequences), as **motion** (a video file or an animated GIF, encoded directly), or as **vector** (SVG, for pen plotters and any vector pipeline). Export runs the sketch *headlessly*: it calls `setup()`, advances the clock to the frame you ask for, runs `draw()`, and writes the result. No window opens, so the same call works from a script or a render farm.
 
 Most exports are reached by a command-line flag on any example's executable; the same work is available as functions on `OllinApp` if you're driving it yourself.
 
 ### Contents
 
 - [Raster: PNG and sequences](#raster-png-and-sequences) — `--export`, `--export-sequence`
+- [Video](#video) — `--export-video`, `OllinApp.exportVideo`
+- [Animated GIF](#animated-gif) — `--export-gif`, `OllinApp.exportGIF`
 - [Vector: SVG](#vector-svg) — `--export-svg`, `OllinApp.svg` / `exportSVG`
 - [What SVG export records](#what-svg-export-records) — the shape mapping and the limits
 - [Hatching: solid fills for a pen plotter](#hatching-solid-fills-for-a-pen-plotter) — `--hatch`, `Hatching`
@@ -33,6 +35,45 @@ swift run Example-Breathing --export-sequence /tmp/out --seconds 5 --fps 60
 ```
 
 Both render through Metal off-screen (MSAA, then resolve), so the pixels match the live window. The same capability is available as `OllinApp.image(of:frame:)` (returns a `CGImage`), `OllinApp.export(_:to:frame:)`, and `OllinApp.exportSequence(...)`. For a *reproducible* sequence, seed the sketch (`seed(…)` in `setup()`).
+
+The sequence is the raw-material path: it keeps every frame as a lossless PNG for an external encoder or an edit. When the goal is just a file to share, the next two sections encode directly and skip the stitching step.
+
+### Video
+
+Encode an animated sketch straight to a `.mp4` or `.mov` — one command from a sketch to a file you can post, no external tool:
+
+```sh
+swift run Example-Breathing --export-video breathing.mp4 --seconds 6
+swift run Example-Orbits --export-video orbits.mov --seconds 10 --codec hevc --bitrate 8
+```
+
+It runs on the same deterministic fixed-timestep drive as `--export-sequence` (`--seconds`/`--frames`, `--fps`, and `--skip` work the same way), so a render that takes ten minutes still plays back smooth at the requested rate. In code it's `OllinApp.exportVideo(_:to:frames:fps:codec:bitsPerSecond:quality:skipSeconds:)`.
+
+The flags:
+
+| Flag | Effect |
+|---|---|
+| `--codec h264` \| `hevc` \| `prores422` \| `prores4444` | the encoder (default `h264`) |
+| `--bitrate MBPS` | average bitrate in Mbit/s — the file-size dial |
+| `--quality 0..1` | constant-quality rate control instead of a bitrate (Apple silicon only) |
+
+**Picking a codec.** `h264` plays everywhere and is the safe default for posting. `hevc` is clearly better quality per byte (and encodes 10-bit, which keeps smooth gradients smoother) — a good first switch when a file needs to be smaller — at a small compatibility cost on older players. The two ProRes profiles are mastering codecs: visually lossless, an order of magnitude larger, meant for an edit timeline or a later re-encode rather than for sharing, and they need a `.mov` path.
+
+**Size and quality.** Without `--bitrate` the encoder picks its own (generous) rate. With it, the file size is predictable: a clip's size is roughly `bitrate × seconds`. As a starting point, a 1080×1080 clip at 60 fps looks clean around 10–15 Mbit/s in `h264` and 6–9 in `hevc`; halve those for slow, flat-color motion, raise them for full-frame noise or grain. On Apple silicon, `--quality` (0…1) targets a constant quality and lets the rate float instead — closer to how `crf` works in `ffmpeg`. The encoders are the hardware ones (fast, power-efficient); if you want a specific software encoder or two-pass tuning, `--export-sequence` still hands you lossless frames and prints the `ffmpeg` line.
+
+Exported tracks are tagged Rec. 709, so what players show matches what the canvas rendered.
+
+### Animated GIF
+
+Write a short, infinitely-looping GIF:
+
+```sh
+swift run Example-Breathing --export-gif breathing.gif --seconds 4 --gif-width 540
+```
+
+In code it's `OllinApp.exportGIF(_:to:frames:fps:width:skipSeconds:)`. GIF is palette-limited (256 colors a frame) and heavy per second next to video, so the format wants **short loops at modest sizes** — `--gif-width` downscales the output (height follows the canvas aspect), which is usually the difference between a few hundred kilobytes and many megabytes. For anything long or subtle, `--export-video` is the better tool.
+
+One timing quirk is inherent to the format: GIF stores each frame's delay in whole centiseconds, so the achievable rates are 50, 33.3, 25, 20, … fps. The requested `--fps` (default 25, which is exact) is quantized to the closest achievable rate, and the sketch's clock runs at *that* rate, so motion always plays back at true speed and the clip keeps its requested duration.
 
 ### Vector: SVG
 
