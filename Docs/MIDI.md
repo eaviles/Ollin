@@ -132,7 +132,7 @@ func bind(controlChange controller: Int, to param: Param,
 func unbind(controlChange controller: Int, channel: Int? = nil)
 ```
 
-The fourth way to read: wire a control-change knob straight onto a [`@Param`](./Sketch.md) knob, so a hardware fader drives the same parameter the inspector slider does. Each incoming value is mapped from `input` (a controller's `0…127` by default) into the parameter's own range and assigned:
+The fourth way to read: wire a control-change knob straight onto a [`@Param`](./Parameters.md) knob, so a hardware fader drives the same parameter the inspector slider does. Each incoming value is mapped from `input` (a controller's `0…127` by default) into the parameter's own range and assigned:
 
 ```swift
 @Param(20...400) var radius = 120.0

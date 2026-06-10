@@ -119,6 +119,7 @@ The names are familiar and the calls are short. The full API reference lives in 
 - [Noise](Docs/Noise.md) - Perlin `noise`/`signedNoise` and `curlNoise` flow fields.
 - [Math](Docs/Math.md) - `map`, `dist`, `lerp`.
 - [Animation](Docs/Animation.md) - the `Easing` curves, the `@Eased` value that tweens toward a target, and `@Smoothed` for cleaning up a noisy signal.
+- [Parameters](Docs/Parameters.md) - `@Param` tunable knobs: live sliders in the inspector, optional smoothing, and binding from OSC or MIDI.
 - [Input](Docs/Input.md) - mouse and keyboard.
 - [Export](Docs/Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters).
 

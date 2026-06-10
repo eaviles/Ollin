@@ -135,7 +135,7 @@ It works on a `Double` or a `Vector2`. Two knobs tune the feel:
 @Smoothed(minCutoff: 0.5, beta: 0.02) var angle = 0.0
 ```
 
-Both are reachable live through the projected value (`$angle.beta = …`), so a `@Param` knob can dial them in by feel. The projected value also gives you `$p.rawValue` (the last unsmoothed input) and `$p.set(v)` (jump there with no glide). Because the filter is timed in seconds, it behaves the same at any frame rate.
+Both are reachable live through the projected value (`$angle.beta = …`), so a [`@Param`](./Parameters.md) knob can dial them in by feel. The projected value also gives you `$p.rawValue` (the last unsmoothed input) and `$p.set(v)` (jump there with no glide). Because the filter is timed in seconds, it behaves the same at any frame rate.
 
 To smooth a value that isn't a sketch property, the `OneEuroFilter<Value>` underneath is public — own the state and step it yourself:
 

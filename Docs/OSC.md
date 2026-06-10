@@ -138,7 +138,7 @@ func bind(_ address: String, to param: Param, from input: ClosedRange<Double> = 
 func unbind(_ address: String)
 ```
 
-The third way to read: wire an address straight onto a [`@Param`](./Sketch.md) knob, so an incoming value drives the same parameter a live-inspector slider does. Each message's first value is mapped from `input` into the parameter's own range and assigned (clamped):
+The third way to read: wire an address straight onto a [`@Param`](./Parameters.md) knob, so an incoming value drives the same parameter a live-inspector slider does. Each message's first value is mapped from `input` into the parameter's own range and assigned (clamped):
 
 ```swift
 @Param(20...400) var radius = 120.0
