@@ -1,0 +1,56 @@
+# Xcode project spec for the Ollin Camera host app + CMIO system extension.
+# Generate with:  xcodegen generate   (from this directory)
+#
+# We use Xcode here, not the SwiftPM package, because a camera extension needs
+# automatic signing to provision the restricted `system-extension.install`
+# entitlement — the one thing the hand-rolled swiftc + package.sh build couldn't
+# do. The targets reuse the existing Host/ and Extension/ sources unchanged.
+
+name: OllinCamera
+
+options:
+  bundleIdPrefix: dev.ollin
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: "3ET6D79498"
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1"
+    CURRENT_PROJECT_VERSION: "2"
+    GENERATE_INFOPLIST_FILE: NO
+    ENABLE_HARDENED_RUNTIME: YES
+
+targets:
+  OllinCamera:
+    type: application
+    platform: macOS
+    sources:
+      - Host
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.ollin.OllinCamera
+        PRODUCT_NAME: OllinCamera
+        INFOPLIST_FILE: Host/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Host/Host.entitlements
+    dependencies:
+      - target: OllinCameraExtension
+        embed: true
+
+  OllinCameraExtension:
+    type: system-extension
+    platform: macOS
+    sources:
+      - Extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.ollin.OllinCamera.Extension
+        # System extensions must be named after their bundle id, or activation
+        # reports "Extension not found in App bundle" (the framework matches the
+        # .systemextension filename, not just the Info.plist identifier).
+        PRODUCT_NAME: "$(PRODUCT_BUNDLE_IDENTIFIER)"
+        INFOPLIST_FILE: Extension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Extension/Extension.entitlements

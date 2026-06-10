@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>dev.ollin.OllinCamera.Extension</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>OllinCameraExtension</string>
+	<!-- SYSX is load-bearing: sysextd's category check requires it, and the build
+	     does not inject it into a hand-written Info.plist. Without it activation
+	     fails with Code=9 "does not appear to belong to any extension categories". -->
+	<key>CFBundlePackageType</key>
+	<string>SYSX</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1</string>
+	<key>CFBundleVersion</key>
+	<string>2</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Ollin Camera generates a virtual camera feed.</string>
+	<key>NSSystemExtensionUsageDescription</key>
+	<string>Ollin Camera publishes a sketch's rendered frames as a virtual camera.</string>
+	<key>CMIOExtension</key>
+	<dict>
+		<key>CMIOExtensionMachServiceName</key>
+		<string>$(TeamIdentifierPrefix)dev.ollin.OllinCamera</string>
+	</dict>
+</dict>
+</plist>
