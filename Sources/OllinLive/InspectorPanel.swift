@@ -2,7 +2,7 @@ import SwiftUI
 import Ollin
 
 /// Sidebar inspector for the live host: the shared monitor card (sketch
-/// identity · Frame/Reloads · timecode clock · performance strip) over the
+/// identity · frame counter · timecode clock · performance strip) over the
 /// running sketch's `@Param` knobs. The card and parameter list are the same
 /// views the standalone detached panel uses, so the two never drift. The
 /// reload status lives in the window toolbar (see `LiveRootView`), and a compile

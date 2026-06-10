@@ -59,9 +59,22 @@ public enum InspectorStatus: Equatable, Sendable {
 /// formatter. Resolved per `ColorScheme` so the card matches the spec in both
 /// appearances.
 public enum OllinInspector {
-    public static let green = SwiftUI.Color(red: 0x30 / 255, green: 0xD1 / 255, blue: 0x58 / 255)
-    public static let amber = SwiftUI.Color(red: 0xFF / 255, green: 0x9F / 255, blue: 0x0A / 255)
-    public static let red = SwiftUI.Color(red: 0xFF / 255, green: 0x45 / 255, blue: 0x3A / 255)
+    // The status colors are the system semantics (AppKit dynamic colors), so
+    // they adapt per appearance: dark resolves to the values the design speced
+    // (#30D158 / #FF9F0A-ish / #FF453A) and light gets the correct, less
+    // fluorescent variants — hard-coding the dark hexes had light mode showing
+    // dark-palette neon.
+    public static let green = SwiftUI.Color(nsColor: .systemGreen)
+    public static let amber = SwiftUI.Color(nsColor: .systemOrange)
+    public static let red = SwiftUI.Color(nsColor: .systemRed)
+
+    /// The brand accent: the slider tint, the frame counter, the ring spinner,
+    /// the `@Param` mention in the empty state. One token so they can't drift.
+    public static let accent = SwiftUI.Color.purple
+
+    /// The inspector surface width — the live host's docked sidebar and the
+    /// detached panel share it, keeping the two a true 1:1.
+    public static let sidebarWidth: CGFloat = 296
 
     /// Shared opacity for the host chrome's frosted tints — the live host's sidebar
     /// scrim and reload toast, and the standalone stats panel — so they read as one
@@ -188,8 +201,9 @@ public struct MonitorIdentity {
 }
 
 /// The centerpiece: a card with three tiers — an identity row (filename · path,
-/// with Frame and Reloads cells on the right), the big centered timecode clock,
-/// and a four-up FPS · CPU · Canvas · Geometry stat strip. Driven by a live
+/// with a Frame counter cell on the right; just the one cell, a second squeezed
+/// the identity block illegibly), the big centered timecode clock, and a
+/// four-up FPS · CPU · Canvas · Geometry stat strip. Driven by a live
 /// `FrameStats`, so it updates a few times a second as the sketch runs.
 public struct MonitorCardView: View {
     let identity: MonitorIdentity
@@ -210,6 +224,29 @@ public struct MonitorCardView: View {
         let w = Int(stats.canvasWidth.rounded()), h = Int(stats.canvasHeight.rounded())
         guard w > 0, h > 0 else { return "—" }
         return w == h ? "\(w)²" : "\(w)×\(h)"
+    }
+
+    /// Geometry readout naming whichever path is in use — `5 sdf`, `31k tri`,
+    /// or `5+31k` when mixed (the full breakdown rides the cell's tooltip).
+    /// "0 sdf" alone hid the triangle path entirely: a text/shape-heavy sketch
+    /// (the kind that gets slow) read as drawing nothing.
+    private var geometryLabel: String {
+        func compact(_ n: Int) -> String { n >= 1000 ? "\(n / 1000)k" : "\(n)" }
+        switch (stats.sdfCount > 0, stats.vertexCount > 0) {
+        case (true, false): return "\(compact(stats.sdfCount)) sdf"
+        case (false, true): return "\(compact(stats.vertexCount)) tri"
+        case (true, true): return "\(compact(stats.sdfCount))+\(compact(stats.vertexCount))"
+        case (false, false): return "0"
+        }
+    }
+
+    /// The Geometry cell's tooltip — the decoder for the compact value, so it
+    /// always spells out both paths, zeros included.
+    private var geometryDetail: String {
+        let sdf = stats.sdfCount, tri = stats.vertexCount
+        let sdfPart = sdf == 1 ? "1 instanced SDF shape" : "\(sdf) instanced SDF shapes"
+        let triPart = tri == 1 ? "1 tessellated triangle vertex" : "\(tri) tessellated triangle vertices"
+        return "Geometry this frame: \(sdfPart) + \(triPart)"
     }
 
     /// The full path, shown as a tooltip on the (often truncated) identity block.
@@ -262,7 +299,10 @@ public struct MonitorCardView: View {
 
             HStack(spacing: 0) {
                 Hairline(palette: palette, axis: .vertical)
-                cell(value: "\(stats.frameCount)", label: "Frame", valueColor: .purple)
+                cell(value: "\(stats.frameCount)", label: "Frame", valueColor: OllinInspector.accent)
+                    // A width floor so the identity row doesn't shift each time
+                    // the running frame count gains a digit.
+                    .frame(minWidth: 56)
             }
             .fixedSize(horizontal: true, vertical: false)
         }
@@ -277,7 +317,7 @@ public struct MonitorCardView: View {
                 .font(.system(size: 12.5, design: .monospaced))
                 .foregroundStyle(valueColor)
             Text(label)
-                .font(.system(size: 8, weight: .semibold))
+                .font(.system(size: 9, weight: .semibold))
                 .tracking(0.3)
                 .textCase(.uppercase)
                 .foregroundStyle(palette.textTertiary)
@@ -305,7 +345,9 @@ public struct MonitorCardView: View {
             Hairline(palette: palette, axis: .vertical)
             statCell(value: canvasLabel, label: "Canvas", valueColor: .primary)
             Hairline(palette: palette, axis: .vertical)
-            statCell(value: "\(stats.sdfCount) sdf", label: "Geometry", valueColor: .primary)
+            statCell(value: stats.hasData ? geometryLabel : "—",
+                     label: "Geometry", valueColor: .primary)
+                .help(geometryDetail)
         }
         .fixedSize(horizontal: false, vertical: true)
     }
@@ -318,14 +360,15 @@ public struct MonitorCardView: View {
                 .font(.system(size: 12, design: .monospaced))
                 .foregroundStyle(valueColor)
             Text(label)
-                .font(.system(size: 8.5, weight: .semibold))
+                .font(.system(size: 9, weight: .semibold))
                 .tracking(0.3)
                 .textCase(.uppercase)
                 .foregroundStyle(palette.textTertiary)
         }
         .lineLimit(1)
-        .minimumScaleFactor(0.8)   // shrink rather than clip "0.0 ms" in a tight column
-        .fixedSize(horizontal: true, vertical: false)
+        // Shrink rather than clip when a value outgrows its quarter-column —
+        // no fixedSize here, or the scale factor can never engage.
+        .minimumScaleFactor(0.8)
         .padding(.horizontal, 8)
         .padding(.top, 8)
         .padding(.bottom, 9)
@@ -395,8 +438,7 @@ public struct ParametersListView: View {
             Text("No parameters")
                 .font(.system(size: 12.5, weight: .semibold))
                 .foregroundStyle(.secondary)
-            (Text("Add ") + Text("@Param").font(.system(size: 11.5, design: .monospaced)).foregroundColor(.purple)
-                + Text(" knobs to your sketch to tune them live."))
+            Text("Add \(Text("@Param").font(.system(size: 11.5, design: .monospaced)).foregroundStyle(OllinInspector.accent)) knobs to your sketch to tune them live.")
                 .font(.system(size: 11.5))
                 .foregroundStyle(palette.textTertiary)
                 .multilineTextAlignment(.center)
@@ -463,7 +505,7 @@ private struct ParamSliderRow: View {
             }
             Slider(value: $value, in: handle.param.range) { isDragging = $0 }
                 .controlSize(.small)
-                .tint(.purple)
+                .tint(OllinInspector.accent)
                 // The native slider carries internal vertical inset; trim it so the
                 // track-to-separator gap matches the pill's top gap (balanced row).
                 .padding(.vertical, -3)

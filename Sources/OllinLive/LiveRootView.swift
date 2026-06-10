@@ -28,10 +28,16 @@ private enum LiveChrome {
 /// The sketch's `SketchRunner` is created here (the detail view owns the
 /// `MTKView`) and handed to the session so the watcher can drive hot-swaps.
 struct LiveRootView: View {
-    /// Fixed inspector width (matches the redesign's 296pt sidebar). The detail
-    /// pane is pinned to the sketch's square, so the window is exactly
-    /// `square + sidebarWidth` wide; collapsing the inspector narrows it.
-    static let sidebarWidth: CGFloat = 296
+    /// Fixed inspector width (the design's 296pt sidebar, shared with the
+    /// detached panel via `OllinInspector`). The detail pane is pinned to the
+    /// sketch's square, so the window is exactly `square + sidebarWidth` wide;
+    /// collapsing the inspector narrows it.
+    static let sidebarWidth: CGFloat = OllinInspector.sidebarWidth
+
+    /// `@AppStorage` key for the sidebar toggle — shared with the View ▸ Show
+    /// Inspector command so the menu, the button, and the persisted choice
+    /// stay one state.
+    static let sidebarShownKey = "ollin.live.sidebarShown"
 
     let session: LiveSession
 
@@ -44,8 +50,9 @@ struct LiveRootView: View {
     /// which sizes the window from its own ideal and won't hug the sketch) so a
     /// plain `HStack` + `.windowResizability(.contentSize)` makes the window exactly
     /// the sketch (+ sidebar), non-resizable, and shrinks it to just the sketch on
-    /// collapse.
-    @State private var sidebarShown = true
+    /// collapse. `@AppStorage` so the choice persists across launches and the
+    /// View ▸ Show Inspector command drives the same state.
+    @AppStorage(Self.sidebarShownKey) private var sidebarShown = true
     @Environment(\.colorScheme) private var colorScheme
 
     /// The sketch's on-screen size (or the default before one loads). The sidebar
@@ -103,23 +110,26 @@ struct LiveRootView: View {
         .navigationTitle(session.title)
         .background(TitlebarAccessory(attribute: .leading) {
             HStack(spacing: 10) {
-                SwiftUI.Rectangle().fill(.separator).frame(width: 1, height: 22)   // divider after the traffic lights
+                // Divider after the traffic lights, in the same separator token
+                // as the window's other hairlines (semantic `.separator` reads
+                // differently against the custom gradient).
+                SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(width: 1, height: 22)
                 Button { sidebarShown.toggle() } label: {
                     SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.secondary)
+                .help(sidebarShown ? "Hide Inspector" : "Show Inspector")
+                .accessibilityLabel(sidebarShown ? "Hide Inspector" : "Show Inspector")
             }
             .padding(.leading, 8)
             .frame(maxHeight: .infinity)
         })
         .background(TitlebarAccessory(attribute: .trailing) {
-            HStack(spacing: 0) {
-                StatusChip(status: session.inspectorStatus)
-                SwiftUI.Color.clear.frame(width: 22, height: 1)
-            }
-            .padding(.leading, 12)
-            .frame(maxHeight: .infinity)
+            StatusChip(status: session.inspectorStatus)
+                .padding(.leading, 12)
+                .padding(.trailing, 22)
+                .frame(maxHeight: .infinity)
         })
         // The centered title is the unified toolbar's principal item; the gradient
         // is the toolbar background. (The taller bar comes from the unified toolbar
@@ -234,7 +244,7 @@ private struct RingSpinner: View {
             SwiftUI.Circle().stroke(track, lineWidth: 2.5)
             SwiftUI.Circle()
                 .trim(from: 0, to: 0.28)
-                .stroke(.purple, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                .stroke(OllinInspector.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
         }
         .frame(width: 30, height: 30)
         .rotationEffect(.degrees(spinning ? 360 : 0))
@@ -464,6 +474,7 @@ private struct ReloadedToast: View {
                 .overlay(shape.fill(hudTint))
                 .overlay(shape.strokeBorder(glassStroke, lineWidth: 0.5))
         }
-        .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
+        // Softer in light mode — the dark-tuned shadow reads as a smudge there.
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.35 : 0.18), radius: 18, y: 8)
     }
 }

@@ -71,7 +71,23 @@ struct OllinLiveApp: App {
         // centers the traffic lights and `.contentSize` accounts for the height, so
         // there's no reserved dead space (hiding the native bar leaves it behind).
         .windowToolbarStyle(.unified(showsTitle: false))
-        // No "Show FPS" command here: the inspector panel is the live host's
-        // stats display, so the floating overlay would only duplicate it.
+        // The sidebar toggle as a menu command (⌘/, matching the standalone
+        // hosts' Show Inspector). No "Show FPS"/detached-panel command here:
+        // the sidebar is the live host's stats display.
+        .commands { LiveSidebarCommands() }
+    }
+}
+
+/// View ▸ Show Inspector (⌘/) for the live host — bound to the same
+/// `@AppStorage` key as the title-bar toggle, so the menu, the button, and the
+/// persisted choice are one state.
+private struct LiveSidebarCommands: Commands {
+    @AppStorage(LiveRootView.sidebarShownKey) private var sidebarShown = true
+
+    var body: some Commands {
+        CommandGroup(after: .sidebar) {
+            Toggle("Show Inspector", isOn: $sidebarShown)
+                .keyboardShortcut("/", modifiers: .command)
+        }
     }
 }

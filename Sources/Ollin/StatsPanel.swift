@@ -42,7 +42,7 @@ struct DetachedInspectorView: View {
         .padding(.horizontal, 14)
         .padding(.top, 8)      // tight under the title bar (safe area already insets the rest)
         .padding(.bottom, 14)
-        .frame(width: 300)
+        .frame(width: OllinInspector.sidebarWidth)
         .background(panelScrim)
         .background(.regularMaterial)
     }
