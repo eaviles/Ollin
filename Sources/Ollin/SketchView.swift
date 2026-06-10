@@ -858,64 +858,52 @@ public extension Sketch {
 
 // MARK: - Standalone SwiftUI launcher
 
-/// SwiftUI `App` that runs a single `Sketch` in a window — the `swift run
-/// Example-X` launcher behind `Sketch.main()` / `OllinApp.run`. One `Window`
-/// hosting a `SketchView`, on the same SwiftUI lifecycle the live host and
-/// gallery use. The sketch comes from `OllinApp.standaloneSketch` because
-/// SwiftUI, not the caller, instantiates the `App`.
+/// SwiftUI `App` that runs a single `Sketch` — the `swift run Example-X`
+/// launcher behind `Sketch.main()` / `OllinApp.run`. The app *lifecycle* stays
+/// SwiftUI (it owns the main menu, so `OllinHUDCommands` plugs in), but the
+/// sketch window itself is an AppKit `NSWindow` hosting the SwiftUI
+/// `SketchView` through `NSHostingView`, built by the delegate below.
+///
+/// The AppKit window is deliberate: on macOS 26, windows owned by SwiftUI
+/// window scenes that host a Metal layer intermittently flicker between 100%
+/// and 98% of their frame size while being dragged — a WindowServer bug (the
+/// oscillation shows in `CGWindowListCopyWindowInfo` bounds while the app-side
+/// geometry stays constant). AppKit-owned windows with identical content have
+/// not shown it. The placeholder `Settings` scene satisfies SwiftUI's scene
+/// requirement without opening a window, and the empty `.appSettings` command
+/// group removes the dangling "Settings…" menu item it would otherwise add.
 @MainActor
 struct OllinSketchApp: App {
     @NSApplicationDelegateAdaptor(StandaloneAppDelegate.self) private var delegate
-    private let sketch: Sketch
-
-    init() { sketch = OllinApp.standaloneSketch! }
-
-    /// The window's initial size, resolved from the sketch's `windowMode`.
-    private var windowSize: CGSize { OllinApp.windowSize(for: sketch) }
-
-    /// `.resizable` sketches get a freely resizable window (canvas follows it);
-    /// `.auto`/`.fixed` get a window locked to `windowSize`.
-    private var isResizable: Bool {
-        if case .resizable = sketch.windowMode { return true }
-        return false
-    }
 
     var body: some Scene {
-        Window(sketch.title, id: "ollin-sketch") {
-            if isResizable {
-                // Fill the window; the canvas tracks the resized view.
-                SketchView(sketch)
-                    .frame(minWidth: 200, maxWidth: .infinity,
-                           minHeight: 200, maxHeight: .infinity)
-            } else {
-                SketchView(sketch)
-                    .frame(width: windowSize.width, height: windowSize.height)
+        Settings { EmptyView() }
+            .commands {
+                CommandGroup(replacing: .appSettings) {}
+                OllinHUDCommands()
             }
-        }
-        .defaultSize(windowSize)
-        // Fixed modes lock the window to its content; `.resizable` allows free
-        // resize down to the content's minimum.
-        .windowResizability(isResizable ? .contentMinSize : .contentSize)
-        .commands { OllinHUDCommands() }
     }
 }
 
-/// Bring the bundleless `swift run` window to the front, and quit when it
-/// closes so the terminal command returns. A standalone example is a single
-/// window run from the terminal, so a stray Cmd+W (Close) should end the run
-/// like Cmd+Q — the full `OllinLive` host and examples gallery are actual apps
-/// and keep the normal close-doesn't-quit behavior.
+/// Builds and owns the AppKit sketch window, brings the bundleless `swift run`
+/// process to the front, and quits when the window closes so the terminal
+/// command returns. A standalone example is a single window run from the
+/// terminal, so a stray Cmd+W (Close) should end the run like Cmd+Q — the full
+/// `OllinLive` host and examples gallery are actual apps and keep the normal
+/// close-doesn't-quit behavior.
 private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
+    private var window: NSWindow?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+        openSketchWindow()
         NSApp.activate(ignoringOtherApps: true)
-        // SwiftUI's single `Window` scene doesn't reliably honor
-        // `applicationShouldTerminateAfterLastWindowClosed`, so quit explicitly
-        // when the sketch window closes — Cmd+W then ends the run like Cmd+Q.
-        // Quit only when no real window is left: the floating "Show FPS" panel is
-        // an `NSPanel` (closing *it* mustn't quit), and opening it spins up and
-        // tears down transient helper windows whose close must be ignored too. So
-        // react after the close settles and check what's still on screen.
+        // Quit explicitly when the sketch window closes — Cmd+W then ends the
+        // run like Cmd+Q. Quit only when no real window is left: the floating
+        // "Show Inspector" panel is an `NSPanel` (closing *it* mustn't quit),
+        // and opening it spins up and tears down transient helper windows whose
+        // close must be ignored too. So react after the close settles and check
+        // what's still on screen.
         NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification, object: nil, queue: .main
         ) { _ in
@@ -928,5 +916,56 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
+    }
+
+    /// Create the sketch window: AppKit shell, SwiftUI content.
+    @MainActor
+    private func openSketchWindow() {
+        guard let sketch = OllinApp.standaloneSketch else { return }
+        let contentSize = OllinApp.windowSize(for: sketch)
+        let isResizable: Bool = {
+            if case .resizable = sketch.windowMode { return true }
+            return false
+        }()
+
+        var style: NSWindow.StyleMask = [.titled, .closable, .miniaturizable]
+        if isResizable { style.insert(.resizable) }
+
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: contentSize),
+            styleMask: style,
+            backing: .buffered,
+            defer: false
+        )
+        window.title = sketch.title
+        window.isReleasedWhenClosed = false
+
+        // `.resizable` follows the user's drag down to a sane floor (the canvas
+        // tracks the view); fixed modes pin the content size exactly, which
+        // also clamps any stale autosaved frame restored below.
+        if isResizable {
+            window.contentMinSize = NSSize(width: 200, height: 200)
+        } else {
+            window.contentMinSize = contentSize
+            window.contentMaxSize = contentSize
+        }
+
+        let root: AnyView = isResizable
+            ? AnyView(SketchView(sketch)
+                .frame(minWidth: 200, maxWidth: .infinity,
+                       minHeight: 200, maxHeight: .infinity))
+            : AnyView(SketchView(sketch)
+                .frame(width: contentSize.width, height: contentSize.height))
+        let hosting = NSHostingView(rootView: root)
+        hosting.frame = NSRect(origin: .zero, size: contentSize)
+        hosting.autoresizingMask = [.width, .height]
+        window.contentView = hosting
+
+        window.center()
+        // Same autosave name the previous SwiftUI window scene wrote, so an
+        // existing saved position carries over.
+        window.setFrameAutosaveName("ollin-sketch")
+        window.makeKeyAndOrderFront(nil)
+        self.window = window
     }
 }
