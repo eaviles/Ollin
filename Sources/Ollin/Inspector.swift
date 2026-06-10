@@ -148,27 +148,26 @@ private struct Hairline: View {
 // MARK: - Status chip
 
 /// A dot-and-label status chip (`● Watching`). Used in the live host's toolbar
-/// and the detached panel's header.
+/// and the detached panel's header. The compiling pulse rides the symbol-effect
+/// system (`isActive:` starts and stops it per state change), so it works on
+/// every compile — a hand-rolled `repeatForever` keyed on local state only
+/// fired the first time, leaving later compiles a static dimmed dot.
 public struct StatusChip: View {
     let status: InspectorStatus
-    @State private var dim = false
 
     public init(status: InspectorStatus) { self.status = status }
 
     public var body: some View {
         HStack(spacing: 6) {
-            SwiftUI.Circle()
-                .fill(status.tint)
-                .frame(width: 7, height: 7)
+            SwiftUI.Image(systemName: "circle.fill")
+                .font(.system(size: 7))
+                .foregroundStyle(status.tint)
                 .shadow(color: status.tint.opacity(0.6), radius: 3.5)
-                .opacity(status.pulses && dim ? 0.35 : 1)
-                .animation(status.pulses ? Animation.easeInOut(duration: 1).repeatForever(autoreverses: true) : .default,
-                           value: dim)
+                .symbolEffect(.pulse, options: .repeating, isActive: status.pulses)
             Text(status.label)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(status.labelColor)
         }
-        .onAppear { if status.pulses { dim = true } }
     }
 }
 
