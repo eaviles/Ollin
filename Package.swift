@@ -57,6 +57,13 @@ let package = Package(
         // Built on the vendored Syphon Framework (Metal subset, BSD 2-Clause);
         // kept out of `Ollin` so the drawing core stays free of that dependency.
         .library(name: "OllinSyphon", targets: ["OllinSyphon"]),
+        // The virtual-camera publish client: `import OllinCamera` to feed a
+        // sketch's rendered frames to the Ollin Camera system virtual camera,
+        // so every app that takes a webcam (including browsers, which Syphon
+        // can't reach) reads the sketch as a live camera. The camera device is
+        // installed once by the Ollin Camera app (Apps/OllinCameraApp); this
+        // library connects to it from any sketch process.
+        .library(name: "OllinCamera", targets: ["OllinCamera"]),
     ],
     targets: [
         // Shared, runtime-side dev machinery used by the live host and the
@@ -77,7 +84,7 @@ let package = Package(
             // are linked (not used by the host) so a hot-swapped sketch that
             // `import`s them resolves its symbols against this process at load,
             // the same way it resolves Ollin's.
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon"],
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon", "OllinCamera"],
             path: "Sources/OllinLive",
             // Export the host's symbols so a hot-swapped sketch `.dylib`
             // (compiled with `-undefined dynamic_lookup`) resolves its Ollin
@@ -96,7 +103,7 @@ let package = Package(
             // Links the satellite libraries (OllinAudio/OllinOSC/OllinMIDI/
             // OllinPhysics) so gallery sketches that `import` them resolve at load
             // (same reason as OllinLive above).
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon"],
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon", "OllinCamera"],
             path: "Sources/OllinExamples",
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
@@ -239,6 +246,15 @@ let package = Package(
         .target(
             name: "OllinSyphon",
             dependencies: ["Ollin", "CSyphon"]
+        ),
+        // Virtual camera: publish the sketch's rendered frames to the Ollin
+        // Camera system extension over its CMIO sink stream (IOSurface-backed,
+        // no CPU round-trip), so webcam apps and browsers read the sketch as a
+        // camera. A satellite so the drawing core stays free of CoreMediaIO;
+        // depends on Ollin for the rendered-texture extension seam.
+        .target(
+            name: "OllinCamera",
+            dependencies: ["Ollin"]
         ),
         // Video playback: a `VideoPlayer` over AVPlayer that surfaces each decoded
         // frame as a texture-backed `Image` (CVMetalTextureCache, no CPU round-trip)
@@ -683,6 +699,15 @@ let package = Package(
             dependencies: ["Ollin", "OllinSyphon"],
             path: "Examples/Integration/SyphonViewer"
         ),
+        // Publishes its frames to the Ollin Camera virtual camera, so any
+        // webcam app (Photo Booth, Zoom, a browser) reads the sketch as a live
+        // camera; the canvas shows the connection state. Needs the Ollin
+        // Camera extension installed (Apps/OllinCameraApp).
+        .executableTarget(
+            name: "Example-VirtualCamera",
+            dependencies: ["Ollin", "OllinCamera"],
+            path: "Examples/Integration/VirtualCamera"
+        ),
         // Physics — a Verlet world stepped each frame. Packing is a field of
         // colliding discs; Blobs are spring-built soft bodies that squish.
         .executableTarget(
@@ -861,6 +886,13 @@ let package = Package(
         .testTarget(
             name: "OllinSyphonTests",
             dependencies: ["Ollin", "OllinSyphon", "CSyphon"]
+        ),
+        // Virtual-camera publish client: the connect failure path (always on),
+        // the GPU letterbox pass (Metal-gated), and a soft-gated end-to-end
+        // push that runs for real where the Ollin Camera extension is installed.
+        .testTarget(
+            name: "OllinCameraTests",
+            dependencies: ["Ollin", "OllinCamera"]
         ),
         // Video correctness: writes a tiny clip with AVAssetWriter, then checks
         // metadata loading and CPU frame snapshots; the GPU texture path is

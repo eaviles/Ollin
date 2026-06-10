@@ -1,16 +1,16 @@
-# Ollin Camera (prototype)
+# Ollin Camera
 
 A macOS **virtual camera**: it publishes a sketch's rendered frames as a system camera device, so every app that takes a webcam — Photo Booth, QuickTime, Zoom, Meet, OBS, and browser tools like Hydra through `getUserMedia` — can read Ollin as a live input. Where Syphon shares GPU frames app-to-app on one Mac, a virtual camera reaches the much larger set of apps that only speak "webcam," including the browser sandbox an OS-level transport can't cross.
 
-This folder lives **beside `Sources/`**, not inside it, on purpose. A camera extension is a signed, notarized `.app` with an embedded **CMIO system extension** — a different build artifact from the SwiftPM package: it can't be `swift build`-compiled into a bundle, can't be `swift run`, and is *installed*, not imported. It builds through its own xcodegen-generated Xcode project (`project.yml` → `OllinCamera.xcodeproj`), so the core package stays clean. (The lightweight publish-client that pushes frames in will land later as a normal `Sources/OllinCamera/` library — the `import OllinCamera` you'd use from a sketch, mirroring `publishSyphon`.)
+This folder lives **beside `Sources/`**, not inside it, on purpose. A camera extension is a signed, notarized `.app` with an embedded **CMIO system extension** — a different build artifact from the SwiftPM package: it can't be `swift build`-compiled into a bundle, can't be `swift run`, and is *installed*, not imported. It builds through its own xcodegen-generated Xcode project (`project.yml` → `OllinCamera.xcodeproj`), so the core package stays clean. The sketch-facing half is the normal `Sources/OllinCamera/` library — `import OllinCamera`, then `publishVirtualCamera()` in `setup()`, mirroring `publishSyphon`; see [`Docs/VirtualCamera.md`](../../Docs/VirtualCamera.md).
 
-## Status
+## How it works
 
-Build order, de-risked so the hardest part comes first:
+The device publishes two streams. The **source** stream is the camera every app captures from. The **sink** stream is the writable half: a publishing sketch process finds it through the CoreMediaIO DAL API, starts it, and enqueues IOSurface-backed `CVPixelBuffer`s; the extension consumes them (`consumeSampleBuffer`) and forwards each one to the source stream. While nothing has fed the sink for about a second, a timer renders the built-in **"no signal" test card** instead — a broadcast-style circle card (an original design in the genre of the classic Philips test cards) with color bars, gray steps, gratings, a live clock, and a moving dot, so a viewer can always tell the camera itself works (`Extension/TestCard.swift`).
 
-- **Phase A — prove the pipeline (done).** The extension generates its own test pattern (a hue-cycling background with a sweeping white band). "Ollin Camera" appears in Photo Booth showing our frames, end to end: build, sign, notarize, activate, stream.
-- **Phase B — host → extension (next).** Add a *sink* stream and a small host that pushes frames into it (IOSurface-backed `CVPixelBuffer`s, zero-copy).
-- **Phase C — wire to Ollin.** Feed the sink from `MetalRenderer.texture(of:)`, the same resolved-canvas seam Syphon publishes through.
+Two client-side findings worth keeping (both cost a debugging round): the sink is the **direction-0** stream (`kCMIOStreamPropertyDirection`: 0 = output, host → device — the capture stream is direction 1), and `CMIOStreamCopyBufferQueue` returns `noErr` with a **nil queue** unless you pass a non-nil queue-altered callback (an empty closure is fine).
+
+One presentation note: **Photo Booth mirrors every camera preview** (like a selfie mirror) **and crops** the frame to fill its non-16:9 pane — both can look like a broken feed. QuickTime (File ▸ New Movie Recording) shows the frame as actually published: upright and complete. Don't "fix" the mirror by pre-flipping; that would break every non-mirroring consumer.
 
 ## Build, notarize, install
 
@@ -47,4 +47,4 @@ macOS validates the embedded extension strictly before it will even ask the user
 
 ## Identifiers
 
-Host `dev.ollin.OllinCamera`, extension `dev.ollin.OllinCamera.Extension`, CMIO mach service `<team id>.dev.ollin.OllinCamera` (the shared app group). Placeholder IDs for the prototype.
+Host `dev.ollin.OllinCamera`, extension `dev.ollin.OllinCamera.Extension`, CMIO mach service `<team id>.dev.ollin.OllinCamera` (the shared app group).

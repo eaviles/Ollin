@@ -42,10 +42,6 @@ OPENRNDR-style effects that compose in layers: draw into off-screen targets, run
 
 Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
 
-## Virtual camera output
-
-Feed a sketch's rendered frames to the Ollin Camera virtual-camera device, so every app that takes a webcam reads Ollin as a live input — Hydra and other browser tools (through `getUserMedia`), plus Zoom, Meet, QuickTime, and OBS. Where Syphon shares GPU frames app-to-app on the same Mac, a virtual camera reaches the much larger set of apps that only speak "webcam", including the browser sandbox that an OS-level transport like Syphon or NDI can't cross. The camera device itself is the CMIO system extension app under `Apps/OllinCameraApp`; the work here is the frame feed: a sink stream on the extension, a `Sources/OllinCamera` publish-client library, and a `publishVirtualCamera(...)` sugar pulling from the same rendered-texture seam Syphon publishes through. See the [design notes](DESIGN-NOTES.md#virtual-camera-output-in-progress).
-
 ## Project generator
 
 An openFrameworks-style generator that scaffolds a ready-to-run sketch folder from a few questions (which capabilities, which canvas size), instead of hand-copying boilerplate. See the [design notes](DESIGN-NOTES.md#project-generator--sketch-scaffolding-not-started).

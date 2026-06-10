@@ -123,7 +123,7 @@ The names are familiar and the calls are short. The full API reference lives in 
 - [Input](Docs/Input.md) - mouse and keyboard.
 - [Export](Docs/Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters).
 
-Seven satellite libraries live in the same package behind their own `import`, so a sketch only links what it uses:
+Eight satellite libraries live in the same package behind their own `import`, so a sketch only links what it uses:
 
 - [Audio](Docs/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`, `spectrum`, and band values (`bass`/`mid`/`treble`) a sketch reads in `draw()`.
 - [OSC](Docs/OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`.
@@ -131,6 +131,7 @@ Seven satellite libraries live in the same package behind their own `import`, so
 - [Physics](Docs/Physics.md) - `import OllinPhysics` for a `World` you step each frame, so motion comes from simulation instead of hand-tuned values: a soft Verlet side (particles, springs, disk collisions) and a rigid side (bodies, colliders, and joints, backed by Box2D).
 - [Vision](Docs/Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results a sketch reads in `draw()`: face tracking (landmarks, head pose, capture quality), hand and body pose (joint skeletons), rectangle, barcode/QR, and text (OCR) detection, contour tracing (a camera frame into vector `Shape`s for line work and plotting), and object tracking (lock onto a patch and follow it across frames).
 - [Syphon](Docs/Syphon.md) - `import OllinSyphon` to share live visuals with other Mac apps (openFrameworks, Resolume, MadMapper, VDMX, …): publish a sketch's frames as a Syphon source, and draw an incoming Syphon feed as an `Image`.
+- [Virtual camera](Docs/VirtualCamera.md) - `import OllinCamera` to feed a sketch's frames to the Ollin Camera system camera, so anything that takes a webcam (Zoom, OBS, QuickTime, and browser tools like Hydra through `getUserMedia`) reads the sketch as a live camera; the device itself installs once from [`Apps/OllinCameraApp`](Apps/OllinCameraApp/README.md).
 - [Video](Docs/Video.md) - `import OllinVideo` to play a video file into a sketch as a live image: each decoded frame arrives as a GPU texture drawn with `drawImage`, riding the transform stack and `tint`, with a CPU `snapshot()` for pixel reads and analysis.
 
 New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.
@@ -181,7 +182,7 @@ In code they're `OllinApp.exportVideo(...)` and `OllinApp.exportGIF(...)`; codec
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: an HDR float pipeline, layered effects and compositing, shader composition and a live-coding mode, virtual camera output, the rest of the computer-vision catalog, the iPhone as a sensor array, a 3D mode, a project generator, and eventually iOS, visionOS, and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: an HDR float pipeline, layered effects and compositing, shader composition and a live-coding mode, the rest of the computer-vision catalog, the iPhone as a sensor array, a 3D mode, a project generator, and eventually iOS, visionOS, and AR.
 
 ## Built with AI
 
@@ -235,6 +236,8 @@ The frameworks above shaped Ollin's API and ideas. Two more, written for the sam
 | [AsyncGraphics](https://github.com/heestand-xyz/AsyncGraphics) | MIT | GPU image and video compositing; a reference for shader-library structure and a layered-effects model |
 
 As with the others, this is reading for ideas and engineering approach, which is different from copying code; Ollin's implementation is its own. Thanks to their authors, [@yukiny0811](https://github.com/yukiny0811) and [@heestand-xyz](https://github.com/heestand-xyz), for building in the open.
+
+The Ollin Camera virtual camera follows the same rule. Three projects were studied for the companion-app mechanism, where a system extension owns the camera device and a client app feeds it frames: [SinkCam](https://github.com/Halle/SinkCam) by Halle Winkler ([@Halle](https://github.com/Halle)), the reference for feeding a CMIO camera extension through its sink stream, along with her [write-ups on The Offcuts](https://theoffcuts.org/); [Celluloid](https://github.com/whyisjake/Celluloid) by Jake Spurlock ([@whyisjake](https://github.com/whyisjake)), a shipping virtual-camera app pushing Metal-processed frames the same way; and [ofxGL2Webcam](https://github.com/daitomanabe/ofxGL2Webcam) by Daito Manabe ([@daitomanabe](https://github.com/daitomanabe)), which published an openFrameworks texture to a virtual webcam in the earlier DAL era. Ollin Camera's implementation is its own. The idle test card is an original design in the genre of the classic broadcast test cards (the Philips PM5544 family by Finn Hendil), drawn from scratch rather than reproduced.
 
 ### Techniques
 
