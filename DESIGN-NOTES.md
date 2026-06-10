@@ -14,17 +14,6 @@ Worth pursuing. Swift Playgrounds app (Mac and iPad) App Projects (`.swiftpm`) a
 - **Onboarding nicety:** ship a ready-made `.swiftpm` starter (Ollin pre-wired plus a `HelloCircle`) so users don't hand-add the package URL.
 - **Caveats:** the Playgrounds sandbox restricts file I/O (which matters for the export items, not for drawing); package-dependency UX is finicky; prefer the Swift Playgrounds app's App Projects over the semi-deprecated Xcode Playgrounds. iOS changes need `xcodebuild -destination` with the iOS SDK on a Mac to verify.
 
-## Video playback (not started)
-
-A `VideoPlayer` that plays a video file into a sketch as a live image, the input-side companion to the video export. It lives in a small satellite (`import OllinVideo`): the drawing core's AVFoundation link is for the offline export path only, and live playback belongs on the satellite side with audio.
-
-- **The GPU path already exists.** `AVPlayer` plus `AVPlayerItemVideoOutput` hands back each frame as a `CVPixelBuffer`; a `CVMetalTextureCache` wraps that as an `MTLTexture` with no CPU copy, and the texture-backed `Image(texture:)` seam carries it into `drawImage`, the transform stack, and `tint`. The color lesson from the Syphon work applies verbatim: request BGRA buffers and read them through an sRGB texture view, so the linear-light pipeline decodes them correctly.
-- **Surface.** Mirror `AudioPlayer` where it fits: load from `path`/`url`/`resource`, then `play`/`pause`/`stop`, `loops`, `rate`, `seek(to:)`, `duration`/`currentTime`/`isPlaying`, and the per-frame read (`currentFrame` as an `Image`, plus `hasNewFrame`). The file's audio plays through `AVPlayer` for free; routing it into `AudioAnalyzer` (an `MTAudioProcessingTap`) is a later tie-in, not part of the first cut.
-- **Recorded footage feeds the trackers.** The vision trackers read frames from a `Camera` today; giving the analyzer spine a frame-source seam lets a `VideoPlayer` slot in the same way, so face tracking, contours, or OCR run over a file. That also gives tracker development reproducible test material, which a live webcam can never be.
-- **Deterministic export pulls frames; it doesn't play them.** Live playback follows the player clock and drops or repeats frames as needed. The offline export paths should instead pull frames by timestamp (`copyPixelBuffer(forItemTime:)`, or `AVAssetReader` for strictly sequential reads), so a sketch that draws a video exports the same frames every run.
-- **Apple-native codecs only.** Whatever AVFoundation reads: H.264, HEVC, and ProRes in `.mov`/`.mp4`/`.m4v`. The VJ-world HAP codec needs third-party decode and stays out of scope.
-- **The example can author its own clip.** A loopback example in the OSC and Syphon spirit exports a short clip of one sketch (`OllinApp.exportVideo`) and plays it back in another, so there's no bundled video asset and no provenance burden; a test can do the same with a tiny `AVAssetWriter`-authored file.
-
 ## Shape booleans and offsets (not started)
 
 Set operations on the vector types: union, intersection, subtraction, and symmetric difference over `Shape`, plus polygon offsetting (inset/outset) with join styles. This is the missing half of the computational-geometry story: `Shape` can fill and stroke itself, but it can't yet operate on another shape.

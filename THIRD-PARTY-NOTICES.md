@@ -134,3 +134,22 @@ redistributed inside this repository.
 > this clip remains under CC BY-SA 4.0 — that obligation rides on the audio file
 > and its adaptations, not on Ollin's source, which stays MIT (the clip is merely
 > bundled alongside it). The root [`LICENSE`](LICENSE) is unaffected.
+
+---
+
+## Voladores de Papantla (example video)
+
+- **Used for:** the `VideoPlayback` example sketch only — a sample video clip, to demonstrate `VideoPlayer` drawing a file as a live image. Not part of the Ollin framework; Ollin (and `OllinVideo`) bundle no video themselves.
+- **Location in this repo:** [`Examples/Video/VideoPlayback/voladores.mp4`](Examples/Video/VideoPlayback/voladores.mp4)
+- **Work:** *Voladores de Papantla México* — a recording of the *Danza de los Voladores*, the Totonac pole-flying ritual dance from Papantla, Veracruz (performed at an exhibition in Mexico City, 2018). Filmed by José Millán (Wikimedia Commons user Jmillan325).
+- **Upstream:** https://commons.wikimedia.org/wiki/File:Voladores_de_Papantla_M%C3%A9xico.webm
+- **License:** CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0
+
+> Licensed CC BY-SA 4.0 (Attribution-ShareAlike). Attribution is given above as
+> required. **Changes:** a ~28-second excerpt was trimmed from the original
+> 3-minute VP9/WebM file and re-encoded to H.264 MP4 at 960×540 (mono AAC audio)
+> for AVFoundation playback and a small repository footprint; no other edits. As
+> a ShareAlike work this clip remains under CC BY-SA 4.0 — that obligation rides
+> on the video file and its adaptations, not on Ollin's source, which stays MIT
+> (the clip is merely bundled alongside it). The root [`LICENSE`](LICENSE) is
+> unaffected.

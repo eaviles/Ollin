@@ -17,12 +17,15 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Color](Color/) | palettes, colormaps, and color over time |
 | [Images](Images/) | loading, drawing, tinting, and authoring images |
 | [Input](Input/) | mouse-driven sketches |
+| [Integration](Integration/) | talking to other apps and gear — OSC, MIDI, Syphon (`import OllinOSC` / `OllinMIDI` / `OllinSyphon`) |
 | [Live](Live/) | tunable `@Param` knobs under OllinLive |
 | [Motion](Motion/) | animation driven by `time` |
 | [Patterns](Patterns/) | grids and rule-based repetition |
 | [Physics](Physics/) | simulated motion (`import OllinPhysics`) |
 | [Randomness](Randomness/) | `random`, `noise`, and scatter |
 | [Text](Text/) | drawing text with the bitmap-font `drawText` |
+| [Video](Video/) | recorded footage as drawing material (`import OllinVideo`) |
+| [Vision](Vision/) | the camera plus on-device perception (`import OllinVision`) |
 | [Recreations](Recreations/) | homages to past computer artists, by artist |
 
 ### Running

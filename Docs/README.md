@@ -48,6 +48,10 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 
 - [`Vision`](./Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception — face tracking with landmarks, hand and body pose (joint skeletons), rectangle, barcode/QR, and text (OCR) detection, contour tracing (camera frame → vector `Shape`s), and object tracking (follow a patch you point at), surfaced as typed results you read in `draw()`
 
+### Video
+
+- [`Video`](./Video.md) - `import OllinVideo` to play a video file into a sketch as a live image: each decoded frame arrives as a GPU texture you draw with `drawImage`, plus a CPU `snapshot()` for pixel reads and analysis
+
 ### Output
 
 - [`Export`](./Export.md) - save frames as raster (PNG, sequences), motion (video, animated GIF), or vector (SVG, for pen plotters)

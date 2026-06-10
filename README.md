@@ -123,7 +123,7 @@ The names are familiar and the calls are short. The full API reference lives in 
 - [Input](Docs/Input.md) - mouse and keyboard.
 - [Export](Docs/Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters).
 
-Six satellite libraries live in the same package behind their own `import`, so a sketch only links what it uses:
+Seven satellite libraries live in the same package behind their own `import`, so a sketch only links what it uses:
 
 - [Audio](Docs/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`, `spectrum`, and band values (`bass`/`mid`/`treble`) a sketch reads in `draw()`.
 - [OSC](Docs/OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`.
@@ -131,6 +131,7 @@ Six satellite libraries live in the same package behind their own `import`, so a
 - [Physics](Docs/Physics.md) - `import OllinPhysics` for a `World` you step each frame, so motion comes from simulation instead of hand-tuned values: a soft Verlet side (particles, springs, disk collisions) and a rigid side (bodies, colliders, and joints, backed by Box2D).
 - [Vision](Docs/Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results a sketch reads in `draw()`: face tracking (landmarks, head pose, capture quality), hand and body pose (joint skeletons), rectangle, barcode/QR, and text (OCR) detection, contour tracing (a camera frame into vector `Shape`s for line work and plotting), and object tracking (lock onto a patch and follow it across frames).
 - [Syphon](Docs/Syphon.md) - `import OllinSyphon` to share live visuals with other Mac apps (openFrameworks, Resolume, MadMapper, VDMX, …): publish a sketch's frames as a Syphon source, and draw an incoming Syphon feed as an `Image`.
+- [Video](Docs/Video.md) - `import OllinVideo` to play a video file into a sketch as a live image: each decoded frame arrives as a GPU texture drawn with `drawImage`, riding the transform stack and `tint`, with a CPU `snapshot()` for pixel reads and analysis.
 
 New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.
 
@@ -180,7 +181,7 @@ In code they're `OllinApp.exportVideo(...)` and `OllinApp.exportGIF(...)`; codec
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: video playback as an input, shape booleans and offsets, an HDR float pipeline, layered effects and compositing, shader composition and a live-coding mode, virtual camera output, the rest of the computer-vision catalog, the iPhone as a sensor array, a 3D mode, a project generator, and eventually iOS, visionOS, and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: shape booleans and offsets, an HDR float pipeline, layered effects and compositing, shader composition and a live-coding mode, virtual camera output, the rest of the computer-vision catalog, the iPhone as a sensor array, a 3D mode, a project generator, and eventually iOS, visionOS, and AR.
 
 ## Built with AI
 
@@ -219,6 +220,7 @@ Ollin bundles a small amount of third-party source in the repo. This is differen
 - **[Hershey fonts](https://paulbourke.net/dataformats/hershey/)** (public domain): "Hershey Sans" (`futural`), the bundled default stroke (single-line / plotter) font for `drawText`, vendored as a `.jhf` under `Sources/Ollin/Resources/`. Created by A. V. Hershey at the U.S. National Bureau of Standards.
 - **[Marble Madness](https://github.com/idleberg/playdate-arcade-fonts)** (CC0 / public domain): a sample Playdate `.fnt` font used only by the `PlaydateFont` example to demonstrate the loader, bundled beside that sketch — not in the framework. Ollin ships the `.fnt` loader, not a library of fonts.
 - **[El Fandanguito](https://commons.wikimedia.org/wiki/File:Viol%C3%ADn_SonHuasteco_ELFandanguito.ogg)** (CC BY-SA 4.0): a recording of a traditional Mexican *son huasteco* for violin (performed by Cynthia Molina), used only by the `FilePlayer` example to demonstrate `AudioPlayer`, bundled beside that sketch — not in the framework. Ollin bundles no audio of its own. As a ShareAlike work the clip stays under CC BY-SA; that applies to the audio file, not to Ollin's code.
+- **[Voladores de Papantla México](https://commons.wikimedia.org/wiki/File:Voladores_de_Papantla_M%C3%A9xico.webm)** by José Millán (CC BY-SA 4.0): a recording of the *Danza de los Voladores*, the Totonac pole-flying ritual dance, used only by the `VideoPlayback` example to demonstrate `VideoPlayer`, bundled (trimmed and re-encoded) beside that sketch — not in the framework. Ollin bundles no video of its own. As a ShareAlike work the clip stays under CC BY-SA; that applies to the video file, not to Ollin's code.
 
 Everything bundled is listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), with each component's license kept next to its source. Ollin's own code stays MIT; bundling a separately-licensed font, library, or example asset doesn't change that — each keeps its own license and the root [`LICENSE`](LICENSE) stays pure MIT.
 
@@ -250,6 +252,7 @@ A few helpers lean on well-known public techniques, reimplemented in Ollin and c
 - MIDI (`OllinMIDI`) speaks the MIDI 1.0 message format, parsed and encoded from the specification, over Apple's Core MIDI. Its API takes after openFrameworks' `ofxMidi` and OPENRNDR's `orx-midi`, read for approach and written independently; no MIDI library is vendored.
 - Syphon (`OllinSyphon`) shares live GPU frames with other Mac apps over the vendored [Syphon Framework](https://github.com/Syphon/Syphon-Framework) (Metal portion, see [Bundled third-party code](#bundled-third-party-code)), wrapped behind Ollin's own `SyphonServer`/`SyphonClient`. The API takes after openFrameworks' `ofxSyphon`.
 - Physics (`OllinPhysics`) has two sides. The soft side (particles, springs, soft bodies) is a from-scratch Verlet solver with position-based constraint relaxation, following the approach in Thomas Jakobsen's ["Advanced Character Physics"](https://www.cs.cmu.edu/afs/cs/academic/class/15462-s13/www/lec_slides/Jakobsen.pdf) (GDC 2001). The rigid side (bodies with rotation, polygon colliders, joints, and stable stacking) is backed by the vendored [Box2D](https://github.com/erincatto/box2d) engine (see [Bundled third-party code](#bundled-third-party-code)), wrapped behind the same `World`. The API takes after openFrameworks' `ofxBox2d` and p5 / matter.js.
+- Video playback (`OllinVideo`) plays files through Apple's [AVFoundation](https://developer.apple.com/documentation/avfoundation) (`AVPlayer` with a video output), with each decoded frame surfaced as a Metal texture through `CVMetalTextureCache`; no codec or media library is vendored. The sketch-facing shape (load, `play`, draw the current frame) takes after p5.js's video element and openFrameworks' `ofVideoPlayer`, written independently.
 - Computer vision (`OllinVision`) runs on Apple's own on-device stack — [Vision](https://developer.apple.com/documentation/vision) and Core ML for the perception, [AVFoundation](https://developer.apple.com/documentation/avfoundation) for camera capture — hardware-accelerated on the Neural Engine where present. No computer-vision library is vendored; the framework calls the OS. Its sketch-facing ergonomics (results as typed values you read in `draw()`) take after openFrameworks' [`ofxCv`](https://github.com/kylemcdonald/ofxCv), read for approach and written independently.
 
 ### Directions ahead

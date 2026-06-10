@@ -44,6 +44,12 @@ let package = Package(
         // and more — surfaced as typed values a sketch reads in `draw()`. Kept out
         // of `Ollin` so the drawing core stays free of AVFoundation / Vision.
         .library(name: "OllinVision", targets: ["OllinVision"]),
+        // Video playback as a satellite library: `import OllinVideo` to play a
+        // video file into a sketch as a live image — each decoded frame arrives
+        // as a GPU texture drawn through `drawImage`. Kept out of `Ollin` so the
+        // drawing core stays free of AVFoundation playback (the input-side
+        // companion to the core's offline video export).
+        .library(name: "OllinVideo", targets: ["OllinVideo"]),
         // Syphon as a satellite library: `import OllinSyphon` to share live
         // visuals with the other apps on a Mac (openFrameworks via ofxSyphon,
         // Resolume, MadMapper, VDMX, …) — publish the sketch's rendered frames as
@@ -71,7 +77,7 @@ let package = Package(
             // are linked (not used by the host) so a hot-swapped sketch that
             // `import`s them resolves its symbols against this process at load,
             // the same way it resolves Ollin's.
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinSyphon"],
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon"],
             path: "Sources/OllinLive",
             // Export the host's symbols so a hot-swapped sketch `.dylib`
             // (compiled with `-undefined dynamic_lookup`) resolves its Ollin
@@ -90,7 +96,7 @@ let package = Package(
             // Links the satellite libraries (OllinAudio/OllinOSC/OllinMIDI/
             // OllinPhysics) so gallery sketches that `import` them resolve at load
             // (same reason as OllinLive above).
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinSyphon"],
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon"],
             path: "Sources/OllinExamples",
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
@@ -211,6 +217,15 @@ let package = Package(
         .target(
             name: "OllinSyphon",
             dependencies: ["Ollin", "CSyphon"]
+        ),
+        // Video playback: a `VideoPlayer` over AVPlayer that surfaces each decoded
+        // frame as a texture-backed `Image` (CVMetalTextureCache, no CPU round-trip)
+        // a sketch draws with `drawImage`. A satellite (like OllinAudio) so the
+        // drawing core stays free of AVFoundation playback; sketches opt in with
+        // `import OllinVideo`.
+        .target(
+            name: "OllinVideo",
+            dependencies: ["Ollin"]
         ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
@@ -663,6 +678,15 @@ let package = Package(
             dependencies: ["Ollin", "OllinPhysics"],
             path: "Examples/Physics/Chain"
         ),
+        // Video — plays a bundled clip (or a path passed on launch) as a live
+        // image. The clip is the example's own asset (CC BY-SA, provenance in
+        // THIRD-PARTY-NOTICES.md), per the per-example asset convention.
+        .executableTarget(
+            name: "Example-VideoPlayback",
+            dependencies: ["Ollin", "OllinVideo"],
+            path: "Examples/Video/VideoPlayback",
+            resources: [.copy("voladores.mp4")]
+        ),
         // Vision — the Mac's camera plus Apple Vision perception. WebcamFeed draws
         // the live feed; FaceTracking overlays detected faces and landmarks. Both
         // need a camera and grant camera permission on first run.
@@ -805,6 +829,14 @@ let package = Package(
         .testTarget(
             name: "OllinSyphonTests",
             dependencies: ["Ollin", "OllinSyphon", "CSyphon"]
+        ),
+        // Video correctness: writes a tiny clip with AVAssetWriter, then checks
+        // metadata loading and CPU frame snapshots; the GPU texture path is
+        // Metal-gated. Soft-skips where the headless environment can't encode
+        // or decode, so it never fails CI for environmental reasons.
+        .testTarget(
+            name: "OllinVideoTests",
+            dependencies: ["Ollin", "OllinVideo"]
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety

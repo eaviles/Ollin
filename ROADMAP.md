@@ -29,10 +29,6 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 - **Retained geometry buffers.** Every frame currently re-uploads everything; keeping static geometry (a large point cloud, a fixed background) in a persistent buffer would drop its per-frame cost to zero.
 - **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
 
-## Video playback
-
-The input-side companion to video export: a `VideoPlayer` that plays a video file into a sketch as a live image. Each decoded frame arrives as a GPU texture drawn through `drawImage`, riding the transform stack and `tint` like any other image, and the same frames can feed the vision trackers, so face tracking or contour tracing runs over recorded footage the way it runs over the webcam. Planned as a small satellite library (`import OllinVideo`), keeping AVFoundation out of the drawing core the way audio does. See the [design notes](DESIGN-NOTES.md#video-playback-not-started).
-
 ## Shape booleans and offsets
 
 Set operations on `Shape`: union, intersection, subtraction, and symmetric difference, plus inset/outset offsetting with the existing join styles. Curved contours flatten through the `Path` sampler first, so results stay plain polygonal shapes that fill, stroke, hatch, and export like any other. This turns the vector side into real computational geometry: clipping hatching to a region, hidden-line removal for plotters, pen-width compensation, and pattern-making by combining forms. Robust polygon clipping is notoriously hard to get right, so the likely path is vendoring a proven permissively-licensed clipper behind Ollin's own API, the same tier as libtess2 and Box2D. See the [design notes](DESIGN-NOTES.md#shape-booleans-and-offsets-not-started).
