@@ -4,20 +4,14 @@
 
 *Ollin* (OH-leen) is the Aztec glyph for **movement**, the 17th day sign of the calendar, and the name says what the framework is about: in Ollin, your sketches **move by default**. The draw loop runs continuously at the display's refresh rate from the very first line of code. Animation is on from the start, so you never reach for a `loop()` call to begin it. For the rare still image, `noLoop()` turns it off.
 
-It draws inspiration from [OPENRNDR](https://openrndr.org) (the `Program` /
-`drawer` lifecycle), [p5.js](https://p5js.org) (friendly, forgiving,
-learn-it-in-an-afternoon API names), and [openFrameworks](https://openframeworks.cc)
-(simple structure, immediate-mode primitives), while leaning into Swift idioms where
-they improve on the originals.
-
-Where those three are cross-platform, Ollin isn't, and that's on purpose. Betting on one family of hardware is what buys the depth: the same p5 feel and typed core sit straight on Metal, not WebGL or the JVM, so the rendering ceiling is whatever the GPU can do. Staying native is also what keeps the harder things in reach later, like vision on the Neural Engine, ARKit and visionOS, or an iPhone's depth sensors feeding a sketch the Mac renders. A tool that runs everywhere has to leave those on the table. Most of that is still ahead (the [roadmap](#roadmap) has it); for now the point is that the core is built to grow into them rather than get retrofitted.
+It draws inspiration from [OPENRNDR](https://openrndr.org) (the `Program` / `drawer` lifecycle), [p5.js](https://p5js.org) (friendly, forgiving, learn-it-in-an-afternoon API names), and [openFrameworks](https://openframeworks.cc) (simple structure, immediate-mode primitives), while leaning into Swift idioms rather than porting any of them literally.
 
 - **Platform:** macOS 26+, Swift 6+
 - **Rendering:** Metal (`MTKView`, up to 8× MSAA), built on Foundation / SwiftUI / Metal / MetalKit / simd. It stays dependency-light (no package dependencies today; just a little vendored source, see [Bundled third-party code](#bundled-third-party-code)) and takes on a package only when one clearly earns its place
 - **License:** MIT
 - **Built with:** an AI coding assistant (Claude) under [@eaviles](https://github.com/eaviles)'s direction; see [Built with AI](#built-with-ai)
 
-> **Status: alpha, pre-1.0, built in public.** Right now the goal is modest: run `swift run`, see a black circle outline on white, and notice the continuous draw loop already humming underneath. From there it grows. Expect the API to change between commits, and don't count on stability or support guarantees yet. See [Status & contributing](#status--contributing).
+> **Status: alpha, pre-1.0, built in public.** Everything documented below runs today, but the project is young: names and APIs still change between commits, and there's no stability or support guarantee yet. See [Status & contributing](#status--contributing).
 
 ## Hello, circle
 
@@ -34,24 +28,16 @@ final class HelloCircle: Sketch {
         noFill()
         stroke(.black)
         strokeWeight(3)
-        drawCircle(width / 2, height / 2, 120)
+        drawCircle(width / 2, height / 2, 120 + sin(time) * 40)
     }
 }
 
 OllinApp.run(HelloCircle())
 ```
 
-That draws a black circle outline about 3px wide, centered on white, and it's the whole program.
+That's the whole program: a black circle outline, breathing on a white canvas. There's no call to start the animation, because the draw loop is already running at the display's refresh rate, and `time` (seconds since start) is ready to use in any sketch. Delete `+ sin(time) * 40` and you have a still circle.
 
-## Make it move
-
-The loop is already animating underneath, so making the circle breathe takes a single line. `time` (seconds since start) is ready to use in any sketch, with no setup needed:
-
-```swift
-drawCircle(width / 2, height / 2, 120 + sin(time) * 40)
-```
-
-Every sketch also gets temporal state out of the box (`frameCount`, `time`, `deltaTime`, `frameRate`), live `width`/`height`, a resolution-relative `scale`, and `noLoop()` / `loop()` for still images. The [`Sketch`](Docs/Sketch.md) reference covers them all.
+Every sketch also gets temporal state out of the box (`frameCount`, `deltaTime`, `frameRate`), live `width`/`height`, a resolution-relative `scale`, and `noLoop()` / `loop()` for still images. The [`Sketch`](Docs/Sketch.md) reference covers them all.
 
 ## Run it
 
@@ -61,9 +47,13 @@ From the terminal, no Xcode required:
 swift run Example-HelloCircle
 ```
 
-That builds the package and opens a window running the `HelloCircle` example (a 1080² canvas, fit to your screen). More runnable sketches live in [`Examples/`](Examples/); `swift run` with no argument lists every example target.
+That builds the package and opens a window with the breathing circle above (a 1080² canvas, fit to your screen). More runnable sketches live in [`Examples/`](Examples/); `swift run` with no argument lists every example target.
 
 Or browse them all in one window: `swift run OllinExamples` opens a gallery with every example in a sidebar, and clicking one compiles and runs it on the right.
+
+## Why Apple-only
+
+p5.js, OPENRNDR, and openFrameworks run everywhere; Ollin only runs on Apple hardware, and that's the trade it makes on purpose. Sitting directly on Metal means the rendering ceiling is whatever the GPU can do, and staying native keeps harder things in reach later: vision on the Neural Engine, ARKit and visionOS, an iPhone's depth sensors feeding a sketch the Mac renders. Most of that is still ahead (the [roadmap](#roadmap) has it); for now the point is that the core is built to grow into those things rather than get retrofitted.
 
 ## Canvas size and resolution
 
@@ -116,11 +106,11 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
 
 ## Documentation
 
-The drawing surface is small and the names familiar. The full API reference lives in [`Docs/`](Docs/):
+The names are familiar and the calls are short. The full API reference lives in [`Docs/`](Docs/). Everything here ships with the core `import Ollin`:
 
 - [Sketch](Docs/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), and loop control.
 - [Canvas](Docs/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
-- [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawRect`, `drawLine`, `drawShape`, and a full catalog of analytic SDF shapes — see the reference), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
+- [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawRect`, `drawLine`, `drawShape`, and a full catalog of analytic SDF shapes; see the reference), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
 - [Text](Docs/Text.md) - `drawText` with bitmap, outline (`.ttf`/`.otf`), and single-line/plotter (Hershey) fonts (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`/`OutlineFont`/`StrokeFont`), `textToShapes` for text as geometry, and loading BDF, Playdate `.fnt`, and Hershey `.jhf` fonts.
 - [Images](Docs/Images.md) - `loadImage` / `drawImage` for raster images (PNG, JPEG, HEIC, …), with `tint` recoloring and an `Image[x, y]` pixel subscript for sampling or authoring.
 - [Color](Docs/Color.md) - the `Color` type, cosine-gradient `Palette` presets, and perceptual `Colormap`s.
@@ -130,13 +120,16 @@ The drawing surface is small and the names familiar. The full API reference live
 - [Math](Docs/Math.md) - `map`, `dist`, `lerp`.
 - [Animation](Docs/Animation.md) - the `Easing` curves, the `@Eased` value that tweens toward a target, and `@Smoothed` for cleaning up a noisy signal.
 - [Input](Docs/Input.md) - mouse and keyboard.
+- [Export](Docs/Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters).
+
+Six satellite libraries live in the same package behind their own `import`, so a sketch only links what it uses:
+
 - [Audio](Docs/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`, `spectrum`, and band values (`bass`/`mid`/`treble`) a sketch reads in `draw()`.
 - [OSC](Docs/OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`.
 - [MIDI](Docs/MIDI.md) - `import OllinMIDI` to read from and send to MIDI controllers and keyboards over Core MIDI, read in `draw()` or bound to a `@Param`.
 - [Physics](Docs/Physics.md) - `import OllinPhysics` for a `World` you step each frame, so motion comes from simulation instead of hand-tuned values: a soft Verlet side (particles, springs, disk collisions) and a rigid side (bodies, colliders, and joints, backed by Box2D).
 - [Vision](Docs/Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results a sketch reads in `draw()`: face tracking (landmarks, head pose, capture quality), hand and body pose (joint skeletons), rectangle, barcode/QR, and text (OCR) detection, contour tracing (a camera frame into vector `Shape`s for line work and plotting), and object tracking (lock onto a patch and follow it across frames).
 - [Syphon](Docs/Syphon.md) - `import OllinSyphon` to share live visuals with other Mac apps (openFrameworks, Resolume, MadMapper, VDMX, …): publish a sketch's frames as a Syphon source, and draw an incoming Syphon feed as an `Image`.
-- [Export](Docs/Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters).
 
 New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.
 
@@ -203,7 +196,7 @@ Ollin builds on the ideas of three creative-coding frameworks and reimplements t
 
 That `setup()` / `draw()` vocabulary started in [Processing](https://processing.org), the Java project p5.js grew out of. Ollin follows p5's spelling because that's the version most people coming to it already know.
 
-*"Inspired by" means borrowing ideas and API vocabulary, which is different from copying code; Ollin's implementation is written independently.* Individual example sketches that are ported from a published source name that source, its author, and its license in the file header. Only sources whose licenses permit redistribution under MIT are used.
+"Inspired by" means borrowing ideas and API vocabulary, which is different from copying code; Ollin's implementation is written independently. Individual example sketches that are ported from a published source name that source, its author, and its license in the file header. Only sources whose licenses permit redistribution under MIT are used.
 
 ### Bundled third-party code
 
