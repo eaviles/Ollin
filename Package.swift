@@ -400,6 +400,11 @@ let package = Package(
             path: "Examples/Color/Mixing"
         ),
         .executableTarget(
+            name: "Example-Gradients",
+            dependencies: ["Ollin"],
+            path: "Examples/Color/Gradients"
+        ),
+        .executableTarget(
             name: "Example-Harmonies",
             dependencies: ["Ollin"],
             path: "Examples/Color/Harmonies"

@@ -66,21 +66,32 @@ typedef struct {
 // shape parameterized by three free points (a general triangle's corners, a
 // quadratic Bézier's control points) fills `param0`/`param1`/`param2` — `size`
 // is reserved as the covering quad's AABB half-extent and can't double as a
-// point. Adding `param2` takes the stride to 144 (still 16-aligned), leaving 8
-// bytes of tail padding for future fields.
+// point. Adding `param2` took the stride to 144 (still 16-aligned); the two
+// gradient row fields then filled the 8 bytes of tail padding that left, so the
+// stride is still 144 with no spare bytes.
+//
+// Gradient paints ride the existing slots rather than widening the struct: when
+// a paint-kind field in `shape` (bits 10-11 for fill, 12-13 for stroke; 0 solid,
+// 1 linear, 2 radial, 3 along-path) is non-zero, the matching color slot is
+// reinterpreted as gradient *geometry* relative to `center` — linear packs
+// (start.xy, end.xy), radial packs (center.xy, radius, unused) — and
+// `fillGradient`/`strokeGradient` carry the paint's row in the gradient strip
+// texture the ramp was baked into (see BakedGradient).
 typedef struct {
     simd_float3x3 transform;   // local sketch space -> sketch space (the CTM)
     simd_float2 center;        // shape center, local sketch space
     simd_float2 size;          // generic half-extent (see SDFShape)
-    simd_float4 fillColor;     // straight RGBA; alpha 0 means no fill
-    simd_float4 strokeColor;   // straight RGBA; alpha 0 means no stroke
+    simd_float4 fillColor;     // straight RGBA; alpha 0 means no fill — or fill-gradient geometry
+    simd_float4 strokeColor;   // straight RGBA; alpha 0 means no stroke — or stroke-gradient geometry
     simd_float2 param0;        // shape-specific
     simd_float2 param1;        // shape-specific
     simd_float2 param2;        // shape-specific
     float strokeWidth;         // points; 0 means no stroke
     float extra;               // shape-specific scalar
     float bandWidth;           // hollow-band width (points); 0 means solid fill
-    unsigned int shape;        // SDFShape.rawValue (32-bit on Apple platforms)
+    unsigned int shape;        // SDFShape.rawValue + alignment/paint-kind bits (32-bit)
+    float fillGradient;        // gradient-strip row index for a gradient fill
+    float strokeGradient;      // gradient-strip row index for a gradient stroke
 } SDFInstance;
 
 #endif /* OLLIN_SHADER_TYPES_H */

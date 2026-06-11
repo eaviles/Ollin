@@ -150,3 +150,70 @@ struct SVGExportTests {
         #expect(lines.allSatisfy { $0[0].length <= 50.01 && $0[1].length <= 50.01 })  // inside the disk
     }
 }
+
+/// Gradient paints in the SVG exporter: linear/radial become native defs
+/// referenced by `url(#…)`, an along-path stroke splits into short solid runs,
+/// and an along-path fill (the conic sweep, which SVG can't express) falls back
+/// to its ramp's midpoint color.
+@Suite
+@MainActor
+struct SVGGradientTests {
+
+    final class GradientFixture: Sketch {
+        override var canvasSize: CanvasSize { .square(100) }
+
+        override func draw() {
+            background(.white)
+            noStroke()
+            fill(.linear(from: Vector2(0, 0), to: Vector2(0, 100), [.black, .white]))
+            drawRect(0, 0, 100, 100)
+            fill(.radial(center: Vector2(50, 50), radius: 20, [.red, .blue]))
+            drawCircle(50, 50, 20)
+            stroke(.alongPath([.red, .blue]))
+            strokeWeight(2)
+            drawLine(Vector2(0, 10), Vector2(100, 10))
+            noStroke()
+            fill(.alongPath([.black, .white]))
+            drawPolygon([Vector2(10, 80), Vector2(30, 80), Vector2(20, 95)])
+        }
+    }
+
+    @Test func linearAndRadialBecomeDefs() {
+        let svg = OllinApp.svg(of: GradientFixture())
+        #expect(svg.contains("<defs>"))
+        #expect(svg.contains("<linearGradient id=\"grad0\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"100\">"))
+        #expect(svg.contains("fill=\"url(#grad0)\""))
+        #expect(svg.contains("<radialGradient id=\"grad1\" gradientUnits=\"userSpaceOnUse\" cx=\"50\" cy=\"50\" r=\"20\">"))
+        #expect(svg.contains("fill=\"url(#grad1)\""))
+    }
+
+    @Test func nonRGBRampsSubdivideTheirStops() {
+        // The ramps mix in OKLab, which SVG can't interpolate — each span gains
+        // intermediate stops so the SVG curve tracks the ramp.
+        let svg = OllinApp.svg(of: GradientFixture())
+        let linearDef = svg.components(separatedBy: "</linearGradient>")[0]
+        let stops = linearDef.components(separatedBy: "<stop ").count - 1
+        #expect(stops > 2)
+    }
+
+    @Test func alongPathStrokeSplitsIntoRuns() {
+        let svg = OllinApp.svg(of: GradientFixture())
+        // The 100-point line splits into ~12-point solid runs; their colors walk
+        // the ramp, so the first and last differ.
+        let lines = svg.components(separatedBy: "\n").filter { $0.contains("<line ") }
+        #expect(lines.count >= 4)
+        #expect(svg.contains("stroke=\"url") == false)   // no gradient stroke refs remain
+        if let first = lines.first, let last = lines.last {
+            let firstColor = first.components(separatedBy: "stroke=\"").last?.prefix(16)
+            let lastColor = last.components(separatedBy: "stroke=\"").last?.prefix(16)
+            #expect(firstColor != lastColor)
+        }
+    }
+
+    @Test func alongPathFillFallsBackToMidpoint() {
+        let svg = OllinApp.svg(of: GradientFixture())
+        // The conic-filled polygon gets a flat midpoint color, not a url ref.
+        let polygon = svg.components(separatedBy: "\n").first { $0.contains("<polygon") } ?? ""
+        #expect(polygon.contains("fill=\"rgb("))
+    }
+}

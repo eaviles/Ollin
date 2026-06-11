@@ -100,8 +100,8 @@ final class Drawer {
 
     /// The clear color for the frame. `nil`-fill / `nil`-stroke mean "don't draw".
     private(set) var backgroundColor: Color = .black
-    private var fillColor: Color? = .white     // default: white fill
-    private var strokeColor: Color? = .black    // default: black stroke
+    private var fillPaint: Paint? = .color(.white)     // default: white fill
+    private var strokePaint: Paint? = .color(.black)   // default: black stroke
     private var strokeWidth: Double = 1         // default: 1px
     private var pointDiameter: Double = 1       // default: 1px dot (see pointSize / drawPoint)
     private var marker: PointMarker = .circle   // default: round dot (see pointMarker / drawPoint)
@@ -143,6 +143,37 @@ final class Drawer {
     /// outside the per-frame reset so the exporter owns its lifecycle.
     var svgRecorder: SVGRecorder?
 
+    // MARK: Gradient rows
+
+    /// One baked LUT row per distinct gradient ramp used this frame, in row
+    /// order — the renderer uploads these as the gradient strip texture an SDF
+    /// instance's `fillGradient`/`strokeGradient` row indices point into.
+    private(set) var gradientRows: [[UInt8]] = []
+    private var gradientRowIndex: [Ramp: Int] = [:]
+
+    /// Baked ramps, kept across frames so a steady gradient bakes once, not per
+    /// frame. Wiped wholesale past a generous cap (an animated ramp churns keys;
+    /// re-baking is microseconds, unbounded growth is not).
+    private var bakedGradients: [Ramp: BakedGradient] = [:]
+
+    /// The strip row (and its baked samples) for `ramp`, registering it for this
+    /// frame on first use.
+    private func gradientRow(for ramp: Ramp) -> (index: Int, baked: BakedGradient) {
+        let baked: BakedGradient
+        if let cached = bakedGradients[ramp] {
+            baked = cached
+        } else {
+            if bakedGradients.count >= 256 { bakedGradients.removeAll(keepingCapacity: true) }
+            baked = BakedGradient(ramp)
+            bakedGradients[ramp] = baked
+        }
+        if let index = gradientRowIndex[ramp] { return (index, baked) }
+        let index = gradientRows.count
+        gradientRows.append(baked.bytes)
+        gradientRowIndex[ramp] = index
+        return (index, baked)
+    }
+
     /// Open a new batch when the geometry kind changes; a no-op while the kind
     /// is unchanged, so it's cheap to call per primitive.
     private func ensureBatch(_ kind: GeometryKind) {
@@ -179,8 +210,8 @@ final class Drawer {
 
     /// Record one vector primitive for SVG export, snapshotting the current style
     /// and CTM. Fill and stroke are passed explicitly (a line has no fill; a point
-    /// has no stroke); an invisible stroke (no color or zero width) is dropped.
-    private func svgRecord(_ geometry: SVGGeometry, fill: Color?, stroke: Color?) {
+    /// has no stroke); an invisible stroke (no paint or zero width) is dropped.
+    private func svgRecord(_ geometry: SVGGeometry, fill: Paint?, stroke: Paint?) {
         let visibleStroke = (stroke != nil && strokeWidth > 0) ? stroke : nil
         let style = SVGStyle(fill: fill, stroke: visibleStroke, strokeWidth: strokeWidth,
                              join: strokeJoinStyle, cap: strokeCapStyle)
@@ -208,8 +239,8 @@ final class Drawer {
     private struct SavedState {
         var transform: matrix_float3x3
         var transformIsIdentity: Bool
-        var fillColor: Color?
-        var strokeColor: Color?
+        var fillPaint: Paint?
+        var strokePaint: Paint?
         var strokeWidth: Double
         var pointDiameter: Double
         var marker: PointMarker
@@ -239,10 +270,14 @@ final class Drawer {
         currentKind = nil
     }
 
-    func fill(_ color: Color) { fillColor = color }
-    func noFill() { fillColor = nil }
-    func stroke(_ color: Color) { strokeColor = color }
-    func noStroke() { strokeColor = nil }
+    func fill(_ color: Color) { fillPaint = .color(color) }
+    func fill(_ gradient: Gradient) { fillPaint = .gradient(gradient) }
+    func fill(_ paint: Paint) { fillPaint = paint }
+    func noFill() { fillPaint = nil }
+    func stroke(_ color: Color) { strokePaint = .color(color) }
+    func stroke(_ gradient: Gradient) { strokePaint = .gradient(gradient) }
+    func stroke(_ paint: Paint) { strokePaint = paint }
+    func noStroke() { strokePaint = nil }
     func strokeWeight(_ weight: Double) { strokeWidth = max(0, weight) }
     func pointSize(_ size: Double) { pointDiameter = max(0, size) }
     func pointMarker(_ marker: PointMarker) { self.marker = marker }
@@ -317,6 +352,10 @@ final class Drawer {
         glyphVertices.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
+        // The row table is per-frame like the geometry (a row index is only
+        // meaningful against this frame's strip); the bake cache persists.
+        gradientRows.removeAll(keepingCapacity: true)
+        gradientRowIndex.removeAll(keepingCapacity: true)
         transform = matrix_identity_float3x3
         transformIsIdentity = true
         stateStack.removeAll(keepingCapacity: true)
@@ -346,7 +385,7 @@ final class Drawer {
     /// Save the current transform and style (fill/stroke/weight).
     func pushState() {
         stateStack.append(SavedState(transform: transform, transformIsIdentity: transformIsIdentity,
-                                     fillColor: fillColor, strokeColor: strokeColor,
+                                     fillPaint: fillPaint, strokePaint: strokePaint,
                                      strokeWidth: strokeWidth, pointDiameter: pointDiameter,
                                      marker: marker, hollowWidth: hollowWidth,
                                      strokeAlignment: strokeAlignment,
@@ -363,8 +402,8 @@ final class Drawer {
         guard let s = stateStack.popLast() else { return }
         transform = s.transform
         transformIsIdentity = s.transformIsIdentity
-        fillColor = s.fillColor
-        strokeColor = s.strokeColor
+        fillPaint = s.fillPaint
+        strokePaint = s.strokePaint
         strokeWidth = s.strokeWidth
         pointDiameter = s.pointDiameter
         marker = s.marker
@@ -391,12 +430,12 @@ final class Drawer {
     func drawCircle(_ x: Double, _ y: Double, _ radius: Double) {
         guard radius > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.ellipse(center: Vector2(x, y), rx: radius, ry: radius), fill: fillColor, stroke: strokeColor)
+            svgRecord(.ellipse(center: Vector2(x, y), rx: radius, ry: radius), fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .ellipse, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(radius), Float(radius)),
-                  fill: fillColor, stroke: strokeColor)
+                  fill: fillPaint, stroke: strokePaint)
     }
 
     /// The same circle, given as a `Circle` value.
@@ -411,12 +450,12 @@ final class Drawer {
     func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double) {
         guard rx > 0, ry > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.ellipse(center: Vector2(x, y), rx: rx, ry: ry), fill: fillColor, stroke: strokeColor)
+            svgRecord(.ellipse(center: Vector2(x, y), rx: rx, ry: ry), fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .ellipse, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(rx), Float(ry)),
-                  fill: fillColor, stroke: strokeColor)
+                  fill: fillPaint, stroke: strokePaint)
     }
 
     /// A filled marker at `(x, y)`. `size` is the on-screen *diameter* (points); the
@@ -427,7 +466,7 @@ final class Drawer {
     /// The round `.circle` marker also stays smooth down to sub-pixel sizes, fading
     /// by area instead of popping or snapping to 1px.
     func drawPoint(_ x: Double, _ y: Double, _ size: Double) {
-        guard size > 0, let fill = fillColor else { return }
+        guard size > 0, let fill = fillPaint else { return }
         if svgRecorder != nil {
             let r = size / 2, c = Vector2(x, y), arm = (size / 2) * 0.28
             switch marker {
@@ -473,7 +512,7 @@ final class Drawer {
         guard radius > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.triangleEquilateral(radius: radius), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         let height = radius * 1.5                          // apex-to-base distance
@@ -482,7 +521,7 @@ final class Drawer {
         // above it (the centroid is ⅓ of the height up from the base).
         appendSDF(shape: .triangle, center: Vector2(x, y - radius),
                   size: SIMD2<Float>(Float(halfBase), Float(height)),
-                  fill: fillColor, stroke: strokeColor)
+                  fill: fillPaint, stroke: strokePaint)
     }
 
     /// An isosceles triangle whose apex (tip) is at `(x, y)`, opening toward +y
@@ -496,12 +535,12 @@ final class Drawer {
         guard base > 0, height > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.triangleIsosceles(base: base, height: height), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .triangle, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(base / 2), Float(height)),
-                  fill: fillColor, stroke: strokeColor)
+                  fill: fillPaint, stroke: strokePaint)
     }
 
     /// A triangle through three arbitrary corners `a`, `b`, `c` (any winding). Unlike
@@ -517,14 +556,14 @@ final class Drawer {
         let lo = Vector2(min(a.x, min(b.x, c.x)), min(a.y, min(b.y, c.y)))
         let hi = Vector2(max(a.x, max(b.x, c.x)), max(a.y, max(b.y, c.y)))
         if svgRecorder != nil {
-            svgRecord(.polygon([a, b, c]), fill: fillColor, stroke: strokeColor)
+            svgRecord(.polygon([a, b, c]), fill: fillPaint, stroke: strokePaint)
             return
         }
         let center = (lo + hi) / 2
         let half = (hi - lo) / 2
         appendSDF(shape: .triangle3, center: center,
                   size: SIMD2<Float>(Float(half.x), Float(half.y)),
-                  fill: fillColor, stroke: strokeColor,
+                  fill: fillPaint, stroke: strokePaint,
                   param0: (a - center).simd2, param1: (b - center).simd2, param2: (c - center).simd2)
     }
 
@@ -545,7 +584,7 @@ final class Drawer {
         guard radius > 0, sides >= 3 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.ngon(radius: radius, sides: sides), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         // A regular polygon is the special case of a star whose inner radius is the
@@ -573,7 +612,7 @@ final class Drawer {
         guard outerRadius > 0, innerRadius > 0, innerRadius <= outerRadius, points >= 3 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.star(outer: outerRadius, inner: innerRadius, points: points), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         appendStar(center: Vector2(x, y), outer: outerRadius, inner: innerRadius, points: points)
@@ -590,12 +629,12 @@ final class Drawer {
         if svgRecorder != nil {
             let pts = r > 0 ? SDFOutline.rhombusRounded(width: width, height: height, cornerRadius: r)
                             : SDFOutline.rhombus(width: width, height: height)
-            svgRecord(.polygon(svgOffset(pts, Vector2(x, y))), fill: fillColor, stroke: strokeColor)
+            svgRecord(.polygon(svgOffset(pts, Vector2(x, y))), fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .rhombus, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(width / 2), Float(height / 2)),
-                  fill: fillColor, stroke: strokeColor, extra: Float(r))
+                  fill: fillPaint, stroke: strokePaint, extra: Float(r))
     }
 
     /// A vesica (a pointed lens / two-circle intersection) centered at `(x, y)`,
@@ -606,7 +645,7 @@ final class Drawer {
         guard width > 0, height > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.vesica(width: width, height: height, cornerRadius: max(0, cornerRadius)), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         let horizontal = width > height
@@ -624,7 +663,7 @@ final class Drawer {
         let dOff = (a * a - w * w) / (2 * w)
         appendSDF(shape: .vesica, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(width / 2 + rr), Float(height / 2 + rr)),
-                  fill: fillColor, stroke: strokeColor, extra: Float(rr),
+                  fill: fillPaint, stroke: strokePaint, extra: Float(rr),
                   param0: SIMD2<Float>(Float(rCircle), Float(dOff)),
                   param1: SIMD2<Float>(horizontal ? 1 : 0, 0))
     }
@@ -640,12 +679,12 @@ final class Drawer {
         let rr = max(0, cornerRadius)
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.moon(outerRadius: outerRadius, innerRadius: innerRadius, offset: offset, cornerRadius: rr), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .moon, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(outerRadius + rr), Float(outerRadius + rr)),
-                  fill: fillColor, stroke: strokeColor, extra: Float(rr),
+                  fill: fillPaint, stroke: strokePaint, extra: Float(rr),
                   param0: SIMD2<Float>(Float(outerRadius), Float(innerRadius)),
                   param1: SIMD2<Float>(Float(offset), 0))
     }
@@ -662,12 +701,12 @@ final class Drawer {
         if svgRecorder != nil {
             let pts = r > 0 ? SDFOutline.crossRounded(length: length, thickness: thickness, cornerRadius: r)
                             : SDFOutline.cross(length: length, thickness: thickness)
-            svgRecord(.polygon(svgOffset(pts, Vector2(x, y))), fill: fillColor, stroke: strokeColor)
+            svgRecord(.polygon(svgOffset(pts, Vector2(x, y))), fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .cross, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(armHalfLength), Float(armHalfLength)),
-                  fill: fillColor, stroke: strokeColor, extra: Float(r),
+                  fill: fillPaint, stroke: strokePaint, extra: Float(r),
                   param0: SIMD2<Float>(Float(armHalfWidth), 0))
     }
 
@@ -683,14 +722,14 @@ final class Drawer {
             if innerRadius > 0 {
                 contours.append(Contour(svgOffset(SDFOutline.circle(radius: innerRadius), c), closed: true))
             }
-            svgRecord(.path(Shape(contours: contours, winding: .evenOdd)), fill: fillColor, stroke: nil)
+            svgRecord(.path(Shape(contours: contours, winding: .evenOdd)), fill: fillPaint, stroke: nil)
             return
         }
         let mid = (outerRadius + innerRadius) / 2
         let half = (outerRadius - innerRadius) / 2
         appendSDF(shape: .ring, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(outerRadius), Float(outerRadius)),
-                  fill: fillColor, stroke: nil,
+                  fill: fillPaint, stroke: nil,
                   param0: SIMD2<Float>(Float(mid), Float(half)))
     }
 
@@ -702,13 +741,13 @@ final class Drawer {
         guard height > 0, topWidth >= 0, bottomWidth >= 0, topWidth + bottomWidth > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.trapezoid(topWidth: topWidth, bottomWidth: bottomWidth, height: height), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         let halfMax = max(topWidth, bottomWidth) / 2
         appendSDF(shape: .trapezoid, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(halfMax), Float(height / 2)),
-                  fill: fillColor, stroke: strokeColor,
+                  fill: fillPaint, stroke: strokePaint,
                   param0: SIMD2<Float>(Float(topWidth / 2), Float(bottomWidth / 2)))
     }
 
@@ -719,12 +758,12 @@ final class Drawer {
         guard width > 0, height > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.parallelogram(width: width, height: height, skew: skew), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .parallelogram, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(width / 2 + abs(skew)), Float(height / 2)),
-                  fill: fillColor, stroke: strokeColor, extra: Float(skew),
+                  fill: fillPaint, stroke: strokePaint, extra: Float(skew),
                   param0: SIMD2<Float>(Float(width / 2), 0))
     }
 
@@ -736,7 +775,7 @@ final class Drawer {
         guard bottomRadius > 0, topRadius > 0, topRadius <= bottomRadius else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.egg(bottomRadius: bottomRadius, topRadius: topRadius), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         // Native span is y in [-bottomRadius, apex]; the fragment recenters on the
@@ -745,7 +784,7 @@ final class Drawer {
         let halfHeight = (apex + bottomRadius) / 2
         appendSDF(shape: .egg, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(bottomRadius), Float(halfHeight)),
-                  fill: fillColor, stroke: strokeColor,
+                  fill: fillPaint, stroke: strokePaint,
                   param0: SIMD2<Float>(Float(bottomRadius), Float(topRadius)))
     }
 
@@ -755,7 +794,7 @@ final class Drawer {
     func drawHeart(_ x: Double, _ y: Double, _ size: Double) {
         guard size > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.heart(size: size), Vector2(x, y))), fill: fillColor, stroke: strokeColor)
+            svgRecord(.polygon(svgOffset(SDFOutline.heart(size: size), Vector2(x, y))), fill: fillPaint, stroke: strokePaint)
             return
         }
         // The unit heart spans width 1.2036, height 1.0985 (lobes up); scale so the
@@ -763,7 +802,7 @@ final class Drawer {
         let s = size / 1.2036
         appendSDF(shape: .heart, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(0.6018 * s), Float(0.54925 * s)),
-                  fill: fillColor, stroke: strokeColor,
+                  fill: fillPaint, stroke: strokePaint,
                   param0: SIMD2<Float>(Float(s), 0))
     }
 
@@ -777,12 +816,12 @@ final class Drawer {
         guard radius > 0, abs(cut) < radius else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.cutDisk(radius: radius, cut: cut), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .cutDisk, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(radius), Float(radius)),
-                  fill: fillColor, stroke: strokeColor,
+                  fill: fillPaint, stroke: strokePaint,
                   param0: SIMD2<Float>(Float(radius), Float(cut)))
     }
 
@@ -798,14 +837,14 @@ final class Drawer {
         guard len > 1e-6, len >= abs(ra - rb) else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.unevenCapsule(a: a, b: b, ra: ra, rb: rb), (a + b) / 2)),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         let dir = d / len
         let bound = len / 2 + max(ra, rb)
         appendSDF(shape: .unevenCapsule, center: (a + b) / 2,
                   size: SIMD2<Float>(Float(bound), Float(bound)),
-                  fill: fillColor, stroke: strokeColor, extra: Float(len),
+                  fill: fillPaint, stroke: strokePaint, extra: Float(len),
                   param0: SIMD2<Float>(Float(ra), Float(rb)),
                   param1: SIMD2<Float>(Float(dir.y), Float(dir.x)))
     }
@@ -820,7 +859,7 @@ final class Drawer {
         guard radius > 0, thickness > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.horseshoe(radius: radius, thickness: thickness, gap: gap), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         // iq's `c` is the (cos, sin) of half the opening angle: the band then wraps
@@ -830,7 +869,7 @@ final class Drawer {
         let bound = Float(radius + thickness)
         appendSDF(shape: .horseshoe, center: Vector2(x, y),
                   size: SIMD2<Float>(bound, bound),
-                  fill: fillColor, stroke: strokeColor, extra: Float(radius),
+                  fill: fillPaint, stroke: strokePaint, extra: Float(radius),
                   param0: SIMD2<Float>(Float(cos(an)), Float(sin(an))),
                   param1: SIMD2<Float>(w, w))
     }
@@ -843,12 +882,12 @@ final class Drawer {
         guard width > 0, height > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.parabola(width: width, height: height), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .parabola, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(width / 2), Float(height / 2)),
-                  fill: fillColor, stroke: strokeColor,
+                  fill: fillPaint, stroke: strokePaint,
                   param0: SIMD2<Float>(Float(width / 2), Float(height)))
     }
 
@@ -860,7 +899,7 @@ final class Drawer {
         guard length > 0, thickness > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.roundedX(length: length, thickness: thickness), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         let r = thickness / 2
@@ -868,7 +907,7 @@ final class Drawer {
         let w = max(length - thickness * 0.7071067811865476, 0)
         appendSDF(shape: .roundedX, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(length / 2 + r), Float(length / 2 + r)),
-                  fill: fillColor, stroke: strokeColor, extra: Float(r),
+                  fill: fillPaint, stroke: strokePaint, extra: Float(r),
                   param0: SIMD2<Float>(Float(w), 0))
     }
 
@@ -881,7 +920,7 @@ final class Drawer {
         guard radius > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.blobbyCross(radius: radius, blobbiness: blobbiness), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         let he = min(max(blobbiness, 0.3), 0.6)
@@ -892,7 +931,7 @@ final class Drawer {
         let s = radius / tipUnit
         appendSDF(shape: .blobbyCross, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(radius * 1.08), Float(radius * 1.08)),
-                  fill: fillColor, stroke: strokeColor,
+                  fill: fillPaint, stroke: strokePaint,
                   param0: SIMD2<Float>(Float(s), Float(he)))
     }
 
@@ -904,14 +943,14 @@ final class Drawer {
         guard width > 0, height >= width / 2 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.tunnel(width: width, height: height), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         let whx = width / 2                 // half-width = arch radius
         let why = height - whx              // straight-wall height
         appendSDF(shape: .tunnel, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(width / 2), Float(height / 2)),
-                  fill: fillColor, stroke: strokeColor,
+                  fill: fillPaint, stroke: strokePaint,
                   param0: SIMD2<Float>(Float(whx), Float(why)))
     }
 
@@ -923,13 +962,13 @@ final class Drawer {
         guard stepWidth > 0, stepHeight > 0, steps >= 1 else { return }
         if svgRecorder != nil {
             svgRecord(.polygon(svgOffset(SDFOutline.stairs(stepWidth: stepWidth, stepHeight: stepHeight, steps: steps), Vector2(x, y))),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         let n = Double(steps)
         appendSDF(shape: .stairs, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(stepWidth * n / 2), Float(stepHeight * n / 2)),
-                  fill: fillColor, stroke: strokeColor, extra: Float(steps),
+                  fill: fillPaint, stroke: strokePaint, extra: Float(steps),
                   param0: SIMD2<Float>(Float(stepWidth), Float(stepHeight)))
     }
 
@@ -939,14 +978,14 @@ final class Drawer {
     func drawCoolS(_ x: Double, _ y: Double, _ size: Double) {
         guard size > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.coolS(size: size), Vector2(x, y))), fill: fillColor, stroke: strokeColor)
+            svgRecord(.polygon(svgOffset(SDFOutline.coolS(size: size), Vector2(x, y))), fill: fillPaint, stroke: strokePaint)
             return
         }
         // The unit "S" spans about y in [-1.05, 1.05]; scale so `size` is its height.
         let s = size / 2.1
         appendSDF(shape: .coolS, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(size / 2 + s * 0.1), Float(size / 2 + s * 0.1)),
-                  fill: fillColor, stroke: strokeColor,
+                  fill: fillPaint, stroke: strokePaint,
                   param0: SIMD2<Float>(Float(s), 0))
     }
 
@@ -965,17 +1004,51 @@ final class Drawer {
         let ecs = SIMD2<Float>(Float(cos(en)), Float(sin(en)))
         appendSDF(shape: .star, center: center,
                   size: SIMD2<Float>(Float(outer), Float(outer)),
-                  fill: fillColor, stroke: strokeColor,
+                  fill: fillPaint, stroke: strokePaint,
                   extra: Float(an), param0: acs, param1: ecs)
+    }
+
+    /// One paint encoded for an `SDFInstance` color slot: a solid color as-is
+    /// (kind 0), or a gradient's geometry — made relative to the shape center, so
+    /// the fragment evaluates it against `in.local` and it rides the CTM — with
+    /// the paint kind for the shape-tag bits and the ramp's strip row.
+    private struct EncodedPaint {
+        var slot: SIMD4<Float>
+        var kind: UInt32      // 0 solid, 1 linear, 2 radial, 3 along-path
+        var row: Float
+
+        static let none = EncodedPaint(slot: SIMD4<Float>(repeating: 0), kind: 0, row: 0)
+    }
+
+    private func encodePaint(_ paint: Paint, center: Vector2) -> EncodedPaint {
+        switch paint {
+        case .color(let c):
+            return EncodedPaint(slot: c.simd4, kind: 0, row: 0)
+        case .gradient(let g):
+            let row = Float(gradientRow(for: g.ramp).index)
+            switch g.geometry {
+            case .linear(let start, let end):
+                let s = start - center
+                let e = end - center
+                return EncodedPaint(slot: SIMD4<Float>(Float(s.x), Float(s.y), Float(e.x), Float(e.y)),
+                                    kind: 1, row: row)
+            case .radial(let c, let r):
+                let cc = c - center
+                return EncodedPaint(slot: SIMD4<Float>(Float(cc.x), Float(cc.y), Float(max(r, 1e-6)), 0),
+                                    kind: 2, row: row)
+            case .alongPath:
+                return EncodedPaint(slot: SIMD4<Float>(repeating: 0), kind: 3, row: row)
+            }
+        }
     }
 
     /// Record one analytic shape as an SDF instance, carrying the current
     /// transform plus the given fill, stroke, and shape-specific slots. A `nil`
     /// fill/stroke becomes a zero-alpha color the shader treats as "skip"; a
-    /// caller passes explicit colors (e.g. a line passes its stroke as `fill`).
+    /// caller passes explicit paints (e.g. a line passes its stroke as `fill`).
     /// No-op when there's nothing to draw.
     private func appendSDF(shape: SDFShape, center: Vector2, size: SIMD2<Float>,
-                           fill: Color?, stroke: Color?, strokeWidth: Double? = nil,
+                           fill: Paint?, stroke: Paint?, strokeWidth: Double? = nil,
                            extra: Float = 0,
                            param0: SIMD2<Float> = .zero, param1: SIMD2<Float> = .zero,
                            param2: SIMD2<Float> = .zero,
@@ -998,21 +1071,26 @@ final class Drawer {
         // round-dot point path shares the `.ellipse` tag, so it opts out here.
         let band = (applyHollow && shape.honorsHollow) ? Float(hollowWidth) : 0
         ensureBatch(.sdf)
+        let fillEnc = fill.map { encodePaint($0, center: center) } ?? .none
+        let strokeEnc = hasStroke ? encodePaint(stroke!, center: center) : .none
         sdfInstances.append(SDFInstance(
             transform: transform,
             center: center.simd2,
             size: size,
-            fillColor: fill?.simd4 ?? SIMD4<Float>(repeating: 0),
-            strokeColor: hasStroke ? stroke!.simd4 : SIMD4<Float>(repeating: 0),
+            fillColor: fillEnc.slot,
+            strokeColor: strokeEnc.slot,
             param0: param0,
             param1: param1,
             param2: param2,
             strokeWidth: hasStroke ? Float(weight) : 0,
             extra: extra,
             bandWidth: band,
-            // Stroke alignment rides in the shape tag's high bits (the tag itself
-            // is < 256), so it costs no room in the instance.
-            shape: shape.rawValue | (strokeAlignment.shaderCode << 8)))
+            // Stroke alignment and the two paint kinds ride in the shape tag's
+            // high bits (the tag itself is < 256), so they cost no instance room.
+            shape: shape.rawValue | (strokeAlignment.shaderCode << 8)
+                 | (fillEnc.kind << 10) | (strokeEnc.kind << 12),
+            fillGradient: fillEnc.row,
+            strokeGradient: strokeEnc.row))
     }
 
     /// An elliptical arc centered at `(x, y)` with radii `rx`/`ry`, sweeping from
@@ -1041,14 +1119,14 @@ final class Drawer {
                 pts.append(Vector2(x + cos(a) * rx, y + sin(a) * ry))
             }
             let center = Vector2(x, y)
-            if let fill = fillColor {
+            if let fill = fillPaint {
                 svgRecord(.polygon(mode == .pie ? [center] + pts : pts), fill: fill, stroke: nil)
             }
-            if strokeColor != nil, strokeWidth > 0 {
+            if strokePaint != nil, strokeWidth > 0 {
                 switch mode {
-                case .open:  svgRecord(.polyline(pts), fill: nil, stroke: strokeColor)
-                case .chord: svgRecord(.polygon(pts), fill: nil, stroke: strokeColor)
-                case .pie:   svgRecord(.polygon([center] + pts), fill: nil, stroke: strokeColor)
+                case .open:  svgRecord(.polyline(pts), fill: nil, stroke: strokePaint)
+                case .chord: svgRecord(.polygon(pts), fill: nil, stroke: strokePaint)
+                case .pie:   svgRecord(.polygon([center] + pts), fill: nil, stroke: strokePaint)
                 }
             }
             return
@@ -1071,42 +1149,50 @@ final class Drawer {
         }
         let center = Vector2(x, y)
 
-        if let fill = fillColor {
-            let c = fill.simd4
+        if let fill = fillPaint {
+            // Anchored on the arc center, so an along-path fill sweeps the same
+            // conic the SDF arc evaluates.
+            let vp = vertexPaint(fill, anchor: center)
             switch mode {
             case .open, .chord:
                 // Circular segment — convex, so a fan from the first point fills it.
                 let p0 = pts[0].simd2
+                let c0 = vp.color(at: pts[0])
                 for i in 1..<(pts.count - 1) {
-                    emit(p0, color: c)
-                    emit(pts[i].simd2, color: c)
-                    emit(pts[i + 1].simd2, color: c)
+                    emit(p0, color: c0)
+                    emit(pts[i].simd2, color: vp.color(at: pts[i]))
+                    emit(pts[i + 1].simd2, color: vp.color(at: pts[i + 1]))
                 }
             case .pie:
                 // Wedge — fan from the center.
                 let cc = center.simd2
+                let centerColor = vp.color(at: center)
                 for i in 0..<(pts.count - 1) {
-                    emit(cc, color: c)
-                    emit(pts[i].simd2, color: c)
-                    emit(pts[i + 1].simd2, color: c)
+                    emit(cc, color: centerColor)
+                    emit(pts[i].simd2, color: vp.color(at: pts[i]))
+                    emit(pts[i + 1].simd2, color: vp.color(at: pts[i + 1]))
                 }
             }
         }
 
-        if let stroke = strokeColor, strokeWidth > 0 {
-            let c = stroke.simd4
+        if let stroke = strokePaint, strokeWidth > 0 {
+            let vp = vertexPaint(stroke, anchor: center)
             let half = strokeWidth / 2
             for i in 1..<pts.count {
-                appendSegment(from: pts[i - 1], to: pts[i], half: half, color: c)
+                appendSegment(from: pts[i - 1], to: pts[i], half: half,
+                              colorA: vp.color(at: pts[i - 1]), colorB: vp.color(at: pts[i]))
             }
             switch mode {
             case .open:
                 break
             case .chord:
-                appendSegment(from: pts[pts.count - 1], to: pts[0], half: half, color: c)
+                appendSegment(from: pts[pts.count - 1], to: pts[0], half: half,
+                              colorA: vp.color(at: pts[pts.count - 1]), colorB: vp.color(at: pts[0]))
             case .pie:
-                appendSegment(from: center, to: pts[0], half: half, color: c)
-                appendSegment(from: pts[pts.count - 1], to: center, half: half, color: c)
+                appendSegment(from: center, to: pts[0], half: half,
+                              colorA: vp.color(at: center), colorB: vp.color(at: pts[0]))
+                appendSegment(from: pts[pts.count - 1], to: center, half: half,
+                              colorA: vp.color(at: pts[pts.count - 1]), colorB: vp.color(at: center))
             }
         }
     }
@@ -1132,7 +1218,7 @@ final class Drawer {
         let r = Float(radius)
         appendSDF(shape: shape, center: center,
                   size: SIMD2<Float>(r, r),
-                  fill: fillColor, stroke: strokeColor,
+                  fill: fillPaint, stroke: strokePaint,
                   param0: SIMD2<Float>(Float(sin(halfAperture)), Float(cos(halfAperture))),
                   param1: SIMD2<Float>(Float(cos(phi)), Float(sin(phi))))
     }
@@ -1146,12 +1232,13 @@ final class Drawer {
     /// finish per `strokeCap` (butt by default). Needs at least two points and a
     /// stroke to draw anything.
     func drawPolyline(_ points: [Vector2]) {
-        guard points.count >= 2, let stroke = strokeColor, strokeWidth > 0 else { return }
+        guard points.count >= 2, let stroke = strokePaint, strokeWidth > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.polyline(points), fill: nil, stroke: stroke)
             return
         }
-        appendStrokedPath(points, closed: false, half: strokeWidth / 2, color: stroke.simd4)
+        appendStrokedPath(points, closed: false, half: strokeWidth / 2,
+                          paint: vertexPaint(stroke, anchor: points[0]))
     }
 
     /// An axis-aligned `Rectangle`. Recorded as a single SDF instance (a box
@@ -1165,12 +1252,12 @@ final class Drawer {
         let r = max(0, min(cornerRadius, min(rect.width, rect.height) / 2))
         if svgRecorder != nil {
             svgRecord(.rect(corner: Vector2(rect.x, rect.y), width: rect.width, height: rect.height, cornerRadius: r),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .box, center: rect.center,
                   size: SIMD2<Float>(Float(rect.width / 2), Float(rect.height / 2)),
-                  fill: fillColor, stroke: strokeColor, extra: Float(r))
+                  fill: fillPaint, stroke: strokePaint, extra: Float(r))
     }
 
     // MARK: Batches
@@ -1278,7 +1365,7 @@ final class Drawer {
     /// current `stroke` (weight, join, cap). Fill is ignored — the inverse of
     /// outline text.
     private func drawStrokeText(_ string: String, _ x: Double, _ y: Double, font: StrokeFont) {
-        guard strokeColor != nil, strokeWidth > 0 else { return }
+        guard strokePaint != nil, strokeWidth > 0 else { return }
         forEachStrokeGlyphPolyline(string, x, y, font: font) { polyline in
             drawPolyline(polyline)
         }
@@ -1329,7 +1416,7 @@ final class Drawer {
 
     /// Bitmap path: one fill color square per lit pixel (see `forEachBitmapPixel`).
     private func drawBitmapText(_ string: String, _ x: Double, _ y: Double, font: BitmapFont) {
-        guard let fill = fillColor else { return }
+        guard let fill = fillPaint else { return }
         forEachBitmapPixel(string, x, y, font: font) { center, module in
             let half = SIMD2<Float>(Float(module / 2), Float(module / 2))
             // Fill-only square; opt out of hollow so a set band doesn't turn each
@@ -1345,8 +1432,8 @@ final class Drawer {
     /// `glyphShapes` + `drawShape` pass would emit, without re-tessellating every
     /// frame. SVG export keeps the `drawShape` path (its recorder wants `Shape`s).
     private func drawOutlineText(_ string: String, _ x: Double, _ y: Double, font: OutlineFont) {
-        let hasFill = fillColor != nil
-        let hasStroke = strokeColor != nil && strokeWidth > 0
+        let hasFill = fillPaint != nil
+        let hasStroke = strokePaint != nil && strokeWidth > 0
         guard hasFill || hasStroke else { return }
 
         if svgRecorder != nil {
@@ -1357,24 +1444,29 @@ final class Drawer {
             return
         }
 
+        // One paint resolution for the whole run; an along-path fill sweeps
+        // around the text anchor.
+        let fillVP = fillPaint.map { vertexPaint($0, anchor: Vector2(x, y)) }
+        let strokeVP = strokePaint.map { vertexPaint($0, anchor: Vector2(x, y)) }
         for glyph in font.placedGlyphs(for: string, size: textPixelSize,
                                        alignH: textAlignH, alignV: textAlignV, at: Vector2(x, y)) {
             let origin = glyph.origin
-            if hasFill, let fill = fillColor {
-                let c = fill.simd4
+            if let vp = fillVP {
                 let tri = glyph.localFill
                 for i in stride(from: 0, to: tri.count - 2, by: 3) {
-                    emit((tri[i] + origin).simd2, color: c)
-                    emit((tri[i + 1] + origin).simd2, color: c)
-                    emit((tri[i + 2] + origin).simd2, color: c)
+                    let p0 = tri[i] + origin
+                    let p1 = tri[i + 1] + origin
+                    let p2 = tri[i + 2] + origin
+                    emit(p0.simd2, color: vp.color(at: p0))
+                    emit(p1.simd2, color: vp.color(at: p1))
+                    emit(p2.simd2, color: vp.color(at: p2))
                 }
             }
-            if hasStroke, let stroke = strokeColor {
-                let c = stroke.simd4
+            if hasStroke, let vp = strokeVP {
                 let half = strokeWidth / 2
                 for contour in glyph.localContours where contour.points.count >= 2 {
                     appendStrokedPath(contour.points.map { $0 + origin },
-                                      closed: contour.isClosed, half: half, color: c)
+                                      closed: contour.isClosed, half: half, paint: vp)
                 }
             }
         }
@@ -1386,12 +1478,14 @@ final class Drawer {
     /// filled body text); the outline path keeps fill + stroke. The whole call is
     /// one batch — all glyphs share the atlas texture.
     private func drawAtlasText(_ string: String, _ x: Double, _ y: Double, font: OutlineFont) {
-        guard let fill = fillColor else { return }
+        guard let fill = fillPaint else { return }
         let placed = font.placedAtlasGlyphs(for: string, size: textPixelSize,
                                             alignH: textAlignH, alignV: textAlignV, at: Vector2(x, y))
         guard !placed.isEmpty else { return }
 
-        let tint = fill.simd4
+        // The tint carries the fill: per-corner for a gradient (glyph quads are
+        // small, so corner interpolation tracks the paint), constant for a color.
+        let vp = vertexPaint(fill, anchor: Vector2(x, y))
         beginGlyphBatch(font.atlas)
         for g in placed {
             guard let slot = font.atlas.slot(for: g.glyph, font: g.font) else { continue }   // space / unplaced
@@ -1401,10 +1495,14 @@ final class Drawer {
             let right = Float(g.origin.x + slot.emRight * textPixelSize)
             let top = Float(g.origin.y - slot.emTop * textPixelSize)
             let bottom = Float(g.origin.y - slot.emBottom * textPixelSize)
-            let tl = imageVertex(left, top, slot.u0, slot.v0, tint)
-            let tr = imageVertex(right, top, slot.u1, slot.v0, tint)
-            let br = imageVertex(right, bottom, slot.u1, slot.v1, tint)
-            let bl = imageVertex(left, bottom, slot.u0, slot.v1, tint)
+            let tl = imageVertex(left, top, slot.u0, slot.v0,
+                                 vp.color(at: Vector2(Double(left), Double(top))))
+            let tr = imageVertex(right, top, slot.u1, slot.v0,
+                                 vp.color(at: Vector2(Double(right), Double(top))))
+            let br = imageVertex(right, bottom, slot.u1, slot.v1,
+                                 vp.color(at: Vector2(Double(right), Double(bottom))))
+            let bl = imageVertex(left, bottom, slot.u0, slot.v1,
+                                 vp.color(at: Vector2(Double(left), Double(bottom))))
             glyphVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
         }
     }
@@ -1673,7 +1771,7 @@ final class Drawer {
     /// `fill` and `stroke` like `drawText`.
     func drawText(_ string: String, along path: Path, offset: Double) {
         guard textPixelSize > 0, !string.isEmpty else { return }
-        guard fillColor != nil || (strokeColor != nil && strokeWidth > 0) else { return }
+        guard fillPaint != nil || (strokePaint != nil && strokeWidth > 0) else { return }
         let run = glyphRun(string)
         let points = path.contour.points
         guard run.count > 0, points.count >= 2 else { return }
@@ -1801,7 +1899,7 @@ final class Drawer {
     /// fattened to `strokeWeight` with round caps — so it's crisp at any size and
     /// effectively free per line. Needs a stroke to draw.
     func drawLine(_ a: Vector2, _ b: Vector2) {
-        guard let stroke = strokeColor, strokeWidth > 0 else { return }
+        guard let stroke = strokePaint, strokeWidth > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.line(a, b), fill: nil, stroke: stroke)
             return
@@ -1842,11 +1940,11 @@ final class Drawer {
             let along = dir * halfLen, across = perp * halfThick
             svgRecord(.polygon([center + along + across, center + along - across,
                                 center - along - across, center - along + across]),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .orientedBox, center: center, size: half,
-                  fill: fillColor, stroke: strokeColor, extra: Float(thickness),
+                  fill: fillPaint, stroke: strokePaint, extra: Float(thickness),
                   param0: (a - center).simd2, param1: (b - center).simd2)
     }
 
@@ -1880,11 +1978,11 @@ final class Drawer {
             let perp = Vector2(-dir.y, dir.x)
             let local = SDFOutline.orientedVesica(halfLength: halfLen, halfWidth: halfWidth)
             svgRecord(.polygon(local.map { center + dir * $0.x + perp * $0.y }),
-                      fill: fillColor, stroke: strokeColor)
+                      fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .orientedVesica, center: center, size: half,
-                  fill: fillColor, stroke: strokeColor, extra: Float(halfWidth),
+                  fill: fillPaint, stroke: strokePaint, extra: Float(halfWidth),
                   param0: (a - center).simd2, param1: (b - center).simd2)
     }
 
@@ -1902,7 +2000,7 @@ final class Drawer {
     /// the current stroke (not fill). For a cubic curve (two control points), sample
     /// it into a `Shape` contour. Needs a stroke to draw.
     func drawBezier(_ start: Vector2, _ control: Vector2, _ end: Vector2) {
-        guard let stroke = strokeColor, strokeWidth > 0 else { return }
+        guard let stroke = strokePaint, strokeWidth > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.quad(start: start, control: control, end: end), fill: nil, stroke: stroke)
             return
@@ -1937,20 +2035,22 @@ final class Drawer {
     func drawPolygon(_ points: [Vector2]) {
         guard points.count >= 3 else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(points), fill: fillColor, stroke: strokeColor)
+            svgRecord(.polygon(points), fill: fillPaint, stroke: strokePaint)
             return
         }
-        if let fill = fillColor {
-            let c = fill.simd4
+        if let fill = fillPaint {
+            let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(points))
             let p0 = points[0].simd2
+            let c0 = vp.color(at: points[0])
             for i in 1..<(points.count - 1) {        // fan from the first vertex
-                emit(p0, color: c)
-                emit(points[i].simd2, color: c)
-                emit(points[i + 1].simd2, color: c)
+                emit(p0, color: c0)
+                emit(points[i].simd2, color: vp.color(at: points[i]))
+                emit(points[i + 1].simd2, color: vp.color(at: points[i + 1]))
             }
         }
-        if let stroke = strokeColor, strokeWidth > 0 {
-            appendStrokedPath(points, closed: true, half: strokeWidth / 2, color: stroke.simd4)
+        if let stroke = strokePaint, strokeWidth > 0 {
+            appendStrokedPath(points, closed: true, half: strokeWidth / 2,
+                              paint: vertexPaint(stroke, anchor: Drawer.boundsCenter(points)))
         }
     }
 
@@ -1961,28 +2061,106 @@ final class Drawer {
     /// path, so a `Shape` composites in draw order with everything else.
     func drawShape(_ shape: Shape) {
         if svgRecorder != nil {
-            svgRecord(.path(shape), fill: fillColor, stroke: strokeColor)
+            svgRecord(.path(shape), fill: fillPaint, stroke: strokePaint)
             return
         }
-        if let fill = fillColor {
-            let c = fill.simd4
+        if let fill = fillPaint {
+            let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(shape.contours.flatMap(\.points)))
             let triangles = shape.triangulatedFill()
             for i in stride(from: 0, to: triangles.count - 2, by: 3) {
-                emit(triangles[i].simd2, color: c)
-                emit(triangles[i + 1].simd2, color: c)
-                emit(triangles[i + 2].simd2, color: c)
+                emit(triangles[i].simd2, color: vp.color(at: triangles[i]))
+                emit(triangles[i + 1].simd2, color: vp.color(at: triangles[i + 1]))
+                emit(triangles[i + 2].simd2, color: vp.color(at: triangles[i + 2]))
             }
         }
-        if let stroke = strokeColor, strokeWidth > 0 {
-            let c = stroke.simd4
+        if let stroke = strokePaint, strokeWidth > 0 {
             let half = strokeWidth / 2
             for contour in shape.contours where contour.points.count >= 2 {
-                appendStrokedPath(contour.points, closed: contour.isClosed, half: half, color: c)
+                appendStrokedPath(contour.points, closed: contour.isClosed, half: half,
+                                  paint: vertexPaint(stroke, anchor: contour.points[0]))
             }
         }
     }
 
     // MARK: Tessellation helpers
+
+    /// A paint resolved for CPU-side, per-vertex evaluation on the tessellated
+    /// path. A solid paint returns its constant; a gradient samples its baked
+    /// LUT row at the vertex position (linear/radial) or path parameter
+    /// (along-path), so the tessellated path paints the same colors the SDF
+    /// fragment derives analytically.
+    private enum VertexPaint {
+        case solid(SIMD4<Float>)
+        case linear(origin: Vector2, dir: Vector2, invLen2: Double, baked: BakedGradient)
+        case radial(center: Vector2, invRadius: Double, baked: BakedGradient)
+        /// Along-path paint: stroked paths pass their arc-length fraction; fills
+        /// (no path parameter) sweep once around `center`, matching the SDF
+        /// fragment's conic fallback.
+        case along(center: Vector2, baked: BakedGradient)
+
+        var isGradient: Bool {
+            if case .solid = self { return false }
+            return true
+        }
+
+        /// The paint color at a vertex position.
+        func color(at p: Vector2) -> SIMD4<Float> {
+            switch self {
+            case .solid(let c):
+                return c
+            case .linear(let origin, let dir, let invLen2, let baked):
+                return baked.sample(((p.x - origin.x) * dir.x + (p.y - origin.y) * dir.y) * invLen2)
+            case .radial(let center, let invRadius, let baked):
+                return baked.sample((p - center).length * invRadius)
+            case .along(let center, let baked):
+                // Conic sweep: 0 at 12 o'clock, increasing clockwise (y-down) —
+                // the same wrap the SDF fragment computes.
+                let raw = atan2(p.x - center.x, -(p.y - center.y)) / Double.tau
+                return baked.sample(raw - raw.rounded(.down))
+            }
+        }
+
+        /// The paint color for a stroked-path vertex: along-path paint reads the
+        /// arc-length fraction `t`; the others read the position like a fill.
+        func color(at p: Vector2, pathT t: Double) -> SIMD4<Float> {
+            if case .along(_, let baked) = self { return baked.sample(t) }
+            return color(at: p)
+        }
+    }
+
+    /// Resolve `paint` for per-vertex evaluation. `anchor` is the center an
+    /// along-path gradient sweeps around when the geometry has no path parameter
+    /// (a fill's conic fallback); it's only evaluated in that case.
+    private func vertexPaint(_ paint: Paint, anchor: @autoclosure () -> Vector2) -> VertexPaint {
+        switch paint {
+        case .color(let c):
+            return .solid(c.simd4)
+        case .gradient(let g):
+            let baked = gradientRow(for: g.ramp).baked
+            switch g.geometry {
+            case .linear(let start, let end):
+                let d = end - start
+                let len2 = max(d.x * d.x + d.y * d.y, 1e-12)
+                return .linear(origin: start, dir: d, invLen2: 1 / len2, baked: baked)
+            case .radial(let center, let radius):
+                return .radial(center: center, invRadius: 1 / max(radius, 1e-6), baked: baked)
+            case .alongPath:
+                return .along(center: anchor(), baked: baked)
+            }
+        }
+    }
+
+    /// The center of `points`' bounding box — the conic anchor for an
+    /// along-path fill on tessellated geometry.
+    private static func boundsCenter(_ points: [Vector2]) -> Vector2 {
+        guard let first = points.first else { return .zero }
+        var lo = first, hi = first
+        for p in points.dropFirst() {
+            lo = Vector2(min(lo.x, p.x), min(lo.y, p.y))
+            hi = Vector2(max(hi.x, p.x), max(hi.y, p.y))
+        }
+        return (lo + hi) / 2
+    }
 
     /// Append one tessellated vertex, transformed by the current CTM. Every
     /// triangle primitive funnels through here, so the transform applies
@@ -2008,9 +2186,11 @@ final class Drawer {
     }
 
     /// One straight stroke segment as a rectangle (two triangles) of width
-    /// `2 * half`, offset perpendicular to the segment direction.
-    private func appendSegment(from a: Vector2, to b: Vector2,
-                               half: Double, color: SIMD4<Float>) {
+    /// `2 * half`, offset perpendicular to the segment direction. Each end takes
+    /// its own color, so a gradient stroke shades across the quad; a solid
+    /// stroke passes the same color twice.
+    private func appendSegment(from a: Vector2, to b: Vector2, half: Double,
+                               colorA: SIMD4<Float>, colorB: SIMD4<Float>) {
         let d = b - a
         let len = d.length
         guard len > 0 else { return }   // skip zero-length (repeated) points
@@ -2021,12 +2201,12 @@ final class Drawer {
         let b0 = (b + n).simd2
         let b1 = (b - n).simd2
         // Quad (a0, b0, b1, a1) -> two triangles.
-        emit(a0, color: color)
-        emit(b0, color: color)
-        emit(b1, color: color)
-        emit(a0, color: color)
-        emit(b1, color: color)
-        emit(a1, color: color)
+        emit(a0, color: colorA)
+        emit(b0, color: colorB)
+        emit(b1, color: colorB)
+        emit(a0, color: colorA)
+        emit(b1, color: colorB)
+        emit(a1, color: colorA)
     }
 
     /// Stroke a polyline or closed contour as butt segment quads plus a join
@@ -2039,7 +2219,7 @@ final class Drawer {
     /// ends. The inner side of a turn is already covered by the overlapping
     /// segment quads, so only the outer gap is filled.
     private func appendStrokedPath(_ points: [Vector2], closed: Bool,
-                                   half: Double, color: SIMD4<Float>) {
+                                   half: Double, paint: VertexPaint) {
         guard half > 0 else { return }
         // Drop repeated points; a zero-length segment has no direction.
         var pts: [Vector2] = []
@@ -2049,12 +2229,43 @@ final class Drawer {
         if closed, pts.count > 1, (pts[0] - pts[pts.count - 1]).length <= 1e-9 {
             pts.removeLast()
         }
+        // A segment quad carries color only at its two ends, so a gradient
+        // crossing a long straight run would interpolate straight through its
+        // stops (and a radial sweep would corner instead of curve) — split long
+        // segments first. The inserted points are collinear, so the join filler
+        // below skips them. Solid strokes keep their geometry untouched.
+        if paint.isGradient {
+            pts = Drawer.subdivided(pts, closed: closed, maxLength: 12)
+        }
         let n = pts.count
         guard n >= 2 else { return }
 
+        // Arc-length fraction at each vertex (0…1 over the path, the closing
+        // segment included), read by along-path paint.
+        var ts: [Double] = []
+        var solidColor: SIMD4<Float>? = nil
+        if case .solid(let c) = paint { solidColor = c }
+        if solidColor == nil {
+            var cumulative: [Double] = [0]
+            cumulative.reserveCapacity(n)
+            for i in 1..<n { cumulative.append(cumulative[i - 1] + (pts[i] - pts[i - 1]).length) }
+            var total = cumulative[n - 1]
+            if closed { total += (pts[0] - pts[n - 1]).length }
+            ts = total > 0 ? cumulative.map { $0 / total } : Array(repeating: 0, count: n)
+        }
+        func colorAt(_ i: Int) -> SIMD4<Float> {
+            solidColor ?? paint.color(at: pts[i], pathT: ts[i])
+        }
+
         let segments = closed ? n : n - 1
         for i in 0..<segments {
-            appendSegment(from: pts[i], to: pts[(i + 1) % n], half: half, color: color)
+            // The closing segment runs back to the start: its far end is the
+            // path's t = 1, not the first vertex's t = 0.
+            let j = (i + 1) % n
+            let colorB = (closed && j == 0 && solidColor == nil)
+                ? paint.color(at: pts[0], pathT: 1) : colorAt(j)
+            appendSegment(from: pts[i], to: pts[j], half: half,
+                          colorA: colorAt(i), colorB: colorB)
         }
 
         let miterLimit = 8.0
@@ -2071,6 +2282,8 @@ final class Drawer {
             let cross = d0.x * d1.y - d0.y * d1.x
             guard abs(cross) > 1e-6 else { continue }   // collinear: no gap to fill
             // Fill on the outer side of the turn (where the two quads diverge).
+            // The whole join takes the corner vertex's color (it spans no length).
+            let color = colorAt(v)
             let side: Double = cross >= 0 ? -1 : 1
             let cornerA = curr + n0 * (side * half)
             let cornerB = curr + n1 * (side * half)
@@ -2104,12 +2317,35 @@ final class Drawer {
         guard !closed else { return }
         let dStart = pts[1] - pts[0]
         if dStart.length > 1e-9 {
-            appendCap(at: pts[0], outward: dStart / dStart.length * -1, half: half, color: color)
+            appendCap(at: pts[0], outward: dStart / dStart.length * -1, half: half, color: colorAt(0))
         }
         let dEnd = pts[n - 1] - pts[n - 2]
         if dEnd.length > 1e-9 {
-            appendCap(at: pts[n - 1], outward: dEnd / dEnd.length, half: half, color: color)
+            appendCap(at: pts[n - 1], outward: dEnd / dEnd.length, half: half, color: colorAt(n - 1))
         }
+    }
+
+    /// `pts` with every segment longer than `maxLength` split into equal pieces
+    /// (the closing segment of a closed path included), so per-vertex gradient
+    /// color tracks the paint instead of skipping its stops.
+    private static func subdivided(_ pts: [Vector2], closed: Bool, maxLength: Double) -> [Vector2] {
+        guard pts.count >= 2 else { return pts }
+        var out: [Vector2] = []
+        out.reserveCapacity(pts.count)
+        let segments = closed ? pts.count : pts.count - 1
+        for i in 0..<segments {
+            let a = pts[i]
+            let b = pts[(i + 1) % pts.count]
+            out.append(a)
+            let pieces = Int(((b - a).length / maxLength).rounded(.up))
+            if pieces > 1 {
+                for k in 1..<pieces {
+                    out.append(a + (b - a) * (Double(k) / Double(pieces)))
+                }
+            }
+        }
+        if !closed { out.append(pts[pts.count - 1]) }
+        return out
     }
 
     /// Finish one open end of a stroked path per `strokeCap`. `outward` is the

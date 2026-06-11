@@ -13,9 +13,9 @@ import Foundation
 ///                        (0.8, Color(hex: 0x3C6DD0)),
 ///                        (1, Color(hex: 0xFFD9A0))], in: .oklch)
 /// ```
-public struct Ramp: Equatable, Sendable {
+public struct Ramp: Equatable, Hashable, Sendable {
     /// A color pinned to a position in `0...1`.
-    public struct Stop: Equatable, Sendable {
+    public struct Stop: Equatable, Hashable, Sendable {
         public var position: Double
         public var color: Color
 

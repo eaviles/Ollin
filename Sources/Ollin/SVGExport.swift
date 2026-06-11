@@ -14,10 +14,12 @@ import simd
 
 /// The drawing state captured alongside each recorded command. A primitive's
 /// fill/stroke is resolved at record time, so the serializer needs no access to
-/// the live `Drawer` state.
+/// the live `Drawer` state. Paints carry gradients through: linear and radial
+/// serialize as native SVG gradient defs; along-path strokes are approximated
+/// as short solid runs before serialization (see `approximateAlongPaths`).
 struct SVGStyle {
-    var fill: Color?
-    var stroke: Color?        // already nil when there's no visible stroke
+    var fill: Paint?
+    var stroke: Paint?        // already nil when there's no visible stroke
     var strokeWidth: Double
     var join: StrokeJoin
     var cap: StrokeCap
@@ -68,11 +70,14 @@ func applyHatching(_ commands: [RecordedSVG], _ options: Hatching) -> [RecordedS
             out.append(command)                  // nothing to fill — leave as-is
             continue
         }
-        // Tone → density: a darker, more opaque fill hatches more tightly.
-        let spacing = options.toneDensity ? toneSpacing(options.spacing, fill) : options.spacing
+        // Tone → density: a darker, more opaque fill hatches more tightly. A
+        // gradient fill keys density to its ramp's midpoint tone (one density
+        // per shape — the hatch is a single pen pass, not a shaded raster).
+        let tone = paintTone(fill)
+        let spacing = options.toneDensity ? toneSpacing(options.spacing, tone) : options.spacing
         if let spacing {
             let device = contours.map { $0.map { transformed($0, command.transform) } }
-            let pen = SVGStyle(fill: nil, stroke: opaque(fill), strokeWidth: options.penWidth,
+            let pen = SVGStyle(fill: nil, stroke: .color(opaque(tone)), strokeWidth: options.penWidth,
                                join: .miter, cap: .butt)
             for line in hatchLines(device, winding: winding, spacing: spacing,
                                    angle: options.angle, crossHatch: options.crossHatch) {
@@ -84,7 +89,7 @@ func applyHatching(_ commands: [RecordedSVG], _ options: Hatching) -> [RecordedS
             var style = command.style          // keep the original border as a stroke
             style.fill = nil
             if style.stroke == nil {
-                style.stroke = opaque(fill)
+                style.stroke = .color(opaque(tone))
                 style.strokeWidth = options.penWidth
             }
             out.append(RecordedSVG(geometry: command.geometry, style: style,
@@ -92,6 +97,15 @@ func applyHatching(_ commands: [RecordedSVG], _ options: Hatching) -> [RecordedS
         }
     }
     return out
+}
+
+/// A paint's representative color for tone decisions: the color itself, or a
+/// gradient's ramp midpoint.
+private func paintTone(_ paint: Paint) -> Color {
+    switch paint {
+    case .color(let c): return c
+    case .gradient(let g): return g.ramp.color(at: 0.5)
+    }
 }
 
 /// A fill's outline as one or more closed contours in its local space, or `nil`
@@ -160,31 +174,180 @@ private func transformed(_ p: Vector2, _ m: simd_float3x3) -> Vector2 {
 
 // MARK: - Serialization
 
-/// Render recorded primitives into an SVG document string.
+/// Render recorded primitives into an SVG document string. Linear and radial
+/// gradient paints become native `<linearGradient>`/`<radialGradient>` defs in
+/// user space (so they transform with the element, matching the render);
+/// along-path strokes are split into short solid runs first, and along-path
+/// fills (the conic sweep) fall back to the ramp's midpoint color.
 func serializeSVG(_ commands: [RecordedSVG], background: Color,
                   width: Int, height: Int, skippedImages: Int = 0) -> String {
+    let resolved = approximateAlongPaths(commands)
+    let (defs, ids) = gradientDefs(resolved)
     var out = """
     <?xml version="1.0" encoding="UTF-8"?>
     <svg xmlns="http://www.w3.org/2000/svg" width="\(width)" height="\(height)" viewBox="0 0 \(width) \(height)">
 
     """
+    out += defs
     out += "  <rect width=\"\(width)\" height=\"\(height)\" fill=\"\(svgColor(background))\"\(svgOpacity("fill", background))/>\n"
     if skippedImages > 0 {
         out += "  <!-- \(skippedImages) image draw(s) skipped: raster is omitted from vector export -->\n"
     }
-    for command in commands {
-        out += "  " + svgElement(command) + "\n"
+    for command in resolved {
+        out += "  " + svgElement(command, ids) + "\n"
     }
     out += "</svg>\n"
     return out
 }
 
+/// Replace along-path paints with what SVG can express: a gradient *stroke*
+/// following a path becomes a run of short solid segments (one `<line>` per
+/// piece, round-capped so they chain seamlessly), and an along-path *fill* —
+/// the conic sweep — becomes its ramp's midpoint color.
+private func approximateAlongPaths(_ commands: [RecordedSVG]) -> [RecordedSVG] {
+    var out: [RecordedSVG] = []
+    for command in commands {
+        var command = command
+        var runs: [RecordedSVG] = []
+        if case .gradient(let g) = command.style.stroke, g.geometry == .alongPath,
+           let split = alongStrokeRuns(command, g) {
+            command.style.stroke = nil
+            runs = split
+        }
+        if case .gradient(let g) = command.style.fill, g.geometry == .alongPath {
+            command.style.fill = .color(g.ramp.color(at: 0.5))
+        }
+        if command.style.fill != nil || command.style.stroke != nil {
+            out.append(command)
+        }
+        out.append(contentsOf: runs)
+    }
+    return out
+}
+
+/// An along-path stroke as solid runs, or `nil` when the geometry has no path
+/// to follow (an ellipse/rect outline sweep stays a midpoint-color stroke).
+private func alongStrokeRuns(_ command: RecordedSVG, _ gradient: Gradient) -> [RecordedSVG]? {
+    var paths: [(points: [Vector2], closed: Bool)]
+    switch command.geometry {
+    case let .line(a, b):
+        paths = [([a, b], false)]
+    case let .quad(start, control, end):
+        let n = 24
+        let pts = (0...n).map { k -> Vector2 in
+            let t = Double(k) / Double(n)
+            let u = 1 - t
+            return start * (u * u) + control * (2 * u * t) + end * (t * t)
+        }
+        paths = [(pts, false)]
+    case let .polyline(points):
+        paths = [(points, false)]
+    case let .polygon(points):
+        paths = [(points, true)]
+    case let .path(shape):
+        paths = shape.contours.map { ($0.points, $0.isClosed) }
+    case .ellipse, .rect:
+        return nil
+    }
+
+    var penStyle = command.style
+    penStyle.fill = nil
+    var out: [RecordedSVG] = []
+    for (points, closed) in paths {
+        var pts = points
+        if closed, let first = pts.first { pts.append(first) }
+        guard pts.count >= 2 else { continue }
+        // Split long segments (the same ~12-point pieces the renderer shades
+        // across), then color each piece at its midpoint arc length.
+        var split: [Vector2] = []
+        for i in 0..<(pts.count - 1) {
+            let a = pts[i], b = pts[i + 1]
+            split.append(a)
+            let pieces = Int(((b - a).length / 12).rounded(.up))
+            if pieces > 1 {
+                for k in 1..<pieces { split.append(a + (b - a) * (Double(k) / Double(pieces))) }
+            }
+        }
+        split.append(pts[pts.count - 1])
+        var cumulative: [Double] = [0]
+        for i in 1..<split.count { cumulative.append(cumulative[i - 1] + (split[i] - split[i - 1]).length) }
+        let total = cumulative[split.count - 1]
+        guard total > 0 else { continue }
+        for i in 0..<(split.count - 1) {
+            let midT = (cumulative[i] + cumulative[i + 1]) / (2 * total)
+            penStyle.stroke = .color(gradient.ramp.color(at: midT))
+            out.append(RecordedSVG(geometry: .line(split[i], split[i + 1]),
+                                   style: penStyle, transform: command.transform))
+        }
+    }
+    return out
+}
+
+/// Collect one def per distinct linear/radial gradient paint, keyed for
+/// `url(#…)` references. `userSpaceOnUse` puts the coordinates in the same
+/// pre-CTM space the geometry is recorded in, so an element's `transform`
+/// carries its gradient along — exactly the render semantics.
+private func gradientDefs(_ commands: [RecordedSVG]) -> (defs: String, ids: [Gradient: String]) {
+    var ids: [Gradient: String] = [:]
+    var lines: [String] = []
+    func register(_ paint: Paint?) {
+        guard case .gradient(let g) = paint, ids[g] == nil else { return }
+        switch g.geometry {
+        case let .linear(start, end):
+            let id = "grad\(ids.count)"
+            ids[g] = id
+            lines.append("    <linearGradient id=\"\(id)\" gradientUnits=\"userSpaceOnUse\" "
+                         + "x1=\"\(n(start.x))\" y1=\"\(n(start.y))\" x2=\"\(n(end.x))\" y2=\"\(n(end.y))\">")
+            lines.append(contentsOf: stopLines(g.ramp))
+            lines.append("    </linearGradient>")
+        case let .radial(center, radius):
+            let id = "grad\(ids.count)"
+            ids[g] = id
+            lines.append("    <radialGradient id=\"\(id)\" gradientUnits=\"userSpaceOnUse\" "
+                         + "cx=\"\(n(center.x))\" cy=\"\(n(center.y))\" r=\"\(n(radius))\">")
+            lines.append(contentsOf: stopLines(g.ramp))
+            lines.append("    </radialGradient>")
+        case .alongPath:
+            break   // resolved by approximateAlongPaths before serialization
+        }
+    }
+    for command in commands {
+        register(command.style.fill)
+        register(command.style.stroke)
+    }
+    guard !lines.isEmpty else { return ("", ids) }
+    return ("  <defs>\n" + lines.joined(separator: "\n") + "\n  </defs>\n", ids)
+}
+
+/// A ramp as SVG `<stop>`s. SVG interpolates stops in plain sRGB, so spans of a
+/// ramp mixing in any other space are subdivided to track the ramp's curve;
+/// duplicate-position stops (hard edges) pass through untouched.
+private func stopLines(_ ramp: Ramp) -> [String] {
+    var stops: [(position: Double, color: Color)] = []
+    for (i, stop) in ramp.stops.enumerated() {
+        stops.append((stop.position, stop.color))
+        if ramp.space != .rgb, i + 1 < ramp.stops.count {
+            let span = ramp.stops[i + 1].position - stop.position
+            if span > 1e-9 {
+                for k in 1...3 {
+                    let p = stop.position + span * Double(k) / 4
+                    stops.append((p, ramp.color(at: p)))
+                }
+            }
+        }
+    }
+    return stops.map { stop in
+        let opacity = stop.color.alpha < 1 ? " stop-opacity=\"\(n(stop.color.alpha))\"" : ""
+        return "      <stop offset=\"\(n(stop.position))\" stop-color=\"\(svgColor(stop.color))\"\(opacity)/>"
+    }
+}
+
 /// One recorded primitive as an SVG element.
-private func svgElement(_ c: RecordedSVG) -> String {
+private func svgElement(_ c: RecordedSVG, _ ids: [Gradient: String]) -> String {
     let t = matrixAttr(c.transform)
     switch c.geometry {
     case let .ellipse(center, rx, ry):
-        let fillStroke = fillStrokeAttrs(c.style)
+        let fillStroke = fillStrokeAttrs(c.style, ids)
         if abs(rx - ry) < 1e-9 {
             return "<circle cx=\"\(n(center.x))\" cy=\"\(n(center.y))\" r=\"\(n(rx))\"\(fillStroke)\(t)/>"
         }
@@ -192,46 +355,66 @@ private func svgElement(_ c: RecordedSVG) -> String {
 
     case let .rect(corner, w, h, r):
         let radius = r > 0 ? " rx=\"\(n(r))\"" : ""
-        return "<rect x=\"\(n(corner.x))\" y=\"\(n(corner.y))\" width=\"\(n(w))\" height=\"\(n(h))\"\(radius)\(fillStrokeAttrs(c.style))\(t)/>"
+        return "<rect x=\"\(n(corner.x))\" y=\"\(n(corner.y))\" width=\"\(n(w))\" height=\"\(n(h))\"\(radius)\(fillStrokeAttrs(c.style, ids))\(t)/>"
 
     case let .line(a, b):
-        return "<line x1=\"\(n(a.x))\" y1=\"\(n(a.y))\" x2=\"\(n(b.x))\" y2=\"\(n(b.y))\"\(strokeOnlyAttrs(c.style, forceCap: "round"))\(t)/>"
+        return "<line x1=\"\(n(a.x))\" y1=\"\(n(a.y))\" x2=\"\(n(b.x))\" y2=\"\(n(b.y))\"\(strokeOnlyAttrs(c.style, ids, forceCap: "round"))\(t)/>"
 
     case let .quad(s, control, e):
         let d = "M \(n(s.x)) \(n(s.y)) Q \(n(control.x)) \(n(control.y)) \(n(e.x)) \(n(e.y))"
-        return "<path d=\"\(d)\"\(strokeOnlyAttrs(c.style, forceCap: "round"))\(t)/>"
+        return "<path d=\"\(d)\"\(strokeOnlyAttrs(c.style, ids, forceCap: "round"))\(t)/>"
 
     case let .polyline(points):
-        return "<polyline points=\"\(pointList(points))\"\(strokeOnlyAttrs(c.style))\(t)/>"
+        return "<polyline points=\"\(pointList(points))\"\(strokeOnlyAttrs(c.style, ids))\(t)/>"
 
     case let .polygon(points):
-        return "<polygon points=\"\(pointList(points))\"\(fillStrokeAttrs(c.style))\(t)/>"
+        return "<polygon points=\"\(pointList(points))\"\(fillStrokeAttrs(c.style, ids))\(t)/>"
 
     case let .path(shape):
         let rule = shape.winding == .evenOdd ? " fill-rule=\"evenodd\"" : ""
-        return "<path d=\"\(pathData(shape))\"\(fillStrokeAttrs(c.style))\(rule)\(t)/>"
+        return "<path d=\"\(pathData(shape))\"\(fillStrokeAttrs(c.style, ids))\(rule)\(t)/>"
     }
 }
 
 // MARK: - Attribute helpers
 
+/// A paint as an SVG paint value: a color, or a gradient def reference. An
+/// unregistered gradient (an along-path paint that had no path) falls back to
+/// its ramp midpoint.
+private func paintValue(_ paint: Paint, _ ids: [Gradient: String]) -> String {
+    switch paint {
+    case .color(let c):
+        return svgColor(c)
+    case .gradient(let g):
+        if let id = ids[g] { return "url(#\(id))" }
+        return svgColor(g.ramp.color(at: 0.5))
+    }
+}
+
+/// The `*-opacity` attribute for a paint: only a flat color carries one (a
+/// gradient's alpha rides its stops).
+private func paintOpacity(_ kind: String, _ paint: Paint) -> String {
+    if case .color(let c) = paint { return svgOpacity(kind, c) }
+    return ""
+}
+
 /// Fill + stroke attributes for a filled, possibly stroked shape.
-private func fillStrokeAttrs(_ s: SVGStyle) -> String {
-    var attrs = " fill=\"\(s.fill.map(svgColor) ?? "none")\""
-    if let fill = s.fill { attrs += svgOpacity("fill", fill) }
-    attrs += strokeAttrs(s)
+private func fillStrokeAttrs(_ s: SVGStyle, _ ids: [Gradient: String]) -> String {
+    var attrs = " fill=\"\(s.fill.map { paintValue($0, ids) } ?? "none")\""
+    if let fill = s.fill { attrs += paintOpacity("fill", fill) }
+    attrs += strokeAttrs(s, ids)
     return attrs
 }
 
 /// Attributes for a stroke-only shape (no fill).
-private func strokeOnlyAttrs(_ s: SVGStyle, forceCap: String? = nil) -> String {
-    " fill=\"none\"" + strokeAttrs(s, forceCap: forceCap)
+private func strokeOnlyAttrs(_ s: SVGStyle, _ ids: [Gradient: String], forceCap: String? = nil) -> String {
+    " fill=\"none\"" + strokeAttrs(s, ids, forceCap: forceCap)
 }
 
 /// The stroke half: nothing when there's no visible stroke.
-private func strokeAttrs(_ s: SVGStyle, forceCap: String? = nil) -> String {
+private func strokeAttrs(_ s: SVGStyle, _ ids: [Gradient: String], forceCap: String? = nil) -> String {
     guard let stroke = s.stroke else { return "" }
-    var attrs = " stroke=\"\(svgColor(stroke))\"\(svgOpacity("stroke", stroke)) stroke-width=\"\(n(s.strokeWidth))\""
+    var attrs = " stroke=\"\(paintValue(stroke, ids))\"\(paintOpacity("stroke", stroke)) stroke-width=\"\(n(s.strokeWidth))\""
     attrs += " stroke-linejoin=\"\(joinName(s.join))\""
     attrs += " stroke-linecap=\"\(forceCap ?? capName(s.cap))\""
     return attrs

@@ -14,16 +14,12 @@ Worth pursuing. Swift Playgrounds app (Mac and iPad) App Projects (`.swiftpm`) a
 - **Onboarding nicety:** ship a ready-made `.swiftpm` starter (Ollin pre-wired plus a `HelloCircle`) so users don't hand-add the package URL.
 - **Caveats:** the Playgrounds sandbox restricts file I/O (which matters for the export items, not for drawing); package-dependency UX is finicky; prefer the Swift Playgrounds app's App Projects over the semi-deprecated Xcode Playgrounds. iOS changes need `xcodebuild -destination` with the iOS SDK on a Mac to verify.
 
-## Gradient fills and strokes (not started)
+## Color additions deliberately kept out
 
-The remaining piece of the color leg: gradients as paint that `fill` and `stroke` both accept.
+Rationale that still gates future color work:
 
 - **Other color spaces stay out.** Classic Lab/LCH (the 1976 space OKLab was built to fix; interpolating through it bends blues toward purple), CIECAM16/JCh (a full appearance model that needs viewing-condition parameters; OKLab was fitted to give most of that benefit without the machinery), and DIN99/DLCH (an industrial color-difference standard). Any of them can arrive later as a plain conversion if matching an external spec calls for it.
 - **Further curated palette collections stay license-gated.** Collections scraped from ColourLovers and similar sites are not license-clean and stay out; anything added must carry a permissive license the way the ColorBrewer data does.
-- **Gradients as paint, strokes included.** `fill` and `stroke` widen from `Color` to a paint that's either a flat color or a gradient (linear, radial, or along the path). Strokes need no special machinery as long as the gradient is evaluated where each path already colors its pixels: SDF region shapes evaluate it in the fragment shader (the local-space position is already there for AA), the line/Bézier capsules know their position along the axis (the closest-point parameter falls out of `sdBezier`), and the tessellated strokes (`appendStrokedPath`) interpolate per vertex, with arc length available while the segment quads are built, which is what makes along-the-path gradients natural on polylines. One caveat on the tessellated side: a multi-stop or radial paint sampled only at vertices interpolates linearly across a long straight segment, so those need subdivision or fragment-side evaluation.
-- **GPU encoding.** Arbitrary stop lists don't fit `SDFInstance` (8 spare bytes at stride 144). Bake each distinct gradient to one row of a small 1D lookup-strip texture on the CPU, sampling in the chosen space at bake time so the shader needs no color-space math, and give the instance a row index plus the start/end geometry. The instanced batches stay intact.
-- **Export.** Linear and radial gradients map natively to SVG (`<linearGradient>`/`<radialGradient>`, valid on both fill and stroke). Along-the-path has no SVG equivalent and would be approximated by splitting the path into short solid-color runs. For the plotter path, hatching already keys density to the fill's tone, so a gradient fill becomes a density ramp through the same machinery.
-- **Banding.** Smooth gradients are where the 8-bit target bands. The output dither covers it today; the [HDR/float pipeline](#rendering-precision-hdrfloat-pipeline-not-started) removes it at the source, so the two features reinforce each other.
 
 ## Rendering precision (HDR/float pipeline) (not started)
 

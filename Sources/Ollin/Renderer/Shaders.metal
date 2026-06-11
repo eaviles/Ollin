@@ -197,13 +197,15 @@ fragment float4 ollin_glyph_fragment(ImageOut in [[stage_in]],
 // 27 and 28 are the first shapes parameterized by three free points, so they
 // read corners / control points from param0/param1/param2 (see SDFInstance).
 // The shape tag occupies the low byte; bits 8-9 carry the stroke alignment
-// (0 center, 1 inside, 2 outside), so the vertex shader masks before the switch.
+// (0 center, 1 inside, 2 outside) and bits 10-11 / 12-13 the fill / stroke
+// paint kind (0 solid, 1 linear, 2 radial, 3 along-path — see resolvePaint),
+// so the vertex shader masks before the switch.
 
 struct SDFOut {
     float4 position [[position]];
     float2 local;         // fragment offset from center, in local sketch units
     float2 size;
-    float4 fillColor;
+    float4 fillColor;     // solid color, or gradient geometry (see SDFInstance)
     float4 strokeColor;
     float2 param0;
     float2 param1;
@@ -211,8 +213,12 @@ struct SDFOut {
     float strokeWidth;
     float extra;
     float bandWidth;
+    float fillRow;        // gradient-strip row for a gradient fill / stroke
+    float strokeRow;
     uint  shape [[flat]]; // constant per instance; never interpolate an integer tag
     uint  align [[flat]]; // stroke alignment: 0 center, 1 inside, 2 outside
+    uint  fillKind [[flat]];   // paint kind: 0 solid, 1 linear, 2 radial, 3 along-path
+    uint  strokeKind [[flat]];
 };
 
 vertex SDFOut ollin_sdf_vertex(uint vid [[vertex_id]],
@@ -252,8 +258,12 @@ vertex SDFOut ollin_sdf_vertex(uint vid [[vertex_id]],
     out.strokeWidth = inst.strokeWidth;
     out.extra = inst.extra;
     out.bandWidth = inst.bandWidth;
-    out.shape = inst.shape & 0xFFu;   // strip the alignment bits for the tag switch
+    out.fillRow = inst.fillGradient;
+    out.strokeRow = inst.strokeGradient;
+    out.shape = inst.shape & 0xFFu;   // strip the alignment/paint bits for the tag switch
     out.align = shapeAlign;
+    out.fillKind = (inst.shape >> 10) & 0x3u;
+    out.strokeKind = (inst.shape >> 12) & 0x3u;
     return out;
 }
 
@@ -609,15 +619,22 @@ static float sdTriangle(float2 p, float2 a, float2 b, float2 c) {
 // Unsigned distance to the quadratic Bézier curve with control points A, B, C
 // (B is the off-curve handle). The cubic that locates the nearest parameter has
 // one or three real roots; both branches are handled. Stroked by thresholding
-// this distance against the half-width (round caps fall out of the unsigned form).
-static float sdBezier(float2 pos, float2 A, float2 B, float2 C) {
+// this distance against the half-width (round caps fall out of the unsigned
+// form). `outT` returns the curve parameter of the nearest point — the
+// along-path coordinate a gradient stroke samples.
+static float sdBezier(float2 pos, float2 A, float2 B, float2 C, thread float &outT) {
     float2 a = B - A;
     float2 b = A - 2.0 * B + C;
     float2 c = a * 2.0;
     float2 d = A - pos;
     // Collinear control points collapse `b` to zero (the curve is a straight
     // line); fall back to the segment A–C so 1/dot(b,b) can't blow up to NaN.
-    if (dot(b, b) < 1e-4) { return sdSegment(pos, A, C); }
+    if (dot(b, b) < 1e-4) {
+        float2 pa = pos - A, ba = C - A;
+        float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-12), 0.0, 1.0);
+        outT = h;
+        return length(pa - ba * h);
+    }
     float kk = 1.0 / dot(b, b);
     float kx = kk * dot(a, b);
     float ky = kk * (2.0 * dot(a, a) + dot(d, b)) / 3.0;
@@ -632,14 +649,17 @@ static float sdBezier(float2 pos, float2 A, float2 B, float2 C) {
         float2 uv = sign(x) * pow(abs(x), float2(1.0 / 3.0));
         float t = clamp(uv.x + uv.y - kx, 0.0, 1.0);
         res = dot2(d + (c + b * t) * t);
+        outT = t;
     } else {
         float z = sqrt(-p);
         float v = acos(q / (p * z * 2.0)) / 3.0;
         float m = cos(v);
         float n = sin(v) * 1.7320508;
         float3 t = clamp(float3(m + m, -n - m, n - m) * z - kx, 0.0, 1.0);
-        res = min(dot2(d + (c + b * t.x) * t.x),
-                  dot2(d + (c + b * t.y) * t.y));
+        float resX = dot2(d + (c + b * t.x) * t.x);
+        float resY = dot2(d + (c + b * t.y) * t.y);
+        res = min(resX, resY);
+        outT = (resX <= resY) ? t.x : t.y;
     }
     return sqrt(res);
 }
@@ -716,7 +736,34 @@ static inline float capsuleCoverage(float s, float hw) {
     return perceptualCoverage(c);
 }
 
-fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
+// Resolve one paint slot to linear straight-alpha color at this fragment. A
+// solid slot (kind 0) carries an sRGB color, linearized here like the old
+// direct path. A gradient slot carries geometry relative to the shape center
+// (the space `p` lives in), mapped to t and sampled from `row` of the gradient
+// strip — an sRGB texture, so the sample comes back linear with no extra math.
+// `pathT` is the along-path coordinate (kind 3): the curve parameter on a
+// capsule/Bézier, a conic sweep around the center on region shapes.
+static float4 resolvePaint(float4 slot, uint kind, float row, float2 p, float pathT,
+                           texture2d<float> gradients, sampler gradientSampler) {
+    if (kind == 0u) { return float4(srgbToLinear(slot.rgb), slot.a); }
+    float t;
+    if (kind == 1u) {            // linear: slot = (start.xy, end.xy)
+        float2 d = slot.zw - slot.xy;
+        t = dot(p - slot.xy, d) / max(dot(d, d), 1e-12);
+    } else if (kind == 2u) {     // radial: slot = (center.xy, radius, –)
+        t = length(p - slot.xy) / max(slot.z, 1e-6);
+    } else {                     // along-path
+        t = pathT;
+    }
+    float w = float(gradients.get_width());
+    float u = (clamp(t, 0.0, 1.0) * (w - 1.0) + 0.5) / w;
+    float v = (row + 0.5) / float(gradients.get_height());
+    return gradients.sample(gradientSampler, float2(u, v));
+}
+
+fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
+                                   texture2d<float> gradients [[texture(0)]],
+                                   sampler gradientSampler [[sampler(0)]]) {
     float2 p = in.local;
     float hw = in.strokeWidth * 0.5;
     // Stroke alignment: shift the stroke band inside (-hw) or outside (+hw) the
@@ -724,6 +771,13 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
     float strokeBias = (in.align == 1u) ? -hw : (in.align == 2u) ? hw : 0.0;
     float fillCov = 0.0;
     float strokeCov = 0.0;
+    // The along-path coordinate: region shapes sweep once around their center
+    // (0 at 12 o'clock, clockwise — computed only when an along paint asks);
+    // the capsule and Bézier overwrite it with their true path parameter below.
+    float pathT = 0.0;
+    if (in.fillKind == 3u || in.strokeKind == 3u) {
+        pathT = fract(atan2(p.x, -p.y) * (1.0 / 6.283185307179586));
+    }
 
     switch (in.shape) {
     case 1u:     // rounded box
@@ -770,8 +824,14 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         // fades smoothly instead of vanishing or snapping to 1px.
         // Area-conserving coverage via the L2 gradient footprint (orientation-
         // invariant — see capsuleCoverage). param0 = half-segment vector; extra =
-        // cap radius (half the weight).
-        float s = sdSegment(p, -in.param0, in.param0);
+        // cap radius (half the weight). The segment math is inlined (same form
+        // as sdSegment) so the closest-point parameter doubles as the line's
+        // along-path coordinate for a gradient stroke.
+        float2 pa = p + in.param0;             // p - a, with a = -param0
+        float2 ba = in.param0 * 2.0;           // b - a
+        float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-12), 0.0, 1.0);
+        float s = length(pa - ba * h);
+        pathT = h;
         fillCov = capsuleCoverage(s, in.extra);
         break;
     }
@@ -959,7 +1019,9 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
                  // color. Stroke-only (a curve has no interior), so it uses the
                  // capsule's centered, area-conserving fade rather than regionFill —
                  // a sub-pixel-thin curve fades by width instead of vanishing.
-        float s = sdBezier(p, in.param0, in.param1, in.param2);
+        float t = 0.0;
+        float s = sdBezier(p, in.param0, in.param1, in.param2, t);
+        pathT = t;
         fillCov = capsuleCoverage(s, in.extra);   // same coverage as the line
         break;
     }
@@ -986,15 +1048,18 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]]) {
         break;
     }
 
-    float fillA = in.fillColor.a * fillCov;
-    float strokeA = in.strokeColor.a * strokeCov;
-
-    // Linearize the sRGB fill/stroke tones, composite stroke over fill in
+    // Resolve each slot to linear straight-alpha (a solid color linearized, a
+    // gradient sampled at this fragment), composite stroke over fill in
     // premultiplied *linear* space, then return dithered straight-alpha linear so
     // the same source-over blend as the solid pipeline applies.
-    float3 fillLin = srgbToLinear(in.fillColor.rgb);
-    float3 strokeLin = srgbToLinear(in.strokeColor.rgb);
-    float3 premul = strokeLin * strokeA + fillLin * fillA * (1.0 - strokeA);
+    float4 fillPaint = resolvePaint(in.fillColor, in.fillKind, in.fillRow,
+                                    p, pathT, gradients, gradientSampler);
+    float4 strokePaint = resolvePaint(in.strokeColor, in.strokeKind, in.strokeRow,
+                                      p, pathT, gradients, gradientSampler);
+    float fillA = fillPaint.a * fillCov;
+    float strokeA = strokePaint.a * strokeCov;
+
+    float3 premul = strokePaint.rgb * strokeA + fillPaint.rgb * fillA * (1.0 - strokeA);
     float a = strokeA + fillA * (1.0 - strokeA);
     if (a <= 0.0) { return float4(0.0); }
     return finalizeColor(float4(premul / a, a), in.position.xy);

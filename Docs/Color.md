@@ -12,6 +12,7 @@
 - [OKLab, OKLCH, OKHSL](#oklab)
 - [Mixing](#mixing)
 - [Ramp](#ramp)
+- [Gradient paint](#gradient)
 - [Palette](#palette)
 - [CosinePalette](#cosinepalette)
 - [Colormap](#colormap)
@@ -118,6 +119,31 @@ let sky = Ramp(stops: [(0, Color(hex: 0x0B1A40)),
                        (0.8, Color(hex: 0x3C6DD0)),
                        (1, Color(hex: 0xFFD9A0))], in: .oklch)
 ```
+
+<a name="gradient"></a>
+
+### Gradient paint
+
+A `Ramp` becomes paint through `Gradient`: `fill(_:)` and `stroke(_:)` take a gradient anywhere they take a color, on every shape. The gradient is a `Ramp` laid over the canvas by one of three geometries:
+
+```swift
+fill(.linear(from: Vector2(0, 0), to: Vector2(0, height), sky))   // start → end
+fill(.radial(center: sun, radius: 260, [.white, .clear]))         // center → radius
+stroke(.alongPath(heat))                                          // along the stroke
+```
+
+Each factory takes a `Ramp` or a plain `[Color]` list (spread evenly, mixed in OKLab by default — pass `in:` for another space). Coordinates are in drawing space, so a gradient rides the transform stack with the shapes it paints, and one gradient laid across many shapes shades them coherently. `t` clamps at the ends, and alpha rides the ramp — fading a radial gradient to `.clear` makes a soft-edged glow.
+
+`.alongPath` follows what it paints: on `drawLine`, `drawBezier`, `drawPolyline`, and stroked `drawShape` contours the ramp runs start → end by arc length (each contour runs its own 0…1); on a region shape — including its fill — it sweeps once around the shape's center, starting at 12 o'clock and turning clockwise, so a ring outline becomes a color wheel. A cyclic ramp (matching end colors) hides the seam where the sweep wraps.
+
+`Paint` carries either kind as one value when you want a variable that's "a color or a gradient":
+
+```swift
+let paint: Paint = beat > 0 ? .gradient(.radial(center: c, radius: r, heat)) : .color(.white)
+fill(paint)
+```
+
+The analytic SDF shapes (circles, rects, stars, lines, …) evaluate gradients per pixel, so they're exact at any size. The tessellated shapes (`drawPolygon`, `drawShape`, elliptical arcs, outline text) shade across their vertices instead: gradient strokes subdivide automatically so ramps track the path, but a fill is only sampled at its outline points — a radial gradient centered *inside* a large polygon won't show its bullseye there. Where that matters, prefer an SDF shape. Vector export maps linear and radial gradients to native SVG gradients; an along-path stroke exports as short solid runs, and an along-path fill falls back to the ramp's midpoint color.
 
 <a name="palette"></a>
 

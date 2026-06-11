@@ -40,16 +40,22 @@ background(.white)
 
 ```swift
 fill(_ color: Color)
+fill(_ gradient: Gradient)
+fill(_ paint: Paint)
 noFill()
 ```
 
-Set the fill color for filled shapes, or turn fill off.
+Set the fill for filled shapes — a flat color or a gradient — or turn fill off.
 
 ```swift
 fill(.red)
 drawCircle(width / 2, height / 2, 80)   // solid red disc
+fill(.radial(center: Vector2(width / 2, height / 2), radius: 80, [.white, .red]))
+drawCircle(width / 2, height / 2, 80)   // shaded disc
 noFill()                                // following shapes are outline-only
 ```
+
+Gradients — linear, radial, or along-path — are covered in [Color → Gradient paint](Color.md#gradient).
 
 <a name="stroke"></a>
 
@@ -57,14 +63,18 @@ noFill()                                // following shapes are outline-only
 
 ```swift
 stroke(_ color: Color)
+stroke(_ gradient: Gradient)
+stroke(_ paint: Paint)
 noStroke()
 ```
 
-Set the outline color, or turn the outline off.
+Set the outline paint — a flat color or a gradient — or turn the outline off. An `.alongPath` gradient runs start → end along lines, curves, and stroked paths (see [Color → Gradient paint](Color.md#gradient)).
 
 ```swift
 stroke(.black)
 drawRect(40, 40, 120, 80)
+stroke(.alongPath([.red, .blue]))
+drawLine(Vector2(40, 160), Vector2(160, 160))   // red fading to blue
 noStroke()                              // following shapes have no outline
 ```
 

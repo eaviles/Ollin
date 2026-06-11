@@ -99,7 +99,19 @@ final class MetalRenderer {
     private var textureTargetSize = (width: 0, height: 0)
 
     /// Sampler for the image pipeline: linear filtering, clamp to edge. Built once.
+    /// Also samples the gradient strip (the same filtering is exactly what a LUT
+    /// row wants).
     private let imageSampler: MTLSamplerState?
+
+    /// The gradient strip: one row per distinct gradient ramp this frame, baked
+    /// on the CPU (see `BakedGradient`) and sampled by the SDF fragment. Reused
+    /// while the frame's rows are unchanged (the common case — a steady sketch
+    /// uploads nothing); a *new* texture is made when they change, because the
+    /// old one may still be read by an in-flight frame (the command buffer
+    /// retains it until completion, so swapping the reference is safe where
+    /// rewriting the contents is not).
+    private var gradientStrip: MTLTexture?
+    private var gradientStripRows: [[UInt8]] = []
 
     init(device: MTLDevice, pixelFormat: MTLPixelFormat, sampleCount: Int) throws {
         self.device = device
@@ -330,6 +342,10 @@ final class MetalRenderer {
         var uniforms = Uniforms(viewport: viewport)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
 
+        // The strip must be bound whenever the SDF fragment runs (it references
+        // the texture even for all-solid frames), so resolve it once per encode.
+        let strip = gradientStripTexture(for: drawer.gradientRows)
+
         let vertexStride = MemoryLayout<OllinVertex>.stride
         let instanceStride = MemoryLayout<SDFInstance>.stride
         let imageStride = MemoryLayout<OllinImageVertex>.stride
@@ -350,6 +366,10 @@ final class MetalRenderer {
                 guard count > 0, let sdfBuffer else { continue }
                 encoder.setRenderPipelineState(sdf)
                 encoder.setVertexBuffer(sdfBuffer, offset: batch.instanceStart * instanceStride, index: 0)
+                // Rebind per batch — an image/glyph batch in between binds its own
+                // texture at the same index.
+                encoder.setFragmentTexture(strip, index: 0)
+                encoder.setFragmentSamplerState(imageSampler, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .image:
                 let end = next?.imageStart ?? imageVertices.count
@@ -373,6 +393,35 @@ final class MetalRenderer {
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             }
         }
+    }
+
+    /// The gradient strip texture holding `rows` (one baked ramp per row),
+    /// reused while the rows are unchanged and rebuilt — as a fresh texture, see
+    /// `gradientStrip` — when they differ. With no gradients in the frame a
+    /// 1-row placeholder keeps the SDF fragment's texture argument valid.
+    private func gradientStripTexture(for rows: [[UInt8]]) -> MTLTexture? {
+        if let existing = gradientStrip, rows == gradientStripRows { return existing }
+
+        let height = max(rows.count, 1)
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba8Unorm_srgb, width: BakedGradient.width,
+            height: height, mipmapped: false)
+        descriptor.usage = .shaderRead
+        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
+
+        let bytesPerRow = BakedGradient.width * 4
+        var flat: [UInt8] = []
+        flat.reserveCapacity(bytesPerRow * height)
+        for row in rows { flat.append(contentsOf: row) }
+        if rows.isEmpty { flat = [UInt8](repeating: 0, count: bytesPerRow) }
+        flat.withUnsafeBytes { raw in
+            texture.replace(region: MTLRegionMake2D(0, 0, BakedGradient.width, height),
+                            mipmapLevel: 0, withBytes: raw.baseAddress!,
+                            bytesPerRow: bytesPerRow)
+        }
+        gradientStrip = texture
+        gradientStripRows = rows
+        return texture
     }
 
     // MARK: Pipelines

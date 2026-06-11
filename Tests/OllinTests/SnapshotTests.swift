@@ -80,6 +80,12 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: TintedImage(), against: "tinted-image")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func gradientPaintsMatchReference() throws {
+        let diff = try Snapshot.meanDifference(of: GradientShapes(), against: "gradient-shapes")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -370,5 +376,39 @@ private final class TintedImage: Sketch {
             fill(img[i * 2, 0])
             drawRect(18 + Double(i) * 28, 150, 24, 80)
         }
+    }
+}
+
+/// Gradient paint across both pipelines: linear and radial SDF fills, a conic
+/// (along-path) stroke sweeping a circle outline, a per-vertex linear fill on a
+/// tessellated polygon, and along-path ramps on a line capsule and a Bézier.
+/// Gradients are smooth fields, so the mean-difference metric stays tight.
+private final class GradientShapes: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.1))
+        noStroke()
+        // Linear fill on the SDF box path.
+        fill(.linear(from: Vector2(20, 20), to: Vector2(236, 20),
+                     [Color(hex: 0xFF8A3D), Color(hex: 0x2BB3A3)]))
+        drawRect(20, 20, 216, 60)
+        // Radial fill plus a conic (along-path) stroke on the same circle.
+        fill(.radial(center: Vector2(70, 160), radius: 40,
+                     [.white, Color(hex: 0xD03060)]))
+        stroke(.alongPath([Color(hex: 0xFFF3C4), Color(hex: 0x3C6DD0)]))
+        strokeWeight(6)
+        drawCircle(70, 160, 40)
+        noStroke()
+        // Per-vertex linear fill on the tessellated path.
+        fill(.linear(from: Vector2(130, 120), to: Vector2(230, 210),
+                     [Color(hex: 0x0B1A40), Color(hex: 0xFFB36B)]))
+        drawPolygon([Vector2(180, 120), Vector2(230, 210), Vector2(130, 210)])
+        // Along-path ramps on a line capsule and a quadratic Bézier.
+        stroke(.alongPath([Color(hex: 0xFFF3C4), Color(hex: 0xD03060)]))
+        strokeWeight(8)
+        drawLine(Vector2(20, 234), Vector2(236, 234))
+        drawBezier(Vector2(20, 108), Vector2(128, 86), Vector2(118, 108))
+        noStroke()
     }
 }

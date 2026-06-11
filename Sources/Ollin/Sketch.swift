@@ -241,8 +241,21 @@ open class Sketch {
 
     public func background(_ color: Color) { drawer.background(color) }
     public func fill(_ color: Color) { drawer.fill(color) }
+    /// Fill with a gradient instead of a flat color: linear, radial, or
+    /// along-path (see `Gradient`). Every shape takes it — the analytic SDF
+    /// shapes evaluate it per pixel; the tessellated paths (`drawPolygon`,
+    /// `drawShape`, curves) shade it across their vertices.
+    public func fill(_ gradient: Gradient) { drawer.fill(gradient) }
+    /// Fill with a `Paint` — a flat color or a gradient carried as one value.
+    public func fill(_ paint: Paint) { drawer.fill(paint) }
     public func noFill() { drawer.noFill() }
     public func stroke(_ color: Color) { drawer.stroke(color) }
+    /// Stroke with a gradient (see `Gradient`). An `.alongPath` gradient runs
+    /// start-to-end along lines, curves, and stroked paths, and sweeps around
+    /// region shapes' outlines.
+    public func stroke(_ gradient: Gradient) { drawer.stroke(gradient) }
+    /// Stroke with a `Paint` — a flat color or a gradient carried as one value.
+    public func stroke(_ paint: Paint) { drawer.stroke(paint) }
     public func noStroke() { drawer.noStroke() }
     public func strokeWeight(_ weight: Double) { drawer.strokeWeight(weight) }
     /// Draw region shapes as a constant-width band along their outline instead of

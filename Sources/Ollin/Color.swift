@@ -5,7 +5,7 @@ import Foundation
 /// `Color` is intentionally tiny and dependency-free (Foundation only). The
 /// renderer converts it to the GPU-friendly representations it needs (a
 /// `SIMD4<Float>` vertex color, or an `MTLClearColor` for `background`).
-public struct Color: Equatable, Sendable {
+public struct Color: Equatable, Hashable, Sendable {
     public var red: Double
     public var green: Double
     public var blue: Double
