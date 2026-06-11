@@ -800,6 +800,16 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/ObjectTracking"
         ),
+        // Vision over recorded footage — contours traced from a playing video
+        // (the frame-source seam: a tracker attached to a VideoPlayer the way
+        // it attaches to a Camera). Bundles the same CC BY-SA clip as
+        // VideoPlayback; provenance in THIRD-PARTY-NOTICES.md.
+        .executableTarget(
+            name: "Example-VideoTrace",
+            dependencies: ["Ollin", "OllinVision", "OllinVideo"],
+            path: "Examples/Vision/VideoTrace",
+            resources: [.copy("voladores.mp4")]
+        ),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
@@ -875,9 +885,11 @@ let package = Package(
         // everywhere) plus a soft-skipping still-image face detection (renders a
         // simple synthetic image and tolerates a no-detection result, so it never
         // fails CI but verifies the path end-to-end when the model is present).
+        // OllinVideo is here for the frame-source seam's end-to-end test: a
+        // tracker running over a playing VideoPlayer.
         .testTarget(
             name: "OllinVisionTests",
-            dependencies: ["Ollin", "OllinVision"]
+            dependencies: ["Ollin", "OllinVision", "OllinVideo"]
         ),
         // Syphon correctness: a directory smoke test (always on) plus a
         // Metal-gated in-process publish→discover→receive loopback that

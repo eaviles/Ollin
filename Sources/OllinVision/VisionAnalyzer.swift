@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import Ollin
 import os
 
 /// One captured frame, carried across threads. The `CGImage` is immutable once
@@ -96,13 +97,49 @@ final class VisionStatus: @unchecked Sendable {
     }
 }
 
-/// Runs the registered trackers over the camera's frames.
+/// One shared analyzer per frame source, created the first time a tracker
+/// attaches to that source. Trackers constructed over the same `FrameSource`
+/// (the same camera, the same video player) share one analyzer, so the source
+/// is tapped once and its frames fan out to every tracker.
+///
+/// Lifetime: the analyzer is held strongly by the tap closure installed on the
+/// source, so it lives exactly as long as the source does; this table only
+/// remembers it weakly so the next tracker finds it.
+@MainActor
+enum SourceAnalyzers {
+
+    private struct WeakRef {
+        weak var analyzer: VisionAnalyzer?
+    }
+    private static var table: [ObjectIdentifier: WeakRef] = [:]
+
+    /// The analyzer running over `source`, creating it (and installing the
+    /// source's tap) on first use.
+    static func analyzer(for source: any FrameSource) -> VisionAnalyzer {
+        table = table.filter { $0.value.analyzer != nil }
+        let key = ObjectIdentifier(source)
+        if let existing = table[key]?.analyzer { return existing }
+        let analyzer = VisionAnalyzer()
+        table[key] = WeakRef(analyzer: analyzer)
+        source.frameTap = makeFrameTap(analyzer)
+        return analyzer
+    }
+}
+
+/// Formed in a free function, never inside a `@MainActor` context, so the tap
+/// carries no actor isolation — the source calls it from its capture/decode
+/// thread (the same render-thread rule the audio taps follow).
+private func makeFrameTap(_ analyzer: VisionAnalyzer) -> FrameTap {
+    { cgImage in analyzer.submit(FrameBox(cgImage)) }
+}
+
+/// Runs the registered trackers over a frame source's frames.
 ///
 /// It does one thing the live path needs and the still-image path doesn't:
-/// **drop frames it can't keep up with**. Recognition is slower than the camera's
+/// **drop frames it can't keep up with**. Recognition is slower than the source's
 /// frame rate, so each incoming frame is analyzed only if the previous analysis
 /// has finished; otherwise it's skipped and the next one is tried. The display
-/// frame is never dropped (the camera publishes every one) — only the analysis
+/// frame is never dropped (the source publishes every one) — only the analysis
 /// is throttled, which is what keeps a sketch responsive while a model runs.
 ///
 /// `@unchecked Sendable`: all mutable state lives under `lock`, and the trackers

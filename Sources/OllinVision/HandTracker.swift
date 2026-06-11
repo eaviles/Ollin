@@ -131,11 +131,11 @@ public final class HandTracker: VisionTracking, @unchecked Sendable {
     /// Why hand tracking can't run here, or `nil` when it can.
     public var unavailableReason: String? { status.reason }
 
-    /// Track hands in `camera`'s live feed.
+    /// Track hands in `source`'s frames — the live camera, or a playing video.
     @MainActor
-    public init(_ camera: Camera, maximumHandCount: Int = 2) {
+    public init(_ source: any FrameSource, maximumHandCount: Int = 2) {
         self.maximumHandCount = max(1, maximumHandCount)
-        camera.register(self)
+        SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     /// Detect hands in a still image, once.

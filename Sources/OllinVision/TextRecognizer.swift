@@ -74,11 +74,12 @@ public final class TextRecognizer: VisionTracking, @unchecked Sendable {
     /// Why text recognition can't run here, or `nil` when it can.
     public var unavailableReason: String? { status.reason }
 
-    /// Recognize text in `camera`'s live feed. Defaults to `.fast` so it keeps up.
+    /// Recognize text in `source`'s frames — the live camera, or a playing
+    /// video. Defaults to `.fast` so it keeps up.
     @MainActor
-    public init(_ camera: Camera, level: Level = .fast) {
+    public init(_ source: any FrameSource, level: Level = .fast) {
         self.level = level
-        camera.register(self)
+        SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     /// Recognize text in a still image, once. Defaults to `.accurate`.

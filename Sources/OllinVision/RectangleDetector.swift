@@ -76,9 +76,9 @@ public final class RectangleDetector: VisionTracking, @unchecked Sendable {
     /// Why rectangle detection can't run here, or `nil` when it can.
     public var unavailableReason: String? { status.reason }
 
-    /// Detect rectangles in `camera`'s live feed.
+    /// Detect rectangles in `source`'s frames — the live camera, or a playing video.
     @MainActor
-    public init(_ camera: Camera,
+    public init(_ source: any FrameSource,
                 minimumAspectRatio: Float = 0.2,
                 maximumAspectRatio: Float = 1.0,
                 minimumSize: Float = 0.1,
@@ -89,7 +89,7 @@ public final class RectangleDetector: VisionTracking, @unchecked Sendable {
         self.minimumSize = minimumSize
         self.minimumConfidence = minimumConfidence
         self.maximumCount = max(1, maximumCount)
-        camera.register(self)
+        SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     /// Detect rectangles in a still image, once.

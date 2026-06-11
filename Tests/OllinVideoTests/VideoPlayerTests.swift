@@ -4,6 +4,7 @@ import AVFoundation
 import CoreVideo
 import Metal
 import Ollin
+import os
 @testable import OllinVideo
 
 /// Exercised against a tiny clip written on the spot with AVAssetWriter, so the
@@ -123,6 +124,33 @@ import Ollin
         #expect(frame.height == 64)
         // While playing (looped), the same frame keeps drawing between decodes.
         #expect(player.frame != nil)
+    }
+
+    @Test func frameTapDeliversCPUFrames() async throws {
+        guard let url = await writeTestClip() else { return }   // soft-skip: no encoder
+        defer { try? FileManager.default.removeItem(at: url) }
+        let player = VideoPlayer(url: url)
+        // Count deliveries and remember the last frame's size (CGImage isn't
+        // Sendable, so only plain values cross out of the tap).
+        let seen = OSAllocatedUnfairLock(initialState: (count: 0, width: 0, height: 0))
+        player.frameTap = { cgImage in
+            let size = (cgImage.width, cgImage.height)
+            seen.withLock { $0 = (count: $0.count + 1, width: size.0, height: size.1) }
+        }
+        player.loops = true
+        player.play()
+        guard await waitFor(seconds: 5, { seen.withLock { $0.count > 0 ? $0 : nil } }) != nil else {
+            return   // soft-skip: decode never produced a frame headless
+        }
+        let final = seen.withLock { $0 }
+        #expect(final.width == 64)
+        #expect(final.height == 64)
+
+        // Removing the tap stops delivery.
+        player.frameTap = nil
+        let countAtRemoval = seen.withLock { $0.count }
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(seen.withLock { $0.count } == countAtRemoval)
     }
 
     @Test func missingFileThrows() {

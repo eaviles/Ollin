@@ -120,12 +120,12 @@ public final class ContourDetector: VisionTracking, @unchecked Sendable {
         latest.shapes(in: rect, mirrored: mirrored)
     }
 
-    /// Trace contours in `camera`'s live feed.
+    /// Trace contours in `source`'s frames — the live camera, or a playing video.
     @MainActor
-    public init(_ camera: Camera, detectsDarkOnLight: Bool = true, contrastAdjustment: Float = 1) {
+    public init(_ source: any FrameSource, detectsDarkOnLight: Bool = true, contrastAdjustment: Float = 1) {
         self.detectsDarkOnLight = detectsDarkOnLight
         self.contrastAdjustment = contrastAdjustment
-        camera.register(self)
+        SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     /// Trace contours in a still image, once.

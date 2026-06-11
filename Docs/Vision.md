@@ -6,7 +6,7 @@
 
 See with the Mac's camera. Vision lives in a separate library so the drawing core stays free of `AVFoundation` and Apple's Vision framework — add `import OllinVision` alongside `import Ollin` to reach it.
 
-There are two pieces. A [`Camera`](#camera) captures frames from the built-in camera, a Continuity Camera iPhone, or an external webcam, and hands them over as drawable `Image`s. A **tracker** attached to that camera runs Apple's on-device perception on each frame and publishes typed results you read in `draw()`. The first tracker is [`FaceTracker`](#facetracker); more (hands, bodies, segmentation, contours, text, …) follow the same shape.
+There are two pieces. A [`Camera`](#camera) captures frames from the built-in camera, a Continuity Camera iPhone, or an external webcam, and hands them over as drawable `Image`s. A **tracker** attached to a [frame source](#frame-sources) — that camera, or a playing [`VideoPlayer`](./Video.md) — runs Apple's on-device perception on each frame and publishes typed results you read in `draw()`. The first tracker is [`FaceTracker`](#facetracker); more (hands, bodies, segmentation, contours, text, …) follow the same shape.
 
 The usual flow: make a camera in `setup()` and `start()` it, attach the trackers you want, then in `draw()` draw `camera.frame` and read each tracker's results.
 
@@ -37,6 +37,7 @@ final class Faces: Sketch {
 ### Contents
 
 - [Camera](#camera) — capture the webcam (built-in, Continuity, or external)
+- [Frame sources](#frame-sources) — trackers over any source of frames (a video, your own)
 - [FaceTracker](#facetracker) — find faces, landmarks, and head pose
 - [Face](#face) — one detected face, and reading its parts
 - [ContourDetector](#contourdetector) — trace edges into vector contours
@@ -77,12 +78,45 @@ let camera = Camera(.continuity)   // use a Continuity Camera iPhone
 
 A fresh `Image` is produced each new frame, so draw `camera.frame` directly in `draw()` rather than holding onto it across frames.
 
+<a name="frame-sources"></a>
+
+### Frame sources
+
+```swift
+protocol FrameSource: AnyObject {       // lives in the Ollin core
+    var frameTap: FrameTap? { get set }
+}
+typealias FrameTap = @Sendable (CGImage) -> Void
+```
+
+Every tracker takes `any FrameSource`, not just a camera — the seam that lets the same perception run over any source of moving pictures. `Camera` conforms, and so does [`VideoPlayer`](./Video.md), so a tracker runs over recorded footage exactly the way it runs over the live feed:
+
+```swift
+import Ollin
+import OllinVideo
+import OllinVision
+
+final class Traced: Sketch {
+    let player = try! VideoPlayer(path: "/path/to/clip.mp4")
+    lazy var contours = ContourDetector(player)   // analyzed as it plays
+
+    override func setup() {
+        player.loops = true
+        player.play()
+    }
+}
+```
+
+Trackers attached to the same source share one analysis engine, so the source is tapped once and its frames fan out. Analysis is throttled to what the machine keeps up with (frames are skipped, never queued), and a paused video stops producing frames, so its trackers simply hold their last results.
+
+A type of your own can join the seam too: conform to `FrameSource` (hold the closure, call it with each new `CGImage` from whatever thread produces them) and every tracker accepts it.
+
 <a name="facetracker"></a>
 
 ### FaceTracker
 
 ```swift
-FaceTracker(_ camera: Camera)
+FaceTracker(_ source: any FrameSource)
 var faces: [Face] { get }
 var count: Int { get }
 static func detect(in image: Image) async throws -> [Face]
@@ -129,7 +163,7 @@ for face in faces.faces {
 ### ContourDetector
 
 ```swift
-ContourDetector(_ camera: Camera, detectsDarkOnLight: Bool = true, contrastAdjustment: Float = 1)
+ContourDetector(_ source: any FrameSource, detectsDarkOnLight: Bool = true, contrastAdjustment: Float = 1)
 var latest: DetectedContours { get }
 var count: Int { get }
 func contours(in: Rectangle, mirrored: Bool = false) -> [Contour]
@@ -171,7 +205,7 @@ The result of a contour trace: a tree of closed outlines, where a contour can co
 ### HandTracker
 
 ```swift
-HandTracker(_ camera: Camera, maximumHandCount: Int = 2)
+HandTracker(_ source: any FrameSource, maximumHandCount: Int = 2)
 var hands: [Hand] { get }
 var count: Int { get }
 static func detect(in: Image, maximumHandCount: Int = 2) async throws -> [Hand]
@@ -217,7 +251,7 @@ The joints are `HandJoint` — `.wrist` plus four per finger (`.indexMCP`, `.ind
 ### BodyTracker
 
 ```swift
-BodyTracker(_ camera: Camera)
+BodyTracker(_ source: any FrameSource)
 var bodies: [Body] { get }
 var count: Int { get }
 static func detect(in: Image) async throws -> [Body]
@@ -243,7 +277,7 @@ override func draw() {
 ### RectangleDetector
 
 ```swift
-RectangleDetector(_ camera: Camera, minimumAspectRatio: Float = 0.2,
+RectangleDetector(_ source: any FrameSource, minimumAspectRatio: Float = 0.2,
                   maximumAspectRatio: Float = 1.0, minimumSize: Float = 0.1,
                   minimumConfidence: Float = 0.6, maximumCount: Int = 8)
 var rectangles: [DetectedRectangle] { get }
@@ -269,7 +303,7 @@ A `DetectedRectangle` is `corners(in:)` (the four corners in perimeter order, re
 ### BarcodeScanner
 
 ```swift
-BarcodeScanner(_ camera: Camera)
+BarcodeScanner(_ source: any FrameSource)
 var barcodes: [DetectedBarcode] { get }
 static func detect(in: Image) async throws -> [DetectedBarcode]
 ```
@@ -295,7 +329,7 @@ A `DetectedBarcode` is its `payload` (the decoded text or URL, or `nil`), its `s
 ### TextRecognizer
 
 ```swift
-TextRecognizer(_ camera: Camera, level: Level = .fast)
+TextRecognizer(_ source: any FrameSource, level: Level = .fast)
 var lines: [DetectedText] { get }
 var text: String { get }            // all lines joined
 static func detect(in: Image, level: Level = .accurate) async throws -> [DetectedText]
@@ -322,7 +356,7 @@ A `DetectedText` is its `text`, a `confidence`, and `corners(in:)` / `bounds(in:
 ### ObjectTracker
 
 ```swift
-ObjectTracker(_ camera: Camera)
+ObjectTracker(_ source: any FrameSource)
 func track(_ region: Rectangle, in frameRect: Rectangle, mirrored: Bool = false)
 func track(centeredAt: Vector2, size: Double, in frameRect: Rectangle, mirrored: Bool = false)
 func track(normalized: Rectangle)

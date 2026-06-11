@@ -4,7 +4,7 @@
 
 ## Video
 
-Play a video file into a sketch as a live image. Recorded footage becomes drawing material the same way the [camera](./Vision.md) is: each decoded frame arrives as a GPU texture wrapped in an [`Image`](./Images.md), so it draws with `drawImage`, rides the transform stack, and takes `tint` — with no CPU round-trip per frame. Video lives in a separate library so the drawing core stays free of AVFoundation playback; add `import OllinVideo` alongside `import Ollin` to reach it.
+Play a video file into a sketch as a live image. Recorded footage becomes drawing material the same way the [camera](./Vision.md) is: each decoded frame arrives as a GPU texture wrapped in an [`Image`](./Images.md), so it draws with `drawImage`, rides the transform stack, and takes `tint` — with no CPU round-trip per frame. The player is also a [frame source](./Vision.md#frame-sources), so a vision tracker attaches to it the way one attaches to a camera and analyzes the footage as it plays. Video lives in a separate library so the drawing core stays free of AVFoundation playback; add `import OllinVideo` alongside `import Ollin` to reach it.
 
 ```swift
 import Ollin
@@ -34,7 +34,7 @@ final class Player: Sketch {
 - [Loading](#loading) — from a path, URL, or bundled resource
 - [Playback](#playback) — play, pause, loop, seek, rate, volume
 - [Drawing frames](#drawing-frames) — `frame`, `fittedRect`, `size`
-- [Pixels and analysis](#pixels-and-analysis) — `snapshot()` for CPU access
+- [Pixels and analysis](#pixels-and-analysis) — live trackers, and `snapshot()` for CPU access
 - [Notes](#notes) — formats, audio, and the Metal device
 
 <a name="loading"></a>
@@ -103,17 +103,23 @@ Draw any overlays into the same rectangle so they line up with the picture.
 
 ### Pixels and analysis
 
+For **live analysis**, attach a [vision tracker](./Vision.md) directly — `VideoPlayer` is a [frame source](./Vision.md#frame-sources), so every tracker takes it where it takes a camera, and analyzes the footage as it plays (decoded frames are handed to the analyzer off the GPU path, so drawing stays texture-fast):
+
+```swift
+let player = try VideoPlayer(path: "/path/to/clip.mp4")
+lazy var contours = ContourDetector(player)   // traces the clip as it plays
+```
+
 ```swift
 func snapshot() -> Image?
 ```
 
-`frame` is a live GPU texture, so the CPU paths on it (`image[x, y]`, `cgImage`) are inert. When you need the pixels — sampling colors, feeding a [vision tracker](./Vision.md)'s `detect(in:)` — take a `snapshot()`: a CPU-backed copy of the current frame that supports all of them. It costs a GPU→CPU copy, so take one when needed (every few frames is plenty for analysis) rather than unconditionally.
+For **one-shot pixel access**, `frame` is a live GPU texture, so the CPU paths on it (`image[x, y]`, `cgImage`) are inert. When you need the pixels — sampling colors, feeding a tracker's still-image `detect(in:)` — take a `snapshot()`: a CPU-backed copy of the current frame that supports all of them. It costs a GPU→CPU copy, so take one when needed (every few frames is plenty) rather than unconditionally.
 
 ```swift
 // OCR over a paused frame:
-let text = TextRecognizer()
 if let still = player.snapshot() {
-    let lines = try await text.detect(in: still)
+    let lines = try await TextRecognizer.detect(in: still)
 }
 ```
 
@@ -126,4 +132,4 @@ if let still = player.snapshot() {
 - **Metal device.** Frame textures are created on the system's default Metal device, which is the device the sketch renders on for any single-GPU Mac.
 - **Headless export.** Playback follows the player's own clock, which advances with the runloop of a live window. The offline exporters (`--export`, `--export-sequence`, `--export-video`) drive the sketch clock headlessly without one, so a sketch that draws a video currently exports it as blank; a deterministic frame-pull for export is a planned follow-up.
 
-The runnable example is [`Examples/Video/VideoPlayback`](../Examples/Video/VideoPlayback/Sketch.swift), which loops a bundled clip of the *Danza de los Voladores* (the Totonac pole-flying ritual) and draws playback progress over it.
+The runnable examples are [`Examples/Video/VideoPlayback`](../Examples/Video/VideoPlayback/Sketch.swift), which loops a bundled clip of the *Danza de los Voladores* (the Totonac pole-flying ritual) and draws playback progress over it, and [`Examples/Vision/VideoTrace`](../Examples/Vision/VideoTrace/Sketch.swift), which runs a contour tracker over the same clip as it plays.

@@ -102,10 +102,10 @@ public final class BodyTracker: VisionTracking, @unchecked Sendable {
     /// Why body pose can't run here, or `nil` when it can.
     public var unavailableReason: String? { status.reason }
 
-    /// Track body pose in `camera`'s live feed.
+    /// Track body pose in `source`'s frames — the live camera, or a playing video.
     @MainActor
-    public init(_ camera: Camera) {
-        camera.register(self)
+    public init(_ source: any FrameSource) {
+        SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     /// Detect body pose in a still image, once.

@@ -104,11 +104,12 @@ public final class ObjectTracker: VisionTracking, @unchecked Sendable {
     /// Why object tracking can't run here, or `nil` when it can.
     public var unavailableReason: String? { status.reason }
 
-    /// Track an object in `camera`'s live feed. Nothing is tracked until you seed a
-    /// target with one of the `track(…)` methods.
+    /// Track an object in `source`'s frames — the live camera, or a playing
+    /// video. Nothing is tracked until you seed a target with one of the
+    /// `track(…)` methods.
     @MainActor
-    public init(_ camera: Camera) {
-        camera.register(self)
+    public init(_ source: any FrameSource) {
+        SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     // MARK: Seeding

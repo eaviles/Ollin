@@ -21,11 +21,13 @@ import Metal
 /// ```
 ///
 /// Decodes the usual Apple-supported containers and codecs (`.mp4`/`.mov` with
-/// H.264/HEVC/ProRes, …) through AVFoundation. For analysis — feeding a frame
-/// to a vision tracker's `detect(in:)`, reading pixels — take a `snapshot()`,
-/// which is a CPU-backed copy of the current frame.
+/// H.264/HEVC/ProRes, …) through AVFoundation. For one-off analysis — feeding a
+/// frame to a vision tracker's `detect(in:)`, reading pixels — take a
+/// `snapshot()`, a CPU-backed copy of the current frame. For *live* analysis,
+/// the player is a `FrameSource`: attach a vision tracker to it exactly the way
+/// you'd attach one to a camera, and it runs over the footage as it plays.
 @MainActor
-public final class VideoPlayer {
+public final class VideoPlayer: FrameSource {
 
     /// Whether playback should restart from the top when it reaches the end.
     public var loops = false
@@ -80,6 +82,28 @@ public final class VideoPlayer {
     private var lastPixelBuffer: CVPixelBuffer?
     private var cachedFrame: Image?
     private lazy var ciContext = CIContext()
+
+    /// The analysis tap (`FrameSource`). Installing one attaches a *second*
+    /// video output to the player item and pumps its frames to the tap from a
+    /// background queue — its own output, so the tap never steals a decoded
+    /// frame from the `frame` display path (each output gets every frame).
+    public var frameTap: FrameTap? {
+        didSet {
+            tapPump?.cancel()
+            tapPump = nil
+            if let tapOutput {
+                player.currentItem?.remove(tapOutput)
+                self.tapOutput = nil
+            }
+            guard let frameTap else { return }
+            let output = Self.makeOutput()
+            player.currentItem?.add(output)
+            tapOutput = output
+            tapPump = VideoFrameTapPump(output: output, tap: frameTap)
+        }
+    }
+    private var tapPump: VideoFrameTapPump?
+    private var tapOutput: AVPlayerItemVideoOutput?
 
     /// Opens the video at a filesystem `path`. Throws if no file exists there.
     public convenience init(path: String) throws {
@@ -251,6 +275,57 @@ public final class VideoPlayer {
         inFlightTextures.append(cvTexture)
         if inFlightTextures.count > 4 { inFlightTextures.removeFirst() }
         return texture
+    }
+}
+
+/// Pulls decoded frames from a dedicated video output and hands each new one
+/// to the frame tap as a `CGImage`, from its own background queue — the pump
+/// behind `VideoPlayer`'s `FrameSource` conformance.
+///
+/// Defined at file scope (not nested in the `@MainActor` `VideoPlayer`) so its
+/// timer handler stays **non-isolated**; a main-actor-isolated closure would
+/// trip an executor assertion the instant the background queue ran it. The
+/// timer ticks faster than any common video's frame rate and
+/// `hasNewPixelBuffer` gates the work, so frames are delivered at the
+/// footage's own cadence and a paused video delivers nothing.
+///
+/// `@unchecked Sendable`: the output and `CIContext` are touched only on the
+/// serial pump queue after init; the tap is `@Sendable`; `cancel()` on the
+/// timer is thread-safe.
+private final class VideoFrameTapPump: @unchecked Sendable {
+
+    private let output: AVPlayerItemVideoOutput
+    private let tap: FrameTap
+    private let queue = DispatchQueue(label: "co.eavl.ollin.video.frametap")
+    private let timer: any DispatchSourceTimer
+    private let context = CIContext()
+
+    init(output: AVPlayerItemVideoOutput, tap: @escaping FrameTap) {
+        self.output = output
+        self.tap = tap
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(16))
+        self.timer = timer
+        timer.setEventHandler { [weak self] in self?.tick() }
+        timer.resume()
+    }
+
+    /// A resumed GCD timer is kept alive by the system until cancelled, so the
+    /// pump must cancel it explicitly (the handler's `weak self` keeps the
+    /// timer from retaining the pump, which is what lets `deinit` run at all).
+    func cancel() { timer.cancel() }
+
+    deinit { timer.cancel() }
+
+    private func tick() {
+        let itemTime = output.itemTime(forHostTime: CACurrentMediaTime())
+        guard itemTime.isValid,
+              output.hasNewPixelBuffer(forItemTime: itemTime),
+              let buffer = output.copyPixelBuffer(forItemTime: itemTime, itemTimeForDisplay: nil)
+        else { return }
+        let ciImage = CIImage(cvPixelBuffer: buffer)
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
+        tap(cgImage)
     }
 }
 

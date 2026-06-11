@@ -68,10 +68,10 @@ public final class BarcodeScanner: VisionTracking, @unchecked Sendable {
     /// Why barcode scanning can't run here, or `nil` when it can.
     public var unavailableReason: String? { status.reason }
 
-    /// Scan barcodes in `camera`'s live feed.
+    /// Scan barcodes in `source`'s frames — the live camera, or a playing video.
     @MainActor
-    public init(_ camera: Camera) {
-        camera.register(self)
+    public init(_ source: any FrameSource) {
+        SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     /// Scan barcodes in a still image, once.

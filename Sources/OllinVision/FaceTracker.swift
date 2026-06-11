@@ -111,11 +111,11 @@ public final class FaceTracker: VisionTracking, @unchecked Sendable {
     /// Why face tracking can't run here, or `nil` when it can.
     public var unavailableReason: String? { status.reason }
 
-    /// Track faces in `camera`'s live feed. Registers with the camera; results
-    /// arrive in `faces` as frames are analyzed.
+    /// Track faces in `source`'s frames — the live camera, or a playing video.
+    /// Results arrive in `faces` as frames are analyzed.
     @MainActor
-    public init(_ camera: Camera) {
-        camera.register(self)
+    public init(_ source: any FrameSource) {
+        SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     /// Detect faces in a still image, once. The still-image path every tracker

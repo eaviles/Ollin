@@ -3,6 +3,7 @@ import AVFoundation
 import CoreImage
 import CoreMedia
 import CoreVideo
+import os
 
 /// The Mac's camera as a frame source for a sketch — the built-in FaceTime
 /// camera, a Continuity Camera iPhone, or an external webcam. Create one in
@@ -21,7 +22,7 @@ import CoreVideo
 /// Using the camera needs the user's permission; `start()` requests it the first
 /// time. Until it's granted, `frame` stays `nil`.
 @MainActor
-public final class Camera {
+public final class Camera: FrameSource {
 
     /// Which camera to use. `.default` is the system's default video device (the
     /// built-in camera on most Macs); the rest pick the first device of a kind.
@@ -45,9 +46,15 @@ public final class Camera {
     private let store = FrameStore()
     private let device: Device
 
-    /// The shared analysis engine trackers register with. Internal — a sketch
-    /// reaches it only by constructing a tracker over this camera.
-    let analyzer = VisionAnalyzer()
+    /// The analysis tap (`FrameSource`). The capture delegate reads it on the
+    /// capture queue, so the live value crosses through a locked box.
+    public var frameTap: FrameTap? {
+        didSet {
+            let tap = frameTap
+            tapStore.withLock { $0 = tap }
+        }
+    }
+    private let tapStore = OSAllocatedUnfairLock<FrameTap?>(initialState: nil)
 
     private var delegate: CameraCaptureDelegate?
     private var configured = false
@@ -115,12 +122,6 @@ public final class Camera {
         return VisionSpace.fittedRect(imageSize: size, in: container)
     }
 
-    /// Register a tracker with this camera's analyzer. Trackers call this from
-    /// their initializer; sketches don't call it directly.
-    func register(_ tracker: any VisionTracking) {
-        analyzer.register(tracker)
-    }
-
     private func configureAndRun() throws {
         if !configured {
             try configure()
@@ -149,7 +150,7 @@ public final class Camera {
 
         output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         output.alwaysDiscardsLateVideoFrames = true
-        let delegate = CameraCaptureDelegate(store: store, analyzer: analyzer)
+        let delegate = CameraCaptureDelegate(store: store, tapStore: tapStore)
         output.setSampleBufferDelegate(delegate, queue: queue)
         self.delegate = delegate
         guard session.canAddOutput(output) else { throw CameraError.cannotAddOutput }
@@ -179,7 +180,7 @@ public enum CameraError: Error, Sendable {
 }
 
 /// Receives frames on the capture queue and fans them out: the display frame to
-/// the `FrameStore`, and a copy to the analyzer for recognition.
+/// the `FrameStore`, and a copy to the installed frame tap for recognition.
 ///
 /// Defined at file scope (not nested in the `@MainActor` `Camera`) on purpose, so
 /// its delegate method stays **non-isolated** — the capture queue calls it off
@@ -190,12 +191,12 @@ private final class CameraCaptureDelegate: NSObject,
     AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
 
     private let store: FrameStore
-    private let analyzer: VisionAnalyzer
+    private let tapStore: OSAllocatedUnfairLock<FrameTap?>
     private let context = CIContext()
 
-    init(store: FrameStore, analyzer: VisionAnalyzer) {
+    init(store: FrameStore, tapStore: OSAllocatedUnfairLock<FrameTap?>) {
         self.store = store
-        self.analyzer = analyzer
+        self.tapStore = tapStore
     }
 
     func captureOutput(_ output: AVCaptureOutput,
@@ -204,8 +205,7 @@ private final class CameraCaptureDelegate: NSObject,
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
-        let box = FrameBox(cgImage)
-        store.store(box)
-        analyzer.submit(box)
+        store.store(FrameBox(cgImage))
+        if let tap = tapStore.withLock({ $0 }) { tap(cgImage) }
     }
 }
