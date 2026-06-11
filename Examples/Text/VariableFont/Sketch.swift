@@ -12,7 +12,7 @@ final class VariableFont: Sketch {
     let base = OutlineFont(name: "Skia") ?? .system
     let weights = [0.55, 1.0, 1.8, 3.0]
     var ramp: [OutlineFont] = []
-    let palette = Palette.dusk
+    let palette = CosinePalette.dusk
 
     override func setup() {
         textAlign(.center, .middle)

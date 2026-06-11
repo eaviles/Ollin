@@ -8,7 +8,7 @@ import Ollin
 /// stack and stays crisp at any size. The bundled font is Cozette (MIT).
 @main
 final class HelloText: Sketch {
-    let palette = Palette.sunset
+    let palette = CosinePalette.sunset
     let specimen = "ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789  áéíóú ñ ü ¿¡  ハローワールド こんにちは  .,!?:;-+=/()[]<>#@%&   "
 
     override func draw() {

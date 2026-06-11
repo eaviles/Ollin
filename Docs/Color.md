@@ -4,14 +4,16 @@
 
 ## Color
 
-`Color` is an RGBA color with `Double` components in `0...1`. Palettes and colormaps below both map a single number to a `Color`, which is the usual way to drive color from a value or from time.
+`Color` is an RGBA color with `Double` components in `0...1`. Most of the types below map a single number to a `Color` through the same `color(at:)` call — `Ramp`, `CosinePalette`, and `Colormap` smoothly, the discrete `Palette` in steps — which is the usual way to drive color from a value or from time.
 
 ### Contents
 
 - [Color](#color)
 - [OKLab, OKLCH, OKHSL](#oklab)
 - [Mixing](#mixing)
+- [Ramp](#ramp)
 - [Palette](#palette)
+- [CosinePalette](#cosinepalette)
 - [Colormap](#colormap)
 
 <a name="color"></a>
@@ -102,13 +104,56 @@ fill(Color.mix(warm, cool, t: sin(time) * 0.5 + 0.5))
 
 The `Mixing` example draws the same two colors mixed in all five spaces, band by band. The OKLab family and the gamut mapping are credited under [Influences & attribution](../README.md#influences--attribution).
 
+<a name="ramp"></a>
+
+### `Ramp`
+
+A gradient built from a list of colors — spread evenly, or placed with explicit stops — sampled with `color(at:)`. Interpolation runs through a chosen `ColorSpace` (OKLab by default, which blends evenly), and `t` clamps to the ends. Two stops sharing a position make a hard edge.
+
+```swift
+let heat = Ramp([.black, .red, Color(hex: 0xFFCC00), .white])
+fill(heat.color(at: energy))
+
+let sky = Ramp(stops: [(0, Color(hex: 0x0B1A40)),
+                       (0.8, Color(hex: 0x3C6DD0)),
+                       (1, Color(hex: 0xFFD9A0))], in: .oklch)
+```
+
+<a name="palette"></a>
+
 ### `Palette`
+
+A discrete set of colors carried as a unit. `palette[i]` wraps in both directions (so any counter cycles it), `color(at:)` quantizes `0...1` into equal bands (a noise value picks a swatch), and `ramp(in:)` turns the set into a smooth interpolating `Ramp`.
+
+```swift
+let p = Palette(.red, Color(hex: 0x1B9E77), .white)
+fill(p[frameCount / 30])                   // step through, wrapping
+fill(p.color(at: noise(x * 0.01)))         // band-quantized
+fill(p.ramp(in: .oklch).color(at: t))      // smooth
+```
+
+**Harmonies** build a palette from one base color, computed in OKLCH so the companions hold the base's lightness and chroma:
+
+```swift
+Palette.complementary(of: base)                         // base + opposite
+Palette.splitComplementary(of: base, spread: 1.0 / 12)  // base + the pair flanking its opposite
+Palette.triadic(of: base)                               // thirds of the wheel
+Palette.analogous(of: base, count: 3, spread: 1.0 / 12) // neighbours centered on base
+```
+
+**Built-in sets**: the eight ColorBrewer qualitative palettes ship as data — `.set1`, `.set2`, `.set3`, `.paired`, `.pastel1`, `.pastel2`, `.dark2`, `.accent` (credited under [Influences & attribution](../README.md#influences--attribution)).
+
+The `Harmonies` example follows a drifting base color through all four builders; `Swatchbook` lays out the built-in sets.
+
+<a name="cosinepalette"></a>
+
+### `CosinePalette`
 
 A cyclic color gradient from Inigo Quilez's cosine formula: each channel is `a + b · cos(2π · (c · t + d))`. Build one from four `(r, g, b)` coefficient triples (center, amplitude, frequency, phase), then sample it.
 
 ```swift
-let p = Palette(a: (0.5, 0.5, 0.5), b: (0.5, 0.5, 0.5),
-                c: (1.0, 1.0, 1.0), d: (0.0, 0.10, 0.20))
+let p = CosinePalette(a: (0.5, 0.5, 0.5), b: (0.5, 0.5, 0.5),
+                      c: (1.0, 1.0, 1.0), d: (0.0, 0.10, 0.20))
 let c = p.color(at: t)        // t cycles; 0 and 1 meet for the defaults
 ```
 
@@ -117,7 +162,7 @@ Seven presets ship built in (Quilez's example palettes), named for how each read
 `.rainbow`, `.dusk`, `.blush`, `.meadow`, `.sunset`, `.neon`, `.melon`.
 
 ```swift
-fill(Palette.sunset.color(at: time * 0.1))   // drift through the ramp over time
+fill(CosinePalette.sunset.color(at: time * 0.1))   // drift through the ramp over time
 ```
 
 The `Palettes` example sweeps all seven. The formula is credited under [Influences & attribution](../README.md#influences--attribution).

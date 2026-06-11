@@ -17,7 +17,7 @@ final class SyphonLoopback: Sketch {
 
     let sourceName = "Ollin Loopback"
     var feed: SyphonClient!
-    let palette = Palette.neon
+    let palette = CosinePalette.neon
 
     override func setup() {
         publishSyphon(name: sourceName)        // share every frame

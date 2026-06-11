@@ -9,7 +9,7 @@ import Ollin
 /// transform), so per-rect CPU work is one struct write.
 @main
 final class RectField: Sketch {
-    let palette = Palette.neon
+    let palette = CosinePalette.neon
     let cols = 56
     let rows = 56
 

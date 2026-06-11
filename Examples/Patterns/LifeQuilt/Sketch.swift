@@ -70,7 +70,7 @@ final class LifeQuilt: Sketch {
                     let cy = (Double(j) + 0.5) * side
                     let diff = Vector2(cx, cy) - center
                     let ci = map(atan2(diff.y, diff.x), -.pi, .pi, 0, 1)
-                    let hue = Palette.rainbow.color(at: ci * off + t)
+                    let hue = CosinePalette.rainbow.color(at: ci * off + t)
                     // Fade toward black with the cell's life.
                     fill(Color(red: hue.red * alpha, green: hue.green * alpha, blue: hue.blue * alpha))
 

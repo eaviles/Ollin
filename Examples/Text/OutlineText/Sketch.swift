@@ -18,7 +18,7 @@ import Ollin
 @main
 final class OutlineText: Sketch {
     let display = OutlineFont(name: "AvenirNext-Heavy") ?? .systemBold
-    let palette = Palette.rainbow
+    let palette = CosinePalette.rainbow
     let word = "ollin"
 
     override func setup() {

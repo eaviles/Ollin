@@ -21,7 +21,7 @@ final class VirtualCamera: Sketch {
     override var canvasSize: CanvasSize { .size(1280, 720) }
 
     var camera: VirtualCameraServer!
-    let palette = Palette.neon
+    let palette = CosinePalette.neon
 
     override func setup() {
         camera = publishVirtualCamera()

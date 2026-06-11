@@ -9,7 +9,7 @@ import Ollin
 @main
 final class GlyphWave: Sketch {
     let font = OutlineFont(name: "AvenirNext-Bold") ?? .systemBold
-    let palette = Palette.rainbow
+    let palette = CosinePalette.rainbow
     let word = "ollin"
 
     override func setup() {

@@ -1,11 +1,11 @@
 import Ollin
 
-/// Ollin's built-in cosine-gradient `Palette` presets — Inigo Quilez's seven
+/// Ollin's built-in cosine-gradient `CosinePalette` presets — Inigo Quilez's seven
 /// example palettes — each swept across the canvas as a band and scrolled over
-/// time. Build your own with `Palette(a:b:c:d:)`.
+/// time. Build your own with `CosinePalette(a:b:c:d:)`.
 @main
 final class Palettes: Sketch {
-    let presets: [Palette] = [.rainbow, .dusk, .blush, .meadow, .sunset, .neon, .melon]
+    let presets: [CosinePalette] = [.rainbow, .dusk, .blush, .meadow, .sunset, .neon, .melon]
 
     override func setup() {
         noStroke()

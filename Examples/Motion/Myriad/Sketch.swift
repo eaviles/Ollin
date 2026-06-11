@@ -7,7 +7,7 @@ import Ollin
 /// work is one struct write and the whole field stays smooth.
 @main
 final class Myriad: Sketch {
-    let palette = Palette.neon
+    let palette = CosinePalette.neon
     let cols = 90
     let rows = 90
 

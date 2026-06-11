@@ -27,7 +27,7 @@ final class Capture: Sketch {
             let a = Double(i) / Double(count) * .tau + time * 0.3
             let r = min(width, height) * 0.32 * (0.6 + 0.4 * sin(time + Double(i)))
             let p = c + Vector2(cos(a), sin(a)) * r
-            fill(Palette.rainbow.color(at: Double(i) / Double(count)))
+            fill(CosinePalette.rainbow.color(at: Double(i) / Double(count)))
             drawCircle(center: p, radius: 46 * scale)
         }
     }

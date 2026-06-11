@@ -38,7 +38,7 @@ final class Keys: Sketch {
 
         for (i, p) in trail.enumerated() {
             let t = Double(i) / Double(max(1, trail.count - 1))   // 0 oldest … 1 newest
-            fill(Palette.rainbow.color(at: (hue + t * 0.15).truncatingRemainder(dividingBy: 1)))
+            fill(CosinePalette.rainbow.color(at: (hue + t * 0.15).truncatingRemainder(dividingBy: 1)))
             drawCircle(p.x, p.y, r * (0.3 + 0.7 * t))
         }
     }

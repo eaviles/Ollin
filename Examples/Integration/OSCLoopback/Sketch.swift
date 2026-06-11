@@ -18,7 +18,7 @@ final class OSCLoopback: Sketch {
     let port = 5005
     var sender: OSCSender!
     let receiver = OSCReceiver(port: 5005)
-    let palette = Palette.neon
+    let palette = CosinePalette.neon
 
     override func setup() {
         sender = OSCSender(host: "127.0.0.1", port: port)

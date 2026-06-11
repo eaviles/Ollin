@@ -14,7 +14,7 @@ import Ollin
 @main
 final class TextVolume: Sketch {
     let font = OutlineFont.systemMono
-    let palette = Palette.sunset
+    let palette = CosinePalette.sunset
 
     /// A pool of short words the wall is woven from (no source text, no asset).
     let words = """

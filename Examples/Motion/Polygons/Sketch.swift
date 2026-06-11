@@ -10,7 +10,7 @@ import Ollin
 /// signed-distance instance, not a tessellated outline.
 @main
 final class Polygons: Sketch {
-    private let palette = Palette.rainbow
+    private let palette = CosinePalette.rainbow
 
     override func setup() {
         noStroke()

@@ -7,7 +7,7 @@ import Ollin
 /// capsule instance, crisp at any weight.
 @main
 final class Spokes: Sketch {
-    let palette = Palette.neon
+    let palette = CosinePalette.neon
     let count = 64
 
     override func draw() {
