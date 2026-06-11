@@ -42,6 +42,10 @@ OPENRNDR-style effects that compose in layers: draw into off-screen targets, run
 
 Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
 
+## Compute shaders
+
+General-purpose GPU work as a first-class capability: kernels a sketch dispatches over buffers and textures each frame — particle and agent simulations in the hundreds of thousands (flocking, physarum, attractors), reaction-diffusion, cellular automata — with the results feeding the instanced render path or arriving as textures, never touching the CPU. Metal makes this native on every Mac Ollin supports, closing a long-standing platform gap: compute shaders arrived in OpenGL 4.3 and Apple's OpenGL stops at 4.1, so the GL-based frameworks never had them on a Mac. See the [design notes](DESIGN-NOTES.md#compute-shaders-not-started).
+
 ## Project generator
 
 An openFrameworks-style generator that scaffolds a ready-to-run sketch folder from a few questions (which capabilities, which canvas size), instead of hand-copying boilerplate. See the [design notes](DESIGN-NOTES.md#project-generator--sketch-scaffolding-not-started).
