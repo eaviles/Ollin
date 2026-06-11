@@ -801,6 +801,20 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/BodyPose"
         ),
+        // People lifted off the background and composited over a drawn gradient
+        // (background replacement; the matte doubles as the drop shadow).
+        .executableTarget(
+            name: "Example-PersonSegmentation",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/PersonSegmentation"
+        ),
+        // The salient subject lifted into a spotlight: dimmed frame, full-color
+        // cutout, matte halo.
+        .executableTarget(
+            name: "Example-SubjectLift",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/SubjectLift"
+        ),
         // Rectangular shapes (paper, screens, cards) highlighted as quads.
         .executableTarget(
             name: "Example-RectangleScan",

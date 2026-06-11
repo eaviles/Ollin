@@ -45,6 +45,9 @@ final class Faces: Sketch {
 - [HandTracker](#handtracker) — find hands and their 21-joint skeletons
 - [Hand](#hand) — one detected hand, its joints and fingers
 - [BodyTracker](#bodytracker) — find people and their pose skeletons
+- [PersonSegmenter](#personsegmenter) — lift the people out of the frame
+- [SubjectSegmenter](#subjectsegmenter) — lift whatever stands out as foreground
+- [Segmentation](#segmentation) — a soft matte and the cutout it makes
 - [RectangleDetector](#rectangledetector) — find rectangular shapes and their corners
 - [BarcodeScanner](#barcodescanner) — read barcodes and QR codes
 - [TextRecognizer](#textrecognizer) — read text (OCR) from the feed
@@ -273,6 +276,70 @@ override func draw() {
 ```
 
 `Body` mirrors `Hand`: `point(_:in:)` maps a single `BodyJoint` (or `nil`), `points(in:)` maps them all, and `bones(in:)` returns the skeleton as line segments (`Body.skeleton` is the joint-pair list — head, spine, arms, legs). Note that body pose is a heavier model — see [Availability](#availability).
+
+<a name="personsegmenter"></a>
+
+### PersonSegmenter
+
+```swift
+PersonSegmenter(_ source: any FrameSource, quality: Quality = .balanced)
+var matte: Image? { get }
+var cutout: Image? { get }
+static func detect(in: Image, quality: Quality = .accurate) async throws -> Segmentation?
+```
+
+Segments the people out of the frame. Where the pose trackers reduce a person to joints, this gives you their **pixels**: `matte` is a soft white silhouette of everyone in view (alpha = per-pixel confidence; `tint(_:)` recolors it into a shadow, a glow, a flat silhouette), and `cutout` is the frame's own pixels with the background gone — you, lifted, ready to composite over anything the sketch draws. Both are plain `Image`s: draw them into the same rectangle as the frame and they sit exactly on the picture.
+
+```swift
+let camera = Camera()
+lazy var people = PersonSegmenter(camera)
+override func draw() {
+    drawMyBackground()                        // anything — the replacement backdrop
+    let rect = camera.fittedRect(in: bounds) ?? bounds
+    if let cutout = people.cutout { drawImage(cutout, in: rect) }
+}
+```
+
+`quality` trades matte resolution for speed: `.fast` for the lowest latency, `.balanced` (the live default), `.accurate` for the finest edges (the still-image default). It's a neural model — see [Availability](#availability).
+
+<a name="subjectsegmenter"></a>
+
+### SubjectSegmenter
+
+```swift
+SubjectSegmenter(_ source: any FrameSource)
+var matte: Image? { get }
+var cutout: Image? { get }
+var count: Int { get }
+static func detect(in: Image) async throws -> Segmentation?
+```
+
+Lifts the **salient subject** — the thing held up to the camera, the object on the table, people included — rather than specifically people. The same `matte`/`cutout` pair as `PersonSegmenter` (all subjects combined), plus `count`, how many distinct subjects the model found. While nothing stands out as foreground, `matte` and `cutout` are `nil` and `count` is `0`; the still-image `detect(in:)` likewise returns `nil` when nothing lifts.
+
+```swift
+let camera = Camera()
+lazy var subjects = SubjectSegmenter(camera)
+override func draw() {
+    let rect = camera.fittedRect(in: bounds) ?? bounds
+    if let frame = camera.frame {
+        tint(Color(white: 0.3)); drawImage(frame, in: rect); noTint()   // the room, dimmed
+    }
+    if let cutout = subjects.cutout { drawImage(cutout, in: rect) }     // the subject, lit
+}
+```
+
+<a name="segmentation"></a>
+
+### Segmentation
+
+```swift
+struct Segmentation {
+    var matte: Image     // white silhouette, alpha = per-pixel confidence
+    var cutout: Image    // the source's pixels where the matte is on
+}
+```
+
+What the still-image `detect(in:)` calls return — the same two images the live trackers publish as properties. The matte is at the model's resolution (drawing it into the source's rectangle rescales it onto the picture); the cutout is at the source's own resolution.
 
 <a name="rectangledetector"></a>
 
@@ -515,7 +582,7 @@ if !bodies.isAvailable {
 }
 ```
 
-`isAvailable` is `false` only when the model genuinely can't run here (a transient error doesn't flip it); `unavailableReason` is a short human-readable explanation. The tracker also logs the reason once to the console. Face, hands, and contours run on nearly any Mac; body pose and the heavier models want Apple silicon.
+`isAvailable` is `false` only when the model genuinely can't run here (a transient error doesn't flip it); `unavailableReason` is a short human-readable explanation. The tracker also logs the reason once to the console. Face, hands, and contours run on nearly any Mac; body pose, segmentation, and the heavier models want Apple silicon.
 
 <a name="permission"></a>
 
