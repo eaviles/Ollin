@@ -19,6 +19,9 @@
 ```swift
 Color(red: Double, green: Double, blue: Double, alpha: Double = 1)
 Color(white: Double, alpha: Double = 1)
+Color(hex: UInt32, alpha: Double = 1)     // 24-bit RGB: Color(hex: 0xFF0066)
+Color(hex: String)                        // "#RGB" "#RGBA" "#RRGGBB" "#RRGGBBAA" → Color?
+Color(hue: Double, saturation: Double, brightness: Double, alpha: Double = 1)
 ```
 
 Named constants: `.white`, `.black`, `.gray`, `.red`, `.green`, `.blue`, `.clear`.
@@ -27,6 +30,26 @@ Named constants: `.white`, `.black`, `.gray`, `.red`, `.green`, `.blue`, `.clear
 background(.white)
 fill(Color(red: 0.2, green: 0.5, blue: 0.9))
 stroke(Color(white: 0.1))
+```
+
+**Hex** comes in two forms. The integer form is the one for literals in code — compile-checked, nothing to parse, never optional. An integer carries no digit count (`0xFFF` and `0x000FFF` are the same value), so it's always six digits of RGB, with alpha as its own parameter:
+
+```swift
+background(Color(hex: 0x14171C))
+fill(Color(hex: 0xFF0066, alpha: 0.5))
+```
+
+The string form takes the full grammar — `"#RGB"`, `"#RGBA"`, `"#RRGGBB"`, `"#RRGGBBAA"`, the `#` optional, case-insensitive — and returns an optional, so a string from a file or the network fails cleanly instead of trapping:
+
+```swift
+let brand = Color(hex: "#ff0066")!        // a literal you know is well-formed
+if let c = Color(hex: userString) { fill(c) }
+```
+
+**Hue, saturation, brightness** are each in `0...1`. Hue wraps (1.2 reads as 0.2), so it can run on `time` or any other unbounded value without bookkeeping; saturation and brightness clamp. The `HSBWheel` example draws the classic wheel with it:
+
+```swift
+fill(Color(hue: time * 0.1, saturation: 0.8, brightness: 1))   // cycle the rainbow
 ```
 
 <a name="palette"></a>
