@@ -9,6 +9,8 @@
 ### Contents
 
 - [Color](#color)
+- [OKLab, OKLCH, OKHSL](#oklab)
+- [Mixing](#mixing)
 - [Palette](#palette)
 - [Colormap](#colormap)
 
@@ -52,7 +54,53 @@ if let c = Color(hex: userString) { fill(c) }
 fill(Color(hue: time * 0.1, saturation: 0.8, brightness: 1))   // cycle the rainbow
 ```
 
-<a name="palette"></a>
+<a name="oklab"></a>
+
+### OKLab, OKLCH, OKHSL
+
+Three views of one perceptual model, each a small value type that converts to and from `Color` (alpha stays on the `Color`):
+
+```swift
+OKLab(l:a:b:)     OKLab(_ color: Color)     Color(_ lab: OKLab, alpha: 1)
+OKLCH(l:c:h:)     OKLCH(_ color: Color)     Color(_ lch: OKLCH, alpha: 1)
+OKHSL(h:s:l:)     OKHSL(_ color: Color)     Color(_ hsl: OKHSL, alpha: 1)
+```
+
+- **`OKLab`** is the workhorse for color *math*: `l` is perceived lightness in `0...1`, `a` runs green → red and `b` runs blue → yellow. Mixing through it comes out visually even.
+- **`OKLCH`** is OKLab in polar form — lightness, chroma, hue — the space for hue and chroma *dials*: turning `h` leaves lightness and colorfulness alone. The maximum displayable chroma depends on hue and lightness, so a dialed-up `c` can ask for colors the screen can't show; converting to `Color` maps those back by reducing chroma at constant lightness and hue, so the color stays itself, just as vivid as sRGB allows.
+- **`OKHSL`** squeezes the same model into the sRGB gamut: `s` and `l` run `0...1` and every combination is displayable — the space for *generated* color ("random hue, same perceived lightness").
+
+Hue is a turn in `0...1` everywhere, like the HSB initializer, and wraps the same way.
+
+```swift
+// Twelve hues that genuinely read as the same lightness:
+for i in 0..<12 {
+    fill(Color(OKHSL(h: Double(i) / 12, s: 0.9, l: 0.65)))
+    drawCircle(60 + Double(i) * 80, height / 2, 30)
+}
+
+var lch = OKLCH(brand)
+lch.h += 0.5                 // the complementary hue, same lightness and chroma
+let complement = Color(lch)
+```
+
+<a name="mixing"></a>
+
+### Mixing
+
+```swift
+Color.mix(_ a: Color, _ b: Color, t: Double, in: ColorSpace = .oklab) -> Color
+```
+
+Interpolates between two colors in a chosen space: `.rgb`, `.hsb`, `.oklab` (the default — perceptually even), `.oklch` (holds hue identity, arcs through chroma), or `.okhsl`. `t` clamps to `0...1` and alpha interpolates linearly. In the polar spaces hue takes the shortest way around the wheel, and an achromatic endpoint (gray, black, white) adopts the other color's hue, so a fade to white doesn't detour through unrelated hues.
+
+```swift
+let warm = Color(hex: 0xFF5500)
+let cool = Color(hex: 0x0066FF)
+fill(Color.mix(warm, cool, t: sin(time) * 0.5 + 0.5))
+```
+
+The `Mixing` example draws the same two colors mixed in all five spaces, band by band. The OKLab family and the gamut mapping are credited under [Influences & attribution](../README.md#influences--attribution).
 
 ### `Palette`
 

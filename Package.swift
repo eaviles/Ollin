@@ -395,6 +395,11 @@ let package = Package(
             path: "Examples/Color/HSBWheel"
         ),
         .executableTarget(
+            name: "Example-Mixing",
+            dependencies: ["Ollin"],
+            path: "Examples/Color/Mixing"
+        ),
+        .executableTarget(
             name: "Example-Palettes",
             dependencies: ["Ollin"],
             path: "Examples/Color/Palettes"

@@ -601,9 +601,4 @@ extension Color {
         MTLClearColorMake(Color.srgbToLinear(red), Color.srgbToLinear(green),
                           Color.srgbToLinear(blue), alpha)
     }
-
-    /// sRGB → linear for a single 0–1 component (the standard piecewise curve).
-    static func srgbToLinear(_ c: Double) -> Double {
-        c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
-    }
 }
