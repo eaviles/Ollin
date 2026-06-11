@@ -50,6 +50,8 @@ final class Faces: Sketch {
 - [TextRecognizer](#textrecognizer) — read text (OCR) from the feed
 - [ObjectTracker](#objecttracker) — follow a patch you point at across frames
 - [TrackedObject](#trackedobject) — the tracked box and its confidence
+- [TrajectoryTracker](#trajectorytracker) — find things flying along parabolic arcs
+- [DetectedTrajectory](#detectedtrajectory) — one arc: its points, fit, and identity
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
 - [Availability](#availability) — when a model can't run on a Mac
@@ -109,7 +111,7 @@ final class Traced: Sketch {
 
 Trackers attached to the same source share one analysis engine, so the source is tapped once and its frames fan out. Analysis is throttled to what the machine keeps up with (frames are skipped, never queued), and a paused video stops producing frames, so its trackers simply hold their last results.
 
-A type of your own can join the seam too: conform to `FrameSource` (hold the closure, call it with each new `CGImage` from whatever thread produces them) and every tracker accepts it.
+A type of your own can join the seam too: conform to `FrameSource` (hold the closure, call it with each new `CGImage` from whatever thread produces them) and every tracker accepts it. `Examples/Vision/TrajectoryTracking` does exactly that — its "camera" is a little ball-launching simulation the example renders itself.
 
 <a name="facetracker"></a>
 
@@ -404,6 +406,56 @@ func center(in: Rectangle, mirrored: Bool = false) -> Vector2
 
 Where the tracked patch is now and how sure the tracker is. `confidence` stays high while the patch is clearly in view and falls as it's occluded, leaves the frame, or moves too fast — a good value to fade an overlay by, or to threshold on to decide the object's been lost (then `track(…)` again to re-lock).
 
+<a name="trajectorytracker"></a>
+
+### TrajectoryTracker
+
+```swift
+TrajectoryTracker(_ source: any FrameSource, trajectoryLength: Int = 10,
+                  minimumObjectRadius: Double? = nil, maximumObjectRadius: Double? = nil)
+var trajectories: [DetectedTrajectory] { get }
+func reset()
+static func detect(across: [Image], frameRate: Double = 30,
+                   trajectoryLength: Int = 10) async throws -> [[DetectedTrajectory]]
+```
+
+Where `ObjectTracker` follows a patch you point at, this one watches for **ballistic motion** on its own: anything small that flies along a parabola — a thrown ball, a bounce — comes back as a `DetectedTrajectory`, an arc of points with the fitted curve. It's classical (no neural model), so it runs on any Mac. Two things it needs: the camera held still (a moving camera turns the whole scene into motion), and a beat of patience — an arc is reported only once the object has been seen `trajectoryLength` times.
+
+```swift
+let camera = Camera()
+lazy var tracker = TrajectoryTracker(camera)
+
+override func draw() {
+    guard let frame = camera.frame else { return }
+    let view = camera.fittedRect(in: bounds) ?? bounds
+    drawImage(frame, in: view)
+    for arc in tracker.trajectories {
+        stroke(Color(red: 0.35, green: 1, blue: 0.6, alpha: arc.confidence))
+        drawPolyline(arc.projectedPoints(in: view))
+    }
+}
+```
+
+The optional radius bounds (fractions of the frame, `0…1`) filter what counts as a moving object — set `maximumObjectRadius` to ignore large movers like a person crossing the scene. Call `reset()` after the scene jumps (a video loop, a seek) so the discontinuity isn't read as motion. The static `detect(across:frameRate:)` finds the arcs in an ordered array of frames with no camera — a recorded clip's frames, paced at `frameRate`.
+
+<a name="detectedtrajectory"></a>
+
+### DetectedTrajectory
+
+```swift
+var id: UUID { get }
+var confidence: Double { get }
+func detectedPoints(in: Rectangle, mirrored: Bool = false) -> [Vector2]
+func projectedPoints(in: Rectangle, mirrored: Bool = false) -> [Vector2]
+var equationCoefficients: SIMD3<Double> { get }
+var normalizedRadius: Double { get }
+var timeRange: ClosedRange<Double>? { get }
+```
+
+One arc. `detectedPoints(in:)` is the path as observed (the raw sightings, in travel order); `projectedPoints(in:)` is the same span projected onto the fitted parabola — the smoothed path, and the better one to draw. The fit itself is `equationCoefficients`: in normalized space (lower-left origin), `y = c.x·x² + c.y·x + c.z`, which you can sample *past* the last point to predict where the arc is headed.
+
+An arc keeps its `id` as more of it comes into view, so accumulate results by `id` to build trails that outlive any single frame's detection — and fade them by `confidence`, which is how sure the detector is that the points form one real trajectory.
+
 <a name="coordinate-mapping"></a>
 
 ### Coordinate mapping
@@ -449,7 +501,7 @@ let found = try await FaceTracker.detect(in: image)
 print("\(found.count) faces")
 ```
 
-`ObjectTracker` is the exception — tracking needs more than one frame — so its camera-free form takes an ordered sequence instead: `ObjectTracker.track(seed, across: frames)`.
+The two trackers that work *across* frames are the exception — one frame isn't enough — so their camera-free forms take an ordered sequence instead: `ObjectTracker.track(seed, across: frames)` and `TrajectoryTracker.detect(across: frames)`.
 
 <a name="availability"></a>
 

@@ -60,6 +60,25 @@ struct ImageTests {
         expectColor(image[0, 0], red: 1, green: 0, blue: 0)
     }
 
+    /// A bitmap-context-made image must render at face value. The texture loader
+    /// only honors its sRGB option for ImageIO-backed sources — a context-made
+    /// CGImage (a pixel-authored image, a camera frame) comes back in a linear
+    /// pixel format holding sRGB bytes and draws washed-out lighter unless
+    /// `texture(for:)` rebuilds it; this pins the rebuild.
+    @Test(.enabled(if: Snapshot.hasMetal)) @MainActor
+    func contextMadeImageRendersAtFaceValue() throws {
+        let sketch = ContextImageSketch()
+        let rendered = try #require(OllinApp.image(of: sketch))
+        let center = Image(cgImage: rendered)[32, 32]
+
+        // The source color comes back as itself, not its washed-out (linear →
+        // sRGB re-encoded) double: 0.07 would wash to ~0.29, so a 0.05
+        // tolerance cleanly separates the two.
+        #expect(abs(center.red - 0.07) < 0.05, "red \(center.red) ≠ 0.07")
+        #expect(abs(center.green - 0.08) < 0.05, "green \(center.green) ≠ 0.08")
+        #expect(abs(center.blue - 0.11) < 0.05, "blue \(center.blue) ≠ 0.11")
+    }
+
     // MARK: Helpers
 
     private func expectColor(_ c: Color, red: Double, green: Double, blue: Double,
@@ -78,5 +97,26 @@ struct ImageTests {
             bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
             provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+    }
+}
+
+/// Draws a bitmap-context-made image of one known color across the canvas, so
+/// the render's center pixel reports whether the texture path kept the color.
+private final class ContextImageSketch: Sketch {
+    override var canvasSize: CanvasSize { .square(64) }
+
+    private lazy var image: Image = {
+        let ctx = CGContext(data: nil, width: 64, height: 64, bitsPerComponent: 8,
+                            bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+                                | CGBitmapInfo.byteOrder32Little.rawValue)!
+        ctx.setFillColor(CGColor(srgbRed: 0.07, green: 0.08, blue: 0.11, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
+        return Image(cgImage: ctx.makeImage()!)
+    }()
+
+    override func draw() {
+        background(.white)
+        drawImage(image, 0, 0, width, height)
     }
 }

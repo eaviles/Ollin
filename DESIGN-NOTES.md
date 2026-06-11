@@ -72,7 +72,7 @@ Ollin aims to support AR sketches and offer a template-driven AR framework, fill
 
 Image understanding as a first-class Mac capability, not something that requires the phone. Apple ships the whole computer-vision stack on macOS, hardware-accelerated on the M-series Neural Engine, so a sketch can grab the Mac's own webcam (or a Continuity Camera) and run real perception locally. Over the frame-source spine — a tracker attaches to any `FrameSource`: the camera, recorded footage through a `VideoPlayer`, or a conforming feed of your own — the capabilities still to add:
 
-- **Vision** for body pose in 3D from a single camera, person and subject segmentation, optical flow, image classification, trajectory tracking, and saliency.
+- **Vision** for body pose in 3D from a single camera, person and subject segmentation, optical flow, image classification, and saliency.
 - **Core ML** to run any converted model, **Core Image** for filters and the legacy `CIDetector`, **vImage and Accelerate** for fast low-level pixel work, and **Create ML** for training custom models.
 The shape each tracker follows: a request run per frame (or throttled to a slower cadence) over the camera's frames, and the results exposed as typed values a sketch reads in `draw()`, such as a segmentation matte as a texture, a flow field, or a set of 3D body joints. It stays sugar over the typed core, and the heavier per-pixel results (mattes, flow fields) arrive as textures, which is what the [layered effects](#layered-effects-and-compositing-not-started) graph already consumes.
 

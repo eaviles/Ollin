@@ -190,11 +190,48 @@ public final class Image {
             .textureUsage: NSNumber(value: MTLTextureUsage.shaderRead.rawValue),
             .textureStorageMode: NSNumber(value: MTLStorageMode.private.rawValue),
         ]
-        guard let texture = try? loader.newTexture(cgImage: source, options: options) else {
+        guard var texture = try? loader.newTexture(cgImage: source, options: options) else {
             return nil
+        }
+        // The loader honors `.SRGB` only for ImageIO-backed sources: a CGImage
+        // made by a bitmap context (a pixel-authored image, a camera frame, any
+        // CG drawing) comes back in a *linear* pixel format holding the same
+        // sRGB-encoded bytes, so sampling skips the decode and everything washes
+        // out lighter. When that happens, rebuild the texture by hand in the
+        // sRGB format.
+        if texture.pixelFormat != .bgra8Unorm_srgb, texture.pixelFormat != .rgba8Unorm_srgb,
+           let rebuilt = Image.sRGBTexture(from: source, on: device) {
+            texture = rebuilt
         }
         cachedTexture = texture
         cachedDeviceID = id
+        return texture
+    }
+
+    /// Upload `source` as a `.bgra8Unorm_srgb` texture by hand: draw it into a
+    /// premultiplied BGRA sRGB bitmap (the byte layout the texture stores) and
+    /// copy the rows in. The fallback for sources `MTKTextureLoader` won't give
+    /// an sRGB texture for.
+    private static func sRGBTexture(from source: CGImage, on device: MTLDevice) -> MTLTexture? {
+        let width = source.width, height = source.height
+        let bytesPerRow = width * 4
+        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+              let context = CGContext(data: nil, width: width, height: height,
+                                      bitsPerComponent: 8, bytesPerRow: bytesPerRow, space: space,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+                                          | CGBitmapInfo.byteOrder32Little.rawValue),
+              let bytes = context.data else { return nil }
+        // The straight draw lands the image's top row in row 0, matching the
+        // loader's (and the image quad's) orientation.
+        context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm_srgb, width: width, height: height, mipmapped: false)
+        descriptor.usage = .shaderRead
+        descriptor.storageMode = .managed
+        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
+        texture.replace(region: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0,
+                        withBytes: bytes, bytesPerRow: bytesPerRow)
         return texture
     }
 

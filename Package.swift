@@ -800,6 +800,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/ObjectTracking"
         ),
+        // Trajectory detection — ballistic arcs found in a synthetic feed (a
+        // custom FrameSource the example conforms itself).
+        .executableTarget(
+            name: "Example-TrajectoryTracking",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/TrajectoryTracking"
+        ),
         // Vision over recorded footage — contours traced from a playing video
         // (the frame-source seam: a tracker attached to a VideoPlayer the way
         // it attaches to a Camera). Bundles the same CC BY-SA clip as
