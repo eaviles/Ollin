@@ -19,7 +19,7 @@ If you're coming from p5.js or JavaScript, [`Docs/Swift.md`](Docs/Swift.md) cove
 
 Near-term, fairly self-contained pieces. Each is small and well-scoped, which is what makes them good first contributions.
 
-- **Blend modes.** Compositing modes beyond source-over. Blend mode wants to land as a parameter in the pipeline descriptor rather than a separate renderer path (see the [layered effects notes](DESIGN-NOTES.md#layered-effects-and-compositing-not-started)).
+- **Blend modes.** Compositing modes beyond source-over, additive first — it's what light-accumulation sketches want (see [depth-of-field particle rendering](#depth-of-field-particle-rendering-sandpainting)). Blend mode wants to land as a parameter in the pipeline descriptor rather than a separate renderer path (see the [layered effects notes](DESIGN-NOTES.md#layered-effects-and-compositing-not-started)).
 - **User-supplied shaders.** A way for a sketch to bring its own Metal shader functions, resolved ahead of the built-ins, with hot-reload through the runtime source compiler. The fluent mixing layer above this is [shader composition and live-coding](#shader-composition-and-live-coding).
 - **Normalized `u, v` coordinates.** A 0…1 coordinate space across the canvas alongside points, so a sketch can place things without referring to `width`/`height`.
 - **Sub-pixel region outlines.** Disks and lines already fade by area below ~1px instead of vanishing; the stroke band on region shapes (rect, star, triangle) doesn't yet. Closing that gap would make every outline honor sizes from 0 up. See the [render-scale notes](DESIGN-NOTES.md#supersampled-render-scale--the-crispness-dial-not-started).
@@ -37,6 +37,10 @@ Render into a 16-bit float (`rgba16Float`), linear-light intermediate, then tone
 ## Layered effects and compositing
 
 OPENRNDR-style effects that compose in layers: draw into off-screen targets, run filters (blur, bloom, feedback, color grades) over them, and composite with blend modes. The natural home for post-processing, building on the off-screen render path the exporter already uses. Shape, references, and the design are in the [design notes](DESIGN-NOTES.md#layered-effects-and-compositing-not-started).
+
+## Depth-of-field particle rendering (sandpainting)
+
+A target experience that several roadmap items add up to: sketches in the style of Anders Hoff's depth-of-field and colour-shift work and the Blurry library — millions of faint particles, each displaced at random by its distance from a focal plane and accumulated as light, so depth of field *emerges* from the scatter instead of a post-process blur, with chromatic fringes from shifting the color channels apart. No single big feature; the pieces are: **additive blending** (the blend-modes item — samples accumulate as light), an **accumulation target** that persists across frames instead of clearing (a slice of [layered effects](#layered-effects-and-compositing); progressive refinement, long-exposure stills), the **float/HDR pipeline** (thousands of dim samples quantize to nothing in 8 bits, and colors above 1.0 are the point), and **scale** ([compute shaders](#compute-shaders) generating and jittering samples GPU-side). It doesn't wait for 3D: the displacement needs only a per-particle depth the sketch invents, so the first playable slice is additive blending plus an accumulation surface over the instanced point path that already handles sub-pixel marks. See the [design notes](DESIGN-NOTES.md#depth-of-field-particle-rendering-sandpainting-not-started).
 
 ## Shader composition and live-coding
 

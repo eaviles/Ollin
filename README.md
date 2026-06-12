@@ -270,6 +270,8 @@ These projects are inspirations for parts of Ollin that don't exist yet. Ollin s
 | [LYGIA](https://github.com/patriciogonzalezvivo/lygia) | Prosperity PL 3.0.0 (noncommercial) | A catalog of shader functions for well-known techniques like SDFs, noise, blends, and color conversions. Ollin reads it to learn the approach, then writes its own and credits the original technique. |
 | [Hydra](https://github.com/ojack/hydra) | AGPL-3.0 | How a chainable, video-synth-style API makes mixing visuals feel easy. A direction for a future livecoding mode. |
 | [Shader Park](https://github.com/shader-park) | MIT | How to compose and blend SDF shapes, and its livecoding environment. |
+| [ofxFX](https://github.com/patriciogonzalezvivo/ofxFX) | MIT | How shader effects become chainable, mixable objects — filters, blends, LUT color grading, and generative passes over ping-pong buffers. A reference for the planned layered-effects work. |
+| [Blurry](https://github.com/Domenicobrz/Blurry) | MIT | Depth of field that *emerges* from accumulating millions of displaced particle samples, implementing Anders Hoff's ([inconvergent](https://inconvergent.net/2019/depth-of-field/)) published technique. A reference for the planned sandpainting/accumulation rendering. |
 
 Meta Spark, the AR studio Meta has since discontinued, is the reference for an eventual AR mode. There's no source to credit, just the idea of starting from templates.
 
