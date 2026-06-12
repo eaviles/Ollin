@@ -18,3 +18,6 @@ DerivedData/
 # Local Claude Design handoff bundle (reference for the OllinLive UI redesign;
 # kept local — not published)
 /design/
+
+# Downloaded Core ML model weights (fetched by Scripts/fetch-models.sh, never committed)
+/Models/

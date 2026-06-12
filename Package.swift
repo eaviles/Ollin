@@ -867,6 +867,14 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/EyeCatcher"
         ),
+        // A custom Core ML model (monocular depth) over the live feed — the
+        // depth map sampled into a relief of disks. The model weights download
+        // via Scripts/fetch-models.sh (never committed).
+        .executableTarget(
+            name: "Example-DepthRelief",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/DepthRelief"
+        ),
         // Trajectory detection — ballistic arcs found in a synthetic feed (a
         // custom FrameSource the example conforms itself).
         .executableTarget(

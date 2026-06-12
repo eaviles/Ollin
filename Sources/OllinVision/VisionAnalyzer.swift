@@ -64,6 +64,7 @@ extension FaceTracker: VisionAvailability {}
 extension FlowTracker: VisionAvailability {}
 extension HandTracker: VisionAvailability {}
 extension ImageClassifier: VisionAvailability {}
+extension ModelTracker: VisionAvailability {}
 extension ObjectTracker: VisionAvailability {}
 extension PersonSegmenter: VisionAvailability {}
 extension RectangleDetector: VisionAvailability {}
@@ -109,6 +110,13 @@ final class VisionStatus: @unchecked Sendable {
     /// ignored, so a single hiccup doesn't flip the flag.
     func recordFailure(_ error: Error) {
         guard let reason = VisionStatus.capabilityReason(error, label: label) else { return }
+        markUnavailable(reason)
+    }
+
+    /// A permanent failure established outside `perform` — a model file that's
+    /// missing or won't load. Marks the tracker unavailable with `reason` and
+    /// logs once.
+    func markUnavailable(_ reason: String) {
         let shouldLog = state.withLock { state -> Bool in
             state.reason = reason
             if state.logged { return false }

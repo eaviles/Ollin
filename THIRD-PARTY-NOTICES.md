@@ -171,3 +171,17 @@ redistributed inside this repository.
 > on the video file and its adaptations, not on Ollin's source, which stays MIT
 > (the clip is merely bundled alongside it). The root [`LICENSE`](LICENSE) is
 > unaffected.
+
+---
+
+## Depth Anything V2, small (example model — downloaded, not bundled)
+
+- **Used for:** the `DepthRelief` example sketch only — a monocular depth-estimation model, to demonstrate `ModelTracker` running a custom Core ML model. Not part of the Ollin framework; Ollin (and `OllinVision`) bundle no model weights themselves.
+- **Location in this repo:** none. The weights are **not committed**: [`Scripts/fetch-models.sh`](Scripts/fetch-models.sh) downloads them into the gitignored `Models/` directory on a developer's machine.
+- **Work:** *Depth Anything V2* (the **small** checkpoint), Lihe Yang, Bingyi Kang, Zilong Huang, Zhen Zhao, Xiaogang Xu, Jiashi Feng, Hengshuang Zhao (2024) — in Apple's official Core ML conversion (`DepthAnythingV2SmallF16.mlpackage`).
+- **Upstream:** https://huggingface.co/apple/coreml-depth-anything-v2-small (conversion), via Apple's model gallery https://developer.apple.com/machine-learning/models/ — original model https://github.com/DepthAnything/Depth-Anything-V2
+- **License:** Apache-2.0 — https://www.apache.org/licenses/LICENSE-2.0 (the small checkpoint; the larger Depth Anything V2 checkpoints are CC BY-NC 4.0 and are not used)
+
+> Apache-2.0 applies to the model weights the script downloads; nothing from the
+> model is redistributed in this repository, so the root [`LICENSE`](LICENSE) is
+> unaffected. This entry records the provenance of what the script fetches.

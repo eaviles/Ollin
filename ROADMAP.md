@@ -49,10 +49,6 @@ General-purpose GPU work as a first-class capability: kernels a sketch dispatche
 
 An openFrameworks-style generator that scaffolds a ready-to-run sketch folder from a few questions (which capabilities, which canvas size), instead of hand-copying boilerplate. See the [design notes](DESIGN-NOTES.md#project-generator--sketch-scaffolding-not-started).
 
-## Computer vision
-
-Image understanding on the Mac itself: a `Camera` grabs the webcam (or a Continuity Camera), and trackers run Apple's on-device perception over any frame source — the live camera, or recorded footage through a `VideoPlayer` — surfaced as typed values a sketch reads in `draw()`. Over that foundation comes the rest of the catalog — custom Core ML models — hardware-accelerated on the Neural Engine, with the heavier per-pixel results arriving as textures the effects path can consume. A first-class Mac capability with no phone required, built on Vision, Core ML, Core Image, vImage and Accelerate, and AVFoundation. The one thing the Mac can't do is depth and AR sensing (LiDAR, TrueDepth face mesh, ARKit world tracking); that is the [iPhone as a sensor array](#iphone-as-a-sensor-array) section, the depth and AR superset over the same models. See the [design notes](DESIGN-NOTES.md#computer-vision-in-progress).
-
 ## iPhone as a sensor array
 
 A Mac has no depth camera, inertial sensors, or spare Neural Engine for live perception; a tethered iPhone has all three. The idea: let the phone act as a sensor and on-device ML co-processor for a sketch that still renders on the Mac, capturing and perceiving (LiDAR point clouds, face and body tracking, segmentation, device motion, and more) and streaming typed results the sketch reads in `draw()`. The first slice is a live RGBD point cloud, the kind an Intel RealSense once fed openFrameworks. The wire protocol, the sensor catalog, and the build order are in the [design notes](DESIGN-NOTES.md#iphone-as-a-sensor-array-not-started).

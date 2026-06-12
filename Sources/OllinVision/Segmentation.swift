@@ -99,8 +99,18 @@ enum SegmentationImages {
     /// The matte as a drawable `Image`, built straight over the bytes so its GPU
     /// texture uploads directly — no CGImage round-trip, no draw-side rebuild.
     static func matteImage(from matte: CGImage) -> Image? {
-        guard let bytes = matteRGBABytes(from: matte) else { return nil }
-        return Image(width: matte.width, height: matte.height, premultipliedRGBA: bytes)
+        guard let bytes = grayBytes(from: matte, width: matte.width, height: matte.height) else {
+            return nil
+        }
+        return matteImage(fromGray: bytes, width: matte.width, height: matte.height)
+    }
+
+    /// The same white-alpha matte built from an already-extracted gray plane —
+    /// for a caller that keeps the gray bytes around for its own reads (the
+    /// model tracker's value queries) and shouldn't pay the extraction twice.
+    static func matteImage(fromGray gray: [UInt8], width: Int, height: Int) -> Image? {
+        Image(width: width, height: height,
+              premultipliedRGBA: expandGrayToRGBA(gray, width: width, height: height))
     }
 
     /// The cutout as premultiplied RGBA8 bytes: `frame`'s pixels scaled by the

@@ -6,7 +6,7 @@
 
 See with the Mac's camera. Vision lives in a separate library so the drawing core stays free of `AVFoundation` and Apple's Vision framework — add `import OllinVision` alongside `import Ollin` to reach it.
 
-There are two pieces. A [`Camera`](#camera) captures frames from the built-in camera, a Continuity Camera iPhone, or an external webcam, and hands them over as drawable `Image`s. A **tracker** attached to a [frame source](#frame-sources) — that camera, or a playing [`VideoPlayer`](./Video.md) — runs Apple's on-device perception on each frame and publishes typed results you read in `draw()`. The first tracker is [`FaceTracker`](#facetracker); more (hands, bodies, segmentation, contours, text, …) follow the same shape.
+There are two pieces. A [`Camera`](#camera) captures frames from the built-in camera, a Continuity Camera iPhone, or an external webcam, and hands them over as drawable `Image`s. A **tracker** attached to a [frame source](#frame-sources) — that camera, or a playing [`VideoPlayer`](./Video.md) — runs Apple's on-device perception on each frame and publishes typed results you read in `draw()`. The first tracker is [`FaceTracker`](#facetracker); more (hands, bodies, segmentation, contours, text, …) follow the same shape, through to [`ModelTracker`](#modeltracker), which runs **your own Core ML model** the same way.
 
 The usual flow: make a camera in `setup()` and `start()` it, attach the trackers you want, then in `draw()` draw the feed with `drawFrame(camera)` — it letterboxes the latest frame, shows a standard waiting notice until the first one arrives, and returns the rectangle to map results into — and read each tracker's results.
 
@@ -61,6 +61,8 @@ final class Faces: Sketch {
 - [Classification](#classification) — one label and how strongly it applies
 - [SaliencyTracker](#saliencytracker) — map what draws the eye
 - [Saliency](#saliency) — the heat map, regions, and point query
+- [ModelTracker](#modeltracker) — run your own Core ML model over the frames
+- [ModelOutput](#modeloutput) — its decoded surfaces: labels, objects, map
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
 - [Availability](#availability) — when a model can't run on a Mac
@@ -754,6 +756,71 @@ struct Saliency {
 ```
 
 What the still-image `detect(in:mode:)` returns — the same three surfaces the live tracker publishes, as one value. `nil` only if the heat map couldn't be converted.
+
+<a name="modeltracker"></a>
+
+### ModelTracker
+
+```swift
+ModelTracker(_ source: any FrameSource, modelAt: URL)
+ModelTracker(_ source: any FrameSource, model: MLModel)   // a model you configured yourself
+ModelTracker(modelAt: URL)                                // bound to no source; still images only
+var labels: [Classification] { get }                      // classifier outputs, strongest first
+var top: Classification? { get }
+func confidence(of: String) -> Double
+var objects: [DetectedObject] { get }                     // object-detector outputs
+var map: Image? { get }                                   // image-typed output, white-alpha
+func value(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Double
+var isLoaded: Bool { get }
+func detect(in: Image) async throws -> ModelOutput
+```
+
+Runs **your own Core ML model** over the frames — the open end of the tracker catalog. Anything converted to Core ML drops in: an `.mlpackage` or `.mlmodel` you converted yourself (most published models convert with `coremltools`), one from [Apple's model gallery](https://developer.apple.com/machine-learning/models/), or an already-compiled `.mlmodelc`. Core ML schedules the work across the CPU, GPU, and Neural Engine on its own — on Apple silicon a typical vision model runs mostly on the Neural Engine.
+
+A model fills the surfaces matching what it outputs, decoded the same way the built-in trackers decode theirs:
+
+- **Classifier** (label + confidence outputs) → `labels` / `top` / `confidence(of:)`, like [`ImageClassifier`](#imageclassifier) but over your model's own vocabulary.
+- **Image-to-image** (a depth estimator, a custom matte or style model) → `map`, a white-alpha `Image` like the segmentation matte (`tint(_:)` recolors it; draw it into the frame's rectangle and it stretches onto the picture), plus `value(at:in:)` — the output value under any canvas point, the same field-shaped query [`SaliencyTracker`](#saliencytracker) offers. `0…1` for image-typed outputs; out-of-range points clamp to the edge.
+- **Object detector** (a detector exported with its non-maximum-suppression head, the form Apple's gallery ships) → `objects`, labeled boxes mapped by `bounds(in:)`.
+
+```swift
+let camera = Camera()
+lazy var depth = ModelTracker(camera, modelAt: URL(fileURLWithPath:
+    "Models/DepthAnythingV2SmallF16.mlpackage"))
+
+override func draw() {
+    guard let rect = drawFrame(camera) else { return }
+    let near = depth.value(at: Vector2(mouseX, mouseY), in: rect)   // 0 far … 1 near
+    if let map = depth.map { drawImage(map, in: rect) }             // the depth map, tintable
+}
+```
+
+Loading happens in the background, off the frame loop, started by the first analyzed frame (or the first `detect(in:)`): `isLoaded` flips when the model is ready, and frames simply pass by until then — the source's other trackers aren't stalled behind it. The compiled model is cached at a stable path, which is load-bearing: Core ML *specializes* a model for this Mac's compute device and keys that work to the compiled files and the executable that loads them, so the **first launch of a (re)built sketch takes several seconds** while every later launch of the same build starts in milliseconds. A model file that's missing or won't load surfaces through the [availability](#availability) pair instead of failing silently — check it and tell the user what to do (the `DepthRelief` example points at its download script).
+
+Model weights are yours to bring: Ollin bundles none. The examples fetch theirs with `Scripts/fetch-models.sh` (the repo ignores `Models/`), which downloads Apple's official conversion of **Depth Anything V2 (small)** — Apache-2.0, ~50 MB.
+
+<a name="modeloutput"></a>
+
+### ModelOutput
+
+```swift
+struct ModelOutput {
+    var labels: [Classification]     // classifier outputs, strongest first
+    var objects: [DetectedObject]    // detector outputs
+    var map: Image?                  // image-typed output, white-alpha
+    func value(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Double
+    func valueNormalized(at: Vector2) -> Double
+}
+
+struct DetectedObject {
+    var label: String                // what the model says it is
+    var confidence: Double           // 0…1
+    func bounds(in: Rectangle, mirrored: Bool = false) -> Rectangle
+    func center(in: Rectangle, mirrored: Bool = false) -> Vector2
+}
+```
+
+What the still-image `detect(in:)` returns — the same surfaces the live tracker publishes, as one value. `DetectedObject` is one thing an object-detection model found: its label, confidence, and box, mapped onto the canvas by the usual `in:` helpers.
 
 <a name="coordinate-mapping"></a>
 
