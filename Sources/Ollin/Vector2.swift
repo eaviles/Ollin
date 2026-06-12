@@ -129,3 +129,15 @@ public extension Vector2 {
     /// A copy with `y` replaced.
     func with(y newY: Double) -> Vector2 { Vector2(x, newY) }
 }
+
+public extension Collection where Element == Vector2 {
+    /// The centroid (arithmetic mean) of the points, or `nil` when empty.
+    ///
+    /// This is the mean of the points *themselves*: where vertices crowd, the
+    /// centroid is pulled toward them, so for a polygon outline it is not the
+    /// same as the area's center of mass.
+    var centroid: Vector2? {
+        guard !isEmpty else { return nil }
+        return reduce(.zero, +) / Double(count)
+    }
+}

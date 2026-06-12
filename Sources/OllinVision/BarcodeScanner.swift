@@ -31,8 +31,7 @@ public struct DetectedBarcode: Sendable {
 
     /// The center of the code, mapped into `rect`.
     public func center(in rect: Rectangle, mirrored: Bool = false) -> Vector2 {
-        let c = corners(in: rect, mirrored: mirrored)
-        return c.reduce(Vector2.zero, +) / Double(c.count)
+        corners(in: rect, mirrored: mirrored).centroid ?? .zero
     }
 }
 

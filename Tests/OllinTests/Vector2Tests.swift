@@ -98,4 +98,12 @@ struct Vector2Tests {
         #expect(v.with(x: 9) == Vector2(9, 2))
         #expect(v.with(y: 9) == Vector2(1, 9))
     }
+
+    @Test func centroid() {
+        #expect([Vector2]().centroid == nil)
+        #expect([Vector2(3, 7)].centroid == Vector2(3, 7))
+        // Mean of the points, not an area property: the doubled vertex drags it.
+        #expect([Vector2(0, 0), Vector2(4, 0), Vector2(2, 6)].centroid == Vector2(2, 2))
+        #expect([Vector2(0, 0), Vector2(0, 0), Vector2(4, 0), Vector2(2, 6)].centroid == Vector2(1.5, 1.5))
+    }
 }

@@ -261,6 +261,10 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** pin one axis — drop points to the top edge with `.with(y: 0)`, or let x scroll while y holds still.
 
+**`points.centroid`** — on any collection of `Vector2`: the centroid (arithmetic mean) of the points, or `nil` when the collection is empty. It's the mean of the points themselves — where vertices crowd, the centroid is pulled toward them — so for a polygon outline it's not the area's center of mass.
+
+**In a sketch:** the center of a cluster — a flock's middle to steer toward, or the center of a tracker's landmark points (an eye region's loop, a quad's corners).
+
 <a name="v2-together"></a>
 
 #### Putting it together

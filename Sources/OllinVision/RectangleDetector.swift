@@ -28,9 +28,7 @@ public struct DetectedRectangle: Sendable {
 
     /// The center of the quad, mapped into `rect`.
     public func center(in rect: Rectangle, mirrored: Bool = false) -> Vector2 {
-        let c = corners(in: rect, mirrored: mirrored)
-        let sum = c.reduce(Vector2.zero, +)
-        return sum / Double(c.count)
+        corners(in: rect, mirrored: mirrored).centroid ?? .zero
     }
 
     /// The quad's axis-aligned bounds mapped into `rect` — the box that contains
