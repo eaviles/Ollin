@@ -45,6 +45,8 @@ final class Faces: Sketch {
 - [HandTracker](#handtracker) — find hands and their 21-joint skeletons
 - [Hand](#hand) — one detected hand, its joints and fingers
 - [BodyTracker](#bodytracker) — find people and their pose skeletons
+- [BodyTracker3D](#bodytracker3d) — one person's pose in space, in meters
+- [Body3D](#body3d) — the 3D skeleton in canvas, model, and camera space
 - [PersonSegmenter](#personsegmenter) — lift the people out of the frame
 - [SubjectSegmenter](#subjectsegmenter) — lift whatever stands out as foreground
 - [Segmentation](#segmentation) — a soft matte and the cutout it makes
@@ -282,6 +284,69 @@ override func draw() {
 ```
 
 `Body` mirrors `Hand`: `point(_:in:)` maps a single `BodyJoint` (or `nil`), `points(in:)` maps them all, and `bones(in:)` returns the skeleton as line segments (`Body.skeleton` is the joint-pair list — head, spine, arms, legs). Note that body pose is a heavier model — see [Availability](#availability).
+
+<a name="bodytracker3d"></a>
+
+### BodyTracker3D
+
+```swift
+BodyTracker3D(_ source: any FrameSource)
+var body: Body3D? { get }
+static func detect(in: Image) async throws -> Body3D?
+```
+
+Finds one person's pose **in space** from an ordinary 2D camera — every joint a 3D position in meters, where `BodyTracker` gives flat picture coordinates. The same single webcam, but now the sketch knows how far the person is, how tall they are, and what their figure looks like from the side.
+
+Two ways it differs from the 2D tracker, both worth knowing before reaching for it:
+
+- **One person.** The model follows the most prominent person, so the read surface is a singular `body` (`nil` while no one is in view), not a list. For counting people or multi-person scenes, use `BodyTracker`.
+- **The full skeleton, always.** All 17 joints are placed every time — joints the camera can't see are the model's best guess, and their canvas projections simply land outside the frame's rectangle rather than disappearing. There is no per-joint confidence. (The 2D tracker is the opposite: it drops what it can't see.)
+
+It's a heavier neural model — see [Availability](#availability).
+
+<a name="body3d"></a>
+
+### Body3D
+
+```swift
+var confidence: Double                      // 0…1
+var height: Double                          // meters
+var heightEstimation: HeightEstimation      // .reference or .measured
+var distance: Double?                       // meters from the camera to the root
+func has(_ joint: BodyJoint3D) -> Bool
+
+// canvas — the overlay surface, like the other trackers
+func point(_ joint: BodyJoint3D, in rect: Rectangle, mirrored: Bool = false) -> Vector2?
+func points(in rect: Rectangle, mirrored: Bool = false) -> [BodyJoint3D: Vector2]
+func bones(in rect: Rectangle, mirrored: Bool = false) -> [(Vector2, Vector2)]
+
+// model space — meters, the pelvis root at the origin
+func position(_ joint: BodyJoint3D) -> Vector3?
+var positions: [BodyJoint3D: Vector3] { get }
+func bones() -> [(Vector3, Vector3)]
+
+// camera space — meters from the camera itself
+func cameraRelativePosition(_ joint: BodyJoint3D) -> Vector3?
+
+static let skeleton: [(BodyJoint3D, BodyJoint3D)]
+```
+
+One person's pose, readable in three spaces:
+
+- **Canvas** — `point(_:in:)`, `points(in:)`, and `bones(in:)` work exactly like `Body`'s: the joints projected onto the frame and mapped into the rectangle you drew it in, for skeleton overlays.
+- **Model space** — `position(_:)`, `positions`, and the no-argument `bones()` give meters, with the pelvis `root` at the origin, x to the picture's right, y up, and z pointing away from the camera. Because it's a real 3D figure, you can project it from *any* angle: `(x, y)` is the front view, `(z, y)` the side, `(x, z)` the top — views no camera was at.
+- **Camera space** — `cameraRelativePosition(_:)` gives meters from the camera itself (x right, y up, z out in front of the lens), so a joint's z is how far away it is. `distance` is the sugar: the distance to the person's root.
+
+The 17 `BodyJoint3D` joints are the head (`topHead`, `centerHead`), shoulders (`centerShoulder`, left/right), arms (elbows, wrists), `spine` and `root`, and legs (hips, knees, ankles) — a different set from the 2D `BodyJoint` (no eyes or ears; the 3D skeleton is built for the body in space, not the face). `height` is the person's estimated height; without real depth data `heightEstimation` is `.reference` (the skeleton is scaled to a standard assumed height — what a webcam gives), and `.measured` when the image carried depth (a LiDAR photo).
+
+```swift
+if let body = tracker.body {
+    for (a, b) in body.bones(in: rect) { drawLine(a, b) }     // over the feed
+    for (a, b) in body.bones() {                              // from the side, in meters
+        drawLine(center + Vector2(a.z, -a.y) * 200, center + Vector2(b.z, -b.y) * 200)
+    }
+}
+```
 
 <a name="personsegmenter"></a>
 

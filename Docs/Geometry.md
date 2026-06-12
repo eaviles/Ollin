@@ -4,7 +4,7 @@
 
 ## Geometry
 
-`Vector2`, `Rectangle`, `Circle`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types: the data primitives take, and the values you pass around and compose. Coordinates use a top-left origin with y increasing downward.
+`Vector2`, `Vector3`, `Rectangle`, `Circle`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types: the data primitives take, and the values you pass around and compose. Canvas coordinates use a top-left origin with y increasing downward.
 
 ### Contents
 
@@ -15,6 +15,7 @@
   - [Measuring between two vectors](#v2-measuring)
   - [Producing new vectors](#v2-producing)
   - [Putting it together](#v2-together)
+- [Vector3](#vector3)
 - [Rectangle](#rectangle)
 - [Circle](#circle)
 - [Contour](#contour)
@@ -273,6 +274,30 @@ let dir = (b - a).normalized        // unit direction from a to b
 let mid = a.lerp(to: b, 0.5)        // the midpoint
 var p = a
 p += dir * 10                       // step 10 units toward b
+```
+
+<a name="vector3"></a>
+
+### `Vector3`
+
+An `(x, y, z)` point or vector. Ollin draws in 2D, but some values live in space — a 3D body joint in meters, a point of a depth cloud — and `Vector3` carries them: `Vector2`'s arithmetic with a `z`.
+
+```swift
+Vector3(_ x: Double, _ y: Double, _ z: Double)
+Vector3(x: Double, y: Double, z: Double)
+```
+
+- **Constants:** `.zero`, `.one`, `.unitX`, `.unitY`, `.unitZ`.
+- **Same surface as `Vector2`** where it generalizes: `length` / `lengthSquared` / `normalized`, the `+ - * /` operators and their in-place forms, `dot`, `distance(to:)` / `distanceSquared(to:)`, `lerp(to:_:)`, `limited(to:)`, `projected(onto:)`, and `with(x:)` / `with(y:)` / `with(z:)`.
+- **3D-specific:** `cross(_:)` returns the perpendicular `Vector3` (in 2D it's a scalar), and `xy` drops the depth — the projection back onto the canvas plane.
+- **Not here:** the angle and rotation helpers — a 3D rotation needs an axis, which belongs to the coming 3D transform work, not a lone vector.
+
+Axis meaning (which way is up, where the origin sits) belongs to whatever produced the value — a producer like [`Body3D`](Vision.md#body3d) documents its own spaces.
+
+```swift
+let joint = Vector3(0.2, 1.4, -0.3)          // meters, say
+drawCircle(center + joint.xy * 200, 6)        // front view: drop the z
+drawCircle(center + Vector2(joint.z, -joint.y) * 200, 6)   // side view: look along x
 ```
 
 <a name="rectangle"></a>

@@ -801,6 +801,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/BodyPose"
         ),
+        // The 3D pose: the skeleton in meters, overlaid on the feed and re-drawn
+        // from the side — a view no camera is at.
+        .executableTarget(
+            name: "Example-BodyPose3D",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/BodyPose3D"
+        ),
         // People lifted off the background and composited over a drawn gradient
         // (background replacement; the matte doubles as the drop shadow).
         .executableTarget(
