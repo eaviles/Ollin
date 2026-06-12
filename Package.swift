@@ -782,6 +782,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/FaceTracking"
         ),
+        // The camera transformed so the face stays locked level and centered —
+        // the room moves, not the head.
+        .executableTarget(
+            name: "Example-FaceAlign",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/FaceAlign"
+        ),
         // Traces the camera's edges into vector contours (Shapes); self-contained,
         // falling back to a generated pattern when there's no camera.
         .executableTarget(

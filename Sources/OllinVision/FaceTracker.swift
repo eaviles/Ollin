@@ -62,6 +62,11 @@ public struct Face: Sendable, Identifiable {
 }
 
 /// A face landmark region. The points within one are ordered along the feature.
+///
+/// The left/right names are *image-space*, not anatomical: in an unmirrored
+/// frame, `leftEye` is the eye on the image's left — the subject's right eye
+/// (verified by probe on a portrait photo). The same holds for the brows and
+/// pupils.
 public enum FaceLandmark: Sendable, CaseIterable {
     case faceContour
     case leftEye, rightEye
