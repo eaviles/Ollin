@@ -192,10 +192,15 @@ public final class SaliencyTracker: VisionTracking, @unchecked Sendable {
         }
     }
 
-    /// The heat-map value at a normalized point, clamped to the map. Vision's
-    /// pixel lookup is nearest-neighbor with no bounds clamping of its own (the
-    /// optical-flow lesson: a coordinate that rounds past the last pixel traps),
-    /// so clamp to the last pixel's exact coordinate before querying.
+    /// The heat-map value at a normalized point (lower-left origin), clamped to
+    /// the map. Two facts about Vision's lookup, both pinned empirically:
+    /// `pixel(at:)` indexes the buffer **top-down** — it takes row/column
+    /// fractions, not a point in Vision's usual lower-left normalized space —
+    /// so the y flips here (a real bug: queries used to read the vertically
+    /// mirrored spot, hidden by the vertically-centered test fixture); and it's
+    /// nearest-neighbor with no bounds clamping of its own (the optical-flow
+    /// lesson: a coordinate that rounds past the last pixel traps), so clamp to
+    /// the last pixel's exact coordinate before querying.
     static func salienceNormalized(_ observation: SaliencyImageObservation,
                                    at point: Vector2) -> Double {
         let heat = observation.heatMap
@@ -203,7 +208,7 @@ public final class SaliencyTracker: VisionTracking, @unchecked Sendable {
         let h = Double(heat.size.height)
         guard w > 0, h > 0 else { return 0 }
         let query = NormalizedPoint(x: min(max(point.x, 0), (w - 1) / w),
-                                    y: min(max(point.y, 0), (h - 1) / h))
+                                    y: min(max(1 - point.y, 0), (h - 1) / h))
         return Double(heat.pixel(at: query))
     }
 }

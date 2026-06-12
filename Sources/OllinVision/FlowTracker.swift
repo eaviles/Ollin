@@ -74,13 +74,19 @@ public struct FlowField: @unchecked Sendable {
         let w = Double(observation.size.width)
         let h = Double(observation.size.height)
         guard w > 0, h > 0 else { return .zero }
-        // Vision's `flow(at:)` does no bounds clamping of its own: it rounds
-        // the scaled coordinate to the nearest pixel (nearest-neighbor, not
-        // bilinear) and traps when that rounds past the last one — any
-        // x ≥ (w − 0.5)/w, so even 0.999999, or a particle sitting on the
-        // frame's right edge. Clamp to the last pixel's exact coordinate.
+        // Two facts about Vision's `flow(at:)`, both pinned empirically. It
+        // indexes the map **top-down** — it takes row/column fractions, not a
+        // point in Vision's usual lower-left normalized space — so the query's
+        // y flips here (a real bug: queries used to read the vertically
+        // mirrored spot, hidden by the uniform-shift test fixtures, which are
+        // invariant under the flip). And it does no bounds clamping of its
+        // own: it rounds the scaled coordinate to the nearest pixel
+        // (nearest-neighbor, not bilinear) and traps when that rounds past the
+        // last one — any x ≥ (w − 0.5)/w, so even 0.999999, or a particle
+        // sitting on the frame's right edge. Clamp to the last pixel's exact
+        // coordinate.
         let query = NormalizedPoint(x: min(max(point.x, 0), (w - 1) / w),
-                                    y: min(max(point.y, 0), (h - 1) / h))
+                                    y: min(max(1 - point.y, 0), (h - 1) / h))
         let (dx, dy) = observation.flow(at: query)
         // The raw map is the *backward* displacement in flow-map pixels with the
         // image's own y (down): where each pixel of the newer frame came from.

@@ -40,6 +40,45 @@ import Ollin
                 > heat[0, 0].alpha)
     }
 
+    @Test func queriesReadTheRightPartOfThePicture() async throws {
+        // The disk sits OFF-center, in the picture's top quarter, and
+        // objectness boxes it: the query surface must put the heat *inside*
+        // that box, not in its vertical mirror. Pins the **top-down** indexing
+        // of Vision's `pixel(at:)` behind the query's internal y-flip (queries
+        // used to read the vertically mirrored spot — a real bug the
+        // vertically-centered fixtures couldn't catch, being invariant under
+        // the flip; the published heat-map image was always upright, only the
+        // queries were mirrored).
+        let image = Image(width: 320, height: 240, color: Color(white: 0.05))
+        let cx = 160, cy = 56, radius = 44
+        for y in (cy - radius)...(cy + radius) {
+            for x in (cx - radius)...(cx + radius)
+            where (x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius * radius {
+                image[x, y] = Color(red: 1.0, green: 0.6, blue: 0.1)
+            }
+        }
+        guard let saliency = try? await SaliencyTracker.detect(in: image,
+                                                               mode: .objectness) else { return }
+        // Lenient on detection (the model decides), strict on orientation.
+        guard let region = saliency.regions.first else { return }
+        let box = region.bounds(in: diskRect)
+        let mirrored = Rectangle(x: box.x, y: 240 - box.y - box.height,
+                                 width: box.width, height: box.height)
+        func meanSalience(in r: Rectangle) -> Double {
+            var sum = 0.0, n = 0.0
+            for gy in 0..<6 {
+                for gx in 0..<6 {
+                    let p = Vector2(r.x + (Double(gx) + 0.5) / 6 * r.width,
+                                    r.y + (Double(gy) + 0.5) / 6 * r.height)
+                    sum += saliency.salience(at: p, in: diskRect)
+                    n += 1
+                }
+            }
+            return sum / n
+        }
+        #expect(meanSalience(in: box) > meanSalience(in: mirrored) * 3)
+    }
+
     @Test func edgeQueriesClampInsteadOfTrapping() async throws {
         guard let saliency = try? await SaliencyTracker.detect(in: diskImage()) else { return }
         // The optical-flow regression, re-pinned here: Vision's nearest-neighbor

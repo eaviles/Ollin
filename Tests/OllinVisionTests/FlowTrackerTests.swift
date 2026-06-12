@@ -41,6 +41,52 @@ import Foundation
 
     private let imageRect = Rectangle(x: 0, y: 0, width: 320, height: 240)
 
+    @Test func queriesReadTheRightPartOfThePicture() async throws {
+        // Only the picture's TOP half moves: the query under a top canvas
+        // point must read that motion and a bottom point must not. Pins the
+        // **top-down** indexing of Vision's `flow(at:)` (queries used to read
+        // the vertically mirrored spot — a real bug the uniform-shift fixtures
+        // couldn't catch, being invariant under the flip).
+        let a = splitFrame(shiftTopRightBy: 0)
+        let b = splitFrame(shiftTopRightBy: 7)
+        let field = try #require(try await FlowTracker.flow(from: a, to: b))
+        let top = field.vector(at: Vector2(160, 60), in: imageRect)
+        let bottom = field.vector(at: Vector2(160, 180), in: imageRect)
+        #expect(top.x > bottom.x + 2)
+        #expect(top.x > 2)              // rightward, clearly read
+        #expect(abs(bottom.x) < 2)      // the static half stays near zero
+    }
+
+    /// Confetti where only the picture's top half (canvas y < 120) is drawn
+    /// shifted — the position-dependent companion to `texturedFrame`.
+    private func splitFrame(shiftTopRightBy dx: Double) -> Image {
+        let w = 320, h = 240
+        let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                            space: CGColorSpaceCreateDeviceRGB(),
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.setFillColor(CGColor(red: 0.12, green: 0.12, blue: 0.15, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        // The generator divides the 31 surviving bits by 2³¹ so it spans the
+        // whole 0…1 (the shared fixture's `/ UInt32.max` form tops out at 0.5,
+        // which would leave the top half permanently confetti-free — and this
+        // fixture's whole point is having both halves populated).
+        var seed: UInt64 = 0x5DEECE66D
+        func next() -> Double {
+            seed = seed &* 6364136223846793005 &+ 1442695040888963407
+            return Double(seed >> 33) / Double(UInt64(1) << 31)
+        }
+        for _ in 0..<1200 {
+            let x = next() * 400 - 40
+            let y = next() * 320 - 40
+            let side = 5 + next() * 14
+            // CG's y points up: rows with y ≥ 120 are the picture's top half.
+            let inTop = y >= 120
+            ctx.setFillColor(CGColor(red: next(), green: next(), blue: next(), alpha: 1))
+            ctx.fill(CGRect(x: x + (inTop ? dx : 0), y: y, width: side, height: side))
+        }
+        return Image(cgImage: ctx.makeImage()!)
+    }
+
     @Test func pairReportsTheShift() async throws {
         let a = texturedFrame()
         let b = texturedFrame(shiftRight: 8, shiftDown: 5)
