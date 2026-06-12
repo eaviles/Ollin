@@ -86,6 +86,19 @@ Ollin aims to support AR sketches and offer a template-driven AR framework, fill
 - **The Spark lesson is templates.** Spark's reach came from ready-made effect templates (face filters, world effects, plane and image tracking) people could start from. The Ollin version: AR-example sketches plus starter templates wired to ARKit anchors (face, world, image tracking), so an AR sketch is "fill in the `draw()`, the tracking is handed to you", the same template-as-on-ramp idea as the examples and `.swiftpm` starters.
 - **Caveat:** AR needs ARKit on a device to verify (the simulator has no AR camera).
 
+## Model examples and ModelTracker surfaces (not started)
+
+`ModelTracker` runs any converted Core ML model, so new perception examples are mostly a matter of picking models worth showing — plus, for some, one small new output surface on the tracker. The standing delivery rule for all of them: **weights are never committed** — `Scripts/fetch-models.sh` downloads into the gitignored `Models/`, the example shows the run-the-script notice until they exist, provenance goes in `THIRD-PARTY-NOTICES.md`, and the real-model tests soft-skip where the weights aren't fetched.
+
+Candidates, in rough order of effort:
+
+- **Object detection — YOLOv3-Tiny.** Drops in as-is: the `objects`/`DetectedObject` decode is already exercised against it, the model is on Apple's gallery CDN (8.9–35 MB by variant), and its Darknet license is permissive. The classic installation capability — labeled boxes, count the people, find the dog. Honest caveat for the example text: it's a dated model that misses small or far objects. **The modern Ultralytics YOLOs (v8/26) are AGPL-3.0 — never bundled, never scripted, same tier as p5.js's LGPL.**
+- **Style transfer — via Create ML, not a download.** The most creative-coding model of the set, with a zero-provenance angle: Create ML trains a style-transfer model from a single style image in minutes, so the example can say "train your own, drop the `.mlmodel` here" — the user owns the weights, no license question, no fetch script. The prerequisite: a style model outputs a **color** image, and the tracker's `map` is deliberately a gray white-alpha matte — this wants a separate `outputImage` surface (decode the output's stride-aware `cgImage` as a full-color `Image`; the same never-`pixel(at:)` rule applies).
+- **Semantic segmentation — DeepLabV3.** Tiny (2.3–8.6 MB, Apple's gallery) and it answers something the built-in person/subject segmenters can't: *per-class* masks over 21 everyday classes — recolor every chair, find the dog pixels. The prerequisite: it outputs an `MLMultiArray` of class labels (`CoreMLFeatureValueObservation`), which the tracker doesn't decode — this wants a small multiarray surface (likely decoded straight to a class-mask form rather than exposing raw arrays).
+- **Text-driven knobs — MobileCLIP-class embeddings.** `confidence(of:)` for *any phrase*, not a fixed vocabulary — "how spooky does the camera look" as a `0…1` knob. A real milestone rather than an example: it needs an embedding surface, the text-encoder side, and a tokenizer, and **the license of Apple's MobileCLIP release needs verifying before any fetch script points at it.**
+
+Skip the plain ImageNet classifiers (FastViT, MobileNetV2, ResNet) — redundant with the built-in `ImageClassifier`'s ~1,300-label vocabulary.
+
 ## iPhone as a sensor array (not started)
 
 A Mac has no depth camera, no inertial sensors, and no spare Neural Engine for live perception. A tethered iPhone has all three, so the idea is to let it act as a sensor and on-device ML co-processor for a sketch that still renders on the Mac. The phone captures and perceives, streams the results over the wire, and the sketch reads them in `draw()` as typed values. The Mac keeps the Metal rendering ceiling; the phone fills the input gap desktop hardware leaves.
