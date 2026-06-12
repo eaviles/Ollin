@@ -59,6 +59,8 @@ final class Faces: Sketch {
 - [FlowField](#flowfield) — the motion field, sampled anywhere on the canvas
 - [ImageClassifier](#imageclassifier) — name what's in the picture
 - [Classification](#classification) — one label and how strongly it applies
+- [SaliencyTracker](#saliencytracker) — map what draws the eye
+- [Saliency](#saliency) — the heat map, regions, and point query
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
 - [Availability](#availability) — when a model can't run on a Mac
@@ -371,7 +373,7 @@ override func draw() {
 }
 ```
 
-A `DetectedRectangle` is `corners(in:)` (the four corners in perimeter order, ready to `drawPolygon` as a closed quad), `center(in:)`, and a `confidence`. The corners come back in perspective, which is exactly what a document scanner uses to warp a page flat.
+A `DetectedRectangle` is `corners(in:)` (the four corners in perimeter order, ready to `drawPolygon` as a closed quad), `center(in:)`, `bounds(in:)` (the axis-aligned box containing the corners, ready to `drawRect`), and a `confidence`. The corners come back in perspective, which is exactly what a document scanner uses to warp a page flat. The same type carries [`SaliencyTracker`](#saliencytracker)'s salient regions, which arrive upright — there, `bounds(in:)` is the natural read.
 
 <a name="barcodescanner"></a>
 
@@ -632,6 +634,60 @@ var name: String { get }        // "blue sky" — ready to draw
 ```
 
 One label the classifier saw. `label` is the underscored identifier the vocabulary uses (what `confidence(of:)` and `supportedLabels()` speak); `name` opens the underscores up for display.
+
+<a name="saliencytracker"></a>
+
+### SaliencyTracker
+
+```swift
+SaliencyTracker(_ source: any FrameSource, mode: Mode = .attention)
+var heatMap: Image? { get }
+var regions: [DetectedRectangle] { get }
+func salience(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Double
+static func detect(in: Image, mode: Mode = .attention) async throws -> Saliency?
+```
+
+Maps **what draws the eye**: a heat map of visual salience over the frame, plus the bounding regions it peaks in. Where the segmenters answer "which pixels are the subject," this answers "which parts of the picture matter" — for any content. Two flavors via `mode`: `.attention` (the default) predicts where a person would look — trained on human gaze, drawn to faces and contrast — and `.objectness` highlights regions likely to contain discrete objects, whether or not they draw the eye. The mode is fixed at init; make one tracker per mode to read both.
+
+```swift
+let camera = Camera()
+lazy var saliency = SaliencyTracker(camera)
+
+override func draw() {
+    let rect = camera.fittedRect(in: bounds) ?? bounds
+    if let frame = camera.frame { drawImage(frame, in: rect) }
+    if let heat = saliency.heatMap {
+        tint(Color(red: 1, green: 0.6, blue: 0.1, alpha: 0.7))
+        drawImage(heat, in: rect)                     // attention as a warm glow
+        noTint()
+    }
+    for region in saliency.regions {
+        noFill(); stroke(.white)
+        drawRect(region.bounds(in: rect))             // the salient spots, boxed
+    }
+}
+```
+
+`heatMap` is a white-alpha image like the segmentation matte — alpha is the salience, so `tint(_:)` recolors it into a glow, a fog, an inverted spotlight. It comes back at the model's own coarse resolution (68×68, whatever the source's size or aspect); drawing it into the frame's rectangle stretches it smoothly onto the picture. Like the segmenters' images, it's converted only once a read has armed it (the first read can come back `nil`; the next analyzed frame publishes). `regions` are the salient bounding boxes (usually a handful at most) as [`DetectedRectangle`](#rectangledetector)s — upright here, so `bounds(in:)` is the natural read.
+
+The third surface is a query: `salience(at:in:)` answers "how salient is the picture under this canvas point" (`0…1`) straight from the latest result — no image in between. That's the field-shaped form: a density for stippling or hatching, an attractor for particles, a weight for where to spend detail. Pass the same rectangle you drew the frame into (and `mirrored:` if you drew it flipped); out-of-range points clamp to the edge. `salienceNormalized(at:)` is the raw normalized-space form.
+
+The model is neural, so the [availability](#availability) surface applies (`isAvailable` / `unavailableReason`).
+
+<a name="saliency"></a>
+
+### Saliency
+
+```swift
+struct Saliency {
+    var heatMap: Image                 // white, alpha = salience
+    var regions: [DetectedRectangle]   // the salient bounding boxes
+    func salience(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Double
+    func salienceNormalized(at: Vector2) -> Double
+}
+```
+
+What the still-image `detect(in:mode:)` returns — the same three surfaces the live tracker publishes, as one value. `nil` only if the heat map couldn't be converted.
 
 <a name="coordinate-mapping"></a>
 

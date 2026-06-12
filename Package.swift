@@ -853,6 +853,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/SceneLabels"
         ),
+        // Saliency — where the eye goes, as a warm heat-map glow over the feed
+        // with the salient regions boxed and a marker gliding to the hottest spot.
+        .executableTarget(
+            name: "Example-EyeCatcher",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/EyeCatcher"
+        ),
         // Trajectory detection — ballistic arcs found in a synthetic feed (a
         // custom FrameSource the example conforms itself).
         .executableTarget(

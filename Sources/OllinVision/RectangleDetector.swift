@@ -32,6 +32,31 @@ public struct DetectedRectangle: Sendable {
         let sum = c.reduce(Vector2.zero, +)
         return sum / Double(c.count)
     }
+
+    /// The quad's axis-aligned bounds mapped into `rect` — the box that contains
+    /// all four corners, ready to `drawRect`. For an upright quad (a saliency
+    /// region) this *is* the quad; for one seen in perspective it's the
+    /// enclosing box.
+    public func bounds(in rect: Rectangle, mirrored: Bool = false) -> Rectangle {
+        let c = corners(in: rect, mirrored: mirrored)
+        let xs = c.map(\.x), ys = c.map(\.y)
+        guard let minX = xs.min(), let maxX = xs.max(),
+              let minY = ys.min(), let maxY = ys.max() else { return rect }
+        return Rectangle(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
+}
+
+extension DetectedRectangle {
+    /// Decode from the Vision observation (also the shape saliency's salient
+    /// regions arrive in), keeping the Vision type off the public surface.
+    init(_ observation: RectangleObservation) {
+        func vec(_ p: NormalizedPoint) -> Vector2 { Vector2(Double(p.x), Double(p.y)) }
+        self.init(confidence: Double(observation.confidence),
+                  topLeftN: vec(observation.topLeft),
+                  topRightN: vec(observation.topRight),
+                  bottomRightN: vec(observation.bottomRight),
+                  bottomLeftN: vec(observation.bottomLeft))
+    }
 }
 
 /// Finds rectangular shapes — documents, screens, cards, signs — even seen at an
@@ -105,7 +130,7 @@ public final class RectangleDetector: VisionTracking, @unchecked Sendable {
                                   minimumConfidence: minimumConfidence,
                                   maximumCount: maximumCount)
         let observations = try await request.perform(on: image.currentCGImage())
-        return observations.map(decode)
+        return observations.map(DetectedRectangle.init)
     }
 
     // MARK: VisionTracking
@@ -120,7 +145,7 @@ public final class RectangleDetector: VisionTracking, @unchecked Sendable {
         do {
             let observations = try await request.perform(on: cgImage)
             status.recordSuccess()
-            lock.withLock { $0 = observations.map(RectangleDetector.decode) }
+            lock.withLock { $0 = observations.map(DetectedRectangle.init) }
         } catch {
             status.recordFailure(error)
         }
@@ -138,16 +163,5 @@ public final class RectangleDetector: VisionTracking, @unchecked Sendable {
         request.minimumConfidence = minimumConfidence
         request.maximumObservations = max(1, maximumCount)
         return request
-    }
-
-    private static func decode(_ observation: RectangleObservation) -> DetectedRectangle {
-        func vec(_ p: NormalizedPoint) -> Vector2 { Vector2(Double(p.x), Double(p.y)) }
-        return DetectedRectangle(
-            confidence: Double(observation.confidence),
-            topLeftN: vec(observation.topLeft),
-            topRightN: vec(observation.topRight),
-            bottomRightN: vec(observation.bottomRight),
-            bottomLeftN: vec(observation.bottomLeft)
-        )
     }
 }
