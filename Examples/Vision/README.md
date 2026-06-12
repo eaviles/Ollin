@@ -27,8 +27,28 @@ Computer vision on the Mac. Vision lives in a separate library — add `import O
 | [DepthRelief](DepthRelief/Sketch.swift) | depth from one plain webcam — your own Core ML model (a monocular depth estimator) over the live feed, its map sampled into a relief of disks: nearer is bigger and warmer; run `Scripts/fetch-models.sh` once to download the model (`ModelTracker`, `value(at:in:)`, `map`) |
 | [ObjectDetection](ObjectDetection/Sketch.swift) | objects found, boxed, and named in the live feed — where SceneLabels names the whole picture, a detector answers *where* and *how many*: one labeled, color-coded box per thing the model can name; run `Scripts/fetch-models.sh` once to download the model (`ModelTracker`, `objects`, `bounds(in:)`) |
 | [DigitReader](DigitReader/Sketch.swift) | a model reading the sketch's *own* pixels — draw a digit with the mouse onto a pixel-authored `Image` and MNIST classifies it on every mouse lift; no camera anywhere, which is the point: a sketch can point a model at its own output (`ModelTracker`, still `detect(in:)`, `mouseIsPressed`, `Image[x, y]`) |
-| [StyleMirror](StyleMirror/Sketch.swift) | the camera through a style-transfer model *you train yourself* in Create ML (a few minutes, any style image, no download, no license to check) — slide the mouse to crossfade between the camera and the painted frame (`ModelTracker`, `outputImage`, `tint`) |
+| [StyleMirror](StyleMirror/Sketch.swift) | the camera through a style-transfer model *you train yourself* with one command (any style image, no download, no license to check — see [Training the StyleMirror model](#training-the-stylemirror-model) below) — slide the mouse to crossfade between the camera and the painted frame (`ModelTracker`, `outputImage`, `tint`) |
 | [VideoTrace](VideoTrace/Sketch.swift) | vision over recorded footage — the bundled clip traced into line art as it plays, with the clip itself in a corner inset; a tracker attaches to a `VideoPlayer` exactly the way it attaches to a camera (`ContourDetector` over `VideoPlayer`, the frame-source seam) |
 | [TrajectoryTracking](TrajectoryTracking/Sketch.swift) | ballistic arcs found and *predicted* in a synthetic ball-launcher feed — the example conforms its own `FrameSource`, so a simulation is the tracker's camera (`TrajectoryTracker`, `DetectedTrajectory`) |
 
-These examples need a camera and ask for camera permission on first run (the system prompts from `swift run`) — except VideoTrace, TrajectoryTracking, and DigitReader, which are self-contained and run with no camera at all. DepthRelief, ObjectDetection, and DigitReader additionally need their models downloaded once (`Scripts/fetch-models.sh` — the weights are fetched, never committed), and StyleMirror wants a model you train yourself in Create ML (the sketch explains how). Run one with `swift run Example-<Name>`, e.g. `swift run Example-WebcamFeed`.
+These examples need a camera and ask for camera permission on first run (the system prompts from `swift run`) — except VideoTrace, TrajectoryTracking, and DigitReader, which are self-contained and run with no camera at all. DepthRelief, ObjectDetection, and DigitReader additionally need their models downloaded once (`Scripts/fetch-models.sh` — the weights are fetched, never committed), and StyleMirror wants a model you train yourself (below). Run one with `swift run Example-<Name>`, e.g. `swift run Example-WebcamFeed`.
+
+### Training the StyleMirror model
+
+StyleMirror runs a model that's *your own work* — nothing to download, no license to check. The Create ML app no longer offers its Style Transfer template, but the CreateML framework still trains them, and the repo wraps that in one command (run it from the repo root):
+
+```sh
+swift Scripts/train-style-model.swift path/to/any-image.jpg
+```
+
+Any image works as the style — a painting, a texture, an export of one of your own sketches. A couple of minutes later `Models/StyleTransfer.mlmodel` exists and StyleMirror starts painting; the sketch watches for the file, so you can train while it runs and watch the style arrive.
+
+Options, all optional:
+
+| Flag | What it does |
+|---|---|
+| `--content <folder>` | your own photos as training *content* (what teaches the model to preserve structure); defaults to frames pulled from the repo's sample clip |
+| `--iterations <n>` | more iterations, finer style (default 200 — about two minutes) |
+| `--strength <1-10>` | how hard the style pushes (default 5) |
+| `--quality` | the heavier image-quality network instead of the lighter real-time one the live mirror wants |
+| `--out <path>` | write somewhere else (default `Models/StyleTransfer.mlmodel`) |

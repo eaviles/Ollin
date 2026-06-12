@@ -3,23 +3,23 @@ import Ollin
 import OllinVision
 
 /// The camera through *your own* style-transfer model — a live painted mirror.
-/// Nothing to download for this one: Create ML trains a style-transfer model
-/// from a single style image in a few minutes, you save it next to the repo,
-/// and the model is yours — no license to check, no weights to fetch. The
+/// Nothing to download for this one: one script command trains a style-transfer
+/// model from a single style image in a couple of minutes, and the model is
+/// yours — no license to check, no weights to fetch. The
 /// surface doing the work is `outputImage`: where `DepthRelief` reads its
 /// model's output as a gray value *map*, a style model *paints a picture*, and
 /// `outputImage` hands it over in full color, drawn like any image. Slide the
 /// mouse left and right to crossfade between the camera and the painting.
 ///
-/// To train a model (about five minutes, no code):
-///  1. Open Create ML (Xcode ▸ Open Developer Tool ▸ Create ML).
-///  2. New project ▸ Style Transfer. Pick any image as the style — a painting,
-///     a texture, one of your own sketches' exports — and a folder of a few
-///     photos as content/validation.
-///  3. Train, then under Output save the model as `Models/StyleTransfer.mlmodel`
-///     in the repo.
-///  4. Relaunch — or just drop the file in while this runs; the sketch is
-///     watching for it.
+/// To train a model (a couple of minutes, one command — the Create ML app no
+/// longer offers its Style Transfer template, but the CreateML framework still
+/// trains them, and `Scripts/train-style-model.swift` wraps it):
+///
+///     swift Scripts/train-style-model.swift path/to/any-image.jpg
+///
+/// Any image works as the style — a painting, a texture, an export of one of
+/// your own sketches. Relaunch — or train while this runs; the sketch is
+/// watching for the file. Details and options in `Examples/Vision/README.md`.
 @main
 final class StyleMirror: Sketch {
     static let modelPaths = ["Models/StyleTransfer.mlmodel",
@@ -52,12 +52,11 @@ final class StyleMirror: Sketch {
         noTint()
 
         guard let styler else {
-            return drawStatus("No style model yet — train your own (≈5 min): " +
-                              "open Create ML (Xcode ▸ Open Developer Tool), " +
-                              "start a Style Transfer project, pick any image " +
-                              "as the style, train, and save the model as\n" +
-                              Self.modelPaths[0] + "\n" +
-                              "Drop it in while this runs — the sketch is watching.",
+            return drawStatus("No style model yet — train your own from any " +
+                              "image (a couple of minutes):\n" +
+                              "swift Scripts/train-style-model.swift your-image.jpg\n" +
+                              "Train while this runs — the sketch is watching for\n" +
+                              Self.modelPaths[0] + ".",
                               style: .warning)
         }
         if let reason = styler.unavailableReason {

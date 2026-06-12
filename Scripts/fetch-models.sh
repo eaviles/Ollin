@@ -15,7 +15,7 @@
 #     The gallery's Turi Create-trained drawing classifier.
 #
 # (The style-transfer example's model is not fetched here — you train your
-# own in Create ML; see Examples/Vision/StyleMirror/Sketch.swift.)
+# own with Scripts/train-style-model.swift; see Examples/Vision/README.md.)
 
 set -euo pipefail
 cd "$(dirname "$0")/.."

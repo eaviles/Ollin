@@ -214,5 +214,6 @@ redistributed inside this repository.
 > redistributed in this repository, so the root [`LICENSE`](LICENSE) is
 > unaffected. This entry records the provenance of what the script fetches.
 > (The `StyleMirror` example needs no entry here at all: its style-transfer
-> model is trained by the user in Create ML, so the weights are the user's own
-> work — nothing is fetched or redistributed.)
+> model is trained by the user — `Scripts/train-style-model.swift`, over the
+> CreateML framework — so the weights are the user's own work; nothing is
+> fetched or redistributed.)
