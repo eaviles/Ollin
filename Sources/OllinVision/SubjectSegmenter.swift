@@ -28,28 +28,46 @@ import os
 /// turns `false` and `unavailableReason` says why.
 public final class SubjectSegmenter: VisionTracking, @unchecked Sendable {
 
-    private struct Results {
-        var matte: FrameBox?
-        var cutout: FrameBox?
+    /// Published results plus which of the two image surfaces a sketch actually
+    /// reads. Each conversion runs on the analyzer thread only once its surface
+    /// has been read at least once (the first read arms it), so a sketch reading
+    /// only the matte never pays for the cutout. The images are built fresh per
+    /// analyzed frame and handed over whole — the `Segmentation` hand-off
+    /// justification.
+    private struct State {
+        var matte: Image?
+        var cutout: Image?
         var count = 0
+        var wantsMatte = false
+        var wantsCutout = false
     }
-    private let lock = OSAllocatedUnfairLock<Results>(initialState: Results())
+    private let lock = OSAllocatedUnfairLock(uncheckedState: State())
     private let status = VisionStatus("subject segmentation")
-    private let matteCache = ImageWrapCache()
-    private let cutoutCache = ImageWrapCache()
 
     /// The combined matte of every subject in the most recent analyzed frame —
     /// white, alpha = per-pixel confidence — or `nil` while nothing is lifted
-    /// (no subject in view, or no frame analyzed yet).
-    public var matte: Image? { matteCache.image(for: lock.withLock { $0.matte }?.cgImage) }
+    /// (no subject in view, or no frame analyzed yet). The first read arms the
+    /// conversion, so it can stay `nil` until the next analyzed frame publishes.
+    public var matte: Image? {
+        lock.withLockUnchecked { state in
+            state.wantsMatte = true
+            return state.matte
+        }
+    }
 
     /// The frame's pixels where the subjects are, transparent elsewhere — or
-    /// `nil` while nothing is lifted.
-    public var cutout: Image? { cutoutCache.image(for: lock.withLock { $0.cutout }?.cgImage) }
+    /// `nil` while nothing is lifted. The first read arms the conversion, so it
+    /// can stay `nil` until the next analyzed frame publishes.
+    public var cutout: Image? {
+        lock.withLockUnchecked { state in
+            state.wantsCutout = true
+            return state.cutout
+        }
+    }
 
     /// How many distinct subjects the most recent analyzed frame held (`0` when
     /// nothing is lifted).
-    public var count: Int { lock.withLock { $0.count } }
+    public var count: Int { lock.withLockUnchecked { $0.count } }
 
     /// Whether subject lifting can run on this Mac. Some Macs lack the compute
     /// device (Neural Engine) the model needs; when so, this is `false` and
@@ -70,9 +88,12 @@ public final class SubjectSegmenter: VisionTracking, @unchecked Sendable {
         let request = GenerateForegroundInstanceMaskRequest()
         let source = image.currentCGImage()
         guard let observation = try await request.perform(on: source),
-              let images = try images(from: observation, source: source) else { return nil }
-        return Segmentation(matte: Image(cgImage: images.matte),
-                            cutout: Image(cgImage: images.cutout))
+              let matteGray = try matteGray(from: observation),
+              let matte = SegmentationImages.matteImage(from: matteGray),
+              let cutout = SegmentationImages.cutoutImage(frame: source, matte: matteGray) else {
+            return nil
+        }
+        return Segmentation(matte: matte, cutout: cutout)
     }
 
     // MARK: VisionTracking
@@ -86,17 +107,28 @@ public final class SubjectSegmenter: VisionTracking, @unchecked Sendable {
         do {
             let observation = try await request.perform(on: cgImage)
             status.recordSuccess()
-            guard let observation,
-                  let images = try? SubjectSegmenter.images(from: observation, source: cgImage) else {
+            guard let observation else {
                 // No subject in view — clear, so a lifted subject leaving the
                 // frame doesn't linger.
-                lock.withLock { $0 = Results() }
+                lock.withLockUnchecked { $0 = State(wantsMatte: $0.wantsMatte,
+                                                    wantsCutout: $0.wantsCutout) }
                 return
             }
-            lock.withLock {
-                $0 = Results(matte: FrameBox(images.matte),
-                             cutout: FrameBox(images.cutout),
-                             count: observation.allInstances.count)
+            // Convert only the surfaces some read has armed; `count` comes free
+            // from the observation either way.
+            let (wantsMatte, wantsCutout) = lock.withLockUnchecked { ($0.wantsMatte, $0.wantsCutout) }
+            var matte: Image?
+            var cutout: Image?
+            if wantsMatte || wantsCutout, let matteGray = try? Self.matteGray(from: observation) {
+                if wantsMatte { matte = SegmentationImages.matteImage(from: matteGray) }
+                if wantsCutout { cutout = SegmentationImages.cutoutImage(frame: cgImage, matte: matteGray) }
+            }
+            lock.withLockUnchecked { state in
+                state.count = observation.allInstances.count
+                // Assign under the arming flag even when conversion came up nil:
+                // a lift the model lost must clear, not linger.
+                if wantsMatte { state.matte = matte }
+                if wantsCutout { state.cutout = cutout }
             }
         } catch {
             status.recordFailure(error)
@@ -105,17 +137,12 @@ public final class SubjectSegmenter: VisionTracking, @unchecked Sendable {
 
     // MARK: Decoding
 
-    private static func images(from observation: InstanceMaskObservation,
-                               source: CGImage) throws -> (matte: CGImage, cutout: CGImage)? {
-        // `allInstancesMask` holds instance *labels* (0 background, 1, 2, …), not
-        // a soft matte — read as gray it's all but black. The soft mask comes
-        // from `generateMask`, which feeds the same conversions as the person one.
+    /// The soft combined mask as a grayscale `CGImage`. `allInstancesMask` holds
+    /// instance *labels* (0 background, 1, 2, …), not a soft matte — read as gray
+    /// it's all but black. The soft mask comes from `generateMask`, which feeds
+    /// the same conversions as the person one.
+    private static func matteGray(from observation: InstanceMaskObservation) throws -> CGImage? {
         let mask = try observation.generateMask(for: observation.allInstances)
-        guard let matteGray = SegmentationImages.grayCGImage(from: mask),
-              let matte = SegmentationImages.matteCGImage(from: matteGray),
-              let cutout = SegmentationImages.cutoutCGImage(frame: source, matte: matteGray) else {
-            return nil
-        }
-        return (matte, cutout)
+        return SegmentationImages.grayCGImage(from: mask)
     }
 }

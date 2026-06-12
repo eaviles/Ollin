@@ -35,10 +35,6 @@ import Ollin
                        intent: .defaultIntent)!
     }
 
-    private func rgbaBytes(_ image: CGImage) -> [UInt8] {
-        Array(image.dataProvider!.data! as Data)
-    }
-
     // MARK: Conversions
 
     @Test func grayBytesRoundTripAtSameSize() {
@@ -49,18 +45,25 @@ import Ollin
     }
 
     @Test func matteBecomesPremultipliedWhite() {
-        let matte = SegmentationImages.matteCGImage(
+        let bytes = SegmentationImages.matteRGBABytes(
             from: grayImage([0, 64, 128, 255], width: 2, height: 2))
-        let bytes = rgbaBytes(try! #require(matte))
         // Each pixel is (m, m, m, m): white premultiplied by the matte's level.
         #expect(bytes == [0, 0, 0, 0,  64, 64, 64, 64,  128, 128, 128, 128,  255, 255, 255, 255])
+    }
+
+    @Test func matteImageWrapsTheBytesDrawable() throws {
+        let image = try #require(SegmentationImages.matteImage(
+            from: grayImage([0, 64, 128, 255], width: 2, height: 2)))
+        #expect(image.width == 2 && image.height == 2)
+        // Fully-on pixel reads back as opaque white; fully-off as clear.
+        #expect(image[1, 1].alpha == 1 && image[1, 1].red == 1)
+        #expect(image[0, 0].alpha == 0)
     }
 
     @Test func cutoutKeepsSourceWhereMatteIsOn() {
         let frame = solidImage(r: 200, g: 100, b: 40, width: 2, height: 2)
         let matte = grayImage([255, 0, 255, 0], width: 2, height: 2)
-        let cutout = SegmentationImages.cutoutCGImage(frame: frame, matte: matte)
-        let bytes = rgbaBytes(try! #require(cutout))
+        let bytes = SegmentationImages.cutoutRGBABytes(frame: frame, matte: matte)
         // On-pixels keep the source color opaque; off-pixels go fully transparent
         // (premultiplied, so every channel zeroes).
         #expect(bytes == [200, 100, 40, 255,  0, 0, 0, 0,  200, 100, 40, 255,  0, 0, 0, 0])
@@ -70,9 +73,8 @@ import Ollin
         // A 1×1 fully-on matte against a larger frame: the rescale must cover it.
         let frame = solidImage(r: 10, g: 20, b: 30, width: 4, height: 4)
         let matte = grayImage([255], width: 1, height: 1)
-        let cutout = SegmentationImages.cutoutCGImage(frame: frame, matte: matte)
-        let bytes = rgbaBytes(try! #require(cutout))
-        #expect(bytes.count == 4 * 4 * 4)
+        let bytes = SegmentationImages.cutoutRGBABytes(frame: frame, matte: matte)
+        #expect(bytes?.count == 4 * 4 * 4)
         #expect(bytes == Array([[UInt8]](repeating: [10, 20, 30, 255], count: 16).joined()))
     }
 
@@ -91,16 +93,6 @@ import Ollin
 
         let gray = try #require(SegmentationImages.grayCGImage(from: mask))
         #expect(SegmentationImages.grayBytes(from: gray, width: 2, height: 2) == [0, 64, 128, 255])
-    }
-
-    @Test func wrapCacheReusesTheImageWhileTheFrameHolds() {
-        let cache = ImageWrapCache()
-        let cg = solidImage(r: 1, g: 2, b: 3, width: 2, height: 2)
-        let first = cache.image(for: cg)
-        #expect(first === cache.image(for: cg))
-        #expect(cache.image(for: nil) == nil)
-        let other = solidImage(r: 4, g: 5, b: 6, width: 2, height: 2)
-        #expect(cache.image(for: other) !== first)
     }
 
     // MARK: Models (soft-skip where the compute device is missing)
@@ -160,11 +152,12 @@ import Ollin
         var published = false
         while Date() < deadline {
             tap(frame)   // the analyzer drops frames while one is in flight
-            if subjects.matte != nil { published = true; break }
+            // Reading both surfaces arms both conversions (the first read is what
+            // turns each one on), so poll until both publish.
+            if subjects.matte != nil, subjects.cutout != nil { published = true; break }
             try? await Task.sleep(for: .milliseconds(50))
         }
         #expect(published)
-        #expect(subjects.cutout != nil)
         #expect(subjects.count >= 1)
     }
 }

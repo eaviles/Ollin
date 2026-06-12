@@ -132,6 +132,24 @@ public final class Image {
         self.pixelsModified = true
     }
 
+    /// Wrap raw pixels: `bytes` is `width × height × 4` RGBA8, premultiplied
+    /// alpha, row-major from the top-left — the layout the pixel `subscript`
+    /// stores. The image takes the buffer as its own pixels (no decode, no
+    /// conversion), so this is the fast lane for pixels produced in bulk by
+    /// other code: the GPU texture uploads straight from the buffer. Returns
+    /// `nil` when the count doesn't match the dimensions.
+    public init?(width: Int, height: Int, premultipliedRGBA bytes: [UInt8]) {
+        guard width > 0, height > 0, bytes.count == width * height * 4,
+              let cgImage = Image.makeCGImage(bytes, width: width, height: height) else {
+            return nil
+        }
+        self.width = width
+        self.height = height
+        self.cgImage = cgImage
+        self.pixelBytes = bytes
+        self.pixelsModified = true
+    }
+
     /// Decode an image file at `url` (PNG, JPEG, HEIC, TIFF, GIF — anything
     /// ImageIO reads). Returns `nil` if the file can't be read or decoded.
     public convenience init?(contentsOf url: URL) {
@@ -178,6 +196,19 @@ public final class Image {
         let id = ObjectIdentifier(device)
         if let cachedTexture, cachedDeviceID == id { return cachedTexture }
 
+        // Edited or authored pixels upload straight from the buffer: it's already
+        // the texture's byte layout (premultiplied RGBA8, top-left rows), so the
+        // loader's decode, the context redraw, and the sRGB self-heal below are
+        // all skipped. This is what keeps per-frame published images (a
+        // segmentation matte) off the expensive path.
+        if pixelsModified, let pixelBytes,
+           let direct = Image.sRGBTexture(premultipliedRGBA: pixelBytes, width: width,
+                                          height: height, on: device) {
+            cachedTexture = direct
+            cachedDeviceID = id
+            return direct
+        }
+
         // After a pixel write (or for a blank image authored in memory), upload the
         // edited buffer; otherwise upload the original decode unchanged.
         let source = (pixelsModified ? bufferBackedCGImage() : nil) ?? cgImage
@@ -205,6 +236,24 @@ public final class Image {
         }
         cachedTexture = texture
         cachedDeviceID = id
+        return texture
+    }
+
+    /// Upload premultiplied RGBA8 `bytes` as an `.rgba8Unorm_srgb` texture: the
+    /// bytes pass through verbatim, and each sample decodes sRGB → linear on
+    /// read. The fast path for buffer-backed pixels — no decode, no redraw.
+    private static func sRGBTexture(premultipliedRGBA bytes: [UInt8], width: Int,
+                                    height: Int, on device: MTLDevice) -> MTLTexture? {
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba8Unorm_srgb, width: width, height: height, mipmapped: false)
+        descriptor.usage = .shaderRead
+        descriptor.storageMode = .managed
+        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
+        bytes.withUnsafeBytes { raw in
+            guard let base = raw.baseAddress else { return }
+            texture.replace(region: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0,
+                            withBytes: base, bytesPerRow: width * 4)
+        }
         return texture
     }
 

@@ -302,6 +302,8 @@ override func draw() {
 
 `quality` trades matte resolution for speed: `.fast` for the lowest latency, `.balanced` (the live default), `.accurate` for the finest edges (the still-image default). It's a neural model — see [Availability](#availability).
 
+Each of the two images is converted only for the surfaces your sketch actually reads — the first read of `matte` or `cutout` turns its conversion on, so a sketch reading only the matte never pays for the cutout. (That first read can come back `nil` once; the next analyzed frame publishes.) The same applies to `SubjectSegmenter` below.
+
 <a name="subjectsegmenter"></a>
 
 ### SubjectSegmenter

@@ -28,7 +28,6 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 - **Single-file sketches.** A zero-ceremony way to run one `.swift` file as a sketch, in the spirit of `swift-sh`, so dashing off an idea doesn't require setting up a package.
 - **Retained geometry buffers.** Every frame currently re-uploads everything; keeping static geometry (a large point cloud, a fixed background) in a persistent buffer would drop its per-frame cost to zero.
 - **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
-- **Faster segmentation publishing.** The live segmentation path is noticeably slow: each analyzed frame converts the matte and cutout on the CPU and re-uploads both as full images, with the draw-side texture build paying the context-made-CGImage sRGB rebuild on the main thread, and the cutout composited even when a sketch reads only the matte. Levers, roughly in order: upload the already-premultiplied RGBA bytes straight into an sRGB texture (skipping the CGImage round-trip), make the cutout lazy, and ultimately publish mattes as GPU textures — the form the [layered effects](DESIGN-NOTES.md#layered-effects-and-compositing-not-started) graph wants anyway.
 
 ## Rendering precision (HDR/float pipeline)
 

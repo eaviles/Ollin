@@ -59,9 +59,10 @@ enum SegmentationImages {
         return drew ? bytes : nil
     }
 
-    /// The white-alpha matte: every pixel white with alpha = the matte's gray
-    /// level — premultiplied, so the bytes are `(m, m, m, m)`.
-    static func matteCGImage(from matte: CGImage) -> CGImage? {
+    /// The white-alpha matte as premultiplied RGBA8 bytes: every pixel white
+    /// with alpha = the matte's gray level — premultiplied, so the bytes are
+    /// `(m, m, m, m)`.
+    static func matteRGBABytes(from matte: CGImage) -> [UInt8]? {
         guard let gray = grayBytes(from: matte, width: matte.width, height: matte.height) else {
             return nil
         }
@@ -73,13 +74,20 @@ enum SegmentationImages {
                 out[j] = m; out[j + 1] = m; out[j + 2] = m; out[j + 3] = m
             }
         }
-        return makeRGBA(rgba, width: matte.width, height: matte.height)
+        return rgba
     }
 
-    /// The cutout: `frame`'s pixels scaled by the matte (rescaled to the frame),
-    /// transparent where the matte is off. Premultiplied, so every channel
-    /// scales by the matte value.
-    static func cutoutCGImage(frame: CGImage, matte: CGImage) -> CGImage? {
+    /// The matte as a drawable `Image`, built straight over the bytes so its GPU
+    /// texture uploads directly — no CGImage round-trip, no draw-side rebuild.
+    static func matteImage(from matte: CGImage) -> Image? {
+        guard let bytes = matteRGBABytes(from: matte) else { return nil }
+        return Image(width: matte.width, height: matte.height, premultipliedRGBA: bytes)
+    }
+
+    /// The cutout as premultiplied RGBA8 bytes: `frame`'s pixels scaled by the
+    /// matte (rescaled to the frame), transparent where the matte is off.
+    /// Premultiplied, so every channel scales by the matte value.
+    static func cutoutRGBABytes(frame: CGImage, matte: CGImage) -> [UInt8]? {
         let width = frame.width, height = frame.height
         guard let mask = grayBytes(from: matte, width: width, height: height) else { return nil }
         var rgba = [UInt8](repeating: 0, count: width * height * 4)
@@ -106,7 +114,14 @@ enum SegmentationImages {
                 }
             }
         }
-        return makeRGBA(rgba, width: width, height: height)
+        return rgba
+    }
+
+    /// The cutout as a drawable `Image`, built straight over the bytes like
+    /// `matteImage`.
+    static func cutoutImage(frame: CGImage, matte: CGImage) -> Image? {
+        guard let bytes = cutoutRGBABytes(frame: frame, matte: matte) else { return nil }
+        return Image(width: frame.width, height: frame.height, premultipliedRGBA: bytes)
     }
 
     /// A grayscale `CGImage` from a Vision mask `CVPixelBuffer` — the soft masks
@@ -150,42 +165,4 @@ enum SegmentationImages {
                        intent: .defaultIntent)
     }
 
-    private static func makeRGBA(_ buffer: [UInt8], width: Int, height: Int) -> CGImage? {
-        guard let provider = CGDataProvider(data: Data(buffer) as CFData) else { return nil }
-        return CGImage(width: width, height: height,
-                       bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
-                       space: CGColorSpaceCreateDeviceRGB(),
-                       bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-                       provider: provider, decode: nil, shouldInterpolate: true,
-                       intent: .defaultIntent)
-    }
-}
-
-/// Wraps a published `CGImage` into a drawable `Image` lazily, keeping the
-/// wrapper while the frame doesn't change — the same cache `Camera.frame` keeps,
-/// so repeated reads (within one draw and across draws until the next analysis)
-/// reuse the cached GPU texture instead of re-uploading it every call.
-final class ImageWrapCache: @unchecked Sendable {
-
-    private struct State {
-        var image: Image?
-        var id: ObjectIdentifier?
-    }
-    private let lock = OSAllocatedUnfairLock(uncheckedState: State())
-
-    func image(for cgImage: CGImage?) -> Image? {
-        lock.withLockUnchecked { state in
-            guard let cgImage else {
-                state.image = nil
-                state.id = nil
-                return nil
-            }
-            let id = ObjectIdentifier(cgImage)
-            if state.id == id, let image = state.image { return image }
-            let image = Image(cgImage: cgImage)
-            state.image = image
-            state.id = id
-            return image
-        }
-    }
 }

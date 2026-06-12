@@ -51,6 +51,26 @@ struct ImageTests {
         #expect(filled.width == 3 && filled.height == 3)
     }
 
+    /// Raw premultiplied RGBA bytes wrap into an image whose pixels read back as
+    /// given; a byte count that doesn't match the dimensions is refused.
+    @Test func bytesInitWrapsAndValidates() throws {
+        let bytes: [UInt8] = [
+            255, 0, 0, 255,   0, 255, 0, 255,
+            0, 0, 255, 255,   128, 128, 128, 128,
+        ]
+        let image = try #require(Image(width: 2, height: 2, premultipliedRGBA: bytes))
+        expectColor(image[0, 0], red: 1, green: 0, blue: 0)   // top-left
+        expectColor(image[1, 0], red: 0, green: 1, blue: 0)
+        expectColor(image[0, 1], red: 0, green: 0, blue: 1)
+        // Premultiplied (128, 128, 128, 128) un-premultiplies to white at ~½ alpha.
+        let translucent = image[1, 1]
+        expectColor(translucent, red: 1, green: 1, blue: 1)
+        #expect(abs(translucent.alpha - 0.5) < 0.01)
+
+        #expect(Image(width: 2, height: 2, premultipliedRGBA: [0, 0, 0]) == nil)
+        #expect(Image(width: 0, height: 2, premultipliedRGBA: []) == nil)
+    }
+
     /// Out-of-range access is forgiving: reads return `.clear`, writes are ignored.
     @Test func outOfRangeAccessIsSafe() {
         let image = Image(width: 2, height: 2, color: .red)
@@ -74,6 +94,22 @@ struct ImageTests {
         // The source color comes back as itself, not its washed-out (linear →
         // sRGB re-encoded) double: 0.07 would wash to ~0.29, so a 0.05
         // tolerance cleanly separates the two.
+        #expect(abs(center.red - 0.07) < 0.05, "red \(center.red) ≠ 0.07")
+        #expect(abs(center.green - 0.08) < 0.05, "green \(center.green) ≠ 0.08")
+        #expect(abs(center.blue - 0.11) < 0.05, "blue \(center.blue) ≠ 0.11")
+    }
+
+    /// A bytes-backed image uploads straight from its buffer (no loader, no
+    /// context redraw); this pins that the direct path lands the same face-value
+    /// color the loader path does.
+    @Test(.enabled(if: Snapshot.hasMetal)) @MainActor
+    func bytesBackedImageRendersAtFaceValue() throws {
+        let sketch = BytesImageSketch()
+        let rendered = try #require(OllinApp.image(of: sketch))
+        let center = Image(cgImage: rendered)[32, 32]
+
+        // Same separation as the context-made test: the color comes back as
+        // itself, not its washed-out (linear → sRGB re-encoded) double.
         #expect(abs(center.red - 0.07) < 0.05, "red \(center.red) ≠ 0.07")
         #expect(abs(center.green - 0.08) < 0.05, "green \(center.green) ≠ 0.08")
         #expect(abs(center.blue - 0.11) < 0.05, "blue \(center.blue) ≠ 0.11")
@@ -113,6 +149,24 @@ private final class ContextImageSketch: Sketch {
         ctx.setFillColor(CGColor(srgbRed: 0.07, green: 0.08, blue: 0.11, alpha: 1))
         ctx.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
         return Image(cgImage: ctx.makeImage()!)
+    }()
+
+    override func draw() {
+        background(.white)
+        drawImage(image, 0, 0, width, height)
+    }
+}
+
+/// Draws a bytes-authored image of one known color across the canvas — the
+/// direct buffer→texture upload — so the render's center pixel reports whether
+/// that path kept the color.
+private final class BytesImageSketch: Sketch {
+    override var canvasSize: CanvasSize { .square(64) }
+
+    private lazy var image: Image = {
+        let pixel: [UInt8] = [18, 20, 28, 255]   // 0.07, 0.08, 0.11 in bytes
+        let bytes = [[UInt8]](repeating: pixel, count: 64 * 64).flatMap { $0 }
+        return Image(width: 64, height: 64, premultipliedRGBA: bytes)!
     }()
 
     override func draw() {

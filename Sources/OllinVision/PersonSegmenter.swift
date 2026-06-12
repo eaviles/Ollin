@@ -41,26 +41,44 @@ public final class PersonSegmenter: VisionTracking, @unchecked Sendable {
         }
     }
 
-    private struct Results {
-        var matte: FrameBox?
-        var cutout: FrameBox?
+    /// Published results plus which of the two surfaces a sketch actually reads.
+    /// Each conversion runs on the analyzer thread only once its surface has been
+    /// read at least once (the first read arms it), so a sketch reading only the
+    /// matte never pays for the cutout. The images are built fresh per analyzed
+    /// frame and handed over whole — the `Segmentation` hand-off justification.
+    private struct State {
+        var matte: Image?
+        var cutout: Image?
+        var wantsMatte = false
+        var wantsCutout = false
     }
-    private let lock = OSAllocatedUnfairLock<Results>(initialState: Results())
+    private let lock = OSAllocatedUnfairLock(uncheckedState: State())
     private let status = VisionStatus("person segmentation")
     /// One request reused across frames — it's a stateful (video-aware) request,
     /// and the analyzer runs one analysis at a time, so reuse is serial.
     private let request: GeneratePersonSegmentationRequest
-    private let matteCache = ImageWrapCache()
-    private let cutoutCache = ImageWrapCache()
 
     /// The people matte from the most recent analyzed frame — white, alpha =
     /// per-pixel confidence — or `nil` before the first result. Empty (fully
-    /// transparent) when no one is in view.
-    public var matte: Image? { matteCache.image(for: lock.withLock { $0.matte }?.cgImage) }
+    /// transparent) when no one is in view. The first read arms the conversion,
+    /// so it can stay `nil` until the next analyzed frame publishes.
+    public var matte: Image? {
+        lock.withLockUnchecked { state in
+            state.wantsMatte = true
+            return state.matte
+        }
+    }
 
     /// The frame's pixels where people are, transparent elsewhere, from the most
-    /// recent analyzed frame — or `nil` before the first result.
-    public var cutout: Image? { cutoutCache.image(for: lock.withLock { $0.cutout }?.cgImage) }
+    /// recent analyzed frame — or `nil` before the first result. The first read
+    /// arms the conversion, so it can stay `nil` until the next analyzed frame
+    /// publishes.
+    public var cutout: Image? {
+        lock.withLockUnchecked { state in
+            state.wantsCutout = true
+            return state.cutout
+        }
+    }
 
     /// Whether person segmentation can run on this Mac. Some Macs lack the
     /// compute device (Neural Engine) the model needs; when so, this is `false`
@@ -87,7 +105,12 @@ public final class PersonSegmenter: VisionTracking, @unchecked Sendable {
         request.qualityLevel = quality.visionLevel
         let source = image.currentCGImage()
         let observation = try await request.perform(on: source)
-        return try segmentation(from: observation, source: source)
+        let matteGray = try observation.cgImage
+        guard let matte = SegmentationImages.matteImage(from: matteGray),
+              let cutout = SegmentationImages.cutoutImage(frame: source, matte: matteGray) else {
+            return nil
+        }
+        return Segmentation(matte: matte, cutout: cutout)
     }
 
     // MARK: VisionTracking
@@ -100,33 +123,18 @@ public final class PersonSegmenter: VisionTracking, @unchecked Sendable {
         do {
             let observation = try await request.perform(on: cgImage)
             status.recordSuccess()
-            guard let result = try? PersonSegmenter.images(from: observation, source: cgImage) else {
-                return
-            }
-            lock.withLock {
-                $0 = Results(matte: FrameBox(result.matte), cutout: FrameBox(result.cutout))
+            // Convert only the surfaces some read has armed; nothing read yet
+            // means no byte work at all.
+            let (wantsMatte, wantsCutout) = lock.withLockUnchecked { ($0.wantsMatte, $0.wantsCutout) }
+            guard wantsMatte || wantsCutout, let matteGray = try? observation.cgImage else { return }
+            let matte = wantsMatte ? SegmentationImages.matteImage(from: matteGray) : nil
+            let cutout = wantsCutout ? SegmentationImages.cutoutImage(frame: cgImage, matte: matteGray) : nil
+            lock.withLockUnchecked { state in
+                if let matte { state.matte = matte }
+                if let cutout { state.cutout = cutout }
             }
         } catch {
             status.recordFailure(error)
         }
-    }
-
-    // MARK: Decoding
-
-    private static func images(from observation: PixelBufferObservation,
-                               source: CGImage) throws -> (matte: CGImage, cutout: CGImage)? {
-        let matteGray = try observation.cgImage
-        guard let matte = SegmentationImages.matteCGImage(from: matteGray),
-              let cutout = SegmentationImages.cutoutCGImage(frame: source, matte: matteGray) else {
-            return nil
-        }
-        return (matte, cutout)
-    }
-
-    private static func segmentation(from observation: PixelBufferObservation,
-                                     source: CGImage) throws -> Segmentation? {
-        guard let images = try images(from: observation, source: source) else { return nil }
-        return Segmentation(matte: Image(cgImage: images.matte),
-                            cutout: Image(cgImage: images.cutout))
     }
 }

@@ -120,11 +120,14 @@ Image(data: Data)
 Image(resource name: String, extension ext: String?, in bundle: Bundle)
 Image(cgImage: CGImage)
 Image(width: Int, height: Int, color: Color = .clear)
+Image(width: Int, height: Int, premultipliedRGBA: [UInt8])
 ```
 
 `Image` is the typed value `drawImage` takes. It's a reference type: it owns a GPU texture and is identified by who holds it, not by value. The failable initializers return `nil` when the bytes aren't a decodable image.
 
-The last initializer makes a blank `width`×`height` image filled with `color` (transparent by default), so you can [author one from scratch](#pixels) pixel by pixel rather than loading a file.
+`Image(width:height:color:)` makes a blank `width`×`height` image filled with `color` (transparent by default), so you can [author one from scratch](#pixels) pixel by pixel rather than loading a file.
+
+`Image(width:height:premultipliedRGBA:)` wraps pixels you've already produced in bulk: `width × height × 4` RGBA bytes, premultiplied alpha, rows top to bottom. The buffer becomes the image's own pixels with no decode or conversion — the GPU texture uploads straight from it — so it's the fast lane for per-frame generated images. Returns `nil` when the byte count doesn't match the dimensions.
 
 Load a bundled asset with the `resource:` initializer. `in:` has no default on purpose — a default argument would resolve to *Ollin's* bundle, never yours — so pass `.module` from the target that bundles the file:
 
