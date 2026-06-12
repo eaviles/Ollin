@@ -60,6 +60,31 @@ import Ollin
         #expect(image[0, 0].alpha == 0)
     }
 
+    @Test func colorImageKeepsColorsAndOrientation() throws {
+        // 2×2 with a distinct color per corner, decoded at face value: colors
+        // pass through untouched and the top-left origin is preserved (no
+        // flip) — the decode behind the model tracker's `outputImage`.
+        var bytes: [UInt8] = []
+        bytes.append(contentsOf: [255, 0, 0, 255])      // top-left: red
+        bytes.append(contentsOf: [0, 255, 0, 255])      // top-right: green
+        bytes.append(contentsOf: [0, 0, 255, 255])      // bottom-left: blue
+        bytes.append(contentsOf: [255, 255, 255, 255])  // bottom-right: white
+        let provider = CGDataProvider(data: Data(bytes) as CFData)!
+        let cg = CGImage(width: 2, height: 2,
+                         bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: 8,
+                         space: CGColorSpaceCreateDeviceRGB(),
+                         bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                         provider: provider, decode: nil, shouldInterpolate: false,
+                         intent: .defaultIntent)!
+        let image = try #require(SegmentationImages.colorImage(from: cg))
+        #expect(image.width == 2 && image.height == 2)
+        #expect(image[0, 0].red == 1 && image[0, 0].green == 0 && image[0, 0].blue == 0)
+        #expect(image[1, 0].green == 1 && image[1, 0].red == 0)
+        #expect(image[0, 1].blue == 1 && image[0, 1].red == 0)
+        #expect(image[1, 1].red == 1 && image[1, 1].green == 1 && image[1, 1].blue == 1)
+        #expect(image[1, 1].alpha == 1)
+    }
+
     @Test func cutoutKeepsSourceWhereMatteIsOn() {
         let frame = solidImage(r: 200, g: 100, b: 40, width: 2, height: 2)
         let matte = grayImage([255, 0, 255, 0], width: 2, height: 2)

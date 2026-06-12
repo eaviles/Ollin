@@ -319,6 +319,7 @@ Rectangle(fitting size: Vector2, in container: Rectangle)
 
 - **Properties:** `corner`, `width`, `height`, `x`, `y`, `center`.
 - **Corners:** `topLeft`, `topRight`, `bottomRight`, `bottomLeft`.
+- **Test:** `contains(_ point: Vector2)` (the boundary counts as inside).
 
 `Rectangle(fitting:in:)` is the letterbox fit: the largest rectangle of `size`'s aspect ratio centered inside `container` — the box to draw an image or video frame into without stretching it (the fit behind `drawFrame` and `fittedRect(in:)`).
 

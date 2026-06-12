@@ -1,26 +1,36 @@
+import AVFoundation
 import CoreGraphics
+import CoreMedia
 import Foundation
 import Testing
 import Ollin
 @testable import OllinVision
 
 /// The failure paths and the coordinate math are always-on; the real-model
-/// tests run only where the depth model has been downloaded
-/// (`Scripts/fetch-models.sh`), soft-skipping elsewhere (CI never fetches the
-/// weights).
+/// tests run only where the matching model has been downloaded
+/// (`Scripts/fetch-models.sh`) — or, for the style model, trained in Create ML —
+/// soft-skipping elsewhere (CI never fetches the weights).
 @Suite struct ModelTrackerTests {
 
-    /// The depth model the fetch script downloads, located from this file so
-    /// the tests don't depend on the working directory.
-    static let depthModelURL = URL(fileURLWithPath: #filePath)
+    /// The repo root, located from this file so the tests don't depend on the
+    /// working directory.
+    static let repoRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()   // OllinVisionTests
         .deletingLastPathComponent()   // Tests
         .deletingLastPathComponent()   // repo root
-        .appendingPathComponent("Models/DepthAnythingV2SmallF16.mlpackage")
 
-    static var depthModelIsFetched: Bool {
-        FileManager.default.fileExists(atPath: depthModelURL.path)
+    static func model(_ name: String) -> URL {
+        repoRoot.appendingPathComponent("Models/\(name)")
     }
+    static func isFetched(_ url: URL) -> Bool {
+        FileManager.default.fileExists(atPath: url.path)
+    }
+
+    static let depthModelURL = model("DepthAnythingV2SmallF16.mlpackage")
+    static var depthModelIsFetched: Bool { isFetched(depthModelURL) }
+    static let detectorModelURL = model("YOLOv3TinyFP16.mlmodel")
+    static let digitModelURL = model("MNISTClassifier.mlmodel")
+    static let styleModelURL = model("StyleTransfer.mlmodel")
 
     // MARK: Always-on
 
@@ -56,7 +66,8 @@ import Ollin
     }
 
     @Test func emptyOutputReadsZero() {
-        let output = ModelOutput(labels: [], objects: [], map: nil, mapBytes: nil)
+        let output = ModelOutput(labels: [], objects: [], map: nil, outputImage: nil,
+                                 mapBytes: nil)
         let rect = Rectangle(x: 0, y: 0, width: 100, height: 100)
         #expect(output.value(at: Vector2(50, 50), in: rect) == 0)
         #expect(output.valueNormalized(at: Vector2(0.5, 0.5)) == 0)
@@ -134,6 +145,105 @@ import Ollin
         #expect(mismatched == 0)
     }
 
+    /// The full-color surface rides the same observation as the gray one: for
+    /// the depth model, `outputImage` is the map at face value, so the two must
+    /// agree — the picture's pixel values are what the map holds as alpha.
+    @Test func outputImageMatchesTheMapItWasDecodedFrom() async throws {
+        guard Self.depthModelIsFetched else { return }
+        let tracker = ModelTracker(modelAt: Self.depthModelURL)
+        let output = try await tracker.detect(in: gradientScene(width: 320, height: 240))
+        let map = try #require(output.map)
+        let picture = try #require(output.outputImage)
+        #expect(picture.width == map.width && picture.height == map.height)
+        var mismatched = 0
+        for y in stride(from: 0, to: map.height, by: 7) {
+            for x in stride(from: 0, to: map.width, by: 11)
+            where abs(picture[x, y].red - map[x, y].alpha) > 2.0 / 255 {
+                mismatched += 1
+            }
+        }
+        #expect(mismatched == 0)
+    }
+
+    /// The `objects` surface over the real detector: YOLOv3-tiny finds the
+    /// person in the bundled clip's opening scene — the end-to-end pin for the
+    /// fetched model + the labeled-box decode. (Later in the same clip the
+    /// flying dancers read as "kite" and "bird" — the model's age, honestly.)
+    @Test func detectorFindsThePersonInRealFootage() async throws {
+        guard Self.isFetched(Self.detectorModelURL) else { return }
+        let frame = try await Self.clipFrame(at: 6)
+        let tracker = ModelTracker(modelAt: Self.detectorModelURL)
+        let output = try await tracker.detect(in: Image(cgImage: frame))
+        let person = try #require(output.objects.first { $0.label == "person" })
+        #expect(person.confidence > 0.5)
+        let rect = Rectangle(x: 0, y: 0, width: 960, height: 540)
+        let bounds = person.bounds(in: rect)
+        #expect(bounds.width > 0 && bounds.height > 0)
+        // A detector fills only the objects surface.
+        #expect(output.labels.isEmpty)
+        #expect(output.map == nil)
+    }
+
+    /// The classifier surface over a drawn digit: a thick ring on black — a
+    /// "0" in the form MNIST was trained on — through the same still path the
+    /// DigitReader example uses.
+    @Test func digitClassifierReadsADrawnZero() async throws {
+        guard Self.isFetched(Self.digitModelURL) else { return }
+        let pad = Image(width: 280, height: 280, color: .black)
+        let c = 140.0
+        for y in 0..<280 {
+            for x in 0..<280 {
+                let d = ((Double(x) - c) * (Double(x) - c)
+                       + (Double(y) - c) * (Double(y) - c)).squareRoot()
+                if abs(d - 80) < 18 { pad[x, y] = .white }
+            }
+        }
+        let tracker = ModelTracker(modelAt: Self.digitModelURL)
+        let output = try await tracker.detect(in: pad)
+        let top = try #require(output.labels.first)
+        #expect(top.label == "0")
+        #expect(top.confidence > 0.9)
+        #expect(output.objects.isEmpty)
+    }
+
+    /// A Create ML style-transfer model paints in color: `outputImage` comes
+    /// back at the model's size with the style's hues, not a gray map. Gated on
+    /// the locally *trained* model (the StyleMirror example's instructions),
+    /// not a fetched one.
+    @Test func styleModelPaintsInColor() async throws {
+        guard Self.isFetched(Self.styleModelURL) else { return }
+        let frame = try await Self.clipFrame(at: 6)
+        let tracker = ModelTracker(modelAt: Self.styleModelURL)
+        let output = try await tracker.detect(in: Image(cgImage: frame))
+        let picture = try #require(output.outputImage)
+        #expect(picture.width > 0 && picture.height > 0)
+        // Styled output is colorful: a healthy share of sampled pixels must
+        // have channels that actually differ (a gray decode would have none).
+        var colorful = 0, sampled = 0
+        for y in stride(from: 0, to: picture.height, by: 13) {
+            for x in stride(from: 0, to: picture.width, by: 17) {
+                let p = picture[x, y]
+                let spread = max(p.red, p.green, p.blue) - min(p.red, p.green, p.blue)
+                if spread > 10.0 / 255 { colorful += 1 }
+                sampled += 1
+            }
+        }
+        #expect(colorful > sampled / 10)
+    }
+
+    /// A frame of the bundled CC BY-SA clip (`Examples/Video/VideoPlayback`),
+    /// decoded at an exact timestamp so the real-model pins are reproducible.
+    static func clipFrame(at seconds: Double) async throws -> CGImage {
+        let video = repoRoot.appendingPathComponent("Examples/Video/VideoPlayback/voladores.mp4")
+        let generator = AVAssetImageGenerator(asset: AVURLAsset(url: video))
+        generator.appliesPreferredTrackTransform = true
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
+        let (frame, _) = try await generator.image(
+            at: CMTime(seconds: seconds, preferredTimescale: 600))
+        return frame
+    }
+
     /// The compile cache hands back the same stable path for the same source —
     /// what keeps every launch after the first in milliseconds.
     @Test func compileCacheIsStable() async throws {
@@ -146,23 +256,27 @@ import Ollin
     }
 
     /// The live path over a hand-fired frame source: frames flow, the model
-    /// loads in the background, and the surfaces publish. Reads `map` in the
-    /// poll loop because its first read arms the conversion.
+    /// loads in the background, and the surfaces publish. Reads `map` and
+    /// `outputImage` in the poll loop because each surface's first read arms
+    /// its own conversion.
     @Test @MainActor func liveWiringPublishes() async throws {
         guard Self.depthModelIsFetched else { return }
         let source = FrameSourceTests.ManualFrameSource()
         let tracker = ModelTracker(source, modelAt: Self.depthModelURL)
         let frame = gradientScene(width: 160, height: 120)
-        let cgImage = try #require(frame.currentCGImage())
+        let cgImage = frame.currentCGImage()
 
         let deadline = Date().addingTimeInterval(30)
         var map: Image?
-        while map == nil, Date() < deadline {
+        var picture: Image?
+        while map == nil || picture == nil, Date() < deadline {
             source.frameTap?(cgImage)
             map = tracker.map
+            picture = tracker.outputImage
             try await Task.sleep(for: .milliseconds(100))
         }
         #expect(map != nil)
+        #expect(picture != nil)
         #expect(tracker.isLoaded)
         let rect = Rectangle(x: 0, y: 0, width: 160, height: 120)
         let v = tracker.value(at: Vector2(80, 60), in: rect)

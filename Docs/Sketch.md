@@ -22,7 +22,7 @@ final class HelloCircle: Sketch {
 
 ### Contents
 
-- [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`, `keyPressed`/`keyReleased`, `onReload`
+- [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`/`mouseReleased`, `keyPressed`/`keyReleased`, `onReload`
 - [Temporal state](#temporal-state) - `frameCount`, `time`, `deltaTime`, `frameRate`
 - [Canvas](#canvas) - `width`, `height`
 - [Loop control](#loop-control) - `noLoop`, `loop`, `isLooping`
@@ -73,13 +73,14 @@ override func draw() {
 
 <a name="mousePressed"></a>
 
-#### mousePressed
+#### mousePressed / mouseReleased
 
 ```swift
 mousePressed()
+mouseReleased()
 ```
 
-Called once each time a mouse button is pressed over the canvas. See [Input](./Input.md).
+Called once each time a mouse button is pressed or released over the canvas. For continuous response while the button is *held*, poll `mouseIsPressed` in `draw()` instead. See [Input](./Input.md).
 
 ```swift
 override func mousePressed() {

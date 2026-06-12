@@ -185,3 +185,34 @@ redistributed inside this repository.
 > Apache-2.0 applies to the model weights the script downloads; nothing from the
 > model is redistributed in this repository, so the root [`LICENSE`](LICENSE) is
 > unaffected. This entry records the provenance of what the script fetches.
+
+---
+
+## YOLOv3-tiny (example model — downloaded, not bundled)
+
+- **Used for:** the `ObjectDetection` example sketch only — an object-detection model (80 COCO classes), to demonstrate `ModelTracker`'s labeled-box surface. Not part of the Ollin framework; Ollin (and `OllinVision`) bundle no model weights themselves.
+- **Location in this repo:** none. The weights are **not committed**: [`Scripts/fetch-models.sh`](Scripts/fetch-models.sh) downloads them into the gitignored `Models/` directory on a developer's machine.
+- **Work:** *YOLOv3-tiny*, Joseph Redmon and Ali Farhadi — "YOLOv3: An Incremental Improvement" (2018) — in Apple's Core ML conversion (`YOLOv3TinyFP16.mlmodel`).
+- **Upstream:** https://developer.apple.com/machine-learning/models/ (conversion) — original model https://github.com/pjreddie/darknet, https://pjreddie.com/darknet/yolo/
+- **License:** YOLO License, Version 2 (a public-domain dedication: "Darknet is public domain. Do whatever you want with it.") — https://github.com/pjreddie/darknet/blob/master/LICENSE
+
+> The YOLO License applies to the model the script downloads; nothing from the
+> model is redistributed in this repository, so the root [`LICENSE`](LICENSE) is
+> unaffected. This entry records the provenance of what the script fetches.
+
+---
+
+## MNIST drawing classifier (example model — downloaded, not bundled)
+
+- **Used for:** the `DigitReader` example sketch only — a handwritten-digit classifier, to demonstrate `ModelTracker` reading a sketch's own pixel-authored drawing through the still `detect(in:)` path. Not part of the Ollin framework; Ollin (and `OllinVision`) bundle no model weights themselves.
+- **Location in this repo:** none. The weights are **not committed**: [`Scripts/fetch-models.sh`](Scripts/fetch-models.sh) downloads them into the gitignored `Models/` directory on a developer's machine.
+- **Work:** *MNISTClassifier* — Apple's Turi Create-trained drawing classifier from the Core ML model gallery, trained on the MNIST dataset of handwritten digits (LeCun, Cortes, Burges).
+- **Upstream:** https://developer.apple.com/machine-learning/models/ — dataset http://yann.lecun.com/exdb/mnist/
+- **License:** MIT (Copyright 2019 Apple Inc.) — https://docs-assets.developer.apple.com/coreml/models/Image/DrawingClassification/MNISTClassifier/LICENSE-MIT.txt
+
+> MIT applies to the model the script downloads; nothing from the model is
+> redistributed in this repository, so the root [`LICENSE`](LICENSE) is
+> unaffected. This entry records the provenance of what the script fetches.
+> (The `StyleMirror` example needs no entry here at all: its style-transfer
+> model is trained by the user in Create ML, so the weights are the user's own
+> work — nothing is fetched or redistributed.)

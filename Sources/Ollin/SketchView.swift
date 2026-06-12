@@ -250,7 +250,13 @@ private final class OllinMTKView: MTKView {
         // control moved first responder away), so the canvas keeps the keys.
         window?.makeFirstResponder(self)
         reportPointer(event)
+        sketch?.mouseIsPressed = true
         sketch?.mousePressed()
+    }
+    override func mouseUp(with event: NSEvent) {
+        reportPointer(event)
+        sketch?.mouseIsPressed = false
+        sketch?.mouseReleased()
     }
 
     // MARK: Keyboard

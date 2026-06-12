@@ -113,12 +113,12 @@ enum SegmentationImages {
               premultipliedRGBA: expandGrayToRGBA(gray, width: width, height: height))
     }
 
-    /// The cutout as premultiplied RGBA8 bytes: `frame`'s pixels scaled by the
-    /// matte (rescaled to the frame), transparent where the matte is off.
-    /// Premultiplied, so every channel scales by the matte value.
-    static func cutoutRGBABytes(frame: CGImage, matte: CGImage) -> [UInt8]? {
+    /// `frame`'s own pixels as premultiplied RGBA8 bytes at its native size —
+    /// the full-color decode shared by the cutout (which masks it next) and the
+    /// model tracker's `outputImage` (which keeps it as-is).
+    static func colorRGBABytes(from frame: CGImage) -> [UInt8]? {
         let width = frame.width, height = frame.height
-        guard let mask = grayBytes(from: matte, width: width, height: height) else { return nil }
+        guard width > 0, height > 0 else { return nil }
         var rgba = [UInt8](repeating: 0, count: width * height * 4)
         let drew = rgba.withUnsafeMutableBytes { raw -> Bool in
             guard let context = CGContext(
@@ -129,7 +129,23 @@ enum SegmentationImages {
             context.draw(frame, in: CGRect(x: 0, y: 0, width: width, height: height))
             return true
         }
-        guard drew else { return nil }
+        return drew ? rgba : nil
+    }
+
+    /// `frame` as a drawable `Image` at face value — full color, built straight
+    /// over the bytes like `matteImage`.
+    static func colorImage(from frame: CGImage) -> Image? {
+        guard let bytes = colorRGBABytes(from: frame) else { return nil }
+        return Image(width: frame.width, height: frame.height, premultipliedRGBA: bytes)
+    }
+
+    /// The cutout as premultiplied RGBA8 bytes: `frame`'s pixels scaled by the
+    /// matte (rescaled to the frame), transparent where the matte is off.
+    /// Premultiplied, so every channel scales by the matte value.
+    static func cutoutRGBABytes(frame: CGImage, matte: CGImage) -> [UInt8]? {
+        let width = frame.width, height = frame.height
+        guard let mask = grayBytes(from: matte, width: width, height: height) else { return nil }
+        guard var rgba = colorRGBABytes(from: frame) else { return nil }
         // Scale every channel by the mask: expand the mask to the same
         // interleaved layout, then treat each RGBA row as one wide plane and
         // premultiply it against the expanded mask — a single vectorized pass.

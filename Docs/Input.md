@@ -9,7 +9,8 @@ Pointer and keyboard input live on the sketch as plain properties and overridabl
 ### Contents
 
 - [mouseX / mouseY](#mouse)
-- [mousePressed](#mousePressed)
+- [mouseIsPressed](#mouseIsPressed)
+- [mousePressed / mouseReleased](#mousePressed)
 - [key / keyCode / keyIsPressed](#key)
 - [keyPressed / keyReleased](#keyPressed)
 - [isKeyDown](#isKeyDown)
@@ -33,15 +34,34 @@ override func draw() {
 }
 ```
 
+<a name="mouseIsPressed"></a>
+
+### mouseIsPressed
+
+```swift
+mouseIsPressed: Bool
+```
+
+Whether a mouse button is currently held over the canvas — the polling counterpart to the one-shot hooks below, mirroring `keyIsPressed`. Poll it in `draw()` for anything that should continue as long as the button is down: dragging, painting, steering. `mouseX`/`mouseY` keep updating through the drag.
+
+```swift
+override func draw() {
+    if mouseIsPressed {
+        drawCircle(mouseX, mouseY, 12)   // paint while the button is down
+    }
+}
+```
+
 <a name="mousePressed"></a>
 
-### mousePressed
+### mousePressed / mouseReleased
 
 ```swift
 mousePressed()
+mouseReleased()
 ```
 
-Override to respond to a click; `mouseX`/`mouseY` hold the press location. Handy for regenerating an otherwise-static sketch on demand.
+Override to respond to a click. Each fires once per press or release, and `mouseX`/`mouseY` hold the event's location. `mousePressed()` is handy for regenerating an otherwise-static sketch on demand; `mouseReleased()` is the natural moment to act on a finished drag or stroke (the `DigitReader` example classifies its drawing there).
 
 ```swift
 override func mousePressed() {

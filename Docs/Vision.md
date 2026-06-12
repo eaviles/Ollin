@@ -770,6 +770,7 @@ var top: Classification? { get }
 func confidence(of: String) -> Double
 var objects: [DetectedObject] { get }                     // object-detector outputs
 var map: Image? { get }                                   // image-typed output, white-alpha
+var outputImage: Image? { get }                           // image-typed output, full color
 func value(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Double
 var isLoaded: Bool { get }
 func detect(in: Image) async throws -> ModelOutput
@@ -780,7 +781,7 @@ Runs **your own Core ML model** over the frames — the open end of the tracker 
 A model fills the surfaces matching what it outputs, decoded the same way the built-in trackers decode theirs:
 
 - **Classifier** (label + confidence outputs) → `labels` / `top` / `confidence(of:)`, like [`ImageClassifier`](#imageclassifier) but over your model's own vocabulary.
-- **Image-to-image** (a depth estimator, a custom matte or style model) → `map`, a white-alpha `Image` like the segmentation matte (`tint(_:)` recolors it; draw it into the frame's rectangle and it stretches onto the picture), plus `value(at:in:)` — the output value under any canvas point, the same field-shaped query [`SaliencyTracker`](#saliencytracker) offers. `0…1` for image-typed outputs; out-of-range points clamp to the edge.
+- **Image-to-image** (a depth estimator, a custom matte, a style-transfer model) → two readings of the same output. `map` is the output as a *value field*: a white-alpha `Image` like the segmentation matte (`tint(_:)` recolors it; draw it into the frame's rectangle and it stretches onto the picture), plus `value(at:in:)` — the value under any canvas point, the same field-shaped query [`SaliencyTracker`](#saliencytracker) offers (`0…1`; out-of-range points clamp to the edge). `outputImage` is the output as a *picture*: full color, for a model that paints rather than measures — a style-transfer model's stylized frame, drawn like any image (the `StyleMirror` example). Each surface converts only once something reads it, so a sketch pays for the reading it uses.
 - **Object detector** (a detector exported with its non-maximum-suppression head, the form Apple's gallery ships) → `objects`, labeled boxes mapped by `bounds(in:)`.
 
 ```swift
@@ -797,7 +798,7 @@ override func draw() {
 
 Loading happens in the background, off the frame loop, started by the first analyzed frame (or the first `detect(in:)`): `isLoaded` flips when the model is ready, and frames simply pass by until then — the source's other trackers aren't stalled behind it. The compiled model is cached at a stable path, which is load-bearing: Core ML *specializes* a model for this Mac's compute device and keys that work to the compiled files and the executable that loads them, so the **first launch of a (re)built sketch takes several seconds** while every later launch of the same build starts in milliseconds. A model file that's missing or won't load surfaces through the [availability](#availability) pair instead of failing silently — check it and tell the user what to do (the `DepthRelief` example points at its download script).
 
-Model weights are yours to bring: Ollin bundles none. The examples fetch theirs with `Scripts/fetch-models.sh` (the repo ignores `Models/`), which downloads Apple's official conversion of **Depth Anything V2 (small)** — Apache-2.0, ~50 MB.
+Model weights are yours to bring: Ollin bundles none. The examples fetch theirs with `Scripts/fetch-models.sh` (the repo ignores `Models/`), which downloads Apple's official conversion of **Depth Anything V2 (small)** (Apache-2.0, ~50 MB — the `DepthRelief` example), **YOLOv3-tiny** (YOLO License v2, ~18 MB — `ObjectDetection`), and the **MNIST drawing classifier** (MIT, ~400 KB — `DigitReader`, which points the model at the sketch's *own* pixels: no camera anywhere). The `StyleMirror` example's model isn't fetched at all — you train it yourself in Create ML from any style image in a few minutes, so the weights are your own work with no license to check.
 
 <a name="modeloutput"></a>
 
@@ -808,6 +809,7 @@ struct ModelOutput {
     var labels: [Classification]     // classifier outputs, strongest first
     var objects: [DetectedObject]    // detector outputs
     var map: Image?                  // image-typed output, white-alpha
+    var outputImage: Image?          // image-typed output, full color
     func value(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Double
     func valueNormalized(at: Vector2) -> Double
 }

@@ -52,4 +52,11 @@ public struct Rectangle: Equatable, Hashable, Sendable {
     public var topRight: Vector2 { Vector2(corner.x + width, corner.y) }
     public var bottomRight: Vector2 { Vector2(corner.x + width, corner.y + height) }
     public var bottomLeft: Vector2 { Vector2(corner.x, corner.y + height) }
+
+    /// Whether `point` lies inside the rectangle (the boundary counts as
+    /// inside).
+    public func contains(_ point: Vector2) -> Bool {
+        point.x >= corner.x && point.x <= corner.x + width &&
+        point.y >= corner.y && point.y <= corner.y + height
+    }
 }

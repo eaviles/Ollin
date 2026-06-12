@@ -92,12 +92,10 @@ Ollin aims to support AR sketches and offer a template-driven AR framework, fill
 
 Candidates, in rough order of effort:
 
-- **Object detection — YOLOv3-Tiny.** Drops in as-is: the `objects`/`DetectedObject` decode is already exercised against it, the model is on Apple's gallery CDN (8.9–35 MB by variant), and its Darknet license is permissive. The classic installation capability — labeled boxes, count the people, find the dog. Honest caveat for the example text: it's a dated model that misses small or far objects. **The modern Ultralytics YOLOs (v8/26) are AGPL-3.0 — never bundled, never scripted, same tier as p5.js's LGPL.**
-- **Style transfer — via Create ML, not a download.** The most creative-coding model of the set, with a zero-provenance angle: Create ML trains a style-transfer model from a single style image in minutes, so the example can say "train your own, drop the `.mlmodel` here" — the user owns the weights, no license question, no fetch script. The prerequisite: a style model outputs a **color** image, and the tracker's `map` is deliberately a gray white-alpha matte — this wants a separate `outputImage` surface (decode the output's stride-aware `cgImage` as a full-color `Image`; the same never-`pixel(at:)` rule applies).
 - **Semantic segmentation — DeepLabV3.** Tiny (2.3–8.6 MB, Apple's gallery) and it answers something the built-in person/subject segmenters can't: *per-class* masks over 21 everyday classes — recolor every chair, find the dog pixels. The prerequisite: it outputs an `MLMultiArray` of class labels (`CoreMLFeatureValueObservation`), which the tracker doesn't decode — this wants a small multiarray surface (likely decoded straight to a class-mask form rather than exposing raw arrays).
 - **Text-driven knobs — MobileCLIP-class embeddings.** `confidence(of:)` for *any phrase*, not a fixed vocabulary — "how spooky does the camera look" as a `0…1` knob. A real milestone rather than an example: it needs an embedding surface, the text-encoder side, and a tokenizer, and **the license of Apple's MobileCLIP release needs verifying before any fetch script points at it.**
 
-Skip the plain ImageNet classifiers (FastViT, MobileNetV2, ResNet) — redundant with the built-in `ImageClassifier`'s ~1,300-label vocabulary.
+Skip the plain ImageNet classifiers (FastViT, MobileNetV2, ResNet) — redundant with the built-in `ImageClassifier`'s ~1,300-label vocabulary. And the modern Ultralytics YOLOs (v8/26) are AGPL-3.0 — never bundled, never scripted, same tier as p5.js's LGPL.
 
 ## iPhone as a sensor array (not started)
 

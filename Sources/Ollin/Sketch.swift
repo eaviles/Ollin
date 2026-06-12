@@ -86,6 +86,12 @@ open class Sketch {
     public internal(set) var mouseX: Double = 0
     /// Cursor y in sketch coordinates (points, top-left origin, y-down).
     public internal(set) var mouseY: Double = 0
+    /// Whether a mouse button is currently held down over the canvas. Poll it
+    /// in `draw()` for continuous response while the button is held — dragging,
+    /// painting, steering — alongside `mouseX`/`mouseY`, which keep updating
+    /// through the drag; the `mousePressed()`/`mouseReleased()` hooks fire once
+    /// per press, not continuously.
+    public internal(set) var mouseIsPressed = false
 
     // MARK: Keyboard (input)
 
@@ -143,8 +149,14 @@ open class Sketch {
     /// Called every frame. Do your drawing here.
     open func draw() {}
     /// Called once each time a mouse button is pressed over the canvas. Override
-    /// to respond to clicks; `mouseX`/`mouseY` hold the press location.
+    /// to respond to clicks; `mouseX`/`mouseY` hold the press location. For
+    /// continuous response while the button is held, poll `mouseIsPressed` in
+    /// `draw()` instead.
     open func mousePressed() {}
+    /// Called once each time a mouse button is released over the canvas;
+    /// `mouseX`/`mouseY` hold the release location — the natural moment to act
+    /// on a finished drag or stroke.
+    open func mouseReleased() {}
     /// Called once each time a key is pressed (auto-repeat doesn't re-fire it).
     /// Override to respond to keys; `key`/`keyCode` hold the key. For movement
     /// while a key is held, poll `isKeyDown(_:)` in `draw()` instead.

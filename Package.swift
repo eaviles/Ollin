@@ -882,6 +882,29 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/DepthRelief"
         ),
+        // Object detection (YOLOv3-tiny) — labeled boxes over the live feed.
+        // The model weights download via Scripts/fetch-models.sh (never
+        // committed).
+        .executableTarget(
+            name: "Example-ObjectDetection",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/ObjectDetection"
+        ),
+        // A model reading the sketch's own pixels — draw a digit with the
+        // mouse, MNIST classifies it; no camera at all. The model weights
+        // download via Scripts/fetch-models.sh (never committed).
+        .executableTarget(
+            name: "Example-DigitReader",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/DigitReader"
+        ),
+        // The camera through a Create ML style-transfer model you train
+        // yourself (no download — the model is the user's own work).
+        .executableTarget(
+            name: "Example-StyleMirror",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/StyleMirror"
+        ),
         // Trajectory detection — ballistic arcs found in a synthetic feed (a
         // custom FrameSource the example conforms itself).
         .executableTarget(

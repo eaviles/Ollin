@@ -85,6 +85,12 @@ public struct ModelOutput: @unchecked Sendable {
     /// the picture, and `tint(_:)` recolors it.
     public let map: Image?
 
+    /// The same image-typed output at face value — full color, the picture an
+    /// image-to-image model painted (a style-transfer model's stylized frame) —
+    /// or `nil` when the model has none. `map` reads the output as a gray
+    /// value map; this keeps the model's own colors.
+    public let outputImage: Image?
+
     let mapBytes: MapBytes?
 
     /// The map's value under `point` (a canvas point inside `rect`, the
@@ -125,9 +131,11 @@ public struct ModelOutput: @unchecked Sendable {
 /// - **Classifier** (label + confidence outputs): `labels` / `top` /
 ///   `confidence(of:)`, like `ImageClassifier` but over your model's own
 ///   vocabulary.
-/// - **Image-to-image** (a depth estimator, a custom matte): `map` — a
-///   white-alpha `Image` like the segmentation matte — plus `value(at:in:)`,
-///   the value under any canvas point.
+/// - **Image-to-image** (a depth estimator, a custom matte, a style-transfer
+///   model): `map` — a white-alpha `Image` like the segmentation matte — plus
+///   `value(at:in:)`, the value under any canvas point; and `outputImage`, the
+///   same output at face value — full color, for a model that paints a
+///   picture rather than a value map.
 /// - **Object detector** (a model with its non-maximum-suppression head, the
 ///   form Apple's model gallery ships): `objects` — labeled boxes mapped by
 ///   `bounds(in:)`.
@@ -165,9 +173,11 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         var labels: [Classification] = []
         var objects: [DetectedObject] = []
         var map: Image?
+        var outputImage: Image?
         var mapBytes: MapBytes?
         var wantsMap = false
         var wantsValues = false
+        var wantsOutputImage = false
     }
     private let lock = OSAllocatedUnfairLock(uncheckedState: State())
     private let status: VisionStatus
@@ -202,6 +212,20 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         lock.withLockUnchecked { state in
             state.wantsMap = true
             return state.map
+        }
+    }
+
+    /// The model's image-typed output from the most recent analyzed frame at
+    /// face value — full color, the picture an image-to-image model painted (a
+    /// style-transfer model's stylized frame) — or `nil` before the first
+    /// result (or when the model has none). The first read arms the
+    /// conversion, so it can stay `nil` until the next analyzed frame
+    /// publishes. `map` reads the same output as a gray white-alpha map; this
+    /// surface keeps the model's own colors.
+    public var outputImage: Image? {
+        lock.withLockUnchecked { state in
+            state.wantsOutputImage = true
+            return state.outputImage
         }
     }
 
@@ -283,12 +307,14 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         }
         let observations = try await request.perform(on: image.currentCGImage())
         let decoded = Self.decode(observations)
-        let mapBytes = decoded.observation.flatMap(Self.mapBytes(of:))
+        let outputCGImage = decoded.observation.flatMap { try? $0.cgImage }
+        let mapBytes = outputCGImage.flatMap(Self.mapBytes(from:))
         let map = mapBytes.flatMap {
             SegmentationImages.matteImage(fromGray: $0.bytes, width: $0.width, height: $0.height)
         }
+        let outputImage = outputCGImage.flatMap(SegmentationImages.colorImage(from:))
         return ModelOutput(labels: decoded.labels, objects: decoded.objects,
-                           map: map, mapBytes: mapBytes)
+                           map: map, outputImage: outputImage, mapBytes: mapBytes)
     }
 
     // MARK: VisionTracking
@@ -307,25 +333,37 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
             let observations = try await request.perform(on: cgImage)
             status.recordSuccess()
             let decoded = Self.decode(observations)
-            // Convert the map only once some read has armed it (value queries
-            // arm the byte plane; a `map` read additionally arms the drawable
-            // image) — a sketch reading only labels never pays the conversion.
-            let (wantsMap, wantsValues) = lock.withLockUnchecked { ($0.wantsMap, $0.wantsValues) }
+            // Convert the image-typed output only once some read has armed it
+            // (value queries arm the byte plane; a `map` read additionally arms
+            // the gray drawable; an `outputImage` read arms the full-color
+            // decode) — a sketch reading only labels never pays a conversion.
+            let (wantsMap, wantsValues, wantsOutputImage) = lock.withLockUnchecked {
+                ($0.wantsMap, $0.wantsValues, $0.wantsOutputImage)
+            }
+            var outputCGImage: CGImage?
+            if wantsMap || wantsValues || wantsOutputImage {
+                outputCGImage = decoded.observation.flatMap { try? $0.cgImage }
+            }
             var mapBytes: MapBytes?
             var map: Image?
+            var outputImage: Image?
             if wantsMap || wantsValues {
-                mapBytes = decoded.observation.flatMap(Self.mapBytes(of:))
+                mapBytes = outputCGImage.flatMap(Self.mapBytes(from:))
             }
             if wantsMap, let mapBytes {
                 map = SegmentationImages.matteImage(fromGray: mapBytes.bytes,
                                                     width: mapBytes.width,
                                                     height: mapBytes.height)
             }
+            if wantsOutputImage {
+                outputImage = outputCGImage.flatMap(SegmentationImages.colorImage(from:))
+            }
             lock.withLockUnchecked { state in
                 state.labels = decoded.labels
                 state.objects = decoded.objects
                 if wantsMap || wantsValues { state.mapBytes = mapBytes }
                 if wantsMap { state.map = map }
+                if wantsOutputImage { state.outputImage = outputImage }
             }
         } catch {
             status.recordFailure(error)
@@ -460,9 +498,8 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
     /// The image-typed output as Ollin's own gray plane, extracted through the
     /// observation's stride-aware `cgImage` — never through `pixel(at:)`,
     /// which misindexes multi-channel buffers (see `MapBytes`).
-    static func mapBytes(of observation: PixelBufferObservation) -> MapBytes? {
-        guard let cgImage = try? observation.cgImage,
-              let bytes = SegmentationImages.grayBytes(from: cgImage,
+    static func mapBytes(from cgImage: CGImage) -> MapBytes? {
+        guard let bytes = SegmentationImages.grayBytes(from: cgImage,
                                                        width: cgImage.width,
                                                        height: cgImage.height) else { return nil }
         return MapBytes(bytes: bytes, width: cgImage.width, height: cgImage.height)
