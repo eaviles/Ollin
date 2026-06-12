@@ -98,6 +98,25 @@ import Foundation
         #expect(rightward > samples.count * 3 / 4)
     }
 
+    /// Vision's `flow(at:)` does no bounds clamping: it rounds to the nearest
+    /// pixel and traps past the last one (any coordinate ≥ (w − 0.5)/w — even
+    /// 0.999999), so the field clamps queries to the last pixel's coordinate.
+    /// The frame's far corner — where a drifting particle lands — must answer,
+    /// not crash.
+    @Test func edgeQueriesAreSafe() async throws {
+        let a = texturedFrame()
+        let b = texturedFrame(shiftRight: 8, shiftDown: 5)
+        let field = try #require(try await FlowTracker.flow(from: a, to: b))
+
+        // The coordinates that trap unclamped: exactly 1 and just under it.
+        _ = field.flowNormalized(at: Vector2(1, 1))
+        _ = field.flowNormalized(at: Vector2(0.999999, 0.999999))
+        _ = field.flowNormalized(at: Vector2(-0.5, 2))
+        // A point pinned to the rect's far corner — the live-particle crash.
+        let v = field.vector(at: Vector2(320, 240), in: imageRect)
+        #expect(v.x.isFinite && v.y.isFinite)
+    }
+
     /// The live path re-performs one stateful request on successive frames (the
     /// way `ObjectTracker` does) — this pins that that actually produces flow,
     /// frame over frame, with the same conventions as the two-image path.

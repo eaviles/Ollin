@@ -74,8 +74,13 @@ public struct FlowField: @unchecked Sendable {
         let w = Double(observation.size.width)
         let h = Double(observation.size.height)
         guard w > 0, h > 0 else { return .zero }
-        let query = NormalizedPoint(x: min(max(point.x, 0), 1),
-                                    y: min(max(point.y, 0), 1))
+        // Vision's `flow(at:)` does no bounds clamping of its own: it rounds
+        // the scaled coordinate to the nearest pixel (nearest-neighbor, not
+        // bilinear) and traps when that rounds past the last one — any
+        // x ≥ (w − 0.5)/w, so even 0.999999, or a particle sitting on the
+        // frame's right edge. Clamp to the last pixel's exact coordinate.
+        let query = NormalizedPoint(x: min(max(point.x, 0), (w - 1) / w),
+                                    y: min(max(point.y, 0), (h - 1) / h))
         let (dx, dy) = observation.flow(at: query)
         // The raw map is the *backward* displacement in flow-map pixels with the
         // image's own y (down): where each pixel of the newer frame came from.

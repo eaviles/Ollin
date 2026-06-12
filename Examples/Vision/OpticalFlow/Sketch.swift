@@ -38,35 +38,37 @@ final class OpticalFlow: Sketch {
 
         if positions.isEmpty { seedParticles(in: view) }
 
-        guard let field = flow.field else { return }
+        // The field needs two analyzed frames, so it's nil for the first beat;
+        // the dust and caption still draw, just unmoved.
+        if let field = flow.field {
+            // The field as a grid of streaks: each sample is the local motion,
+            // colored by how fast the picture is moving there.
+            strokeWeight(2 * scale)
+            for sample in field.samples(in: view, every: 36 * scale) {
+                let speed = sample.flow.length
+                guard speed > 0.7 * scale else { continue }
+                let t = min(speed / (18 * scale), 1)
+                let tone = Colormap.turbo.color(at: t)
+                stroke(Color(red: tone.red, green: tone.green, blue: tone.blue,
+                             alpha: 0.35 + t * 0.65))
+                drawLine(sample.position, sample.position + sample.flow * 4)
+            }
 
-        // The field as a grid of streaks: each sample is the local motion,
-        // colored by how fast the picture is moving there.
-        strokeWeight(2 * scale)
-        for sample in field.samples(in: view, every: 36 * scale) {
-            let speed = sample.flow.length
-            guard speed > 0.7 * scale else { continue }
-            let t = min(speed / (18 * scale), 1)
-            let tone = Colormap.turbo.color(at: t)
-            stroke(Color(red: tone.red, green: tone.green, blue: tone.blue,
-                         alpha: 0.35 + t * 0.65))
-            drawLine(sample.position, sample.position + sample.flow * 4)
-        }
-
-        // Dust that rides the field: every particle reads the motion under
-        // itself and drifts with it, settling wherever the picture holds still.
-        noStroke()
-        fill(Color(white: 1, alpha: 0.8))
-        for i in positions.indices {
-            let push = field.vector(at: positions[i], in: view)
-            velocities[i] = velocities[i] * 0.88 + push * 0.5
-            positions[i] += velocities[i]
-            if positions[i].x < view.x || positions[i].x > view.x + view.width ||
-               positions[i].y < view.y || positions[i].y > view.y + view.height {
-                positions[i] = randomPoint(in: view)
-                velocities[i] = .zero
+            // Dust that rides the field: every particle reads the motion under
+            // itself and drifts with it, settling wherever the picture holds still.
+            for i in positions.indices {
+                let push = field.vector(at: positions[i], in: view)
+                velocities[i] = velocities[i] * 0.88 + push * 0.5
+                positions[i] += velocities[i]
+                if positions[i].x < view.x || positions[i].x > view.x + view.width ||
+                   positions[i].y < view.y || positions[i].y > view.y + view.height {
+                    positions[i] = randomPoint(in: view)
+                    velocities[i] = .zero
+                }
             }
         }
+        noStroke()
+        fill(Color(white: 1, alpha: 0.8))
         drawPoints(positions, size: 5 * scale)
 
         fill(.white)
