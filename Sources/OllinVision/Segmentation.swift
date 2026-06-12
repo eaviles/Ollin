@@ -1,3 +1,4 @@
+import Accelerate
 import Ollin
 import CoreGraphics
 import CoreVideo
@@ -37,7 +38,12 @@ public struct Segmentation: @unchecked Sendable {
 /// The pixel work shared by the segmenters: Vision hands back a grayscale matte
 /// (as a `CGImage`), and these turn it into the two drawable forms — the
 /// white-alpha matte and the source cutout. Pure CPU byte work at matte/frame
-/// resolution, so it's deterministic and unit-testable.
+/// resolution, so it's deterministic and unit-testable. The per-pixel passes go
+/// through vImage, which matters more than it looks: these run per analyzed
+/// frame on the analyzer thread, and the `swift run` workflow is a *debug*
+/// build, where a hand-rolled byte loop over a camera frame costs ~100 ms while
+/// the vectorized call stays in the low milliseconds (it was the difference
+/// between ~6 and ~30 matte updates a second, live).
 enum SegmentationImages {
 
     /// The matte's gray levels as one byte per pixel at `width`×`height`,
@@ -66,12 +72,25 @@ enum SegmentationImages {
         guard let gray = grayBytes(from: matte, width: matte.width, height: matte.height) else {
             return nil
         }
+        return expandGrayToRGBA(gray, width: matte.width, height: matte.height)
+    }
+
+    /// `gray` broadcast into interleaved `(m, m, m, m)` RGBA — one vImage
+    /// planar→interleaved convert with the same plane feeding all four channels.
+    private static func expandGrayToRGBA(_ gray: [UInt8], width: Int, height: Int) -> [UInt8] {
         var rgba = [UInt8](repeating: 0, count: gray.count * 4)
-        rgba.withUnsafeMutableBufferPointer { out in
-            for i in 0..<gray.count {
-                let m = gray[i]
-                let j = i * 4
-                out[j] = m; out[j + 1] = m; out[j + 2] = m; out[j + 3] = m
+        gray.withUnsafeBufferPointer { plane in
+            rgba.withUnsafeMutableBytes { out in
+                var src = vImage_Buffer(
+                    data: UnsafeMutableRawPointer(mutating: plane.baseAddress),
+                    height: vImagePixelCount(height), width: vImagePixelCount(width),
+                    rowBytes: width)
+                var dest = vImage_Buffer(
+                    data: out.baseAddress,
+                    height: vImagePixelCount(height), width: vImagePixelCount(width),
+                    rowBytes: width * 4)
+                vImageConvert_Planar8toARGB8888(&src, &src, &src, &src, &dest,
+                                                vImage_Flags(kvImageNoFlags))
             }
         }
         return rgba
@@ -101,17 +120,22 @@ enum SegmentationImages {
             return true
         }
         guard drew else { return nil }
-        rgba.withUnsafeMutableBufferPointer { out in
-            mask.withUnsafeBufferPointer { mask in
-                for i in 0..<mask.count {
-                    let m = Int(mask[i])
-                    guard m < 255 else { continue }
-                    let j = i * 4
-                    out[j]     = UInt8(Int(out[j])     * m / 255)
-                    out[j + 1] = UInt8(Int(out[j + 1]) * m / 255)
-                    out[j + 2] = UInt8(Int(out[j + 2]) * m / 255)
-                    out[j + 3] = UInt8(Int(out[j + 3]) * m / 255)
-                }
+        // Scale every channel by the mask: expand the mask to the same
+        // interleaved layout, then treat each RGBA row as one wide plane and
+        // premultiply it against the expanded mask — a single vectorized pass.
+        let maskRGBA = expandGrayToRGBA(mask, width: width, height: height)
+        rgba.withUnsafeMutableBytes { data in
+            maskRGBA.withUnsafeBytes { alpha in
+                var src = vImage_Buffer(
+                    data: data.baseAddress,
+                    height: vImagePixelCount(height), width: vImagePixelCount(width * 4),
+                    rowBytes: width * 4)
+                var alphaBuffer = vImage_Buffer(
+                    data: UnsafeMutableRawPointer(mutating: alpha.baseAddress),
+                    height: vImagePixelCount(height), width: vImagePixelCount(width * 4),
+                    rowBytes: width * 4)
+                vImagePremultiplyData_Planar8(&src, &alphaBuffer, &src,
+                                              vImage_Flags(kvImageNoFlags))
             }
         }
         return rgba
@@ -139,19 +163,22 @@ enum SegmentationImages {
         var gray = [UInt8](repeating: 0, count: width * height)
         switch CVPixelBufferGetPixelFormatType(buffer) {
         case kCVPixelFormatType_OneComponent8:
-            let p = base.assumingMemoryBound(to: UInt8.self)
-            for y in 0..<height {
-                let row = y * bytesPerRow
-                for x in 0..<width { gray[y * width + x] = p[row + x] }
+            gray.withUnsafeMutableBytes { out in
+                var src = vImage_Buffer(data: base, height: vImagePixelCount(height),
+                                        width: vImagePixelCount(width), rowBytes: bytesPerRow)
+                var dest = vImage_Buffer(data: out.baseAddress, height: vImagePixelCount(height),
+                                         width: vImagePixelCount(width), rowBytes: width)
+                vImageCopyBuffer(&src, &dest, 1, vImage_Flags(kvImageNoFlags))
             }
         case kCVPixelFormatType_OneComponent32Float:
-            let p = base.assumingMemoryBound(to: Float.self)
-            let floatsPerRow = bytesPerRow / MemoryLayout<Float>.stride
-            for y in 0..<height {
-                let row = y * floatsPerRow
-                for x in 0..<width {
-                    gray[y * width + x] = UInt8(min(max(p[row + x], 0), 1) * 255 + 0.5)
-                }
+            gray.withUnsafeMutableBytes { out in
+                var src = vImage_Buffer(data: base, height: vImagePixelCount(height),
+                                        width: vImagePixelCount(width), rowBytes: bytesPerRow)
+                var dest = vImage_Buffer(data: out.baseAddress, height: vImagePixelCount(height),
+                                         width: vImagePixelCount(width), rowBytes: width)
+                // Clamps to 0…1 and scales to 0…255, the vectorized form of the
+                // per-pixel `min(max(v, 0), 1) * 255` convert.
+                vImageConvert_PlanarFtoPlanar8(&src, &dest, 1, 0, vImage_Flags(kvImageNoFlags))
             }
         default:
             return nil
