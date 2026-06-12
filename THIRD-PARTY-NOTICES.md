@@ -217,3 +217,17 @@ redistributed inside this repository.
 > model is trained by the user — `Scripts/train-style-model.swift`, over the
 > CreateML framework — so the weights are the user's own work; nothing is
 > fetched or redistributed.)
+
+---
+
+## DeepLabV3 (example model — downloaded, not bundled)
+
+- **Used for:** the `PaintByClass` example sketch only — a semantic-segmentation model (21 PASCAL VOC classes), to demonstrate `ModelTracker`'s class-mask surface. Not part of the Ollin framework; Ollin (and `OllinVision`) bundle no model weights themselves.
+- **Location in this repo:** none. The weights are **not committed**: [`Scripts/fetch-models.sh`](Scripts/fetch-models.sh) downloads them into the gitignored `Models/` directory on a developer's machine.
+- **Work:** *DeepLabV3* (MobileNetV2 backbone), Liang-Chieh Chen, Yukun Zhu, George Papandreou, Florian Schroff, Hartwig Adam — "Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation" (2018) — in Apple's Core ML conversion (`DeepLabV3FP16.mlmodel`).
+- **Upstream:** https://developer.apple.com/machine-learning/models/ (conversion) — original model https://github.com/tensorflow/models/tree/master/research/deeplab (TensorFlow)
+- **License:** Apache-2.0 — https://github.com/tensorflow/models/blob/master/LICENSE (per the model's own embedded license metadata, which points at the TensorFlow repositories)
+
+> Apache-2.0 applies to the model weights the script downloads; nothing from the
+> model is redistributed in this repository, so the root [`LICENSE`](LICENSE) is
+> unaffected. This entry records the provenance of what the script fetches.

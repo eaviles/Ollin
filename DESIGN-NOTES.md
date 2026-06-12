@@ -92,7 +92,6 @@ Ollin aims to support AR sketches and offer a template-driven AR framework, fill
 
 Candidates, in rough order of effort:
 
-- **Semantic segmentation — DeepLabV3.** Tiny (2.3–8.6 MB, Apple's gallery) and it answers something the built-in person/subject segmenters can't: *per-class* masks over 21 everyday classes — recolor every chair, find the dog pixels. The prerequisite: it outputs an `MLMultiArray` of class labels (`CoreMLFeatureValueObservation`), which the tracker doesn't decode — this wants a small multiarray surface (likely decoded straight to a class-mask form rather than exposing raw arrays).
 - **Text-driven knobs — MobileCLIP-class embeddings.** `confidence(of:)` for *any phrase*, not a fixed vocabulary — "how spooky does the camera look" as a `0…1` knob. A real milestone rather than an example: it needs an embedding surface, the text-encoder side, and a tokenizer, and **the license of Apple's MobileCLIP release needs verifying before any fetch script points at it.**
 
 Skip the plain ImageNet classifiers (FastViT, MobileNetV2, ResNet) — redundant with the built-in `ImageClassifier`'s ~1,300-label vocabulary. And the modern Ultralytics YOLOs (v8/26) are AGPL-3.0 — never bundled, never scripted, same tier as p5.js's LGPL.

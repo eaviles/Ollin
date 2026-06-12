@@ -1,6 +1,7 @@
 import AVFoundation
 import CoreGraphics
 import CoreMedia
+import CoreML
 import Foundation
 import Testing
 import Ollin
@@ -31,6 +32,7 @@ import Ollin
     static let detectorModelURL = model("YOLOv3TinyFP16.mlmodel")
     static let digitModelURL = model("MNISTClassifier.mlmodel")
     static let styleModelURL = model("StyleTransfer.mlmodel")
+    static let segmentationModelURL = model("DeepLabV3FP16.mlmodel")
 
     // MARK: Always-on
 
@@ -67,7 +69,7 @@ import Ollin
 
     @Test func emptyOutputReadsZero() {
         let output = ModelOutput(labels: [], objects: [], map: nil, outputImage: nil,
-                                 mapBytes: nil)
+                                 classMask: nil, mapBytes: nil)
         let rect = Rectangle(x: 0, y: 0, width: 100, height: 100)
         #expect(output.value(at: Vector2(50, 50), in: rect) == 0)
         #expect(output.valueNormalized(at: Vector2(0.5, 0.5)) == 0)
@@ -88,6 +90,90 @@ import Ollin
         #expect(map.value(at: Vector2(1.0, 1.0)) == 10.0 / 255)
         #expect(map.value(at: Vector2(5, -3)) == 200.0 / 255)
         #expect(map.value(at: Vector2(-1, 2)) == 10.0 / 255)
+    }
+
+    /// The class plane behind the segmentation surface, pinned
+    /// deterministically: rows are top-down, queries are lower-left
+    /// normalized and clamp, coverage counts pixels, and per-class masks
+    /// memoize. A 4×2 plane: top row class 1, bottom row class 15 — except
+    /// the bottom-right pixel, class 7.
+    @Test func classMaskReadsAndMasks() throws {
+        var counts = [Int](repeating: 0, count: 256)
+        counts[1] = 4; counts[15] = 3; counts[7] = 1
+        let mask = ClassMask(plane: [1, 1, 1, 1, 15, 15, 15, 7], width: 4, height: 2,
+                             counts: counts, labels: deepLabStyleLabels)
+
+        // Largest first; names follow the vocabulary.
+        #expect(mask.presentClasses == [1, 15, 7])
+        #expect(mask.presentLabels == ["aeroplane", "person", "car"])
+        #expect(mask.coverage(ofClass: 1) == 0.5)
+        #expect(mask.coverage(of: "person") == 3.0 / 8)
+        #expect(mask.coverage(of: "PERSON") == 3.0 / 8)   // case-insensitive
+        #expect(mask.coverage(of: "submarine") == 0)
+
+        // Lower-left normalized: y near 1 is the picture's top.
+        #expect(mask.classIndexNormalized(at: Vector2(0.5, 0.9)) == 1)
+        #expect(mask.classIndexNormalized(at: Vector2(0.5, 0.1)) == 15)
+        #expect(mask.classIndexNormalized(at: Vector2(0.99, 0.1)) == 7)
+        // Clamping: far-out points answer, never trap.
+        #expect(mask.classIndexNormalized(at: Vector2(5, -3)) == 7)
+        #expect(mask.classIndexNormalized(at: Vector2(-1, 2)) == 1)
+
+        // Canvas-space query, the y flip and the mirror.
+        let rect = Rectangle(x: 0, y: 0, width: 100, height: 100)
+        #expect(mask.label(at: Vector2(50, 10), in: rect) == "aeroplane")
+        #expect(mask.label(at: Vector2(10, 90), in: rect) == "person")
+        #expect(mask.label(at: Vector2(90, 90), in: rect) == "car")
+        #expect(mask.label(at: Vector2(90, 90), in: rect, mirrored: true) == "person")
+
+        // The per-class mask: white-alpha where the class is, clear elsewhere,
+        // and the same instance on a repeated read (memoized).
+        let person = try #require(mask.mask(of: "person"))
+        #expect(person.width == 4 && person.height == 2)
+        #expect(person[0, 1].alpha == 1 && person[0, 1].red == 1)
+        #expect(person[0, 0].alpha == 0)
+        #expect(person[3, 1].alpha == 0)   // the car pixel
+        #expect(mask.mask(ofClass: 15) === person)
+        // A class not in frame answers nil.
+        #expect(mask.mask(ofClass: 3) == nil)
+        #expect(mask.mask(of: "bird") == nil)
+    }
+
+    /// The multiarray decode: `[H, W]` Int32 (the DeepLabV3 form), a leading
+    /// 1-sized dim squeezed, the Float fallback rounded — and shapes that
+    /// aren't a class plane rejected.
+    @Test func classMaskDecodesShapedArrays() throws {
+        let scalars: [Int32] = [0, 1, 2, 3, 4, 5]
+        for shape in [[2, 3], [1, 2, 3]] {
+            let array = MLShapedArray<Int32>(scalars: scalars, shape: shape)
+            let mask = try #require(ClassMask(featureValue: .init(array), labels: []),
+                                    "shape \(shape) should decode")
+            #expect(mask.width == 3 && mask.height == 2)
+            #expect(mask.classIndexNormalized(at: Vector2(0.99, 0.9)) == 2)   // top-right
+            #expect(mask.classIndexNormalized(at: Vector2(0.01, 0.1)) == 3)   // bottom-left
+            #expect(mask.presentClasses.count == 6)
+        }
+
+        let floats = MLShapedArray<Float>(scalars: [0.2, 0.8, 14.6, 15.4], shape: [2, 2])
+        let rounded = try #require(ClassMask(featureValue: .init(floats), labels: []))
+        #expect(rounded.classIndexNormalized(at: Vector2(0.1, 0.9)) == 0)
+        #expect(rounded.classIndexNormalized(at: Vector2(0.9, 0.9)) == 1)
+        #expect(rounded.classIndexNormalized(at: Vector2(0.1, 0.1)) == 15)
+        #expect(rounded.classIndexNormalized(at: Vector2(0.9, 0.1)) == 15)
+
+        // Not a class plane: 3D logits and 1D vectors stay undecoded.
+        let logits = MLShapedArray<Float>(repeating: 0, shape: [4, 2, 2])
+        #expect(ClassMask(featureValue: .init(logits), labels: []) == nil)
+        let vector = MLShapedArray<Int32>(repeating: 0, shape: [8])
+        #expect(ClassMask(featureValue: .init(vector), labels: []) == nil)
+    }
+
+    /// The 21 PASCAL VOC labels in the DeepLabV3 metadata ordering.
+    private var deepLabStyleLabels: [String] {
+        ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
+         "car", "cat", "chair", "cow", "diningTable", "dog", "horse",
+         "motorbike", "person", "pottedPlant", "sheep", "sofa", "train",
+         "tvOrMonitor"]
     }
 
     // MARK: Real model (soft-gated on the downloaded weights)
@@ -229,6 +315,65 @@ import Ollin
             }
         }
         #expect(colorful > sampled / 10)
+    }
+
+    /// The class-mask surface over the real segmenter: DeepLabV3 finds the
+    /// person pixels in the bundled clip — the end-to-end pin for the fetched
+    /// model, the metadata vocabulary, and the top-down plane orientation
+    /// (the flyers are in the picture's top half, so their centroid must read
+    /// in the normalized upper half — the regression shape that caught the
+    /// mirrored point queries elsewhere in the catalog).
+    @Test func segmenterLabelsThePersonPixelsInRealFootage() async throws {
+        guard Self.isFetched(Self.segmentationModelURL) else { return }
+        let frame = try await Self.clipFrame(at: 1)
+        let tracker = ModelTracker(modelAt: Self.segmentationModelURL)
+        let output = try await tracker.detect(in: Image(cgImage: frame))
+        let classes = try #require(output.classMask)
+        #expect(classes.width == 513 && classes.height == 513)
+
+        // The model declares its own vocabulary; the load picks it up.
+        #expect(classes.labels.count == 21)
+        #expect(classes.labels.first == "background")
+        #expect(classes.labels[15] == "person")
+        #expect(classes.presentLabels.contains("person"))
+        let coverage = classes.coverage(of: "person")
+        #expect(coverage > 0.005 && coverage < 0.3)
+
+        // Orientation, end to end: the person pixels' centroid sits in the
+        // top half (normalized lower-left, so y > 0.5).
+        var ySum = 0.0
+        var hits = 0
+        for gy in 0..<40 {
+            for gx in 0..<40 {
+                let point = Vector2((Double(gx) + 0.5) / 40, (Double(gy) + 0.5) / 40)
+                if classes.classIndexNormalized(at: point) == 15 {
+                    ySum += point.y
+                    hits += 1
+                }
+            }
+        }
+        #expect(hits > 0)
+        #expect(ySum / Double(max(hits, 1)) > 0.5)
+
+        // The drawable mask is built from the same plane, so it must agree
+        // with the queries cell for cell.
+        let person = try #require(classes.mask(of: "person"))
+        #expect(person.width == 513 && person.height == 513)
+        var mismatched = 0
+        for y in stride(from: 0, to: 513, by: 17) {
+            for x in stride(from: 0, to: 513, by: 13) {
+                let u = (Double(x) + 0.5) / 513
+                let v = 1 - (Double(y) + 0.5) / 513
+                let isPerson = classes.classIndexNormalized(at: Vector2(u, v)) == 15
+                if (person[x, y].alpha == 1) != isPerson { mismatched += 1 }
+            }
+        }
+        #expect(mismatched == 0)
+
+        // A segmenter fills only the class-mask surface.
+        #expect(output.labels.isEmpty)
+        #expect(output.objects.isEmpty)
+        #expect(output.map == nil)
     }
 
     /// A frame of the bundled CC BY-SA clip (`Examples/Video/VideoPlayback`),

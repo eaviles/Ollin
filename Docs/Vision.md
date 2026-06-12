@@ -63,6 +63,7 @@ final class Faces: Sketch {
 - [Saliency](#saliency) — the heat map, regions, and point query
 - [ModelTracker](#modeltracker) — run your own Core ML model over the frames
 - [ModelOutput](#modeloutput) — its decoded surfaces: labels, objects, map
+- [ClassMask](#classmask) — a semantic segmenter's output: every pixel named
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
 - [Availability](#availability) — when a model can't run on a Mac
@@ -771,6 +772,7 @@ func confidence(of: String) -> Double
 var objects: [DetectedObject] { get }                     // object-detector outputs
 var map: Image? { get }                                   // image-typed output, white-alpha
 var outputImage: Image? { get }                           // image-typed output, full color
+var classMask: ClassMask? { get }                         // semantic-segmenter output
 func value(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Double
 var isLoaded: Bool { get }
 func detect(in: Image) async throws -> ModelOutput
@@ -783,6 +785,7 @@ A model fills the surfaces matching what it outputs, decoded the same way the bu
 - **Classifier** (label + confidence outputs) → `labels` / `top` / `confidence(of:)`, like [`ImageClassifier`](#imageclassifier) but over your model's own vocabulary.
 - **Image-to-image** (a depth estimator, a custom matte, a style-transfer model) → two readings of the same output. `map` is the output as a *value field*: a white-alpha `Image` like the segmentation matte (`tint(_:)` recolors it; draw it into the frame's rectangle and it stretches onto the picture), plus `value(at:in:)` — the value under any canvas point, the same field-shaped query [`SaliencyTracker`](#saliencytracker) offers (`0…1`; out-of-range points clamp to the edge). `outputImage` is the output as a *picture*: full color, for a model that paints rather than measures — a style-transfer model's stylized frame, drawn like any image (the `StyleMirror` example). Each surface converts only once something reads it, so a sketch pays for the reading it uses.
 - **Object detector** (a detector exported with its non-maximum-suppression head, the form Apple's gallery ships) → `objects`, labeled boxes mapped by `bounds(in:)`.
+- **Semantic segmenter** (a model whose output is a plane of class indices, one per pixel — the DeepLabV3 form) → `classMask`, a [`ClassMask`](#classmask): what classes are in frame and how much of it they fill, the class under any canvas point, and each class as a drawable, tintable mask. The model's own vocabulary comes along when it declares one (Apple's gallery models do).
 
 ```swift
 let camera = Camera()
@@ -798,7 +801,7 @@ override func draw() {
 
 Loading happens in the background, off the frame loop, started by the first analyzed frame (or the first `detect(in:)`): `isLoaded` flips when the model is ready, and frames simply pass by until then — the source's other trackers aren't stalled behind it. The compiled model is cached at a stable path, which is load-bearing: Core ML *specializes* a model for this Mac's compute device and keys that work to the compiled files and the executable that loads them, so the **first launch of a (re)built sketch takes several seconds** while every later launch of the same build starts in milliseconds. A model file that's missing or won't load surfaces through the [availability](#availability) pair instead of failing silently — check it and tell the user what to do (the `DepthRelief` example points at its download script).
 
-Model weights are yours to bring: Ollin bundles none. The examples fetch theirs with `Scripts/fetch-models.sh` (the repo ignores `Models/`), which downloads Apple's official conversion of **Depth Anything V2 (small)** (Apache-2.0, ~50 MB — the `DepthRelief` example), **YOLOv3-tiny** (YOLO License v2, ~18 MB — `ObjectDetection`), and the **MNIST drawing classifier** (MIT, ~400 KB — `DigitReader`, which points the model at the sketch's *own* pixels: no camera anywhere). The `StyleMirror` example's model isn't fetched at all — you train it yourself from any style image in a couple of minutes with `swift Scripts/train-style-model.swift <image>` (the CreateML framework underneath; the Create ML app no longer offers its Style Transfer template), so the weights are your own work with no license to check.
+Model weights are yours to bring: Ollin bundles none. The examples fetch theirs with `Scripts/fetch-models.sh` (the repo ignores `Models/`), which downloads Apple's official conversion of **Depth Anything V2 (small)** (Apache-2.0, ~50 MB — the `DepthRelief` example), **YOLOv3-tiny** (YOLO License v2, ~18 MB — `ObjectDetection`), the **MNIST drawing classifier** (MIT, ~400 KB — `DigitReader`, which points the model at the sketch's *own* pixels: no camera anywhere), and **DeepLabV3** (Apache-2.0, ~4 MB — `PaintByClass`, the class-mask surface). The `StyleMirror` example's model isn't fetched at all — you train it yourself from any style image in a couple of minutes with `swift Scripts/train-style-model.swift <image>` (the CreateML framework underneath; the Create ML app no longer offers its Style Transfer template), so the weights are your own work with no license to check.
 
 <a name="modeloutput"></a>
 
@@ -810,6 +813,7 @@ struct ModelOutput {
     var objects: [DetectedObject]    // detector outputs
     var map: Image?                  // image-typed output, white-alpha
     var outputImage: Image?          // image-typed output, full color
+    var classMask: ClassMask?        // semantic-segmenter output
     func value(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Double
     func valueNormalized(at: Vector2) -> Double
 }
@@ -823,6 +827,42 @@ struct DetectedObject {
 ```
 
 What the still-image `detect(in:)` returns — the same surfaces the live tracker publishes, as one value. `DetectedObject` is one thing an object-detection model found: its label, confidence, and box, mapped onto the canvas by the usual `in:` helpers.
+
+<a name="classmask"></a>
+
+### ClassMask
+
+```swift
+var labels: [String] { get }                 // the model's class vocabulary, by index
+var presentClasses: [Int] { get }            // classes in frame, largest first
+var presentLabels: [String] { get }          // the same, by name
+func coverage(of label: String) -> Double            // fraction of the picture, 0…1
+func coverage(ofClass index: Int) -> Double
+func classIndex(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Int
+func label(at: Vector2, in: Rectangle, mirrored: Bool = false) -> String?
+func classIndexNormalized(at: Vector2) -> Int
+func mask(of label: String) -> Image?        // one class as a white-alpha mask
+func mask(ofClass index: Int) -> Image?
+```
+
+What a semantic-segmentation model labeled, pixel by pixel — three readings of one plane. **What's in frame:** `presentClasses` / `presentLabels` (largest first) and `coverage(of:)`, the share of the picture a class fills. **What's under a point:** `classIndex(at:in:)` / `label(at:in:)` — the class under any canvas point (out-of-range points clamp; pass the rectangle you drew the frame into, like every `in:` helper). **One class as pixels:** `mask(of: "person")` — white where the picture is that class, transparent elsewhere, like the segmentation matte: draw it into the frame's rectangle and it lands on the picture, `tint(_:)` recolors it. A mask returns `nil` for a class that isn't in frame, and masks are memoized per result, so drawing the same class every frame costs one conversion per analyzed frame.
+
+`labels` is the vocabulary the model declares about itself (DeepLabV3's 21 PASCAL VOC classes, `"background"` first); with an undeclared vocabulary the index-based reads still work. The plane is at the model's own resolution (DeepLabV3 answers 513×513 whatever it watched) and covers the full frame. Class indices above 255 aren't representable on this surface.
+
+```swift
+lazy var segmenter = ModelTracker(camera, modelAt: URL(fileURLWithPath:
+    "Models/DeepLabV3FP16.mlmodel"))
+
+override func draw() {
+    guard let rect = drawFrame(camera) else { return }
+    if let classes = segmenter.classMask,
+       let person = classes.mask(of: "person") {
+        tint(.red)                        // the person's pixels, as paint
+        drawImage(person, in: rect)
+        noTint()
+    }
+}
+```
 
 <a name="coordinate-mapping"></a>
 

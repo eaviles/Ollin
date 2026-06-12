@@ -890,6 +890,14 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/ObjectDetection"
         ),
+        // Semantic segmentation (DeepLabV3) — every pixel painted by class.
+        // The model weights download via Scripts/fetch-models.sh (never
+        // committed).
+        .executableTarget(
+            name: "Example-PaintByClass",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/PaintByClass"
+        ),
         // A model reading the sketch's own pixels — draw a digit with the
         // mouse, MNIST classifies it; no camera at all. The model weights
         // download via Scripts/fetch-models.sh (never committed).

@@ -13,6 +13,9 @@
 #     Core ML conversion from the same gallery.
 #   MNISTClassifier — handwritten-digit classification, MIT (Apple).
 #     The gallery's Turi Create-trained drawing classifier.
+#   DeepLabV3FP16 — semantic segmentation (21 everyday classes), Apache-2.0.
+#     The TensorFlow DeepLabV3 research model, in Apple's Core ML conversion
+#     from the same gallery.
 #
 # (The style-transfer example's model is not fetched here — you train your
 # own with Scripts/train-style-model.swift; see Examples/Vision/README.md.)
@@ -66,3 +69,6 @@ fetch_mlmodel "YOLOv3TinyFP16" \
 
 fetch_mlmodel "MNISTClassifier" \
     "https://ml-assets.apple.com/coreml/models/Image/DrawingClassification/MNISTClassifier/MNISTClassifier.mlmodel"
+
+fetch_mlmodel "DeepLabV3FP16" \
+    "https://ml-assets.apple.com/coreml/models/Image/ImageSegmentation/DeepLabV3/DeepLabV3FP16.mlmodel"

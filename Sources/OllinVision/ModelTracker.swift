@@ -65,7 +65,7 @@ struct MapBytes: Sendable {
 /// counterpart of `ModelTracker`'s live surfaces. A model fills only the
 /// surfaces its outputs match: a classifier fills `labels`, an image-to-image
 /// model fills `map` (and answers `value(at:in:)`), an object detector fills
-/// `objects`.
+/// `objects`, a semantic segmenter fills `classMask`.
 ///
 /// `@unchecked Sendable`: `Image` is a class, but the map is freshly created by
 /// the run and handed over whole — nothing else holds or mutates it.
@@ -90,6 +90,10 @@ public struct ModelOutput: @unchecked Sendable {
     /// or `nil` when the model has none. `map` reads the output as a gray
     /// value map; this keeps the model's own colors.
     public let outputImage: Image?
+
+    /// What a semantic-segmentation model labeled, pixel by pixel — or `nil`
+    /// when the model's output isn't a class-index plane.
+    public let classMask: ClassMask?
 
     let mapBytes: MapBytes?
 
@@ -127,7 +131,7 @@ public struct ModelOutput: @unchecked Sendable {
 /// }
 /// ```
 ///
-/// Three result surfaces, by output kind — a model fills the ones it matches:
+/// Four result surfaces, by output kind — a model fills the ones it matches:
 /// - **Classifier** (label + confidence outputs): `labels` / `top` /
 ///   `confidence(of:)`, like `ImageClassifier` but over your model's own
 ///   vocabulary.
@@ -139,6 +143,9 @@ public struct ModelOutput: @unchecked Sendable {
 /// - **Object detector** (a model with its non-maximum-suppression head, the
 ///   form Apple's model gallery ships): `objects` — labeled boxes mapped by
 ///   `bounds(in:)`.
+/// - **Semantic segmenter** (a class-index plane, the DeepLabV3 form):
+///   `classMask` — every pixel labeled with a class, queryable by point,
+///   name, or as per-class drawable masks (`ClassMask`).
 ///
 /// Loading happens in the background, off the frame loop: `isLoaded` flips when
 /// the model is ready (the **first-ever** load of a model also specializes it
@@ -175,9 +182,14 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         var map: Image?
         var outputImage: Image?
         var mapBytes: MapBytes?
+        var classMask: ClassMask?
         var wantsMap = false
         var wantsValues = false
         var wantsOutputImage = false
+        var wantsClassMask = false
+        /// The model's declared class vocabulary (the segmentation preview
+        /// metadata), parsed once at load.
+        var modelLabels: [String] = []
     }
     private let lock = OSAllocatedUnfairLock(uncheckedState: State())
     private let status: VisionStatus
@@ -226,6 +238,18 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         lock.withLockUnchecked { state in
             state.wantsOutputImage = true
             return state.outputImage
+        }
+    }
+
+    /// What a semantic-segmentation model labeled in the most recent analyzed
+    /// frame, pixel by pixel — or `nil` before the first result (or when the
+    /// model's output isn't a class-index plane). The first read arms the
+    /// conversion, so it can stay `nil` until the next analyzed frame
+    /// publishes.
+    public var classMask: ClassMask? {
+        lock.withLockUnchecked { state in
+            state.wantsClassMask = true
+            return state.classMask
         }
     }
 
@@ -313,8 +337,13 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
             SegmentationImages.matteImage(fromGray: $0.bytes, width: $0.width, height: $0.height)
         }
         let outputImage = outputCGImage.flatMap(SegmentationImages.colorImage(from:))
+        let modelLabels = lock.withLockUnchecked { $0.modelLabels }
+        let classMask = decoded.featureValue.flatMap {
+            ClassMask(featureValue: $0, labels: modelLabels)
+        }
         return ModelOutput(labels: decoded.labels, objects: decoded.objects,
-                           map: map, outputImage: outputImage, mapBytes: mapBytes)
+                           map: map, outputImage: outputImage, classMask: classMask,
+                           mapBytes: mapBytes)
     }
 
     // MARK: VisionTracking
@@ -336,10 +365,13 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
             // Convert the image-typed output only once some read has armed it
             // (value queries arm the byte plane; a `map` read additionally arms
             // the gray drawable; an `outputImage` read arms the full-color
-            // decode) — a sketch reading only labels never pays a conversion.
-            let (wantsMap, wantsValues, wantsOutputImage) = lock.withLockUnchecked {
-                ($0.wantsMap, $0.wantsValues, $0.wantsOutputImage)
-            }
+            // decode; a `classMask` read arms the class-plane decode) — a
+            // sketch reading only labels never pays a conversion.
+            let (wantsMap, wantsValues, wantsOutputImage, wantsClassMask, modelLabels) =
+                lock.withLockUnchecked {
+                    ($0.wantsMap, $0.wantsValues, $0.wantsOutputImage,
+                     $0.wantsClassMask, $0.modelLabels)
+                }
             var outputCGImage: CGImage?
             if wantsMap || wantsValues || wantsOutputImage {
                 outputCGImage = decoded.observation.flatMap { try? $0.cgImage }
@@ -358,12 +390,19 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
             if wantsOutputImage {
                 outputImage = outputCGImage.flatMap(SegmentationImages.colorImage(from:))
             }
+            var classMask: ClassMask?
+            if wantsClassMask {
+                classMask = decoded.featureValue.flatMap {
+                    ClassMask(featureValue: $0, labels: modelLabels)
+                }
+            }
             lock.withLockUnchecked { state in
                 state.labels = decoded.labels
                 state.objects = decoded.objects
                 if wantsMap || wantsValues { state.mapBytes = mapBytes }
                 if wantsMap { state.map = map }
                 if wantsOutputImage { state.outputImage = outputImage }
+                if wantsClassMask { state.classMask = classMask }
             }
         } catch {
             status.recordFailure(error)
@@ -404,8 +443,12 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
                 status.markUnavailable("No model was provided.")
                 return
             }
+            let labels = Self.declaredClassLabels(of: model)
             let request = CoreMLRequest(model: try CoreMLModelContainer(model: model))
-            lock.withLockUnchecked { $0.request = request }
+            lock.withLockUnchecked { state in
+                state.modelLabels = labels
+                state.request = request
+            }
         } catch {
             status.markUnavailable(
                 "The model at \(modelURL?.path ?? "?") couldn't load: \(error.localizedDescription)")
@@ -461,13 +504,16 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         var labels: [Classification] = []
         var objects: [DetectedObject] = []
         var observation: PixelBufferObservation?
+        var featureValue: MLSendableFeatureValue?
     }
 
     /// Split whatever the model produced by observation kind. A classifier
     /// yields one `ClassificationObservation` per label (its whole vocabulary,
     /// like the built-in classifier); a detector yields one
     /// `RecognizedObjectObservation` per found object; an image-to-image model
-    /// yields a `PixelBufferObservation`.
+    /// yields a `PixelBufferObservation`; a semantic segmenter yields its
+    /// class plane as a `CoreMLFeatureValueObservation` (a multiarray —
+    /// `ClassMask` decodes it, and rejects multiarrays that aren't one).
     private static func decode(_ observations: [any VisionObservation]) -> Decoded {
         var decoded = Decoded()
         for observation in observations {
@@ -486,6 +532,10 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
                                        width: box.width, height: box.height)))
             case let pixels as PixelBufferObservation:
                 decoded.observation = pixels
+            case let feature as CoreMLFeatureValueObservation:
+                if decoded.featureValue == nil, feature.featureValue.isShapedArray {
+                    decoded.featureValue = feature.featureValue
+                }
             default:
                 continue
             }
@@ -493,6 +543,20 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         decoded.labels.sort { $0.confidence > $1.confidence }
         decoded.objects.sort { $0.confidence > $1.confidence }
         return decoded
+    }
+
+    /// The class vocabulary a segmentation model declares about itself —
+    /// Apple's gallery models (and anything exported with coremltools' image
+    /// segmenter preview) carry it as JSON in the creator-defined metadata.
+    /// Empty when the model declares none; index-based reads work regardless.
+    static func declaredClassLabels(of model: MLModel) -> [String] {
+        guard let creator = model.modelDescription
+                .metadata[.creatorDefinedKey] as? [String: Any],
+              let params = creator["com.apple.coreml.model.preview.params"] as? String,
+              let data = params.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let labels = json["labels"] as? [String] else { return [] }
+        return labels
     }
 
     /// The image-typed output as Ollin's own gray plane, extracted through the
