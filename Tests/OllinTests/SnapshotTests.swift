@@ -86,6 +86,12 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: GradientShapes(), against: "gradient-shapes")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func statusAndCaptionMatchReference() throws {
+        let diff = try Snapshot.meanDifference(of: StatusNotices(), against: "status-notices")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -319,6 +325,7 @@ private final class TextSpecimen: Sketch {
     override func draw() {
         background(.white)
         fill(.black)
+        textFont(BitmapFont.builtin)   // the fixture is about Cozette, not the default font
         textAlign(.left, .top)
         textSize(24)
         drawText("¡Hola! Ñ", 14, 12)
@@ -410,5 +417,31 @@ private final class GradientShapes: Sketch {
         drawLine(Vector2(20, 234), Vector2(236, 234))
         drawBezier(Vector2(20, 108), Vector2(128, 86), Vector2(118, 108))
         noStroke()
+    }
+}
+
+/// The standard notices and caption helpers, plus a closed polyline: an `.info`
+/// status filling the canvas, a `.warning` status scoped to a sub-rectangle,
+/// captions on both edges, and `drawPolyline(closed:)` joining its seam. Pins
+/// the helpers' look and that they leave the drawing state untouched (the
+/// rectangle after them still draws with the sketch's own fill).
+private final class StatusNotices: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.06))
+        drawStatus("Waiting for camera…")
+        drawStatus("Model unavailable", style: .warning,
+                   in: Rectangle(x: 0, y: 150, width: width, height: 90))
+        drawCaption("StatusNotices — a caption")
+        drawCaption("top caption", edge: .top)
+        // State untouched by the helpers: this still draws white, stroke-free.
+        fill(.white)
+        noStroke()
+        drawRect(10, 118, 20, 20)
+        // A closed polyline turns its seam with the join (vs. an open V).
+        stroke(.white)
+        strokeWeight(6)
+        drawPolyline([Vector2(200, 110), Vector2(236, 140), Vector2(200, 140)], closed: true)
     }
 }

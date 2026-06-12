@@ -26,7 +26,6 @@ final class OSCMonitor: Sketch {
         do { try osc.start() }
         catch { print("could not start receiver: \(error)") }
         print("Listening for OSC on :\(listenPort) — point a sender at this Mac's IP on port \(listenPort)")
-        textFont(OutlineFont.system)
         noStroke()
     }
 

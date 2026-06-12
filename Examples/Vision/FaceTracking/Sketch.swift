@@ -7,32 +7,23 @@ import OllinVision
 /// outlines (jaw, brows, eyes, nose, lips) plus a dot on each pupil.
 ///
 /// The crux is coordinate mapping: the tracker reports normalized points, and the
-/// `in:` helpers place them on the canvas. Drawing the frame and mapping the
-/// results into the *same* rectangle (`rect`) is what keeps the overlay glued to
-/// the face. Set `mirrored: true` everywhere for the natural selfie orientation.
+/// `in:` helpers place them on the canvas. `drawFrame` returns the rectangle the
+/// frame landed in, and mapping the results into the *same* rectangle (`rect`) is
+/// what keeps the overlay glued to the face. Set `mirrored: true` everywhere for
+/// the natural selfie orientation.
 @main
 final class FaceTracking: Sketch {
     let camera = Camera()
     lazy var faces = FaceTracker(camera)
 
     override func setup() {
-        textFont(OutlineFont.system)
         try? camera.start()
     }
 
     override func draw() {
         background(Color(white: 0.06))
 
-        guard let frame = camera.frame else {
-            fill(Color(white: 0.5))
-            textAlign(.center, .middle)
-            textSize(22 * scale)
-            drawText("Waiting for camera…", width / 2, height / 2)
-            return
-        }
-
-        let rect = camera.fittedRect(in: bounds) ?? bounds
-        drawImage(frame, in: rect)
+        guard let rect = drawFrame(camera) else { return }
 
         let accent = Color(red: 0.3, green: 1.0, blue: 0.6)
         let detected = faces.faces
@@ -51,7 +42,7 @@ final class FaceTracking: Sketch {
                 drawPolyline(face.landmarks(region, in: rect))
             }
             for region in [FaceLandmark.leftEye, .rightEye, .outerLips, .innerLips] {
-                drawClosed(face.landmarks(region, in: rect))
+                drawPolyline(face.landmarks(region, in: rect), closed: true)
             }
 
             // Pupils.
@@ -64,18 +55,7 @@ final class FaceTracking: Sketch {
             }
         }
 
-        // Screen-space label with the live count.
-        fill(.white)
-        noStroke()
-        textAlign(.center, .bottom)
-        textSize(15 * scale)
         let n = detected.count
-        drawText("FaceTracking — \(n) face\(n == 1 ? "" : "s")", width / 2, height - 28 * scale)
-    }
-
-    /// Draw a polyline closed back to its first point (for loop regions).
-    private func drawClosed(_ points: [Vector2]) {
-        guard let first = points.first else { return }
-        drawPolyline(points + [first])
+        drawCaption("FaceTracking — \(n) face\(n == 1 ? "" : "s")")
     }
 }

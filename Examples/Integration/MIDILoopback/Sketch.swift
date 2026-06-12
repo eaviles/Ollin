@@ -64,7 +64,6 @@ final class MIDILoopback: Sketch {
 
         // Labels.
         fill(Color(white: 0.95))
-        textFont(OutlineFont.system)
         textSize(30 * scale)
         drawText("MIDI loopback — sending CC 1 to myself", 40 * scale, 70 * scale)
         fill(Color(white: 0.55))

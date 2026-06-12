@@ -38,6 +38,40 @@ protocol VisionTracking: AnyObject, Sendable {
     func analyze(_ cgImage: CGImage, size: CGSize) async
 }
 
+/// The availability surface every tracker shares: whether its Vision request
+/// can actually run on this Mac, and the human-readable reason when it can't
+/// (the heavier neural models need a compute device some Macs lack). Trackers
+/// start assumed available and flip on the first capability failure — so a
+/// sketch reports the state instead of staying silently empty:
+///
+/// ```swift
+/// if let reason = tracker.unavailableReason {
+///     return drawStatus(reason, style: .warning)
+/// }
+/// ```
+public protocol VisionAvailability: AnyObject {
+    /// Whether the tracker's model can run on this Mac.
+    var isAvailable: Bool { get }
+    /// Why the tracker can't run here, or `nil` while it can.
+    var unavailableReason: String? { get }
+}
+
+extension BarcodeScanner: VisionAvailability {}
+extension BodyTracker: VisionAvailability {}
+extension BodyTracker3D: VisionAvailability {}
+extension ContourDetector: VisionAvailability {}
+extension FaceTracker: VisionAvailability {}
+extension FlowTracker: VisionAvailability {}
+extension HandTracker: VisionAvailability {}
+extension ImageClassifier: VisionAvailability {}
+extension ObjectTracker: VisionAvailability {}
+extension PersonSegmenter: VisionAvailability {}
+extension RectangleDetector: VisionAvailability {}
+extension SaliencyTracker: VisionAvailability {}
+extension SubjectSegmenter: VisionAvailability {}
+extension TextRecognizer: VisionAvailability {}
+extension TrajectoryTracker: VisionAvailability {}
+
 /// Tracks whether a tracker's Vision request can actually run on this machine,
 /// so the live path doesn't fail *silently*.
 ///

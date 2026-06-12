@@ -32,16 +32,13 @@ final class TrajectoryTracking: Sketch {
     let linger = 1.2
 
     override func setup() {
-        textFont(OutlineFont.system)
         feed.start()
     }
 
     override func draw() {
         background(Color(white: 0.06))
 
-        guard let frame = feed.frame else { return }
-        let view = VisionSpace.fittedRect(imageSize: BallFeed.size, in: bounds)
-        drawImage(frame, in: view)
+        guard let view = drawFrame(feed) else { return }
 
         // Fold this frame's detections into the lingering trails, keyed by the
         // arc's stable identity, and drop the ones gone stale.
@@ -77,12 +74,7 @@ final class TrajectoryTracking: Sketch {
             }
         }
 
-        fill(.white)
-        noStroke()
-        textAlign(.center, .bottom)
-        textSize(15 * scale)
-        drawText("TrajectoryTracking — ballistic arcs detected in a synthetic feed (a FrameSource of our own)",
-                 width / 2, height - 28 * scale)
+        drawCaption("TrajectoryTracking — ballistic arcs detected in a synthetic feed (a FrameSource of our own)")
     }
 
     /// Sample the arc's fitted parabola (`y = ax² + bx + c`, normalized space)
@@ -108,12 +100,16 @@ final class TrajectoryTracking: Sketch {
 
 /// A frame source of our own: a little launcher that lobs balls across a
 /// 640×480 scene and renders each simulation step to a `CGImage` on its own
-/// thread — the same contract `Camera` and `VideoPlayer` fulfill. The tracker
-/// taps it without knowing (or caring) that the "camera" is made up.
+/// thread — the same contracts `Camera` and `VideoPlayer` fulfill: `FrameSource`
+/// so the tracker can tap it, `VideoFeed` so `drawFrame` can draw it. The
+/// tracker taps it without knowing (or caring) that the "camera" is made up.
 @MainActor
-final class BallFeed: FrameSource {
+final class BallFeed: FrameSource, VideoFeed {
 
     nonisolated static let size = Vector2(640, 480)
+
+    /// The fixed scene size (`VideoFeed` — what `drawFrame` letterboxes by).
+    var frameSize: Vector2? { BallFeed.size }
 
     /// The analysis tap (`FrameSource`). The simulation thread reads it per
     /// frame, so the live value crosses through a locked box.

@@ -109,7 +109,7 @@ final class Drawer {
     private var strokeAlignment: StrokeAlign = .center   // where the stroke sits on the outline (see strokeAlign)
     private var strokeJoinStyle: StrokeJoin = .miter     // how stroked-path corners turn (see strokeJoin)
     private var strokeCapStyle: StrokeCap = .butt        // how open stroked-path ends finish (see strokeCap)
-    private var currentFont: ActiveFont = .bitmap(.builtin)   // active text font (see textFont / drawText)
+    private var currentFont: ActiveFont = .outline(.systemMedium)   // active text font (see textFont / drawText)
     private var textPixelSize: Double = 24               // rendered glyph height in points (see textSize)
     private var textAlignH: TextAlignH = .left           // horizontal text anchor (see textAlign)
     private var textAlignV: TextAlignV = .baseline       // vertical text anchor (see textAlign)
@@ -1226,18 +1226,19 @@ final class Drawer {
     /// A connected open path through `points`, stroked with the current stroke
     /// color and weight.
     ///
-    /// Open (the last point is not joined back to the first) and stroke-only —
-    /// fills belong to closed shapes (`drawShape`). Corners turn per `strokeJoin`
-    /// (mitered by default, so fat strokes stay clean at sharp turns) and the ends
-    /// finish per `strokeCap` (butt by default). Needs at least two points and a
-    /// stroke to draw anything.
-    func drawPolyline(_ points: [Vector2]) {
+    /// Stroke-only — fills belong to closed shapes (`drawShape`). Open by
+    /// default (the last point is not joined back to the first); `closed: true`
+    /// joins it, turning that seam with `strokeJoin` like every other corner.
+    /// Corners turn per `strokeJoin` (mitered by default, so fat strokes stay
+    /// clean at sharp turns) and open ends finish per `strokeCap` (butt by
+    /// default). Needs at least two points and a stroke to draw anything.
+    func drawPolyline(_ points: [Vector2], closed: Bool = false) {
         guard points.count >= 2, let stroke = strokePaint, strokeWidth > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.polyline(points), fill: nil, stroke: stroke)
+            svgRecord(closed ? .polygon(points) : .polyline(points), fill: nil, stroke: stroke)
             return
         }
-        appendStrokedPath(points, closed: false, half: strokeWidth / 2,
+        appendStrokedPath(points, closed: closed, half: strokeWidth / 2,
                           paint: vertexPaint(stroke, anchor: points[0]))
     }
 

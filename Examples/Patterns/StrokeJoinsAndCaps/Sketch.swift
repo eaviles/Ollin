@@ -16,10 +16,6 @@ final class StrokeJoinsAndCaps: Sketch {
     let joinNames = ["miter", "bevel", "round"]
     let capNames = ["butt", "round", "square"]
 
-    override func setup() {
-        textFont(OutlineFont.system)
-    }
-
     override func draw() {
         background(Color(white: 0.1))
 

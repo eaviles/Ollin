@@ -20,7 +20,6 @@ final class Spectrum: Sketch {
 
     override func setup() {
         noStroke()
-        textFont(OutlineFont.system)
         tone.play()
     }
 
@@ -32,7 +31,6 @@ final class Spectrum: Sketch {
         tone.frequency = 110 * pow(2, sin(time * 0.2) * 1.5)
         tone.amplitude = 0.10 + 0.08 * (sin(time * 1.7) * 0.5 + 0.5)
 
-        let center = Vector2(width / 2, height / 2)
         let levels = tone.bands(bars)        // already normalized 0...1
         let inner = 150 * scale
         let maxLen = 320 * scale
@@ -55,9 +53,6 @@ final class Spectrum: Sketch {
         drawCircle(center.x, center.y, (40 + level * 260) * scale)
 
         // Screen-space label.
-        fill(.white)
-        textAlign(.center, .top)
-        textSize(15 * scale)
-        drawText("Spectrum", width / 2, height - 44 * scale)
+        drawCaption("Spectrum")
     }
 }

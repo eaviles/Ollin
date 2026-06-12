@@ -27,7 +27,7 @@ import Metal
 /// the player is a `FrameSource`: attach a vision tracker to it exactly the way
 /// you'd attach one to a camera, and it runs over the footage as it plays.
 @MainActor
-public final class VideoPlayer: FrameSource {
+public final class VideoPlayer: FrameSource, VideoFeed {
 
     /// Whether playback should restart from the top when it reaches the end.
     public var loops = false
@@ -60,6 +60,10 @@ public final class VideoPlayer: FrameSource {
     /// The video's pixel dimensions, or `nil` until known (from the file's
     /// metadata, or the first decoded frame, whichever lands first).
     public private(set) var size: Vector2?
+
+    /// `size`, under the name the `VideoFeed` seam reads (`drawFrame` and
+    /// `fittedRect(in:)` letterbox by it).
+    public var frameSize: Vector2? { size }
 
     /// The current playback position in seconds.
     public var currentTime: Double {
@@ -218,22 +222,6 @@ public final class VideoPlayer: FrameSource {
         let ciImage = CIImage(cvPixelBuffer: buffer)
         guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else { return nil }
         return Image(cgImage: cgImage)
-    }
-
-    /// The letterboxed rectangle that fits the video inside `container` without
-    /// stretching — draw `frame` into it, and map any analysis results into the
-    /// same rectangle so overlays line up. `nil` until `size` is known.
-    public func fittedRect(in container: Rectangle) -> Rectangle? {
-        guard let size, size.x > 0, size.y > 0 else { return nil }
-        let scale = min(container.width / size.x, container.height / size.y)
-        let width = size.x * scale
-        let height = size.y * scale
-        return Rectangle(
-            x: container.x + (container.width - width) / 2,
-            y: container.y + (container.height - height) / 2,
-            width: width,
-            height: height
-        )
     }
 
     /// BGRA (the texture cache's native layout), Metal-compatible buffers.

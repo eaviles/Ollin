@@ -21,10 +21,7 @@ final class Player: Sketch {
 
     override func draw() {
         background(.black)
-        if let player, let frame = player.frame,
-           let rect = player.fittedRect(in: bounds) {
-            drawImage(frame, in: rect)
-        }
+        if let player { drawFrame(player) }
     }
 }
 ```
@@ -33,7 +30,7 @@ final class Player: Sketch {
 
 - [Loading](#loading) — from a path, URL, or bundled resource
 - [Playback](#playback) — play, pause, loop, seek, rate, volume
-- [Drawing frames](#drawing-frames) — `frame`, `fittedRect`, `size`
+- [Drawing frames](#drawing-frames) — `drawFrame`, `frame`, `fittedRect`, `size`
 - [Pixels and analysis](#pixels-and-analysis) — live trackers, and `snapshot()` for CPU access
 - [Notes](#notes) — formats, audio, and the Metal device
 
@@ -80,9 +77,16 @@ Set `loops = true` before `play()` for the usual creative-coding loop. `rate` ch
 var frame: Image?                                    // the current frame
 var size: Vector2?                                   // pixel dimensions
 func fittedRect(in container: Rectangle) -> Rectangle?
+
+// on Sketch, for any VideoFeed (a VideoPlayer, a Camera, your own):
+@discardableResult
+func drawFrame(_ feed: some VideoFeed, in container: Rectangle? = nil,
+               waiting: String? = nil) -> Rectangle?
 ```
 
-`frame` is the current video frame, ready for `drawImage`. It's `nil` until the first frame decodes; after that it always returns a frame — between video frames (your sketch usually draws faster than the video's frame rate) you get the same one again, so there's never a gap. The image wraps the decoder's texture directly, which is what keeps per-frame cost near zero.
+`drawFrame(player)` is the one-call draw: the current frame, letterboxed into the canvas (or `container`), returning the rectangle it landed in — and a standard "Waiting for video…" notice (override it with `waiting:`) until the first frame decodes. It works on any `VideoFeed`, the core protocol `VideoPlayer` and the vision `Camera` share, so a player drops in anywhere a camera does.
+
+For the typed pieces: `frame` is the current video frame, ready for `drawImage`. It's `nil` until the first frame decodes; after that it always returns a frame — between video frames (your sketch usually draws faster than the video's frame rate) you get the same one again, so there's never a gap. The image wraps the decoder's texture directly, which is what keeps per-frame cost near zero.
 
 `fittedRect(in:)` letterboxes the video into a rectangle without stretching — typically `bounds` for a full-canvas draw:
 

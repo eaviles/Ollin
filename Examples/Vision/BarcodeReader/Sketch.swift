@@ -13,23 +13,13 @@ final class BarcodeReader: Sketch {
     lazy var scanner = BarcodeScanner(camera)
 
     override func setup() {
-        textFont(OutlineFont.system)
         try? camera.start()
     }
 
     override func draw() {
         background(Color(white: 0.06))
 
-        guard let frame = camera.frame else {
-            fill(Color(white: 0.5))
-            textAlign(.center, .middle)
-            textSize(22 * scale)
-            drawText("Waiting for camera…", width / 2, height / 2)
-            return
-        }
-
-        let rect = camera.fittedRect(in: bounds) ?? bounds
-        drawImage(frame, in: rect)
+        guard let rect = drawFrame(camera) else { return }
 
         let accent = Color(red: 1.0, green: 0.85, blue: 0.3)
         let codes = scanner.barcodes
@@ -53,12 +43,7 @@ final class BarcodeReader: Sketch {
             }
         }
 
-        // Screen-space label.
-        fill(.white)
-        noStroke()
-        textAlign(.center, .bottom)
-        textSize(15 * scale)
         let n = codes.count
-        drawText("BarcodeReader — \(n) code\(n == 1 ? "" : "s")", width / 2, height - 28 * scale)
+        drawCaption("BarcodeReader — \(n) code\(n == 1 ? "" : "s")")
     }
 }

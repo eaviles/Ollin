@@ -35,10 +35,6 @@ final class EasingGallery: Sketch {
         "easeInBounce", "easeOutBounce", "easeInOutBounce",
     ]
 
-    override func setup() {
-        textFont(OutlineFont.system)
-    }
-
     override func draw() {
         background(Color(white: 0.08))
 

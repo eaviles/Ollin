@@ -13,7 +13,7 @@ import OllinVideo
 /// ```
 ///
 /// Each decoded frame arrives as a GPU texture wrapped in an `Image`, drawn
-/// letterboxed with `fittedRect`; the thin line along the bottom is playback
+/// letterboxed with `drawFrame`; the thin line along the bottom is playback
 /// progress (`currentTime` over `duration`).
 @main
 final class VideoPlayback: Sketch {
@@ -21,7 +21,6 @@ final class VideoPlayback: Sketch {
 
     override func setup() {
         noStroke()
-        textFont(OutlineFont.system)
         let player = makePlayer()
         player?.loops = true
         player?.play()
@@ -42,9 +41,7 @@ final class VideoPlayback: Sketch {
         background(Color(white: 0.06))
         guard let player else { return }
 
-        if let frame = player.frame, let rect = player.fittedRect(in: bounds) {
-            drawImage(frame, in: rect)
-        }
+        drawFrame(player)
 
         // Playback progress along the bottom edge.
         if let duration = player.duration, duration > 0 {
@@ -53,10 +50,6 @@ final class VideoPlayback: Sketch {
             drawRect(0, height - 5 * scale, width * progress, 5 * scale)
         }
 
-        // Title in screen space.
-        fill(.white)
-        textAlign(.center, .top)
-        textSize(15 * scale)
-        drawText("Voladores de Papantla · José Millán (CC BY-SA)", width / 2, 34 * scale)
+        drawCaption("Voladores de Papantla · José Millán (CC BY-SA)", edge: .top)
     }
 }

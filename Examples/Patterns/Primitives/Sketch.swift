@@ -23,7 +23,6 @@ final class Primitives: Sketch {
 
     override func setup() {
         noStroke()
-        textFont(OutlineFont.system)
     }
 
     override func draw() {

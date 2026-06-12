@@ -25,7 +25,6 @@ final class VirtualCamera: Sketch {
 
     override func setup() {
         camera = publishVirtualCamera()
-        textFont(OutlineFont.system)
         noStroke()
     }
 

@@ -17,7 +17,6 @@ final class PersonSegmentation: Sketch {
                                 (1.0, Color(hex: 0xF7B267))], in: .oklch)
 
     override func setup() {
-        textFont(OutlineFont.system)
         try? camera.start()
     }
 
@@ -29,24 +28,17 @@ final class PersonSegmentation: Sketch {
                      to: Vector2(width / 2 + swing, height), backdrop))
         drawRect(0, 0, width, height)
 
-        guard camera.frame != nil else {
-            fill(Color(white: 1, alpha: 0.85))
-            textAlign(.center, .middle)
-            textSize(22 * scale)
-            drawText("Waiting for camera…", width / 2, height / 2)
-            return
+        // The raw frame never draws here (only its matte and cutout do), so this
+        // takes the typed path — `fittedRect` for the rectangle, `drawStatus` for
+        // the waiting notice — instead of `drawFrame`.
+        guard let rect = camera.fittedRect(in: bounds) else {
+            return drawStatus(camera.waitingMessage)
         }
-        let rect = camera.fittedRect(in: bounds) ?? bounds
 
         // If the segmentation model can't run on this Mac (no compute device),
         // say so on the canvas instead of silently showing only the gradient.
         if let reason = people.unavailableReason {
-            fill(Color(red: 1.0, green: 0.5, blue: 0.4))
-            textAlign(.center, .middle)
-            textSize(18 * scale)
-            drawText(reason, in: Rectangle(x: width * 0.1, y: height / 2 - 60 * scale,
-                                           width: width * 0.8, height: 120 * scale))
-            return
+            return drawStatus(reason, style: .warning)
         }
 
         // Drop shadow: the matte tinted translucent black, nudged down and right.
@@ -62,10 +54,6 @@ final class PersonSegmentation: Sketch {
             drawImage(cutout, in: rect)
         }
 
-        fill(.white)
-        textAlign(.center, .bottom)
-        textSize(15 * scale)
-        drawText("PersonSegmentation — the camera's people over a drawn background",
-                 width / 2, height - 28 * scale)
+        drawCaption("PersonSegmentation — the camera's people over a drawn background")
     }
 }

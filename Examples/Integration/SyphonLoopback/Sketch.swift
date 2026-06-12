@@ -23,7 +23,6 @@ final class SyphonLoopback: Sketch {
         publishSyphon(name: sourceName)        // share every frame
         feed = SyphonClient(named: sourceName) // … and subscribe to ourselves
         noStroke()
-        textFont(OutlineFont.system)
     }
 
     override func draw() {

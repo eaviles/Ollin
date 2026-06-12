@@ -790,10 +790,10 @@ drawCoolS(width / 2, height / 2, 360)                          // the doodle, fi
 #### drawPolyline
 
 ```swift
-drawPolyline(_ points: [Vector2])
+drawPolyline(_ points: [Vector2], closed: Bool = false)
 ```
 
-A connected open path through `points`, stroked. Its corners follow [strokeJoin](#strokeJoin) and its ends follow [strokeCap](#strokeCap).
+A connected path through `points`, stroked — open by default, joined back to its first point with `closed: true`. Its corners (including a closed path's seam) follow [strokeJoin](#strokeJoin) and its open ends follow [strokeCap](#strokeCap).
 
 ```swift
 let wave = stride(from: 0.0, through: width, by: 8).map { x in

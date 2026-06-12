@@ -18,34 +18,18 @@ final class BodyPose3D: Sketch {
     lazy var tracker = BodyTracker3D(camera)
 
     override func setup() {
-        textFont(OutlineFont.system)
         try? camera.start()
     }
 
     override func draw() {
         background(Color(white: 0.06))
 
-        guard let frame = camera.frame else {
-            fill(Color(white: 0.5))
-            textAlign(.center, .middle)
-            textSize(22 * scale)
-            drawText("Waiting for camera…", width / 2, height / 2)
-            return
-        }
-
-        let rect = camera.fittedRect(in: bounds) ?? bounds
-        drawImage(frame, in: rect)
+        guard let rect = drawFrame(camera) else { return }
 
         // If the model can't run on this Mac (no compute device), say so on the
         // canvas instead of silently showing no skeleton.
         if let reason = tracker.unavailableReason {
-            fill(Color(red: 1.0, green: 0.5, blue: 0.4))
-            noStroke()
-            textAlign(.center, .middle)
-            textSize(18 * scale)
-            drawText(reason, in: Rectangle(x: width * 0.1, y: height / 2 - 60 * scale,
-                                           width: width * 0.8, height: 120 * scale))
-            return
+            return drawStatus(reason, style: .warning)
         }
 
         let body = tracker.body
@@ -61,15 +45,9 @@ final class BodyPose3D: Sketch {
 
         drawSideView(body)
 
-        // Screen-space caption with the live distance.
-        fill(.white)
-        noStroke()
-        textAlign(.center, .bottom)
-        textSize(15 * scale)
-        let caption = body?.distance.map {
+        drawCaption(body?.distance.map {
             String(format: "BodyPose3D — %.1f m from the camera", $0)
-        } ?? "BodyPose3D — no one in view"
-        drawText(caption, width / 2, height - 28 * scale)
+        } ?? "BodyPose3D — no one in view")
     }
 
     /// The same skeleton seen from the person's side: model space `(z, y)` onto

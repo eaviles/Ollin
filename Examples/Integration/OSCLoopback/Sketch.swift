@@ -24,7 +24,6 @@ final class OSCLoopback: Sketch {
         sender = OSCSender(host: "127.0.0.1", port: port)
         try? receiver.start()
         noStroke()
-        textFont(OutlineFont.system)
     }
 
     override func draw() {

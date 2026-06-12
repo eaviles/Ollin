@@ -29,6 +29,19 @@ public struct Rectangle: Equatable, Hashable, Sendable {
                   width: width, height: height)
     }
 
+    /// Build the largest rectangle of `size`'s aspect ratio centered inside
+    /// `container` — the letterboxed box to draw an image or video frame into
+    /// without stretching it. A degenerate `size` or `container` yields
+    /// `container` unchanged.
+    public init(fitting size: Vector2, in container: Rectangle) {
+        guard size.x > 0, size.y > 0, container.width > 0, container.height > 0 else {
+            self = container
+            return
+        }
+        let scale = Swift.min(container.width / size.x, container.height / size.y)
+        self.init(center: container.center, width: size.x * scale, height: size.y * scale)
+    }
+
     public var x: Double { corner.x }
     public var y: Double { corner.y }
 

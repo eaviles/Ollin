@@ -22,7 +22,7 @@ import os
 /// Using the camera needs the user's permission; `start()` requests it the first
 /// time. Until it's granted, `frame` stays `nil`.
 @MainActor
-public final class Camera: FrameSource {
+public final class Camera: FrameSource, VideoFeed {
 
     /// Which camera to use. `.default` is the system's default video device (the
     /// built-in camera on most Macs); the rest pick the first device of a kind.
@@ -114,13 +114,9 @@ public final class Camera: FrameSource {
         return Vector2(Double(box.width), Double(box.height))
     }
 
-    /// The letterboxed rectangle that fits the camera frame inside `container`
-    /// without stretching — draw the frame into it and map results into the same
-    /// rectangle so overlays line up. `nil` before the first frame.
-    public func fittedRect(in container: Rectangle) -> Rectangle? {
-        guard let size = frameSize else { return nil }
-        return VisionSpace.fittedRect(imageSize: size, in: container)
-    }
+    /// The notice `drawFrame(camera)` shows before the first frame (`VideoFeed`;
+    /// `fittedRect(in:)` comes from the same conformance).
+    public var waitingMessage: String { "Waiting for camera…" }
 
     private func configureAndRun() throws {
         if !configured {

@@ -87,14 +87,6 @@ public enum VisionSpace {
     /// into) when you don't want it stretched. Returns `container` unchanged for a
     /// degenerate size.
     public static func fittedRect(imageSize: Vector2, in container: Rectangle) -> Rectangle {
-        guard imageSize.x > 0, imageSize.y > 0, container.width > 0, container.height > 0 else {
-            return container
-        }
-        let scale = min(container.width / imageSize.x, container.height / imageSize.y)
-        let w = imageSize.x * scale
-        let h = imageSize.y * scale
-        return Rectangle(corner: Vector2(container.x + (container.width - w) / 2,
-                                         container.y + (container.height - h) / 2),
-                         width: w, height: h)
+        Rectangle(fitting: imageSize, in: container)
     }
 }

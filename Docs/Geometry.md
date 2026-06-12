@@ -310,10 +310,13 @@ An axis-aligned rectangle: a `corner` plus `width` and `height`. The typed form 
 Rectangle(corner: Vector2, width: Double, height: Double)
 Rectangle(x: Double, y: Double, width: Double, height: Double)
 Rectangle(center: Vector2, width: Double, height: Double)
+Rectangle(fitting size: Vector2, in container: Rectangle)
 ```
 
 - **Properties:** `corner`, `width`, `height`, `x`, `y`, `center`.
 - **Corners:** `topLeft`, `topRight`, `bottomRight`, `bottomLeft`.
+
+`Rectangle(fitting:in:)` is the letterbox fit: the largest rectangle of `size`'s aspect ratio centered inside `container` — the box to draw an image or video frame into without stretching it (the fit behind `drawFrame` and `fittedRect(in:)`).
 
 ```swift
 let box = Rectangle(center: Vector2(width / 2, height / 2), width: 200, height: 120)

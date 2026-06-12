@@ -14,7 +14,6 @@ final class ShapeMenagerie: Sketch {
 
     override func setup() {
         noStroke()
-        textFont(OutlineFont.system)
     }
 
     override func draw() {

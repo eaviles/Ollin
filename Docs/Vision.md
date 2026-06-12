@@ -8,7 +8,7 @@ See with the Mac's camera. Vision lives in a separate library so the drawing cor
 
 There are two pieces. A [`Camera`](#camera) captures frames from the built-in camera, a Continuity Camera iPhone, or an external webcam, and hands them over as drawable `Image`s. A **tracker** attached to a [frame source](#frame-sources) — that camera, or a playing [`VideoPlayer`](./Video.md) — runs Apple's on-device perception on each frame and publishes typed results you read in `draw()`. The first tracker is [`FaceTracker`](#facetracker); more (hands, bodies, segmentation, contours, text, …) follow the same shape.
 
-The usual flow: make a camera in `setup()` and `start()` it, attach the trackers you want, then in `draw()` draw `camera.frame` and read each tracker's results.
+The usual flow: make a camera in `setup()` and `start()` it, attach the trackers you want, then in `draw()` draw the feed with `drawFrame(camera)` — it letterboxes the latest frame, shows a standard waiting notice until the first one arrives, and returns the rectangle to map results into — and read each tracker's results.
 
 ```swift
 import Ollin
@@ -22,9 +22,7 @@ final class Faces: Sketch {
 
     override func draw() {
         background(.black)
-        guard let frame = camera.frame else { return }
-        let rect = camera.fittedRect(in: bounds) ?? bounds
-        drawImage(frame, in: rect)
+        guard let rect = drawFrame(camera) else { return }
 
         noFill(); stroke(.green); strokeWeight(2)
         for face in faces.faces {
@@ -79,9 +77,20 @@ func stop()
 var frame: Image? { get }
 var frameSize: Vector2? { get }
 func fittedRect(in container: Rectangle) -> Rectangle?
+
+// on Sketch, for any VideoFeed (a Camera, a VideoPlayer, your own):
+@discardableResult
+func drawFrame(_ feed: some VideoFeed, in container: Rectangle? = nil,
+               waiting: String? = nil) -> Rectangle?
 ```
 
-A frame source. Create it in `setup()`, `start()` it, and draw `frame` (the latest captured frame, or `nil` before the first one arrives) in `draw()`. `fittedRect(in:)` is the letterboxed rectangle that fits the frame inside a container without stretching — draw the frame into it and map results into the same rectangle so overlays line up.
+A frame source. Create it in `setup()`, `start()` it, and draw it with `drawFrame(camera)` in `draw()` — it draws the latest frame letterboxed into the canvas (or `container`) and returns the rectangle it landed in; map every tracker result into that same rectangle so overlays line up. Before the first frame arrives it draws a standard waiting notice instead ("Waiting for camera…"; pass `waiting:` to change it) and returns `nil`, so a camera sketch opens with one line:
+
+```swift
+guard let rect = drawFrame(camera) else { return }
+```
+
+`drawFrame` works on any `VideoFeed` — the core protocol `Camera` and [`VideoPlayer`](./Video.md) conform to (`frame`, `frameSize`, and the letterboxing `fittedRect(in:)` come with it). For the typed pieces: `frame` is the latest captured frame (or `nil` before the first one), and `fittedRect(in:)` is the letterboxed rectangle alone — what a sketch uses when it draws a frame's *derivatives* (a segmentation matte, a cutout) rather than the frame itself.
 
 `Camera.Device` picks which camera: `.default` (the system default), `.builtIn`, `.continuity` (a nearby iPhone), `.external` (a USB/Thunderbolt webcam), or `.deskView`.
 
@@ -366,7 +375,7 @@ let camera = Camera()
 lazy var people = PersonSegmenter(camera)
 override func draw() {
     drawMyBackground()                        // anything — the replacement backdrop
-    let rect = camera.fittedRect(in: bounds) ?? bounds
+    guard let rect = camera.fittedRect(in: bounds) else { return }
     if let cutout = people.cutout { drawImage(cutout, in: rect) }
 }
 ```
@@ -393,10 +402,9 @@ Lifts the **salient subject** — the thing held up to the camera, the object on
 let camera = Camera()
 lazy var subjects = SubjectSegmenter(camera)
 override func draw() {
-    let rect = camera.fittedRect(in: bounds) ?? bounds
-    if let frame = camera.frame {
-        tint(Color(white: 0.3)); drawImage(frame, in: rect); noTint()   // the room, dimmed
-    }
+    tint(Color(white: 0.3))                                             // the room, dimmed
+    guard let rect = drawFrame(camera) else { return noTint() }
+    noTint()
     if let cutout = subjects.cutout { drawImage(cutout, in: rect) }     // the subject, lit
 }
 ```
@@ -518,9 +526,8 @@ lazy var tracker = ObjectTracker(camera)
 var view = Rectangle(x: 0, y: 0, width: 1, height: 1)
 
 override func draw() {
-    guard let frame = camera.frame else { return }
-    view = camera.fittedRect(in: bounds) ?? bounds
-    drawImage(frame, in: view)
+    guard let rect = drawFrame(camera) else { return }
+    view = rect
     if let object = tracker.trackedObject {
         noFill(); stroke(.green)
         drawRect(object.bounds(in: view))
@@ -566,9 +573,7 @@ let camera = Camera()
 lazy var tracker = TrajectoryTracker(camera)
 
 override func draw() {
-    guard let frame = camera.frame else { return }
-    let view = camera.fittedRect(in: bounds) ?? bounds
-    drawImage(frame, in: view)
+    guard let view = drawFrame(camera) else { return }
     for arc in tracker.trajectories {
         stroke(Color(red: 0.35, green: 1, blue: 0.6, alpha: arc.confidence))
         drawPolyline(arc.projectedPoints(in: view))
@@ -636,9 +641,7 @@ let camera = Camera()
 lazy var flow = FlowTracker(camera)
 
 override func draw() {
-    guard let frame = camera.frame else { return }
-    let view = camera.fittedRect(in: bounds) ?? bounds
-    drawImage(frame, in: view)
+    guard let view = drawFrame(camera) else { return }
 
     if let field = flow.field {
         stroke(.white)
@@ -673,8 +676,7 @@ let camera = Camera()
 lazy var classifier = ImageClassifier(camera)
 
 override func draw() {
-    guard let frame = camera.frame else { return }
-    drawImage(frame, in: camera.fittedRect(in: bounds) ?? bounds)
+    drawFrame(camera)
 
     for (i, found) in classifier.labels.prefix(5).enumerated() {
         drawText("\(found.name) \(Int(found.confidence * 100))%", 40, 60 + Double(i) * 32)
@@ -719,8 +721,7 @@ let camera = Camera()
 lazy var saliency = SaliencyTracker(camera)
 
 override func draw() {
-    let rect = camera.fittedRect(in: bounds) ?? bounds
-    if let frame = camera.frame { drawImage(frame, in: rect) }
+    guard let rect = drawFrame(camera) else { return }
     if let heat = saliency.heatMap {
         tint(Color(red: 1, green: 0.6, blue: 0.1, alpha: 0.7))
         drawImage(heat, in: rect)                     // attention as a warm glow
@@ -805,15 +806,15 @@ The trackers that work *across* frames are the exception — one frame isn't eno
 
 ### Availability
 
-Some Vision models — body pose especially — need a compute device (a Neural Engine or a capable GPU) that not every Mac has. On a Mac without one, the model can't run, and rather than silently reporting nothing, a tracker tells you:
+Some Vision models — body pose especially — need a compute device (a Neural Engine or a capable GPU) that not every Mac has. On a Mac without one, the model can't run, and rather than silently reporting nothing, a tracker tells you — and [`drawStatus`](./Text.md#notices) turns the reason into the standard on-canvas notice:
 
 ```swift
-if !bodies.isAvailable {
-    drawText(bodies.unavailableReason ?? "Unavailable", width / 2, height / 2)
+if let reason = bodies.unavailableReason {
+    return drawStatus(reason, style: .warning)
 }
 ```
 
-`isAvailable` is `false` only when the model genuinely can't run here (a transient error doesn't flip it); `unavailableReason` is a short human-readable explanation. The tracker also logs the reason once to the console. Face, hands, and contours run on nearly any Mac; body pose, segmentation, and the heavier models want Apple silicon.
+`isAvailable` is `false` only when the model genuinely can't run here (a transient error doesn't flip it); `unavailableReason` is a short human-readable explanation. The tracker also logs the reason once to the console. Every tracker exposes the pair through the `VisionAvailability` protocol, so a helper of your own can take `any VisionAvailability` and report for whichever tracker it's handed. Face, hands, and contours run on nearly any Mac; body pose, segmentation, and the heavier models want Apple silicon.
 
 <a name="permission"></a>
 

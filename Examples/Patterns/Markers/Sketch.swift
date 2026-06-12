@@ -12,7 +12,6 @@ final class Markers: Sketch {
 
     override func setup() {
         noStroke()
-        textFont(OutlineFont.system)
     }
 
     override func draw() {

@@ -6,17 +6,18 @@
 
 Ollin draws text in three kinds of font, all behind the same `drawText` / `textFont` / `textSize` / `textAlign` surface:
 
-- A **bitmap font** — a glyph is a small grid of pixels, each lit pixel stamped as one square on the same instanced-SDF path the shapes use. No rasterizer, no separate pipeline. The default font is a bitmap font, so text works with zero setup.
-- An **outline font** — a real TrueType/OpenType (`.ttf`/`.otf`) face, each glyph stored as vector contours and drawn as a [`Shape`](./Geometry.md#shape). One load draws crisp at *any* size, the type takes both `fill` and `stroke`, and the glyph geometry is yours to manipulate.
+- An **outline font** — a real TrueType/OpenType (`.ttf`/`.otf`) face, each glyph stored as vector contours and drawn as a [`Shape`](./Geometry.md#shape). One load draws crisp at *any* size, the type takes both `fill` and `stroke`, and the glyph geometry is yours to manipulate. The default font is an outline font, so text works with zero setup.
+- A **bitmap font** — a glyph is a small grid of pixels, each lit pixel stamped as one square on the same instanced-SDF path the shapes use. No rasterizer, no separate pipeline.
 - A **stroke font** — a single-line (plotter) face whose glyphs are open pen paths with *no fill*, drawn with the current `stroke`. The kind of letterform a pen plotter draws. Hershey Sans comes bundled.
 
 All three ride the [transform stack](./Drawing.md#translate), composite in draw order with everything else, and stay crisp at any size.
 
-The default font, `BitmapFont.builtin`, is **[Cozette](https://github.com/the-moonwitch/Cozette)**, a 13px pixel font bundled with Ollin, so `drawText` works with zero setup. It covers a wide range: Latin (including the Spanish accents `á é í ó ú`, `ñ`, `ü`, `¿`, `¡`), Cyrillic, Greek, and Japanese kana. Call these bare inside `draw()`; they forward to the `Drawer`. Bitmap text takes the current [`fill`](./Drawing.md#fill) color.
+The default font is `OutlineFont.systemMedium` — the system UI face (San Francisco on macOS) at medium weight, a touch sturdier than the regular weight so text holds up over busy canvases — so `drawText` works with zero setup. For a pixel look, the bundled `BitmapFont.builtin` is **[Cozette](https://github.com/the-moonwitch/Cozette)**, a 13px pixel font covering a wide range: Latin (including the Spanish accents `á é í ó ú`, `ñ`, `ü`, `¿`, `¡`), Cyrillic, Greek, and Japanese kana. Call these bare inside `draw()`; they forward to the `Drawer`.
 
 ### Contents
 
 - [drawText](#drawtext) — draw a string
+- [drawStatus & drawCaption](#notices) — standard notices and labels, one call each
 - [textFont](#textfont), [textSize](#textsize), [textAlign](#textalign) — text state
 - [textWidth](#textwidth) — measure a string
 - [Outline fonts](#outlinefont) — `OutlineFont`, loading a `.ttf`/`.otf` from anywhere
@@ -39,7 +40,7 @@ drawText(_ string: String, _ x: Double, _ y: Double)
 drawText(_ string: String, at position: Vector2)
 ```
 
-Draw `string` at a point, in the current `fill` color, using the active `textFont` / `textSize` / `textAlign`. `\n` starts a new line. Because each pixel is an SDF square, text rotates and scales with the [transform stack](./Drawing.md#translate) like any other geometry. `noFill()` draws nothing; characters the font doesn't have advance the pen but draw nothing.
+Draw `string` at a point, in the current `fill` color, using the active `textFont` / `textSize` / `textAlign`. `\n` starts a new line. Glyphs are geometry (vector shapes for an outline font, SDF squares for a bitmap one), so text rotates and scales with the [transform stack](./Drawing.md#translate) like everything else. `noFill()` draws nothing; characters the font doesn't have advance the pen but draw nothing.
 
 ```swift
 background(.black)
@@ -48,6 +49,29 @@ textSize(120)
 textAlign(.center, .middle)
 drawText("ollin", width / 2, height / 2)
 ```
+
+<a name="notices"></a>
+
+### drawStatus & drawCaption
+
+```swift
+drawStatus(_ message: String, style: StatusStyle = .info, in container: Rectangle? = nil)
+drawCaption(_ text: String, edge: CaptionEdge = .bottom)
+```
+
+Two one-call conveniences for the text every sketch ends up wearing, so the states a sketch should report never stay silently blank:
+
+- `drawStatus` centers a standard notice in `container` (the whole canvas by default), wrapped if long — quiet gray for `.info` ("Waiting for camera…"; [`drawFrame`](./Vision.md#camera) draws this one for you), salmon for `.warning` (a vision model that [can't run here](./Vision.md#availability), a missing install).
+- `drawCaption` sets a small white label along the bottom edge (or the top, with `edge: .top`) — what the sketch is, what it's showing, what to do with it.
+
+```swift
+if let reason = tracker.unavailableReason {
+    return drawStatus(reason, style: .warning)
+}
+drawCaption("FaceTracking — \(faces.count) faces")
+```
+
+Both draw in their own standard typeface, size, and alignment, scoped like a `withState { }` — the sketch's fill, font, and alignment are untouched afterward.
 
 <a name="textfont"></a>
 
@@ -59,7 +83,7 @@ textFont(_ font: OutlineFont)
 textFont(_ font: StrokeFont)
 ```
 
-Set the active font — a bitmap (pixel-grid), outline (`.ttf`/`.otf`), or stroke (single-line) font. The default is `BitmapFont.builtin` (Cozette); write `textFont(BitmapFont.builtin)` to switch back to it. Like the other drawing state, the active font is part of the [push/pop stack](./Drawing.md#withstate), so `withState { textFont(custom); … }` restores the previous font automatically on exit. (See [BitmapFont](#bitmapfont) to load or build a bitmap font, [Outline fonts](#outlinefont) for a `.ttf`/`.otf`, or [Stroke fonts](#strokefont) for single-line type.)
+Set the active font — a bitmap (pixel-grid), outline (`.ttf`/`.otf`), or stroke (single-line) font. The default is `OutlineFont.systemMedium`; write `textFont(OutlineFont.systemMedium)` to switch back to it (or `textFont(BitmapFont.builtin)` for the bundled Cozette pixel font). Like the other drawing state, the active font is part of the [push/pop stack](./Drawing.md#withstate), so `withState { textFont(custom); … }` restores the previous font automatically on exit. (See [BitmapFont](#bitmapfont) to load or build a bitmap font, [Outline fonts](#outlinefont) for a `.ttf`/`.otf`, or [Stroke fonts](#strokefont) for single-line type.)
 
 <a name="textsize"></a>
 
@@ -159,6 +183,7 @@ OutlineFont(data: bytes)                          // raw .ttf/.otf data
 OutlineFont(resource: "Font.ttf", in: .module)   // a font bundled beside your sketch
 
 OutlineFont.system        // the system UI font (San Francisco on macOS)
+OutlineFont.systemMedium  // medium weight — the default text font
 OutlineFont.systemBold
 OutlineFont.systemMono
 ```

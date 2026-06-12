@@ -14,10 +14,6 @@ final class StrokeAlignment: Sketch {
     let names = ["inside", "center", "outside"]
     let rows = 3
 
-    override func setup() {
-        textFont(OutlineFont.system)
-    }
-
     override func draw() {
         background(Color(white: 0.1))
 

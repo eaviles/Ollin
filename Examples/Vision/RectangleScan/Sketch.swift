@@ -15,23 +15,13 @@ final class RectangleScan: Sketch {
     lazy var rectangles = RectangleDetector(camera)
 
     override func setup() {
-        textFont(OutlineFont.system)
         try? camera.start()
     }
 
     override func draw() {
         background(Color(white: 0.06))
 
-        guard let frame = camera.frame else {
-            fill(Color(white: 0.5))
-            textAlign(.center, .middle)
-            textSize(22 * scale)
-            drawText("Waiting for camera…", width / 2, height / 2)
-            return
-        }
-
-        let rect = camera.fittedRect(in: bounds) ?? bounds
-        drawImage(frame, in: rect)
+        guard let rect = drawFrame(camera) else { return }
 
         let accent = Color(red: 0.3, green: 1.0, blue: 0.6)
         let detected = rectangles.rectangles
@@ -50,12 +40,7 @@ final class RectangleScan: Sketch {
             for c in corners { drawCircle(c.x, c.y, 6 * scale) }
         }
 
-        // Screen-space label.
-        fill(.white)
-        noStroke()
-        textAlign(.center, .bottom)
-        textSize(15 * scale)
         let n = detected.count
-        drawText("RectangleScan — \(n) rectangle\(n == 1 ? "" : "s")", width / 2, height - 28 * scale)
+        drawCaption("RectangleScan — \(n) rectangle\(n == 1 ? "" : "s")")
     }
 }

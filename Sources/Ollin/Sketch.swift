@@ -481,7 +481,9 @@ open class Sketch {
                         start: Double, stop: Double, mode: ArcMode = .open) {
         drawer.drawArc(center.x, center.y, rx, ry, start: start, stop: stop, mode: mode)
     }
-    public func drawPolyline(_ points: [Vector2]) { drawer.drawPolyline(points) }
+    public func drawPolyline(_ points: [Vector2], closed: Bool = false) {
+        drawer.drawPolyline(points, closed: closed)
+    }
     public func drawPolygon(_ points: [Vector2]) { drawer.drawPolygon(points) }
     public func drawShape(_ shape: Shape) { drawer.drawShape(shape) }
 
@@ -562,13 +564,14 @@ open class Sketch {
     public func tint(_ color: Color) { drawer.tint(color) }
     /// Stop tinting images — draw them unchanged again (the default), undoing `tint(_:)`.
     public func noTint() { drawer.noTint() }
-    /// Set the active text font for `drawText` to a bitmap (pixel-grid) font.
-    /// Defaults to `.builtin`, Ollin's bundled Cozette pixel font, so text works
-    /// with no setup.
+    /// Set the active text font for `drawText` to a bitmap (pixel-grid) font —
+    /// `.builtin` (Ollin's bundled Cozette pixel font), a loaded BDF/`.fnt`, or
+    /// a sprite grid.
     public func textFont(_ font: BitmapFont) { drawer.textFont(font) }
     /// Set the active text font for `drawText` to an outline (vector `.ttf`/`.otf`)
     /// font — `OutlineFont(name:)`, `.system`, a file, or bundled data. One load
     /// draws at any `textSize`, and each glyph is a `Shape` (fill *and* stroke).
+    /// The default font is `OutlineFont.systemMedium`, so text works with no setup.
     public func textFont(_ font: OutlineFont) { drawer.textFont(font) }
     /// Set the active text font for `drawText` to a stroke (single-line / plotter)
     /// font — `StrokeFont.builtin` (Hershey Sans) or a loaded `.jhf`. Glyphs are
@@ -589,9 +592,10 @@ open class Sketch {
     /// magnification, fill-only). A no-op for bitmap and stroke fonts. See `TextMode`.
     public func textMode(_ mode: TextMode) { drawer.textMode(mode) }
     /// Draw `string` at `(x, y)` using the active `textFont`/`textSize`/`textAlign`.
-    /// How it paints follows the font kind: a **bitmap** font (the default) uses
-    /// `fill` only (it ignores `stroke`); an **outline** (`.ttf`/`.otf`) font takes
-    /// `fill` *and* `stroke`; a **stroke** (single-line) font uses `stroke` only.
+    /// How it paints follows the font kind: an **outline** (`.ttf`/`.otf`) font
+    /// (the default, `OutlineFont.systemMedium`) takes `fill` *and* `stroke`; a
+    /// **bitmap** font uses `fill` only (it ignores `stroke`); a **stroke**
+    /// (single-line) font uses `stroke` only.
     /// `\n` starts a new line; text rides the transform stack (so it rotates/scales).
     public func drawText(_ string: String, _ x: Double, _ y: Double) {
         drawer.drawText(string, x, y)

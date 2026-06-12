@@ -22,7 +22,6 @@ final class VideoTrace: Sketch {
     var contours: ContourDetector?
 
     override func setup() {
-        textFont(OutlineFont.system)
         let player = makePlayer()
         player?.loops = true
         player?.isMuted = true
@@ -47,11 +46,7 @@ final class VideoTrace: Sketch {
         let margin = 40 * scale
         let container = Rectangle(x: margin, y: margin, width: width - 2 * margin, height: height - 2 * margin)
         guard let player, let contours, let rect = player.fittedRect(in: container) else {
-            fill(Color(white: 0.5))
-            textAlign(.center, .middle)
-            textSize(22 * scale)
-            drawText("Waiting for video…", width / 2, height / 2)
-            return
+            return drawStatus("Waiting for video…")
         }
 
         // The traced contours as black line work — each is an Ollin Shape.

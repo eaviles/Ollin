@@ -5,11 +5,16 @@ import Ollin
 /// and shifts color, a centered multilingual caption, and the character set —
 /// Latin, Spanish accents, and Japanese kana — marqueeing along the bottom. Every
 /// glyph is stamped as pixel squares on the SDF path, so text rides the transform
-/// stack and stays crisp at any size. The bundled font is Cozette (MIT).
+/// stack and stays crisp at any size. One `textFont` call selects the bundled
+/// Cozette pixel font (MIT); everything after it is plain `drawText`.
 @main
 final class HelloText: Sketch {
     let palette = CosinePalette.sunset
     let specimen = "ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789  áéíóú ñ ü ¿¡  ハローワールド こんにちは  .,!?:;-+=/()[]<>#@%&   "
+
+    override func setup() {
+        textFont(BitmapFont.builtin)   // Cozette, the bundled pixel font
+    }
 
     override func draw() {
         background(Color(white: 0.07))

@@ -11,7 +11,6 @@ final class NamedPolygons: Sketch {
 
     override func setup() {
         noStroke()
-        textFont(OutlineFont.system)   // San Francisco on macOS
     }
 
     override func draw() {

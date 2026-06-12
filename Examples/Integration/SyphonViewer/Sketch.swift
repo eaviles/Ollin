@@ -18,7 +18,6 @@ final class SyphonViewer: Sketch {
     var lastSeen = -1.0
 
     override func setup() {
-        textFont(OutlineFont.system)
         noStroke()
     }
 
@@ -33,7 +32,9 @@ final class SyphonViewer: Sketch {
         }
 
         if let frame = feed.newFrame() {
-            drawImage(frame, in: aspectFit(imageWidth: frame.width, imageHeight: frame.height))
+            // Letterboxed to fit, centered — the same fit `drawFrame` does.
+            drawImage(frame, in: Rectangle(fitting: Vector2(Double(frame.width), Double(frame.height)),
+                                           in: bounds))
             fill(Color(white: 0.7))
             textSize(22 * scale)
             let title = [feed.serverName, feed.appName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " — ")
@@ -41,19 +42,6 @@ final class SyphonViewer: Sketch {
         } else {
             drawWaiting()
         }
-    }
-
-    /// The rect that fits an `imageWidth`×`imageHeight` frame inside the canvas
-    /// without distortion (letterbox), centered.
-    private func aspectFit(imageWidth: Int, imageHeight: Int) -> Rectangle {
-        guard imageWidth > 0, imageHeight > 0 else {
-            return Rectangle(x: 0, y: 0, width: width, height: height)
-        }
-        let imageAspect = Double(imageWidth) / Double(imageHeight)
-        let canvasAspect = width / height
-        let w = imageAspect > canvasAspect ? width : height * imageAspect
-        let h = imageAspect > canvasAspect ? width / imageAspect : height
-        return Rectangle(x: (width - w) / 2, y: (height - h) / 2, width: w, height: h)
     }
 
     private func drawWaiting() {

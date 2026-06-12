@@ -24,7 +24,6 @@ final class MIDIMonitor: Sketch {
         catch { print("could not start MIDI input: \(error)") }
         let names = midi.sources.map(\.name).joined(separator: ", ")
         print("Listening to MIDI sources: \(names.isEmpty ? "(none yet — plug one in)" : names)")
-        textFont(OutlineFont.system)
         noStroke()
     }
 

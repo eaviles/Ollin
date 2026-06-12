@@ -15,25 +15,15 @@ final class OpticalFlow: Sketch {
     var velocities: [Vector2] = []
 
     override func setup() {
-        textFont(OutlineFont.system)
         try? camera.start()
     }
 
     override func draw() {
         background(.black)
 
-        guard let frame = camera.frame else {
-            fill(Color(white: 1, alpha: 0.85))
-            textAlign(.center, .middle)
-            textSize(22 * scale)
-            drawText("Waiting for camera…", width / 2, height / 2)
-            return
-        }
-        let view = camera.fittedRect(in: bounds) ?? bounds
-
         // The feed, dimmed to a backdrop so the motion overlay carries the image.
         tint(Color(white: 0.4))
-        drawImage(frame, in: view)
+        guard let view = drawFrame(camera) else { return noTint() }
         noTint()
 
         if positions.isEmpty { seedParticles(in: view) }
@@ -71,11 +61,7 @@ final class OpticalFlow: Sketch {
         fill(Color(white: 1, alpha: 0.8))
         drawPoints(positions, size: 5 * scale)
 
-        fill(.white)
-        textAlign(.center, .bottom)
-        textSize(15 * scale)
-        drawText("OpticalFlow — wave at the camera; arrows show the motion, the dust rides it",
-                 width / 2, height - 28 * scale)
+        drawCaption("OpticalFlow — wave at the camera; arrows show the motion, the dust rides it")
     }
 
     private func seedParticles(in view: Rectangle) {

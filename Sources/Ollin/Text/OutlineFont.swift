@@ -119,20 +119,29 @@ public struct OutlineFont: @unchecked Sendable {
         self.init(url: url)
     }
 
+    // The system faces are `static let` so every user of one shares a single
+    // instance — and with it the glyph/geometry caches (reference types the
+    // copies share), which matters for anything drawing text every frame.
+
     /// The system UI font (San Francisco on macOS), at any size.
-    public static var system: OutlineFont {
-        OutlineFont(ctFont: CTFontCreateUIFontForLanguage(.system, 1.0, nil)!)
-    }
+    public static let system = OutlineFont(ctFont: CTFontCreateUIFontForLanguage(.system, 1.0, nil)!)
+
+    /// The medium-weight system UI font — the default text font (`drawText`
+    /// with no `textFont` set), a touch sturdier than the regular weight so
+    /// text holds up over busy canvases.
+    public static let systemMedium: OutlineFont = {
+        let base = CTFontCreateUIFontForLanguage(.system, 1.0, nil)!
+        let traits = [kCTFontWeightTrait as String: 0.23] as CFDictionary   // medium
+        let attributes = [kCTFontTraitsAttribute as String: traits] as CFDictionary
+        let descriptor = CTFontDescriptorCreateWithAttributes(attributes)
+        return OutlineFont(ctFont: CTFontCreateCopyWithAttributes(base, 1.0, nil, descriptor))
+    }()
 
     /// The bold system UI font.
-    public static var systemBold: OutlineFont {
-        OutlineFont(ctFont: CTFontCreateUIFontForLanguage(.emphasizedSystem, 1.0, nil)!)
-    }
+    public static let systemBold = OutlineFont(ctFont: CTFontCreateUIFontForLanguage(.emphasizedSystem, 1.0, nil)!)
 
     /// The system monospaced font (Menlo / SF Mono lineage).
-    public static var systemMono: OutlineFont {
-        OutlineFont(ctFont: CTFontCreateUIFontForLanguage(.userFixedPitch, 1.0, nil)!)
-    }
+    public static let systemMono = OutlineFont(ctFont: CTFontCreateUIFontForLanguage(.userFixedPitch, 1.0, nil)!)
 
     /// Strip case and spaces so `"Helvetica Neue"` matches `"HelveticaNeue"`.
     private static func normalize(_ s: String) -> String {

@@ -21,7 +21,6 @@ final class EyeCatcher: Sketch {
     var marker: Vector2?
 
     override func setup() {
-        textFont(OutlineFont.system)
         try? camera.start()
     }
 
@@ -32,29 +31,15 @@ final class EyeCatcher: Sketch {
     override func draw() {
         background(Color(white: 0.04))
 
-        guard let frame = camera.frame else {
-            fill(Color(white: 0.5))
-            textAlign(.center, .middle)
-            textSize(22 * scale)
-            drawText("Waiting for camera…", width / 2, height / 2)
-            return
-        }
-        let rect = camera.fittedRect(in: bounds) ?? bounds
-
         // The room, dimmed — the heat is the bright thing here.
         tint(Color(white: 0.4))
-        drawImage(frame, in: rect)
+        guard let rect = drawFrame(camera) else { return noTint() }
         noTint()
 
         // If the model can't run on this Mac (no compute device), say so on the
         // canvas instead of silently never glowing.
         if let reason = active.unavailableReason {
-            fill(Color(red: 1.0, green: 0.5, blue: 0.4))
-            textAlign(.center, .middle)
-            textSize(18 * scale)
-            drawText(reason, in: Rectangle(x: width * 0.1, y: height / 2 - 60 * scale,
-                                           width: width * 0.8, height: 120 * scale))
-            return
+            return drawStatus(reason, style: .warning)
         }
 
         // The heat map, stretched over the picture and tinted warm: salience
@@ -103,11 +88,8 @@ final class EyeCatcher: Sketch {
             drawCircle(center: marker, radius: 4 * scale)
         }
 
-        fill(.white)
-        textAlign(.center, .bottom)
-        textSize(15 * scale)
         let mode = showingAttention ? "attention (where the eye goes)"
                                     : "objectness (where the objects are)"
-        drawText("EyeCatcher — \(mode) · click to switch", width / 2, height - 28 * scale)
+        drawCaption("EyeCatcher — \(mode) · click to switch")
     }
 }

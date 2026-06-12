@@ -17,14 +17,12 @@ final class Microphone: Sketch {
 
     override func setup() {
         noStroke()
-        textFont(OutlineFont.system)
         try? mic.start()
     }
 
     override func draw() {
         background(Color(white: 0.07))
 
-        let center = Vector2(width / 2, height / 2)
         let levels = mic.bands(bars)        // normalized 0...1, no gain to guess
         let inner = 150 * scale
 
@@ -45,11 +43,7 @@ final class Microphone: Sketch {
         fill(Color(white: 0.95))
         drawCircle(center.x, center.y, (40 + pulse * 300) * scale)
 
-        // Status / hint in screen space.
-        fill(.white)
-        textAlign(.center, .top)
-        textSize(15 * scale)
-        let label = mic.isRunning ? "Listening — make some noise" : "Microphone — allow access to react"
-        drawText(label, width / 2, height - 44 * scale)
+        drawCaption(mic.isRunning ? "Listening — make some noise"
+                                  : "Microphone — allow access to react")
     }
 }

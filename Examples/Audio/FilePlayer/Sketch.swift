@@ -21,7 +21,6 @@ final class FilePlayer: Sketch {
 
     override func setup() {
         noStroke()
-        textFont(OutlineFont.system)
         let player = makePlayer()
         player?.loops = true
         player?.play()
@@ -67,10 +66,6 @@ final class FilePlayer: Sketch {
             drawPolyline(points)
         }
 
-        // Title in screen space.
-        fill(.white)
-        textAlign(.center, .top)
-        textSize(15 * scale)
-        drawText("El Fandanguito · son huasteco (CC BY-SA)", width / 2, 34 * scale)
+        drawCaption("El Fandanguito · son huasteco (CC BY-SA)", edge: .top)
     }
 }

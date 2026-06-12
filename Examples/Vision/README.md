@@ -8,7 +8,7 @@ Computer vision on the Mac. Vision lives in a separate library — add `import O
 
 | Example | What it shows |
 |---|---|
-| [WebcamFeed](WebcamFeed/Sketch.swift) | the live camera drawn to the canvas, letterboxed with `fittedRect(in:)` — the foundation every tracker builds on; `Camera.start()` requests camera permission and the canvas waits until a frame arrives (`Camera`, `frame`) |
+| [WebcamFeed](WebcamFeed/Sketch.swift) | the live camera drawn to the canvas with one `drawFrame(camera)` call — letterboxed, with the standard waiting notice until the first frame arrives — the foundation every tracker builds on; `Camera.start()` requests camera permission (`Camera`, `drawFrame`) |
 | [FaceTracking](FaceTracking/Sketch.swift) | detected faces overlaid on the feed — a bounding box plus landmark outlines (jaw, brows, eyes, nose, lips) and pupil dots, with the normalized points placed on the canvas by the `in:` mapping helpers (`FaceTracker`, `Face`, landmarks) |
 | [ContourTrace](ContourTrace/Sketch.swift) | the camera's edges traced into vector contours and drawn as black line art over a faint feed — each is an Ollin `Shape`, so it could be filled, hatched, or sent to a plotter (`ContourDetector`, `shapes(in:)`) |
 | [HandTracking](HandTracking/Sketch.swift) | up to two hands drawn as 21-joint skeletons over the feed — finger bones, joint dots, and highlighted fingertips, tinted by which hand it is (`HandTracker`, `Hand`, `bones(in:)`) |

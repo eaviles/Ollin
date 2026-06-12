@@ -15,37 +15,24 @@ final class SceneLabels: Sketch {
     var shown: [String: Double] = [:]
 
     override func setup() {
-        textFont(OutlineFont.system)
         try? camera.start()
     }
 
     override func draw() {
         background(Color(white: 0.04))
 
-        guard let frame = camera.frame else {
-            fill(Color(white: 0.5))
-            textAlign(.center, .middle)
-            textSize(22 * scale)
-            drawText("Waiting for camera…", width / 2, height / 2)
-            return
-        }
-
         // The feed up top, the label bars in the band below it.
         let margin = 24 * scale
         let videoArea = Rectangle(x: margin, y: margin,
                                   width: width - margin * 2, height: height * 0.56)
-        let rect = camera.fittedRect(in: videoArea) ?? videoArea
-        drawImage(frame, in: rect)
+        guard let rect = drawFrame(camera, in: videoArea) else { return }
 
         // If the model can't run on this Mac (no compute device), say so on the
-        // canvas instead of silently never naming anything.
+        // canvas instead of silently never naming anything — in the bar band,
+        // under the feed.
         if let reason = classifier.unavailableReason {
-            fill(Color(red: 1.0, green: 0.5, blue: 0.4))
-            textAlign(.center, .middle)
-            textSize(18 * scale)
-            drawText(reason, in: Rectangle(x: width * 0.1, y: height * 0.7,
-                                           width: width * 0.8, height: 120 * scale))
-            return
+            return drawStatus(reason, style: .warning,
+                              in: Rectangle(x: 0, y: height * 0.6, width: width, height: height * 0.3))
         }
 
         // Ease every displayed value toward its live confidence (labels that
@@ -92,9 +79,6 @@ final class SceneLabels: Sketch {
                      width / 2, barArea.y + 60 * scale)
         }
 
-        fill(.white)
-        textAlign(.center, .bottom)
-        textSize(15 * scale)
-        drawText("SceneLabels — the picture, named live", width / 2, height - 28 * scale)
+        drawCaption("SceneLabels — the picture, named live")
     }
 }

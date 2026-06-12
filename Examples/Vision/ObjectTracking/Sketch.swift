@@ -20,7 +20,6 @@ final class ObjectTracking: Sketch {
     var view = Rectangle(x: 0, y: 0, width: 1, height: 1)
 
     override func setup() {
-        textFont(OutlineFont.system)
         try? camera.start()
     }
 
@@ -30,16 +29,8 @@ final class ObjectTracking: Sketch {
     override func draw() {
         background(Color(white: 0.06))
 
-        guard let frame = camera.frame else {
-            fill(Color(white: 0.5))
-            textAlign(.center, .middle)
-            textSize(22 * scale)
-            drawText("Waiting for camera…", width / 2, height / 2)
-            return
-        }
-
-        view = camera.fittedRect(in: bounds) ?? bounds
-        drawImage(frame, in: view)
+        guard let rect = drawFrame(camera) else { return }
+        view = rect
 
         if let object = tracker.trackedObject {
             // Green when sure, warming toward orange as confidence drops.
@@ -72,14 +63,8 @@ final class ObjectTracking: Sketch {
                                width: seedSize, height: seedSize))
         }
 
-        // Screen-space label.
-        fill(.white)
-        noStroke()
-        textAlign(.center, .bottom)
-        textSize(15 * scale)
-        let hint = tracker.isTracking ? "ObjectTracking — click to re-lock"
-                                      : "ObjectTracking — click to lock onto what's under the cursor"
-        drawText(hint, width / 2, height - 28 * scale)
+        drawCaption(tracker.isTracking ? "ObjectTracking — click to re-lock"
+                                       : "ObjectTracking — click to lock onto what's under the cursor")
     }
 
     override func mousePressed() {
