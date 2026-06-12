@@ -8,7 +8,7 @@ import Ollin
 
 /// A word dissolved into a field of points that shimmer. `textToShapes` gives the
 /// glyph contours; resampling them at an even spacing turns the type into clean,
-/// regularly spaced dots (the points p5's `textToPoints` returns). Each point is
+/// regularly spaced dots. Each point is
 /// then nudged sideways by a sine of its own height, so the letters wobble like
 /// type seen through heat haze — the wave travels with time and its amplitude
 /// breathes. Uses the bold system font.
@@ -25,8 +25,8 @@ final class PointShimmer: Sketch {
         textAlign(.center, .middle)
         textSize(300 * scale)
         // Sample the outline once (the word and size don't change), centered on the
-        // origin so the shimmer is symmetric — exactly the p5 sketch's setup-time
-        // `textToPoints`.
+        // origin so the shimmer is symmetric — the original sketch's setup-time
+        // sampling.
         dots = textToShapes("hello", 0, 0)
             .flatMap(\.contours)
             .flatMap { resampled($0.points, spacing: 7 * scale, closed: $0.isClosed) }
@@ -49,9 +49,9 @@ final class PointShimmer: Sketch {
         }
     }
 
-    /// Resample a polyline at an even arc-length `spacing` — the clean, regularly
-    /// spaced points p5's `textToPoints` returns, instead of Core Text's raw outline
-    /// vertices (dense on curves, sparse on straights).
+    /// Resample a polyline at an even arc-length `spacing` — clean, regularly
+    /// spaced points instead of Core Text's raw outline vertices (dense on curves,
+    /// sparse on straights).
     private func resampled(_ points: [Vector2], spacing: Double, closed: Bool) -> [Vector2] {
         guard points.count >= 2, spacing > 0 else { return points }
         var poly = points

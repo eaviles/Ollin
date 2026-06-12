@@ -23,7 +23,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Patterns](Patterns/) | grids and rule-based repetition |
 | [Physics](Physics/) | simulated motion (`import OllinPhysics`) |
 | [Randomness](Randomness/) | `random`, `noise`, and scatter |
-| [Text](Text/) | drawing text with the bitmap-font `drawText` |
+| [Text](Text/) | drawing text — bitmap, outline, and stroke fonts over one `drawText` |
 | [Video](Video/) | recorded footage as drawing material (`import OllinVideo`) |
 | [Vision](Vision/) | the camera plus on-device perception (`import OllinVision`) |
 | [Recreations](Recreations/) | homages to past computer artists, by artist |

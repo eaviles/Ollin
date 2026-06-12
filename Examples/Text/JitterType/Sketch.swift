@@ -54,9 +54,9 @@ final class JitterType: Sketch {
         }
     }
 
-    /// Resample a polyline at an even arc-length `spacing` — the clean, regularly
-    /// spaced points p5's `textToPoints` returns, instead of Core Text's raw outline
-    /// vertices (dense on curves, sparse on straights).
+    /// Resample a polyline at an even arc-length `spacing` — clean, regularly
+    /// spaced points instead of Core Text's raw outline vertices (dense on curves,
+    /// sparse on straights).
     private func resampled(_ points: [Vector2], spacing: Double, closed: Bool) -> [Vector2] {
         guard points.count >= 2, spacing > 0 else { return points }
         var poly = points

@@ -5,7 +5,8 @@ import Ollin
 /// index, position, and bounds — so you can give each one its own transform and
 /// color before stamping it with `g.draw()`. Here each glyph rides a travelling
 /// sine wave, tilts into the motion, and takes its own hue: a per-letter effect
-/// p5 and openFrameworks give you no direct hook for. Uses the bold system font.
+/// that otherwise means measuring and placing each glyph by hand. Uses the bold
+/// system font.
 @main
 final class GlyphWave: Sketch {
     let font = OutlineFont(name: "AvenirNext-Bold") ?? .systemBold

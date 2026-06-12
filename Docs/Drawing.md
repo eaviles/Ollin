@@ -690,6 +690,8 @@ drawUnevenCapsule(300, 540, 780, 540, 70, 70)                     // equal radii
 
 A handful of less-common analytic forms — curves, cut-outs, and a couple of pure doodles — that ride the same instanced-SDF path as everything above (crisp at any size, effectively free, rotatable through the transform stack).
 
+<a name="horseshoe"></a>
+
 #### drawHorseshoe
 
 ```swift
@@ -704,6 +706,8 @@ drawHorseshoe(width / 2, height / 2, 160, 70, gap: 1.4)        // a classic open
 withState { translate(width / 2, height / 2); rotate(time); drawHorseshoe(0, 0, 150, 60, gap: 1.0) }  // a turning, nearly-closed ring
 ```
 
+<a name="parabola"></a>
+
 #### drawParabola
 
 ```swift
@@ -717,6 +721,8 @@ A filled parabolic arch centered at `(x, y)`, `width` across the flat base and `
 drawParabola(width / 2, height / 2, 240, 240)                  // a rounded arch
 ```
 
+<a name="roundedx"></a>
+
 #### drawRoundedX
 
 ```swift
@@ -729,6 +735,8 @@ An X (saltire) centered at `(x, y)`, `length` tip-to-tip along each axis, with r
 ```swift
 drawRoundedX(width / 2, height / 2, 240, 56)                   // a chunky rounded X
 ```
+
+<a name="blobbycross"></a>
 
 #### drawBlobbyCross
 
@@ -744,6 +752,8 @@ drawBlobbyCross(width / 2, height / 2, 150)                    // the default wa
 drawBlobbyCross(width / 2, height / 2, 150, blobbiness: 0.35)  // spikier arms
 ```
 
+<a name="tunnel"></a>
+
 #### drawTunnel
 
 ```swift
@@ -757,6 +767,8 @@ A tunnel / archway centered at `(x, y)`: vertical walls and a flat base under a 
 drawTunnel(width / 2, height / 2, 200, 260)                    // a doorway
 ```
 
+<a name="stairs"></a>
+
 #### drawStairs
 
 ```swift
@@ -769,6 +781,8 @@ A staircase centered at `(x, y)`: `steps` steps, each `stepWidth` wide and `step
 ```swift
 drawStairs(width / 2, height / 2, 60, 60, steps: 4)            // a four-step flight
 ```
+
+<a name="cools"></a>
 
 #### drawCoolS
 
