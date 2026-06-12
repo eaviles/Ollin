@@ -55,6 +55,8 @@ final class Faces: Sketch {
 - [TrackedObject](#trackedobject) — the tracked box and its confidence
 - [TrajectoryTracker](#trajectorytracker) — find things flying along parabolic arcs
 - [DetectedTrajectory](#detectedtrajectory) — one arc: its points, fit, and identity
+- [FlowTracker](#flowtracker) — measure optical flow, the whole picture's motion
+- [FlowField](#flowfield) — the motion field, sampled anywhere on the canvas
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
 - [Availability](#availability) — when a model can't run on a Mac
@@ -525,6 +527,63 @@ One arc. `detectedPoints(in:)` is the path as observed (the raw sightings, in tr
 
 An arc keeps its `id` as more of it comes into view, so accumulate results by `id` to build trails that outlive any single frame's detection — and fade them by `confidence`, which is how sure the detector is that the points form one real trajectory.
 
+<a name="flowtracker"></a>
+
+### FlowTracker
+
+```swift
+FlowTracker(_ source: any FrameSource, accuracy: Accuracy = .medium)
+var field: FlowField? { get }
+func reset()
+static func flow(from previous: Image, to current: Image,
+                 accuracy: Accuracy = .high) async throws -> FlowField?
+static func flow(across: [Image], accuracy: Accuracy = .medium) async throws -> [FlowField?]
+```
+
+Where `ObjectTracker` follows one patch and `TrajectoryTracker` finds arcs, this one measures **all** the motion: optical flow, a dense field of vectors describing how every part of the picture moved since the previous analyzed frame. Wave a hand and the pixels under it get vectors; pan the camera and the whole field drifts together. It's classical (no neural model), so it runs on any Mac.
+
+Read `field` each frame — it's `nil` until the second analyzed frame, since flow needs a pair — and sample it wherever you like (see [`FlowField`](#flowfield)). `accuracy` trades speed for a finer field (`.low` / `.medium` / `.high` / `.veryHigh`); `.medium` keeps up with a live camera. Call `reset()` after the scene jumps (a video loop, a seek) so the discontinuity isn't read as one huge motion.
+
+Two camera-free forms: `flow(from:to:)` measures a single pair of stills, and `flow(across:)` runs an ordered array of frames through the same frame-over-frame path the live tracker uses (its first entry is `nil` — flow needs a frame before it).
+
+<a name="flowfield"></a>
+
+### FlowField
+
+```swift
+func vector(at point: Vector2, in rect: Rectangle, mirrored: Bool = false) -> Vector2
+func samples(in rect: Rectangle, every step: Double = 24, mirrored: Bool = false) -> [Sample]
+func averageFlow(in rect: Rectangle, mirrored: Bool = false) -> Vector2
+func flowNormalized(at point: Vector2) -> Vector2
+var averageFlowNormalized: Vector2 { get }
+var confidence: Double { get }
+var size: Vector2 { get }
+```
+
+The motion between the previous analyzed frame and this one, queryable anywhere. `vector(at:in:)` answers in canvas terms — "which way is the picture moving under this point, and how far" — taking a canvas point and the rectangle you drew the frame into, and returning a canvas-space vector (so it scales with how large you drew the frame). `samples(in:every:)` lays a regular grid of those over the rect, each a `Sample` with a `position` and the `flow` there — ready to draw as arrows. `averageFlow(in:)` is the global drift: a camera pan reads as one shared direction, while localized motion mostly averages out.
+
+```swift
+let camera = Camera()
+lazy var flow = FlowTracker(camera)
+
+override func draw() {
+    guard let frame = camera.frame else { return }
+    let view = camera.fittedRect(in: bounds) ?? bounds
+    drawImage(frame, in: view)
+
+    if let field = flow.field {
+        stroke(.white)
+        for s in field.samples(in: view, every: 36) {
+            drawLine(s.position, s.position + s.flow * 3)
+        }
+    }
+}
+```
+
+Because every query is a read out of the underlying flow map, the field works as the input to anything: push particles by the vector under each one, drive a [physics](./Physics.md) world's forces from the motion in front of the camera, or steer a brush by `averageFlow`. Two practical notes: magnitudes are conservative estimates (treat them as a signal you scale by a gain of your own, not a calibrated speed — the analysis interval also breathes with load), and motion is only defined where the picture has texture (a blank wall reports little even when it's moving).
+
+`flowNormalized(at:)` and `averageFlowNormalized` are the raw surface for working in normalized coordinates yourself (`0…1`, lower-left origin, +y up — see [coordinate mapping](#coordinate-mapping)); `size` is the flow map's resolution and `confidence` the tracker's confidence in the field as a whole.
+
 <a name="coordinate-mapping"></a>
 
 ### Coordinate mapping
@@ -570,7 +629,7 @@ let found = try await FaceTracker.detect(in: image)
 print("\(found.count) faces")
 ```
 
-The two trackers that work *across* frames are the exception — one frame isn't enough — so their camera-free forms take an ordered sequence instead: `ObjectTracker.track(seed, across: frames)` and `TrajectoryTracker.detect(across: frames)`.
+The trackers that work *across* frames are the exception — one frame isn't enough — so their camera-free forms take more than one: `ObjectTracker.track(seed, across: frames)` and `TrajectoryTracker.detect(across: frames)` take an ordered sequence, and `FlowTracker.flow(from:to:)` takes the pair of stills to measure between (with `flow(across:)` for a sequence).
 
 <a name="availability"></a>
 

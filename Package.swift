@@ -839,6 +839,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/ObjectTracking"
         ),
+        // Optical flow — the camera's motion as a field of arrows, with dust
+        // particles riding it.
+        .executableTarget(
+            name: "Example-OpticalFlow",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/OpticalFlow"
+        ),
         // Trajectory detection — ballistic arcs found in a synthetic feed (a
         // custom FrameSource the example conforms itself).
         .executableTarget(
