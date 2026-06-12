@@ -57,6 +57,8 @@ final class Faces: Sketch {
 - [DetectedTrajectory](#detectedtrajectory) — one arc: its points, fit, and identity
 - [FlowTracker](#flowtracker) — measure optical flow, the whole picture's motion
 - [FlowField](#flowfield) — the motion field, sampled anywhere on the canvas
+- [ImageClassifier](#imageclassifier) — name what's in the picture
+- [Classification](#classification) — one label and how strongly it applies
 - [Coordinate mapping](#coordinate-mapping) — placing normalized results on the canvas
 - [Still images](#still-images) — running a tracker on a loaded image
 - [Availability](#availability) — when a model can't run on a Mac
@@ -583,6 +585,53 @@ override func draw() {
 Because every query is a read out of the underlying flow map, the field works as the input to anything: push particles by the vector under each one, drive a [physics](./Physics.md) world's forces from the motion in front of the camera, or steer a brush by `averageFlow`. Two practical notes: magnitudes are conservative estimates (treat them as a signal you scale by a gain of your own, not a calibrated speed — the analysis interval also breathes with load), and motion is only defined where the picture has texture (a blank wall reports little even when it's moving).
 
 `flowNormalized(at:)` and `averageFlowNormalized` are the raw surface for working in normalized coordinates yourself (`0…1`, lower-left origin, +y up — see [coordinate mapping](#coordinate-mapping)); `size` is the flow map's resolution and `confidence` the tracker's confidence in the field as a whole.
+
+<a name="imageclassifier"></a>
+
+### ImageClassifier
+
+```swift
+ImageClassifier(_ source: any FrameSource, minimumConfidence: Double = 0.1)
+var labels: [Classification] { get }
+var top: Classification? { get }
+func confidence(of label: String) -> Double
+static func detect(in: Image, minimumConfidence: Double = 0.1) async throws -> [Classification]
+static func supportedLabels() -> [String]
+```
+
+Names what the picture shows — `"sky"`, `"people"`, `"dog"`, `"food"` — from a fixed vocabulary of about 1,300 everyday labels. Unlike the other trackers it reports no positions: the result is *what's in the frame* and how confidently, which is exactly the right shape for a sketch that reacts to its surroundings rather than overlaying them.
+
+```swift
+let camera = Camera()
+lazy var classifier = ImageClassifier(camera)
+
+override func draw() {
+    guard let frame = camera.frame else { return }
+    drawImage(frame, in: camera.fittedRect(in: bounds) ?? bounds)
+
+    for (i, found) in classifier.labels.prefix(5).enumerated() {
+        drawText("\(found.name) \(Int(found.confidence * 100))%", 40, 60 + Double(i) * 32)
+    }
+}
+```
+
+`labels` is everything at or above `minimumConfidence`, strongest first, and `top` is the single strongest. The other read surface goes by name: `confidence(of: "dog")` answers `0…1` for any label in the vocabulary — unfiltered, so a concept below the floor still reads its true (small) value. That's the knob-shaped form: let "how much does this look like a plant" drive a color, a speed, a sound. Spaces work in place of underscores (`"blue sky"` finds `blue_sky`).
+
+Two things worth knowing about the vocabulary. It's hierarchical, so one clear subject lights up its whole lineage — a blue sky scores `blue_sky`, `sky`, and `outdoor` together. And the classifier scores *all* of it every frame, mostly near zero; `minimumConfidence` (default `0.1`) is what keeps `labels` down to the meaningful few. `supportedLabels()` lists the full vocabulary when you want to browse for a concept to key on.
+
+The model is neural, so the [availability](#availability) surface applies (`isAvailable` / `unavailableReason`).
+
+<a name="classification"></a>
+
+### Classification
+
+```swift
+var label: String { get }       // "blue_sky" — the identifier
+var confidence: Double { get }  // 0…1
+var name: String { get }        // "blue sky" — ready to draw
+```
+
+One label the classifier saw. `label` is the underscored identifier the vocabulary uses (what `confidence(of:)` and `supportedLabels()` speak); `name` opens the underscores up for display.
 
 <a name="coordinate-mapping"></a>
 

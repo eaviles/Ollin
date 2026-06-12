@@ -846,6 +846,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/OpticalFlow"
         ),
+        // Image classification — what the camera sees, named live as animated
+        // label bars.
+        .executableTarget(
+            name: "Example-SceneLabels",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/Vision/SceneLabels"
+        ),
         // Trajectory detection — ballistic arcs found in a synthetic feed (a
         // custom FrameSource the example conforms itself).
         .executableTarget(
