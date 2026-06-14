@@ -92,6 +92,12 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: StatusNotices(), against: "status-notices")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func additiveBlendMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: AdditiveBlend(), against: "additive-blend")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -443,5 +449,27 @@ private final class StatusNotices: Sketch {
         stroke(.white)
         strokeWeight(6)
         drawPolyline([Vector2(200, 110), Vector2(236, 140), Vector2(200, 140)], closed: true)
+    }
+}
+
+/// Three translucent primary-color disks on black, drawn with `blendMode(.add)`
+/// so they sum as light: each pair overlaps in a secondary and all three meet in
+/// a white core. Pins the additive blend factors (and that `.add` rides the SDF
+/// path). Deterministic — no time dependence.
+private final class AdditiveBlend: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        blendMode(.add)
+        noStroke()
+        let r = width * 0.3
+        let cx = width * 0.5, cy = height * 0.52, off = width * 0.17
+        fill(Color(red: 1, green: 0, blue: 0, alpha: 0.85))
+        drawCircle(cx, cy - off, r)
+        fill(Color(red: 0, green: 1, blue: 0, alpha: 0.85))
+        drawCircle(cx - off * 0.92, cy + off * 0.6, r)
+        fill(Color(red: 0, green: 0, blue: 1, alpha: 0.85))
+        drawCircle(cx + off * 0.92, cy + off * 0.6, r)
     }
 }

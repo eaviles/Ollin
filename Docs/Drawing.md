@@ -10,7 +10,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 
 ### Contents
 
-- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [strokeJoin](#strokeJoin), [strokeCap](#strokeCap), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker)
+- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [strokeJoin](#strokeJoin), [strokeCap](#strokeCap), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker), [blendMode](#blendMode)
 - **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawOrientedBox](#orientedbox), [drawTriangle](#triangle), [drawArc](#arc), [drawBezier](#bezier)
 - **More shapes:** [drawNgon](#ngon) (+ `drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawOrientedVesica](#orientedvesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
@@ -238,6 +238,29 @@ pointMarker(.cross)
 pointSize(10)
 for p in cloud { drawPoint(p) }          // a scatter of plus signs
 ```
+
+<a name="blendMode"></a>
+
+#### blendMode
+
+```swift
+blendMode(_ mode: BlendMode)   // .normal (default), .add, .subtract, .multiply, .screen, .lightest, .darkest
+```
+
+How following shapes combine with what's already on the canvas. The default, `.normal`, lays each shape over the previous ones (a translucent shape shows what's beneath). The other modes *combine* the new color with the destination — the headline being `.add`, which **sums colors as light** so overlapping marks brighten toward white instead of the topmost one winning. That additive accumulation is what light-field and particle sketches want, and the first renderer step toward depth-of-field "sandpainting" rendering.
+
+```swift
+blendMode(.add)                          // overlaps brighten — best on a dark background
+noStroke()
+for p in particles {
+    fill(Color(hue: p.hue, saturation: 0.7, brightness: 1, alpha: 0.1))
+    drawCircle(p.x, p.y, p.r)            // a thousand faint dots pile into a glow
+}
+```
+
+The modes: `.add` (sum as light, lightens), `.screen` (also lightens, softer), `.multiply` (stacked ink, darkens), `.subtract` (darkens by removing light), `.lightest` / `.darkest` (keep the lighter / darker of the two, channel by channel). It applies to every primitive — the SDF shapes, the tessellated paths, images, and text — and, like other style, it's saved and restored by [`withState { }`](#isolated), so you can scope an additive field and leave the rest of the frame normal.
+
+Because the canvas blends in linear light (the gamma-correct pipeline), `.add` sums physically — two half-bright lights make a full-bright one. Set against a dark background it reads as glowing accumulation; see `Examples/Basic/Blending`.
 
 ### Basic shapes
 

@@ -77,6 +77,10 @@ struct GeometryBatch {
     var instanceStart: Int   // first SDF instance (sdf batches)
     var imageStart: Int = 0  // first image vertex (image batches)
     var glyphStart: Int = 0  // first glyph vertex (glyphAtlas batches)
+    /// The blend mode active when this run was recorded; selects the pipeline.
+    /// A run breaks (a new batch opens) whenever the blend mode changes, so each
+    /// batch composites with a single mode.
+    var blendMode: BlendMode = .normal
     /// Texture source for an `.image` batch — `nil` otherwise. Each image draw is
     /// its own batch (one texture per draw call), so it never merges with a
     /// neighbour.
@@ -115,6 +119,7 @@ final class Drawer {
     private var textAlignV: TextAlignV = .baseline       // vertical text anchor (see textAlign)
     private var textRenderMode: TextMode = .outline      // outline vs SDF-atlas text (see textMode)
     private var tintColor: Color? = nil                  // multiplies drawImage texels; nil = untinted (see tint / noTint)
+    private var currentBlend: BlendMode = .normal        // how shapes combine with the canvas (see blendMode)
 
     // MARK: Per-frame geometry (reset every frame)
 
@@ -137,6 +142,9 @@ final class Drawer {
     /// shapes composite in draw order rather than in two unordered passes.
     private(set) var batches: [GeometryBatch] = []
     private var currentKind: GeometryKind?
+    /// The blend mode of the currently-open batch, so a blend-mode change opens a
+    /// fresh batch even when the geometry kind is unchanged.
+    private var currentBatchBlend: BlendMode = .normal
 
     /// When set, draw calls are recorded as vector geometry for SVG export instead
     /// of being tessellated/SDF-encoded for the GPU (see SVGExport.swift). It lives
@@ -174,15 +182,17 @@ final class Drawer {
         return (index, baked)
     }
 
-    /// Open a new batch when the geometry kind changes; a no-op while the kind
-    /// is unchanged, so it's cheap to call per primitive.
+    /// Open a new batch when the geometry kind *or* the blend mode changes; a
+    /// no-op while both are unchanged, so it's cheap to call per primitive.
     private func ensureBatch(_ kind: GeometryKind) {
-        guard currentKind != kind else { return }
+        guard currentKind != kind || currentBatchBlend != currentBlend else { return }
         currentKind = kind
+        currentBatchBlend = currentBlend
         batches.append(GeometryBatch(kind: kind, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
-                                     glyphStart: glyphVertices.count))
+                                     glyphStart: glyphVertices.count,
+                                     blendMode: currentBlend))
     }
 
     /// Open a fresh `.image` batch carrying `image` as its texture. Unlike
@@ -191,10 +201,12 @@ final class Drawer {
     /// following triangle/SDF primitive reopens its own batch.
     private func beginImageBatch(_ image: Image) {
         currentKind = .image
+        currentBatchBlend = currentBlend
         batches.append(GeometryBatch(kind: .image, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
-                                     glyphStart: glyphVertices.count, image: image))
+                                     glyphStart: glyphVertices.count,
+                                     blendMode: currentBlend, image: image))
     }
 
     /// Open a fresh `.glyphAtlas` batch carrying `atlas` as its texture. One
@@ -202,10 +214,12 @@ final class Drawer {
     /// resets `currentKind` so a following primitive reopens its own batch.
     private func beginGlyphBatch(_ atlas: GlyphAtlas) {
         currentKind = .glyphAtlas
+        currentBatchBlend = currentBlend
         batches.append(GeometryBatch(kind: .glyphAtlas, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
-                                     glyphStart: glyphVertices.count, atlas: atlas))
+                                     glyphStart: glyphVertices.count,
+                                     blendMode: currentBlend, atlas: atlas))
     }
 
     /// Record one vector primitive for SVG export, snapshotting the current style
@@ -254,6 +268,7 @@ final class Drawer {
         var textAlignV: TextAlignV
         var textRenderMode: TextMode
         var tintColor: Color?
+        var currentBlend: BlendMode
     }
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
@@ -298,6 +313,11 @@ final class Drawer {
 
     /// Stop tinting images — back to drawing them unchanged (the default).
     func noTint() { tintColor = nil }
+
+    /// Set how subsequent shapes combine with the canvas (see `BlendMode`):
+    /// `.normal` (default, lay over) or a combining mode like `.add` (sum as
+    /// light). Applies to every drawn primitive until changed.
+    func blendMode(_ mode: BlendMode) { currentBlend = mode }
 
     /// Set where a shape's stroke sits relative to its outline (see `StrokeAlign`):
     /// `.center` (default), `.inside`, or `.outside`. Affects the analytic SDF
@@ -394,7 +414,8 @@ final class Drawer {
                                      currentFont: currentFont, textPixelSize: textPixelSize,
                                      textAlignH: textAlignH, textAlignV: textAlignV,
                                      textRenderMode: textRenderMode,
-                                     tintColor: tintColor))
+                                     tintColor: tintColor,
+                                     currentBlend: currentBlend))
     }
 
     /// Restore the most recently pushed transform and style. No-op if unbalanced.
@@ -417,6 +438,7 @@ final class Drawer {
         textAlignV = s.textAlignV
         textRenderMode = s.textRenderMode
         tintColor = s.tintColor
+        currentBlend = s.currentBlend
     }
 
     // MARK: Primitives

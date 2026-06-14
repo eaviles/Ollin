@@ -6,8 +6,8 @@ import CoreGraphics
 import COllinShaders   // OllinVertex / Uniforms / SDFInstance, shared with Shaders.metal
 
 /// The Metal back end. Deliberately small: one command queue, an enum-keyed
-/// cache of render pipelines (just `.solid` — solid-color 2D triangles — for
-/// now), and a reusable vertex buffer.
+/// cache of render pipelines (keyed by shader pair × blend mode — solid
+/// triangles, SDF quads, image quads, glyph quads), and a reusable vertex buffer.
 ///
 /// You'll be editing this as you add primitives. The shape of the thing:
 ///
@@ -36,14 +36,26 @@ final class MetalRenderer {
     }
 
     /// Identifies a render pipeline so it's built once and cached in
-    /// `pipelines`. Today there's only `.solid`; instanced circles, SDF
-    /// circles, textured quads, or a new blend mode each become a new case
-    /// here (plus a branch in `makePipeline(_:)`) — not more code in `init`.
+    /// `pipelines`. Each case names a vertex/fragment pair, and the associated
+    /// `BlendMode` makes the descriptor's blend factors part of the key — so a
+    /// pipeline is a *combination* of shader and blend mode (a new shader or a
+    /// new blend mode each slots in here, not in `init`). The `.normal` variants
+    /// are built up front; combining modes (`.add`, …) build lazily on first use.
     private enum Pipeline: Hashable {
-        case solid        // tessellated triangles (rects, lines, polygons, arcs)
-        case sdf          // instanced SDF quads (circles, ellipses, rects, lines, arcs)
-        case image        // textured quads (images), premultiplied-alpha blend
-        case glyphAtlas   // SDF-atlas text quads, straight-alpha coverage blend
+        case solid(BlendMode)        // tessellated triangles (rects, lines, polygons, arcs)
+        case sdf(BlendMode)          // instanced SDF quads (circles, ellipses, rects, lines, arcs)
+        case image(BlendMode)        // textured quads (images), premultiplied-alpha blend
+        case glyphAtlas(BlendMode)   // SDF-atlas text quads, straight-alpha coverage blend
+
+        /// The pipeline a recorded batch needs, from its geometry kind + blend.
+        static func forBatch(_ kind: GeometryKind, _ blend: BlendMode) -> Pipeline {
+            switch kind {
+            case .triangles:  return .solid(blend)
+            case .sdf:        return .sdf(blend)
+            case .image:      return .image(blend)
+            case .glyphAtlas: return .glyphAtlas(blend)
+            }
+        }
     }
 
     private let device: MTLDevice
@@ -135,10 +147,10 @@ final class MetalRenderer {
         // Build the pipelines we know we need now; `pipeline(_:)` builds any
         // added later on first use. Building here surfaces shader errors at
         // startup rather than mid-frame.
-        _ = try pipeline(.solid)
-        _ = try pipeline(.sdf)
-        _ = try pipeline(.image)
-        _ = try pipeline(.glyphAtlas)
+        _ = try pipeline(.solid(.normal))
+        _ = try pipeline(.sdf(.normal))
+        _ = try pipeline(.image(.normal))
+        _ = try pipeline(.glyphAtlas(.normal))
     }
 
     /// Encode and present one frame's worth of recorded geometry.
@@ -315,8 +327,7 @@ final class MetalRenderer {
         let imageVertices = drawer.imageVertices
         let glyphVertices = drawer.glyphVertices
         let batches = drawer.batches
-        guard !batches.isEmpty, let solid = pipelines[.solid], let sdf = pipelines[.sdf],
-              let image = pipelines[.image], let glyph = pipelines[.glyphAtlas] else { return }
+        guard !batches.isEmpty else { return }
 
         if !vertices.isEmpty, let triangleBuffer {
             vertices.withUnsafeBytes { raw in
@@ -352,19 +363,23 @@ final class MetalRenderer {
         for i in batches.indices {
             let batch = batches[i]
             let next = i + 1 < batches.count ? batches[i + 1] : nil
+            // The pipeline for this batch's geometry kind *and* blend mode; built
+            // on first use of a given mode. Skip the batch if it can't be built
+            // (never expected — same shader, different blend factors).
+            guard let state = try? pipeline(.forBatch(batch.kind, batch.blendMode)) else { continue }
             switch batch.kind {
             case .triangles:
                 let end = next?.vertexStart ?? vertices.count
                 let count = end - batch.vertexStart
                 guard count > 0, let triangleBuffer else { continue }
-                encoder.setRenderPipelineState(solid)
+                encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(triangleBuffer, offset: batch.vertexStart * vertexStride, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .sdf:
                 let end = next?.instanceStart ?? instances.count
                 let count = end - batch.instanceStart
                 guard count > 0, let sdfBuffer else { continue }
-                encoder.setRenderPipelineState(sdf)
+                encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(sdfBuffer, offset: batch.instanceStart * instanceStride, index: 0)
                 // Rebind per batch — an image/glyph batch in between binds its own
                 // texture at the same index.
@@ -376,7 +391,7 @@ final class MetalRenderer {
                 let count = end - batch.imageStart
                 guard count > 0, let imageBuffer, let source = batch.image,
                       let texture = source.texture(for: device) else { continue }
-                encoder.setRenderPipelineState(image)
+                encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(imageBuffer, offset: batch.imageStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
@@ -386,7 +401,7 @@ final class MetalRenderer {
                 let count = end - batch.glyphStart
                 guard count > 0, let glyphBuffer, let atlas = batch.atlas,
                       let texture = atlas.texture(for: device) else { continue }
-                encoder.setRenderPipelineState(glyph)
+                encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(glyphBuffer, offset: batch.glyphStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
@@ -442,7 +457,7 @@ final class MetalRenderer {
     /// it); a bad shader edit never blanks or crashes the running sketch.
     func reloadLibrary(source: String) throws {
         let newLibrary = try device.makeLibrary(source: MetalRenderer.composeShaderSource(source), options: nil)
-        let kinds = pipelines.isEmpty ? [Pipeline.solid] : Array(pipelines.keys)
+        let kinds = pipelines.isEmpty ? [Pipeline.solid(.normal)] : Array(pipelines.keys)
         var rebuilt: [Pipeline: MTLRenderPipelineState] = [:]
         for kind in kinds {
             rebuilt[kind] = try makePipeline(kind, using: newLibrary)
@@ -460,37 +475,41 @@ final class MetalRenderer {
 
     private func makePipeline(_ kind: Pipeline, using library: MTLLibrary) throws -> MTLRenderPipelineState {
         switch kind {
-        case .solid:
+        case let .solid(blend):
             // Solid-color triangles: rects, lines, polygons, arcs.
-            return try makePipeline(vertex: "ollin_vertex", fragment: "ollin_fragment", using: library)
-        case .sdf:
+            return try makePipeline(vertex: "ollin_vertex", fragment: "ollin_fragment",
+                                    using: library, blend: blend)
+        case let .sdf(blend):
             // Instanced SDF quads: circles, ellipses, rects, lines, arcs. The
             // fragment returns straight-alpha color, so it shares the solid
             // pipeline's blend.
-            return try makePipeline(vertex: "ollin_sdf_vertex", fragment: "ollin_sdf_fragment", using: library)
-        case .image:
+            return try makePipeline(vertex: "ollin_sdf_vertex", fragment: "ollin_sdf_fragment",
+                                    using: library, blend: blend)
+        case let .image(blend):
             // Textured quads. The texture keeps the CGImage's premultiplied alpha,
             // so this pipeline blends premultiplied (source factor .one) rather than
             // by source alpha.
             return try makePipeline(vertex: "ollin_image_vertex", fragment: "ollin_image_fragment",
-                                    using: library, premultiplied: true)
-        case .glyphAtlas:
+                                    using: library, premultiplied: true, blend: blend)
+        case let .glyphAtlas(blend):
             // SDF-atlas text. Reuses the image vertex (position + uv + color); the
             // fragment turns the sampled distance into coverage and emits straight
             // color, so it blends by source alpha like the solid/SDF paths.
             return try makePipeline(vertex: "ollin_image_vertex", fragment: "ollin_glyph_fragment",
-                                    using: library, premultiplied: false)
+                                    using: library, premultiplied: false, blend: blend)
         }
     }
 
     /// Build a render pipeline from the named vertex/fragment functions with the
     /// shared config: the view's MSAA sample count, the target pixel format, and
-    /// alpha blending so translucent colors composite. `premultiplied` selects the
-    /// source factor — `.one` for premultiplied color (the image path), `.sourceAlpha`
-    /// for straight-alpha color (solid + SDF).
+    /// the `blend` mode's factors (resolved against the fragment's alpha
+    /// convention). `premultiplied` is true for premultiplied color (the image
+    /// path), false for straight-alpha color (solid + SDF + glyph). The default
+    /// `blend` (`.normal`) reproduces ordinary source-over compositing.
     private func makePipeline(vertex: String, fragment: String,
                               using library: MTLLibrary,
-                              premultiplied: Bool = false) throws -> MTLRenderPipelineState {
+                              premultiplied: Bool = false,
+                              blend: BlendMode = .normal) throws -> MTLRenderPipelineState {
         guard let vertexFunction = library.makeFunction(name: vertex),
               let fragmentFunction = library.makeFunction(name: fragment) else {
             throw RendererError.shaderFunctions
@@ -502,15 +521,16 @@ final class MetalRenderer {
         // Must match the MTKView's MSAA sample count or pipeline creation fails.
         descriptor.rasterSampleCount = sampleCount
 
+        let state = blend.blendState(premultiplied: premultiplied)
         let attachment = descriptor.colorAttachments[0]!
         attachment.pixelFormat = pixelFormat
         attachment.isBlendingEnabled = true
-        attachment.rgbBlendOperation = .add
-        attachment.alphaBlendOperation = .add
-        attachment.sourceRGBBlendFactor = premultiplied ? .one : .sourceAlpha
-        attachment.sourceAlphaBlendFactor = .one
-        attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
-        attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+        attachment.rgbBlendOperation = state.colorOperation
+        attachment.alphaBlendOperation = state.alphaOperation
+        attachment.sourceRGBBlendFactor = state.sourceColor
+        attachment.sourceAlphaBlendFactor = state.sourceAlpha
+        attachment.destinationRGBBlendFactor = state.destinationColor
+        attachment.destinationAlphaBlendFactor = state.destinationAlpha
 
         return try device.makeRenderPipelineState(descriptor: descriptor)
     }

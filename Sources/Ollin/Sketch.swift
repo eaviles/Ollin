@@ -277,6 +277,13 @@ open class Sketch {
     public func hollow(_ width: Double) { drawer.hollow(width) }
     /// Return to solid fills (the default), undoing `hollow(_:)`.
     public func solid() { drawer.solid() }
+    /// Set how following shapes combine with the canvas: `.normal` (default, lay
+    /// over) or a combining mode like `.add` (sum colors as light, so overlapping
+    /// marks brighten — best on a dark background), `.screen`, `.multiply`,
+    /// `.subtract`, `.lightest`, or `.darkest`. Applies to every primitive — SDF
+    /// shapes, tessellated paths, images, and text — and, like other state, is
+    /// saved and restored by `withState { }`. See `BlendMode`.
+    public func blendMode(_ mode: BlendMode) { drawer.blendMode(mode) }
     /// Set where a shape's stroke sits on its outline: `.center` (default, half
     /// inside / half outside), `.inside`, or `.outside`. Inside keeps the shape's
     /// footprint fixed; outside grows it by the stroke weight. Applies to the

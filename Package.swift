@@ -335,6 +335,11 @@ let package = Package(
             path: "Examples/Basic/Hatching"
         ),
         .executableTarget(
+            name: "Example-Blending",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Blending"
+        ),
+        .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"
