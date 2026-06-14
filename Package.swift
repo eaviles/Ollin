@@ -350,6 +350,11 @@ let package = Package(
             path: "Examples/Basic/ToneMapping"
         ),
         .executableTarget(
+            name: "Example-DepthOfField",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/DepthOfField"
+        ),
+        .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"

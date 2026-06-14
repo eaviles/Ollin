@@ -14,5 +14,8 @@ The smallest starting point: a first breathing circle, the shape of a sketch, an
 | [VectorExport](VectorExport/Sketch.swift) | SVG export: the shape catalog serialized to vector paths (`--export-svg`) |
 | [Hatching](Hatching/Sketch.swift) | filled shapes shaded as pen line work for a plotter (`--export-svg --hatch`) |
 | [Blending](Blending/Sketch.swift) | additive blending: faint disks accumulating as light (`blendMode(.add)`) |
+| [Accumulation](Accumulation/Sketch.swift) | a persistent canvas that builds up over frames (`noClear()`) |
+| [ToneMapping](ToneMapping/Sketch.swift) | HDR light summed in float, mapped to the screen (`toneMap(_:)`) |
+| [DepthOfField](DepthOfField/Sketch.swift) | sandpainting depth of field: bokeh earned by scattering accumulated samples (drag to rack focus) |
 
 Run one with `swift run Example-<Name>`, e.g. `swift run Example-HelloCircle`.
