@@ -110,6 +110,20 @@ final class MetalRenderer {
     private var textureResolve: MTLTexture?
     private var textureTargetSize = (width: 0, height: 0)
 
+    /// The persistent accumulation surface (`Drawer.accumulates` / `noClear`): a
+    /// render target the frame *doesn't* clear, so additive samples pile up across
+    /// frames. `accumTarget` is an MSAA target kept private (so its samples persist
+    /// — never `.memoryless`); each frame loads it, draws this frame's geometry,
+    /// and resolves into `accumResolve` (single-sample, `.shaderRead`+blit) for
+    /// presentation and read-back. Kept at the active draw size and reset (the next
+    /// frame clears) when the size changes or the sketch calls `background(_:)`.
+    /// Reusing the same MSAA target keeps the existing pipelines (no new sample-count
+    /// variant) and preserves edge anti-aliasing while accumulating.
+    private var accumTarget: MTLTexture?
+    private var accumResolve: MTLTexture?
+    private var accumSize = (width: 0, height: 0)
+    private var accumNeedsClear = true
+
     /// Sampler for the image pipeline: linear filtering, clamp to edge. Built once.
     /// Also samples the gradient strip (the same filtering is exactly what a LUT
     /// row wants).
@@ -155,6 +169,10 @@ final class MetalRenderer {
 
     /// Encode and present one frame's worth of recorded geometry.
     func render(_ drawer: Drawer, viewport: SIMD2<Float>, in view: MTKView) {
+        if drawer.accumulates {
+            renderAccumulating(drawer, viewport: viewport, in: view)
+            return
+        }
         // `currentRenderPassDescriptor` already points at the MSAA target with a
         // resolve into the drawable when the view's sampleCount > 1, so we only
         // need to set the load action and clear color.
@@ -185,6 +203,185 @@ final class MetalRenderer {
         encoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
+    }
+
+    // MARK: Accumulation surface (noClear)
+
+    /// Live accumulation path: render this frame's geometry onto the persistent
+    /// accumulation surface — loading the prior pile unless this frame resets — then
+    /// blit the resolved canvas to the drawable to present it. Reuses the
+    /// triple-buffer vertex ring and its semaphore exactly like `render`, so the
+    /// upload still can't stomp a buffer an in-flight frame is reading.
+    private func renderAccumulating(_ drawer: Drawer, viewport: SIMD2<Float>, in view: MTKView) {
+        let width = Int(view.drawableSize.width.rounded())
+        let height = Int(view.drawableSize.height.rounded())
+        guard width > 0, height > 0, let drawable = view.currentDrawable else { return }
+
+        // The drawable is the blit destination for the present, so it can't be
+        // framebuffer-only. Idempotent — harmless to set every frame.
+        view.framebufferOnly = false
+
+        frameBoundary.wait()
+        frameIndex = (frameIndex + 1) % MetalRenderer.maxFramesInFlight
+
+        guard let pass = accumulationPass(drawer, width: width, height: height),
+              let resolve = accumResolve,
+              let commandBuffer = commandQueue.makeCommandBuffer(),
+              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else {
+            frameBoundary.signal()      // nothing encoded; hand the slot back
+            return
+        }
+        commandBuffer.addCompletedHandler { [frameBoundary] _ in frameBoundary.signal() }
+
+        encode(drawer, viewport: viewport, into: encoder,
+               triangleBuffer: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
+               sdfBuffer: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count),
+               imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
+               glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count))
+        encoder.endEncoding()
+
+        // Present by copying the resolved canvas into the drawable: same sRGB
+        // format, so it's an exact byte copy with no extra color conversion.
+        if let blit = commandBuffer.makeBlitCommandEncoder() {
+            blit.copy(from: resolve, sourceSlice: 0, sourceLevel: 0,
+                      sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                      sourceSize: MTLSize(width: width, height: height, depth: 1),
+                      to: drawable.texture, destinationSlice: 0, destinationLevel: 0,
+                      destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+            blit.endEncoding()
+        }
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
+    }
+
+    /// Headless accumulation: render this frame's geometry onto the persistent
+    /// accumulation surface (load/clear per the drawer) and read the resolved
+    /// canvas back as a `CGImage`. The off-screen companion to
+    /// `renderAccumulating`, used by the export drivers (still / sequence / video /
+    /// GIF) — call it once per frame in order and the pile builds across the run.
+    /// Synchronous: waits for the GPU before reading back.
+    func accumulatedImage(of drawer: Drawer, viewport: SIMD2<Float>, width: Int, height: Int) -> CGImage? {
+        guard width > 0, height > 0,
+              let pass = accumulationPass(drawer, width: width, height: height),
+              let resolve = accumResolve,
+              let commandBuffer = commandQueue.makeCommandBuffer(),
+              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+
+        encode(drawer, viewport: viewport, into: encoder,
+               triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
+               sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
+               imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
+               glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count))
+        encoder.endEncoding()
+
+        let bytesPerRow = width * 4, byteCount = bytesPerRow * height
+        guard let readbackBuffer = device.makeBuffer(length: byteCount, options: .storageModeShared),
+              let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
+        blit.copy(from: resolve, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: width, height: height, depth: 1),
+                  to: readbackBuffer, destinationOffset: 0,
+                  destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
+        blit.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        return MetalRenderer.cgImage(fromBGRA8: readbackBuffer, width: width, height: height)
+    }
+
+    /// Read the current accumulated canvas back as a `CGImage` without re-rendering
+    /// — for the live frame-grab hook (a recorder/Syphon consumer) while
+    /// accumulating, since the on-screen pile is exactly what it wants. Nil before
+    /// the first accumulating frame.
+    func accumulatedFrameImage() -> CGImage? {
+        guard let resolve = accumResolve else { return nil }
+        return readback(resolve, width: accumSize.width, height: accumSize.height)
+    }
+
+    /// The current accumulated canvas texture (resolved, sRGB, `.shaderRead`) for
+    /// the GPU-texture frame hook while accumulating — handed straight to a consumer
+    /// that stays on the GPU. Nil before the first accumulating frame.
+    var accumulatedTexture: MTLTexture? { accumResolve }
+
+    /// Wipe the accumulated canvas on the next accumulating frame — for a live
+    /// reload, so a freshly swapped-in sketch starts from a clean surface rather
+    /// than inheriting the previous sketch's pile (the fresh-restart reload model).
+    func resetAccumulation() { accumNeedsClear = true }
+
+    /// Build the render pass for one accumulation frame, (re)allocating the
+    /// persistent target on a size change and choosing load vs clear. The frame
+    /// clears (to the background color) only when the target was just (re)allocated
+    /// or the sketch called `background(_:)` this frame; otherwise it loads the
+    /// accumulated pile. Always resolves to `accumResolve` and stores the samples
+    /// back so they persist to the next frame.
+    private func accumulationPass(_ drawer: Drawer, width: Int, height: Int) -> MTLRenderPassDescriptor? {
+        if accumSize != (width, height) || accumTarget == nil || accumResolve == nil {
+            let msaaDesc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
+            msaaDesc.textureType = .type2DMultisample
+            msaaDesc.sampleCount = sampleCount
+            msaaDesc.usage = .renderTarget
+            msaaDesc.storageMode = .private        // persists across frames (never memoryless)
+
+            let resolveDesc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
+            // `.shaderRead`/`.pixelFormatView` so the GPU-texture hook (Syphon) can
+            // sample/reinterpret it; the present and read-back use it as a blit source.
+            resolveDesc.usage = [.renderTarget, .shaderRead, .pixelFormatView]
+            resolveDesc.storageMode = .private
+
+            guard let msaa = device.makeTexture(descriptor: msaaDesc),
+                  let resolve = device.makeTexture(descriptor: resolveDesc) else { return nil }
+            accumTarget = msaa
+            accumResolve = resolve
+            accumSize = (width, height)
+            accumNeedsClear = true                 // fresh memory: clear before the first load
+        }
+        guard let msaa = accumTarget, let resolve = accumResolve else { return nil }
+
+        let reset = accumNeedsClear || drawer.backgroundSetThisFrame
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = msaa
+        pass.colorAttachments[0].resolveTexture = resolve
+        pass.colorAttachments[0].loadAction = reset ? .clear : .load
+        pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
+        pass.colorAttachments[0].storeAction = .storeAndMultisampleResolve
+        accumNeedsClear = false
+        return pass
+    }
+
+    /// Blit `texture` into a CPU-readable buffer and build a `CGImage`. A
+    /// standalone command buffer (commits + waits) for reading a texture an earlier
+    /// command buffer already produced (the live accumulation grab).
+    private func readback(_ texture: MTLTexture, width: Int, height: Int) -> CGImage? {
+        guard width > 0, height > 0 else { return nil }
+        let bytesPerRow = width * 4, byteCount = bytesPerRow * height
+        guard let buffer = device.makeBuffer(length: byteCount, options: .storageModeShared),
+              let commandBuffer = commandQueue.makeCommandBuffer(),
+              let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
+        blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: width, height: height, depth: 1),
+                  to: buffer, destinationOffset: 0,
+                  destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
+        blit.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        return MetalRenderer.cgImage(fromBGRA8: buffer, width: width, height: height)
+    }
+
+    /// Build an opaque BGRA8 `CGImage` from a shared buffer of `width*height*4`
+    /// bytes (the resolved-texture read-back layout). Shared by `image(of:)` and
+    /// the accumulation read-back paths.
+    private static func cgImage(fromBGRA8 buffer: MTLBuffer, width: Int, height: Int) -> CGImage? {
+        let bytesPerRow = width * 4, byteCount = bytesPerRow * height
+        let data = Data(bytes: buffer.contents(), count: byteCount)
+        guard let provider = CGDataProvider(data: data as CFData) else { return nil }
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue
+                                      | CGBitmapInfo.byteOrder32Little.rawValue)
+        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+                       bytesPerRow: bytesPerRow, space: CGColorSpaceCreateDeviceRGB(),
+                       bitmapInfo: bitmapInfo, provider: provider, decode: nil,
+                       shouldInterpolate: false, intent: .defaultIntent)
     }
 
     /// Render `drawer`'s geometry off-screen to a `CGImage` of `width`×`height`
@@ -245,14 +442,7 @@ final class MetalRenderer {
         commandBuffer.waitUntilCompleted()
 
         // BGRA8 bytes -> CGImage. Frames are opaque, so skip the alpha channel.
-        let data = Data(bytes: readback.contents(), count: byteCount)
-        guard let provider = CGDataProvider(data: data as CFData) else { return nil }
-        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue
-                                      | CGBitmapInfo.byteOrder32Little.rawValue)
-        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
-                       bytesPerRow: bytesPerRow, space: CGColorSpaceCreateDeviceRGB(),
-                       bitmapInfo: bitmapInfo, provider: provider, decode: nil,
-                       shouldInterpolate: false, intent: .defaultIntent)
+        return MetalRenderer.cgImage(fromBGRA8: readback, width: width, height: height)
     }
 
     /// Render `drawer`'s geometry off-screen and return the resolved color texture

@@ -76,6 +76,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         wireLoopControl(newSketch)
         sketch = newSketch
         if let statsExtension { newSketch.extend(statsExtension) }   // re-attach stats observer
+        renderer.resetAccumulation()   // a reloaded sketch starts on a clean canvas
         didSetup = false            // re-run setup() next frame
         didReload = true            // ...then call onReload() once
         view?.isPaused = false      // a prior noLoop() must not freeze the reload
@@ -182,11 +183,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // async drawable readback is a later optimization.
         if sketch.wantsRenderedFrames {
             let w = Int(sketch.width.rounded()), h = Int(sketch.height.rounded())
-            if let image = renderer.image(of: sketch.drawer,
-                                          viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
-                                          width: w, height: h) {
-                sketch.runFrameRendered(image)
-            }
+            // While accumulating, the on-screen pile is what a recorder wants, so
+            // read it back rather than re-rendering (which would double-accumulate).
+            let image = sketch.drawer.accumulates
+                ? renderer.accumulatedFrameImage()
+                : renderer.image(of: sketch.drawer,
+                                 viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
+                                 width: w, height: h)
+            if let image { sketch.runFrameRendered(image) }
         }
 
         // GPU-texture frame hook: same off-screen re-render, but the texture is
@@ -195,11 +199,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // nothing; armed live, so a sharer can start/stop between frames.
         if sketch.wantsRenderedTextures {
             let w = Int(sketch.width.rounded()), h = Int(sketch.height.rounded())
-            if let texture = renderer.texture(of: sketch.drawer,
-                                              viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
-                                              width: w, height: h) {
-                sketch.runFrameRendered(texture: texture)
-            }
+            // While accumulating, share the on-screen pile directly (a re-render
+            // would double-accumulate); otherwise re-render this frame off-screen.
+            let texture = sketch.drawer.accumulates
+                ? renderer.accumulatedTexture
+                : renderer.texture(of: sketch.drawer,
+                                   viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
+                                   width: w, height: h)
+            if let texture { sketch.runFrameRendered(texture: texture) }
         }
     }
 
@@ -599,14 +606,22 @@ public enum OllinApp {
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.setup()
+        let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
+        let width = size.width, height = size.height
+        // In accumulation mode (`noClear`) each frame piles onto the persistent
+        // surface, so render every frame into it — the captured frame N is the
+        // built-up canvas, not a fresh draw of frame N alone.
+        var accumulated: CGImage?
         for k in 0...max(0, frame) {                 // advance so frame N is correct
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
             sketch.performDraw()
+            if sketch.drawer.accumulates {
+                accumulated = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
+                                                        width: width, height: height)
+            }
         }
-        let width = size.width, height = size.height
-        return renderer.image(of: sketch.drawer,
-                              viewport: SIMD2<Float>(Float(size.width), Float(size.height)),
-                              width: width, height: height)
+        if sketch.drawer.accumulates { return accumulated }
+        return renderer.image(of: sketch.drawer, viewport: viewport, width: width, height: height)
     }
 
     /// Render one frame of `sketch` off-screen and write it as a PNG — no window.
@@ -715,14 +730,24 @@ public enum OllinApp {
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
             sketch.performDraw()                          // run every frame so state settles
 
-            if k < skipFrames {                           // warmup: don't render or write
+            // In accumulation mode (`noClear`) the persistent pile must build every
+            // frame — including warmup — so render into it always; otherwise warmup
+            // frames skip the render entirely.
+            let accumulates = sketch.drawer.accumulates
+            var rendered: CGImage?
+            if accumulates || k >= skipFrames {
+                rendered = accumulates
+                    ? renderer.accumulatedImage(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                    : renderer.image(of: sketch.drawer, viewport: viewport, width: width, height: height)
+            }
+
+            if k < skipFrames {                           // warmup: built the pile, don't write
                 FileHandle.standardError.write(Data(
                     String(format: "\r  warming up %d/%d    ", k + 1, skipFrames).utf8))
                 continue
             }
 
-            guard let cgImage = renderer.image(of: sketch.drawer, viewport: viewport,
-                                               width: width, height: height) else {
+            guard let cgImage = rendered else {
                 fatalError("Ollin: failed to render frame \(k)")
             }
             let done = k - skipFrames + 1                  // 1-based count of written frames

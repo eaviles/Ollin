@@ -340,6 +340,11 @@ let package = Package(
             path: "Examples/Basic/Blending"
         ),
         .executableTarget(
+            name: "Example-Accumulation",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Accumulation"
+        ),
+        .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"

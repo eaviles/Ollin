@@ -121,6 +121,22 @@ final class Drawer {
     private var tintColor: Color? = nil                  // multiplies drawImage texels; nil = untinted (see tint / noTint)
     private var currentBlend: BlendMode = .normal        // how shapes combine with the canvas (see blendMode)
 
+    /// When true the canvas is *not* cleared each frame — drawing piles up across
+    /// frames on a persistent accumulation surface instead (see `noClear` /
+    /// `clearEachFrame`). A mode, not per-frame state: it persists until changed.
+    /// The renderer reads it to route through the accumulation target; calling
+    /// `background(_:)` while it's on wipes the pile (the long-exposure reset),
+    /// reported through `backgroundSetThisFrame`.
+    private(set) var accumulates: Bool = false
+
+    /// Whether `background(_:)` was called during the frame being recorded. Reset
+    /// at the start of each frame and set by `background(_:)`. Only consulted by
+    /// the renderer in accumulation mode, where it means "wipe the persistent
+    /// canvas to the background color this frame" (otherwise the frame loads the
+    /// accumulated pile). In the ordinary clear-each-frame path it's ignored — the
+    /// frame always clears.
+    private(set) var backgroundSetThisFrame: Bool = false
+
     // MARK: Per-frame geometry (reset every frame)
 
     private(set) var vertices: [OllinVertex] = []
@@ -274,9 +290,12 @@ final class Drawer {
     // MARK: State setters (mirrors the bare API on `Sketch`)
 
     /// Set the background/clear color. This also wipes anything drawn
-    /// so far this frame (background paints over everything).
+    /// so far this frame (background paints over everything). In accumulation mode
+    /// (`noClear`) it additionally wipes the persistent canvas this frame — the
+    /// way to reset a long exposure (see `backgroundSetThisFrame`).
     func background(_ color: Color) {
         backgroundColor = color
+        backgroundSetThisFrame = true
         vertices.removeAll(keepingCapacity: true)
         sdfInstances.removeAll(keepingCapacity: true)
         imageVertices.removeAll(keepingCapacity: true)
@@ -284,6 +303,16 @@ final class Drawer {
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
     }
+
+    /// Stop clearing the canvas each frame: drawing accumulates on a persistent
+    /// surface across frames (progressive refinement, long-exposure stills,
+    /// paint-on-canvas). Pairs with `blendMode(.add)` for light-accumulation
+    /// ("sandpainting") sketches. Call `background(_:)` to wipe the pile, or
+    /// `clearEachFrame()` to return to the default.
+    func noClear() { accumulates = true }
+
+    /// Return to clearing the canvas every frame (the default).
+    func clearEachFrame() { accumulates = false }
 
     func fill(_ color: Color) { fillPaint = .color(color) }
     func fill(_ gradient: Gradient) { fillPaint = .gradient(gradient) }
@@ -372,6 +401,9 @@ final class Drawer {
         glyphVertices.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
+        // `accumulates` is a mode and persists; only the per-frame "did the sketch
+        // wipe the pile this frame" flag resets here.
+        backgroundSetThisFrame = false
         // The row table is per-frame like the geometry (a row index is only
         // meaningful against this frame's strip); the bake cache persists.
         gradientRows.removeAll(keepingCapacity: true)

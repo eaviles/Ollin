@@ -111,6 +111,7 @@ The names are familiar and the calls are short. The full API reference lives in 
 - [Sketch](Docs/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), and loop control.
 - [Canvas](Docs/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
 - [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawRect`, `drawLine`, `drawShape`, and a full catalog of analytic SDF shapes; see the reference), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
+- [Accumulation](Docs/Accumulation.md) - `noClear` to keep the canvas across frames so drawing piles up: long exposures, paint-on-canvas, and light accumulation (paired with `blendMode(.add)`).
 - [Text](Docs/Text.md) - `drawText` with bitmap, outline (`.ttf`/`.otf`), and single-line/plotter (Hershey) fonts (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`/`OutlineFont`/`StrokeFont`), `textToShapes` for text as geometry, and loading BDF, Playdate `.fnt`, and Hershey `.jhf` fonts.
 - [Images](Docs/Images.md) - `loadImage` / `drawImage` for raster images (PNG, JPEG, HEIC, …), with `tint` recoloring and an `Image[x, y]` pixel subscript for sampling or authoring.
 - [Color](Docs/Color.md) - the `Color` type, the OKLab family and mixing, `Ramp`s and `Palette`s, and perceptual `Colormap`s.
@@ -271,7 +272,7 @@ These projects are inspirations for parts of Ollin that don't exist yet. Ollin s
 | [Hydra](https://github.com/ojack/hydra) | AGPL-3.0 | How a chainable, video-synth-style API makes mixing visuals feel easy. A direction for a future livecoding mode. |
 | [Shader Park](https://github.com/shader-park) | MIT | How to compose and blend SDF shapes, and its livecoding environment. |
 | [ofxFX](https://github.com/patriciogonzalezvivo/ofxFX) | MIT | How shader effects become chainable, mixable objects — filters, blends, LUT color grading, and generative passes over ping-pong buffers. A reference for the planned layered-effects work. |
-| [Blurry](https://github.com/Domenicobrz/Blurry) | MIT | Depth of field that *emerges* from accumulating millions of displaced particle samples, implementing Anders Hoff's ([inconvergent](https://inconvergent.net/2019/depth-of-field/)) published technique. A reference for the planned sandpainting/accumulation rendering. |
+| [Blurry](https://github.com/Domenicobrz/Blurry) | MIT | Depth of field that *emerges* from accumulating millions of displaced particle samples, implementing Anders Hoff's ([inconvergent](https://inconvergent.net/2019/depth-of-field/)) published technique. A reference for the sandpainting / depth-of-field accumulation rendering track. |
 
 Meta Spark, the AR studio Meta has since discontinued, is the reference for an eventual AR mode. There's no source to credit, just the idea of starting from templates.
 

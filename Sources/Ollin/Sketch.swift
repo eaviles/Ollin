@@ -190,6 +190,21 @@ open class Sketch {
     /// Resume the continuous draw loop.
     public func loop() { setLooping(true) }
 
+    // MARK: Accumulation
+
+    /// Stop clearing the canvas each frame: from now on drawing piles up on a
+    /// persistent surface across frames instead of starting blank. Use it for
+    /// progressive refinement, long-exposure stills, and paint-on-canvas sketches;
+    /// paired with `blendMode(.add)` it's the basis of light-accumulation
+    /// ("sandpainting") rendering, where a frame contributes a haze of faint
+    /// samples that sum over time. Call `background(_:)` to wipe the accumulated
+    /// canvas (the long-exposure reset), or `clearEachFrame()` to return to the
+    /// default of a fresh frame each time. Typically called once in `setup()`.
+    public func noClear() { drawer.noClear() }
+
+    /// Return to clearing the canvas every frame (the default), undoing `noClear()`.
+    public func clearEachFrame() { drawer.clearEachFrame() }
+
     // MARK: Keyboard queries
 
     /// Whether `character` is currently held down — for continuous response while

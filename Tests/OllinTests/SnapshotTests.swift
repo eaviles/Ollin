@@ -98,6 +98,14 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: AdditiveBlend(), against: "additive-blend")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func accumulationMatchesReference() throws {
+        // Captured at frame 12, so the reference can only match if the canvas
+        // accumulated across the prior frames (a single frame is a sparse scatter).
+        let diff = try Snapshot.meanDifference(of: AccumulationField(), against: "accumulation", frame: 12)
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -471,5 +479,36 @@ private final class AdditiveBlend: Sketch {
         drawCircle(cx - off * 0.92, cy + off * 0.6, r)
         fill(Color(red: 0, green: 0, blue: 1, alpha: 0.85))
         drawCircle(cx + off * 0.92, cy + off * 0.6, r)
+    }
+}
+
+/// A persistent (`noClear`) canvas: each frame scatters a seeded ring of faint
+/// additive dots that rotates slowly, so by the captured frame the canvas holds
+/// the accumulated, overlapping trails — not a single frame's sparse scatter.
+/// Pins the accumulation surface (don't-clear + the persistent-target read-back),
+/// and that it builds up across frames. Deterministic via the seed + fixed timestep.
+private final class AccumulationField: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var seeds: [(angle: Double, radius: Double)] = []
+
+    override func setup() {
+        seed(3)
+        background(Color(white: 0.02))     // the one base wipe; then accumulate
+        noClear()
+        for _ in 0 ..< 200 {
+            seeds.append((random(.tau), random(40, 110)))
+        }
+    }
+
+    override func draw() {
+        blendMode(.add)
+        noStroke()
+        fill(Color(red: 0.5, green: 0.72, blue: 1, alpha: 0.12))
+        let cx = width / 2, cy = height / 2
+        let spin = time * 0.6
+        for s in seeds {
+            let a = s.angle + spin
+            drawCircle(cx + cos(a) * s.radius, cy + sin(a) * s.radius, 2.2)
+        }
     }
 }
