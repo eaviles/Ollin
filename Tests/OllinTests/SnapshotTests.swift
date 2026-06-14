@@ -106,6 +106,15 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: AccumulationField(), against: "accumulation", frame: 12)
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func toneMappedBloomMatchesReference() throws {
+        // Additive light pushes the overlaps well past 1.0; `.aces` rolls them off
+        // instead of clipping. Pins the float intermediate + the present pass's
+        // tone-map (a `.clamp` render would flatten the cores to white).
+        let diff = try Snapshot.meanDifference(of: ToneMappedBloom(), against: "tone-mapped-bloom")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -510,5 +519,28 @@ private final class AccumulationField: Sketch {
             let a = s.angle + spin
             drawCircle(cx + cos(a) * s.radius, cy + sin(a) * s.radius, 2.2)
         }
+    }
+}
+
+/// Bright additive disks overlapping past full brightness, mapped down by ACES.
+/// The center stacks three saturated colors into a high-dynamic-range core that a
+/// clamp would flatten to white; this pins that the linear-float frame is
+/// tone-mapped in the present pass (not clipped). Deterministic (no time/random).
+private final class ToneMappedBloom: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x05060A))
+        toneMap(.aces, exposure: 1.6)
+        blendMode(.add)
+        noStroke()
+        let r = width * 0.32
+        let cx = width * 0.5, cy = height * 0.5, off = width * 0.14
+        fill(Color(red: 1, green: 0.2, blue: 0.1, alpha: 0.95))
+        drawCircle(cx, cy - off, r)
+        fill(Color(red: 0.1, green: 1, blue: 0.3, alpha: 0.95))
+        drawCircle(cx - off, cy + off * 0.7, r)
+        fill(Color(red: 0.2, green: 0.4, blue: 1, alpha: 0.95))
+        drawCircle(cx + off, cy + off * 0.7, r)
     }
 }

@@ -129,6 +129,15 @@ final class Drawer {
     /// reported through `backgroundSetThisFrame`.
     private(set) var accumulates: Bool = false
 
+    /// How the linear-float frame is mapped to the 8-bit display in the present
+    /// pass (see `toneMap` / `ToneMap`). A frame-wide mode, not per-shape state:
+    /// one mapping over the finished frame, so it persists until changed and is
+    /// not saved by `withState`. `.clamp` (the default) reproduces the prior
+    /// clip-to-[0,1] look. The renderer reads both when it runs the present pass.
+    private(set) var toneMapMode: ToneMap = .clamp
+    /// Linear exposure multiplier applied before the tone-map (1 = unchanged).
+    private(set) var toneMapExposure: Double = 1
+
     /// Whether `background(_:)` was called during the frame being recorded. Reset
     /// at the start of each frame and set by `background(_:)`. Only consulted by
     /// the renderer in accumulation mode, where it means "wipe the persistent
@@ -313,6 +322,13 @@ final class Drawer {
 
     /// Return to clearing the canvas every frame (the default).
     func clearEachFrame() { accumulates = false }
+
+    /// Set how the linear-float frame maps to the 8-bit display. A mode like
+    /// `accumulates` — it persists across frames (not reset in `beginFrame`).
+    func toneMap(_ map: ToneMap, exposure: Double) {
+        toneMapMode = map
+        toneMapExposure = exposure
+    }
 
     func fill(_ color: Color) { fillPaint = .color(color) }
     func fill(_ gradient: Gradient) { fillPaint = .gradient(gradient) }

@@ -104,10 +104,11 @@ vertex VertexOut ollin_vertex(uint vertexID [[vertex_id]],
 }
 
 fragment float4 ollin_fragment(VertexOut in [[stage_in]]) {
-    // Linearize the sRGB tone, dither, and let the blend state composite it in
-    // linear light (the target is sRGB-encoded).
+    // Linearize the sRGB tone and let the blend state composite it in linear light.
+    // Output goes to the linear rgba16Float intermediate; the present pass
+    // tone-maps, dithers, and sRGB-encodes to the drawable (see finalizeColor).
     float3 lin = srgbToLinear(in.color.rgb);
-    return finalizeColor(float4(lin, in.color.a), in.position.xy);
+    return float4(lin, in.color.a);
 }
 
 // MARK: - Textured quads (images)
@@ -174,7 +175,8 @@ fragment float4 ollin_glyph_fragment(ImageOut in [[stage_in]],
     // evenly dark in linear light (the same carve-out strokes and dots use).
     cov = perceptualCoverage(clamp(cov, 0.0, 1.0));
     float3 lin = srgbToLinear(in.tint.rgb);
-    return finalizeColor(float4(lin, in.tint.a * cov), in.position.xy);
+    // Linear output to the float intermediate; the present pass finalizes.
+    return float4(lin, in.tint.a * cov);
 }
 
 // MARK: - SDF instanced shapes
@@ -1050,8 +1052,9 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
 
     // Resolve each slot to linear straight-alpha (a solid color linearized, a
     // gradient sampled at this fragment), composite stroke over fill in
-    // premultiplied *linear* space, then return dithered straight-alpha linear so
-    // the same source-over blend as the solid pipeline applies.
+    // premultiplied *linear* space, then return straight-alpha linear so the same
+    // source-over blend as the solid pipeline applies. The present pass tone-maps,
+    // dithers, and sRGB-encodes the resolved float intermediate (see finalizeColor).
     float4 fillPaint = resolvePaint(in.fillColor, in.fillKind, in.fillRow,
                                     p, pathT, gradients, gradientSampler);
     float4 strokePaint = resolvePaint(in.strokeColor, in.strokeKind, in.strokeRow,
@@ -1062,5 +1065,54 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
     float3 premul = strokePaint.rgb * strokeA + fillPaint.rgb * fillA * (1.0 - strokeA);
     float a = strokeA + fillA * (1.0 - strokeA);
     if (a <= 0.0) { return float4(0.0); }
-    return finalizeColor(float4(premul / a, a), in.position.xy);
+    return float4(premul / a, a);
+}
+
+// MARK: - Present / tone-map pass
+//
+// The frame's geometry is composited in a linear `rgba16Float` intermediate, so
+// values can exceed 1.0 (additive light accumulation) and precision survives the
+// many translucent blends an 8-bit target would band on. This final fullscreen
+// pass reads that resolved intermediate and produces the displayable 8-bit sRGB
+// drawable: scale by exposure, map HDR values into [0, 1] per the tone-map mode,
+// then dither + sRGB-encode (finalizeColor) right at the 8-bit quantization — the
+// single place de-banding dither is applied now that the geometry fragments
+// output raw linear.
+
+struct PresentOut {
+    float4 position [[position]];
+    float2 uv;
+};
+
+// One oversized triangle covering the viewport — no vertex buffer needed. uv has
+// its V flipped so texel (0,0) lands top-left, matching the canvas (y-down).
+vertex PresentOut ollin_present_vertex(uint vid [[vertex_id]]) {
+    float2 p = float2((vid << 1) & 2, vid & 2);   // (0,0), (2,0), (0,2)
+    PresentOut out;
+    out.position = float4(p * 2.0 - 1.0, 0.0, 1.0);
+    out.uv = float2(p.x, 1.0 - p.y);
+    return out;
+}
+
+// ACES filmic tone-map (Krzysztof Narkowicz's fitted curve, written from the
+// published approximation): rolls highlights off smoothly instead of clipping.
+static inline float3 toneMapACES(float3 x) {
+    const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
+fragment float4 ollin_present_fragment(PresentOut in [[stage_in]],
+                                       texture2d<float> src [[texture(0)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant OllinPresentUniforms &u [[buffer(0)]]) {
+    float3 c = src.sample(samp, in.uv).rgb * u.exposure;
+    if (u.toneMapMode == 1) {
+        c = c / (1.0 + c);              // Reinhard: x / (1 + x), per channel
+    } else if (u.toneMapMode == 2) {
+        c = toneMapACES(c);             // ACES filmic
+    }
+    // Mode 0 (clamp / SDR): finalizeColor's own clamp clips to [0, 1], so an
+    // in-range frame is byte-for-byte the prior per-fragment finalize. The dither
+    // is a function of the pixel coordinate, identical to the geometry path's.
+    return finalizeColor(float4(c, 1.0), in.position.xy);
 }

@@ -46,6 +46,7 @@ final class MetalRenderer {
         case sdf(BlendMode)          // instanced SDF quads (circles, ellipses, rects, lines, arcs)
         case image(BlendMode)        // textured quads (images), premultiplied-alpha blend
         case glyphAtlas(BlendMode)   // SDF-atlas text quads, straight-alpha coverage blend
+        case present                 // final fullscreen tone-map pass, float -> sRGB drawable
 
         /// The pipeline a recorded batch needs, from its geometry kind + blend.
         static func forBatch(_ kind: GeometryKind, _ blend: BlendMode) -> Pipeline {
@@ -61,7 +62,17 @@ final class MetalRenderer {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private var library: MTLLibrary
+    /// The display/drawable format — sRGB 8-bit. The final present pass writes
+    /// here; it's never a geometry render target anymore.
     private let pixelFormat: MTLPixelFormat
+    /// The compositing substrate: a linear `rgba16Float` intermediate every
+    /// geometry pipeline renders into, so values can exceed 1.0 (additive light)
+    /// and many translucent blends don't band the way an 8-bit target would. The
+    /// present pass tone-maps + encodes it down to `pixelFormat`.
+    private let linearFormat: MTLPixelFormat = .rgba16Float
+    /// MSAA sample count for the float geometry targets (the drawable itself is
+    /// single-sample — MSAA happens in the intermediate, then resolves before the
+    /// present pass tone-maps).
     private let sampleCount: Int
 
     /// Render pipelines, built on first use and reused. Keyed by `Pipeline` so
@@ -101,12 +112,25 @@ final class MetalRenderer {
     private var glyphBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     private var glyphExportBuffer: MTLBuffer?
 
-    /// Off-screen target for the GPU-texture frame hook (`texture(of:)`), kept and
+    /// The on-screen geometry targets: this frame's geometry composites into a
+    /// linear-float MSAA target (`mainMSAA`, `.memoryless` — it lives only in tile
+    /// memory since the frame clears each time and the samples aren't needed after
+    /// the resolve), resolves into a single-sample float texture (`mainResolve`),
+    /// and the present pass then tone-maps that into the drawable. Reused across
+    /// frames; rebuilt on a size change.
+    private var mainMSAA: MTLTexture?
+    private var mainResolve: MTLTexture?
+    private var mainSize = (width: 0, height: 0)
+
+    /// Off-screen targets for the GPU-texture frame hook (`texture(of:)`), kept and
     /// reused across frames — rebuilt only when the canvas size changes, so live
-    /// frame-sharing (Syphon) doesn't allocate a texture every frame. The MSAA
-    /// target resolves into `textureResolve`, which is what's handed out
-    /// (single-sample, `.shaderRead` so a consumer can sample/copy it).
+    /// frame-sharing (Syphon) doesn't allocate a texture every frame. Geometry
+    /// composites into the float MSAA target (`textureTargetMSAA`, `.memoryless`),
+    /// resolves into `textureFloatResolve`, and the present pass tone-maps that into
+    /// `textureResolve` — the single-sample sRGB texture handed out (`.shaderRead`
+    /// so a consumer can sample/copy it, `.pixelFormatView` for Syphon's byte-pass).
     private var textureTargetMSAA: MTLTexture?
+    private var textureFloatResolve: MTLTexture?
     private var textureResolve: MTLTexture?
     private var textureTargetSize = (width: 0, height: 0)
 
@@ -118,9 +142,15 @@ final class MetalRenderer {
     /// presentation and read-back. Kept at the active draw size and reset (the next
     /// frame clears) when the size changes or the sketch calls `background(_:)`.
     /// Reusing the same MSAA target keeps the existing pipelines (no new sample-count
-    /// variant) and preserves edge anti-aliasing while accumulating.
+    /// variant) and preserves edge anti-aliasing while accumulating. The targets are
+    /// linear-float, so faint additive samples (below 1/255) sum correctly instead of
+    /// quantizing away — the precision the light-accumulation look needs. `accumResolve`
+    /// holds the raw linear pile; presentation/read-back tone-maps it through
+    /// `accumDisplay` (a single-sample sRGB texture) so a consumer gets display-ready
+    /// bytes, never the raw HDR float.
     private var accumTarget: MTLTexture?
     private var accumResolve: MTLTexture?
+    private var accumDisplay: MTLTexture?
     private var accumSize = (width: 0, height: 0)
     private var accumNeedsClear = true
 
@@ -165,22 +195,29 @@ final class MetalRenderer {
         _ = try pipeline(.sdf(.normal))
         _ = try pipeline(.image(.normal))
         _ = try pipeline(.glyphAtlas(.normal))
+        _ = try pipeline(.present)
     }
 
-    /// Encode and present one frame's worth of recorded geometry.
+    /// Encode and present one frame's worth of recorded geometry: composite into
+    /// the linear-float intermediate, then run the present pass to tone-map it into
+    /// the drawable.
     func render(_ drawer: Drawer, viewport: SIMD2<Float>, in view: MTKView) {
         if drawer.accumulates {
             renderAccumulating(drawer, viewport: viewport, in: view)
             return
         }
-        // `currentRenderPassDescriptor` already points at the MSAA target with a
-        // resolve into the drawable when the view's sampleCount > 1, so we only
-        // need to set the load action and clear color.
-        guard let renderPass = view.currentRenderPassDescriptor,
-              let drawable = view.currentDrawable else { return }
+        let width = Int(view.drawableSize.width.rounded())
+        let height = Int(view.drawableSize.height.rounded())
+        guard width > 0, height > 0, let drawable = view.currentDrawable else { return }
 
-        renderPass.colorAttachments[0].loadAction = .clear
-        renderPass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
+        // (Re)allocate the cached float geometry targets on a size change. The MSAA
+        // target is memoryless (tile-only); the resolve is sampled by the present pass.
+        if mainSize != (width, height) || mainMSAA == nil || mainResolve == nil {
+            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless),
+                  let resolve = makeFloatResolve(width: width, height: height) else { return }
+            mainMSAA = msaa; mainResolve = resolve; mainSize = (width, height)
+        }
+        guard let msaa = mainMSAA, let resolve = mainResolve else { return }
 
         // Block until a vertex-buffer slot frees up, then advance to the next one
         // in the ring — so this frame's upload can't stomp a buffer the GPU is
@@ -188,19 +225,31 @@ final class MetalRenderer {
         frameBoundary.wait()
         frameIndex = (frameIndex + 1) % MetalRenderer.maxFramesInFlight
 
+        let geomPass = MTLRenderPassDescriptor()
+        geomPass.colorAttachments[0].texture = msaa
+        geomPass.colorAttachments[0].resolveTexture = resolve
+        geomPass.colorAttachments[0].loadAction = .clear
+        geomPass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
+        geomPass.colorAttachments[0].storeAction = .multisampleResolve
+
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPass) else {
+              let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
             return
         }
         commandBuffer.addCompletedHandler { [frameBoundary] _ in frameBoundary.signal() }
 
-        encode(drawer, viewport: viewport, into: encoder,
+        encode(drawer, viewport: viewport, into: geomEncoder,
                triangleBuffer: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
                sdfBuffer: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count),
                imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
                glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count))
-        encoder.endEncoding()
+        geomEncoder.endEncoding()
+
+        if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: drawable.texture)) {
+            encodePresent(from: resolve, drawer: drawer, into: presentEncoder)
+            presentEncoder.endEncoding()
+        }
         commandBuffer.present(drawable)
         commandBuffer.commit()
     }
@@ -216,10 +265,6 @@ final class MetalRenderer {
         let width = Int(view.drawableSize.width.rounded())
         let height = Int(view.drawableSize.height.rounded())
         guard width > 0, height > 0, let drawable = view.currentDrawable else { return }
-
-        // The drawable is the blit destination for the present, so it can't be
-        // framebuffer-only. Idempotent — harmless to set every frame.
-        view.framebufferOnly = false
 
         frameBoundary.wait()
         frameIndex = (frameIndex + 1) % MetalRenderer.maxFramesInFlight
@@ -240,15 +285,11 @@ final class MetalRenderer {
                glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count))
         encoder.endEncoding()
 
-        // Present by copying the resolved canvas into the drawable: same sRGB
-        // format, so it's an exact byte copy with no extra color conversion.
-        if let blit = commandBuffer.makeBlitCommandEncoder() {
-            blit.copy(from: resolve, sourceSlice: 0, sourceLevel: 0,
-                      sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                      sourceSize: MTLSize(width: width, height: height, depth: 1),
-                      to: drawable.texture, destinationSlice: 0, destinationLevel: 0,
-                      destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
-            blit.endEncoding()
+        // Present: tone-map the resolved float pile into the drawable. (The pile
+        // itself stays in linear float, so faint samples keep summing next frame.)
+        if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: drawable.texture)) {
+            encodePresent(from: resolve, drawer: drawer, into: presentEncoder)
+            presentEncoder.endEncoding()
         }
         commandBuffer.present(drawable)
         commandBuffer.commit()
@@ -263,7 +304,7 @@ final class MetalRenderer {
     func accumulatedImage(of drawer: Drawer, viewport: SIMD2<Float>, width: Int, height: Int) -> CGImage? {
         guard width > 0, height > 0,
               let pass = accumulationPass(drawer, width: width, height: height),
-              let resolve = accumResolve,
+              let resolve = accumResolve, let display = accumDisplay,
               let commandBuffer = commandQueue.makeCommandBuffer(),
               let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
@@ -274,10 +315,16 @@ final class MetalRenderer {
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count))
         encoder.endEncoding()
 
+        // Tone-map the float pile into the sRGB display texture, then read that back.
+        if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: display)) {
+            encodePresent(from: resolve, drawer: drawer, into: presentEncoder)
+            presentEncoder.endEncoding()
+        }
+
         let bytesPerRow = width * 4, byteCount = bytesPerRow * height
         guard let readbackBuffer = device.makeBuffer(length: byteCount, options: .storageModeShared),
               let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
-        blit.copy(from: resolve, sourceSlice: 0, sourceLevel: 0,
+        blit.copy(from: display, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: width, height: height, depth: 1),
                   to: readbackBuffer, destinationOffset: 0,
@@ -289,18 +336,37 @@ final class MetalRenderer {
     }
 
     /// Read the current accumulated canvas back as a `CGImage` without re-rendering
-    /// — for the live frame-grab hook (a recorder/Syphon consumer) while
-    /// accumulating, since the on-screen pile is exactly what it wants. Nil before
-    /// the first accumulating frame.
-    func accumulatedFrameImage() -> CGImage? {
-        guard let resolve = accumResolve else { return nil }
-        return readback(resolve, width: accumSize.width, height: accumSize.height)
+    /// the geometry — for the live frame-grab hook (a recorder/Syphon consumer)
+    /// while accumulating, since the on-screen pile is exactly what it wants. Runs
+    /// the tone-map present pass over the existing float pile first (it can't hand
+    /// back the raw HDR float). Nil before the first accumulating frame.
+    func accumulatedFrameImage(_ drawer: Drawer) -> CGImage? {
+        guard let display = accumulatedDisplayTexture(drawer) else { return nil }
+        return readback(display, width: accumSize.width, height: accumSize.height)
     }
 
-    /// The current accumulated canvas texture (resolved, sRGB, `.shaderRead`) for
-    /// the GPU-texture frame hook while accumulating — handed straight to a consumer
+    /// The current accumulated canvas as a tone-mapped sRGB texture, for the
+    /// GPU-texture frame hook while accumulating — handed straight to a consumer
     /// that stays on the GPU. Nil before the first accumulating frame.
-    var accumulatedTexture: MTLTexture? { accumResolve }
+    func accumulatedTexture(_ drawer: Drawer) -> MTLTexture? {
+        accumulatedDisplayTexture(drawer)
+    }
+
+    /// Tone-map the existing float accumulation pile into `accumDisplay` (no
+    /// geometry re-render) and return it. Synchronous: waits for the GPU so the
+    /// display texture is complete on return.
+    private func accumulatedDisplayTexture(_ drawer: Drawer) -> MTLTexture? {
+        guard let resolve = accumResolve, let display = accumDisplay,
+              let commandBuffer = commandQueue.makeCommandBuffer(),
+              let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: display)) else {
+            return nil
+        }
+        encodePresent(from: resolve, drawer: drawer, into: presentEncoder)
+        presentEncoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        return display
+    }
 
     /// Wipe the accumulated canvas on the next accumulating frame — for a live
     /// reload, so a freshly swapped-in sketch starts from a clean surface rather
@@ -315,26 +381,17 @@ final class MetalRenderer {
     /// back so they persist to the next frame.
     private func accumulationPass(_ drawer: Drawer, width: Int, height: Int) -> MTLRenderPassDescriptor? {
         if accumSize != (width, height) || accumTarget == nil || accumResolve == nil {
-            let msaaDesc = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
-            msaaDesc.textureType = .type2DMultisample
-            msaaDesc.sampleCount = sampleCount
-            msaaDesc.usage = .renderTarget
-            msaaDesc.storageMode = .private        // persists across frames (never memoryless)
-
-            let resolveDesc = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
-            // `.shaderRead`/`.pixelFormatView` so the GPU-texture hook (Syphon) can
-            // sample/reinterpret it; the present and read-back use it as a blit source.
-            resolveDesc.usage = [.renderTarget, .shaderRead, .pixelFormatView]
-            resolveDesc.storageMode = .private
-
-            guard let msaa = device.makeTexture(descriptor: msaaDesc),
-                  let resolve = device.makeTexture(descriptor: resolveDesc) else { return nil }
+            // The MSAA target is `.private` (never memoryless) so its samples
+            // persist across frames; both it and the resolve are linear float so
+            // faint additive samples accumulate without quantizing away.
+            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .private),
+                  let resolve = makeFloatResolve(width: width, height: height),
+                  let display = makeDisplayTexture(width: width, height: height) else { return nil }
             accumTarget = msaa
             accumResolve = resolve
+            accumDisplay = display         // tone-mapped output for hand-off / read-back
             accumSize = (width, height)
-            accumNeedsClear = true                 // fresh memory: clear before the first load
+            accumNeedsClear = true         // fresh memory: clear before the first load
         }
         guard let msaa = accumTarget, let resolve = accumResolve else { return nil }
 
@@ -391,21 +448,11 @@ final class MetalRenderer {
     func image(of drawer: Drawer, viewport: SIMD2<Float>, width: Int, height: Int) -> CGImage? {
         guard width > 0, height > 0 else { return nil }
 
-        // MSAA color target + a single-sample resolve we can read back.
-        let msaaDesc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
-        msaaDesc.textureType = .type2DMultisample
-        msaaDesc.sampleCount = sampleCount
-        msaaDesc.usage = .renderTarget
-        msaaDesc.storageMode = .private
-
-        let resolveDesc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
-        resolveDesc.usage = .renderTarget
-        resolveDesc.storageMode = .private
-
-        guard let msaaTexture = device.makeTexture(descriptor: msaaDesc),
-              let resolveTexture = device.makeTexture(descriptor: resolveDesc) else { return nil }
+        // Float MSAA target + float resolve for the geometry, plus an sRGB display
+        // texture the present pass tone-maps into and we read back.
+        guard let msaaTexture = makeFloatMSAA(width: width, height: height, storage: .memoryless),
+              let resolveTexture = makeFloatResolve(width: width, height: height),
+              let displayTexture = makeDisplayTexture(width: width, height: height) else { return nil }
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = msaaTexture
@@ -428,10 +475,15 @@ final class MetalRenderer {
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count))
         encoder.endEncoding()
 
-        // Copy the resolved texture into a CPU-readable buffer (works on every
+        // Tone-map the resolved float frame into the sRGB display texture.
+        guard let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: displayTexture)) else { return nil }
+        encodePresent(from: resolveTexture, drawer: drawer, into: presentEncoder)
+        presentEncoder.endEncoding()
+
+        // Copy the display texture into a CPU-readable buffer (works on every
         // Mac GPU, unlike texture.getBytes on discrete cards).
         guard let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
-        blit.copy(from: resolveTexture, sourceSlice: 0, sourceLevel: 0,
+        blit.copy(from: displayTexture, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: width, height: height, depth: 1),
                   to: readback, destinationOffset: 0,
@@ -458,34 +510,23 @@ final class MetalRenderer {
     func texture(of drawer: Drawer, viewport: SIMD2<Float>, width: Int, height: Int) -> MTLTexture? {
         guard width > 0, height > 0 else { return nil }
 
-        if textureTargetSize != (width, height) || textureTargetMSAA == nil || textureResolve == nil {
-            let msaaDesc = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
-            msaaDesc.textureType = .type2DMultisample
-            msaaDesc.sampleCount = sampleCount
-            msaaDesc.usage = .renderTarget
-            msaaDesc.storageMode = .private
-
-            let resolveDesc = MTLTextureDescriptor.texture2DDescriptor(
-                pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
-            // `.shaderRead` so a consumer (e.g. Syphon's server renderer) can
-            // sample it; `.renderTarget` because it's the MSAA resolve destination;
-            // `.pixelFormatView` so a consumer can reinterpret its sRGB bytes
-            // through a non-sRGB view (Syphon exchanges display-ready bytes).
-            resolveDesc.usage = [.renderTarget, .shaderRead, .pixelFormatView]
-            resolveDesc.storageMode = .private
-
-            guard let msaa = device.makeTexture(descriptor: msaaDesc),
-                  let resolve = device.makeTexture(descriptor: resolveDesc) else { return nil }
+        if textureTargetSize != (width, height) || textureTargetMSAA == nil
+            || textureFloatResolve == nil || textureResolve == nil {
+            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless),
+                  let floatResolve = makeFloatResolve(width: width, height: height),
+                  let display = makeDisplayTexture(width: width, height: height) else { return nil }
             textureTargetMSAA = msaa
-            textureResolve = resolve
+            textureFloatResolve = floatResolve
+            textureResolve = display
             textureTargetSize = (width, height)
         }
-        guard let msaaTexture = textureTargetMSAA, let resolveTexture = textureResolve else { return nil }
+        guard let msaaTexture = textureTargetMSAA,
+              let floatResolve = textureFloatResolve,
+              let displayTexture = textureResolve else { return nil }
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = msaaTexture
-        pass.colorAttachments[0].resolveTexture = resolveTexture
+        pass.colorAttachments[0].resolveTexture = floatResolve
         pass.colorAttachments[0].loadAction = .clear
         pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
         pass.colorAttachments[0].storeAction = .multisampleResolve
@@ -499,9 +540,15 @@ final class MetalRenderer {
                imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count))
         encoder.endEncoding()
+
+        // Tone-map the resolved float frame into the sRGB display texture handed out.
+        guard let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: displayTexture)) else { return nil }
+        encodePresent(from: floatResolve, drawer: drawer, into: presentEncoder)
+        presentEncoder.endEncoding()
+
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-        return resolveTexture
+        return displayTexture
     }
 
     /// Upload `drawer`'s recorded geometry and issue its draws into `encoder`,
@@ -629,6 +676,70 @@ final class MetalRenderer {
         return texture
     }
 
+    // MARK: Render targets
+
+    /// A linear-float MSAA color target. `storageMode` is `.memoryless` for the
+    /// transient per-frame targets (the samples live only in tile memory, never
+    /// backed by DRAM, since the frame clears each time) and `.private` for the
+    /// accumulation target (its samples must persist across frames).
+    private func makeFloatMSAA(width: Int, height: Int, storage: MTLStorageMode) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: linearFormat, width: width, height: height, mipmapped: false)
+        desc.textureType = .type2DMultisample
+        desc.sampleCount = sampleCount
+        desc.usage = .renderTarget
+        desc.storageMode = storage
+        return device.makeTexture(descriptor: desc)
+    }
+
+    /// The single-sample linear-float resolve target: the MSAA resolve destination
+    /// (`.renderTarget`) that the present pass then samples (`.shaderRead`).
+    private func makeFloatResolve(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: linearFormat, width: width, height: height, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
+    }
+
+    /// A single-sample sRGB display texture: the present pass's tone-mapped output,
+    /// for the off-screen paths (export read-back, Syphon/grab hand-off).
+    /// `.pixelFormatView` lets a consumer (Syphon) reinterpret its sRGB bytes.
+    private func makeDisplayTexture(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: pixelFormat, width: width, height: height, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead, .pixelFormatView]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
+    }
+
+    /// A render-pass descriptor that tone-maps the resolved float frame into
+    /// `destination` (the drawable or a display texture). The present pass
+    /// overwrites every pixel, so the load action doesn't matter.
+    private func presentPass(into destination: MTLTexture) -> MTLRenderPassDescriptor {
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = destination
+        pass.colorAttachments[0].loadAction = .dontCare
+        pass.colorAttachments[0].storeAction = .store
+        return pass
+    }
+
+    /// Encode the final tone-map pass: a fullscreen triangle sampling `source` (the
+    /// resolved linear-float frame) with the drawer's exposure + tone-map mode,
+    /// dithering and sRGB-encoding to the bound display attachment. Shared by every
+    /// output path (on-screen drawable, export texture, Syphon/grab texture).
+    private func encodePresent(from source: MTLTexture, drawer: Drawer,
+                               into encoder: MTLRenderCommandEncoder) {
+        guard let state = try? pipeline(.present) else { return }
+        encoder.setRenderPipelineState(state)
+        encoder.setFragmentTexture(source, index: 0)
+        encoder.setFragmentSamplerState(imageSampler, index: 0)
+        var present = OllinPresentUniforms(toneMapMode: drawer.toneMapMode.shaderIndex,
+                                           exposure: Float(drawer.toneMapExposure))
+        encoder.setFragmentBytes(&present, length: MemoryLayout<OllinPresentUniforms>.stride, index: 0)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+    }
+
     // MARK: Pipelines
 
     /// Return the cached pipeline for `kind`, building and caching it on first
@@ -687,7 +798,26 @@ final class MetalRenderer {
             // color, so it blends by source alpha like the solid/SDF paths.
             return try makePipeline(vertex: "ollin_image_vertex", fragment: "ollin_glyph_fragment",
                                     using: library, premultiplied: false, blend: blend)
+        case .present:
+            return try makePresentPipeline(using: library)
         }
+    }
+
+    /// The final tone-map pass: a fullscreen triangle sampling the resolved
+    /// linear-float frame and writing the sRGB drawable. Single-sample (it runs
+    /// after the MSAA resolve), blending disabled (it overwrites the drawable),
+    /// and it targets the display format rather than the float intermediate.
+    private func makePresentPipeline(using library: MTLLibrary) throws -> MTLRenderPipelineState {
+        guard let vertexFunction = library.makeFunction(name: "ollin_present_vertex"),
+              let fragmentFunction = library.makeFunction(name: "ollin_present_fragment") else {
+            throw RendererError.shaderFunctions
+        }
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = vertexFunction
+        descriptor.fragmentFunction = fragmentFunction
+        descriptor.rasterSampleCount = 1
+        descriptor.colorAttachments[0].pixelFormat = pixelFormat
+        return try device.makeRenderPipelineState(descriptor: descriptor)
     }
 
     /// Build a render pipeline from the named vertex/fragment functions with the
@@ -713,7 +843,8 @@ final class MetalRenderer {
 
         let state = blend.blendState(premultiplied: premultiplied)
         let attachment = descriptor.colorAttachments[0]!
-        attachment.pixelFormat = pixelFormat
+        // Geometry composites into the linear-float intermediate, not the drawable.
+        attachment.pixelFormat = linearFormat
         attachment.isBlendingEnabled = true
         attachment.rgbBlendOperation = state.colorOperation
         attachment.alphaBlendOperation = state.alphaOperation

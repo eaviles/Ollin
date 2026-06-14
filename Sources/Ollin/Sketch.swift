@@ -205,6 +205,23 @@ open class Sketch {
     /// Return to clearing the canvas every frame (the default), undoing `noClear()`.
     public func clearEachFrame() { drawer.clearEachFrame() }
 
+    // MARK: Tone-mapping
+
+    /// Choose how the frame's high-dynamic-range color is mapped to the screen.
+    ///
+    /// The canvas composites in linear floating-point, so color can exceed full
+    /// brightness — additive light building up on a `noClear` surface, a glow, a
+    /// bright gradient. By default (`.clamp`) those values clip to white. Calling
+    /// `toneMap()` opts into a curve that rolls highlights off smoothly instead,
+    /// the photographic falloff light-accumulation ("sandpainting") and bloom
+    /// looks want; `exposure` scales the image first, like a brightness dial — turn
+    /// it up to lift faint accumulation into view. It's a frame-wide setting (one
+    /// mapping over the finished frame), so it isn't saved by `withState`; set it
+    /// once in `setup()`. See `ToneMap`.
+    public func toneMap(_ map: ToneMap = .reinhard, exposure: Double = 1) {
+        drawer.toneMap(map, exposure: exposure)
+    }
+
     // MARK: Keyboard queries
 
     /// Whether `character` is currently held down — for continuous response while

@@ -38,9 +38,11 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     public init(sketch: Sketch, view: MTKView, device: MTLDevice) {
         self.sketch = sketch
         do {
+            // The drawable is single-sample (the final present target); MSAA happens
+            // in the renderer's float intermediate, so pass the MSAA count directly.
             self.renderer = try MetalRenderer(device: device,
                                               pixelFormat: view.colorPixelFormat,
-                                              sampleCount: view.sampleCount)
+                                              sampleCount: ollinPreferredSampleCount(device))
         } catch {
             fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
         }
@@ -186,7 +188,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             // While accumulating, the on-screen pile is what a recorder wants, so
             // read it back rather than re-rendering (which would double-accumulate).
             let image = sketch.drawer.accumulates
-                ? renderer.accumulatedFrameImage()
+                ? renderer.accumulatedFrameImage(sketch.drawer)
                 : renderer.image(of: sketch.drawer,
                                  viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
                                  width: w, height: h)
@@ -202,7 +204,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             // While accumulating, share the on-screen pile directly (a re-render
             // would double-accumulate); otherwise re-render this frame off-screen.
             let texture = sketch.drawer.accumulates
-                ? renderer.accumulatedTexture
+                ? renderer.accumulatedTexture(sketch.drawer)
                 : renderer.texture(of: sketch.drawer,
                                    viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
                                    width: w, height: h)
@@ -400,7 +402,8 @@ let ollinColorPixelFormat: MTLPixelFormat = .bgra8Unorm_srgb
 /// MSAA sample count for the triangle path — 8× where the device supports it (it
 /// sharpens thin strokes, polygon/curve outlines, and tessellated text), else
 /// the universally-supported 4×. The SDF path is analytically anti-aliased and
-/// doesn't depend on this.
+/// doesn't depend on this. It's the sample count of the renderer's float
+/// intermediate, not of the drawable (which is single-sample — see below).
 func ollinPreferredSampleCount(_ device: MTLDevice) -> Int {
     device.supportsTextureSampleCount(8) ? 8 : 4
 }
@@ -410,7 +413,9 @@ private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -
     let view = OllinMTKView(frame: CGRect(origin: .zero, size: size), device: device)
     view.sketch = sketch
     view.colorPixelFormat = ollinColorPixelFormat
-    view.sampleCount = ollinPreferredSampleCount(device)
+    // The drawable is the present target: single-sample. MSAA is done in the
+    // renderer's float intermediate, then resolved before the present pass.
+    view.sampleCount = 1
     view.isPaused = false                    // run continuously...
     view.enableSetNeedsDisplay = false       // ...driven by the display timer
     view.preferredFramesPerSecond = NSScreen.main?.maximumFramesPerSecond ?? 60

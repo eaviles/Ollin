@@ -94,4 +94,15 @@ typedef struct {
     float strokeGradient;      // gradient-strip row index for a gradient stroke
 } SDFInstance;
 
+// Constants for the final present/tone-map pass (`ollin_present_fragment`). The
+// frame renders into a linear `rgba16Float` intermediate; this pass reads it,
+// scales by `exposure`, maps high-dynamic-range values into displayable range
+// per `toneMapMode`, then dithers + sRGB-encodes to the 8-bit drawable. Not a
+// per-shape value — one operation over the whole resolved frame (see
+// `Drawer.toneMapMode` / `Sketch.toneMap`).
+typedef struct {
+    int   toneMapMode;   // ToneMap.shaderIndex: 0 clamp (SDR), 1 reinhard, 2 aces
+    float exposure;      // linear multiplier applied before the tone-map (1 = none)
+} OllinPresentUniforms;
+
 #endif /* OLLIN_SHADER_TYPES_H */

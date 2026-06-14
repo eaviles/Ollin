@@ -63,6 +63,6 @@ clearEachFrame()
 ### Notes
 
 - **Continuous motion avoids saturation.** A perfectly static scene drawn additively keeps getting brighter until it saturates to white. Keep the scene moving (a slow rotation, drifting particles, a sweep) so light flows across the canvas and reaches a steady glow instead.
-- **8-bit precision, for now.** The accumulation surface is an 8-bit canvas, so a sample fainter than ~1/255 contributes nothing. That's enough for striking results, but very faint, very numerous samples is what the float/HDR pipeline (ahead on the roadmap) will sum correctly.
+- **Float precision.** The accumulation surface composites in linear floating-point, so even very faint samples (well below 1/255) sum correctly instead of quantizing away, and light can build past full brightness. Pair it with [`toneMap(_:)`](./HDR.md) to roll that built-up light off smoothly rather than clipping it — the basis of the depth-of-field "sandpainting" look.
 - **Window resizing resets it.** The persistent surface is sized to the window; resizing reallocates it and starts the accumulation over.
 - **Export works the same way.** The headless still (`--export --frame N`) and the sequence/video/GIF exports drive the accumulation across frames just like the live window, so what you export matches what you see.

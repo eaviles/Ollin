@@ -345,6 +345,11 @@ let package = Package(
             path: "Examples/Basic/Accumulation"
         ),
         .executableTarget(
+            name: "Example-ToneMapping",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/ToneMapping"
+        ),
+        .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"
