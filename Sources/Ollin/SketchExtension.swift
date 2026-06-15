@@ -15,6 +15,10 @@ public struct FrameInfo: Sendable {
     /// Geometry emitted this frame: tessellated vertices and instanced SDF shapes.
     public let vertexCount: Int
     public let sdfCount: Int
+    /// Instanced 3D point-cloud splats and GPU-particle discs emitted this frame —
+    /// the GPU-resident paths, which aren't in any CPU vertex array.
+    public let pointCount: Int
+    public let particleCount: Int
 }
 
 /// A pluggable lifecycle participant — Ollin's `extend(...)` seam. Register one

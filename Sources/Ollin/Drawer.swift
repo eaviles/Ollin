@@ -181,6 +181,13 @@ final class Drawer {
     /// through it; a 2D-only frame leaves it `nil` and is untouched.
     private(set) var camera3D: Camera3D?
 
+    /// Total GPU particles drawn this frame, summed across `.particles` batches —
+    /// for the stats readout, since the particle buffer is GPU-resident and so isn't
+    /// in any CPU vertex array (3D point splats live in `points`, counted directly).
+    var particleCount: Int {
+        batches.reduce(0) { $0 + ($1.kind == .particles ? $1.particleCount : 0) }
+    }
+
     /// Compute dispatches recorded this frame (see `compute` / `Particles`), drained
     /// by the renderer into a compute encoder *ahead* of the geometry pass so a sim
     /// step and the draw that reads its output stay ordered within one frame. Reset

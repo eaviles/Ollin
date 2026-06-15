@@ -173,7 +173,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         sketch.runAfterFrame(FrameInfo(deltaTime: dt, frameRate: smoothedFrameRate,
                                        cpuDrawMS: smoothedCPUMS,
                                        vertexCount: sketch.drawer.vertices.count,
-                                       sdfCount: sketch.drawer.sdfInstances.count))
+                                       sdfCount: sketch.drawer.sdfInstances.count,
+                                       pointCount: sketch.drawer.points.count,
+                                       particleCount: sketch.drawer.particleCount))
 
         // Frame-grab: if any extension asked for the rendered pixels, render the
         // frame off-screen and hand it over. Gated on `wantsRenderedFrames` so a

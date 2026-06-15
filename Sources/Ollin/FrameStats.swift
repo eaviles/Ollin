@@ -29,10 +29,13 @@ public final class FrameStats {
     /// The sketch clock, mirrored for display.
     public internal(set) var frameCount: Int = 0
     public internal(set) var time: Double = 0
-    /// Geometry emitted this frame: tessellated vertices and instanced SDF
-    /// shapes — the "why is it slow" breakdown.
+    /// Geometry emitted this frame — the "why is it slow" breakdown: tessellated
+    /// vertices, instanced SDF shapes, 3D point-cloud splats, and GPU-particle discs
+    /// (the last two are GPU-resident, so they're not in any CPU vertex array).
     public internal(set) var vertexCount: Int = 0
     public internal(set) var sdfCount: Int = 0
+    public internal(set) var pointCount: Int = 0
+    public internal(set) var particleCount: Int = 0
     /// The logical canvas size, for context.
     public internal(set) var canvasWidth: Double = 0
     public internal(set) var canvasHeight: Double = 0
@@ -44,7 +47,7 @@ public final class FrameStats {
     public var hasData: Bool { fps > 0 }
 
     func update(fps: Double, frameTimeMS: Double, frameCount: Int, time: Double,
-                vertexCount: Int, sdfCount: Int,
+                vertexCount: Int, sdfCount: Int, pointCount: Int, particleCount: Int,
                 canvasWidth: Double, canvasHeight: Double) {
         self.fps = fps
         self.frameTimeMS = frameTimeMS
@@ -52,6 +55,8 @@ public final class FrameStats {
         self.time = time
         self.vertexCount = vertexCount
         self.sdfCount = sdfCount
+        self.pointCount = pointCount
+        self.particleCount = particleCount
         self.canvasWidth = canvasWidth
         self.canvasHeight = canvasHeight
     }
@@ -81,10 +86,12 @@ final class StatsExtension: SketchExtension {
         let fps = info.frameRate, frameTimeMS = info.cpuDrawMS
         let frameCount = sketch.frameCount, time = sketch.time
         let vertexCount = info.vertexCount, sdfCount = info.sdfCount
+        let pointCount = info.pointCount, particleCount = info.particleCount
         let canvasWidth = sketch.width, canvasHeight = sketch.height
         DispatchQueue.main.async {
             stats.update(fps: fps, frameTimeMS: frameTimeMS, frameCount: frameCount,
                          time: time, vertexCount: vertexCount, sdfCount: sdfCount,
+                         pointCount: pointCount, particleCount: particleCount,
                          canvasWidth: canvasWidth, canvasHeight: canvasHeight)
         }
     }

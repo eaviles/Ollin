@@ -226,27 +226,36 @@ public struct MonitorCardView: View {
         return w == h ? "\(w)²" : "\(w)×\(h)"
     }
 
-    /// Geometry readout naming whichever path is in use — `5 sdf`, `31k tri`,
-    /// or `5+31k` when mixed (the full breakdown rides the cell's tooltip).
-    /// "0 sdf" alone hid the triangle path entirely: a text/shape-heavy sketch
-    /// (the kind that gets slow) read as drawing nothing.
+    /// Geometry readout, naming each path in use — e.g. `5 sdf`, `31k tri`,
+    /// `12k pts` (3D point cloud), `1M particles` — space-joined when a sketch
+    /// mixes them (the full breakdown rides the cell's tooltip). Naming the path
+    /// rather than showing a bare number keeps a text/shape-heavy *or* a point-cloud
+    /// / particle sketch from reading as "0" when it's clearly drawing.
     private var geometryLabel: String {
-        func compact(_ n: Int) -> String { n >= 1000 ? "\(n / 1000)k" : "\(n)" }
-        switch (stats.sdfCount > 0, stats.vertexCount > 0) {
-        case (true, false): return "\(compact(stats.sdfCount)) sdf"
-        case (false, true): return "\(compact(stats.vertexCount)) tri"
-        case (true, true): return "\(compact(stats.sdfCount))+\(compact(stats.vertexCount))"
-        case (false, false): return "0"
+        func compact(_ n: Int) -> String {
+            n >= 1_000_000 ? "\(n / 1_000_000)M" : n >= 1000 ? "\(n / 1000)k" : "\(n)"
         }
+        var parts: [String] = []
+        if stats.sdfCount > 0 { parts.append("\(compact(stats.sdfCount)) sdf") }
+        if stats.vertexCount > 0 { parts.append("\(compact(stats.vertexCount)) tri") }
+        if stats.pointCount > 0 { parts.append("\(compact(stats.pointCount)) pts") }
+        if stats.particleCount > 0 { parts.append("\(compact(stats.particleCount)) particles") }
+        return parts.isEmpty ? "0" : parts.joined(separator: " ")
     }
 
     /// The Geometry cell's tooltip — the decoder for the compact value, so it
-    /// always spells out both paths, zeros included.
+    /// always spells out every path, zeros included.
     private var geometryDetail: String {
-        let sdf = stats.sdfCount, tri = stats.vertexCount
-        let sdfPart = sdf == 1 ? "1 instanced SDF shape" : "\(sdf) instanced SDF shapes"
-        let triPart = tri == 1 ? "1 tessellated triangle vertex" : "\(tri) tessellated triangle vertices"
-        return "Geometry this frame: \(sdfPart) + \(triPart)"
+        func line(_ n: Int, _ one: String, _ many: String) -> String {
+            n == 1 ? "1 \(one)" : "\(n) \(many)"
+        }
+        let parts = [
+            line(stats.sdfCount, "instanced SDF shape", "instanced SDF shapes"),
+            line(stats.vertexCount, "tessellated triangle vertex", "tessellated triangle vertices"),
+            line(stats.pointCount, "3D point-cloud splat", "3D point-cloud splats"),
+            line(stats.particleCount, "GPU particle", "GPU particles"),
+        ]
+        return "Geometry this frame: " + parts.joined(separator: " + ")
     }
 
     /// The full path, shown as a tooltip on the (often truncated) identity block.
