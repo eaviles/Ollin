@@ -273,6 +273,36 @@ open class Sketch {
         drawer.recordParticles(particles.current, count: particles.count)
     }
 
+    // MARK: 3D — camera & point clouds
+
+    /// Set the active 3D camera (see `Camera3D`). Setting one puts this frame into
+    /// 3D: the renderer adds a depth buffer and draws 3D geometry (point clouds)
+    /// through the camera. Per-frame state — set it in `draw()`, where a 3D sketch
+    /// usually animates an orbit; a 2D sketch never calls it and is unaffected.
+    public func camera(_ camera: Camera3D) { drawer.camera(camera) }
+
+    /// A perspective 3D camera looking from `eye` at `target` (sugar over `camera`);
+    /// `fieldOfView` is the vertical angle in radians.
+    public func perspective(eye: Vector3, target: Vector3 = .zero, up: Vector3 = .unitY,
+                            fieldOfView: Double = .pi / 3, near: Double = 0.1, far: Double = 1000) {
+        drawer.perspective(eye: eye, target: target, up: up,
+                           fieldOfView: fieldOfView, near: near, far: far)
+    }
+
+    /// An orthographic 3D camera looking from `eye` at `target`, framing `height`
+    /// world units top-to-bottom (sugar over `camera`).
+    public func ortho(eye: Vector3, target: Vector3 = .zero, up: Vector3 = .unitY,
+                      height: Double, near: Double = 0.1, far: Double = 1000) {
+        drawer.ortho(eye: eye, target: target, up: up, height: height, near: near, far: far)
+    }
+
+    /// Draw a 3D `PointCloud` as camera-facing disc splats through the active
+    /// camera (set one first with `camera`/`perspective`/`ortho`). Splats are sized
+    /// in world units, so perspective shrinks distant points; they composite in
+    /// draw order and under the active blend mode (`.add` sums them as light). A
+    /// no-op without a camera.
+    public func drawPointCloud(_ cloud: PointCloud) { drawer.drawPointCloud(cloud) }
+
     /// Run a compute `kernel` that writes `texture` — one thread per texel, over a
     /// 2-D grid. The write texture binds at **texture index 0**; the kernel takes
     /// `texture2d<float, access::write> [[texture(0)]]` and a `uint2 gid

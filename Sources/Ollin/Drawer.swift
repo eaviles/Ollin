@@ -70,6 +70,7 @@ enum GeometryKind {
     case image        // one textured quad in `imageVertices`, sampling `image`
     case glyphAtlas   // SDF-atlas text quads in `glyphVertices`, sampling `atlas`
     case particles    // instanced GPU-particle discs reading a compute buffer
+    case points3D     // instanced 3D point-cloud splats in `points`, through the camera
 }
 
 struct GeometryBatch {
@@ -78,6 +79,7 @@ struct GeometryBatch {
     var instanceStart: Int   // first SDF instance (sdf batches)
     var imageStart: Int = 0  // first image vertex (image batches)
     var glyphStart: Int = 0  // first glyph vertex (glyphAtlas batches)
+    var pointStart: Int = 0  // first point (points3D batches)
     /// The blend mode active when this run was recorded; selects the pipeline.
     /// A run breaks (a new batch opens) whenever the blend mode changes, so each
     /// batch composites with a single mode.
@@ -169,6 +171,16 @@ final class Drawer {
     /// vertex layout (position + uv + `tint` as the fill color).
     private(set) var glyphVertices: [OllinImageVertex] = []
 
+    /// 3D point-cloud splats recorded this frame (see `drawPointCloud`). World-space
+    /// points drawn through `camera3D`; each is one instanced camera-facing quad.
+    private(set) var points: [OllinPoint] = []
+
+    /// The active 3D camera, or `nil` for a 2D frame (the default). Per-frame state
+    /// like the geometry — set with `camera`/`perspective`/`ortho`, reset each
+    /// frame. When set, the renderer allocates a depth buffer and draws 3D geometry
+    /// through it; a 2D-only frame leaves it `nil` and is untouched.
+    private(set) var camera3D: Camera3D?
+
     /// Compute dispatches recorded this frame (see `compute` / `Particles`), drained
     /// by the renderer into a compute encoder *ahead* of the geometry pass so a sim
     /// step and the draw that reads its output stay ordered within one frame. Reset
@@ -238,6 +250,7 @@ final class Drawer {
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
                                      blendMode: currentBlend))
     }
 
@@ -252,6 +265,7 @@ final class Drawer {
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
                                      blendMode: currentBlend, image: image))
     }
 
@@ -265,6 +279,7 @@ final class Drawer {
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
                                      blendMode: currentBlend, atlas: atlas))
     }
 
@@ -283,6 +298,7 @@ final class Drawer {
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
                                      blendMode: currentBlend,
                                      particleBuffer: buffer, particleCount: count))
     }
@@ -358,6 +374,7 @@ final class Drawer {
         sdfInstances.removeAll(keepingCapacity: true)
         imageVertices.removeAll(keepingCapacity: true)
         glyphVertices.removeAll(keepingCapacity: true)
+        points.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
     }
@@ -455,6 +472,48 @@ final class Drawer {
     /// bitmap and stroke fonts.
     func textMode(_ mode: TextMode) { textRenderMode = mode }
 
+    // MARK: 3D camera & point clouds
+
+    /// Set the active 3D camera for this frame (see `Camera3D`); drawing a point
+    /// cloud needs one. The camera is per-frame state and resets to none each
+    /// frame, so set it from `draw()` (3D sketches typically animate it). Setting
+    /// it is what puts the frame into 3D — the renderer allocates a depth buffer
+    /// and draws 3D geometry through it. A 2D-only frame never calls this.
+    func camera(_ camera: Camera3D) { camera3D = camera }
+
+    /// A perspective 3D camera looking from `eye` at `target` (sugar over `camera`).
+    func perspective(eye: Vector3, target: Vector3 = .zero, up: Vector3 = .unitY,
+                     fieldOfView: Double = .pi / 3, near: Double = 0.1, far: Double = 1000) {
+        camera3D = .perspective(eye: eye, target: target, up: up,
+                                fieldOfView: fieldOfView, near: near, far: far)
+    }
+
+    /// An orthographic 3D camera looking from `eye` at `target`, framing `height`
+    /// world units top-to-bottom (sugar over `camera`).
+    func ortho(eye: Vector3, target: Vector3 = .zero, up: Vector3 = .unitY,
+               height: Double, near: Double = 0.1, far: Double = 1000) {
+        camera3D = .orthographic(eye: eye, target: target, up: up,
+                                 height: height, near: near, far: far)
+    }
+
+    /// Record a 3D point cloud, drawn as camera-facing disc splats through the
+    /// active camera. World-space points (they ride the camera, not the 2D
+    /// transform stack). A no-op without a camera or when the cloud is empty.
+    func drawPointCloud(_ cloud: PointCloud) {
+        guard camera3D != nil, !cloud.isEmpty else { return }
+        // SVG export is 2D vector only; a splat cloud has no vector outline.
+        if svgRecorder != nil { return }
+        ensureBatch(.points3D)
+        points.reserveCapacity(points.count + cloud.count)
+        for p in cloud.points {
+            var op = OllinPoint()
+            op.position = SIMD4<Float>(Float(p.position.x), Float(p.position.y), Float(p.position.z), 1)
+            op.color = p.color.simd4
+            op.size = Float(p.size)
+            points.append(op)
+        }
+    }
+
     // MARK: Frame lifecycle
 
     /// Drop last frame's geometry but keep drawing state. Called once per frame
@@ -464,9 +523,11 @@ final class Drawer {
         sdfInstances.removeAll(keepingCapacity: true)
         imageVertices.removeAll(keepingCapacity: true)
         glyphVertices.removeAll(keepingCapacity: true)
+        points.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         dispatches.removeAll(keepingCapacity: true)
         currentKind = nil
+        camera3D = nil
         // `accumulates` is a mode and persists; only the per-frame "did the sketch
         // wipe the pile this frame" flag resets here.
         backgroundSetThisFrame = false

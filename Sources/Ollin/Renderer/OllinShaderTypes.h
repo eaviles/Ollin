@@ -29,6 +29,7 @@
 typedef float2   simd_float2;
 typedef float4   simd_float4;
 typedef float3x3 simd_float3x3;
+typedef float4x4 simd_float4x4;
 #else
 #include <simd/simd.h>
 #endif
@@ -44,6 +45,17 @@ typedef struct {
 typedef struct {
     simd_float2 viewport;   // logical canvas size in points (width, height)
 } Uniforms;
+
+// Per-frame constants for the 3D pipelines (an active `Camera3D`). Bound at
+// vertex buffer index 2 — distinct from the 2D `Uniforms` at index 1, so a 3D
+// batch and the 2D batches around it (HUD/captions) each read their own without
+// rebinding. World space is right-handed, y-up; `view` takes a world point into
+// camera space (camera down −z) and `projection` into Metal clip space (z ∈ [0,1]).
+typedef struct {
+    simd_float4x4 view;        // world -> camera space
+    simd_float4x4 projection;  // camera -> clip space (Metal z in [0,1])
+    simd_float2 viewport;      // drawable size in points (for any screen-space math)
+} Uniforms3D;
 
 // One vertex of a textured quad (the image pipeline). Position is already in
 // sketch space (the CTM is applied on the CPU, like OllinVertex), `uv` samples
@@ -110,6 +122,21 @@ typedef struct {
     float seedA;            // free per-particle scratch (e.g. a respawn seed)
     float seedB;            // free per-particle scratch — pads the stride to 48
 } OllinParticle;
+
+// One point of a 3D point cloud, drawn by the instanced point pipeline
+// (`ollin_point_vertex`) as a camera-facing disc billboard sized in world units
+// (perspective shrinks distant points). Positions are world space (right-handed,
+// y-up) and reach the screen through `Camera3D`, not the 2D canvas mapping.
+// `position.w` is unused (a float4 keeps the layout unambiguous across CPU/GPU).
+// Stride 48 (three 16-byte rows): float4 @0, float4 @16, float @32, then pad.
+typedef struct {
+    simd_float4 position;   // world-space xyz (w unused)
+    simd_float4 color;      // straight (non-premultiplied) RGBA, 0…1
+    float size;             // splat diameter in world units
+    float _pad0;            // pads the stride to 48 (free for a future normal)
+    float _pad1;
+    float _pad2;
+} OllinPoint;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer
 // index 10), so a kernel reads `u.time`/`u.dt`/`u.resolution`/… with no plumbing.

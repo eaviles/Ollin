@@ -371,6 +371,16 @@ let package = Package(
             resources: [.copy("Kernels.metal")]
         ),
         .executableTarget(
+            name: "Example-PointCloud",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/PointCloud"
+        ),
+        .executableTarget(
+            name: "Example-DepthCloud",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/3D/DepthCloud"
+        ),
+        .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"

@@ -1121,6 +1121,59 @@ fragment float4 ollin_particle_fragment(ParticleOut in [[stage_in]]) {
     return float4(srgbToLinear(in.color.rgb), a);
 }
 
+// MARK: - 3D point cloud (instanced splats)
+//
+// One instanced quad per point, billboarded in camera (view) space so it always
+// faces the camera, sized in world units (perspective shrinks distant points).
+// Positions are world space and reach clip space through the camera's view +
+// projection (Uniforms3D at index 2), not the 2D viewport mapping. The disc and
+// its sub-pixel area-conserving anti-aliasing reuse diskCoverage/perceptualCoverage
+// exactly like the GPU-particle path, so a cloud of tiny splats fades by area
+// rather than flickering. Straight-alpha out, so `.add` sums splats as light.
+
+struct PointOut {
+    float4 position [[position]];
+    float2 local;     // billboard offset from the point center (view-space units)
+    float  radius;    // disc radius (world units)
+    float4 color;     // straight RGBA (sRGB), linearized in the fragment
+};
+
+vertex PointOut ollin_point_vertex(uint vid [[vertex_id]],
+                                   uint iid [[instance_id]],
+                                   const device OllinPoint *points [[buffer(0)]],
+                                   constant Uniforms3D &u [[buffer(2)]]) {
+    OllinPoint pt = points[iid];
+
+    // Two triangles forming a quad in [-1, 1], grown a little past the disc radius
+    // so the anti-aliasing halo has room inside the covered area (cf. the particle
+    // path's +2pt margin, here a proportional world-space margin).
+    const float2 corners[6] = { float2(-1, -1), float2(1, -1), float2(1, 1),
+                                float2(-1, -1), float2(1, 1), float2(-1, 1) };
+    float radius = max(pt.size * 0.5, 0.0);
+    float2 corner = corners[vid] * (radius * 1.3 + 1e-4);
+
+    // Billboard in camera space: offset the center by the corner in the camera's
+    // x/y plane (so the quad always faces the camera), then project.
+    float4 viewPos = u.view * float4(pt.position.xyz, 1.0);
+    viewPos.xy += corner;
+
+    PointOut out;
+    out.position = u.projection * viewPos;
+    out.local = corner;
+    out.radius = radius;
+    out.color = pt.color;
+    return out;
+}
+
+fragment float4 ollin_point_fragment(PointOut in [[stage_in]]) {
+    float fillCov, strokeCov;
+    diskCoverage(in.local, float2(in.radius), 0.0, 0.0, 0.0, fillCov, strokeCov);
+    float a = in.color.a * fillCov;
+    if (a <= 0.0) { return float4(0.0); }
+    // Linearize the sRGB tone and emit straight-alpha into the linear float target.
+    return float4(srgbToLinear(in.color.rgb), a);
+}
+
 // MARK: - Present / tone-map pass
 //
 // The frame's geometry is composited in a linear `rgba16Float` intermediate, so

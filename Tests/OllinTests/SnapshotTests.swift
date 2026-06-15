@@ -115,9 +115,46 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: ToneMappedBloom(), against: "tone-mapped-bloom")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func pointCloud3DMatchesReference() throws {
+        // A static 3D heightfield through a fixed camera — pins the 3D camera, the
+        // depth-tested point pipeline, and the instanced disc splats.
+        let diff = try Snapshot.meanDifference(of: PointCloud3DScene(), against: "point-cloud-3d")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
+
+/// A static 3D heightfield drawn as a point cloud from a fixed camera — exercises
+/// the 3D camera, the depth-tested point pipeline, and the instanced disc splats.
+/// No `time`, so it's deterministic at any frame.
+private final class PointCloud3DScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        camera(.orbiting(target: Vector3(0, -0.1, 0), radius: 5,
+                         azimuth: 0.6, elevation: 0.5, fieldOfView: .pi / 3.4))
+        let n = 64, span = 3.0
+        var cloud = PointCloud()
+        let step = span / Double(n - 1)
+        for i in 0..<n {
+            let x = -span / 2 + Double(i) * step
+            for j in 0..<n {
+                let z = -span / 2 + Double(j) * step
+                let rr = (x * x + z * z).squareRoot()
+                let h = sin(rr * 3.0) * 0.34 * exp(-rr * 0.35)
+                let t = max(0, min(1, h + 0.5))
+                cloud.add(Vector3(x, h, z),
+                          color: Color(hue: 0.62 - t * 0.52, saturation: 0.85, brightness: 0.42 + t * 0.58),
+                          size: 0.07)
+            }
+        }
+        drawPointCloud(cloud)
+    }
+}
 
 /// A few solid SDF fills on white — large flat regions, so anti-aliased edges
 /// are a small fraction of the frame. Pure SDF pipeline.

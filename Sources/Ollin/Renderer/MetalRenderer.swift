@@ -36,27 +36,69 @@ final class MetalRenderer {
     }
 
     /// Identifies a render pipeline so it's built once and cached in
-    /// `pipelines`. Each case names a vertex/fragment pair, and the associated
-    /// `BlendMode` makes the descriptor's blend factors part of the key — so a
-    /// pipeline is a *combination* of shader and blend mode (a new shader or a
-    /// new blend mode each slots in here, not in `init`). The `.normal` variants
-    /// are built up front; combining modes (`.add`, …) build lazily on first use.
-    private enum Pipeline: Hashable {
-        case solid(BlendMode)        // tessellated triangles (rects, lines, polygons, arcs)
-        case sdf(BlendMode)          // instanced SDF quads (circles, ellipses, rects, lines, arcs)
-        case image(BlendMode)        // textured quads (images), premultiplied-alpha blend
-        case glyphAtlas(BlendMode)   // SDF-atlas text quads, straight-alpha coverage blend
-        case points(BlendMode)       // instanced GPU-particle discs (compute-resident buffer)
-        case present                 // final fullscreen tone-map pass, float -> sRGB drawable
+    /// `pipelines`. A pipeline is a *combination* of a shader pair, blend mode,
+    /// alpha convention, and (for 3D) a depth-attachment format — captured as a
+    /// value here rather than one enum case per combination, so a new capability
+    /// adds a factory or a field, not a case. The depth axis is the reason this
+    /// is a descriptor struct and not an enum (see CLAUDE.md): a pipeline used in
+    /// a depth-tested pass must declare its depth format, so it's part of the key.
+    /// The `.normal`, no-depth variants are built up front; other combinations (a
+    /// combining blend mode, a depth-tested 3D pass) build lazily on first use.
+    private struct PipelineKey: Hashable {
+        var vertex: String
+        var fragment: String
+        var blend: BlendMode = .normal
+        /// Premultiplied color (the image path) vs straight-alpha (solid/SDF/glyph/points).
+        var premultiplied = false
+        /// nil for the 2D color-only pass; a depth format when the pass carries a
+        /// depth attachment (an active 3D camera). Part of the key because the
+        /// descriptor must declare it to be valid in that pass.
+        var depthFormat: MTLPixelFormat? = nil
+        /// The final tone-map pass is single-sample and targets the display
+        /// format, unlike every geometry pipeline; this flag keeps it in the same
+        /// cache (so live shader reload rebuilds it too).
+        var isPresent = false
 
-        /// The pipeline a recorded batch needs, from its geometry kind + blend.
-        static func forBatch(_ kind: GeometryKind, _ blend: BlendMode) -> Pipeline {
+        // tessellated triangles (rects, lines, polygons, arcs)
+        static func solid(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_vertex", fragment: "ollin_fragment", blend: blend, depthFormat: depth)
+        }
+        // instanced SDF quads (circles, ellipses, rects, lines, arcs)
+        static func sdf(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_sdf_vertex", fragment: "ollin_sdf_fragment", blend: blend, depthFormat: depth)
+        }
+        // textured quads (images); the texture keeps the CGImage's premultiplied alpha
+        static func image(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_image_vertex", fragment: "ollin_image_fragment",
+                        blend: blend, premultiplied: true, depthFormat: depth)
+        }
+        // SDF-atlas text quads, straight-alpha coverage
+        static func glyphAtlas(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_image_vertex", fragment: "ollin_glyph_fragment", blend: blend, depthFormat: depth)
+        }
+        // instanced GPU-particle discs (compute-resident buffer)
+        static func points(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_particle_vertex", fragment: "ollin_particle_fragment", blend: blend, depthFormat: depth)
+        }
+        // instanced 3D point-cloud splats (camera-facing discs, depth-tested)
+        static func pointCloud(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_point_vertex", fragment: "ollin_point_fragment", blend: blend, depthFormat: depth)
+        }
+        // final fullscreen tone-map pass, float -> sRGB drawable
+        static let present = PipelineKey(vertex: "ollin_present_vertex",
+                                         fragment: "ollin_present_fragment", isPresent: true)
+
+        /// The pipeline a recorded batch needs, from its geometry kind, blend, and
+        /// the active depth format (nil in 2D).
+        static func forBatch(_ kind: GeometryKind, _ blend: BlendMode,
+                             depth: MTLPixelFormat? = nil) -> PipelineKey {
             switch kind {
-            case .triangles:  return .solid(blend)
-            case .sdf:        return .sdf(blend)
-            case .image:      return .image(blend)
-            case .glyphAtlas: return .glyphAtlas(blend)
-            case .particles:  return .points(blend)
+            case .triangles:  return .solid(blend, depth: depth)
+            case .sdf:        return .sdf(blend, depth: depth)
+            case .image:      return .image(blend, depth: depth)
+            case .glyphAtlas: return .glyphAtlas(blend, depth: depth)
+            case .particles:  return .points(blend, depth: depth)
+            case .points3D:   return .pointCloud(blend, depth: depth)
             }
         }
     }
@@ -76,11 +118,14 @@ final class MetalRenderer {
     /// single-sample — MSAA happens in the intermediate, then resolves before the
     /// present pass tone-maps).
     private let sampleCount: Int
+    /// Depth format for 3D passes (an active `Camera3D`). 2D passes carry no depth
+    /// attachment, so a 2D sketch allocates none of this.
+    private let depthPixelFormat: MTLPixelFormat = .depth32Float
 
     /// Render pipelines, built on first use and reused. Keyed by `Pipeline` so
     /// a new capability is a new case + a branch in `makePipeline(_:)`, never
     /// more inline construction in `init` (see CLAUDE.md).
-    private var pipelines: [Pipeline: MTLRenderPipelineState] = [:]
+    private var pipelines: [PipelineKey: MTLRenderPipelineState] = [:]
 
     /// Compute kernels are open-ended (one per user source), so they can't be a
     /// fixed enum like the render pipelines. They're cached separately, keyed by a
@@ -122,6 +167,27 @@ final class MetalRenderer {
     private var glyphBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     private var glyphExportBuffer: MTLBuffer?
 
+    /// Parallel ring + export buffer for 3D point-cloud splats (`OllinPoint`),
+    /// advanced with `frameIndex` like the others.
+    private var pointBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    private var pointExportBuffer: MTLBuffer?
+
+    /// Depth-stencil states for the 3D path, built once. 3D geometry z-tests
+    /// (less-equal) and writes depth; 2D batches in a 3D pass leave depth alone
+    /// (always-pass, no write) so they composite over in draw order.
+    private lazy var depthTestState: MTLDepthStencilState? = {
+        let d = MTLDepthStencilDescriptor()
+        d.depthCompareFunction = .lessEqual
+        d.isDepthWriteEnabled = true
+        return device.makeDepthStencilState(descriptor: d)
+    }()
+    private lazy var noDepthState: MTLDepthStencilState? = {
+        let d = MTLDepthStencilDescriptor()
+        d.depthCompareFunction = .always
+        d.isDepthWriteEnabled = false
+        return device.makeDepthStencilState(descriptor: d)
+    }()
+
     /// The on-screen geometry targets: this frame's geometry composites into a
     /// linear-float MSAA target (`mainMSAA`, `.memoryless` — it lives only in tile
     /// memory since the frame clears each time and the samples aren't needed after
@@ -131,6 +197,11 @@ final class MetalRenderer {
     private var mainMSAA: MTLTexture?
     private var mainResolve: MTLTexture?
     private var mainSize = (width: 0, height: 0)
+
+    /// The depth target for the live 3D path, paired with `mainMSAA` (same size +
+    /// sample count). Allocated lazily only when a 3D camera is active — a 2D
+    /// sketch never makes one. Memoryless: depth lives only in tile memory.
+    private var mainDepth: MTLTexture?
 
     /// Off-screen targets for the GPU-texture frame hook (`texture(of:)`), kept and
     /// reused across frames — rebuilt only when the canvas size changes, so live
@@ -242,6 +313,22 @@ final class MetalRenderer {
         geomPass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
         geomPass.colorAttachments[0].storeAction = .multisampleResolve
 
+        // A 3D camera adds a depth attachment, paired to mainMSAA (allocated lazily;
+        // a 2D sketch never allocates one). Memoryless, cleared to the far plane.
+        var passDepthFormat: MTLPixelFormat? = nil
+        if drawer.camera3D != nil {
+            if mainDepth?.width != width || mainDepth?.height != height {
+                mainDepth = makeDepthMSAA(width: width, height: height)
+            }
+            if let depth = mainDepth {
+                geomPass.depthAttachment.texture = depth
+                geomPass.depthAttachment.loadAction = .clear
+                geomPass.depthAttachment.clearDepth = 1.0
+                geomPass.depthAttachment.storeAction = .dontCare
+                passDepthFormat = depthPixelFormat
+            }
+        }
+
         guard let commandBuffer = commandQueue.makeCommandBuffer() else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
             return
@@ -257,7 +344,9 @@ final class MetalRenderer {
                triangleBuffer: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
                sdfBuffer: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count),
                imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
-               glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count))
+               glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
+               pointBuffer: pointBuffer(at: frameIndex, for: drawer.points.count),
+               depthFormat: passDepthFormat)
         geomEncoder.endEncoding()
 
         if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: drawable.texture)) {
@@ -300,7 +389,9 @@ final class MetalRenderer {
                triangleBuffer: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
                sdfBuffer: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count),
                imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
-               glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count))
+               glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
+               pointBuffer: pointBuffer(at: frameIndex, for: drawer.points.count),
+               depthFormat: nil)   // 3D + accumulation isn't supported in M1
         encoder.endEncoding()
 
         // Present: tone-map the resolved float pile into the drawable. (The pile
@@ -331,7 +422,9 @@ final class MetalRenderer {
                triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
                sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
                imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
-               glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count))
+               glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
+               pointBuffer: exportPointBuffer(for: drawer.points.count),
+               depthFormat: nil)   // 3D + accumulation isn't supported in M1
         encoder.endEncoding()
 
         // Tone-map the float pile into the sRGB display texture, then read that back.
@@ -480,6 +573,17 @@ final class MetalRenderer {
         pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
         pass.colorAttachments[0].storeAction = .multisampleResolve
 
+        // A 3D camera adds a (freshly allocated, memoryless) depth attachment so the
+        // headless/snapshot path z-tests exactly like the live window.
+        var passDepthFormat: MTLPixelFormat? = nil
+        if drawer.camera3D != nil, let depth = makeDepthMSAA(width: width, height: height) {
+            pass.depthAttachment.texture = depth
+            pass.depthAttachment.loadAction = .clear
+            pass.depthAttachment.clearDepth = 1.0
+            pass.depthAttachment.storeAction = .dontCare
+            passDepthFormat = depthPixelFormat
+        }
+
         let bytesPerRow = width * 4
         let byteCount = bytesPerRow * height
 
@@ -492,7 +596,9 @@ final class MetalRenderer {
                triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
                sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
                imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
-               glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count))
+               glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
+               pointBuffer: exportPointBuffer(for: drawer.points.count),
+               depthFormat: passDepthFormat)
         encoder.endEncoding()
 
         // Tone-map the resolved float frame into the sRGB display texture.
@@ -559,7 +665,9 @@ final class MetalRenderer {
                triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
                sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
                imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
-               glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count))
+               glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
+               pointBuffer: exportPointBuffer(for: drawer.points.count),
+               depthFormat: nil)   // 3D over the texture/Syphon hand-off isn't supported in M1
         encoder.endEncoding()
 
         // Tone-map the resolved float frame into the sRGB display texture handed out.
@@ -579,11 +687,13 @@ final class MetalRenderer {
     private func encode(_ drawer: Drawer, viewport: SIMD2<Float>,
                         into encoder: MTLRenderCommandEncoder,
                         triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?,
-                        imageBuffer: MTLBuffer?, glyphBuffer: MTLBuffer?) {
+                        imageBuffer: MTLBuffer?, glyphBuffer: MTLBuffer?,
+                        pointBuffer: MTLBuffer?, depthFormat: MTLPixelFormat?) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
         let imageVertices = drawer.imageVertices
         let glyphVertices = drawer.glyphVertices
+        let points = drawer.points
         let batches = drawer.batches
         guard !batches.isEmpty else { return }
 
@@ -607,9 +717,25 @@ final class MetalRenderer {
                 glyphBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
             }
         }
+        if !points.isEmpty, let pointBuffer {
+            points.withUnsafeBytes { raw in
+                pointBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
 
         var uniforms = Uniforms(viewport: viewport)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
+
+        // 3D camera constants for the points3D batches, bound once at index 2 —
+        // distinct from the 2D Uniforms at index 1, so the 2D batches around a 3D
+        // one are undisturbed. Built from the camera and the viewport's aspect.
+        if let camera = drawer.camera3D {
+            let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
+            var u3 = Uniforms3D(view: camera.viewMatrix,
+                                projection: camera.projectionMatrix(aspect: aspect),
+                                viewport: viewport)
+            encoder.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
+        }
 
         // The strip must be bound whenever the SDF fragment runs (it references
         // the texture even for all-solid frames), so resolve it once per encode.
@@ -618,13 +744,21 @@ final class MetalRenderer {
         let vertexStride = MemoryLayout<OllinVertex>.stride
         let instanceStride = MemoryLayout<SDFInstance>.stride
         let imageStride = MemoryLayout<OllinImageVertex>.stride
+        let pointStride = MemoryLayout<OllinPoint>.stride
         for i in batches.indices {
             let batch = batches[i]
             let next = i + 1 < batches.count ? batches[i + 1] : nil
-            // The pipeline for this batch's geometry kind *and* blend mode; built
-            // on first use of a given mode. Skip the batch if it can't be built
-            // (never expected — same shader, different blend factors).
-            guard let state = try? pipeline(.forBatch(batch.kind, batch.blendMode)) else { continue }
+            // The pipeline for this batch's geometry kind, blend mode, *and* the
+            // pass's depth format; built on first use of a combination. Skip the
+            // batch if it can't be built (never expected — same shaders).
+            guard let state = try? pipeline(.forBatch(batch.kind, batch.blendMode, depth: depthFormat)) else { continue }
+            // In a depth pass (active camera): 3D batches z-test + write depth, 2D
+            // batches around them leave depth alone so they composite over in draw
+            // order. With no depth attachment the encoder keeps its default state,
+            // so 2D-only frames are byte-identical to before.
+            if depthFormat != nil {
+                encoder.setDepthStencilState(batch.kind == .points3D ? depthTestState : noDepthState)
+            }
             switch batch.kind {
             case .triangles:
                 let end = next?.vertexStart ?? vertices.count
@@ -674,6 +808,17 @@ final class MetalRenderer {
                 encoder.setVertexBuffer(buffer, offset: 0, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6,
                                        instanceCount: batch.particleCount)
+            case .points3D:
+                // 3D point-cloud splats: one instanced camera-facing quad per point,
+                // projected by the camera constants bound at index 2 above. Each draw
+                // is a run in the per-frame `points` array (count from the next
+                // batch's start), like the SDF/triangle paths.
+                let end = next?.pointStart ?? points.count
+                let count = end - batch.pointStart
+                guard count > 0, let pointBuffer, drawer.camera3D != nil else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(pointBuffer, offset: batch.pointStart * pointStride, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             }
         }
     }
@@ -783,6 +928,19 @@ final class MetalRenderer {
         return device.makeTexture(descriptor: desc)
     }
 
+    /// A multisample depth target for a 3D pass, matching the geometry MSAA target's
+    /// size and sample count. Memoryless — depth is consumed within the pass
+    /// (storeAction `.dontCare`), never backed by DRAM.
+    private func makeDepthMSAA(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: depthPixelFormat, width: width, height: height, mipmapped: false)
+        desc.textureType = .type2DMultisample
+        desc.sampleCount = sampleCount
+        desc.usage = .renderTarget
+        desc.storageMode = .memoryless
+        return device.makeTexture(descriptor: desc)
+    }
+
     /// The single-sample linear-float resolve target: the MSAA resolve destination
     /// (`.renderTarget`) that the present pass then samples (`.shaderRead`).
     private func makeFloatResolve(width: Int, height: Int) -> MTLTexture? {
@@ -835,10 +993,10 @@ final class MetalRenderer {
 
     /// Return the cached pipeline for `kind`, building and caching it on first
     /// use.
-    private func pipeline(_ kind: Pipeline) throws -> MTLRenderPipelineState {
-        if let existing = pipelines[kind] { return existing }
-        let built = try makePipeline(kind)
-        pipelines[kind] = built
+    private func pipeline(_ key: PipelineKey) throws -> MTLRenderPipelineState {
+        if let existing = pipelines[key] { return existing }
+        let built = try makePipeline(key)
+        pipelines[key] = built
         return built
     }
 
@@ -874,8 +1032,8 @@ final class MetalRenderer {
     /// it); a bad shader edit never blanks or crashes the running sketch.
     func reloadLibrary(source: String) throws {
         let newLibrary = try device.makeLibrary(source: MetalRenderer.composeShaderSource(source), options: nil)
-        let kinds = pipelines.isEmpty ? [Pipeline.solid(.normal)] : Array(pipelines.keys)
-        var rebuilt: [Pipeline: MTLRenderPipelineState] = [:]
+        let kinds = pipelines.isEmpty ? [PipelineKey.solid(.normal)] : Array(pipelines.keys)
+        var rebuilt: [PipelineKey: MTLRenderPipelineState] = [:]
         for kind in kinds {
             rebuilt[kind] = try makePipeline(kind, using: newLibrary)
         }
@@ -890,43 +1048,21 @@ final class MetalRenderer {
     /// The single place pipeline descriptors are constructed. Add a `case` here
     /// when you add a `Pipeline` — e.g. instanced/SDF circles get their own
     /// vertex/fragment functions and (for instancing) a per-instance buffer.
-    private func makePipeline(_ kind: Pipeline) throws -> MTLRenderPipelineState {
-        try makePipeline(kind, using: library)
+    private func makePipeline(_ key: PipelineKey) throws -> MTLRenderPipelineState {
+        try makePipeline(key, using: library)
     }
 
-    private func makePipeline(_ kind: Pipeline, using library: MTLLibrary) throws -> MTLRenderPipelineState {
-        switch kind {
-        case let .solid(blend):
-            // Solid-color triangles: rects, lines, polygons, arcs.
-            return try makePipeline(vertex: "ollin_vertex", fragment: "ollin_fragment",
-                                    using: library, blend: blend)
-        case let .sdf(blend):
-            // Instanced SDF quads: circles, ellipses, rects, lines, arcs. The
-            // fragment returns straight-alpha color, so it shares the solid
-            // pipeline's blend.
-            return try makePipeline(vertex: "ollin_sdf_vertex", fragment: "ollin_sdf_fragment",
-                                    using: library, blend: blend)
-        case let .image(blend):
-            // Textured quads. The texture keeps the CGImage's premultiplied alpha,
-            // so this pipeline blends premultiplied (source factor .one) rather than
-            // by source alpha.
-            return try makePipeline(vertex: "ollin_image_vertex", fragment: "ollin_image_fragment",
-                                    using: library, premultiplied: true, blend: blend)
-        case let .glyphAtlas(blend):
-            // SDF-atlas text. Reuses the image vertex (position + uv + color); the
-            // fragment turns the sampled distance into coverage and emits straight
-            // color, so it blends by source alpha like the solid/SDF paths.
-            return try makePipeline(vertex: "ollin_image_vertex", fragment: "ollin_glyph_fragment",
-                                    using: library, premultiplied: false, blend: blend)
-        case let .points(blend):
-            // Instanced GPU-particle discs. The fragment emits straight-alpha disc
-            // coverage, so it shares the solid/SDF straight-alpha blend (additive
-            // sums it as light).
-            return try makePipeline(vertex: "ollin_particle_vertex", fragment: "ollin_particle_fragment",
-                                    using: library, premultiplied: false, blend: blend)
-        case .present:
+    private func makePipeline(_ key: PipelineKey, using library: MTLLibrary) throws -> MTLRenderPipelineState {
+        // The present pass is the one pipeline that targets the display format at
+        // single-sample with blending off; every other key is a geometry pipeline
+        // into the float intermediate, fully described by its shader pair + blend +
+        // alpha convention + depth format.
+        if key.isPresent {
             return try makePresentPipeline(using: library)
         }
+        return try makePipeline(vertex: key.vertex, fragment: key.fragment, using: library,
+                                premultiplied: key.premultiplied, blend: key.blend,
+                                depthFormat: key.depthFormat)
     }
 
     /// The final tone-map pass: a fullscreen triangle sampling the resolved
@@ -955,7 +1091,8 @@ final class MetalRenderer {
     private func makePipeline(vertex: String, fragment: String,
                               using library: MTLLibrary,
                               premultiplied: Bool = false,
-                              blend: BlendMode = .normal) throws -> MTLRenderPipelineState {
+                              blend: BlendMode = .normal,
+                              depthFormat: MTLPixelFormat? = nil) throws -> MTLRenderPipelineState {
         guard let vertexFunction = library.makeFunction(name: vertex),
               let fragmentFunction = library.makeFunction(name: fragment) else {
             throw RendererError.shaderFunctions
@@ -966,6 +1103,12 @@ final class MetalRenderer {
         descriptor.fragmentFunction = fragmentFunction
         // Must match the MTKView's MSAA sample count or pipeline creation fails.
         descriptor.rasterSampleCount = sampleCount
+        // A depth-tested pass (an active 3D camera) needs the pipeline to declare
+        // its depth format; 2D leaves it unset (.invalid), so 2D pipelines stay
+        // byte-identical to before this descriptor migration.
+        if let depthFormat {
+            descriptor.depthAttachmentPixelFormat = depthFormat
+        }
 
         let state = blend.blendState(premultiplied: premultiplied)
         let attachment = descriptor.colorAttachments[0]!
@@ -1065,6 +1208,26 @@ final class MetalRenderer {
         if let buffer = glyphExportBuffer, buffer.length >= needed { return buffer }
         glyphExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
         return glyphExportBuffer
+    }
+
+    /// Return the point-cloud ring buffer at `index`, grown on demand. Mirrors
+    /// `vertexBuffer(at:for:)`.
+    private func pointBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinPoint>.stride
+        if let buffer = pointBuffers[index], buffer.length >= needed {
+            return buffer
+        }
+        let capacity = needed + needed / 2
+        pointBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
+        return pointBuffers[index]
+    }
+
+    /// The off-screen export buffer for point-cloud splats, grown on demand.
+    private func exportPointBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinPoint>.stride
+        if let buffer = pointExportBuffer, buffer.length >= needed { return buffer }
+        pointExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return pointExportBuffer
     }
 
     /// Splice the shared CPU/GPU type header into shader source for runtime

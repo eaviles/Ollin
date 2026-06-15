@@ -1,0 +1,163 @@
+import Foundation
+import simd
+
+/// A camera for 3D drawing: an eye looking at a target, plus how it flattens
+/// space onto the canvas (perspective or orthographic).
+///
+/// 2D is Ollin's default, and a 2D sketch never makes one of these. Setting a
+/// camera — `camera(...)`, `perspective(...)`, or `ortho(...)` on a `Sketch` —
+/// is what puts a frame into 3D: the renderer then allocates a depth buffer and
+/// draws 3D geometry (a point cloud today) through this camera's view and
+/// projection. Omit the camera and nothing changes; the 2D path is untouched.
+///
+/// World space is right-handed with **y up**: x runs right, y up, and the camera
+/// looks down its local −z. Distances are in world units — whatever the geometry
+/// uses (meters for a depth cloud, say). This is a different convention from the
+/// 2D canvas (top-left origin, y-down, points); 3D geometry lives in its own
+/// world space and reaches the screen through the camera, not the 2D mapping.
+public struct Camera3D: Equatable, Sendable {
+
+    /// How the camera flattens space onto the canvas.
+    public enum Projection: Equatable, Sendable {
+        /// Perspective: nearer is bigger, framed by a vertical field of view in
+        /// radians (the full top-to-bottom angle).
+        case perspective(fieldOfView: Double)
+        /// Orthographic: no foreshortening, framing `height` world units tall.
+        case orthographic(height: Double)
+    }
+
+    /// The camera position — where you look *from*.
+    public var eye: Vector3
+    /// The point the camera looks *at*.
+    public var target: Vector3
+    /// Which way is up for the camera (usually `.unitY`).
+    public var up: Vector3
+    /// The near clip distance; geometry nearer than this is cut away. Must be > 0
+    /// for a perspective camera.
+    public var near: Double
+    /// The far clip distance; geometry beyond this is cut away.
+    public var far: Double
+    /// Perspective or orthographic, with its parameter.
+    public var projection: Projection
+
+    public init(eye: Vector3, target: Vector3, up: Vector3 = .unitY,
+                near: Double = 0.1, far: Double = 1000,
+                projection: Projection = .perspective(fieldOfView: .pi / 3)) {
+        self.eye = eye
+        self.target = target
+        self.up = up
+        self.near = near
+        self.far = far
+        self.projection = projection
+    }
+}
+
+public extension Camera3D {
+    /// A perspective camera at `eye` looking at `target`.
+    static func perspective(eye: Vector3, target: Vector3 = .zero, up: Vector3 = .unitY,
+                            fieldOfView: Double = .pi / 3,
+                            near: Double = 0.1, far: Double = 1000) -> Camera3D {
+        Camera3D(eye: eye, target: target, up: up, near: near, far: far,
+                 projection: .perspective(fieldOfView: fieldOfView))
+    }
+
+    /// An orthographic camera at `eye` looking at `target`, framing `height`
+    /// world units from top to bottom.
+    static func orthographic(eye: Vector3, target: Vector3 = .zero, up: Vector3 = .unitY,
+                             height: Double, near: Double = 0.1, far: Double = 1000) -> Camera3D {
+        Camera3D(eye: eye, target: target, up: up, near: near, far: far,
+                 projection: .orthographic(height: height))
+    }
+
+    /// A perspective camera orbiting `target` on a sphere of `radius`, at
+    /// `azimuth` (turn around the up axis, 0 looking down +z) and `elevation`
+    /// (tilt above the horizontal), both in radians. The easy way to spin a
+    /// camera around a scene from a sketch.
+    static func orbiting(target: Vector3 = .zero, radius: Double,
+                         azimuth: Double = 0, elevation: Double = 0,
+                         fieldOfView: Double = .pi / 3,
+                         near: Double = 0.1, far: Double = 1000) -> Camera3D {
+        let ce = cos(elevation)
+        let eye = target + Vector3(radius * ce * sin(azimuth),
+                                   radius * sin(elevation),
+                                   radius * ce * cos(azimuth))
+        return Camera3D(eye: eye, target: target, up: .unitY,
+                        near: near, far: far,
+                        projection: .perspective(fieldOfView: fieldOfView))
+    }
+}
+
+// MARK: - Matrices (internal — the renderer consumes these; sketches set the camera)
+
+extension Camera3D {
+    /// The view matrix (world → camera space), column-major for Metal.
+    var viewMatrix: simd_float4x4 {
+        Camera3D.lookAt(eye: eye.simd3, center: target.simd3, up: up.simd3)
+    }
+
+    /// The projection matrix (camera → clip space) for the given viewport
+    /// `aspect` ratio (width ÷ height), column-major, with Metal's clip-space
+    /// z ∈ [0, 1].
+    func projectionMatrix(aspect: Double) -> simd_float4x4 {
+        let a = Float(aspect <= 0 ? 1 : aspect)
+        switch projection {
+        case .perspective(let fov):
+            return Camera3D.perspective(fovY: Float(fov), aspect: a,
+                                        near: Float(near), far: Float(far))
+        case .orthographic(let height):
+            return Camera3D.orthographic(height: Float(height), aspect: a,
+                                         near: Float(near), far: Float(far))
+        }
+    }
+
+    /// `projection · view` for the given viewport aspect — multiply a world-space
+    /// point (as a `float4` with w = 1) by this to land it in clip space.
+    func viewProjectionMatrix(aspect: Double) -> simd_float4x4 {
+        projectionMatrix(aspect: aspect) * viewMatrix
+    }
+
+    /// Right-handed look-at: world → camera space, camera looking down −z.
+    /// Column-major (Metal). Written from the standard formula.
+    static func lookAt(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {
+        let z = simd_normalize(eye - center)        // +z points back toward the eye
+        let x = simd_normalize(simd_cross(up, z))   // camera right
+        let y = simd_cross(z, x)                     // camera up (re-orthogonalized)
+        return simd_float4x4(columns: (
+            SIMD4<Float>(x.x, y.x, z.x, 0),
+            SIMD4<Float>(x.y, y.y, z.y, 0),
+            SIMD4<Float>(x.z, y.z, z.z, 0),
+            SIMD4<Float>(-simd_dot(x, eye), -simd_dot(y, eye), -simd_dot(z, eye), 1)
+        ))
+    }
+
+    /// Right-handed perspective with Metal's z ∈ [0, 1] clip range (near → 0,
+    /// far → 1). `fovY` is the full vertical field of view in radians.
+    static func perspective(fovY: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
+        let f = 1 / tan(fovY / 2)
+        let zRange = near - far
+        return simd_float4x4(columns: (
+            SIMD4<Float>(f / aspect, 0, 0, 0),
+            SIMD4<Float>(0, f, 0, 0),
+            SIMD4<Float>(0, 0, far / zRange, -1),
+            SIMD4<Float>(0, 0, (near * far) / zRange, 0)
+        ))
+    }
+
+    /// Right-handed orthographic with Metal's z ∈ [0, 1] clip range, centered,
+    /// framing `height` world units tall and `height · aspect` wide.
+    static func orthographic(height: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
+        let w = height * aspect
+        let zRange = near - far
+        return simd_float4x4(columns: (
+            SIMD4<Float>(2 / w, 0, 0, 0),
+            SIMD4<Float>(0, 2 / height, 0, 0),
+            SIMD4<Float>(0, 0, 1 / zRange, 0),
+            SIMD4<Float>(0, 0, near / zRange, 1)
+        ))
+    }
+}
+
+extension Vector3 {
+    /// This vector as a single-precision SIMD triple (for the GPU/matrix side).
+    var simd3: SIMD3<Float> { SIMD3<Float>(Float(x), Float(y), Float(z)) }
+}
