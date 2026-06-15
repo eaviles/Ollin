@@ -1,0 +1,39 @@
+# SwiftLint config for Ollin.
+#
+# Like the .swiftformat config, this is an *allowlist* (`only_rules`). SwiftLint's
+# default rule set produces ~3,500 violations here, almost all from rules that
+# encode style opinions Ollin deliberately rejects — `identifier_name` (the short
+# names `p`, `fd`, `dx` that read fine in tight math) and `line_length` (the dense
+# doc-comments). Those aren't bugs, so they're off.
+#
+# What's left is a small set of *correctness / clarity* rules that catch real
+# future mistakes and are a verified zero-change no-op on the current tree. Rules
+# that fire only false positives on this codebase are intentionally NOT here:
+#   - weak_delegate          — Ollin's capture delegates are correctly *strong*
+#                              (AVFoundation/CoreMedia don't retain them).
+#   - empty_count            — flags the `count >= 0` tautology assertions in tests
+#                              where `isEmpty` would change the meaning.
+# Add a rule here only after confirming it's clean against the tree.
+
+only_rules:
+  - empty_string
+  - first_where
+  - last_where
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - contains_over_first_not_nil
+  - contains_over_range_nil_comparison
+  - redundant_nil_coalescing
+  - toggle_bool
+  - unused_optional_binding
+  - force_cast
+  - block_based_kvo
+  - empty_collection_literal
+  - flatmap_over_map_reduce
+  - legacy_random
+
+# Never lint vendored third-party source or build output.
+excluded:
+  - External
+  - .build
+  - DerivedData

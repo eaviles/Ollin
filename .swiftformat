@@ -1,0 +1,19 @@
+# SwiftFormat config for Ollin.
+#
+# Ollin's source is hand-tuned — intentional column alignment, inline loop
+# bodies, dense doc-comments, blank lines kept at the start of a scope. A default
+# autoformatter rewrites ~85% of the files and fights all of that. So this config
+# is an *allowlist*: only the safe-hygiene rules below ever run (`--rules` replaces
+# the default set entirely), and they're verified to be a zero-change no-op on the
+# current tree. The opinionated rules (indent, wrapping, blank-line placement,
+# import sorting, redundantSelf) stay off on purpose — they're not "wrong", they
+# just don't match this codebase's deliberate style.
+#
+# Run by the pre-commit hook (lint-only) and by `Scripts/format.sh` (apply).
+
+--swiftversion 6.0
+
+--rules linebreakAtEndOfFile,trailingSpace,consecutiveBlankLines,duplicateImports,redundantParens,redundantReturn,spaceInsideBrackets,spaceInsideParens,spaceInsideBraces,spaceAroundBraces,emptyBraces,redundantBackticks
+
+# Never touch vendored third-party source or build output.
+--exclude External,.build,DerivedData

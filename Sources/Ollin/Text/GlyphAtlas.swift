@@ -177,7 +177,7 @@ final class GlyphAtlas: @unchecked Sendable {
         let range = Double(2 * spread)
         for i in 0..<n {
             let isInside = coverage[i] >= 128
-            let signed = isInside ? (distToOutside[i]).squareRoot() : -(distToInside[i]).squareRoot()
+            let signed = isInside ? distToOutside[i].squareRoot() : -distToInside[i].squareRoot()
             let norm = 0.5 + signed / range
             out[i] = UInt8(max(0, min(255, (norm * 255).rounded())))
         }

@@ -1,0 +1,42 @@
+#!/bin/sh
+# Ollin pre-commit hook — lint staged Swift files with SwiftFormat + SwiftLint.
+#
+# Non-destructive: it *checks* and blocks the commit on issues, but never rewrites
+# your files. Auto-fix formatting with `Scripts/format.sh`. Both configs (.swiftformat,
+# .swiftlint.yml) are tuned to be a no-op on the existing tree, so this only fires on
+# newly introduced issues. Install with `Scripts/install-git-hooks.sh`; bypass once
+# with `git commit --no-verify`. Skips cleanly if a tool isn't installed.
+
+root=$(git rev-parse --show-toplevel)
+cd "$root" || exit 0
+
+# Staged Swift files (added/copied/modified), minus vendored source.
+files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$' | grep -v '^External/')
+[ -z "$files" ] && exit 0
+
+status=0
+
+if command -v swiftformat >/dev/null 2>&1; then
+  if ! swiftformat --lint $files >/dev/null 2>&1; then
+    echo "✗ SwiftFormat — formatting issues in staged files:"
+    swiftformat --lint $files 2>&1 | grep -E '\.swift:[0-9]'
+    echo "  Fix with: Scripts/format.sh"
+    status=1
+  fi
+else
+  echo "• SwiftFormat not installed (brew install swiftformat) — skipping format check."
+fi
+
+if command -v swiftlint >/dev/null 2>&1; then
+  out=$(swiftlint lint --quiet $files 2>/dev/null)
+  if [ -n "$out" ]; then
+    echo "✗ SwiftLint — issues in staged files:"
+    echo "$out"
+    status=1
+  fi
+else
+  echo "• SwiftLint not installed (brew install swiftlint) — skipping lint check."
+fi
+
+[ "$status" -ne 0 ] && echo "Commit blocked. Fix the above, or bypass once with: git commit --no-verify"
+exit $status

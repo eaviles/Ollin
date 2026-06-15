@@ -69,4 +69,3 @@ final class DepthRelief: Sketch {
         drawCaption("DepthRelief — depth from one webcam: nearer is bigger and warmer")
     }
 }
-
