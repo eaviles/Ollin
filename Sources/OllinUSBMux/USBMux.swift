@@ -9,27 +9,29 @@ import Darwin
 /// connection to a TCP port the device is listening on.
 ///
 /// This is the standard, publicly-documented usbmuxd plist protocol — wholly
-/// independent of any RGBD library; only the *port* it connects to (and the
-/// frame format read from it) belongs to the streaming app.
+/// independent of any RGBD or sensor library; only the *port* it connects to (and
+/// the frame format read from it) belongs to the streaming app. Shared (via the
+/// `package`-level surface) by `OllinRecord3D` (Record3D's RGBD stream on 1337)
+/// and `OllinPhone` (the Ollin capture app's sensor stream on 1338).
 ///
 /// The protocol: each message is a 16-byte little-endian header
 /// (`length`, `version` = 1, `type` = 8 for plist, `tag`) followed by an XML
 /// property-list body. `ListDevices` returns the attached devices; `Connect`
 /// (with the target port in **network byte order**) turns the socket into a
 /// transparent pipe to that port on success.
-enum USBMux {
+package enum USBMux {
 
     /// The macOS usbmuxd Unix-domain socket.
     static let socketPath = "/var/run/usbmuxd"
 
     /// One attached device, as reported by `ListDevices`.
-    struct DeviceInfo: Sendable {
-        let deviceID: Int
-        let serialNumber: String
-        let connectionType: String
+    package struct DeviceInfo: Sendable {
+        package let deviceID: Int
+        package let serialNumber: String
+        package let connectionType: String
     }
 
-    enum USBMuxError: Error, CustomStringConvertible {
+    package enum USBMuxError: Error, CustomStringConvertible {
         case socketUnavailable
         case noDevice
         case handshakeFailed
@@ -37,7 +39,7 @@ enum USBMux {
         /// refused" — the device is reachable but nothing is listening on the port.
         case connectFailed(Int)
 
-        var description: String {
+        package var description: String {
             switch self {
             case .socketUnavailable: return "Could not reach usbmuxd at \(USBMux.socketPath)"
             case .noDevice: return "No USB device attached"
@@ -55,7 +57,7 @@ enum USBMux {
     }
 
     /// List the devices usbmuxd currently sees.
-    static func listDevices() throws -> [DeviceInfo] {
+    package static func listDevices() throws -> [DeviceInfo] {
         let fd = try openSocket()
         defer { close(fd) }
         var request = baseRequest
@@ -79,7 +81,7 @@ enum USBMux {
     /// port — read and write it directly. The caller owns it and must `close` it.
     /// Throws `.noDevice` when nothing is attached and `.connectFailed(3)` when the
     /// device is reachable but no server is listening on `port`.
-    static func connect(toPort port: UInt16) throws -> Int32 {
+    package static func connect(toPort port: UInt16) throws -> Int32 {
         let devices = try listDevices()
         // Prefer a USB device; fall back to whatever is attached.
         guard let device = devices.first(where: { $0.connectionType == "USB" }) ?? devices.first else {
@@ -159,7 +161,7 @@ enum USBMux {
     // MARK: - Low-level read/write
 
     /// Read exactly `count` bytes (or fewer if the connection ends or times out).
-    static func readFully(_ fd: Int32, _ count: Int) -> Data {
+    package static func readFully(_ fd: Int32, _ count: Int) -> Data {
         var out = Data()
         out.reserveCapacity(count)
         var buffer = [UInt8](repeating: 0, count: min(count, 65536))

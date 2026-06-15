@@ -5,6 +5,7 @@ import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
 import Ollin
+import OllinUSBMux
 @testable import OllinRecord3D
 #if canImport(Darwin)
 import Darwin

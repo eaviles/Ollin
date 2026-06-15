@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 import os
 import Ollin
+import OllinUSBMux
 #if canImport(Darwin)
 import Darwin
 #endif

@@ -70,6 +70,11 @@ let package = Package(
         // The device-free first slice of the iPhone-as-a-sensor-array work; pure
         // Apple-native decode (ZIP + LZFSE + ImageIO), kept out of `Ollin`.
         .library(name: "OllinRecord3D", targets: ["OllinRecord3D"]),
+        // The Ollin iPhone capture app's Mac client: `import OllinPhone` to read a
+        // tethered phone's live on-device ARKit sensor stream (body pose, device
+        // motion) over USB. The own-app sibling of OllinRecord3D's borrowed RGBD
+        // feed; the wire format (PhoneWire) is shared verbatim with the iOS app.
+        .library(name: "OllinPhone", targets: ["OllinPhone"]),
     ],
     targets: [
         // Shared, runtime-side dev machinery used by the live host and the
@@ -90,7 +95,7 @@ let package = Package(
             // are linked (not used by the host) so a hot-swapped sketch that
             // `import`s them resolves its symbols against this process at load,
             // the same way it resolves Ollin's.
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon", "OllinCamera", "OllinRecord3D"],
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon", "OllinCamera", "OllinRecord3D", "OllinPhone"],
             path: "Sources/OllinLive",
             // Export the host's symbols so a hot-swapped sketch `.dylib`
             // (compiled with `-undefined dynamic_lookup`) resolves its Ollin
@@ -109,7 +114,7 @@ let package = Package(
             // Links the satellite libraries (OllinAudio/OllinOSC/OllinMIDI/
             // OllinPhysics) so gallery sketches that `import` them resolve at load
             // (same reason as OllinLive above).
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon", "OllinCamera", "OllinRecord3D"],
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon", "OllinCamera", "OllinRecord3D", "OllinPhone"],
             path: "Sources/OllinExamples",
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
@@ -279,7 +284,24 @@ let package = Package(
         // lean; sketches opt in with `import OllinRecord3D`.
         .target(
             name: "OllinRecord3D",
-            dependencies: ["Ollin"]
+            dependencies: ["Ollin", "OllinUSBMux"]
+        ),
+        // Shared usbmuxd transport: the publicly-documented protocol that tunnels a
+        // TCP connection to a USB-tethered iPhone (the plumbing Xcode and
+        // libimobiledevice use). Extracted from OllinRecord3D so OllinPhone shares
+        // it; `package`-level surface, no library product — it's transport plumbing,
+        // not public API. No dependencies (pure Foundation/Darwin).
+        .target(
+            name: "OllinUSBMux"
+        ),
+        // The Ollin iPhone capture app's Mac client: reads a tethered phone's live
+        // on-device ARKit sensor stream (body pose, device motion) over the usbmuxd
+        // tunnel. A satellite (like OllinRecord3D) so the drawing core stays lean.
+        // PhoneWire.swift is shared verbatim with the iOS app (Apps/OllinPhoneApp),
+        // so it imports only Foundation/simd — never Ollin.
+        .target(
+            name: "OllinPhone",
+            dependencies: ["Ollin", "OllinUSBMux"]
         ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
@@ -410,6 +432,13 @@ let package = Package(
             name: "Example-DepthLiftedPose",
             dependencies: ["Ollin", "OllinVision", "OllinRecord3D"],
             path: "Examples/3D/DepthLiftedPose"
+        ),
+        // The Ollin iPhone capture app's live body pose drawn as an orbiting 3D
+        // stick figure — the own-app sibling of Record3DLiveCloud.
+        .executableTarget(
+            name: "Example-PhoneBodyPose",
+            dependencies: ["Ollin", "OllinPhone"],
+            path: "Examples/3D/PhoneBodyPose"
         ),
         .executableTarget(
             name: "Example-Breathing",
@@ -1123,7 +1152,15 @@ let package = Package(
         // runs in CI with no committed binary asset.
         .testTarget(
             name: "OllinRecord3DTests",
-            dependencies: ["Ollin", "OllinRecord3D"]
+            dependencies: ["Ollin", "OllinRecord3D", "OllinUSBMux"]
+        ),
+        // Phone sensor-stream wire format: encode/decode round-trips for the motion
+        // and body-pose messages (GPU-free, CI-safe), plus a live-gated test that
+        // pulls a frame off a connected phone running the capture app and soft-skips
+        // without one (the Record3D pattern).
+        .testTarget(
+            name: "OllinPhoneTests",
+            dependencies: ["Ollin", "OllinPhone", "OllinUSBMux"]
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety
