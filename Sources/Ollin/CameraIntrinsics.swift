@@ -1,17 +1,18 @@
 import Foundation
-import Ollin
 
 /// A pinhole camera's calibration — focal length and principal point in pixels,
 /// at a stated image resolution — and the unprojection that turns a depth pixel
 /// into a 3D point.
 ///
-/// Kept in this satellite for now rather than the `Ollin` core: the live USB
-/// tether and the broader 3D mode will both want intrinsics, and that's the
-/// moment to lift a shared seam into the core — not before a second caller
-/// earns it.
+/// This is the bridge between a 2D depth map and 3D space: a depth source (a
+/// Record3D `.r3d` file or its live stream, an iPhone capture app, a depth model
+/// paired with a webcam) carries intrinsics alongside its depth, and anything
+/// that lifts pixels into the world — a point cloud, a depth-lifted skeleton —
+/// reads them here. Lives in the core so every depth source and the 3D mode share
+/// one definition.
 ///
 /// Intrinsics are tied to the resolution they were measured at, so they must be
-/// `scaled(to:)` before being used at another resolution (a recording's color
+/// `scaled(toWidth:height:)` before being used at another resolution (a color
 /// frame and its smaller depth map don't share a pixel grid).
 public struct CameraIntrinsics: Equatable, Sendable {
 

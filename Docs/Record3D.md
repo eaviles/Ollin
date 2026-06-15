@@ -96,6 +96,8 @@ struct RGBDFrame {
 
 `color` is a normal [`Image`](./Images.md) (usually higher-resolution than the depth map) you can also just `drawImage`. `depth` is metric depth in meters, row-major from the top-left.
 
+`RGBDFrame` and `CameraIntrinsics` are **core** types (in `Ollin`) — the source-agnostic shape every depth source produces — so beyond point clouds they also lift a single image point or a 2D body pose into metric 3D. See [RGBD frames and depth-lifted pose](./RGBD.md).
+
 <a name="live-usb"></a>
 
 ### Live streaming over USB

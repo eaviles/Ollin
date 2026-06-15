@@ -407,6 +407,11 @@ let package = Package(
             path: "Examples/3D/Record3DLiveCloud"
         ),
         .executableTarget(
+            name: "Example-DepthLiftedPose",
+            dependencies: ["Ollin", "OllinVision", "OllinRecord3D"],
+            path: "Examples/3D/DepthLiftedPose"
+        ),
+        .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"
