@@ -27,6 +27,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 ### 3D
 
 - [`3D`](./3D.md) - opt into a 3D camera and depth buffer: orbit a `Camera3D` (perspective or orthographic) and draw `PointCloud`s as instanced disc splats, including a live webcam depth cloud
+- [`Record3D`](./Record3D.md) - `import OllinRecord3D` to open an RGBD clip recorded by the Record3D iOS app and unproject its color-plus-depth frames into a 3D point cloud — an iPhone scan orbited on the Mac, from a file
 
 ### Generators
 

@@ -64,6 +64,12 @@ let package = Package(
         // installed once by the Ollin Camera app (Apps/OllinCameraApp); this
         // library connects to it from any sketch process.
         .library(name: "OllinCamera", targets: ["OllinCamera"]),
+        // Record3D RGBD recordings as a satellite library: `import OllinRecord3D`
+        // to open a `.r3d` clip captured by the Record3D iOS app and turn its
+        // color-plus-depth frames into 3D point clouds drawn through `Camera3D`.
+        // The device-free first slice of the iPhone-as-a-sensor-array work; pure
+        // Apple-native decode (ZIP + LZFSE + ImageIO), kept out of `Ollin`.
+        .library(name: "OllinRecord3D", targets: ["OllinRecord3D"]),
     ],
     targets: [
         // Shared, runtime-side dev machinery used by the live host and the
@@ -84,7 +90,7 @@ let package = Package(
             // are linked (not used by the host) so a hot-swapped sketch that
             // `import`s them resolves its symbols against this process at load,
             // the same way it resolves Ollin's.
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon", "OllinCamera"],
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon", "OllinCamera", "OllinRecord3D"],
             path: "Sources/OllinLive",
             // Export the host's symbols so a hot-swapped sketch `.dylib`
             // (compiled with `-undefined dynamic_lookup`) resolves its Ollin
@@ -103,7 +109,7 @@ let package = Package(
             // Links the satellite libraries (OllinAudio/OllinOSC/OllinMIDI/
             // OllinPhysics) so gallery sketches that `import` them resolve at load
             // (same reason as OllinLive above).
-            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon", "OllinCamera"],
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon", "OllinCamera", "OllinRecord3D"],
             path: "Sources/OllinExamples",
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
@@ -265,6 +271,16 @@ let package = Package(
             name: "OllinVideo",
             dependencies: ["Ollin"]
         ),
+        // Record3D RGBD recordings: a `Record3DRecording` that opens a `.r3d` clip
+        // (a ZIP of a metadata JSON + per-frame JPEG color, LZFSE float32 depth, and
+        // confidence) and unprojects each frame into a `PointCloud`. Native decode
+        // only (Foundation/Compression/ImageIO); the `.r3d` format is read clean-room
+        // from its public structure. A satellite (like OllinVideo) so the core stays
+        // lean; sketches opt in with `import OllinRecord3D`.
+        .target(
+            name: "OllinRecord3D",
+            dependencies: ["Ollin"]
+        ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
         // memory layout can't drift between the two sides. This thin C module
@@ -379,6 +395,11 @@ let package = Package(
             name: "Example-DepthCloud",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/3D/DepthCloud"
+        ),
+        .executableTarget(
+            name: "Example-Record3DCloud",
+            dependencies: ["Ollin", "OllinRecord3D"],
+            path: "Examples/3D/Record3DCloud"
         ),
         .executableTarget(
             name: "Example-Breathing",
@@ -1079,6 +1100,15 @@ let package = Package(
         .testTarget(
             name: "OllinVideoTests",
             dependencies: ["Ollin", "OllinVideo"]
+        ),
+        // Record3D decode correctness: synthesizes a tiny `.r3d` in memory (a ZIP
+        // of metadata + one JPEG + one LZFSE depth/confidence buffer) and checks
+        // the ZIP read, metadata/intrinsics parse, depth round-trip, depth-grid
+        // derivation, and the unprojection into a point cloud. GPU-free, so it
+        // runs in CI with no committed binary asset.
+        .testTarget(
+            name: "OllinRecord3DTests",
+            dependencies: ["Ollin", "OllinRecord3D"]
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety

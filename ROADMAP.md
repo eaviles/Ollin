@@ -44,7 +44,7 @@ An openFrameworks-style generator that scaffolds a ready-to-run sketch folder fr
 
 ## iPhone as a sensor array
 
-A Mac has no depth camera, inertial sensors, or spare Neural Engine for live perception; a tethered iPhone has all three. The idea: let the phone act as a sensor and on-device ML co-processor for a sketch that still renders on the Mac, capturing and perceiving (LiDAR point clouds, face and body tracking, segmentation, device motion, and more) and streaming typed results the sketch reads in `draw()`. The first slice is a live RGBD point cloud, the kind an Intel RealSense once fed openFrameworks. The wire protocol, the sensor catalog, and the build order are in the [design notes](DESIGN-NOTES.md#iphone-as-a-sensor-array-not-started).
+A Mac has no depth camera, inertial sensors, or spare Neural Engine for live perception; a tethered iPhone has all three. The idea: let the phone act as a sensor and on-device ML co-processor for a sketch that still renders on the Mac, capturing and perceiving (LiDAR point clouds, face and body tracking, segmentation, device motion, and more) and streaming typed results the sketch reads in `draw()`. Recorded RGBD clips already reconstruct on the Mac as point clouds (see [`Docs/Record3D.md`](Docs/Record3D.md)); the work ahead is the *live* tether — the phone streaming RGBD over a wire as the sketch renders, the kind of feed an Intel RealSense once gave openFrameworks — starting with a live point cloud and growing into the broader sensor stream. The wire protocol, the sensor catalog, and the build order are in the [design notes](DESIGN-NOTES.md#iphone-as-a-sensor-array-partly-shipped).
 
 ## 3D mode
 
