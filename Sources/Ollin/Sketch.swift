@@ -273,6 +273,41 @@ open class Sketch {
         drawer.recordParticles(particles.current, count: particles.count)
     }
 
+    /// Run a compute `kernel` that writes `texture` — one thread per texel, over a
+    /// 2-D grid. The write texture binds at **texture index 0**; the kernel takes
+    /// `texture2d<float, access::write> [[texture(0)]]` and a `uint2 gid
+    /// [[thread_position_in_grid]]`. Standard constants are at buffer index 10
+    /// (`u.time`/…) and any `params` at buffer index 11. Use this to **seed** a
+    /// simulation's initial state on the first frame, or for a generative image
+    /// kernel that writes from `gid` alone.
+    public func compute(_ kernel: ComputeKernel, writing texture: ComputeTexture,
+                        params: ComputeParams = ComputeParams()) {
+        drawer.recordDispatch(RecordedDispatch(
+            kernel: kernel, gridWidth: texture.width, gridHeight: texture.height,
+            textures: [texture], params: params.bytes))
+    }
+
+    /// Run a compute `kernel` reading `reading` (texture index 0) and writing
+    /// `writing` (texture index 1) — the texture ping-pong form. The kernel takes
+    /// `texture2d<float, access::read> [[texture(0)]]`, `texture2d<float,
+    /// access::write> [[texture(1)]]`, and a `uint2 gid`. The grid covers `writing`.
+    /// For a self-evolving field the render path also reads each frame, drive it
+    /// through a `PingPongTexture` (or the `Simulation` convenience) so a step never
+    /// reads a texture it's mid-write into.
+    public func compute(_ kernel: ComputeKernel, reading: ComputeTexture,
+                        writing: ComputeTexture, params: ComputeParams = ComputeParams()) {
+        drawer.recordDispatch(RecordedDispatch(
+            kernel: kernel, gridWidth: writing.width, gridHeight: writing.height,
+            textures: [reading, writing], params: params.bytes))
+    }
+
+    /// Step a `Simulation` one frame — records its `subSteps` kernel dispatches and
+    /// swaps its ping-pong textures so `current`/`image` end on the freshly written
+    /// field. `custom` passes up to four live floats the step reads as `custom.x…w`.
+    public func updateSimulation(_ simulation: Simulation, custom: SIMD4<Float> = .zero) {
+        simulation.recordUpdate(into: drawer, custom: custom)
+    }
+
     // MARK: Keyboard queries
 
     /// Whether `character` is currently held down — for continuous response while

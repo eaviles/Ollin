@@ -363,6 +363,14 @@ let package = Package(
             path: "Examples/Compute/CurlField"
         ),
         .executableTarget(
+            name: "Example-ReactionDiffusion",
+            dependencies: ["Ollin"],
+            path: "Examples/Compute/ReactionDiffusion",
+            // The kernels live in their own .metal file (highlighted, editor-checked);
+            // .copy ships the source for Ollin's runtime compiler to read + splice.
+            resources: [.copy("Kernels.metal")]
+        ),
+        .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"

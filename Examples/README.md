@@ -15,7 +15,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Audio](Audio/) | sound-reactive sketches (`import OllinAudio`) |
 | [Basic](Basic/) | the smallest starting point |
 | [Color](Color/) | palettes, colormaps, and color over time |
-| [Compute](Compute/) | GPU compute — a million particles updated and drawn on the GPU |
+| [Compute](Compute/) | GPU compute — a million particles, and reaction-diffusion / texture simulations |
 | [Images](Images/) | loading, drawing, tinting, and authoring images |
 | [Input](Input/) | mouse-driven sketches |
 | [Integration](Integration/) | talking to other apps and gear — OSC, MIDI, Syphon (`import OllinOSC` / `OllinMIDI` / `OllinSyphon`) |

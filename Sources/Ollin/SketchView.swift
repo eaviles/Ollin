@@ -617,12 +617,18 @@ public enum OllinApp {
         // surface, so render every frame into it — the captured frame N is the
         // built-up canvas, not a fresh draw of frame N alone.
         var accumulated: CGImage?
-        for k in 0...max(0, frame) {                 // advance so frame N is correct
+        let target = max(0, frame)
+        for k in 0...target {                        // advance so frame N is correct
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
             sketch.performDraw()
             if sketch.drawer.accumulates {
                 accumulated = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
                                                         width: width, height: height)
+            } else if k < target {
+                // A stateful compute sim must run on the GPU every frame to evolve;
+                // the intermediate frames we don't capture still need their steps
+                // executed (only the final frame is rendered + read back below).
+                renderer.stepCompute(sketch.drawer)
             }
         }
         if sketch.drawer.accumulates { return accumulated }
@@ -744,6 +750,11 @@ public enum OllinApp {
                 rendered = accumulates
                     ? renderer.accumulatedImage(of: sketch.drawer, viewport: viewport, width: width, height: height)
                     : renderer.image(of: sketch.drawer, viewport: viewport, width: width, height: height)
+            } else {
+                // Non-accumulating warmup frame: not captured, but a stateful compute
+                // sim still needs its steps run on the GPU so the field evolves into
+                // the first captured frame.
+                renderer.stepCompute(sketch.drawer)
             }
 
             if k < skipFrames {                           // warmup: built the pile, don't write

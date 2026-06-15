@@ -56,6 +56,13 @@ public final class Image {
     /// through `drawImage` without a CPU round-trip.
     private var externalTexture: MTLTexture?
 
+    /// A GPU-resident `ComputeTexture` this image wraps. Unlike `externalTexture`
+    /// (a concrete `MTLTexture`), this resolves the live texture *lazily at draw
+    /// time* — the compute texture may not be realized when the `Image` is built, and
+    /// its contents change every frame — so `drawImage(sim.image)` always composites
+    /// the latest kernel write. CPU pixel paths are inert, as for `externalTexture`.
+    private var computeTextureSource: ComputeTextureBindable?
+
     /// Draw a texture-backed image with its rows flipped (V coordinate inverted).
     /// Syphon textures follow the GL/Syphon bottom-left origin convention, the
     /// opposite of Ollin's top-left image space, so a consumed feed sets this to
@@ -95,6 +102,17 @@ public final class Image {
         self.flipsVertically = flippedVertically
         self.width = texture.width
         self.height = texture.height
+        self.cgImage = Image.placeholderCGImage
+    }
+
+    /// Wrap a `ComputeTexture` so a kernel's output draws through `drawImage` like
+    /// any other image. The texture is resolved lazily each frame (see
+    /// `computeTextureSource`), so the same `Image` always reflects the latest GPU
+    /// contents. Built by `ComputeTexture.image`; CPU pixel paths are inert.
+    init(computeTexture source: ComputeTextureBindable) {
+        self.computeTextureSource = source
+        self.width = source.width
+        self.height = source.height
         self.cgImage = Image.placeholderCGImage
     }
 
@@ -192,6 +210,9 @@ public final class Image {
         // A texture-backed image hands its live texture straight through (it's
         // already on the GPU; the renderer composites it as-is each frame).
         if let externalTexture { return externalTexture }
+        // A compute-texture-backed image resolves the kernel's output texture now,
+        // at draw time (realizing it on first use), so it picks up this frame's write.
+        if let computeTextureSource { return computeTextureSource.metalTexture(for: device) }
 
         let id = ObjectIdentifier(device)
         if let cachedTexture, cachedDeviceID == id { return cachedTexture }

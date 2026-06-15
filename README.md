@@ -113,7 +113,7 @@ The names are familiar and the calls are short. The full API reference lives in 
 - [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawRect`, `drawLine`, `drawShape`, and a full catalog of analytic SDF shapes; see the reference), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
 - [Accumulation](Docs/Accumulation.md) - `noClear` to keep the canvas across frames so drawing piles up: long exposures, paint-on-canvas, and light accumulation (paired with `blendMode(.add)`).
 - [HDR & tone-mapping](Docs/HDR.md) - `toneMap` to roll bright, out-of-range light off the screen instead of clipping it, with an `exposure` dial — the glow/bloom and light-accumulation looks, over a linear-float pipeline that also kills 8-bit gradient banding.
-- [Compute & GPU particles](Docs/Compute.md) - `Particles` (write the per-particle update as a Metal snippet) and the `ComputeKernel`/`ComputeBuffer` core: a million particles updated and drawn on the GPU each frame, never touching the CPU — the depth-of-field "sandpainting" engine.
+- [Compute & GPU particles](Docs/Compute.md) - GPU compute over buffers and textures, the per-element update written as a Metal snippet (inline or in its own `.metal` file): `Particles` runs a million particles updated and drawn on the GPU each frame, never touching the CPU (the "sandpainting" engine); `Simulation` runs reaction-diffusion, cellular automata, and other ping-pong texture sims, drawn as an `Image`. Over the `ComputeKernel`/`ComputeBuffer`/`ComputeTexture` core.
 - [Text](Docs/Text.md) - `drawText` with bitmap, outline (`.ttf`/`.otf`), and single-line/plotter (Hershey) fonts (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`/`OutlineFont`/`StrokeFont`), `textToShapes` for text as geometry, and loading BDF, Playdate `.fnt`, and Hershey `.jhf` fonts.
 - [Images](Docs/Images.md) - `loadImage` / `drawImage` for raster images (PNG, JPEG, HEIC, …), with `tint` recoloring and an `Image[x, y]` pixel subscript for sampling or authoring.
 - [Color](Docs/Color.md) - the `Color` type, the OKLab family and mixing, `Ramp`s and `Palette`s, and perceptual `Colormap`s.
@@ -185,7 +185,7 @@ In code they're `OllinApp.exportVideo(...)` and `OllinApp.exportGIF(...)`; codec
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: compute texture kernels (reaction-diffusion and the like — GPU compute over buffers, with a million-particle path, is already in), layered effects and compositing, shader composition and a live-coding mode, the iPhone as a sensor array, a 3D mode, a project generator, and eventually iOS, visionOS, and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: layered effects and compositing, shader composition and a live-coding mode, the iPhone as a sensor array, a 3D mode, a project generator, and eventually iOS, visionOS, and AR.
 
 ## Built with AI
 

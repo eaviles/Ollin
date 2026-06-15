@@ -38,10 +38,6 @@ OPENRNDR-style effects that compose in layers: draw into off-screen targets, run
 
 Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
 
-## Compute shaders — texture kernels
-
-GPU compute over *buffers* is in (a kernel updates a persistent particle buffer each frame, feeding the instanced render path — see `Particles` / `ComputeKernel`). What remains is the *texture* half: kernels that read and write 2D textures — reaction-diffusion, cellular automata, and other ping-pong simulations, plus image work that fits a fragment pass badly (scattered writes, threadgroup shared memory, separable passes), with the result drawn as an `Image`. It overlaps with [layered effects](#layered-effects-and-compositing), where a filter awkward as a fragment pass becomes a compute kernel. See the [design notes](DESIGN-NOTES.md#compute-shaders-not-started).
-
 ## Project generator
 
 An openFrameworks-style generator that scaffolds a ready-to-run sketch folder from a few questions (which capabilities, which canvas size), instead of hand-copying boilerplate. See the [design notes](DESIGN-NOTES.md#project-generator--sketch-scaffolding-not-started).

@@ -696,6 +696,9 @@ final class MetalRenderer {
             for (index, bindable) in dispatch.buffers.enumerated() {
                 encoder.setBuffer(bindable?.metalBuffer(for: device), offset: 0, index: index)
             }
+            for (index, bindable) in dispatch.textures.enumerated() {
+                encoder.setTexture(bindable?.metalTexture(for: device), index: index)
+            }
             var uniforms = drawer.computeUniforms
             uniforms.particleCount = UInt32(dispatch.threadCount)
             encoder.setBytes(&uniforms, length: MemoryLayout<OllinComputeUniforms>.stride, index: 10)
@@ -704,11 +707,35 @@ final class MetalRenderer {
                     encoder.setBytes($0.baseAddress!, length: $0.count, index: 11)
                 }
             }
-            let width = min(state.threadExecutionWidth, state.maxTotalThreadsPerThreadgroup)
-            encoder.dispatchThreads(MTLSize(width: dispatch.threadCount, height: 1, depth: 1),
-                                    threadsPerThreadgroup: MTLSize(width: width, height: 1, depth: 1))
+            // Threadgroup shaped to the grid: the execution width along x, the rest
+            // of the budget along y. A 1-D buffer dispatch (height 1) collapses to
+            // the old `width × 1`; a 2-D texture dispatch tiles in both axes.
+            // `dispatchThreads` handles a grid that isn't a multiple of the group.
+            let tew = state.threadExecutionWidth
+            let groupWidth = max(1, min(dispatch.gridWidth, tew))
+            let groupHeight = max(1, min(dispatch.gridHeight, state.maxTotalThreadsPerThreadgroup / tew))
+            encoder.dispatchThreads(
+                MTLSize(width: dispatch.gridWidth, height: dispatch.gridHeight, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: groupWidth, height: groupHeight, depth: 1))
         }
         encoder.endEncoding()
+    }
+
+    /// Execute this frame's recorded compute dispatches *without* rendering geometry —
+    /// for headless drivers advancing a stateful sim (a `Simulation`, a ping-pong
+    /// `ComputeTexture`) through frames they don't capture: the frames before the one
+    /// being grabbed, and `--skip` warmup. The live window and a captured frame run
+    /// the steps as part of their full render, but an *un*-captured frame otherwise
+    /// records its dispatches and drops them, so the sim never evolves on the GPU.
+    /// This runs just the compute, in its own command buffer (no geometry pass, no
+    /// readback), so the GPU-resident state carries forward to the next frame at a
+    /// fraction of a full render's cost. A no-op when nothing was recorded.
+    func stepCompute(_ drawer: Drawer) {
+        guard !drawer.dispatches.isEmpty,
+              let commandBuffer = commandQueue.makeCommandBuffer() else { return }
+        encodeCompute(drawer, into: commandBuffer)
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
     }
 
     /// The gradient strip texture holding `rows` (one baked ramp per row),

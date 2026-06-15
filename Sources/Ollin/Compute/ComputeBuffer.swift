@@ -122,12 +122,42 @@ public struct ComputeParams: Sendable {
 
 /// One recorded compute dispatch, drained by the renderer into a compute encoder
 /// ahead of the frame's render pass (so a step and the draw that consumes it stay
-/// ordered within one command buffer). Pure data; references the bound buffers and
-/// the packed params bytes (bound at index 11 when non-empty). The standard
-/// `OllinComputeUniforms` (index 10) are filled by the renderer.
+/// ordered within one command buffer). Pure data; references the bound buffers
+/// and/or textures and the packed params bytes (bound at index 11 when non-empty).
+/// The standard `OllinComputeUniforms` (index 10) are filled by the renderer.
+///
+/// The grid is up to 2-D: a buffer dispatch is `gridWidth × 1` (one thread per
+/// element), a texture dispatch is `gridWidth × gridHeight` (one thread per texel).
 struct RecordedDispatch {
     let kernel: ComputeKernel
-    let threadCount: Int
-    let buffers: [ComputeBindable?]   // bound at indices 0… (10/11 are reserved)
-    let params: [UInt8]               // index 11 (empty = not bound)
+    let gridWidth: Int
+    let gridHeight: Int
+    let buffers: [ComputeBindable?]          // bound at buffer indices 0… (10/11 reserved)
+    let textures: [ComputeTextureBindable?]  // bound at texture indices 0…
+    let params: [UInt8]                      // buffer index 11 (empty = not bound)
+
+    /// Total thread count, also the `OllinComputeUniforms.particleCount` value.
+    var threadCount: Int { gridWidth * gridHeight }
+
+    /// A 1-D buffer dispatch (`threadCount × 1`). Keeps the buffer call sites
+    /// unchanged as the struct grew the texture/2-D fields.
+    init(kernel: ComputeKernel, threadCount: Int, buffers: [ComputeBindable?], params: [UInt8]) {
+        self.kernel = kernel
+        self.gridWidth = threadCount
+        self.gridHeight = 1
+        self.buffers = buffers
+        self.textures = []
+        self.params = params
+    }
+
+    /// A 2-D texture dispatch (`gridWidth × gridHeight`, one thread per texel).
+    init(kernel: ComputeKernel, gridWidth: Int, gridHeight: Int,
+         textures: [ComputeTextureBindable?], buffers: [ComputeBindable?] = [], params: [UInt8]) {
+        self.kernel = kernel
+        self.gridWidth = gridWidth
+        self.gridHeight = gridHeight
+        self.buffers = buffers
+        self.textures = textures
+        self.params = params
+    }
 }
