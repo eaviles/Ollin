@@ -125,8 +125,11 @@ device.stop()                  // close the connection
 var isStreaming: Bool          // frames currently arriving
 var latestFrame: RGBDFrame?    // the most recent decoded frame (same type as the file path)
 var latestPose: Record3DPose?  // the frame's ARKit camera pose (see below)
+var camera: Record3DCamera?    // .trueDepth (front) or .lidar (rear), or nil before the first frame
 func pointCloud(minimumConfidence:depthRange:step:pointSize:) -> PointCloud?
 ```
+
+**Which camera is streaming** is detectable, which is worth acting on because the two behave very differently. `camera` (also `RGBDFrame.camera`) reports `.trueDepth` or `.lidar`, inferred from the depth grid — the front TrueDepth camera streams a dense 640×480 map, the rear LiDAR a sparse 256×192 one, and no iPhone pairs them the other way, so the resolution identifies the camera. Tune for it: the **front** camera is short-range and noisy past a meter (clamp `depthRange` tight, around `0.2...1.2`, and demand `.high` confidence — good for a face up close), while the **rear LiDAR** reaches across a room (open the range to several meters at `.medium`). The live example switches its settings on `frame.camera` and shows the detected camera in its caption.
 
 `Record3DDevice` is also a [`FrameSource`](./Vision.md) and a `VideoFeed`, so its color frames flow into `drawFrame(device)` and into a vision tracker exactly like a `Camera` — the phone's camera, analyzed on the Mac.
 

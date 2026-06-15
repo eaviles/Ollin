@@ -36,13 +36,19 @@ final class Record3DLiveCloud: Sketch {
     override func draw() {
         background(Color(white: 0.04))
 
-        guard let cloud = device.pointCloud(minimumConfidence: .medium,
-                                            depthRange: 0.1...8, pointSize: 0.005),
-              !cloud.isEmpty else {
+        guard let frame = device.latestFrame else {
             return drawStatus(device.waitingMessage + "\n\n" +
                               "Open Record3D on the iPhone, enable USB streaming in Settings,\n" +
                               "keep it on the live screen, and connect the cable.", style: .info)
         }
+
+        // Tune for the camera in use: the front TrueDepth camera is short-range and
+        // noisy past a meter (a face up close), so clamp tight and demand high
+        // confidence; the rear LiDAR reaches across a room, so open the range up.
+        let tuning = Tuning.forCamera(frame.camera)
+        let cloud = frame.pointCloud(minimumConfidence: tuning.confidence,
+                                     depthRange: tuning.range, pointSize: tuning.pointSize)
+        guard !cloud.isEmpty else { return }
 
         // Frame the cloud: orbit its centroid at a radius set by how spread out it is.
         var sum = Vector3.zero
@@ -68,6 +74,29 @@ final class Record3DLiveCloud: Sketch {
                          elevation: 0.18, fieldOfView: .pi / 3))
         drawPointCloud(cloud)
 
-        drawCaption("Record3DLiveCloud — a tethered iPhone's live depth as a point cloud; drag to spin")
+        drawCaption("Record3DLiveCloud — \(tuning.label), \(frame.depthWidth)×\(frame.depthHeight) depth, " +
+                    "\(cloud.count) pts; drag to spin")
+    }
+
+    /// The per-camera point-cloud settings — derived from which camera is streaming.
+    struct Tuning {
+        let range: ClosedRange<Double>
+        let confidence: DepthConfidence
+        let pointSize: Double
+        let label: String
+
+        static func forCamera(_ camera: Record3DCamera) -> Tuning {
+            switch camera {
+            case .trueDepth:   // front: a face up close, noisy background
+                return Tuning(range: 0.2...1.2, confidence: .high, pointSize: 0.004,
+                              label: "TrueDepth (front)")
+            case .lidar:       // rear: a whole room
+                return Tuning(range: 0.3...5.0, confidence: .medium, pointSize: 0.009,
+                              label: "LiDAR (rear)")
+            case .unknown:
+                return Tuning(range: 0.1...8.0, confidence: .medium, pointSize: 0.006,
+                              label: "depth camera")
+            }
+        }
     }
 }

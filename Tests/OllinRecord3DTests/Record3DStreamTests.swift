@@ -82,6 +82,18 @@ import Darwin
         #expect(box.intrinsics.cy == 3)
     }
 
+    // MARK: Camera detection
+
+    @Test func classifiesCameraFromDepthGrid() {
+        // Rear LiDAR is 256×192 (49,152) in either orientation; front TrueDepth
+        // is 640×480 (307,200).
+        #expect(Record3DCamera.classify(depthWidth: 256, depthHeight: 192) == .lidar)
+        #expect(Record3DCamera.classify(depthWidth: 192, depthHeight: 256) == .lidar)
+        #expect(Record3DCamera.classify(depthWidth: 640, depthHeight: 480) == .trueDepth)
+        #expect(Record3DCamera.classify(depthWidth: 480, depthHeight: 640) == .trueDepth)
+        #expect(Record3DCamera.classify(depthWidth: 0, depthHeight: 0) == .unknown)
+    }
+
     // MARK: Live device (soft-skips without a streaming phone)
 
     @Test func streamsFromConnectedDevice() {

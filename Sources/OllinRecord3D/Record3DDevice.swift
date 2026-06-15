@@ -84,6 +84,14 @@ public final class Record3DDevice: FrameSource, VideoFeed {
     /// the world-placement work to come; this slice draws in camera space.
     public var latestPose: Record3DPose? { reader.latestPose }
 
+    /// Which iPhone camera the live stream is coming from (front TrueDepth vs. rear
+    /// LiDAR), inferred from the depth grid — `nil` before the first frame. A sketch
+    /// reads it to tune depth range and density for the situation.
+    public var camera: Record3DCamera? {
+        guard let box = reader.latest else { return nil }
+        return Record3DCamera.classify(depthWidth: box.depthWidth, depthHeight: box.depthHeight)
+    }
+
     /// Unproject the latest frame into a `PointCloud` (see `RGBDFrame.pointCloud`
     /// for the parameters). `nil` until the first frame arrives.
     public func pointCloud(minimumConfidence: DepthConfidence = .medium,
