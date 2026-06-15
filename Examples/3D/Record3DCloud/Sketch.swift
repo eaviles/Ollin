@@ -22,6 +22,10 @@ final class Record3DCloud: Sketch {
     var loadedPath: String?
     var loadError: String?
 
+    // The orbit framing, eased frame-to-frame (see the framing block in draw).
+    var orbitCenter: Vector3?
+    var orbitRadius = 0.0
+
     override func draw() {
         background(Color(white: 0.04))
 
@@ -35,6 +39,7 @@ final class Record3DCloud: Sketch {
         if path != loadedPath {
             loadedPath = path
             loadError = nil
+            orbitCenter = nil       // re-frame for the new recording
             do { recording = try Record3DRecording(path: path) }
             catch { recording = nil; loadError = "\(error)" }
         }
@@ -46,7 +51,7 @@ final class Record3DCloud: Sketch {
         let rate = recording.fps > 0 ? recording.fps : 15
         let index = recording.frameCount == 1 ? 0 : Int(time * rate) % recording.frameCount
         guard let cloud = try? recording.pointCloud(at: index, minimumConfidence: .medium,
-                                                    depthRange: 0.1...8) else { return }
+                                                    depthRange: 0.1...8, pointSize: 0.005) else { return }
         guard !cloud.isEmpty else { return }
 
         // Frame the cloud: orbit its centroid at a radius set by how spread out it is.
@@ -57,8 +62,20 @@ final class Record3DCloud: Sketch {
         for p in cloud.points { spread += p.position.distanceSquared(to: center) }
         let radius = max(0.6, (spread / Double(cloud.count)).squareRoot() * 3)
 
+        // The framing is derived from depth that flickers a little frame to frame
+        // (sensor noise, points crossing the confidence/range filters), so snapping
+        // the orbit target/radius to it makes the whole cloud jump. Ease toward it
+        // instead: a static scene holds still, real camera motion is still followed.
+        if let c = orbitCenter {
+            orbitCenter = c.lerp(to: center, 0.08)
+            orbitRadius += (radius - orbitRadius) * 0.08
+        } else {
+            orbitCenter = center
+            orbitRadius = radius
+        }
+
         let azimuth = mouseIsPressed ? map(mouseX, 0, width, .pi, -.pi) : time * 0.3
-        camera(.orbiting(target: center, radius: radius, azimuth: azimuth,
+        camera(.orbiting(target: orbitCenter ?? center, radius: orbitRadius, azimuth: azimuth,
                          elevation: 0.18, fieldOfView: .pi / 3))
         drawPointCloud(cloud)
 
