@@ -38,9 +38,17 @@ OPENRNDR-style effects that compose in layers: draw into off-screen targets, run
 
 Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
 
+## Generative geometry
+
+A tier of classic generative-art building blocks that emit vector geometry — points, `Contour`s, `Shape`s — feeding the existing draw, shape-boolean, hatching, and SVG paths rather than the renderer: **Voronoi and Delaunay** tessellation (with Lloyd relaxation), **circle and shape packing** (grow-to-touch and front relaxation), **L-systems** (grammar-driven recursive structure), and **differential growth** (organic line and curve accretion). They share the plotter-friendly, geometry-first shape the shape booleans set, all driven by the existing seedable `random`/`noise` so a run is reproducible, and each ships with an example — several are the natural implementation behind a [recreation](DESIGN-NOTES.md#examples-folder-maintained-ongoing) of the artist who pioneered them. See the [design notes](DESIGN-NOTES.md#generative-geometry-not-started).
+
 ## Project generator
 
 An openFrameworks-style generator that scaffolds a ready-to-run sketch folder from a few questions (which capabilities, which canvas size), instead of hand-copying boilerplate. See the [design notes](DESIGN-NOTES.md#project-generator--sketch-scaffolding-not-started).
+
+## Variation galleries and seed exploration
+
+Ollin sketches are already reproducible (`seed()` makes a run deterministic) and tunable (`@Param`); the missing piece is *exploring the seed space* the way Art Blocks-style generators do. Navigate a sketch's variations — step through seeds, jump to one, randomize — and export a contact sheet of many seeds as a single image (the fixed-timestep frame driver behind `OllinApp.image(of:)` already renders any frame off-screen). Distinct from the [project generator](#project-generator), which scaffolds a *new* sketch; this explores the variation space of an existing one. See the [design notes](DESIGN-NOTES.md#variation-galleries-and-seed-exploration-not-started).
 
 ## iPhone as a sensor array
 
