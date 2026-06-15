@@ -647,6 +647,11 @@ let package = Package(
             path: "Examples/Patterns/Topography"
         ),
         .executableTarget(
+            name: "Example-Voronoi",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/Voronoi"
+        ),
+        .executableTarget(
             name: "Example-HollowShapes",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/HollowShapes"

@@ -123,6 +123,14 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: PointCloud3DScene(), against: "point-cloud-3d")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func voronoiCellsMatchReference() throws {
+        // A Lloyd-relaxed Voronoi diagram — pins the Bowyer–Watson triangulation,
+        // the bisector cell clipping, and the relaxation. Seeded, no `time`.
+        let diff = try Snapshot.meanDifference(of: VoronoiCells(), against: "voronoi-cells")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -153,6 +161,27 @@ private final class PointCloud3DScene: Sketch {
             }
         }
         drawPointCloud(cloud)
+    }
+}
+
+/// A Lloyd-relaxed Voronoi diagram of seeded sites, each cell filled from a
+/// colormap and outlined — exercises the Bowyer–Watson triangulation, the
+/// bisector cell clipping (incl. the boundary cells clamped to the canvas), and
+/// the relaxation. Seeded and `time`-free, so it's deterministic.
+private final class VoronoiCells: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.1))
+        seed(11)
+        let scattered = (0..<40).map { _ in randomVector(in: canvasRectangle) }
+        let sites = lloyd(scattered, iterations: 4)
+        let cells = voronoi(sites).cells
+        stroke(Color(white: 0.1)); strokeWeight(1.5)
+        for (i, cell) in cells.enumerated() {
+            fill(Colormap.viridis.color(at: Double(i) / Double(max(cells.count - 1, 1))))
+            drawShape(cell)
+        }
     }
 }
 
