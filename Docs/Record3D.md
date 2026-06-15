@@ -4,9 +4,9 @@
 
 ## Record3D (RGBD recordings)
 
-Open an RGBD clip captured by the **[Record3D](https://record3d.app)** iOS app — an ARKit color-plus-depth recorder — and turn its frames into 3D point clouds you orbit through a [`Camera3D`](./3D.md). This is the device-free first step of bringing an iPhone's depth sensors into a sketch: record a clip on the phone, AirDrop the `.r3d` to your Mac, and inspect your room as a cloud — no networking, no live tether, no extra hardware on the Mac.
+Bring an iPhone's depth camera into a sketch through the **[Record3D](https://record3d.app)** iOS app — an ARKit color-plus-depth recorder — and turn its frames into 3D point clouds you orbit through a [`Camera3D`](./3D.md). Two ways in: open a recorded `.r3d` **file** (`Record3DRecording`), or read the phone's **live USB stream** as it captures (`Record3DDevice`). Either way a Mac, which has no depth sensor of its own, gets the world-facing RGBD feed an Intel RealSense once gave openFrameworks.
 
-Record3D lives in a separate library so the drawing core stays free of the decode work; add `import OllinRecord3D` alongside `import Ollin` to reach it. Everything decodes with Apple-native frameworks — the `.r3d` container (a ZIP), its LZFSE-compressed depth, and its JPEG color — so there's no third-party dependency.
+Record3D lives in a separate library so the drawing core stays free of the decode work; add `import OllinRecord3D` alongside `import Ollin` to reach it. Everything decodes with Apple-native frameworks — the `.r3d` container (a ZIP), its LZFSE-compressed depth, and its JPEG color, and over USB the standard `usbmuxd` device tunnel — so there's no third-party dependency.
 
 ```swift
 import Ollin
@@ -34,6 +34,7 @@ final class Scan: Sketch {
 
 - [Loading](#loading) — from a path, URL, or bundled resource
 - [Frames and point clouds](#frames-and-point-clouds) — `pointCloud(at:)`, `frame(at:)`, the options
+- [Live streaming over USB](#live-usb) — `Record3DDevice`, a tethered phone as a real-time feed
 - [Intrinsics and coordinates](#intrinsics-and-coordinates) — `CameraIntrinsics`, the camera-space convention
 - [Notes](#notes) — the `.r3d` format, depth grids, what's ahead
 
@@ -95,6 +96,42 @@ struct RGBDFrame {
 
 `color` is a normal [`Image`](./Images.md) (usually higher-resolution than the depth map) you can also just `drawImage`. `depth` is metric depth in meters, row-major from the top-left.
 
+<a name="live-usb"></a>
+
+### Live streaming over USB
+
+`Record3DDevice` is the live sibling of `Record3DRecording`: instead of a recorded file, it reads the phone's RGBD stream over the cable in real time — same metric depth, same true intrinsics, but moving as the phone moves.
+
+```swift
+let device = Record3DDevice()
+
+override func setup() { device.start() }
+
+override func draw() {
+    background(Color(white: 0.04))
+    guard let cloud = device.pointCloud() else {
+        return drawStatus(device.waitingMessage, style: .info)
+    }
+    camera(.orbiting(radius: 2.5, azimuth: time * 0.3, elevation: 0.2))
+    drawPointCloud(cloud)
+}
+```
+
+**On the phone:** open Record3D, turn on **USB streaming** in its Settings, and keep it on the live screen; connect the cable. The device retries on its own, so enabling the stream (or plugging in) after the sketch is already running just starts the feed — `waitingMessage` tells you what it's waiting for (no device, refused, reconnecting). Only one streaming mode is supported, deliberately: USB carries full-quality LZFSE float32 depth plus intrinsics and pose, where Record3D's WiFi mode is lossy and behind a paid add-on.
+
+```swift
+device.start()                 // begin connecting (retries until the phone is serving)
+device.stop()                  // close the connection
+var isStreaming: Bool          // frames currently arriving
+var latestFrame: RGBDFrame?    // the most recent decoded frame (same type as the file path)
+var latestPose: Record3DPose?  // the frame's ARKit camera pose (see below)
+func pointCloud(minimumConfidence:depthRange:step:pointSize:) -> PointCloud?
+```
+
+`Record3DDevice` is also a [`FrameSource`](./Vision.md) and a `VideoFeed`, so its color frames flow into `drawFrame(device)` and into a vision tracker exactly like a `Camera` — the phone's camera, analyzed on the Mac.
+
+Each frame carries a `Record3DPose` (the ARKit camera quaternion and translation in meters). This slice draws in **camera space** and publishes the pose without applying it; using it to place frames in a shared world (and fuse several into one cloud) is a later step.
+
 <a name="intrinsics-and-coordinates"></a>
 
 ### Intrinsics and coordinates
@@ -116,7 +153,8 @@ struct CameraIntrinsics {
 
 - **The `.r3d` format.** A `.r3d` is a ZIP holding a `metadata` JSON (camera intrinsics, capture resolution, frame rate) and, per frame, a JPEG color image, an LZFSE-compressed float32 depth map in meters, and an LZFSE-compressed confidence map. Ollin reads this clean-room from the format's public structure with Apple-native frameworks only (Foundation's ZIP-less archive read, `Compression` for LZFSE, ImageIO for JPEG); the `record3d` library that documents the format is LGPL-2.1 and is credited, never copied.
 - **Depth grids.** LiDAR depth is 256×192, TrueDepth 640×480. The grid isn't stored explicitly, so it's recovered from the sample count and the capture aspect — both orientations (landscape and portrait) are handled.
-- **Capturing.** Use the Record3D app on a LiDAR or TrueDepth iPhone, then share the `.r3d` (AirDrop is simplest). The runnable example reads the newest `.r3d` in `~/Downloads`.
-- **What's ahead.** This reads recorded files; a live tether (the phone streaming over USB into a sketch as it renders) and a broader sensor stream are the next steps of the iPhone-as-a-sensor-array work (see [`ROADMAP.md`](../ROADMAP.md)).
+- **The USB stream.** The live path uses Record3D's USB streaming over the standard `usbmuxd` device tunnel (TCP port 1337); each frame is a small header (sizes, intrinsics, pose) followed by JPEG color, LZFSE float32 depth, optional confidence, and a JSON metadata trailer. The wire format is read clean-room from its public structure, the same stance as the file format.
+- **Capturing.** Use the Record3D app on a LiDAR or TrueDepth iPhone. For files, share the `.r3d` (AirDrop is simplest); for live, enable USB streaming and tether the cable.
+- **What's ahead.** Files and the live USB feed are in; a broader sensor stream (face, body, segmentation, device motion) and an Ollin-own capture app — and using the per-frame pose to fuse frames into a world — are the next steps of the iPhone-as-a-sensor-array work (see [`ROADMAP.md`](../ROADMAP.md)).
 
-The runnable example is [`Examples/3D/Record3DCloud`](../Examples/3D/Record3DCloud/Sketch.swift): it finds the newest `.r3d` in `~/Downloads`, plays the clip, and orbits the cloud (drag to spin it yourself).
+The runnable examples are [`Examples/3D/Record3DCloud`](../Examples/3D/Record3DCloud/Sketch.swift) (reads the newest `.r3d` in `~/Downloads`, plays the clip, and orbits the cloud) and [`Examples/3D/Record3DLiveCloud`](../Examples/3D/Record3DLiveCloud/Sketch.swift) (the same, live from a tethered phone). Drag to spin either one.

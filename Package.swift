@@ -402,6 +402,11 @@ let package = Package(
             path: "Examples/3D/Record3DCloud"
         ),
         .executableTarget(
+            name: "Example-Record3DLiveCloud",
+            dependencies: ["Ollin", "OllinRecord3D"],
+            path: "Examples/3D/Record3DLiveCloud"
+        ),
+        .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"
