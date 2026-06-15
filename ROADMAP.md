@@ -30,10 +30,6 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 - **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
 - **More model examples over `ModelTracker`.** The custom-model tracker runs anything converted to Core ML; a well-known model can make a strong example, with the weights always fetched by `Scripts/fetch-models.sh` rather than committed. Candidates, licenses, and the surfaces involved are in the [design notes](DESIGN-NOTES.md#model-examples-and-modeltracker-surfaces-not-started).
 
-## Depth-of-field particle rendering (sandpainting)
-
-**The priority track: the renderer work ahead is sequenced to make this kind of sketch possible.** A target experience that several roadmap items add up to: sketches in the style of Anders Hoff's depth-of-field and colour-shift work and the Blurry library — millions of faint particles, each displaced at random by its distance from a focal plane and accumulated as light, so depth of field *emerges* from the scatter instead of a post-process blur, with chromatic fringes from shifting the color channels apart. The foundation is in place: faint samples drawn with the additive blend mode (`blendMode(.add)`) onto the persistent accumulation surface (`noClear`) sum as light in a linear floating-point buffer and tone-map to the screen (`toneMap`), so the look already works at modest counts. What remains is **scale**: [compute shaders](#compute-shaders) generating and jittering samples GPU-side so the counts (10⁶–10⁷) never touch the CPU. It doesn't wait for 3D: the displacement needs only a per-particle depth the sketch invents, so the prototype rides the instanced point path that already handles sub-pixel marks. See the [design notes](DESIGN-NOTES.md#depth-of-field-particle-rendering-sandpainting-not-started).
-
 ## Layered effects and compositing
 
 OPENRNDR-style effects that compose in layers: draw into off-screen targets, run filters (blur, bloom, feedback, color grades) over them, and composite with blend modes. The natural home for post-processing, building on the off-screen render path the exporter already uses. Shape, references, and the design are in the [design notes](DESIGN-NOTES.md#layered-effects-and-compositing-not-started).
@@ -42,9 +38,9 @@ OPENRNDR-style effects that compose in layers: draw into off-screen targets, run
 
 Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
 
-## Compute shaders
+## Compute shaders — texture kernels
 
-General-purpose GPU work as a first-class capability: kernels a sketch dispatches over buffers and textures each frame — particle and agent simulations in the hundreds of thousands (flocking, physarum, attractors), reaction-diffusion, cellular automata — with the results feeding the instanced render path or arriving as textures, never touching the CPU. Metal makes this native on every Mac Ollin supports, closing a long-standing platform gap: compute shaders arrived in OpenGL 4.3 and Apple's OpenGL stops at 4.1, so the GL-based frameworks never had them on a Mac. See the [design notes](DESIGN-NOTES.md#compute-shaders-not-started).
+GPU compute over *buffers* is in (a kernel updates a persistent particle buffer each frame, feeding the instanced render path — see `Particles` / `ComputeKernel`). What remains is the *texture* half: kernels that read and write 2D textures — reaction-diffusion, cellular automata, and other ping-pong simulations, plus image work that fits a fragment pass badly (scattered writes, threadgroup shared memory, separable passes), with the result drawn as an `Image`. It overlaps with [layered effects](#layered-effects-and-compositing), where a filter awkward as a fragment pass becomes a compute kernel. See the [design notes](DESIGN-NOTES.md#compute-shaders-not-started).
 
 ## Project generator
 

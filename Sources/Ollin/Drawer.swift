@@ -69,6 +69,7 @@ enum GeometryKind {
     case sdf          // instanced SDF shapes in `sdfInstances`
     case image        // one textured quad in `imageVertices`, sampling `image`
     case glyphAtlas   // SDF-atlas text quads in `glyphVertices`, sampling `atlas`
+    case particles    // instanced GPU-particle discs reading a compute buffer
 }
 
 struct GeometryBatch {
@@ -88,6 +89,11 @@ struct GeometryBatch {
     /// SDF atlas for a `.glyphAtlas` batch — `nil` otherwise. One `drawText` call
     /// is one batch (a paragraph's glyphs all sample the same atlas).
     var atlas: GlyphAtlas?
+    /// The GPU particle buffer for a `.particles` batch — `nil` otherwise. Each
+    /// `drawParticles` call is its own batch carrying its buffer.
+    var particleBuffer: ComputeBindable?
+    /// Number of particles to draw (instances) for a `.particles` batch.
+    var particleCount: Int = 0
 }
 
 /// The drawing state machine and per-frame geometry recorder.
@@ -162,6 +168,21 @@ final class Drawer {
     /// is 6 vertices (two triangles) sampling the font's atlas; reuses the image
     /// vertex layout (position + uv + `tint` as the fill color).
     private(set) var glyphVertices: [OllinImageVertex] = []
+
+    /// Compute dispatches recorded this frame (see `compute` / `Particles`), drained
+    /// by the renderer into a compute encoder *ahead* of the geometry pass so a sim
+    /// step and the draw that reads its output stay ordered within one frame. Reset
+    /// each frame — but NOT by `background(_:)` (a dispatch is a sim step, not
+    /// geometry to wipe).
+    private(set) var dispatches: [RecordedDispatch] = []
+
+    /// Standard per-frame constants bound into every dispatch at buffer index 10
+    /// (`u.time`/`u.dt`/`u.resolution`/`u.mouse`/`u.frameCount`). `particleCount` is
+    /// filled per dispatch by the renderer; `custom` per dispatch by the caller.
+    /// Set once per frame by the runner via `setComputeFrame`.
+    private(set) var computeUniforms = OllinComputeUniforms(
+        resolution: .zero, mouse: .zero, time: 0, dt: 0,
+        frameCount: 0, particleCount: 0, custom: .zero)
 
     /// Recorded geometry split into call-ordered runs, so triangles and SDF
     /// shapes composite in draw order rather than in two unordered passes.
@@ -245,6 +266,34 @@ final class Drawer {
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      blendMode: currentBlend, atlas: atlas))
+    }
+
+    /// Record a compute dispatch for this frame (see `Sketch.compute` / `Particles`).
+    func recordDispatch(_ dispatch: RecordedDispatch) { dispatches.append(dispatch) }
+
+    /// Open a `.particles` batch drawing `count` instances from the GPU `buffer`.
+    /// Like `beginImageBatch`, it always appends (each draw carries its own buffer)
+    /// and resets `currentKind` so a following primitive reopens its own batch. The
+    /// particle buffer's positions are in canvas space, so it rides no CTM.
+    func recordParticles(_ buffer: ComputeBindable, count: Int) {
+        guard count > 0 else { return }
+        currentKind = .particles
+        currentBatchBlend = currentBlend
+        batches.append(GeometryBatch(kind: .particles, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     blendMode: currentBlend,
+                                     particleBuffer: buffer, particleCount: count))
+    }
+
+    /// Set the standard compute uniforms for this frame (called by the runner before
+    /// `draw()`). `particleCount`/`custom` are filled per dispatch.
+    func setComputeFrame(resolution: SIMD2<Float>, mouse: SIMD2<Float>,
+                         time: Float, dt: Float, frameCount: UInt32) {
+        computeUniforms = OllinComputeUniforms(
+            resolution: resolution, mouse: mouse, time: time, dt: dt,
+            frameCount: frameCount, particleCount: 0, custom: .zero)
     }
 
     /// Record one vector primitive for SVG export, snapshotting the current style
@@ -416,6 +465,7 @@ final class Drawer {
         imageVertices.removeAll(keepingCapacity: true)
         glyphVertices.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
+        dispatches.removeAll(keepingCapacity: true)
         currentKind = nil
         // `accumulates` is a mode and persists; only the per-frame "did the sketch
         // wipe the pile this frame" flag resets here.

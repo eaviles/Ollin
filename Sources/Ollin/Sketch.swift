@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import Metal
+import COllinShaders   // OllinParticle (the GPU particle struct, shared with Shaders.metal)
 
 /// How a sketch's preview window behaves and is sized, relative to its
 /// `canvasSize`. `.auto` and `.fixed` are fixed-size (export-first): the window
@@ -220,6 +221,56 @@ open class Sketch {
     /// once in `setup()`. See `ToneMap`.
     public func toneMap(_ map: ToneMap = .reinhard, exposure: Double = 1) {
         drawer.toneMap(map, exposure: exposure)
+    }
+
+    // MARK: Compute & GPU particles
+
+    /// Run a compute `kernel` over `buffer` in place — one thread per element,
+    /// reading and writing the same buffer (bound at index 0). The dispatch is
+    /// encoded ahead of this frame's drawing. `count` defaults to the buffer's
+    /// element count. Standard constants are at index 10 (`u.time`/`u.dt`/…) and
+    /// any `params` bytes at index 11. For a buffer the render path also reads each
+    /// frame, prefer the ping-pong `compute(_:reading:writing:)` form.
+    public func compute<T>(_ kernel: ComputeKernel, over buffer: ComputeBuffer<T>,
+                           count: Int? = nil, params: ComputeParams = ComputeParams()) {
+        drawer.recordDispatch(RecordedDispatch(
+            kernel: kernel, threadCount: count ?? buffer.count,
+            buffers: [buffer], params: params.bytes))
+    }
+
+    /// Run a compute `kernel` reading `reading` (index 0) and writing `writing`
+    /// (index 1) — the ping-pong form for a sim whose output the render path also
+    /// reads, so the GPU can overlap this frame's render with the next step. Swap
+    /// the two buffers yourself between frames. `count` defaults to `reading`'s
+    /// element count.
+    public func compute<T>(_ kernel: ComputeKernel, reading: ComputeBuffer<T>,
+                           writing: ComputeBuffer<T>, count: Int? = nil,
+                           params: ComputeParams = ComputeParams()) {
+        drawer.recordDispatch(RecordedDispatch(
+            kernel: kernel, threadCount: count ?? reading.count,
+            buffers: [reading, writing], params: params.bytes))
+    }
+
+    /// Draw a GPU particle `buffer` as additive sub-pixel discs (the area-conserving
+    /// disc coverage `drawCircle` uses, so a million jittered marks fade by area
+    /// rather than flicker). Composites under the active blend mode (`.add` sums
+    /// them as light) and in draw order with everything else. `count` defaults to
+    /// the buffer's element count.
+    public func drawParticles(_ buffer: ComputeBuffer<OllinParticle>, count: Int? = nil) {
+        drawer.recordParticles(buffer, count: count ?? buffer.count)
+    }
+
+    /// Step a `Particles` system one frame (records its compute dispatch and swaps
+    /// its ping-pong buffers). `custom` passes up to four live floats the kernel
+    /// reads as `custom.x…w`.
+    public func updateParticles(_ particles: Particles, custom: SIMD4<Float> = .zero) {
+        particles.recordStep(into: drawer, custom: custom)
+    }
+
+    /// Draw a `Particles` system's current state as additive discs (see
+    /// `drawParticles(_ buffer:)`).
+    public func drawParticles(_ particles: Particles) {
+        drawer.recordParticles(particles.current, count: particles.count)
     }
 
     // MARK: Keyboard queries
@@ -814,6 +865,10 @@ open class Sketch {
             for e in extensions { e.setup(self) }
         }
         drawer.beginFrame()
+        drawer.setComputeFrame(resolution: SIMD2(Float(width), Float(height)),
+                               mouse: SIMD2(Float(mouseX), Float(mouseY)),
+                               time: Float(time), dt: Float(deltaTime),
+                               frameCount: UInt32(max(0, frameCount)))
         for e in extensions { e.beforeDraw(self) }
         draw()
         for e in extensions { e.afterDraw(self) }   // before the render — can draw

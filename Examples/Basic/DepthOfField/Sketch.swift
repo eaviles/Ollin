@@ -1,4 +1,5 @@
 import Ollin
+import simd
 
 /// Depth of field, *earned* rather than faked. A blurred photograph isn't a sharp
 /// image with a blur filter on top — it's countless light rays that each landed in a
@@ -10,123 +11,118 @@ import Ollin
 /// from it the samples spread into soft bokeh. The blur *emerges* from the statistics
 /// of where the light fell — there is no blur filter anywhere.
 ///
-/// Three shipped pieces make it possible, summing as light in a linear float buffer:
+/// **It runs on the GPU compute path.** Every frame a kernel generates a *million*
+/// fresh samples — the displacement math below, per sample, never touching the CPU —
+/// and they sum as light in a linear float buffer:
 ///   • `blendMode(.add)` — every sample adds light to the pile.
-///   • `noClear()` — the canvas isn't cleared, so the sparse per-frame spray
-///     accumulates across frames and refines into dense, smooth ribbons.
+///   • `noClear()` — the canvas isn't cleared, so the spray accumulates and refines.
 ///   • `toneMap(.aces)` — light piles up well past full brightness in float; the
 ///     film-like curve rolls those highlights into a glow instead of clipping.
+/// At this sample count the ribbons converge almost instantly, where the CPU version
+/// needed many frames of accumulation to fill in — that's the point of compute.
 ///
 /// A mild perspective makes near samples larger, so out-of-focus foreground curves
 /// bloom into big soft discs while distant ones stay small — the look of a fast lens.
 /// The scene turns slowly, so each ribbon racks through the fixed focal plane as it
 /// rotates. **Drag left↔right to move the focal plane** and pull focus through the
-/// depth yourself. **Press any key** to toggle colour-shift: the R/G/B contributions
-/// of each sample scatter by slightly different radii, so the bokeh grows
-/// chromatic-aberration fringes — the same emergent trick, applied per channel.
+/// depth yourself. **Press any key** to toggle colour-shift: each sample is drawn as
+/// three particles (its R, G, B channels) displaced by slightly different radii, so
+/// the bokeh grows chromatic-aberration fringes — the same emergent trick, per
+/// channel.
 ///
 /// Inspired by Anders Hoff's depth-of-field and colour-shift technique (inconvergent).
 @main
 final class DepthOfField_Example: Sketch {
-    /// A smooth closed curve through the unit box — a 3D Lissajous figure.
-    private struct Ribbon {
-        var fx, fy, fz: Double   // integer frequencies (closed curve)
-        var px, py, pz: Double   // phases
-        var hue: Double          // its own colour, evenly spaced round the wheel
-    }
-    private var ribbons: [Ribbon] = []
+    private var ribbons: Particles!
     private var colourShift = true
 
-    private let ribbonCount = 9
-    private let samplesPerRibbon = 700
+    // 1,000,000 particles ≈ 333k samples, each drawn as 3 channel-particles.
+    private let particleCount = 1_000_000
 
     override func setup() {
-        seed(4)
         background(Color(red: 0.015, green: 0.015, blue: 0.03))   // the one base wipe
         noClear()                                                 // then accumulate
+        toneMap(.aces)                                            // roll highlights into a glow
 
-        for i in 0 ..< ribbonCount {
-            ribbons.append(Ribbon(
-                fx: Double(Int(random(1, 4))), fy: Double(Int(random(1, 4))),
-                fz: Double(Int(random(1, 4))),
-                px: random(.tau), py: random(.tau), pz: random(.tau),
-                hue: Double(i) / Double(ribbonCount)))
+        // Nine smooth closed curves (3D Lissajous figures), fixed by the seed and
+        // baked straight into the kernel source as constant arrays — the kernel is a
+        // string the sketch builds. Each gets integer frequencies (so the curve
+        // closes), random phases, and its own hue evenly spaced round the wheel.
+        seed(4)
+        var freq = "", phase = "", col = ""
+        for i in 0 ..< 9 {
+            let fx = Int(random(1, 4)), fy = Int(random(1, 4)), fz = Int(random(1, 4))
+            let c = Color(hue: Double(i) / 9, saturation: 0.8, brightness: 1)
+            freq  += "float3(\(fx), \(fy), \(fz)), "
+            phase += "float3(\(random(.tau)), \(random(.tau)), \(random(.tau))), "
+            col   += "float3(\(c.red), \(c.green), \(c.blue)), "
         }
+
+        ribbons = Particles(count: particleCount, step: """
+            const float TAU = 6.28318530718;
+            const float3 freq[9]  = { \(freq) };
+            const float3 phase[9] = { \(phase) };
+            const float3 col[9]   = { \(col) };
+
+            // Each particle is one colour channel (id % 3) of one sample (id / 3).
+            // Re-roll the sample each frame so the spray refines and animates.
+            uint sample = id / 3u;
+            uint channel = id % 3u;
+            float2 rseed = float2(float(sample), float(u.frameCount));
+            uint r = uint(hash21(rseed) * 9.0) % 9u;
+            float t = hash21(rseed + 1.7);
+
+            // A point along the curve, then rotate (x, z) about the vertical axis.
+            float3 p3 = 0.95 * sin(freq[r] * t * TAU + phase[r]);
+            float ang = u.time * 0.10;
+            float ca = cos(ang), sa = sin(ang);
+            float rx =  p3.x * ca + p3.z * sa;
+            float rz = -p3.x * sa + p3.z * ca;
+
+            // Perspective: near samples sit larger than far ones.
+            float persp = 2.4 / (rz + 3.0);
+            float radius = min(u.resolution.x, u.resolution.y) * 0.30;
+            float2 cen = u.resolution * 0.5;
+            float sx = cen.x + rx * radius * persp;
+            float sy = cen.y - p3.y * radius * persp;
+
+            // Distance from the focal plane (custom.x) sets the bokeh disc radius.
+            float focus = custom.x;
+            float defocus = abs(rz - focus);
+            float blur = defocus * (radius * 0.14) * persp;
+            float refScale = min(u.resolution.x, u.resolution.y) / 1000.0;
+            float dotSize = (0.5 + defocus * 1.4) * persp * refScale;
+            // Energy conservation: a wider disc means each sample dims, so a ribbon's
+            // total brightness stays roughly constant. Faint, because a million sum.
+            float alpha = 0.0009 / (1.0 + defocus * 6.0);
+
+            // An offset within the bokeh disc; colour-shift (custom.y) spreads the
+            // three channels to slightly different radii for chromatic fringes.
+            float2 off = discSample(rseed + 3.3) * blur;
+            float shift = custom.y * min(defocus, 1.0);
+            float chOff = (channel == 0u) ? (1.0 + shift) : (channel == 2u) ? (1.0 - shift) : 1.0;
+            float3 mask = (channel == 0u) ? float3(1, 0, 0)
+                        : (channel == 1u) ? float3(0, 1, 0) : float3(0, 0, 1);
+
+            position = float2(sx, sy) + off * chOff;
+            size = dotSize;
+            color = float4(col[r] * mask, alpha);
+            life = 1.0;
+        """)
     }
 
-    override func keyPressed() {
-        colourShift.toggle()
-    }
+    override func keyPressed() { colourShift.toggle() }
 
     override func draw() {
-        toneMap(.aces)           // roll the accumulated highlights into a glow
-        blendMode(.add)          // samples sum as light
-        noStroke()
-
-        let cx = width / 2, cy = height / 2
-        let radius = min(width, height) * 0.30
-        let angle = time * 0.10                      // a slow turn around the vertical axis
-        let cosA = cos(angle), sinA = sin(angle)
-
-        // Fixed focal plane by default (so the depth-of-field read stays crisp while
-        // the ribbons rotate through it); drag to rack it through the depth yourself.
-        let focus = mouseIsPressed ? map(mouseX, 0, width, -0.9, 0.9) : 0.0
-
-        let blurStrength = radius * 0.14             // bokeh disc radius per unit of defocus
-        let caStrength = colourShift ? 0.16 : 0.0
-
-        for r in ribbons {
-            let c = Color(hue: r.hue, saturation: 0.8, brightness: 1)
-            for _ in 0 ..< samplesPerRibbon {
-                // A random point along the curve; over many frames the whole ribbon
-                // fills in — this is the progressive refinement accumulation gives.
-                let t = random()
-                let px3 = 0.95 * sin(r.fx * t * .tau + r.px)
-                let py3 = 0.95 * sin(r.fy * t * .tau + r.py)
-                let pz3 = 0.95 * sin(r.fz * t * .tau + r.pz)
-
-                // Rotate (x, z) around the vertical axis, then perspective-project so
-                // near samples sit larger than far ones.
-                let rx = px3 * cosA + pz3 * sinA
-                let rz = -px3 * sinA + pz3 * cosA
-                let persp = 2.4 / (rz + 3.0)
-                let sx = cx + rx * radius * persp
-                let sy = cy - py3 * radius * persp
-
-                let defocus = abs(rz - focus)        // distance from the focal plane
-                let blur = defocus * blurStrength * persp
-                let dotSize = (0.5 + defocus * 1.4) * persp * scale
-                // Energy conservation: as the light spreads over a wider disc, each
-                // sample dims so the ribbon's total brightness stays roughly constant.
-                let alpha = 0.085 / (1 + defocus * 6)
-
-                let u = discSample() * blur          // an offset within the bokeh disc
-                if caStrength > 0 {
-                    // Each channel lands at a slightly different radius, so the disc
-                    // grows a coloured rim — chromatic aberration, earned the same way.
-                    let ca = caStrength * min(defocus, 1)
-                    fill(Color(red: c.red, green: 0, blue: 0, alpha: alpha))
-                    drawCircle(sx + u.x * (1 + ca), sy + u.y * (1 + ca), dotSize)
-                    fill(Color(red: 0, green: c.green, blue: 0, alpha: alpha))
-                    drawCircle(sx + u.x, sy + u.y, dotSize)
-                    fill(Color(red: 0, green: 0, blue: c.blue, alpha: alpha))
-                    drawCircle(sx + u.x * (1 - ca), sy + u.y * (1 - ca), dotSize)
-                } else {
-                    fill(Color(red: c.red, green: c.green, blue: c.blue, alpha: alpha))
-                    drawCircle(sx + u.x, sy + u.y, dotSize)
-                }
-            }
-        }
+        blendMode(.add)
+        // Fixed focal plane by default (so the depth read stays crisp while the
+        // ribbons rotate through it); drag to rack it through the depth yourself.
+        let focus = mouseIsPressed ? Float(map(mouseX, 0, width, -0.9, 0.9)) : 0
+        let shift = Float(colourShift ? 0.16 : 0)
+        updateParticles(ribbons, custom: SIMD4(focus, shift, 0, 0))
+        drawParticles(ribbons)
 
         blendMode(.normal)
         drawCaption("drag to rack focus · press a key: colour-shift \(colourShift ? "on" : "off")")
-    }
-
-    /// A point in the unit disc, uniform over its *area* (so the bokeh fills evenly,
-    /// not bunched at the centre): radius via `sqrt` of a uniform sample.
-    private func discSample() -> Vector2 {
-        let r = random().squareRoot()
-        let a = random(.tau)
-        return Vector2(cos(a) * r, sin(a) * r)
     }
 }

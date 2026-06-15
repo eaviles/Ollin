@@ -1068,6 +1068,59 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
     return float4(premul / a, a);
 }
 
+// MARK: - GPU particles
+//
+// The instanced render path for a compute-resident particle buffer (OllinParticle,
+// updated each frame by a kernel — see the compute core). One quad per particle
+// (6 verts x instanceCount), the position read straight from the buffer in sketch
+// space (no CTM — the kernel works in canvas coordinates). The fragment reuses the
+// area-conserving sub-pixel disc coverage (diskCoverage), the same path drawCircle
+// uses, so a million jittered sub-pixel marks fade by area instead of flickering —
+// the earned depth-of-field look. Straight-alpha out, so it composites under the
+// active blend mode (.add sums it as light) exactly like the SDF disc.
+
+struct ParticleOut {
+    float4 position [[position]];
+    float2 local;     // fragment offset from the particle center, in sketch points
+    float  radius;    // disc radius in points
+    float4 color;     // straight RGBA (sRGB), linearized in the fragment
+};
+
+vertex ParticleOut ollin_particle_vertex(uint vid [[vertex_id]],
+                                         uint iid [[instance_id]],
+                                         const device OllinParticle *particles [[buffer(0)]],
+                                         constant Uniforms &uniforms [[buffer(1)]]) {
+    OllinParticle pt = particles[iid];
+
+    // Two triangles forming a quad in [-1, 1], sized to the disc plus an AA margin.
+    const float2 corners[6] = { float2(-1, -1), float2(1, -1), float2(1, 1),
+                                float2(-1, -1), float2(1, 1), float2(-1, 1) };
+    float radius = pt.size * 0.5;
+    float2 local = corners[vid] * (radius + 2.0);
+    float2 sketch = pt.position + local;
+
+    float2 ndc;
+    ndc.x = (sketch.x / uniforms.viewport.x) * 2.0 - 1.0;
+    ndc.y = 1.0 - (sketch.y / uniforms.viewport.y) * 2.0;
+
+    ParticleOut out;
+    out.position = float4(ndc, 0.0, 1.0);
+    out.local = local;
+    out.radius = radius;
+    out.color = pt.color;
+    return out;
+}
+
+fragment float4 ollin_particle_fragment(ParticleOut in [[stage_in]]) {
+    float fillCov, strokeCov;
+    diskCoverage(in.local, float2(in.radius), 0.0, 0.0, 0.0, fillCov, strokeCov);
+    float a = in.color.a * fillCov;
+    if (a <= 0.0) { return float4(0.0); }
+    // Linearize the sRGB tone and emit straight-alpha into the linear float target;
+    // the active blend mode composites it (additive sums it as light).
+    return float4(srgbToLinear(in.color.rgb), a);
+}
+
 // MARK: - Present / tone-map pass
 //
 // The frame's geometry is composited in a linear `rgba16Float` intermediate, so

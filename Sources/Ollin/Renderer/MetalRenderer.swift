@@ -46,6 +46,7 @@ final class MetalRenderer {
         case sdf(BlendMode)          // instanced SDF quads (circles, ellipses, rects, lines, arcs)
         case image(BlendMode)        // textured quads (images), premultiplied-alpha blend
         case glyphAtlas(BlendMode)   // SDF-atlas text quads, straight-alpha coverage blend
+        case points(BlendMode)       // instanced GPU-particle discs (compute-resident buffer)
         case present                 // final fullscreen tone-map pass, float -> sRGB drawable
 
         /// The pipeline a recorded batch needs, from its geometry kind + blend.
@@ -55,6 +56,7 @@ final class MetalRenderer {
             case .sdf:        return .sdf(blend)
             case .image:      return .image(blend)
             case .glyphAtlas: return .glyphAtlas(blend)
+            case .particles:  return .points(blend)
             }
         }
     }
@@ -79,6 +81,14 @@ final class MetalRenderer {
     /// a new capability is a new case + a branch in `makePipeline(_:)`, never
     /// more inline construction in `init` (see CLAUDE.md).
     private var pipelines: [Pipeline: MTLRenderPipelineState] = [:]
+
+    /// Compute kernels are open-ended (one per user source), so they can't be a
+    /// fixed enum like the render pipelines. They're cached separately, keyed by a
+    /// hash of the composed source + the entry name. The composed *library* is
+    /// cached per source too, so several entries in one source share one compile.
+    private struct ComputeKey: Hashable { let sourceHash: UInt64; let entry: String }
+    private var computePipelines: [ComputeKey: MTLComputePipelineState] = [:]
+    private var computeLibraries: [UInt64: MTLLibrary] = [:]
 
     /// Triple-buffered vertex storage, gated by a semaphore so the CPU never
     /// overwrites vertices the GPU is still reading. Writing one shared buffer
@@ -232,8 +242,12 @@ final class MetalRenderer {
         geomPass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
         geomPass.colorAttachments[0].storeAction = .multisampleResolve
 
-        guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
+            frameBoundary.signal()   // nothing encoded; hand the slot back
+            return
+        }
+        encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        guard let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
             return
         }
@@ -271,8 +285,12 @@ final class MetalRenderer {
 
         guard let pass = accumulationPass(drawer, width: width, height: height),
               let resolve = accumResolve,
-              let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else {
+              let commandBuffer = commandQueue.makeCommandBuffer() else {
+            frameBoundary.signal()      // nothing encoded; hand the slot back
+            return
+        }
+        encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else {
             frameBoundary.signal()      // nothing encoded; hand the slot back
             return
         }
@@ -305,8 +323,9 @@ final class MetalRenderer {
         guard width > 0, height > 0,
               let pass = accumulationPass(drawer, width: width, height: height),
               let resolve = accumResolve, let display = accumDisplay,
-              let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+              let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
+        encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
         encode(drawer, viewport: viewport, into: encoder,
                triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
@@ -465,8 +484,9 @@ final class MetalRenderer {
         let byteCount = bytesPerRow * height
 
         guard let readback = device.makeBuffer(length: byteCount, options: .storageModeShared),
-              let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+              let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
+        encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
         encode(drawer, viewport: viewport, into: encoder,
                triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
@@ -531,8 +551,9 @@ final class MetalRenderer {
         pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
         pass.colorAttachments[0].storeAction = .multisampleResolve
 
-        guard let commandBuffer = commandQueue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
+        encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
         encode(drawer, viewport: viewport, into: encoder,
                triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
@@ -643,8 +664,51 @@ final class MetalRenderer {
                 encoder.setFragmentTexture(texture, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+            case .particles:
+                // GPU-resident particle buffer (written by a compute dispatch this
+                // frame), drawn as one instanced disc per particle. Uniforms are
+                // already bound at index 1; the particle struct is read at index 0.
+                guard batch.particleCount > 0,
+                      let buffer = batch.particleBuffer?.metalBuffer(for: device) else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(buffer, offset: 0, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6,
+                                       instanceCount: batch.particleCount)
             }
         }
+    }
+
+    /// Encode the frame's recorded compute dispatches into one compute encoder,
+    /// ahead of the geometry render pass in the *same* command buffer — so a
+    /// simulation step and the draw that reads its output stay ordered within the
+    /// frame (Metal's intra-command-buffer hazard tracking inserts the dependency).
+    /// The standard `OllinComputeUniforms` are bound at index 10 (with this
+    /// dispatch's thread count as `particleCount`) and the custom params, if any, at
+    /// index 11; the kernel's own buffers bind at 0…9. Threadgroup size comes from
+    /// the pipeline, dispatched non-uniformly so the count needn't be a multiple.
+    private func encodeCompute(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer) {
+        guard !drawer.dispatches.isEmpty,
+              let encoder = commandBuffer.makeComputeCommandEncoder() else { return }
+        for dispatch in drawer.dispatches {
+            guard dispatch.threadCount > 0,
+                  let state = try? computePipeline(for: dispatch.kernel) else { continue }
+            encoder.setComputePipelineState(state)
+            for (index, bindable) in dispatch.buffers.enumerated() {
+                encoder.setBuffer(bindable?.metalBuffer(for: device), offset: 0, index: index)
+            }
+            var uniforms = drawer.computeUniforms
+            uniforms.particleCount = UInt32(dispatch.threadCount)
+            encoder.setBytes(&uniforms, length: MemoryLayout<OllinComputeUniforms>.stride, index: 10)
+            if !dispatch.params.isEmpty {
+                dispatch.params.withUnsafeBytes {
+                    encoder.setBytes($0.baseAddress!, length: $0.count, index: 11)
+                }
+            }
+            let width = min(state.threadExecutionWidth, state.maxTotalThreadsPerThreadgroup)
+            encoder.dispatchThreads(MTLSize(width: dispatch.threadCount, height: 1, depth: 1),
+                                    threadsPerThreadgroup: MTLSize(width: width, height: 1, depth: 1))
+        }
+        encoder.endEncoding()
     }
 
     /// The gradient strip texture holding `rows` (one baked ramp per row),
@@ -751,6 +815,31 @@ final class MetalRenderer {
         return built
     }
 
+    /// The compiled compute pipeline for `kernel`, built and cached on first use.
+    /// Keyed by a hash of the *composed* source (prelude + shared types + user
+    /// source) plus the entry name, so re-creating the same kernel value each frame
+    /// is free, and the composed library is cached per source so several entries in
+    /// one source share one compile.
+    private func computePipeline(for kernel: ComputeKernel) throws -> MTLComputePipelineState {
+        let composed = MetalRenderer.composeComputeSource(kernel.source)
+        let hash = MetalRenderer.fnv1a(composed)
+        let key = ComputeKey(sourceHash: hash, entry: kernel.entry)
+        if let existing = computePipelines[key] { return existing }
+        let lib: MTLLibrary
+        if let cached = computeLibraries[hash] {
+            lib = cached
+        } else {
+            lib = try device.makeLibrary(source: composed, options: nil)
+            computeLibraries[hash] = lib
+        }
+        guard let function = lib.makeFunction(name: kernel.entry) else {
+            throw RendererError.shaderFunctions
+        }
+        let state = try device.makeComputePipelineState(function: function)
+        computePipelines[key] = state
+        return state
+    }
+
     /// Recompile the shader library from `source` and rebuild the cached
     /// pipelines against it — the renderer side of live shader reload. Builds the
     /// replacements *before* committing, so a compile/link error leaves the
@@ -765,6 +854,10 @@ final class MetalRenderer {
         }
         library = newLibrary           // commit atomically once all rebuilt
         pipelines = rebuilt
+        // User compute kernels compile from their own source, but drop their caches
+        // too so they rebuild against any edited shared types/prelude on next use.
+        computePipelines.removeAll()
+        computeLibraries.removeAll()
     }
 
     /// The single place pipeline descriptors are constructed. Add a `case` here
@@ -797,6 +890,12 @@ final class MetalRenderer {
             // fragment turns the sampled distance into coverage and emits straight
             // color, so it blends by source alpha like the solid/SDF paths.
             return try makePipeline(vertex: "ollin_image_vertex", fragment: "ollin_glyph_fragment",
+                                    using: library, premultiplied: false, blend: blend)
+        case let .points(blend):
+            // Instanced GPU-particle discs. The fragment emits straight-alpha disc
+            // coverage, so it shares the solid/SDF straight-alpha blend (additive
+            // sums it as light).
+            return try makePipeline(vertex: "ollin_particle_vertex", fragment: "ollin_particle_fragment",
                                     using: library, premultiplied: false, blend: blend)
         case .present:
             return try makePresentPipeline(using: library)
@@ -956,6 +1055,34 @@ final class MetalRenderer {
             return source
         }
         return source.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
+    }
+
+    /// Build the full MSL source for a user compute kernel: the `metal_stdlib`
+    /// preamble, the shared CPU↔GPU types (`OllinParticle`/`OllinComputeUniforms`),
+    /// and the compute prelude (`OllinCompute.h` — hash/noise/curl/disc), then the
+    /// user's source. So a kernel writes no `#include`s and can use those directly.
+    /// Both headers ship beside the shaders as resources (the runtime compiler has
+    /// no include search path, the same reason `composeShaderSource` splices).
+    static func composeComputeSource(_ userSource: String) -> String {
+        var source = "#include <metal_stdlib>\nusing namespace metal;\n"
+        if let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
+           let header = try? String(contentsOf: url, encoding: .utf8) {
+            source += header + "\n"
+        }
+        if let url = Bundle.module.url(forResource: "OllinCompute", withExtension: "h"),
+           let prelude = try? String(contentsOf: url, encoding: .utf8) {
+            source += prelude + "\n"
+        }
+        return source + userSource
+    }
+
+    /// FNV-1a hash of a string's UTF-8, for the compute-pipeline cache key.
+    /// (`Hasher` is per-process-seeded, so it can't key a stable cache; FNV is
+    /// stable — the same lesson the model-tracker cache learned.)
+    static func fnv1a(_ string: String) -> UInt64 {
+        var hash: UInt64 = 0xcbf29ce484222325
+        for byte in string.utf8 { hash = (hash ^ UInt64(byte)) &* 0x100000001b3 }
+        return hash
     }
 
     /// Load the shader library for `Shaders.metal`.

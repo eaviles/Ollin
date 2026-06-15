@@ -94,6 +94,39 @@ typedef struct {
     float strokeGradient;      // gradient-strip row index for a gradient stroke
 } SDFInstance;
 
+// One particle for the GPU compute path: a persistent buffer of these is updated
+// by a compute kernel each frame (positions never round-trip through the CPU) and
+// drawn by the instanced particle render path (`ollin_particle_vertex`). The
+// built-in renderer reads `position`/`color`/`size`; `velocity`/`life`/`seedA`/
+// `seedB` are free per-particle state a sim kernel uses (velocity for motion, life
+// for fade/respawn, the two seeds for per-particle randomness). Stride 48 (three
+// 16-byte rows): float2 @0, float2 @8, float4 @16, then four floats @32…44.
+typedef struct {
+    simd_float2 position;   // sketch-space, points, top-left origin, y-down
+    simd_float2 velocity;   // points/sec — sim state; the built-in render ignores it
+    simd_float4 color;      // straight (non-premultiplied) RGBA, 0…1
+    float size;             // on-screen diameter, points
+    float life;             // 0…1 lifetime — sim state; the built-in render ignores it
+    float seedA;            // free per-particle scratch (e.g. a respawn seed)
+    float seedB;            // free per-particle scratch — pads the stride to 48
+} OllinParticle;
+
+// Per-frame constants auto-injected into every compute dispatch (bound at buffer
+// index 10), so a kernel reads `u.time`/`u.dt`/`u.resolution`/… with no plumbing.
+// `particleCount` is the dispatch's thread count (set per dispatch). `custom` is a
+// 4-float per-dispatch knob bag the sketch fills (focus, strength, …) so a kernel
+// can take a couple of live parameters without declaring its own struct. Stride 48
+// (`custom` is float4, 16-aligned at offset 32).
+typedef struct {
+    simd_float2 resolution;     // canvas size in points
+    simd_float2 mouse;          // cursor position in points (top-left origin)
+    float time;                 // seconds since the sketch started
+    float dt;                   // seconds since the previous frame
+    unsigned int frameCount;    // frames drawn so far
+    unsigned int particleCount; // this dispatch's thread count
+    simd_float4 custom;         // four free per-dispatch floats (see ComputeParams)
+} OllinComputeUniforms;
+
 // Constants for the final present/tone-map pass (`ollin_present_fragment`). The
 // frame renders into a linear `rgba16Float` intermediate; this pass reads it,
 // scales by `exposure`, maps high-dynamic-range values into displayable range
