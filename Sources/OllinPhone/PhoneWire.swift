@@ -46,6 +46,10 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     case deviceMotion = 1
     /// An ARKit body skeleton (named 3D joints in model space).
     case bodyPose = 2
+    /// An ARKit face — the deforming mesh, the 52 expression blendshapes, and the
+    /// head pose. The phone runs face tracking on its front TrueDepth camera, so it's
+    /// mutually exclusive with body pose (which uses the rear camera).
+    case face = 3
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -98,15 +102,71 @@ public struct PhonePoseSample: Sendable, Equatable {
     }
 }
 
-/// A decoded message of either kind — the unit tests round-trip this.
+/// The 52 ARKit face blendshapes, in a fixed order so the wire can carry them as a
+/// bare positional array (the index *is* the shape) with no keys. The iOS app maps
+/// each onto ARKit's `ARFaceAnchor.BlendShapeLocation`; the Mac side reads them by
+/// case off `PhoneFace`. A coefficient is `0` (neutral) … `1` (fully expressed).
+public enum PhoneBlendShape: UInt8, CaseIterable, Sendable {
+    // Eyes — left
+    case eyeBlinkLeft = 0, eyeLookDownLeft, eyeLookInLeft, eyeLookOutLeft
+    case eyeLookUpLeft, eyeSquintLeft, eyeWideLeft
+    // Eyes — right
+    case eyeBlinkRight, eyeLookDownRight, eyeLookInRight, eyeLookOutRight
+    case eyeLookUpRight, eyeSquintRight, eyeWideRight
+    // Jaw
+    case jawForward, jawLeft, jawRight, jawOpen
+    // Mouth
+    case mouthClose, mouthFunnel, mouthPucker, mouthLeft, mouthRight
+    case mouthSmileLeft, mouthSmileRight, mouthFrownLeft, mouthFrownRight
+    case mouthDimpleLeft, mouthDimpleRight, mouthStretchLeft, mouthStretchRight
+    case mouthRollLower, mouthRollUpper, mouthShrugLower, mouthShrugUpper
+    case mouthPressLeft, mouthPressRight, mouthLowerDownLeft, mouthLowerDownRight
+    case mouthUpperUpLeft, mouthUpperUpRight
+    // Brows
+    case browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight
+    // Cheeks
+    case cheekPuff, cheekSquintLeft, cheekSquintRight
+    // Nose
+    case noseSneerLeft, noseSneerRight
+    // Tongue
+    case tongueOut
+}
+
+/// One ARKit face sample: whether ARKit has the face, the capture timestamp, the
+/// head's world pose (rotation `(x,y,z,w)` + position in meters), the 52 expression
+/// `blendShapes` (positional, in `PhoneBlendShape` order), and the deforming
+/// `meshVertices` in **face-local** space (centered on the face, meters) — ready to
+/// draw as a point cloud, since 3D mode has no mesh primitive yet.
+public struct PhoneFaceSample: Sendable, Equatable {
+    public var tracked: Bool
+    public var timestamp: Double
+    public var headOrientation: SIMD4<Float>
+    public var headPosition: SIMD3<Float>
+    public var blendShapes: [Float]
+    public var meshVertices: [SIMD3<Float>]
+
+    public init(tracked: Bool, timestamp: Double, headOrientation: SIMD4<Float>,
+                headPosition: SIMD3<Float>, blendShapes: [Float], meshVertices: [SIMD3<Float>]) {
+        self.tracked = tracked
+        self.timestamp = timestamp
+        self.headOrientation = headOrientation
+        self.headPosition = headPosition
+        self.blendShapes = blendShapes
+        self.meshVertices = meshVertices
+    }
+}
+
+/// A decoded message of any kind — the unit tests round-trip this.
 public enum PhoneMessage: Sendable, Equatable {
     case motion(PhoneMotionSample)
     case pose(PhonePoseSample)
+    case face(PhoneFaceSample)
 
     public var kind: PhoneMessageKind {
         switch self {
         case .motion: return .deviceMotion
         case .pose: return .bodyPose
+        case .face: return .face
         }
     }
 }
@@ -150,6 +210,7 @@ public extension PhoneWire {
         switch message {
         case .motion(let m): payload = encodeMotionPayload(m)
         case .pose(let p): payload = encodePosePayload(p)
+        case .face(let f): payload = encodeFacePayload(f)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -184,6 +245,24 @@ public extension PhoneWire {
         }
         return p
     }
+
+    private static func encodeFacePayload(_ face: PhoneFaceSample) -> Data {
+        var p = Data()
+        p.append(face.tracked ? 1 : 0)
+        appendF64(&p, face.timestamp)
+        for v in [face.headOrientation.x, face.headOrientation.y,
+                  face.headOrientation.z, face.headOrientation.w] { appendF32(&p, v) }
+        for v in [face.headPosition.x, face.headPosition.y, face.headPosition.z] { appendF32(&p, v) }
+        // Blendshapes: a count, then that many floats (positional, PhoneBlendShape order).
+        p.append(UInt8(min(face.blendShapes.count, 255)))
+        for v in face.blendShapes.prefix(255) { appendF32(&p, v) }
+        // Mesh: a vertex count, then xyz per vertex (face-local space).
+        appendU16(&p, UInt16(min(face.meshVertices.count, Int(UInt16.max))))
+        for v in face.meshVertices.prefix(Int(UInt16.max)) {
+            appendF32(&p, v.x); appendF32(&p, v.y); appendF32(&p, v.z)
+        }
+        return p
+    }
 }
 
 // MARK: - Decoding
@@ -196,6 +275,7 @@ public extension PhoneWire {
         switch header.kind {
         case .deviceMotion: return decodeMotion(payload).map(PhoneMessage.motion)
         case .bodyPose: return decodePose(payload).map(PhoneMessage.pose)
+        case .face: return decodeFace(payload).map(PhoneMessage.face)
         }
     }
 
@@ -232,6 +312,31 @@ public extension PhoneWire {
             if let joint = PhoneJoint(rawValue: raw) { joints[joint] = SIMD3<Float>(x, y, z) }
         }
         return PhonePoseSample(tracked: tracked, timestamp: timestamp, joints: joints)
+    }
+
+    private static func decodeFace(_ data: Data) -> PhoneFaceSample? {
+        // Fixed prefix: tracked(1) + timestamp(8) + headOrientation(16) + headPosition(12) + bsCount(1).
+        guard data.count >= 1 + 8 + 16 + 12 + 1 else { return nil }
+        let s = data.startIndex
+        let tracked = data[s] != 0
+        var o = 1
+        func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+        let timestamp = readF64(data, s + o); o += 8
+        let headOrientation = SIMD4<Float>(f32(), f32(), f32(), f32())
+        let headPosition = SIMD3<Float>(f32(), f32(), f32())
+
+        let bsCount = Int(data[s + o]); o += 1
+        guard data.count >= o + bsCount * 4 + 2 else { return nil }
+        var blendShapes = [Float](); blendShapes.reserveCapacity(bsCount)
+        for _ in 0..<bsCount { blendShapes.append(f32()) }
+
+        let vCount = Int(UInt16(data[s + o]) | (UInt16(data[s + o + 1]) << 8)); o += 2
+        guard data.count >= o + vCount * 12 else { return nil }
+        var meshVertices = [SIMD3<Float>](); meshVertices.reserveCapacity(vCount)
+        for _ in 0..<vCount { meshVertices.append(SIMD3<Float>(f32(), f32(), f32())) }
+
+        return PhoneFaceSample(tracked: tracked, timestamp: timestamp, headOrientation: headOrientation,
+                               headPosition: headPosition, blendShapes: blendShapes, meshVertices: meshVertices)
     }
 }
 

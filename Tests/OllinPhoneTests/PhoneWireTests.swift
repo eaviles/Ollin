@@ -41,6 +41,35 @@ import Darwin
         #expect(roundTrip(message) == message)
     }
 
+    @Test func roundTripsFace() {
+        // A full face: all 52 blendshapes, a small mesh, and a head pose.
+        let blendShapes = (0..<PhoneBlendShape.allCases.count).map { Float($0) / 100 }
+        let mesh = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(0.01, -0.02, 0.03), SIMD3<Float>(-0.04, 0.05, -0.06)]
+        let message = PhoneMessage.face(PhoneFaceSample(
+            tracked: true, timestamp: 8.75,
+            headOrientation: SIMD4<Float>(0.1, 0.2, 0.3, 0.9),
+            headPosition: SIMD3<Float>(0.05, -0.1, -0.4),
+            blendShapes: blendShapes, meshVertices: mesh))
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func roundTripsFaceWithoutMesh() {
+        // Blendshapes only, no mesh vertices — the lightweight case.
+        let message = PhoneMessage.face(PhoneFaceSample(
+            tracked: false, timestamp: 0,
+            headOrientation: SIMD4<Float>(0, 0, 0, 1), headPosition: .zero,
+            blendShapes: [Float](repeating: 0, count: PhoneBlendShape.allCases.count),
+            meshVertices: []))
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func blendShapeOrderIsContiguous() {
+        // The wire carries blendshapes positionally, so the cases must be 0…51.
+        let raws = PhoneBlendShape.allCases.map { Int($0.rawValue) }
+        #expect(raws == Array(0..<PhoneBlendShape.allCases.count))
+        #expect(PhoneBlendShape.allCases.count == 52)
+    }
+
     // MARK: Header validation
 
     @Test func parsesHeader() {

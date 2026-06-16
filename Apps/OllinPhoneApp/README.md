@@ -1,15 +1,20 @@
 # Ollin Capture — iPhone sensor app
 
-Ollin's own iPhone capture app: the phone runs **ARKit body tracking** on its
-Neural Engine and **CoreMotion** device motion, and streams both to a tethered Mac
-over USB. An Ollin sketch on the Mac reads the live skeleton in `draw()` through the
-[`OllinPhone`](../../Sources/OllinPhone) satellite (`PhoneDevice`).
+Ollin's own iPhone capture app: the phone runs **ARKit body tracking** and **face
+tracking** on its Neural Engine and **CoreMotion** device motion, and streams them to
+a tethered Mac over USB. An Ollin sketch on the Mac reads the live skeleton, face, or
+motion in `draw()` through the [`OllinPhone`](../../Sources/OllinPhone) satellite
+(`PhoneDevice`).
 
 This is the own-app successor to borrowing the Record3D app's RGBD feed
 ([`OllinRecord3D`](../../Sources/OllinRecord3D)): where Record3D gives depth only,
-this streams what ARKit *perceives* — a 3D body skeleton today, more sensors (face
-mesh + blendshapes, segmentation, LiDAR depth) to come. The chain is Ollin's end to
-end.
+this streams what ARKit *perceives* — a 3D body skeleton, a face mesh with its 52
+expression blendshapes, and device motion today, more sensors (segmentation, LiDAR
+depth) to come. The chain is Ollin's end to end.
+
+Body tracking uses the rear camera and face tracking the front TrueDepth camera, so
+the two can't run at once — the app has a **Body / Face** toggle and runs one at a
+time. Device motion streams in both modes.
 
 ## How it fits together
 
@@ -20,10 +25,10 @@ end.
 - **Transport is the standard usbmuxd USB tunnel.** The app opens an `NWListener` on
   TCP `PhoneWire.streamPort` (1338, distinct from Record3D's 1337); the Mac's
   `PhoneDevice` tunnels to it through usbmuxd. No Wi-Fi, no pairing — just the cable.
-- **One-way push.** Each ARKit body update and motion sample is encoded with
+- **One-way push.** Each ARKit body/face update and motion sample is encoded with
   `PhoneWire` and broadcast to the connected Mac. The device-motion payload is the
   cheap transport smoke-test: it moves the instant the wire is alive, before ARKit
-  has found a body.
+  has found a body or face.
 
 ## Build & deploy
 
@@ -57,11 +62,14 @@ Requirements:
 ## Run it
 
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
-   then **ON AIR**, with live body/motion/port status.
+   then **ON AIR**, with the **Body / Face** toggle and live status.
 2. Connect the cable to the Mac.
-3. On the Mac, run the sketch: `swift run Example-PhoneBodyPose`. The orbiting stick
-   figure is driven by the phone's skeleton; before a body is found, the gravity
-   readout proves the USB wire is alive (tilt the phone — it moves).
+3. On the Mac, run a sketch. With the toggle on **Body**: `swift run
+   Example-PhoneBodyPose` — the orbiting stick figure is driven by the phone's
+   skeleton. With the toggle on **Face**: `swift run Example-PhoneFace` — the face
+   mesh orbits and the expression bars move as you smile, blink, and open your mouth.
+   Before tracking begins, the gravity readout proves the USB wire is alive (tilt the
+   phone — it moves).
 
 ## Notes
 
@@ -70,6 +78,9 @@ Requirements:
   device's real joint-name list (visible by running the binary directly, not under
   `open`, since NSLogs are privacy-redacted), so the mapping can be tuned against the
   device if a name doesn't resolve.
-- The cloud is the skeleton in **model space** (root at the origin). The per-frame
-  ARKit world transform and world placement / multi-frame fusion are a later slice,
-  as on the Record3D path.
+- The face stream (`FaceStreamer`) carries the deforming mesh in face-local space,
+  the 52 blendshapes positionally in `PhoneBlendShape` order, and the head pose. Face
+  tracking needs a TrueDepth front camera (Face ID devices).
+- The cloud is the skeleton/mesh in **model space** (root or face at the origin). The
+  per-frame ARKit world transform and world placement / multi-frame fusion are a
+  later slice, as on the Record3D path.

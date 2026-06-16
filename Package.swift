@@ -440,6 +440,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinPhone"],
             path: "Examples/3D/PhoneBodyPose"
         ),
+        // The Ollin capture app's live face mesh + blendshapes, orbited as a point
+        // cloud with expression bars — the front-camera sibling of PhoneBodyPose.
+        .executableTarget(
+            name: "Example-PhoneFace",
+            dependencies: ["Ollin", "OllinPhone"],
+            path: "Examples/3D/PhoneFace"
+        ),
         .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],

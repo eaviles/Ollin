@@ -56,6 +56,12 @@ public final class PhoneDevice {
     /// time the phone sends a pose — read it within the current `draw()`.
     public var latestBody: PhoneBody? { reader.latestPose.map(PhoneBody.init) }
 
+    /// The latest face — mesh, blendshapes, and head pose — or `nil` before one
+    /// arrives. Populated when the capture app is in **Face** mode (front camera);
+    /// body and face are mutually exclusive, so only one of `latestBody`/`latestFace`
+    /// updates at a time.
+    public var latestFace: PhoneFace? { reader.latestFace.map(PhoneFace.init) }
+
     /// The latest CoreMotion sample, or `nil` before one arrives — the cheap
     /// transport smoke-test (it moves the moment the wire is alive, before ARKit
     /// has found a body).
@@ -75,6 +81,7 @@ final class PhoneStreamReader: @unchecked Sendable {
 
     private struct State {
         var latestPose: PhonePoseSample?
+        var latestFace: PhoneFaceSample?
         var latestMotion: PhoneMotionSample?
         var connected = false
         var message: String? = "Connecting to the phone…"
@@ -90,6 +97,7 @@ final class PhoneStreamReader: @unchecked Sendable {
     // MARK: Public surface (read from the main actor)
 
     var latestPose: PhonePoseSample? { lock.withLock { $0.latestPose } }
+    var latestFace: PhoneFaceSample? { lock.withLock { $0.latestFace } }
     var latestMotion: PhoneMotionSample? { lock.withLock { $0.latestMotion } }
     var isConnected: Bool { lock.withLock { $0.connected } }
     var statusMessage: String? { lock.withLock { $0.message } }
@@ -141,6 +149,7 @@ final class PhoneStreamReader: @unchecked Sendable {
                         switch message {
                         case .motion(let m): state.latestMotion = m
                         case .pose(let p): state.latestPose = p
+                        case .face(let f): state.latestFace = f
                         }
                     }
                 case .skip:

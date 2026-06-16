@@ -4,9 +4,9 @@
 
 ## Phone (iPhone sensor stream)
 
-Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture** — Ollin's own iOS app ([`Apps/OllinPhoneApp`](../Apps/OllinPhoneApp/README.md)) — runs ARKit on the phone's Neural Engine and streams the results over the USB cable; `PhoneDevice` reads them on the Mac as typed values you use in `draw()`. The first slice streams a **3D body skeleton** and **device motion**.
+Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture** — Ollin's own iOS app ([`Apps/OllinPhoneApp`](../Apps/OllinPhoneApp/README.md)) — runs ARKit on the phone's Neural Engine and streams the results over the USB cable; `PhoneDevice` reads them on the Mac as typed values you use in `draw()`. It streams a **3D body skeleton**, a **face** (deforming mesh + the 52 expression blendshapes), and **device motion**.
 
-Where [`Record3D`](./Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives* — a body pose today, with more sensors (face mesh + blendshapes, segmentation, LiDAR depth) to come. The chain is Ollin's end to end.
+Where [`Record3D`](./Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives* — a body, a face, and motion today, with more sensors (segmentation, LiDAR depth) to come. The chain is Ollin's end to end.
 
 `PhoneDevice` lives in a separate library so the drawing core stays lean; add `import OllinPhone` alongside `import Ollin`. The transport is the standard `usbmuxd` device tunnel (the same plumbing Xcode uses), so there's no third-party dependency and no Wi-Fi pairing — just the cable.
 
@@ -33,8 +33,9 @@ final class Pose: Sketch {
 ### Contents
 
 - [Setup](#setup) — install the capture app, connect the cable
-- [Reading the stream](#reading-the-stream) — `latestBody`, `latestMotion`, the connection state
+- [Reading the stream](#reading-the-stream) — `latestBody`, `latestFace`, `latestMotion`, the connection state
 - [The body](#the-body) — `PhoneBody`, the joints, drawing the skeleton
+- [The face](#the-face) — `PhoneFace`, the blendshapes, the mesh
 - [Device motion](#device-motion) — `PhoneMotion`, the transport smoke-test
 - [Notes](#notes) — the wire, coordinate space, what's ahead
 
@@ -60,11 +61,14 @@ device.start()                       // begins connecting; safe to call once
 
 device.isStreaming                   // Bool — frames currently arriving
 device.waitingMessage                // a notice reflecting the live connection state
-device.latestBody                    // PhoneBody?  — the latest skeleton
+device.latestBody                    // PhoneBody?  — the latest skeleton (Body mode)
+device.latestFace                    // PhoneFace?  — the latest face (Face mode)
 device.latestMotion                  // PhoneMotion? — the latest device-motion sample
 ```
 
-`latestBody` and `latestMotion` are fresh each time the phone sends one; read them within the current `draw()`. Both are `nil` until the first of their kind arrives — so motion typically lights up first (it needs no camera or model), proving the wire before ARKit has found a body.
+These are fresh each time the phone sends one; read them within the current `draw()`. Each is `nil` until the first of its kind arrives — so motion typically lights up first (it needs no camera or model), proving the wire before ARKit has found a body or face.
+
+**Body and face are mutually exclusive.** ARKit body tracking uses the rear camera and face tracking the front TrueDepth camera, so the phone can't do both at once. The capture app has a **Body / Face** toggle; whichever is selected is the one that updates (`latestBody` or `latestFace`). The other holds its last value, so check `latestFace` for the sketch you mean to drive.
 
 ## The body
 
@@ -89,6 +93,33 @@ camera(.orbiting(target: body.center, radius: 2.6, azimuth: time * 0.4, elevatio
 drawPointCloud(body.cloud(jointSize: 0.055, boneSize: 0.018, color: .white))
 ```
 
+## The face
+
+In **Face** mode the phone tracks the operator's face on the front TrueDepth camera and streams `PhoneFace` — the 52 expression **blendshapes**, the deforming **mesh**, and the **head pose**:
+
+```swift
+if let face = device.latestFace {
+    face.isTracked                   // Bool — ARKit tracking vs. extrapolating
+    face.blendShape(.jawOpen)        // Double 0…1 — one expression coefficient
+    face.blendShapes                 // [PhoneBlendShape: Double] — all 52
+    face.strongestBlendShapes()      // the few firing now, strongest first
+    face.meshPoints                  // [Vector3] — the mesh, face-local space (meters)
+    face.headPosition                // Vector3 — head position in world space
+    face.headOrientation             // SIMD4<Float> — head rotation quaternion (x,y,z,w)
+}
+```
+
+The blendshapes are the `PhoneBlendShape` set — ARKit's 52 named coefficients (`jawOpen`, `eyeBlinkLeft`, `mouthSmileLeft`, `browInnerUp`, `cheekPuff`, `tongueOut`, …), each `0` (neutral) to `1` (fully expressed). They're the cheap, expressive payload: read one to drive a knob, or `strongestBlendShapes()` to name the current expression.
+
+3D mode has no mesh primitive yet, so the mesh draws as a `PointCloud` — one splat per vertex, exactly like the skeleton. The vertices are face-local (centered on the face), so orbit `.zero`:
+
+```swift
+camera(.orbiting(target: .zero, radius: 0.42, azimuth: time * 0.4, elevation: 0.04))
+drawPointCloud(face.cloud(pointSize: 0.0045, color: .white))
+```
+
+The bundled example is `swift run Example-PhoneFace`.
+
 ## Device motion
 
 `PhoneMotion` is the CoreMotion sample — attitude (a quaternion), gravity, rotation rate, and user acceleration — the cheap payload that proves the USB transport before any model runs:
@@ -109,4 +140,4 @@ Tilt the phone and `gravity` swings — a one-line check that the wire is alive.
 - **The wire is Ollin's own, shared verbatim.** Both ends are Swift, so the protocol skips the packed-image trick cross-language tools use: a length-prefixed stream of tagged binary messages (`PhoneWire`). That one source file is compiled into *both* the Mac satellite and the iOS app, so the framing can't drift between them.
 - **USB only.** The transport is the `usbmuxd` tunnel over the cable (port 1338, distinct from Record3D's 1337). Wi-Fi is deliberately out.
 - **Camera space, for now.** The skeleton is in model space (root at the origin). The per-frame ARKit world transform — for placing the figure in a scene and fusing frames into one world — is a later slice, as on the Record3D path.
-- **A growing catalog.** Body pose and motion are the first payloads; face mesh + blendshapes, segmentation mattes, and LiDAR depth are the same app sending new tagged payloads, not new pipelines.
+- **A growing catalog.** Body pose, face, and motion are the shipped payloads; segmentation mattes and LiDAR depth are the same app sending new tagged payloads, not new pipelines.

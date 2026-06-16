@@ -41,7 +41,7 @@
 		<string>arkit</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Ollin Capture uses the camera for on-device ARKit body tracking. Frames are processed on the phone; only the skeleton is sent to the tethered Mac.</string>
+	<string>Ollin Capture uses the camera for on-device ARKit body and face tracking. Frames are processed on the phone; only the tracked skeleton, face mesh, and expression data are sent to the tethered Mac.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>Ollin Capture streams device motion to the tethered Mac.</string>
 	<key>NSLocalNetworkUsageDescription</key>
