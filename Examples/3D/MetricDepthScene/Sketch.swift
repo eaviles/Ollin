@@ -20,16 +20,14 @@ import OllinRecord3D
 /// rear camera at the room), enable **USB streaming** in its Settings, keep it on
 /// the live screen, and connect the cable. The connection retries on its own.
 ///
-/// A 4:3 canvas matches the rear-LiDAR feed's aspect so the picture isn't stretched
-/// — the metric depth scene fills the canvas and the camera projects the scene
-/// across it, so backdrop and markers line up.
+/// The feed is letterboxed into the canvas by its own aspect (no stretch, whatever
+/// the phone's orientation), and the metric camera letterboxes to match — so the
+/// markers always land on the picture.
 ///
 /// Record3D is by Marek Šimoník (record3d.app) — credited as the capture app and
 /// the source of the stream format, read clean-room from its public structure.
 @main
 final class MetricDepthScene: Sketch {
-
-    override var canvasSize: CanvasSize { .size(1080, 810) }   // 4:3, the rear-LiDAR aspect
 
     let device = Record3DDevice()
 

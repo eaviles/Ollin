@@ -345,9 +345,10 @@ open class Sketch {
     ///
     /// Set a matching camera first — `camera(.fromIntrinsics(frame.intrinsics))` is
     /// the one that aligns with the feed — or this is a no-op (it needs the camera's
-    /// near/far). It fills the canvas by default; to avoid stretching, give the
-    /// sketch a `canvasSize` matching the feed's aspect (the camera projects the
-    /// scene across the whole canvas, where the backdrop is drawn).
+    /// near/far). The feed is **letterboxed** into the canvas by its own aspect (no
+    /// stretch, whatever the `canvasSize`), and the metric camera letterboxes to
+    /// match, so placed 3D geometry lands on the picture. Pass `in rect` only to
+    /// move the backdrop; for aligned 3D placement keep the default (the full canvas).
     public func drawDepthScene(_ frame: RGBDFrame, in rect: Rectangle? = nil) {
         drawer.drawDepthScene(metricFrame: frame, in: rect ?? canvasRectangle)
     }

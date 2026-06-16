@@ -126,6 +126,25 @@ struct Camera3DTests {
         #expect(close(atFar.z / atFar.w, 1))
     }
 
+    /// `projectionMatrix(aspect:)` letterboxes the image's aspect into the viewport so
+    /// the picture isn't stretched: a 1:1 image in a 2:1 (wide) viewport pillarboxes —
+    /// a point at the image's right edge lands at half width (ndc_x = ½), not the edge,
+    /// and the y axis is untouched. The depth (z/w) is unaffected by the fit.
+    @Test func intrinsicLetterboxesIntoViewport() {
+        let k = CameraIntrinsics(fx: 100, fy: 100, cx: 50, cy: 50, width: 100, height: 100)  // 1:1
+        let cam = Camera3D.fromIntrinsics(k, near: 0.1, far: 10)
+        // A camera-space point projecting to the image's right edge at unit depth.
+        let edge = k.unproject(col: 100, row: 50, depth: 1)          // base ndc_x = 1
+        let wide = cam.projectionMatrix(aspect: 2) * SIMD4<Float>(edge.simd3, 1)
+        #expect(close(wide.x / wide.w, 0.5, 1e-3))                   // pillarboxed to half
+        let square = cam.projectionMatrix(aspect: 1) * SIMD4<Float>(edge.simd3, 1)
+        #expect(close(square.x / square.w, 1, 1e-3))                 // unchanged at matching aspect
+        // The on-axis depth mapping is identical regardless of the viewport aspect.
+        let zWide = (cam.projectionMatrix(aspect: 2) * SIMD4<Float>(0, 0, -1, 1))
+        let zSq = (cam.projectionMatrix(aspect: 1) * SIMD4<Float>(0, 0, -1, 1))
+        #expect(close(zWide.z / zWide.w, zSq.z / zSq.w))
+    }
+
     /// `fromIntrinsics` places the camera at the origin looking down −z (so its view
     /// matrix is the identity — the unproject space *is* the world) and carries the
     /// intrinsic projection with the given near/far.

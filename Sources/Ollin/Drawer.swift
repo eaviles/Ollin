@@ -1626,8 +1626,10 @@ final class Drawer {
     /// depth against the active camera's near/far — so 3D geometry placed at real
     /// world coordinates (`drawPointCloud`, `depth(at:)`) occludes and is occluded by
     /// the feed in one metric space. Needs an active camera (`Camera3D.fromIntrinsics`
-    /// is the matching one); a no-op without one, or for SVG (no vector form). Fills
-    /// `rect`; raster only.
+    /// is the matching one); a no-op without one, or for SVG (no vector form). The
+    /// backdrop is **letterboxed** into `rect` by the feed's aspect (no stretch),
+    /// matching the metric camera's own letterbox so backdrop and placed geometry
+    /// align. Raster only.
     func drawDepthScene(metricFrame frame: RGBDFrame, in rect: Rectangle) {
         guard rect.width > 0, rect.height > 0,
               frame.color.width > 0, frame.color.height > 0,
@@ -1642,8 +1644,13 @@ final class Drawer {
         let denom = camera.far - camera.near
         let p = denom != 0 ? camera.far / denom : 0
         let q = denom != 0 ? camera.far * camera.near / denom : 0
-        let x0 = Float(rect.x), y0 = Float(rect.y)
-        let x1 = Float(rect.x + rect.width), y1 = Float(rect.y + rect.height)
+        // Letterbox the feed into `rect` by the intrinsics' aspect — the same fit the
+        // metric camera applies in clip space, so the backdrop and the projected 3D
+        // geometry land on the same pixels.
+        let k = frame.intrinsics
+        let fit = Rectangle(fitting: Vector2(Double(k.width), Double(k.height)), in: rect)
+        let x0 = Float(fit.x), y0 = Float(fit.y)
+        let x1 = Float(fit.x + fit.width), y1 = Float(fit.y + fit.height)
         let (vTop, vBot): (Float, Float) = frame.color.flipsVertically ? (1, 0) : (0, 1)
         // tint.a = 1 selects the metric branch (the normalized path leaves it 0);
         // tint.r/.g carry P/Q.

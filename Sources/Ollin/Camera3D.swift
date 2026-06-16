@@ -134,9 +134,22 @@ extension Camera3D {
             return Camera3D.orthographic(height: Float(height), aspect: a,
                                          near: Float(near), far: Float(far))
         case .intrinsic(let k):
-            // The intrinsics already encode the image size and aspect, so the
-            // viewport aspect plays no part here — the frustum is fully off-axis.
-            return Camera3D.perspective(intrinsics: k, near: Float(near), far: Float(far))
+            // The off-axis frustum maps the full image to full NDC. Letterbox that
+            // into the viewport so the picture isn't stretched when the canvas aspect
+            // differs from the image's — pillarbox (shrink x) when the viewport is
+            // wider than the image, letterbox (shrink y) when it's taller. This is the
+            // same fit `drawDepthScene(_ frame:)` draws the backdrop into, so backdrop
+            // and projected geometry stay aligned. The z/w rows are untouched, so
+            // metric depth stays exact.
+            var m = Camera3D.perspective(intrinsics: k, near: Float(near), far: Float(far))
+            if k.width > 0, k.height > 0, a > 0 {
+                let imageAspect = Float(k.width) / Float(k.height)
+                var sx: Float = 1, sy: Float = 1
+                if a > imageAspect { sx = imageAspect / a } else { sy = a / imageAspect }
+                m.columns.0.x *= sx; m.columns.2.x *= sx
+                m.columns.1.y *= sy; m.columns.2.y *= sy
+            }
+            return m
         }
     }
 
