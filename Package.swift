@@ -424,6 +424,11 @@ let package = Package(
             path: "Examples/3D/DepthCloud"
         ),
         .executableTarget(
+            name: "Example-DepthOcclusion",
+            dependencies: ["Ollin", "OllinVision"],
+            path: "Examples/3D/DepthOcclusion"
+        ),
+        .executableTarget(
             name: "Example-Record3DCloud",
             dependencies: ["Ollin", "OllinRecord3D"],
             path: "Examples/3D/Record3DCloud"

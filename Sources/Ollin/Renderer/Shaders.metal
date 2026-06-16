@@ -155,6 +155,34 @@ fragment float4 ollin_image_fragment(ImageOut in [[stage_in]],
     return c;
 }
 
+// MARK: - Depth scene (drawDepthScene)
+//
+// A backdrop quad that also primes the depth buffer from a depth map, so 2D drawn
+// afterward (placed with a normalized depth(_:)) is occluded by the scene. Color
+// at texture 0 (the backdrop, premultiplied linear like the image path), the depth
+// map at texture 1. The fragment outputs per-pixel depth via [[depth(any)]], which
+// the depth-test state writes; the rasterized vertex z is ignored. `in.tint.r`
+// carries the whiteIsNear flag (1 = white in the map is nearest).
+
+struct DepthSceneOut {
+    float4 color [[color(0)]];
+    float  depth [[depth(any)]];
+};
+
+fragment DepthSceneOut ollin_depthscene_fragment(ImageOut in [[stage_in]],
+                                                 texture2d<float> colorTex [[texture(0)]],
+                                                 texture2d<float> depthTex [[texture(1)]],
+                                                 sampler samp [[sampler(0)]]) {
+    DepthSceneOut out;
+    out.color = colorTex.sample(samp, in.uv);   // sRGB texture → already linear, premultiplied
+    // The depth map is an sRGB texture too, so the sample is decoded to linear on
+    // read; re-encode to recover the stored 0…1 value (white = near by default),
+    // then map to clip-space depth (Metal NDC, 0 near … 1 far).
+    float v = linearToSrgb(depthTex.sample(samp, in.uv).rrr).x;
+    out.depth = (in.tint.r > 0.5) ? (1.0 - v) : v;
+    return out;
+}
+
 // MARK: - SDF glyph atlas (textMode(.atlas))
 //
 // The volume path for outline text. Each glyph is a textured quad sampling a

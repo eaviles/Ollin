@@ -84,6 +84,12 @@ final class MetalRenderer {
         static func pointCloud(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_point_vertex", fragment: "ollin_point_fragment", blend: blend, depthFormat: depth)
         }
+        // depth-scene backdrop: a textured quad that also writes per-pixel depth from
+        // a depth map (premultiplied color, like the image path; outputs [[depth]]).
+        static func depthScene(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_image_vertex", fragment: "ollin_depthscene_fragment",
+                        blend: blend, premultiplied: true, depthFormat: depth)
+        }
         // final fullscreen tone-map pass, float -> sRGB drawable
         static let present = PipelineKey(vertex: "ollin_present_vertex",
                                          fragment: "ollin_present_fragment", isPresent: true)
@@ -99,6 +105,7 @@ final class MetalRenderer {
             case .glyphAtlas: return .glyphAtlas(blend, depth: depth)
             case .particles:  return .points(blend, depth: depth)
             case .points3D:   return .pointCloud(blend, depth: depth)
+            case .depthScene: return .depthScene(blend, depth: depth)
             }
         }
     }
@@ -313,10 +320,11 @@ final class MetalRenderer {
         geomPass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
         geomPass.colorAttachments[0].storeAction = .multisampleResolve
 
-        // A 3D camera adds a depth attachment, paired to mainMSAA (allocated lazily;
-        // a 2D sketch never allocates one). Memoryless, cleared to the far plane.
+        // A 3D camera *or* a depth scene adds a depth attachment, paired to mainMSAA
+        // (allocated lazily; a plain 2D sketch never allocates one). Memoryless,
+        // cleared to the far plane.
         var passDepthFormat: MTLPixelFormat? = nil
-        if drawer.camera3D != nil {
+        if drawer.usesDepthBuffer {
             if mainDepth?.width != width || mainDepth?.height != height {
                 mainDepth = makeDepthMSAA(width: width, height: height)
             }
@@ -573,10 +581,10 @@ final class MetalRenderer {
         pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
         pass.colorAttachments[0].storeAction = .multisampleResolve
 
-        // A 3D camera adds a (freshly allocated, memoryless) depth attachment so the
-        // headless/snapshot path z-tests exactly like the live window.
+        // A 3D camera or a depth scene adds a (freshly allocated, memoryless) depth
+        // attachment so the headless/snapshot path z-tests exactly like the live window.
         var passDepthFormat: MTLPixelFormat? = nil
-        if drawer.camera3D != nil, let depth = makeDepthMSAA(width: width, height: height) {
+        if drawer.usesDepthBuffer, let depth = makeDepthMSAA(width: width, height: height) {
             pass.depthAttachment.texture = depth
             pass.depthAttachment.loadAction = .clear
             pass.depthAttachment.clearDepth = 1.0
@@ -759,9 +767,13 @@ final class MetalRenderer {
             // composites over in draw order. With no depth attachment the encoder
             // keeps its default state, so 2D-only frames are byte-identical to before.
             if depthFormat != nil {
-                let wantsDepth = batch.kind == .points3D || batch.depth != nil
+                // 3D splats, a depth-scene backdrop, and any depth-placed 2D batch
+                // z-test + write; a plain 2D batch leaves depth alone. The depth
+                // scene and 3D batches set their own clip-z (a fragment SV_Depth and
+                // the camera projection), so only plain 2D batches feed `clipDepth`.
+                let wantsDepth = batch.kind == .points3D || batch.kind == .depthScene || batch.depth != nil
                 encoder.setDepthStencilState(wantsDepth ? depthTestState : noDepthState)
-                if batch.kind != .points3D {
+                if batch.kind != .points3D && batch.kind != .depthScene {
                     uniforms.clipDepth = batch.depth ?? 0
                     encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
                 }
@@ -826,6 +838,22 @@ final class MetalRenderer {
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(pointBuffer, offset: batch.pointStart * pointStride, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
+            case .depthScene:
+                // A backdrop quad (in `imageVertices`, like an image) whose fragment
+                // also writes per-pixel depth from the depth map: color at texture 0,
+                // depth at texture 1. The depth-test state (set above) writes the
+                // fragment's SV_Depth so 2D drawn after composites against it.
+                let end = next?.imageStart ?? imageVertices.count
+                let count = end - batch.imageStart
+                guard count > 0, let imageBuffer, let color = batch.image, let depthMap = batch.depthImage,
+                      let colorTex = color.texture(for: device), let depthTex = depthMap.texture(for: device)
+                else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(imageBuffer, offset: batch.imageStart * imageStride, index: 0)
+                encoder.setFragmentTexture(colorTex, index: 0)
+                encoder.setFragmentTexture(depthTex, index: 1)
+                encoder.setFragmentSamplerState(imageSampler, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             }
         }
     }

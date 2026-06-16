@@ -8,11 +8,14 @@ In a [3D](./3D.md) frame, 2D drawing lays *over* everything by default — right
 
 It's opt-in twice over. A frame is only 3D once you set a [`camera`](./3D.md#camera), and 2D drawing only joins the depth buffer once you give it a depth; everything else composites over in draw order exactly as before.
 
+There are two scenes to composite against: a **3D-camera** scene (a point cloud you drew), and a **depth-map** scene (a depth feed — a webcam depth model, an `RGBDFrame`). They share the same depth buffer and the same occlusion rule; they differ only in how you set a 2D mark's depth (a world point vs a normalized value).
+
 ### Contents
 
-- [Placing 2D at a world depth](#depth) — `depth(at:)`, `noDepth`
+- [Placing 2D at a world depth](#depth) — `depth(at:)`, `noDepth` (a 3D-camera scene)
 - [Projecting a world point to the canvas](#project) — `project`
 - [Billboards](#billboard) — `withBillboard(at:)`
+- [A depth-map scene](#scene) — `drawDepthScene`, `depth(_:)` (a depth feed)
 - [How occlusion reads](#how)
 - [Notes](#notes)
 
@@ -64,6 +67,24 @@ withBillboard(at: orbCenter) {
 ```
 
 It's sugar over `project` + `translate` + `depth(at:)`, scoped by `withState` — reach for the pieces directly when you want the screen position or the depth on their own.
+
+<a id="scene"></a>
+### A depth-map scene
+
+The other scene to composite against isn't 3D geometry you drew — it's a **depth feed**: a colour image paired with a depth map (a webcam depth model, an `RGBDFrame` from a depth camera). `drawDepthScene(color:depth:)` draws the colour as the backdrop *and* writes the depth map into the depth buffer, so 2D drawn afterward is occluded by the scene — a mark behind a nearer subject is hidden by it.
+
+```swift
+// `depth` is a gray map — white is nearest by default.
+drawDepthScene(color: cameraFrame, depth: depthMap)
+
+// A mark at a normalized scene depth: 0 is nearest, 1 is farthest.
+depth(0.5)
+drawCircle(width / 2, height / 2, 40)   // hidden where the scene is nearer than mid
+```
+
+This needs no 3D camera — the depth scene allocates the depth buffer on its own. Where a 3D-camera scene uses `depth(at: worldPoint)`, a depth-map scene uses **`depth(_ t:)`** with a normalized `t` (`0` nearest … `1` farthest), since the map's depth is a relative range, not metric world units. `drawDepthScene` fills the whole canvas by default; pass `in: rect` to letterbox a feed into a fitted rectangle, and `whiteIsNear: false` if the map encodes far as white.
+
+The colour image and the depth map usually come from the same source, so they line up: a depth model run over a camera frame, or an `RGBDFrame`'s `color` and a gray image of its `depth`. The [`3D/DepthOcclusion`](../Examples/3D/DepthOcclusion/) example hangs a field of discs at a draggable depth plane in front of a live webcam, occluded by whoever stands nearer than the plane.
 
 <a id="how"></a>
 ### How occlusion reads

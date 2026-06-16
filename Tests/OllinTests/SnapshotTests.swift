@@ -141,6 +141,16 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: DepthComposited2D(), against: "depth-compositing-2d")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func depthSceneMatchesReference() throws {
+        // A depth-map scene (a near left half, a far right half) with a 2D bar at
+        // mid-depth — pins drawDepthScene + the normalized depth(_:): the bar is
+        // hidden on the near half and drawn over the backdrop on the far half. Pins
+        // the depth-scene pre-pass writing per-pixel SV_Depth. Synthetic, no `time`.
+        let diff = try Snapshot.meanDifference(of: DepthSceneScene(), against: "depth-scene")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -228,6 +238,51 @@ private final class DepthComposited2D: Sketch {
             fill(Color(white: 0.95))
             drawRect(center: .zero, width: 150, height: 92, cornerRadius: 12)
         }
+    }
+}
+
+/// A depth-map scene with a 2D bar at mid-depth — exercises `drawDepthScene` (the
+/// pre-pass that writes per-pixel SV_Depth from a depth map) and the normalized
+/// `depth(_:)`. The depth map's left half is near (white), the right half far
+/// (black); a white bar at depth 0.5 is hidden on the near half and drawn over the
+/// backdrop on the far half. Synthetic Images, no `time`, so it's deterministic.
+private final class DepthSceneScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private let n = 64
+    private lazy var backdrop = makeBackdrop()
+    private lazy var depthMap = makeDepthMap()
+
+    private func makeBackdrop() -> Image {
+        var px = [UInt8](repeating: 255, count: n * n * 4)
+        for y in 0..<n {
+            for x in 0..<n {
+                let t = Double(x) / Double(n - 1)
+                let i = (y * n + x) * 4
+                px[i] = UInt8(40 + t * 200); px[i + 1] = 60; px[i + 2] = UInt8(220 - t * 180)
+            }
+        }
+        return Image(width: n, height: n, premultipliedRGBA: px)!
+    }
+
+    private func makeDepthMap() -> Image {
+        var px = [UInt8](repeating: 255, count: n * n * 4)
+        for y in 0..<n {
+            for x in 0..<n {
+                let v: UInt8 = x < n / 2 ? 255 : 0   // left near (white), right far (black)
+                let i = (y * n + x) * 4
+                px[i] = v; px[i + 1] = v; px[i + 2] = v
+            }
+        }
+        return Image(width: n, height: n, premultipliedRGBA: px)!
+    }
+
+    override func draw() {
+        background(.black)
+        drawDepthScene(color: backdrop, depth: depthMap)
+        depth(0.5)
+        noStroke()
+        fill(.white)
+        drawRect(center: Vector2(width / 2, height / 2), width: width * 0.7, height: height * 0.26)
     }
 }
 

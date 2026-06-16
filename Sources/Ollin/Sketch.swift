@@ -317,6 +317,25 @@ open class Sketch {
     /// (the default), ignoring the depth buffer.
     public func noDepth() { drawer.noDepth() }
 
+    /// Place subsequent 2D drawing at a normalized scene depth `t` (0 = nearest, 1 =
+    /// farthest) — the companion to `depth(at:)` for a [`drawDepthScene`] depth-map
+    /// scene that has no 3D camera. A mark at `t` is hidden where the scene is nearer
+    /// and drawn over where it's farther. Saved by `withState`.
+    public func depth(_ t: Double) { drawer.depth(t) }
+
+    /// Draw a depth scene: `color` as the backdrop and `depth` (a gray map, white =
+    /// nearest by default) written into the depth buffer, so 2D drawn afterward at a
+    /// normalized `depth(_:)` is occluded by the scene — a sprite hidden behind the
+    /// nearer subject in a depth feed. Fills the whole canvas by default. The depth
+    /// map and color usually come from the same source (a depth model over a camera
+    /// frame, an `RGBDFrame`'s depth and color). Set `whiteIsNear: false` if the map
+    /// encodes far as white.
+    public func drawDepthScene(color: Image, depth: Image, in rect: Rectangle? = nil,
+                               whiteIsNear: Bool = true) {
+        drawer.drawDepthScene(color: color, depth: depth,
+                              in: rect ?? canvasRectangle, whiteIsNear: whiteIsNear)
+    }
+
     /// Project a world point through the active camera to its position on the canvas
     /// (top-left origin, points), or `nil` if there's no camera or the point is
     /// behind it. The screen place to draw a 2D billboard for a 3D point.

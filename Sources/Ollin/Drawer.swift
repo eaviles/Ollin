@@ -71,6 +71,7 @@ enum GeometryKind {
     case glyphAtlas   // SDF-atlas text quads in `glyphVertices`, sampling `atlas`
     case particles    // instanced GPU-particle discs reading a compute buffer
     case points3D     // instanced 3D point-cloud splats in `points`, through the camera
+    case depthScene   // a backdrop quad in `imageVertices` that also primes the depth buffer from a depth map
 }
 
 struct GeometryBatch {
@@ -102,6 +103,9 @@ struct GeometryBatch {
     /// only on 2D batches in a depth pass; 3D (`points3D`) batches derive their own
     /// depth from the camera and ignore it. A change in depth breaks the batch.
     var depth: Float?
+    /// The depth map for a `.depthScene` batch — sampled per pixel and written to
+    /// the depth buffer (with `image` as the color backdrop). `nil` otherwise.
+    var depthImage: Image?
 }
 
 /// The drawing state machine and per-frame geometry recorder.
@@ -187,6 +191,16 @@ final class Drawer {
     /// frame. When set, the renderer allocates a depth buffer and draws 3D geometry
     /// through it; a 2D-only frame leaves it `nil` and is untouched.
     private(set) var camera3D: Camera3D?
+
+    /// Whether a depth scene (`drawDepthScene`) was recorded this frame. Like an
+    /// active camera, it makes the renderer allocate the depth buffer — so a 2D
+    /// sketch can prime depth from a depth map and composite 2D against it with no
+    /// 3D camera. Reset each frame; the depth buffer is gated on this *or* a camera.
+    private(set) var hasDepthScene = false
+
+    /// True when this frame needs a depth buffer — an active 3D camera or a depth
+    /// scene. The renderer reads it to allocate (and clear) the depth attachment.
+    var usesDepthBuffer: Bool { camera3D != nil || hasDepthScene }
 
     /// Total GPU particles drawn this frame, summed across `.particles` batches —
     /// for the stats readout, since the particle buffer is GPU-resident and so isn't
@@ -403,6 +417,7 @@ final class Drawer {
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
         currentBatchDepth = nil
+        hasDepthScene = false   // background wipes the recorded scene quad too
     }
 
     /// Stop clearing the canvas each frame: drawing accumulates on a persistent
@@ -558,6 +573,14 @@ final class Drawer {
     /// it ignores the depth buffer and composites in draw order.
     func noDepth() { currentDepth = nil }
 
+    /// Place subsequent 2D drawing at a normalized scene depth `t` (0 = nearest, 1
+    /// = farthest), the companion to `depth(at:)` for a depth-map scene
+    /// (`drawDepthScene`) that has no 3D camera. The value is the clip-space depth
+    /// directly, so it tests against the depth the scene wrote from its map: a mark
+    /// at `t` is hidden where the scene is nearer (smaller depth) and drawn over
+    /// where it's farther. Clamped to 0…1; saved by `withState`.
+    func depth(_ t: Double) { currentDepth = Float(min(max(t, 0), 1)) }
+
     /// Project a world point through the active camera to its canvas-space position
     /// (top-left origin, points), or `nil` if there's no camera or the point is
     /// behind it. `viewport` is the canvas size (the `Sketch` passes `width`/`height`).
@@ -586,6 +609,7 @@ final class Drawer {
         dispatches.removeAll(keepingCapacity: true)
         currentKind = nil
         camera3D = nil
+        hasDepthScene = false
         // The 2D depth is camera-derived (a clip-z against this frame's camera), so
         // it resets with the camera each frame — set it from `draw()` after the
         // camera, like the camera itself.
@@ -1566,6 +1590,44 @@ final class Drawer {
         let bl = imageVertex(x0, y1, 0, vBot, tint)
         beginImageBatch(image)
         imageVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
+    }
+
+    /// Draw a depth scene into `rect`: `color` is the backdrop and `depth` is a
+    /// gray depth map (white = nearest by default) sampled per pixel and written to
+    /// the depth buffer. After it, 2D placed at a normalized `depth(_:)` is occluded
+    /// by the scene — the way a sprite is hidden by a nearer subject. Allocates the
+    /// depth buffer (like a camera) with no 3D camera needed; raster only.
+    func drawDepthScene(color: Image, depth: Image, in rect: Rectangle, whiteIsNear: Bool) {
+        guard rect.width > 0, rect.height > 0,
+              color.width > 0, color.height > 0, depth.width > 0, depth.height > 0 else { return }
+        if svgRecorder != nil { return }   // a depth scene has no vector form
+        hasDepthScene = true
+        let x0 = Float(rect.x), y0 = Float(rect.y)
+        let x1 = Float(rect.x + rect.width), y1 = Float(rect.y + rect.height)
+        let (vTop, vBot): (Float, Float) = color.flipsVertically ? (1, 0) : (0, 1)
+        // The whiteIsNear flag rides in tint.r (the fragment reads it; the backdrop
+        // color is drawn untinted), so no new per-batch field is needed.
+        let flag = SIMD4<Float>(whiteIsNear ? 1 : 0, 0, 0, 0)
+        let tl = imageVertex(x0, y0, 0, vTop, flag)
+        let tr = imageVertex(x1, y0, 1, vTop, flag)
+        let br = imageVertex(x1, y1, 1, vBot, flag)
+        let bl = imageVertex(x0, y1, 0, vBot, flag)
+        beginDepthSceneBatch(color: color, depth: depth)
+        imageVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
+    }
+
+    /// Open a fresh `.depthScene` batch carrying the color backdrop and the depth
+    /// map. Always appends (like `beginImageBatch`); resets `currentKind`.
+    private func beginDepthSceneBatch(color: Image, depth: Image) {
+        currentKind = .depthScene
+        currentBatchBlend = currentBlend
+        currentBatchDepth = currentDepth
+        batches.append(GeometryBatch(kind: .depthScene, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
+                                     blendMode: currentBlend, image: color, depthImage: depth))
     }
 
     /// Build one textured-quad vertex, transforming its position by the current

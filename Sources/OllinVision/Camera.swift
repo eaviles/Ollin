@@ -4,6 +4,9 @@ import CoreImage
 import CoreMedia
 import CoreVideo
 import os
+#if canImport(AppKit)
+import AppKit
+#endif
 
 /// The Mac's camera as a frame source for a sketch — the built-in FaceTime
 /// camera, a Continuity Camera iPhone, or an external webcam. Create one in
@@ -58,6 +61,10 @@ public final class Camera: FrameSource, VideoFeed {
 
     private var delegate: CameraCaptureDelegate?
     private var configured = false
+    /// Holds the capture session and the app-termination observer so both the
+    /// `@Sendable` observer block and the nonisolated `deinit` can stop the
+    /// pipeline off the main actor (see `Teardown`).
+    private let teardown: Teardown
 
     // Cache the wrapped `Image` so repeated `frame` reads in one draw don't
     // rebuild it; a new capture (new `CGImage`) invalidates the cache.
@@ -67,7 +74,22 @@ public final class Camera: FrameSource, VideoFeed {
     /// Create a camera bound to `device` (the default video device by default).
     public init(_ device: Device = .default) {
         self.device = device
+        self.teardown = Teardown(session)
+        // Stop the capture pipeline before the app tears down. On quit the CoreImage
+        // frame conversions (and any other Metal/CoreML work sharing the GPU) are
+        // otherwise still in flight while the process deallocates, which races on
+        // shared framework state and can crash. `stopRunning()` is synchronous, so
+        // the capture queue is drained before termination proceeds.
+        #if canImport(AppKit)
+        teardown.observer = NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification, object: nil, queue: .main
+        ) { [teardown] _ in
+            teardown.stop()
+        }
+        #endif
     }
+
+    deinit { teardown.dispose() }
 
     /// Begin capturing. Gates on camera permission the same way the microphone
     /// does: if it's already granted, capture starts now; if it hasn't been asked,
@@ -203,5 +225,22 @@ private final class CameraCaptureDelegate: NSObject,
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
         store.store(FrameBox(cgImage))
         if let tap = tapStore.withLock({ $0 }) { tap(cgImage) }
+    }
+}
+
+/// Holds the capture session and the app-termination observer so the camera can
+/// stop the pipeline from the `@Sendable` `willTerminate` block and the nonisolated
+/// `deinit` — both off the main actor. `AVCaptureSession.stopRunning()` is
+/// documented safe to call from any thread, and the observer token is set once in
+/// `init` and read once in `deinit`, so the unchecked `Sendable` is sound.
+private final class Teardown: @unchecked Sendable {
+    let session: AVCaptureSession
+    var observer: (any NSObjectProtocol)?
+    init(_ session: AVCaptureSession) { self.session = session }
+    func stop() { session.stopRunning() }
+    func dispose() {
+        if let observer { NotificationCenter.default.removeObserver(observer) }
+        observer = nil
+        session.stopRunning()
     }
 }

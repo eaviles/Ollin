@@ -183,10 +183,12 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         var outputImage: Image?
         var mapBytes: MapBytes?
         var classMask: ClassMask?
+        var sourceFrame: Image?
         var wantsMap = false
         var wantsValues = false
         var wantsOutputImage = false
         var wantsClassMask = false
+        var wantsSourceFrame = false
         /// The model's declared class vocabulary (the segmentation preview
         /// metadata), parsed once at load.
         var modelLabels: [String] = []
@@ -224,6 +226,20 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         lock.withLockUnchecked { state in
             state.wantsMap = true
             return state.map
+        }
+    }
+
+    /// The camera frame the most recent result was computed *from* — the source
+    /// image that produced this frame's `map`/`labels`/etc., or `nil` before the
+    /// first result. Because analysis runs behind the live feed, this frame lags
+    /// the camera by the inference latency, but it's perfectly in step with the
+    /// result: draw it (instead of the live frame) under an overlay or a depth
+    /// scene and the two line up exactly, with no relative lag. The first read arms
+    /// the capture, so it can stay `nil` until the next analyzed frame.
+    public var sourceFrame: Image? {
+        lock.withLockUnchecked { state in
+            state.wantsSourceFrame = true
+            return state.sourceFrame
         }
     }
 
@@ -367,10 +383,10 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
             // the gray drawable; an `outputImage` read arms the full-color
             // decode; a `classMask` read arms the class-plane decode) — a
             // sketch reading only labels never pays a conversion.
-            let (wantsMap, wantsValues, wantsOutputImage, wantsClassMask, modelLabels) =
+            let (wantsMap, wantsValues, wantsOutputImage, wantsClassMask, wantsSourceFrame, modelLabels) =
                 lock.withLockUnchecked {
                     ($0.wantsMap, $0.wantsValues, $0.wantsOutputImage,
-                     $0.wantsClassMask, $0.modelLabels)
+                     $0.wantsClassMask, $0.wantsSourceFrame, $0.modelLabels)
                 }
             var outputCGImage: CGImage?
             if wantsMap || wantsValues || wantsOutputImage {
@@ -396,6 +412,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
                     ClassMask(featureValue: $0, labels: modelLabels)
                 }
             }
+            let sourceFrame = wantsSourceFrame ? Image(cgImage: cgImage) : nil
             lock.withLockUnchecked { state in
                 state.labels = decoded.labels
                 state.objects = decoded.objects
@@ -403,6 +420,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
                 if wantsMap { state.map = map }
                 if wantsOutputImage { state.outputImage = outputImage }
                 if wantsClassMask { state.classMask = classMask }
+                if wantsSourceFrame { state.sourceFrame = sourceFrame }
             }
         } catch {
             status.recordFailure(error)
