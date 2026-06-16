@@ -106,7 +106,7 @@ The **input** to `unproject` is Vision-normalized (lower-left origin); the **out
 <a name="ahead"></a>
 ## What's here, what's ahead
 
-Here: the core `RGBDFrame`/`CameraIntrinsics`/`DepthConfidence`, `unproject`/`pointCloud`, and depth-lifted pose (`Body.lifted` → `LiftedPose`). Ahead, composing over the same frame: depth-aware compositing and occlusion (drawing 2D over a depth scene with the depth test), and richer depth sources as the [iPhone sensor array](../ROADMAP.md) grows.
+Here: the core `RGBDFrame`/`CameraIntrinsics`/`DepthConfidence`, `unproject`/`pointCloud`, and depth-lifted pose (`Body.lifted` → `LiftedPose`). Also here, for a depth source that reports a camera **pose**: `PointCloud.transformed(by:)` places a camera-space cloud into world space, and `WorldCloud` fuses a sweep of pose-placed frames into one accumulated cloud — see [Phone › World fusion](./Phone.md#world-fusion). Ahead, composing over the same frame: depth-aware compositing and occlusion (drawing 2D over a depth scene with the depth test), and richer depth sources as the [iPhone sensor array](../ROADMAP.md) grows.
 
 ### See also
 

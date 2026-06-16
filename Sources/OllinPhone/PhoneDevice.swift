@@ -109,9 +109,17 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     }
 
     /// The 6DoF camera pose of the latest World-mode frame (ARKit's camera→world
-    /// `simd_float4x4`), or `nil` before one arrives. Published for the multi-frame
-    /// world-fusion work to come; this slice draws clouds in camera space.
+    /// `simd_float4x4`), or `nil` before one arrives. ARKit's world is fixed and
+    /// gravity-aligned, so transforming a frame's camera-space cloud by this pose
+    /// places it where it really is in the room — feed both to a `WorldCloud` to
+    /// fuse a sweep of frames into one scene (see `PointCloud.transformed(by:)`).
     public var latestPose: simd_float4x4? { reader.latestPose3D }
+
+    /// An identifier that changes whenever a new World-mode depth frame arrives —
+    /// the frame's stream sequence number. `draw()` runs faster than depth frames
+    /// stream in, so a fusion sketch compares this against the last value it fused
+    /// to add each frame exactly once. `nil` before the first frame.
+    public var latestDepthFrameID: Int? { reader.latestDepth?.sequence }
 
     // MARK: - FrameSource / VideoFeed (the World-mode color feed)
 

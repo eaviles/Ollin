@@ -1,4 +1,5 @@
 import Foundation
+import simd
 
 /// A cloud of 3D points, drawn through a `Camera3D` as camera-facing disc splats
 /// (see `Sketch.drawPointCloud`). Each point carries a world-space position, a
@@ -51,4 +52,33 @@ public struct PointCloud: Sendable {
 
     public var count: Int { points.count }
     public var isEmpty: Bool { points.isEmpty }
+
+    /// This cloud with every point's position run through `transform` (a 4×4
+    /// matrix, applied as `transform · (x, y, z, 1)`), keeping each point's color
+    /// and splat size.
+    ///
+    /// The use it's built for: placing a *camera-space* cloud into *world* space.
+    /// A depth feed unprojects into the camera's own frame (`RGBDFrame.pointCloud`),
+    /// and a depth source that also reports a 6DoF pose (the iPhone capture app's
+    /// `latestPose`, a Record3D stream) gives the camera→world transform — apply it
+    /// and the cloud lands where it really is in the room, so clouds from different
+    /// moments register against each other. `WorldCloud` fuses a sweep of them.
+    ///
+    /// The transform is assumed rigid (rotation + translation, as a camera pose is),
+    /// so splat sizes pass through unscaled.
+    public func transformed(by transform: simd_float4x4) -> PointCloud {
+        var moved = self
+        for index in moved.points.indices {
+            moved.points[index].position = transform.transforming(moved.points[index].position)
+        }
+        return moved
+    }
+}
+
+extension simd_float4x4 {
+    /// Transform a point (`w = 1`, so translation applies) and drop back to `Vector3`.
+    func transforming(_ p: Vector3) -> Vector3 {
+        let v = self * SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), 1)
+        return Vector3(Double(v.x), Double(v.y), Double(v.z))
+    }
 }

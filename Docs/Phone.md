@@ -37,6 +37,7 @@ final class Pose: Sketch {
 - [The body](#the-body) — `PhoneBody`, the joints, drawing the skeleton
 - [The face](#the-face) — `PhoneFace`, the blendshapes, the mesh
 - [World depth](#world-depth) — `latestDepthFrame`, `pointCloud(...)`, the camera pose
+- [World fusion](#world-fusion) — `WorldCloud`, sweeping a room into one cloud
 - [Device motion](#device-motion) — `PhoneMotion`, the transport smoke-test
 - [Notes](#notes) — the wire, coordinate space, what's ahead
 
@@ -142,6 +143,32 @@ device.latestPose                    // simd_float4x4? — the camera's 6DoF pos
 
 The bundled example is `swift run Example-PhoneDepthCloud`.
 
+## World fusion
+
+A single depth frame is only the slice of the world in front of the lens. The camera's 6DoF pose (`latestPose`) is what turns slices into a whole: ARKit's world is fixed and gravity-aligned, so transforming each frame's camera-space cloud by its pose places it where it really is in the room. Sweep the phone and the slices stack up.
+
+[`WorldCloud`](../README.md) (in the core) does the fusing. It keeps one point per small cube of space, so re-seeing a wall refreshes it in place rather than piling up duplicates — the cloud's size is bounded by the scene's surface area, not the number of frames, so a sweep can run as long as you like:
+
+```swift
+var world = WorldCloud(voxelSize: 0.025)   // fuse at 2.5 cm
+
+override func draw() {
+    // Fuse each fresh frame once — draw() runs faster than frames stream in.
+    if let id = device.latestDepthFrameID, id != lastFused,
+       let pose = device.latestPose,
+       let cameraCloud = device.pointCloud(minimumConfidence: .low, depthRange: 0.3...5.0) {
+        world.add(cameraCloud, transformedBy: pose)
+        lastFused = id
+    }
+    camera(.orbiting(target: center, radius: r, azimuth: time * 0.2, elevation: 0.22))
+    drawPointCloud(world.cloud)            // the whole accumulated room
+}
+```
+
+`add(_:transformedBy:)` applies the camera→world pose and merges in one pass; `add(_:)` merges an already-world-space cloud. `latestDepthFrameID` changes only when a new depth frame arrives, so comparing it against the last fused id adds each frame exactly once. `world.cloud` is the fused `PointCloud`, `world.count` its point total, and `world.reset()` starts a fresh scan. The placement primitive underneath, `PointCloud.transformed(by:)`, is public too — apply any 4×4 matrix to a cloud's positions.
+
+The bundled example is `swift run Example-PhoneWorldScan` (sweep the phone, **R** to reset).
+
 ## Device motion
 
 `PhoneMotion` is the CoreMotion sample — attitude (a quaternion), gravity, rotation rate, and user acceleration — the cheap payload that proves the USB transport before any model runs:
@@ -161,6 +188,6 @@ Tilt the phone and `gravity` swings — a one-line check that the wire is alive.
 
 - **The wire is Ollin's own, shared verbatim.** Both ends are Swift, so the protocol skips the packed-image trick cross-language tools use: a length-prefixed stream of tagged binary messages (`PhoneWire`). That one source file is compiled into *both* the Mac satellite and the iOS app, so the framing can't drift between them.
 - **USB only.** The transport is the `usbmuxd` tunnel over the cable (port 1338, distinct from Record3D's 1337). Wi-Fi is deliberately out.
-- **Camera space, for now.** The skeleton is in model space (root at the origin) and the depth cloud is camera-relative. World mode *does* carry the per-frame camera pose (`latestPose`) — the input for placing a frame in a scene and fusing several frames into one world cloud — but applying it (world placement, fusion) is a later slice.
+- **Per-frame clouds are camera-relative; fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame (root at the lens), and the skeleton is in model space (root at the origin). [World fusion](#world-fusion) is what lifts a sweep into one fixed world cloud, by applying each frame's `latestPose`. Fusing several poses' clouds into a single *registered* scene is shipped; richer multi-frame tricks (loop closure, drift correction) are not — a long sweep drifts with ARKit's own tracking.
 - **Depth is raw over the wire.** The LiDAR depth map ships uncompressed (a 256×192 frame is ~196 KB, comfortable over USB); LZFSE compression is a later optimization. The color image is sent as a downscaled JPEG.
 - **A growing catalog.** Body pose, face, world depth, and motion are the shipped payloads; segmentation mattes and richer sensors are the same app sending new tagged payloads, not new pipelines.

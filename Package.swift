@@ -471,6 +471,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinPhone"],
             path: "Examples/3D/PhoneDepthCloud"
         ),
+        // Sweep the phone around a room and fuse every depth frame, by its camera
+        // pose, into one accumulated world cloud — the fusion sibling of PhoneDepthCloud.
+        .executableTarget(
+            name: "Example-PhoneWorldScan",
+            dependencies: ["Ollin", "OllinPhone"],
+            path: "Examples/3D/PhoneWorldScan"
+        ),
         .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],
