@@ -7,8 +7,8 @@
 // (Vector3, PointCloud, the device) lives in the other OllinPhone files, which
 // the iOS app never sees. Keep this file dependency-free.
 //
-// The framing mirrors the usbmuxd-tunnelled stream the Record3D reader uses: a
-// fixed little-endian header, then a tagged payload the reader decodes by kind.
+// The framing is a usbmuxd-tunnelled stream of tagged messages: a fixed
+// little-endian header, then a payload the reader decodes by kind.
 
 import Foundation
 import simd
@@ -30,8 +30,8 @@ public enum PhoneWire {
     public static let headerByteCount = 12
 
     /// The TCP port the capture app listens on, tunnelled to the Mac via usbmuxd.
-    /// Distinct from Record3D's 1337. Shared by both ends (this file compiles into
-    /// the iOS app too), so the port can't drift between them.
+    /// Shared by both ends (this file compiles into the iOS app too), so the port
+    /// can't drift between them.
     public static let streamPort: UInt16 = 1338
 
     /// Defensive upper bound on a single payload, so a garbage header can't steer
@@ -50,6 +50,12 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// head pose. The phone runs face tracking on its front TrueDepth camera, so it's
     /// mutually exclusive with body pose (which uses the rear camera).
     case face = 3
+    /// A world-facing RGBD frame from the rear LiDAR — a metric depth map, a color
+    /// image, the depth-grid intrinsics, optional per-pixel confidence, and the 6DoF
+    /// camera pose, which unproject into a point cloud. The heaviest payload (hundreds
+    /// of KB; depth is raw float32 — LZFSE compression is a later optimization), so it
+    /// streams only while the app is in World mode (LiDAR rear camera).
+    case depth = 4
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -156,17 +162,64 @@ public struct PhoneFaceSample: Sendable, Equatable {
     }
 }
 
+/// One world-facing RGBD frame from the phone's rear LiDAR: a metric depth map
+/// (`depth`, meters, row-major from the top-left, `depthWidth × depthHeight`), the
+/// matching JPEG color image (`colorJPEG`, decoded on the Mac side so this file
+/// stays free of ImageIO), the camera intrinsics **already scaled to the depth
+/// grid** (`fx`/`fy`/`cx`/`cy`, so the Mac builds a `CameraIntrinsics` straight
+/// against `depthWidth × depthHeight`), optional per-pixel `confidence` (`0`/`1`/`2`,
+/// matching the depth grid), and the camera's 6DoF pose (`cameraTransform`,
+/// camera→world, ARKit's column-major `simd_float4x4`) for the multi-frame world
+/// fusion to come.
+///
+/// Depth is carried **raw** (not compressed) — a 256×192 LiDAR map is ~196 KB,
+/// comfortable over USB; LZFSE compression is a documented later optimization. The
+/// color JPEG keeps the payload well under `PhoneWire.maxPayloadBytes`.
+public struct PhoneDepthSample: Sendable, Equatable {
+    public var tracked: Bool
+    public var timestamp: Double
+    public var depthWidth: Int
+    public var depthHeight: Int
+    public var fx: Float
+    public var fy: Float
+    public var cx: Float
+    public var cy: Float
+    public var cameraTransform: simd_float4x4
+    public var colorJPEG: Data
+    public var depth: [Float]
+    public var confidence: [UInt8]?
+
+    public init(tracked: Bool, timestamp: Double, depthWidth: Int, depthHeight: Int,
+                fx: Float, fy: Float, cx: Float, cy: Float, cameraTransform: simd_float4x4,
+                colorJPEG: Data, depth: [Float], confidence: [UInt8]?) {
+        self.tracked = tracked
+        self.timestamp = timestamp
+        self.depthWidth = depthWidth
+        self.depthHeight = depthHeight
+        self.fx = fx
+        self.fy = fy
+        self.cx = cx
+        self.cy = cy
+        self.cameraTransform = cameraTransform
+        self.colorJPEG = colorJPEG
+        self.depth = depth
+        self.confidence = confidence
+    }
+}
+
 /// A decoded message of any kind — the unit tests round-trip this.
 public enum PhoneMessage: Sendable, Equatable {
     case motion(PhoneMotionSample)
     case pose(PhonePoseSample)
     case face(PhoneFaceSample)
+    case depth(PhoneDepthSample)
 
     public var kind: PhoneMessageKind {
         switch self {
         case .motion: return .deviceMotion
         case .pose: return .bodyPose
         case .face: return .face
+        case .depth: return .depth
         }
     }
 }
@@ -211,6 +264,7 @@ public extension PhoneWire {
         case .motion(let m): payload = encodeMotionPayload(m)
         case .pose(let p): payload = encodePosePayload(p)
         case .face(let f): payload = encodeFacePayload(f)
+        case .depth(let d): payload = encodeDepthPayload(d)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -263,6 +317,31 @@ public extension PhoneWire {
         }
         return p
     }
+
+    private static func encodeDepthPayload(_ d: PhoneDepthSample) -> Data {
+        var p = Data()
+        p.append(d.tracked ? 1 : 0)
+        appendF64(&p, d.timestamp)
+        appendU32(&p, UInt32(max(0, d.depthWidth)))
+        appendU32(&p, UInt32(max(0, d.depthHeight)))
+        for v in [d.fx, d.fy, d.cx, d.cy] { appendF32(&p, v) }
+        appendMatrix(&p, d.cameraTransform)
+        // Color: a JPEG byte count, then the JPEG bytes (decoded on the Mac side).
+        appendU32(&p, UInt32(d.colorJPEG.count))
+        p.append(d.colorJPEG)
+        // Depth: a sample count, then raw little-endian float32 meters.
+        appendU32(&p, UInt32(d.depth.count))
+        for v in d.depth { appendF32(&p, v) }
+        // Confidence: a present flag, then (if present) a count + the raw bytes.
+        if let conf = d.confidence {
+            p.append(1)
+            appendU32(&p, UInt32(conf.count))
+            p.append(contentsOf: conf)
+        } else {
+            p.append(0)
+        }
+        return p
+    }
 }
 
 // MARK: - Decoding
@@ -276,6 +355,7 @@ public extension PhoneWire {
         case .deviceMotion: return decodeMotion(payload).map(PhoneMessage.motion)
         case .bodyPose: return decodePose(payload).map(PhoneMessage.pose)
         case .face: return decodeFace(payload).map(PhoneMessage.face)
+        case .depth: return decodeDepth(payload).map(PhoneMessage.depth)
         }
     }
 
@@ -338,6 +418,45 @@ public extension PhoneWire {
         return PhoneFaceSample(tracked: tracked, timestamp: timestamp, headOrientation: headOrientation,
                                headPosition: headPosition, blendShapes: blendShapes, meshVertices: meshVertices)
     }
+
+    private static func decodeDepth(_ data: Data) -> PhoneDepthSample? {
+        // Fixed prefix: tracked(1) + timestamp(8) + dims(8) + intrinsics(16) + transform(64) + jpegLen(4).
+        let prefix = 1 + 8 + 8 + 16 + 64 + 4
+        guard data.count >= prefix else { return nil }
+        let s = data.startIndex
+        let tracked = data[s] != 0
+        var o = 1
+        func u32() -> Int { defer { o += 4 }; return Int(readU32(data, s + o)) }
+        func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+        let timestamp = readF64(data, s + o); o += 8
+        let depthWidth = u32()
+        let depthHeight = u32()
+        let fx = f32(), fy = f32(), cx = f32(), cy = f32()
+        let transform = readMatrix(data, s + o); o += 64
+
+        let jpegLen = u32()
+        guard jpegLen >= 0, data.count >= o + jpegLen + 4 else { return nil }
+        let colorJPEG = Data(data[(s + o)..<(s + o + jpegLen)]); o += jpegLen
+
+        let depthCount = u32()
+        guard depthCount >= 0, data.count >= o + depthCount * 4 + 1 else { return nil }
+        var depth = [Float](); depth.reserveCapacity(depthCount)
+        for _ in 0..<depthCount { depth.append(f32()) }
+
+        let hasConfidence = data[s + o] != 0; o += 1
+        var confidence: [UInt8]?
+        if hasConfidence {
+            guard data.count >= o + 4 else { return nil }
+            let confCount = u32()
+            guard confCount >= 0, data.count >= o + confCount else { return nil }
+            confidence = [UInt8](data[(s + o)..<(s + o + confCount)])
+        }
+
+        return PhoneDepthSample(tracked: tracked, timestamp: timestamp,
+                                depthWidth: depthWidth, depthHeight: depthHeight,
+                                fx: fx, fy: fy, cx: cx, cy: cy, cameraTransform: transform,
+                                colorJPEG: colorJPEG, depth: depth, confidence: confidence)
+    }
 }
 
 // MARK: - Little-endian byte helpers
@@ -352,6 +471,19 @@ private extension PhoneWire {
     static func appendF32(_ d: inout Data, _ v: Float) { appendU32(&d, v.bitPattern) }
     static func appendF64(_ d: inout Data, _ v: Double) {
         var le = v.bitPattern.littleEndian; withUnsafeBytes(of: &le) { d.append(contentsOf: $0) }
+    }
+    /// 16 floats, column-major (`simd` order): columns 0…3, each `(x, y, z, w)`.
+    static func appendMatrix(_ d: inout Data, _ m: simd_float4x4) {
+        for c in 0..<4 { let col = m[c]; for v in [col.x, col.y, col.z, col.w] { appendF32(&d, v) } }
+    }
+    static func readMatrix(_ d: Data, _ i: Data.Index) -> simd_float4x4 {
+        var cols = [SIMD4<Float>]()
+        for c in 0..<4 {
+            let base = i + c * 16
+            cols.append(SIMD4<Float>(readF32(d, base), readF32(d, base + 4),
+                                     readF32(d, base + 8), readF32(d, base + 12)))
+        }
+        return simd_float4x4(cols[0], cols[1], cols[2], cols[3])
     }
     static func readU32(_ d: Data, _ i: Data.Index) -> UInt32 {
         UInt32(d[i]) | (UInt32(d[i + 1]) << 8) | (UInt32(d[i + 2]) << 16) | (UInt32(d[i + 3]) << 24)

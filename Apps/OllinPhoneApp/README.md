@@ -1,20 +1,21 @@
 # Ollin Capture — iPhone sensor app
 
-Ollin's own iPhone capture app: the phone runs **ARKit body tracking** and **face
-tracking** on its Neural Engine and **CoreMotion** device motion, and streams them to
-a tethered Mac over USB. An Ollin sketch on the Mac reads the live skeleton, face, or
-motion in `draw()` through the [`OllinPhone`](../../Sources/OllinPhone) satellite
-(`PhoneDevice`).
+Ollin's own iPhone capture app: the phone runs **ARKit body tracking**, **face
+tracking**, and **rear-LiDAR scene depth** on its Neural Engine, plus **CoreMotion**
+device motion, and streams them to a tethered Mac over USB. An Ollin sketch on the Mac
+reads the live skeleton, face, depth cloud, or motion in `draw()` through the
+[`OllinPhone`](../../Sources/OllinPhone) satellite (`PhoneDevice`).
 
 This is the own-app successor to borrowing the Record3D app's RGBD feed
-([`OllinRecord3D`](../../Sources/OllinRecord3D)): where Record3D gives depth only,
-this streams what ARKit *perceives* — a 3D body skeleton, a face mesh with its 52
-expression blendshapes, and device motion today, more sensors (segmentation, LiDAR
-depth) to come. The chain is Ollin's end to end.
+([`OllinRecord3D`](../../Sources/OllinRecord3D)): it streams what ARKit *perceives* —
+a 3D body skeleton, a face mesh with its 52 expression blendshapes, a world-facing
+RGBD depth frame (a point cloud, with the camera's 6DoF pose), and device motion
+today, more sensors (segmentation, scene mesh) to come. The chain is Ollin's end to
+end.
 
-Body tracking uses the rear camera and face tracking the front TrueDepth camera, so
-the two can't run at once — the app has a **Body / Face** toggle and runs one at a
-time. Device motion streams in both modes.
+Body and World use the rear camera and face tracking the front TrueDepth camera, and
+only one ARKit session runs at a time — the app has a **Body / Face / World** toggle
+and runs one mode at a time. Device motion streams in all three.
 
 ## How it fits together
 
@@ -25,10 +26,11 @@ time. Device motion streams in both modes.
 - **Transport is the standard usbmuxd USB tunnel.** The app opens an `NWListener` on
   TCP `PhoneWire.streamPort` (1338, distinct from Record3D's 1337); the Mac's
   `PhoneDevice` tunnels to it through usbmuxd. No Wi-Fi, no pairing — just the cable.
-- **One-way push.** Each ARKit body/face update and motion sample is encoded with
-  `PhoneWire` and broadcast to the connected Mac. The device-motion payload is the
-  cheap transport smoke-test: it moves the instant the wire is alive, before ARKit
-  has found a body or face.
+- **One-way push.** Each ARKit body/face/depth update and motion sample is encoded
+  with `PhoneWire` and broadcast to the connected Mac. The device-motion payload is
+  the cheap transport smoke-test: it moves the instant the wire is alive, before ARKit
+  has found a body, face, or depth. The depth payload is by far the heaviest (a
+  256×192 LiDAR frame + a JPEG color image), so it streams only in World mode.
 
 ## Build & deploy
 
@@ -62,14 +64,15 @@ Requirements:
 ## Run it
 
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
-   then **ON AIR**, with the **Body / Face** toggle and live status.
+   then **ON AIR**, with the **Body / Face / World** toggle and live status.
 2. Connect the cable to the Mac.
 3. On the Mac, run a sketch. With the toggle on **Body**: `swift run
    Example-PhoneBodyPose` — the orbiting stick figure is driven by the phone's
-   skeleton. With the toggle on **Face**: `swift run Example-PhoneFace` — the face
-   mesh orbits and the expression bars move as you smile, blink, and open your mouth.
-   Before tracking begins, the gravity readout proves the USB wire is alive (tilt the
-   phone — it moves).
+   skeleton. On **Face**: `swift run Example-PhoneFace` — the face mesh orbits and the
+   expression bars move as you smile, blink, and open your mouth. On **World** (a
+   LiDAR iPhone): `swift run Example-PhoneDepthCloud` — point the phone at the room and
+   the rear LiDAR's depth becomes a live point cloud. Before tracking begins, the
+   gravity readout proves the USB wire is alive (tilt the phone — it moves).
 
 ## Notes
 
@@ -81,6 +84,11 @@ Requirements:
 - The face stream (`FaceStreamer`) carries the deforming mesh in face-local space,
   the 52 blendshapes positionally in `PhoneBlendShape` order, and the head pose. Face
   tracking needs a TrueDepth front camera (Face ID devices).
-- The cloud is the skeleton/mesh in **model space** (root or face at the origin). The
-  per-frame ARKit world transform and world placement / multi-frame fusion are a
-  later slice, as on the Record3D path.
+- The depth stream (`DepthStreamer`) runs `ARWorldTrackingConfiguration` with scene
+  depth (smoothed where supported) and sends the LiDAR depth map, a JPEG color image,
+  the intrinsics scaled to the depth grid, per-pixel confidence, and the camera's
+  6DoF transform. Scene depth needs a **LiDAR** sensor (Pro-tier iPhones); the World
+  segment reports it unsupported otherwise. The Mac decodes it into a core `RGBDFrame`.
+- The skeleton/face cloud is in **model space** (root or face at the origin) and the
+  depth cloud is camera-relative. World mode carries the per-frame camera pose, but
+  world placement / multi-frame fusion using it is a later slice.

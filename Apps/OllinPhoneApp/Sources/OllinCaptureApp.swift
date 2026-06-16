@@ -2,11 +2,10 @@ import SwiftUI
 import ARKit
 import simd
 
-/// **Ollin Capture** — Ollin's own iPhone sensor app. The phone runs ARKit body
-/// tracking on its Neural Engine and CoreMotion device motion, and streams both to
-/// a tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin sketch
-/// reads them in `draw()` via `OllinPhone`'s `PhoneDevice`. This is the own-app
-/// successor to borrowing Record3D's RGBD feed — the sensor stream is ours end to end.
+/// **Ollin Capture** — Ollin's own iPhone sensor app. The phone runs ARKit (body
+/// pose, face, and rear-LiDAR scene depth) on its Neural Engine plus CoreMotion device
+/// motion, and streams them to a tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`),
+/// where an Ollin sketch reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
 @main
 struct OllinCaptureApp: App {
     var body: some Scene {
@@ -14,11 +13,14 @@ struct OllinCaptureApp: App {
     }
 }
 
-/// Which on-device camera ARKit drives. Body uses the rear camera, face the front
-/// TrueDepth camera, so the two are mutually exclusive — the app runs one at a time.
+/// Which on-device sensor ARKit drives. Body and World use the rear camera, Face the
+/// front TrueDepth camera; only one ARKit session runs at a time, so they're mutually
+/// exclusive — the app runs one at a time. World streams a LiDAR RGBD frame (depth +
+/// color + pose); Body a skeleton; Face the expression mesh.
 enum CaptureMode: String, CaseIterable, Identifiable {
     case body = "Body"
     case face = "Face"
+    case world = "World"
     var id: String { rawValue }
 }
 
@@ -33,16 +35,20 @@ final class SensorStreamer: ObservableObject {
     @Published var jointCount = 0
     @Published var faceTracked = false
     @Published var topExpression = ""
+    @Published var depthTracked = false
+    @Published var depthInfo = ""
     @Published var gravity = SIMD3<Float>(0, 0, 0)
     @Published var motionLive = false
     @Published var status = "Starting…"
 
     let bodySupported = ARBodyTrackingConfiguration.isSupported
     let faceSupported = ARFaceTrackingConfiguration.isSupported
+    let depthSupported = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
 
     private var server: SensorServer?
     private let ar = ARStreamer()
     private let face = FaceStreamer()
+    private let depth = DepthStreamer()
     private let motion = MotionStreamer()
     private var started = false
 
@@ -84,6 +90,13 @@ final class SensorStreamer: ObservableObject {
             self.topExpression = Self.describe(sample.blendShapes)
         }
 
+        depth.onDepth = { [weak self] sample in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.depth(sample)))
+            self.depthTracked = sample.tracked
+            self.depthInfo = "\(sample.depthWidth)×\(sample.depthHeight) · \(sample.colorJPEG.count / 1024) KB"
+        }
+
         applyMode()
     }
 
@@ -96,15 +109,20 @@ final class SensorStreamer: ObservableObject {
     }
 
     private func applyMode() {
+        // Only one ARKit session at a time — stop the others before starting one.
         switch mode {
         case .body:
-            face.stop()
+            face.stop(); depth.stop()
             ar.start()
             status = bodySupported ? "Streaming body" : "This device doesn't support body tracking"
         case .face:
-            ar.stop()
+            ar.stop(); depth.stop()
             face.start()
             status = faceSupported ? "Streaming face" : "This device doesn't support face tracking"
+        case .world:
+            ar.stop(); face.stop()
+            depth.start()
+            status = depthSupported ? "Streaming depth" : "This device has no LiDAR for depth"
         }
     }
 
@@ -162,16 +180,22 @@ struct ContentView: View {
 
                 // Status rows
                 VStack(alignment: .leading, spacing: 12) {
-                    if streamer.mode == .body {
+                    switch streamer.mode {
+                    case .body:
                         row("Body", streamer.bodySupported
                             ? (streamer.bodyTracked ? "tracking · \(streamer.jointCount) joints" : "searching…")
                             : "unsupported on this device",
                             ok: streamer.bodyTracked)
-                    } else {
+                    case .face:
                         row("Face", streamer.faceSupported
                             ? (streamer.faceTracked ? "tracking · \(streamer.topExpression)" : "searching…")
                             : "unsupported on this device",
                             ok: streamer.faceTracked)
+                    case .world:
+                        row("Depth", streamer.depthSupported
+                            ? (streamer.depthTracked ? "streaming · \(streamer.depthInfo)" : "starting…")
+                            : "needs LiDAR (Pro)",
+                            ok: streamer.depthTracked)
                     }
                     row("Motion", streamer.motionLive
                         ? String(format: "live · gravity (% .2f, % .2f, % .2f)",

@@ -4,9 +4,9 @@
 
 ## Phone (iPhone sensor stream)
 
-Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture** — Ollin's own iOS app ([`Apps/OllinPhoneApp`](../Apps/OllinPhoneApp/README.md)) — runs ARKit on the phone's Neural Engine and streams the results over the USB cable; `PhoneDevice` reads them on the Mac as typed values you use in `draw()`. It streams a **3D body skeleton**, a **face** (deforming mesh + the 52 expression blendshapes), and **device motion**.
+Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture** — Ollin's own iOS app ([`Apps/OllinPhoneApp`](../Apps/OllinPhoneApp/README.md)) — runs ARKit on the phone's Neural Engine and streams the results over the USB cable; `PhoneDevice` reads them on the Mac as typed values you use in `draw()`. It streams a **3D body skeleton**, a **face** (deforming mesh + the 52 expression blendshapes), a world-facing **RGBD depth frame** from the rear LiDAR (a point cloud, with the camera's 6DoF pose), and **device motion**.
 
-Where [`Record3D`](./Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives* — a body, a face, and motion today, with more sensors (segmentation, LiDAR depth) to come. The chain is Ollin's end to end.
+Where [`Record3D`](./Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives* — a body, a face, world-facing depth, and motion today, with more sensors (segmentation, richer depth) to come. The chain is Ollin's end to end.
 
 `PhoneDevice` lives in a separate library so the drawing core stays lean; add `import OllinPhone` alongside `import Ollin`. The transport is the standard `usbmuxd` device tunnel (the same plumbing Xcode uses), so there's no third-party dependency and no Wi-Fi pairing — just the cable.
 
@@ -33,9 +33,10 @@ final class Pose: Sketch {
 ### Contents
 
 - [Setup](#setup) — install the capture app, connect the cable
-- [Reading the stream](#reading-the-stream) — `latestBody`, `latestFace`, `latestMotion`, the connection state
+- [Reading the stream](#reading-the-stream) — `latestBody`, `latestFace`, `latestDepthFrame`, `latestMotion`, the connection state
 - [The body](#the-body) — `PhoneBody`, the joints, drawing the skeleton
 - [The face](#the-face) — `PhoneFace`, the blendshapes, the mesh
+- [World depth](#world-depth) — `latestDepthFrame`, `pointCloud(...)`, the camera pose
 - [Device motion](#device-motion) — `PhoneMotion`, the transport smoke-test
 - [Notes](#notes) — the wire, coordinate space, what's ahead
 
@@ -63,12 +64,13 @@ device.isStreaming                   // Bool — frames currently arriving
 device.waitingMessage                // a notice reflecting the live connection state
 device.latestBody                    // PhoneBody?  — the latest skeleton (Body mode)
 device.latestFace                    // PhoneFace?  — the latest face (Face mode)
+device.latestDepthFrame              // RGBDFrame?  — the latest depth frame (World mode)
 device.latestMotion                  // PhoneMotion? — the latest device-motion sample
 ```
 
-These are fresh each time the phone sends one; read them within the current `draw()`. Each is `nil` until the first of its kind arrives — so motion typically lights up first (it needs no camera or model), proving the wire before ARKit has found a body or face.
+These are fresh each time the phone sends one; read them within the current `draw()`. Each is `nil` until the first of its kind arrives — so motion typically lights up first (it needs no camera or model), proving the wire before ARKit has found a body, face, or depth.
 
-**Body and face are mutually exclusive.** ARKit body tracking uses the rear camera and face tracking the front TrueDepth camera, so the phone can't do both at once. The capture app has a **Body / Face** toggle; whichever is selected is the one that updates (`latestBody` or `latestFace`). The other holds its last value, so check `latestFace` for the sketch you mean to drive.
+**The three camera modes are mutually exclusive.** Body and World use the rear camera, Face the front TrueDepth camera, and only one ARKit session runs at a time. The capture app has a **Body / Face / World** toggle; whichever is selected is the one that updates (`latestBody`, `latestFace`, or `latestDepthFrame`). The others hold their last value, so read the one for the mode you mean to drive. (Motion streams across all three.)
 
 ## The body
 
@@ -120,6 +122,26 @@ drawPointCloud(face.cloud(pointSize: 0.0045, color: .white))
 
 The bundled example is `swift run Example-PhoneFace`.
 
+## World depth
+
+In **World** mode the phone's rear **LiDAR** streams a world-facing RGBD frame — a metric depth map, the matching color image, the camera intrinsics, per-pixel confidence, and the camera's 6DoF pose. `PhoneDevice` exposes it as the source-agnostic core [`RGBDFrame`](./RGBD.md), so it unprojects into a point cloud the same way every depth source does. Needs a LiDAR iPhone (a Pro model).
+
+```swift
+if let cloud = device.pointCloud(depthRange: 0.3...5.0) {
+    camera(.orbiting(target: .zero, radius: 2.5, azimuth: time * 0.3, elevation: 0.18))
+    drawPointCloud(cloud)
+}
+
+device.latestDepthFrame              // RGBDFrame? — depth + color + intrinsics
+device.latestPose                    // simd_float4x4? — the camera's 6DoF pose
+```
+
+`pointCloud(...)` is sugar over `latestDepthFrame?.pointCloud(...)` with rear-LiDAR defaults (`minimumConfidence: .medium`, an open depth range); see [`RGBD.md`](./RGBD.md) for the full unprojection parameters and the coordinate space (camera-relative, +x right, +y up, looking −z). For finer control — sampling a single depth point, lifting a 2D pose to metric 3D — reach for `latestDepthFrame` and the `RGBDFrame` API directly.
+
+`PhoneDevice` is also a `FrameSource` and a `VideoFeed` in this mode, so a vision tracker can analyze the color feed and `drawFrame` can letterbox it (the color frame is only present while World mode is streaming).
+
+The bundled example is `swift run Example-PhoneDepthCloud`.
+
 ## Device motion
 
 `PhoneMotion` is the CoreMotion sample — attitude (a quaternion), gravity, rotation rate, and user acceleration — the cheap payload that proves the USB transport before any model runs:
@@ -139,5 +161,6 @@ Tilt the phone and `gravity` swings — a one-line check that the wire is alive.
 
 - **The wire is Ollin's own, shared verbatim.** Both ends are Swift, so the protocol skips the packed-image trick cross-language tools use: a length-prefixed stream of tagged binary messages (`PhoneWire`). That one source file is compiled into *both* the Mac satellite and the iOS app, so the framing can't drift between them.
 - **USB only.** The transport is the `usbmuxd` tunnel over the cable (port 1338, distinct from Record3D's 1337). Wi-Fi is deliberately out.
-- **Camera space, for now.** The skeleton is in model space (root at the origin). The per-frame ARKit world transform — for placing the figure in a scene and fusing frames into one world — is a later slice, as on the Record3D path.
-- **A growing catalog.** Body pose, face, and motion are the shipped payloads; segmentation mattes and LiDAR depth are the same app sending new tagged payloads, not new pipelines.
+- **Camera space, for now.** The skeleton is in model space (root at the origin) and the depth cloud is camera-relative. World mode *does* carry the per-frame camera pose (`latestPose`) — the input for placing a frame in a scene and fusing several frames into one world cloud — but applying it (world placement, fusion) is a later slice.
+- **Depth is raw over the wire.** The LiDAR depth map ships uncompressed (a 256×192 frame is ~196 KB, comfortable over USB); LZFSE compression is a later optimization. The color image is sent as a downscaled JPEG.
+- **A growing catalog.** Body pose, face, world depth, and motion are the shipped payloads; segmentation mattes and richer sensors are the same app sending new tagged payloads, not new pipelines.

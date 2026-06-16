@@ -11,5 +11,9 @@ right-handed and y-up.
 | [DepthCloud](DepthCloud/) | A live 3D point cloud from one webcam: a neural depth model lifts each pixel into space, colored by the camera image, orbiting. Needs `Scripts/fetch-models.sh`. |
 | [Record3DCloud](Record3DCloud/) | An iPhone RGBD recording orbited as a point cloud: a `.r3d` clip from the Record3D app, unprojected with its true camera intrinsics. Drop a recording in `~/Downloads`. Needs `import OllinRecord3D`. |
 | [Record3DLiveCloud](Record3DLiveCloud/) | A **live** RGBD cloud streamed from a tethered iPhone: open Record3D, turn on USB streaming, and the phone's depth camera becomes a real-time point cloud on the Mac. Needs `import OllinRecord3D`. |
+| [DepthLiftedPose](DepthLiftedPose/) | A 2D body pose lifted into metric 3D through a depth frame: the tethered phone's depth back-projects each tracked joint, and the skeleton is drawn in space over the person's own cloud. Needs `import OllinVision`/`OllinRecord3D`. |
+| [PhoneBodyPose](PhoneBodyPose/) | A live 3D body skeleton streamed from **Ollin Capture** on a tethered iPhone — ARKit body pose over USB, orbited as a stick figure. Needs `import OllinPhone`. |
+| [PhoneFace](PhoneFace/) | Ollin Capture's live face mesh and 52 expression blendshapes, orbited as a point cloud with expression bars (tap **Face** on the phone). Needs `import OllinPhone`. |
+| [PhoneDepthCloud](PhoneDepthCloud/) | A **live** rear-LiDAR RGBD cloud from Ollin Capture (tap **World**): Ollin's own-app world-facing depth feed, unprojected with the stream's true intrinsics and orbited. Needs `import OllinPhone`. |
 
-See [`Docs/3D.md`](../../Docs/3D.md) for the 3D guide. Record3D recordings have their own guide in [`Docs/Record3D.md`](../../Docs/Record3D.md).
+See [`Docs/3D.md`](../../Docs/3D.md) for the 3D guide. Record3D recordings have their own guide in [`Docs/Record3D.md`](../../Docs/Record3D.md); the Ollin Capture stream is documented in [`Docs/Phone.md`](../../Docs/Phone.md).

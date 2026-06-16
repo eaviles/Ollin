@@ -1,4 +1,6 @@
 import Foundation
+import CoreGraphics
+import simd
 import os
 import Ollin
 import OllinUSBMux
@@ -8,9 +10,9 @@ import Darwin
 
 /// A live sensor stream from a tethered iPhone running the **Ollin** capture app
 /// (Apps/OllinPhoneApp) — the phone runs ARKit on its own Neural Engine and streams
-/// typed results the Mac reads in `draw()`. Where `Record3DDevice` borrows the
-/// Record3D app's RGBD feed, this is Ollin's own app, so the stream carries what
-/// ARKit perceives: a 3D **body skeleton** and **device motion**, not just depth.
+/// typed results the Mac reads in `draw()`: a 3D **body skeleton**, a **face** (the
+/// deforming mesh + the 52 expression blendshapes), a world-facing **RGBD depth
+/// frame** from the rear LiDAR, and **device motion**.
 ///
 /// ```swift
 /// let device = PhoneDevice()
@@ -24,18 +26,29 @@ import Darwin
 /// }
 /// ```
 ///
+/// In **World** mode the capture app streams a world-facing RGBD frame from the
+/// rear LiDAR instead — `latestDepthFrame` / `pointCloud(...)` unproject it into a
+/// colored cloud, and each frame's `latestPose` carries the 6DoF camera transform
+/// for world fusion. The device is also a `FrameSource` + `VideoFeed`, so a vision
+/// tracker can analyze the depth-mode color feed and `drawFrame` can letterbox it.
+///
 /// Launch the Ollin capture app on the iPhone and connect the cable; the device
 /// keeps retrying, so plugging in or starting the app mid-run just works. The
-/// transport is the standard `usbmuxd` tunnel (port 1338, distinct from Record3D's
-/// 1337); the wire format is Ollin's own (`PhoneWire`).
+/// transport is the standard `usbmuxd` tunnel (port 1338); the wire format is
+/// Ollin's own (`PhoneWire`).
 @MainActor
-public final class PhoneDevice {
+public final class PhoneDevice: FrameSource, VideoFeed {
 
     /// The TCP port the Ollin capture app listens on (tunnelled via usbmuxd) —
     /// defined once in `PhoneWire` so both ends agree.
     public nonisolated static let streamPort: UInt16 = PhoneWire.streamPort
 
     private let reader: PhoneStreamReader
+
+    // Build the drawable `RGBDFrame` lazily and cache it by the box's sequence, so
+    // repeated reads in one `draw()` (frame, frameSize, pointCloud) reuse it.
+    private var cachedSequence: Int?
+    private var cachedFrame: RGBDFrame?
 
     /// Create a device bound to the capture app's stream port.
     public init(port: UInt16 = PhoneDevice.streamPort) {
@@ -67,6 +80,56 @@ public final class PhoneDevice {
     /// has found a body).
     public var latestMotion: PhoneMotion? { reader.latestMotion.map(PhoneMotion.init) }
 
+    // MARK: - World mode (rear LiDAR RGBD)
+
+    /// The latest world-facing RGBD frame, or `nil` before one arrives. Populated
+    /// when the capture app is in **World** mode (rear LiDAR); body/face modes don't
+    /// produce depth. A fresh frame each time the phone sends one — read it within
+    /// the current `draw()`.
+    public var latestDepthFrame: RGBDFrame? {
+        guard let box = reader.latestDepth else { return nil }
+        if cachedSequence == box.sequence, let cachedFrame { return cachedFrame }
+        let frame = RGBDFrame(color: Image(cgImage: box.color), depth: box.depth,
+                              confidence: box.confidence, depthWidth: box.depthWidth,
+                              depthHeight: box.depthHeight, intrinsics: box.intrinsics)
+        cachedSequence = box.sequence
+        cachedFrame = frame
+        return frame
+    }
+
+    /// Unproject the latest depth frame into a `PointCloud` (see `RGBDFrame.pointCloud`
+    /// for the parameters). `nil` until the first World-mode frame arrives. The rear
+    /// LiDAR reaches across a room, so the defaults open the depth range up.
+    public func pointCloud(minimumConfidence: DepthConfidence = .medium,
+                           depthRange: ClosedRange<Double>? = nil,
+                           step: Int = 1,
+                           pointSize: Double = 0.009) -> PointCloud? {
+        latestDepthFrame?.pointCloud(minimumConfidence: minimumConfidence, depthRange: depthRange,
+                                     step: step, pointSize: pointSize)
+    }
+
+    /// The 6DoF camera pose of the latest World-mode frame (ARKit's camera→world
+    /// `simd_float4x4`), or `nil` before one arrives. Published for the multi-frame
+    /// world-fusion work to come; this slice draws clouds in camera space.
+    public var latestPose: simd_float4x4? { reader.latestPose3D }
+
+    // MARK: - FrameSource / VideoFeed (the World-mode color feed)
+
+    /// The analysis tap (`FrameSource`): the live color frame, delivered on the
+    /// reader thread so a vision tracker can run over the phone's World-mode camera.
+    public var frameTap: FrameTap? {
+        didSet { reader.setTap(frameTap) }
+    }
+
+    /// The latest World-mode color frame as a drawable `Image` (`VideoFeed`).
+    public var frame: Image? { latestDepthFrame?.color }
+
+    /// The pixel size of the latest World-mode color frame (`VideoFeed`).
+    public var frameSize: Vector2? {
+        guard let box = reader.latestDepth else { return nil }
+        return Vector2(Double(box.color.width), Double(box.color.height))
+    }
+
     /// The notice to show before frames arrive — reflects the live connection state
     /// (no device, refused, reconnecting).
     public var waitingMessage: String { reader.statusMessage ?? "Connecting to the phone…" }
@@ -74,7 +137,7 @@ public final class PhoneDevice {
 
 /// Owns the usbmuxd connection and the background read loop, decoding framed
 /// messages off the main thread and handing the latest of each kind across a lock —
-/// the serial-producer / locked-reader model `Record3DStreamReader` uses.
+/// a serial-producer / locked-reader model.
 /// `@unchecked Sendable`: its mutable state lives behind the lock, and the read
 /// thread touches nothing main-actor-isolated (the executor-assertion lesson).
 final class PhoneStreamReader: @unchecked Sendable {
@@ -83,6 +146,9 @@ final class PhoneStreamReader: @unchecked Sendable {
         var latestPose: PhonePoseSample?
         var latestFace: PhoneFaceSample?
         var latestMotion: PhoneMotionSample?
+        var latestDepth: PhoneDepthFrameBox?
+        var depthSequence = 0
+        var tap: FrameTap?
         var connected = false
         var message: String? = "Connecting to the phone…"
         var running = false
@@ -99,8 +165,12 @@ final class PhoneStreamReader: @unchecked Sendable {
     var latestPose: PhonePoseSample? { lock.withLock { $0.latestPose } }
     var latestFace: PhoneFaceSample? { lock.withLock { $0.latestFace } }
     var latestMotion: PhoneMotionSample? { lock.withLock { $0.latestMotion } }
+    var latestDepth: PhoneDepthFrameBox? { lock.withLock { $0.latestDepth } }
+    var latestPose3D: simd_float4x4? { lock.withLock { $0.latestDepth?.transform } }
     var isConnected: Bool { lock.withLock { $0.connected } }
     var statusMessage: String? { lock.withLock { $0.message } }
+
+    func setTap(_ tap: FrameTap?) { lock.withLock { $0.tap = tap } }
 
     func start() {
         let alreadyRunning = lock.withLock { state -> Bool in
@@ -144,12 +214,25 @@ final class PhoneStreamReader: @unchecked Sendable {
 
             readLoop: while isRunning {
                 switch readMessage(fd) {
+                case .message(.depth(let sample)):
+                    // Decode the RGBD frame (JPEG + intrinsics) on this thread, off
+                    // the main actor (the executor-assertion lesson), then fire the
+                    // FrameSource tap with the color image.
+                    let seq = lock.withLock { state -> Int in state.depthSequence += 1; return state.depthSequence }
+                    if let box = decodePhoneDepth(sample, sequence: seq) {
+                        let tap = lock.withLock { state -> FrameTap? in
+                            state.latestDepth = box
+                            return state.tap
+                        }
+                        tap?(box.color)
+                    }
                 case .message(let message):
                     lock.withLock { state in
                         switch message {
                         case .motion(let m): state.latestMotion = m
                         case .pose(let p): state.latestPose = p
                         case .face(let f): state.latestFace = f
+                        case .depth: break   // handled above
                         }
                     }
                 case .skip:

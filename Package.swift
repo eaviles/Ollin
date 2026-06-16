@@ -447,6 +447,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinPhone"],
             path: "Examples/3D/PhoneFace"
         ),
+        // The Ollin capture app's live rear-LiDAR RGBD cloud — the depth sibling of
+        // PhoneBodyPose and PhoneFace.
+        .executableTarget(
+            name: "Example-PhoneDepthCloud",
+            dependencies: ["Ollin", "OllinPhone"],
+            path: "Examples/3D/PhoneDepthCloud"
+        ),
         .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],

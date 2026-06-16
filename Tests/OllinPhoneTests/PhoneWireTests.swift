@@ -8,8 +8,8 @@ import Darwin
 #endif
 
 /// Exercises the phone sensor-stream wire format — the framing header plus the
-/// motion and body-pose payload codecs — with encode/decode round-trips (GPU-free,
-/// CI-safe), plus a live-device test that soft-skips when no phone is streaming.
+/// motion, body-pose, face, and depth payload codecs — with encode/decode round-trips
+/// (GPU-free, CI-safe), plus a live-device test that soft-skips when no phone is streaming.
 @Suite struct PhoneWireTests {
 
     // MARK: Round-trips
@@ -60,6 +60,29 @@ import Darwin
             headOrientation: SIMD4<Float>(0, 0, 0, 1), headPosition: .zero,
             blendShapes: [Float](repeating: 0, count: PhoneBlendShape.allCases.count),
             meshVertices: []))
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func roundTripsDepth() {
+        // A small RGBD frame: a 4×2 depth grid, opaque JPEG-stand-in bytes, a
+        // confidence map, intrinsics, and a 6DoF camera transform.
+        let depth: [Float] = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2]
+        let confidence: [UInt8] = [2, 2, 1, 0, 2, 1, 2, 2]
+        let transform = simd_float4x4(SIMD4<Float>(1, 0, 0, 0), SIMD4<Float>(0, 1, 0, 0),
+                                      SIMD4<Float>(0, 0, 1, 0), SIMD4<Float>(0.1, 0.2, -0.3, 1))
+        let message = PhoneMessage.depth(PhoneDepthSample(
+            tracked: true, timestamp: 5.5, depthWidth: 4, depthHeight: 2,
+            fx: 211.5, fy: 211.5, cx: 128.25, cy: 96.5, cameraTransform: transform,
+            colorJPEG: Data([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]), depth: depth, confidence: confidence))
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func roundTripsDepthWithoutConfidence() {
+        // The TrueDepth front camera (and a missing confidence map) — depth only.
+        let message = PhoneMessage.depth(PhoneDepthSample(
+            tracked: false, timestamp: 0, depthWidth: 2, depthHeight: 1,
+            fx: 100, fy: 100, cx: 1, cy: 0.5, cameraTransform: matrix_identity_float4x4,
+            colorJPEG: Data(), depth: [1.0, 2.0], confidence: nil))
         #expect(roundTrip(message) == message)
     }
 
