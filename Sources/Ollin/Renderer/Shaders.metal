@@ -1169,7 +1169,12 @@ fragment float4 ollin_point_fragment(PointOut in [[stage_in]]) {
     float fillCov, strokeCov;
     diskCoverage(in.local, float2(in.radius), 0.0, 0.0, 0.0, fillCov, strokeCov);
     float a = in.color.a * fillCov;
-    if (a <= 0.0) { return float4(0.0); }
+    // Discard (not just zero out) the transparent corners of the billboard quad.
+    // In a 3D depth pass the quad writes depth across its whole area, so a near
+    // splat's invisible corner would occlude farther splats behind it — the black
+    // rectangles where dense dots overlap. Discarding writes neither color nor
+    // depth, so only the disc itself participates in occlusion.
+    if (a <= 0.0) { discard_fragment(); }
     // Linearize the sRGB tone and emit straight-alpha into the linear float target.
     return float4(srgbToLinear(in.color.rgb), a);
 }
