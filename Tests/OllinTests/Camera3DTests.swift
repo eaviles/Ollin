@@ -95,4 +95,47 @@ struct Camera3DTests {
         #expect(close(Float(side.eye.x), 5))
         #expect(close(Float(side.eye.z), 0, 1e-3))
     }
+
+    /// The load-bearing property of the intrinsics projection: a camera-space point
+    /// made by `CameraIntrinsics.unproject(col,row,depth)` reprojects to its *own*
+    /// pixel (NDC), with the clip w equal to the metric depth — so a depth cloud and
+    /// a metric depth scene built from the same intrinsics share one space. Uses an
+    /// off-center principal point and unequal focal lengths (the asymmetric case).
+    @Test func intrinsicReprojectsToPixel() {
+        let k = CameraIntrinsics(fx: 360, fy: 380, cx: 120, cy: 100, width: 256, height: 192)
+        let proj = Camera3D.perspective(intrinsics: k, near: 0.01, far: 100)
+        for (col, row, depth) in [(20.0, 30.0, 0.5), (200.0, 150.0, 2.0), (128.0, 96.0, 1.25)] {
+            let p = k.unproject(col: col, row: row, depth: depth)
+            let clip = proj * SIMD4<Float>(p.simd3, 1)
+            #expect(close(clip.w, Float(depth), 1e-3))            // w = metric depth
+            #expect(close(clip.x / clip.w, Float(2 * col / 256 - 1), 1e-3))
+            #expect(close(clip.y / clip.w, Float(1 - 2 * row / 192), 1e-3))
+        }
+    }
+
+    /// The intrinsic projection maps metric depth onto Metal's z ∈ [0,1]: a point at
+    /// `near` lands at 0, at `far` at 1 (the perspective depth curve), so a depth
+    /// scene's meters and a placed object's depth test on the same scale.
+    @Test func intrinsicDepthRange() {
+        let k = CameraIntrinsics(fx: 300, fy: 300, cx: 128, cy: 96, width: 256, height: 192)
+        let near: Float = 0.1, far: Float = 50
+        let proj = Camera3D.perspective(intrinsics: k, near: near, far: far)
+        let atNear = proj * SIMD4<Float>(0, 0, -near, 1)   // on-axis, at the near plane
+        let atFar  = proj * SIMD4<Float>(0, 0, -far, 1)
+        #expect(close(atNear.z / atNear.w, 0))
+        #expect(close(atFar.z / atFar.w, 1))
+    }
+
+    /// `fromIntrinsics` places the camera at the origin looking down −z (so its view
+    /// matrix is the identity — the unproject space *is* the world) and carries the
+    /// intrinsic projection with the given near/far.
+    @Test func fromIntrinsicsPose() {
+        let k = CameraIntrinsics(fx: 300, fy: 300, cx: 128, cy: 96, width: 256, height: 192)
+        let cam = Camera3D.fromIntrinsics(k, near: 0.02, far: 80)
+        let q = cam.viewMatrix * SIMD4<Float>(1, 2, 3, 1)   // identity view → unchanged
+        #expect(close(q.x, 1)); #expect(close(q.y, 2)); #expect(close(q.z, 3))
+        #expect(cam.near == 0.02 && cam.far == 80)
+        guard case .intrinsic(let got) = cam.projection else { #expect(Bool(false)); return }
+        #expect(got == k)
+    }
 }

@@ -845,8 +845,12 @@ final class MetalRenderer {
                 // fragment's SV_Depth so 2D drawn after composites against it.
                 let end = next?.imageStart ?? imageVertices.count
                 let count = end - batch.imageStart
-                guard count > 0, let imageBuffer, let color = batch.image, let depthMap = batch.depthImage,
-                      let colorTex = color.texture(for: device), let depthTex = depthMap.texture(for: device)
+                // Depth comes from either a metric float map (meters) or the
+                // normalized gray map; the fragment branches on the quad's tint.a.
+                let depthTex = batch.metricDepth?.texture(for: device)
+                    ?? batch.depthImage?.texture(for: device)
+                guard count > 0, let imageBuffer, let color = batch.image,
+                      let colorTex = color.texture(for: device), let depthTex
                 else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(imageBuffer, offset: batch.imageStart * imageStride, index: 0)

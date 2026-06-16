@@ -24,6 +24,14 @@ public struct Camera3D: Equatable, Sendable {
         case perspective(fieldOfView: Double)
         /// Orthographic: no foreshortening, framing `height` world units tall.
         case orthographic(height: Double)
+        /// A real camera's pinhole calibration: an off-axis perspective frustum
+        /// built straight from `CameraIntrinsics` (focal length and principal
+        /// point), so a depth feed's own lens drives the projection. This is what
+        /// lets a drawn point cloud and a depth scene share one *metric* space — a
+        /// point made by `CameraIntrinsics.unproject` reprojects to its own pixel.
+        /// The intrinsics carry the image size and aspect, so the viewport aspect is
+        /// ignored for this case. Build it with `Camera3D.fromIntrinsics(_:)`.
+        case intrinsic(CameraIntrinsics)
     }
 
     /// The camera position — where you look *from*.
@@ -69,6 +77,24 @@ public extension Camera3D {
                  projection: .orthographic(height: height))
     }
 
+    /// A camera built from a depth frame's pinhole `intrinsics`, placed at the
+    /// origin looking down −z — exactly where `CameraIntrinsics.unproject` puts the
+    /// points it lifts. So a point cloud unprojected from the frame, a 2D mark
+    /// placed with `depth(at:)`, and a metric `drawDepthScene` all share one metric
+    /// world space (meters), and an object placed at true world coordinates lands
+    /// inside the depth feed with correct occlusion.
+    ///
+    /// `near`/`far` are the metric clip range in meters — the depth scene maps its
+    /// metric depth into the same range, so keep them spanning the scene's depths
+    /// (the defaults, 1 cm … 100 m, cover an indoor LiDAR feed). Move `eye`/`target`
+    /// afterward to orbit a *drawn* cloud; the default pose is the one that aligns
+    /// with a depth-scene backdrop.
+    static func fromIntrinsics(_ intrinsics: CameraIntrinsics,
+                               near: Double = 0.01, far: Double = 100) -> Camera3D {
+        Camera3D(eye: .zero, target: Vector3(0, 0, -1), up: .unitY,
+                 near: near, far: far, projection: .intrinsic(intrinsics))
+    }
+
     /// A perspective camera orbiting `target` on a sphere of `radius`, at
     /// `azimuth` (turn around the up axis, 0 looking down +z) and `elevation`
     /// (tilt above the horizontal), both in radians. The easy way to spin a
@@ -107,6 +133,10 @@ extension Camera3D {
         case .orthographic(let height):
             return Camera3D.orthographic(height: Float(height), aspect: a,
                                          near: Float(near), far: Float(far))
+        case .intrinsic(let k):
+            // The intrinsics already encode the image size and aspect, so the
+            // viewport aspect plays no part here — the frustum is fully off-axis.
+            return Camera3D.perspective(intrinsics: k, near: Float(near), far: Float(far))
         }
     }
 
@@ -139,6 +169,31 @@ extension Camera3D {
             SIMD4<Float>(f / aspect, 0, 0, 0),
             SIMD4<Float>(0, f, 0, 0),
             SIMD4<Float>(0, 0, far / zRange, -1),
+            SIMD4<Float>(0, 0, (near * far) / zRange, 0)
+        ))
+    }
+
+    /// Right-handed off-axis perspective built from a pinhole camera's intrinsics,
+    /// with Metal's z ∈ [0, 1] clip range (near → 0, far → 1). The principal point
+    /// (`cx`, `cy`) need not be centered, and `fx`/`fy` may differ — so the frustum
+    /// is asymmetric, matching the lens the depth was captured with.
+    ///
+    /// Derived from `CameraIntrinsics.unproject`'s exact convention (top-left pixel
+    /// origin, camera looking down −z, so metric depth maps to −z): a camera-space
+    /// point projects back to the pixel it came from, and NDC spans the full image
+    /// (col 0…W → x −1…1, row 0…H → y +1…−1). It collapses to the symmetric
+    /// `perspective(fovY:...)` when `cx = W/2`, `cy = H/2`, `fx = fy`.
+    static func perspective(intrinsics k: CameraIntrinsics, near: Float, far: Float) -> simd_float4x4 {
+        let w = Float(k.width), h = Float(k.height)
+        guard w > 0, h > 0 else { return matrix_identity_float4x4 }
+        let fx = Float(k.fx), fy = Float(k.fy), cx = Float(k.cx), cy = Float(k.cy)
+        let zRange = near - far
+        // clip.x = (2fx/W)·X + (1 − 2cx/W)·Z   clip.y = (2fy/H)·Y + (2cy/H − 1)·Z
+        // clip.z = far/zRange·Z + near·far/zRange   clip.w = −Z   (w = metric depth)
+        return simd_float4x4(columns: (
+            SIMD4<Float>(2 * fx / w, 0, 0, 0),
+            SIMD4<Float>(0, 2 * fy / h, 0, 0),
+            SIMD4<Float>(1 - 2 * cx / w, 2 * cy / h - 1, far / zRange, -1),
             SIMD4<Float>(0, 0, (near * far) / zRange, 0)
         ))
     }

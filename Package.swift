@@ -438,6 +438,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinRecord3D"],
             path: "Examples/3D/Record3DLiveCloud"
         ),
+        // 2D markers floating at true metric depths inside a live RGBD feed — the
+        // metric (meters) sibling of DepthOcclusion, via a Camera3D.fromIntrinsics.
+        .executableTarget(
+            name: "Example-MetricDepthScene",
+            dependencies: ["Ollin", "OllinRecord3D"],
+            path: "Examples/3D/MetricDepthScene"
+        ),
         .executableTarget(
             name: "Example-DepthLiftedPose",
             dependencies: ["Ollin", "OllinVision", "OllinRecord3D"],

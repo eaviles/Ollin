@@ -106,6 +106,11 @@ struct GeometryBatch {
     /// The depth map for a `.depthScene` batch — sampled per pixel and written to
     /// the depth buffer (with `image` as the color backdrop). `nil` otherwise.
     var depthImage: Image?
+    /// The *metric* depth map (meters) for a metric `.depthScene` batch, written to
+    /// the depth buffer as true clip-space depth against the active camera's near/far
+    /// (the conversion coefficients ride in the quad's vertex tint). `nil` for the
+    /// normalized gray path — exactly one of `depthImage`/`metricDepth` is set.
+    var metricDepth: MetricDepthMap?
 }
 
 /// The drawing state machine and per-frame geometry recorder.
@@ -1612,13 +1617,51 @@ final class Drawer {
         let tr = imageVertex(x1, y0, 1, vTop, flag)
         let br = imageVertex(x1, y1, 1, vBot, flag)
         let bl = imageVertex(x0, y1, 0, vBot, flag)
-        beginDepthSceneBatch(color: color, depth: depth)
+        beginDepthSceneBatch(color: color, depth: depth, metricDepth: nil)
         imageVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
     }
 
-    /// Open a fresh `.depthScene` batch carrying the color backdrop and the depth
-    /// map. Always appends (like `beginImageBatch`); resets `currentKind`.
-    private func beginDepthSceneBatch(color: Image, depth: Image) {
+    /// Draw a *metric* depth scene from an `RGBDFrame`: `frame.color` is the backdrop
+    /// and `frame.depth` (meters) is written into the depth buffer as true clip-space
+    /// depth against the active camera's near/far — so 3D geometry placed at real
+    /// world coordinates (`drawPointCloud`, `depth(at:)`) occludes and is occluded by
+    /// the feed in one metric space. Needs an active camera (`Camera3D.fromIntrinsics`
+    /// is the matching one); a no-op without one, or for SVG (no vector form). Fills
+    /// `rect`; raster only.
+    func drawDepthScene(metricFrame frame: RGBDFrame, in rect: Rectangle) {
+        guard rect.width > 0, rect.height > 0,
+              frame.color.width > 0, frame.color.height > 0,
+              frame.depthWidth > 0, frame.depthHeight > 0,
+              frame.depth.count >= frame.depthWidth * frame.depthHeight else { return }
+        guard let camera = camera3D else { return }   // metric depth needs near/far
+        if svgRecorder != nil { return }
+        hasDepthScene = true
+        // Map metric depth d → Metal NDC z ∈ [0,1] as ndc_z = P − Q/d, where
+        // P = far/(far−near), Q = far·near/(far−near) (the perspective depth curve).
+        // These ride in the quad's vertex tint so the fragment needs no extra buffer.
+        let denom = camera.far - camera.near
+        let p = denom != 0 ? camera.far / denom : 0
+        let q = denom != 0 ? camera.far * camera.near / denom : 0
+        let x0 = Float(rect.x), y0 = Float(rect.y)
+        let x1 = Float(rect.x + rect.width), y1 = Float(rect.y + rect.height)
+        let (vTop, vBot): (Float, Float) = frame.color.flipsVertically ? (1, 0) : (0, 1)
+        // tint.a = 1 selects the metric branch (the normalized path leaves it 0);
+        // tint.r/.g carry P/Q.
+        let flag = SIMD4<Float>(Float(p), Float(q), 0, 1)
+        let tl = imageVertex(x0, y0, 0, vTop, flag)
+        let tr = imageVertex(x1, y0, 1, vTop, flag)
+        let br = imageVertex(x1, y1, 1, vBot, flag)
+        let bl = imageVertex(x0, y1, 0, vBot, flag)
+        let carrier = MetricDepthMap(depth: frame.depth,
+                                     width: frame.depthWidth, height: frame.depthHeight)
+        beginDepthSceneBatch(color: frame.color, depth: nil, metricDepth: carrier)
+        imageVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
+    }
+
+    /// Open a fresh `.depthScene` batch carrying the color backdrop and either a
+    /// normalized gray `depth` map or a `metricDepth` map (meters). Always appends
+    /// (like `beginImageBatch`); resets `currentKind`.
+    private func beginDepthSceneBatch(color: Image, depth: Image?, metricDepth: MetricDepthMap?) {
         currentKind = .depthScene
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
@@ -1627,7 +1670,8 @@ final class Drawer {
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
-                                     blendMode: currentBlend, image: color, depthImage: depth))
+                                     blendMode: currentBlend, image: color,
+                                     depthImage: depth, metricDepth: metricDepth))
     }
 
     /// Build one textured-quad vertex, transforming its position by the current

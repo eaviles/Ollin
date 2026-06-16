@@ -161,8 +161,13 @@ fragment float4 ollin_image_fragment(ImageOut in [[stage_in]],
 // afterward (placed with a normalized depth(_:)) is occluded by the scene. Color
 // at texture 0 (the backdrop, premultiplied linear like the image path), the depth
 // map at texture 1. The fragment outputs per-pixel depth via [[depth(any)]], which
-// the depth-test state writes; the rasterized vertex z is ignored. `in.tint.r`
-// carries the whiteIsNear flag (1 = white in the map is nearest).
+// the depth-test state writes; the rasterized vertex z is ignored.
+//
+// Two modes, selected by `in.tint.a`:
+//  - normalized (a == 0): an sRGB gray map; `tint.r` is the whiteIsNear flag.
+//  - metric     (a == 1): an r32Float map of meters; `tint.r`/`.g` are the
+//                         coefficients P/Q of ndc_z = P − Q/d (the perspective depth
+//                         curve), so the feed shares the camera's metric depth.
 
 struct DepthSceneOut {
     float4 color [[color(0)]];
@@ -175,11 +180,18 @@ fragment DepthSceneOut ollin_depthscene_fragment(ImageOut in [[stage_in]],
                                                  sampler samp [[sampler(0)]]) {
     DepthSceneOut out;
     out.color = colorTex.sample(samp, in.uv);   // sRGB texture → already linear, premultiplied
-    // The depth map is an sRGB texture too, so the sample is decoded to linear on
-    // read; re-encode to recover the stored 0…1 value (white = near by default),
-    // then map to clip-space depth (Metal NDC, 0 near … 1 far).
-    float v = linearToSrgb(depthTex.sample(samp, in.uv).rrr).x;
-    out.depth = (in.tint.r > 0.5) ? (1.0 - v) : v;
+    if (in.tint.a > 0.5) {
+        // Metric: the texture holds raw meters (r32Float, no sRGB decode). A hole
+        // (d ≤ 0) is infinitely far, so write the far plane (1.0) — it never occludes.
+        float d = depthTex.sample(samp, in.uv).r;
+        out.depth = (d > 0.0) ? clamp(in.tint.r - in.tint.g / d, 0.0, 1.0) : 1.0;
+    } else {
+        // Normalized: the depth map is an sRGB texture too, so the sample is decoded
+        // to linear on read; re-encode to recover the stored 0…1 value (white = near
+        // by default), then map to clip-space depth (Metal NDC, 0 near … 1 far).
+        float v = linearToSrgb(depthTex.sample(samp, in.uv).rrr).x;
+        out.depth = (in.tint.r > 0.5) ? (1.0 - v) : v;
+    }
     return out;
 }
 

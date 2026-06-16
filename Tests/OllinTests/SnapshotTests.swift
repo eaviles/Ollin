@@ -151,6 +151,17 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: DepthSceneScene(), against: "depth-scene")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func metricDepthSceneMatchesReference() throws {
+        // The same near-left / far-right split, but the depth is real meters and the
+        // camera is built from the frame's intrinsics, so the bar sits at a true
+        // 1.5 m depth — hidden over the near (0.5 m) half, drawn over the far (3 m)
+        // half. Pins Camera3D.fromIntrinsics + the metric drawDepthScene(RGBDFrame)
+        // float-depth path + depth(at: Vector3). Synthetic, no `time`.
+        let diff = try Snapshot.meanDifference(of: MetricDepthSceneScene(), against: "metric-depth-scene")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -280,6 +291,45 @@ private final class DepthSceneScene: Sketch {
         background(.black)
         drawDepthScene(color: backdrop, depth: depthMap)
         depth(0.5)
+        noStroke()
+        fill(.white)
+        drawRect(center: Vector2(width / 2, height / 2), width: width * 0.7, height: height * 0.26)
+    }
+}
+
+/// A *metric* depth scene: the same left-near / right-far split, but the depth is
+/// real meters and the camera is built from the frame's intrinsics, so the 2D bar is
+/// placed at a true 1.5 m depth. The left half (0.5 m, nearer) hides the bar; the
+/// right half (3 m, farther) shows it. Pins `Camera3D.fromIntrinsics`, the metric
+/// `drawDepthScene(_ frame:)` float-depth path, and a metric `depth(at: Vector3)`.
+private final class MetricDepthSceneScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private let n = 64
+    private lazy var frame = makeFrame()
+
+    private func makeFrame() -> RGBDFrame {
+        var px = [UInt8](repeating: 255, count: n * n * 4)
+        var depth = [Float](repeating: 0, count: n * n)
+        for y in 0..<n {
+            for x in 0..<n {
+                let t = Double(x) / Double(n - 1)
+                let i = (y * n + x) * 4
+                px[i] = UInt8(40 + t * 200); px[i + 1] = 60; px[i + 2] = UInt8(220 - t * 180)
+                depth[y * n + x] = x < n / 2 ? 0.5 : 3.0   // left near, right far (meters)
+            }
+        }
+        let color = Image(width: n, height: n, premultipliedRGBA: px)!
+        let k = CameraIntrinsics(fx: 60, fy: 60, cx: Double(n) / 2, cy: Double(n) / 2,
+                                 width: n, height: n)
+        return RGBDFrame(color: color, depth: depth, confidence: nil,
+                         depthWidth: n, depthHeight: n, intrinsics: k)
+    }
+
+    override func draw() {
+        background(.black)
+        camera(.fromIntrinsics(frame.intrinsics, near: 0.1, far: 10))
+        drawDepthScene(frame)
+        depth(at: Vector3(0, 0, -1.5))   // a true 1.5 m depth, between the halves
         noStroke()
         fill(.white)
         drawRect(center: Vector2(width / 2, height / 2), width: width * 0.7, height: height * 0.26)

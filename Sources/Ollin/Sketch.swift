@@ -336,6 +336,22 @@ open class Sketch {
                               in: rect ?? canvasRectangle, whiteIsNear: whiteIsNear)
     }
 
+    /// Draw a **metric** depth scene from an `RGBDFrame` (a LiDAR or depth-camera
+    /// feed): `frame.color` is the backdrop and `frame.depth` (meters) is written
+    /// into the depth buffer as true clip-space depth. Unlike the gray-map overload,
+    /// this shares one *metric* space with the 3D camera — so a `drawPointCloud` or a
+    /// 2D mark placed with `depth(at: Vector3)` at real world coordinates occludes,
+    /// and is occluded by, the feed in meters.
+    ///
+    /// Set a matching camera first — `camera(.fromIntrinsics(frame.intrinsics))` is
+    /// the one that aligns with the feed — or this is a no-op (it needs the camera's
+    /// near/far). It fills the canvas by default; to avoid stretching, give the
+    /// sketch a `canvasSize` matching the feed's aspect (the camera projects the
+    /// scene across the whole canvas, where the backdrop is drawn).
+    public func drawDepthScene(_ frame: RGBDFrame, in rect: Rectangle? = nil) {
+        drawer.drawDepthScene(metricFrame: frame, in: rect ?? canvasRectangle)
+    }
+
     /// Project a world point through the active camera to its position on the canvas
     /// (top-left origin, points), or `nil` if there's no camera or the point is
     /// behind it. The screen place to draw a 2D billboard for a 3D point.

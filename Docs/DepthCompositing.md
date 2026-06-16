@@ -16,6 +16,7 @@ There are two scenes to composite against: a **3D-camera** scene (a point cloud 
 - [Projecting a world point to the canvas](#project) — `project`
 - [Billboards](#billboard) — `withBillboard(at:)`
 - [A depth-map scene](#scene) — `drawDepthScene`, `depth(_:)` (a depth feed)
+- [A metric depth scene](#metric) — `Camera3D.fromIntrinsics`, `drawDepthScene(_:)` (true meters)
 - [How occlusion reads](#how)
 - [Notes](#notes)
 
@@ -85,6 +86,33 @@ drawCircle(width / 2, height / 2, 40)   // hidden where the scene is nearer than
 This needs no 3D camera — the depth scene allocates the depth buffer on its own. Where a 3D-camera scene uses `depth(at: worldPoint)`, a depth-map scene uses **`depth(_ t:)`** with a normalized `t` (`0` nearest … `1` farthest), since the map's depth is a relative range, not metric world units. `drawDepthScene` fills the whole canvas by default; pass `in: rect` to letterbox a feed into a fitted rectangle, and `whiteIsNear: false` if the map encodes far as white.
 
 The colour image and the depth map usually come from the same source, so they line up: a depth model run over a camera frame, or an `RGBDFrame`'s `color` and a gray image of its `depth`. The [`3D/DepthOcclusion`](../Examples/3D/DepthOcclusion/) example hangs a field of discs at a draggable depth plane in front of a live webcam, occluded by whoever stands nearer than the plane.
+
+<a id="metric"></a>
+### A metric depth scene
+
+A normalized `depth(_ t:)` is enough to hide a sprite behind a nearer subject, but it can't say *how far* — `t` is a relative 0…1, not a distance. When the feed is a true depth camera (a LiDAR iPhone, a depth sensor), its `RGBDFrame` carries **metric** depth in meters and the lens `intrinsics` that took it. Build a camera from those intrinsics and the whole scene — a drawn point cloud, the depth feed, and any object you place — shares **one metric space**, so you can put something *1.5 m in front of the camera* and have the feed occlude it at exactly that distance.
+
+```swift
+guard let frame = device.latestFrame else { return }       // an RGBDFrame (meters)
+
+// A camera from the feed's own lens. A point cloud, the depth scene, and any
+// placed object now live in one space measured in meters.
+camera(.fromIntrinsics(frame.intrinsics))
+
+// The colour picture as the backdrop AND the frame's metric depth written into
+// the depth buffer (this overload takes the RGBDFrame, not a gray Image).
+drawDepthScene(frame)
+
+// A marker at a true world point — 1 m ahead, 0.2 m up — hidden the moment
+// something nearer than 1 m passes in front of it.
+withBillboard(at: Vector3(0, 0.2, -1)) {
+    fill(.white); drawCircle(0, 0, 24)
+}
+```
+
+The key difference from the gray-map scene: depth is placed with **`depth(at: worldPoint)`** in real meters (or `withBillboard`, which projects *and* sets the depth), not the normalized `depth(_ t:)` — the same metric `Camera3D` drives both the feed's depth and the object's. `Camera3D.fromIntrinsics` sits the camera at the origin looking down −z, exactly where `RGBDFrame.pointCloud` and `unproject` put their points, so a metric `drawDepthScene` and a `drawPointCloud` of the same frame land on top of each other. Move the camera's `eye`/`target` afterward to orbit a drawn cloud; leave it at the default to keep it aligned with a depth-scene backdrop.
+
+Two practical notes. The metric overload **needs a camera** (it reads the near/far that map meters onto the depth buffer) — `fromIntrinsics` is the matching one; without a camera it's a no-op. And it **fills the canvas** (the camera projects the scene across the whole canvas, where the backdrop is drawn), so to avoid stretching, give the sketch a `canvasSize` matching the feed's aspect. The [`3D/MetricDepthScene`](../Examples/3D/MetricDepthScene/) example floats a grid of markers at a draggable metric plane in a live LiDAR feed — step within that many meters of the camera and you block them.
 
 <a id="how"></a>
 ### How occlusion reads
