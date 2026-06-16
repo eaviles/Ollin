@@ -23,7 +23,10 @@ public enum PhoneWire {
     /// fails this check and the reader drops the connection to resync.
     public static let magic: UInt32 = 0x4F4C_4E31
 
-    /// Wire version. Bumped if the header or any payload layout changes.
+    /// Wire version. Pre-1.0 both ends are always rebuilt and shipped together (the
+    /// app and the satellite share this file), so this is **not** bumped per payload
+    /// change — just rebuild both. It becomes a real compatibility contract worth
+    /// versioning at Ollin 1.0+, when an installed app might outlive a Mac update.
     public static let version: UInt8 = 1
 
     /// Header size: magic(4) + version(1) + kind(1) + reserved(2) + payloadLength(4).
@@ -46,9 +49,10 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     case deviceMotion = 1
     /// An ARKit body skeleton (named 3D joints in model space).
     case bodyPose = 2
-    /// An ARKit face — the deforming mesh, the 52 expression blendshapes, and the
-    /// head pose. The phone runs face tracking on its front TrueDepth camera, so it's
-    /// mutually exclusive with body pose (which uses the rear camera).
+    /// The ARKit faces in view (up to 3 on TrueDepth) — each a deforming mesh, the
+    /// 52 expression blendshapes, and a head pose, bundled per frame. The phone runs
+    /// face tracking on its front TrueDepth camera, so it's mutually exclusive with
+    /// body pose (which uses the rear camera).
     case face = 3
     /// A world-facing RGBD frame from the rear LiDAR — a metric depth map, a color
     /// image, the depth-grid intrinsics, optional per-pixel confidence, and the 6DoF
@@ -211,7 +215,10 @@ public struct PhoneDepthSample: Sendable, Equatable {
 public enum PhoneMessage: Sendable, Equatable {
     case motion(PhoneMotionSample)
     case pose(PhonePoseSample)
-    case face(PhoneFaceSample)
+    /// Every face ARKit currently tracks, bundled into one frame (TrueDepth tracks
+    /// up to 3). The list is the complete current set — empty when no face is in
+    /// view — so the reader swaps it in wholesale and a face leaving clears itself.
+    case face([PhoneFaceSample])
     case depth(PhoneDepthSample)
 
     public var kind: PhoneMessageKind {
@@ -263,7 +270,7 @@ public extension PhoneWire {
         switch message {
         case .motion(let m): payload = encodeMotionPayload(m)
         case .pose(let p): payload = encodePosePayload(p)
-        case .face(let f): payload = encodeFacePayload(f)
+        case .face(let faces): payload = encodeFacePayload(faces)
         case .depth(let d): payload = encodeDepthPayload(d)
         }
         var out = Data()
@@ -300,8 +307,19 @@ public extension PhoneWire {
         return p
     }
 
-    private static func encodeFacePayload(_ face: PhoneFaceSample) -> Data {
+    private static func encodeFacePayload(_ faces: [PhoneFaceSample]) -> Data {
         var p = Data()
+        // A face count, then that many self-contained face records (ARKit tracks up
+        // to 3; the count is capped at 255 defensively).
+        p.append(UInt8(min(faces.count, 255)))
+        for face in faces.prefix(255) { appendFaceRecord(&p, face) }
+        return p
+    }
+
+    /// One face record — tracked, timestamp, head pose, the positional blendshapes,
+    /// and the face-local mesh. Self-contained so the list decoder reads records back
+    /// to back.
+    private static func appendFaceRecord(_ p: inout Data, _ face: PhoneFaceSample) {
         p.append(face.tracked ? 1 : 0)
         appendF64(&p, face.timestamp)
         for v in [face.headOrientation.x, face.headOrientation.y,
@@ -315,7 +333,6 @@ public extension PhoneWire {
         for v in face.meshVertices.prefix(Int(UInt16.max)) {
             appendF32(&p, v.x); appendF32(&p, v.y); appendF32(&p, v.z)
         }
-        return p
     }
 
     private static func encodeDepthPayload(_ d: PhoneDepthSample) -> Data {
@@ -394,13 +411,28 @@ public extension PhoneWire {
         return PhonePoseSample(tracked: tracked, timestamp: timestamp, joints: joints)
     }
 
-    private static func decodeFace(_ data: Data) -> PhoneFaceSample? {
-        // Fixed prefix: tracked(1) + timestamp(8) + headOrientation(16) + headPosition(12) + bsCount(1).
-        guard data.count >= 1 + 8 + 16 + 12 + 1 else { return nil }
-        let s = data.startIndex
-        let tracked = data[s] != 0
+    private static func decodeFace(_ data: Data) -> [PhoneFaceSample]? {
+        // A face count, then that many records. An empty set (count 0) is valid —
+        // it means no face is in view this frame.
+        guard !data.isEmpty else { return nil }
+        let count = Int(data[data.startIndex])
         var o = 1
+        var faces = [PhoneFaceSample](); faces.reserveCapacity(count)
+        for _ in 0..<count {
+            guard let face = readFaceRecord(data, &o) else { return nil }
+            faces.append(face)
+        }
+        return faces
+    }
+
+    /// Read one face record starting at offset `o` (advanced past the record on
+    /// success), or `nil` if the buffer is short.
+    private static func readFaceRecord(_ data: Data, _ o: inout Int) -> PhoneFaceSample? {
+        // Fixed prefix: tracked(1) + timestamp(8) + headOrientation(16) + headPosition(12) + bsCount(1).
+        guard data.count >= o + 1 + 8 + 16 + 12 + 1 else { return nil }
+        let s = data.startIndex
         func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+        let tracked = data[s + o] != 0; o += 1
         let timestamp = readF64(data, s + o); o += 8
         let headOrientation = SIMD4<Float>(f32(), f32(), f32(), f32())
         let headPosition = SIMD3<Float>(f32(), f32(), f32())

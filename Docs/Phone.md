@@ -4,7 +4,7 @@
 
 ## Phone (iPhone sensor stream)
 
-Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture** — Ollin's own iOS app ([`Apps/OllinPhoneApp`](../Apps/OllinPhoneApp/README.md)) — runs ARKit on the phone's Neural Engine and streams the results over the USB cable; `PhoneDevice` reads them on the Mac as typed values you use in `draw()`. It streams a **3D body skeleton**, a **face** (deforming mesh + the 52 expression blendshapes), a world-facing **RGBD depth frame** from the rear LiDAR (a point cloud, with the camera's 6DoF pose), and **device motion**.
+Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture** — Ollin's own iOS app ([`Apps/OllinPhoneApp`](../Apps/OllinPhoneApp/README.md)) — runs ARKit on the phone's Neural Engine and streams the results over the USB cable; `PhoneDevice` reads them on the Mac as typed values you use in `draw()`. It streams a **3D body skeleton**, **faces** (up to 3 at once — each a deforming mesh + the 52 expression blendshapes), a world-facing **RGBD depth frame** from the rear LiDAR (a point cloud, with the camera's 6DoF pose), and **device motion**.
 
 Where [`Record3D`](./Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives* — a body, a face, world-facing depth, and motion today, with more sensors (segmentation, richer depth) to come. The chain is Ollin's end to end.
 
@@ -64,7 +64,8 @@ device.start()                       // begins connecting; safe to call once
 device.isStreaming                   // Bool — frames currently arriving
 device.waitingMessage                // a notice reflecting the live connection state
 device.latestBody                    // PhoneBody?  — the latest skeleton (Body mode)
-device.latestFace                    // PhoneFace?  — the latest face (Face mode)
+device.latestFaces                   // [PhoneFace] — every tracked face, up to 3 (Face mode)
+device.latestFace                    // PhoneFace?  — the most prominent face (= latestFaces.first)
 device.latestDepthFrame              // RGBDFrame?  — the latest depth frame (World mode)
 device.latestMotion                  // PhoneMotion? — the latest device-motion sample
 ```
@@ -98,10 +99,10 @@ drawPointCloud(body.cloud(jointSize: 0.055, boneSize: 0.018, color: .white))
 
 ## The face
 
-In **Face** mode the phone tracks the operator's face on the front TrueDepth camera and streams `PhoneFace` — the 52 expression **blendshapes**, the deforming **mesh**, and the **head pose**:
+In **Face** mode the phone tracks faces on the front TrueDepth camera — **up to 3 at once** — and streams each as a `PhoneFace`: the 52 expression **blendshapes**, the deforming **mesh**, and the **head pose**. Read `latestFaces` for the whole set, or `latestFace` for just the most prominent one:
 
 ```swift
-if let face = device.latestFace {
+for face in device.latestFaces {     // up to 3 people
     face.isTracked                   // Bool — ARKit tracking vs. extrapolating
     face.blendShape(.jawOpen)        // Double 0…1 — one expression coefficient
     face.blendShapes                 // [PhoneBlendShape: Double] — all 52
@@ -112,11 +113,12 @@ if let face = device.latestFace {
 }
 ```
 
-The blendshapes are the `PhoneBlendShape` set — ARKit's 52 named coefficients (`jawOpen`, `eyeBlinkLeft`, `mouthSmileLeft`, `browInnerUp`, `cheekPuff`, `tongueOut`, …), each `0` (neutral) to `1` (fully expressed). They're the cheap, expressive payload: read one to drive a knob, or `strongestBlendShapes()` to name the current expression.
+`latestFaces` is the complete current set each frame, so a face leaving simply drops out (the list shrinks); ARKit's order isn't spatially meaningful, so sort by `headPosition.x` if you want each face to keep a steady color. The blendshapes are the `PhoneBlendShape` set — ARKit's 52 named coefficients (`jawOpen`, `eyeBlinkLeft`, `mouthSmileLeft`, `browInnerUp`, `cheekPuff`, `tongueOut`, …), each `0` (neutral) to `1` (fully expressed). They're the cheap, expressive payload: read one to drive a knob, or `strongestBlendShapes()` to name the current expression.
 
-3D mode has no mesh primitive yet, so the mesh draws as a `PointCloud` — one splat per vertex, exactly like the skeleton. The vertices are face-local (centered on the face), so orbit `.zero`:
+3D mode has no mesh primitive yet, so each mesh draws as a `PointCloud` — one splat per vertex, exactly like the skeleton. The vertices are face-local (centered on the face); add `face.headPosition` to place several people apart in space, then orbit their centroid:
 
 ```swift
+// One face — vertices are face-local, so orbit .zero
 camera(.orbiting(target: .zero, radius: 0.42, azimuth: time * 0.4, elevation: 0.04))
 drawPointCloud(face.cloud(pointSize: 0.0045, color: .white))
 ```

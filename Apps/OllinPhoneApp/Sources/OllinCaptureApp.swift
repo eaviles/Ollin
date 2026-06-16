@@ -83,11 +83,16 @@ final class SensorStreamer: ObservableObject {
             self.jointCount = sample.joints.count
         }
 
-        face.onFace = { [weak self] sample in
+        face.onFaces = { [weak self] samples in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.face(sample)))
-            self.faceTracked = sample.tracked
-            self.topExpression = Self.describe(sample.blendShapes)
+            self.server?.send(PhoneWire.encode(.face(samples)))
+            self.faceTracked = samples.contains { $0.tracked }
+            if let primary = samples.first {
+                let expr = Self.describe(primary.blendShapes)
+                self.topExpression = samples.count > 1 ? "\(samples.count) faces · \(expr)" : expr
+            } else {
+                self.topExpression = ""
+            }
         }
 
         depth.onDepth = { [weak self] sample in

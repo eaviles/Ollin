@@ -32,7 +32,10 @@ final class PhoneFace3D: Sketch {
     override func draw() {
         background(Color(white: 0.05))
 
-        guard let face = device.latestFace, !face.meshPoints.isEmpty else {
+        // Every face the phone is tracking (TrueDepth handles up to 3), with a mesh
+        // to draw.
+        let faces = device.latestFaces.filter { !$0.meshPoints.isEmpty }
+        guard !faces.isEmpty else {
             var text = device.waitingMessage + "\n\n" +
                 "Run Ollin Capture on the iPhone, connect the cable,\n" +
                 "tap Face, and look at the front camera."
@@ -43,32 +46,45 @@ final class PhoneFace3D: Sketch {
             return drawStatus(text, style: .info)
         }
 
-        drawMesh(face)
-        drawExpressionBars(face)
+        // Sort left-to-right by head position so each face keeps a steady color.
+        let ordered = faces.sorted { $0.headPosition.x < $1.headPosition.x }
+        drawMeshes(ordered)
+        drawExpressionBars(ordered[0])    // bars track the leftmost face
 
-        let state = face.isTracked ? "tracking" : "extrapolating"
-        drawCaption("PhoneFace — \(state), \(face.meshPoints.count) verts; drag to spin")
+        let n = ordered.count
+        let tracking = ordered.filter { $0.isTracked }.count
+        drawCaption("PhoneFace — \(n) \(n == 1 ? "face" : "faces"), \(tracking) tracking; drag to spin")
     }
 
-    /// The face mesh, orbited and colored by depth, warmed as the mouth opens.
-    private func drawMesh(_ face: PhoneFace) {
-        let azimuth = mouseIsPressed ? map(mouseX, 0, width, .pi, -.pi) : time * 0.4
-        camera(.orbiting(target: .zero, radius: 0.42, azimuth: azimuth,
-                         elevation: 0.04, fieldOfView: .pi / 3))
-
-        // Warm the whole face toward orange as the jaw opens — a visible read of one
-        // blendshape driving the look.
-        let warmth = face.blendShape(.jawOpen)
-        let cool = Color(hex: 0x9FB4D8), warm = Color(hex: 0xFFB060)
-        let tint = Color.mix(cool, warm, t: warmth, in: .oklch)
+    /// All tracked face meshes, each placed at its head position so several people
+    /// sit apart in space, orbited as one and warmed as each jaw opens.
+    private func drawMeshes(_ faces: [PhoneFace]) {
+        // A base hue per face so people read apart; each warms toward orange as its
+        // jaw opens — a visible read of one blendshape driving the look.
+        let baseColors = [Color(hex: 0x9FB4D8), Color(hex: 0xFFB060), Color(hex: 0x8AE0A0)]
+        let warm = Color(hex: 0xFFB060)
 
         var cloud = PointCloud()
-        for p in face.meshPoints {
-            // Fade the back of the head out so the front face reads clearly.
-            var c = tint
-            c.alpha = map(p.z, -0.08, 0.06, 0.25, 1.0, clamp: true)
-            cloud.add(p, color: c, size: 0.0045)
+        var center = Vector3.zero
+        for (i, face) in faces.enumerated() {
+            let tint = Color.mix(baseColors[i % baseColors.count], warm,
+                                 t: face.blendShape(.jawOpen), in: .oklch)
+            for p in face.meshPoints {
+                // Place the face-local mesh at its head's world position, and fade the
+                // back of the head out so the front reads clearly.
+                var c = tint
+                c.alpha = map(p.z, -0.08, 0.06, 0.25, 1.0, clamp: true)
+                cloud.add(p + face.headPosition, color: c, size: 0.0045)
+            }
+            center += face.headPosition
         }
+        center = center / Double(faces.count)
+
+        // Widen the orbit as more faces spread out so they all stay in frame.
+        let azimuth = mouseIsPressed ? map(mouseX, 0, width, .pi, -.pi) : time * 0.4
+        let radius = 0.42 + Double(faces.count - 1) * 0.3
+        camera(.orbiting(target: center, radius: radius, azimuth: azimuth,
+                         elevation: 0.04, fieldOfView: .pi / 3))
         drawPointCloud(cloud)
     }
 

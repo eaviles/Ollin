@@ -45,21 +45,44 @@ import Darwin
         // A full face: all 52 blendshapes, a small mesh, and a head pose.
         let blendShapes = (0..<PhoneBlendShape.allCases.count).map { Float($0) / 100 }
         let mesh = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(0.01, -0.02, 0.03), SIMD3<Float>(-0.04, 0.05, -0.06)]
-        let message = PhoneMessage.face(PhoneFaceSample(
+        let message = PhoneMessage.face([PhoneFaceSample(
             tracked: true, timestamp: 8.75,
             headOrientation: SIMD4<Float>(0.1, 0.2, 0.3, 0.9),
             headPosition: SIMD3<Float>(0.05, -0.1, -0.4),
-            blendShapes: blendShapes, meshVertices: mesh))
+            blendShapes: blendShapes, meshVertices: mesh)])
         #expect(roundTrip(message) == message)
     }
 
     @Test func roundTripsFaceWithoutMesh() {
         // Blendshapes only, no mesh vertices — the lightweight case.
-        let message = PhoneMessage.face(PhoneFaceSample(
+        let message = PhoneMessage.face([PhoneFaceSample(
             tracked: false, timestamp: 0,
             headOrientation: SIMD4<Float>(0, 0, 0, 1), headPosition: .zero,
             blendShapes: [Float](repeating: 0, count: PhoneBlendShape.allCases.count),
-            meshVertices: []))
+            meshVertices: [])])
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func roundTripsMultipleFaces() {
+        // Three faces at once — the TrueDepth maximum. Each carries its own pose,
+        // blendshapes, and mesh, and they must come back in order.
+        func face(_ i: Int) -> PhoneFaceSample {
+            let f = Float(i)
+            return PhoneFaceSample(
+                tracked: i != 1, timestamp: Double(i),
+                headOrientation: SIMD4<Float>(0.1 * f, 0.2 * f, 0.3 * f, 1),
+                headPosition: SIMD3<Float>(0.2 * f - 0.2, 0, -0.5),
+                blendShapes: (0..<PhoneBlendShape.allCases.count).map { Float($0 + i) / 100 },
+                meshVertices: [SIMD3<Float>(f, -f, f), SIMD3<Float>(0.01 * f, 0.02, -0.03)])
+        }
+        let message = PhoneMessage.face([face(0), face(1), face(2)])
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func roundTripsNoFaces() {
+        // The empty set — sent when no face is in view, so the reader clears it (a
+        // face leaving disappears) rather than holding the last one.
+        let message = PhoneMessage.face([])
         #expect(roundTrip(message) == message)
     }
 

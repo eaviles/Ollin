@@ -57,19 +57,23 @@ final class DepthLiftedPose: Sketch {
                                      depthRange: tuning.range, pointSize: tuning.pointSize)
         guard !cloud.isEmpty else { return }
 
-        // The 2D pose lifted into the cloud's own metric space. The body is from
-        // the most recent analyzed color frame; lifting through *this* frame's
-        // depth is the best-registered distance available.
-        let pose = bodies.bodies.first?.lifted(through: frame)
+        // Every 2D pose lifted into the cloud's own metric space — BodyTracker finds
+        // everyone in view, so several people lift into the same depth frame at their
+        // true relative positions. The bodies are from the most recent analyzed color
+        // frame; lifting through *this* frame's depth is the best distance available.
+        let poses = bodies.bodies.lifted(through: frame).filter { $0.center != nil }
 
-        // Frame the figure: orbit the skeleton's centroid when we have one, else
-        // the cloud's, at a radius set by how spread out the cloud is.
+        // Frame the scene: orbit the centroid of the lifted skeletons when we have
+        // any, else the cloud's, at a radius set by how spread out the cloud is.
         var sum = Vector3.zero
         for p in cloud.points { sum += p.position }
         let cloudCenter = sum / Double(cloud.count)
         var spread = 0.0
         for p in cloud.points { spread += p.position.distanceSquared(to: cloudCenter) }
-        let center = pose?.center ?? cloudCenter
+        let poseCenters = poses.compactMap { $0.center }
+        let center = poseCenters.isEmpty
+            ? cloudCenter
+            : poseCenters.reduce(.zero, +) / Double(poseCenters.count)
         let radius = max(0.8, (spread / Double(cloud.count)).squareRoot() * 3)
 
         if let c = orbitCenter {
@@ -85,12 +89,18 @@ final class DepthLiftedPose: Sketch {
                          elevation: 0.18, fieldOfView: .pi / 3))
 
         drawPointCloud(cloud)
-        if let pose {
-            // Bright and large so the figure reads against its own depth cloud.
-            drawPointCloud(pose.cloud(jointSize: 0.07, boneSize: 0.022, color: Color(hex: 0xFFC23C)))
+        // One bright color per person so several skeletons read apart in the cloud.
+        let skeletonColors = [Color(hex: 0xFFC23C), Color(hex: 0x4FE0C0),
+                              Color(hex: 0xFF7AB0), Color(hex: 0x8AB4FF)]
+        for (i, pose) in poses.enumerated() {
+            drawPointCloud(pose.cloud(jointSize: 0.07, boneSize: 0.022,
+                                      color: skeletonColors[i % skeletonColors.count]))
         }
 
-        let status = pose.map { "\($0.positions.count) joints lifted" } ?? "step into frame"
+        let n = poses.count
+        let joints = poses.reduce(0) { $0 + $1.positions.count }
+        let status = n == 0 ? "step into frame"
+            : "\(n) \(n == 1 ? "person" : "people"), \(joints) joints lifted"
         drawCaption("DepthLiftedPose — \(tuning.label), \(status); drag to spin")
     }
 

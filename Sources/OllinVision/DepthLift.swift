@@ -15,12 +15,15 @@ import Ollin
 /// the person's own `pointCloud(...)` and `cloud(...)` draws both together through
 /// one `Camera3D`.
 ///
+/// `BodyTracker` finds everyone in frame, so lift the whole set — one `LiftedPose`
+/// per person — and they all land in the depth frame's own space:
+///
 /// ```swift
-/// if let body = bodies.bodies.first, let frame = device.latestFrame {
-///     let pose = body.lifted(through: frame)
-///     camera(.orbiting(target: pose.center ?? .zero, radius: 2.5, azimuth: time * 0.3))
-///     drawPointCloud(frame.pointCloud())   // the person, as depth points
-///     drawPointCloud(pose.cloud())          // the skeleton, in the same space
+/// if let frame = device.latestFrame {
+///     drawPointCloud(frame.pointCloud())                  // everyone, as depth points
+///     for pose in bodies.bodies.lifted(through: frame) {  // each skeleton, same space
+///         drawPointCloud(pose.cloud())
+///     }
 /// }
 /// ```
 public struct LiftedPose: Sendable {
@@ -82,6 +85,17 @@ public struct LiftedPose: Sendable {
             }
         }
         return cloud
+    }
+}
+
+public extension Collection where Element == Body {
+    /// Lift every pose in this collection into metric 3D through one depth `frame`
+    /// (see `Body.lifted(through:radius:)`). `BodyTracker` finds everyone in view, so
+    /// this lifts the whole set at once — one `LiftedPose` per person, all in the
+    /// frame's own camera space — for drawing several skeletons in their real
+    /// relative positions.
+    func lifted(through frame: RGBDFrame, radius: Int = 2) -> [LiftedPose] {
+        map { $0.lifted(through: frame, radius: radius) }
     }
 }
 

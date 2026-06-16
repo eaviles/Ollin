@@ -88,9 +88,17 @@ pose.center                                     // centroid, to aim an orbiting 
 pose.cloud(jointSize: 0.06, color: .yellow)     // the skeleton as a PointCloud
 ```
 
-Where [`BodyTracker3D`](./Vision.md) *estimates* a skeleton's depth from a single flat image, this **reads** it: with a real depth source — an iPhone's LiDAR or TrueDepth camera — the joints sit at their true distance, not a guessed one.
+`BodyTracker` finds **everyone** in view, so lift the whole set at once — `bodies.bodies.lifted(through: frame)` returns one `LiftedPose` per person, all in the frame's own camera space, so several skeletons land at their true relative positions in the same cloud:
 
-Run the `BodyTracker` on the **same source** as the depth (so the 2D pose comes from the depth frame's own color image), then lift through the latest frame. A joint whose depth was a hole is dropped, just as a low-confidence 2D joint is absent from the source `Body`.
+```swift
+for pose in bodies.bodies.lifted(through: frame) {
+    drawPointCloud(pose.cloud(color: .yellow))
+}
+```
+
+Where [`BodyTracker3D`](./Vision.md) *estimates* a skeleton's depth from a single flat image, this **reads** it: with a real depth source — an iPhone's LiDAR or TrueDepth camera — the joints sit at their true distance, not a guessed one. (`BodyTracker3D` itself follows only the most prominent person — depth-lift is the multi-person route to 3D skeletons.)
+
+Run the `BodyTracker` on the **same source** as the depth (so the 2D poses come from the depth frame's own color image), then lift through the latest frame. A joint whose depth was a hole is dropped, just as a low-confidence 2D joint is absent from the source `Body`.
 
 Since 3D mode has no line primitive yet, `cloud()` is the shipped way to draw the figure: each joint a splat, each bone a line of small splats, in the cloud's own space — so the skeleton lands inside the person's depth cloud and the whole scene orbits as one.
 

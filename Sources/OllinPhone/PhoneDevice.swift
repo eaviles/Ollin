@@ -69,11 +69,17 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// time the phone sends a pose — read it within the current `draw()`.
     public var latestBody: PhoneBody? { reader.latestPose.map(PhoneBody.init) }
 
-    /// The latest face — mesh, blendshapes, and head pose — or `nil` before one
-    /// arrives. Populated when the capture app is in **Face** mode (front camera);
-    /// body and face are mutually exclusive, so only one of `latestBody`/`latestFace`
-    /// updates at a time.
-    public var latestFace: PhoneFace? { reader.latestFace.map(PhoneFace.init) }
+    /// Every face the phone is tracking — each with mesh, blendshapes, and head pose
+    /// — newest set each frame, empty before any arrive or when no face is in view.
+    /// The front TrueDepth camera tracks up to 3 faces at once. Populated in **Face**
+    /// mode (front camera); body and face are mutually exclusive, so only one of
+    /// `latestBody`/`latestFaces` updates at a time.
+    public var latestFaces: [PhoneFace] { reader.latestFaces.map(PhoneFace.init) }
+
+    /// The most prominent tracked face — the first of `latestFaces` — or `nil` when
+    /// none is in view. The convenience for the common single-person case; read
+    /// `latestFaces` to handle several people at once.
+    public var latestFace: PhoneFace? { latestFaces.first }
 
     /// The latest CoreMotion sample, or `nil` before one arrives — the cheap
     /// transport smoke-test (it moves the moment the wire is alive, before ARKit
@@ -152,7 +158,7 @@ final class PhoneStreamReader: @unchecked Sendable {
 
     private struct State {
         var latestPose: PhonePoseSample?
-        var latestFace: PhoneFaceSample?
+        var latestFaces: [PhoneFaceSample] = []
         var latestMotion: PhoneMotionSample?
         var latestDepth: PhoneDepthFrameBox?
         var depthSequence = 0
@@ -171,7 +177,7 @@ final class PhoneStreamReader: @unchecked Sendable {
     // MARK: Public surface (read from the main actor)
 
     var latestPose: PhonePoseSample? { lock.withLock { $0.latestPose } }
-    var latestFace: PhoneFaceSample? { lock.withLock { $0.latestFace } }
+    var latestFaces: [PhoneFaceSample] { lock.withLock { $0.latestFaces } }
     var latestMotion: PhoneMotionSample? { lock.withLock { $0.latestMotion } }
     var latestDepth: PhoneDepthFrameBox? { lock.withLock { $0.latestDepth } }
     var latestPose3D: simd_float4x4? { lock.withLock { $0.latestDepth?.transform } }
@@ -239,7 +245,7 @@ final class PhoneStreamReader: @unchecked Sendable {
                         switch message {
                         case .motion(let m): state.latestMotion = m
                         case .pose(let p): state.latestPose = p
-                        case .face(let f): state.latestFace = f
+                        case .face(let f): state.latestFaces = f
                         case .depth: break   // handled above
                         }
                     }
