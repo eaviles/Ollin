@@ -98,7 +98,7 @@ vertex VertexOut ollin_vertex(uint vertexID [[vertex_id]],
     ndc.y = 1.0 - (v.position.y / uniforms.viewport.y) * 2.0;
 
     VertexOut out;
-    out.position = float4(ndc, 0.0, 1.0);
+    out.position = float4(ndc, uniforms.clipDepth, 1.0);
     out.color = v.color;
     return out;
 }
@@ -134,7 +134,7 @@ vertex ImageOut ollin_image_vertex(uint vertexID [[vertex_id]],
     ndc.y = 1.0 - (v.position.y / uniforms.viewport.y) * 2.0;
 
     ImageOut out;
-    out.position = float4(ndc, 0.0, 1.0);
+    out.position = float4(ndc, uniforms.clipDepth, 1.0);
     out.uv = v.uv;
     out.tint = v.tint;
     return out;
@@ -249,7 +249,7 @@ vertex SDFOut ollin_sdf_vertex(uint vid [[vertex_id]],
     ndc.y = 1.0 - (sketch.y / uniforms.viewport.y) * 2.0;
 
     SDFOut out;
-    out.position = float4(ndc, 0.0, 1.0);
+    out.position = float4(ndc, uniforms.clipDepth, 1.0);
     out.local = local;
     out.size = inst.size;
     out.fillColor = inst.fillColor;
@@ -1104,7 +1104,7 @@ vertex ParticleOut ollin_particle_vertex(uint vid [[vertex_id]],
     ndc.y = 1.0 - (sketch.y / uniforms.viewport.y) * 2.0;
 
     ParticleOut out;
-    out.position = float4(ndc, 0.0, 1.0);
+    out.position = float4(ndc, uniforms.clipDepth, 1.0);
     out.local = local;
     out.radius = radius;
     out.color = pt.color;

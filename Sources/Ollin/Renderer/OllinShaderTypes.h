@@ -44,6 +44,10 @@ typedef struct {
 // Per-frame constants, shared by both pipelines.
 typedef struct {
     simd_float2 viewport;   // logical canvas size in points (width, height)
+    float clipDepth;        // clip-space z (Metal NDC, [0,1]) the 2D vertex shaders
+                            // emit, so 2D draws can occlude/be occluded by 3D
+                            // geometry in a depth pass (see depth(at:)). 0 in a
+                            // 2D-only frame, so those frames are byte-identical.
 } Uniforms;
 
 // Per-frame constants for the 3D pipelines (an active `Camera3D`). Bound at

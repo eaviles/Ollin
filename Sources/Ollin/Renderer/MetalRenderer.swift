@@ -723,7 +723,7 @@ final class MetalRenderer {
             }
         }
 
-        var uniforms = Uniforms(viewport: viewport)
+        var uniforms = Uniforms(viewport: viewport, clipDepth: 0)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
 
         // 3D camera constants for the points3D batches, bound once at index 2 —
@@ -752,12 +752,19 @@ final class MetalRenderer {
             // pass's depth format; built on first use of a combination. Skip the
             // batch if it can't be built (never expected — same shaders).
             guard let state = try? pipeline(.forBatch(batch.kind, batch.blendMode, depth: depthFormat)) else { continue }
-            // In a depth pass (active camera): 3D batches z-test + write depth, 2D
-            // batches around them leave depth alone so they composite over in draw
-            // order. With no depth attachment the encoder keeps its default state,
-            // so 2D-only frames are byte-identical to before.
+            // In a depth pass (active camera): 3D batches z-test + write depth. A 2D
+            // batch that opted into a depth (`depth(at:)`) does too — its constant
+            // clip-z is fed to the 2D vertex shader so it occludes / is occluded by
+            // 3D geometry — while a plain 2D batch leaves depth alone (clip-z 0) and
+            // composites over in draw order. With no depth attachment the encoder
+            // keeps its default state, so 2D-only frames are byte-identical to before.
             if depthFormat != nil {
-                encoder.setDepthStencilState(batch.kind == .points3D ? depthTestState : noDepthState)
+                let wantsDepth = batch.kind == .points3D || batch.depth != nil
+                encoder.setDepthStencilState(wantsDepth ? depthTestState : noDepthState)
+                if batch.kind != .points3D {
+                    uniforms.clipDepth = batch.depth ?? 0
+                    encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
+                }
             }
             switch batch.kind {
             case .triangles:

@@ -303,6 +303,42 @@ open class Sketch {
     /// no-op without a camera.
     public func drawPointCloud(_ cloud: PointCloud) { drawer.drawPointCloud(cloud) }
 
+    // MARK: 3D — depth-aware compositing
+
+    /// Place subsequent 2D drawing at the depth of `worldPoint` in the active 3D
+    /// scene, so it occludes — and is occluded by — 3D geometry: a 2D mark behind a
+    /// point in the cloud is hidden, in front of it is drawn over. Pair it with
+    /// `project(_:)` to put the mark at the point's screen position too (or use
+    /// `withBillboard(at:)`, which does both). A no-op without a camera (drawing
+    /// returns to "over"); saved by `withState`, and reset each frame like the camera.
+    public func depth(at worldPoint: Vector3) { drawer.depth(at: worldPoint) }
+
+    /// Return subsequent 2D drawing to compositing *over* the 3D scene in draw order
+    /// (the default), ignoring the depth buffer.
+    public func noDepth() { drawer.noDepth() }
+
+    /// Project a world point through the active camera to its position on the canvas
+    /// (top-left origin, points), or `nil` if there's no camera or the point is
+    /// behind it. The screen place to draw a 2D billboard for a 3D point.
+    public func project(_ worldPoint: Vector3) -> Vector2? {
+        drawer.project(worldPoint, viewport: SIMD2<Float>(Float(width), Float(height)))
+    }
+
+    /// Draw a 2D billboard anchored to a world point: the origin is moved to the
+    /// point's projected canvas position and the depth set to its depth, so 2D drawn
+    /// inside `body` (in local coordinates around the origin) lands at the point and
+    /// composites with correct occlusion against the 3D scene. Skipped if the point
+    /// is behind the camera. Sugar over `project` + `translate` + `depth(at:)`,
+    /// scoped by `withState`.
+    public func withBillboard(at worldPoint: Vector3, _ body: () -> Void) {
+        guard let screen = project(worldPoint) else { return }
+        withState {
+            depth(at: worldPoint)
+            translate(screen)
+            body()
+        }
+    }
+
     /// Run a compute `kernel` that writes `texture` — one thread per texel, over a
     /// 2-D grid. The write texture binds at **texture index 0**; the kernel takes
     /// `texture2d<float, access::write> [[texture(0)]]` and a `uint2 gid

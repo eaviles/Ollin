@@ -96,6 +96,12 @@ struct GeometryBatch {
     var particleBuffer: ComputeBindable?
     /// Number of particles to draw (instances) for a `.particles` batch.
     var particleCount: Int = 0
+    /// Clip-space z (Metal NDC, [0,1]) this 2D batch tests and writes against the
+    /// 3D depth buffer — `nil` (the default) means "draw over" (always-pass, no
+    /// write), the byte-identical legacy behavior. Set by `depth(at:)` and carried
+    /// only on 2D batches in a depth pass; 3D (`points3D`) batches derive their own
+    /// depth from the camera and ignore it. A change in depth breaks the batch.
+    var depth: Float?
 }
 
 /// The drawing state machine and per-frame geometry recorder.
@@ -128,6 +134,7 @@ final class Drawer {
     private var textRenderMode: TextMode = .outline      // outline vs SDF-atlas text (see textMode)
     private var tintColor: Color? = nil                  // multiplies drawImage texels; nil = untinted (see tint / noTint)
     private var currentBlend: BlendMode = .normal        // how shapes combine with the canvas (see blendMode)
+    private var currentDepth: Float? = nil               // clip-z for 2D draws in a 3D scene; nil = draw over (see depth(at:))
 
     /// When true the canvas is *not* cleared each frame — drawing piles up across
     /// frames on a persistent accumulation surface instead (see `noClear` /
@@ -210,6 +217,9 @@ final class Drawer {
     /// The blend mode of the currently-open batch, so a blend-mode change opens a
     /// fresh batch even when the geometry kind is unchanged.
     private var currentBatchBlend: BlendMode = .normal
+    /// The 2D depth of the currently-open batch, so a `depth(at:)`/`noDepth()`
+    /// change opens a fresh batch even when kind and blend are unchanged.
+    private var currentBatchDepth: Float? = nil
 
     /// When set, draw calls are recorded as vector geometry for SVG export instead
     /// of being tessellated/SDF-encoded for the GPU (see SVGExport.swift). It lives
@@ -247,18 +257,21 @@ final class Drawer {
         return (index, baked)
     }
 
-    /// Open a new batch when the geometry kind *or* the blend mode changes; a
-    /// no-op while both are unchanged, so it's cheap to call per primitive.
+    /// Open a new batch when the geometry kind, the blend mode, *or* the 2D depth
+    /// changes; a no-op while all three are unchanged, so it's cheap to call per
+    /// primitive.
     private func ensureBatch(_ kind: GeometryKind) {
-        guard currentKind != kind || currentBatchBlend != currentBlend else { return }
+        guard currentKind != kind || currentBatchBlend != currentBlend
+            || currentBatchDepth != currentDepth else { return }
         currentKind = kind
         currentBatchBlend = currentBlend
+        currentBatchDepth = currentDepth
         batches.append(GeometryBatch(kind: kind, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
-                                     blendMode: currentBlend))
+                                     blendMode: currentBlend, depth: currentDepth))
     }
 
     /// Open a fresh `.image` batch carrying `image` as its texture. Unlike
@@ -268,12 +281,13 @@ final class Drawer {
     private func beginImageBatch(_ image: Image) {
         currentKind = .image
         currentBatchBlend = currentBlend
+        currentBatchDepth = currentDepth
         batches.append(GeometryBatch(kind: .image, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
-                                     blendMode: currentBlend, image: image))
+                                     blendMode: currentBlend, image: image, depth: currentDepth))
     }
 
     /// Open a fresh `.glyphAtlas` batch carrying `atlas` as its texture. One
@@ -282,12 +296,13 @@ final class Drawer {
     private func beginGlyphBatch(_ atlas: GlyphAtlas) {
         currentKind = .glyphAtlas
         currentBatchBlend = currentBlend
+        currentBatchDepth = currentDepth
         batches.append(GeometryBatch(kind: .glyphAtlas, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
-                                     blendMode: currentBlend, atlas: atlas))
+                                     blendMode: currentBlend, atlas: atlas, depth: currentDepth))
     }
 
     /// Record a compute dispatch for this frame (see `Sketch.compute` / `Particles`).
@@ -301,13 +316,15 @@ final class Drawer {
         guard count > 0 else { return }
         currentKind = .particles
         currentBatchBlend = currentBlend
+        currentBatchDepth = currentDepth
         batches.append(GeometryBatch(kind: .particles, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
                                      blendMode: currentBlend,
-                                     particleBuffer: buffer, particleCount: count))
+                                     particleBuffer: buffer, particleCount: count,
+                                     depth: currentDepth))
     }
 
     /// Set the standard compute uniforms for this frame (called by the runner before
@@ -366,6 +383,7 @@ final class Drawer {
         var textRenderMode: TextMode
         var tintColor: Color?
         var currentBlend: BlendMode
+        var currentDepth: Float?
     }
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
@@ -384,6 +402,7 @@ final class Drawer {
         points.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
+        currentBatchDepth = nil
     }
 
     /// Stop clearing the canvas each frame: drawing accumulates on a persistent
@@ -521,6 +540,38 @@ final class Drawer {
         }
     }
 
+    /// Place subsequent 2D drawing at the depth of a world point in the active 3D
+    /// scene, so it z-tests against 3D geometry — hidden where the scene is nearer,
+    /// hiding the scene where it's in front. The world point's clip-space z (against
+    /// this frame's camera) is what the 2D vertex shaders emit. A no-op without a
+    /// camera (the depth resets to "draw over"). Camera-derived, so it resets each
+    /// frame with the camera; saved by `withState`.
+    func depth(at worldPoint: Vector3) {
+        guard let camera = camera3D else { currentDepth = nil; return }
+        // Clip-space z is independent of the viewport aspect (the projection's z and
+        // w rows don't touch x/y), so any aspect gives the right NDC depth.
+        let clip = camera.projectionMatrix(aspect: 1) * camera.viewMatrix * SIMD4<Float>(worldPoint.simd3, 1)
+        currentDepth = clip.w != 0 ? clip.z / clip.w : nil
+    }
+
+    /// Return subsequent 2D drawing to drawing *over* the 3D scene (the default):
+    /// it ignores the depth buffer and composites in draw order.
+    func noDepth() { currentDepth = nil }
+
+    /// Project a world point through the active camera to its canvas-space position
+    /// (top-left origin, points), or `nil` if there's no camera or the point is
+    /// behind it. `viewport` is the canvas size (the `Sketch` passes `width`/`height`).
+    func project(_ worldPoint: Vector3, viewport: SIMD2<Float>) -> Vector2? {
+        guard let camera = camera3D else { return nil }
+        let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
+        let clip = camera.viewProjectionMatrix(aspect: aspect) * SIMD4<Float>(worldPoint.simd3, 1)
+        // clip.w = −z_camera: positive only for points in front of the camera.
+        guard clip.w > 0 else { return nil }
+        let ndx = clip.x / clip.w, ndy = clip.y / clip.w
+        return Vector2((Double(ndx) + 1) / 2 * Double(viewport.x),
+                       (1 - Double(ndy)) / 2 * Double(viewport.y))
+    }
+
     // MARK: Frame lifecycle
 
     /// Drop last frame's geometry but keep drawing state. Called once per frame
@@ -535,6 +586,10 @@ final class Drawer {
         dispatches.removeAll(keepingCapacity: true)
         currentKind = nil
         camera3D = nil
+        // The 2D depth is camera-derived (a clip-z against this frame's camera), so
+        // it resets with the camera each frame — set it from `draw()` after the
+        // camera, like the camera itself.
+        currentDepth = nil
         // `accumulates` is a mode and persists; only the per-frame "did the sketch
         // wipe the pile this frame" flag resets here.
         backgroundSetThisFrame = false
@@ -581,7 +636,8 @@ final class Drawer {
                                      textAlignH: textAlignH, textAlignV: textAlignV,
                                      textRenderMode: textRenderMode,
                                      tintColor: tintColor,
-                                     currentBlend: currentBlend))
+                                     currentBlend: currentBlend,
+                                     currentDepth: currentDepth))
     }
 
     /// Restore the most recently pushed transform and style. No-op if unbalanced.
@@ -605,6 +661,7 @@ final class Drawer {
         textRenderMode = s.textRenderMode
         tintColor = s.tintColor
         currentBlend = s.currentBlend
+        currentDepth = s.currentDepth
     }
 
     // MARK: Primitives

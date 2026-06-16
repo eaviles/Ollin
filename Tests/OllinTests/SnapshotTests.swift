@@ -131,6 +131,16 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: VoronoiCells(), against: "voronoi-cells")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func depthCompositing2DMatchesReference() throws {
+        // A 2D card standing at a world depth between two point-cloud balls — pins
+        // depth-aware compositing: the near ball draws over the card, the far ball
+        // is hidden by it. If 2D ignored depth (always over), the card would cover
+        // both, so this fails if the depth-participation path breaks. No `time`.
+        let diff = try Snapshot.meanDifference(of: DepthComposited2D(), against: "depth-compositing-2d")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
@@ -181,6 +191,42 @@ private final class VoronoiCells: Sketch {
         for (i, cell) in cells.enumerated() {
             fill(Colormap.viridis.color(at: Double(i) / Double(max(cells.count - 1, 1))))
             drawShape(cell)
+        }
+    }
+}
+
+/// A 2D card placed at a world depth between two point-cloud balls — exercises
+/// depth-aware compositing (`withBillboard`/`depth(at:)`): the near ball composites
+/// over the card, the far ball is hidden by it. The camera looks down −z from +z,
+/// so the +z ball is in front of the origin (over the card) and the −z ball behind
+/// it (occluded). No `time`, deterministic blob.
+private final class DepthComposited2D: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    // A small fixed cloud of offsets (deterministic hash), so the balls hold still.
+    private let blob: [Vector3] = {
+        func h(_ n: Int) -> Double {
+            let x = sin(Double(n) * 12.9898) * 43758.5453
+            return (x - floor(x)) * 2 - 1
+        }
+        return (0..<120).map { i in
+            Vector3(h(i * 4), h(i * 4 + 1), h(i * 4 + 2)) * (abs(h(i * 4 + 3)) * 0.22 + 0.05)
+        }
+    }()
+
+    override func draw() {
+        background(Color(white: 0.04))
+        camera(.perspective(eye: Vector3(0, 0, 4.2), target: .zero, fieldOfView: .pi / 3))
+        var cloud = PointCloud()
+        for off in blob {
+            cloud.add(Vector3(-0.85, 0, 1.25) + off, color: Color(hue: 0.5, saturation: 0.7, brightness: 1.0), size: 0.07)
+            cloud.add(Vector3(0.85, 0, -1.25) + off, color: Color(hue: 0.07, saturation: 0.8, brightness: 1.0), size: 0.07)
+        }
+        drawPointCloud(cloud)
+        withBillboard(at: .zero) {
+            noStroke()
+            fill(Color(white: 0.95))
+            drawRect(center: .zero, width: 150, height: 92, cornerRadius: 12)
         }
     }
 }

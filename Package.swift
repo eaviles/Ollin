@@ -414,6 +414,11 @@ let package = Package(
             path: "Examples/3D/PointCloud"
         ),
         .executableTarget(
+            name: "Example-DepthCompositing",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/DepthCompositing"
+        ),
+        .executableTarget(
             name: "Example-DepthCloud",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/3D/DepthCloud"
