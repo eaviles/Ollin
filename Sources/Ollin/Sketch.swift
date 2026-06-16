@@ -927,6 +927,34 @@ open class Sketch {
     public func rotate(_ radians: Double) { drawer.rotate(radians) }
     public func scale(_ amount: Double) { drawer.scale(amount, amount) }
     public func scale(_ x: Double, _ y: Double) { drawer.scale(x, y) }
+
+    // MARK: 3D transforms
+
+    // The spatial siblings of the 2D `translate`/`rotate`/`scale` above: these move
+    // 3D geometry (a point cloud) inside the active `camera`, in right-handed, y-up
+    // world units, composing on a 4×4 model matrix that `withState` saves and restores
+    // like the 2D one. They don't affect 2D drawing (shapes/images/text keep using the
+    // 2D transform), so both stacks stay live in a 3D frame. A 2D-only sketch ignores
+    // them. Set a `camera` first; the cloud rides the model matrix into the scene.
+
+    /// Move subsequent 3D geometry by `offset` in world units.
+    public func translate(_ offset: Vector3) { drawer.translate(offset) }
+    /// Move subsequent 3D geometry by `(x, y, z)` in world units.
+    public func translate(_ x: Double, _ y: Double, _ z: Double) { drawer.translate(x, y, z) }
+    /// Rotate subsequent 3D geometry by `radians` about the world x-axis (right-handed).
+    public func rotateX(_ radians: Double) { drawer.rotateX(radians) }
+    /// Rotate subsequent 3D geometry by `radians` about the world y-axis (right-handed).
+    public func rotateY(_ radians: Double) { drawer.rotateY(radians) }
+    /// Rotate subsequent 3D geometry by `radians` about the world z-axis (right-handed).
+    public func rotateZ(_ radians: Double) { drawer.rotateZ(radians) }
+    /// Rotate subsequent 3D geometry by `radians` about an arbitrary `axis`.
+    public func rotate(_ radians: Double, axis: Vector3) { drawer.rotate(radians, axis: axis) }
+    /// Scale subsequent 3D geometry per axis by `(x, y, z)`.
+    public func scale(_ x: Double, _ y: Double, _ z: Double) { drawer.scale(x, y, z) }
+    /// Scale subsequent 3D geometry by per-axis `factors`. Uniform scale is
+    /// `scale(Vector3(s, s, s))`.
+    public func scale(_ factors: Vector3) { drawer.scale(factors) }
+
     public func pushState() { drawer.pushState() }
     public func popState() { drawer.popState() }
 

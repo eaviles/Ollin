@@ -125,6 +125,17 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func transformed3DMatchesReference() throws {
+        // Point-cloud blobs placed entirely by the 3D transform stack — a center blob
+        // plus four satellites positioned by rotateY + translate and sized by scale.
+        // Pins the model-matrix bake (translate/rotate/scale composing) into the point
+        // pipeline; if the stack were ignored every blob would pile at the origin.
+        // Seeded, no `time`.
+        let diff = try Snapshot.meanDifference(of: Transformed3DScene(), against: "transformed-3d")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func voronoiCellsMatchReference() throws {
         // A Lloyd-relaxed Voronoi diagram — pins the Bowyer–Watson triangulation,
         // the bisector cell clipping, and the relaxation. Seeded, no `time`.
@@ -192,6 +203,47 @@ private final class PointCloud3DScene: Sketch {
             }
         }
         drawPointCloud(cloud)
+    }
+}
+
+/// Point-cloud blobs placed entirely by the 3D transform stack: a central blob and
+/// four satellites positioned with `rotateY` + `translate` and sized with `scale`,
+/// under a fixed camera. Exercises the model matrix baking into the point pipeline.
+/// Seeded and `time`-free, so it's deterministic.
+private final class Transformed3DScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        seed(3)
+        camera(.orbiting(target: .zero, radius: 6.5, azimuth: 0.5, elevation: 0.4,
+                         fieldOfView: .pi / 3.2))
+        let center = makeBlob(count: 1400, dot: 0.06,
+                              color: Color(hue: 0.09, saturation: 0.85, brightness: 1))
+        let satellite = makeBlob(count: 900, dot: 0.09,
+                                 color: Color(hue: 0.58, saturation: 0.7, brightness: 0.95))
+
+        withState {
+            scale(Vector3(0.9, 0.9, 0.9))
+            drawPointCloud(center)
+        }
+        for i in 0..<4 {
+            withState {
+                rotateY(Double(i) * .pi / 2 + 0.3)
+                translate(2.6, 0, 0)
+                scale(Vector3(0.4, 0.4, 0.4))
+                drawPointCloud(satellite)
+            }
+        }
+    }
+
+    private func makeBlob(count: Int, dot: Double, color: Color) -> PointCloud {
+        var cloud = PointCloud()
+        for _ in 0..<count {
+            let dir = Vector3(randomGaussian(), randomGaussian(), randomGaussian()).normalized
+            cloud.add(dir * (0.9 + random(0.2)), color: color, size: dot)
+        }
+        return cloud
     }
 }
 

@@ -380,12 +380,27 @@ final class Drawer {
     /// a frame otherwise).
     private var transformIsIdentity = true
 
+    /// The 3D model matrix — the spatial sibling of `transform`, for geometry that
+    /// rides the `camera3D` rather than the 2D canvas (point clouds today). Built by
+    /// the 3D `translate`/`rotate*`/`scale` overloads and reset to identity each
+    /// frame. It composes *inside* the camera: a point reaches clip space as
+    /// `projection · view · model · p`. Kept separate from the 2D affine so the 2D
+    /// path stays byte-identical — a 2D-only sketch never touches it.
+    private var modelMatrix = matrix_identity_float4x4
+
+    /// Tracks whether `modelMatrix` is still the identity, so `drawPointCloud` can
+    /// skip the per-point matrix multiply when no 3D transform is active (every
+    /// existing 3D sketch, so their geometry stays byte-identical).
+    private var modelIsIdentity = true
+
     /// Saved (transform + style) snapshots for `pushState()`/`popState()` / `withState`.
     private var stateStack: [SavedState] = []
 
     private struct SavedState {
         var transform: matrix_float3x3
         var transformIsIdentity: Bool
+        var modelMatrix: matrix_float4x4
+        var modelIsIdentity: Bool
         var fillPaint: Paint?
         var strokePaint: Paint?
         var strokeWidth: Double
@@ -551,11 +566,22 @@ final class Drawer {
         if svgRecorder != nil { return }
         ensureBatch(.points3D)
         points.reserveCapacity(points.count + cloud.count)
+        // The model matrix bakes into each point CPU-side (the 2D affine bakes the
+        // same way into triangle vertices), so the splat shader stays untouched. When
+        // no 3D transform is active this is the original world-space copy, byte for
+        // byte. Splat sizes are world units, so a scaling transform grows them too.
+        let m = modelMatrix
+        let sizeScale = modelIsIdentity ? 1 : Drawer.averageScale(m)
         for p in cloud.points {
             var op = OllinPoint()
-            op.position = SIMD4<Float>(Float(p.position.x), Float(p.position.y), Float(p.position.z), 1)
+            if modelIsIdentity {
+                op.position = SIMD4<Float>(Float(p.position.x), Float(p.position.y), Float(p.position.z), 1)
+            } else {
+                let w = m * SIMD4<Float>(Float(p.position.x), Float(p.position.y), Float(p.position.z), 1)
+                op.position = SIMD4<Float>(w.x, w.y, w.z, 1)
+            }
             op.color = p.color.simd4
-            op.size = Float(p.size)
+            op.size = Float(p.size) * sizeScale
             points.append(op)
         }
     }
@@ -568,9 +594,12 @@ final class Drawer {
     /// frame with the camera; saved by `withState`.
     func depth(at worldPoint: Vector3) {
         guard let camera = camera3D else { currentDepth = nil; return }
+        // The point is in the current model space (like the geometry it accompanies),
+        // so push it through the model matrix first — identity today, so unchanged.
+        let p = modelIsIdentity ? worldPoint : modelMatrix.transforming(worldPoint)
         // Clip-space z is independent of the viewport aspect (the projection's z and
         // w rows don't touch x/y), so any aspect gives the right NDC depth.
-        let clip = camera.projectionMatrix(aspect: 1) * camera.viewMatrix * SIMD4<Float>(worldPoint.simd3, 1)
+        let clip = camera.projectionMatrix(aspect: 1) * camera.viewMatrix * SIMD4<Float>(p.simd3, 1)
         currentDepth = clip.w != 0 ? clip.z / clip.w : nil
     }
 
@@ -591,8 +620,9 @@ final class Drawer {
     /// behind it. `viewport` is the canvas size (the `Sketch` passes `width`/`height`).
     func project(_ worldPoint: Vector3, viewport: SIMD2<Float>) -> Vector2? {
         guard let camera = camera3D else { return nil }
+        let p = modelIsIdentity ? worldPoint : modelMatrix.transforming(worldPoint)
         let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
-        let clip = camera.viewProjectionMatrix(aspect: aspect) * SIMD4<Float>(worldPoint.simd3, 1)
+        let clip = camera.viewProjectionMatrix(aspect: aspect) * SIMD4<Float>(p.simd3, 1)
         // clip.w = −z_camera: positive only for points in front of the camera.
         guard clip.w > 0 else { return nil }
         let ndx = clip.x / clip.w, ndy = clip.y / clip.w
@@ -628,6 +658,8 @@ final class Drawer {
         gradientRowIndex.removeAll(keepingCapacity: true)
         transform = matrix_identity_float3x3
         transformIsIdentity = true
+        modelMatrix = matrix_identity_float4x4
+        modelIsIdentity = true
         stateStack.removeAll(keepingCapacity: true)
     }
 
@@ -652,9 +684,70 @@ final class Drawer {
         transformIsIdentity = false
     }
 
+    // MARK: 3D transforms (the model matrix)
+    //
+    // The spatial siblings of the 2D `translate`/`rotate`/`scale` above: these build
+    // the `modelMatrix` and move 3D geometry (point clouds) inside the active camera,
+    // not the 2D canvas. World space is right-handed, y-up (the `Camera3D`
+    // convention); rotations are right-handed (counter-clockwise looking from the
+    // positive axis toward the origin). They compose by post-multiplication like the
+    // 2D affine, so `translate` then `rotateY` then draw places a point at
+    // `T · R · p`. A 2D-only sketch never calls these.
+
+    /// Move subsequent 3D geometry by `offset` in world units.
+    func translate(_ offset: Vector3) {
+        modelMatrix = modelMatrix * Drawer.translation3(offset.simd3)
+        modelIsIdentity = false
+    }
+
+    /// Move subsequent 3D geometry by `(x, y, z)` in world units.
+    func translate(_ x: Double, _ y: Double, _ z: Double) {
+        translate(Vector3(x, y, z))
+    }
+
+    /// Rotate subsequent 3D geometry by `radians` about the world x-axis.
+    func rotateX(_ radians: Double) {
+        modelMatrix = modelMatrix * Drawer.rotationX(Float(radians))
+        modelIsIdentity = false
+    }
+
+    /// Rotate subsequent 3D geometry by `radians` about the world y-axis.
+    func rotateY(_ radians: Double) {
+        modelMatrix = modelMatrix * Drawer.rotationY(Float(radians))
+        modelIsIdentity = false
+    }
+
+    /// Rotate subsequent 3D geometry by `radians` about the world z-axis.
+    func rotateZ(_ radians: Double) {
+        modelMatrix = modelMatrix * Drawer.rotationZ(Float(radians))
+        modelIsIdentity = false
+    }
+
+    /// Rotate subsequent 3D geometry by `radians` about an arbitrary `axis`
+    /// (need not be unit length). A no-op for a zero-length axis.
+    func rotate(_ radians: Double, axis: Vector3) {
+        let a = axis.normalized
+        guard a.lengthSquared > 0 else { return }
+        modelMatrix = modelMatrix * Drawer.rotation3(Float(radians), axis: a.simd3)
+        modelIsIdentity = false
+    }
+
+    /// Scale subsequent 3D geometry by `(x, y, z)` per axis.
+    func scale(_ x: Double, _ y: Double, _ z: Double) {
+        modelMatrix = modelMatrix * Drawer.scaling3(Float(x), Float(y), Float(z))
+        modelIsIdentity = false
+    }
+
+    /// Scale subsequent 3D geometry by per-axis `factors`. Uniform scale is
+    /// `scale(Vector3(s, s, s))`.
+    func scale(_ factors: Vector3) {
+        scale(factors.x, factors.y, factors.z)
+    }
+
     /// Save the current transform and style (fill/stroke/weight).
     func pushState() {
         stateStack.append(SavedState(transform: transform, transformIsIdentity: transformIsIdentity,
+                                     modelMatrix: modelMatrix, modelIsIdentity: modelIsIdentity,
                                      fillPaint: fillPaint, strokePaint: strokePaint,
                                      strokeWidth: strokeWidth, pointDiameter: pointDiameter,
                                      marker: marker, hollowWidth: hollowWidth,
@@ -674,6 +767,8 @@ final class Drawer {
         guard let s = stateStack.popLast() else { return }
         transform = s.transform
         transformIsIdentity = s.transformIsIdentity
+        modelMatrix = s.modelMatrix
+        modelIsIdentity = s.modelIsIdentity
         fillPaint = s.fillPaint
         strokePaint = s.strokePaint
         strokeWidth = s.strokeWidth
@@ -2770,6 +2865,56 @@ final class Drawer {
         matrix_float3x3(columns: (SIMD3<Float>(sx, 0, 0),
                                   SIMD3<Float>(0, sy, 0),
                                   SIMD3<Float>(0, 0, 1)))
+    }
+
+    // MARK: 3D model-matrix builders (column-major, right-handed, y-up)
+
+    private static func translation3(_ t: SIMD3<Float>) -> matrix_float4x4 {
+        matrix_float4x4(columns: (SIMD4<Float>(1, 0, 0, 0),
+                                  SIMD4<Float>(0, 1, 0, 0),
+                                  SIMD4<Float>(0, 0, 1, 0),
+                                  SIMD4<Float>(t.x, t.y, t.z, 1)))
+    }
+    private static func scaling3(_ sx: Float, _ sy: Float, _ sz: Float) -> matrix_float4x4 {
+        matrix_float4x4(columns: (SIMD4<Float>(sx, 0, 0, 0),
+                                  SIMD4<Float>(0, sy, 0, 0),
+                                  SIMD4<Float>(0, 0, sz, 0),
+                                  SIMD4<Float>(0, 0, 0, 1)))
+    }
+    private static func rotationX(_ a: Float) -> matrix_float4x4 {
+        let c = cos(a), s = sin(a)
+        return matrix_float4x4(columns: (SIMD4<Float>(1, 0, 0, 0),
+                                         SIMD4<Float>(0, c, s, 0),
+                                         SIMD4<Float>(0, -s, c, 0),
+                                         SIMD4<Float>(0, 0, 0, 1)))
+    }
+    private static func rotationY(_ a: Float) -> matrix_float4x4 {
+        let c = cos(a), s = sin(a)
+        return matrix_float4x4(columns: (SIMD4<Float>(c, 0, -s, 0),
+                                         SIMD4<Float>(0, 1, 0, 0),
+                                         SIMD4<Float>(s, 0, c, 0),
+                                         SIMD4<Float>(0, 0, 0, 1)))
+    }
+    private static func rotationZ(_ a: Float) -> matrix_float4x4 {
+        let c = cos(a), s = sin(a)
+        return matrix_float4x4(columns: (SIMD4<Float>(c, s, 0, 0),
+                                         SIMD4<Float>(-s, c, 0, 0),
+                                         SIMD4<Float>(0, 0, 1, 0),
+                                         SIMD4<Float>(0, 0, 0, 1)))
+    }
+    /// Rotation about a unit `axis` by `a` radians (right-handed), via a quaternion
+    /// so it stays consistent with the axis-aligned builders above.
+    private static func rotation3(_ a: Float, axis: SIMD3<Float>) -> matrix_float4x4 {
+        matrix_float4x4(simd_quatf(angle: a, axis: axis))
+    }
+    /// The mean of the model matrix's three basis-column lengths — the factor a
+    /// scaling transform applies to a splat's world-unit size (exact for uniform
+    /// scale, a sensible average otherwise; 1 for a rigid transform).
+    private static func averageScale(_ m: matrix_float4x4) -> Float {
+        let x = simd_length(SIMD3<Float>(m.columns.0.x, m.columns.0.y, m.columns.0.z))
+        let y = simd_length(SIMD3<Float>(m.columns.1.x, m.columns.1.y, m.columns.1.z))
+        let z = simd_length(SIMD3<Float>(m.columns.2.x, m.columns.2.y, m.columns.2.z))
+        return (x + y + z) / 3
     }
 }
 
