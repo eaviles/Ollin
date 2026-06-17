@@ -1105,7 +1105,7 @@ open class Sketch {
     /// Draw `string` glyph by glyph, handing each glyph to `perGlyph` for its own
     /// transform or color before you stamp it with `TextGlyph.draw()`. Single line,
     /// using the current `textFont`/`textSize`/`textAlign`. Per-letter waves,
-    /// rainbows, springs — effects p5/oF have no direct hook for.
+    /// rainbows, springs — effects with no single built-in call.
     public func drawText(_ string: String, _ x: Double, _ y: Double, perGlyph: (TextGlyph) -> Void) {
         drawer.drawText(string, x, y, perGlyph: perGlyph)
     }

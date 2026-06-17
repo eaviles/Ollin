@@ -92,7 +92,7 @@ vertex VertexOut ollin_vertex(uint vertexID [[vertex_id]],
     OllinVertex v = vertices[vertexID];
 
     // Map top-left / y-down point coordinates into clip space [-1, 1],
-    // flipping Y so that y grows downward on screen (p5 / Processing style).
+    // flipping Y so that y grows downward on screen (top-left-origin convention).
     float2 ndc;
     ndc.x = (v.position.x / uniforms.viewport.x) * 2.0 - 1.0;
     ndc.y = 1.0 - (v.position.y / uniforms.viewport.y) * 2.0;

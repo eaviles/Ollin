@@ -110,7 +110,7 @@ The [Easing example](../Examples/Motion/Easing/Sketch.swift) races four dots tow
 
 ### `@Smoothed`
 
-`@Eased` glides toward a target you *know*. When instead you have a noisy live signal whose true value you *don't* know — a jittery `mouseX`/`mouseY`, or the input that arrives once OSC, MIDI, computer vision, and the phone sensors land — reach for `@Smoothed`. It cleans the stream with the [1€ filter](https://gery.casiez.net/1euro/), an adaptive low-pass that stays responsive when the signal moves fast and steady when it's slow, something a fixed low-pass can't manage at both ends.
+`@Eased` glides toward a target you *know*. When instead you have a noisy live signal whose true value you *don't* know — a jittery `mouseX`/`mouseY`, or live input from OSC, MIDI, computer vision, or the phone sensors — reach for `@Smoothed`. It cleans the stream with the [1€ filter](https://gery.casiez.net/1euro/), an adaptive low-pass that stays responsive when the signal moves fast and steady when it's slow, something a fixed low-pass can't manage at both ends.
 
 Assign the raw value each frame and read back a clean one. Like `@Eased`, the sketch advances it for you, so there's no update step to call:
 

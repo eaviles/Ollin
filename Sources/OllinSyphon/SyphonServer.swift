@@ -3,10 +3,9 @@ import Metal
 import Ollin
 import CSyphon
 
-/// Publishes a sketch's rendered frames as a **Syphon source**, so other apps on
-/// the Mac can read its live visuals — openFrameworks (via `ofxSyphon`),
-/// Resolume, MadMapper, VDMX, or Syphon's own Simple Client. It's a `Sketch`
-/// extension: register one in `setup()` and every frame is shared automatically.
+/// Publishes a sketch's rendered frames as a **Syphon source**, so any other
+/// Syphon-capable app on the Mac can read its live visuals in real time. It's a
+/// `Sketch` extension: register one in `setup()` and every frame is shared automatically.
 ///
 /// ```swift
 /// final class Visuals: Sketch {
@@ -79,8 +78,8 @@ public final class SyphonServer: SketchExtension {
         let region = NSRect(x: 0, y: 0, width: publishTexture.width, height: publishTexture.height)
         // `flipped: true` — Ollin's render target is top-left origin, which Syphon
         // treats as vertically flipped relative to its GL/bottom-left convention.
-        // Passing true makes standard consumers (Syphon's Simple Client, ofxSyphon,
-        // Resolume, …) show the frame upright; Ollin's own SyphonClient flips back
+        // Passing true makes standard Syphon consumers show the frame upright;
+        // Ollin's own SyphonClient flips back
         // on its side (Image(texture:flippedVertically:)), so the loopback and
         // viewing a standard source both land upright too.
         server.publishFrameTexture(publishTexture, on: commandBuffer,

@@ -45,6 +45,7 @@ final class Pulse: Sketch {
 AudioInput(fftSize: Int = 1024, smoothing: Float = 0.8)
 func start() throws
 func stop()
+var isRunning: Bool        // true while the mic is capturing
 ```
 
 Live audio from the system's default input. Call `start()` once (usually in `setup()`), then read the [audio values](#reading-audio) in `draw()`.
@@ -98,6 +99,7 @@ func stop()
 var frequency: Double      // Hz, settable live
 var amplitude: Double      // 0...1, settable live
 var waveform: Waveform     // .sine, .triangle, .sawtooth, .square
+var isPlaying: Bool        // true while the tone is sounding
 ```
 
 A single oscillator that synthesizes a tone you can hear — and, because it feeds the same analyzer, also read back. Enough for audible feedback and self-contained audio-reactive demos, short of a full synthesizer. `frequency`, `amplitude`, and `waveform` are all settable from `draw()`.

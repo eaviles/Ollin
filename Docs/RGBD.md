@@ -34,7 +34,7 @@ final class Pose: Sketch {
 ### Contents
 
 - [The RGBD frame](#frame) — `RGBDFrame`, `CameraIntrinsics`, `DepthConfidence`
-- [Lifting one point](#unproject) — `unproject(normalized:)`, `depth(atNormalizedX:)`
+- [Lifting one point](#unproject) — `unproject(normalized:)`, `depth(atNormalizedX:y:)`
 - [Depth-lifted pose](#pose) — `Body.lifted(through:)`, `LiftedPose`
 - [The coordinate convention](#space)
 - [What's here, what's ahead](#ahead)
@@ -114,11 +114,12 @@ The **input** to `unproject` is Vision-normalized (lower-left origin); the **out
 <a name="ahead"></a>
 ## What's here, what's ahead
 
-Here: the core `RGBDFrame`/`CameraIntrinsics`/`DepthConfidence`, `unproject`/`pointCloud`, and depth-lifted pose (`Body.lifted` → `LiftedPose`). Also here, for a depth source that reports a camera **pose**: `PointCloud.transformed(by:)` places a camera-space cloud into world space, and `WorldCloud` fuses a sweep of pose-placed frames into one accumulated cloud — see [Phone › World fusion](./Phone.md#world-fusion). Ahead, composing over the same frame: depth-aware compositing and occlusion (drawing 2D over a depth scene with the depth test), and richer depth sources as the [iPhone sensor array](../ROADMAP.md) grows.
+Here: the core `RGBDFrame`/`CameraIntrinsics`/`DepthConfidence`, `unproject`/`pointCloud`, and depth-lifted pose (`Body.lifted` → `LiftedPose`). Also here, for a depth source that reports a camera **pose**: `PointCloud.transformed(by:)` places a camera-space cloud into world space, and `WorldCloud` fuses a sweep of pose-placed frames into one accumulated cloud — see [Phone › World fusion](./Phone.md#world-fusion). And [depth-aware compositing](./DepthCompositing.md) puts 2D drawing *inside* a depth scene, so a mark occludes and is occluded by the depth. Ahead: a depth-driven blur for camera-feed depth of field, and richer depth sources as the [iPhone sensor array](../ROADMAP.md) grows.
 
 ### See also
 
 - [3D](./3D.md) — the camera and point clouds the lifted geometry draws through
+- [Depth compositing](./DepthCompositing.md) — placing 2D drawing inside a depth scene, with occlusion
 - [Record3D](./Record3D.md) — the iPhone depth sources that produce RGBD frames
 - [Vision](./Vision.md) — `BodyTracker`, the 2D pose that gets lifted
 

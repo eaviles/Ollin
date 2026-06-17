@@ -24,7 +24,7 @@ mouseX: Double
 mouseY: Double
 ```
 
-The cursor position in sketch coordinates (points, top-left origin, y-down). They're seeded from the cursor's actual position when the window opens, so a mouse-driven sketch is alive on the first frame instead of waiting for the first move, then update as the pointer moves over the canvas.
+The cursor position in sketch coordinates (points, top-left origin, y-down). They're seeded from the cursor's actual position when the window opens, so a mouse-driven sketch is alive on the first frame instead of reading (0, 0) until the first move. After that they track the pointer as it moves over the canvas.
 
 ```swift
 override func draw() {

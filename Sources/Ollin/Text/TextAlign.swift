@@ -11,7 +11,7 @@ public enum TextAlignH: Sendable {
 
 /// Vertical anchoring of text relative to the `drawText` position (see
 /// `textAlign`). `.baseline` (default) sits the first line's baseline on the y —
-/// p5's default; `.top`/`.bottom` align the block's top/bottom edge to the y, and
+/// the conventional default; `.top`/`.bottom` align the block's top/bottom edge to the y, and
 /// `.middle` centers the whole block on the y.
 public enum TextAlignV: Sendable {
     case top

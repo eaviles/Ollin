@@ -118,8 +118,8 @@ Call `newFrame()` each frame and draw the result; don't hold onto it across fram
 SyphonClient.availableServers() -> [SyphonServerInfo]
 
 struct SyphonServerInfo {
-    var name: String?       // the source's name
-    var appName: String?    // the app publishing it
+    let name: String?       // the source's name
+    let appName: String?    // the app publishing it
     var label: String       // a friendly one-line label, e.g. "Composition (Resolume)"
 }
 ```

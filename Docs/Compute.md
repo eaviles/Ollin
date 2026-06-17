@@ -148,13 +148,13 @@ final class RD: Sketch {
     override func draw() {
         if !seeded { compute(seed, writing: field.current); seeded = true }   // initial state
         updateSimulation(field)                                               // one frame of sim
-        drawImage(field.image, in: Rectangle(x: 0, y: 0, width: Double(width), height: Double(height)))
+        drawImage(field.image, in: Rectangle(x: 0, y: 0, width: width, height: height))
     }
 }
 ```
 
 - **`updateSimulation(_:custom:)`** records the sim — `subSteps` kernel iterations run, on the GPU, before the frame is drawn. `custom` passes up to four live floats the snippet reads as `custom.x…w`.
-- **`field.image`** wraps the current field as an [`Image`](./Drawing.md) for `drawImage` — it composites in draw order, rides the transform stack, and takes `tint`, like any image. Its texels are treated as **linear** colour; author sRGB tones through `srgbToLinear` in the kernel.
+- **`field.image`** wraps the current field as an [`Image`](./Drawing.md) for `drawImage` — it composites in draw order, rides the transform stack, and takes `tint`, like any image. Its texels are treated as **linear** color; author sRGB tones through `srgbToLinear` in the kernel.
 
 In the `step:` snippet these are in scope:
 
@@ -207,7 +207,7 @@ Inline strings are terse, but an editor can't highlight or check them. For anyth
 let blur = ComputeKernel(entry: "blur", resource: "Kernels", in: .module)!
 ```
 
-The shared types and the [prelude](#prelude) are still spliced in, so the file references `OllinComputeUniforms` / `hash22` / `curlNoise` / … and writes no `#include`s. One file can hold any number of kernels — load each by its `entry` name (they share one compile). Pass `in: .module` explicitly (a default would resolve to *Ollin's* bundle, not yours), and list the file as a `.copy` resource on your target. There's also `ComputeKernel(entry:contentsOf:)` for an arbitrary file URL. See `Examples/Compute/ReactionDiffusion`, which keeps its seed and colourise passes in `Kernels.metal`.
+The shared types and the [prelude](#prelude) are still spliced in, so the file references `OllinComputeUniforms` / `hash22` / `curlNoise` / … and writes no `#include`s. One file can hold any number of kernels — load each by its `entry` name (they share one compile). Pass `in: .module` explicitly (a default would resolve to *Ollin's* bundle, not yours), and list the file as a `.copy` resource on your target. There's also `ComputeKernel(entry:contentsOf:)` for an arbitrary file URL. See `Examples/Compute/ReactionDiffusion`, which keeps its seed and colorize passes in `Kernels.metal`.
 
 <a id="core"></a>
 ### The typed core
@@ -245,7 +245,7 @@ let buffer = ComputeBuffer<MyParticle>(count: 500_000)
 let seeded = ComputeBuffer<MyParticle>(initialParticles)   // uploaded once
 ```
 
-For a buffer the render path reads each frame, use a [`PingPong`](#notes) pair (two buffers swapped each step) so the GPU can overlap one frame's render with the next step.
+For a buffer the render path reads each frame, use a [`PingPong`](#computebuffer) pair (two buffers swapped each step) so the GPU can overlap one frame's render with the next step.
 
 <a id="compute"></a>
 #### compute
@@ -272,7 +272,7 @@ Draw a `ComputeBuffer<OllinParticle>` directly with `drawParticles(_ buffer:)`; 
 
 - **`OllinParticle`** is the built-in particle struct (`position`, `velocity`, `color`, `size`, `life`, two scratch floats). `drawParticles` reads `position`/`color`/`size` from it. A custom struct that wants the built-in renderer must place those fields at the same offsets, or render itself.
 - **Ping-pong, not in place, for simulation.** When a buffer or texture is both written by the kernel and read by the render path each frame, drive it as a `PingPong` / `PingPongTexture` pair (`Particles` and `Simulation` do this for you). In-place `compute(_:over:)` is for scratch work the render path doesn't also read that frame.
-- **A `ComputeTexture` draws as linear colour.** Its texels feed the render pipeline as linear values (the format the renderer composites in). Author display colours in a kernel through `srgbToLinear` (from the [prelude](#prelude)) and keep alpha at 1 for opaque, predictable compositing. Storage is `.shared` (unified memory) with `.shaderRead`+`.shaderWrite` usage.
+- **A `ComputeTexture` draws as linear color.** Its texels feed the render pipeline as linear values (the format the renderer composites in). Author display colors in a kernel through `srgbToLinear` (from the [prelude](#prelude)) and keep alpha at 1 for opaque, predictable compositing. Storage is `.shared` (unified memory) with `.shaderRead`+`.shaderWrite` usage.
 - **Determinism.** GPU floating-point results are deterministic on a given device but can differ across GPUs (reassociation), so compute renders aren't pinned to exact reference images.
 - **It's Metal.** Kernels are MSL, compiled at runtime. A syntax error prints to the console and the dispatch is skipped (the frame still renders), so a broken kernel shows as missing particles rather than a crash.
 

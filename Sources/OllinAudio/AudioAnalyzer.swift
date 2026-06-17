@@ -211,7 +211,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
     }
 
     /// A 0…1 pulse that snaps to 1 on each beat and decays over ~0.25 s — the
-    /// p5-friendly "make it throb on the beat" value.
+    /// ready-to-use "make it throb on the beat" value.
     public var beat: Float {
         let t = timeSinceBeat
         guard t.isFinite else { return 0 }

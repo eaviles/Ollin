@@ -6,7 +6,7 @@
 
 See with the Mac's camera. Vision lives in a separate library so the drawing core stays free of `AVFoundation` and Apple's Vision framework — add `import OllinVision` alongside `import Ollin` to reach it.
 
-There are two pieces. A [`Camera`](#camera) captures frames from the built-in camera, a Continuity Camera iPhone, or an external webcam, and hands them over as drawable `Image`s. A **tracker** attached to a [frame source](#frame-sources) — that camera, or a playing [`VideoPlayer`](./Video.md) — runs Apple's on-device perception on each frame and publishes typed results you read in `draw()`. The first tracker is [`FaceTracker`](#facetracker); more (hands, bodies, segmentation, contours, text, …) follow the same shape, through to [`ModelTracker`](#modeltracker), which runs **your own Core ML model** the same way.
+There are two pieces. A [`Camera`](#camera) captures frames from the built-in camera, a Continuity Camera iPhone, or an external webcam, and hands them over as drawable `Image`s. A **tracker** attached to a [frame source](#frame-sources) — that camera, or a playing [`VideoPlayer`](./Video.md) — runs Apple's on-device perception on each frame and publishes typed results you read in `draw()`. Every tracker follows the same shape: [`FaceTracker`](#facetracker) for faces, then hands, bodies, segmentation, contours, text, and on through [`ModelTracker`](#modeltracker), which runs **your own Core ML model** the same way.
 
 The usual flow: make a camera in `setup()` and `start()` it, attach the trackers you want, then in `draw()` draw the feed with `drawFrame(camera)` — it letterboxes the latest frame, shows a standard waiting notice until the first one arrives, and returns the rectangle to map results into — and read each tracker's results.
 
@@ -470,7 +470,7 @@ override func draw() {
     if let frame = camera.frame { drawImage(frame, in: bounds) }
     for code in codes.barcodes {
         drawPolygon(code.corners(in: bounds))
-        if let payload = code.payload { drawText(payload, code.center(in: bounds)) }
+        if let payload = code.payload { drawText(payload, at: code.center(in: bounds)) }
     }
 }
 ```
@@ -497,7 +497,7 @@ override func draw() {
     if let frame = camera.frame { drawImage(frame, in: bounds) }
     for line in reader.lines {
         drawRect(line.bounds(in: bounds))
-        drawText(line.text, line.bounds(in: bounds).corner)
+        drawText(line.text, at: line.bounds(in: bounds).corner)
     }
 }
 ```

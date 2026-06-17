@@ -5,7 +5,7 @@ import Foundation
 /// into a 3D point.
 ///
 /// This is the bridge between a 2D depth map and 3D space: a depth source (a
-/// Record3D `.r3d` file or its live stream, an iPhone capture app, a depth model
+/// recorded depth clip, a tethered phone's live stream, a depth model
 /// paired with a webcam) carries intrinsics alongside its depth, and anything
 /// that lifts pixels into the world — a point cloud, a depth-lifted skeleton —
 /// reads them here. Lives in the core so every depth source and the 3D mode share

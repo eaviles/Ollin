@@ -9,8 +9,8 @@ import simd
 /// A live depth feed only ever sees the slice of the world in front of the lens, and
 /// drawn alone each frame replaces the last. The missing piece is the camera's 6DoF
 /// **pose** — where it was when it took the frame. A depth source that reports one
-/// (the iPhone capture app's `latestPose`, a Record3D stream) lets every frame be
-/// placed in the same fixed world space, so the slices stack into a whole.
+/// (the iPhone capture app's `latestPose`, a tethered depth device's pose) lets every
+/// frame be placed in the same fixed world space, so the slices stack into a whole.
 ///
 /// ```swift
 /// var world = WorldCloud(voxelSize: 0.02)        // fuse at 2 cm

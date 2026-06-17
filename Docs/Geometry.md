@@ -128,7 +128,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** `target - pos` is the arrow pointing from one point to another — the seed of every chase, spring, and look-at. `pos += velocity` is how anything moves.
 
-**`*` / `/` by a scalar** — stretch or shrink the arrow, keeping its heading (negative flips it). The scalar can sit on either side. (Plus the in-place `*=` / `/=`.)
+**`*` / `/` by a scalar** — stretch or shrink the arrow, keeping its heading (negative flips it). For `*` the scalar can sit on either side. (Plus the in-place `*=` / `/=`.)
 
 ```
   ●──►v        ●──────►v * 2        ◄──● v * -1
@@ -294,7 +294,7 @@ Vector3(x: Double, y: Double, z: Double)
 - **Constants:** `.zero`, `.one`, `.unitX`, `.unitY`, `.unitZ`.
 - **Same surface as `Vector2`** where it generalizes: `length` / `lengthSquared` / `normalized`, the `+ - * /` operators and their in-place forms, `dot`, `distance(to:)` / `distanceSquared(to:)`, `lerp(to:_:)`, `limited(to:)`, `projected(onto:)`, and `with(x:)` / `with(y:)` / `with(z:)`.
 - **3D-specific:** `cross(_:)` returns the perpendicular `Vector3` (in 2D it's a scalar), and `xy` drops the depth — the projection back onto the canvas plane.
-- **Not here:** the angle and rotation helpers — a 3D rotation needs an axis, which belongs to the coming 3D transform work, not a lone vector.
+- **Not here:** the angle and rotation helpers — a 3D rotation needs an axis, which lives in the [3D transform stack](3D.md#transforms), not a lone vector.
 
 Axis meaning (which way is up, where the origin sits) belongs to whatever produced the value — a producer like [`Body3D`](Vision.md#body3d) documents its own spaces.
 

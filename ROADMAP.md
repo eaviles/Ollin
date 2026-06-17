@@ -17,7 +17,7 @@ If you're coming from p5.js or JavaScript, [`Docs/Swift.md`](Docs/Swift.md) cove
 
 ## Up next
 
-Near-term, fairly self-contained pieces. Each is small and well-scoped, which is what makes them good first contributions.
+Near-term, fairly self-contained pieces, each small and well-scoped.
 
 - **User-supplied shaders.** A way for a sketch to bring its own Metal shader functions, resolved ahead of the built-ins, with hot-reload through the runtime source compiler. The fluent mixing layer above this is [shader composition and live-coding](#shader-composition-and-live-coding).
 - **Normalized `u, v` coordinates.** A 0…1 coordinate space across the canvas alongside points, so a sketch can place things without referring to `width`/`height`.
@@ -55,9 +55,9 @@ Ollin sketches are already reproducible (`seed()` makes a run deterministic) and
 
 A Mac has no depth camera, inertial sensors, or spare Neural Engine for live perception; a tethered iPhone has all three. The idea: let the phone act as a sensor and on-device ML co-processor for a sketch that still renders on the Mac, capturing and perceiving (LiDAR point clouds, face and body tracking, segmentation, device motion, and more) and streaming typed results the sketch reads in `draw()`. Both a recorded RGBD clip and a tethered phone's live USB RGBD stream already reconstruct on the Mac as point clouds (see [`Docs/Record3D.md`](Docs/Record3D.md)), the kind of world-facing depth feed an Intel RealSense once gave openFrameworks, and a sweep of the phone's depth frames fuses by camera pose into one world cloud (see [`Docs/Phone.md`](Docs/Phone.md)). The work ahead grows that stream into the rest of the phone's senses — segmentation mattes, scene mesh, richer face and body data — over Ollin's own iPhone capture app, and drift-corrects a long sweep so its fused cloud stays registered. The wire protocol, the sensor catalog, and the build order are in the [design notes](DESIGN-NOTES.md#iphone-as-a-sensor-array-partly-shipped).
 
-## Depth-aware compositing
+## Depth-driven blur
 
-A colour image, a depth map, and intrinsics — an "RGBD frame" — is the source-agnostic shape every depth source produces (a Record3D `.r3d` file or its live USB stream, a webcam paired with a depth model, the iPhone capture app to come), and the foundation a family of depth capabilities composes over: unproject a point cloud, lift a single image point or a whole 2D body pose to metric 3D (see [`Docs/RGBD.md`](Docs/RGBD.md)), and place 2D drawing inside a scene — in true metric space, a `Camera3D` from a frame's intrinsics putting a cloud, a depth feed, and a placed object in one space measured in meters — so it occludes and is occluded by the depth, both a 3D point cloud you drew and a live depth feed (a sprite hidden behind the person in front of the camera), see [`Docs/DepthCompositing.md`](Docs/DepthCompositing.md). The next step is a depth-driven blur for camera-feed depth of field, which fits the [layered effects](#layered-effects-and-compositing) tier where a general variable blur belongs. It's entirely Mac-side, independent of the iOS capture app, and builds on the [3D mode](#3d-mode)'s depth buffer.
+A variable blur for camera-feed depth of field, set by per-pixel depth so a subject stays sharp while the background falls away. It fits the [layered effects](#layered-effects-and-compositing) tier, where a general variable blur belongs, and builds on the [3D mode](#3d-mode)'s depth buffer. The depth foundation it draws on — the RGBD frame, unprojection, metric occlusion, and 2D-in-depth compositing — is covered in [`Docs/RGBD.md`](Docs/RGBD.md) and [`Docs/DepthCompositing.md`](Docs/DepthCompositing.md). Entirely Mac-side, independent of the iOS capture app.
 
 ## 3D mode
 

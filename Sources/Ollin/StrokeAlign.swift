@@ -3,7 +3,7 @@
 /// until changed.
 ///
 /// The default, `.center`, straddles the edge — half the weight inside, half
-/// outside — which is what every stroke did before and what p5 / Processing do.
+/// outside — which is what every stroke did before, the conventional default.
 /// `.inside` keeps the whole stroke within the shape, so its footprint doesn't
 /// grow (handy for tiled grids, where an outward border would overlap
 /// neighbors); `.outside` puts the stroke entirely beyond the edge.

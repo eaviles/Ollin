@@ -9,7 +9,7 @@ import CSyphon
 public struct SyphonServerInfo {
     /// The source's human-readable name (may be empty or absent).
     public let name: String?
-    /// The name of the app publishing the source (e.g. `"Ollin"`, `"Resolume"`).
+    /// The name of the app publishing the source (e.g. `"Ollin"`, or another app's name).
     public let appName: String?
     /// The raw Syphon server description, used to open a ``SyphonClient``.
     let description: [String: Any]
@@ -20,7 +20,7 @@ public struct SyphonServerInfo {
         self.appName = description[SyphonServerDescriptionAppNameKey] as? String
     }
 
-    /// A friendly one-line label, e.g. `"Composition (Resolume)"`.
+    /// A friendly one-line label, e.g. `"Composition (SomeApp)"`.
     public var label: String {
         let n = (name?.isEmpty == false) ? name : nil
         switch (n, appName) {
@@ -32,9 +32,8 @@ public struct SyphonServerInfo {
     }
 }
 
-/// Receives live visuals from a **Syphon source** — another app on the Mac
-/// (openFrameworks, Resolume, MadMapper, VDMX, or another Ollin sketch) — as an
-/// ``Image`` you draw with `drawImage`.
+/// Receives live visuals from a **Syphon source** — any Syphon-capable app on
+/// the Mac, or another Ollin sketch — as an ``Image`` you draw with `drawImage`.
 ///
 /// ```swift
 /// final class Viewer: Sketch {

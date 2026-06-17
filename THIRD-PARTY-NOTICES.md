@@ -84,8 +84,9 @@ redistributed inside this repository.
 - **License:** BSD 2-Clause — full text at [`External/CSyphon/License.txt`](External/CSyphon/License.txt)
 - **Local changes:** the framework-style `<Syphon/…>` imports were rewritten to quoted includes for the flat SwiftPM target; `SyphonServerRendererMetal.m` was changed to compile its (unchanged) blit shader from embedded source at runtime instead of loading a precompiled metallib from a bundle (the `swift run` build produces no metallib); and `SyphonMetalClient.m`'s frame texture gains `MTLTextureUsagePixelFormatView` so the consumer can read the surface through an sRGB view. All are documented in [`External/CSyphon/README.md`](External/CSyphon/README.md); the per-file copyright headers are intact.
 
-> Copyright 2010-2023 bangnoise (Tom Butterworth), vade (Anton Marini), Maxime
-> Touroute & Philippe Chaurand. All rights reserved.
+> Copyright the Syphon Project contributors — bangnoise (Tom Butterworth), vade
+> (Anton Marini), Maxime Touroute & Philippe Chaurand. All rights reserved. See
+> `License.txt` and the per-file headers for the exact notices.
 >
 > Redistribution and use in source and binary forms, with or without modification,
 > are permitted provided that the conditions of the BSD 2-Clause license are met

@@ -19,7 +19,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 - [`Accumulation`](./Accumulation.md) - `noClear` to keep the canvas across frames so drawing piles up (long exposures, paint-on-canvas, light accumulation)
 - [`HDR & tone-mapping`](./HDR.md) - `toneMap` to roll bright, out-of-range light off the screen instead of clipping it (the linear-float pipeline behind every frame; the glow/bloom and sandpainting looks)
 - [`Compute & GPU particles`](./Compute.md) - GPU compute over buffers and textures: `Particles` (a million updated and drawn on the GPU each frame — the "sandpainting" engine) and `Simulation` (reaction-diffusion, cellular automata, and other ping-pong texture sims), over the `ComputeKernel`/`ComputeBuffer`/`ComputeTexture` core
-- [`Text`](./Text.md) - `drawText` with bitmap *and* outline (`.ttf`/`.otf`) fonts, plus `textToShapes` (text as geometry)
+- [`Text`](./Text.md) - `drawText` with bitmap, outline (`.ttf`/`.otf`), and stroke (single-line / plotter) fonts, plus `textToShapes` (text as geometry)
 - [`Images`](./Images.md) - `loadImage`, `drawImage`, `tint`, and pixel access: load or author a raster image, draw it scaled or transformed, recolor it
 - [`Color`](./Color.md) - the `Color` type, the OKLab family and mixing, `Ramp`s and `Palette`s, and perceptual `Colormap`s
 - [`Geometry`](./Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines, shape booleans, and offsetting)
@@ -31,7 +31,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 - [`Depth compositing`](./DepthCompositing.md) - place 2D drawing *inside* a 3D scene so it occludes and is occluded by the geometry: `depth(at:)`, `project`, and `withBillboard` (a 2D label hidden when it swings behind the cloud)
 - [`Record3D`](./Record3D.md) - `import OllinRecord3D` to turn an iPhone's color-plus-depth into a 3D point cloud — from a recorded `.r3d` file or a tethered phone's live USB stream
 - [`RGBD`](./RGBD.md) - the source-agnostic `RGBDFrame` (color + depth + intrinsics) any depth source produces: unproject a point cloud, lift a single image point to metric 3D, or lift a 2D body pose into space (`Body.lifted(through:)`)
-- [`Phone`](./Phone.md) - `import OllinPhone` to read a tethered iPhone's live on-device ARKit sensor stream from Ollin's own capture app: a 3D body skeleton, a face mesh with expression blendshapes, and device motion, over the USB cable
+- [`Phone`](./Phone.md) - `import OllinPhone` to read a tethered iPhone's live on-device ARKit sensor stream from Ollin's own capture app: a 3D body skeleton, a face mesh with expression blendshapes, world-facing rear-LiDAR depth (a metric point cloud with the camera's 6DoF pose), and device motion, over the USB cable
 
 ### Generators
 
@@ -40,7 +40,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 
 ### Helpers
 
-- [`Math`](./Math.md) - `map`, `dist`, and `lerp`
+- [`Math`](./Math.md) - `map`, `dist`, `lerp`, and `Double.tau`
 - [`Animation`](./Animation.md) - the `Easing` curves, `@Eased` (ease toward a target), and `@Smoothed` (smooth a noisy signal)
 - [`Parameters`](./Parameters.md) - `@Param` tunable knobs: live sliders in the inspector, optional smoothing, and binding from OSC or MIDI
 - [`Input`](./Input.md) - mouse and keyboard
@@ -59,7 +59,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 
 ### Vision
 
-- [`Vision`](./Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception — face tracking with landmarks, hand and body pose (joint skeletons), rectangle, barcode/QR, and text (OCR) detection, contour tracing (camera frame → vector `Shape`s), and object tracking (follow a patch you point at), surfaced as typed results you read in `draw()`
+- [`Vision`](./Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results you read in `draw()`: sixteen trackers spanning detection (rectangles, barcodes/QR, text/OCR, contours into vector `Shape`s), tracking (a patch you point at, parabolic trajectories, dense optical flow), segmentation (person and subject mattes and cutouts), pose (face landmarks, hand and body skeletons, the 3D body in meters), classification, and saliency — plus any custom Core ML model
 
 ### Video
 

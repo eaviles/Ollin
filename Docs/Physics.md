@@ -46,9 +46,9 @@ Gravity pulls the discs down, the walls catch them, and `collisions` keeps them 
 - [World](#world) — the simulation: bodies, rules, and the per-frame `step`
 - [Particle](#particle) — a point mass; position, velocity, mass, pinning
 - [Spring](#spring) — a distance link between two particles (cloth, chains, soft bodies)
+- [Rigid bodies](#rigid-bodies) — `Body`, colliders, surface properties, and joints (the Box2D side)
 - [How the solver works](#how-the-solver-works) — Verlet integration and relaxation, in one paragraph
 - [Soft bodies](#soft-bodies) — building a squishy blob from springs
-- [Rigid bodies](#rigid-bodies) — `Body`, colliders, materials, and joints (the Box2D side)
 
 <a name="world"></a>
 
@@ -156,7 +156,7 @@ var stiffness: Double      // 0…1; 1 is a rigid stick, less gives
 var strain: Double { get } // signed: 0 at rest, + stretched, − compressed
 ```
 
-With `stiffness` at `1` the link behaves like a rigid stick; lower it and the link gives, springing back over a few frames. `strain` reads how far it's stretched right now, handy for tinting a cloth by stress.
+With `stiffness` at `1` the link behaves like a rigid stick; lower it and the link gives, springing back over a few frames. `strain` reads how far it's stretched right now, as a signed fraction of its rest length (0 at rest, positive stretched, negative compressed) — handy for tinting a cloth by stress.
 
 <a name="rigid-bodies"></a>
 
@@ -289,7 +289,7 @@ See the `Stack`, `Tumble`, and `Chain` examples for the whole thing — a toppli
 
 ### How the solver works
 
-Each `step` integrates every particle forward (time-corrected Verlet, so a wandering frame rate doesn't change how fast things move), then runs a handful of **relaxation** passes that pull springs back toward their length, push overlapping disks apart, and keep everything inside `bounds`. Because every constraint is solved by nudging *positions*, the velocity follows for free — a bounce, a spring's recoil, and a collision all just move points, and the implicit Verlet velocity carries the result into the next frame. It's the approach behind cloth and soft-body demos the web over, and it stays entirely in Ollin's value-type idiom.
+Each `step` integrates every particle forward (time-corrected Verlet, so a wandering frame rate doesn't change how fast things move), then runs a handful of **relaxation** passes that pull springs back toward their length, push overlapping disks apart, and keep everything inside `bounds`. Because every constraint is solved by nudging *positions*, the velocity follows for free — a bounce, a spring's recoil, and a collision all just move points, and the implicit Verlet velocity carries the result into the next frame. It's the approach behind cloth and soft-body demos the web over. `Particle` is the one place Ollin reaches for reference semantics rather than value types — so a spring or a collision can move the same shared point in place.
 
 <a name="soft-bodies"></a>
 

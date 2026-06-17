@@ -53,7 +53,7 @@ Or browse them all in one window: `swift run OllinExamples` opens a gallery with
 
 ## Why Apple-only
 
-p5.js, OPENRNDR, and openFrameworks run everywhere; Ollin only runs on Apple hardware, and that's the trade it makes on purpose. Sitting directly on Metal means the rendering ceiling is whatever the GPU can do, and staying native keeps harder things in reach later: vision on the Neural Engine, ARKit and visionOS, an iPhone's depth sensors feeding a sketch the Mac renders. Most of that is still ahead (the [roadmap](#roadmap) has it); for now the point is that the core is built to grow into those things rather than get retrofitted.
+p5.js, OPENRNDR, and openFrameworks run everywhere; Ollin only runs on Apple hardware, and that's the trade it makes on purpose. Sitting directly on Metal means the rendering ceiling is whatever the GPU can do, and staying native puts the rest of the platform in reach: vision on the Neural Engine and an iPhone's depth sensors feeding a sketch the Mac renders are already here (the docs below cover them); ARKit, visionOS, and AR are still ahead (the [roadmap](#roadmap) has them). The point is that the core is built to grow into those things rather than get retrofitted.
 
 ## Canvas size and resolution
 
@@ -106,7 +106,7 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
 
 ## Documentation
 
-The names are familiar and the calls are short. The full API reference lives in [`Docs/`](Docs/). Everything here ships with the core `import Ollin`:
+The names are familiar and the calls are short. The full API reference lives in [`Docs/`](Docs/). Most of this ships with the core `import Ollin` (the few satellite pieces show their own `import` in the bullet):
 
 - [Sketch](Docs/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), and loop control.
 - [Canvas](Docs/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
@@ -118,6 +118,7 @@ The names are familiar and the calls are short. The full API reference lives in 
 - [Images](Docs/Images.md) - `loadImage` / `drawImage` for raster images (PNG, JPEG, HEIC, …), with `tint` recoloring and an `Image[x, y]` pixel subscript for sampling or authoring.
 - [Color](Docs/Color.md) - the `Color` type, the OKLab family and mixing, `Ramp`s and `Palette`s, and perceptual `Colormap`s.
 - [Geometry](Docs/Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines, shape booleans, and offsetting).
+- [Voronoi & Delaunay](Docs/Voronoi.md) - tessellate points into vector geometry: Voronoi cells and the dual Delaunay triangle mesh, with Lloyd relaxation.
 - [3D](Docs/3D.md) - opt into a 3D camera and depth buffer: orbit a `Camera3D` (perspective or orthographic) and draw `PointCloud`s as instanced disc splats and a catalog of solid primitives (box, sphere, capsule, the Platonic solids, …) plus parametric and profile shapes (supershape, extrude, lathe), lit by directional, point, and spot lights with a Blinn-Phong material (shaded out of the box by an auto-lit default), including a live webcam depth cloud (the Mac-side preview of the iPhone LiDAR cloud to come).
 - [Depth compositing](Docs/DepthCompositing.md) - place 2D drawing *inside* a 3D scene so it occludes and is occluded by the geometry: `depth(at:)`, `project`, and `withBillboard` (a 2D label hidden when it swings behind the cloud), or against a live depth feed with `drawDepthScene` — including in true metric space (`Camera3D.fromIntrinsics`), so an object sits at a real distance inside a LiDAR feed.
 - [Record3D](Docs/Record3D.md) - `import OllinRecord3D` to turn an iPhone's color-plus-depth into a 3D point cloud — from a recorded `.r3d` file or a tethered phone's live USB stream (the iPhone's depth camera, borrowed by the Mac in real time).
@@ -131,13 +132,13 @@ The names are familiar and the calls are short. The full API reference lives in 
 - [Input](Docs/Input.md) - mouse and keyboard.
 - [Export](Docs/Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters).
 
-Eight satellite libraries live in the same package behind their own `import`, so a sketch only links what it uses:
+Ten satellite libraries live in the same package behind their own `import`, so a sketch only links what it uses (Record3D and Phone, grouped with the 3D docs above, are two of them):
 
 - [Audio](Docs/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`, `spectrum`, and band values (`bass`/`mid`/`treble`) a sketch reads in `draw()`.
 - [OSC](Docs/OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`.
 - [MIDI](Docs/MIDI.md) - `import OllinMIDI` to read from and send to MIDI controllers and keyboards over Core MIDI, read in `draw()` or bound to a `@Param`.
 - [Physics](Docs/Physics.md) - `import OllinPhysics` for a `World` you step each frame, so motion comes from simulation instead of hand-tuned values: a soft Verlet side (particles, springs, disk collisions) and a rigid side (bodies, colliders, and joints, backed by Box2D).
-- [Vision](Docs/Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results a sketch reads in `draw()`: face tracking (landmarks, head pose, capture quality), hand and body pose (joint skeletons — flat on the picture, or the 3D body in meters from the same single webcam: distance, height, and the figure seen from angles no camera was at), person and subject segmentation (a soft matte and the cutout it makes, as drawable `Image`s — background replacement and subject lifting in a few lines), rectangle, barcode/QR, and text (OCR) detection, contour tracing (a camera frame into vector `Shape`s for line work and plotting), object tracking (lock onto a patch and follow it across frames), trajectory detection (find things flying along parabolic arcs, with the fitted curve telling you where they're headed), optical flow (the whole picture's motion as a field of vectors a sketch samples anywhere — arrows, particle pushes, physics forces), image classification (what the picture shows, named from ~1,300 everyday labels — read the strongest, or let one concept's confidence drive the sketch), and saliency (what draws the eye, as a heat map, boxed regions, and a point query — in attention and objectness flavors) — plus any custom Core ML model, run the same way: classifier labels, detector boxes, or an image-typed output read as a value map or a full-color picture (depth estimation, object detection, digit reading, style transfer). Trackers attach to any frame source — the live camera, a playing video, or a frame producer of your own.
+- [Vision](Docs/Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results a sketch reads in `draw()`: sixteen trackers spanning detection (rectangles, barcodes/QR, text/OCR, contours into vector `Shape`s), tracking (lock onto a patch, parabolic trajectories, dense optical flow), segmentation (person and subject mattes and cutouts as drawable `Image`s), pose (face landmarks and head pose, hand and body skeletons, the 3D body in meters from one webcam), classification, and saliency — plus any custom Core ML model run the same way. Trackers attach to any frame source: the live camera, a playing video, or a frame producer of your own.
 - [Syphon](Docs/Syphon.md) - `import OllinSyphon` to share live visuals with other Mac apps (openFrameworks, Resolume, MadMapper, VDMX, …): publish a sketch's frames as a Syphon source, and draw an incoming Syphon feed as an `Image`.
 - [Virtual camera](Docs/VirtualCamera.md) - `import OllinCamera` to feed a sketch's frames to the Ollin Camera system camera, so anything that takes a webcam (Zoom, OBS, QuickTime, and browser tools like Hydra through `getUserMedia`) reads the sketch as a live camera; the device itself installs once from [`Apps/OllinCameraApp`](Apps/OllinCameraApp/README.md).
 - [Video](Docs/Video.md) - `import OllinVideo` to play a video file into a sketch as a live image: each decoded frame arrives as a GPU texture drawn with `drawImage`, riding the transform stack and `tint`, with a CPU `snapshot()` for pixel reads and vision trackers attaching directly to analyze the footage as it plays.
@@ -177,7 +178,7 @@ For an animation, `--export-sequence` writes a numbered PNG sequence you can sti
 swift run Example-Breathing --export-sequence frames/ --skip 5 --seconds 20 --fps 60
 ```
 
-It advances the clock at a fixed timestep rather than wall-clock, so each frame renders the moment it should regardless of how long the render takes. A slow render still plays back smoothly. Pass `--seconds` for a duration instead of `--frames`, and `--skip` to run the sketch a while first without writing, so a sketch that needs to settle into motion is already going when capture starts. Frames are written as `frame-00001.png`, `frame-00002.png`, and so on, and the command prints an `ffmpeg` line to assemble them. In code it's `OllinApp.exportSequence(sketch, to:frames:fps:skipSeconds:)`.
+It advances the clock at a fixed timestep rather than wall-clock, so each frame renders the moment it should regardless of how long the render takes. A slow render still plays back smoothly. Pass `--seconds` for a duration instead of `--frames`, and `--skip` to run the sketch a while first without writing, so a sketch that needs to settle into motion is already going when capture starts. Frames are written as `frame-00001.png`, `frame-00002.png`, and so on, and the command prints an `ffmpeg` line to assemble them. In code it's `OllinApp.exportSequence(sketch, to:frames:fps:)` (plus optional `startFrame:` / `skipSeconds:`).
 
 For a file you can share directly, `--export-video` encodes the same deterministic render straight to `.mp4` or `.mov` (H.264 by default; HEVC and ProRes via `--codec`, `--bitrate` as the file-size dial), and `--export-gif` writes a short looping GIF (`--gif-width` to shrink it). No external tool needed:
 
@@ -190,7 +191,7 @@ In code they're `OllinApp.exportVideo(...)` and `OllinApp.exportGIF(...)`; codec
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: layered effects and compositing, shader composition and a live-coding mode, the iPhone as a sensor array, a 3D mode, a project generator, and eventually iOS, visionOS, and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: layered effects and compositing, shader composition and a live-coding mode, more of the iPhone sensor array and the 3D mode (loaded meshes, shadows), a project generator, and eventually iOS, visionOS, and AR.
 
 ## Built with AI
 

@@ -16,8 +16,8 @@ public enum DepthConfidence: Int, Sendable, Comparable {
 
 /// One RGBD frame: a color image, a metric depth map, an optional per-pixel
 /// confidence map, and the depth-map intrinsics that tie them together — the
-/// source-agnostic shape every depth feed produces (a Record3D `.r3d` file or its
-/// live USB stream, an iPhone capture app, a webcam paired with a depth model).
+/// source-agnostic shape every depth feed produces (a recorded depth clip, a
+/// tethered phone's live stream, a webcam paired with a depth model).
 ///
 /// It carries everything needed to lift the 2D picture into 3D: `pointCloud(...)`
 /// unprojects the whole depth map into a `PointCloud`, and `unproject(normalized:)`

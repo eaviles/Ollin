@@ -76,7 +76,7 @@ These are fresh each time the phone sends one; read them within the current `dra
 
 ## The body
 
-`PhoneBody` carries every reported joint as a 3D position in **meters**, model space — the pelvis root at the origin, x to the picture's right, y up. Its accessor shape matches `Body3D` and `LiftedPose` from [`OllinVision`](./Vision.md):
+`PhoneBody` carries every reported joint as a 3D position in **meters**, model space — the pelvis root at the origin, x to the picture's right, y up, z toward the camera (ARKit's convention). Its accessor shape matches `Body3D` and `LiftedPose` from [`OllinVision`](./Vision.md):
 
 ```swift
 if let body = device.latestBody {
@@ -149,7 +149,7 @@ The bundled example is `swift run Example-PhoneDepthCloud`.
 
 A single depth frame is only the slice of the world in front of the lens. The camera's 6DoF pose (`latestPose`) is what turns slices into a whole: ARKit's world is fixed and gravity-aligned, so transforming each frame's camera-space cloud by its pose places it where it really is in the room. Sweep the phone and the slices stack up.
 
-[`WorldCloud`](../README.md) (in the core) does the fusing. It keeps one point per small cube of space, so re-seeing a wall refreshes it in place rather than piling up duplicates — the cloud's size is bounded by the scene's surface area, not the number of frames, so a sweep can run as long as you like:
+`WorldCloud` (in the core) does the fusing. It keeps one point per small cube of space, so re-seeing a wall refreshes it in place rather than piling up duplicates — the cloud's size is bounded by the scene's surface area, not the number of frames, so a sweep can run as long as you like:
 
 ```swift
 var world = WorldCloud(voxelSize: 0.025)   // fuse at 2.5 cm

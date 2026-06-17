@@ -60,7 +60,7 @@ public struct PointCloud: Sendable {
     /// The use it's built for: placing a *camera-space* cloud into *world* space.
     /// A depth feed unprojects into the camera's own frame (`RGBDFrame.pointCloud`),
     /// and a depth source that also reports a 6DoF pose (the iPhone capture app's
-    /// `latestPose`, a Record3D stream) gives the camera→world transform — apply it
+    /// `latestPose`, a tethered depth device's pose) gives the camera→world transform — apply it
     /// and the cloud lands where it really is in the room, so clouds from different
     /// moments register against each other. `WorldCloud` fuses a sweep of them.
     ///

@@ -4,8 +4,8 @@ import Ollin
 import os
 
 /// Publishes a sketch's rendered frames to the **Ollin Camera virtual camera**,
-/// so every app that takes a webcam — Photo Booth, QuickTime, Zoom, Meet, OBS,
-/// and browser tools like Hydra through `getUserMedia` — reads the sketch as a
+/// so every app that takes a webcam — video chat, recording, and streaming apps,
+/// and browser tools through `getUserMedia` — reads the sketch as a
 /// live camera. It's a `Sketch` extension: register one in `setup()` and every
 /// frame is published automatically.
 ///

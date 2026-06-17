@@ -131,9 +131,9 @@ if let still = player.snapshot() {
 
 ### Notes
 
-- **Formats.** Whatever AVFoundation reads: H.264, HEVC, and ProRes in `.mp4`, `.mov`, and `.m4v` containers.
+- **Formats.** Whatever AVFoundation reads: H.264 and HEVC in `.mp4`/`.m4v`, and ProRes in `.mov`.
 - **Audio.** The file's audio track plays automatically through the system output; `volume` and `isMuted` control it. Routing it into `OllinAudio`'s analyzer is a possible later tie-in.
 - **Metal device.** Frame textures are created on the system's default Metal device, which is the device the sketch renders on for any single-GPU Mac.
 - **Headless export.** Playback follows the player's own clock, which advances with the runloop of a live window. The offline exporters (`--export`, `--export-sequence`, `--export-video`) drive the sketch clock headlessly without one, so a sketch that draws a video currently exports it as blank; a deterministic frame-pull for export is a planned follow-up.
 
-The runnable examples are [`Examples/Video/VideoPlayback`](../Examples/Video/VideoPlayback/Sketch.swift), which loops a bundled clip of the *Danza de los Voladores* (the Totonac pole-flying ritual) and draws playback progress over it, and [`Examples/Vision/VideoTrace`](../Examples/Vision/VideoTrace/Sketch.swift), which runs a contour tracker over the same clip as it plays.
+The runnable examples are [`Examples/Video/VideoPlayback`](../Examples/Video/VideoPlayback/Sketch.swift), which loops a bundled clip of the *Voladores de Papantla* (the Totonac pole-flying ritual, *Danza de los Voladores*) and draws playback progress over it, and [`Examples/Vision/VideoTrace`](../Examples/Vision/VideoTrace/Sketch.swift), which runs a contour tracker over the same clip as it plays.

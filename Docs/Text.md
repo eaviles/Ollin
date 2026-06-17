@@ -93,7 +93,7 @@ Set the active font — a bitmap (pixel-grid), outline (`.ttf`/`.otf`), or strok
 textSize(_ size: Double)
 ```
 
-Set the rendered text height in points — the height one line of glyphs occupies on screen. A `BitmapFont` is authored at a native pixel height; `textSize` scales each pixel to a module of `size / font.pixelHeight` points, so `textSize(140)` makes a capital letter 140 points tall whatever the font's grid. Defaults to 24.
+Set the rendered text height in points — the height one line of glyphs occupies on screen. A `BitmapFont` is authored at a native pixel height; `textSize` scales each pixel to a module of `size / font.pixelHeight` points, so `textSize(140)` makes one line of the font 140 points tall whatever the font's grid. Defaults to 24.
 
 <a name="textalign"></a>
 
@@ -141,8 +141,9 @@ textWidth(_ string: String) -> Double
 The on-screen width of `string`'s widest line, in points, at the current `textFont` / `textSize` — for laying text out (centering by hand, wrapping, marquees).
 
 ```swift
+let size = 42; textSize(size)
 let w = textWidth(label)
-drawRect(center: Vector2(x, y), width: w + 24, height: textSize_ + 16)   // a padded backing
+drawRect(center: Vector2(x, y), width: w + 24, height: size + 16)   // a padded backing
 ```
 
 <a name="outlinefont"></a>
@@ -341,7 +342,7 @@ drawText("text on a curve · ", along: path, offset: -time * 120)   // scrolling
 drawText(_ string: String, in rect: Rectangle)
 ```
 
-Wrap `string` into a [`Rectangle`](Geometry.md#rectangle): words break to the next line at the box width, and `textAlign` positions the wrapped block within the box — horizontal `.left`/`.center`/`.right` against the box edges, vertical `.top`/`.middle`/`.bottom`. Explicit `\n`s start new paragraphs. Works for bitmap and outline fonts.
+Wrap `string` into a [`Rectangle`](Geometry.md#rectangle): words break to the next line at the box width, and `textAlign` positions the wrapped block within the box — horizontal `.left`/`.center`/`.right` against the box edges, vertical `.top`/`.middle`/`.bottom`. Explicit `\n`s start new paragraphs. Works for every font kind.
 
 ```swift
 textSize(42); textAlign(.left, .top)
@@ -406,7 +407,7 @@ textBounds(_ string: String, at position: Vector2) -> Rectangle
    textLeading()  baseline → next baseline    (line spacing; one '\n')
 ```
 
-All in points at the current `textFont` / `textSize`, for both font kinds. `textBounds` returns the box `string` would occupy if drawn at `(x, y)` with the current alignment — handy for backings, layout, and hit-testing.
+All in points at the current `textFont` / `textSize`, for every font kind. `textBounds` returns the box `string` would occupy if drawn at `(x, y)` with the current alignment — handy for backings, layout, and hit-testing.
 
 <a name="bitmapfont"></a>
 

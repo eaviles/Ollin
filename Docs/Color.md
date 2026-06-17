@@ -64,9 +64,9 @@ fill(Color(hue: time * 0.1, saturation: 0.8, brightness: 1))   // cycle the rain
 Three views of one perceptual model, each a small value type that converts to and from `Color` (alpha stays on the `Color`):
 
 ```swift
-OKLab(l:a:b:)     OKLab(_ color: Color)     Color(_ lab: OKLab, alpha: 1)
-OKLCH(l:c:h:)     OKLCH(_ color: Color)     Color(_ lch: OKLCH, alpha: 1)
-OKHSL(h:s:l:)     OKHSL(_ color: Color)     Color(_ hsl: OKHSL, alpha: 1)
+OKLab(l:a:b:)     OKLab(_ color: Color)     Color(_ lab: OKLab, alpha: Double = 1)
+OKLCH(l:c:h:)     OKLCH(_ color: Color)     Color(_ lch: OKLCH, alpha: Double = 1)
+OKHSL(h:s:l:)     OKHSL(_ color: Color)     Color(_ hsl: OKHSL, alpha: Double = 1)
 ```
 
 - **`OKLab`** is the workhorse for color *math*: `l` is perceived lightness in `0...1`, `a` runs green → red and `b` runs blue → yellow. Mixing through it comes out visually even.

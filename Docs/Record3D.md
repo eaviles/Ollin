@@ -127,7 +127,7 @@ device.stop()                  // close the connection
 var isStreaming: Bool          // frames currently arriving
 var latestFrame: RGBDFrame?    // the most recent decoded frame (same type as the file path)
 var latestPose: Record3DPose?  // the frame's ARKit camera pose (see below)
-var camera: Record3DCamera?    // .trueDepth (front) or .lidar (rear), or nil before the first frame
+var camera: Record3DCamera?    // .trueDepth (front), .lidar (rear), or .unknown; nil before the first frame
 func pointCloud(minimumConfidence:depthRange:step:pointSize:) -> PointCloud?
 ```
 
@@ -156,7 +156,7 @@ struct CameraIntrinsics {
 
 ### Notes
 
-- **The `.r3d` format.** A `.r3d` is a ZIP holding a `metadata` JSON (camera intrinsics, capture resolution, frame rate) and, per frame, a JPEG color image, an LZFSE-compressed float32 depth map in meters, and an LZFSE-compressed confidence map. Ollin reads this clean-room from the format's public structure with Apple-native frameworks only (Foundation's ZIP-less archive read, `Compression` for LZFSE, ImageIO for JPEG); the `record3d` library that documents the format is LGPL-2.1 and is credited, never copied.
+- **The `.r3d` format.** A `.r3d` is a ZIP holding a `metadata` JSON (camera intrinsics, capture resolution, frame rate) and, per frame, a JPEG color image, an LZFSE-compressed float32 depth map in meters, and an LZFSE-compressed confidence map. Ollin reads this clean-room from the format's public structure with Apple-native frameworks only (a small hand-written ZIP reader over `Data`, `Compression` for LZFSE, ImageIO for JPEG); the `record3d` library that documents the format is LGPL-2.1 and is credited, never copied.
 - **Depth grids.** LiDAR depth is 256×192, TrueDepth 640×480. The grid isn't stored explicitly, so it's recovered from the sample count and the capture aspect — both orientations (landscape and portrait) are handled.
 - **The USB stream.** The live path uses Record3D's USB streaming over the standard `usbmuxd` device tunnel (TCP port 1337); each frame is a small header (sizes, intrinsics, pose) followed by JPEG color, LZFSE float32 depth, optional confidence, and a JSON metadata trailer. The wire format is read clean-room from its public structure, the same stance as the file format.
 - **Capturing.** Use the Record3D app on a LiDAR or TrueDepth iPhone. For files, share the `.r3d` (AirDrop is simplest); for live, enable USB streaming and tether the cable.

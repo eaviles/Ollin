@@ -6,13 +6,13 @@
 
 In a [3D](./3D.md) frame, 2D drawing lays *over* everything by default — right for a HUD or a caption, wrong for a label or a sprite that lives *in* the scene and should be hidden when something passes in front of it. Depth compositing lets 2D drawing participate in the depth buffer: a 2D mark placed at a world depth occludes — and is occluded by — the 3D geometry around it.
 
-It's opt-in twice over. A frame is only 3D once you set a [`camera`](./3D.md#camera), and 2D drawing only joins the depth buffer once you give it a depth; everything else composites over in draw order exactly as before.
+It's opt-in twice over. A frame is only 3D once you set a [`camera`](./3D.md#the-camera), and 2D drawing only joins the depth buffer once you give it a depth; everything else composites over in draw order exactly as before.
 
 There are two scenes to composite against: a **3D-camera** scene (a point cloud you drew), and a **depth-map** scene (a depth feed — a webcam depth model, an `RGBDFrame`). They share the same depth buffer and the same occlusion rule; they differ only in how you set a 2D mark's depth (a world point vs a normalized value).
 
 ### Contents
 
-- [Placing 2D at a world depth](#depth) — `depth(at:)`, `noDepth` (a 3D-camera scene)
+- [Placing 2D at a world depth](#depth) — `depth(at:)`, `noDepth()` (a 3D-camera scene)
 - [Projecting a world point to the canvas](#project) — `project`
 - [Billboards](#billboard) — `withBillboard(at:)`
 - [A depth-map scene](#scene) — `drawDepthScene`, `depth(_:)` (a depth feed)
@@ -47,7 +47,7 @@ The depth is computed against the current frame's camera, so it resets each fram
 
 ```swift
 if let p = project(Vector3(1, 0.5, 0)) {
-    drawCircle(p, 6)            // a 2D dot at the 3D point's screen position
+    drawCircle(center: p, radius: 6)   // a 2D dot at the 3D point's screen position
 }
 ```
 
