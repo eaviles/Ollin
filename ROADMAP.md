@@ -28,7 +28,6 @@ Near-term, fairly self-contained pieces, each small and well-scoped.
 - **Single-file sketches.** A zero-ceremony way to run one `.swift` file as a sketch, in the spirit of `swift-sh`, so dashing off an idea doesn't require setting up a package.
 - **Retained geometry buffers.** Every frame currently re-uploads everything; keeping static geometry (a large point cloud, a fixed background) in a persistent buffer would drop its per-frame cost to zero.
 - **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
-- **Expanded named colors.** `Color` ships only the essentials today (`white`/`black`/`gray`/`clear`/`red`/`green`/`blue`); fill out a fuller set of named constants (`cyan`, `magenta`, `orange`, `yellow`, `purple`, …, in the CSS/X11 spirit) so common colors read by name. Pure data over the existing `Color` initializers — no new machinery.
 - **More model examples over `ModelTracker`.** The custom-model tracker runs anything converted to Core ML; a well-known model can make a strong example, with the weights always fetched by `Scripts/fetch-models.sh` rather than committed. Candidates, licenses, and the surfaces involved are in the [design notes](DESIGN-NOTES.md#model-examples-and-modeltracker-surfaces-not-started).
 
 ## Layered effects and compositing

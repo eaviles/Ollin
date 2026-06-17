@@ -30,10 +30,15 @@ Color(hue: Double, saturation: Double, brightness: Double, alpha: Double = 1)
 Color(kelvin: Double, alpha: Double = 1)  // blackbody color temperature
 ```
 
-Named constants: `.white`, `.black`, `.gray`, `.red`, `.green`, `.blue`, `.clear`.
+Named constants come in two tiers. The essentials are `.white`, `.black`, `.gray`, `.clear`, and the additive primaries `.red`, `.green`, `.blue` (so `green` is pure `(0, 1, 0)`). A fuller set fills in around them, with names and exact sRGB values from the [CSS Color Module Level 4](https://www.w3.org/TR/css-color-4/#named-colors) `<named-color>` list, so common colors read by name:
+
+`.yellow` `.cyan` `.magenta` `.orange` `.purple` `.pink` `.brown` · `.crimson` `.tomato` `.coral` `.salmon` `.gold` · `.darkGreen` `.forestGreen` `.seaGreen` `.olive` `.teal` `.turquoise` · `.navy` `.royalBlue` `.steelBlue` `.skyBlue` `.indigo` · `.violet` `.orchid` `.plum` `.lavender` `.maroon` · `.tan` `.khaki` `.beige` `.ivory` `.silver` `.lightGray` `.darkGray` `.slateGray`
+
+(CSS pins `green` to a darker `#008000`; Ollin keeps `green` as the pure primary, so reach for `.darkGreen` or `.forestGreen` for the deeper tone.)
 
 ```swift
 background(.white)
+fill(.coral)
 fill(Color(red: 0.2, green: 0.5, blue: 0.9))
 stroke(Color(white: 0.1))
 ```

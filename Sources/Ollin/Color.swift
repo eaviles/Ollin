@@ -26,6 +26,10 @@ public struct Color: Equatable, Hashable, Sendable {
 }
 
 // A few familiar named constants so `.white` / `.black` Just Work.
+//
+// `red`/`green`/`blue` here are the **additive primaries**: `green` is pure
+// `(0, 1, 0)`, the natural default for building colors on screen (it's what the
+// CSS named-color set calls `lime`). The fuller set below fills in around them.
 public extension Color {
     static let white = Color(white: 1)
     static let black = Color(white: 0)
@@ -34,6 +38,64 @@ public extension Color {
     static let red   = Color(red: 1, green: 0, blue: 0)
     static let green = Color(red: 0, green: 1, blue: 0)
     static let blue  = Color(red: 0, green: 0, blue: 1)
+}
+
+// MARK: - Named colors
+
+// A fuller set of named colors so common ones read by name. The names and their
+// exact sRGB values follow the **CSS Color Module Level 4** `<named-color>` set,
+// the modern web-standard list. Pure data over `Color(hex:)`, no new machinery.
+//
+// (Ollin's `green`/`blue`/`red` above stay the pure additive primaries; for the
+// CSS sense of a darker "green" reach for `darkGreen` or `forestGreen`.)
+public extension Color {
+    // Secondary & everyday
+    static let yellow  = Color(hex: 0xFFFF00)
+    static let cyan    = Color(hex: 0x00FFFF)
+    static let magenta = Color(hex: 0xFF00FF)
+    static let orange  = Color(hex: 0xFFA500)
+    static let purple  = Color(hex: 0x800080)
+    static let pink    = Color(hex: 0xFFC0CB)
+    static let brown   = Color(hex: 0xA52A2A)
+
+    // Warm
+    static let crimson = Color(hex: 0xDC143C)
+    static let tomato  = Color(hex: 0xFF6347)
+    static let coral   = Color(hex: 0xFF7F50)
+    static let salmon  = Color(hex: 0xFA8072)
+    static let gold    = Color(hex: 0xFFD700)
+
+    // Greens
+    static let darkGreen   = Color(hex: 0x006400)
+    static let forestGreen = Color(hex: 0x228B22)
+    static let seaGreen    = Color(hex: 0x2E8B57)
+    static let olive       = Color(hex: 0x808000)
+    static let teal        = Color(hex: 0x008080)
+    static let turquoise   = Color(hex: 0x40E0D0)
+
+    // Blues
+    static let navy      = Color(hex: 0x000080)
+    static let royalBlue = Color(hex: 0x4169E1)
+    static let steelBlue = Color(hex: 0x4682B4)
+    static let skyBlue   = Color(hex: 0x87CEEB)
+    static let indigo    = Color(hex: 0x4B0082)
+
+    // Purples & pinks
+    static let violet   = Color(hex: 0xEE82EE)
+    static let orchid   = Color(hex: 0xDA70D6)
+    static let plum     = Color(hex: 0xDDA0DD)
+    static let lavender = Color(hex: 0xE6E6FA)
+    static let maroon   = Color(hex: 0x800000)
+
+    // Earth & neutral
+    static let tan       = Color(hex: 0xD2B48C)
+    static let khaki     = Color(hex: 0xF0E68C)
+    static let beige     = Color(hex: 0xF5F5DC)
+    static let ivory     = Color(hex: 0xFFFFF0)
+    static let silver    = Color(hex: 0xC0C0C0)
+    static let lightGray = Color(hex: 0xD3D3D3)
+    static let darkGray  = Color(hex: 0xA9A9A9)
+    static let slateGray = Color(hex: 0x708090)
 }
 
 // MARK: - Hex

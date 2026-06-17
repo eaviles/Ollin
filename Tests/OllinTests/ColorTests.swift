@@ -131,4 +131,29 @@ struct ColorTests {
     @Test func kelvinAlphaPassesThrough() {
         #expect(Color(kelvin: 5600, alpha: 0.4).alpha == 0.4)
     }
+
+    // MARK: Named colors
+
+    /// The extended named set carries its CSS Color Module Level 4 values, and
+    /// every constant is opaque.
+    @Test func namedColorsMatchCSSValues() {
+        #expect(Color.orange == Color(hex: 0xFFA500))
+        #expect(Color.cyan == Color(hex: 0x00FFFF))
+        #expect(Color.magenta == Color(hex: 0xFF00FF))
+        #expect(Color.teal == Color(hex: 0x008080))
+        #expect(Color.indigo == Color(hex: 0x4B0082))
+        #expect(Color.slateGray == Color(hex: 0x708090))
+
+        for c in [Color.yellow, .orange, .purple, .crimson, .gold,
+                  .forestGreen, .navy, .violet, .khaki, .silver] {
+            #expect(c.alpha == 1)
+        }
+    }
+
+    /// The pure additive primaries are kept (deliberately not CSS's darker
+    /// `green`), so `green` reads as full-intensity green.
+    @Test func primariesStayPure() {
+        #expect(Color.green == Color(red: 0, green: 1, blue: 0))
+        #expect(Color.green != Color(hex: 0x008000))
+    }
 }
