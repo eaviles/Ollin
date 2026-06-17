@@ -424,6 +424,11 @@ let package = Package(
             path: "Examples/3D/Solids"
         ),
         .executableTarget(
+            name: "Example-ShapeFactory",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/ShapeFactory"
+        ),
+        .executableTarget(
             name: "Example-DepthCompositing",
             dependencies: ["Ollin"],
             path: "Examples/3D/DepthCompositing"

@@ -387,6 +387,90 @@ open class Sketch {
                                    segments: segments, sides: sides))
     }
 
+    /// Draw a regular tetrahedron (4 faces) centered at the model origin.
+    public func drawTetrahedron(radius: Double = 0.5) { drawer.drawMesh(.tetrahedron(radius: radius)) }
+
+    /// Draw a regular octahedron (8 faces) centered at the model origin.
+    public func drawOctahedron(radius: Double = 0.5) { drawer.drawMesh(.octahedron(radius: radius)) }
+
+    /// Draw a capsule (cylinder with hemispherical caps) centered at the model
+    /// origin, axis along y. `height` is the straight section (total = height + 2·radius).
+    public func drawCapsule(radius: Double = 0.4, height: Double = 0.8,
+                            segments: Int = 32, rings: Int = 8) {
+        drawer.drawMesh(.capsule(radius: radius, height: height, segments: segments, rings: rings))
+    }
+
+    /// Draw a box with rounded edges centered at the model origin, the edges
+    /// filleted by `radius`. `segments` is the per-face grid resolution.
+    public func drawRoundedBox(width: Double = 1, height: Double = 1, depth: Double = 1,
+                               radius: Double = 0.15, segments: Int = 20) {
+        drawer.drawMesh(.roundedBox(width: width, height: height, depth: depth,
+                                    radius: radius, segments: segments))
+    }
+
+    /// Draw a rounded cube `size` on each edge, filleted by `radius`.
+    public func drawRoundedBox(size: Double, radius: Double = 0.15, segments: Int = 20) {
+        drawer.drawMesh(.roundedBox(width: size, height: size, depth: size,
+                                    radius: radius, segments: segments))
+    }
+
+    /// Draw a geodesic sphere (subdivided icosahedron) centered at the model origin
+    /// — evenly sized triangles, no pole pinching. `subdivisions` sets the detail.
+    public func drawIcosphere(radius: Double = 0.5, subdivisions: Int = 2) {
+        drawer.drawMesh(.icosphere(radius: radius, subdivisions: subdivisions))
+    }
+
+    /// Draw a tube of `radius` swept along a 3D `path` (the helix/knot machinery,
+    /// open to any curve). `closed` joins the ends into a loop.
+    public func drawTube(_ path: [Vector3], radius: Double = 0.1, sides: Int = 12, closed: Bool = false) {
+        drawer.drawMesh(.tube(along: path, radius: radius, sides: sides, closed: closed))
+    }
+
+    /// Draw a Möbius strip centered at the model origin — a band with a half-twist.
+    public func drawMobius(radius: Double = 0.5, width: Double = 0.3,
+                           segments: Int = 140, sides: Int = 12) {
+        drawer.drawMesh(.mobius(radius: radius, width: width, segments: segments, sides: sides))
+    }
+
+    /// Draw a Klein bottle (figure-8 immersion) centered at the model origin.
+    public func drawKlein(scale: Double = 0.22, segments: Int = 100, sides: Int = 40) {
+        drawer.drawMesh(.klein(scale: scale, segments: segments, sides: sides))
+    }
+
+    /// Draw a superellipsoid centered at the model origin: a sphere that morphs
+    /// toward a box (`e → 0`) or octahedron (`e → 2`). `e1` shapes pole-to-pole, `e2`
+    /// around the equator.
+    public func drawSuperellipsoid(radius: Double = 0.5, e1: Double = 0.5, e2: Double = 0.5,
+                                   segments: Int = 64, rings: Int = 32) {
+        drawer.drawMesh(.superellipsoid(radius: radius, e1: e1, e2: e2, segments: segments, rings: rings))
+    }
+
+    /// Draw a 3D supershape (Gielis superformula) centered at the model origin —
+    /// `m` sets the lobe count; `n1`/`n2`/`n3` shape the lobes. A parametric toy.
+    public func drawSupershape(radius: Double = 0.5, m: Double = 7, n1: Double = 0.2,
+                               n2: Double = 1.7, n3: Double = 1.7,
+                               segments: Int = 120, rings: Int = 60) {
+        drawer.drawMesh(.supershape(radius: radius, m: m, n1: n1, n2: n2, n3: n3,
+                                    segments: segments, rings: rings))
+    }
+
+    /// Draw a closed 2D `outline` (x–y plane) extruded `depth` deep along z — a flat
+    /// shape pushed into 3D. Pair with the `Profile` helpers (rectangle/ellipse/…).
+    public func drawExtrude(_ outline: [Vector2], depth: Double = 0.5) {
+        drawer.drawMesh(.extrude(outline, depth: depth))
+    }
+
+    /// Draw a 2D `Shape` (x–y plane) extruded `depth` deep along z, honoring holes.
+    public func drawExtrude(_ shape: Shape, depth: Double = 0.5) {
+        drawer.drawMesh(.extrude(shape, depth: depth))
+    }
+
+    /// Draw a surface of revolution by revolving a 2D `silhouette` (x = radius from
+    /// the y-axis, y = height) around the y-axis — a vase/bowl from its side profile.
+    public func drawLathe(_ silhouette: [Vector2], segments: Int = 48) {
+        drawer.drawMesh(.lathe(silhouette, segments: segments))
+    }
+
     // MARK: 3D — depth-aware compositing
 
     /// Place subsequent 2D drawing at the depth of `worldPoint` in the active 3D

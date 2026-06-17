@@ -21,6 +21,18 @@ struct MeshTests {
             ("icosahedron", .icosahedron(radius: 1)),
             ("dodecahedron", .dodecahedron(radius: 1)),
             ("torusKnot", .torusKnot(p: 2, q: 3, radius: 1, tube: 0.2, segments: 80, sides: 8)),
+            ("tetrahedron", .tetrahedron(radius: 1)),
+            ("octahedron", .octahedron(radius: 1)),
+            ("capsule", .capsule(radius: 0.5, height: 1, segments: 12, rings: 4)),
+            ("roundedBox", .roundedBox(size: 1, radius: 0.2, segments: 6)),
+            ("icosphere", .icosphere(radius: 1, subdivisions: 2)),
+            ("mobius", .mobius(radius: 1, width: 0.4, segments: 40, sides: 6)),
+            ("klein", .klein(scale: 0.3, segments: 30, sides: 12)),
+            ("superellipsoid", .superellipsoid(radius: 1, e1: 0.5, e2: 0.5, segments: 24, rings: 12)),
+            ("supershape", .supershape(radius: 1, m: 6, n1: 0.3, n2: 1, n3: 1, segments: 40, rings: 20)),
+            ("tube", .tube(along: [Vector3(0, 0, 0), Vector3(0, 1, 0), Vector3(1, 1, 0)], radius: 0.1, sides: 6)),
+            ("extrude", .extrude(Profile.star(points: 5, outerRadius: 1, innerRadius: 0.5), depth: 0.5)),
+            ("lathe", .lathe([Vector2(0.1, -0.5), Vector2(0.5, 0), Vector2(0.1, 0.5)], segments: 16)),
         ]
         for (name, mesh) in meshes {
             #expect(!mesh.isEmpty, "\(name) should not be empty")
@@ -44,18 +56,37 @@ struct MeshTests {
         #expect(axes.count == 6)
     }
 
-    /// The regular polyhedra have their defining face counts: icosahedron 20
-    /// triangles, dodecahedron 12 pentagons = 36 triangles (3 per pentagon fan).
+    /// The polyhedra have their defining face counts: tetrahedron 4, octahedron 8,
+    /// icosahedron 20 triangles, dodecahedron 12 pentagons = 36 triangles, and the
+    /// icosphere is the icosahedron subdivided ×4 per level (20·4ⁿ).
     @Test func polyhedraHaveExpectedFaceCounts() {
+        #expect(Mesh.tetrahedron(radius: 1).triangleCount == 4)
+        #expect(Mesh.octahedron(radius: 1).triangleCount == 8)
         #expect(Mesh.icosahedron(radius: 1).triangleCount == 20)
         #expect(Mesh.dodecahedron(radius: 1).triangleCount == 36)
-        // Every polyhedron vertex sits on the bounding sphere of the given radius.
-        for p in Mesh.icosahedron(radius: 2).positions {
-            #expect(abs(p.length - 2) < 1e-6)
-        }
-        for p in Mesh.dodecahedron(radius: 2).positions {
-            #expect(abs(p.length - 2) < 1e-6)
-        }
+        #expect(Mesh.icosphere(radius: 1, subdivisions: 0).triangleCount == 20)
+        #expect(Mesh.icosphere(radius: 1, subdivisions: 2).triangleCount == 20 * 16)
+        // Every polyhedron / icosphere vertex sits on the bounding sphere.
+        for p in Mesh.icosahedron(radius: 2).positions { #expect(abs(p.length - 2) < 1e-6) }
+        for p in Mesh.dodecahedron(radius: 2).positions { #expect(abs(p.length - 2) < 1e-6) }
+        for p in Mesh.icosphere(radius: 2, subdivisions: 2).positions { #expect(abs(p.length - 2) < 1e-6) }
+    }
+
+    /// Extrude builds a closed solid `depth` deep along z; lathe revolves a profile.
+    @Test func extrudeAndLatheAreWellFormed() {
+        let prism = Mesh.extrude(Profile.rectangle(width: 2, height: 1), depth: 0.5)
+        #expect(!prism.isEmpty)
+        // Spans ±0.25 in z (the extrusion depth) and the rectangle's extent in x/y.
+        let zs = prism.positions.map(\.z)
+        #expect(abs((zs.max() ?? 0) - 0.25) < 1e-9 && abs((zs.min() ?? 0) + 0.25) < 1e-9)
+        let xs = prism.positions.map(\.x)
+        #expect(abs((xs.max() ?? 0) - 1) < 1e-9 && abs((xs.min() ?? 0) + 1) < 1e-9)
+
+        let bowl = Mesh.lathe([Vector2(0.1, -0.5), Vector2(0.6, 0), Vector2(0.1, 0.5)], segments: 24)
+        #expect(!bowl.isEmpty)
+        // Revolution reaches the profile's max radius all the way around.
+        let maxR = bowl.positions.map { ($0.x * $0.x + $0.z * $0.z).squareRoot() }.max() ?? 0
+        #expect(abs(maxR - 0.6) < 1e-6)
     }
 
     /// Generated primitives are centered on the origin, with bounds matching their
