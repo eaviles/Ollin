@@ -1,6 +1,9 @@
 import Testing
 import Foundation
 import simd
+import CoreGraphics
+import ImageIO
+import UniformTypeIdentifiers
 @testable import Ollin
 #if canImport(ModelIO)
 import ModelIO
@@ -130,6 +133,111 @@ struct MeshLoaderTests {
         #expect(abs(maxX - 2) < 1e-5 && abs(maxY - 2) < 1e-5)
         // Computed normal of the CCW x–y triangle points +z.
         for n in mesh.normals { #expect(abs(n.z - 1) < 1e-5) }
+    }
+
+    /// A glTF triangle that carries TEXCOORD_0 and a base-color material (a factor
+    /// plus an embedded PNG texture): exercises UV reading, the linear→sRGB base-color
+    /// conversion, and decoding the texture image from a data-URI. No external asset.
+    @Test func gltfReadsUVsAndBaseColorMaterial() throws {
+        var buffer = Data()
+        for f: Float in [0, 0, 0, 1, 0, 0, 0, 1, 0] {           // 3 positions (VEC3) @0
+            withUnsafeBytes(of: f) { buffer.append(contentsOf: $0) }
+        }
+        for f: Float in [0, 0, 1, 0, 0, 1] {                    // 3 UVs (VEC2) @36
+            withUnsafeBytes(of: f) { buffer.append(contentsOf: $0) }
+        }
+        for i: UInt16 in [0, 1, 2] {                            // 3 indices (SCALAR) @60
+            withUnsafeBytes(of: i) { buffer.append(contentsOf: $0) }
+        }
+        let b64 = buffer.base64EncodedString()
+        let png = Self.solidPNG(width: 4, height: 4, rgb: (0, 0, 1)).base64EncodedString()
+        // baseColorFactor is linear; 0.5 linear re-encodes to sRGB ≈ 0.7353.
+        let json = """
+        { "asset": {"version": "2.0"},
+          "scene": 0, "scenes": [{"nodes": [0]}],
+          "nodes": [{"mesh": 0}],
+          "meshes": [{"primitives": [{"attributes": {"POSITION": 0, "TEXCOORD_0": 1}, "indices": 2, "mode": 4, "material": 0}]}],
+          "materials": [{"pbrMetallicRoughness": {"baseColorFactor": [0.5, 0.25, 0.75, 1], "baseColorTexture": {"index": 0}}}],
+          "textures": [{"source": 0}],
+          "images": [{"uri": "data:image/png;base64,\(png)"}],
+          "accessors": [
+            {"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3"},
+            {"bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC2"},
+            {"bufferView": 2, "componentType": 5123, "count": 3, "type": "SCALAR"}],
+          "bufferViews": [
+            {"buffer": 0, "byteOffset": 0, "byteLength": 36},
+            {"buffer": 0, "byteOffset": 36, "byteLength": 24},
+            {"buffer": 0, "byteOffset": 60, "byteLength": 6}],
+          "buffers": [{"uri": "data:application/octet-stream;base64,\(b64)", "byteLength": \(buffer.count)}]
+        }
+        """
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).gltf")
+        try json.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let mesh = try #require(Mesh(contentsOf: url))
+        // UVs read and aligned with positions.
+        #expect(mesh.uvs.count == mesh.positions.count)
+        #expect(mesh.uvs.contains { abs($0.x - 1) < 1e-5 })
+        // Base color: 0.5 linear → ~0.735 sRGB on the red channel.
+        let mat = try #require(mesh.material)
+        #expect(abs(mat.baseColor.red - 0.7353) < 0.01)
+        // The texture decoded from the embedded PNG, at its 4×4 size.
+        let tex = try #require(mat.texture)
+        #expect(tex.width == 4 && tex.height == 4)
+    }
+
+    /// An OBJ quad with UVs and an `mtllib`/`usemtl` material whose `.mtl` carries a
+    /// diffuse color and a `map_Kd` texture: exercises `vt` reading and the `.mtl`
+    /// parse (color + sibling texture file). Writes the trio to a temp folder.
+    @Test func objReadsUVsAndMTLMaterial() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-obj-\(ProcessInfo.processInfo.globallyUniqueString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try Self.solidPNG(width: 4, height: 4, rgb: (0, 1, 0)).write(to: dir.appendingPathComponent("tex.png"))
+        try "newmtl Painted\nKd 0.8 0.2 0.1\nmap_Kd tex.png\n"
+            .write(to: dir.appendingPathComponent("quad.mtl"), atomically: true, encoding: .utf8)
+        let obj = """
+        mtllib quad.mtl
+        v 0 0 0
+        v 1 0 0
+        v 1 1 0
+        v 0 1 0
+        vt 0 0
+        vt 1 0
+        vt 1 1
+        vt 0 1
+        vn 0 0 1
+        usemtl Painted
+        f 1/1/1 2/2/1 3/3/1 4/4/1
+        """
+        let objURL = dir.appendingPathComponent("quad.obj")
+        try obj.write(to: objURL, atomically: true, encoding: .utf8)
+
+        let mesh = try #require(Mesh(contentsOf: objURL))
+        #expect(mesh.uvs.count == mesh.positions.count)
+        #expect(mesh.uvs.contains { abs($0.x - 1) < 1e-5 })
+        let mat = try #require(mesh.material)
+        #expect(abs(mat.baseColor.red - 0.8) < 0.01)   // Kd taken as the sRGB color directly
+        #expect(mat.texture?.width == 4)
+    }
+
+    /// A small solid-color PNG as `Data`, for embedding a texture in a fixture.
+    private static func solidPNG(width: Int, height: Int, rgb: (Double, Double, Double)) -> Data {
+        let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
+                            bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.setFillColor(red: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
+        ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        let image = ctx.makeImage()!
+        let out = NSMutableData()
+        let dest = CGImageDestinationCreateWithData(out, UTType.png.identifier as CFString, 1, nil)!
+        CGImageDestinationAddImage(dest, image, nil)
+        CGImageDestinationFinalize(dest)
+        return out as Data
     }
 
     // MARK: Model I/O (USD)

@@ -61,9 +61,8 @@ A variable blur for camera-feed depth of field, set by per-pixel depth so a subj
 
 ## 3D mode
 
-2D stays the default, and 3D keeps building out on top of the shipped camera, depth buffer, transform stack, solid primitives, meshes loaded from file, and the directional/point/spot light & material model:
+2D stays the default, and 3D keeps building out on top of the shipped camera, depth buffer, transform stack, solid primitives, meshes loaded from file (with their own base-color material and texture), textured meshes, and the directional/point/spot light & material model:
 
-- **Materials and textures from file** — a loaded model loads as geometry today (shaded with the sketch's `fill`); read its own material colors and textures (UVs and a textured mesh path) so it arrives looking the way its author made it.
 - **Shadows** — cast shadows for the scene's lights (shadow mapping), so solids ground in their setting.
 - **Cinematic lighting presets** — curated, high-end "lighting scenes" a sketch drops in (a film-style key/fill/rim rig, golden hour, noir, studio softbox, …) so getting a great-looking, well-lit scene takes one call instead of hand-placing lights.
 - **Extensible material libraries** — a set of ready-made named materials (clay, plastic, metal, glass, …) that a sketch can use as-is or extend with its own, plus matcap materials that bake a whole look into a single texture, layered over the Blinn-Phong material.

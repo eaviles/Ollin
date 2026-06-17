@@ -21,8 +21,7 @@ extension Mesh {
     public init?(contentsOf url: URL) {
         switch url.pathExtension.lowercased() {
         case "obj":
-            guard let text = try? String(contentsOf: url, encoding: .utf8),
-                  let mesh = Mesh(objSource: text) else { return nil }
+            guard let mesh = Mesh.loadOBJ(url) else { return nil }
             self = mesh
         case "gltf", "glb":
             guard let mesh = Mesh.loadGLTF(url) else { return nil }
@@ -54,23 +53,55 @@ extension Mesh {
 extension Mesh {
 
     /// Parse Wavefront OBJ source text into a `Mesh`. Reads geometric vertices (`v`),
-    /// vertex normals (`vn`), and faces (`f`); skips texture coords (`vt`, no UVs on
-    /// `Mesh` yet), grouping/smoothing/material directives, and comments. Faces may be
-    /// polygons (triangulated as a fan) and may reference vertices and normals either
-    /// 1-based or with negative (relative) indices, in any of OBJ's corner forms (`v`,
-    /// `v/vt`, `v//vn`, `v/vt/vn`). When the file carries no normals, smooth,
-    /// area-weighted vertex normals are computed. Returns `nil` if no triangles
-    /// result. Total, a malformed line is skipped, never trapped (the file is
-    /// untrusted input, like every other Ollin parser).
+    /// texture coordinates (`vt`), vertex normals (`vn`), and faces (`f`); skips
+    /// grouping/smoothing directives and comments. The material (`mtllib`/`usemtl`)
+    /// needs the file's folder to resolve, so a bare string parses geometry + UVs only
+    /// — load from a URL (`Mesh(contentsOf:)`) to read the `.mtl` too. Faces may be
+    /// polygons (fan-triangulated) and may reference vertices/UVs/normals 1-based or
+    /// with negative (relative) indices, in any of OBJ's corner forms (`v`, `v/vt`,
+    /// `v//vn`, `v/vt/vn`). When the file carries no normals, smooth, area-weighted
+    /// vertex normals are computed. Returns `nil` if no triangles result. Total, a
+    /// malformed line is skipped, never trapped (the file is untrusted input, like
+    /// every other Ollin parser).
     public init?(objSource source: String) {
+        guard let p = Mesh.parseOBJ(source) else { return nil }
+        self.init(positions: p.positions, normals: p.normals, indices: p.indices, uvs: p.uvs)
+    }
+
+    /// Load an OBJ from a URL, also reading its `.mtl` material (diffuse color +
+    /// texture) when the file references one (`mtllib` + the first `usemtl`), relative
+    /// to the OBJ's folder.
+    static func loadOBJ(_ url: URL) -> Mesh? {
+        guard let text = try? String(contentsOf: url, encoding: .utf8),
+              let p = parseOBJ(text) else { return nil }
+        let material = p.mtllib.flatMap { lib -> MeshMaterial? in
+            loadMTL(url.deletingLastPathComponent().appendingPathComponent(lib), use: p.material)
+        }
+        return Mesh(positions: p.positions, normals: p.normals, indices: p.indices,
+                    uvs: p.uvs, material: material)
+    }
+
+    private struct ParsedOBJ {
+        var positions: [Vector3]; var normals: [Vector3]; var uvs: [Vector2]
+        var indices: [UInt32]; var mtllib: String?; var material: String?
+    }
+
+    /// The geometry-and-references half of OBJ parsing (no file I/O), shared by the
+    /// bare-string init and the URL loader.
+    private static func parseOBJ(_ source: String) -> ParsedOBJ? {
         var verts: [Vector3] = []
         var fileNormals: [Vector3] = []
+        var fileUVs: [Vector2] = []
 
         var positions: [Vector3] = []
         var outNormals: [Vector3] = []
+        var outUVs: [Vector2] = []
         var provided: [Bool] = []        // did this output vertex get a normal from the file?
+        var providedUV: [Bool] = []      // and a texture coordinate?
         var indices: [UInt32] = []
-        var cache: [Int64: UInt32] = [:] // (vertex, normal) corner -> output index
+        var cache: [Int64: UInt32] = [:] // (vertex, uv, normal) corner -> output index
+        var mtllib: String?
+        var material: String?
 
         // An OBJ index is 1-based, or negative meaning "relative to the count so far".
         // Resolve to a 0-based offset, or nil if out of range / the invalid 0.
@@ -80,25 +111,29 @@ extension Mesh {
             return nil
         }
 
-        // A face corner, "v", "v/vt", "v//vn", or "v/vt/vn", to (vertex, normal?).
-        func corner(_ token: Substring) -> (v: Int, vn: Int?)? {
+        // A face corner, "v", "v/vt", "v//vn", or "v/vt/vn", to (vertex, uv?, normal?).
+        func corner(_ token: Substring) -> (v: Int, vt: Int?, vn: Int?)? {
             let parts = token.split(separator: "/", omittingEmptySubsequences: false)
             guard let first = parts.first, let v = Int(first) else { return nil }
+            let vt = parts.count >= 2 ? Int(parts[1]) : nil   // empty in "v//vn"
             let vn = parts.count >= 3 ? Int(parts[2]) : nil
-            return (v, vn)
+            return (v, vt, vn)
         }
 
-        // The output index for a unique (vertex, normal) corner, appending on first use
-        // so faces that share a corner share a vertex (and a smooth normal).
-        func emit(_ c: (v: Int, vn: Int?)) -> UInt32? {
+        // The output index for a unique (vertex, uv, normal) corner, appending on first
+        // use so faces that share a corner share a vertex (and its normal/UV).
+        func emit(_ c: (v: Int, vt: Int?, vn: Int?)) -> UInt32? {
             guard let vi = resolve(c.v, count: verts.count) else { return nil }
             let ni = c.vn.flatMap { resolve($0, count: fileNormals.count) }
-            let key = Int64(vi) &* 1_000_000 &+ Int64((ni ?? -1) + 1)
+            let ti = c.vt.flatMap { resolve($0, count: fileUVs.count) }
+            let key = (Int64(vi) &* 1_000_003 &+ Int64((ni ?? -1) + 1)) &* 1_000_003 &+ Int64((ti ?? -1) + 1)
             if let existing = cache[key] { return existing }
             let out = UInt32(positions.count)
             positions.append(verts[vi])
             if let ni { outNormals.append(fileNormals[ni]); provided.append(true) }
             else { outNormals.append(.zero); provided.append(false) }
+            if let ti, ti < fileUVs.count { outUVs.append(fileUVs[ti]); providedUV.append(true) }
+            else { outUVs.append(.zero); providedUV.append(false) }
             cache[key] = out
             return out
         }
@@ -114,14 +149,21 @@ extension Mesh {
             case "vn":
                 let f = values.compactMap { Double($0) }
                 if f.count >= 3 { fileNormals.append(Vector3(f[0], f[1], f[2])) }
+            case "vt":
+                let f = values.compactMap { Double($0) }
+                if f.count >= 2 { fileUVs.append(Vector2(f[0], f[1])) }
             case "f":
                 let outs = values.compactMap(corner).compactMap(emit)
                 guard outs.count >= 3 else { continue }
                 for k in 1..<(outs.count - 1) {        // fan-triangulate the polygon
                     indices.append(outs[0]); indices.append(outs[k]); indices.append(outs[k + 1])
                 }
+            case "mtllib":
+                if mtllib == nil, let name = values.first { mtllib = String(name) }
+            case "usemtl":
+                if material == nil, let name = values.first { material = String(name) }
             default:
-                continue   // vt, o, g, s, mtllib, usemtl, comments, anything else
+                continue   // o, g, s, comments, anything else
             }
         }
 
@@ -148,7 +190,50 @@ extension Mesh {
             outNormals[k] = outNormals[k].lengthSquared > 1e-12 ? outNormals[k].normalized : .unitY
         }
 
-        self.init(positions: positions, normals: outNormals, indices: indices)
+        // Keep UVs only if every output vertex carried one (a partial set can't map).
+        let uvs = providedUV.allSatisfy { $0 } ? outUVs : []
+        return ParsedOBJ(positions: positions, normals: outNormals, uvs: uvs, indices: indices,
+                         mtllib: mtllib, material: material)
+    }
+
+    /// Read a `.mtl` for the named material (or the first one): diffuse `Kd` → base
+    /// color, `map_Kd` → texture image (relative to the `.mtl`'s folder). OBJ has no
+    /// color-space tag, so `Kd` is taken as the display (sRGB) color directly.
+    private static func loadMTL(_ url: URL, use name: String?) -> MeshMaterial? {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        let dir = url.deletingLastPathComponent()
+        struct M { var kd: Color?; var mapKd: String? }
+        var mats: [String: M] = [:]
+        var order: [String] = []
+        var cur: String?
+        for line in text.split(whereSeparator: \.isNewline) {
+            let t = line.split(whereSeparator: { $0 == " " || $0 == "\t" })
+            guard let key = t.first else { continue }
+            let vals = Array(t.dropFirst())
+            switch String(key) {
+            case "newmtl":
+                let n = vals.first.map(String.init)
+                cur = n
+                if let n, mats[n] == nil { mats[n] = M(); order.append(n) }
+            case "Kd":
+                let f = vals.compactMap { Double($0) }
+                if f.count >= 3, let c = cur { mats[c]?.kd = Color(red: f[0], green: f[1], blue: f[2]) }
+            case "map_Kd":
+                // The map path is the last token (earlier tokens are options like -s).
+                if let file = vals.last, let c = cur { mats[c]?.mapKd = String(file) }
+            default:
+                continue
+            }
+        }
+        let chosen = name.flatMap { mats[$0] != nil ? $0 : nil } ?? order.first
+        guard let key = chosen, let m = mats[key] else { return nil }
+        var texture: Image?
+        if let file = m.mapKd {
+            let path = file.removingPercentEncoding ?? file
+            if let data = try? Data(contentsOf: dir.appendingPathComponent(path)) { texture = Image(data: data) }
+        }
+        if m.kd == nil, texture == nil { return nil }
+        return MeshMaterial(baseColor: m.kd ?? .white, texture: texture)
     }
 }
 
@@ -157,11 +242,12 @@ extension Mesh {
 #if canImport(ModelIO)
 extension Mesh {
 
-    /// Read positions, normals, and triangle indices out of any container Model I/O
-    /// can open. Every `MDLMesh` in the asset is merged into one `Mesh`; a mesh with
-    /// no normals has them generated. Reads attribute data by its own stride/offset
-    /// (so interleaved buffers are handled) and submesh index buffers at their own
-    /// bit depth.
+    /// Read positions, normals, triangle indices, texture coordinates, and the
+    /// base-color material out of any container Model I/O can open. Every `MDLMesh` in
+    /// the asset is merged into one `Mesh`; a mesh with no normals has them generated.
+    /// Reads attribute data by its own stride/offset (so interleaved buffers are
+    /// handled) and submesh index buffers at their own bit depth. The merged mesh wears
+    /// the first submesh material that carries a base color or texture.
     static func loadViaModelIO(_ url: URL) -> Mesh? {
         let asset = MDLAsset(url: url)
         guard let mdlMeshes = asset.childObjects(of: MDLMesh.self) as? [MDLMesh],
@@ -169,7 +255,10 @@ extension Mesh {
 
         var positions: [Vector3] = []
         var normals: [Vector3] = []
+        var uvs: [Vector2] = []
         var indices: [UInt32] = []
+        var allHaveUV = true
+        var material: MeshMaterial?
 
         for mdl in mdlMeshes {
             let normalAttr = mdl.vertexDescriptor.attributeNamed(MDLVertexAttributeNormal)
@@ -179,6 +268,7 @@ extension Mesh {
             guard let posAttr = mdl.vertexAttributeData(forAttributeNamed: MDLVertexAttributePosition,
                                                         as: .float3) else { continue }
             let nrmAttr = mdl.vertexAttributeData(forAttributeNamed: MDLVertexAttributeNormal, as: .float3)
+            let uvAttr = mdl.vertexAttributeData(forAttributeNamed: MDLVertexAttributeTextureCoordinate, as: .float2)
             let base = UInt32(positions.count)
             let count = mdl.vertexCount
 
@@ -197,8 +287,18 @@ extension Mesh {
             } else {
                 normals.append(contentsOf: repeatElement(.unitY, count: count))
             }
+            if let uvAttr {
+                for i in 0..<count {
+                    let t = uvAttr.dataStart.advanced(by: i * uvAttr.stride).assumingMemoryBound(to: Float.self)
+                    uvs.append(Vector2(Double(t[0]), Double(t[1])))
+                }
+            } else {
+                allHaveUV = false
+                uvs.append(contentsOf: repeatElement(.zero, count: count))
+            }
 
             for case let submesh as MDLSubmesh in mdl.submeshes ?? [] {
+                if material == nil, let m = submesh.material { material = readMaterial(m) }
                 guard submesh.geometryType == .triangles else { continue }
                 let map = submesh.indexBuffer.map()
                 let raw = map.bytes
@@ -220,7 +320,36 @@ extension Mesh {
 
         guard !positions.isEmpty, !indices.isEmpty else { return nil }
         let unit = normals.map { $0.lengthSquared > 1e-12 ? $0.normalized : .unitY }
-        return Mesh(positions: positions, normals: unit, indices: indices)
+        return Mesh(positions: positions, normals: unit, indices: indices,
+                    uvs: allHaveUV ? uvs : [], material: material)
+    }
+
+    /// Read an `MDLMaterial`'s base color: a texture (decoded to an `Image`) or a solid
+    /// color/float3, whichever the `.baseColor` property carries. Other channels
+    /// (metallic/roughness, normal) are the later PBR tier. Returns nil if neither is
+    /// present. (A texture comes back at Model I/O's image origin; a vertically
+    /// flipped result is a known limitation until UV-origin handling lands.)
+    private static func readMaterial(_ mdlMaterial: MDLMaterial) -> MeshMaterial? {
+        guard let prop = mdlMaterial.property(with: .baseColor) else { return nil }
+        var baseColor: Color?
+        var texture: Image?
+        switch prop.type {
+        case .texture:
+            if let cg = prop.textureSamplerValue?.texture?.imageFromTexture()?.takeRetainedValue() {
+                texture = Image(cgImage: cg)
+            }
+        case .color:
+            if let comps = prop.color?.components, comps.count >= 3 {
+                baseColor = Color(red: Double(comps[0]), green: Double(comps[1]), blue: Double(comps[2]))
+            }
+        case .float3:
+            let f = prop.float3Value
+            baseColor = Color(red: Double(f.x), green: Double(f.y), blue: Double(f.z))
+        default:
+            break
+        }
+        if baseColor == nil, texture == nil { return nil }
+        return MeshMaterial(baseColor: baseColor ?? .white, texture: texture)
     }
 }
 #endif

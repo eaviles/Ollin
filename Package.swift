@@ -432,7 +432,7 @@ let package = Package(
             name: "Example-LoadedMesh",
             dependencies: ["Ollin"],
             path: "Examples/3D/LoadedMesh",
-            resources: [.copy("model.obj")]
+            resources: [.copy("model.gltf"), .copy("model.obj")]
         ),
         .executableTarget(
             name: "Example-ShapeFactory",

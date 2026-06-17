@@ -9,6 +9,10 @@ import Foundation
 /// primitives: `loadMesh` returns a `Mesh`, `normalized(scale:)` fits it to the scene
 /// no matter what size its author saved it at, and `drawMesh` draws it.
 ///
+/// A glTF model also brings its own **base-color material and texture**: the bundled
+/// `model.gltf` is a textured cube, drawn in its own colors (white `fill`, so the
+/// texture shows true). A model with no material falls back to a chosen `fill`.
+///
 /// Point this at any model by setting `OLLIN_MESH` to its path, or drop a `model.usdz`
 /// (or `.glb`/`.gltf`/`.obj`) beside this sketch. Until one is found it spins a
 /// placeholder and shows how to add a model.
@@ -47,14 +51,20 @@ final class LoadedMesh: Sketch {
         camera(.orbiting(radius: 7, azimuth: time * 0.3, elevation: 0.2, fieldOfView: .pi / 4))
 
         if let mesh {
+            let textured = mesh.material != nil
             withState {
                 rotateY(time * 0.4)
-                fill(Color(hex: 0xF5C542))     // rubber-duck yellow
-                specular(0.5)
-                shininess(40)
+                if textured {
+                    fill(.white)               // let the model's own material/texture show
+                } else {
+                    fill(Color(hex: 0xF5C542)) // rubber-duck yellow for a material-less model
+                    specular(0.5)
+                    shininess(40)
+                }
                 drawMesh(mesh)
             }
-            drawCaption("\(sourceName) · \(mesh.triangleCount) triangles")
+            let surface = textured ? "textured" : "\(mesh.triangleCount) triangles"
+            drawCaption("\(sourceName) · \(surface)")
         } else {
             // No model yet, spin a placeholder and say how to add one.
             withState {
