@@ -66,7 +66,8 @@ A variable blur for camera-feed depth of field, set by per-pixel depth so a subj
 - **Materials and textures from file** — a loaded model loads as geometry today (shaded with the sketch's `fill`); read its own material colors and textures (UVs and a textured mesh path) so it arrives looking the way its author made it.
 - **Shadows** — cast shadows for the scene's lights (shadow mapping), so solids ground in their setting.
 - **Cinematic lighting presets** — curated, high-end "lighting scenes" a sketch drops in (a film-style key/fill/rim rig, golden hour, noir, studio softbox, …) so getting a great-looking, well-lit scene takes one call instead of hand-placing lights.
-- **Extensible material libraries** — a set of ready-made named materials (clay, plastic, metal, glass, …) that a sketch can use as-is or extend with its own, layered over the Blinn-Phong material.
+- **Extensible material libraries** — a set of ready-made named materials (clay, plastic, metal, glass, …) that a sketch can use as-is or extend with its own, plus matcap materials that bake a whole look into a single texture, layered over the Blinn-Phong material.
+- **Physically-based shading and environment lighting** — the later realism tier: a physically-based material model (energy-conserving, roughness and metalness) lit by image-based environment maps (a prefiltered HDRI or a procedural studio environment), which is how modern real-time 3D gets its photographic look. The bigger step beyond the analytic directional/point/spot model, pairing the material and lighting halves; it builds on the named-material and preset work rather than replacing it.
 
 It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode-partly-shipped).
 
