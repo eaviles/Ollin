@@ -113,6 +113,11 @@ struct GeometryBatch {
     /// (the conversion coefficients ride in the quad's vertex tint). `nil` for the
     /// normalized gray path — exactly one of `depthImage`/`metricDepth` is set.
     var metricDepth: MetricDepthMap?
+    /// The surface material for a *textured* `.mesh3D` batch — its `texture` is bound
+    /// to the mesh fragment and `baseColor` is already baked into the vertices. `nil`
+    /// for an untextured mesh (the byte-identical solid path). A textured mesh opens
+    /// its own batch (one texture per batch), like an image.
+    var material: MeshMaterial?
 }
 
 /// The drawing state machine and per-frame geometry recorder.
@@ -343,6 +348,22 @@ final class Drawer {
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
                                      blendMode: currentBlend, image: image, depth: currentDepth))
+    }
+
+    /// Open a fresh `.mesh3D` batch carrying `material` (its texture binds to the
+    /// mesh fragment). Always appends — each textured mesh binds its own texture, so
+    /// it can't share a batch — and clears `currentKind` so a following mesh (textured
+    /// or solid) opens its own batch rather than merging into this textured one.
+    private func beginMeshBatch(material: MeshMaterial?) {
+        batches.append(GeometryBatch(kind: .mesh3D, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
+                                     meshStart: meshVertices.count,
+                                     blendMode: currentBlend, depth: currentDepth,
+                                     material: material))
+        currentKind = nil
     }
 
     /// Open a fresh `.glyphAtlas` batch carrying `atlas` as its texture. One
@@ -733,14 +754,27 @@ final class Drawer {
         guard camera3D != nil, !mesh.isEmpty else { return }
         // SVG export is 2D vector only; a shaded solid has no vector outline.
         if svgRecorder != nil { return }
-        ensureBatch(.mesh3D)
+        // A texture maps only with matching UVs; without them, fall back to a flat
+        // base-color surface (there's nothing to map against). A textured mesh opens
+        // its own batch (one bound texture per batch); a solid mesh merges.
+        let material = mesh.material
+        let textured = material?.texture != nil && mesh.uvs.count == mesh.positions.count
+        if textured {
+            beginMeshBatch(material: material)
+        } else {
+            ensureBatch(.mesh3D)
+        }
         let m = modelMatrix
         let nm = modelIsIdentity ? matrix_identity_float3x3 : m.normalMatrix
-        let color = meshSurfaceColor.simd4
+        // The surface color is the current fill tinted by the material's base color
+        // (white = the fill unchanged), so a base-color-only material just tints and
+        // the textured fragment multiplies its sample by this. Same value on both
+        // paths; a material-less mesh has a white base color, so this is exactly the fill.
+        let color = meshSurfaceColor.simd4 * (material?.baseColor.simd4 ?? SIMD4<Float>(1, 1, 1, 1))
         // The material rides the vertices' spare w slots (the vertex shader reads
         // only position.xyz / normal.xyz): specular strength in position.w, the
-        // shininess exponent in normal.w. So material is state-stack drawing state
-        // with no struct widening.
+        // shininess exponent in normal.w. So the lit-material parameters need no
+        // struct widening (the texture coordinate in `uv` is the one widening).
         let specW = Float(specularStrength)
         let shineW = Float(shininessValue)
         meshVertices.reserveCapacity(meshVertices.count + mesh.indices.count)
@@ -761,6 +795,10 @@ final class Drawer {
                 v.normal = SIMD4<Float>(wn.x, wn.y, wn.z, shineW)
             }
             v.color = color
+            if textured {
+                let uv = mesh.uvs[i]
+                v.uv = SIMD2<Float>(Float(uv.x), Float(uv.y))
+            }
             meshVertices.append(v)
         }
     }

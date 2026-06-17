@@ -47,6 +47,36 @@ struct MeshTests {
         }
     }
 
+    /// UV-emitting generators (sphere, plane) carry one texture coordinate per vertex,
+    /// each in [0, 1]; a generator without a natural parameterization (box) ships none.
+    @Test func uvGeneratorsAreAligned() {
+        for (name, mesh) in [("sphere", Mesh.sphere(radius: 1, segments: 12, rings: 8)),
+                             ("plane", Mesh.plane(width: 2, depth: 2, segments: 3))] {
+            #expect(mesh.uvs.count == mesh.positions.count, "\(name) uvs must match positions")
+            for uv in mesh.uvs {
+                #expect(uv.x >= 0 && uv.x <= 1 && uv.y >= 0 && uv.y <= 1, "\(name) uv out of [0,1]: \(uv)")
+            }
+        }
+        #expect(Mesh.box(size: 1).uvs.isEmpty, "box has no natural UVs")
+    }
+
+    /// `textured(_:)` attaches a material (carried through `normalized`); a mesh with a
+    /// texture but no UVs has nothing to map against, so it stays effectively flat.
+    @Test func texturedAttachesMaterial() {
+        let image = Image(width: 4, height: 4, color: .red)
+        let globe = Mesh.sphere(radius: 1, segments: 8, rings: 6).textured(image, baseColor: .white)
+        #expect(globe.material?.texture != nil)
+        #expect(globe.material?.baseColor == .white)
+        #expect(globe.uvs.count == globe.positions.count)
+        // Material survives the recenter/scale transform.
+        #expect(globe.normalized(scale: 2).material?.texture != nil)
+        // A textured box carries the material but no UVs — the render path falls back
+        // to a flat base-color surface.
+        let box = Mesh.box(size: 1).textured(image)
+        #expect(box.material?.texture != nil)
+        #expect(box.uvs.isEmpty)
+    }
+
     /// A cube has 6 faces × 2 triangles = 12 triangles, each face flat-normaled.
     @Test func boxHasTwelveTriangles() {
         let box = Mesh.box(size: 1)

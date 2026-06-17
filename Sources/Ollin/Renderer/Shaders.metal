@@ -1294,6 +1294,88 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     return float4(lit, in.color.a);
 }
 
+// MARK: - Textured 3D mesh
+//
+// Same camera + Blinn-Phong model as the solid mesh, but the surface (diffuse)
+// color is a base-color texture sampled at the vertex UVs, tinted by the baked
+// vertex color (fill × material base color). The shading tail is shared with the
+// solid mesh through `meshLitColor`, so the two stay in step.
+
+struct MeshTexturedOut {
+    float4 position [[position]];
+    float3 normal;
+    float3 worldPos;
+    float4 color;
+    float2 material;
+    float2 uv;
+};
+
+// The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
+// surface `normal`, `worldPos`, and `material` (x = specular strength, y = shininess).
+// Mirrors `ollin_mesh_fragment`'s tail exactly (ambient + per-light diffuse +
+// Blinn-Phong specular, with the spot cone gate).
+static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
+                                  float3 worldPos, float2 material,
+                                  constant OllinLighting &light) {
+    float3 n = normalize(normal);
+    if (light.enabled == 0) {
+        return float4(base, alpha);
+    }
+    float3 viewDir = normalize(light.cameraPosition.xyz - worldPos);
+    float specStrength = material.x;
+    float shininess = max(material.y, 1.0);
+    float3 lit = light.ambient.rgb * base;
+    for (int i = 0; i < light.lightCount; i++) {
+        OllinLight L = light.lights[i];
+        float3 toLight;
+        float atten = 1.0;
+        if (L.kind == 0) {
+            toLight = L.direction.xyz;
+        } else {
+            toLight = normalize(L.position.xyz - worldPos);
+            if (L.kind == 2) {
+                float cosA = dot(-toLight, L.direction.xyz);
+                atten = smoothstep(L.cosOuter, L.cosInner, cosA);
+            }
+        }
+        float ndl = max(dot(n, toLight), 0.0);
+        float3 diffuse = L.color.rgb * base * ndl;
+        float3 h = normalize(toLight + viewDir);
+        float spec = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), shininess) * specStrength : 0.0;
+        float3 specular = L.color.rgb * spec;
+        lit += atten * (diffuse + specular);
+    }
+    return float4(lit, alpha);
+}
+
+vertex MeshTexturedOut ollin_mesh_textured_vertex(uint vid [[vertex_id]],
+                                                  const device OllinMeshVertex *verts [[buffer(0)]],
+                                                  constant Uniforms3D &u [[buffer(2)]]) {
+    OllinMeshVertex v = verts[vid];
+    MeshTexturedOut out;
+    out.worldPos = v.position.xyz;
+    out.position = u.projection * (u.view * float4(v.position.xyz, 1.0));
+    out.normal = v.normal.xyz;
+    out.color = v.color;
+    out.material = float2(v.position.w, v.normal.w);
+    out.uv = v.uv;
+    return out;
+}
+
+fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
+                                             constant OllinLighting &light [[buffer(0)]],
+                                             texture2d<float> baseColorTex [[texture(0)]],
+                                             sampler samp [[sampler(0)]]) {
+    // The base-color texture is sRGB, so the sample comes back already linear and
+    // premultiplied. The milestone contract is opaque textures, so rgb is the
+    // straight base color; tint it by the linearized baked vertex color
+    // (fill × material base color).
+    float4 tex = baseColorTex.sample(samp, in.uv);
+    float3 base = tex.rgb * srgbToLinear(in.color.rgb);
+    float alpha = in.color.a * tex.a;
+    return meshLitColor(base, alpha, in.normal, in.worldPos, in.material, light);
+}
+
 // MARK: - Present / tone-map pass
 //
 // The frame's geometry is composited in a linear `rgba16Float` intermediate, so

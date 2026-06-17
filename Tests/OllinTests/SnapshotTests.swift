@@ -144,6 +144,15 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func texturedMeshMatchesReference() throws {
+        // A UV-gridded sphere through a fixed camera — pins the textured-mesh pipeline:
+        // UVs on the sphere generator, the base-color texture sampled per fragment, and
+        // the shared Blinn-Phong tail (textured surface, auto-lit default rig).
+        let diff = try Snapshot.meanDifference(of: TexturedMesh3DScene(), against: "textured-mesh")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func transformed3DMatchesReference() throws {
         // Point-cloud blobs placed entirely by the 3D transform stack — a center blob
         // plus four satellites positioned by rotateY + translate and sized by scale.
@@ -269,6 +278,41 @@ private final class MeshLightingScene: Sketch {
         }
         withState { fill(Color(white: 0.4)); translate(0, -1.4, 0); drawPlane(width: 6, depth: 6) }
     }
+}
+
+/// A UV-gridded sphere through a fixed camera, lit by the default rig — pins the
+/// textured-mesh pipeline (sphere UVs, the per-fragment base-color texture sample, the
+/// shared lit tail). The texture is built from a pure function of pixel coordinates, so
+/// the scene is deterministic. No `time`.
+private final class TexturedMesh3DScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private lazy var globe = Mesh.sphere(radius: 1.5, segments: 48, rings: 24)
+        .textured(TexturedMesh3DScene.grid)
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: .zero, radius: 5,
+                         azimuth: 0.6, elevation: 0.3, fieldOfView: .pi / 3.4))
+        drawMesh(globe)
+    }
+
+    /// A deterministic UV grid: hue by u, a brightness checker, dark gridlines.
+    static let grid: Image = {
+        let n = 64, cell = 4
+        let img = Image(width: n, height: n)
+        for y in 0..<n {
+            for x in 0..<n {
+                if x % cell == 0 || y % cell == 0 {
+                    img[x, y] = Color(white: 0.12)
+                } else {
+                    let checker = ((x / cell) + (y / cell)) % 2 == 0
+                    img[x, y] = Color(hue: Double(x) / Double(n - 1),
+                                      saturation: 0.7, brightness: checker ? 0.95 : 0.55)
+                }
+            }
+        }
+        return img
+    }()
 }
 
 /// Point-cloud blobs placed entirely by the 3D transform stack: a central blob and

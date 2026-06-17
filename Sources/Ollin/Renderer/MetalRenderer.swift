@@ -84,9 +84,15 @@ final class MetalRenderer {
         static func pointCloud(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_point_vertex", fragment: "ollin_point_fragment", blend: blend, depthFormat: depth)
         }
-        // solid 3D triangle mesh (depth-tested, normal-colored)
+        // solid 3D triangle mesh (depth-tested, lit by the material model)
         static func mesh(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_mesh_vertex", fragment: "ollin_mesh_fragment", blend: blend, depthFormat: depth)
+        }
+        // textured 3D triangle mesh: the surface samples a base-color texture at the
+        // vertex UVs, otherwise the same depth-tested, lit mesh path.
+        static func meshTextured(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_textured_vertex", fragment: "ollin_mesh_textured_fragment",
+                        blend: blend, depthFormat: depth)
         }
         // depth-scene backdrop: a textured quad that also writes per-pixel depth from
         // a depth map (premultiplied color, like the image path; outputs [[depth]]).
@@ -98,10 +104,10 @@ final class MetalRenderer {
         static let present = PipelineKey(vertex: "ollin_present_vertex",
                                          fragment: "ollin_present_fragment", isPresent: true)
 
-        /// The pipeline a recorded batch needs, from its geometry kind, blend, and
-        /// the active depth format (nil in 2D).
+        /// The pipeline a recorded batch needs, from its geometry kind, blend, the
+        /// active depth format (nil in 2D), and — for a mesh — whether it's textured.
         static func forBatch(_ kind: GeometryKind, _ blend: BlendMode,
-                             depth: MTLPixelFormat? = nil) -> PipelineKey {
+                             depth: MTLPixelFormat? = nil, textured: Bool = false) -> PipelineKey {
             switch kind {
             case .triangles:  return .solid(blend, depth: depth)
             case .sdf:        return .sdf(blend, depth: depth)
@@ -109,7 +115,7 @@ final class MetalRenderer {
             case .glyphAtlas: return .glyphAtlas(blend, depth: depth)
             case .particles:  return .points(blend, depth: depth)
             case .points3D:   return .pointCloud(blend, depth: depth)
-            case .mesh3D:     return .mesh(blend, depth: depth)
+            case .mesh3D:     return textured ? .meshTextured(blend, depth: depth) : .mesh(blend, depth: depth)
             case .depthScene: return .depthScene(blend, depth: depth)
             }
         }
@@ -785,9 +791,12 @@ final class MetalRenderer {
             let batch = batches[i]
             let next = i + 1 < batches.count ? batches[i + 1] : nil
             // The pipeline for this batch's geometry kind, blend mode, *and* the
-            // pass's depth format; built on first use of a combination. Skip the
-            // batch if it can't be built (never expected — same shaders).
-            guard let state = try? pipeline(.forBatch(batch.kind, batch.blendMode, depth: depthFormat)) else { continue }
+            // pass's depth format; built on first use of a combination. A textured
+            // mesh batch (carries a material texture) selects the textured variant.
+            // Skip the batch if it can't be built (never expected — same shaders).
+            let meshTextured = batch.kind == .mesh3D && batch.material?.texture != nil
+            guard let state = try? pipeline(.forBatch(batch.kind, batch.blendMode,
+                                                      depth: depthFormat, textured: meshTextured)) else { continue }
             // In a depth pass (active camera): 3D batches z-test + write depth. A 2D
             // batch that opted into a depth (`depth(at:)`) does too — its constant
             // clip-z is fed to the 2D vertex shader so it occludes / is occluded by
@@ -875,6 +884,13 @@ final class MetalRenderer {
                 let end = next?.meshStart ?? meshVertices.count
                 let count = end - batch.meshStart
                 guard count > 0, let meshBuffer, drawer.camera3D != nil else { continue }
+                // A textured mesh needs its base-color texture; if it can't be built,
+                // skip rather than draw the untextured shader against this pipeline.
+                if meshTextured {
+                    guard let texture = batch.material?.texture?.texture(for: device) else { continue }
+                    encoder.setFragmentTexture(texture, index: 0)
+                    encoder.setFragmentSamplerState(imageSampler, index: 0)
+                }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
                 encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 0)

@@ -152,14 +152,18 @@ typedef struct {
 // lights set the fragment draws the surface flat in that color (the unlit look);
 // with lights it shades `color` per the material model. The material's specular
 // strength + shininess ride the spare `w` slots
-// (`position.w`/`normal.w`) — the vertex shader reads only `position.xyz`/`normal.xyz`
-// — so the material is state-stack drawing state with no struct widening. Triangle
-// indices are expanded into a flat list on the CPU (no index buffer), matching the
-// 2D triangle path. Stride 48 (three 16-byte rows): float4 @0, float4 @16, float4 @32.
+// (`position.w`/`normal.w`) — the vertex shader reads only `position.xyz`/`normal.xyz`.
+// `uv` carries texture coordinates (0,0 … 1,1) for the textured-mesh pipeline; the
+// solid `ollin_mesh_vertex`/`_fragment` read only position/normal/color, so an
+// untextured mesh leaves `uv` zero and is unaffected by it. Triangle indices are
+// expanded into a flat list on the CPU (no index buffer), matching the 2D triangle
+// path. Stride 64 (four 16-byte rows): float4 @0, float4 @16, float4 @32, float2 @48
+// (+ 8 bytes pad, a reserved slot, e.g. a tangent later).
 typedef struct {
     simd_float4 position;   // world-space xyz (model matrix baked in); w = specular strength (0…1)
     simd_float4 normal;     // world-space normal (normal matrix baked in); w = shininess exponent
     simd_float4 color;      // straight RGBA diffuse; rgb = surface color, a = opacity
+    simd_float2 uv;         // texture coordinates, 0…1 (textured-mesh pipeline; 0 when untextured)
 } OllinMeshVertex;
 
 // Lighting for the 3D mesh model (the Blinn-Phong material on `ollin_mesh_fragment`).

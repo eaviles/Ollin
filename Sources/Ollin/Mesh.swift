@@ -27,14 +27,28 @@ public struct Mesh: Sendable {
     public var normals: [Vector3]
     /// Triangle list: three indices into `positions`/`normals` per triangle.
     public var indices: [UInt32]
+    /// Per-vertex texture coordinates (0,0 … 1,1), paired with `positions` by index.
+    /// Empty (the default) leaves the mesh untextured; a textured `material` needs
+    /// these to map (a count matching `positions`), else the surface draws flat in
+    /// its base color. The built-in generators emit them where there's a natural
+    /// parameterization (sphere, plane); a loaded model carries its own.
+    public var uvs: [Vector2]
+    /// The surface look — base color and optional texture — or `nil` for a plain
+    /// surface drawn in the current `fill`. Set with `textured(_:)` or read from a
+    /// model file. The texture maps through `uvs`.
+    public var material: MeshMaterial?
 
     /// A mesh from explicit arrays. `normals` should match `positions` by index
     /// (defaulting empty leaves the surface flat-normaled toward +z); `indices`
-    /// are a triangle list (length a multiple of 3).
-    public init(positions: [Vector3], normals: [Vector3] = [], indices: [UInt32]) {
+    /// are a triangle list (length a multiple of 3); `uvs`, when present, match
+    /// `positions` by index.
+    public init(positions: [Vector3], normals: [Vector3] = [], indices: [UInt32],
+                uvs: [Vector2] = [], material: MeshMaterial? = nil) {
         self.positions = positions
         self.normals = normals
         self.indices = indices
+        self.uvs = uvs
+        self.material = material
     }
 
     /// Number of triangles (index count ÷ 3).
@@ -81,7 +95,22 @@ public extension Mesh {
         let longest = Swift.max(s.x, Swift.max(s.y, s.z))
         let factor = longest > 1e-12 ? scale / longest : 1
         return Mesh(positions: positions.map { ($0 - c) * factor },
-                    normals: normals, indices: indices)
+                    normals: normals, indices: indices, uvs: uvs, material: material)
+    }
+
+    /// A copy wearing `image` as its texture (tinted by `baseColor`, default white).
+    /// The texture maps through the mesh's `uvs`, so use it on a mesh that carries
+    /// them — a generator like `.sphere`/`.plane` or a loaded model — else the
+    /// surface draws flat in `baseColor`. Mirrors `normalized(scale:)`: a value
+    /// transform returning a new mesh.
+    ///
+    /// ```swift
+    /// drawMesh(.sphere(radius: 200).textured(earthImage))
+    /// ```
+    func textured(_ image: Image, baseColor: Color = .white) -> Mesh {
+        var copy = self
+        copy.material = MeshMaterial(baseColor: baseColor, texture: image)
+        return copy
     }
 }
 
@@ -126,7 +155,9 @@ public extension Mesh {
             for j in 0...segs {
                 let phi = Double(j) / Double(segs) * 2 * .pi
                 let n = Vector3(st * cos(phi), ct, st * sin(phi))
-                b.vertex(n * radius, normal: n)
+                // u wraps around (longitude), v runs pole to pole (latitude).
+                let uv = Vector2(Double(j) / Double(segs), Double(i) / Double(rng))
+                b.vertex(n * radius, normal: n, uv: uv)
             }
         }
         let stride = segs + 1
@@ -194,10 +225,12 @@ public extension Mesh {
         let segs = max(segments, 1)
         var b = Builder()
         for i in 0...segs {
-            let z = (Double(i) / Double(segs) - 0.5) * depth
+            let v = Double(i) / Double(segs)
+            let z = (v - 0.5) * depth
             for j in 0...segs {
-                let x = (Double(j) / Double(segs) - 0.5) * width
-                b.vertex(Vector3(x, 0, z), normal: .unitY)
+                let u = Double(j) / Double(segs)
+                let x = (u - 0.5) * width
+                b.vertex(Vector3(x, 0, z), normal: .unitY, uv: Vector2(u, v))
             }
         }
         let stride = segs + 1
@@ -873,6 +906,10 @@ private struct Builder {
     var positions: [Vector3] = []
     var normals: [Vector3] = []
     var indices: [UInt32] = []
+    /// Texture coordinates, appended only by the `uv:`-taking `vertex`. A generator
+    /// that never passes a UV leaves this empty, so `mesh()` ships no `uvs`; one
+    /// that passes a UV for *every* vertex ships a full, aligned set.
+    var uvs: [Vector2] = []
 
     /// The index the next appended vertex will take.
     var nextIndex: UInt32 { UInt32(positions.count) }
@@ -880,6 +917,15 @@ private struct Builder {
     mutating func vertex(_ p: Vector3, normal: Vector3) {
         positions.append(p)
         normals.append(normal)
+    }
+
+    /// Append a vertex carrying a texture coordinate. Use it for *every* vertex of
+    /// a generator that emits UVs (sphere, plane), so `uvs` stays aligned with
+    /// `positions`.
+    mutating func vertex(_ p: Vector3, normal: Vector3, uv: Vector2) {
+        positions.append(p)
+        normals.append(normal)
+        uvs.append(uv)
     }
 
     /// Append a vertex and return its index.
@@ -944,7 +990,12 @@ private struct Builder {
         gridQuad(i, i + 1, i + 2, i + 3)
     }
 
-    func mesh() -> Mesh { Mesh(positions: positions, normals: normals, indices: indices) }
+    func mesh() -> Mesh {
+        // Ship UVs only when one was supplied for every vertex (sphere/plane); a
+        // partial set would mismap, so an unaligned count drops to untextured.
+        Mesh(positions: positions, normals: normals, indices: indices,
+             uvs: uvs.count == positions.count ? uvs : [])
+    }
 }
 
 // MARK: - Matrix helpers (internal — for baking the model transform CPU-side)
