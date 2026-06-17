@@ -1,6 +1,8 @@
 import Testing
 import Foundation
 import simd
+import CoreGraphics
+import Ollin
 import OllinPhone
 import OllinUSBMux
 #if canImport(Darwin)
@@ -8,8 +10,9 @@ import Darwin
 #endif
 
 /// Exercises the phone sensor-stream wire format — the framing header plus the
-/// motion, body-pose, face, and depth payload codecs — with encode/decode round-trips
-/// (GPU-free, CI-safe), plus a live-device test that soft-skips when no phone is streaming.
+/// motion, body-pose, face, depth, and segmentation payload codecs — with encode/decode
+/// round-trips (GPU-free, CI-safe), plus a live-device test that soft-skips when no
+/// phone is streaming.
 @Suite struct PhoneWireTests {
 
     // MARK: Round-trips
@@ -107,6 +110,41 @@ import Darwin
             fx: 100, fy: 100, cx: 1, cy: 0.5, cameraTransform: matrix_identity_float4x4,
             colorJPEG: Data(), depth: [1.0, 2.0], confidence: nil))
         #expect(roundTrip(message) == message)
+    }
+
+    @Test func roundTripsSegmentation() {
+        // A small person matte (3×2, 0…255), an upright-rotation count, plus opaque
+        // JPEG-stand-in color bytes.
+        let matte: [UInt8] = [0, 64, 128, 192, 255, 32]
+        let message = PhoneMessage.segmentation(PhoneSegmentationSample(
+            tracked: true, timestamp: 7.0, matteWidth: 3, matteHeight: 2, orientation: 1,
+            matte: matte, colorJPEG: Data([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10])))
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func roundTripsSegmentationEmptyColor() {
+        // A matte with no color frame and no rotation — the degenerate case the codec
+        // must survive.
+        let message = PhoneMessage.segmentation(PhoneSegmentationSample(
+            tracked: false, timestamp: 0, matteWidth: 2, matteHeight: 1, orientation: 0,
+            matte: [10, 250], colorJPEG: Data()))
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func rotatesCGImageClockwise() throws {
+        // A 2×2 gray image (TL=10, TR=20, BL=30, BR=40). A 90° clockwise turn sends
+        // the bottom-left pixel to the top-left; the matte and color rotate through
+        // this same call by the same turn count, so pinning it pins their alignment.
+        let plane: [UInt8] = [10, 20,
+                              30, 40]
+        let src = try #require(SegmentationImages.grayCGImage(fromPlane: plane, width: 2, height: 2))
+        let rotated = try #require(rotatedCGImage(src, quarterTurnsCW: 1))
+        #expect(rotated.width == 2 && rotated.height == 2)
+        #expect(SegmentationImages.grayBytes(from: rotated, width: 2, height: 2) == [30, 10,
+                                                                                     40, 20])
+        // A multiple of 4 turns is the identity (the input is returned unchanged).
+        let same = try #require(rotatedCGImage(src, quarterTurnsCW: 4))
+        #expect(SegmentationImages.grayBytes(from: same, width: 2, height: 2) == plane)
     }
 
     @Test func blendShapeOrderIsContiguous() {

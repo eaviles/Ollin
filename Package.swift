@@ -498,6 +498,13 @@ let package = Package(
             dependencies: ["Ollin", "OllinPhone"],
             path: "Examples/3D/PhoneWorldScan"
         ),
+        // The phone's on-device person segmentation lifted onto a live backdrop —
+        // the rear-camera Segment-mode sibling of the depth/pose/face examples.
+        .executableTarget(
+            name: "Example-PhoneSegmentation",
+            dependencies: ["Ollin", "OllinPhone"],
+            path: "Examples/3D/PhoneSegmentation"
+        ),
         .executableTarget(
             name: "Example-Breathing",
             dependencies: ["Ollin"],

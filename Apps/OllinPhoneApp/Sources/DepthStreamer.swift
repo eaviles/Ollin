@@ -54,10 +54,11 @@ final class DepthStreamer: NSObject, ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         guard let sceneDepth = frame.smoothedSceneDepth ?? frame.sceneDepth else { return }
 
-        guard let (depthW, depthH, depth) = Self.floatPixels(sceneDepth.depthMap) else { return }
-        let confidence = sceneDepth.confidenceMap.flatMap { Self.bytePixels($0) }?.data
+        guard let (depthW, depthH, depth) = floatPixels(sceneDepth.depthMap) else { return }
+        let confidence = sceneDepth.confidenceMap.flatMap { bytePixels($0) }?.data
 
-        guard let jpeg = colorJPEG(from: frame.capturedImage) else { return }
+        guard let jpeg = cameraJPEG(from: frame.capturedImage, context: ciContext,
+                                    maxDimension: maxColorDimension, quality: 0.6) else { return }
 
         // Intrinsics arrive at the captured-image resolution; bring them onto the
         // depth grid so the Mac builds a `CameraIntrinsics` against depthW×depthH.
@@ -76,63 +77,5 @@ final class DepthStreamer: NSObject, ARSessionDelegate {
             cameraTransform: frame.camera.transform,
             colorJPEG: jpeg, depth: depth,
             confidence: (confidence?.count == depth.count) ? confidence : nil))
-    }
-
-    // MARK: Pixel-buffer + JPEG helpers
-
-    /// Copy a `DepthFloat32` pixel buffer into a row-major `[Float]`, honoring the
-    /// buffer's row stride (which is usually padded past `width × 4`).
-    private static func floatPixels(_ buffer: CVPixelBuffer) -> (w: Int, h: Int, data: [Float])? {
-        CVPixelBufferLockBaseAddress(buffer, .readOnly)
-        defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
-        let w = CVPixelBufferGetWidth(buffer), h = CVPixelBufferGetHeight(buffer)
-        guard w > 0, h > 0, let base = CVPixelBufferGetBaseAddress(buffer) else { return nil }
-        let stride = CVPixelBufferGetBytesPerRow(buffer)
-        var out = [Float](repeating: 0, count: w * h)
-        out.withUnsafeMutableBytes { dst in
-            guard let dstBase = dst.baseAddress else { return }
-            for row in 0..<h {
-                memcpy(dstBase.advanced(by: row * w * 4), base.advanced(by: row * stride), w * 4)
-            }
-        }
-        return (w, h, out)
-    }
-
-    /// Copy a `OneComponent8` pixel buffer (the confidence map) into a row-major
-    /// `[UInt8]`, honoring the row stride.
-    private static func bytePixels(_ buffer: CVPixelBuffer) -> (w: Int, h: Int, data: [UInt8])? {
-        CVPixelBufferLockBaseAddress(buffer, .readOnly)
-        defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
-        let w = CVPixelBufferGetWidth(buffer), h = CVPixelBufferGetHeight(buffer)
-        guard w > 0, h > 0, let base = CVPixelBufferGetBaseAddress(buffer) else { return nil }
-        let stride = CVPixelBufferGetBytesPerRow(buffer)
-        var out = [UInt8](repeating: 0, count: w * h)
-        out.withUnsafeMutableBytes { dst in
-            guard let dstBase = dst.baseAddress else { return }
-            for row in 0..<h {
-                memcpy(dstBase.advanced(by: row * w), base.advanced(by: row * stride), w)
-            }
-        }
-        return (w, h, out)
-    }
-
-    /// Convert the captured YCbCr frame to a downscaled JPEG, in the camera-native
-    /// orientation (no rotation — depth, intrinsics, and color must share one frame
-    /// so the unprojection lines up).
-    private func colorJPEG(from pixelBuffer: CVPixelBuffer) -> Data? {
-        var ci = CIImage(cvPixelBuffer: pixelBuffer)
-        let longest = max(ci.extent.width, ci.extent.height)
-        if longest > CGFloat(maxColorDimension) {
-            let s = CGFloat(maxColorDimension) / longest
-            ci = ci.transformed(by: CGAffineTransform(scaleX: s, y: s))
-        }
-        guard let cg = ciContext.createCGImage(ci, from: ci.extent) else { return nil }
-
-        let out = NSMutableData()
-        guard let dest = CGImageDestinationCreateWithData(
-            out, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
-        CGImageDestinationAddImage(dest, cg, [kCGImageDestinationLossyCompressionQuality: 0.6] as CFDictionary)
-        guard CGImageDestinationFinalize(dest) else { return nil }
-        return out as Data
     }
 }

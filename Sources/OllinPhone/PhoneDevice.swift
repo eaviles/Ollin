@@ -50,6 +50,15 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     private var cachedSequence: Int?
     private var cachedFrame: RGBDFrame?
 
+    // The segmentation matte and cutout are built lazily and cached independently by
+    // sequence — so a sketch reading only the matte never pays to build the cutout
+    // (the accessor itself is the arm; building runs here on the main actor, not on
+    // the reader thread, so an unread surface is never produced).
+    private var cachedSegMatteSequence: Int?
+    private var cachedSegMatte: Image?
+    private var cachedSegCutoutSequence: Int?
+    private var cachedSegCutout: Image?
+
     /// Create a device bound to the capture app's stream port.
     public init(port: UInt16 = PhoneDevice.streamPort) {
         reader = PhoneStreamReader(port: port)
@@ -127,6 +136,40 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// to add each frame exactly once. `nil` before the first frame.
     public var latestDepthFrameID: Int? { reader.latestDepth?.sequence }
 
+    // MARK: - Segment mode (rear-camera person segmentation)
+
+    /// The latest person-segmentation matte as a tintable white-alpha `Image`, or
+    /// `nil` before one arrives. Populated when the capture app is in **Segment**
+    /// mode (rear camera, ARKit's on-device person segmentation). Drawn as-is it's a
+    /// white silhouette; `tint(_:)` recolors it into a shadow, glow, or solid fill.
+    /// Draw it into the same rectangle as the color feed and it lines up.
+    public var latestSegmentationMatte: Image? {
+        guard let box = reader.latestSegmentation else { return nil }
+        if cachedSegMatteSequence == box.sequence, let cachedSegMatte { return cachedSegMatte }
+        let matte = SegmentationImages.matteImage(from: box.matte)
+        cachedSegMatteSequence = box.sequence
+        cachedSegMatte = matte
+        return matte
+    }
+
+    /// The latest person **cutout** — the rear-camera frame's pixels where the matte
+    /// is on, transparent elsewhere — or `nil` before a Segment-mode frame arrives.
+    /// The person lifted off the background, ready to composite over anything you
+    /// draw. Costs a little more than the matte (the color is masked), so it's built
+    /// only when read.
+    public var latestSegmentationCutout: Image? {
+        guard let box = reader.latestSegmentation else { return nil }
+        if cachedSegCutoutSequence == box.sequence, let cachedSegCutout { return cachedSegCutout }
+        // Rotate the full-resolution color upright only now, when the cutout is
+        // actually read (the matte was rotated upright at decode time); both use the
+        // same quarter-turn count, so they stay aligned.
+        let color = rotatedCGImage(box.color, quarterTurnsCW: box.orientation) ?? box.color
+        let cutout = SegmentationImages.cutoutImage(frame: color, matte: box.matte)
+        cachedSegCutoutSequence = box.sequence
+        cachedSegCutout = cutout
+        return cutout
+    }
+
     // MARK: - FrameSource / VideoFeed (the World-mode color feed)
 
     /// The analysis tap (`FrameSource`): the live color frame, delivered on the
@@ -162,6 +205,8 @@ final class PhoneStreamReader: @unchecked Sendable {
         var latestMotion: PhoneMotionSample?
         var latestDepth: PhoneDepthFrameBox?
         var depthSequence = 0
+        var latestSegmentation: PhoneSegmentationBox?
+        var segSequence = 0
         var tap: FrameTap?
         var connected = false
         var message: String? = "Connecting to the phone…"
@@ -180,6 +225,7 @@ final class PhoneStreamReader: @unchecked Sendable {
     var latestFaces: [PhoneFaceSample] { lock.withLock { $0.latestFaces } }
     var latestMotion: PhoneMotionSample? { lock.withLock { $0.latestMotion } }
     var latestDepth: PhoneDepthFrameBox? { lock.withLock { $0.latestDepth } }
+    var latestSegmentation: PhoneSegmentationBox? { lock.withLock { $0.latestSegmentation } }
     var latestPose3D: simd_float4x4? { lock.withLock { $0.latestDepth?.transform } }
     var isConnected: Bool { lock.withLock { $0.connected } }
     var statusMessage: String? { lock.withLock { $0.message } }
@@ -240,13 +286,21 @@ final class PhoneStreamReader: @unchecked Sendable {
                         }
                         tap?(box.color)
                     }
+                case .message(.segmentation(let sample)):
+                    // JPEG-decode the color on this thread (off the main actor), then
+                    // store the boxed frame; the matte/cutout images are built lazily
+                    // on the main actor when the sketch reads them.
+                    let seq = lock.withLock { state -> Int in state.segSequence += 1; return state.segSequence }
+                    if let box = decodePhoneSegmentation(sample, sequence: seq) {
+                        lock.withLock { $0.latestSegmentation = box }
+                    }
                 case .message(let message):
                     lock.withLock { state in
                         switch message {
                         case .motion(let m): state.latestMotion = m
                         case .pose(let p): state.latestPose = p
                         case .face(let f): state.latestFaces = f
-                        case .depth: break   // handled above
+                        case .depth, .segmentation: break   // handled above
                         }
                     }
                 case .skip:

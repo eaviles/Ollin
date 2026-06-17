@@ -13,14 +13,16 @@ struct OllinCaptureApp: App {
     }
 }
 
-/// Which on-device sensor ARKit drives. Body and World use the rear camera, Face the
-/// front TrueDepth camera; only one ARKit session runs at a time, so they're mutually
-/// exclusive — the app runs one at a time. World streams a LiDAR RGBD frame (depth +
-/// color + pose); Body a skeleton; Face the expression mesh.
+/// Which on-device sensor ARKit drives. Body, World, and Segment use the rear camera,
+/// Face the front TrueDepth camera; only one ARKit session runs at a time, so they're
+/// mutually exclusive — the app runs one at a time. World streams a LiDAR RGBD frame
+/// (depth + color + pose); Body a skeleton; Face the expression mesh; Segment a person
+/// matte (+ color) for a silhouette/cutout.
 enum CaptureMode: String, CaseIterable, Identifiable {
     case body = "Body"
     case face = "Face"
     case world = "World"
+    case segment = "Segment"
     var id: String { rawValue }
 }
 
@@ -37,6 +39,8 @@ final class SensorStreamer: ObservableObject {
     @Published var topExpression = ""
     @Published var depthTracked = false
     @Published var depthInfo = ""
+    @Published var segTracked = false
+    @Published var segInfo = ""
     @Published var gravity = SIMD3<Float>(0, 0, 0)
     @Published var motionLive = false
     @Published var status = "Starting…"
@@ -44,11 +48,13 @@ final class SensorStreamer: ObservableObject {
     let bodySupported = ARBodyTrackingConfiguration.isSupported
     let faceSupported = ARFaceTrackingConfiguration.isSupported
     let depthSupported = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
+    let segSupported = ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentation)
 
     private var server: SensorServer?
     private let ar = ARStreamer()
     private let face = FaceStreamer()
     private let depth = DepthStreamer()
+    private let seg = SegmentationStreamer()
     private let motion = MotionStreamer()
     private var started = false
 
@@ -102,6 +108,13 @@ final class SensorStreamer: ObservableObject {
             self.depthInfo = "\(sample.depthWidth)×\(sample.depthHeight) · \(sample.colorJPEG.count / 1024) KB"
         }
 
+        seg.onSegmentation = { [weak self] sample in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.segmentation(sample)))
+            self.segTracked = sample.tracked
+            self.segInfo = "\(sample.matteWidth)×\(sample.matteHeight) · \(sample.colorJPEG.count / 1024) KB"
+        }
+
         applyMode()
     }
 
@@ -117,17 +130,21 @@ final class SensorStreamer: ObservableObject {
         // Only one ARKit session at a time — stop the others before starting one.
         switch mode {
         case .body:
-            face.stop(); depth.stop()
+            face.stop(); depth.stop(); seg.stop()
             ar.start()
             status = bodySupported ? "Streaming body" : "This device doesn't support body tracking"
         case .face:
-            ar.stop(); depth.stop()
+            ar.stop(); depth.stop(); seg.stop()
             face.start()
             status = faceSupported ? "Streaming face" : "This device doesn't support face tracking"
         case .world:
-            ar.stop(); face.stop()
+            ar.stop(); face.stop(); seg.stop()
             depth.start()
             status = depthSupported ? "Streaming depth" : "This device has no LiDAR for depth"
+        case .segment:
+            ar.stop(); face.stop(); depth.stop()
+            seg.start()
+            status = segSupported ? "Streaming segmentation" : "This device doesn't support person segmentation"
         }
     }
 
@@ -173,7 +190,8 @@ struct ContentView: View {
                         .foregroundStyle(.white.opacity(0.9))
                 }
 
-                // Camera mode — body (rear) or face (front), mutually exclusive.
+                // Capture mode — one ARKit session at a time (rear: body/world/segment,
+                // front: face), so the modes are mutually exclusive.
                 Picker("Mode", selection: Binding(
                     get: { streamer.mode },
                     set: { streamer.setMode($0) }
@@ -201,6 +219,11 @@ struct ContentView: View {
                             ? (streamer.depthTracked ? "streaming · \(streamer.depthInfo)" : "starting…")
                             : "needs LiDAR (Pro)",
                             ok: streamer.depthTracked)
+                    case .segment:
+                        row("Person", streamer.segSupported
+                            ? (streamer.segTracked ? "streaming · \(streamer.segInfo)" : "starting…")
+                            : "needs A12+ for segmentation",
+                            ok: streamer.segTracked)
                     }
                     row("Motion", streamer.motionLive
                         ? String(format: "live · gravity (% .2f, % .2f, % .2f)",

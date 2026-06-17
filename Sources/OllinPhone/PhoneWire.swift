@@ -60,6 +60,13 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// of KB; depth is raw float32 — LZFSE compression is a later optimization), so it
     /// streams only while the app is in World mode (LiDAR rear camera).
     case depth = 4
+    /// A person-segmentation matte computed on the phone's Neural Engine (ARKit's
+    /// `personSegmentation`) — a grayscale alpha matte (0 = background … 255 =
+    /// person) of the people in the rear-camera scene, plus the matching color
+    /// frame, which the Mac turns into a tintable silhouette and a person cutout.
+    /// Rear camera, so it's mutually exclusive with face tracking and shares the
+    /// camera with body/depth (its own session). Streams only in Segment mode.
+    case segmentation = 5
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -211,6 +218,40 @@ public struct PhoneDepthSample: Sendable, Equatable {
     }
 }
 
+/// One person-segmentation frame from the phone's rear camera: a grayscale alpha
+/// `matte` (`matteWidth × matteHeight`, row-major from the top-left, 0 = background
+/// … 255 = person) computed on the Neural Engine, and the matching JPEG color frame
+/// (`colorJPEG`, decoded on the Mac side so this file stays free of ImageIO). The
+/// matte is downscaled on the phone to a bounded size — it's a soft mask, and the
+/// Mac rescales it onto the color when it builds the cutout, so the payload stays
+/// small.
+///
+/// Both arrive in the camera-native (sensor-landscape) orientation, aligned with
+/// each other. `orientation` is the number of 90° **clockwise** turns the Mac
+/// applies to both to stand them upright for how the phone was held (0…3, derived
+/// from the device's interface orientation) — rotating them by the same amount keeps
+/// them aligned.
+public struct PhoneSegmentationSample: Sendable, Equatable {
+    public var tracked: Bool
+    public var timestamp: Double
+    public var matteWidth: Int
+    public var matteHeight: Int
+    public var orientation: UInt8
+    public var matte: [UInt8]
+    public var colorJPEG: Data
+
+    public init(tracked: Bool, timestamp: Double, matteWidth: Int, matteHeight: Int,
+                orientation: UInt8 = 0, matte: [UInt8], colorJPEG: Data) {
+        self.tracked = tracked
+        self.timestamp = timestamp
+        self.matteWidth = matteWidth
+        self.matteHeight = matteHeight
+        self.orientation = orientation
+        self.matte = matte
+        self.colorJPEG = colorJPEG
+    }
+}
+
 /// A decoded message of any kind — the unit tests round-trip this.
 public enum PhoneMessage: Sendable, Equatable {
     case motion(PhoneMotionSample)
@@ -220,6 +261,7 @@ public enum PhoneMessage: Sendable, Equatable {
     /// view — so the reader swaps it in wholesale and a face leaving clears itself.
     case face([PhoneFaceSample])
     case depth(PhoneDepthSample)
+    case segmentation(PhoneSegmentationSample)
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -227,6 +269,7 @@ public enum PhoneMessage: Sendable, Equatable {
         case .pose: return .bodyPose
         case .face: return .face
         case .depth: return .depth
+        case .segmentation: return .segmentation
         }
     }
 }
@@ -272,6 +315,7 @@ public extension PhoneWire {
         case .pose(let p): payload = encodePosePayload(p)
         case .face(let faces): payload = encodeFacePayload(faces)
         case .depth(let d): payload = encodeDepthPayload(d)
+        case .segmentation(let seg): payload = encodeSegmentationPayload(seg)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -359,6 +403,22 @@ public extension PhoneWire {
         }
         return p
     }
+
+    private static func encodeSegmentationPayload(_ s: PhoneSegmentationSample) -> Data {
+        var p = Data()
+        p.append(s.tracked ? 1 : 0)
+        appendF64(&p, s.timestamp)
+        appendU32(&p, UInt32(max(0, s.matteWidth)))
+        appendU32(&p, UInt32(max(0, s.matteHeight)))
+        p.append(s.orientation)
+        // Color: a JPEG byte count, then the JPEG bytes (decoded on the Mac side).
+        appendU32(&p, UInt32(s.colorJPEG.count))
+        p.append(s.colorJPEG)
+        // Matte: a sample count, then the raw grayscale bytes (one per pixel).
+        appendU32(&p, UInt32(s.matte.count))
+        p.append(contentsOf: s.matte)
+        return p
+    }
 }
 
 // MARK: - Decoding
@@ -373,6 +433,7 @@ public extension PhoneWire {
         case .bodyPose: return decodePose(payload).map(PhoneMessage.pose)
         case .face: return decodeFace(payload).map(PhoneMessage.face)
         case .depth: return decodeDepth(payload).map(PhoneMessage.depth)
+        case .segmentation: return decodeSegmentation(payload).map(PhoneMessage.segmentation)
         }
     }
 
@@ -488,6 +549,32 @@ public extension PhoneWire {
                                 depthWidth: depthWidth, depthHeight: depthHeight,
                                 fx: fx, fy: fy, cx: cx, cy: cy, cameraTransform: transform,
                                 colorJPEG: colorJPEG, depth: depth, confidence: confidence)
+    }
+
+    private static func decodeSegmentation(_ data: Data) -> PhoneSegmentationSample? {
+        // Fixed prefix: tracked(1) + timestamp(8) + dims(8) + orientation(1) + jpegLen(4).
+        let prefix = 1 + 8 + 8 + 1 + 4
+        guard data.count >= prefix else { return nil }
+        let s = data.startIndex
+        let tracked = data[s] != 0
+        var o = 1
+        func u32() -> Int { defer { o += 4 }; return Int(readU32(data, s + o)) }
+        let timestamp = readF64(data, s + o); o += 8
+        let matteWidth = u32()
+        let matteHeight = u32()
+        let orientation = data[s + o]; o += 1
+
+        let jpegLen = u32()
+        guard jpegLen >= 0, data.count >= o + jpegLen + 4 else { return nil }
+        let colorJPEG = Data(data[(s + o)..<(s + o + jpegLen)]); o += jpegLen
+
+        let matteCount = u32()
+        guard matteCount >= 0, data.count >= o + matteCount else { return nil }
+        let matte = [UInt8](data[(s + o)..<(s + o + matteCount)])
+
+        return PhoneSegmentationSample(tracked: tracked, timestamp: timestamp,
+                                       matteWidth: matteWidth, matteHeight: matteHeight,
+                                       orientation: orientation, matte: matte, colorJPEG: colorJPEG)
     }
 }
 

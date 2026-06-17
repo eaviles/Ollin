@@ -4,9 +4,9 @@
 
 ## Phone (iPhone sensor stream)
 
-Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture** — Ollin's own iOS app ([`Apps/OllinPhoneApp`](../Apps/OllinPhoneApp/README.md)) — runs ARKit on the phone's Neural Engine and streams the results over the USB cable; `PhoneDevice` reads them on the Mac as typed values you use in `draw()`. It streams a **3D body skeleton**, **faces** (up to 3 at once — each a deforming mesh + the 52 expression blendshapes), a world-facing **RGBD depth frame** from the rear LiDAR (a point cloud, with the camera's 6DoF pose), and **device motion**.
+Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture** — Ollin's own iOS app ([`Apps/OllinPhoneApp`](../Apps/OllinPhoneApp/README.md)) — runs ARKit on the phone's Neural Engine and streams the results over the USB cable; `PhoneDevice` reads them on the Mac as typed values you use in `draw()`. It streams a **3D body skeleton**, **faces** (up to 3 at once — each a deforming mesh + the 52 expression blendshapes), a world-facing **RGBD depth frame** from the rear LiDAR (a point cloud, with the camera's 6DoF pose), a **person-segmentation matte** (a silhouette and cutout, from the rear camera), and **device motion**.
 
-Where [`Record3D`](./Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives* — a body, a face, world-facing depth, and motion today, with more sensors (segmentation, richer depth) to come. The chain is Ollin's end to end.
+Where [`Record3D`](./Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives* — a body, a face, world-facing depth, a person-segmentation matte, and motion today, with more sensors (scene mesh, richer depth) to come. The chain is Ollin's end to end.
 
 `PhoneDevice` lives in a separate library so the drawing core stays lean; add `import OllinPhone` alongside `import Ollin`. The transport is the standard `usbmuxd` device tunnel (the same plumbing Xcode uses), so there's no third-party dependency and no Wi-Fi pairing — just the cable.
 
@@ -38,6 +38,7 @@ final class Pose: Sketch {
 - [The face](#the-face) — `PhoneFace`, the blendshapes, the mesh
 - [World depth](#world-depth) — `latestDepthFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) — `WorldCloud`, sweeping a room into one cloud
+- [Segmentation](#segmentation) — `latestSegmentationMatte`, `latestSegmentationCutout`, the Segment mode
 - [Device motion](#device-motion) — `PhoneMotion`, the transport smoke-test
 - [Notes](#notes) — the wire, coordinate space, what's ahead
 
@@ -171,6 +172,28 @@ override func draw() {
 
 The bundled example is `swift run Example-PhoneWorldScan` (sweep the phone, **R** to reset).
 
+## Segmentation
+
+In **Segment** mode the phone's rear camera runs ARKit's on-device **person segmentation** — the Neural Engine separates the people in the scene from the background — and streams the matte plus the color frame. `PhoneDevice` turns them into two drawable `Image`s:
+
+```swift
+device.latestSegmentationMatte       // Image? — a tintable white-alpha silhouette
+device.latestSegmentationCutout      // Image? — the person, lifted off the background
+```
+
+Both are `nil` until a Segment-mode frame arrives, and both line up with each other when drawn into the same rectangle. The **matte** is white with the person's alpha, so `tint(_:)` recolors it into a silhouette, a drop shadow, or a colored glow; the **cutout** keeps the camera's own pixels where the matte is on and is transparent elsewhere — the person ready to composite over anything. The cutout costs a little more to build (the color is masked), so it's produced only when you read it.
+
+```swift
+guard let cutout = device.latestSegmentationCutout else {
+    return drawStatus(device.waitingMessage, style: .info)
+}
+let rect = Rectangle(fitting: Vector2(Double(cutout.width), Double(cutout.height)),
+                     in: canvasRectangle)
+drawImage(cutout, in: rect)           // the person over whatever you drew first
+```
+
+The matte and cutout come back **upright** for how the phone is held — the capture app sends the device orientation and `PhoneDevice` rotates both to match — and they stay aligned with each other. Person segmentation needs an A12 or later iPhone, and uses the **rear** camera (ARKit's segmentation is rear-only; a front/selfie matte is a later addition). The bundled example is `swift run Example-PhoneSegmentation`.
+
 ## Device motion
 
 `PhoneMotion` is the CoreMotion sample — attitude (a quaternion), gravity, rotation rate, and user acceleration — the cheap payload that proves the USB transport before any model runs:
@@ -192,4 +215,4 @@ Tilt the phone and `gravity` swings — a one-line check that the wire is alive.
 - **USB only.** The transport is the `usbmuxd` tunnel over the cable (port 1338, distinct from Record3D's 1337). Wi-Fi is deliberately out.
 - **Per-frame clouds are camera-relative; fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame (root at the lens), and the skeleton is in model space (root at the origin). [World fusion](#world-fusion) is what lifts a sweep into one fixed world cloud, by applying each frame's `latestPose`. Fusing several poses' clouds into a single *registered* scene is shipped; richer multi-frame tricks (loop closure, drift correction) are not — a long sweep drifts with ARKit's own tracking.
 - **Depth is raw over the wire.** The LiDAR depth map ships uncompressed (a 256×192 frame is ~196 KB, comfortable over USB); LZFSE compression is a later optimization. The color image is sent as a downscaled JPEG.
-- **A growing catalog.** Body pose, face, world depth, and motion are the shipped payloads; segmentation mattes and richer sensors are the same app sending new tagged payloads, not new pipelines.
+- **A growing catalog.** Body pose, face, world depth, person segmentation, and motion are the shipped payloads; richer sensors are the same app sending new tagged payloads, not new pipelines.
