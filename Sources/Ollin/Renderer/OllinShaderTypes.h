@@ -188,14 +188,28 @@ typedef struct {
     float _pad;
 } OllinLight;
 
+// Shadow mapping (opt-in, `castShadows()`): one directional light casts. The
+// caster's contribution is dimmed where a depth pass from its point of view found
+// an occluder nearer than the receiver. `shadowLight` is the index of that light
+// in `lights` (or -1 when shadows are off — then the mesh fragment is byte-identical
+// to the unshadowed path); `lightViewProjection` takes a world point into the
+// caster's clip space (an orthographic box auto-fit to the camera target);
+// `shadowStrength` scales the darkening (1 = full); `shadowTexelWorld` is the
+// world-space size of one shadow-map texel, the scale-invariant unit for the
+// normal-offset bias.
 typedef struct {
     simd_float4 ambient;          // rgb linear ambient (lights every surface flatly); a unused
     simd_float4 cameraPosition;   // world-space eye xyz (for the specular view direction); w unused
     OllinLight lights[OLLIN_MAX_LIGHTS];
     int lightCount;               // number of valid entries in `lights`
     int enabled;                  // 1 = lit shading (any light or ambient set); 0 = normal-as-color (unchanged)
+    int shadowLight;              // index of the shadow-casting light in `lights`, or -1 (no shadows)
+    float shadowStrength;         // 0…1 darkening applied to the caster where occluded
+    simd_float4x4 lightViewProjection;  // world -> shadow-caster clip space
+    float shadowTexelWorld;       // world-space size of one shadow-map texel (normal-bias scale)
     float _pad0;
     float _pad1;
+    float _pad2;
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

@@ -233,6 +233,17 @@ final class Drawer {
     }
     private(set) var lightingMode: LightingMode = .auto
 
+    /// Whether this frame casts shadows (see `castShadows`). Per-frame state like the
+    /// lights — reset each frame, set in `draw()`. When on, the scene's primary
+    /// directional light casts; the renderer renders a depth pass from it and the mesh
+    /// fragment dims that light where a receiver is occluded.
+    private(set) var castsShadows = false
+
+    /// The shadow map resolution the renderer renders the depth pass into. Kept here
+    /// only to size the normal-offset bias in world units (`shadowTexelWorld`); the
+    /// renderer owns the actual texture and must use the same value (`MetalRenderer`).
+    static let shadowMapResolution = 2048
+
     /// A pleasant default lighting rig — a soft ambient with a key and a dimmer fill
     /// directional — used when a sketch draws meshes without setting any light, and
     /// by the `lights()` convenience. So a solid is shaded out of the box.
@@ -654,12 +665,22 @@ final class Drawer {
     /// Drawing state, saved by `withState`.
     func wireframe(_ on: Bool) { wireframeEnabled = on }
 
+    /// Cast shadows from the scene's primary directional light this frame. Per-frame
+    /// state like the lights — set it in `draw()`. The renderer renders a depth pass
+    /// from that light and dims the light on meshes it can't reach. A no-op without a
+    /// camera or a directional light. (`noShadows()` turns it back off.)
+    func castShadows() { castsShadows = true }
+
+    /// Stop casting shadows (the default). Per-frame state.
+    func noShadows() { castsShadows = false }
+
     /// Pack this frame's effective lighting into the GPU uniform. The mode decides
     /// the source: `.off` shades nothing (flat unlit, `enabled == 0`), `.auto` uses
     /// the default rig (the out-of-box shaded look), `.custom` uses the sketch's own
     /// lights and ambient.
     func makeLighting() -> OllinLighting {
         var u = OllinLighting()
+        u.shadowLight = -1   // no shadows unless a caster is found below
         if let eye = camera3D?.eye {
             u.cameraPosition = SIMD4<Float>(Float(eye.x), Float(eye.y), Float(eye.z), 0)
         }
@@ -668,7 +689,7 @@ final class Drawer {
         switch lightingMode {
         case .off:
             u.enabled = 0
-            return u   // flat, unlit; lights/ambient unused
+            return u   // flat, unlit; lights/ambient/shadows unused
         case .auto:
             ambient = Drawer.defaultAmbient
             activeLights = Drawer.defaultLights
@@ -688,6 +709,27 @@ final class Drawer {
             tuplePtr.withMemoryRebound(to: OllinLight.self, capacity: Int(OLLIN_MAX_LIGHTS)) { buf in
                 for i in 0..<count { buf[i] = Drawer.packLight(activeLights[i]) }
             }
+        }
+        // Shadow caster: the first directional light, with an orthographic frustum
+        // auto-fit around the camera target. Looks from above the target along the
+        // light's travel direction; the box is sized to the eye→target distance (the
+        // orbit radius), which frames the scene the camera does.
+        if castsShadows, let camera = camera3D,
+           let caster = (0..<count).first(where: { activeLights[$0].kind == .directional }) {
+            let target = camera.target.simd3
+            let r = max(Float(simd_distance(camera.eye.simd3, target)), 1)
+            let dirToLight = simd_normalize((activeLights[caster].direction * -1).normalized.simd3)
+            let d = 2 * r
+            let eye = target + dirToLight * d
+            // Pick an up vector not parallel to the light direction.
+            let up: SIMD3<Float> = abs(dirToLight.y) > 0.99 ? SIMD3<Float>(0, 0, 1) : SIMD3<Float>(0, 1, 0)
+            let view = Camera3D.lookAt(eye: eye, center: target, up: up)
+            let proj = Camera3D.orthographic(height: 2 * r, aspect: 1,
+                                             near: max(0.01, d - 1.5 * r), far: d + 1.5 * r)
+            u.lightViewProjection = proj * view
+            u.shadowLight = Int32(caster)
+            u.shadowStrength = 1
+            u.shadowTexelWorld = (2 * r) / Float(Drawer.shadowMapResolution)
         }
         return u
     }
@@ -907,6 +949,7 @@ final class Drawer {
         lights.removeAll(keepingCapacity: true)
         ambientLightColor = nil
         lightingMode = .auto
+        castsShadows = false
         hasDepthScene = false
         // The 2D depth is camera-derived (a clip-z against this frame's camera), so
         // it resets with the camera each frame — set it from `draw()` after the

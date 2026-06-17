@@ -363,6 +363,17 @@ open class Sketch {
     /// generated primitive or a loaded model).
     public func wireframe(_ on: Bool = true) { drawer.wireframe(on) }
 
+    /// Cast shadows this frame from the scene's primary directional light, so solids
+    /// drop shadows onto a floor and onto one another. Per-frame state like the lights
+    /// and camera — call it in `draw()`, after setting a camera and at least one
+    /// directional light (`directionalLight`/`lights()`); it's a no-op otherwise. The
+    /// shadow frustum auto-fits the scene around the camera target. Pass `false` (or
+    /// call `noShadows()`) to turn shadows back off.
+    public func castShadows(_ on: Bool = true) { on ? drawer.castShadows() : drawer.noShadows() }
+
+    /// Stop casting shadows (the default).
+    public func noShadows() { drawer.noShadows() }
+
     // MARK: 3D — solid primitives & meshes
 
     /// Draw a solid 3D `Mesh` through the active camera with depth testing (set a

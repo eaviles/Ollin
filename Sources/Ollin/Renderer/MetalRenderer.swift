@@ -58,6 +58,10 @@ final class MetalRenderer {
         /// format, unlike every geometry pipeline; this flag keeps it in the same
         /// cache (so live shader reload rebuilds it too).
         var isPresent = false
+        /// The shadow depth pass: single-sample, depth-only (no color attachment, no
+        /// fragment). Like `isPresent`, an exception to the geometry-pipeline shape,
+        /// kept in the same cache so live shader reload rebuilds it too.
+        var isShadow = false
 
         // tessellated triangles (rects, lines, polygons, arcs)
         static func solid(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -109,6 +113,9 @@ final class MetalRenderer {
         // final fullscreen tone-map pass, float -> sRGB drawable
         static let present = PipelineKey(vertex: "ollin_present_vertex",
                                          fragment: "ollin_present_fragment", isPresent: true)
+        // depth-only shadow pass (mesh geometry from the light's point of view)
+        static let meshShadow = PipelineKey(vertex: "ollin_mesh_shadow_vertex",
+                                            fragment: "", isShadow: true)
 
         /// The pipeline a recorded batch needs, from its geometry kind, blend, the
         /// active depth format (nil in 2D), and — for a mesh — whether it's textured.
@@ -219,6 +226,26 @@ final class MetalRenderer {
         d.depthCompareFunction = .always
         d.isDepthWriteEnabled = false
         return device.makeDepthStencilState(descriptor: d)
+    }()
+
+    /// Shadow mapping (opt-in via `castShadows()`). The depth pass from the casting
+    /// light renders into `shadowMap` — a square `.private` depth texture sampled in
+    /// the lit mesh fragment. `shadowMapResolution` must match `Drawer`'s (which uses
+    /// it to size the normal-offset bias in world units). `dummyShadowMap` is a 1×1
+    /// depth texture bound when shadows are off, so the mesh fragment's declared
+    /// `depth2d` argument is always satisfied without a separate pipeline variant.
+    /// `shadowSampler` is a comparison sampler (lessEqual) for hardware PCF.
+    static let shadowMapResolution = 2048
+    private var shadowMap: MTLTexture?
+    private var dummyShadowMap: MTLTexture?
+    private lazy var shadowSampler: MTLSamplerState? = {
+        let d = MTLSamplerDescriptor()
+        d.minFilter = .linear
+        d.magFilter = .linear
+        d.sAddressMode = .clampToEdge
+        d.tAddressMode = .clampToEdge
+        d.compareFunction = .lessEqual
+        return device.makeSamplerState(descriptor: d)
     }()
 
     /// The on-screen geometry targets: this frame's geometry composites into a
@@ -368,6 +395,11 @@ final class MetalRenderer {
             return
         }
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        // Shadow depth pass from the casting light, ahead of the geometry pass in the
+        // same command buffer (a no-op returning nil when this frame casts no shadow).
+        // It shares the mesh vertex buffer the geometry pass uses.
+        let meshBuf = meshBuffer(at: frameIndex, for: drawer.meshVertices.count)
+        let renderedShadow = encodeShadowPass(drawer, into: commandBuffer, meshBuffer: meshBuf)
         guard let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
             return
@@ -380,8 +412,8 @@ final class MetalRenderer {
                imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
                glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
                pointBuffer: pointBuffer(at: frameIndex, for: drawer.points.count),
-               meshBuffer: meshBuffer(at: frameIndex, for: drawer.meshVertices.count),
-               depthFormat: passDepthFormat)
+               meshBuffer: meshBuf,
+               depthFormat: passDepthFormat, shadowMap: renderedShadow)
         geomEncoder.endEncoding()
 
         if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: drawable.texture)) {
@@ -627,6 +659,10 @@ final class MetalRenderer {
         guard let readback = device.makeBuffer(length: byteCount, options: .storageModeShared),
               let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        // Shadow depth pass (nil when this frame casts no shadow), sharing the export
+        // mesh buffer; so the headless/snapshot path shadows exactly like the window.
+        let meshBuf = exportMeshBuffer(for: drawer.meshVertices.count)
+        let renderedShadow = encodeShadowPass(drawer, into: commandBuffer, meshBuffer: meshBuf)
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
         encode(drawer, viewport: viewport, into: encoder,
@@ -635,8 +671,8 @@ final class MetalRenderer {
                imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
                pointBuffer: exportPointBuffer(for: drawer.points.count),
-               meshBuffer: exportMeshBuffer(for: drawer.meshVertices.count),
-               depthFormat: passDepthFormat)
+               meshBuffer: meshBuf,
+               depthFormat: passDepthFormat, shadowMap: renderedShadow)
         encoder.endEncoding()
 
         // Tone-map the resolved float frame into the sRGB display texture.
@@ -728,7 +764,7 @@ final class MetalRenderer {
                         triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?,
                         imageBuffer: MTLBuffer?, glyphBuffer: MTLBuffer?,
                         pointBuffer: MTLBuffer?, meshBuffer: MTLBuffer?,
-                        depthFormat: MTLPixelFormat?) {
+                        depthFormat: MTLPixelFormat?, shadowMap: MTLTexture? = nil) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
         let imageVertices = drawer.imageVertices
@@ -787,6 +823,11 @@ final class MetalRenderer {
         // below. `enabled` is 0 when the sketch set no light, so the mesh fragment
         // keeps the byte-identical normal-as-color path.
         var lighting = drawer.makeLighting()
+        // Shadows only apply when the shadow pass actually populated a map (the
+        // render/image paths); the accumulation/texture paths pass nil, so clear the
+        // caster index there and bind the 1×1 dummy so the fragment never samples it.
+        if shadowMap == nil { lighting.shadowLight = -1 }
+        let shadowTexture = shadowMap ?? ensureDummyShadowMap()
 
         // The strip must be bound whenever the SDF fragment runs (it references
         // the texture even for all-solid frames), so resolve it once per encode.
@@ -902,6 +943,11 @@ final class MetalRenderer {
                     encoder.setFragmentTexture(texture, index: 0)
                     encoder.setFragmentSamplerState(imageSampler, index: 0)
                 }
+                // Shadow map at fragment texture 1 (the real map when shadows are on,
+                // a 1×1 dummy otherwise — `lighting.shadowLight` gates the sampling).
+                // Harmlessly ignored by the wireframe pipeline, which declares neither.
+                encoder.setFragmentTexture(shadowTexture, index: 1)
+                if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
                 encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
@@ -1048,6 +1094,97 @@ final class MetalRenderer {
         return device.makeTexture(descriptor: desc)
     }
 
+    /// The shadow map: a square single-sample `.private` depth texture the shadow
+    /// pass renders into and the lit mesh fragment samples. Allocated lazily on the
+    /// first shadow-casting frame (a sketch that never casts shadows allocates none),
+    /// then reused.
+    private func ensureShadowMap() -> MTLTexture? {
+        if let m = shadowMap { return m }
+        let n = MetalRenderer.shadowMapResolution
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: depthPixelFormat, width: n, height: n, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        shadowMap = device.makeTexture(descriptor: desc)
+        return shadowMap
+    }
+
+    /// A 1×1 depth texture bound to the mesh fragment's shadow slot when shadows are
+    /// off, so its declared `depth2d` argument is always satisfied (the fragment only
+    /// samples it when `shadowLight >= 0`). Cleared once on creation so it's never
+    /// read uninitialized.
+    private func ensureDummyShadowMap() -> MTLTexture? {
+        if let m = dummyShadowMap { return m }
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: depthPixelFormat, width: 1, height: 1, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        guard let texture = device.makeTexture(descriptor: desc) else { return nil }
+        // Clear it (a depth-only pass) so the contents are defined.
+        if let cb = commandQueue.makeCommandBuffer() {
+            let pass = MTLRenderPassDescriptor()
+            pass.depthAttachment.texture = texture
+            pass.depthAttachment.loadAction = .clear
+            pass.depthAttachment.clearDepth = 1.0
+            pass.depthAttachment.storeAction = .store
+            cb.makeRenderCommandEncoder(descriptor: pass)?.endEncoding()
+            cb.commit()
+        }
+        dummyShadowMap = texture
+        return dummyShadowMap
+    }
+
+    /// Render the scene's mesh geometry into the shadow map from the casting light's
+    /// point of view (a depth-only pass), so the lit mesh fragment can compare each
+    /// receiver against it. Encoded *before* the geometry pass in the same command
+    /// buffer — Metal's intra-buffer hazard tracking orders the geometry pass after
+    /// it. Returns the populated shadow map, or nil when this frame casts no shadow
+    /// (no `castShadows()`, no directional light, or no meshes) — the caller then
+    /// shades unshadowed. Uses the same `meshBuffer` the geometry pass will use (it
+    /// uploads the vertices here; the geometry pass re-copies the same bytes).
+    private func encodeShadowPass(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
+                                  meshBuffer: MTLBuffer?) -> MTLTexture? {
+        let lighting = drawer.makeLighting()
+        let meshVertices = drawer.meshVertices
+        guard lighting.shadowLight >= 0, lighting.enabled != 0, !meshVertices.isEmpty,
+              let meshBuffer, let shadowMap = ensureShadowMap(),
+              let shadowPipeline = try? pipeline(.meshShadow) else { return nil }
+
+        meshVertices.withUnsafeBytes { raw in
+            meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+        }
+
+        let pass = MTLRenderPassDescriptor()
+        pass.depthAttachment.texture = shadowMap
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.clearDepth = 1.0
+        pass.depthAttachment.storeAction = .store
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        encoder.setRenderPipelineState(shadowPipeline)
+        encoder.setDepthStencilState(depthTestState)
+        // Slope-scaled depth bias on the stored depth keeps self-shadowing acne off
+        // (paired with the fragment's normal-offset + constant bias).
+        encoder.setDepthBias(0.0015, slopeScale: 2.0, clamp: 0.01)
+        var lightVP = lighting.lightViewProjection
+        encoder.setVertexBytes(&lightVP, length: MemoryLayout<simd_float4x4>.stride, index: 2)
+
+        let meshStride = MemoryLayout<OllinMeshVertex>.stride
+        let batches = drawer.batches
+        for i in batches.indices {
+            let batch = batches[i]
+            // Solid + textured meshes cast; wireframe (see-through edges) does not.
+            guard batch.kind == .mesh3D, !batch.meshWireframe else { continue }
+            let next = i + 1 < batches.count ? batches[i + 1] : nil
+            let end = next?.meshStart ?? meshVertices.count
+            let count = end - batch.meshStart
+            guard count > 0 else { continue }
+            encoder.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+        }
+        encoder.endEncoding()
+        return shadowMap
+    }
+
     /// The single-sample linear-float resolve target: the MSAA resolve destination
     /// (`.renderTarget`) that the present pass then samples (`.shaderRead`).
     private func makeFloatResolve(width: Int, height: Int) -> MTLTexture? {
@@ -1167,9 +1304,28 @@ final class MetalRenderer {
         if key.isPresent {
             return try makePresentPipeline(using: library)
         }
+        if key.isShadow {
+            return try makeShadowPipeline(using: library)
+        }
         return try makePipeline(vertex: key.vertex, fragment: key.fragment, using: library,
                                 premultiplied: key.premultiplied, blend: key.blend,
                                 depthFormat: key.depthFormat)
+    }
+
+    /// The shadow depth pass: a depth-only pipeline (no fragment, no color
+    /// attachment) that rasterizes mesh geometry from the light's point of view into
+    /// the shadow map. Single-sample — the shadow map is plain depth, softened by PCF
+    /// when sampled, not MSAA.
+    private func makeShadowPipeline(using library: MTLLibrary) throws -> MTLRenderPipelineState {
+        guard let vertexFunction = library.makeFunction(name: "ollin_mesh_shadow_vertex") else {
+            throw RendererError.shaderFunctions
+        }
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = vertexFunction
+        descriptor.fragmentFunction = nil   // depth-only
+        descriptor.rasterSampleCount = 1
+        descriptor.depthAttachmentPixelFormat = depthPixelFormat
+        return try device.makeRenderPipelineState(descriptor: descriptor)
     }
 
     /// The final tone-map pass: a fullscreen triangle sampling the resolved

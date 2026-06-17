@@ -162,6 +162,15 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func meshShadowsMatchesReference() throws {
+        // A box and a sphere above a floor, lit by a directional key with castShadows()
+        // on — pins the shadow pass (the depth render from the light) and the shadow
+        // sample in the lit fragment (the cast shadows on the floor and between solids).
+        let diff = try Snapshot.meanDifference(of: MeshShadowsScene(), against: "mesh-shadows")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func transformed3DMatchesReference() throws {
         // Point-cloud blobs placed entirely by the 3D transform stack — a center blob
         // plus four satellites positioned by rotateY + translate and sized by scale.
@@ -322,6 +331,32 @@ private final class TexturedMesh3DScene: Sketch {
         }
         return img
     }()
+}
+
+/// A box and a sphere above a floor, lit by a directional key with `castShadows()` on,
+/// through a fixed camera — pins the shadow pass (the depth render from the light) and
+/// the shadow sample in the lit mesh fragment (the cast shadows on the floor and the
+/// sphere's shadow reaching toward the box). No `time`, so it's deterministic.
+private final class MeshShadowsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: Vector3(0, 0.6, 0), radius: 7,
+                         azimuth: 0.5, elevation: 0.45, fieldOfView: .pi / 3.6))
+        ambientLight(Color(white: 0.15))
+        directionalLight(.white, direction: Vector3(-0.5, -0.85, -0.35), intensity: 1.0)
+        castShadows()
+        withState { fill(Color(white: 0.8)); specular(0.05); drawPlane(width: 10, depth: 10) }
+        withState {
+            fill(Color(hue: 0.03, saturation: 0.6, brightness: 0.95)); specular(0.3); shininess(40)
+            translate(-1.1, 1.0, 0); rotateY(0.5); drawBox(size: 1.6)
+        }
+        withState {
+            fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); shininess(40)
+            translate(1.3, 1.3, 0.3); drawSphere(radius: 1.1)
+        }
+    }
 }
 
 /// A wireframe icosphere through a fixed camera, stroke-colored — pins the wireframe

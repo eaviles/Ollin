@@ -450,6 +450,11 @@ let package = Package(
             path: "Examples/3D/Lighting"
         ),
         .executableTarget(
+            name: "Example-Shadows",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/Shadows"
+        ),
+        .executableTarget(
             name: "Example-DepthCompositing",
             dependencies: ["Ollin"],
             path: "Examples/3D/DepthCompositing"

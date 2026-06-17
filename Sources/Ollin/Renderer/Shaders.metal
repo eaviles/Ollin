@@ -1253,19 +1253,53 @@ vertex MeshOut ollin_mesh_vertex(uint vid [[vertex_id]],
     return out;
 }
 
-fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
-                                    constant OllinLighting &light [[buffer(0)]]) {
-    float3 n = normalize(in.normal);
-    // No lights set: draw flat in the surface color (the unlit look). Linearize so
-    // the present pass's sRGB re-encode lands the on-screen pixel at the fill color.
-    if (light.enabled == 0) {
-        return float4(srgbToLinear(in.color.rgb), in.color.a);
+// Shadow factor for the one casting light: 1 fully lit, 0 fully shadowed. Projects
+// the receiver into the caster's clip space and PCF-compares against the depth the
+// shadow pass stored. A normal-offset bias (scaled by the shadow texel's world size,
+// so it's scale-invariant and grows at grazing angles) plus a small constant depth
+// bias keep self-shadowing acne off without floating the contact (peter-panning).
+// Kept self-contained so a softer technique (PCSS) or a ray-traced path can replace
+// it here behind the same call.
+static inline float shadowFactor(float3 worldPos, float3 n, float3 toLight,
+                                 float4x4 lightVP, float texelWorld,
+                                 depth2d<float> shadowMap, sampler shadowSamp) {
+    float cosTheta = clamp(dot(n, toLight), 0.0, 1.0);
+    float3 biased = worldPos + n * (texelWorld * (1.5 + 2.0 * (1.0 - cosTheta)));
+    float4 lc = lightVP * float4(biased, 1.0);
+    if (lc.w <= 0.0) return 1.0;
+    float3 ndc = lc.xyz / lc.w;
+    // Outside the caster's box nothing was rendered, so treat the surface as lit.
+    if (ndc.x < -1.0 || ndc.x > 1.0 || ndc.y < -1.0 || ndc.y > 1.0 || ndc.z > 1.0) return 1.0;
+    float2 uv = ndc.xy * float2(0.5, -0.5) + 0.5;   // clip (y-up) -> texture (y-down)
+    float ref = ndc.z - 0.0015;                     // small constant depth bias
+    float2 texel = 1.0 / float2(shadowMap.get_width(), shadowMap.get_height());
+    // 3x3 PCF with the hardware comparison sampler (lessEqual → fraction lit).
+    float sum = 0.0;
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            sum += shadowMap.sample_compare(shadowSamp, uv + float2(dx, dy) * texel, ref);
+        }
     }
-    // Blinn-Phong over the linearized surface (diffuse) color.
-    float3 base = srgbToLinear(in.color.rgb);
-    float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
-    float specStrength = in.material.x;
-    float shininess = max(in.material.y, 1.0);
+    return sum / 9.0;
+}
+
+// The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
+// surface `normal`, `worldPos`, and `material` (x = specular strength, y = shininess):
+// ambient + per-light diffuse + Blinn-Phong specular, with the spot cone gate. The one
+// shadow-casting light (`light.shadowLight`, -1 when off) is dimmed where the receiver
+// is occluded. Shared by the solid and textured mesh fragments so they stay in step;
+// with `enabled == 0` it returns the surface flat (the unlit look).
+static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
+                                  float3 worldPos, float2 material,
+                                  constant OllinLighting &light,
+                                  depth2d<float> shadowMap, sampler shadowSamp) {
+    float3 n = normalize(normal);
+    if (light.enabled == 0) {
+        return float4(base, alpha);
+    }
+    float3 viewDir = normalize(light.cameraPosition.xyz - worldPos);
+    float specStrength = material.x;
+    float shininess = max(material.y, 1.0);
     float3 lit = light.ambient.rgb * base;   // flat ambient term
     for (int i = 0; i < light.lightCount; i++) {
         OllinLight L = light.lights[i];
@@ -1274,7 +1308,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
         if (L.kind == 0) {
             toLight = L.direction.xyz;            // directional: already the dir to the light
         } else {
-            toLight = normalize(L.position.xyz - in.worldPos);
+            toLight = normalize(L.position.xyz - worldPos);
             if (L.kind == 2) {
                 // Spot: gate by the cone. The axis is the light's travel direction,
                 // so the direction from the light to this surface is -toLight; its
@@ -1289,9 +1323,41 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
         float3 h = normalize(toLight + viewDir);
         float spec = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), shininess) * specStrength : 0.0;
         float3 specular = L.color.rgb * spec;
+        // Dim only the casting light where this surface is in shadow (ambient stays).
+        if (i == light.shadowLight) {
+            float lit01 = shadowFactor(worldPos, n, toLight, light.lightViewProjection,
+                                       light.shadowTexelWorld, shadowMap, shadowSamp);
+            atten *= mix(1.0, lit01, light.shadowStrength);
+        }
         lit += atten * (diffuse + specular);
     }
-    return float4(lit, in.color.a);
+    return float4(lit, alpha);
+}
+
+// Depth-only vertex for the shadow pass: transform a mesh vertex into the caster's
+// clip space (the light view-projection bound at index 2). The pipeline has no
+// fragment — the pass writes only depth, which the lit mesh fragments above sample.
+struct MeshShadowOut {
+    float4 position [[position]];
+};
+
+vertex MeshShadowOut ollin_mesh_shadow_vertex(uint vid [[vertex_id]],
+                                              const device OllinMeshVertex *verts [[buffer(0)]],
+                                              constant float4x4 &lightVP [[buffer(2)]]) {
+    MeshShadowOut out;
+    out.position = lightVP * float4(verts[vid].position.xyz, 1.0);
+    return out;
+}
+
+fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
+                                    constant OllinLighting &light [[buffer(0)]],
+                                    depth2d<float> shadowMap [[texture(1)]],
+                                    sampler shadowSamp [[sampler(1)]]) {
+    // Linearize the surface color so the present pass's sRGB re-encode lands the
+    // on-screen pixel at the fill color, then shade + shadow it through the shared
+    // tail (which returns it flat unchanged when no light is set).
+    return meshLitColor(srgbToLinear(in.color.rgb), in.color.a, in.normal,
+                        in.worldPos, in.material, light, shadowMap, shadowSamp);
 }
 
 // MARK: - Textured 3D mesh
@@ -1310,44 +1376,6 @@ struct MeshTexturedOut {
     float2 uv;
 };
 
-// The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
-// surface `normal`, `worldPos`, and `material` (x = specular strength, y = shininess).
-// Mirrors `ollin_mesh_fragment`'s tail exactly (ambient + per-light diffuse +
-// Blinn-Phong specular, with the spot cone gate).
-static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
-                                  float3 worldPos, float2 material,
-                                  constant OllinLighting &light) {
-    float3 n = normalize(normal);
-    if (light.enabled == 0) {
-        return float4(base, alpha);
-    }
-    float3 viewDir = normalize(light.cameraPosition.xyz - worldPos);
-    float specStrength = material.x;
-    float shininess = max(material.y, 1.0);
-    float3 lit = light.ambient.rgb * base;
-    for (int i = 0; i < light.lightCount; i++) {
-        OllinLight L = light.lights[i];
-        float3 toLight;
-        float atten = 1.0;
-        if (L.kind == 0) {
-            toLight = L.direction.xyz;
-        } else {
-            toLight = normalize(L.position.xyz - worldPos);
-            if (L.kind == 2) {
-                float cosA = dot(-toLight, L.direction.xyz);
-                atten = smoothstep(L.cosOuter, L.cosInner, cosA);
-            }
-        }
-        float ndl = max(dot(n, toLight), 0.0);
-        float3 diffuse = L.color.rgb * base * ndl;
-        float3 h = normalize(toLight + viewDir);
-        float spec = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), shininess) * specStrength : 0.0;
-        float3 specular = L.color.rgb * spec;
-        lit += atten * (diffuse + specular);
-    }
-    return float4(lit, alpha);
-}
-
 vertex MeshTexturedOut ollin_mesh_textured_vertex(uint vid [[vertex_id]],
                                                   const device OllinMeshVertex *verts [[buffer(0)]],
                                                   constant Uniforms3D &u [[buffer(2)]]) {
@@ -1365,7 +1393,9 @@ vertex MeshTexturedOut ollin_mesh_textured_vertex(uint vid [[vertex_id]],
 fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              constant OllinLighting &light [[buffer(0)]],
                                              texture2d<float> baseColorTex [[texture(0)]],
-                                             sampler samp [[sampler(0)]]) {
+                                             sampler samp [[sampler(0)]],
+                                             depth2d<float> shadowMap [[texture(1)]],
+                                             sampler shadowSamp [[sampler(1)]]) {
     // The base-color texture is sRGB, so the sample comes back already linear and
     // premultiplied. The milestone contract is opaque textures, so rgb is the
     // straight base color; tint it by the linearized baked vertex color
@@ -1373,7 +1403,8 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     float4 tex = baseColorTex.sample(samp, in.uv);
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
-    return meshLitColor(base, alpha, in.normal, in.worldPos, in.material, light);
+    return meshLitColor(base, alpha, in.normal, in.worldPos, in.material, light,
+                        shadowMap, shadowSamp);
 }
 
 // MARK: - Wireframe 3D mesh
