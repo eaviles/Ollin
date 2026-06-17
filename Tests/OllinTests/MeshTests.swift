@@ -77,6 +77,20 @@ struct MeshTests {
         #expect(box.uvs.isEmpty)
     }
 
+    /// `withSmoothNormals()` computes area-weighted normals from raw positions +
+    /// indices (a mesh built with none, like a streamed face mesh). A flat x–y quad's
+    /// computed normals all point +z.
+    @Test func smoothNormalsFromRawGeometry() {
+        let mesh = Mesh(positions: [Vector3(0, 0, 0), Vector3(1, 0, 0),
+                                    Vector3(1, 1, 0), Vector3(0, 1, 0)],
+                        indices: [0, 1, 2, 0, 2, 3]).withSmoothNormals()
+        #expect(mesh.normals.count == mesh.positions.count)
+        for n in mesh.normals {
+            #expect(abs(n.length - 1) < 1e-6)
+            #expect(abs(n.z - 1) < 1e-6)
+        }
+    }
+
     /// A cube has 6 faces × 2 triangles = 12 triangles, each face flat-normaled.
     @Test func boxHasTwelveTriangles() {
         let box = Mesh.box(size: 1)

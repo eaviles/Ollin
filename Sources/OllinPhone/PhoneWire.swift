@@ -151,9 +151,10 @@ public enum PhoneBlendShape: UInt8, CaseIterable, Sendable {
 
 /// One ARKit face sample: whether ARKit has the face, the capture timestamp, the
 /// head's world pose (rotation `(x,y,z,w)` + position in meters), the 52 expression
-/// `blendShapes` (positional, in `PhoneBlendShape` order), and the deforming
-/// `meshVertices` in **face-local** space (centered on the face, meters) — ready to
-/// draw as a point cloud, since 3D mode has no mesh primitive yet.
+/// `blendShapes` (positional, in `PhoneBlendShape` order), the deforming
+/// `meshVertices` in **face-local** space (centered on the face, meters), and the
+/// `triangleIndices` (the mesh topology — constant per device, three indices per
+/// triangle) so the Mac can draw a real mesh, not just a point cloud.
 public struct PhoneFaceSample: Sendable, Equatable {
     public var tracked: Bool
     public var timestamp: Double
@@ -161,15 +162,18 @@ public struct PhoneFaceSample: Sendable, Equatable {
     public var headPosition: SIMD3<Float>
     public var blendShapes: [Float]
     public var meshVertices: [SIMD3<Float>]
+    public var triangleIndices: [UInt16]
 
     public init(tracked: Bool, timestamp: Double, headOrientation: SIMD4<Float>,
-                headPosition: SIMD3<Float>, blendShapes: [Float], meshVertices: [SIMD3<Float>]) {
+                headPosition: SIMD3<Float>, blendShapes: [Float], meshVertices: [SIMD3<Float>],
+                triangleIndices: [UInt16] = []) {
         self.tracked = tracked
         self.timestamp = timestamp
         self.headOrientation = headOrientation
         self.headPosition = headPosition
         self.blendShapes = blendShapes
         self.meshVertices = meshVertices
+        self.triangleIndices = triangleIndices
     }
 }
 
@@ -377,6 +381,10 @@ public extension PhoneWire {
         for v in face.meshVertices.prefix(Int(UInt16.max)) {
             appendF32(&p, v.x); appendF32(&p, v.y); appendF32(&p, v.z)
         }
+        // Topology: an index count, then three vertex indices per triangle. Constant
+        // per device, but small (~7k indices), so it's sent each frame for simplicity.
+        appendU32(&p, UInt32(face.triangleIndices.count))
+        for i in face.triangleIndices { appendU16(&p, i) }
     }
 
     private static func encodeDepthPayload(_ d: PhoneDepthSample) -> Data {
@@ -504,12 +512,21 @@ public extension PhoneWire {
         for _ in 0..<bsCount { blendShapes.append(f32()) }
 
         let vCount = Int(UInt16(data[s + o]) | (UInt16(data[s + o + 1]) << 8)); o += 2
-        guard data.count >= o + vCount * 12 else { return nil }
+        guard data.count >= o + vCount * 12 + 4 else { return nil }
         var meshVertices = [SIMD3<Float>](); meshVertices.reserveCapacity(vCount)
         for _ in 0..<vCount { meshVertices.append(SIMD3<Float>(f32(), f32(), f32())) }
 
+        // Topology: an index count, then a UInt16 vertex index each.
+        let iCount = Int(readU32(data, s + o)); o += 4
+        guard data.count >= o + iCount * 2 else { return nil }
+        var triangleIndices = [UInt16](); triangleIndices.reserveCapacity(iCount)
+        for _ in 0..<iCount {
+            triangleIndices.append(UInt16(data[s + o]) | (UInt16(data[s + o + 1]) << 8)); o += 2
+        }
+
         return PhoneFaceSample(tracked: tracked, timestamp: timestamp, headOrientation: headOrientation,
-                               headPosition: headPosition, blendShapes: blendShapes, meshVertices: meshVertices)
+                               headPosition: headPosition, blendShapes: blendShapes,
+                               meshVertices: meshVertices, triangleIndices: triangleIndices)
     }
 
     private static func decodeDepth(_ data: Data) -> PhoneDepthSample? {

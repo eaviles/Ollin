@@ -108,7 +108,8 @@ for face in device.latestFaces {     // up to 3 people
     face.blendShape(.jawOpen)        // Double 0…1 — one expression coefficient
     face.blendShapes                 // [PhoneBlendShape: Double] — all 52
     face.strongestBlendShapes()      // the few firing now, strongest first
-    face.meshPoints                  // [Vector3] — the mesh, face-local space (meters)
+    face.mesh()                      // Mesh — the triangle surface (draw solid/wireframe)
+    face.meshPoints                  // [Vector3] — the mesh vertices, face-local (meters)
     face.headPosition                // Vector3 — head position in world space
     face.headOrientation             // SIMD4<Float> — head rotation quaternion (x,y,z,w)
 }
@@ -116,15 +117,16 @@ for face in device.latestFaces {     // up to 3 people
 
 `latestFaces` is the complete current set each frame, so a face leaving simply drops out (the list shrinks); ARKit's order isn't spatially meaningful, so sort by `headPosition.x` if you want each face to keep a steady color. The blendshapes are the `PhoneBlendShape` set — ARKit's 52 named coefficients (`jawOpen`, `eyeBlinkLeft`, `mouthSmileLeft`, `browInnerUp`, `cheekPuff`, `tongueOut`, …), each `0` (neutral) to `1` (fully expressed). They're the cheap, expressive payload: read one to drive a knob, or `strongestBlendShapes()` to name the current expression.
 
-3D mode has no mesh primitive yet, so each mesh draws as a `PointCloud` — one splat per vertex, exactly like the skeleton. The vertices are face-local (centered on the face); add `face.headPosition` to place several people apart in space, then orbit their centroid:
+Draw each face as a `mesh()`: its triangle surface, carrying the ARKit topology and computed normals, drawn solid, textured, or as a `wireframe()` (the recognizable AR face net). The vertices are face-local (centered on the face); add `face.headPosition` to place several people apart in space, then orbit their centroid:
 
 ```swift
-// One face — vertices are face-local, so orbit .zero
+// One face: face-local space, so orbit .zero
 camera(.orbiting(target: .zero, radius: 0.42, azimuth: time * 0.4, elevation: 0.04))
-drawPointCloud(face.cloud(pointSize: 0.0045, color: .white))
+wireframe()
+drawMesh(face.mesh())
 ```
 
-The bundled example is `swift run Example-PhoneFace`.
+`face.cloud()` draws the vertices as points instead, if you want the splat look. The bundled example is `swift run Example-PhoneFace`.
 
 ## World depth
 

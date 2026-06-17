@@ -7,13 +7,14 @@ import simd
 /// Where `PhoneBody` carries a skeleton from the rear camera, this carries the face
 /// from the front camera — the two are mutually exclusive on the phone (different
 /// cameras), selected by the capture app's Body / Face toggle. The mesh is in
-/// face-local space (centered on the face, meters), so it draws as an orbiting
-/// `PointCloud` exactly like the skeleton, while the blendshapes drive expression.
+/// face-local space (centered on the face, meters); draw it as a `mesh()` (solid,
+/// textured, or `wireframe()` — the AR face net) or a `cloud()` of points, while the
+/// blendshapes drive expression.
 ///
 /// ```swift
 /// if let face = device.latestFace {
 ///     camera(.orbiting(target: .zero, radius: 0.4, azimuth: time * 0.4))
-///     drawPointCloud(face.cloud())
+///     wireframe(); drawMesh(face.mesh())
 ///     let smile = face.blendShape(.mouthSmileLeft)   // 0…1
 /// }
 /// ```
@@ -32,7 +33,8 @@ public struct PhoneFace: Sendable {
     public let headPosition: Vector3
 
     let shapes: [PhoneBlendShape: Double]
-    let mesh: [Vector3]
+    let vertices: [Vector3]
+    let indices: [UInt32]
 
     /// Wrap a decoded wire sample, mapping the positional blendshape array onto the
     /// `PhoneBlendShape` cases and the mesh vertices into `Vector3`.
@@ -48,7 +50,8 @@ public struct PhoneFace: Sendable {
             if let shape = PhoneBlendShape(rawValue: UInt8(i)) { shapes[shape] = Double(v) }
         }
         self.shapes = shapes
-        mesh = sample.meshVertices.map { Vector3(Double($0.x), Double($0.y), Double($0.z)) }
+        vertices = sample.meshVertices.map { Vector3(Double($0.x), Double($0.y), Double($0.z)) }
+        indices = sample.triangleIndices.map(UInt32.init)
     }
 
     /// One expression coefficient, `0` (neutral) … `1` (fully expressed). Returns `0`
@@ -69,24 +72,31 @@ public struct PhoneFace: Sendable {
     }
 
     /// The deforming face mesh as vertices in face-local space (meters, centered on
-    /// the face). 3D mode has no mesh primitive yet, so draw them with `cloud()`.
-    public var meshPoints: [Vector3] { mesh }
+    /// the face). Draw them with `mesh()` (a solid or wireframe surface) or `cloud()`.
+    public var meshPoints: [Vector3] { vertices }
 
     /// The centroid of the mesh vertices — the origin when no mesh was reported. The
     /// mesh is already centered on the face, so this is near `.zero`.
     public var center: Vector3 {
-        guard !mesh.isEmpty else { return .zero }
+        guard !vertices.isEmpty else { return .zero }
         var sum = Vector3.zero
-        for p in mesh { sum += p }
-        return sum / Double(mesh.count)
+        for p in vertices { sum += p }
+        return sum / Double(vertices.count)
+    }
+
+    /// The deforming face as a `Mesh` in face-local space, with the ARKit topology and
+    /// computed smooth normals. Draw it solid, textured, or as a `wireframe()` (the
+    /// recognizable AR face net). Empty-indexed (a point-cloud-only fallback) if the
+    /// stream carried no topology.
+    public func mesh() -> Mesh {
+        Mesh(positions: vertices, indices: indices).withSmoothNormals()
     }
 
     /// The face mesh as a `PointCloud` for drawing in its own space — one splat per
-    /// vertex. The one shipped way to draw the face today (3D mode has no mesh
-    /// primitive yet), the sibling of `PhoneBody.cloud`.
+    /// vertex, the sibling of `PhoneBody.cloud`. (`mesh()` is the surface form.)
     public func cloud(pointSize: Double = 0.004, color: Color = .white) -> PointCloud {
         var cloud = PointCloud()
-        for p in mesh { cloud.add(p, color: color, size: pointSize) }
+        for p in vertices { cloud.add(p, color: color, size: pointSize) }
         return cloud
     }
 }

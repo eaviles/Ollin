@@ -112,6 +112,25 @@ public extension Mesh {
         copy.material = MeshMaterial(baseColor: baseColor, texture: image)
         return copy
     }
+
+    /// A copy with area-weighted smooth normals computed from the positions and
+    /// triangle indices, replacing whatever normals it had. For a mesh built from raw
+    /// geometry with no normals (a deforming face mesh, a marching-cubes surface) so it
+    /// lights correctly.
+    func withSmoothNormals() -> Mesh {
+        var accum = [Vector3](repeating: .zero, count: positions.count)
+        var i = 0
+        while i + 2 < indices.count {
+            let a = Int(indices[i]), b = Int(indices[i + 1]), c = Int(indices[i + 2])
+            i += 3
+            guard a < positions.count, b < positions.count, c < positions.count else { continue }
+            let fn = (positions[b] - positions[a]).cross(positions[c] - positions[a])
+            accum[a] = accum[a] + fn; accum[b] = accum[b] + fn; accum[c] = accum[c] + fn
+        }
+        var copy = self
+        copy.normals = accum.map { $0.lengthSquared > 1e-12 ? $0.normalized : Vector3.unitY }
+        return copy
+    }
 }
 
 // MARK: - Primitive generators

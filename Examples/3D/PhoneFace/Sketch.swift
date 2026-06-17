@@ -5,8 +5,9 @@ import OllinPhone
 /// A live face mesh and its expression, streamed from a tethered iPhone running the
 /// **Ollin** capture app in **Face** mode — the front-camera sibling of
 /// `PhoneBodyPose`. The phone runs ARKit face tracking on its Neural Engine and
-/// streams the deforming mesh plus the 52 expression blendshapes; the Mac orbits the
-/// mesh as a point cloud and reads the expression off the blendshapes.
+/// streams the deforming mesh (with its triangle topology) plus the 52 expression
+/// blendshapes; the Mac orbits the mesh as a wireframe net (the recognizable AR face
+/// mesh) and reads the expression off the blendshapes.
 ///
 /// Setup: run Ollin Capture (Apps/OllinPhoneApp) on the iPhone, connect the cable,
 /// tap **Face**, and look at the phone's front camera. Smile, blink, open your mouth
@@ -56,28 +57,16 @@ final class PhoneFace3D: Sketch {
         drawCaption("PhoneFace — \(n) \(n == 1 ? "face" : "faces"), \(tracking) tracking; drag to spin")
     }
 
-    /// All tracked face meshes, each placed at its head position so several people
-    /// sit apart in space, orbited as one and warmed as each jaw opens.
+    /// All tracked face meshes, each drawn as a wireframe net at its head position so
+    /// several people sit apart in space, orbited as one and warmed as each jaw opens.
     private func drawMeshes(_ faces: [PhoneFace]) {
         // A base hue per face so people read apart; each warms toward orange as its
         // jaw opens — a visible read of one blendshape driving the look.
         let baseColors = [Color(hex: 0x9FB4D8), Color(hex: 0xFFB060), Color(hex: 0x8AE0A0)]
         let warm = Color(hex: 0xFFB060)
 
-        var cloud = PointCloud()
         var center = Vector3.zero
-        for (i, face) in faces.enumerated() {
-            let tint = Color.mix(baseColors[i % baseColors.count], warm,
-                                 t: face.blendShape(.jawOpen), in: .oklch)
-            for p in face.meshPoints {
-                // Place the face-local mesh at its head's world position, and fade the
-                // back of the head out so the front reads clearly.
-                var c = tint
-                c.alpha = map(p.z, -0.08, 0.06, 0.25, 1.0, clamp: true)
-                cloud.add(p + face.headPosition, color: c, size: 0.0045)
-            }
-            center += face.headPosition
-        }
+        for face in faces { center += face.headPosition }
         center = center / Double(faces.count)
 
         // Widen the orbit as more faces spread out so they all stay in frame.
@@ -85,7 +74,20 @@ final class PhoneFace3D: Sketch {
         let radius = 0.42 + Double(faces.count - 1) * 0.3
         camera(.orbiting(target: center, radius: radius, azimuth: azimuth,
                          elevation: 0.04, fieldOfView: .pi / 3))
-        drawPointCloud(cloud)
+
+        // Each face as its triangle net — the recognizable AR face mesh — placed at its
+        // head's world position.
+        wireframe()
+        strokeWeight(1.2)
+        for (i, face) in faces.enumerated() {
+            let tint = Color.mix(baseColors[i % baseColors.count], warm,
+                                 t: face.blendShape(.jawOpen), in: .oklch)
+            withState {
+                translate(face.headPosition)
+                stroke(tint)
+                drawMesh(face.mesh())
+            }
+        }
     }
 
     /// A column of expression bars (a 2D HUD over the 3D scene). Sizes are fractions

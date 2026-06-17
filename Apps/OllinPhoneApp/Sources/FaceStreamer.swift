@@ -44,8 +44,11 @@ final class FaceStreamer: NSObject, ARSessionDelegate {
                 Float(truncating: face.blendShapes[location] ?? 0)
             }
 
-            // The mesh, in face-local space (meters, centered on the face).
+            // The mesh, in face-local space (meters, centered on the face), plus its
+            // triangle topology (constant per device; ARKit's indices are vertex
+            // indices, always non-negative).
             let vertices = face.geometry.vertices.map { SIMD3<Float>($0.x, $0.y, $0.z) }
+            let indices = face.geometry.triangleIndices.map { UInt16($0) }
 
             // Head pose in world space: rotation as a quaternion + translation.
             let q = simd_quatf(face.transform)
@@ -57,7 +60,8 @@ final class FaceStreamer: NSObject, ARSessionDelegate {
                 headOrientation: SIMD4<Float>(q.vector.x, q.vector.y, q.vector.z, q.vector.w),
                 headPosition: SIMD3<Float>(t.x, t.y, t.z),
                 blendShapes: blendShapes,
-                meshVertices: vertices)
+                meshVertices: vertices,
+                triangleIndices: indices)
         }
         onFaces?(faces)
     }

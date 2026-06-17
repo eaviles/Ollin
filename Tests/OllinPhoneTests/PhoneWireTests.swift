@@ -56,6 +56,20 @@ import Darwin
         #expect(roundTrip(message) == message)
     }
 
+    @Test func roundTripsFaceWithTopology() {
+        // A face carrying its triangle topology (three vertex indices per triangle) so
+        // the Mac can build a real mesh — the indices must survive the round-trip.
+        let mesh = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(1, 0, 0),
+                    SIMD3<Float>(0, 1, 0), SIMD3<Float>(1, 1, 0)]
+        let indices: [UInt16] = [0, 1, 2, 0, 2, 3]
+        let message = PhoneMessage.face([PhoneFaceSample(
+            tracked: true, timestamp: 1.5,
+            headOrientation: SIMD4<Float>(0, 0, 0, 1), headPosition: .zero,
+            blendShapes: [Float](repeating: 0.1, count: PhoneBlendShape.allCases.count),
+            meshVertices: mesh, triangleIndices: indices)])
+        #expect(roundTrip(message) == message)
+    }
+
     @Test func roundTripsFaceWithoutMesh() {
         // Blendshapes only, no mesh vertices — the lightweight case.
         let message = PhoneMessage.face([PhoneFaceSample(
