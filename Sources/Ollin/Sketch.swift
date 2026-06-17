@@ -356,6 +356,13 @@ open class Sketch {
     /// sharper highlight (default `32`). Drawing state, saved by `withState`.
     public func shininess(_ exponent: Double) { drawer.shininess(exponent) }
 
+    /// Draw subsequent meshes as a wireframe (their triangle edges only, the faces
+    /// see-through) instead of filled, lit surfaces. The edges take the current
+    /// `stroke` color (or `fill` if no stroke) and `strokeWeight`. Pass `false` to go
+    /// back to solid. Drawing state, saved by `withState`. Works on any mesh (a
+    /// generated primitive or a loaded model).
+    public func wireframe(_ on: Bool = true) { drawer.wireframe(on) }
+
     // MARK: 3D — solid primitives & meshes
 
     /// Draw a solid 3D `Mesh` through the active camera with depth testing (set a

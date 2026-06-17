@@ -153,6 +153,15 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func wireframeMeshMatchesReference() throws {
+        // A wireframe icosphere through a fixed camera — pins the wireframe mesh pipeline:
+        // barycentric edge-shading from vid%3, the stroke-colored edges, and the line
+        // width from strokeWeight, with the faces see-through.
+        let diff = try Snapshot.meanDifference(of: WireframeMesh3DScene(), against: "mesh-wireframe")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func transformed3DMatchesReference() throws {
         // Point-cloud blobs placed entirely by the 3D transform stack — a center blob
         // plus four satellites positioned by rotateY + translate and sized by scale.
@@ -313,6 +322,24 @@ private final class TexturedMesh3DScene: Sketch {
         }
         return img
     }()
+}
+
+/// A wireframe icosphere through a fixed camera, stroke-colored — pins the wireframe
+/// mesh pipeline (barycentric edges from vid%3, the stroke edge color, the line width
+/// from strokeWeight). The faces are see-through, so the back edges show through. No
+/// `time`.
+private final class WireframeMesh3DScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        camera(.orbiting(target: .zero, radius: 4,
+                         azimuth: 0.5, elevation: 0.4, fieldOfView: .pi / 3.4))
+        wireframe()
+        strokeWeight(1.5)
+        stroke(Color(hue: 0.55, saturation: 0.6, brightness: 1))
+        withState { rotateY(0.6); rotateX(0.3); drawMesh(.icosphere(radius: 1.4, subdivisions: 2)) }
+    }
 }
 
 /// Point-cloud blobs placed entirely by the 3D transform stack: a central blob and

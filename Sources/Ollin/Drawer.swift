@@ -118,6 +118,10 @@ struct GeometryBatch {
     /// for an untextured mesh (the byte-identical solid path). A textured mesh opens
     /// its own batch (one texture per batch), like an image.
     var material: MeshMaterial?
+    /// Whether a `.mesh3D` batch draws as a wireframe (triangle edges only), selecting
+    /// the wireframe pipeline. The edge color is baked into the vertices and the line
+    /// width rides `position.w`; lighting/material are unused.
+    var meshWireframe = false
 }
 
 /// The drawing state machine and per-frame geometry recorder.
@@ -145,6 +149,7 @@ final class Drawer {
     private var strokeCapStyle: StrokeCap = .butt        // how open stroked-path ends finish (see strokeCap)
     private var specularStrength: Double = 0    // 3D material: specular highlight strength, 0 = matte (see specular)
     private var shininessValue: Double = 32     // 3D material: Blinn-Phong shininess exponent (see shininess)
+    private var wireframeEnabled = false        // 3D mesh: draw triangle edges only (see wireframe)
     private var currentFont: ActiveFont = .outline(.systemMedium)   // active text font (see textFont / drawText)
     private var textPixelSize: Double = 24               // rendered glyph height in points (see textSize)
     private var textAlignH: TextAlignH = .left           // horizontal text anchor (see textAlign)
@@ -350,11 +355,11 @@ final class Drawer {
                                      blendMode: currentBlend, image: image, depth: currentDepth))
     }
 
-    /// Open a fresh `.mesh3D` batch carrying `material` (its texture binds to the
-    /// mesh fragment). Always appends — each textured mesh binds its own texture, so
-    /// it can't share a batch — and clears `currentKind` so a following mesh (textured
-    /// or solid) opens its own batch rather than merging into this textured one.
-    private func beginMeshBatch(material: MeshMaterial?) {
+    /// Open a fresh `.mesh3D` batch for a *textured* or *wireframe* mesh (carrying its
+    /// `material` texture / wireframe flag). Always appends — each binds its own state,
+    /// so it can't share a batch — and clears `currentKind` so a following mesh (any
+    /// mode) opens its own batch rather than merging into this one.
+    private func beginMeshBatch(material: MeshMaterial?, wireframe: Bool = false) {
         batches.append(GeometryBatch(kind: .mesh3D, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -362,7 +367,7 @@ final class Drawer {
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
                                      blendMode: currentBlend, depth: currentDepth,
-                                     material: material))
+                                     material: material, meshWireframe: wireframe))
         currentKind = nil
     }
 
@@ -469,6 +474,7 @@ final class Drawer {
         var strokeCapStyle: StrokeCap
         var specularStrength: Double
         var shininessValue: Double
+        var wireframeEnabled: Bool
         var currentFont: ActiveFont
         var textPixelSize: Double
         var textAlignH: TextAlignH
@@ -642,6 +648,12 @@ final class Drawer {
     /// highlight). Drawing state, saved by `withState`.
     func shininess(_ exponent: Double) { shininessValue = max(1, exponent) }
 
+    /// Draw subsequent meshes as their triangle edges (a wireframe net) rather than
+    /// filled surfaces. The edges take the current `stroke` color (or `fill` if no
+    /// stroke) and `strokeWeight`; the faces are see-through, so it doesn't light.
+    /// Drawing state, saved by `withState`.
+    func wireframe(_ on: Bool) { wireframeEnabled = on }
+
     /// Pack this frame's effective lighting into the GPU uniform. The mode decides
     /// the source: `.off` shades nothing (flat unlit, `enabled == 0`), `.auto` uses
     /// the default rig (the out-of-box shaded look), `.custom` uses the sketch's own
@@ -754,28 +766,35 @@ final class Drawer {
         guard camera3D != nil, !mesh.isEmpty else { return }
         // SVG export is 2D vector only; a shaded solid has no vector outline.
         if svgRecorder != nil { return }
-        // A texture maps only with matching UVs; without them, fall back to a flat
-        // base-color surface (there's nothing to map against). A textured mesh opens
-        // its own batch (one bound texture per batch); a solid mesh merges.
+        // Wireframe draws the triangle edges only (the faces are see-through), so it
+        // ignores the texture and lighting; otherwise a texture maps when matching UVs
+        // are present, else a flat base-color surface. Wireframe and textured meshes
+        // each open their own batch (own pipeline / bound texture); a solid mesh merges.
         let material = mesh.material
-        let textured = material?.texture != nil && mesh.uvs.count == mesh.positions.count
-        if textured {
+        let wireframe = wireframeEnabled
+        let textured = !wireframe && material?.texture != nil && mesh.uvs.count == mesh.positions.count
+        if wireframe {
+            beginMeshBatch(material: nil, wireframe: true)
+        } else if textured {
             beginMeshBatch(material: material)
         } else {
             ensureBatch(.mesh3D)
         }
         let m = modelMatrix
         let nm = modelIsIdentity ? matrix_identity_float3x3 : m.normalMatrix
-        // The surface color is the current fill tinted by the material's base color
-        // (white = the fill unchanged), so a base-color-only material just tints and
-        // the textured fragment multiplies its sample by this. Same value on both
-        // paths; a material-less mesh has a white base color, so this is exactly the fill.
-        let color = meshSurfaceColor.simd4 * (material?.baseColor.simd4 ?? SIMD4<Float>(1, 1, 1, 1))
-        // The material rides the vertices' spare w slots (the vertex shader reads
-        // only position.xyz / normal.xyz): specular strength in position.w, the
-        // shininess exponent in normal.w. So the lit-material parameters need no
-        // struct widening (the texture coordinate in `uv` is the one widening).
-        let specW = Float(specularStrength)
+        // The vertex color: for a wireframe, the edge (stroke) color; otherwise the
+        // current fill tinted by the material's base color (white = the fill unchanged,
+        // so a material-less mesh's color is exactly the fill, and a base-color-only
+        // material just tints — the textured fragment multiplies its sample by this).
+        let color = wireframe
+            ? meshStrokeColor.simd4
+            : meshSurfaceColor.simd4 * (material?.baseColor.simd4 ?? SIMD4<Float>(1, 1, 1, 1))
+        // The vertices' spare w slots (the lit vertex shader reads only
+        // position.xyz / normal.xyz): the material's specular strength in position.w
+        // and shininess in normal.w. A wireframe has no material, so it reuses
+        // position.w as the line width. So the lit-material parameters need no struct
+        // widening (the texture coordinate in `uv` is the one widening).
+        let specW = wireframe ? Float(strokeWidth) : Float(specularStrength)
         let shineW = Float(shininessValue)
         meshVertices.reserveCapacity(meshVertices.count + mesh.indices.count)
         for idx in mesh.indices {
@@ -811,6 +830,15 @@ final class Drawer {
         switch fillPaint {
         case .color(let c): return c
         case .gradient, .none: return .white
+        }
+    }
+
+    /// The edge color for a wireframe mesh: the current solid `stroke`, falling back to
+    /// the fill color when there's no stroke (so the net is always visible).
+    private var meshStrokeColor: Color {
+        switch strokePaint {
+        case .color(let c): return c
+        case .gradient, .none: return meshSurfaceColor
         }
     }
 
@@ -991,6 +1019,7 @@ final class Drawer {
                                      strokeCapStyle: strokeCapStyle,
                                      specularStrength: specularStrength,
                                      shininessValue: shininessValue,
+                                     wireframeEnabled: wireframeEnabled,
                                      currentFont: currentFont, textPixelSize: textPixelSize,
                                      textAlignH: textAlignH, textAlignV: textAlignV,
                                      textRenderMode: textRenderMode,
@@ -1017,6 +1046,7 @@ final class Drawer {
         strokeCapStyle = s.strokeCapStyle
         specularStrength = s.specularStrength
         shininessValue = s.shininessValue
+        wireframeEnabled = s.wireframeEnabled
         currentFont = s.currentFont
         textPixelSize = s.textPixelSize
         textAlignH = s.textAlignH

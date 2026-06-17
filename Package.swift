@@ -429,6 +429,11 @@ let package = Package(
             path: "Examples/3D/TexturedMesh"
         ),
         .executableTarget(
+            name: "Example-Wireframe",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/Wireframe"
+        ),
+        .executableTarget(
             name: "Example-LoadedMesh",
             dependencies: ["Ollin"],
             path: "Examples/3D/LoadedMesh",

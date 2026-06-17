@@ -94,6 +94,12 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_mesh_textured_vertex", fragment: "ollin_mesh_textured_fragment",
                         blend: blend, depthFormat: depth)
         }
+        // wireframe 3D triangle mesh: triangle edges only (barycentric edge-shading),
+        // unlit, depth-tested.
+        static func meshWireframe(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_wireframe_vertex", fragment: "ollin_mesh_wireframe_fragment",
+                        blend: blend, depthFormat: depth)
+        }
         // depth-scene backdrop: a textured quad that also writes per-pixel depth from
         // a depth map (premultiplied color, like the image path; outputs [[depth]]).
         static func depthScene(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -107,7 +113,8 @@ final class MetalRenderer {
         /// The pipeline a recorded batch needs, from its geometry kind, blend, the
         /// active depth format (nil in 2D), and — for a mesh — whether it's textured.
         static func forBatch(_ kind: GeometryKind, _ blend: BlendMode,
-                             depth: MTLPixelFormat? = nil, textured: Bool = false) -> PipelineKey {
+                             depth: MTLPixelFormat? = nil, textured: Bool = false,
+                             wireframe: Bool = false) -> PipelineKey {
             switch kind {
             case .triangles:  return .solid(blend, depth: depth)
             case .sdf:        return .sdf(blend, depth: depth)
@@ -115,7 +122,10 @@ final class MetalRenderer {
             case .glyphAtlas: return .glyphAtlas(blend, depth: depth)
             case .particles:  return .points(blend, depth: depth)
             case .points3D:   return .pointCloud(blend, depth: depth)
-            case .mesh3D:     return textured ? .meshTextured(blend, depth: depth) : .mesh(blend, depth: depth)
+            case .mesh3D:
+                return wireframe ? .meshWireframe(blend, depth: depth)
+                     : textured  ? .meshTextured(blend, depth: depth)
+                                  : .mesh(blend, depth: depth)
             case .depthScene: return .depthScene(blend, depth: depth)
             }
         }
@@ -791,12 +801,13 @@ final class MetalRenderer {
             let batch = batches[i]
             let next = i + 1 < batches.count ? batches[i + 1] : nil
             // The pipeline for this batch's geometry kind, blend mode, *and* the
-            // pass's depth format; built on first use of a combination. A textured
-            // mesh batch (carries a material texture) selects the textured variant.
-            // Skip the batch if it can't be built (never expected — same shaders).
-            let meshTextured = batch.kind == .mesh3D && batch.material?.texture != nil
-            guard let state = try? pipeline(.forBatch(batch.kind, batch.blendMode,
-                                                      depth: depthFormat, textured: meshTextured)) else { continue }
+            // pass's depth format; built on first use of a combination. A mesh batch
+            // selects its variant: wireframe (edges only) or textured (a material
+            // texture). Skip the batch if it can't be built (never expected — same shaders).
+            let meshWireframe = batch.kind == .mesh3D && batch.meshWireframe
+            let meshTextured = batch.kind == .mesh3D && !batch.meshWireframe && batch.material?.texture != nil
+            guard let state = try? pipeline(.forBatch(batch.kind, batch.blendMode, depth: depthFormat,
+                                                      textured: meshTextured, wireframe: meshWireframe)) else { continue }
             // In a depth pass (active camera): 3D batches z-test + write depth. A 2D
             // batch that opted into a depth (`depth(at:)`) does too — its constant
             // clip-z is fed to the 2D vertex shader so it occludes / is occluded by

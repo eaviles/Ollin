@@ -1376,6 +1376,48 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     return meshLitColor(base, alpha, in.normal, in.worldPos, in.material, light);
 }
 
+// MARK: - Wireframe 3D mesh
+//
+// Draws a mesh's triangle edges only (the faces are see-through), unlit. The mesh
+// path expands indices into a flat triangle list (every 3 vertices = one triangle),
+// so the vertex shader derives barycentric coordinates from `vid % 3` with no extra
+// vertex attribute. The fragment lights up where any barycentric coordinate nears 0
+// (an edge), fading the rest. The edge color is the baked vertex color (`stroke`),
+// and the line width rides `position.w` (a wireframe has no specular to store there).
+
+struct MeshWireOut {
+    float4 position [[position]];
+    float4 color;        // edge color (the stroke), straight RGBA
+    float3 bary;         // barycentric coordinates across the triangle
+    float lineWidth;     // edge width in pixels (from strokeWeight)
+};
+
+vertex MeshWireOut ollin_mesh_wireframe_vertex(uint vid [[vertex_id]],
+                                               const device OllinMeshVertex *verts [[buffer(0)]],
+                                               constant Uniforms3D &u [[buffer(2)]]) {
+    OllinMeshVertex v = verts[vid];
+    MeshWireOut out;
+    out.position = u.projection * (u.view * float4(v.position.xyz, 1.0));
+    out.color = v.color;
+    out.lineWidth = max(v.position.w, 0.5);
+    uint k = vid % 3;
+    out.bary = float3(k == 0 ? 1.0 : 0.0, k == 1 ? 1.0 : 0.0, k == 2 ? 1.0 : 0.0);
+    return out;
+}
+
+fragment float4 ollin_mesh_wireframe_fragment(MeshWireOut in [[stage_in]]) {
+    // Screen-space distance to the nearest edge: a barycentric coordinate goes to 0 on
+    // the edge opposite its vertex, so min(bary) is 0 on any edge. `fwidth` makes the
+    // line a constant pixel width under any transform.
+    float3 d = fwidth(in.bary) * in.lineWidth;
+    float3 a = smoothstep(float3(0.0), d, in.bary);
+    float coverage = 1.0 - min(min(a.x, a.y), a.z);   // 1 on an edge, 0 in the interior
+    if (coverage <= 0.0) discard_fragment();
+    // Perceptual coverage keeps the thin lines evenly dark at any angle (the thin-stroke
+    // remap), straight alpha into the linear target.
+    return float4(srgbToLinear(in.color.rgb), in.color.a * perceptualCoverage(coverage));
+}
+
 // MARK: - Present / tone-map pass
 //
 // The frame's geometry is composited in a linear `rgba16Float` intermediate, so
