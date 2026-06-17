@@ -43,6 +43,48 @@ public struct Mesh: Sendable {
     public var isEmpty: Bool { indices.isEmpty || positions.isEmpty }
 }
 
+// MARK: - Bounds & fit
+
+public extension Mesh {
+
+    /// The axis-aligned bounding box: the `min` and `max` corners over all
+    /// `positions`. Returns `(.zero, .zero)` for an empty mesh. The generators are
+    /// origin-centered, but a mesh loaded from a file arrives wherever its author
+    /// placed it and at whatever scale: `bounds`, `center`, `size`, and
+    /// `normalized(scale:)` are how you fit one to the canvas.
+    var bounds: (min: Vector3, max: Vector3) {
+        guard let first = positions.first else { return (.zero, .zero) }
+        var lo = first, hi = first
+        for p in positions {
+            lo = Vector3(Swift.min(lo.x, p.x), Swift.min(lo.y, p.y), Swift.min(lo.z, p.z))
+            hi = Vector3(Swift.max(hi.x, p.x), Swift.max(hi.y, p.y), Swift.max(hi.z, p.z))
+        }
+        return (lo, hi)
+    }
+
+    /// The center of the axis-aligned bounds (the midpoint of `bounds`).
+    var center: Vector3 { let b = bounds; return (b.min + b.max) * 0.5 }
+
+    /// The full extent of the axis-aligned bounds: its width (x), height (y), and
+    /// depth (z) as a `Vector3`.
+    var size: Vector3 { let b = bounds; return b.max - b.min }
+
+    /// A copy recentered on the origin and uniformly scaled so its longest dimension
+    /// spans `scale` world units. Turns an arbitrarily-placed, arbitrarily-sized
+    /// loaded model into a drop-in unit mesh you position with the transform stack,
+    /// the way the built-in generators already are. Normals are unchanged, a
+    /// uniform scale preserves their direction.
+    func normalized(scale: Double = 1) -> Mesh {
+        let b = bounds
+        let c = (b.min + b.max) * 0.5
+        let s = b.max - b.min
+        let longest = Swift.max(s.x, Swift.max(s.y, s.z))
+        let factor = longest > 1e-12 ? scale / longest : 1
+        return Mesh(positions: positions.map { ($0 - c) * factor },
+                    normals: normals, indices: indices)
+    }
+}
+
 // MARK: - Primitive generators
 
 public extension Mesh {
