@@ -171,6 +171,15 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func lightingPresetMatchesReference() throws {
+        // A still life lit by the .goldenHour LightingPreset — pins the preset path
+        // (ambient + warm/cool directionals, the light colors from Color(kelvin:))
+        // through the lit-mesh pipeline.
+        let diff = try Snapshot.meanDifference(of: LightingPresetScene(), against: "lighting-presets")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func transformed3DMatchesReference() throws {
         // Point-cloud blobs placed entirely by the 3D transform stack — a center blob
         // plus four satellites positioned by rotateY + translate and sized by scale.
@@ -355,6 +364,31 @@ private final class MeshShadowsScene: Sketch {
         withState {
             fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); shininess(40)
             translate(1.3, 1.3, 0.3); drawSphere(radius: 1.1)
+        }
+    }
+}
+
+/// The same still life lit by the `.goldenHour` `LightingPreset` through a fixed
+/// camera — pins the preset path (one call setting the ambient + a warm low
+/// directional + a cool sky fill, the lights' colors from `Color(kelvin:)`) feeding
+/// the same lit-mesh pipeline. If the preset's lights or the kelvin math regressed,
+/// the warm/cool balance would shift. No `time`, so it's deterministic.
+private final class LightingPresetScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        camera(.orbiting(target: Vector3(0, -0.1, 0), radius: 6.5,
+                         azimuth: 0.4, elevation: 0.32, fieldOfView: .pi / 3.4))
+        lightingPreset(.goldenHour)
+        withState { translate(0, -1.2, 0); fill(Color(white: 0.55)); specular(0.05); drawPlane(width: 12, depth: 12) }
+        withState {
+            fill(Color(white: 0.85)); specular(0.6); shininess(100)
+            translate(-1.6, -0.3, 0); drawSphere(radius: 1.0)
+        }
+        withState {
+            fill(Color(hue: 0.04, saturation: 0.5, brightness: 0.9)); specular(0.4); shininess(48)
+            translate(1.4, -0.1, -0.2); rotateY(0.5); rotateX(0.3); drawBox(size: 1.4)
         }
     }
 }

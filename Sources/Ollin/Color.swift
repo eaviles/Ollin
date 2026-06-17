@@ -81,6 +81,45 @@ public extension Color {
     }
 }
 
+// MARK: - Color temperature (blackbody)
+
+public extension Color {
+    /// Create a color from a blackbody **color temperature** in kelvin — the way a
+    /// photographer or gaffer names light. Candlelight sits near `1900`, tungsten
+    /// around `3200`, daylight `5600`, an overcast sky `7000`, deep shade `9000`+.
+    /// Lower is warmer (orange), higher is cooler (blue), neutral white around `6600`.
+    ///
+    /// The result is an ordinary sRGB `Color`, so it drops straight into `fill`,
+    /// `background`, or a `Light`'s color — which is what lets a lighting rig read as
+    /// the temperatures it actually is (`Color(kelvin: 5600)` for a daylight key)
+    /// rather than opaque RGB. `kelvin` clamps to `1000...40000`.
+    init(kelvin: Double, alpha: Double = 1.0) {
+        // Tanner Helland's piecewise approximation of the Planckian locus, scaled to
+        // 0…1 sRGB (see the README's Techniques list). `t` is the temperature in
+        // hundreds of kelvin; the clamp keeps the logs and powers in range.
+        let t = min(max(kelvin, 1000), 40000) / 100
+        func unit(_ v: Double) -> Double { min(max(v, 0), 255) / 255 }
+        let r: Double
+        let g: Double
+        if t <= 66 {
+            r = 255
+            g = 99.4708025861 * log(t) - 161.1195681661
+        } else {
+            r = 329.698727446 * pow(t - 60, -0.1332047592)
+            g = 288.1221695283 * pow(t - 60, -0.0755148492)
+        }
+        let b: Double
+        if t >= 66 {
+            b = 255
+        } else if t <= 19 {
+            b = 0
+        } else {
+            b = 138.5177312231 * log(t - 10) - 305.0447927307
+        }
+        self.init(red: unit(r), green: unit(g), blue: unit(b), alpha: alpha)
+    }
+}
+
 // MARK: - Hue, saturation, brightness
 
 public extension Color {

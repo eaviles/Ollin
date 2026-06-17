@@ -335,14 +335,22 @@ open class Sketch {
     /// counts as lighting the scene (a flat, unshaded fill of the surface color).
     public func ambientLight(_ color: Color) { drawer.ambientLight(color) }
 
-    /// Install the default lighting rig explicitly — a soft ambient plus a key and a
-    /// dimmer fill directional light. This is the same rig solids get automatically
-    /// when no light is set, so you only need it to *restore* the default after using
-    /// your own lights, or to make the intent visible in a sketch.
-    public func lights() {
-        drawer.ambientLight(Drawer.defaultAmbient)
-        for light in Drawer.defaultLights { drawer.addLight(light) }
+    /// Light this frame's scene with a ready-made `LightingPreset` — `.threePoint`,
+    /// `.goldenHour`, `.noir`, `.studio`, `.moonlight`, or `.standard` — in one call
+    /// instead of placing lights by hand. Per-frame state like the individual light
+    /// calls (it replaces the auto-lit default), so call it in `draw()`. Pass your own
+    /// `LightingPreset(ambient:lights:)`, or a tweaked copy of a built-in, to extend
+    /// the set.
+    public func lightingPreset(_ preset: LightingPreset) {
+        drawer.ambientLight(preset.ambient)
+        for light in preset.lights { drawer.addLight(light) }
     }
+
+    /// Install the default lighting rig explicitly — `LightingPreset.standard`, a soft
+    /// ambient plus a key and a dimmer fill. This is the same rig solids get
+    /// automatically when no light is set, so you only need it to *restore* the default
+    /// after using your own lights, or to make the intent visible in a sketch.
+    public func lights() { lightingPreset(.standard) }
 
     /// Turn off lighting for this frame: solids draw flat in their `fill` color
     /// (unlit), overriding the auto-lit default.

@@ -4,9 +4,9 @@ import Foundation
 /// through a Blinn-Phong material whose surface color is the current `fill`.
 ///
 /// Lights are *per-frame* state, like the `Camera3D`: set them each `draw()` (the
-/// scene rebuilds every frame). A mesh drawn with no lights set keeps the
-/// normal-as-color placeholder look, so lighting is opt-in — add a light and the
-/// solids start shading. There are three kinds:
+/// scene rebuilds every frame). A mesh drawn with no lights set is shaded by a
+/// sensible default rig (so a solid looks 3D out of the box); setting a light, an
+/// ambient, or a `LightingPreset` takes over the scene. There are three kinds:
 ///
 /// - **directional** — parallel rays from a direction (the sun): no position, just
 ///   a direction the light travels.

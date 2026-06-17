@@ -96,4 +96,39 @@ struct ColorTests {
     @Test func hsbAlphaPassesThrough() {
         #expect(Color(hue: 0, saturation: 1, brightness: 1, alpha: 0.25).alpha == 0.25)
     }
+
+    // MARK: Color temperature (blackbody)
+
+    @Test func kelvinWarmIsOrange() {
+        // Low temperatures (candle/tungsten) are warm: red full, blue suppressed.
+        let warm = Color(kelvin: 2000)
+        #expect(warm.red > warm.green && warm.green > warm.blue)
+        #expect(warm.red == 1.0)        // red saturates at 255 below ~6600K
+    }
+
+    @Test func kelvinCoolIsBlue() {
+        // High temperatures (deep shade) are cool: blue full, red pulled back.
+        let cool = Color(kelvin: 12000)
+        #expect(cool.blue > cool.red)
+        #expect(cool.blue == 1.0)       // blue saturates at 255 above 6600K
+    }
+
+    @Test func kelvinClampsRange() {
+        // Below 1000K and above 40000K clamp to the endpoints (no NaN from the logs).
+        #expect(close(Color(kelvin: 100), Color(kelvin: 1000)))
+        #expect(close(Color(kelvin: 99999), Color(kelvin: 40000)))
+    }
+
+    @Test func kelvinComponentsStayInRange() {
+        for k in stride(from: 1000.0, through: 40000, by: 500) {
+            let c = Color(kelvin: k)
+            #expect(c.red >= 0 && c.red <= 1)
+            #expect(c.green >= 0 && c.green <= 1)
+            #expect(c.blue >= 0 && c.blue <= 1)
+        }
+    }
+
+    @Test func kelvinAlphaPassesThrough() {
+        #expect(Color(kelvin: 5600, alpha: 0.4).alpha == 0.4)
+    }
 }

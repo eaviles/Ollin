@@ -146,4 +146,52 @@ struct LightingTests {
         let v = d.meshVertices.first!
         #expect(close(v.position.w, 0.6) && close(v.normal.w, 50))
     }
+
+    // MARK: Lighting presets
+
+    @Test func standardPresetIsTheDefaultRig() {
+        // The auto-lit default and `.standard` are one source of truth.
+        #expect(LightingPreset.standard.ambient == Drawer.defaultAmbient)
+        #expect(LightingPreset.standard.lights == Drawer.defaultLights)
+    }
+
+    @Test func builtInPresetsAreCurated() {
+        // A small, hand-picked set — each non-empty, none a sprawling catalog.
+        let presets: [LightingPreset] = [.standard, .threePoint, .goldenHour, .noir, .studio, .moonlight]
+        for p in presets {
+            #expect(!p.lights.isEmpty)
+            #expect(p.lights.count <= 4)
+        }
+    }
+
+    @Test func intensifiedScalesEveryLight() {
+        let dimmed = LightingPreset.studio.intensified(by: 0.5)
+        for (a, b) in zip(LightingPreset.studio.lights, dimmed.lights) {
+            #expect(close(Float(b.intensity), Float(a.intensity * 0.5)))
+        }
+        // Ambient is the shadow floor, not the key brightness — left untouched.
+        #expect(dimmed.ambient == LightingPreset.studio.ambient)
+    }
+}
+
+/// `lightingPreset(_:)` is the bare facade; checks here go through `Drawer` to pin
+/// that a preset packs as a custom (sketch-controlled) rig.
+@Suite
+struct LightingPresetFacadeTests {
+
+    private func close(_ a: Float, _ b: Float, _ eps: Float = 1e-5) -> Bool { abs(a - b) <= eps }
+
+    @Test func presetSetsAmbientAndLights() {
+        let d = Drawer()
+        d.beginFrame()
+        d.camera(Camera3D(eye: Vector3(0, 0, 5), target: .zero))
+        // Mirror what Sketch.lightingPreset(_:) does on the drawer.
+        let preset = LightingPreset.threePoint
+        d.ambientLight(preset.ambient)
+        for light in preset.lights { d.addLight(light) }
+        let u = d.makeLighting()
+        #expect(u.enabled == 1)
+        #expect(u.lightCount == Int32(preset.lights.count))
+        #expect(close(u.ambient.x, Float(Color.srgbToLinear(preset.ambient.red))))
+    }
 }

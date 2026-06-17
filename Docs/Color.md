@@ -27,6 +27,7 @@ Color(white: Double, alpha: Double = 1)
 Color(hex: UInt32, alpha: Double = 1)     // 24-bit RGB: Color(hex: 0xFF0066)
 Color(hex: String)                        // "#RGB" "#RGBA" "#RRGGBB" "#RRGGBBAA" → Color?
 Color(hue: Double, saturation: Double, brightness: Double, alpha: Double = 1)
+Color(kelvin: Double, alpha: Double = 1)  // blackbody color temperature
 ```
 
 Named constants: `.white`, `.black`, `.gray`, `.red`, `.green`, `.blue`, `.clear`.
@@ -55,6 +56,13 @@ if let c = Color(hex: userString) { fill(c) }
 
 ```swift
 fill(Color(hue: time * 0.1, saturation: 0.8, brightness: 1))   // cycle the rainbow
+```
+
+**Color temperature** names light the way a photographer does. `Color(kelvin:)` takes a blackbody temperature, warm (orange) at the low end, cool (blue) at the high end, neutral white around 6600. It's an ordinary sRGB `Color`, so it drops into `fill`, `background`, or a `Light`'s color; the 3D [lighting presets](3D.md#lights) use it so a rig reads as the temperatures it really is. `kelvin` clamps to `1000...40000`.
+
+```swift
+directionalLight(Color(kelvin: 5600), direction: Vector3(-0.5, -0.8, -0.4))  // daylight key
+fill(Color(kelvin: 3200))                                                    // warm tungsten
 ```
 
 <a name="oklab"></a>

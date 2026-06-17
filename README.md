@@ -191,7 +191,7 @@ In code they're `OllinApp.exportVideo(...)` and `OllinApp.exportGIF(...)`; codec
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: layered effects and compositing, shader composition and a live-coding mode, more of the iPhone sensor array and the 3D mode (cinematic lighting presets, material libraries, more shadow casters), a project generator, and eventually iOS, visionOS, and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: layered effects and compositing, shader composition and a live-coding mode, more of the iPhone sensor array and the 3D mode (material libraries, more shadow casters), a project generator, and eventually iOS, visionOS, and AR.
 
 ## Built with AI
 
@@ -263,6 +263,7 @@ A few helpers lean on well-known public techniques, reimplemented in Ollin and c
 - The named `Easing` curves are Robert Penner's easing equations, written from the formulas catalogued at [easings.net](https://easings.net) (Andrey Sitnik and Ivan Solovev).
 - `@Smoothed` and `OneEuroFilter` implement the [1€ filter](https://gery.casiez.net/1euro/) for adaptive input smoothing (Géry Casiez, Nicolas Roussel, and Daniel Vogel, *1€ Filter: A Simple Speed-based Low-pass Filter for Noisy Input in Interactive Systems*, CHI 2012), written from the paper.
 - The `Colormap` ramps carry the canonical public colormap data: `viridis`/`magma`/`inferno`/`plasma`/`cividis` from [matplotlib](https://matplotlib.org) (CC0), `turbo` from Google (Apache-2.0), and `rocket`/`mako` from [seaborn](https://seaborn.pydata.org) (BSD-3).
+- `Color(kelvin:)` maps a blackbody color temperature to sRGB with [Tanner Helland's approximation of the Planckian locus](https://tannerhelland.com/2012/09/18/convert-temperature-rgb-algorithm-code.html), written from the published formula.
 - The perceptual color spaces (`OKLab`/`OKLCH`/`OKHSL`, and the gamut mapping behind `Color.mix`) implement [Björn Ottosson's Oklab](https://bottosson.github.io/posts/oklab/) and its [Okhsl picker space](https://bottosson.github.io/posts/colorpicker/), with out-of-gamut colors brought back by chroma reduction at constant lightness and hue following his [sRGB gamut-clipping method](https://bottosson.github.io/posts/gamutclipping/) (reference code public domain/MIT), written from the published math.
 - OSC (`OllinOSC`) implements the [OSC 1.0 wire format](https://opensoundcontrol.stanford.edu/spec-1_0.html) from the specification, over UDP on `Network.framework`. Its API takes after openFrameworks' `ofxOsc` and OPENRNDR's `orx-osc`, read for approach and written independently; no OSC library is vendored.
 - MIDI (`OllinMIDI`) speaks the MIDI 1.0 message format, parsed and encoded from the specification, over Apple's Core MIDI. Its API takes after openFrameworks' `ofxMidi` and OPENRNDR's `orx-midi`, read for approach and written independently; no MIDI library is vendored.

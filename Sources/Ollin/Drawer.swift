@@ -244,14 +244,11 @@ final class Drawer {
     /// renderer owns the actual texture and must use the same value (`MetalRenderer`).
     static let shadowMapResolution = 2048
 
-    /// A pleasant default lighting rig — a soft ambient with a key and a dimmer fill
-    /// directional — used when a sketch draws meshes without setting any light, and
-    /// by the `lights()` convenience. So a solid is shaded out of the box.
-    static let defaultAmbient = Color(white: 0.28)
-    static let defaultLights: [Light] = [
-        .directional(.white, direction: Vector3(-0.4, -0.7, -0.6), intensity: 0.9),
-        .directional(Color(white: 0.6), direction: Vector3(0.5, 0.3, 0.4), intensity: 0.4),
-    ]
+    /// The default lighting rig — used when a sketch draws meshes without setting any
+    /// light, so a solid is shaded out of the box. It *is* `LightingPreset.standard`
+    /// (one source of truth): the `lights()` convenience installs the same preset.
+    static var defaultAmbient: Color { LightingPreset.standard.ambient }
+    static var defaultLights: [Light] { LightingPreset.standard.lights }
 
     /// Whether a depth scene (`drawDepthScene`) was recorded this frame. Like an
     /// active camera, it makes the renderer allocate the depth buffer — so a 2D
