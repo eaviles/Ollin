@@ -6,7 +6,7 @@ import COllinShaders
 /// CPU checks on the 3D mesh lighting/material model, exercised through `Drawer`:
 /// how lights pack into the GPU `OllinLighting` uniform (`makeLighting`), the
 /// auto/custom/off modes, the directional/point/spot encodings, and the material
-/// riding the mesh vertices' spare w slots. No Metal device, so these run in CI.
+/// finish bound per mesh batch as a uniform. No Metal device, so these run in CI.
 @Suite
 struct LightingTests {
 
@@ -124,16 +124,18 @@ struct LightingTests {
         #expect(close(u.cameraPosition.x, 1) && close(u.cameraPosition.y, 2) && close(u.cameraPosition.z, 3))
     }
 
-    // MARK: Material on the vertices
+    // MARK: Material on the batch
 
-    @Test func materialBakesIntoVertexWSlots() {
+    @Test func materialRidesTheBatchUniform() {
         let d = freshDrawer()
         d.specular(0.6)
         d.shininess(50)
         d.drawMesh(.box(size: 1))
-        let v = d.meshVertices.first!
-        #expect(close(v.position.w, 0.6))   // specular strength rides position.w
-        #expect(close(v.normal.w, 50))      // shininess rides normal.w
+        let finish = d.batches.last!.finish
+        #expect(close(finish.specular, 0.6))   // bound per batch as a uniform
+        #expect(close(finish.shininess, 50))
+        // The vertex w slots no longer carry the material (only the wireframe line width).
+        #expect(close(d.meshVertices.first!.position.w, 0))
     }
 
     @Test func materialIsSavedByState() {
@@ -143,8 +145,18 @@ struct LightingTests {
         d.specular(0.1); d.shininess(8)
         d.popState()
         d.drawMesh(.box(size: 1))
-        let v = d.meshVertices.first!
-        #expect(close(v.position.w, 0.6) && close(v.normal.w, 50))
+        let finish = d.batches.last!.finish
+        #expect(close(finish.specular, 0.6) && close(finish.shininess, 50))
+    }
+
+    @Test func materialChangeBreaksTheSolidBatch() {
+        // A material(_:) change opens a fresh batch (the finish is one per-batch uniform),
+        // but consecutive solids with the same finish merge into one.
+        let d = freshDrawer()
+        d.material(.clay); d.drawMesh(.box(size: 1)); d.drawMesh(.box(size: 1))
+        d.material(.glossy); d.drawMesh(.box(size: 1))
+        let meshBatches = d.batches.filter { $0.kind == .mesh3D }
+        #expect(meshBatches.count == 2)
     }
 
     // MARK: Lighting presets

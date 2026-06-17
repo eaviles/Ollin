@@ -13,6 +13,7 @@ right-handed and y-up.
 | [ShapeFactory](ShapeFactory/) | The parametric/profile mesh set (Möbius, Klein, superellipsoid, supershape, extrude, lathe) morphing on `time`. |
 | [Lighting](Lighting/) | The three light kinds shading solids by hand — a fixed directional key, an orbiting point bulb, a sweeping spot — with a rising-shininess sphere row. |
 | [LightingPresets](LightingPresets/) | One call relights the whole scene: the curated `LightingPreset`s (`.standard`/`.threePoint`/`.goldenHour`/`.noir`/`.studio`/`.moonlight`) cycling over one still life, plus a sketch-built custom rig. Click or press a key to step. |
+| [Materials](Materials/) | The material library — one orbiting sphere grid wearing each built-in `Material` (`.iridescent`/`.soapBubble`/`.velvet`/`.jade`/`.toon`/`.gooch`/…), the view-angle finishes shifting as it turns. |
 | [Shadows](Shadows/) | Directional cast shadows: solids drop shadows onto a floor and onto one another via `castShadows()`. |
 | [LoadedMesh](LoadedMesh/) | A mesh loaded from a file (`.obj`/`.usdz`/`.gltf`/…) — drop one in with `OLLIN_MESH=<path>`, or the bundled crystal — recentered, scaled to fit, and lit. |
 | [TexturedMesh](TexturedMesh/) | A UV-gridded globe textured with an image over a base-color-tinted floor, both lit. |

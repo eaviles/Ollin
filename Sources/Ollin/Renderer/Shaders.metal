@@ -1237,7 +1237,6 @@ struct MeshOut {
     float3 normal;    // world-space normal, interpolated
     float3 worldPos;  // world-space position (point/spot lights + specular view dir)
     float4 color;     // baked surface (diffuse) color; alpha = opacity
-    float2 material;  // x = specular strength, y = shininess exponent
 };
 
 vertex MeshOut ollin_mesh_vertex(uint vid [[vertex_id]],
@@ -1249,7 +1248,6 @@ vertex MeshOut ollin_mesh_vertex(uint vid [[vertex_id]],
     out.position = u.projection * (u.view * float4(v.position.xyz, 1.0));
     out.normal = v.normal.xyz;
     out.color = v.color;
-    out.material = float2(v.position.w, v.normal.w);   // material in the spare w slots
     return out;
 }
 
@@ -1284,13 +1282,16 @@ static inline float shadowFactor(float3 worldPos, float3 n, float3 toLight,
 }
 
 // The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
-// surface `normal`, `worldPos`, and `material` (x = specular strength, y = shininess):
-// ambient + per-light diffuse + Blinn-Phong specular, with the spot cone gate. The one
-// shadow-casting light (`light.shadowLight`, -1 when off) is dimmed where the receiver
-// is occluded. Shared by the solid and textured mesh fragments so they stay in step;
-// with `enabled == 0` it returns the surface flat (the unlit look).
+// surface `normal`, `worldPos`, and the per-batch `mat` finish. It composes a base
+// shading model (standard Lambert / toon cel / Gooch warm–cool) with the layered
+// finishes — Blinn-Phong specular, fake subsurface scattering, a Fresnel-driven
+// iridescent sheen, and a Fresnel rim glow — each inert at its zero value, so a default
+// material shades exactly like the plain Lambert path. The one shadow-casting light
+// (`light.shadowLight`, -1 when off) is dimmed where the receiver is occluded. Shared by
+// the solid and textured mesh fragments so they stay in step; with `enabled == 0` it
+// returns the surface flat (the unlit look).
 static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
-                                  float3 worldPos, float2 material,
+                                  float3 worldPos, constant OllinMaterial &mat,
                                   constant OllinLighting &light,
                                   depth2d<float> shadowMap, sampler shadowSamp) {
     float3 n = normalize(normal);
@@ -1298,9 +1299,19 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         return float4(base, alpha);
     }
     float3 viewDir = normalize(light.cameraPosition.xyz - worldPos);
-    float specStrength = material.x;
-    float shininess = max(material.y, 1.0);
-    float3 lit = light.ambient.rgb * base;   // flat ambient term
+    float specStrength = mat.specular;
+    float shininess = max(mat.shininess, 1.0);
+    int model = mat.shadingModel;            // 0 standard, 1 toon, 2 Gooch
+    float bands = max(mat.toonBands, 1.0);
+    bool wantsSSS = mat.subsurfaceColor.a > 0.0;
+
+    // Gooch sets its own diffuse tone below; the others start from the flat ambient term.
+    float3 lit = (model == 2) ? float3(0.0) : light.ambient.rgb * base;
+    float3 incoming = light.ambient.rgb;     // light reaching the surface (drives the sheen)
+    float3 sssAccum = float3(0.0);           // accumulated back-translucency
+    float3 keyToLight = float3(0.0, 1.0, 0.0);   // the primary light dir (Gooch tone axis)
+    bool haveKey = false;
+
     for (int i = 0; i < light.lightCount; i++) {
         OllinLight L = light.lights[i];
         float3 toLight;     // unit vector from the surface toward the light
@@ -1317,20 +1328,69 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 atten = smoothstep(L.cosOuter, L.cosInner, cosA);
             }
         }
-        float ndl = max(dot(n, toLight), 0.0);
-        float3 diffuse = L.color.rgb * base * ndl;
-        // Blinn-Phong specular (white highlight), only on faces toward the light.
-        float3 h = normalize(toLight + viewDir);
-        float spec = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), shininess) * specStrength : 0.0;
-        float3 specular = L.color.rgb * spec;
         // Dim only the casting light where this surface is in shadow (ambient stays).
         if (i == light.shadowLight) {
             float lit01 = shadowFactor(worldPos, n, toLight, light.lightViewProjection,
                                        light.shadowTexelWorld, shadowMap, shadowSamp);
             atten *= mix(1.0, lit01, light.shadowStrength);
         }
-        lit += atten * (diffuse + specular);
+        if (!haveKey) { keyToLight = toLight; haveKey = true; }
+
+        float ndl = max(dot(n, toLight), 0.0);
+        float3 h = normalize(toLight + viewDir);
+        float specRaw = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), shininess) : 0.0;
+
+        if (model == 1) {
+            // Toon: hard cel bands on the diffuse, the specular snapped to a blob.
+            float d = ceil(ndl * bands) / bands;
+            float spec = (specRaw > 0.5) ? specStrength : 0.0;
+            lit += atten * L.color.rgb * (base * d + spec);
+        } else if (model == 2) {
+            // Gooch tone is set after the loop; each light still adds a highlight.
+            lit += atten * L.color.rgb * (specRaw * specStrength);
+        } else {
+            // Standard Lambert diffuse + Blinn-Phong specular.
+            lit += atten * L.color.rgb * (base * ndl + specRaw * specStrength);
+        }
+        incoming += atten * L.color.rgb * ndl;
+
+        // Subsurface: light seen coming through thin geometry from behind (a wrap term).
+        if (wantsSSS) {
+            float back = pow(max(dot(viewDir, -toLight), 0.0), 3.0);
+            sssAccum += atten * L.color.rgb * back;
+        }
     }
+
+    // Gooch warm–cool tone from the key light (replaces the ambient + Lambert diffuse).
+    // The raw signed dot sends back faces to the cool tone, the lit side to the warm one.
+    if (model == 2) {
+        float t = dot(n, keyToLight) * 0.5 + 0.5;
+        lit += mix(mat.goochCool.rgb, mat.goochWarm.rgb, t) * base;
+    }
+
+    // Subsurface glow: a soft translucent bleed in the tint, modulated by the body color.
+    if (wantsSSS) {
+        lit += mat.subsurfaceColor.a * mat.subsurfaceColor.rgb * base * sssAccum;
+    }
+
+    // Iridescent sheen (thin-film-style): a view-angle rainbow that strengthens toward
+    // grazing angles, the hue cycling through a cosine palette (iq). It's a reflected-
+    // light effect, so it's scaled by the light reaching the surface (with a faint floor
+    // so it still reads in shadow) — not pure emission. Inert when strength is 0.
+    if (mat.iridescence > 0.0) {
+        float fres = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), 3.0);
+        float phase = fres * mat.iridescenceScale;
+        float3 rainbow = 0.5 + 0.5 * cos(6.2831853 * (phase + float3(0.0, 0.3333, 0.6667)));
+        float irrad = dot(incoming, float3(0.299, 0.587, 0.114));
+        lit += mat.iridescence * fres * rainbow * (0.15 + 0.85 * irrad);
+    }
+
+    // Rim (Fresnel edge) glow: a bright halo at grazing angles in the rim color.
+    if (mat.rimColor.a > 0.0) {
+        float rim = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), mat.rimPower);
+        lit += mat.rimColor.a * rim * mat.rimColor.rgb;
+    }
+
     return float4(lit, alpha);
 }
 
@@ -1351,13 +1411,14 @@ vertex MeshShadowOut ollin_mesh_shadow_vertex(uint vid [[vertex_id]],
 
 fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     constant OllinLighting &light [[buffer(0)]],
+                                    constant OllinMaterial &mat [[buffer(1)]],
                                     depth2d<float> shadowMap [[texture(1)]],
                                     sampler shadowSamp [[sampler(1)]]) {
     // Linearize the surface color so the present pass's sRGB re-encode lands the
     // on-screen pixel at the fill color, then shade + shadow it through the shared
     // tail (which returns it flat unchanged when no light is set).
     return meshLitColor(srgbToLinear(in.color.rgb), in.color.a, in.normal,
-                        in.worldPos, in.material, light, shadowMap, shadowSamp);
+                        in.worldPos, mat, light, shadowMap, shadowSamp);
 }
 
 // MARK: - Textured 3D mesh
@@ -1372,7 +1433,6 @@ struct MeshTexturedOut {
     float3 normal;
     float3 worldPos;
     float4 color;
-    float2 material;
     float2 uv;
 };
 
@@ -1385,13 +1445,13 @@ vertex MeshTexturedOut ollin_mesh_textured_vertex(uint vid [[vertex_id]],
     out.position = u.projection * (u.view * float4(v.position.xyz, 1.0));
     out.normal = v.normal.xyz;
     out.color = v.color;
-    out.material = float2(v.position.w, v.normal.w);
     out.uv = v.uv;
     return out;
 }
 
 fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              constant OllinLighting &light [[buffer(0)]],
+                                             constant OllinMaterial &mat [[buffer(1)]],
                                              texture2d<float> baseColorTex [[texture(0)]],
                                              sampler samp [[sampler(0)]],
                                              depth2d<float> shadowMap [[texture(1)]],
@@ -1403,7 +1463,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     float4 tex = baseColorTex.sample(samp, in.uv);
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
-    return meshLitColor(base, alpha, in.normal, in.worldPos, in.material, light,
+    return meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                         shadowMap, shadowSamp);
 }
 

@@ -455,6 +455,11 @@ let package = Package(
             path: "Examples/3D/LightingPresets"
         ),
         .executableTarget(
+            name: "Example-Materials",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/Materials"
+        ),
+        .executableTarget(
             name: "Example-Shadows",
             dependencies: ["Ollin"],
             path: "Examples/3D/Shadows"

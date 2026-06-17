@@ -180,6 +180,15 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func meshMaterialsMatchReference() throws {
+        // A row of spheres in the stylized materials — pins the per-batch OllinMaterial
+        // uniform and each new shader branch: a Fresnel iridescent sheen, the rim glow
+        // (velvet), fake subsurface (jade), toon cel bands, and Gooch warm–cool. No `time`.
+        let diff = try Snapshot.meanDifference(of: MeshMaterialsScene(), against: "mesh-materials")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func transformed3DMatchesReference() throws {
         // Point-cloud blobs placed entirely by the 3D transform stack — a center blob
         // plus four satellites positioned by rotateY + translate and sized by scale.
@@ -408,6 +417,37 @@ private final class WireframeMesh3DScene: Sketch {
         strokeWeight(1.5)
         stroke(Color(hue: 0.55, saturation: 0.6, brightness: 1))
         withState { rotateY(0.6); rotateX(0.3); drawMesh(.icosphere(radius: 1.4, subdivisions: 2)) }
+    }
+}
+
+/// A row of spheres in the stylized materials under a fixed camera and custom lights —
+/// pins the per-batch material uniform and the new shader branches (iridescence, rim,
+/// subsurface, toon, Gooch). No `time`, so it's deterministic.
+private final class MeshMaterialsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: .zero, radius: 7,
+                         azimuth: 0.35, elevation: 0.28, fieldOfView: .pi / 3.2))
+        ambientLight(Color(white: 0.14))
+        directionalLight(Color(kelvin: 5600), direction: Vector3(-0.4, -0.6, -0.5), intensity: 0.8)
+        pointLight(.white, at: Vector3(3, 4, 4), intensity: 1.0)
+        let mats: [(Material, Color)] = [
+            (.iridescent, Color(white: 0.18)),
+            (.velvet,     Color(hue: 0.93, saturation: 0.6, brightness: 0.4)),
+            (.jade,       Color(hue: 0.42, saturation: 0.55, brightness: 0.55)),
+            (.toon,       Color(hue: 0.07, saturation: 0.8, brightness: 0.95)),
+            (.gooch,      Color(white: 0.55)),
+        ]
+        for (i, m) in mats.enumerated() {
+            withState {
+                translate(-3.2 + Double(i) * 1.6, 0, 0)
+                fill(m.1)
+                material(m.0)
+                drawSphere(radius: 0.7)
+            }
+        }
     }
 }
 

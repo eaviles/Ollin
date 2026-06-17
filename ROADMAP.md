@@ -61,10 +61,10 @@ A variable blur for camera-feed depth of field, set by per-pixel depth so a subj
 
 ## 3D mode
 
-2D stays the default, and 3D keeps building out on top of the shipped camera, depth buffer, transform stack, solid primitives, meshes loaded from file (with their own base-color material and texture), textured meshes, the directional/point/spot light & material model, curated lighting presets, and directional cast shadows:
+2D stays the default, and 3D keeps building out on top of the shipped camera, depth buffer, transform stack, solid primitives, meshes loaded from file (with their own base-color material and texture), textured meshes, the directional/point/spot light & material model, curated lighting presets, the stylized material library (iridescent, velvet, jade, toon, gooch, …), and directional cast shadows:
 
 - **More shadow casters** — point (cube map) and spot (perspective) shadow casters beside the directional one, plus softer, contact-hardening (PCSS-style) shadows.
-- **Extensible material libraries** — a set of ready-made named materials (clay, plastic, metal, glass, …) that a sketch can use as-is or extend with its own, plus matcap materials that bake a whole look into a single texture, layered over the Blinn-Phong material. They share the construct-or-mutate-a-value extension shape the lighting presets use.
+- **Matcap materials** — a whole look (clay-render, metal, skin) baked into a single sphere texture, sampled by the view-space normal and independent of the scene lights. It layers over the existing material model, beside the named-finish library, as a new mesh pipeline that samples by view normal.
 - **Physically-based shading and environment lighting** — the later realism tier: a physically-based material model (energy-conserving, roughness and metalness) lit by image-based environment maps (a prefiltered HDRI or a procedural studio environment), which is how modern real-time 3D gets its photographic look. The bigger step beyond the analytic directional/point/spot model, pairing the material and lighting halves; it builds on the named-material and preset work rather than replacing it.
 
 It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode-partly-shipped).

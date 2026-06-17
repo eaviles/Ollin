@@ -951,6 +951,13 @@ final class MetalRenderer {
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
                 encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
+                // The surface finish (shading model + Blinn-Phong/rim/subsurface/iridescence)
+                // is one uniform bound per batch; the wireframe pipeline declares no such
+                // buffer, so only the lit solid/textured fragments take it.
+                if !meshWireframe {
+                    var finish = batch.finish
+                    encoder.setFragmentBytes(&finish, length: MemoryLayout<OllinMaterial>.stride, index: 1)
+                }
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .depthScene:
                 // A backdrop quad (in `imageVertices`, like an image) whose fragment

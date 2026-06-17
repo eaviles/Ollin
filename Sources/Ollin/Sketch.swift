@@ -364,6 +364,13 @@ open class Sketch {
     /// sharper highlight (default `32`). Drawing state, saved by `withState`.
     public func shininess(_ exponent: Double) { drawer.shininess(exponent) }
 
+    /// Give subsequent meshes a whole `Material` finish at once — its specular,
+    /// shininess, and any iridescence — instead of setting those knobs one by one.
+    /// The surface *color* stays the current `fill`. Reach for a built-in
+    /// (`.clay`, `.plastic`, `.glossy`, `.soapBubble`, …) or build/tweak your own.
+    /// Drawing state, saved by `withState`.
+    public func material(_ material: Material) { drawer.material(material) }
+
     /// Draw subsequent meshes as a wireframe (their triangle edges only, the faces
     /// see-through) instead of filled, lit surfaces. The edges take the current
     /// `stroke` color (or `fill` if no stroke) and `strokeWeight`. Pass `false` to go

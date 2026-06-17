@@ -155,16 +155,43 @@ typedef struct {
 // (`position.w`/`normal.w`) — the vertex shader reads only `position.xyz`/`normal.xyz`.
 // `uv` carries texture coordinates (0,0 … 1,1) for the textured-mesh pipeline; the
 // solid `ollin_mesh_vertex`/`_fragment` read only position/normal/color, so an
-// untextured mesh leaves `uv` zero and is unaffected by it. Triangle indices are
-// expanded into a flat list on the CPU (no index buffer), matching the 2D triangle
-// path. Stride 64 (four 16-byte rows): float4 @0, float4 @16, float4 @32, float2 @48
-// (+ 8 bytes pad, a reserved slot, e.g. a tangent later).
+// untextured mesh leaves `uv` zero and is unaffected by it. The *material finish*
+// (specular, iridescence, rim, subsurface, …) does not ride the vertex — it's constant
+// across a mesh, so it's bound per batch as an `OllinMaterial` uniform (below); only the
+// wireframe line width still uses `position.w`. Triangle indices are expanded into a flat
+// list on the CPU (no index buffer), matching the 2D triangle path. Stride 64 (four
+// 16-byte rows): float4 @0, float4 @16, float4 @32, float2 @48 (+ 8 bytes pad, a reserved
+// slot, e.g. a tangent for anisotropic shading later).
 typedef struct {
-    simd_float4 position;   // world-space xyz (model matrix baked in); w = specular strength (0…1)
-    simd_float4 normal;     // world-space normal (normal matrix baked in); w = shininess exponent
+    simd_float4 position;   // world-space xyz (model matrix baked in); w = wireframe line width (unused when lit)
+    simd_float4 normal;     // world-space normal (normal matrix baked in); w unused
     simd_float4 color;      // straight RGBA diffuse; rgb = surface color, a = opacity
     simd_float2 uv;         // texture coordinates, 0…1 (textured-mesh pipeline; 0 when untextured)
 } OllinMeshVertex;
+
+// The surface *finish* of a 3D mesh: how it responds to light, separate from the surface
+// color (which is the baked vertex color = the current `fill`). A material is constant
+// across a mesh, so it's bound per mesh batch as a fragment uniform rather than baked into
+// every vertex. It composes a base **shading model** (0 standard Lambert, 1 toon/cel,
+// 2 Gooch warm–cool) with layered **finishes** evaluated in the shared `meshLitColor`
+// tail — Blinn-Phong specular, a Fresnel **rim** glow, fake **subsurface** scattering, and
+// a Fresnel-driven **iridescent** sheen. Each finish is inert at its zero value, so the
+// default material (specular 0, shininess 32, everything else 0, shading model 0) shades
+// byte-identically to the plain Lambert path. Colors are linear (sRGB→linear CPU-side).
+typedef struct {
+    simd_float4 rimColor;         // rgb linear rim color; a = rim strength (0 = no rim)
+    simd_float4 subsurfaceColor;  // rgb linear subsurface tint; a = subsurface strength (0 = none)
+    simd_float4 goochWarm;        // rgb linear Gooch warm tone (lit side); a unused
+    simd_float4 goochCool;        // rgb linear Gooch cool tone (shadow side); a unused
+    float specular;               // Blinn-Phong specular strength (0 = matte)
+    float shininess;              // Blinn-Phong shininess exponent (>= 1)
+    float iridescence;            // iridescent sheen strength (0 = none)
+    float iridescenceScale;       // iridescence band count, head-on -> grazing
+    float rimPower;               // Fresnel exponent for the rim falloff
+    float toonBands;              // number of cel bands (toon shading)
+    int   shadingModel;           // 0 standard (Lambert), 1 toon (cel), 2 Gooch (warm-cool)
+    int   _pad;
+} OllinMaterial;
 
 // Lighting for the 3D mesh model (the Blinn-Phong material on `ollin_mesh_fragment`).
 // Per-frame state, like the camera: the sketch sets lights each `draw()` (see
