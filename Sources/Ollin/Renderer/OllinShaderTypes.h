@@ -147,17 +147,52 @@ typedef struct {
 // `Mesh` placed by the model matrix; like the point cloud, the model matrix bakes
 // into `position` on the CPU and the model's normal matrix into `normal`, so the
 // vertex shader only applies the camera (view + projection) — positions and normals
-// are already world space (right-handed, y-up). The default fragment colors the
-// surface by its normal (a geometry-revealing look) until the typed light/material
-// model lands, so `color.rgb` is reserved for that and only `color.a` (opacity) is
-// read today. Triangle indices are expanded into a flat list on the CPU (no index
-// buffer), matching the 2D triangle path. Stride 48 (three 16-byte rows):
-// float4 @0, float4 @16, float4 @32.
+// are already world space (right-handed, y-up). `color` is the surface (diffuse)
+// color baked from the current `fill` (rgb) with `color.a` the opacity. With no
+// lights set the fragment draws the surface flat in that color (the unlit look);
+// with lights it shades `color` per the material model. The material's specular
+// strength + shininess ride the spare `w` slots
+// (`position.w`/`normal.w`) — the vertex shader reads only `position.xyz`/`normal.xyz`
+// — so the material is state-stack drawing state with no struct widening. Triangle
+// indices are expanded into a flat list on the CPU (no index buffer), matching the
+// 2D triangle path. Stride 48 (three 16-byte rows): float4 @0, float4 @16, float4 @32.
 typedef struct {
-    simd_float4 position;   // world-space xyz (model matrix baked in; w unused)
-    simd_float4 normal;     // world-space normal (normal matrix baked in; w unused)
-    simd_float4 color;      // straight RGBA; rgb reserved for materials, a = opacity
+    simd_float4 position;   // world-space xyz (model matrix baked in); w = specular strength (0…1)
+    simd_float4 normal;     // world-space normal (normal matrix baked in); w = shininess exponent
+    simd_float4 color;      // straight RGBA diffuse; rgb = surface color, a = opacity
 } OllinMeshVertex;
+
+// Lighting for the 3D mesh model (the Blinn-Phong material on `ollin_mesh_fragment`).
+// Per-frame state, like the camera: the sketch sets lights each `draw()` (see
+// `Sketch.directionalLight`/`pointLight`/`spotLight`/`ambientLight`), and the renderer
+// packs them into one `OllinLighting` bound to the mesh fragment. With `enabled == 0`
+// (no lights and no ambient set) the fragment keeps the byte-identical normal-as-color
+// path, so a 3D frame that sets no light renders exactly as before.
+
+#define OLLIN_MAX_LIGHTS 8
+
+// One light. `kind`: 0 directional (parallel rays), 1 point (omni from a position),
+// 2 spot (point gated by a cone). Colors are linear (sRGB→linear on the CPU) and
+// premultiplied by intensity. There's no distance attenuation in this model.
+typedef struct {
+    simd_float4 color;       // rgb = linear color × intensity; a unused
+    simd_float4 position;    // point/spot: world-space position; w unused
+    simd_float4 direction;   // directional: unit direction *to* the light; spot: unit cone axis (light's travel direction); w unused
+    int   kind;              // 0 directional, 1 point, 2 spot
+    float cosInner;          // spot: cosine of the inner half-angle (full brightness within)
+    float cosOuter;          // spot: cosine of the outer half-angle (zero beyond); inner→outer is the soft penumbra
+    float _pad;
+} OllinLight;
+
+typedef struct {
+    simd_float4 ambient;          // rgb linear ambient (lights every surface flatly); a unused
+    simd_float4 cameraPosition;   // world-space eye xyz (for the specular view direction); w unused
+    OllinLight lights[OLLIN_MAX_LIGHTS];
+    int lightCount;               // number of valid entries in `lights`
+    int enabled;                  // 1 = lit shading (any light or ambient set); 0 = normal-as-color (unchanged)
+    float _pad0;
+    float _pad1;
+} OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer
 // index 10), so a kernel reads `u.time`/`u.dt`/`u.resolution`/… with no plumbing.

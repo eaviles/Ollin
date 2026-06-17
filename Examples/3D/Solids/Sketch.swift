@@ -9,9 +9,9 @@ import Ollin
 /// the camera sways. The parametric and profile generators (supershape, Möbius,
 /// extrude, lathe, …) have their own example in `3D/ShapeFactory`.
 ///
-/// A surface is colored by its normal until the light/material model lands — a
-/// face's hue is its direction in space, which also makes the geometry easy to
-/// read. A 2D label rides above each shape via `withBillboard`.
+/// Each solid takes a `fill` color and is shaded by the auto-lit default — a solid
+/// looks 3D out of the box, no lights to set up — with a soft specular highlight.
+/// A 2D label rides above each shape via `withBillboard`.
 @main
 final class Solids3D: Sketch {
     private var shapes: [(name: String, mesh: Mesh)] = []
@@ -53,11 +53,16 @@ final class Solids3D: Sketch {
 
         for (i, shape) in shapes.enumerated() {
             let col = i % columns, row = i / columns
+            // A hue per shape, lit by the default rig with a gentle highlight.
+            let hue = Double(i) / Double(shapes.count)
             withState {
                 translate(x0 + spacing * Double(col), y0 - spacing * Double(row), 0)
                 withState {
                     rotateY(time * 0.5 + Double(i) * 0.6)
                     rotateX(sin(time * 0.35 + Double(i)) * 0.3)
+                    fill(Color(hue: hue, saturation: 0.6, brightness: 0.95))
+                    specular(0.4)
+                    shininess(48)
                     drawMesh(shape.mesh)
                 }
                 withBillboard(at: Vector3(0, 1.35, 0)) {
@@ -69,6 +74,6 @@ final class Solids3D: Sketch {
             }
         }
 
-        drawCaption("Solid 3D primitives — sixteen shapes, each colored by its surface normal")
+        drawCaption("Solid 3D primitives — sixteen shapes, shaded by the auto-lit default")
     }
 }

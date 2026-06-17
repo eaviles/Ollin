@@ -138,6 +138,8 @@ final class Drawer {
     private var strokeAlignment: StrokeAlign = .center   // where the stroke sits on the outline (see strokeAlign)
     private var strokeJoinStyle: StrokeJoin = .miter     // how stroked-path corners turn (see strokeJoin)
     private var strokeCapStyle: StrokeCap = .butt        // how open stroked-path ends finish (see strokeCap)
+    private var specularStrength: Double = 0    // 3D material: specular highlight strength, 0 = matte (see specular)
+    private var shininessValue: Double = 32     // 3D material: Blinn-Phong shininess exponent (see shininess)
     private var currentFont: ActiveFont = .outline(.systemMedium)   // active text font (see textFont / drawText)
     private var textPixelSize: Double = 24               // rendered glyph height in points (see textSize)
     private var textAlignH: TextAlignH = .left           // horizontal text anchor (see textAlign)
@@ -204,6 +206,31 @@ final class Drawer {
     /// frame. When set, the renderer allocates a depth buffer and draws 3D geometry
     /// through it; a 2D-only frame leaves it `nil` and is untouched.
     private(set) var camera3D: Camera3D?
+
+    /// Lights for the 3D mesh material, set this frame (see `Light`). Per-frame
+    /// state like the camera — reset each frame, accumulated by `addLight`.
+    private(set) var lights: [Light] = []
+
+    /// Ambient light for the 3D mesh material — a flat term added to every lit
+    /// surface (see `ambientLight`). Per-frame state; `nil` means none.
+    private(set) var ambientLightColor: Color?
+
+    /// How the 3D mesh material is lit this frame.
+    enum LightingMode {
+        case auto    // nothing set → the default rig (solids look shaded out of the box)
+        case custom  // the sketch set its own lights/ambient
+        case off     // `noLights()` → flat, unlit surfaces
+    }
+    private(set) var lightingMode: LightingMode = .auto
+
+    /// A pleasant default lighting rig — a soft ambient with a key and a dimmer fill
+    /// directional — used when a sketch draws meshes without setting any light, and
+    /// by the `lights()` convenience. So a solid is shaded out of the box.
+    static let defaultAmbient = Color(white: 0.28)
+    static let defaultLights: [Light] = [
+        .directional(.white, direction: Vector3(-0.4, -0.7, -0.6), intensity: 0.9),
+        .directional(Color(white: 0.6), direction: Vector3(0.5, 0.3, 0.4), intensity: 0.4),
+    ]
 
     /// Whether a depth scene (`drawDepthScene`) was recorded this frame. Like an
     /// active camera, it makes the renderer allocate the depth buffer — so a 2D
@@ -419,6 +446,8 @@ final class Drawer {
         var strokeAlignment: StrokeAlign
         var strokeJoinStyle: StrokeJoin
         var strokeCapStyle: StrokeCap
+        var specularStrength: Double
+        var shininessValue: Double
         var currentFont: ActiveFont
         var textPixelSize: Double
         var textAlignH: TextAlignH
@@ -567,6 +596,103 @@ final class Drawer {
                                  height: height, near: near, far: far)
     }
 
+    /// Add a light to this frame's 3D scene (see `Light`). Per-frame, like the
+    /// camera; meshes drawn after it shade through the material model. Taking control
+    /// of the lights this way replaces the default rig.
+    func addLight(_ light: Light) { lights.append(light); lightingMode = .custom }
+
+    /// Set the ambient (flat fill) light for this frame's 3D scene. Setting it
+    /// replaces the default rig (an ambient alone is a flat, unshaded fill).
+    func ambientLight(_ color: Color) { ambientLightColor = color; lightingMode = .custom }
+
+    /// Turn off lighting for this frame: meshes draw flat in their `fill` color
+    /// (unlit), overriding the auto-lit default.
+    func noLights() {
+        lights.removeAll(keepingCapacity: true)
+        ambientLightColor = nil
+        lightingMode = .off
+    }
+
+    /// Set the material's specular highlight strength (`0` matte; `~0.5` glossy).
+    /// Drawing state, saved by `withState`; baked into mesh vertices as they're drawn.
+    func specular(_ strength: Double) { specularStrength = max(0, strength) }
+
+    /// Set the material's Blinn-Phong shininess exponent (higher = tighter, sharper
+    /// highlight). Drawing state, saved by `withState`.
+    func shininess(_ exponent: Double) { shininessValue = max(1, exponent) }
+
+    /// Pack this frame's effective lighting into the GPU uniform. The mode decides
+    /// the source: `.off` shades nothing (flat unlit, `enabled == 0`), `.auto` uses
+    /// the default rig (the out-of-box shaded look), `.custom` uses the sketch's own
+    /// lights and ambient.
+    func makeLighting() -> OllinLighting {
+        var u = OllinLighting()
+        if let eye = camera3D?.eye {
+            u.cameraPosition = SIMD4<Float>(Float(eye.x), Float(eye.y), Float(eye.z), 0)
+        }
+        let ambient: Color
+        let activeLights: [Light]
+        switch lightingMode {
+        case .off:
+            u.enabled = 0
+            return u   // flat, unlit; lights/ambient unused
+        case .auto:
+            ambient = Drawer.defaultAmbient
+            activeLights = Drawer.defaultLights
+        case .custom:
+            ambient = ambientLightColor ?? .black
+            activeLights = lights
+        }
+        u.enabled = 1
+        u.ambient = SIMD4<Float>(Float(Color.srgbToLinear(ambient.red)),
+                                 Float(Color.srgbToLinear(ambient.green)),
+                                 Float(Color.srgbToLinear(ambient.blue)), 0)
+        let count = min(activeLights.count, Int(OLLIN_MAX_LIGHTS))
+        u.lightCount = Int32(count)
+        // A C fixed-size array imports as a homogeneous tuple; fill it through a
+        // typed pointer rather than naming each element.
+        withUnsafeMutablePointer(to: &u.lights) { tuplePtr in
+            tuplePtr.withMemoryRebound(to: OllinLight.self, capacity: Int(OLLIN_MAX_LIGHTS)) { buf in
+                for i in 0..<count { buf[i] = Drawer.packLight(activeLights[i]) }
+            }
+        }
+        return u
+    }
+
+    /// Convert a `Light` into its GPU form: linearized intensity-scaled color, the
+    /// vectors a directional/point/spot light needs, and a spot's cone cosines.
+    private static func packLight(_ light: Light) -> OllinLight {
+        var l = OllinLight()
+        let i = light.intensity
+        l.color = SIMD4<Float>(Float(Color.srgbToLinear(light.color.red) * i),
+                               Float(Color.srgbToLinear(light.color.green) * i),
+                               Float(Color.srgbToLinear(light.color.blue) * i), 0)
+        switch light.kind {
+        case .directional:
+            l.kind = 0
+            // Store the unit direction *to* the light (the negated travel direction).
+            let d = (light.direction * -1).normalized
+            l.direction = SIMD4<Float>(Float(d.x), Float(d.y), Float(d.z), 0)
+        case .point:
+            l.kind = 1
+            l.position = SIMD4<Float>(Float(light.position.x), Float(light.position.y),
+                                      Float(light.position.z), 0)
+        case .spot:
+            l.kind = 2
+            l.position = SIMD4<Float>(Float(light.position.x), Float(light.position.y),
+                                      Float(light.position.z), 0)
+            // The cone axis is the light's travel direction (source → lit surface).
+            let axis = light.direction.normalized
+            l.direction = SIMD4<Float>(Float(axis.x), Float(axis.y), Float(axis.z), 0)
+            let half = max(0, light.coneAngle / 2)
+            l.cosOuter = Float(cos(half))
+            // Penumbra narrows the full-bright inner cone toward the center.
+            let inner = half * (1 - max(0, min(1, light.penumbra)))
+            l.cosInner = Float(cos(inner))
+        }
+        return l
+    }
+
     /// Record a 3D point cloud, drawn as camera-facing disc splats through the
     /// active camera. World-space points (they ride the camera, not the 2D
     /// transform stack). A no-op without a camera or when the cloud is empty.
@@ -601,9 +727,8 @@ final class Drawer {
     /// 2D affine): the model matrix bakes into each position and its normal matrix
     /// into each normal CPU-side, so the shader only applies the camera. Triangle
     /// indices are expanded into the flat per-frame `meshVertices` list. The surface
-    /// is colored by its normal until the material model lands; the current `fill`'s
-    /// alpha sets opacity (its rgb is carried but not yet used). A no-op without a
-    /// camera or when the mesh is empty.
+    /// takes the current `fill` color: flat (unlit) with no lights set, Blinn-Phong
+    /// shaded once a light is added. A no-op without a camera or when the mesh is empty.
     func drawMesh(_ mesh: Mesh) {
         guard camera3D != nil, !mesh.isEmpty else { return }
         // SVG export is 2D vector only; a shaded solid has no vector outline.
@@ -612,6 +737,12 @@ final class Drawer {
         let m = modelMatrix
         let nm = modelIsIdentity ? matrix_identity_float3x3 : m.normalMatrix
         let color = meshSurfaceColor.simd4
+        // The material rides the vertices' spare w slots (the vertex shader reads
+        // only position.xyz / normal.xyz): specular strength in position.w, the
+        // shininess exponent in normal.w. So material is state-stack drawing state
+        // with no struct widening.
+        let specW = Float(specularStrength)
+        let shineW = Float(shininessValue)
         meshVertices.reserveCapacity(meshVertices.count + mesh.indices.count)
         for idx in mesh.indices {
             let i = Int(idx)
@@ -620,14 +751,14 @@ final class Drawer {
             let n = i < mesh.normals.count ? mesh.normals[i] : Vector3.unitZ
             var v = OllinMeshVertex()
             if modelIsIdentity {
-                v.position = SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), 1)
+                v.position = SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), specW)
                 let nn = n.normalized
-                v.normal = SIMD4<Float>(Float(nn.x), Float(nn.y), Float(nn.z), 0)
+                v.normal = SIMD4<Float>(Float(nn.x), Float(nn.y), Float(nn.z), shineW)
             } else {
                 let wp = m * SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), 1)
-                v.position = SIMD4<Float>(wp.x, wp.y, wp.z, 1)
+                v.position = SIMD4<Float>(wp.x, wp.y, wp.z, specW)
                 let wn = simd_normalize(nm * SIMD3<Float>(Float(n.x), Float(n.y), Float(n.z)))
-                v.normal = SIMD4<Float>(wn.x, wn.y, wn.z, 0)
+                v.normal = SIMD4<Float>(wn.x, wn.y, wn.z, shineW)
             }
             v.color = color
             meshVertices.append(v)
@@ -635,9 +766,9 @@ final class Drawer {
     }
 
     /// The base color baked into a mesh's vertices: the current solid `fill`, or
-    /// white for a gradient/`noFill` (the normal-as-color surface ignores rgb today;
-    /// only the alpha is read, for opacity). Reserved so the material model can wire
-    /// `fill` in with no struct change.
+    /// white for a gradient/`noFill` (mesh surfaces take a solid color — gradient
+    /// paint isn't supported on the 3D path). It's the surface color, flat without
+    /// lights and the diffuse color when lit.
     private var meshSurfaceColor: Color {
         switch fillPaint {
         case .color(let c): return c
@@ -704,6 +835,12 @@ final class Drawer {
         dispatches.removeAll(keepingCapacity: true)
         currentKind = nil
         camera3D = nil
+        // Lights are per-frame like the camera (set in `draw()` each frame). They
+        // reset here but *not* in `background()`, which only wipes geometry mid-frame
+        // while the camera/lights stay — matching the camera's lifetime.
+        lights.removeAll(keepingCapacity: true)
+        ambientLightColor = nil
+        lightingMode = .auto
         hasDepthScene = false
         // The 2D depth is camera-derived (a clip-z against this frame's camera), so
         // it resets with the camera each frame — set it from `draw()` after the
@@ -814,6 +951,8 @@ final class Drawer {
                                      strokeAlignment: strokeAlignment,
                                      strokeJoinStyle: strokeJoinStyle,
                                      strokeCapStyle: strokeCapStyle,
+                                     specularStrength: specularStrength,
+                                     shininessValue: shininessValue,
                                      currentFont: currentFont, textPixelSize: textPixelSize,
                                      textAlignH: textAlignH, textAlignV: textAlignV,
                                      textRenderMode: textRenderMode,
@@ -838,6 +977,8 @@ final class Drawer {
         strokeAlignment = s.strokeAlignment
         strokeJoinStyle = s.strokeJoinStyle
         strokeCapStyle = s.strokeCapStyle
+        specularStrength = s.specularStrength
+        shininessValue = s.shininessValue
         currentFont = s.currentFont
         textPixelSize = s.textPixelSize
         textAlignH = s.textAlignH

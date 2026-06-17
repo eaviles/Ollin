@@ -303,14 +303,67 @@ open class Sketch {
     /// no-op without a camera.
     public func drawPointCloud(_ cloud: PointCloud) { drawer.drawPointCloud(cloud) }
 
+    // MARK: 3D — lights & materials
+
+    /// Add a `Light` to this frame's 3D scene. Lights are per-frame, like the
+    /// camera — set them each `draw()`. Solid meshes drawn after shade through a
+    /// Blinn-Phong material whose surface color is the current `fill`.
+    public func light(_ light: Light) { drawer.addLight(light) }
+
+    /// Add a directional light (parallel rays, like the sun). `direction` is the way
+    /// the light travels — `Vector3(0, -1, 0)` shines straight down.
+    public func directionalLight(_ color: Color, direction: Vector3, intensity: Double = 1) {
+        drawer.addLight(.directional(color, direction: direction, intensity: intensity))
+    }
+
+    /// Add a point light: an omnidirectional source at a world position.
+    public func pointLight(_ color: Color, at position: Vector3, intensity: Double = 1) {
+        drawer.addLight(.point(color, at: position, intensity: intensity))
+    }
+
+    /// Add a spot light: a point source at `position` aimed along `direction`,
+    /// narrowed to a cone of full angle `angle` (radians) with a `penumbra` soft
+    /// edge (`0` hard … `1` very soft).
+    public func spotLight(_ color: Color, at position: Vector3, direction: Vector3,
+                          angle: Double = .pi / 6, penumbra: Double = 0.2, intensity: Double = 1) {
+        drawer.addLight(.spot(color, at: position, direction: direction,
+                              angle: angle, penumbra: penumbra, intensity: intensity))
+    }
+
+    /// Set the ambient light — a flat term added to every lit surface, so the side
+    /// facing away from the lights isn't pure black. Setting an ambient alone also
+    /// counts as lighting the scene (a flat, unshaded fill of the surface color).
+    public func ambientLight(_ color: Color) { drawer.ambientLight(color) }
+
+    /// Install the default lighting rig explicitly — a soft ambient plus a key and a
+    /// dimmer fill directional light. This is the same rig solids get automatically
+    /// when no light is set, so you only need it to *restore* the default after using
+    /// your own lights, or to make the intent visible in a sketch.
+    public func lights() {
+        drawer.ambientLight(Drawer.defaultAmbient)
+        for light in Drawer.defaultLights { drawer.addLight(light) }
+    }
+
+    /// Turn off lighting for this frame: solids draw flat in their `fill` color
+    /// (unlit), overriding the auto-lit default.
+    public func noLights() { drawer.noLights() }
+
+    /// Set the material's specular highlight strength (`0` matte, the default;
+    /// `~0.5` glossy). Drawing state, saved by `withState`.
+    public func specular(_ strength: Double) { drawer.specular(strength) }
+
+    /// Set the material's Blinn-Phong shininess exponent — higher is a tighter,
+    /// sharper highlight (default `32`). Drawing state, saved by `withState`.
+    public func shininess(_ exponent: Double) { drawer.shininess(exponent) }
+
     // MARK: 3D — solid primitives & meshes
 
     /// Draw a solid 3D `Mesh` through the active camera with depth testing (set a
     /// camera first with `camera`/`perspective`/`ortho`). The mesh rides the 3D
-    /// transform stack — `translate`/`rotate`/`scale` place and orient it — and is
-    /// colored by its surface normals until the material model lands (the current
-    /// `fill`'s alpha sets opacity). A no-op without a camera. The primitive calls
-    /// below are sugar over this.
+    /// transform stack — `translate`/`rotate`/`scale` place and orient it — and takes
+    /// the current `fill` color: flat (unlit) with no lights, Blinn-Phong shaded once
+    /// you add a light (`lights()`, `directionalLight`, …). A no-op without a camera.
+    /// The primitive calls below are sugar over this.
     public func drawMesh(_ mesh: Mesh) { drawer.drawMesh(mesh) }
 
     /// Draw a box centered at the model origin, `width` (x) × `height` (y) ×

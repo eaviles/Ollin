@@ -767,6 +767,11 @@ final class MetalRenderer {
             encoder.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
         }
 
+        // 3D mesh lighting (per-frame), bound to the mesh fragment per mesh batch
+        // below. `enabled` is 0 when the sketch set no light, so the mesh fragment
+        // keeps the byte-identical normal-as-color path.
+        var lighting = drawer.makeLighting()
+
         // The strip must be bound whenever the SDF fragment runs (it references
         // the texture even for all-solid frames), so resolve it once per encode.
         let strip = gradientStripTexture(for: drawer.gradientRows)
@@ -872,6 +877,7 @@ final class MetalRenderer {
                 guard count > 0, let meshBuffer, drawer.camera3D != nil else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
+                encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .depthScene:
                 // A backdrop quad (in `imageVertices`, like an image) whose fragment

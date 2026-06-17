@@ -28,6 +28,7 @@ Near-term, fairly self-contained pieces. Each is small and well-scoped, which is
 - **Single-file sketches.** A zero-ceremony way to run one `.swift` file as a sketch, in the spirit of `swift-sh`, so dashing off an idea doesn't require setting up a package.
 - **Retained geometry buffers.** Every frame currently re-uploads everything; keeping static geometry (a large point cloud, a fixed background) in a persistent buffer would drop its per-frame cost to zero.
 - **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
+- **Expanded named colors.** `Color` ships only the essentials today (`white`/`black`/`gray`/`clear`/`red`/`green`/`blue`); fill out a fuller set of named constants (`cyan`, `magenta`, `orange`, `yellow`, `purple`, …, in the CSS/X11 spirit) so common colors read by name. Pure data over the existing `Color` initializers — no new machinery.
 - **More model examples over `ModelTracker`.** The custom-model tracker runs anything converted to Core ML; a well-known model can make a strong example, with the weights always fetched by `Scripts/fetch-models.sh` rather than committed. Candidates, licenses, and the surfaces involved are in the [design notes](DESIGN-NOTES.md#model-examples-and-modeltracker-surfaces-not-started).
 
 ## Layered effects and compositing
@@ -60,7 +61,14 @@ A colour image, a depth map, and intrinsics — an "RGBD frame" — is the sourc
 
 ## 3D mode
 
-2D stays the default, and 3D keeps building out: meshes built in code or loaded from file, and a simple light and material model. It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode-partly-shipped).
+2D stays the default, and 3D keeps building out on top of the shipped camera, depth buffer, transform stack, solid primitives, and the directional/point/spot light & material model:
+
+- **Meshes from file** — load arbitrary geometry from `.obj` and `.usdz`.
+- **Shadows** — cast shadows for the scene's lights (shadow mapping), so solids ground in their setting.
+- **Cinematic lighting presets** — curated, high-end "lighting scenes" a sketch drops in (a film-style key/fill/rim rig, golden hour, noir, studio softbox, …) so getting a great-looking, well-lit scene takes one call instead of hand-placing lights.
+- **Extensible material libraries** — a set of ready-made named materials (clay, plastic, metal, glass, …) that a sketch can use as-is or extend with its own, layered over the Blinn-Phong material.
+
+It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode-partly-shipped).
 
 ## On the horizon
 

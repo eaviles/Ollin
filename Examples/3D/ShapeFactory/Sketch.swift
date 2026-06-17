@@ -11,8 +11,8 @@ import Ollin
 /// polyhedra, … — are in `3D/Solids`.)
 ///
 /// The morphing shapes are rebuilt each frame (cheap at one shape apiece); the rest
-/// are built once. Surfaces are colored by their normal, labels ride via
-/// `withBillboard`.
+/// are built once. Each takes a `fill` color shaded by the auto-lit default; labels
+/// ride via `withBillboard`.
 @main
 final class ShapeFactory: Sketch {
     // A vase silhouette (x = radius from the axis, y = height) for the lathe.
@@ -63,11 +63,15 @@ final class ShapeFactory: Sketch {
 
         for (i, cell) in cells.enumerated() {
             let col = i % columns, row = i / columns
+            let hue = Double(i) / Double(cells.count)
             withState {
                 translate(x0 + spacing * Double(col), y0 - spacing * Double(row), 0)
                 withState {
                     rotateY(time * 0.45 + Double(i) * 0.7)
                     rotateX(sin(time * 0.3 + Double(i)) * 0.25)
+                    fill(Color(hue: hue, saturation: 0.58, brightness: 0.95))
+                    specular(0.4)
+                    shininess(48)
                     drawMesh(cell.mesh)
                 }
                 withBillboard(at: Vector3(0, 1.5, 0)) {

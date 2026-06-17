@@ -127,9 +127,19 @@ struct SnapshotTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func solidPrimitives3DMatchesReference() throws {
         // The five solid primitives through a fixed camera — pins the depth-tested
-        // mesh pipeline, the normal-as-color surface, and the model-matrix + normal
-        // baking (each shape is placed/rotated by the 3D transform stack).
+        // mesh pipeline, the auto-lit default material (each fill shaded by the
+        // default rig), and the model-matrix + normal baking (each shape is
+        // placed/rotated by the 3D transform stack).
         let diff = try Snapshot.meanDifference(of: SolidPrimitives3DScene(), against: "solid-primitives-3d")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func meshLightingMatchesReference() throws {
+        // Custom lighting on solids — pins the directional/point/spot light kinds,
+        // ambient, the spot cone, and the specular highlight (the Blinn-Phong material
+        // the auto-lit default scene doesn't exercise).
+        let diff = try Snapshot.meanDifference(of: MeshLightingScene(), against: "mesh-lighting")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
 
@@ -216,8 +226,9 @@ private final class PointCloud3DScene: Sketch {
 }
 
 /// The five solid primitives through a fixed camera, each placed and rotated by the
-/// 3D transform stack — exercises the depth-tested mesh pipeline, the normal-as-color
-/// surface, and the model-matrix + normal-matrix baking. No `time`, so deterministic.
+/// 3D transform stack — exercises the depth-tested mesh pipeline, the auto-lit default
+/// material (no lights set, so the default rig shades each fill), and the model-matrix
+/// + normal-matrix baking. No `time`, so deterministic.
 private final class SolidPrimitives3DScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -225,11 +236,38 @@ private final class SolidPrimitives3DScene: Sketch {
         background(Color(white: 0.04))
         camera(.orbiting(target: .zero, radius: 6,
                          azimuth: 0.5, elevation: 0.4, fieldOfView: .pi / 3.4))
-        withState { translate(-2.2, 0, 0); rotateY(0.6); rotateX(0.3); drawBox(size: 1.4) }
-        withState { drawSphere(radius: 0.85) }
-        withState { translate(2.2, 0, 0); rotateZ(0.4); drawCylinder(radius: 0.6, height: 1.5) }
-        withState { translate(-1.1, 0, 2.0); rotateX(0.5); drawTorus(radius: 0.6, tube: 0.26) }
-        withState { translate(1.1, -0.9, 2.0); drawPlane(width: 1.8, depth: 1.8) }
+        withState { fill(Color(hue: 0.0, saturation: 0.6, brightness: 0.9)); translate(-2.2, 0, 0); rotateY(0.6); rotateX(0.3); drawBox(size: 1.4) }
+        withState { fill(Color(hue: 0.3, saturation: 0.6, brightness: 0.9)); drawSphere(radius: 0.85) }
+        withState { fill(Color(hue: 0.55, saturation: 0.6, brightness: 0.9)); translate(2.2, 0, 0); rotateZ(0.4); drawCylinder(radius: 0.6, height: 1.5) }
+        withState { fill(Color(hue: 0.75, saturation: 0.6, brightness: 0.9)); translate(-1.1, 0, 2.0); rotateX(0.5); drawTorus(radius: 0.6, tube: 0.26) }
+        withState { fill(Color(hue: 0.12, saturation: 0.6, brightness: 0.9)); translate(1.1, -0.9, 2.0); drawPlane(width: 1.8, depth: 1.8) }
+    }
+}
+
+/// Custom lighting on solids: ambient + a directional key + a point light + a spot,
+/// with a specular material — pins the three light kinds, the spot cone, ambient, and
+/// the specular highlight (the parts the auto-lit default doesn't exercise). No `time`.
+private final class MeshLightingScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.03))
+        camera(.orbiting(target: .zero, radius: 6.5,
+                         azimuth: 0.4, elevation: 0.35, fieldOfView: .pi / 3.4))
+        ambientLight(Color(white: 0.1))
+        directionalLight(Color(hue: 0.09, saturation: 0.3, brightness: 1), direction: Vector3(-0.5, -0.8, -0.4), intensity: 0.7)
+        pointLight(Color(hue: 0.5, saturation: 0.8, brightness: 1), at: Vector3(3, 2.5, 2.5), intensity: 1.2)
+        spotLight(Color(hue: 0.85, saturation: 0.7, brightness: 1), at: Vector3(-2, 4, 1),
+                  direction: Vector3(0.4, -1, -0.2), angle: .pi / 4, penumbra: 0.5, intensity: 1.6)
+        withState {
+            fill(Color(white: 0.85)); specular(0.7); shininess(80)
+            translate(-1.6, 0, 0); drawSphere(radius: 1.0)
+        }
+        withState {
+            fill(Color(hue: 0.05, saturation: 0.5, brightness: 0.9)); specular(0.4); shininess(40)
+            translate(1.6, 0, 0); rotateY(0.5); rotateX(0.3); drawBox(size: 1.5)
+        }
+        withState { fill(Color(white: 0.4)); translate(0, -1.4, 0); drawPlane(width: 6, depth: 6) }
     }
 }
 

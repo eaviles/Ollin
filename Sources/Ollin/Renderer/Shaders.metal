@@ -1225,14 +1225,19 @@ fragment float4 ollin_point_fragment(PointOut in [[stage_in]]) {
 // with depth testing. Positions and normals are already world space — the model
 // matrix and its normal matrix were baked in on the CPU (like the point cloud) —
 // so the vertex shader only applies the camera's view + projection (Uniforms3D at
-// index 2). The default fragment colors the surface by its world normal (a
-// geometry-revealing look) until the typed light/material model lands; opacity
-// comes from the baked color's alpha. Straight-alpha out into the linear target.
+// index 2). With no lights set (`light.enabled == 0`) the fragment draws the
+// surface flat in its color (the unlit look — set a light to shade the form); with
+// lights it shades that color through a Blinn-Phong material — ambient + per-light
+// diffuse + specular, directional/point/spot. The material's specular strength +
+// shininess ride the vertices' spare w slots. Opacity is the baked color's alpha.
+// Straight-alpha out into the linear target.
 
 struct MeshOut {
     float4 position [[position]];
     float3 normal;    // world-space normal, interpolated
-    float4 color;     // baked surface color (rgb reserved, alpha = opacity)
+    float3 worldPos;  // world-space position (point/spot lights + specular view dir)
+    float4 color;     // baked surface (diffuse) color; alpha = opacity
+    float2 material;  // x = specular strength, y = shininess exponent
 };
 
 vertex MeshOut ollin_mesh_vertex(uint vid [[vertex_id]],
@@ -1240,18 +1245,53 @@ vertex MeshOut ollin_mesh_vertex(uint vid [[vertex_id]],
                                  constant Uniforms3D &u [[buffer(2)]]) {
     OllinMeshVertex v = verts[vid];
     MeshOut out;
+    out.worldPos = v.position.xyz;
     out.position = u.projection * (u.view * float4(v.position.xyz, 1.0));
     out.normal = v.normal.xyz;
     out.color = v.color;
+    out.material = float2(v.position.w, v.normal.w);   // material in the spare w slots
     return out;
 }
 
-fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]]) {
+fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
+                                    constant OllinLighting &light [[buffer(0)]]) {
     float3 n = normalize(in.normal);
-    // Map the normal to a color (the MeshNormalMaterial look). srgbToLinear so the
-    // present pass's sRGB re-encode lands the on-screen pixel at exactly n*0.5+0.5.
-    float3 rgb = srgbToLinear(n * 0.5 + 0.5);
-    return float4(rgb, in.color.a);
+    // No lights set: draw flat in the surface color (the unlit look). Linearize so
+    // the present pass's sRGB re-encode lands the on-screen pixel at the fill color.
+    if (light.enabled == 0) {
+        return float4(srgbToLinear(in.color.rgb), in.color.a);
+    }
+    // Blinn-Phong over the linearized surface (diffuse) color.
+    float3 base = srgbToLinear(in.color.rgb);
+    float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
+    float specStrength = in.material.x;
+    float shininess = max(in.material.y, 1.0);
+    float3 lit = light.ambient.rgb * base;   // flat ambient term
+    for (int i = 0; i < light.lightCount; i++) {
+        OllinLight L = light.lights[i];
+        float3 toLight;     // unit vector from the surface toward the light
+        float atten = 1.0;
+        if (L.kind == 0) {
+            toLight = L.direction.xyz;            // directional: already the dir to the light
+        } else {
+            toLight = normalize(L.position.xyz - in.worldPos);
+            if (L.kind == 2) {
+                // Spot: gate by the cone. The axis is the light's travel direction,
+                // so the direction from the light to this surface is -toLight; its
+                // cosine against the axis fades over the inner→outer penumbra.
+                float cosA = dot(-toLight, L.direction.xyz);
+                atten = smoothstep(L.cosOuter, L.cosInner, cosA);
+            }
+        }
+        float ndl = max(dot(n, toLight), 0.0);
+        float3 diffuse = L.color.rgb * base * ndl;
+        // Blinn-Phong specular (white highlight), only on faces toward the light.
+        float3 h = normalize(toLight + viewDir);
+        float spec = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), shininess) * specStrength : 0.0;
+        float3 specular = L.color.rgb * spec;
+        lit += atten * (diffuse + specular);
+    }
+    return float4(lit, in.color.a);
 }
 
 // MARK: - Present / tone-map pass
