@@ -142,6 +142,23 @@ typedef struct {
     float _pad2;
 } OllinPoint;
 
+// One vertex of a solid 3D mesh (the triangle-mesh pipeline, `ollin_mesh_vertex`),
+// drawn through `Camera3D` with depth testing. A primitive (box/sphere/…) is a unit
+// `Mesh` placed by the model matrix; like the point cloud, the model matrix bakes
+// into `position` on the CPU and the model's normal matrix into `normal`, so the
+// vertex shader only applies the camera (view + projection) — positions and normals
+// are already world space (right-handed, y-up). The default fragment colors the
+// surface by its normal (a geometry-revealing look) until the typed light/material
+// model lands, so `color.rgb` is reserved for that and only `color.a` (opacity) is
+// read today. Triangle indices are expanded into a flat list on the CPU (no index
+// buffer), matching the 2D triangle path. Stride 48 (three 16-byte rows):
+// float4 @0, float4 @16, float4 @32.
+typedef struct {
+    simd_float4 position;   // world-space xyz (model matrix baked in; w unused)
+    simd_float4 normal;     // world-space normal (normal matrix baked in; w unused)
+    simd_float4 color;      // straight RGBA; rgb reserved for materials, a = opacity
+} OllinMeshVertex;
+
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer
 // index 10), so a kernel reads `u.time`/`u.dt`/`u.resolution`/… with no plumbing.
 // `particleCount` is the dispatch's thread count (set per dispatch). `custom` is a

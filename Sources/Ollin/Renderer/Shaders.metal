@@ -1219,6 +1219,41 @@ fragment float4 ollin_point_fragment(PointOut in [[stage_in]]) {
     return float4(srgbToLinear(in.color.rgb), a);
 }
 
+// MARK: - 3D solid mesh (triangles)
+//
+// Solid triangle geometry (the box/sphere/… primitives) drawn through the camera
+// with depth testing. Positions and normals are already world space — the model
+// matrix and its normal matrix were baked in on the CPU (like the point cloud) —
+// so the vertex shader only applies the camera's view + projection (Uniforms3D at
+// index 2). The default fragment colors the surface by its world normal (a
+// geometry-revealing look) until the typed light/material model lands; opacity
+// comes from the baked color's alpha. Straight-alpha out into the linear target.
+
+struct MeshOut {
+    float4 position [[position]];
+    float3 normal;    // world-space normal, interpolated
+    float4 color;     // baked surface color (rgb reserved, alpha = opacity)
+};
+
+vertex MeshOut ollin_mesh_vertex(uint vid [[vertex_id]],
+                                 const device OllinMeshVertex *verts [[buffer(0)]],
+                                 constant Uniforms3D &u [[buffer(2)]]) {
+    OllinMeshVertex v = verts[vid];
+    MeshOut out;
+    out.position = u.projection * (u.view * float4(v.position.xyz, 1.0));
+    out.normal = v.normal.xyz;
+    out.color = v.color;
+    return out;
+}
+
+fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]]) {
+    float3 n = normalize(in.normal);
+    // Map the normal to a color (the MeshNormalMaterial look). srgbToLinear so the
+    // present pass's sRGB re-encode lands the on-screen pixel at exactly n*0.5+0.5.
+    float3 rgb = srgbToLinear(n * 0.5 + 0.5);
+    return float4(rgb, in.color.a);
+}
+
 // MARK: - Present / tone-map pass
 //
 // The frame's geometry is composited in a linear `rgba16Float` intermediate, so

@@ -71,6 +71,7 @@ enum GeometryKind {
     case glyphAtlas   // SDF-atlas text quads in `glyphVertices`, sampling `atlas`
     case particles    // instanced GPU-particle discs reading a compute buffer
     case points3D     // instanced 3D point-cloud splats in `points`, through the camera
+    case mesh3D       // solid triangle-mesh geometry in `meshVertices`, through the camera
     case depthScene   // a backdrop quad in `imageVertices` that also primes the depth buffer from a depth map
 }
 
@@ -81,6 +82,7 @@ struct GeometryBatch {
     var imageStart: Int = 0  // first image vertex (image batches)
     var glyphStart: Int = 0  // first glyph vertex (glyphAtlas batches)
     var pointStart: Int = 0  // first point (points3D batches)
+    var meshStart: Int = 0   // first mesh vertex (mesh3D batches)
     /// The blend mode active when this run was recorded; selects the pipeline.
     /// A run breaks (a new batch opens) whenever the blend mode changes, so each
     /// batch composites with a single mode.
@@ -191,6 +193,12 @@ final class Drawer {
     /// points drawn through `camera3D`; each is one instanced camera-facing quad.
     private(set) var points: [OllinPoint] = []
 
+    /// Solid 3D mesh vertices recorded this frame (see `drawMesh`). The model
+    /// matrix and its normal matrix are baked in CPU-side, so these are world-space
+    /// positions + normals drawn through `camera3D`; triangle indices are expanded
+    /// into this flat list (no index buffer), matching the 2D triangle path.
+    private(set) var meshVertices: [OllinMeshVertex] = []
+
     /// The active 3D camera, or `nil` for a 2D frame (the default). Per-frame state
     /// like the geometry — set with `camera`/`perspective`/`ortho`, reset each
     /// frame. When set, the renderer allocates a depth buffer and draws 3D geometry
@@ -290,6 +298,7 @@ final class Drawer {
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
+                                     meshStart: meshVertices.count,
                                      blendMode: currentBlend, depth: currentDepth))
     }
 
@@ -434,6 +443,7 @@ final class Drawer {
         imageVertices.removeAll(keepingCapacity: true)
         glyphVertices.removeAll(keepingCapacity: true)
         points.removeAll(keepingCapacity: true)
+        meshVertices.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
         currentBatchDepth = nil
@@ -586,6 +596,55 @@ final class Drawer {
         }
     }
 
+    /// Record a solid 3D mesh, drawn through the active camera with depth testing.
+    /// World-aware geometry (it rides the camera and the 3D transform stack, not the
+    /// 2D affine): the model matrix bakes into each position and its normal matrix
+    /// into each normal CPU-side, so the shader only applies the camera. Triangle
+    /// indices are expanded into the flat per-frame `meshVertices` list. The surface
+    /// is colored by its normal until the material model lands; the current `fill`'s
+    /// alpha sets opacity (its rgb is carried but not yet used). A no-op without a
+    /// camera or when the mesh is empty.
+    func drawMesh(_ mesh: Mesh) {
+        guard camera3D != nil, !mesh.isEmpty else { return }
+        // SVG export is 2D vector only; a shaded solid has no vector outline.
+        if svgRecorder != nil { return }
+        ensureBatch(.mesh3D)
+        let m = modelMatrix
+        let nm = modelIsIdentity ? matrix_identity_float3x3 : m.normalMatrix
+        let color = meshSurfaceColor.simd4
+        meshVertices.reserveCapacity(meshVertices.count + mesh.indices.count)
+        for idx in mesh.indices {
+            let i = Int(idx)
+            guard i < mesh.positions.count else { continue }
+            let p = mesh.positions[i]
+            let n = i < mesh.normals.count ? mesh.normals[i] : Vector3.unitZ
+            var v = OllinMeshVertex()
+            if modelIsIdentity {
+                v.position = SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), 1)
+                let nn = n.normalized
+                v.normal = SIMD4<Float>(Float(nn.x), Float(nn.y), Float(nn.z), 0)
+            } else {
+                let wp = m * SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), 1)
+                v.position = SIMD4<Float>(wp.x, wp.y, wp.z, 1)
+                let wn = simd_normalize(nm * SIMD3<Float>(Float(n.x), Float(n.y), Float(n.z)))
+                v.normal = SIMD4<Float>(wn.x, wn.y, wn.z, 0)
+            }
+            v.color = color
+            meshVertices.append(v)
+        }
+    }
+
+    /// The base color baked into a mesh's vertices: the current solid `fill`, or
+    /// white for a gradient/`noFill` (the normal-as-color surface ignores rgb today;
+    /// only the alpha is read, for opacity). Reserved so the material model can wire
+    /// `fill` in with no struct change.
+    private var meshSurfaceColor: Color {
+        switch fillPaint {
+        case .color(let c): return c
+        case .gradient, .none: return .white
+        }
+    }
+
     /// Place subsequent 2D drawing at the depth of a world point in the active 3D
     /// scene, so it z-tests against 3D geometry — hidden where the scene is nearer,
     /// hiding the scene where it's in front. The world point's clip-space z (against
@@ -640,6 +699,7 @@ final class Drawer {
         imageVertices.removeAll(keepingCapacity: true)
         glyphVertices.removeAll(keepingCapacity: true)
         points.removeAll(keepingCapacity: true)
+        meshVertices.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         dispatches.removeAll(keepingCapacity: true)
         currentKind = nil

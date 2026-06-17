@@ -125,6 +125,15 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func solidPrimitives3DMatchesReference() throws {
+        // The five solid primitives through a fixed camera — pins the depth-tested
+        // mesh pipeline, the normal-as-color surface, and the model-matrix + normal
+        // baking (each shape is placed/rotated by the 3D transform stack).
+        let diff = try Snapshot.meanDifference(of: SolidPrimitives3DScene(), against: "solid-primitives-3d")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func transformed3DMatchesReference() throws {
         // Point-cloud blobs placed entirely by the 3D transform stack — a center blob
         // plus four satellites positioned by rotateY + translate and sized by scale.
@@ -203,6 +212,24 @@ private final class PointCloud3DScene: Sketch {
             }
         }
         drawPointCloud(cloud)
+    }
+}
+
+/// The five solid primitives through a fixed camera, each placed and rotated by the
+/// 3D transform stack — exercises the depth-tested mesh pipeline, the normal-as-color
+/// surface, and the model-matrix + normal-matrix baking. No `time`, so deterministic.
+private final class SolidPrimitives3DScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        camera(.orbiting(target: .zero, radius: 6,
+                         azimuth: 0.5, elevation: 0.4, fieldOfView: .pi / 3.4))
+        withState { translate(-2.2, 0, 0); rotateY(0.6); rotateX(0.3); drawBox(size: 1.4) }
+        withState { drawSphere(radius: 0.85) }
+        withState { translate(2.2, 0, 0); rotateZ(0.4); drawCylinder(radius: 0.6, height: 1.5) }
+        withState { translate(-1.1, 0, 2.0); rotateX(0.5); drawTorus(radius: 0.6, tube: 0.26) }
+        withState { translate(1.1, -0.9, 2.0); drawPlane(width: 1.8, depth: 1.8) }
     }
 }
 

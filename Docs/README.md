@@ -27,7 +27,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 
 ### 3D
 
-- [`3D`](./3D.md) - opt into a 3D camera and depth buffer: orbit a `Camera3D` (perspective or orthographic) and draw `PointCloud`s as instanced disc splats, including a live webcam depth cloud
+- [`3D`](./3D.md) - opt into a 3D camera and depth buffer: orbit a `Camera3D` (perspective or orthographic) and draw `PointCloud`s as instanced disc splats and solid primitives (box, sphere, cylinder, cone, torus, pyramid, helix, polyhedra, torus knot, plane), including a live webcam depth cloud
 - [`Depth compositing`](./DepthCompositing.md) - place 2D drawing *inside* a 3D scene so it occludes and is occluded by the geometry: `depth(at:)`, `project`, and `withBillboard` (a 2D label hidden when it swings behind the cloud)
 - [`Record3D`](./Record3D.md) - `import OllinRecord3D` to turn an iPhone's color-plus-depth into a 3D point cloud — from a recorded `.r3d` file or a tethered phone's live USB stream
 - [`RGBD`](./RGBD.md) - the source-agnostic `RGBDFrame` (color + depth + intrinsics) any depth source produces: unproject a point cloud, lift a single image point to metric 3D, or lift a 2D body pose into space (`Body.lifted(through:)`)

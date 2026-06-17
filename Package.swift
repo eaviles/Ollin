@@ -419,6 +419,11 @@ let package = Package(
             path: "Examples/3D/Transforms"
         ),
         .executableTarget(
+            name: "Example-Solids",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/Solids"
+        ),
+        .executableTarget(
             name: "Example-DepthCompositing",
             dependencies: ["Ollin"],
             path: "Examples/3D/DepthCompositing"

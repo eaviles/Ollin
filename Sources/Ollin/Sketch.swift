@@ -303,6 +303,90 @@ open class Sketch {
     /// no-op without a camera.
     public func drawPointCloud(_ cloud: PointCloud) { drawer.drawPointCloud(cloud) }
 
+    // MARK: 3D — solid primitives & meshes
+
+    /// Draw a solid 3D `Mesh` through the active camera with depth testing (set a
+    /// camera first with `camera`/`perspective`/`ortho`). The mesh rides the 3D
+    /// transform stack — `translate`/`rotate`/`scale` place and orient it — and is
+    /// colored by its surface normals until the material model lands (the current
+    /// `fill`'s alpha sets opacity). A no-op without a camera. The primitive calls
+    /// below are sugar over this.
+    public func drawMesh(_ mesh: Mesh) { drawer.drawMesh(mesh) }
+
+    /// Draw a box centered at the model origin, `width` (x) × `height` (y) ×
+    /// `depth` (z) world units. Position it with the transform stack.
+    public func drawBox(width: Double, height: Double, depth: Double) {
+        drawer.drawMesh(.box(width: width, height: height, depth: depth))
+    }
+
+    /// Draw a cube centered at the model origin, `size` world units on each edge.
+    public func drawBox(size: Double = 1) { drawer.drawMesh(.box(size: size)) }
+
+    /// Draw a sphere centered at the model origin. `segments` divide it around the
+    /// equator, `rings` from pole to pole.
+    public func drawSphere(radius: Double = 0.5, segments: Int = 32, rings: Int = 16) {
+        drawer.drawMesh(.sphere(radius: radius, segments: segments, rings: rings))
+    }
+
+    /// Draw a cylinder centered at the model origin, its axis along y. `caps`
+    /// closes the two ends (on by default).
+    public func drawCylinder(radius: Double = 0.5, height: Double = 1,
+                             segments: Int = 32, caps: Bool = true) {
+        drawer.drawMesh(.cylinder(radius: radius, height: height, segments: segments, caps: caps))
+    }
+
+    /// Draw a flat plane centered at the model origin in the x–z ground plane,
+    /// `width` (x) × `depth` (z) world units, facing up (+y). Drawn double-sided.
+    public func drawPlane(width: Double = 1, depth: Double = 1, segments: Int = 1) {
+        drawer.drawMesh(.plane(width: width, depth: depth, segments: segments))
+    }
+
+    /// Draw a torus (ring) centered at the model origin in the x–z plane: `radius`
+    /// from the center to the tube's center, `tube` the tube's own radius.
+    public func drawTorus(radius: Double = 0.5, tube: Double = 0.2,
+                          segments: Int = 48, sides: Int = 24) {
+        drawer.drawMesh(.torus(radius: radius, tube: tube, segments: segments, sides: sides))
+    }
+
+    /// Draw a cone centered at the model origin, its axis along y (base down, apex up).
+    public func drawCone(radius: Double = 0.5, height: Double = 1, segments: Int = 32) {
+        drawer.drawMesh(.cone(radius: radius, height: height, segments: segments))
+    }
+
+    /// Draw a square-base pyramid centered at the model origin, `width` (x) ×
+    /// `depth` (z) base rising to an apex. Faceted (flat sides).
+    public func drawPyramid(width: Double = 1, depth: Double = 1, height: Double = 1) {
+        drawer.drawMesh(.pyramid(width: width, depth: depth, height: height))
+    }
+
+    /// Draw a helix (coiled tube) centered at the model origin, its axis along y.
+    /// `turns` coils over `height`; `radius` is the coil radius, `tube` the tube's.
+    public func drawHelix(radius: Double = 0.5, tube: Double = 0.12, turns: Double = 3,
+                          height: Double = 1, segments: Int = 240, sides: Int = 12) {
+        drawer.drawMesh(.helix(radius: radius, tube: tube, turns: turns,
+                               height: height, segments: segments, sides: sides))
+    }
+
+    /// Draw a regular icosahedron (20 faces) centered at the model origin, its
+    /// vertices on a sphere of `radius`.
+    public func drawIcosahedron(radius: Double = 0.5) {
+        drawer.drawMesh(.icosahedron(radius: radius))
+    }
+
+    /// Draw a regular dodecahedron (12 faces) centered at the model origin, its
+    /// vertices on a sphere of `radius`.
+    public func drawDodecahedron(radius: Double = 0.5) {
+        drawer.drawMesh(.dodecahedron(radius: radius))
+    }
+
+    /// Draw a (p, q) torus knot centered at the model origin: a tube winding `p`
+    /// times around the axis and `q` times around the hole (coprime for a true knot).
+    public func drawTorusKnot(p: Int = 2, q: Int = 3, radius: Double = 0.5, tube: Double = 0.16,
+                              segments: Int = 240, sides: Int = 14) {
+        drawer.drawMesh(.torusKnot(p: p, q: q, radius: radius, tube: tube,
+                                   segments: segments, sides: sides))
+    }
+
     // MARK: 3D — depth-aware compositing
 
     /// Place subsequent 2D drawing at the depth of `worldPoint` in the active 3D

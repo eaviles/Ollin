@@ -362,9 +362,39 @@ public struct OutlineFont: @unchecked Sendable {
             guard let path = cache.path(for: glyph, font: font) else {
                 return GlyphGeometryCache.Local(contours: [], fill: [])
             }
-            let contours = OutlineFont.flatten(path, scale: size, originX: 0, originY: 0)
-            let fill = contours.isEmpty
-                ? [] : Shape(contours: contours, winding: .nonZero).triangulatedFill()
+            // Some system faces (San Francisco) build a glyph from *overlapping*
+            // sub-contours. Used as-is they hurt both ways the geometry is drawn:
+            // the triangulated *fill* shows a faint hairline seam where overlaps
+            // meet (the counters of a/e/g), and the *outline* carries doubled edges
+            // where sub-contours cross — so a stroke, or dots sampled along the
+            // outline, double up there. Resolving the self-overlap into clean,
+            // non-overlapping boundaries first — a union of the glyph with nothing,
+            // which normalizes it under its nonzero winding — fixes both. The union
+            // only merges cleanly when the curves are finely flattened, and flatten
+            // density tracks the render size, so at small sizes the overlap stays
+            // coarse and the seam survives. So flatten + clean at a large reference
+            // scale, then scale the clean result down to the render size. Both the
+            // returned contours (outline/stroke/points) and the fill come from it.
+            // Cached per (glyph, size).
+            //
+            // Flattening at the reference scale leaves the result far denser than the
+            // render size needs (~40× the points at 26pt), which the per-frame stroke
+            // tessellation and fill bake then pay for every frame. So simplify the
+            // scaled contours back to a sub-pixel tolerance — the clean topology
+            // survives, but the point count drops to render-appropriate.
+            let referenceContours = OutlineFont.flatten(path, scale: 1024, originX: 0, originY: 0)
+            guard !referenceContours.isEmpty else {
+                return GlyphGeometryCache.Local(contours: [], fill: [])
+            }
+            let cleaned = Shape(contours: referenceContours, winding: .nonZero)
+                .union(Shape(contours: [], winding: .nonZero))
+            let k = size / 1024
+            let contours = cleaned.contours.compactMap { contour -> Contour? in
+                let scaled = contour.points.map { Vector2($0.x * k, $0.y * k) }
+                let simplified = OutlineFont.simplifyClosed(scaled, tolerance: 0.3)
+                return simplified.count >= 3 ? Contour(simplified, closed: contour.isClosed) : nil
+            }
+            let fill = Shape(contours: contours, winding: cleaned.winding).triangulatedFill()
             return GlyphGeometryCache.Local(contours: contours, fill: fill)
         }
     }
@@ -458,6 +488,53 @@ public struct OutlineFont: @unchecked Sendable {
     /// `(gx, gy) → (originX + gx·scale, originY − gy·scale)` (the y flip turns the
     /// font's y-up into Ollin's y-down). Curves flatten through the shared
     /// `CurveSampling`, so segment density tracks the on-screen size.
+    /// Reduce a closed polyline to the points needed to stay within `tolerance`
+    /// (Ramer–Douglas–Peucker), keeping the shape's topology. Used to bring a
+    /// reference-scale-cleaned glyph contour back to render-appropriate density.
+    static func simplifyClosed(_ points: [Vector2], tolerance: Double) -> [Vector2] {
+        guard points.count > 4 else { return points }
+        // Anchor on the two farthest-apart points so a closed loop keeps its extent,
+        // then simplify the two halves between them as open chains.
+        var iA = 0, iB = 0, best = -1.0
+        for i in 1..<points.count {
+            let d = points[i].distanceSquared(to: points[0])
+            if d > best { best = d; iB = i }
+        }
+        best = -1
+        for i in 0..<points.count {
+            let d = points[i].distanceSquared(to: points[iB])
+            if d > best { best = d; iA = i }
+        }
+        if iA > iB { swap(&iA, &iB) }
+        let first = Array(points[iA...iB])
+        let second = Array(points[iB...] + points[...iA])
+        var out = douglasPeucker(first, tolerance: tolerance)
+        let tail = douglasPeucker(second, tolerance: tolerance)
+        if tail.count > 2 { out.append(contentsOf: tail[1..<(tail.count - 1)]) }
+        return out
+    }
+
+    private static func douglasPeucker(_ pts: [Vector2], tolerance: Double) -> [Vector2] {
+        guard pts.count > 2 else { return pts }
+        let a = pts.first!, b = pts.last!
+        var maxDist = -1.0, idx = 0
+        for i in 1..<(pts.count - 1) {
+            let d = perpendicularDistance(pts[i], a, b)
+            if d > maxDist { maxDist = d; idx = i }
+        }
+        if maxDist <= tolerance { return [a, b] }
+        let left = douglasPeucker(Array(pts[0...idx]), tolerance: tolerance)
+        let right = douglasPeucker(Array(pts[idx...]), tolerance: tolerance)
+        return left.dropLast() + right
+    }
+
+    private static func perpendicularDistance(_ p: Vector2, _ a: Vector2, _ b: Vector2) -> Double {
+        let dx = b.x - a.x, dy = b.y - a.y
+        let len = (dx * dx + dy * dy).squareRoot()
+        if len < 1e-12 { return p.distance(to: a) }
+        return abs(dy * p.x - dx * p.y + b.x * a.y - b.y * a.x) / len
+    }
+
     private static func flatten(_ path: CGPath, scale: Double,
                                 originX: Double, originY: Double) -> [Contour] {
         func map(_ p: CGPoint) -> Vector2 {

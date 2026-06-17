@@ -60,7 +60,7 @@ A colour image, a depth map, and intrinsics — an "RGBD frame" — is the sourc
 
 ## 3D mode
 
-2D stays the default, and 3D keeps building out: solid primitives (box, sphere, cylinder, plane, torus), meshes built in code or loaded from file, and a simple light and material model. It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode-partly-shipped).
+2D stays the default, and 3D keeps building out: meshes built in code or loaded from file, and a simple light and material model. It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode-partly-shipped).
 
 ## On the horizon
 

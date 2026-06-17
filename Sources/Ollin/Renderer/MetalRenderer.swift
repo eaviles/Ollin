@@ -84,6 +84,10 @@ final class MetalRenderer {
         static func pointCloud(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_point_vertex", fragment: "ollin_point_fragment", blend: blend, depthFormat: depth)
         }
+        // solid 3D triangle mesh (depth-tested, normal-colored)
+        static func mesh(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_vertex", fragment: "ollin_mesh_fragment", blend: blend, depthFormat: depth)
+        }
         // depth-scene backdrop: a textured quad that also writes per-pixel depth from
         // a depth map (premultiplied color, like the image path; outputs [[depth]]).
         static func depthScene(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -105,6 +109,7 @@ final class MetalRenderer {
             case .glyphAtlas: return .glyphAtlas(blend, depth: depth)
             case .particles:  return .points(blend, depth: depth)
             case .points3D:   return .pointCloud(blend, depth: depth)
+            case .mesh3D:     return .mesh(blend, depth: depth)
             case .depthScene: return .depthScene(blend, depth: depth)
             }
         }
@@ -178,6 +183,11 @@ final class MetalRenderer {
     /// advanced with `frameIndex` like the others.
     private var pointBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     private var pointExportBuffer: MTLBuffer?
+
+    /// Parallel ring + export buffer for solid 3D mesh vertices (`OllinMeshVertex`),
+    /// advanced with `frameIndex` like the others.
+    private var meshBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    private var meshExportBuffer: MTLBuffer?
 
     /// Depth-stencil states for the 3D path, built once. 3D geometry z-tests
     /// (less-equal) and writes depth; 2D batches in a 3D pass leave depth alone
@@ -354,6 +364,7 @@ final class MetalRenderer {
                imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
                glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
                pointBuffer: pointBuffer(at: frameIndex, for: drawer.points.count),
+               meshBuffer: meshBuffer(at: frameIndex, for: drawer.meshVertices.count),
                depthFormat: passDepthFormat)
         geomEncoder.endEncoding()
 
@@ -399,6 +410,7 @@ final class MetalRenderer {
                imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
                glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
                pointBuffer: pointBuffer(at: frameIndex, for: drawer.points.count),
+               meshBuffer: meshBuffer(at: frameIndex, for: drawer.meshVertices.count),
                depthFormat: nil)   // 3D + accumulation isn't supported in M1
         encoder.endEncoding()
 
@@ -432,6 +444,7 @@ final class MetalRenderer {
                imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
                pointBuffer: exportPointBuffer(for: drawer.points.count),
+               meshBuffer: exportMeshBuffer(for: drawer.meshVertices.count),
                depthFormat: nil)   // 3D + accumulation isn't supported in M1
         encoder.endEncoding()
 
@@ -606,6 +619,7 @@ final class MetalRenderer {
                imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
                pointBuffer: exportPointBuffer(for: drawer.points.count),
+               meshBuffer: exportMeshBuffer(for: drawer.meshVertices.count),
                depthFormat: passDepthFormat)
         encoder.endEncoding()
 
@@ -675,6 +689,7 @@ final class MetalRenderer {
                imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
                pointBuffer: exportPointBuffer(for: drawer.points.count),
+               meshBuffer: exportMeshBuffer(for: drawer.meshVertices.count),
                depthFormat: nil)   // 3D over the texture/Syphon hand-off isn't supported in M1
         encoder.endEncoding()
 
@@ -696,12 +711,14 @@ final class MetalRenderer {
                         into encoder: MTLRenderCommandEncoder,
                         triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?,
                         imageBuffer: MTLBuffer?, glyphBuffer: MTLBuffer?,
-                        pointBuffer: MTLBuffer?, depthFormat: MTLPixelFormat?) {
+                        pointBuffer: MTLBuffer?, meshBuffer: MTLBuffer?,
+                        depthFormat: MTLPixelFormat?) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
         let imageVertices = drawer.imageVertices
         let glyphVertices = drawer.glyphVertices
         let points = drawer.points
+        let meshVertices = drawer.meshVertices
         let batches = drawer.batches
         guard !batches.isEmpty else { return }
 
@@ -730,6 +747,11 @@ final class MetalRenderer {
                 pointBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
             }
         }
+        if !meshVertices.isEmpty, let meshBuffer {
+            meshVertices.withUnsafeBytes { raw in
+                meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
 
         var uniforms = Uniforms(viewport: viewport, clipDepth: 0)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
@@ -753,6 +775,7 @@ final class MetalRenderer {
         let instanceStride = MemoryLayout<SDFInstance>.stride
         let imageStride = MemoryLayout<OllinImageVertex>.stride
         let pointStride = MemoryLayout<OllinPoint>.stride
+        let meshStride = MemoryLayout<OllinMeshVertex>.stride
         for i in batches.indices {
             let batch = batches[i]
             let next = i + 1 < batches.count ? batches[i + 1] : nil
@@ -771,9 +794,10 @@ final class MetalRenderer {
                 // z-test + write; a plain 2D batch leaves depth alone. The depth
                 // scene and 3D batches set their own clip-z (a fragment SV_Depth and
                 // the camera projection), so only plain 2D batches feed `clipDepth`.
-                let wantsDepth = batch.kind == .points3D || batch.kind == .depthScene || batch.depth != nil
+                let wantsDepth = batch.kind == .points3D || batch.kind == .mesh3D
+                    || batch.kind == .depthScene || batch.depth != nil
                 encoder.setDepthStencilState(wantsDepth ? depthTestState : noDepthState)
-                if batch.kind != .points3D && batch.kind != .depthScene {
+                if batch.kind != .points3D && batch.kind != .mesh3D && batch.kind != .depthScene {
                     uniforms.clipDepth = batch.depth ?? 0
                     encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
                 }
@@ -838,6 +862,17 @@ final class MetalRenderer {
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(pointBuffer, offset: batch.pointStart * pointStride, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
+            case .mesh3D:
+                // Solid 3D mesh: a flat triangle list (indices already expanded), drawn
+                // through the camera constants bound at index 2. Depth-tested + writing
+                // (state set above), so meshes occlude each other and the point clouds
+                // / depth scene in the same pass.
+                let end = next?.meshStart ?? meshVertices.count
+                let count = end - batch.meshStart
+                guard count > 0, let meshBuffer, drawer.camera3D != nil else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .depthScene:
                 // A backdrop quad (in `imageVertices`, like an image) whose fragment
                 // also writes per-pixel depth from the depth map: color at texture 0,
@@ -1267,6 +1302,26 @@ final class MetalRenderer {
         if let buffer = pointExportBuffer, buffer.length >= needed { return buffer }
         pointExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
         return pointExportBuffer
+    }
+
+    /// Return the solid-mesh ring buffer at `index`, grown on demand. Mirrors
+    /// `pointBuffer(at:for:)`.
+    private func meshBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinMeshVertex>.stride
+        if let buffer = meshBuffers[index], buffer.length >= needed {
+            return buffer
+        }
+        let capacity = needed + needed / 2
+        meshBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
+        return meshBuffers[index]
+    }
+
+    /// The off-screen export buffer for solid-mesh vertices, grown on demand.
+    private func exportMeshBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinMeshVertex>.stride
+        if let buffer = meshExportBuffer, buffer.length >= needed { return buffer }
+        meshExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return meshExportBuffer
     }
 
     /// Splice the shared CPU/GPU type header into shader source for runtime
