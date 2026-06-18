@@ -1307,15 +1307,25 @@ constant float3 cubePCFOffsets[20] = {
 static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
                                      float farPlane, float texelWorld,
                                      texturecube<float> shadowCube, sampler shadowSamp) {
-    float3 biased = worldPos + n * texelWorld;             // ~1-texel seam nudge
+    // Self-occlusion is held off by a **normal-offset**, not a depth bias: the receiver
+    // is pushed along its own normal toward the light before the lookup. This matters for
+    // the floor, which is itself the nearest surface the overhead light sees (so it
+    // self-occludes); a depth bias toward "lit" would fix that but open a gap at object
+    // contacts, while a normal-offset (perpendicular to the surface) clears the
+    // self-compare without detaching contact shadows. It widens at grazing angles, where
+    // a flat surface's depth varies fast across a shadow texel. The remaining depth bias
+    // is then tiny, so contacts stay tight.
+    float cosTheta = clamp(dot(n, normalize(lightPos - worldPos)), 0.0, 1.0);
+    float offset = texelWorld * (1.0 + 2.5 / max(cosTheta, 0.25));
+    float3 biased = worldPos + n * offset;
     float3 v = biased - lightPos;                          // light → receiver direction
     float current = length(v) / farPlane;                 // receiver distance (normalized)
-    float bias = (texelWorld / farPlane) * 1.5;           // small world-space bias
-    float diskRadius = texelWorld * 2.0;                  // PCF tap spread (world units)
+    float bias = (texelWorld / farPlane) * 0.4;            // tiny depth bias
+    float diskRadius = texelWorld * 2.0;                   // PCF tap spread (world units)
     float lit = 0.0;
     for (int i = 0; i < 20; i++) {
         float2 rg = shadowCube.sample(shadowSamp, v + cubePCFOffsets[i] * diskRadius).rg;
-        float midpoint = (rg.x + rg.y) * 0.5;             // midpoint of nearest+farthest
+        float midpoint = (rg.x + rg.y) * 0.5;              // midpoint of nearest+farthest
         // No occluder in this direction (R never reduced below the far clear) -> lit.
         lit += (rg.x >= 0.999 || current - bias <= midpoint) ? 1.0 : 0.0;
     }
