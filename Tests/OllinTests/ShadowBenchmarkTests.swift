@@ -65,18 +65,22 @@ struct ShadowBenchmarkTests {
         let rt = device.supportsRaytracing && device.supportsRaytracingFromRender
         let iters = 30
 
-        // The main display in backing pixels — a sketch's `.auto` window draws at up to a
-        // square of the display's pixel *height*, so default the benchmark to that (the user
-        // can set OLLIN_BENCH_RES to their actual window's drawable for a precise number).
+        // The render resolution a *default sketch* actually uses live: its `.auto` window
+        // (the largest clean fraction of the default 1080² canvas that fits the screen)
+        // times the display's backing scale. The live path rasterises at that drawable, not
+        // at the canvas (`--export` is the one that renders at the 1080² canvas), so this is
+        // the size the quality-tier defaults should be tuned against. OLLIN_BENCH_RES overrides.
+        let canvasPt = Sketch.defaultSize.cgSize
+        let scale = NSScreen.screens.first?.backingScaleFactor ?? 2
+        let windowPt = OllinApp.windowSize(fitting: canvasPt)
+        let liveDrawable = Int((windowPt.height * scale).rounded())
+        let res = Int(ProcessInfo.processInfo.environment["OLLIN_BENCH_RES"] ?? "") ?? liveDrawable
+
         var displayLine = "main display: none detected (headless)"
-        var defaultRes = 2160
         if let screen = NSScreen.screens.first {
             let pt = screen.frame.size, s = screen.backingScaleFactor
-            let pxW = Int((pt.width * s).rounded()), pxH = Int((pt.height * s).rounded())
-            defaultRes = pxH
-            displayLine = "main display: \(Int(pt.width))×\(Int(pt.height)) pt @ \(s)× = \(pxW)×\(pxH) px"
+            displayLine = "main display: \(Int(pt.width))×\(Int(pt.height)) pt @ \(s)× = \(Int((pt.width * s).rounded()))×\(Int((pt.height * s).rounded())) px"
         }
-        let res = Int(ProcessInfo.processInfo.environment["OLLIN_BENCH_RES"] ?? "") ?? defaultRes
 
         func gb(_ bytes: UInt64) -> String { String(format: "%.0f GB", Double(bytes) / 1_073_741_824) }
         let os = ProcessInfo.processInfo.operatingSystemVersion
@@ -86,7 +90,8 @@ struct ShadowBenchmarkTests {
         print("ray tracing: supportsRaytracing=\(device.supportsRaytracing), fromRender=\(device.supportsRaytracingFromRender), hardware-RT(apple9+)=\(device.supportsFamily(.apple9))")
         print("shadow path: \(rt ? "RAY-TRACED — the quality tiers apply" : "mid-point CUBE fallback — tiers inert (no rays)")")
         print(displayLine)
-        print("benchmark resolution: \(res)×\(res) px  (≈ a full-height square window; your sketch's window may be smaller — set OLLIN_BENCH_RES to its drawable)\n")
+        print("default sketch: \(Int(canvasPt.width))² canvas → .auto window \(Int(windowPt.width))×\(Int(windowPt.height)) pt @ \(scale)× = \(liveDrawable)² px live drawable  (--export renders at the \(Int(canvasPt.width))² canvas instead)")
+        print("benchmark resolution: \(res)×\(res) px  (the default sketch's live drawable; set OLLIN_BENCH_RES to override)\n")
 
         let sketch = BenchScene()
         sketch.setCanvasSize(width: Double(res), height: Double(res))
