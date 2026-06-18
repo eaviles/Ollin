@@ -1344,19 +1344,10 @@ static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
 }
 
 #if OLLIN_RT_SHADOWS
-// Shadow factor for a point caster via inline ray tracing (1 fully lit, 0 fully
-// shadowed) — the exact, shadow-map-free path used when the device can trace from
-// the render stages. A point light is an infinitesimal source, so the physically
-// correct shadow is a single visibility ray to the light; a small `lightRadius`
-// then softens it into a contact-hardening penumbra (a finite area light) and
-// anti-aliases the edge, sampled over a deterministic Vogel disk so the result
-// stays reproducible (snapshot-stable, no per-pixel noise). There's no depth
-// compare, so none of the shadow-map bias/acne/peter-pan/teeth tradeoffs apply —
-// a small normal-offset only keeps the ray from re-hitting its own originating
-// triangle. Same swap-point shape as `shadowFactorCube`.
-// One shadow ray from `origin` toward `target`: 1 if that light point is visible, 0 if
-// an occluder lies between. Opaque triangle candidates are committed (else hits never
-// register — load-bearing); `accept_any_intersection` makes it stop at the first hit.
+// One shadow ray from `origin` toward `target`: 1 if that light point is visible, 0 if an
+// occluder lies between. The structure is built opaque, so an opaque triangle hit commits
+// automatically and `accept_any_intersection` stops at the first one (a shadow ray needs
+// no closest hit); the candidate-commit loop covers the general case.
 static inline float traceShadowRay(float3 origin, float3 target, float eps,
                                    primitive_acceleration_structure accel,
                                    intersection_params params) {
@@ -1376,35 +1367,31 @@ static inline float traceShadowRay(float3 origin, float3 target, float eps,
     return (q.get_committed_intersection_type() == intersection_type::none) ? 1.0 : 0.0;
 }
 
+// Shadow factor for a point caster via inline ray tracing (1 fully lit, 0 fully shadowed)
+// — the exact, shadow-map-free path used when the device can trace from the render stages.
+// A point light is an infinitesimal source, so the physically correct shadow is a
+// visibility ray to the light; a small `lightRadius` then softens it into a contact-
+// hardening penumbra (a finite area light) and anti-aliases the edge, sampled over a
+// deterministic Vogel disk so the result is reproducible (snapshot-stable, no per-pixel
+// noise). There's no depth compare, so none of the shadow-map bias/acne/peter-pan/teeth
+// tradeoffs apply; a small normal-offset only keeps the ray from re-hitting its own
+// triangle. A *fixed* low sample count (no early-out branch) is deliberate: on a software-
+// ray-tracing GPU (no dedicated RT units — M1/M2) each ray is a software BVH traversal, so
+// the warp divergence an adaptive probe introduces costs more than the rays it skips; a
+// uniform count keeps every lane in lockstep. Four samples over a small disk read smooth
+// and hold 60fps even there, and a hardware-RT GPU has ample headroom for the same (a
+// per-hardware ray budget is a clean future refinement). Same swap-point as `shadowFactorCube`.
 static inline float shadowFactorRayTraced(float3 worldPos, float3 n, float3 lightPos,
                                           float lightRadius, float eps,
                                           primitive_acceleration_structure accel) {
     float3 origin = worldPos + n * eps;            // lift off the surface (self-hit guard)
     float3 dir = normalize(lightPos - origin);
-    // A basis perpendicular to the light direction, to spread the area-light samples.
     float3 up = abs(dir.y) > 0.99 ? float3(0, 0, 1) : float3(0, 1, 0);
     float3 tangent = normalize(cross(up, dir));
     float3 bitangent = cross(dir, tangent);
     intersection_params params;
-    params.accept_any_intersection(true);          // a shadow ray only needs *any* hit
-
-    // Adaptive sampling: probe the light's center + three rim points. When they all
-    // agree, the fragment is in full light or full shadow (the umbra/lit majority of the
-    // frame), so four rays suffice; only a genuine penumbra pays for the full soft
-    // kernel. Coherent screen regions take the same branch across a warp, so this is a
-    // real ~3-4x speedup with no change to the soft edges.
-    float probe = traceShadowRay(origin, lightPos, eps, accel, params);
-    for (int k = 0; k < 3; k++) {
-        float a = float(k) * 2.0943951;            // 120° apart on the rim
-        float3 t = lightPos + tangent * (cos(a) * lightRadius) + bitangent * (sin(a) * lightRadius);
-        probe += traceShadowRay(origin, t, eps, accel, params);
-    }
-    if (probe == 0.0) return 0.0;                  // every probe occluded -> full shadow
-    if (probe == 4.0) return 1.0;                  // every probe clear -> full light
-
-    // Penumbra: a full Vogel (sunflower) disk over the light — even, deterministic
-    // coverage for a smooth, contact-hardening gradient.
-    const int kSamples = 8;
+    params.accept_any_intersection(true);
+    const int kSamples = 4;
     float lit = 0.0;
     for (int i = 0; i < kSamples; i++) {
         float fi = (float(i) + 0.5) / float(kSamples);

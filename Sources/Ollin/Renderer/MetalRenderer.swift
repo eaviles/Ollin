@@ -1414,35 +1414,53 @@ final class MetalRenderer {
         let meshStride = MemoryLayout<OllinMeshVertex>.stride
         let meshVertices = drawer.meshVertices
         let batches = drawer.batches
+        // Coalesce maximal runs of contiguous caster batches into one geometry descriptor
+        // each (a non-casting batch — wireframe, or a non-mesh kind — breaks the run). The
+        // caster vertices of a run are contiguous in `meshBuffer`, so one descriptor covers
+        // them; fewer descriptors means a cheaper structure build (its per-geometry overhead
+        // dominates at creative-coding triangle counts). A fully solid scene becomes one.
         var geometries: [MTLAccelerationStructureTriangleGeometryDescriptor] = []
-        for i in batches.indices {
-            let batch = batches[i]
-            guard batch.kind == .mesh3D, !batch.meshWireframe else { continue }
-            let next = i + 1 < batches.count ? batches[i + 1] : nil
-            let end = next?.meshStart ?? meshVertices.count
-            let count = end - batch.meshStart
-            guard count >= 3 else { continue }
+        var runStart = -1, runEnd = 0
+        func flushRun() {
+            guard runStart >= 0, runEnd - runStart >= 3 else { runStart = -1; return }
             let geo = MTLAccelerationStructureTriangleGeometryDescriptor()
             geo.vertexBuffer = meshBuffer
-            geo.vertexBufferOffset = batch.meshStart * meshStride
+            geo.vertexBufferOffset = runStart * meshStride
             geo.vertexStride = meshStride
             geo.vertexFormat = .float3        // position.xyz from each vertex (field offset 0)
-            geo.triangleCount = count / 3
+            geo.triangleCount = (runEnd - runStart) / 3
             geo.opaque = true                 // load-bearing: else triangle hits never commit
             geometries.append(geo)
+            runStart = -1
         }
+        for i in batches.indices {
+            let batch = batches[i]
+            let isCaster = batch.kind == .mesh3D && !batch.meshWireframe
+            let end = i + 1 < batches.count ? batches[i + 1].meshStart : meshVertices.count
+            if isCaster {
+                if runStart < 0 { runStart = batch.meshStart }
+                runEnd = end
+            } else {
+                flushRun()
+            }
+        }
+        flushRun()
         guard !geometries.isEmpty else { return nil }
 
+        // A plain (non-refittable) build: a refittable structure trades traversal speed for
+        // the cheaper refit, and on a software-ray-tracing GPU (no RT hardware, e.g. M1/M2)
+        // the per-ray traversal — millions of rays — dwarfs the per-frame build, so the
+        // faster-to-traverse tree wins. Rebuild each frame; grow the structure in place only
+        // when the scene outgrows it.
         let desc = MTLPrimitiveAccelerationStructureDescriptor()
         desc.geometryDescriptors = geometries
         let sizes = device.accelerationStructureSizes(descriptor: desc)
         if shadowAccel == nil || shadowAccelCapacity < sizes.accelerationStructureSize {
             shadowAccel = device.makeAccelerationStructure(size: sizes.accelerationStructureSize)
-            shadowAccelScratch = device.makeBuffer(length: max(1, sizes.buildScratchBufferSize),
-                                                   options: .storageModePrivate)
             shadowAccelCapacity = sizes.accelerationStructureSize
-        } else if (shadowAccelScratch?.length ?? 0) < sizes.buildScratchBufferSize {
-            shadowAccelScratch = device.makeBuffer(length: sizes.buildScratchBufferSize,
+        }
+        if (shadowAccelScratch?.length ?? 0) < sizes.buildScratchBufferSize {
+            shadowAccelScratch = device.makeBuffer(length: max(1, sizes.buildScratchBufferSize),
                                                    options: .storageModePrivate)
         }
         guard let accel = shadowAccel, let scratch = shadowAccelScratch,
