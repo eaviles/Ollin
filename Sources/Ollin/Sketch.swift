@@ -417,6 +417,21 @@ open class Sketch {
     /// Stop casting shadows (the default).
     public func noShadows() { drawer.noShadows() }
 
+    /// Set the soft-shadow quality — how many rays the ray-traced point caster traces per
+    /// pixel — as a **hardware-relative** tier (the dial to trade frame rate for nicer
+    /// shadows). The tier scales with the GPU, like a game's Low/Medium/High: `.medium` (the
+    /// default) is the frame-rate-safe choice on a software-ray-tracing GPU (M1/M2) and a
+    /// richer one on a hardware-RT GPU (M3 and up), so better hardware lifts your shadows with
+    /// no code change; `.high`/`.ultra` shift up from there. A persistent setting — set it once
+    /// in `setup()` or `draw()`. Only the ray-traced point path reads it; directional/spot
+    /// shadows and the non-RT cube fallback are unaffected.
+    public func shadowQuality(_ quality: RenderQuality = .default) { drawer.shadowQuality(quality) }
+
+    /// Set the soft-shadow ray count to an **exact** value (1…64), the hardware-independent
+    /// alternative to `shadowQuality` — for fine control, pushing past the presets on a fast
+    /// GPU, or a render that should look identical across machines. Persistent.
+    public func shadowSamples(_ count: Int) { drawer.shadowSamples(count) }
+
     // MARK: 3D — solid primitives & meshes
 
     /// Draw a solid 3D `Mesh` through the active camera with depth testing (set a

@@ -249,6 +249,14 @@ final class Drawer {
     /// fragment dims that light where a receiver is occluded.
     private(set) var castsShadows = false
 
+    /// The soft-shadow quality knob (`shadowQuality`/`shadowSamples`) — a persistent setting
+    /// (not reset each frame, like `toneMap`): more rays give a smoother ray-traced penumbra
+    /// at proportional GPU cost. A `Quality` tier scales with the GPU (the renderer resolves
+    /// it, so a hardware-RT GPU gets a richer level than a software-RT one); an absolute count
+    /// pins an exact value. Only the ray-traced point path reads it; directional/spot and the
+    /// non-RT cube fallback ignore it.
+    private(set) var shadowQualitySetting: ShadowQualitySetting = .tier(.default)
+
     /// The shadow map resolution the renderer renders the depth pass into. Kept here
     /// only to size the normal-offset bias in world units (`shadowTexelWorld`); the
     /// renderer owns the actual texture and must use the same value (`MetalRenderer`).
@@ -733,6 +741,14 @@ final class Drawer {
     /// Stop casting shadows (the default). Per-frame state.
     func noShadows() { castsShadows = false }
 
+    /// Set the soft-shadow quality to a hardware-relative tier (the renderer picks the ray
+    /// count for the GPU). Persistent (set once, in `setup()` or `draw()`).
+    func shadowQuality(_ quality: RenderQuality) { shadowQualitySetting = .tier(quality) }
+
+    /// Set the soft-shadow ray count to an exact value, clamped to 1…64 (hardware-independent).
+    /// Persistent.
+    func shadowSamples(_ count: Int) { shadowQualitySetting = .absolute(max(1, min(count, 64))) }
+
     /// Pack this frame's effective lighting into the GPU uniform. The mode decides
     /// the source: `.off` shades nothing (flat unlit, `enabled == 0`), `.auto` uses
     /// the default rig (the out-of-box shaded look), `.custom` uses the sketch's own
@@ -837,6 +853,8 @@ final class Drawer {
                 // contact-hardening penumbra (light-relative, so it's camera-independent).
                 // The cube path ignores it, so it's harmless to always pack.
                 u.shadowDepthB = dist * 0.03
+                // `shadowSamples` (rays/pixel) is resolved by the renderer from the GPU's
+                // capability + the sketch's quality tier; left 0 here (it has no device).
             }
         }
         return u

@@ -1382,7 +1382,7 @@ static inline float traceShadowRay(float3 origin, float3 target, float eps,
 // and hold 60fps even there, and a hardware-RT GPU has ample headroom for the same (a
 // per-hardware ray budget is a clean future refinement). Same swap-point as `shadowFactorCube`.
 static inline float shadowFactorRayTraced(float3 worldPos, float3 n, float3 lightPos,
-                                          float lightRadius, float eps,
+                                          float lightRadius, float eps, int samples,
                                           primitive_acceleration_structure accel) {
     float3 origin = worldPos + n * eps;            // lift off the surface (self-hit guard)
     float3 dir = normalize(lightPos - origin);
@@ -1391,16 +1391,16 @@ static inline float shadowFactorRayTraced(float3 worldPos, float3 n, float3 ligh
     float3 bitangent = cross(dir, tangent);
     intersection_params params;
     params.accept_any_intersection(true);
-    const int kSamples = 4;
+    int n_samples = max(samples, 1);               // rays/pixel (the resolved quality tier)
     float lit = 0.0;
-    for (int i = 0; i < kSamples; i++) {
-        float fi = (float(i) + 0.5) / float(kSamples);
+    for (int i = 0; i < n_samples; i++) {
+        float fi = (float(i) + 0.5) / float(n_samples);
         float rr = sqrt(fi) * lightRadius;
         float th = float(i) * 2.39996323;          // golden angle
         float3 t = lightPos + tangent * (cos(th) * rr) + bitangent * (sin(th) * rr);
         lit += traceShadowRay(origin, t, eps, accel, params);
     }
-    return lit / float(kSamples);
+    return lit / float(n_samples);
 }
 
 // The ray-traced point-shadow factor for a lit mesh fragment, or 1 (lit) when this
@@ -1414,7 +1414,8 @@ static inline float meshRTShadow(float3 worldPos, float3 normal,
     if (light.shadowKind != 2) return 1.0;
     return shadowFactorRayTraced(worldPos, normalize(normal),
                                  light.lights[light.shadowLight].position.xyz,
-                                 light.shadowDepthB, light.shadowTexelWorld, accel);
+                                 light.shadowDepthB, light.shadowTexelWorld,
+                                 light.shadowSamples, accel);
 }
 #endif
 

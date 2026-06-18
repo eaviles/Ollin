@@ -273,6 +273,10 @@ final class MetalRenderer {
     /// mesh fragments are compiled with `OLLIN_RT_SHADOWS` set from this, and the cube
     /// path stays the byte-identical fallback on devices without it.
     private let rayTracedShadows: Bool
+    /// Whether the GPU has *dedicated* ray-tracing units (the A17/M3 generation and later,
+    /// `MTLGPUFamily.apple9`+). The M1/M2 trace in software, ~5-10× slower, so the hardware-
+    /// relative `Quality` tiers map to a higher ray count here than on a software-RT GPU.
+    private let hasHardwareRayTracing: Bool
     /// The per-frame acceleration structure (rebuilt each point-RT-shadow frame from the
     /// shadow-caster triangles) and its scratch buffer, both grown in place as the scene
     /// size demands. `dummyShadowAccel` is a 1-triangle structure bound to the lit mesh
@@ -376,6 +380,7 @@ final class MetalRenderer {
         }
         self.commandQueue = queue
         self.rayTracedShadows = device.supportsRaytracing && device.supportsRaytracingFromRender
+        self.hasHardwareRayTracing = device.supportsFamily(.apple9)
 
         let samplerDesc = MTLSamplerDescriptor()
         samplerDesc.minFilter = .linear
@@ -758,6 +763,60 @@ final class MetalRenderer {
         return MetalRenderer.cgImage(fromBGRA8: readback, width: width, height: height)
     }
 
+    /// Render `drawer`'s already-recorded scene `iterations` times into off-screen targets
+    /// (no read-back) and return the **average GPU milliseconds per frame**, from the command
+    /// buffer's GPU start/end timestamps — vsync-independent, so it measures the true frame
+    /// cost the on-screen path is bounded by. For the shadow benchmark tool; the first frame
+    /// is dropped as warm-up. Returns 0 on setup failure.
+    func benchmarkGPUMilliseconds(_ drawer: Drawer, viewport: SIMD2<Float>,
+                                  width: Int, height: Int, iterations: Int) -> Double {
+        guard width > 0, height > 0, iterations > 1,
+              let msaaTexture = makeFloatMSAA(width: width, height: height, storage: .memoryless),
+              let resolveTexture = makeFloatResolve(width: width, height: height),
+              let displayTexture = makeDisplayTexture(width: width, height: height) else { return 0 }
+        let depthTexture = drawer.usesDepthBuffer ? makeDepthMSAA(width: width, height: height) : nil
+        let meshBuf = exportMeshBuffer(for: drawer.meshVertices.count)
+        var totalMs = 0.0, counted = 0
+        for i in 0..<iterations {
+            let pass = MTLRenderPassDescriptor()
+            pass.colorAttachments[0].texture = msaaTexture
+            pass.colorAttachments[0].resolveTexture = resolveTexture
+            pass.colorAttachments[0].loadAction = .clear
+            pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
+            pass.colorAttachments[0].storeAction = .multisampleResolve
+            var passDepthFormat: MTLPixelFormat? = nil
+            if let depthTexture {
+                pass.depthAttachment.texture = depthTexture
+                pass.depthAttachment.loadAction = .clear
+                pass.depthAttachment.clearDepth = 1.0
+                pass.depthAttachment.storeAction = .dontCare
+                passDepthFormat = depthPixelFormat
+            }
+            guard let cb = commandQueue.makeCommandBuffer() else { continue }
+            encodeCompute(drawer, into: cb)
+            let renderedShadow = encodeShadowPass(drawer, into: cb, meshBuffer: meshBuf)
+            guard let encoder = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
+            encode(drawer, viewport: viewport, into: encoder,
+                   triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
+                   sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
+                   imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
+                   glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
+                   pointBuffer: exportPointBuffer(for: drawer.points.count),
+                   meshBuffer: meshBuf,
+                   depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
+                   shadowCube: renderedShadow.cube, shadowAccel: renderedShadow.accel)
+            encoder.endEncoding()
+            if let presentEncoder = cb.makeRenderCommandEncoder(descriptor: presentPass(into: displayTexture)) {
+                encodePresent(from: resolveTexture, drawer: drawer, into: presentEncoder)
+                presentEncoder.endEncoding()
+            }
+            cb.commit()
+            cb.waitUntilCompleted()
+            if i > 0 { totalMs += (cb.gpuEndTime - cb.gpuStartTime) * 1000; counted += 1 }
+        }
+        return counted > 0 ? totalMs / Double(counted) : 0
+    }
+
     /// Render `drawer`'s geometry off-screen and return the resolved color texture
     /// (single-sample, sRGB, `.shaderRead`) — same pipeline, MSAA, and blending as
     /// on-screen and as `image(of:)`, but **without** the CPU read-back. The
@@ -892,8 +951,12 @@ final class MetalRenderer {
         // reads them. A directional/spot caster populates the 2D map, a point caster the
         // cube — or, on a ray-tracing device, the acceleration structure.
         if shadowMap == nil && shadowCube == nil && shadowAccel == nil { lighting.shadowLight = -1 }
-        // A ray-traced point caster: switch the fragment to the RT path (shadowKind 2).
-        if shadowAccel != nil { lighting.shadowKind = 2 }
+        // A ray-traced point caster: switch the fragment to the RT path (shadowKind 2) and
+        // resolve the sketch's quality tier to a concrete ray count for this GPU.
+        if shadowAccel != nil {
+            lighting.shadowKind = 2
+            lighting.shadowSamples = resolveShadowSamples(drawer.shadowQualitySetting)
+        }
         let shadowTexture = shadowMap ?? ensureDummyShadowMap()
         let shadowCubeTexture = shadowCube ?? ensureDummyPointShadowMap()
         // When the mesh fragments are compiled with RT shadows, an acceleration structure
@@ -1399,6 +1462,28 @@ final class MetalRenderer {
         drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
         encoder.endEncoding()
         return cube
+    }
+
+    /// Resolve the sketch's soft-shadow quality intent to a concrete ray count for this GPU.
+    /// A `Quality` tier scales with the hardware (a dedicated-RT GPU affords ~2× the rays of a
+    /// software-RT one at the same tier, so better hardware lifts the default quality on its
+    /// own); an absolute count passes through unchanged. The defaults are tuned so `.medium`
+    /// holds 60fps on each tier (4 rays in software, 8 with hardware RT).
+    private func resolveShadowSamples(_ setting: ShadowQualitySetting) -> Int32 {
+        switch setting {
+        case .absolute(let n):
+            return Int32(n)
+        case .tier(let quality):
+            // Software RT (M1/M2) values are measured: `.default` = 4 holds 60fps. A
+            // dedicated-RT GPU gets 4× at each tier (a placeholder until a per-GPU
+            // benchmark — Scripts/benchmark-shadows — tunes real numbers per machine).
+            let hw = hasHardwareRayTracing
+            switch quality {
+            case .performance: return hw ? 8 : 2
+            case .default:     return hw ? 16 : 4
+            case .detail:      return hw ? 32 : 8
+            }
+        }
     }
 
     /// Build (in place) the per-frame primitive acceleration structure over the shadow

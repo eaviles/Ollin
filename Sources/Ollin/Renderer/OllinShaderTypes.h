@@ -245,9 +245,10 @@ typedef struct {
     float shadowStrength;         // 0…1 darkening applied to the caster where occluded
     simd_float4x4 lightViewProjection;  // world -> shadow-caster clip space (2D kind)
     float shadowTexelWorld;       // world-space size of one shadow-map texel (bias / PCF-spread unit)
-    int   shadowKind;             // 0 = 2D map (directional/spot), 1 = cube map (point)
-    float shadowDepthA;           // cube kind: the far plane (linear-distance normalizer)
-    float shadowDepthB;           // unused
+    int   shadowKind;             // 0 = 2D map (directional/spot), 1 = cube map (point), 2 = ray-traced point
+    float shadowDepthA;           // cube kind: the far plane; ray-traced kind: unused
+    float shadowDepthB;           // ray-traced kind: the area-light radius (softness); else unused
+    int   shadowSamples;          // ray-traced kind: rays per pixel (penumbra quality; default 4)
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer
