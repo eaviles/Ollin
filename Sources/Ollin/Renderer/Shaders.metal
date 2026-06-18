@@ -1293,27 +1293,25 @@ constant float3 cubePCFOffsets[20] = {
 };
 
 // Shadow factor for an omnidirectional (point) caster: 1 fully lit, 0 fully shadowed.
-// The cube pass stored, per face, the nearest occluder's **linear distance to the light**
-// (normalized by the far plane), not a projected depth — so the comparison is in plain
-// world units and is uniform across faces and seams, with none of the per-face
-// reconstruction error a projected-depth cube has (the standard point-shadow technique).
-// Here we measure the receiver's own distance and shadow it where that distance exceeds
-// the stored nearest-occluder distance (plus a bias). A **normal-offset** pushes the
-// query off the surface toward the light (world units, wider at grazing angles), which
-// is what clears the tilted-texel self-shadow stripes a vertical face shows under a high
-// light — there the surface is near-edge-on in the downward cube face, so a plain depth
-// bias can't separate it from itself but a perpendicular offset can. A small constant
-// world bias plus a 20-tap PCF over the cube soften the edges and any residual. Same
-// swap-point shape as `shadowFactor`, so a softer/ray-traced technique drops in here.
+// The cube pass stored, per face, the **linear distance to the light** (normalized by the
+// far plane) of each occluder's *back* face (front faces are culled), i.e. second-depth
+// shadow mapping. Storing back faces is what eliminates the tilted-texel self-shadow
+// stripes a vertical face shows under a high light: the lit *near* face is never written
+// into the cube, so it can never shadow itself, and there's a full object-depth of margin
+// behind it. Storing linear distance (not projected depth) keeps the compare in plain
+// world units, uniform across faces and seams, which is what keeps the *contact* clean
+// (the projected-depth cube's 1/z precision crush is what made the contact leak, the
+// "donut", before). So no angle-ramped normal-offset is needed; we keep only a ~1-texel
+// normal nudge for cube-face-seam discontinuities and a small *toward-the-light* bias to
+// seal the one residual of back-face storage, the contact line. A 20-tap PCF softens the
+// edges. Same swap-point shape as `shadowFactor`, so a softer/ray-traced technique drops in.
 static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
                                      float farPlane, float texelWorld,
                                      depthcube<float> shadowCube, sampler shadowSamp) {
-    float3 toLight = normalize(lightPos - worldPos);
-    float cosTheta = clamp(dot(n, toLight), 0.0, 1.0);
-    float3 biased = worldPos + n * (texelWorld * (2.0 + 6.0 * (1.0 - cosTheta)));
+    float3 biased = worldPos + n * texelWorld;             // ~1-texel seam nudge
     float3 v = biased - lightPos;                          // light → receiver direction
     float current = length(v);                             // receiver distance to light
-    float bias = texelWorld * 2.0 + 0.02;                  // world-space bias
+    float bias = texelWorld * 0.5;                         // small toward-light contact bias
     float diskRadius = texelWorld * 2.0;                   // PCF tap spread (world units)
     float lit = 0.0;
     for (int i = 0; i < 20; i++) {

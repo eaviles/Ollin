@@ -1331,6 +1331,13 @@ final class MetalRenderer {
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
         encoder.setRenderPipelineState(cubePipeline)
         encoder.setDepthStencilState(depthTestState)
+        // Render only occluders' BACK faces into the cube (second-depth shadow mapping):
+        // cull the light-facing fronts, so a lit near face is never its own occluder. This
+        // is what eliminates edge-on self-shadow acne on tall vertical faces; the
+        // linear-distance storage then keeps the contact comparison leak-free. Meshes are
+        // wound CCW-outward (Metal's default front winding), so `.front` culls the lit faces.
+        encoder.setFrontFacing(.counterClockwise)
+        encoder.setCullMode(.front)
         faceVP.withUnsafeBytes { encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 2) }
         // Light position + far plane for the fragment's linear-distance write.
         var lightPosFar = SIMD4<Float>(lightPos.x, lightPos.y, lightPos.z, far)
