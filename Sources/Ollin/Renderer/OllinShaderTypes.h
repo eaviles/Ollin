@@ -216,15 +216,22 @@ typedef struct {
     simd_float4 specular;    // rgb = linear *specular* color × intensity (defaults to `color`, so a single-color light is unchanged); a unused
 } OllinLight;
 
-// Shadow mapping (opt-in, `castShadows()`): one directional light casts. The
-// caster's contribution is dimmed where a depth pass from its point of view found
-// an occluder nearer than the receiver. `shadowLight` is the index of that light
-// in `lights` (or -1 when shadows are off — then the mesh fragment is byte-identical
-// to the unshadowed path); `lightViewProjection` takes a world point into the
-// caster's clip space (an orthographic box auto-fit to the camera target);
-// `shadowStrength` scales the darkening (1 = full); `shadowTexelWorld` is the
-// world-space size of one shadow-map texel, the scale-invariant unit for the
-// normal-offset bias.
+// Shadow mapping (opt-in, `castShadows()`): one light casts. The caster's
+// contribution is dimmed where a depth pass from its point of view found an occluder
+// nearer than the receiver. `shadowLight` is the index of that light in `lights` (or
+// -1 when shadows are off, so the mesh fragment is byte-identical to the unshadowed
+// path); `shadowStrength` scales the darkening (1 = full). `shadowKind` selects how
+// the caster's depth is stored and sampled: 0 = a single **2D** map (a directional
+// light's orthographic box or a spot light's perspective frustum, both via
+// `lightViewProjection` into the caster's clip space, sampled with the comparison
+// `depth2d`), 1 = an omnidirectional **cube** map (a point light, sampled by the
+// direction from the light with a `depthcube`). For the 2D kind, `shadowTexelWorld` is
+// the world-space size of one shadow-map texel (the scale-invariant normal-offset bias
+// unit). For the cube kind, the depth a receiver compares against is reconstructed from
+// its distance to the light: ndc_z = `shadowDepthA` + `shadowDepthB` / d, where d is
+// the dominant axis of (worldPos − lightPos), the per-face view depth, and the two
+// coefficients carry the face perspective's near/far (the light position is
+// `lights[shadowLight].position`).
 typedef struct {
     simd_float4 ambient;          // rgb linear ambient (lights every surface flatly); a unused
     simd_float4 cameraPosition;   // world-space eye xyz (for the specular view direction); w unused
@@ -233,11 +240,11 @@ typedef struct {
     int enabled;                  // 1 = lit shading (any light or ambient set); 0 = normal-as-color (unchanged)
     int shadowLight;              // index of the shadow-casting light in `lights`, or -1 (no shadows)
     float shadowStrength;         // 0…1 darkening applied to the caster where occluded
-    simd_float4x4 lightViewProjection;  // world -> shadow-caster clip space
-    float shadowTexelWorld;       // world-space size of one shadow-map texel (normal-bias scale)
-    float _pad0;
-    float _pad1;
-    float _pad2;
+    simd_float4x4 lightViewProjection;  // world -> shadow-caster clip space (2D kind)
+    float shadowTexelWorld;       // world-space size of one shadow-map texel (2D normal-bias scale)
+    int   shadowKind;             // 0 = 2D map (directional/spot), 1 = cube map (point)
+    float shadowDepthA;           // cube kind: ndc_z = shadowDepthA + shadowDepthB/d reconstruction
+    float shadowDepthB;
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

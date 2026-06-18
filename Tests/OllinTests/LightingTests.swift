@@ -108,6 +108,46 @@ struct LightingTests {
         #expect(close(l.color.x, Float(Color.srgbToLinear(1.0) * 0.5)))
     }
 
+    // MARK: Shadow casters
+
+    @Test func directionalCasterUsesThe2DMap() {
+        let d = freshDrawer()
+        d.addLight(.directional(.white, direction: Vector3(-0.5, -1, -0.3)))
+        d.castShadows()
+        let u = d.makeLighting()
+        #expect(u.shadowKind == 0)      // a 2D (orthographic) shadow map
+        #expect(u.shadowLight == 0)
+    }
+
+    @Test func directionalIsPreferredOverPointAsTheCaster() {
+        // With both present, the directional casts (the 2D map), not the point.
+        let d = freshDrawer()
+        d.addLight(.point(.white, at: Vector3(0, 3, 0)))
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0)))
+        d.castShadows()
+        let u = d.makeLighting()
+        #expect(u.shadowKind == 0)
+        #expect(u.shadowLight == 1)     // the directional's index, not the point's
+    }
+
+    @Test func pointCasterPacksCubeDepthReconstruction() {
+        // A point light with no directional/spot is the caster: an omnidirectional cube
+        // map. It carries the depth-reconstruction constants A/B (ndc = A + B/d), which
+        // must map the face perspective's near plane to NDC 0 and the far plane to 1.
+        let d = freshDrawer()
+        d.addLight(.point(.white, at: Vector3(0, 3, 0)))
+        d.castShadows()
+        let u = d.makeLighting()
+        #expect(u.shadowKind == 1)      // a cube shadow map
+        #expect(u.shadowLight == 0)
+        // Recover the planes the way the renderer does (near = −B/A, far = B/(1−A)).
+        let near = -u.shadowDepthB / u.shadowDepthA
+        let far = u.shadowDepthB / (1 - u.shadowDepthA)
+        #expect(near > 0 && far > near)
+        #expect(close(u.shadowDepthA + u.shadowDepthB / near, 0))   // near → NDC 0
+        #expect(close(u.shadowDepthA + u.shadowDepthB / far, 1))    // far  → NDC 1
+    }
+
     @Test func specularDefaultsToTheDiffuseColor() {
         let d = freshDrawer()
         d.addLight(.directional(Color(red: 0.8, green: 0.4, blue: 0.2), direction: Vector3(0, -1, 0)))

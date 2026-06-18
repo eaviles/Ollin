@@ -122,6 +122,10 @@ final class MetalRenderer {
         // depth-only shadow pass (mesh geometry from the light's point of view)
         static let meshShadow = PipelineKey(vertex: "ollin_mesh_shadow_vertex",
                                             fragment: "", isShadow: true)
+        // depth-only omnidirectional shadow pass: six cube faces in one layered pass
+        // (instanced, `render_target_array_index`) for a point caster
+        static let meshPointShadow = PipelineKey(vertex: "ollin_mesh_point_shadow_vertex",
+                                                 fragment: "", isShadow: true)
 
         /// The pipeline a recorded batch needs, from its geometry kind, blend, the
         /// active depth format (nil in 2D), and — for a mesh — whether it's textured.
@@ -245,6 +249,13 @@ final class MetalRenderer {
     static let shadowMapResolution = 2048
     private var shadowMap: MTLTexture?
     private var dummyShadowMap: MTLTexture?
+    /// The omnidirectional (point) shadow map: a `depthcube` rendered by the layered
+    /// six-face pass and sampled by direction. Per-face resolution; allocated lazily on
+    /// the first point-casting frame. `dummyPointShadowMap` is a 1×1 cube bound when no
+    /// point caster is active, so the fragment's declared `depthcube` is always satisfied.
+    static let pointShadowMapResolution = 1024
+    private var pointShadowMap: MTLTexture?
+    private var dummyPointShadowMap: MTLTexture?
     private lazy var shadowSampler: MTLSamplerState? = {
         let d = MTLSamplerDescriptor()
         d.minFilter = .linear
@@ -420,7 +431,8 @@ final class MetalRenderer {
                glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
                pointBuffer: pointBuffer(at: frameIndex, for: drawer.points.count),
                meshBuffer: meshBuf,
-               depthFormat: passDepthFormat, shadowMap: renderedShadow)
+               depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
+               shadowCube: renderedShadow.cube)
         geomEncoder.endEncoding()
 
         if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: drawable.texture)) {
@@ -679,7 +691,8 @@ final class MetalRenderer {
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
                pointBuffer: exportPointBuffer(for: drawer.points.count),
                meshBuffer: meshBuf,
-               depthFormat: passDepthFormat, shadowMap: renderedShadow)
+               depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
+               shadowCube: renderedShadow.cube)
         encoder.endEncoding()
 
         // Tone-map the resolved float frame into the sRGB display texture.
@@ -771,7 +784,8 @@ final class MetalRenderer {
                         triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?,
                         imageBuffer: MTLBuffer?, glyphBuffer: MTLBuffer?,
                         pointBuffer: MTLBuffer?, meshBuffer: MTLBuffer?,
-                        depthFormat: MTLPixelFormat?, shadowMap: MTLTexture? = nil) {
+                        depthFormat: MTLPixelFormat?, shadowMap: MTLTexture? = nil,
+                        shadowCube: MTLTexture? = nil) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
         let imageVertices = drawer.imageVertices
@@ -832,9 +846,11 @@ final class MetalRenderer {
         var lighting = drawer.makeLighting()
         // Shadows only apply when the shadow pass actually populated a map (the
         // render/image paths); the accumulation/texture paths pass nil, so clear the
-        // caster index there and bind the 1×1 dummy so the fragment never samples it.
-        if shadowMap == nil { lighting.shadowLight = -1 }
+        // caster index there and bind the 1×1 dummies so the fragment never samples
+        // them. A directional/spot caster populates the 2D map, a point caster the cube.
+        if shadowMap == nil && shadowCube == nil { lighting.shadowLight = -1 }
         let shadowTexture = shadowMap ?? ensureDummyShadowMap()
+        let shadowCubeTexture = shadowCube ?? ensureDummyPointShadowMap()
 
         // The strip must be bound whenever the SDF fragment runs (it references
         // the texture even for all-solid frames), so resolve it once per encode.
@@ -962,10 +978,16 @@ final class MetalRenderer {
                 // solid/textured fragments — the wireframe and matcap pipelines declare
                 // none of them (matcap bakes its lighting into the texture).
                 if !meshWireframe && !meshMatcap {
-                    // Shadow map at fragment texture 1 (the real map when shadows are on,
-                    // a 1×1 dummy otherwise — `lighting.shadowLight` gates the sampling).
+                    // Shadow maps at fragment textures 1 (2D, directional/spot) and 2
+                    // (cube, point): the real map when that caster is active, a 1×1 dummy
+                    // otherwise (`lighting.shadowLight`/`shadowKind` gate the sampling).
+                    // Both share the one comparison sampler (lessEqual hardware PCF).
                     encoder.setFragmentTexture(shadowTexture, index: 1)
-                    if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
+                    encoder.setFragmentTexture(shadowCubeTexture, index: 2)
+                    if let shadowSampler {
+                        encoder.setFragmentSamplerState(shadowSampler, index: 1)
+                        encoder.setFragmentSamplerState(shadowSampler, index: 2)
+                    }
                     encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
                     // The surface finish (shading model + Blinn-Phong/rim/subsurface/
                     // iridescence) is one uniform bound per batch.
@@ -1155,32 +1177,87 @@ final class MetalRenderer {
         return dummyShadowMap
     }
 
+    /// The omnidirectional shadow map: a `.private` `depthcube` the layered six-face
+    /// pass renders into and the lit mesh fragment samples by direction. Allocated
+    /// lazily on the first point-casting frame, then reused.
+    private func ensurePointShadowMap() -> MTLTexture? {
+        if let m = pointShadowMap { return m }
+        let n = MetalRenderer.pointShadowMapResolution
+        let desc = MTLTextureDescriptor.textureCubeDescriptor(
+            pixelFormat: depthPixelFormat, size: n, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        pointShadowMap = device.makeTexture(descriptor: desc)
+        return pointShadowMap
+    }
+
+    /// A 1×1 `depthcube` bound to the mesh fragment's cube-shadow slot when no point
+    /// caster is active, so its declared `depthcube` argument is always satisfied (the
+    /// fragment only samples it when `shadowKind == 1`). Cleared once on creation (all
+    /// six faces in one layered pass) so it's never read uninitialized.
+    private func ensureDummyPointShadowMap() -> MTLTexture? {
+        if let m = dummyPointShadowMap { return m }
+        let desc = MTLTextureDescriptor.textureCubeDescriptor(
+            pixelFormat: depthPixelFormat, size: 1, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        guard let texture = device.makeTexture(descriptor: desc) else { return nil }
+        if let cb = commandQueue.makeCommandBuffer() {
+            let pass = MTLRenderPassDescriptor()
+            pass.depthAttachment.texture = texture
+            pass.depthAttachment.loadAction = .clear
+            pass.depthAttachment.clearDepth = 1.0
+            pass.depthAttachment.storeAction = .store
+            pass.renderTargetArrayLength = 6      // clear all six faces at once
+            cb.makeRenderCommandEncoder(descriptor: pass)?.endEncoding()
+            cb.commit()
+        }
+        dummyPointShadowMap = texture
+        return dummyPointShadowMap
+    }
+
+    /// The shadow map(s) a frame produced: the 2D map for a directional/spot caster, or
+    /// the cube map for a point caster (at most one is set; both nil = no shadow).
+    struct ShadowMaps {
+        var twoD: MTLTexture?
+        var cube: MTLTexture?
+    }
+
     /// Render the scene's mesh geometry into the shadow map from the casting light's
     /// point of view (a depth-only pass), so the lit mesh fragment can compare each
     /// receiver against it. Encoded *before* the geometry pass in the same command
-    /// buffer — Metal's intra-buffer hazard tracking orders the geometry pass after
-    /// it. Returns the populated shadow map, or nil when this frame casts no shadow
-    /// (no `castShadows()`, no directional light, or no meshes) — the caller then
-    /// shades unshadowed. Uses the same `meshBuffer` the geometry pass will use (it
-    /// uploads the vertices here; the geometry pass re-copies the same bytes).
+    /// buffer, so Metal's intra-buffer hazard tracking orders the geometry pass after it.
+    /// Returns the populated map (2D for a directional/spot caster, a cube for a point
+    /// caster), or empty when this frame casts no shadow (no `castShadows()`, no eligible
+    /// light, or no meshes), in which case the caller shades unshadowed. Uses the same
+    /// `meshBuffer` the geometry pass will use (it uploads the vertices here; the
+    /// geometry pass re-copies the same bytes).
     private func encodeShadowPass(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
-                                  meshBuffer: MTLBuffer?) -> MTLTexture? {
+                                  meshBuffer: MTLBuffer?) -> ShadowMaps {
         let lighting = drawer.makeLighting()
         let meshVertices = drawer.meshVertices
         guard lighting.shadowLight >= 0, lighting.enabled != 0, !meshVertices.isEmpty,
-              let meshBuffer, let shadowMap = ensureShadowMap(),
-              let shadowPipeline = try? pipeline(.meshShadow) else { return nil }
+              let meshBuffer else { return ShadowMaps() }
 
         meshVertices.withUnsafeBytes { raw in
             meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
         }
 
+        // A point caster renders the omnidirectional cube; directional/spot the 2D map.
+        if lighting.shadowKind == 1 {
+            let cube = encodePointShadowPass(drawer, lighting: lighting,
+                                             into: commandBuffer, meshBuffer: meshBuffer)
+            return ShadowMaps(cube: cube)
+        }
+
+        guard let shadowMap = ensureShadowMap(),
+              let shadowPipeline = try? pipeline(.meshShadow) else { return ShadowMaps() }
         let pass = MTLRenderPassDescriptor()
         pass.depthAttachment.texture = shadowMap
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
         pass.depthAttachment.storeAction = .store
-        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return ShadowMaps() }
         encoder.setRenderPipelineState(shadowPipeline)
         encoder.setDepthStencilState(depthTestState)
         // Slope-scaled depth bias on the stored depth keeps self-shadowing acne off
@@ -1188,22 +1265,83 @@ final class MetalRenderer {
         encoder.setDepthBias(0.0015, slopeScale: 2.0, clamp: 0.01)
         var lightVP = lighting.lightViewProjection
         encoder.setVertexBytes(&lightVP, length: MemoryLayout<simd_float4x4>.stride, index: 2)
+        drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 1)
+        encoder.endEncoding()
+        return ShadowMaps(twoD: shadowMap)
+    }
 
+    /// The omnidirectional (point) shadow pass: render the scene's depth into all six
+    /// cube faces in **one** layered pass (the geometry instanced six times, each
+    /// instance routed to a face by `render_target_array_index`). The light position
+    /// comes from the lighting uniform, and the 90° face perspective's near/far are
+    /// recovered from the depth-reconstruction constants A/B so the stored depth matches
+    /// what the fragment compares against (`ndc = A + B/d`). Returns the populated cube.
+    private func encodePointShadowPass(_ drawer: Drawer, lighting: OllinLighting,
+                                       into commandBuffer: MTLCommandBuffer,
+                                       meshBuffer: MTLBuffer) -> MTLTexture? {
+        guard let cube = ensurePointShadowMap(),
+              let cubePipeline = try? pipeline(.meshPointShadow) else { return nil }
+
+        // The casting light's world position from the uniform's fixed-size light array.
+        let caster = Int(lighting.shadowLight)
+        var lightPos = SIMD3<Float>(0, 0, 0)
+        withUnsafePointer(to: lighting.lights) { ptr in
+            ptr.withMemoryRebound(to: OllinLight.self, capacity: Int(OLLIN_MAX_LIGHTS)) { buf in
+                let p = buf[caster].position
+                lightPos = SIMD3<Float>(p.x, p.y, p.z)
+            }
+        }
+        // Recover the face perspective's near/far from A = far/(far−near),
+        // B = −near·far/(far−near): near = −B/A, far = B/(1−A).
+        let A = lighting.shadowDepthA, B = lighting.shadowDepthB
+        let near = -B / A, far = B / (1 - A)
+        let proj = Camera3D.perspective(fovY: .pi / 2, aspect: 1, near: near, far: far)
+        // The six cube faces (forward axis, up), in Metal's +X/−X/+Y/−Y/+Z/−Z order.
+        let faces: [(SIMD3<Float>, SIMD3<Float>)] = [
+            (SIMD3(1,  0,  0), SIMD3(0, -1,  0)),
+            (SIMD3(-1,  0,  0), SIMD3(0, -1,  0)),
+            (SIMD3(0,  1,  0), SIMD3(0,  0,  1)),
+            (SIMD3(0, -1,  0), SIMD3(0,  0, -1)),
+            (SIMD3(0,  0,  1), SIMD3(0, -1,  0)),
+            (SIMD3(0,  0, -1), SIMD3(0, -1,  0)),
+        ]
+        let faceVP = faces.map { proj * Camera3D.lookAt(eye: lightPos, center: lightPos + $0.0, up: $0.1) }
+
+        let pass = MTLRenderPassDescriptor()
+        pass.depthAttachment.texture = cube
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.clearDepth = 1.0
+        pass.depthAttachment.storeAction = .store
+        pass.renderTargetArrayLength = 6
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        encoder.setRenderPipelineState(cubePipeline)
+        encoder.setDepthStencilState(depthTestState)
+        encoder.setDepthBias(0.0015, slopeScale: 2.0, clamp: 0.01)
+        faceVP.withUnsafeBytes { encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 2) }
+        drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
+        encoder.endEncoding()
+        return cube
+    }
+
+    /// Draw every shadow-casting mesh batch into the active shadow encoder. Solid and
+    /// textured meshes cast; wireframe (see-through edges) does not. `instanceCount` is
+    /// 1 for the 2D pass and 6 for the layered cube pass (one instance per face).
+    private func drawShadowCasters(_ drawer: Drawer, encoder: MTLRenderCommandEncoder,
+                                   meshBuffer: MTLBuffer, instanceCount: Int) {
         let meshStride = MemoryLayout<OllinMeshVertex>.stride
+        let meshVertices = drawer.meshVertices
         let batches = drawer.batches
         for i in batches.indices {
             let batch = batches[i]
-            // Solid + textured meshes cast; wireframe (see-through edges) does not.
             guard batch.kind == .mesh3D, !batch.meshWireframe else { continue }
             let next = i + 1 < batches.count ? batches[i + 1] : nil
             let end = next?.meshStart ?? meshVertices.count
             let count = end - batch.meshStart
             guard count > 0 else { continue }
             encoder.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
-            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0,
+                                   vertexCount: count, instanceCount: instanceCount)
         }
-        encoder.endEncoding()
-        return shadowMap
     }
 
     /// The single-sample linear-float resolve target: the MSAA resolve destination
@@ -1326,19 +1464,22 @@ final class MetalRenderer {
             return try makePresentPipeline(using: library)
         }
         if key.isShadow {
-            return try makeShadowPipeline(using: library)
+            return try makeShadowPipeline(key, using: library)
         }
         return try makePipeline(vertex: key.vertex, fragment: key.fragment, using: library,
                                 premultiplied: key.premultiplied, blend: key.blend,
                                 depthFormat: key.depthFormat)
     }
 
-    /// The shadow depth pass: a depth-only pipeline (no fragment, no color
-    /// attachment) that rasterizes mesh geometry from the light's point of view into
-    /// the shadow map. Single-sample — the shadow map is plain depth, softened by PCF
-    /// when sampled, not MSAA.
-    private func makeShadowPipeline(using library: MTLLibrary) throws -> MTLRenderPipelineState {
-        guard let vertexFunction = library.makeFunction(name: "ollin_mesh_shadow_vertex") else {
+    /// A shadow depth pass: a depth-only pipeline (no fragment, no color attachment)
+    /// that rasterizes mesh geometry from the light's point of view into the shadow map.
+    /// Single-sample (the shadow map is plain depth, softened by PCF when sampled, not
+    /// MSAA). Two variants share this factory: the 2D map (directional/spot,
+    /// `ollin_mesh_shadow_vertex`) and the **layered cube** pass (point,
+    /// `ollin_mesh_point_shadow_vertex`), the latter rendering all six faces at once via
+    /// `render_target_array_index`, which needs the layered-render input topology set.
+    private func makeShadowPipeline(_ key: PipelineKey, using library: MTLLibrary) throws -> MTLRenderPipelineState {
+        guard let vertexFunction = library.makeFunction(name: key.vertex) else {
             throw RendererError.shaderFunctions
         }
         let descriptor = MTLRenderPipelineDescriptor()
@@ -1346,6 +1487,11 @@ final class MetalRenderer {
         descriptor.fragmentFunction = nil   // depth-only
         descriptor.rasterSampleCount = 1
         descriptor.depthAttachmentPixelFormat = depthPixelFormat
+        // The cube pass routes each instance to a cube face from the vertex stage, so
+        // the pipeline must declare a layered (triangle) input topology.
+        if key.vertex == "ollin_mesh_point_shadow_vertex" {
+            descriptor.inputPrimitiveTopology = .triangle
+        }
         return try device.makeRenderPipelineState(descriptor: descriptor)
     }
 

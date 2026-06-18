@@ -181,6 +181,16 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func pointShadowsMatchesReference() throws {
+        // Boxes around a central point light (no directional/spot, so the point light is
+        // the caster) with castShadows() on, pinning the omnidirectional path: the six-face
+        // cube depth pass and the cube depth-compare in the lit fragment, the shadows
+        // radiating outward from the light.
+        let diff = try Snapshot.meanDifference(of: PointShadowsScene(), against: "point-shadows")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func lightingPresetMatchesReference() throws {
         // A still life lit by the .goldenHour LightingPreset — pins the preset path
         // (ambient + warm/cool directionals, the light colors from Color(kelvin:))
@@ -422,6 +432,34 @@ private final class SpotShadowsScene: Sketch {
         withState {
             fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); shininess(40)
             translate(1.3, 1.1, 0.3); drawSphere(radius: 1.1)
+        }
+    }
+}
+
+/// Boxes ringing a central point light over a floor with `castShadows()` on, through a
+/// fixed camera, pinning the omnidirectional caster (the six-face cube depth pass and the
+/// direction-sampled cube compare). With no directional or spot light the point light is
+/// the chosen caster, and the boxes drop shadows radiating outward. No `time`, so it's
+/// deterministic.
+private final class PointShadowsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        camera(.orbiting(target: Vector3(0, 0.6, 0), radius: 8,
+                         azimuth: 0.4, elevation: 0.6, fieldOfView: .pi / 3.6))
+        ambientLight(Color(white: 0.10))
+        pointLight(.white, at: Vector3(0, 2.2, 0), intensity: 1.5)
+        castShadows()
+        withState { fill(Color(white: 0.82)); specular(0.05); drawPlane(width: 14, depth: 14) }
+        for i in 0..<4 {
+            let a = Double(i) / 4 * .tau
+            withState {
+                translate(cos(a) * 2.6, 0.9, sin(a) * 2.6)
+                fill(Color(hue: Double(i) / 4, saturation: 0.55, brightness: 0.95))
+                specular(0.3); shininess(40)
+                drawBox(width: 0.9, height: 1.8, depth: 0.9)
+            }
         }
     }
 }

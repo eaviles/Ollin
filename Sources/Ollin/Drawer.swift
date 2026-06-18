@@ -253,6 +253,9 @@ final class Drawer {
     /// only to size the normal-offset bias in world units (`shadowTexelWorld`); the
     /// renderer owns the actual texture and must use the same value (`MetalRenderer`).
     static let shadowMapResolution = 2048
+    /// The per-face resolution of the omnidirectional (point) shadow cube. Same role as
+    /// `shadowMapResolution` for the cube bias; mirror of `MetalRenderer`'s value.
+    static let pointShadowMapResolution = 1024
 
     /// The default lighting rig — used when a sketch draws meshes without setting any
     /// light, so a solid is shaded out of the box. It *is* `LightingPreset.standard`
@@ -812,6 +815,25 @@ final class Drawer {
                 // A perspective texel grows with depth; size the normal-offset bias from
                 // the frustum at the scene center (where the receivers mostly sit).
                 u.shadowTexelWorld = (2 * tan(fovY * 0.5) * dist) / Float(Drawer.shadowMapResolution)
+            } else if let caster = (0..<count).first(where: { activeLights[$0].kind == .point }) {
+                // Point: an omnidirectional caster. There's no single view-projection
+                // (the renderer renders the scene into a six-face cube from the light), so
+                // here we only carry the depth-reconstruction constants: a receiver's
+                // expected NDC depth is A + B/d, the 90° face perspective's near/far. The
+                // far plane reaches past the scene from the light; the renderer recovers
+                // near/far from A and B to build the matching face matrices.
+                let light = activeLights[caster]
+                let dist = max(Float(simd_distance(light.position.simd3, target)), 1)
+                let far = dist + 1.5 * r
+                let near = max(Float(0.05), far * 0.02)
+                u.shadowLight = Int32(caster)
+                u.shadowKind = 1
+                u.shadowStrength = 1
+                u.shadowDepthA = far / (far - near)
+                u.shadowDepthB = -near * far / (far - near)
+                // A 90° cube face spans 2·d wide at distance d, so a texel there is
+                // 2·dist/resolution, the scale-invariant normal-offset bias unit.
+                u.shadowTexelWorld = (2 * dist) / Float(Drawer.pointShadowMapResolution)
             }
         }
         return u

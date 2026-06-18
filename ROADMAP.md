@@ -60,9 +60,9 @@ A variable blur for camera-feed depth of field, set by per-pixel depth so a subj
 
 ## 3D mode
 
-2D stays the default, and 3D keeps building out on top of the shipped camera, depth buffer, transform stack, solid primitives, meshes loaded from file (with their own base-color material and texture), textured meshes, the directional/point/spot light & material model, curated lighting presets, the stylized material library (iridescent, velvet, jade, toon, gooch, …), matcap materials (view-normal sphere-texture shading), and directional + spot cast shadows:
+2D stays the default, and 3D keeps building out on top of the shipped camera, depth buffer, transform stack, solid primitives, meshes loaded from file (with their own base-color material and texture), textured meshes, the directional/point/spot light & material model, curated lighting presets, the stylized material library (iridescent, velvet, jade, toon, gooch, …), matcap materials (view-normal sphere-texture shading), and directional, spot, and point cast shadows:
 
-- **More shadow casters** — a point (omnidirectional) shadow caster beside the directional and spot ones, built on native Metal (layered cube rendering, a hardware depth-comparison cube sampler), plus softer, contact-hardening (PCSS-style) shadows.
+- **Softer shadows** — contact-hardening (PCSS-style) penumbrae on top of the directional/spot/point casters, so a shadow sharpens at contact and blurs as it falls away. Ray-traced shadows (Metal's native acceleration structures) are the further-out alternative, slotted with the ray-tracing tier.
 - **Physically-based shading and environment lighting** — the later realism tier: a physically-based material model (energy-conserving, roughness and metalness) lit by image-based environment maps (a prefiltered HDRI or a procedural studio environment), which is how modern real-time 3D gets its photographic look. The bigger step beyond the analytic directional/point/spot model, pairing the material and lighting halves; it builds on the named-material and preset work rather than replacing it.
 
 It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode-partly-shipped).

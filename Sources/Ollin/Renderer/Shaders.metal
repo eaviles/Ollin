@@ -1281,6 +1281,28 @@ static inline float shadowFactor(float3 worldPos, float3 n, float3 toLight,
     return sum / 9.0;
 }
 
+// Shadow factor for an omnidirectional (point) caster: 1 fully lit, 0 fully shadowed.
+// The cube depth pass stored, per face, the nearest-occluder NDC depth from the light's
+// 90° perspective. Here we reconstruct the receiver's *expected* NDC depth from its
+// distance to the light (`ndc = A + B/d`, where `d` is the dominant axis of the
+// light→receiver vector, the per-face view depth, and A/B carry that perspective's
+// near/far), then hand the direction to the hardware comparison sampler, which selects
+// the cube face and PCF-compares. A normal-offset (scaled by the texel world size, and
+// wider at grazing angles) plus a small constant bias keep self-shadowing acne off.
+// Same swap-point shape as `shadowFactor`, so a softer/ray-traced technique drops in here.
+static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
+                                     float A, float B, float texelWorld,
+                                     depthcube<float> shadowCube, sampler shadowSamp) {
+    float3 toLight = normalize(lightPos - worldPos);
+    float cosTheta = clamp(dot(n, toLight), 0.0, 1.0);
+    float3 biased = worldPos + n * (texelWorld * (1.5 + 2.0 * (1.0 - cosTheta)));
+    float3 v = biased - lightPos;                          // light → receiver direction
+    float d = max(max(abs(v.x), abs(v.y)), abs(v.z));      // per-face view depth
+    if (d <= 0.0) return 1.0;
+    float ref = clamp(A + B / d, 0.0, 1.0) - 0.0015;       // expected NDC depth + bias
+    return shadowCube.sample_compare(shadowSamp, v, ref);
+}
+
 // The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
 // surface `normal`, `worldPos`, and the per-batch `mat` finish. It composes a base
 // shading model (standard Lambert / toon cel / Gooch warm–cool) with the layered
@@ -1293,7 +1315,8 @@ static inline float shadowFactor(float3 worldPos, float3 n, float3 toLight,
 static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   float3 worldPos, constant OllinMaterial &mat,
                                   constant OllinLighting &light,
-                                  depth2d<float> shadowMap, sampler shadowSamp) {
+                                  depth2d<float> shadowMap, sampler shadowSamp,
+                                  depthcube<float> shadowCube, sampler shadowCubeSamp) {
     float3 n = normalize(normal);
     if (light.enabled == 0) {
         return float4(base, alpha);
@@ -1329,9 +1352,14 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
             }
         }
         // Dim only the casting light where this surface is in shadow (ambient stays).
+        // A directional/spot caster samples the 2D map; a point caster the cube.
         if (i == light.shadowLight) {
-            float lit01 = shadowFactor(worldPos, n, toLight, light.lightViewProjection,
-                                       light.shadowTexelWorld, shadowMap, shadowSamp);
+            float lit01 = (light.shadowKind == 1)
+                ? shadowFactorCube(worldPos, n, L.position.xyz, light.shadowDepthA,
+                                   light.shadowDepthB, light.shadowTexelWorld,
+                                   shadowCube, shadowCubeSamp)
+                : shadowFactor(worldPos, n, toLight, light.lightViewProjection,
+                               light.shadowTexelWorld, shadowMap, shadowSamp);
             atten *= mix(1.0, lit01, light.shadowStrength);
         }
         if (!haveKey) { keyToLight = toLight; haveKey = true; }
@@ -1415,16 +1443,39 @@ vertex MeshShadowOut ollin_mesh_shadow_vertex(uint vid [[vertex_id]],
     return out;
 }
 
+// Depth-only vertex for the omnidirectional (point) shadow pass: all six cube faces in
+// one pass via layered rendering. The geometry is instanced six times: instance `iid`
+// targets cube face `iid` (`render_target_array_index`) through that face's
+// view-projection (the 6-matrix array bound at index 2). No fragment; the pass writes
+// only the depth the lit mesh fragments sample by direction.
+struct MeshCubeShadowOut {
+    float4 position [[position]];
+    uint   layer [[render_target_array_index]];
+};
+
+vertex MeshCubeShadowOut ollin_mesh_point_shadow_vertex(uint vid [[vertex_id]],
+                                                        uint iid [[instance_id]],
+                                                        const device OllinMeshVertex *verts [[buffer(0)]],
+                                                        constant float4x4 *faceVP [[buffer(2)]]) {
+    MeshCubeShadowOut out;
+    out.layer = iid;
+    out.position = faceVP[iid] * float4(verts[vid].position.xyz, 1.0);
+    return out;
+}
+
 fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     constant OllinLighting &light [[buffer(0)]],
                                     constant OllinMaterial &mat [[buffer(1)]],
                                     depth2d<float> shadowMap [[texture(1)]],
-                                    sampler shadowSamp [[sampler(1)]]) {
+                                    sampler shadowSamp [[sampler(1)]],
+                                    depthcube<float> shadowCube [[texture(2)]],
+                                    sampler shadowCubeSamp [[sampler(2)]]) {
     // Linearize the surface color so the present pass's sRGB re-encode lands the
     // on-screen pixel at the fill color, then shade + shadow it through the shared
     // tail (which returns it flat unchanged when no light is set).
     return meshLitColor(srgbToLinear(in.color.rgb), in.color.a, in.normal,
-                        in.worldPos, mat, light, shadowMap, shadowSamp);
+                        in.worldPos, mat, light, shadowMap, shadowSamp,
+                        shadowCube, shadowCubeSamp);
 }
 
 // MARK: - Textured 3D mesh
@@ -1461,7 +1512,9 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              texture2d<float> baseColorTex [[texture(0)]],
                                              sampler samp [[sampler(0)]],
                                              depth2d<float> shadowMap [[texture(1)]],
-                                             sampler shadowSamp [[sampler(1)]]) {
+                                             sampler shadowSamp [[sampler(1)]],
+                                             depthcube<float> shadowCube [[texture(2)]],
+                                             sampler shadowCubeSamp [[sampler(2)]]) {
     // The base-color texture is sRGB, so the sample comes back already linear and
     // premultiplied. The milestone contract is opaque textures, so rgb is the
     // straight base color; tint it by the linearized baked vertex color
@@ -1470,7 +1523,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
     return meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
-                        shadowMap, shadowSamp);
+                        shadowMap, shadowSamp, shadowCube, shadowCubeSamp);
 }
 
 // MARK: - Matcap 3D mesh
