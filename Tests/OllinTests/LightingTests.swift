@@ -130,22 +130,18 @@ struct LightingTests {
         #expect(u.shadowLight == 1)     // the directional's index, not the point's
     }
 
-    @Test func pointCasterPacksCubeDepthReconstruction() {
+    @Test func pointCasterPacksFarPlane() {
         // A point light with no directional/spot is the caster: an omnidirectional cube
-        // map. It carries the depth-reconstruction constants A/B (ndc = A + B/d), which
-        // must map the face perspective's near plane to NDC 0 and the far plane to 1.
+        // map storing linear distance. It carries the far plane in `shadowDepthA` (the
+        // normalizer for the stored distance). The camera (freshDrawer) is at distance 5
+        // from the target; the light is 3 from the target, so far = 3 + 1.5·5 = 10.5.
         let d = freshDrawer()
         d.addLight(.point(.white, at: Vector3(0, 3, 0)))
         d.castShadows()
         let u = d.makeLighting()
         #expect(u.shadowKind == 1)      // a cube shadow map
         #expect(u.shadowLight == 0)
-        // Recover the planes the way the renderer does (near = −B/A, far = B/(1−A)).
-        let near = -u.shadowDepthB / u.shadowDepthA
-        let far = u.shadowDepthB / (1 - u.shadowDepthA)
-        #expect(near > 0 && far > near)
-        #expect(close(u.shadowDepthA + u.shadowDepthB / near, 0))   // near → NDC 0
-        #expect(close(u.shadowDepthA + u.shadowDepthB / far, 1))    // far  → NDC 1
+        #expect(close(u.shadowDepthA, 10.5))   // far plane = dist(3) + 1.5·r(5)
     }
 
     @Test func specularDefaultsToTheDiffuseColor() {

@@ -122,10 +122,12 @@ final class MetalRenderer {
         // depth-only shadow pass (mesh geometry from the light's point of view)
         static let meshShadow = PipelineKey(vertex: "ollin_mesh_shadow_vertex",
                                             fragment: "", isShadow: true)
-        // depth-only omnidirectional shadow pass: six cube faces in one layered pass
-        // (instanced, `render_target_array_index`) for a point caster
+        // omnidirectional shadow pass: six cube faces in one layered pass (instanced,
+        // `render_target_array_index`) for a point caster. Its fragment writes the linear
+        // distance to the light as the stored depth.
         static let meshPointShadow = PipelineKey(vertex: "ollin_mesh_point_shadow_vertex",
-                                                 fragment: "", isShadow: true)
+                                                 fragment: "ollin_mesh_point_shadow_fragment",
+                                                 isShadow: true)
 
         /// The pipeline a recorded batch needs, from its geometry kind, blend, the
         /// active depth format (nil in 2D), and — for a mesh — whether it's textured.
@@ -263,6 +265,17 @@ final class MetalRenderer {
         d.sAddressMode = .clampToEdge
         d.tAddressMode = .clampToEdge
         d.compareFunction = .lessEqual
+        return device.makeSamplerState(descriptor: d)
+    }()
+    /// A plain (non-comparison) sampler for the point-shadow cube, which stores linear
+    /// distance and is read with `.sample()` rather than `.sample_compare()`. Nearest
+    /// (a `depth32Float` cube isn't linearly filterable); the manual PCF taps soften it.
+    private lazy var shadowCubeSampler: MTLSamplerState? = {
+        let d = MTLSamplerDescriptor()
+        d.minFilter = .nearest
+        d.magFilter = .nearest
+        d.sAddressMode = .clampToEdge
+        d.tAddressMode = .clampToEdge
         return device.makeSamplerState(descriptor: d)
     }()
 
@@ -984,10 +997,10 @@ final class MetalRenderer {
                     // Both share the one comparison sampler (lessEqual hardware PCF).
                     encoder.setFragmentTexture(shadowTexture, index: 1)
                     encoder.setFragmentTexture(shadowCubeTexture, index: 2)
-                    if let shadowSampler {
-                        encoder.setFragmentSamplerState(shadowSampler, index: 1)
-                        encoder.setFragmentSamplerState(shadowSampler, index: 2)
-                    }
+                    // 2D map: comparison sampler (hardware PCF). Cube: plain sampler (it
+                    // stores linear distance, read with `.sample`, manual PCF in-shader).
+                    if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
+                    if let shadowCubeSampler { encoder.setFragmentSamplerState(shadowCubeSampler, index: 2) }
                     encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
                     // The surface finish (shading model + Blinn-Phong/rim/subsurface/
                     // iridescence) is one uniform bound per batch.
@@ -1270,12 +1283,12 @@ final class MetalRenderer {
         return ShadowMaps(twoD: shadowMap)
     }
 
-    /// The omnidirectional (point) shadow pass: render the scene's depth into all six
-    /// cube faces in **one** layered pass (the geometry instanced six times, each
-    /// instance routed to a face by `render_target_array_index`). The light position
-    /// comes from the lighting uniform, and the 90° face perspective's near/far are
-    /// recovered from the depth-reconstruction constants A/B so the stored depth matches
-    /// what the fragment compares against (`ndc = A + B/d`). Returns the populated cube.
+    /// The omnidirectional (point) shadow pass: render the scene into all six cube faces
+    /// in **one** layered pass (the geometry instanced six times, each instance routed to
+    /// a face by `render_target_array_index`). The fragment writes each occluder's linear
+    /// distance to the light (normalized by the far plane) as the stored value, so the
+    /// lit mesh fragment later compares plain world-space distances. The light position
+    /// and far plane come from the lighting uniform. Returns the populated cube.
     private func encodePointShadowPass(_ drawer: Drawer, lighting: OllinLighting,
                                        into commandBuffer: MTLCommandBuffer,
                                        meshBuffer: MTLBuffer) -> MTLTexture? {
@@ -1291,10 +1304,12 @@ final class MetalRenderer {
                 lightPos = SIMD3<Float>(p.x, p.y, p.z)
             }
         }
-        // Recover the face perspective's near/far from A = far/(far−near),
-        // B = −near·far/(far−near): near = −B/A, far = B/(1−A).
-        let A = lighting.shadowDepthA, B = lighting.shadowDepthB
-        let near = -B / A, far = B / (1 - A)
+        // The far plane is carried directly (`shadowDepthA`); the fragment normalizes the
+        // stored linear distance by it. The face perspective near/far only frame the
+        // rasterization (the stored value is the fragment's own linear distance), so a
+        // small near and that far suffice.
+        let far = lighting.shadowDepthA
+        let near = max(Float(0.05), far * 0.02)
         let proj = Camera3D.perspective(fovY: .pi / 2, aspect: 1, near: near, far: far)
         // The six cube faces (forward axis, up), in Metal's +X/−X/+Y/−Y/+Z/−Z order.
         let faces: [(SIMD3<Float>, SIMD3<Float>)] = [
@@ -1310,14 +1325,16 @@ final class MetalRenderer {
         let pass = MTLRenderPassDescriptor()
         pass.depthAttachment.texture = cube
         pass.depthAttachment.loadAction = .clear
-        pass.depthAttachment.clearDepth = 1.0
+        pass.depthAttachment.clearDepth = 1.0   // 1.0 = the far plane (nothing)
         pass.depthAttachment.storeAction = .store
         pass.renderTargetArrayLength = 6
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
         encoder.setRenderPipelineState(cubePipeline)
         encoder.setDepthStencilState(depthTestState)
-        encoder.setDepthBias(0.0015, slopeScale: 2.0, clamp: 0.01)
         faceVP.withUnsafeBytes { encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 2) }
+        // Light position + far plane for the fragment's linear-distance write.
+        var lightPosFar = SIMD4<Float>(lightPos.x, lightPos.y, lightPos.z, far)
+        encoder.setFragmentBytes(&lightPosFar, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
         drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
         encoder.endEncoding()
         return cube
@@ -1484,7 +1501,10 @@ final class MetalRenderer {
         }
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
-        descriptor.fragmentFunction = nil   // depth-only
+        // The 2D map is depth-only (nil fragment, the stored value is the rasterized
+        // depth); the cube map's fragment writes the linear distance to the light as the
+        // stored depth. Neither has a color attachment.
+        descriptor.fragmentFunction = key.fragment.isEmpty ? nil : library.makeFunction(name: key.fragment)
         descriptor.rasterSampleCount = 1
         descriptor.depthAttachmentPixelFormat = depthPixelFormat
         // The cube pass routes each instance to a cube face from the vertex stage, so

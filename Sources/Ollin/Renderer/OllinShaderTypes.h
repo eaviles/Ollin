@@ -224,14 +224,13 @@ typedef struct {
 // the caster's depth is stored and sampled: 0 = a single **2D** map (a directional
 // light's orthographic box or a spot light's perspective frustum, both via
 // `lightViewProjection` into the caster's clip space, sampled with the comparison
-// `depth2d`), 1 = an omnidirectional **cube** map (a point light, sampled by the
-// direction from the light with a `depthcube`). For the 2D kind, `shadowTexelWorld` is
-// the world-space size of one shadow-map texel (the scale-invariant normal-offset bias
-// unit). For the cube kind, the depth a receiver compares against is reconstructed from
-// its distance to the light: ndc_z = `shadowDepthA` + `shadowDepthB` / d, where d is
-// the dominant axis of (worldPos − lightPos), the per-face view depth, and the two
-// coefficients carry the face perspective's near/far (the light position is
-// `lights[shadowLight].position`).
+// `depth2d`), 1 = an omnidirectional **cube** map (a point light). The cube stores, per
+// direction, the nearest occluder's **linear distance to the light** normalized by the
+// far plane (not a projected depth), so the receiver simply measures its own distance
+// and shadows where it exceeds the sampled one. `shadowTexelWorld` is the world-space
+// size of one shadow-map texel (the bias / PCF-spread unit, used by both kinds);
+// `shadowDepthA` carries the cube's far plane (to denormalize the sampled distance), with
+// the light position from `lights[shadowLight].position`. `shadowDepthB` is unused.
 typedef struct {
     simd_float4 ambient;          // rgb linear ambient (lights every surface flatly); a unused
     simd_float4 cameraPosition;   // world-space eye xyz (for the specular view direction); w unused
@@ -241,10 +240,10 @@ typedef struct {
     int shadowLight;              // index of the shadow-casting light in `lights`, or -1 (no shadows)
     float shadowStrength;         // 0…1 darkening applied to the caster where occluded
     simd_float4x4 lightViewProjection;  // world -> shadow-caster clip space (2D kind)
-    float shadowTexelWorld;       // world-space size of one shadow-map texel (2D normal-bias scale)
+    float shadowTexelWorld;       // world-space size of one shadow-map texel (bias / PCF-spread unit)
     int   shadowKind;             // 0 = 2D map (directional/spot), 1 = cube map (point)
-    float shadowDepthA;           // cube kind: ndc_z = shadowDepthA + shadowDepthB/d reconstruction
-    float shadowDepthB;
+    float shadowDepthA;           // cube kind: the far plane (linear-distance normalizer)
+    float shadowDepthB;           // unused
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

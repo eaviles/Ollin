@@ -1281,32 +1281,46 @@ static inline float shadowFactor(float3 worldPos, float3 n, float3 toLight,
     return sum / 9.0;
 }
 
+// PCF tap directions for the cube shadow — a roughly even spread over the sphere so
+// the kernel softens edges and breaks up residual self-shadow stripes regardless of
+// which cube face the receiver looks toward.
+constant float3 cubePCFOffsets[20] = {
+    float3( 1,  1,  1), float3( 1, -1,  1), float3(-1, -1,  1), float3(-1,  1,  1),
+    float3( 1,  1, -1), float3( 1, -1, -1), float3(-1, -1, -1), float3(-1,  1, -1),
+    float3( 1,  1,  0), float3( 1, -1,  0), float3(-1, -1,  0), float3(-1,  1,  0),
+    float3( 1,  0,  1), float3(-1,  0,  1), float3( 1,  0, -1), float3(-1,  0, -1),
+    float3( 0,  1,  1), float3( 0, -1,  1), float3( 0, -1, -1), float3( 0,  1, -1),
+};
+
 // Shadow factor for an omnidirectional (point) caster: 1 fully lit, 0 fully shadowed.
-// The cube depth pass stored, per face, the nearest-occluder NDC depth from the light's
-// 90° perspective. Here we reconstruct the receiver's *expected* NDC depth from its
-// distance to the light (`ndc = A + B/d`, where `d` is the dominant axis of the
-// light→receiver vector, the per-face view depth, and A/B carry that perspective's
-// near/far), then hand the direction to the hardware comparison sampler, which selects
-// the cube face and PCF-compares. Self-shadowing is held off mainly by a generous
-// **normal-offset** (move the sample along the surface normal toward the light, scaled
-// by the texel world size and widened at grazing angles) plus a small constant depth
-// bias. The cube leans on the normal-offset harder than the 2D map because a vertical
-// face under a high light is sampled near-edge-on in the downward cube face, where a
-// plain depth bias can't separate the surface from itself; a normal-offset can, and
-// (being perpendicular to the surface) it doesn't peter-pan the contact shadow the way
-// a large depth bias would. Same swap-point shape as `shadowFactor`, so a softer/
-// ray-traced technique drops in here.
+// The cube pass stored, per face, the nearest occluder's **linear distance to the light**
+// (normalized by the far plane), not a projected depth — so the comparison is in plain
+// world units and is uniform across faces and seams, with none of the per-face
+// reconstruction error a projected-depth cube has (the standard point-shadow technique).
+// Here we measure the receiver's own distance and shadow it where that distance exceeds
+// the stored nearest-occluder distance (plus a bias). A **normal-offset** pushes the
+// query off the surface toward the light (world units, wider at grazing angles), which
+// is what clears the tilted-texel self-shadow stripes a vertical face shows under a high
+// light — there the surface is near-edge-on in the downward cube face, so a plain depth
+// bias can't separate it from itself but a perpendicular offset can. A small constant
+// world bias plus a 20-tap PCF over the cube soften the edges and any residual. Same
+// swap-point shape as `shadowFactor`, so a softer/ray-traced technique drops in here.
 static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
-                                     float A, float B, float texelWorld,
+                                     float farPlane, float texelWorld,
                                      depthcube<float> shadowCube, sampler shadowSamp) {
     float3 toLight = normalize(lightPos - worldPos);
     float cosTheta = clamp(dot(n, toLight), 0.0, 1.0);
-    float3 biased = worldPos + n * (texelWorld * (6.0 + 10.0 * (1.0 - cosTheta)));
+    float3 biased = worldPos + n * (texelWorld * (2.0 + 6.0 * (1.0 - cosTheta)));
     float3 v = biased - lightPos;                          // light → receiver direction
-    float d = max(max(abs(v.x), abs(v.y)), abs(v.z));      // per-face view depth
-    if (d <= 0.0) return 1.0;
-    float ref = clamp(A + B / d, 0.0, 1.0) - 0.0015;       // expected NDC depth + bias
-    return shadowCube.sample_compare(shadowSamp, v, ref);
+    float current = length(v);                             // receiver distance to light
+    float bias = texelWorld * 2.0 + 0.02;                  // world-space bias
+    float diskRadius = texelWorld * 2.0;                   // PCF tap spread (world units)
+    float lit = 0.0;
+    for (int i = 0; i < 20; i++) {
+        float closest = shadowCube.sample(shadowSamp, v + cubePCFOffsets[i] * diskRadius) * farPlane;
+        lit += (current - bias <= closest) ? 1.0 : 0.0;
+    }
+    return lit / 20.0;
 }
 
 // The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
@@ -1362,8 +1376,7 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         if (i == light.shadowLight) {
             float lit01 = (light.shadowKind == 1)
                 ? shadowFactorCube(worldPos, n, L.position.xyz, light.shadowDepthA,
-                                   light.shadowDepthB, light.shadowTexelWorld,
-                                   shadowCube, shadowCubeSamp)
+                                   light.shadowTexelWorld, shadowCube, shadowCubeSamp)
                 : shadowFactor(worldPos, n, toLight, light.lightViewProjection,
                                light.shadowTexelWorld, shadowMap, shadowSamp);
             atten *= mix(1.0, lit01, light.shadowStrength);
@@ -1449,14 +1462,15 @@ vertex MeshShadowOut ollin_mesh_shadow_vertex(uint vid [[vertex_id]],
     return out;
 }
 
-// Depth-only vertex for the omnidirectional (point) shadow pass: all six cube faces in
-// one pass via layered rendering. The geometry is instanced six times: instance `iid`
-// targets cube face `iid` (`render_target_array_index`) through that face's
-// view-projection (the 6-matrix array bound at index 2). No fragment; the pass writes
-// only the depth the lit mesh fragments sample by direction.
+// Vertex for the omnidirectional (point) shadow pass: all six cube faces in one pass via
+// layered rendering. The geometry is instanced six times: instance `iid` targets cube
+// face `iid` (`render_target_array_index`) through that face's view-projection (the
+// 6-matrix array bound at index 2). The world position passes through to the fragment,
+// which writes the linear distance to the light as the stored depth.
 struct MeshCubeShadowOut {
     float4 position [[position]];
     uint   layer [[render_target_array_index]];
+    float3 worldPos;
 };
 
 vertex MeshCubeShadowOut ollin_mesh_point_shadow_vertex(uint vid [[vertex_id]],
@@ -1464,8 +1478,23 @@ vertex MeshCubeShadowOut ollin_mesh_point_shadow_vertex(uint vid [[vertex_id]],
                                                         const device OllinMeshVertex *verts [[buffer(0)]],
                                                         constant float4x4 *faceVP [[buffer(2)]]) {
     MeshCubeShadowOut out;
+    float3 wp = verts[vid].position.xyz;
+    out.worldPos = wp;
     out.layer = iid;
-    out.position = faceVP[iid] * float4(verts[vid].position.xyz, 1.0);
+    out.position = faceVP[iid] * float4(wp, 1.0);
+    return out;
+}
+
+// Fragment for the point shadow pass: store the receiver's **linear distance to the
+// light**, normalized by the far plane into [0, 1], as the depth value (rather than the
+// rasterized projected depth). `lightPosFar` is xyz = light world position, w = far
+// plane. The depth test keeps the nearest occluder per direction; the lit mesh fragment
+// reads it back, multiplies by the far plane, and compares distances in world units.
+struct CubeShadowFragOut { float depth [[depth(any)]]; };
+fragment CubeShadowFragOut ollin_mesh_point_shadow_fragment(MeshCubeShadowOut in [[stage_in]],
+                                                            constant float4 &lightPosFar [[buffer(0)]]) {
+    CubeShadowFragOut out;
+    out.depth = length(in.worldPos - lightPosFar.xyz) / lightPosFar.w;
     return out;
 }
 
