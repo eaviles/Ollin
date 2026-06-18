@@ -1467,6 +1467,48 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                         shadowMap, shadowSamp);
 }
 
+// MARK: - Matcap 3D mesh
+//
+// A "material capture": the whole surface look — clay, brushed metal, waxy skin — is
+// baked into one sphere texture, sampled by the *view-space* normal. It's independent
+// of the scene lights (the lighting is painted into the matcap), so it carries none of
+// the `OllinLighting`/`OllinMaterial`/shadow machinery — just the matcap texture. The
+// mapping is the standard one: the view-space normal's xy, remapped to 0…1, indexes the
+// sphere (a normal facing the camera samples the matcap's center, one facing up samples
+// its top). Tinted by the baked vertex color (`fill`), so `fill(.white)` shows the
+// matcap as-is and other fills recolor it — the textured path's convention.
+
+struct MeshMatcapOut {
+    float4 position [[position]];
+    float2 uv;        // sphere lookup from the view-space normal
+    float4 color;     // baked tint (fill); alpha = opacity
+};
+
+vertex MeshMatcapOut ollin_mesh_matcap_vertex(uint vid [[vertex_id]],
+                                              const device OllinMeshVertex *verts [[buffer(0)]],
+                                              constant Uniforms3D &u [[buffer(2)]]) {
+    OllinMeshVertex v = verts[vid];
+    MeshMatcapOut out;
+    out.position = u.projection * (u.view * float4(v.position.xyz, 1.0));
+    // View-space normal: the world normal rotated into camera space (upper 3×3 of the
+    // view matrix — a rigid camera transform, so no normal matrix needed).
+    float3 vn = normalize(float3x3(u.view[0].xyz, u.view[1].xyz, u.view[2].xyz) * v.normal.xyz);
+    // Sphere lookup: xy → 0…1, with v flipped for the top-left texture origin (a normal
+    // pointing up should read the top of the matcap).
+    out.uv = float2(vn.x, -vn.y) * 0.5 + 0.5;
+    out.color = v.color;
+    return out;
+}
+
+fragment float4 ollin_mesh_matcap_fragment(MeshMatcapOut in [[stage_in]],
+                                           texture2d<float> matcap [[texture(0)]],
+                                           sampler samp [[sampler(0)]]) {
+    // The matcap is an sRGB texture, so the sample comes back already linear; tint it by
+    // the linearized fill and output straight-alpha linear into the float target.
+    float4 tex = matcap.sample(samp, in.uv);
+    return float4(tex.rgb * srgbToLinear(in.color.rgb), in.color.a);
+}
+
 // MARK: - Wireframe 3D mesh
 //
 // Draws a mesh's triangle edges only (the faces are see-through), unlit. The mesh

@@ -342,7 +342,12 @@ let package = Package(
                 // at runtime by StrokeFont.builtin via the .jhf parser. Public
                 // domain; provenance recorded beside it and in THIRD-PARTY-NOTICES.
                 .copy("Resources/futural.jhf"),
-                .copy("Resources/Hershey-NOTICE.txt")
+                .copy("Resources/Hershey-NOTICE.txt"),
+                // Built-in matcap (material-capture) sphere textures, loaded at
+                // runtime by Matcap.chrome/clay/jade/… The whole directory is copied
+                // (a Matcaps/ subdirectory in the bundle), CC0 license kept beside
+                // them; derived from Blender's CC0 matcaps, see THIRD-PARTY-NOTICES.md.
+                .copy("Resources/Matcaps")
             ]
         ),
         // Examples — one runnable sketch per executable target, grouped into
@@ -458,6 +463,11 @@ let package = Package(
             name: "Example-Materials",
             dependencies: ["Ollin"],
             path: "Examples/3D/Materials"
+        ),
+        .executableTarget(
+            name: "Example-Matcap",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/Matcap"
         ),
         .executableTarget(
             name: "Example-Shadows",

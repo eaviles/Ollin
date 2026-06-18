@@ -127,6 +127,19 @@ redistributed inside this repository.
 
 ---
 
+## Blender matcaps
+
+- **Used for:** the bundled built-in matcap (material-capture) sphere textures (`Matcap.chrome`, `.clay`, `.toon`, …), sampled by the view-space normal by `matcap(_:)` to shade a 3D mesh.
+- **Location in this repo:** [`Sources/Ollin/Resources/Matcaps/`](Sources/Ollin/Resources/Matcaps/) (per-file mapping + provenance in [`Sources/Ollin/Resources/Matcaps/Matcaps-LICENSE.txt`](Sources/Ollin/Resources/Matcaps/Matcaps-LICENSE.txt))
+- **Upstream:** the matcaps bundled with Blender — https://projects.blender.org/blender/blender/src/branch/main/release/datafiles/studiolights/matcap (each source `.exr` was combined from its diffuse + specular passes into a single sRGB PNG at native 512×512)
+- **License:** CC0 1.0 / public domain — per the upstream [`license.txt`](https://projects.blender.org/blender/blender/src/branch/main/release/datafiles/studiolights/matcap/license.txt)
+
+> These matcap images are licensed as CC0 or public domain. Thanks to the Blender
+> community for contributing these matcaps. CC0 carries no attribution requirement;
+> the credit above is given freely, and provenance is recorded for the bundled assets.
+
+---
+
 ## Marble Madness (example font)
 
 - **Used for:** the `PlaydateFont` example sketch only — a sample Playdate `.fnt` font, loaded at runtime to demonstrate the loader. Not part of the Ollin framework; Ollin bundles no `.fnt` fonts itself.

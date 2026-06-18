@@ -1,0 +1,35 @@
+Bundled matcap textures
+=======================
+
+The matcap (material-capture) PNG textures in this directory are derived
+from the matcaps bundled with Blender (the Blender community's studio-light
+matcaps), which are dedicated to the public domain:
+
+    "These matcap images are licensed as CC0 or public domain.
+     Thanks to the Blender community for contributing these matcaps."
+
+Source:   blender/blender, release/datafiles/studiolights/matcap/
+License:  CC0 1.0 / public domain
+Upstream license file:
+  https://projects.blender.org/blender/blender/src/branch/main/release/datafiles/studiolights/matcap/license.txt
+
+Bundled here (Ollin name  <-  Blender source file):
+    chrome      <- fullmetal          studio      <- basic_grey
+    bronze      <- metal_bronze       basicBright <- basic_bright
+    carpaint    <- metal_carpaint     basicDark   <- basic_dark
+    clay        <- clay_studio        basicSide   <- basic_side
+    terracotta  <- clay_brown         hardSurfaceGrey <- hard_surface_grey
+    sage        <- clay_green         hardSurfaceRed  <- hard_surface_red
+    clayWarm    <- clay_warm          toon        <- toon_light
+    pearl       <- pearl              toonDark    <- toon_dark
+    ceramic     <- ceramic_lightbulb  checkNormal <- check_normal+y
+    ceramicDark <- ceramic_dark       checkGradient <- check_gradient
+    wax         <- red_wax            checkReflectionHorizontal <- check_reflection_horizontal
+    resin       <- resin              checkReflectionVertical   <- check_reflection_vertical
+                                      checkRimDark  <- check_rim_dark
+                                      checkRimLight <- check_rim_light
+
+Each source .exr (a multi-pass diffuse + specular capture, except the plain
+RGB check_normal+y) was combined into a single sRGB image at its native
+512x512 for bundling. CC0 places no conditions on use or modification; the
+Blender community is credited here as a courtesy.

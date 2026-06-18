@@ -104,6 +104,12 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_mesh_wireframe_vertex", fragment: "ollin_mesh_wireframe_fragment",
                         blend: blend, depthFormat: depth)
         }
+        // matcap 3D triangle mesh: the whole look is baked into a sphere texture sampled
+        // by the view-space normal, independent of the scene lights. Depth-tested.
+        static func meshMatcap(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_matcap_vertex", fragment: "ollin_mesh_matcap_fragment",
+                        blend: blend, depthFormat: depth)
+        }
         // depth-scene backdrop: a textured quad that also writes per-pixel depth from
         // a depth map (premultiplied color, like the image path; outputs [[depth]]).
         static func depthScene(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -121,7 +127,7 @@ final class MetalRenderer {
         /// active depth format (nil in 2D), and — for a mesh — whether it's textured.
         static func forBatch(_ kind: GeometryKind, _ blend: BlendMode,
                              depth: MTLPixelFormat? = nil, textured: Bool = false,
-                             wireframe: Bool = false) -> PipelineKey {
+                             wireframe: Bool = false, matcap: Bool = false) -> PipelineKey {
             switch kind {
             case .triangles:  return .solid(blend, depth: depth)
             case .sdf:        return .sdf(blend, depth: depth)
@@ -131,6 +137,7 @@ final class MetalRenderer {
             case .points3D:   return .pointCloud(blend, depth: depth)
             case .mesh3D:
                 return wireframe ? .meshWireframe(blend, depth: depth)
+                     : matcap    ? .meshMatcap(blend, depth: depth)
                      : textured  ? .meshTextured(blend, depth: depth)
                                   : .mesh(blend, depth: depth)
             case .depthScene: return .depthScene(blend, depth: depth)
@@ -846,9 +853,11 @@ final class MetalRenderer {
             // selects its variant: wireframe (edges only) or textured (a material
             // texture). Skip the batch if it can't be built (never expected — same shaders).
             let meshWireframe = batch.kind == .mesh3D && batch.meshWireframe
-            let meshTextured = batch.kind == .mesh3D && !batch.meshWireframe && batch.material?.texture != nil
+            let meshMatcap = batch.kind == .mesh3D && !batch.meshWireframe && batch.matcap != nil
+            let meshTextured = batch.kind == .mesh3D && !batch.meshWireframe && !meshMatcap && batch.material?.texture != nil
             guard let state = try? pipeline(.forBatch(batch.kind, batch.blendMode, depth: depthFormat,
-                                                      textured: meshTextured, wireframe: meshWireframe)) else { continue }
+                                                      textured: meshTextured, wireframe: meshWireframe,
+                                                      matcap: meshMatcap)) else { continue }
             // In a depth pass (active camera): 3D batches z-test + write depth. A 2D
             // batch that opted into a depth (`depth(at:)`) does too — its constant
             // clip-z is fed to the 2D vertex shader so it occludes / is occluded by
@@ -936,25 +945,30 @@ final class MetalRenderer {
                 let end = next?.meshStart ?? meshVertices.count
                 let count = end - batch.meshStart
                 guard count > 0, let meshBuffer, drawer.camera3D != nil else { continue }
-                // A textured mesh needs its base-color texture; if it can't be built,
-                // skip rather than draw the untextured shader against this pipeline.
+                // A textured or matcap mesh needs its texture at fragment index 0; if it
+                // can't be built, skip rather than draw against the wrong pipeline.
                 if meshTextured {
                     guard let texture = batch.material?.texture?.texture(for: device) else { continue }
                     encoder.setFragmentTexture(texture, index: 0)
                     encoder.setFragmentSamplerState(imageSampler, index: 0)
+                } else if meshMatcap {
+                    guard let texture = batch.matcap?.texture(for: device) else { continue }
+                    encoder.setFragmentTexture(texture, index: 0)
+                    encoder.setFragmentSamplerState(imageSampler, index: 0)
                 }
-                // Shadow map at fragment texture 1 (the real map when shadows are on,
-                // a 1×1 dummy otherwise — `lighting.shadowLight` gates the sampling).
-                // Harmlessly ignored by the wireframe pipeline, which declares neither.
-                encoder.setFragmentTexture(shadowTexture, index: 1)
-                if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
-                encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
-                // The surface finish (shading model + Blinn-Phong/rim/subsurface/iridescence)
-                // is one uniform bound per batch; the wireframe pipeline declares no such
-                // buffer, so only the lit solid/textured fragments take it.
-                if !meshWireframe {
+                // Lighting, the shadow map, and the material finish feed only the lit
+                // solid/textured fragments — the wireframe and matcap pipelines declare
+                // none of them (matcap bakes its lighting into the texture).
+                if !meshWireframe && !meshMatcap {
+                    // Shadow map at fragment texture 1 (the real map when shadows are on,
+                    // a 1×1 dummy otherwise — `lighting.shadowLight` gates the sampling).
+                    encoder.setFragmentTexture(shadowTexture, index: 1)
+                    if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
+                    encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
+                    // The surface finish (shading model + Blinn-Phong/rim/subsurface/
+                    // iridescence) is one uniform bound per batch.
                     var finish = batch.finish
                     encoder.setFragmentBytes(&finish, length: MemoryLayout<OllinMaterial>.stride, index: 1)
                 }

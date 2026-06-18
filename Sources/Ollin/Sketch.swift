@@ -378,6 +378,22 @@ open class Sketch {
     /// generated primitive or a loaded model).
     public func wireframe(_ on: Bool = true) { drawer.wireframe(on) }
 
+    /// Wrap subsequent meshes in a *matcap* — a sphere texture (`Matcap.chrome`, any
+    /// matcap `Image`, or a `Matcap.shaded(…)`) sampled by the view-space normal — so
+    /// the whole look comes from the image and the scene lights and `material(_:)` are
+    /// bypassed. Tinted by the current `fill` (`.white` shows it as-is). `noMatcap()`
+    /// returns to the lit material path. Drawing state, saved by `withState`.
+    public func matcap(_ image: Image?) { drawer.matcap(image) }
+
+    /// Wrap subsequent meshes in a built-in or generated `Matcap` — `matcap(.chrome)`,
+    /// `matcap(Matcap.shaded(baseColor: .teal))`, … — the same shape as `material(_:)`.
+    /// The look comes entirely from the matcap; the scene lights and `material(_:)` are
+    /// bypassed. Tinted by the current `fill`. Drawing state, saved by `withState`.
+    public func matcap(_ matcap: Matcap) { drawer.matcap(matcap) }
+
+    /// Stop matcap shading — subsequent meshes light through the normal material model.
+    public func noMatcap() { drawer.noMatcap() }
+
     /// Cast shadows this frame from the scene's primary directional light, so solids
     /// drop shadows onto a floor and onto one another. Per-frame state like the lights
     /// and camera — call it in `draw()`, after setting a camera and at least one

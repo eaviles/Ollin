@@ -127,6 +127,11 @@ struct GeometryBatch {
     /// the wireframe pipeline. The edge color is baked into the vertices and the line
     /// width rides `position.w`; lighting/material are unused.
     var meshWireframe = false
+    /// The matcap sphere texture for a `.mesh3D` batch — sampled by the view-space
+    /// normal, selecting the matcap pipeline. When set, the whole look comes from this
+    /// texture and lighting/material/shadow are bypassed. `nil` for a lit mesh. A matcap
+    /// mesh opens its own batch (one texture per batch), like a textured one.
+    var matcap: Image?
 }
 
 /// The drawing state machine and per-frame geometry recorder.
@@ -154,6 +159,7 @@ final class Drawer {
     private var strokeCapStyle: StrokeCap = .butt        // how open stroked-path ends finish (see strokeCap)
     private var currentMaterial = Material()    // 3D mesh surface finish (shading model + specular/rim/subsurface/iridescence); see material(_:)
     private var wireframeEnabled = false        // 3D mesh: draw triangle edges only (see wireframe)
+    private var currentMatcap: Image?           // 3D mesh: a matcap sphere texture replacing the lit look (see matcap(_:))
     private var currentFont: ActiveFont = .outline(.systemMedium)   // active text font (see textFont / drawText)
     private var textPixelSize: Double = 24               // rendered glyph height in points (see textSize)
     private var textAlignH: TextAlignH = .left           // horizontal text anchor (see textAlign)
@@ -370,12 +376,13 @@ final class Drawer {
                                      blendMode: currentBlend, image: image, depth: currentDepth))
     }
 
-    /// Open a fresh `.mesh3D` batch for a *textured* or *wireframe* mesh (carrying its
-    /// `material` texture, surface `finish`, and wireframe flag). Always appends — each
-    /// binds its own state, so it can't share a batch — and clears `currentKind` so a
-    /// following mesh (any mode) opens its own batch rather than merging into this one.
+    /// Open a fresh `.mesh3D` batch for a *textured*, *wireframe*, or *matcap* mesh
+    /// (carrying its `material` texture, surface `finish`, wireframe flag, or `matcap`
+    /// texture). Always appends — each binds its own state, so it can't share a batch —
+    /// and clears `currentKind` so a following mesh (any mode) opens its own batch
+    /// rather than merging into this one.
     private func beginMeshBatch(material: MeshMaterial?, finish: OllinMaterial,
-                                wireframe: Bool = false) {
+                                wireframe: Bool = false, matcap: Image? = nil) {
         batches.append(GeometryBatch(kind: .mesh3D, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -384,7 +391,7 @@ final class Drawer {
                                      meshStart: meshVertices.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      material: material, finish: finish,
-                                     meshWireframe: wireframe))
+                                     meshWireframe: wireframe, matcap: matcap))
         currentKind = nil
     }
 
@@ -514,6 +521,7 @@ final class Drawer {
         var strokeCapStyle: StrokeCap
         var currentMaterial: Material
         var wireframeEnabled: Bool
+        var currentMatcap: Image?
         var currentFont: ActiveFont
         var textPixelSize: Double
         var textAlignH: TextAlignH
@@ -698,6 +706,21 @@ final class Drawer {
     /// Drawing state, saved by `withState`.
     func wireframe(_ on: Bool) { wireframeEnabled = on }
 
+    /// Wrap subsequent meshes in a *matcap* — a sphere texture (`Matcap.chrome`, a
+    /// `Matcap.shaded(…)`, or any matcap `Image`) sampled by the view-space normal, so
+    /// the whole look (lighting included) comes from the image and the scene lights and
+    /// `material(_:)` are bypassed. The surface is tinted by the current `fill`
+    /// (`.white` shows the matcap as-is). `noMatcap()` (or `matcap(nil)`) returns to the
+    /// lit material path. Drawing state, saved by `withState`.
+    func matcap(_ image: Image?) { currentMatcap = image }
+
+    /// Wrap subsequent meshes in a built-in or generated `Matcap` (`.chrome`,
+    /// `Matcap.shaded(…)`, …).
+    func matcap(_ matcap: Matcap) { currentMatcap = matcap.image }
+
+    /// Stop matcap shading — subsequent meshes light through the normal material model.
+    func noMatcap() { currentMatcap = nil }
+
     /// Cast shadows from the scene's primary directional light this frame. Per-frame
     /// state like the lights — set it in `draw()`. The renderer renders a depth pass
     /// from that light and dims the light on meshes it can't reach. A no-op without a
@@ -847,9 +870,13 @@ final class Drawer {
         // each open their own batch (own pipeline / bound texture); a solid mesh merges.
         let material = mesh.material
         let wireframe = wireframeEnabled
-        let textured = !wireframe && material?.texture != nil && mesh.uvs.count == mesh.positions.count
+        let matcap = !wireframe ? currentMatcap : nil
+        let textured = !wireframe && matcap == nil && material?.texture != nil
+            && mesh.uvs.count == mesh.positions.count
         if wireframe {
             beginMeshBatch(material: nil, finish: OllinMaterial(), wireframe: true)
+        } else if let matcap {
+            beginMeshBatch(material: nil, finish: OllinMaterial(), matcap: matcap)
         } else if textured {
             beginMeshBatch(material: material, finish: currentMaterial.gpuMaterial())
         } else {
@@ -861,9 +888,17 @@ final class Drawer {
         // current fill tinted by the material's base color (white = the fill unchanged,
         // so a material-less mesh's color is exactly the fill, and a base-color-only
         // material just tints — the textured fragment multiplies its sample by this).
-        let color = wireframe
-            ? meshStrokeColor.simd4
-            : meshSurfaceColor.simd4 * (material?.baseColor.simd4 ?? SIMD4<Float>(1, 1, 1, 1))
+        // For a wireframe, the edge (stroke) color; for a matcap, the fill alone (the
+        // matcap carries the surface color, so its mesh's base-color material is ignored);
+        // otherwise the fill tinted by the material's base color.
+        let color: SIMD4<Float>
+        if wireframe {
+            color = meshStrokeColor.simd4
+        } else if matcap != nil {
+            color = meshSurfaceColor.simd4
+        } else {
+            color = meshSurfaceColor.simd4 * (material?.baseColor.simd4 ?? SIMD4<Float>(1, 1, 1, 1))
+        }
         // The material finish is bound per batch as an `OllinMaterial` uniform (not baked
         // per-vertex), so the only `w` slot still used is the wireframe line width in
         // `position.w` (0 for a lit mesh — the lit vertex shader reads only the xyz).
@@ -1092,6 +1127,7 @@ final class Drawer {
                                      strokeCapStyle: strokeCapStyle,
                                      currentMaterial: currentMaterial,
                                      wireframeEnabled: wireframeEnabled,
+                                     currentMatcap: currentMatcap,
                                      currentFont: currentFont, textPixelSize: textPixelSize,
                                      textAlignH: textAlignH, textAlignV: textAlignV,
                                      textRenderMode: textRenderMode,
@@ -1118,6 +1154,7 @@ final class Drawer {
         strokeCapStyle = s.strokeCapStyle
         currentMaterial = s.currentMaterial
         wireframeEnabled = s.wireframeEnabled
+        currentMatcap = s.currentMatcap
         currentFont = s.currentFont
         textPixelSize = s.textPixelSize
         textAlignH = s.textAlignH

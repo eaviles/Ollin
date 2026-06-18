@@ -189,6 +189,15 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func matcapMeshMatchesReference() throws {
+        // Three spheres wearing built-in matcaps (chrome/clay/toon) — pins the matcap
+        // pipeline: the view-space normal sampled into the sphere texture, bypassing the
+        // scene lights and material model, tinted by fill(.white). No `time`.
+        let diff = try Snapshot.meanDifference(of: MatcapMeshScene(), against: "matcap-mesh")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func transformed3DMatchesReference() throws {
         // Point-cloud blobs placed entirely by the 3D transform stack — a center blob
         // plus four satellites positioned by rotateY + translate and sized by scale.
@@ -446,6 +455,28 @@ private final class MeshMaterialsScene: Sketch {
                 fill(m.1)
                 material(m.0)
                 drawSphere(radius: 0.7)
+            }
+        }
+    }
+}
+
+/// Three spheres each wearing a built-in matcap (chrome, clay, toon) under a fixed
+/// camera — pins the matcap pipeline: the view-space normal → sphere-texture lookup,
+/// independent of the scene lights, tinted by fill(.white). No `time`, so deterministic.
+private final class MatcapMeshScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: .zero, radius: 5,
+                         azimuth: 0.3, elevation: 0.25, fieldOfView: .pi / 3.2))
+        fill(.white)
+        let caps: [Matcap] = [.chrome, .clay, .toon]
+        for (i, cap) in caps.enumerated() {
+            withState {
+                translate(-2.0 + Double(i) * 2.0, 0, 0)
+                matcap(cap)
+                drawSphere(radius: 0.8)
             }
         }
     }
