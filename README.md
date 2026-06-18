@@ -191,7 +191,7 @@ In code they're `OllinApp.exportVideo(...)` and `OllinApp.exportGIF(...)`; codec
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: layered effects and compositing, shader composition and a live-coding mode, more of the iPhone sensor array and the 3D mode (softer shadows, environment lighting), a project generator, and eventually iOS, visionOS, and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: layered effects and compositing, shader composition and a live-coding mode, more of the iPhone sensor array and the 3D mode (scene import, softer shadows, environment lighting), a project generator, and eventually iOS, visionOS, and AR.
 
 ## Built with AI
 
