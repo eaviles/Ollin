@@ -1288,18 +1288,20 @@ static inline float shadowFactor(float3 worldPos, float3 n, float3 toLight,
 // light→receiver vector, the per-face view depth, and A/B carry that perspective's
 // near/far), then hand the direction to the hardware comparison sampler, which selects
 // the cube face and PCF-compares. A normal-offset (scaled by the texel world size, and
-// wider at grazing angles) plus a small constant bias keep self-shadowing acne off.
-// Same swap-point shape as `shadowFactor`, so a softer/ray-traced technique drops in here.
+// wider at grazing angles) plus a constant bias keep self-shadowing acne off; both run
+// larger than the 2D map's because the cube's per-face resolution is coarser and the
+// A+B/d reconstruction adds a little error. Same swap-point shape as `shadowFactor`, so
+// a softer/ray-traced technique drops in here.
 static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
                                      float A, float B, float texelWorld,
                                      depthcube<float> shadowCube, sampler shadowSamp) {
     float3 toLight = normalize(lightPos - worldPos);
     float cosTheta = clamp(dot(n, toLight), 0.0, 1.0);
-    float3 biased = worldPos + n * (texelWorld * (1.5 + 2.0 * (1.0 - cosTheta)));
+    float3 biased = worldPos + n * (texelWorld * (3.0 + 4.0 * (1.0 - cosTheta)));
     float3 v = biased - lightPos;                          // light → receiver direction
     float d = max(max(abs(v.x), abs(v.y)), abs(v.z));      // per-face view depth
     if (d <= 0.0) return 1.0;
-    float ref = clamp(A + B / d, 0.0, 1.0) - 0.0015;       // expected NDC depth + bias
+    float ref = clamp(A + B / d, 0.0, 1.0) - 0.004;        // expected NDC depth + bias
     return shadowCube.sample_compare(shadowSamp, v, ref);
 }
 
