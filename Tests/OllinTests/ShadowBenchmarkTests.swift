@@ -1,6 +1,7 @@
 import Testing
 import Metal
 import simd
+import AppKit
 @testable import Ollin
 
 /// A soft-shadow micro-benchmark — **gated by `OLLIN_BENCH=1`** so the normal test suite
@@ -37,6 +38,24 @@ struct ShadowBenchmarkTests {
         }
     }
 
+    /// Read a sysctl string value (e.g. `hw.model`, `machdep.cpu.brand_string`).
+    static func sysctl(_ key: String) -> String? {
+        var size = 0
+        guard sysctlbyname(key, nil, &size, nil, 0) == 0, size > 0 else { return nil }
+        var buffer = [CChar](repeating: 0, count: size)
+        guard sysctlbyname(key, &buffer, &size, nil, 0) == 0 else { return nil }
+        return String(cString: buffer)
+    }
+
+    /// The GPU's highest Metal feature family — Apple9+ (M3/A17) is the dedicated-RT tell.
+    static func gpuFamily(_ d: MTLDevice) -> String {
+        if d.supportsFamily(.apple9) { return "Apple9 (M3/A17 and up)" }
+        if d.supportsFamily(.apple8) { return "Apple8 (M2/A15–A16)" }
+        if d.supportsFamily(.apple7) { return "Apple7 (M1/A14)" }
+        if d.supportsFamily(.mac2)   { return "Mac2 (Intel/AMD)" }
+        return "unknown family"
+    }
+
     @Test(.enabled(if: ProcessInfo.processInfo.environment["OLLIN_BENCH"] != nil))
     @MainActor
     func shadowQualityBenchmark() throws {
@@ -44,14 +63,30 @@ struct ShadowBenchmarkTests {
         let renderer = try MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
                                          sampleCount: ollinPreferredSampleCount(device))
         let rt = device.supportsRaytracing && device.supportsRaytracingFromRender
-        let res = Int(ProcessInfo.processInfo.environment["OLLIN_BENCH_RES"] ?? "2160") ?? 2160
         let iters = 30
 
+        // The main display in backing pixels — a sketch's `.auto` window draws at up to a
+        // square of the display's pixel *height*, so default the benchmark to that (the user
+        // can set OLLIN_BENCH_RES to their actual window's drawable for a precise number).
+        var displayLine = "main display: none detected (headless)"
+        var defaultRes = 2160
+        if let screen = NSScreen.screens.first {
+            let pt = screen.frame.size, s = screen.backingScaleFactor
+            let pxW = Int((pt.width * s).rounded()), pxH = Int((pt.height * s).rounded())
+            defaultRes = pxH
+            displayLine = "main display: \(Int(pt.width))×\(Int(pt.height)) pt @ \(s)× = \(pxW)×\(pxH) px"
+        }
+        let res = Int(ProcessInfo.processInfo.environment["OLLIN_BENCH_RES"] ?? "") ?? defaultRes
+
+        func gb(_ bytes: UInt64) -> String { String(format: "%.0f GB", Double(bytes) / 1_073_741_824) }
+        let os = ProcessInfo.processInfo.operatingSystemVersion
         print("\n=== Ollin shadow benchmark ===")
-        print("GPU: \(device.name)")
+        print("Mac: \(Self.sysctl("hw.model") ?? "?") · \(Self.sysctl("machdep.cpu.brand_string") ?? "?") · \(gb(ProcessInfo.processInfo.physicalMemory)) RAM · macOS \(os.majorVersion).\(os.minorVersion).\(os.patchVersion)")
+        print("GPU: \(device.name) · \(Self.gpuFamily(device)) · \(device.hasUnifiedMemory ? "unified" : "discrete") memory · \(gb(device.recommendedMaxWorkingSetSize)) working set\(device.isLowPower ? " · low-power" : "")")
         print("ray tracing: supportsRaytracing=\(device.supportsRaytracing), fromRender=\(device.supportsRaytracingFromRender), hardware-RT(apple9+)=\(device.supportsFamily(.apple9))")
         print("shadow path: \(rt ? "RAY-TRACED — the quality tiers apply" : "mid-point CUBE fallback — tiers inert (no rays)")")
-        print("resolution: \(res)×\(res)  (a ~Retina full-window proxy; set OLLIN_BENCH_RES to your real drawable)\n")
+        print(displayLine)
+        print("benchmark resolution: \(res)×\(res) px  (≈ a full-height square window; your sketch's window may be smaller — set OLLIN_BENCH_RES to its drawable)\n")
 
         let sketch = BenchScene()
         sketch.setCanvasSize(width: Double(res), height: Double(res))
