@@ -1336,21 +1336,27 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         }
         if (!haveKey) { keyToLight = toLight; haveKey = true; }
 
-        float ndl = max(dot(n, toLight), 0.0);
+        // Diffuse N·L, softened by a wrap term (softness 0 = plain max(N·L, 0), so the
+        // shading is byte-identical; higher wraps the light a little past the terminator).
+        float raw = dot(n, toLight);
+        float ndl = max((raw + L.softness) / (1.0 + L.softness), 0.0);
         float3 h = normalize(toLight + viewDir);
         float specRaw = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), shininess) : 0.0;
+        // The highlight takes the light's own specular tint (defaults to its diffuse
+        // color, so a single-color light is unchanged).
+        float3 specCol = L.specular.rgb * (specRaw * specStrength);
 
         if (model == 1) {
             // Toon: hard cel bands on the diffuse, the specular snapped to a blob.
             float d = ceil(ndl * bands) / bands;
             float spec = (specRaw > 0.5) ? specStrength : 0.0;
-            lit += atten * L.color.rgb * (base * d + spec);
+            lit += atten * (L.color.rgb * base * d + L.specular.rgb * spec);
         } else if (model == 2) {
             // Gooch tone is set after the loop; each light still adds a highlight.
-            lit += atten * L.color.rgb * (specRaw * specStrength);
+            lit += atten * specCol;
         } else {
             // Standard Lambert diffuse + Blinn-Phong specular.
-            lit += atten * L.color.rgb * (base * ndl + specRaw * specStrength);
+            lit += atten * (L.color.rgb * base * ndl + specCol);
         }
         incoming += atten * L.color.rgb * ndl;
 

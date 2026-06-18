@@ -108,6 +108,33 @@ struct LightingTests {
         #expect(close(l.color.x, Float(Color.srgbToLinear(1.0) * 0.5)))
     }
 
+    @Test func specularDefaultsToTheDiffuseColor() {
+        let d = freshDrawer()
+        d.addLight(.directional(Color(red: 0.8, green: 0.4, blue: 0.2), direction: Vector3(0, -1, 0)))
+        let l = d.makeLighting().lights.0
+        // No specular set → the highlight tint matches the diffuse color, so a
+        // single-color light shades exactly as before.
+        #expect(close(l.specular.x, l.color.x) && close(l.specular.y, l.color.y) && close(l.specular.z, l.color.z))
+    }
+
+    @Test func specularTintPacksSeparately() {
+        let d = freshDrawer()
+        d.addLight(.directional(.black, direction: Vector3(0, -1, 0), intensity: 0.5, specular: .white))
+        let l = d.makeLighting().lights.0
+        // Diffuse black, specular white × intensity — the two are independent.
+        #expect(close(l.color.x, 0))
+        #expect(close(l.specular.x, Float(Color.srgbToLinear(1.0) * 0.5)))
+    }
+
+    @Test func softnessPacksAndClamps() {
+        let d = freshDrawer()
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0), softness: 0.4))
+        #expect(close(d.makeLighting().lights.0.softness, 0.4))
+        let d2 = freshDrawer()
+        d2.addLight(.directional(.white, direction: Vector3(0, -1, 0), softness: 5))   // clamps to 1
+        #expect(close(d2.makeLighting().lights.0.softness, 1))
+    }
+
     @Test func lightsCapAtMax() {
         let d = freshDrawer()
         for _ in 0..<(Int(OLLIN_MAX_LIGHTS) + 4) {

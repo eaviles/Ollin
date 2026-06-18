@@ -206,13 +206,14 @@ typedef struct {
 // 2 spot (point gated by a cone). Colors are linear (sRGB→linear on the CPU) and
 // premultiplied by intensity. There's no distance attenuation in this model.
 typedef struct {
-    simd_float4 color;       // rgb = linear color × intensity; a unused
+    simd_float4 color;       // rgb = linear *diffuse* color × intensity; a unused
     simd_float4 position;    // point/spot: world-space position; w unused
     simd_float4 direction;   // directional: unit direction *to* the light; spot: unit cone axis (light's travel direction); w unused
     int   kind;              // 0 directional, 1 point, 2 spot
     float cosInner;          // spot: cosine of the inner half-angle (full brightness within)
     float cosOuter;          // spot: cosine of the outer half-angle (zero beyond); inner→outer is the soft penumbra
-    float _pad;
+    float softness;          // diffuse wrap, 0…1: softens the terminator (0 = hard Lambert, byte-identical to before)
+    simd_float4 specular;    // rgb = linear *specular* color × intensity (defaults to `color`, so a single-color light is unchanged); a unused
 } OllinLight;
 
 // Shadow mapping (opt-in, `castShadows()`): one directional light casts. The

@@ -311,23 +311,34 @@ open class Sketch {
     public func light(_ light: Light) { drawer.addLight(light) }
 
     /// Add a directional light (parallel rays, like the sun). `direction` is the way
-    /// the light travels — `Vector3(0, -1, 0)` shines straight down.
-    public func directionalLight(_ color: Color, direction: Vector3, intensity: Double = 1) {
-        drawer.addLight(.directional(color, direction: direction, intensity: intensity))
+    /// the light travels — `Vector3(0, -1, 0)` shines straight down. `specular` (default
+    /// `nil` = `color`) tints its highlight; `softness` (`0…1`) wraps the terminator for
+    /// a gentler shaded edge.
+    public func directionalLight(_ color: Color, direction: Vector3, intensity: Double = 1,
+                                 specular: Color? = nil, softness: Double = 0) {
+        drawer.addLight(.directional(color, direction: direction, intensity: intensity,
+                                     specular: specular, softness: softness))
     }
 
-    /// Add a point light: an omnidirectional source at a world position.
-    public func pointLight(_ color: Color, at position: Vector3, intensity: Double = 1) {
-        drawer.addLight(.point(color, at: position, intensity: intensity))
+    /// Add a point light: an omnidirectional source at a world position. `specular`
+    /// (default `nil` = `color`) tints its highlight; `softness` (`0…1`) softens the
+    /// terminator.
+    public func pointLight(_ color: Color, at position: Vector3, intensity: Double = 1,
+                           specular: Color? = nil, softness: Double = 0) {
+        drawer.addLight(.point(color, at: position, intensity: intensity,
+                               specular: specular, softness: softness))
     }
 
     /// Add a spot light: a point source at `position` aimed along `direction`,
     /// narrowed to a cone of full angle `angle` (radians) with a `penumbra` soft
-    /// edge (`0` hard … `1` very soft).
+    /// edge (`0` hard … `1` very soft). `specular` (default `nil` = `color`) tints its
+    /// highlight; `softness` (`0…1`) softens the terminator.
     public func spotLight(_ color: Color, at position: Vector3, direction: Vector3,
-                          angle: Double = .pi / 6, penumbra: Double = 0.2, intensity: Double = 1) {
+                          angle: Double = .pi / 6, penumbra: Double = 0.2, intensity: Double = 1,
+                          specular: Color? = nil, softness: Double = 0) {
         drawer.addLight(.spot(color, at: position, direction: direction,
-                              angle: angle, penumbra: penumbra, intensity: intensity))
+                              angle: angle, penumbra: penumbra, intensity: intensity,
+                              specular: specular, softness: softness))
     }
 
     /// Set the ambient light — a flat term added to every lit surface, so the side

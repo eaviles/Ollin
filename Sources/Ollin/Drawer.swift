@@ -798,6 +798,13 @@ final class Drawer {
         l.color = SIMD4<Float>(Float(Color.srgbToLinear(light.color.red) * i),
                                Float(Color.srgbToLinear(light.color.green) * i),
                                Float(Color.srgbToLinear(light.color.blue) * i), 0)
+        // Specular tint: defaults to the diffuse color, so a single-color light shades
+        // byte-identically; a distinct `specular` gives a separately-tinted highlight.
+        let s = light.specular ?? light.color
+        l.specular = SIMD4<Float>(Float(Color.srgbToLinear(s.red) * i),
+                                  Float(Color.srgbToLinear(s.green) * i),
+                                  Float(Color.srgbToLinear(s.blue) * i), 0)
+        l.softness = Float(light.softness)   // 0 = hard Lambert (unchanged)
         switch light.kind {
         case .directional:
             l.kind = 0
