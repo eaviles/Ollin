@@ -1287,17 +1287,21 @@ static inline float shadowFactor(float3 worldPos, float3 n, float3 toLight,
 // distance to the light (`ndc = A + B/d`, where `d` is the dominant axis of the
 // light→receiver vector, the per-face view depth, and A/B carry that perspective's
 // near/far), then hand the direction to the hardware comparison sampler, which selects
-// the cube face and PCF-compares. A normal-offset (scaled by the texel world size, and
-// wider at grazing angles) plus a small constant bias trim residual self-shadowing; the
-// heavy lifting is done by the pass rendering occluders' *back* faces (see the cube pass
-// in `MetalRenderer`), so a lit near face is never its own occluder. Same swap-point
-// shape as `shadowFactor`, so a softer/ray-traced technique drops in here.
+// the cube face and PCF-compares. Self-shadowing is held off mainly by a generous
+// **normal-offset** (move the sample along the surface normal toward the light, scaled
+// by the texel world size and widened at grazing angles) plus a small constant depth
+// bias. The cube leans on the normal-offset harder than the 2D map because a vertical
+// face under a high light is sampled near-edge-on in the downward cube face, where a
+// plain depth bias can't separate the surface from itself; a normal-offset can, and
+// (being perpendicular to the surface) it doesn't peter-pan the contact shadow the way
+// a large depth bias would. Same swap-point shape as `shadowFactor`, so a softer/
+// ray-traced technique drops in here.
 static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
                                      float A, float B, float texelWorld,
                                      depthcube<float> shadowCube, sampler shadowSamp) {
     float3 toLight = normalize(lightPos - worldPos);
     float cosTheta = clamp(dot(n, toLight), 0.0, 1.0);
-    float3 biased = worldPos + n * (texelWorld * (1.5 + 2.0 * (1.0 - cosTheta)));
+    float3 biased = worldPos + n * (texelWorld * (6.0 + 10.0 * (1.0 - cosTheta)));
     float3 v = biased - lightPos;                          // light → receiver direction
     float d = max(max(abs(v.x), abs(v.y)), abs(v.z));      // per-face view depth
     if (d <= 0.0) return 1.0;
