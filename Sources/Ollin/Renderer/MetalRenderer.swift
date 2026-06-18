@@ -266,6 +266,23 @@ final class MetalRenderer {
     static let pointShadowMapResolution = 1024
     private var pointShadowMap: MTLTexture?
     private var dummyPointShadowMap: MTLTexture?
+    /// Whether this device can trace rays from the render stages. When true, a point
+    /// caster is shadowed by *ray tracing* (an exact visibility ray against a per-frame
+    /// acceleration structure built from the shadow casters) instead of the mid-point
+    /// cube — no depth compare, so no acne/peter-pan/teeth tradeoff. The `Shaders.metal`
+    /// mesh fragments are compiled with `OLLIN_RT_SHADOWS` set from this, and the cube
+    /// path stays the byte-identical fallback on devices without it.
+    private let rayTracedShadows: Bool
+    /// The per-frame acceleration structure (rebuilt each point-RT-shadow frame from the
+    /// shadow-caster triangles) and its scratch buffer, both grown in place as the scene
+    /// size demands. `dummyShadowAccel` is a 1-triangle structure bound to the lit mesh
+    /// fragment whenever no RT point shadow is active this frame, so its declared
+    /// `primitive_acceleration_structure` argument is always satisfied (the fragment only
+    /// traces it when `shadowKind == 2`).
+    private var shadowAccel: MTLAccelerationStructure?
+    private var shadowAccelScratch: MTLBuffer?
+    private var shadowAccelCapacity = 0
+    private var dummyShadowAccel: MTLAccelerationStructure?
     private lazy var shadowSampler: MTLSamplerState? = {
         let d = MTLSamplerDescriptor()
         d.minFilter = .linear
@@ -358,6 +375,7 @@ final class MetalRenderer {
             throw RendererError.commandQueue
         }
         self.commandQueue = queue
+        self.rayTracedShadows = device.supportsRaytracing && device.supportsRaytracingFromRender
 
         let samplerDesc = MTLSamplerDescriptor()
         samplerDesc.minFilter = .linear
@@ -453,7 +471,8 @@ final class MetalRenderer {
                pointBuffer: pointBuffer(at: frameIndex, for: drawer.points.count),
                meshBuffer: meshBuf,
                depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
-               shadowCube: renderedShadow.cube)
+               shadowCube: renderedShadow.cube,
+               shadowAccel: renderedShadow.accel)
         geomEncoder.endEncoding()
 
         if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: drawable.texture)) {
@@ -713,7 +732,8 @@ final class MetalRenderer {
                pointBuffer: exportPointBuffer(for: drawer.points.count),
                meshBuffer: meshBuf,
                depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
-               shadowCube: renderedShadow.cube)
+               shadowCube: renderedShadow.cube,
+               shadowAccel: renderedShadow.accel)
         encoder.endEncoding()
 
         // Tone-map the resolved float frame into the sRGB display texture.
@@ -806,7 +826,8 @@ final class MetalRenderer {
                         imageBuffer: MTLBuffer?, glyphBuffer: MTLBuffer?,
                         pointBuffer: MTLBuffer?, meshBuffer: MTLBuffer?,
                         depthFormat: MTLPixelFormat?, shadowMap: MTLTexture? = nil,
-                        shadowCube: MTLTexture? = nil) {
+                        shadowCube: MTLTexture? = nil,
+                        shadowAccel: MTLAccelerationStructure? = nil) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
         let imageVertices = drawer.imageVertices
@@ -865,13 +886,20 @@ final class MetalRenderer {
         // below. `enabled` is 0 when the sketch set no light, so the mesh fragment
         // keeps the byte-identical normal-as-color path.
         var lighting = drawer.makeLighting()
-        // Shadows only apply when the shadow pass actually populated a map (the
-        // render/image paths); the accumulation/texture paths pass nil, so clear the
-        // caster index there and bind the 1×1 dummies so the fragment never samples
-        // them. A directional/spot caster populates the 2D map, a point caster the cube.
-        if shadowMap == nil && shadowCube == nil { lighting.shadowLight = -1 }
+        // Shadows only apply when the shadow pass actually populated a map / structure
+        // (the render/image paths); the accumulation/texture paths pass nil, so clear the
+        // caster index there and bind the 1×1 / dummy stand-ins so the fragment never
+        // reads them. A directional/spot caster populates the 2D map, a point caster the
+        // cube — or, on a ray-tracing device, the acceleration structure.
+        if shadowMap == nil && shadowCube == nil && shadowAccel == nil { lighting.shadowLight = -1 }
+        // A ray-traced point caster: switch the fragment to the RT path (shadowKind 2).
+        if shadowAccel != nil { lighting.shadowKind = 2 }
         let shadowTexture = shadowMap ?? ensureDummyShadowMap()
         let shadowCubeTexture = shadowCube ?? ensureDummyPointShadowMap()
+        // When the mesh fragments are compiled with RT shadows, an acceleration structure
+        // is always part of their signature, so bind the real one this frame or a dummy
+        // that's never traced (the fragment only traces it when shadowKind == 2).
+        let shadowAccelStructure = rayTracedShadows ? (shadowAccel ?? ensureDummyShadowAccel()) : nil
 
         // The strip must be bound whenever the SDF fragment runs (it references
         // the texture even for all-solid frames), so resolve it once per encode.
@@ -1014,6 +1042,12 @@ final class MetalRenderer {
                     // iridescence) is one uniform bound per batch.
                     var finish = batch.finish
                     encoder.setFragmentBytes(&finish, length: MemoryLayout<OllinMaterial>.stride, index: 1)
+                    // Ray-traced point shadows: the fragment traces this acceleration
+                    // structure at buffer 3 (a dummy when shadowKind != 2, never traced).
+                    if let accel = shadowAccelStructure {
+                        encoder.useResource(accel, usage: .read, stages: .fragment)
+                        encoder.setFragmentAccelerationStructure(accel, bufferIndex: 3)
+                    }
                 }
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .depthScene:
@@ -1245,6 +1279,9 @@ final class MetalRenderer {
     struct ShadowMaps {
         var twoD: MTLTexture?
         var cube: MTLTexture?
+        /// The ray-traced point caster's acceleration structure (RT devices), in place
+        /// of the cube; the lit mesh fragment traces a visibility ray against it.
+        var accel: MTLAccelerationStructure?
     }
 
     /// Render the scene's mesh geometry into the shadow map from the casting light's
@@ -1267,8 +1304,14 @@ final class MetalRenderer {
             meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
         }
 
-        // A point caster renders the omnidirectional cube; directional/spot the 2D map.
+        // A point caster: ray-trace it on a capable device (exact, no cube/depth-compare
+        // artifacts), else render the omnidirectional mid-point cube. Directional/spot
+        // always use the 2D map below (untouched by the RT path).
         if lighting.shadowKind == 1 {
+            if rayTracedShadows,
+               let accel = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) {
+                return ShadowMaps(accel: accel)
+            }
             let cube = encodePointShadowPass(drawer, lighting: lighting,
                                              into: commandBuffer, meshBuffer: meshBuffer)
             return ShadowMaps(cube: cube)
@@ -1356,6 +1399,88 @@ final class MetalRenderer {
         drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
         encoder.endEncoding()
         return cube
+    }
+
+    /// Build (in place) the per-frame primitive acceleration structure over the shadow
+    /// casters for a ray-traced point light — one geometry descriptor per solid/textured
+    /// mesh batch (wireframe doesn't cast), reading world-space positions straight from
+    /// the `meshBuffer` the geometry pass uses (position is the first field of
+    /// `OllinMeshVertex`, so a `.float3` read at the vertex stride lands on it). Encoded
+    /// ahead of the geometry pass in the same command buffer, so Metal orders build →
+    /// trace. The structure + scratch grow in place only when the scene outgrows them.
+    /// Returns nil when there's nothing to cast (the caller then falls back / unshadows).
+    private func buildShadowAccel(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
+                                  meshBuffer: MTLBuffer) -> MTLAccelerationStructure? {
+        let meshStride = MemoryLayout<OllinMeshVertex>.stride
+        let meshVertices = drawer.meshVertices
+        let batches = drawer.batches
+        var geometries: [MTLAccelerationStructureTriangleGeometryDescriptor] = []
+        for i in batches.indices {
+            let batch = batches[i]
+            guard batch.kind == .mesh3D, !batch.meshWireframe else { continue }
+            let next = i + 1 < batches.count ? batches[i + 1] : nil
+            let end = next?.meshStart ?? meshVertices.count
+            let count = end - batch.meshStart
+            guard count >= 3 else { continue }
+            let geo = MTLAccelerationStructureTriangleGeometryDescriptor()
+            geo.vertexBuffer = meshBuffer
+            geo.vertexBufferOffset = batch.meshStart * meshStride
+            geo.vertexStride = meshStride
+            geo.vertexFormat = .float3        // position.xyz from each vertex (field offset 0)
+            geo.triangleCount = count / 3
+            geo.opaque = true                 // load-bearing: else triangle hits never commit
+            geometries.append(geo)
+        }
+        guard !geometries.isEmpty else { return nil }
+
+        let desc = MTLPrimitiveAccelerationStructureDescriptor()
+        desc.geometryDescriptors = geometries
+        let sizes = device.accelerationStructureSizes(descriptor: desc)
+        if shadowAccel == nil || shadowAccelCapacity < sizes.accelerationStructureSize {
+            shadowAccel = device.makeAccelerationStructure(size: sizes.accelerationStructureSize)
+            shadowAccelScratch = device.makeBuffer(length: max(1, sizes.buildScratchBufferSize),
+                                                   options: .storageModePrivate)
+            shadowAccelCapacity = sizes.accelerationStructureSize
+        } else if (shadowAccelScratch?.length ?? 0) < sizes.buildScratchBufferSize {
+            shadowAccelScratch = device.makeBuffer(length: sizes.buildScratchBufferSize,
+                                                   options: .storageModePrivate)
+        }
+        guard let accel = shadowAccel, let scratch = shadowAccelScratch,
+              let enc = commandBuffer.makeAccelerationStructureCommandEncoder() else { return nil }
+        enc.build(accelerationStructure: accel, descriptor: desc,
+                  scratchBuffer: scratch, scratchBufferOffset: 0)
+        enc.endEncoding()
+        return accel
+    }
+
+    /// A 1-triangle acceleration structure bound to the lit mesh fragment whenever no
+    /// ray-traced point shadow is active this frame, so the fragment's declared
+    /// `primitive_acceleration_structure` argument is always satisfied (it only traces
+    /// when `shadowKind == 2`). Built once, far from any scene so it never matters.
+    private func ensureDummyShadowAccel() -> MTLAccelerationStructure? {
+        if let a = dummyShadowAccel { return a }
+        var verts: [SIMD3<Float>] = [SIMD3(1e6, 1e6, 1e6), SIMD3(1e6 + 1, 1e6, 1e6),
+                                     SIMD3(1e6, 1e6 + 1, 1e6)]
+        let vbuf = device.makeBuffer(bytes: &verts, length: MemoryLayout<SIMD3<Float>>.stride * 3,
+                                     options: .storageModeShared)
+        let geo = MTLAccelerationStructureTriangleGeometryDescriptor()
+        geo.vertexBuffer = vbuf
+        geo.vertexStride = MemoryLayout<SIMD3<Float>>.stride
+        geo.vertexFormat = .float3
+        geo.triangleCount = 1
+        let desc = MTLPrimitiveAccelerationStructureDescriptor()
+        desc.geometryDescriptors = [geo]
+        let sizes = device.accelerationStructureSizes(descriptor: desc)
+        guard let accel = device.makeAccelerationStructure(size: sizes.accelerationStructureSize),
+              let scratch = device.makeBuffer(length: max(1, sizes.buildScratchBufferSize),
+                                              options: .storageModePrivate),
+              let cb = commandQueue.makeCommandBuffer(),
+              let enc = cb.makeAccelerationStructureCommandEncoder() else { return nil }
+        enc.build(accelerationStructure: accel, descriptor: desc,
+                  scratchBuffer: scratch, scratchBufferOffset: 0)
+        enc.endEncoding(); cb.commit(); cb.waitUntilCompleted()
+        dummyShadowAccel = accel
+        return dummyShadowAccel
     }
 
     /// Draw every shadow-casting mesh batch into the active shadow encoder. Solid and
@@ -1469,7 +1594,8 @@ final class MetalRenderer {
     /// current library and pipelines untouched (it throws, and the caller reports
     /// it); a bad shader edit never blanks or crashes the running sketch.
     func reloadLibrary(source: String) throws {
-        let newLibrary = try device.makeLibrary(source: MetalRenderer.composeShaderSource(source), options: nil)
+        let newLibrary = try device.makeLibrary(
+            source: MetalRenderer.composeShaderSource(source, rayTracing: rayTracedShadows), options: nil)
         let kinds = pipelines.isEmpty ? [PipelineKey.solid(.normal)] : Array(pipelines.keys)
         var rebuilt: [PipelineKey: MTLRenderPipelineState] = [:]
         for kind in kinds {
@@ -1740,12 +1866,16 @@ final class MetalRenderer {
     ///
     /// If the header resource is missing we leave the source untouched and let
     /// the compiler report the undefined types — louder than a silent fallback.
-    static func composeShaderSource(_ source: String) -> String {
+    static func composeShaderSource(_ source: String, rayTracing: Bool = false) -> String {
+        // Gate the inline-RT mesh-shadow path on device capability (the symbol the
+        // `#if OLLIN_RT_SHADOWS` blocks in Shaders.metal read). A device without
+        // render-stage ray tracing compiles it out entirely, so the cube path stays.
+        let prefix = "#define OLLIN_RT_SHADOWS \(rayTracing ? 1 : 0)\n"
         guard let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
               let header = try? String(contentsOf: url, encoding: .utf8) else {
-            return source
+            return prefix + source
         }
-        return source.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
+        return prefix + source.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
     }
 
     /// Build the full MSL source for a user compute kernel: the `metal_stdlib`
@@ -1784,15 +1914,21 @@ final class MetalRenderer {
     /// try a precompiled `default.metallib` first in case a future build step
     /// (e.g. a build-tool plugin) produces one.
     private static func loadLibrary(device: MTLDevice) throws -> MTLLibrary {
-        if let library = try? device.makeDefaultLibrary(bundle: Bundle.module) {
+        let rt = device.supportsRaytracing && device.supportsRaytracingFromRender
+        // A precompiled `default.metallib` is built without the device-conditional
+        // `OLLIN_RT_SHADOWS` define (it can hold only one variant — the *non*-RT
+        // mesh-shadow path). Use it only on a device without render-stage ray tracing;
+        // an RT device compiles `Shaders.metal` from source with the define set, which is
+        // Ollin's standard runtime-compile path (and what live shader reload already uses).
+        if !rt, let library = try? device.makeDefaultLibrary(bundle: Bundle.module) {
             return library
         }
         if let url = Bundle.module.url(forResource: "Shaders", withExtension: "metal"),
            let source = try? String(contentsOf: url, encoding: .utf8) {
             // Let compile errors propagate: a bad shader should fail loudly here.
-            return try device.makeLibrary(source: composeShaderSource(source), options: nil)
+            return try device.makeLibrary(source: composeShaderSource(source, rayTracing: rt), options: nil)
         }
-        if let library = device.makeDefaultLibrary() {
+        if !rt, let library = device.makeDefaultLibrary() {
             return library
         }
         throw RendererError.shaderLibrary

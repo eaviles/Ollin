@@ -320,15 +320,17 @@ let package = Package(
             // Declaring the `.metal` file as a resource makes SwiftPM copy it
             // into the target's resource bundle and synthesize `Bundle.module`,
             // which MetalRenderer.loadLibrary uses to read and compile the shader
-            // source at runtime. (`.process` copies the `.metal` as source; it
-            // does not precompile a `default.metallib`.) Without this, the file
-            // is "unhandled" and `Bundle.module` is never generated.
+            // source at runtime. Use `.copy` so the *raw source* ships: on current
+            // toolchains `.process` instead precompiles a single `default.metallib`,
+            // which can't carry the device-conditional `OLLIN_RT_SHADOWS` define
+            // (ray-traced point shadows on a capable GPU) — runtime compilation is
+            // what makes that variant, the hot-reload seam, and user shaders possible.
             //
             // `OllinShaderTypes.h` ships beside it: the runtime shader compiler
             // has no include path, so MetalRenderer splices this header into the
             // source in place of its `#include` directive.
             resources: [
-                .process("Renderer/Shaders.metal"),
+                .copy("Renderer/Shaders.metal"),
                 .copy("Renderer/OllinShaderTypes.h"),
                 // The MSL compute prelude (hash/noise/curl/disc), spliced into
                 // user compute-kernel source at runtime like OllinShaderTypes.h.

@@ -230,7 +230,11 @@ typedef struct {
 // and shadows where it exceeds the sampled one. `shadowTexelWorld` is the world-space
 // size of one shadow-map texel (the bias / PCF-spread unit, used by both kinds);
 // `shadowDepthA` carries the cube's far plane (to denormalize the sampled distance), with
-// the light position from `lights[shadowLight].position`. `shadowDepthB` is unused.
+// the light position from `lights[shadowLight].position`. A ray-tracing device instead
+// uses `shadowKind` 2 for a point caster: the renderer traces a visibility ray against a
+// per-frame acceleration structure (no cube, no depth compare — exact, no acne/peter-pan),
+// and `shadowDepthB` carries the area-light radius that softens it (`shadowTexelWorld`
+// reused as the self-hit normal-offset). `shadowDepthB` is 0 / unused for the other kinds.
 typedef struct {
     simd_float4 ambient;          // rgb linear ambient (lights every surface flatly); a unused
     simd_float4 cameraPosition;   // world-space eye xyz (for the specular view direction); w unused

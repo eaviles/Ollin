@@ -9,8 +9,9 @@ import Ollin
 /// center of a ring of pillars, so every pillar throws its shadow radially outward,
 /// the signature look a single direction can't make. The camera orbits.
 ///
-/// (Under the hood the cube is rendered in one layered pass, each face storing the
-/// distance to the light, then sampled by direction with soft PCF.)
+/// (Under the hood, on a ray-tracing GPU each lit pixel traces a few visibility rays
+/// straight to the light for an exact, soft contact-hardening shadow; on other GPUs it
+/// falls back to an omnidirectional cube depth map sampled by direction.)
 @main
 final class PointShadow3D: Sketch {
 

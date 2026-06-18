@@ -1,6 +1,19 @@
 #include <metal_stdlib>
 using namespace metal;
 
+// Inline ray tracing for point-light shadows, compiled in only when the device
+// supports tracing from the render stages (`OLLIN_RT_SHADOWS`, spliced in by
+// MetalRenderer.composeShaderSource from `device.supportsRaytracing`). On a device
+// without it the symbol is 0 and every block below drops out, leaving the
+// shadow-map (mid-point cube) path byte-identical.
+#ifndef OLLIN_RT_SHADOWS
+#define OLLIN_RT_SHADOWS 0
+#endif
+#if OLLIN_RT_SHADOWS
+#include <metal_raytracing>
+using namespace metal::raytracing;
+#endif
+
 // The CPU/GPU shared structs (`OllinVertex`, `Uniforms`, `SDFInstance`) are
 // defined once in this header so their layout can't drift from the Swift side.
 // At runtime the shader compiler has no include path, so MetalRenderer splices
@@ -1330,6 +1343,94 @@ static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
     return lit / 20.0;
 }
 
+#if OLLIN_RT_SHADOWS
+// Shadow factor for a point caster via inline ray tracing (1 fully lit, 0 fully
+// shadowed) — the exact, shadow-map-free path used when the device can trace from
+// the render stages. A point light is an infinitesimal source, so the physically
+// correct shadow is a single visibility ray to the light; a small `lightRadius`
+// then softens it into a contact-hardening penumbra (a finite area light) and
+// anti-aliases the edge, sampled over a deterministic Vogel disk so the result
+// stays reproducible (snapshot-stable, no per-pixel noise). There's no depth
+// compare, so none of the shadow-map bias/acne/peter-pan/teeth tradeoffs apply —
+// a small normal-offset only keeps the ray from re-hitting its own originating
+// triangle. Same swap-point shape as `shadowFactorCube`.
+// One shadow ray from `origin` toward `target`: 1 if that light point is visible, 0 if
+// an occluder lies between. Opaque triangle candidates are committed (else hits never
+// register — load-bearing); `accept_any_intersection` makes it stop at the first hit.
+static inline float traceShadowRay(float3 origin, float3 target, float eps,
+                                   primitive_acceleration_structure accel,
+                                   intersection_params params) {
+    float3 sv = target - origin;
+    float sd = length(sv);
+    ray r;
+    r.origin = origin;
+    r.direction = sv / max(sd, 1e-5);
+    r.min_distance = eps;
+    r.max_distance = sd - eps;                     // stop just short of the light
+    intersection_query<triangle_data> q;
+    q.reset(r, accel, params);
+    while (q.next()) {
+        if (q.get_candidate_intersection_type() == intersection_type::triangle)
+            q.commit_triangle_intersection();
+    }
+    return (q.get_committed_intersection_type() == intersection_type::none) ? 1.0 : 0.0;
+}
+
+static inline float shadowFactorRayTraced(float3 worldPos, float3 n, float3 lightPos,
+                                          float lightRadius, float eps,
+                                          primitive_acceleration_structure accel) {
+    float3 origin = worldPos + n * eps;            // lift off the surface (self-hit guard)
+    float3 dir = normalize(lightPos - origin);
+    // A basis perpendicular to the light direction, to spread the area-light samples.
+    float3 up = abs(dir.y) > 0.99 ? float3(0, 0, 1) : float3(0, 1, 0);
+    float3 tangent = normalize(cross(up, dir));
+    float3 bitangent = cross(dir, tangent);
+    intersection_params params;
+    params.accept_any_intersection(true);          // a shadow ray only needs *any* hit
+
+    // Adaptive sampling: probe the light's center + three rim points. When they all
+    // agree, the fragment is in full light or full shadow (the umbra/lit majority of the
+    // frame), so four rays suffice; only a genuine penumbra pays for the full soft
+    // kernel. Coherent screen regions take the same branch across a warp, so this is a
+    // real ~3-4x speedup with no change to the soft edges.
+    float probe = traceShadowRay(origin, lightPos, eps, accel, params);
+    for (int k = 0; k < 3; k++) {
+        float a = float(k) * 2.0943951;            // 120° apart on the rim
+        float3 t = lightPos + tangent * (cos(a) * lightRadius) + bitangent * (sin(a) * lightRadius);
+        probe += traceShadowRay(origin, t, eps, accel, params);
+    }
+    if (probe == 0.0) return 0.0;                  // every probe occluded -> full shadow
+    if (probe == 4.0) return 1.0;                  // every probe clear -> full light
+
+    // Penumbra: a full Vogel (sunflower) disk over the light — even, deterministic
+    // coverage for a smooth, contact-hardening gradient.
+    const int kSamples = 8;
+    float lit = 0.0;
+    for (int i = 0; i < kSamples; i++) {
+        float fi = (float(i) + 0.5) / float(kSamples);
+        float rr = sqrt(fi) * lightRadius;
+        float th = float(i) * 2.39996323;          // golden angle
+        float3 t = lightPos + tangent * (cos(th) * rr) + bitangent * (sin(th) * rr);
+        lit += traceShadowRay(origin, t, eps, accel, params);
+    }
+    return lit / float(kSamples);
+}
+
+// The ray-traced point-shadow factor for a lit mesh fragment, or 1 (lit) when this
+// frame's caster isn't a ray-traced point light (`shadowKind != 2`) — shared by the
+// solid and textured fragments so they stay in step. The light position comes from
+// the caster entry; `shadowDepthB` carries the soft-shadow light radius and
+// `shadowTexelWorld` the self-hit normal-offset (both packed in `makeLighting`).
+static inline float meshRTShadow(float3 worldPos, float3 normal,
+                                 constant OllinLighting &light,
+                                 primitive_acceleration_structure accel) {
+    if (light.shadowKind != 2) return 1.0;
+    return shadowFactorRayTraced(worldPos, normalize(normal),
+                                 light.lights[light.shadowLight].position.xyz,
+                                 light.shadowDepthB, light.shadowTexelWorld, accel);
+}
+#endif
+
 // The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
 // surface `normal`, `worldPos`, and the per-batch `mat` finish. It composes a base
 // shading model (standard Lambert / toon cel / Gooch warm–cool) with the layered
@@ -1343,7 +1444,11 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   float3 worldPos, constant OllinMaterial &mat,
                                   constant OllinLighting &light,
                                   depth2d<float> shadowMap, sampler shadowSamp,
-                                  texturecube<float> shadowCube, sampler shadowCubeSamp) {
+                                  texturecube<float> shadowCube, sampler shadowCubeSamp
+#if OLLIN_RT_SHADOWS
+                                  , float rtShadow
+#endif
+                                  ) {
     float3 n = normalize(normal);
     if (light.enabled == 0) {
         return float4(base, alpha);
@@ -1381,7 +1486,13 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         // Dim only the casting light where this surface is in shadow (ambient stays).
         // A directional/spot caster samples the 2D map; a point caster the cube.
         if (i == light.shadowLight) {
-            float lit01 = (light.shadowKind == 1)
+            float lit01;
+#if OLLIN_RT_SHADOWS
+            // shadowKind 2 = ray-traced point caster (computed in the fragment).
+            if (light.shadowKind == 2) lit01 = rtShadow;
+            else
+#endif
+            lit01 = (light.shadowKind == 1)
                 ? shadowFactorCube(worldPos, n, L.position.xyz, light.shadowDepthA,
                                    light.shadowTexelWorld, shadowCube, shadowCubeSamp)
                 : shadowFactor(worldPos, n, toLight, light.lightViewProjection,
@@ -1509,13 +1620,24 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     depth2d<float> shadowMap [[texture(1)]],
                                     sampler shadowSamp [[sampler(1)]],
                                     texturecube<float> shadowCube [[texture(2)]],
-                                    sampler shadowCubeSamp [[sampler(2)]]) {
+                                    sampler shadowCubeSamp [[sampler(2)]]
+#if OLLIN_RT_SHADOWS
+                                    , primitive_acceleration_structure shadowAccel [[buffer(3)]]
+#endif
+                                    ) {
     // Linearize the surface color so the present pass's sRGB re-encode lands the
     // on-screen pixel at the fill color, then shade + shadow it through the shared
     // tail (which returns it flat unchanged when no light is set).
+#if OLLIN_RT_SHADOWS
+    float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
+    return meshLitColor(srgbToLinear(in.color.rgb), in.color.a, in.normal,
+                        in.worldPos, mat, light, shadowMap, shadowSamp,
+                        shadowCube, shadowCubeSamp, rtShadow);
+#else
     return meshLitColor(srgbToLinear(in.color.rgb), in.color.a, in.normal,
                         in.worldPos, mat, light, shadowMap, shadowSamp,
                         shadowCube, shadowCubeSamp);
+#endif
 }
 
 // MARK: - Textured 3D mesh
@@ -1554,7 +1676,11 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              depth2d<float> shadowMap [[texture(1)]],
                                              sampler shadowSamp [[sampler(1)]],
                                              texturecube<float> shadowCube [[texture(2)]],
-                                             sampler shadowCubeSamp [[sampler(2)]]) {
+                                             sampler shadowCubeSamp [[sampler(2)]]
+#if OLLIN_RT_SHADOWS
+                                             , primitive_acceleration_structure shadowAccel [[buffer(3)]]
+#endif
+                                             ) {
     // The base-color texture is sRGB, so the sample comes back already linear and
     // premultiplied. The milestone contract is opaque textures, so rgb is the
     // straight base color; tint it by the linearized baked vertex color
@@ -1562,8 +1688,14 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     float4 tex = baseColorTex.sample(samp, in.uv);
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
+#if OLLIN_RT_SHADOWS
+    float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
+    return meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
+                        shadowMap, shadowSamp, shadowCube, shadowCubeSamp, rtShadow);
+#else
     return meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                         shadowMap, shadowSamp, shadowCube, shadowCubeSamp);
+#endif
 }
 
 // MARK: - Matcap 3D mesh

@@ -831,6 +831,12 @@ final class Drawer {
                 // A 90° cube face spans 2·d wide at distance d, so a texel there is
                 // 2·dist/resolution, the world-space unit for the bias and PCF spread.
                 u.shadowTexelWorld = (2 * dist) / Float(Drawer.pointShadowMapResolution)
+                // On a ray-tracing device the renderer traces this caster instead of
+                // sampling the cube (it bumps `shadowKind` to 2); `shadowDepthB` then
+                // carries the area-light radius that softens the traced shadow into a
+                // contact-hardening penumbra (light-relative, so it's camera-independent).
+                // The cube path ignores it, so it's harmless to always pack.
+                u.shadowDepthB = dist * 0.03
             }
         }
         return u
