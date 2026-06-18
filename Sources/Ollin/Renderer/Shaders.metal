@@ -1307,21 +1307,19 @@ constant float3 cubePCFOffsets[20] = {
 static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
                                      float farPlane, float texelWorld,
                                      texturecube<float> shadowCube, sampler shadowSamp) {
-    // Self-occlusion is held off by a **normal-offset**, not a depth bias: the receiver
-    // is pushed along its own normal toward the light before the lookup. This matters for
-    // the floor, which is itself the nearest surface the overhead light sees (so it
-    // self-occludes); a depth bias toward "lit" would fix that but open a gap at object
-    // contacts, while a normal-offset (perpendicular to the surface) clears the
-    // self-compare without detaching contact shadows. It widens at grazing angles, where
-    // a flat surface's depth varies fast across a shadow texel. The remaining depth bias
-    // is then tiny, so contacts stay tight.
-    float cosTheta = clamp(dot(n, normalize(lightPos - worldPos)), 0.0, 1.0);
-    float offset = texelWorld * (1.0 + 2.5 / max(cosTheta, 0.25));
-    float3 biased = worldPos + n * offset;
+    // A small **fixed** normal-offset (push the receiver along its normal toward the light)
+    // plus a small **lit-eager** depth bias hold off self-occlusion (chiefly the floor,
+    // which the overhead light sees as its own nearest surface so R≈G sits on it). Both are
+    // kept flat on purpose: scaling the offset by grazing angle or by probed occluder
+    // thickness clears the floor a touch tighter but fires at a box's bottom *corners*
+    // (where the ray grazes the edge and reads thin), pushing that corner's sample off and
+    // notching the base ("teeth"). A flat offset has no teeth; a softer PCF then blends the
+    // small residual contact gap into a natural penumbra rather than a hard step.
+    float3 biased = worldPos + n * (texelWorld * 2.0);
     float3 v = biased - lightPos;                          // light → receiver direction
     float current = length(v) / farPlane;                 // receiver distance (normalized)
-    float bias = (texelWorld / farPlane) * 0.4;            // tiny depth bias
-    float diskRadius = texelWorld * 2.0;                   // PCF tap spread (world units)
+    float bias = (texelWorld / farPlane) * 0.6;           // small lit-eager depth bias
+    float diskRadius = texelWorld * 3.0;                   // PCF tap spread (world units)
     float lit = 0.0;
     for (int i = 0; i < 20; i++) {
         float2 rg = shadowCube.sample(shadowSamp, v + cubePCFOffsets[i] * diskRadius).rg;
