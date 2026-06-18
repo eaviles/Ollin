@@ -62,6 +62,10 @@ final class MetalRenderer {
         /// fragment). Like `isPresent`, an exception to the geometry-pipeline shape,
         /// kept in the same cache so live shader reload rebuilds it too.
         var isShadow = false
+        /// The point (cube) shadow pass writes distance into an `rg32Float` cube with
+        /// two passes: 1 = MIN-blend into R (nearest), 2 = MAX-blend into G (farthest),
+        /// for mid-point shadow mapping. 0 = not a point-shadow pipeline.
+        var pointShadowOp = 0
 
         // tessellated triangles (rects, lines, polygons, arcs)
         static func solid(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -123,11 +127,15 @@ final class MetalRenderer {
         static let meshShadow = PipelineKey(vertex: "ollin_mesh_shadow_vertex",
                                             fragment: "", isShadow: true)
         // omnidirectional shadow pass: six cube faces in one layered pass (instanced,
-        // `render_target_array_index`) for a point caster. Its fragment writes the linear
-        // distance to the light as the stored depth.
-        static let meshPointShadow = PipelineKey(vertex: "ollin_mesh_point_shadow_vertex",
-                                                 fragment: "ollin_mesh_point_shadow_fragment",
-                                                 isShadow: true)
+        // `render_target_array_index`) for a point caster. Two draws into one rg32Float
+        // cube (mid-point shadow mapping): MIN-blend the distance into R (nearest),
+        // MAX-blend into G (farthest); the receiver shadows past the midpoint.
+        static let meshPointShadowMin = PipelineKey(vertex: "ollin_mesh_point_shadow_vertex",
+                                                    fragment: "ollin_mesh_point_shadow_fragment",
+                                                    isShadow: true, pointShadowOp: 1)
+        static let meshPointShadowMax = PipelineKey(vertex: "ollin_mesh_point_shadow_vertex",
+                                                    fragment: "ollin_mesh_point_shadow_fragment",
+                                                    isShadow: true, pointShadowOp: 2)
 
         /// The pipeline a recorded batch needs, from its geometry kind, blend, the
         /// active depth format (nil in 2D), and — for a mesh — whether it's textured.
@@ -1190,37 +1198,40 @@ final class MetalRenderer {
         return dummyShadowMap
     }
 
-    /// The omnidirectional shadow map: a `.private` `depthcube` the layered six-face
-    /// pass renders into and the lit mesh fragment samples by direction. Allocated
+    /// The omnidirectional (point) shadow map, a `.private` **`rg32Float` cube** for
+    /// mid-point shadow mapping: R holds the nearest occluder's distance to the light
+    /// (normalized by the far plane), G the farthest, per direction. The lit fragment
+    /// shadows where the receiver's distance exceeds the midpoint `(R+G)/2`. Allocated
     /// lazily on the first point-casting frame, then reused.
+    static let pointShadowColorFormat: MTLPixelFormat = .rg32Float
     private func ensurePointShadowMap() -> MTLTexture? {
         if let m = pointShadowMap { return m }
         let n = MetalRenderer.pointShadowMapResolution
         let desc = MTLTextureDescriptor.textureCubeDescriptor(
-            pixelFormat: depthPixelFormat, size: n, mipmapped: false)
+            pixelFormat: MetalRenderer.pointShadowColorFormat, size: n, mipmapped: false)
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .private
         pointShadowMap = device.makeTexture(descriptor: desc)
         return pointShadowMap
     }
 
-    /// A 1×1 `depthcube` bound to the mesh fragment's cube-shadow slot when no point
-    /// caster is active, so its declared `depthcube` argument is always satisfied (the
-    /// fragment only samples it when `shadowKind == 1`). Cleared once on creation (all
-    /// six faces in one layered pass) so it's never read uninitialized.
+    /// A 1×1 `rg32Float` cube bound to the mesh fragment's cube-shadow slot when no point
+    /// caster is active, so its declared `texturecube` argument is always satisfied (the
+    /// fragment only samples it when `shadowKind == 1`). Cleared to (1, 0) once on
+    /// creation (all six faces in one layered pass) so it's never read uninitialized.
     private func ensureDummyPointShadowMap() -> MTLTexture? {
         if let m = dummyPointShadowMap { return m }
         let desc = MTLTextureDescriptor.textureCubeDescriptor(
-            pixelFormat: depthPixelFormat, size: 1, mipmapped: false)
+            pixelFormat: MetalRenderer.pointShadowColorFormat, size: 1, mipmapped: false)
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .private
         guard let texture = device.makeTexture(descriptor: desc) else { return nil }
         if let cb = commandQueue.makeCommandBuffer() {
             let pass = MTLRenderPassDescriptor()
-            pass.depthAttachment.texture = texture
-            pass.depthAttachment.loadAction = .clear
-            pass.depthAttachment.clearDepth = 1.0
-            pass.depthAttachment.storeAction = .store
+            pass.colorAttachments[0].texture = texture
+            pass.colorAttachments[0].loadAction = .clear
+            pass.colorAttachments[0].clearColor = MTLClearColor(red: 1, green: 0, blue: 0, alpha: 0)
+            pass.colorAttachments[0].storeAction = .store
             pass.renderTargetArrayLength = 6      // clear all six faces at once
             cb.makeRenderCommandEncoder(descriptor: pass)?.endEncoding()
             cb.commit()
@@ -1293,7 +1304,8 @@ final class MetalRenderer {
                                        into commandBuffer: MTLCommandBuffer,
                                        meshBuffer: MTLBuffer) -> MTLTexture? {
         guard let cube = ensurePointShadowMap(),
-              let cubePipeline = try? pipeline(.meshPointShadow) else { return nil }
+              let minPipeline = try? pipeline(.meshPointShadowMin),
+              let maxPipeline = try? pipeline(.meshPointShadowMax) else { return nil }
 
         // The casting light's world position from the uniform's fixed-size light array.
         let caster = Int(lighting.shadowLight)
@@ -1322,26 +1334,25 @@ final class MetalRenderer {
         ]
         let faceVP = faces.map { proj * Camera3D.lookAt(eye: lightPos, center: lightPos + $0.0, up: $0.1) }
 
+        // Mid-point shadow mapping: clear R = 1 (far, for the MIN pass) and G = 0 (near,
+        // for the MAX pass), then make two draws of the scene with NO culling — the MIN
+        // pass fills R with the nearest occluder distance per direction, the MAX pass
+        // fills G with the farthest. The receiver shadows past the midpoint (R+G)/2, so a
+        // surface compares against a point *inside* the occluder: no self-shadow acne on
+        // edge-on faces, and no contact leak, without any face culling.
         let pass = MTLRenderPassDescriptor()
-        pass.depthAttachment.texture = cube
-        pass.depthAttachment.loadAction = .clear
-        pass.depthAttachment.clearDepth = 1.0   // 1.0 = the far plane (nothing)
-        pass.depthAttachment.storeAction = .store
+        pass.colorAttachments[0].texture = cube
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: 1, green: 0, blue: 0, alpha: 0)
+        pass.colorAttachments[0].storeAction = .store
         pass.renderTargetArrayLength = 6
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
-        encoder.setRenderPipelineState(cubePipeline)
-        encoder.setDepthStencilState(depthTestState)
-        // Render only occluders' BACK faces into the cube (second-depth shadow mapping):
-        // cull the light-facing fronts, so a lit near face is never its own occluder. This
-        // is what eliminates edge-on self-shadow acne on tall vertical faces; the
-        // linear-distance storage then keeps the contact comparison leak-free. Meshes are
-        // wound CCW-outward (Metal's default front winding), so `.front` culls the lit faces.
-        encoder.setFrontFacing(.counterClockwise)
-        encoder.setCullMode(.front)
         faceVP.withUnsafeBytes { encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 2) }
-        // Light position + far plane for the fragment's linear-distance write.
         var lightPosFar = SIMD4<Float>(lightPos.x, lightPos.y, lightPos.z, far)
         encoder.setFragmentBytes(&lightPosFar, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+        encoder.setRenderPipelineState(minPipeline)   // nearest -> R
+        drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
+        encoder.setRenderPipelineState(maxPipeline)   // farthest -> G
         drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
         encoder.endEncoding()
         return cube
@@ -1495,25 +1506,38 @@ final class MetalRenderer {
                                 depthFormat: key.depthFormat)
     }
 
-    /// A shadow depth pass: a depth-only pipeline (no fragment, no color attachment)
-    /// that rasterizes mesh geometry from the light's point of view into the shadow map.
-    /// Single-sample (the shadow map is plain depth, softened by PCF when sampled, not
-    /// MSAA). Two variants share this factory: the 2D map (directional/spot,
-    /// `ollin_mesh_shadow_vertex`) and the **layered cube** pass (point,
-    /// `ollin_mesh_point_shadow_vertex`), the latter rendering all six faces at once via
-    /// `render_target_array_index`, which needs the layered-render input topology set.
+    /// A shadow pass pipeline. Two shapes share this factory: the **2D map**
+    /// (directional/spot, `ollin_mesh_shadow_vertex`) is depth-only — no fragment, no
+    /// color attachment, the stored value is the rasterized depth. The **point cube**
+    /// (`ollin_mesh_point_shadow_vertex`) is layered (all six faces via
+    /// `render_target_array_index`, so it needs the triangle input topology) and writes
+    /// the distance to the light into an `rg32Float` color cube for mid-point shadow
+    /// mapping: `pointShadowOp` 1 MIN-blends into R (nearest), 2 MAX-blends into G
+    /// (farthest), each writing only its channel. Single-sample either way.
     private func makeShadowPipeline(_ key: PipelineKey, using library: MTLLibrary) throws -> MTLRenderPipelineState {
         guard let vertexFunction = library.makeFunction(name: key.vertex) else {
             throw RendererError.shaderFunctions
         }
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
-        // The 2D map is depth-only (nil fragment, the stored value is the rasterized
-        // depth); the cube map's fragment writes the linear distance to the light as the
-        // stored depth. Neither has a color attachment.
         descriptor.fragmentFunction = key.fragment.isEmpty ? nil : library.makeFunction(name: key.fragment)
         descriptor.rasterSampleCount = 1
-        descriptor.depthAttachmentPixelFormat = depthPixelFormat
+        if key.pointShadowOp != 0 {
+            // Point cube: a color attachment (rg32Float), no depth. One channel per
+            // pass, MIN/MAX-blended, so the two draws build nearest (R) + farthest (G).
+            let color = descriptor.colorAttachments[0]!
+            color.pixelFormat = MetalRenderer.pointShadowColorFormat
+            color.isBlendingEnabled = true
+            color.rgbBlendOperation = key.pointShadowOp == 1 ? .min : .max
+            color.alphaBlendOperation = key.pointShadowOp == 1 ? .min : .max
+            color.sourceRGBBlendFactor = .one
+            color.destinationRGBBlendFactor = .one
+            color.sourceAlphaBlendFactor = .one
+            color.destinationAlphaBlendFactor = .one
+            color.writeMask = key.pointShadowOp == 1 ? .red : .green
+        } else {
+            descriptor.depthAttachmentPixelFormat = depthPixelFormat
+        }
         // The cube pass routes each instance to a cube face from the vertex stage, so
         // the pipeline must declare a layered (triangle) input topology.
         if key.vertex == "ollin_mesh_point_shadow_vertex" {

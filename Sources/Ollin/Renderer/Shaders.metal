@@ -1293,30 +1293,31 @@ constant float3 cubePCFOffsets[20] = {
 };
 
 // Shadow factor for an omnidirectional (point) caster: 1 fully lit, 0 fully shadowed.
-// The cube pass stored, per face, the **linear distance to the light** (normalized by the
-// far plane) of each occluder's *back* face (front faces are culled), i.e. second-depth
-// shadow mapping. Storing back faces is what eliminates the tilted-texel self-shadow
-// stripes a vertical face shows under a high light: the lit *near* face is never written
-// into the cube, so it can never shadow itself, and there's a full object-depth of margin
-// behind it. Storing linear distance (not projected depth) keeps the compare in plain
-// world units, uniform across faces and seams, which is what keeps the *contact* clean
-// (the projected-depth cube's 1/z precision crush is what made the contact leak, the
-// "donut", before). So no angle-ramped normal-offset is needed; we keep only a ~1-texel
-// normal nudge for cube-face-seam discontinuities and a small *toward-the-light* bias to
-// seal the one residual of back-face storage, the contact line. A 20-tap PCF softens the
-// edges. Same swap-point shape as `shadowFactor`, so a softer/ray-traced technique drops in.
+// **Mid-point shadow mapping.** The cube stores, per direction, the nearest occluder's
+// linear distance to the light in R and the farthest in G (both normalized by the far
+// plane, written by MIN/MAX-blending the scene with no face culling). The receiver shadows
+// where its distance exceeds the **midpoint** (R+G)/2 — i.e. it compares against a point
+// *inside* the occluder volume. That's robust where front/back-face schemes fail: a
+// vertical face under a high light is near-edge-on (its own near face compares against a
+// midpoint deeper inside the object, so no self-shadow stripe), and the floor under a
+// sphere compares against the sphere's middle (no contact "donut"). No face culling is
+// involved, so there's no edge-on culling ambiguity. R == 1 means no occluder in that
+// direction (lit). A small bias covers the floor's own thin self-occlusion, and a 20-tap
+// PCF softens the edges. Same swap-point shape as `shadowFactor`.
 static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
                                      float farPlane, float texelWorld,
-                                     depthcube<float> shadowCube, sampler shadowSamp) {
+                                     texturecube<float> shadowCube, sampler shadowSamp) {
     float3 biased = worldPos + n * texelWorld;             // ~1-texel seam nudge
     float3 v = biased - lightPos;                          // light → receiver direction
-    float current = length(v);                             // receiver distance to light
-    float bias = texelWorld * 0.5;                         // small toward-light contact bias
-    float diskRadius = texelWorld * 2.0;                   // PCF tap spread (world units)
+    float current = length(v) / farPlane;                 // receiver distance (normalized)
+    float bias = (texelWorld / farPlane) * 1.5;           // small world-space bias
+    float diskRadius = texelWorld * 2.0;                  // PCF tap spread (world units)
     float lit = 0.0;
     for (int i = 0; i < 20; i++) {
-        float closest = shadowCube.sample(shadowSamp, v + cubePCFOffsets[i] * diskRadius) * farPlane;
-        lit += (current - bias <= closest) ? 1.0 : 0.0;
+        float2 rg = shadowCube.sample(shadowSamp, v + cubePCFOffsets[i] * diskRadius).rg;
+        float midpoint = (rg.x + rg.y) * 0.5;             // midpoint of nearest+farthest
+        // No occluder in this direction (R never reduced below the far clear) -> lit.
+        lit += (rg.x >= 0.999 || current - bias <= midpoint) ? 1.0 : 0.0;
     }
     return lit / 20.0;
 }
@@ -1334,7 +1335,7 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   float3 worldPos, constant OllinMaterial &mat,
                                   constant OllinLighting &light,
                                   depth2d<float> shadowMap, sampler shadowSamp,
-                                  depthcube<float> shadowCube, sampler shadowCubeSamp) {
+                                  texturecube<float> shadowCube, sampler shadowCubeSamp) {
     float3 n = normalize(normal);
     if (light.enabled == 0) {
         return float4(base, alpha);
@@ -1483,17 +1484,15 @@ vertex MeshCubeShadowOut ollin_mesh_point_shadow_vertex(uint vid [[vertex_id]],
     return out;
 }
 
-// Fragment for the point shadow pass: store the receiver's **linear distance to the
-// light**, normalized by the far plane into [0, 1], as the depth value (rather than the
-// rasterized projected depth). `lightPosFar` is xyz = light world position, w = far
-// plane. The depth test keeps the nearest occluder per direction; the lit mesh fragment
-// reads it back, multiplies by the far plane, and compares distances in world units.
-struct CubeShadowFragOut { float depth [[depth(any)]]; };
-fragment CubeShadowFragOut ollin_mesh_point_shadow_fragment(MeshCubeShadowOut in [[stage_in]],
-                                                            constant float4 &lightPosFar [[buffer(0)]]) {
-    CubeShadowFragOut out;
-    out.depth = length(in.worldPos - lightPosFar.xyz) / lightPosFar.w;
-    return out;
+// Fragment for the point (mid-point) shadow pass: output the occluder's **linear distance
+// to the light** (normalized by the far plane) in both R and G. The pass runs this twice
+// into an `rg32Float` cube — once MIN-blended writing R (the nearest occluder per
+// direction), once MAX-blended writing G (the farthest) — so the lit mesh fragment shadows
+// past the midpoint (R+G)/2. `lightPosFar` is xyz = light world position, w = far plane.
+fragment float4 ollin_mesh_point_shadow_fragment(MeshCubeShadowOut in [[stage_in]],
+                                                 constant float4 &lightPosFar [[buffer(0)]]) {
+    float dist = length(in.worldPos - lightPosFar.xyz) / lightPosFar.w;
+    return float4(dist, dist, 0.0, 0.0);
 }
 
 fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
@@ -1501,7 +1500,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     constant OllinMaterial &mat [[buffer(1)]],
                                     depth2d<float> shadowMap [[texture(1)]],
                                     sampler shadowSamp [[sampler(1)]],
-                                    depthcube<float> shadowCube [[texture(2)]],
+                                    texturecube<float> shadowCube [[texture(2)]],
                                     sampler shadowCubeSamp [[sampler(2)]]) {
     // Linearize the surface color so the present pass's sRGB re-encode lands the
     // on-screen pixel at the fill color, then shade + shadow it through the shared
@@ -1546,7 +1545,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              sampler samp [[sampler(0)]],
                                              depth2d<float> shadowMap [[texture(1)]],
                                              sampler shadowSamp [[sampler(1)]],
-                                             depthcube<float> shadowCube [[texture(2)]],
+                                             texturecube<float> shadowCube [[texture(2)]],
                                              sampler shadowCubeSamp [[sampler(2)]]) {
     // The base-color texture is sRGB, so the sample comes back already linear and
     // premultiplied. The milestone contract is opaque textures, so rgb is the
