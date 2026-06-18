@@ -475,6 +475,11 @@ let package = Package(
             path: "Examples/3D/Shadows"
         ),
         .executableTarget(
+            name: "Example-SpotShadow",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/SpotShadow"
+        ),
+        .executableTarget(
             name: "Example-DepthCompositing",
             dependencies: ["Ollin"],
             path: "Examples/3D/DepthCompositing"

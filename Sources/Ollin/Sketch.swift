@@ -405,12 +405,13 @@ open class Sketch {
     /// Stop matcap shading — subsequent meshes light through the normal material model.
     public func noMatcap() { drawer.noMatcap() }
 
-    /// Cast shadows this frame from the scene's primary directional light, so solids
-    /// drop shadows onto a floor and onto one another. Per-frame state like the lights
-    /// and camera — call it in `draw()`, after setting a camera and at least one
-    /// directional light (`directionalLight`/`lights()`); it's a no-op otherwise. The
-    /// shadow frustum auto-fits the scene around the camera target. Pass `false` (or
-    /// call `noShadows()`) to turn shadows back off.
+    /// Cast shadows this frame from the scene's primary caster, so solids drop shadows
+    /// onto a floor and onto one another. The caster is the first directional light or,
+    /// if the scene has none, the first spot light. Per-frame state like the lights and
+    /// camera, so call it in `draw()`, after setting a camera and at least one directional
+    /// or spot light (`directionalLight`/`spotLight`/`lights()`); it's a no-op
+    /// otherwise. The shadow frustum auto-fits the scene around the camera target. Pass
+    /// `false`, or call `noShadows()`, to turn shadows back off.
     public func castShadows(_ on: Bool = true) { on ? drawer.castShadows() : drawer.noShadows() }
 
     /// Stop casting shadows (the default).

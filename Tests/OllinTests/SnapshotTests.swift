@@ -171,6 +171,16 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func spotShadowsMatchesReference() throws {
+        // A box and a sphere above a floor under a spot light (no directional, so the
+        // spot is the caster) with castShadows() on — pins the spot path: a perspective
+        // shadow map fit to the cone, sampled by the same shadowFactor as the
+        // directional map, dropping shadows inside the lit pool.
+        let diff = try Snapshot.meanDifference(of: SpotShadowsScene(), against: "spot-shadows")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func lightingPresetMatchesReference() throws {
         // A still life lit by the .goldenHour LightingPreset — pins the preset path
         // (ambient + warm/cool directionals, the light colors from Color(kelvin:))
@@ -382,6 +392,36 @@ private final class MeshShadowsScene: Sketch {
         withState {
             fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); shininess(40)
             translate(1.3, 1.3, 0.3); drawSphere(radius: 1.1)
+        }
+    }
+}
+
+/// A box and a sphere above a floor under a single spot light with `castShadows()` on,
+/// through a fixed camera — pins the spot caster (a perspective shadow map fit to the
+/// cone). The scene has no directional light, so the spot is the chosen caster; the
+/// solids drop shadows inside its lit pool and the rest falls to ambient + a point
+/// fill. No `time`, so it's deterministic.
+private final class SpotShadowsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        camera(.orbiting(target: Vector3(0, 0.6, 0), radius: 7,
+                         azimuth: 0.5, elevation: 0.5, fieldOfView: .pi / 3.6))
+        ambientLight(Color(white: 0.12))
+        pointLight(Color(white: 0.4), at: Vector3(-4, 3, 4), intensity: 0.4)
+        spotLight(.white, at: Vector3(-1.5, 6, 3),
+                  direction: (Vector3(0, 0.6, 0) - Vector3(-1.5, 6, 3)).normalized,
+                  angle: .pi / 4, penumbra: 0.4, intensity: 1.3)
+        castShadows()
+        withState { fill(Color(white: 0.82)); specular(0.05); drawPlane(width: 10, depth: 10) }
+        withState {
+            fill(Color(hue: 0.03, saturation: 0.6, brightness: 0.95)); specular(0.3); shininess(40)
+            translate(-1.1, 1.0, 0); rotateY(0.5); drawBox(size: 1.6)
+        }
+        withState {
+            fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); shininess(40)
+            translate(1.3, 1.1, 0.3); drawSphere(radius: 1.1)
         }
     }
 }

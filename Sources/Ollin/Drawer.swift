@@ -766,26 +766,53 @@ final class Drawer {
                 for i in 0..<count { buf[i] = Drawer.packLight(activeLights[i]) }
             }
         }
-        // Shadow caster: the first directional light, with an orthographic frustum
-        // auto-fit around the camera target. Looks from above the target along the
-        // light's travel direction; the box is sized to the eye→target distance (the
-        // orbit radius), which frames the scene the camera does.
-        if castsShadows, let camera = camera3D,
-           let caster = (0..<count).first(where: { activeLights[$0].kind == .directional }) {
+        // Shadow caster: the first directional light, or, when the scene has no
+        // directional, the first spot light. Both render into the same 2D shadow map
+        // and are sampled by the same `shadowFactor` (which already does the
+        // perspective divide), so the only difference is the projection: a directional
+        // caster is an orthographic box auto-fit around the camera target, a spot
+        // caster is a perspective frustum from the light's position along its cone.
+        if castsShadows, let camera = camera3D {
             let target = camera.target.simd3
+            // The eye→target distance (the orbit radius) is the scene-size proxy that
+            // frames the box / fits the frustum, matching what the camera frames.
             let r = max(Float(simd_distance(camera.eye.simd3, target)), 1)
-            let dirToLight = simd_normalize((activeLights[caster].direction * -1).normalized.simd3)
-            let d = 2 * r
-            let eye = target + dirToLight * d
-            // Pick an up vector not parallel to the light direction.
-            let up: SIMD3<Float> = abs(dirToLight.y) > 0.99 ? SIMD3<Float>(0, 0, 1) : SIMD3<Float>(0, 1, 0)
-            let view = Camera3D.lookAt(eye: eye, center: target, up: up)
-            let proj = Camera3D.orthographic(height: 2 * r, aspect: 1,
-                                             near: max(0.01, d - 1.5 * r), far: d + 1.5 * r)
-            u.lightViewProjection = proj * view
-            u.shadowLight = Int32(caster)
-            u.shadowStrength = 1
-            u.shadowTexelWorld = (2 * r) / Float(Drawer.shadowMapResolution)
+            if let caster = (0..<count).first(where: { activeLights[$0].kind == .directional }) {
+                // Directional: look from above the target along the light's travel
+                // direction, an orthographic box sized to the scene.
+                let dirToLight = simd_normalize((activeLights[caster].direction * -1).normalized.simd3)
+                let d = 2 * r
+                let eye = target + dirToLight * d
+                // Pick an up vector not parallel to the light direction.
+                let up: SIMD3<Float> = abs(dirToLight.y) > 0.99 ? SIMD3<Float>(0, 0, 1) : SIMD3<Float>(0, 1, 0)
+                let view = Camera3D.lookAt(eye: eye, center: target, up: up)
+                let proj = Camera3D.orthographic(height: 2 * r, aspect: 1,
+                                                 near: max(0.01, d - 1.5 * r), far: d + 1.5 * r)
+                u.lightViewProjection = proj * view
+                u.shadowLight = Int32(caster)
+                u.shadowStrength = 1
+                u.shadowTexelWorld = (2 * r) / Float(Drawer.shadowMapResolution)
+            } else if let caster = (0..<count).first(where: { activeLights[$0].kind == .spot }) {
+                // Spot: a perspective frustum from the light's position, aimed down its
+                // cone axis, the vertical field of view set to the full cone angle (a
+                // small margin so the soft penumbra edge isn't clipped).
+                let light = activeLights[caster]
+                let eye = light.position.simd3
+                let axis = simd_normalize(light.direction.normalized.simd3)
+                let dist = max(simd_distance(eye, target), 1)
+                let center = eye + axis * dist
+                let up: SIMD3<Float> = abs(axis.y) > 0.99 ? SIMD3<Float>(0, 0, 1) : SIMD3<Float>(0, 1, 0)
+                let view = Camera3D.lookAt(eye: eye, center: center, up: up)
+                let fovY = Float(min(light.coneAngle * 1.05, Double.pi - 0.05))
+                let proj = Camera3D.perspective(fovY: fovY, aspect: 1,
+                                                near: max(0.1, dist - 1.5 * r), far: dist + 1.5 * r)
+                u.lightViewProjection = proj * view
+                u.shadowLight = Int32(caster)
+                u.shadowStrength = 1
+                // A perspective texel grows with depth; size the normal-offset bias from
+                // the frustum at the scene center (where the receivers mostly sit).
+                u.shadowTexelWorld = (2 * tan(fovY * 0.5) * dist) / Float(Drawer.shadowMapResolution)
+            }
         }
         return u
     }

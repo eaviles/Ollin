@@ -9,8 +9,9 @@ import Ollin
 /// sweep. The solids drop shadows onto the floor and across one another, and the
 /// camera orbits so you see them from every side.
 ///
-/// Shadows are directional-only for now (one orthographic shadow map, auto-fit to
-/// the scene around the camera target); point and spot casters are a later step.
+/// This scene casts from a directional light (an orthographic shadow map, auto-fit to
+/// the scene around the camera target). A spot light can cast too; see the
+/// `3D/SpotShadow` example. Point (omnidirectional) casters are a later step.
 @main
 final class Shadows3D: Sketch {
 
