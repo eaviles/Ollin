@@ -1317,6 +1317,12 @@ final class MetalRenderer {
         encoder.setRenderPipelineState(cubePipeline)
         encoder.setDepthStencilState(depthTestState)
         encoder.setDepthBias(0.0015, slopeScale: 2.0, clamp: 0.01)
+        // Render the occluders' *far* faces only (meshes are CCW-outward, so cull the
+        // light-facing front faces): the lit near face is then never the stored
+        // occluder, so a solid can't self-shadow its own lit surface (the cure for the
+        // acne that biasing a near-edge-on face can't fully reach).
+        encoder.setFrontFacing(.counterClockwise)
+        encoder.setCullMode(.front)
         faceVP.withUnsafeBytes { encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 2) }
         drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
         encoder.endEncoding()
