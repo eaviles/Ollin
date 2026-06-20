@@ -71,6 +71,12 @@ final class MetalRenderer {
         static func solid(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_vertex", fragment: "ollin_fragment", blend: blend, depthFormat: depth)
         }
+        // Expanded stroke + AA fringe (reuses the triangle vertex buffer; its own
+        // vertex shader routes the per-vertex coverage as a separate interpolant the
+        // fragment remaps to perceptual alpha, scaled by the paint's own alpha).
+        static func fringe(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_fringe_vertex", fragment: "ollin_fringe_fragment", blend: blend, depthFormat: depth)
+        }
         // instanced SDF quads (circles, ellipses, rects, lines, arcs)
         static func sdf(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_sdf_vertex", fragment: "ollin_sdf_fragment", blend: blend, depthFormat: depth)
@@ -144,6 +150,7 @@ final class MetalRenderer {
                              wireframe: Bool = false, matcap: Bool = false) -> PipelineKey {
             switch kind {
             case .triangles:  return .solid(blend, depth: depth)
+            case .fringe:     return .fringe(blend, depth: depth)
             case .sdf:        return .sdf(blend, depth: depth)
             case .image:      return .image(blend, depth: depth)
             case .glyphAtlas: return .glyphAtlas(blend, depth: depth)
@@ -1006,7 +1013,7 @@ final class MetalRenderer {
                 }
             }
             switch batch.kind {
-            case .triangles:
+            case .triangles, .fringe:   // .fringe shares the triangle vertex buffer; only the pipeline differs (coverage rides in `aa.x`)
                 let end = next?.vertexStart ?? vertices.count
                 let count = end - batch.vertexStart
                 guard count > 0, let triangleBuffer else { continue }

@@ -8,10 +8,9 @@
 /// the endpoint, so both `.round` and `.square` reach beyond the path's end by
 /// half the weight.
 ///
-/// It applies to the open tessellated stroked paths — `drawPolyline` and any
-/// open `drawShape` contour. Closed outlines (the `drawPolygon` outline, a
-/// closed contour) have no ends to cap. `drawLine` and `drawBezier` are their own
-/// round-capped SDF segments and aren't affected.
+/// It applies to the open stroked paths — `drawLine`, `drawBezier`,
+/// `drawPolyline`, and any open `drawShape` contour. Closed outlines (the
+/// `drawPolygon` outline, a closed contour) have no ends to cap.
 public enum StrokeCap: Sendable, CaseIterable {
     /// Ends flat at the endpoint, with no extension. The default.
     case butt

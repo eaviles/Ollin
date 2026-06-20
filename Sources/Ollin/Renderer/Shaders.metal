@@ -124,6 +124,40 @@ fragment float4 ollin_fragment(VertexOut in [[stage_in]]) {
     return float4(lin, in.color.a);
 }
 
+// Fringe-stroke pipeline (edge-expansion AA). A stroke is expanded
+// CPU-side into a core band plus a ~1px fringe whose AA coverage rides in the
+// vertex's `aa.x`; the GPU interpolates it across the geometry (1 at the core,
+// ramping to 0 across the fringe), so the edge stays smooth at *any* angle with no
+// fwidth/SDF and no supersampling. The stroke's own color rides in `color` (rgb +
+// paint alpha). The fragment remaps coverage to perceptual alpha (so thin lines
+// stay dark in linear light) and scales by the paint alpha kept linear (so
+// translucent strokes composite correctly), the two channels kept separate.
+struct FringeVertexOut {
+    float4 position [[position]];
+    float4 color;        // rgb = sRGB stroke color, a = paint alpha
+    float coverage;      // AA fringe coverage; perceptualCoverage applied per-pixel
+};
+
+vertex FringeVertexOut ollin_fringe_vertex(uint vertexID [[vertex_id]],
+                                           const device OllinVertex *vertices [[buffer(0)]],
+                                           constant Uniforms &uniforms [[buffer(1)]]) {
+    OllinVertex v = vertices[vertexID];
+    float2 ndc;
+    ndc.x = (v.position.x / uniforms.viewport.x) * 2.0 - 1.0;
+    ndc.y = 1.0 - (v.position.y / uniforms.viewport.y) * 2.0;
+    FringeVertexOut out;
+    out.position = float4(ndc, uniforms.clipDepth, 1.0);
+    out.color = v.color;
+    out.coverage = v.aa.x;
+    return out;
+}
+
+fragment float4 ollin_fringe_fragment(FringeVertexOut in [[stage_in]]) {
+    float3 lin = srgbToLinear(in.color.rgb);
+    float a = in.color.a * perceptualCoverage(clamp(in.coverage, 0.0, 1.0));
+    return float4(lin, a);
+}
+
 // MARK: - Textured quads (images)
 //
 // One pipeline samples a 2D texture over a quad whose four corners arrive already

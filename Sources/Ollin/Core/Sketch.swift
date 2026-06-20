@@ -809,14 +809,16 @@ open class Sketch {
     public func strokeAlign(_ align: StrokeAlign) { drawer.strokeAlign(align) }
     /// Set how a stroked path turns its corners: `.miter` (default, a sharp point
     /// that bevels off past the miter limit), `.bevel` (always flat), or `.round`
-    /// (arced). Applies to the tessellated stroked paths — `drawPolyline`, the
-    /// `drawPolygon` outline, and `drawShape` contours. See `StrokeJoin`.
+    /// (arced). Applies to the stroked paths with interior corners — `drawPolyline`,
+    /// the `drawPolygon` outline, `drawShape` contours, and the flattened
+    /// `drawBezier`. The analytic SDF shapes draw their own outlines, so they have
+    /// no joins to style. See `StrokeJoin`.
     public func strokeJoin(_ join: StrokeJoin) { drawer.strokeJoin(join) }
     /// Set how the open ends of a stroked path finish: `.butt` (default, flat at
     /// the endpoint), `.round` (a half-disk tip), or `.square` (a flat extension
-    /// half the weight past the end). Applies to open tessellated paths
-    /// (`drawPolyline`, open `drawShape` contours); closed outlines and the
-    /// round-capped `drawLine` / `drawBezier` aren't affected. See `StrokeCap`.
+    /// half the weight past the end). Applies to the open stroked paths —
+    /// `drawLine`, `drawBezier`, `drawPolyline`, and open `drawShape` contours;
+    /// closed outlines have no ends to cap. See `StrokeCap`.
     public func strokeCap(_ cap: StrokeCap) { drawer.strokeCap(cap) }
     public func pointSize(_ size: Double) { drawer.pointSize(size) }
     public func pointMarker(_ marker: PointMarker) { drawer.pointMarker(marker) }

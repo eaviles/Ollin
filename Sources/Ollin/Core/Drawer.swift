@@ -6,6 +6,14 @@ import COllinShaders
 // `COllinShaders` C module: one definition shared with `Shaders.metal`, so their
 // CPU/GPU memory layout can't drift. See Sources/Ollin/Renderer/OllinShaderTypes.h.
 
+extension OllinVertex {
+    /// A triangle-path vertex. `aa` (the fringe coverage interpolant) is read only
+    /// by the fringe pipeline, so it defaults to zero for ordinary triangles.
+    init(position: SIMD2<Float>, color: SIMD4<Float>) {
+        self.init(position: position, aa: SIMD2<Float>(0, 0), color: color)
+    }
+}
+
 /// Which analytic shape an `SDFInstance` carries. The fragment shader switches
 /// on this tag and evaluates the matching signed-distance field, so one pipeline
 /// and one instance buffer serve every SDF primitive. Raw values must match the
@@ -72,6 +80,7 @@ enum GeometryKind {
     case particles    // instanced GPU-particle discs reading a compute buffer
     case points3D     // instanced 3D point-cloud splats in `points`, through the camera
     case mesh3D       // solid triangle-mesh geometry in `meshVertices`, through the camera
+    case fringe       // edge-expanded stroke + ~1px AA fringe in `vertices` (the high-quality stroke path)
     case depthScene   // a backdrop quad in `imageVertices` that also primes the depth buffer from a depth map
 }
 
@@ -621,13 +630,15 @@ final class Drawer {
     func strokeAlign(_ align: StrokeAlign) { strokeAlignment = align }
 
     /// Set how a stroked path turns its corners (see `StrokeJoin`): `.miter`
-    /// (default), `.bevel`, or `.round`. Affects the tessellated stroked paths
-    /// (`drawPolyline`, the `drawPolygon` outline, `drawShape` contours).
+    /// (default), `.bevel`, or `.round`. Affects the fringe stroked paths with
+    /// interior corners (`drawPolyline`, the `drawPolygon` outline, `drawShape`
+    /// contours, the flattened `drawBezier`).
     func strokeJoin(_ join: StrokeJoin) { strokeJoinStyle = join }
 
     /// Set how the open ends of a stroked path finish (see `StrokeCap`): `.butt`
-    /// (default), `.round`, or `.square`. Affects open tessellated paths
-    /// (`drawPolyline`, open `drawShape` contours); closed outlines have no ends.
+    /// (default), `.round`, or `.square`. Affects the open fringe stroked paths
+    /// (`drawLine`, `drawBezier`, `drawPolyline`, open `drawShape` contours);
+    /// closed outlines have no ends.
     func strokeCap(_ cap: StrokeCap) { strokeCapStyle = cap }
 
     /// Set the active text font to a bitmap (pixel-grid) font. Defaults to
@@ -2047,7 +2058,7 @@ final class Drawer {
     }
 
     /// A connected open path through `points`, stroked with the current stroke
-    /// color and weight.
+    /// paint and weight (solid, translucent, or gradient).
     ///
     /// Stroke-only — fills belong to closed shapes (`drawShape`). Open by
     /// default (the last point is not joined back to the first); `closed: true`
@@ -2061,8 +2072,10 @@ final class Drawer {
             svgRecord(closed ? .polygon(points) : .polyline(points), fill: nil, stroke: stroke)
             return
         }
-        appendStrokedPath(points, closed: closed, half: strokeWidth / 2,
-                          paint: vertexPaint(stroke, anchor: points[0]))
+        // The full stroke (solid / translucent / gradient) renders through the
+        // high-quality fringe expander — joins per strokeJoin, smooth at any angle.
+        appendFringeStroke(points, closed: closed,
+                           paint: vertexPaint(stroke, anchor: points[0]))
     }
 
     /// An axis-aligned `Rectangle`. Recorded as a single SDF instance (a box
@@ -2803,23 +2816,18 @@ final class Drawer {
     }
 
     /// A straight line segment from `a` to `b`, stroked with the current stroke
-    /// color and weight. Recorded as a single capsule SDF instance — the segment
-    /// fattened to `strokeWeight` with round caps — so it's crisp at any size and
-    /// effectively free per line. Needs a stroke to draw.
+    /// paint and weight. Rendered through the high-quality fringe expander — edge-
+    /// expanded triangles plus a ~1px AA fringe — so it's crisp at any angle and
+    /// resolution, honoring `strokeCap` (`.butt` by default). Solid, translucent,
+    /// and gradient strokes all take this path. Needs a stroke to draw.
     func drawLine(_ a: Vector2, _ b: Vector2) {
         guard let stroke = strokePaint, strokeWidth > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.line(a, b), fill: nil, stroke: stroke)
             return
         }
-        let halfWidth = strokeWidth / 2
-        let center = (a + b) / 2
-        let e = (b - a) / 2   // half-segment vector, relative to the center
-        // AABB half-extent: the segment's reach plus the cap radius on each axis.
-        let bound = SIMD2<Float>(Float(abs(e.x) + halfWidth), Float(abs(e.y) + halfWidth))
-        appendSDF(shape: .capsule, center: center, size: bound,
-                  fill: stroke, stroke: nil,
-                  extra: Float(halfWidth), param0: e.simd2)
+        guard (b - a).length > 1e-9 else { return }
+        appendFringeStroke([a, b], closed: false, paint: vertexPaint(stroke, anchor: (a + b) / 2))
     }
 
     /// A rectangle whose long axis runs from `a` to `b` with the given `thickness`
@@ -2900,32 +2908,23 @@ final class Drawer {
         drawOrientedVesica(Vector2(x1, y1), Vector2(x2, y2), width: width)
     }
 
-    /// A quadratic Bézier curve stroked with the current stroke color and weight:
+    /// A quadratic Bézier curve stroked with the current stroke paint and weight:
     /// from `start` to `end`, bending toward the single control point `control`.
-    /// Recorded as one SDF instance — the exact distance to the curve, fattened to
-    /// `strokeWeight` with round caps — so it's crisp at any size and effectively
-    /// free, with no tessellation. Stroke-only: a curve has no interior, so it takes
-    /// the current stroke (not fill). For a cubic curve (two control points), sample
-    /// it into a `Shape` contour. Needs a stroke to draw.
+    /// The curve flattens to a polyline and renders through the high-quality fringe
+    /// expander — smooth at any angle and resolution, no tessellated fill or SDF.
+    /// Solid, translucent, and gradient strokes all take this path. Stroke-only: a
+    /// curve has no interior, so it takes the current stroke (not fill). For a cubic
+    /// curve (two control points), sample it into a `Shape` contour. Needs a stroke
+    /// to draw.
     func drawBezier(_ start: Vector2, _ control: Vector2, _ end: Vector2) {
         guard let stroke = strokePaint, strokeWidth > 0 else { return }
         if svgRecorder != nil {
             svgRecord(.quad(start: start, control: control, end: end), fill: nil, stroke: stroke)
             return
         }
-        let halfWidth = strokeWidth / 2
-        // The curve stays within the convex hull of its control points, so their
-        // AABB (grown by the stroke half-width) bounds the stroked curve — the same
-        // size-folds-in-the-cap trick `drawLine` uses for the capsule.
-        let lo = Vector2(min(start.x, min(control.x, end.x)), min(start.y, min(control.y, end.y)))
-        let hi = Vector2(max(start.x, max(control.x, end.x)), max(start.y, max(control.y, end.y)))
-        let center = (lo + hi) / 2
-        let half = (hi - lo) / 2
-        appendSDF(shape: .bezier, center: center,
-                  size: SIMD2<Float>(Float(half.x + halfWidth), Float(half.y + halfWidth)),
-                  fill: stroke, stroke: nil, extra: Float(halfWidth),
-                  param0: (start - center).simd2, param1: (control - center).simd2,
-                  param2: (end - center).simd2)
+        var pts = [start]
+        pts.append(contentsOf: CurveSampling.quadratic(from: start, control: control, end: end))
+        appendFringeStroke(pts, closed: false, paint: vertexPaint(stroke, anchor: (start + end) / 2))
     }
 
     /// A quadratic Bézier curve through scalar coordinates — the positional form of
@@ -2957,8 +2956,8 @@ final class Drawer {
             }
         }
         if let stroke = strokePaint, strokeWidth > 0 {
-            appendStrokedPath(points, closed: true, half: strokeWidth / 2,
-                              paint: vertexPaint(stroke, anchor: Drawer.boundsCenter(points)))
+            appendFringeStroke(points, closed: true,
+                               paint: vertexPaint(stroke, anchor: Drawer.boundsCenter(points)))
         }
     }
 
@@ -2982,10 +2981,9 @@ final class Drawer {
             }
         }
         if let stroke = strokePaint, strokeWidth > 0 {
-            let half = strokeWidth / 2
             for contour in shape.contours where contour.points.count >= 2 {
-                appendStrokedPath(contour.points, closed: contour.isClosed, half: half,
-                                  paint: vertexPaint(stroke, anchor: contour.points[0]))
+                appendFringeStroke(contour.points, closed: contour.isClosed,
+                                   paint: vertexPaint(stroke, anchor: contour.points[0]))
             }
         }
     }
@@ -3072,7 +3070,8 @@ final class Drawer {
 
     /// Append one tessellated vertex, transformed by the current CTM. Every
     /// triangle primitive funnels through here, so the transform applies
-    /// uniformly and the vertex joins the current triangle batch.
+    /// uniformly and the vertex joins the current triangle batch. `aa` is left
+    /// zero — the triangle pipeline ignores it (only the fringe pipeline reads it).
     private func emit(_ position: SIMD2<Float>, color: SIMD4<Float>) {
         ensureBatch(.triangles)
         guard !transformIsIdentity else {
@@ -3081,6 +3080,219 @@ final class Drawer {
         }
         let p = transform * SIMD3<Float>(position.x, position.y, 1)
         vertices.append(OllinVertex(position: SIMD2<Float>(p.x, p.y), color: color))
+    }
+
+    /// The current CTM's average linear scale (canvas units → post-transform units),
+    /// used to keep the AA fringe ~1px on screen regardless of zoom: a fringe of
+    /// `1/ctmScale` local units becomes ~1px after the transform. Exact for
+    /// uniform scale + rotation (the common case); approximate under non-uniform
+    /// scale/skew (documented limitation).
+    private var ctmScale: Double {
+        guard !transformIsIdentity else { return 1 }
+        let c0 = transform.columns.0, c1 = transform.columns.1
+        let sx = (c0.x * c0.x + c0.y * c0.y).squareRoot()
+        let sy = (c1.x * c1.x + c1.y * c1.y).squareRoot()
+        return max(Double(sx + sy) / 2, 1e-6)
+    }
+
+    /// Append one fringe-stroke vertex (CTM-transformed) into `vertices` under a
+    /// `.fringe` batch. The AA coverage rides in `aa.x` (its own interpolant the
+    /// fringe fragment remaps to perceptual alpha), while `color` carries the
+    /// stroke's rgb and its own paint alpha — the two kept separate so a translucent
+    /// stroke composites at its true opacity.
+    private func emitFringe(_ position: SIMD2<Float>, cov: Float, color: SIMD4<Float>) {
+        ensureBatch(.fringe)
+        let aa = SIMD2<Float>(cov, 0)
+        if transformIsIdentity {
+            vertices.append(OllinVertex(position: position, aa: aa, color: color))
+        } else {
+            let p = transform * SIMD3<Float>(position.x, position.y, 1)
+            vertices.append(OllinVertex(position: SIMD2<Float>(p.x, p.y), aa: aa, color: color))
+        }
+    }
+
+    /// Stroke a polyline (or closed loop) as edge-expanded triangles plus a
+    /// screen-space ~1px anti-aliasing fringe — the technique behind the smooth
+    /// `drawLine`/`drawBezier`/polyline lines (no SDF/fwidth, no supersampling: the
+    /// AA is carried in the geometry). Each segment is its own butt-ended quad with
+    /// a fringe band on each long edge whose coverage ramps 1→0, GPU-interpolated so
+    /// the edge stays smooth at any angle. The fringe straddles the true edge so
+    /// perceived width = `strokeWidth`, and is ~1px in screen space (`fw = 1/ctmScale`).
+    /// Interior vertices fill the outer gap per `strokeJoin` (`.miter` — bevelling past
+    /// the miter limit — / `.bevel` / `.round`); the inner side is covered by the
+    /// segments' overlap. Open ends take the `strokeCap` style.
+    ///
+    /// The whole stroke path runs through here — solid, translucent, and gradient. The
+    /// paint is sampled per path vertex (`cols[i]`) exactly like the tessellated path
+    /// (along-path reads the arc-length fraction, the rest read position) and rides in
+    /// each vertex's `color` (rgb + paint alpha), constant across the stroke width; a
+    /// gradient first splits long segments so the baked LUT is tracked. The AA coverage
+    /// rides separately in `aa.x`, so the fragment can keep the paint alpha linear while
+    /// remapping only the coverage perceptually.
+    private func appendFringeStroke(_ points: [Vector2], closed: Bool, paint: VertexPaint) {
+        // Drop repeated points (a zero-length segment has no direction) and a
+        // closed loop's closing duplicate, so every join is well-defined.
+        var pts: [Vector2] = []
+        for p in points where (pts.last.map { ($0 - p).length > 1e-9 } ?? true) { pts.append(p) }
+        if closed, pts.count > 1, (pts[0] - pts[pts.count - 1]).length <= 1e-9 { pts.removeLast() }
+        // A gradient varies along the run, so split long segments first (like the
+        // tessellated path) — the per-vertex color samples the baked LUT densely
+        // instead of interpolating straight through its stops. Solid strokes are
+        // untouched, so their geometry is unchanged.
+        if paint.isGradient { pts = Drawer.subdivided(pts, closed: closed, maxLength: 12) }
+        let n = pts.count
+        guard n >= 2 else { return }
+
+        let hw = strokeWidth / 2
+        let fw = 1.0 / ctmScale                 // ~1px AA fringe in screen space
+        let outerHalf = hw + fw / 2
+        let coreHalf = max(0, hw - fw / 2)
+        let miterLimit = 8.0
+
+        // Per-vertex paint color (rgb + the paint's own alpha). Along-path reads the
+        // arc-length fraction; the rest read the position — matching the tessellated
+        // path. Constant across the stroke width (a stroke's gradient runs along it).
+        var cols = [SIMD4<Float>](repeating: .zero, count: n)
+        if case .solid(let c) = paint {
+            for i in 0..<n { cols[i] = c }
+        } else {
+            var cum = [Double](repeating: 0, count: n)
+            for i in 1..<n { cum[i] = cum[i - 1] + (pts[i] - pts[i - 1]).length }
+            var total = cum[n - 1]
+            if closed { total += (pts[0] - pts[n - 1]).length }
+            for i in 0..<n {
+                cols[i] = paint.color(at: pts[i], pathT: total > 0 ? cum[i] / total : 0)
+            }
+        }
+
+        // Coverage vs. distance from the centerline: 1 in the solid core, ramping to
+        // 0 across the outer fringe (and < 1 at the center for a sub-pixel stroke, so
+        // thin lines fade by width instead of snapping to a 1px floor).
+        func covU(_ off: Double) -> Float { Float(min(max((outerHalf - abs(off)) / fw, 0), 1)) }
+        let offs = [outerHalf, coreHalf, -coreHalf, -outerHalf]
+        let centerCov = covU(0), coreCov = covU(coreHalf)
+
+        func segDir(_ a: Vector2, _ b: Vector2) -> Vector2 {
+            let d = b - a; let l = d.length
+            return l > 1e-9 ? d / l : Vector2(1, 0)
+        }
+        func leftNormal(_ d: Vector2) -> Vector2 { Vector2(-d.y, d.x) }
+
+        // A fringe vertex: position, AA coverage, and the path color at this point.
+        typealias FV = (SIMD2<Float>, Float, SIMD4<Float>)
+        func tri(_ a: FV, _ b: FV, _ d: FV) {
+            emitFringe(a.0, cov: a.1, color: a.2)
+            emitFringe(b.0, cov: b.1, color: b.2)
+            emitFringe(d.0, cov: d.1, color: d.2)
+        }
+        func quad(_ a: FV, _ b: FV, _ d: FV, _ e: FV) { tri(a, b, d); tri(a, d, e) }
+        // A cross-section at `p` along `perp` in path vertex `i`'s color, coverage
+        // scaled by `s` (1 on the line, 0 at a length-fringe tip so butt/square ends
+        // fade out across the fringe).
+        func crossAt(_ p: Vector2, _ perp: Vector2, _ s: Float, _ col: SIMD4<Float>) -> [FV] {
+            offs.map { ((p + perp * $0).simd2, covU($0) * s, col) }
+        }
+        // Connect two cross-sections into 3 quad bands (outer-fringe | core | outer-fringe).
+        func ribbon(_ a: [FV], _ b: [FV]) { for k in 0..<3 { quad(a[k], b[k], b[k + 1], a[k + 1]) } }
+
+        // Body: each segment is its own butt-ended fringe quad along its perpendicular,
+        // its two ends carrying their path vertices' colors (the GPU interpolates).
+        let segCount = closed ? n : n - 1
+        for i in 0..<segCount {
+            let j = (i + 1) % n
+            let perp = leftNormal(segDir(pts[i], pts[j]))
+            ribbon(crossAt(pts[i], perp, 1, cols[i]), crossAt(pts[j], perp, 1, cols[j]))
+        }
+
+        // Interior joins: fill the outer gap between the two segment quads at each
+        // shared vertex (the inner side is covered by their overlap). The join style
+        // honors `strokeJoin`; `.miter` bevels past the miter limit so an acute corner
+        // doesn't spike. The whole join takes the corner vertex's color.
+        let joins = closed ? Array(0..<n) : Array(1..<(n - 1))
+        for v in joins {
+            let prev = pts[(v - 1 + n) % n], curr = pts[v], next = pts[(v + 1) % n]
+            let d0 = segDir(prev, curr), d1 = segDir(curr, next)
+            let cross = d0.x * d1.y - d0.y * d1.x
+            guard abs(cross) > 1e-6 else { continue }       // collinear: no gap to fill
+            let p0 = leftNormal(d0), p1 = leftNormal(d1)
+            let side: Double = cross >= 0 ? -1 : 1          // outer side of the turn
+            let col = cols[v]
+            let center:  FV = (curr.simd2, centerCov, col)
+            let inCore:  FV = ((curr + p0 * (side * coreHalf)).simd2, coreCov, col)
+            let inEdge:  FV = ((curr + p0 * (side * outerHalf)).simd2, 0, col)
+            let outCore: FV = ((curr + p1 * (side * coreHalf)).simd2, coreCov, col)
+            let outEdge: FV = ((curr + p1 * (side * outerHalf)).simd2, 0, col)
+            func bevel() {
+                tri(center, inCore, outCore)                // inner core wedge
+                quad(inCore, inEdge, outEdge, outCore)      // fringe band across the bevel
+            }
+            func miter() -> Bool {
+                let b = p0 + p1, bl = b.length
+                let cosHalf = bl > 1e-6 ? (b.x * p0.x + b.y * p0.y) / bl : 0
+                guard cosHalf > 1e-4, 1 / cosHalf <= miterLimit else { return false }
+                let m = b / bl                              // unit bisector of the normals
+                let miterCore: FV = ((curr + m * (side * coreHalf / cosHalf)).simd2, coreCov, col)
+                let miterEdge: FV = ((curr + m * (side * outerHalf / cosHalf)).simd2, 0, col)
+                tri(center, inCore, miterCore); tri(center, miterCore, outCore)
+                quad(inCore, inEdge, miterEdge, miterCore)
+                quad(miterCore, miterEdge, outEdge, outCore)
+                return true
+            }
+            func roundJoin() {
+                let oa = p0 * side, ob = p1 * side          // unit outward dirs to the corners
+                let a0 = atan2(oa.y, oa.x)
+                let sweep = atan2(oa.x * ob.y - oa.y * ob.x, oa.x * ob.x + oa.y * ob.y)
+                let steps = max(1, Int((abs(sweep) / (2 * .pi)
+                                        * Double(circleSegments(for: outerHalf))).rounded(.up)))
+                var prevD = oa
+                for s in 1...steps {
+                    let ang = a0 + sweep * Double(s) / Double(steps)
+                    let curD = Vector2(cos(ang), sin(ang))
+                    let inA: FV = ((curr + prevD * coreHalf).simd2, coreCov, col)
+                    let inB: FV = ((curr + curD  * coreHalf).simd2, coreCov, col)
+                    let edA: FV = ((curr + prevD * outerHalf).simd2, 0, col)
+                    let edB: FV = ((curr + curD  * outerHalf).simd2, 0, col)
+                    tri(center, inA, inB)                   // core fan wedge
+                    quad(inA, edA, edB, inB)                // fringe band along the arc
+                    prevD = curD
+                }
+            }
+            switch strokeJoinStyle {
+            case .round: roundJoin()
+            case .bevel: bevel()
+            case .miter: if !miter() { bevel() }
+            }
+        }
+
+        // Caps on the two open ends (honor strokeCap; ends fade over the fringe).
+        guard !closed else { return }
+        func cap(at p: Vector2, perp: Vector2, outward: Vector2, _ col: SIMD4<Float>) {
+            switch strokeCapStyle {
+            case .butt:
+                ribbon(crossAt(p, perp, 1, col), crossAt(p + outward * fw, perp, 0, col))
+            case .square:
+                let tip = p + outward * hw
+                ribbon(crossAt(p, perp, 1, col), crossAt(tip, perp, 1, col))
+                ribbon(crossAt(tip, perp, 1, col), crossAt(tip + outward * fw, perp, 0, col))
+            case .round:
+                let steps = max(4, Int((outerHalf * ctmScale).rounded()))
+                let base = atan2(perp.y, perp.x)
+                let rot90 = Vector2(-perp.y, perp.x)
+                let sweep: Double = (outward.x * rot90.x + outward.y * rot90.y) >= 0 ? 1 : -1
+                for s in 0..<steps {
+                    let aθ = base + .pi * (Double(s) / Double(steps)) * sweep
+                    let bθ = base + .pi * (Double(s + 1) / Double(steps)) * sweep
+                    let da = Vector2(cos(aθ), sin(aθ)), db = Vector2(cos(bθ), sin(bθ))
+                    let inA: FV = ((p + da * coreHalf).simd2, coreCov, col), inB: FV = ((p + db * coreHalf).simd2, coreCov, col)
+                    let edA: FV = ((p + da * outerHalf).simd2, 0, col), edB: FV = ((p + db * outerHalf).simd2, 0, col)
+                    tri((p.simd2, centerCov, col), inA, inB)
+                    quad(inA, edA, edB, inB)
+                }
+            }
+        }
+        let d0 = segDir(pts[0], pts[1]), dL = segDir(pts[n - 2], pts[n - 1])
+        cap(at: pts[0], perp: leftNormal(d0), outward: d0 * -1, cols[0])
+        cap(at: pts[n - 1], perp: leftNormal(dL), outward: dL, cols[n - 1])
     }
 
     /// Pick a vertex count that keeps each edge segment ≲ 8 points long, so big

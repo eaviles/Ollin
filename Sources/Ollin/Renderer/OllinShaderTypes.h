@@ -34,11 +34,17 @@ typedef float4x4 simd_float4x4;
 #include <simd/simd.h>
 #endif
 
-// One vertex of tessellated (triangle-path) geometry: float2 @0, float4 @16,
-// for a stride of 32.
+// One vertex of tessellated (triangle-path) geometry: float2 @0, float2 @8,
+// float4 @16, for a stride of 32 — `aa` lives in what was the float2→float4
+// alignment padding, so the stride (and the triangle buffer/ring) is unchanged.
+// The triangle pipeline ignores `aa`; the fringe pipeline (`ollin_fringe_vertex`)
+// reads `aa.x` as the AA coverage interpolant, with the stroke's own paint alpha
+// in `color.a` — so a fringe vertex carries rgb + paint-alpha + coverage as three
+// independent channels (the fragment applies perceptualCoverage to coverage only).
 typedef struct {
     simd_float2 position;   // sketch-space, points, top-left origin, y-down
-    simd_float4 color;      // straight (non-premultiplied) RGBA, 0...1
+    simd_float2 aa;         // fringe pipeline: x = AA coverage 0…1 (y reserved); ignored elsewhere
+    simd_float4 color;      // straight (non-premultiplied) RGBA, 0...1 (fringe: a = paint alpha)
 } OllinVertex;
 
 // Per-frame constants, shared by both pipelines.

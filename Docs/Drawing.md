@@ -150,7 +150,7 @@ stroke(.black); strokeWeight(20); strokeJoin(.round)
 drawPolyline([Vector2(120, 360), Vector2(540, 120), Vector2(960, 360)])   // a rounded peak
 ```
 
-It applies to the tessellated stroked paths — `drawPolyline`, the `drawPolygon` outline, and `drawShape` contours. The analytic SDF shapes draw their own outlines, and `drawLine` / `drawBezier` are single round-capped segments, so none of those have joins to style.
+It applies to the stroked paths with interior corners: `drawPolyline`, the `drawPolygon` outline, `drawShape` contours, and the flattened `drawBezier`. The analytic SDF shapes draw their own outlines, and `drawLine` is a single segment, so those have no joins to style.
 
 <a name="strokeCap"></a>
 
@@ -176,7 +176,7 @@ stroke(.black); strokeWeight(24); strokeCap(.round)
 drawPolyline([Vector2(300, 540), Vector2(780, 540)])   // rounded tips past each end
 ```
 
-It applies to the open tessellated stroked paths — `drawPolyline` and any open `drawShape` contour. Closed outlines (the `drawPolygon` outline, a closed contour) have no ends to cap, and `drawLine` / `drawBezier` are their own round-capped segments, unaffected by this setting.
+It applies to the open stroked paths: `drawLine`, `drawBezier`, `drawPolyline`, and any open `drawShape` contour. Closed outlines (the `drawPolygon` outline, a closed contour) have no ends to cap.
 
 <a name="hollow"></a>
 
@@ -296,7 +296,7 @@ drawLine(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double)
 drawLine(_ a: Vector2, _ b: Vector2)
 ```
 
-A stroked line segment between two points, with round caps at both ends.
+A stroked line segment between two points. It honors [`strokeCap`](#strokeCap) (butt by default) and takes solid, translucent, or gradient stroke paint. Rendered through the high-quality stroke path (edge-expanded triangles plus a ~1px anti-aliasing fringe), so it stays crisp and even at any angle and resolution, down to sub-pixel widths.
 
 ```swift
 stroke(.black)
@@ -367,7 +367,7 @@ drawOrientedBox(_ a: Vector2, _ b: Vector2, thickness: Double)
 drawOrientedBox(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, thickness: Double)
 ```
 
-A rectangle placed by its two centerline endpoints `a` and `b` with the given `thickness` across it — a thick bar between two points, with square (not round) ends. Where `drawRect` is axis-aligned and you'd rotate it about its own center, this is positioned by *both* of its ends, so connecting a pair of moving points (a linkage, a truss, an edge between nodes) is one call with no trigonometry. It's a filled region: it takes `fill`, an outline `stroke`, `strokeAlign`, and `hollow` — where `drawLine` is a round-capped stroke with no interior. A zero-length bar (`a == b`) or a non-positive thickness draws nothing.
+A rectangle placed by its two centerline endpoints `a` and `b` with the given `thickness` across it — a thick bar between two points, with square (not round) ends. Where `drawRect` is axis-aligned and you'd rotate it about its own center, this is positioned by *both* of its ends, so connecting a pair of moving points (a linkage, a truss, an edge between nodes) is one call with no trigonometry. It's a filled region: it takes `fill`, an outline `stroke`, `strokeAlign`, and `hollow` — where `drawLine` is a stroke with no interior. A zero-length bar (`a == b`) or a non-positive thickness draws nothing.
 
 ```swift
 fill(.black)
@@ -456,7 +456,7 @@ drawBezier(_ start: Vector2, _ control: Vector2, _ end: Vector2)
 drawBezier(_ x1: Double, _ y1: Double, _ cx: Double, _ cy: Double, _ x2: Double, _ y2: Double)
 ```
 
-A **quadratic** Bézier curve, stroked from `start` to `end` and bending toward the single control point `control`. It takes the current `stroke` color and `strokeWeight` (a curve has no interior, so there's no fill), with round caps at the ends — like a curved `drawLine`. It's one analytic SDF stroke, so it's exact and crisp at any size with no tessellation, and stays smooth down to sub-pixel widths.
+A **quadratic** Bézier curve, stroked from `start` to `end` and bending toward the single control point `control`. It takes the current `stroke` paint (solid, translucent, or gradient) and `strokeWeight` (a curve has no interior, so there's no fill), and honors [`strokeCap`](#strokeCap) on its ends (butt by default). The curve flattens to a polyline and renders through the high-quality stroke path (edge-expanded triangles plus a ~1px anti-aliasing fringe), so it stays crisp and even at any angle and resolution, down to sub-pixel widths.
 
 ```
   drawBezier(start, control, end) — a quadratic curve from start to end,
@@ -702,7 +702,7 @@ drawUnevenCapsule(_ a: Vector2, _ b: Vector2, _ ra: Double, _ rb: Double)
 drawUnevenCapsule(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ ra: Double, _ rb: Double)
 ```
 
-A tapered capsule — like `drawLine` but with unequal round caps — from `a` (radius `ra`) to `b` (radius `rb`), taking fill and stroke like a shape. The end-to-end distance must be at least `|ra − rb|`, otherwise the smaller cap is swallowed. An analytic SDF shape, crisp at any size.
+A tapered capsule — a round-capped bar with unequal end radii — from `a` (radius `ra`) to `b` (radius `rb`), taking fill and stroke like a shape. The end-to-end distance must be at least `|ra − rb|`, otherwise the smaller cap is swallowed. An analytic SDF shape, crisp at any size.
 
 ```swift
 drawUnevenCapsule(Vector2(200, 200), Vector2(880, 880), 90, 24)   // a long taper

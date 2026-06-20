@@ -7,10 +7,10 @@
 /// spike. `.bevel` always cuts the corner off with a straight edge; `.round`
 /// fills it with an arc, so the turn reads as a smooth bend.
 ///
-/// It applies to the tessellated stroked paths — `drawPolyline`, the
-/// `drawPolygon` outline, and `drawShape` contours. The analytic SDF shapes draw
-/// their own outlines, and `drawLine` / `drawBezier` are single round-capped
-/// segments, so none of them have joins to style.
+/// It applies to the stroked paths with interior corners — `drawPolyline`, the
+/// `drawPolygon` outline, `drawShape` contours, and the flattened `drawBezier`.
+/// The analytic SDF shapes draw their own outlines, and `drawLine` is a single
+/// segment, so those have no joins to style.
 public enum StrokeJoin: Sendable, CaseIterable {
     /// A sharp point where the outer edges meet, beveled off past the miter
     /// limit so an acute corner doesn't spike. The default.
