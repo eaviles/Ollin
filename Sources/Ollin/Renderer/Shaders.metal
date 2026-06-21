@@ -753,6 +753,20 @@ static float sdBezier(float2 pos, float2 A, float2 B, float2 C, thread float &ou
     return sqrt(res);
 }
 
+// Coverage for a stroke band of half-width `hw` straddling an outline. `t` is the
+// unsigned distance to the band centerline (|d - strokeBias|) and `px` the
+// screen-space footprint. A band wider than ~1px is a plain smoothstep edge; a
+// sub-pixel-thin band keeps a ~1px footprint and scales its alpha by the width
+// ratio (the ink-conserving trick capsuleCoverage uses for thin lines), so an
+// outline thinner than a pixel fades by ink instead of thinning to nothing,
+// honoring widths from 0 up. The result is remapped to perceptual coverage so the
+// conserved ink reads evenly dark (see perceptualCoverage).
+static inline float strokeBandCoverage(float t, float hw, float px) {
+    float hwE = max(hw, 0.5 * px);                          // keep a >= ~½px band on screen
+    float band = 1.0 - smoothstep(hwE - px, hwE + px, t);
+    return perceptualCoverage(band * min(hw / hwE, 1.0));   // ratio < 1 only when floored
+}
+
 // Fill + stroke coverage for a shape whose boundary is the zero level set of a
 // region SDF `d`: fill the inside (d < 0), stroke a band of half-width `hw`
 // straddling the boundary. `fwidth(d)` keeps the falloff ~1px under any
@@ -769,11 +783,12 @@ static float sdBezier(float2 pos, float2 A, float2 B, float2 C, thread float &ou
 static void regionCoverage(float d, float hw, float strokeWidth, float strokeBias,
                            thread float &fillCov, thread float &strokeCov) {
     float aa = max(fwidth(d), 1e-5);
-    // The fill stays linear (abutting fills must meet seamlessly); the stroke band
-    // is a mark, so it gets perceptual coverage like the line/disk strokes — a thin
-    // outline reads evenly dark at any angle instead of beading.
+    // The fill stays linear so abutting fills meet seamlessly; the stroke band is a
+    // mark, so strokeBandCoverage gives it perceptual, ink-conserving coverage. A
+    // thin outline reads evenly dark at any angle and fades by ink below ~1px instead
+    // of beading or vanishing.
     fillCov = 1.0 - smoothstep(0.0, aa, d);
-    strokeCov = (strokeWidth > 0.0) ? perceptualCoverage(1.0 - smoothstep(hw - aa, hw + aa, abs(d - strokeBias))) : 0.0;
+    strokeCov = (strokeWidth > 0.0) ? strokeBandCoverage(abs(d - strokeBias), hw, aa) : 0.0;
 }
 
 // `regionCoverage` with optional hollow mode: when `bandWidth` > 0 the region's
@@ -806,7 +821,7 @@ static void diskCoverage(float2 p, float2 ab, float hw, float strokeWidth, float
     float d = sdEllipse(p, abE);
     float areaScale = (ab.x * ab.y) / (abE.x * abE.y);   // < 1 only when enlarged
     fillCov = perceptualCoverage(clamp(0.5 - d / px, 0.0, 1.0) * areaScale);
-    strokeCov = (strokeWidth > 0.0) ? perceptualCoverage(1.0 - smoothstep(hw - px, hw + px, abs(d - strokeBias))) : 0.0;
+    strokeCov = (strokeWidth > 0.0) ? strokeBandCoverage(abs(d - strokeBias), hw, px) : 0.0;
 }
 
 // Coverage for a thin round-capped stroke (line / quadratic curve): `s` is the
