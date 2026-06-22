@@ -36,10 +36,11 @@ public struct SketchLoader: Sendable {
         }
     }
 
-    /// The directory holding this executable — `.build/<triple>/debug` — which is
-    /// also where `Modules/Ollin.swiftmodule` lives, so it's the search path the
-    /// sketch dylib needs to `import Ollin` (for type-checking only; the Ollin
-    /// *symbols* resolve against this host process at load time).
+    /// The directory holding this executable (`.build/debug` and friends). The
+    /// sketch dylib is compiled against the Ollin module found from here (for
+    /// type-checking only; the Ollin *symbols* resolve against this host process at
+    /// load time). Where exactly the module and the C module maps sit relative to
+    /// this depends on the build system; see `moduleSearchPaths()`.
     private var buildDir: String {
         (Bundle.main.executablePath! as NSString).deletingLastPathComponent
     }
@@ -114,8 +115,6 @@ public struct SketchLoader: Sendable {
         }
 
         let dylibPath = (work as NSString).appendingPathComponent("sketch.dylib")
-        let bin = buildDir
-        // `-I .../Modules` lets the sketch type-check against `import Ollin`.
         // `-undefined dynamic_lookup` (and *no* `-lOllin`) leaves Ollin symbols
         // unresolved at link time so they bind to the host process at `dlopen`,
         // keeping one shared copy of `Sketch` across the boundary.
@@ -123,16 +122,14 @@ public struct SketchLoader: Sendable {
             "swiftc", "-emit-library", "-o", dylibPath,
             "-module-name", "OllinRuntimeSketch_\(token)",
             sketchPath, factoryPath,
-            "-I", (bin as NSString).appendingPathComponent("Modules"),
             "-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup",
         ]
-        // `import Ollin` transitively pulls in the C modules Ollin imports
-        // (`CLibtess2`, `COllinShaders`), whose clang module maps SwiftPM emits
-        // under `<bin>/<Target>.build/` — not in `Modules/` with the Swift
-        // modules — so without these search paths the compile fails with
-        // "missing required modules". Found by scanning, so a new C target needs
-        // no change here.
-        for path in cModuleMapSearchPaths() {
+        // `-I` the dirs holding `Ollin.swiftmodule` (so `import Ollin` type-checks)
+        // and the C targets' clang module maps that `import Ollin` pulls in
+        // (`CLibtess2` / `CClipper2` / `COllinShaders`). Discovered across both
+        // build layouts; see `moduleSearchPaths()`. Without them the compile fails
+        // with "no such module 'Ollin'" or "missing required modules".
+        for path in moduleSearchPaths() {
             args.append(contentsOf: ["-I", path])
         }
         let result = run("/usr/bin/xcrun", args)
@@ -165,21 +162,72 @@ public struct SketchLoader: Sendable {
         return .success(sketch)
     }
 
-    /// Directories holding the clang module maps for the C targets `import
-    /// Ollin` depends on. SwiftPM writes a C target's map to
-    /// `<bin>/<Target>.build/module.modulemap`; the Swift targets' generated
-    /// maps live a level deeper (`…/include/`), so matching only a direct
-    /// `module.modulemap` child selects exactly the C targets (and adding their
-    /// dirs to the header search path lets clang auto-discover the modules).
-    private func cModuleMapSearchPaths() -> [String] {
+    /// The `-I` directories the sketch compile needs: the one holding
+    /// `Ollin.swiftmodule` (so `import Ollin` type-checks) and the C targets'
+    /// `module.modulemap` dirs that `import Ollin` pulls in. Discovered, not
+    /// assumed, because the build layout differs by build system:
+    ///
+    /// - **Classic SwiftPM build:** everything sits next to the executable, at
+    ///   `<bin>/Modules/Ollin.swiftmodule` and `<bin>/<C>.build/module.modulemap`.
+    /// - **Xcode/Swift build system:** `Ollin.swiftmodule` is directly in `<bin>`
+    ///   (`.build/out/Products/Debug`), while the C module maps live under the
+    ///   index-store build at `.build/index-build/<triple>/debug/<C>.build/`, so
+    ///   the classic `<bin>`-only scan finds neither and the compile fails with
+    ///   "no such module 'Ollin'".
+    ///
+    /// Each *layout root* follows the same classic shape (an optional `Modules/`
+    /// for the Swift modules, plus `<C>.build/module.modulemap` children for the C
+    /// targets, with `Ollin.swiftmodule` possibly sitting in the root itself). We
+    /// collect from `<bin>` and from each `index-build/<triple>/debug`, taking
+    /// whichever exist; a classic build (no index-build) just uses `<bin>`.
+    private func moduleSearchPaths() -> [String] {
         let fm = FileManager.default
-        guard let entries = try? fm.contentsOfDirectory(atPath: buildDir) else { return [] }
-        return entries.compactMap { name in
-            guard name.hasSuffix(".build") else { return nil }
-            let dir = (buildDir as NSString).appendingPathComponent(name)
-            let map = (dir as NSString).appendingPathComponent("module.modulemap")
-            return fm.fileExists(atPath: map) ? dir : nil
+        var dirs: [String] = []
+        func add(_ dir: String) {
+            var isDir: ObjCBool = false
+            if !dirs.contains(dir), fm.fileExists(atPath: dir, isDirectory: &isDir), isDir.boolValue {
+                dirs.append(dir)
+            }
         }
+
+        var roots = [buildDir]
+        if let buildRoot = dotBuildDirectory() {
+            let indexBuild = (buildRoot as NSString).appendingPathComponent("index-build")
+            for triple in (try? fm.contentsOfDirectory(atPath: indexBuild)) ?? [] {
+                roots.append(((indexBuild as NSString).appendingPathComponent(triple) as NSString)
+                    .appendingPathComponent("debug"))
+            }
+        }
+
+        for root in roots {
+            // The Swift module: in a `Modules/` subdir (classic / index-build) or
+            // directly in the root (the Xcode build system's product dir).
+            let modules = (root as NSString).appendingPathComponent("Modules")
+            if fm.fileExists(atPath: (modules as NSString).appendingPathComponent("Ollin.swiftmodule")) { add(modules) }
+            if fm.fileExists(atPath: (root as NSString).appendingPathComponent("Ollin.swiftmodule")) { add(root) }
+            // C module maps: a `module.modulemap` that's a *direct* child of a
+            // `*.build` dir is a C target's (the Swift targets keep theirs a level
+            // deeper under `include/`), so matching direct children selects exactly
+            // the C targets, and a new C target needs no change here.
+            for name in (try? fm.contentsOfDirectory(atPath: root)) ?? [] where name.hasSuffix(".build") {
+                let dir = (root as NSString).appendingPathComponent(name)
+                if fm.fileExists(atPath: (dir as NSString).appendingPathComponent("module.modulemap")) { add(dir) }
+            }
+        }
+        return dirs
+    }
+
+    /// Walk up from the executable's directory to the enclosing `.build` directory
+    /// (the SwiftPM build root), or `nil` if it isn't under one.
+    private func dotBuildDirectory() -> String? {
+        var dir = buildDir
+        while !dir.isEmpty, dir != "/" {
+            if (dir as NSString).lastPathComponent == ".build" { return dir }
+            let parent = (dir as NSString).deletingLastPathComponent
+            if parent == dir { break }
+            dir = parent
+        }
+        return nil
     }
 
     /// Escape a string so it's safe to splice into a Swift `"…"` literal in the
