@@ -402,6 +402,11 @@ let package = Package(
             path: "Examples/Basic/Feedback"
         ),
         .executableTarget(
+            name: "Example-Compose",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Compose"
+        ),
+        .executableTarget(
             name: "Example-Accumulation",
             dependencies: ["Ollin"],
             path: "Examples/Basic/Accumulation"

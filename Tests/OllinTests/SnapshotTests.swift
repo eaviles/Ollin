@@ -146,6 +146,16 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func effectsComposeMatchesReference() throws {
+        // The same blurred-band-plus-bloomed-disks scene as `effects-layers`, declared
+        // through `compose { }`. Pins the DSL's orchestration: per-layer render scale,
+        // a post-filter on each layer, the per-layer blend mode, and the bottom-to-top
+        // composite order, i.e. that the sugar resolves to the substrate it stands for.
+        let diff = try Snapshot.meanDifference(of: EffectsCompose(), against: "effects-compose")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func pointCloud3DMatchesReference() throws {
         // A static 3D heightfield through a fixed camera — pins the 3D camera, the
         // depth-tested point pipeline, and the instanced disc splats.
@@ -1282,5 +1292,35 @@ private final class EffectsFeedback: Sketch {
             drawCircle(x, y, 12)
         }
         drawImage(trail.image, 0, 0)
+    }
+}
+
+/// The layered-effects `compose { }` DSL: a blurred half-resolution band beneath a
+/// row of bloomed disks added as light, declared as one block. Deterministic (no
+/// time/random), so it pins the DSL orchestration: per-layer `.scale`, `.post`
+/// filters, the per-layer `.blend`, and the declared composite order.
+private final class EffectsCompose: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        compose {
+            layer {
+                noStroke()
+                fill(Color(red: 0.2, green: 0.5, blue: 1))
+                drawRect(width * 0.18, height * 0.24, width * 0.64, height * 0.26)
+            }
+            .post(.gaussianBlur(radius: 12))
+            .scale(0.5)
+
+            layer {
+                noStroke()
+                fill(.white); drawCircle(width * 0.5, height * 0.68, 22)
+                fill(Color(red: 1, green: 0.4, blue: 0.1)); drawCircle(width * 0.30, height * 0.68, 15)
+                fill(Color(red: 0.3, green: 1, blue: 0.5)); drawCircle(width * 0.70, height * 0.68, 15)
+            }
+            .post(.bloom(threshold: 0.4, intensity: 1.6, radius: 14))
+            .blend(.add)
+        }
     }
 }

@@ -34,6 +34,7 @@ override func draw() {
 - [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
 - [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
+- [compose / layer](#compose) - declare a stack of layers as one block
 - [Notes](#notes)
 
 <a id="rendertarget"></a>
@@ -229,6 +230,47 @@ override func draw() {
 - `feedback.previous` is last frame's content; `feedback.image` is this frame's, for compositing.
 - Call `background(_:)` **before** the block. On the canvas it resets the whole frame, so calling it after would wipe the layer's geometry (like any other `withTarget` layer). Inside the block, `background(_:)` clears just the feedback layer.
 - See the `Basic/Feedback` example for a spiralling tunnel.
+
+<a id="compose"></a>
+### compose(_:) and layer(_:)
+
+`compose { }` is the declarative form of everything above. Instead of making each off-screen layer, filtering it, and compositing it back by hand, you declare the whole stack as one block: each `layer { }` is a drawing, its `.post(...)` filters, and the `.blend(...)` mode it composites with. The intermediate layers are managed for you.
+
+```swift
+override func draw() {
+    background(.black)
+    compose {
+        layer {                                  // beneath: a soft, blurred field
+            noStroke(); fill(.indigo)
+            drawCircle(width / 2, height / 2, 300)
+        }
+        .post(.gaussianBlur(radius: 40))
+        .scale(0.5)                              // half-res: the blur hides it
+
+        layer {                                  // on top: marks that glow…
+            noStroke(); fill(.cyan)
+            drawCircle(mouseX, mouseY, 60)
+        }
+        .post(.bloom(intensity: 1.6))
+        .blend(.add)                             // …added as light
+    }
+}
+```
+
+It's pure sugar over the substrate: `compose` makes a [`renderTarget`](#rendertarget) for each layer, draws into it with [`withTarget`](#withtarget), chains its [`filtered`](#filtered) calls, and composites the result with [`drawImage`](#image) under its [`blendMode`](./Drawing.md#blendmode). Anything you can do in a block, you can do by hand with those calls; `compose` just gathers them.
+
+The layer modifiers chain in any order:
+
+- `.post(_:)` runs a filter over the layer before it composites. Chain calls (or pass several to `.post(_:_:)`) to stack filters: `.post(.threshold()).post(.bloom())`.
+- `.blend(_:)` sets the [blend mode](./Drawing.md#blendmode) the layer composites with (default `.normal`).
+- `.scale(_:)` renders the layer at a fraction of the canvas resolution (default `1`), like [`renderTarget(scale:)`](#rendertarget); drop it for a layer a blur or glow will soften anyway.
+
+Notes:
+
+- **Order is bottom-to-top.** Layers composite in the order written: the first sits beneath the rest.
+- **A layer clears to transparent.** A `layer { }` that doesn't call `background(_:)` composites only what it draws; call `background(_:)` inside to give it an opaque backdrop (it clears just that layer).
+- **Call it near the top of `draw()`.** Layers composite onto whatever is already on the canvas, so draw a `background(_:)` (or a base layer) first. Like `withTarget`, an active transform carries into each layer's drawing.
+- See the `Basic/Compose` example for a blurred backdrop, a bloomed ring, and a screened edge lattice.
 
 <a id="notes"></a>
 ### Notes
