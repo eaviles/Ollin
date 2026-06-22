@@ -1,6 +1,6 @@
 import Metal
 
-/// An off-screen layer a sketch draws into and then reads back — the substrate of
+/// An off-screen layer a sketch draws into and then reads back: the substrate of
 /// layered effects. Draw into it with `withTarget(_:)`, sample it as an `Image`
 /// (`target.image`, composited with `drawImage`), or run a `Filter` over it
 /// (`target.filtered(_:)`). It lives on the GPU: the texture is filled by the
@@ -20,26 +20,26 @@ import Metal
 /// }
 /// ```
 ///
-/// Create a target inside `draw()` — it's a per-frame handle, recorded fresh each
+/// Create a target inside `draw()`: it's a per-frame handle, recorded fresh each
 /// frame, and the renderer reuses its GPU texture across frames behind the scenes.
 /// A reference type: it names a GPU resource, and `filtered(_:)` records work
 /// against the drawer that made it.
 public final class RenderTarget {
 
-    /// The layer's logical size in canvas points — the size `image` draws at and
+    /// The layer's logical size in canvas points: the size `image` draws at and
     /// the coordinate space `withTarget` geometry uses.
     public let width: Int
     public let height: Int
 
     /// Internal resolution as a fraction of the logical size (1 = full). Drop it
-    /// below 1 to render a layer at fewer pixels — effects are fill-rate bound, so
+    /// below 1 to render a layer at fewer pixels: effects are fill-rate bound, so
     /// a blurred or glow layer rarely needs full resolution, and the result
     /// upsamples when drawn back. Clamped to a sane range.
     public let scale: Double
 
     /// How this target gets filled. A `.geometry` target is drawn into by a
     /// `withTarget` block; a `.filter` target is the output of `filtered(_:)`, run
-    /// from `input` by the renderer. Internal — the renderer reads it at render time.
+    /// from `input` by the renderer. Internal: the renderer reads it at render time.
     enum Origin {
         case geometry
         case filter(input: RenderTarget, filter: Filter)
@@ -76,7 +76,7 @@ public final class RenderTarget {
     /// drawn into the layer this frame.
     public var image: Image { Image(renderTarget: self) }
 
-    /// Run `filter` over this layer and return the result as a new layer — itself
+    /// Run `filter` over this layer and return the result as a new layer, itself
     /// filterable, so effects chain (`layer.filtered(.bloom()).filtered(...)`).
     /// The work runs on the GPU during the frame's render; this just records it.
     public func filtered(_ filter: Filter) -> RenderTarget {

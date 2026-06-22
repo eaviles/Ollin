@@ -2,7 +2,7 @@ import Foundation
 
 /// A texture → texture image operation applied to a `RenderTarget` (or to the
 /// whole frame via `postProcess`). A filter reads one off-screen layer and
-/// produces a new one, entirely on the GPU — so chaining filters never touches
+/// produces a new one, entirely on the GPU, so chaining filters never touches
 /// the CPU.
 ///
 /// Filters are plain value descriptors: the renderer reads the parameters and
@@ -21,13 +21,13 @@ import Foundation
 /// ```
 public struct Filter: Sendable {
 
-    /// The concrete operations the renderer knows how to run. Internal — a sketch
+    /// The concrete operations the renderer knows how to run. Internal: a sketch
     /// builds a `Filter` through the static factories below, never this directly.
     enum Kind: Sendable {
         /// Separable Gaussian blur of the given pixel radius (≈ the kernel sigma).
         case gaussianBlur(radius: Double)
         /// Bloom: keep the part of the image above `threshold` brightness, blur it by
-        /// `radius`, and add it back at `intensity` — a self-contained glowing copy.
+        /// `radius`, and add it back at `intensity`, a self-contained glowing copy.
         case bloom(threshold: Double, intensity: Double, radius: Double)
     }
 

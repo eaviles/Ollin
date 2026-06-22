@@ -1,17 +1,17 @@
 import Ollin
 
-/// Layered effects — draw into off-screen layers, filter them on the GPU, and
+/// Layered effects: draw into off-screen layers, filter them on the GPU, and
 /// composite the results. Two layers here: a soft, **blurred** backdrop and a
 /// crisp foreground that **blooms**, its bright parts bleeding glowing light.
 ///
 /// The pieces: `renderTarget()` makes an off-screen layer; `withTarget { }`
 /// redirects drawing into it (scoped like `withState`); `layer.filtered(_:)` runs
 /// a GPU filter and hands back a new layer; `drawImage(layer.image)` composites
-/// it. Nothing leaves the GPU between steps — the slow path other tools fall into
+/// it. Nothing leaves the GPU between steps: the slow path other tools fall into
 /// (reading a layer back to the CPU to combine it) never happens.
 ///
 /// Try it: change `.bloom(...)`'s `threshold` (which marks glow), drop the
-/// backdrop's `scale` (it's already half-resolution — blur never needs full
+/// backdrop's `scale` (it's already half-resolution, since blur never needs full
 /// detail), or swap the foreground's `.add` for `.normal`.
 @main
 final class Bloom_Example: Sketch {
@@ -56,7 +56,7 @@ final class Bloom_Example: Sketch {
 
         withState {
             blendMode(.normal)
-            drawCaption("layered effects — blurred backdrop + bloomed foreground")
+            drawCaption("layered effects: blurred backdrop + bloomed foreground")
         }
     }
 }
