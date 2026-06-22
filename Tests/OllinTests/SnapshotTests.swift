@@ -126,6 +126,16 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func effectsCatalogMatchesReference() throws {
+        // A fixed scene through three filters plus a generator tile. Pins the broader
+        // filter catalog: the packed-param plumbing, a fragment color/tone pass
+        // (posterize), the gradient-map LUT upload + sample, a neighbourhood pass
+        // (Sobel edges), and the input-less generator path.
+        let diff = try Snapshot.meanDifference(of: EffectsCatalog(), against: "effects-catalog")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func pointCloud3DMatchesReference() throws {
         // A static 3D heightfield through a fixed camera — pins the 3D camera, the
         // depth-tested point pipeline, and the instanced disc splats.
@@ -1212,5 +1222,28 @@ private final class EffectsLayers: Sketch {
         }
         blendMode(.add)
         drawImage(marks.filtered(.bloom(threshold: 0.4, intensity: 1.6, radius: 14)).image, 0, 0)
+    }
+}
+
+private final class EffectsCatalog: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+
+        // One fixed scene drawn into a layer, shown through three filters; the
+        // fourth tile is a procedural generator (no input).
+        let scene = renderTarget()
+        withTarget(scene) {
+            background(Color(hex: 0x14233B))
+            noStroke()
+            fill(Color(red: 1, green: 0.3, blue: 0.2)); drawCircle(width * 0.38, height * 0.42, 70)
+            fill(Color(red: 0.2, green: 0.8, blue: 1)); drawCircle(width * 0.62, height * 0.58, 70)
+            fill(.white); drawCircle(width * 0.5, height * 0.3, 26)
+        }
+        drawImage(scene.filtered(.posterize(levels: 4)).image, in: Rectangle(x: 0, y: 0, width: 128, height: 128))
+        drawImage(scene.filtered(.gradientMap(.turbo)).image, in: Rectangle(x: 128, y: 0, width: 128, height: 128))
+        drawImage(scene.filtered(.edges(intensity: 2)).image, in: Rectangle(x: 0, y: 128, width: 128, height: 128))
+        drawImage(generate(.checkers(scale: 6)).image, in: Rectangle(x: 128, y: 128, width: 128, height: 128))
     }
 }

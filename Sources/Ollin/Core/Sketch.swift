@@ -1121,6 +1121,14 @@ open class Sketch {
         drawer.withTarget(target, body)
     }
 
+    /// Fill a full-canvas layer with a procedural pattern (see `Generator`),
+    /// returning it as a `RenderTarget` you can draw (`gen.image`), filter
+    /// (`gen.filtered(_:)`), or feed into another effect. Call it inside `draw()`.
+    public func generate(_ generator: Generator, scale: Double = 1) -> RenderTarget {
+        drawer.generate(generator, width: Int(width.rounded()),
+                        height: Int(height.rounded()), scale: scale)
+    }
+
     /// Apply `filter` to the whole finished frame, before it's shown: the quick
     /// way to bloom or blur everything without managing a layer. Call it in
     /// `draw()`; multiple calls chain in order.

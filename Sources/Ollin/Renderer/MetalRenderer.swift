@@ -954,6 +954,16 @@ final class MetalRenderer {
             || !drawer.frameFilters.isEmpty else { return }
         targetTexNext = 0
         filterTexNext = 0
+        // Generators read no input, so fill them first (a filter may sample one),
+        // each a single fullscreen fragment pass into a sampleable filter texture.
+        for target in drawer.renderTargets {
+            guard case let .generator(generator) = target.origin else { continue }
+            guard let out = acquireFilterTexture(width: target.pixelWidth,
+                                                 height: target.pixelHeight, pooled: pooled) else { continue }
+            encodeGenerator(generator, output: out,
+                            width: target.pixelWidth, height: target.pixelHeight, into: cb)
+            target.texture = out
+        }
         for target in drawer.renderTargets {
             guard case .geometry = target.origin else { continue }
             let pw = target.pixelWidth, ph = target.pixelHeight
@@ -997,10 +1007,23 @@ final class MetalRenderer {
         return current
     }
 
-    /// Run one `filter` from `input` into a freshly acquired output texture. Gaussian
-    /// blur is a hardware MPS kernel; bloom is a bright-pass + blur + add-back chain.
+    /// Run one `filter` from `input` into a freshly acquired output texture. Blur is
+    /// a hardware MPS kernel and bloom a bright-pass + blur + add-back chain; the rest
+    /// are single fullscreen fragment passes, each reading premultiplied-linear input
+    /// and writing the same. `f` is the float vector of the type's parameters.
     private func applyFilter(_ filter: Filter, input: MTLTexture, width: Int, height: Int,
                              into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        // One fragment pass into a fresh output texture (the common shape).
+        func pass(_ fragment: String, _ inputs: [MTLTexture], _ params: [SIMD4<Float>]) -> MTLTexture? {
+            guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            encodeEffectFragment(fragment, inputs: inputs, output: output, params: params, into: cb)
+            return output
+        }
+        let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
+        let aspect = Float(width) / Float(max(1, height))
+        let f = { (a: Double, b: Double, c: Double, d: Double) in
+            SIMD4<Float>(Float(a), Float(b), Float(c), Float(d)) }
+
         switch filter.kind {
         case .gaussianBlur(let radius):
             guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
@@ -1014,21 +1037,82 @@ final class MetalRenderer {
                   let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
             // Bright-pass → blur → add the glow back onto the original.
             encodeEffectFragment("ollin_fx_brightpass", inputs: [input], output: bright,
-                                 params: SIMD4(Float(threshold), 0, 0, 0), into: cb)
+                                 params: [f(threshold, 0, 0, 0)], into: cb)
             let blur = MPSImageGaussianBlur(device: device, sigma: Float(max(0.1, radius)))
             blur.edgeMode = .clamp
             blur.encode(commandBuffer: cb, sourceTexture: bright, destinationTexture: blurred)
             encodeEffectFragment("ollin_fx_bloom_combine", inputs: [input, blurred], output: output,
-                                 params: SIMD4(Float(intensity), 0, 0, 0), into: cb)
+                                 params: [f(intensity, 0, 0, 0)], into: cb)
             return output
+
+        case let .colorGrade(brightness, contrast, saturation, hue):
+            return pass("ollin_fx_color_grade", [input], [f(brightness, contrast, saturation, hue)])
+        case .invert(let amount):
+            return pass("ollin_fx_invert", [input], [f(amount, 0, 0, 0)])
+        case .posterize(let levels):
+            return pass("ollin_fx_posterize", [input], [f(levels, 0, 0, 0)])
+        case let .threshold(value, softness):
+            return pass("ollin_fx_threshold", [input], [f(value, softness, 0, 0)])
+        case .sepia(let amount):
+            return pass("ollin_fx_sepia", [input], [f(amount, 0, 0, 0)])
+        case let .duotone(dark, light, amount):
+            return pass("ollin_fx_duotone", [input], [f(amount, 0, 0, 0), dark, light])
+        case let .gradientMap(lut, amount):
+            guard let lutTex = makeLUTTexture(lut) else { return nil }
+            return pass("ollin_fx_gradient_map", [input, lutTex], [f(amount, 0, 0, 0)])
+
+        case .edges(let intensity):
+            return pass("ollin_fx_edges", [input], [SIMD4(texel.x, texel.y, Float(intensity), 0)])
+        case .sharpen(let amount):
+            return pass("ollin_fx_sharpen", [input], [SIMD4(texel.x, texel.y, Float(amount), 0)])
+        case let .vignette(amount, radius, softness):
+            return pass("ollin_fx_vignette", [input], [SIMD4(Float(amount), Float(radius), Float(softness), aspect)])
+        case .chromaticAberration(let amount):
+            return pass("ollin_fx_chromatic", [input], [f(amount, 0, 0, 0)])
+        case let .halftone(scale, angle):
+            return pass("ollin_fx_halftone", [input], [SIMD4(Float(scale), Float(angle), aspect, 0)])
+        case let .dither(levels, pixelSize):
+            return pass("ollin_fx_dither", [input], [f(levels, pixelSize, 0, 0)])
+        case let .grain(amount, seed):
+            return pass("ollin_fx_grain", [input], [f(amount, seed, 0, 0)])
+        case let .pixelate(size, channel, tint):
+            let cols = max(1, (Double(width) / size).rounded())
+            return pass("ollin_fx_pixelate", [input],
+                        [SIMD4(Float(cols), aspect, channel.rawIndex, tint == nil ? 0 : 1),
+                         tint ?? SIMD4<Float>(repeating: 0)])
+        case let .lineScreen(scale, softness, angle, foreground, background):
+            return pass("ollin_fx_linescreen", [input],
+                        [SIMD4(Float(scale), Float(softness), Float(angle), aspect), foreground, background])
         }
     }
 
-    /// Encode one fullscreen filter fragment pass: bind `inputs` as fragment
-    /// textures 0…, `params` as fragment buffer 0, and draw the present triangle
-    /// into `output` (single-sample, replace).
+    /// Fill a generator's layer: one fullscreen fragment pass that reads no input,
+    /// just its parameters. `aspect` lets the fragment keep cells square.
+    private func encodeGenerator(_ generator: Generator, output: MTLTexture,
+                                 width: Int, height: Int, into cb: MTLCommandBuffer) {
+        let aspect = Float(width) / Float(max(1, height))
+        switch generator.kind {
+        case let .checkers(scale, fg, bg):
+            encodeEffectFragment("ollin_gen_checkers", inputs: [], output: output,
+                                 params: [SIMD4(Float(scale), aspect, 0, 0), fg, bg], into: cb)
+        case let .gridLines(scale, weight, fg, bg):
+            encodeEffectFragment("ollin_gen_grid", inputs: [], output: output,
+                                 params: [SIMD4(Float(scale), Float(weight), aspect, 0), fg, bg], into: cb)
+        case let .bars(scale, vertical, fg, bg):
+            encodeEffectFragment("ollin_gen_bars", inputs: [], output: output,
+                                 params: [SIMD4(Float(scale), vertical ? 1 : 0, aspect, 0), fg, bg], into: cb)
+        case let .noise(scale, sharpness, fg, bg):
+            encodeEffectFragment("ollin_gen_noise", inputs: [], output: output,
+                                 params: [SIMD4(Float(scale), Float(sharpness), aspect, 0), fg, bg], into: cb)
+        }
+    }
+
+    /// Encode one fullscreen filter (or generator) fragment pass: bind `inputs` as
+    /// fragment textures 0… (empty for a generator, which reads nothing), the packed
+    /// `params` rows as fragment buffer 0, and draw the present triangle into
+    /// `output` (single-sample, replace). Shaders read `constant float4 *params`.
     private func encodeEffectFragment(_ fragment: String, inputs: [MTLTexture],
-                                      output: MTLTexture, params: SIMD4<Float>,
+                                      output: MTLTexture, params: [SIMD4<Float>],
                                       into cb: MTLCommandBuffer) {
         guard let state = try? pipeline(.effect(fragment)) else { return }
         let pass = MTLRenderPassDescriptor()
@@ -1039,10 +1123,26 @@ final class MetalRenderer {
         enc.setRenderPipelineState(state)
         for (i, tex) in inputs.enumerated() { enc.setFragmentTexture(tex, index: i) }
         enc.setFragmentSamplerState(imageSampler, index: 0)
-        var p = params
-        enc.setFragmentBytes(&p, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+        let p = params.isEmpty ? [SIMD4<Float>(repeating: 0)] : params
+        p.withUnsafeBytes { enc.setFragmentBytes($0.baseAddress!, length: $0.count, index: 0) }
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
+    }
+
+    /// A small linear-float lookup texture (256×1) for `gradientMap`, uploaded from
+    /// baked straight-alpha samples. `rgba32Float` so the `[SIMD4<Float>]` uploads
+    /// verbatim; tiny, so allocated per use rather than pooled.
+    private func makeLUTTexture(_ samples: [SIMD4<Float>]) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba32Float, width: samples.count, height: 1, mipmapped: false)
+        desc.usage = .shaderRead
+        desc.storageMode = .shared
+        guard let tex = device.makeTexture(descriptor: desc) else { return nil }
+        samples.withUnsafeBytes {
+            tex.replace(region: MTLRegionMake2D(0, 0, samples.count, 1), mipmapLevel: 0,
+                        withBytes: $0.baseAddress!, bytesPerRow: samples.count * MemoryLayout<SIMD4<Float>>.stride)
+        }
+        return tex
     }
 
     /// Acquire an MSAA + resolve pair for a geometry target. Pooled: reuse the slot

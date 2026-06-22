@@ -515,6 +515,15 @@ final class Drawer {
         currentKind = nil    // and force the next main draw into a fresh, untagged batch
     }
 
+    /// Record a procedural generator as a source layer the renderer fills before
+    /// any filters run (it reads no input). Returns the layer for compositing/filtering.
+    func generate(_ generator: Generator, width: Int, height: Int, scale: Double) -> RenderTarget {
+        let target = RenderTarget(width: width, height: height, scale: scale,
+                                  drawer: self, origin: .generator(generator))
+        renderTargets.append(target)
+        return target
+    }
+
     /// Record a filter of `input`, returning the output layer the renderer will fill.
     func recordFilter(_ filter: Filter, of input: RenderTarget) -> RenderTarget {
         let output = RenderTarget(width: input.width, height: input.height, scale: input.scale,

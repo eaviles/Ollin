@@ -19,6 +19,13 @@ extension Color {
     static func linearToSrgb(_ c: Double) -> Double {
         c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055
     }
+
+    /// This color's straight-alpha RGBA as linear-light floats: the form the
+    /// effect fragments and generators composite in (RGB linearized, alpha as-is).
+    var linearRGBA: SIMD4<Float> {
+        SIMD4(Float(Color.srgbToLinear(red)), Float(Color.srgbToLinear(green)),
+              Float(Color.srgbToLinear(blue)), Float(alpha))
+    }
 }
 
 // MARK: - OKLab

@@ -30,7 +30,8 @@ override func draw() {
 - [withTarget](#withtarget) - draw into a layer
 - [RenderTarget.image](#image) - composite a layer back
 - [filtered](#filtered) - run a filter over a layer
-- [Filter](#filter) - the filters (`gaussianBlur`, `bloom`)
+- [Filter](#filter) - the filter catalog (blur, bloom, color, stylize)
+- [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
 - [Notes](#notes)
 
@@ -98,25 +99,86 @@ The work runs on the GPU during the frame's render; `filtered` just records it.
 <a id="filter"></a>
 ### Filter
 
-Filters are value descriptors built with static factories. Today's set:
+Filters are value descriptors built with static factories. They composite in
+[linear light](./HDR.md), so grades and blends are physically correct. The `Basic/Filters`
+example is a contact sheet of the whole set. The catalog:
 
-#### .gaussianBlur(radius:)
+#### Blur & glow
 
-A Gaussian blur; `radius` is the blur extent in pixels (larger is softer). Backed by a hardware Gaussian kernel.
+- **`.gaussianBlur(radius:)`** a Gaussian blur; `radius` is the extent in pixels (larger is softer). Backed by a hardware Gaussian kernel.
+- **`.bloom(threshold:intensity:radius:)`** glow: pixels brighter than `threshold` bleed light into their surroundings. The bright parts are extracted, blurred by `radius`, and added back at `intensity`, so the result is the original **plus** its glow, ready to composite (often additively). Brightness is the **max color channel** (HSV "value"), not luminance, so a vivid full-brightness mark blooms the same whatever its hue. `threshold` runs `0…1` over the linear-light frame, so HDR highlights (values above 1, from additive light) bloom hardest.
 
 ```swift
 layer.filtered(.gaussianBlur(radius: 24))
-```
-
-#### .bloom(threshold:intensity:radius:)
-
-Bloom (glow): pixels brighter than `threshold` bleed light into their surroundings. The bright parts are extracted, blurred by `radius`, and added back at `intensity`, so the result is the original image **plus** its glow, ready to composite (often additively).
-
-```swift
 layer.filtered(.bloom(threshold: 0.6, intensity: 1.4, radius: 24))
 ```
 
-Brightness is the **max color channel** (HSV "value"), not luminance, so a vivid full-brightness mark blooms the same whatever its hue. (Luminance would drop a saturated blue or red below the threshold while greens passed.) `threshold` runs `0…1` over the [linear-light](./HDR.md) frame, so HDR highlights (values above 1, e.g. from additive light) bloom hardest. All three parameters have defaults, so `.bloom()` is a sensible glow.
+#### Color & tone
+
+- **`.colorGrade(brightness:contrast:saturation:hue:)`** the workhorse grade: an additive `brightness`, `contrast` pivoting on mid-gray, `saturation` (0 = gray, >1 = punchier), and a `hue` rotation in **turns** (0…1 wraps the wheel). All default to no-op, so pass only what you want.
+- **`.invert(amount:)`** toward the photographic negative (`amount` 1 = full).
+- **`.posterize(levels:)`** quantize each channel to flat steps, a screen-printed banding.
+- **`.threshold(_:softness:)`** two tones at a brightness cut, `softness` widening the edge.
+- **`.sepia(amount:)`** a warm monochrome tone, blended by `amount`.
+- **`.duotone(dark:light:amount:)`** map luminance between two colors (shadows → `dark`, highlights → `light`).
+- **`.gradientMap(_:amount:)`** read luminance and look its color up along a [`Ramp`](./Color.md) or [`Colormap`](./Color.md) (viridis, magma, turbo, …). A fast recolor of a grayscale field or a whole scene.
+
+```swift
+layer.filtered(.colorGrade(contrast: 1.3, saturation: 1.6, hue: 0.05))
+layer.filtered(.gradientMap(.turbo))
+layer.filtered(.duotone(dark: Color(hex: 0x14233B), light: Color(hex: 0xFFD27D)))
+```
+
+#### Stylize & optical
+
+- **`.edges(intensity:)`** Sobel edge magnitude, bright edges on black; a quick ink/outline pass.
+- **`.sharpen(amount:)`** unsharp mask, emphasizing local detail.
+- **`.vignette(amount:radius:softness:)`** darken toward the corners (aspect-correct, so circular).
+- **`.chromaticAberration(amount:)`** split the red and blue channels radially, like cheap-lens fringing.
+- **`.halftone(scale:angle:)`** a rotated dot screen, dot size tracking brightness.
+- **`.dither(levels:)`** ordered (Bayer 4×4) dithering, the retro look that fakes more shades than it has.
+- **`.grain(amount:seed:)`** film grain; feed `seed` your `time` or `frameCount` for grain that moves.
+- **`.pixelate(size:channel:tint:)`** mosaic into blocks `size` canvas-pixels across; `channel` can read one channel out as gray and `tint` recolor it.
+- **`.lineScreen(scale:softness:angle:foreground:background:)`** a brightness-driven line screen: each cell paints a centered bar whose width tracks its brightness, painted `foreground` over `background`.
+
+```swift
+layer.filtered(.halftone(scale: 48))
+layer.filtered(.pixelate(size: 24, channel: .gray, tint: .orange))
+layer.filtered(.lineScreen(scale: 60, angle: .pi / 6))
+```
+
+Filters chain, so an effect reads as one expression:
+
+```swift
+layer.filtered(.threshold(0.5)).filtered(.gaussianBlur(radius: 3)).filtered(.gradientMap(.magma))
+```
+
+<a id="generate"></a>
+### generate(_:) and Generator
+
+A `Generator` is a procedural pattern filled from math alone, no input layer. Where a
+`Filter` transforms a layer you drew, a `Generator` **is** a layer: a source you composite,
+filter, or feed into another effect. `generate(_:)` realizes one into a `RenderTarget`,
+itself drawable and filterable, so a pattern flows straight into the rest of the chain.
+The `Basic/Patterns` example shows all four and a composed mix.
+
+```swift
+let stripes = generate(.bars(scale: 24, foreground: .black, background: .white))
+drawImage(stripes.filtered(.gaussianBlur(radius: 4)).image, 0, 0)
+
+// A LYGIA-style mix: noise → colormap, with a grid multiplied over it.
+let field = generate(.noise(scale: 5)).filtered(.gradientMap(.turbo))
+drawImage(field.image, 0, 0)
+blendMode(.multiply)
+drawImage(generate(.gridLines(scale: 20, weight: 0.08)).image, 0, 0)
+```
+
+The patterns (cells stay square whatever the layer's aspect ratio):
+
+- **`.checkers(scale:foreground:background:)`** a two-color board, `scale` cells across.
+- **`.gridLines(scale:weight:foreground:background:)`** a line grid, each line `weight` (0…1) of a cell wide.
+- **`.bars(scale:vertical:foreground:background:)`** parallel stripes, `scale` across, on either axis.
+- **`.noise(scale:sharpness:foreground:background:)`** fractal value noise, from a soft cloud (`sharpness` 0) to a hard two-tone split (1).
 
 <a id="postprocess"></a>
 ### postProcess(_:)

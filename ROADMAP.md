@@ -31,7 +31,7 @@ Near-term, fairly self-contained pieces, each small and well-scoped.
 
 ## Layered effects and compositing
 
-Building on the off-screen-layer + filter substrate (`renderTarget` / `withTarget` / `Filter`, with blur and bloom), the work ahead is the **broader filter catalog** (color grading and LUTs, chromatic aberration and other distortions, edge and threshold passes, feedback from the previous frame, and a depth-driven blur for depth of field), plus the **`compose { }` composition DSL**: declaring layers, their post-filters, and their blend together (with `aside` helper layers that feed another layer's filter), so a multi-layer effect graph reads as one block. Shape, references, and the design are in the [design notes](DESIGN-NOTES.md#layered-effects-and-compositing-partly-shipped).
+Building on the off-screen-layer + filter substrate (`renderTarget` / `withTarget` / `Filter` / `generate`, with a broad catalog of color, tone, stylize, and optical filters plus procedural pattern generators), the work ahead is **previous-frame feedback** (the last frame as a filter input, a ping-pong layer the renderer keeps across frames), a **depth-driven blur** for depth of field, and the **`compose { }` composition DSL**: declaring layers, their post-filters, and their blend together (with `aside` helper layers that feed another layer's filter), so a multi-layer effect graph reads as one block. Shape, references, and the design are in the [design notes](DESIGN-NOTES.md#layered-effects-and-compositing-partly-shipped).
 
 ## Shader composition and live-coding
 

@@ -398,6 +398,16 @@ let package = Package(
             path: "Examples/Basic/Accumulation"
         ),
         .executableTarget(
+            name: "Example-Filters",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Filters"
+        ),
+        .executableTarget(
+            name: "Example-Patterns",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Patterns"
+        ),
+        .executableTarget(
             name: "Example-ToneMapping",
             dependencies: ["Ollin"],
             path: "Examples/Basic/ToneMapping"

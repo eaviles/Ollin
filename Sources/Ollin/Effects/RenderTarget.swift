@@ -38,10 +38,12 @@ public final class RenderTarget {
     public let scale: Double
 
     /// How this target gets filled. A `.geometry` target is drawn into by a
-    /// `withTarget` block; a `.filter` target is the output of `filtered(_:)`, run
-    /// from `input` by the renderer. Internal: the renderer reads it at render time.
+    /// `withTarget` block; a `.generator` target is filled by a procedural pattern
+    /// pass; a `.filter` target is the output of `filtered(_:)`, run from `input`.
+    /// Internal: the renderer reads it at render time.
     enum Origin {
         case geometry
+        case generator(Generator)
         case filter(input: RenderTarget, filter: Filter)
     }
     let origin: Origin
