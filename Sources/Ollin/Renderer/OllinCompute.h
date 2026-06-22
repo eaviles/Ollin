@@ -5,7 +5,7 @@
 // MetalRenderer.composeComputeSource). It gives a kernel hashing, value and curl
 // noise, area-uniform disc sampling, and sRGB→linear out of the box, so a particle
 // kernel stays a few lines instead of carrying its own copy of these. It is
-// self-contained (it is *not* included by Shaders.metal — that file has its own
+// self-contained (it is *not* included by the render shaders, which have their own
 // copies) so it can be the only support a standalone kernel compile sees.
 //
 // Implemented from the published techniques — Dave Hoskins' hash family, the Book

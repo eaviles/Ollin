@@ -4,7 +4,7 @@
 // Bridge target: exposes the shared CPU/GPU shader-type header to Swift as an
 // importable C module.
 //
-// The canonical header lives beside `Shaders.metal` (in the Ollin target's
+// The canonical header lives beside the shader segments (in the Ollin target's
 // Renderer/ directory) so it ships as a runtime resource the renderer can
 // splice into the shader source. SwiftPM won't let a resource live outside its
 // target, and won't let two targets' directories overlap, so this thin module

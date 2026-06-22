@@ -307,7 +307,7 @@ let package = Package(
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
         // memory layout can't drift between the two sides. This thin C module
         // makes that header importable from Swift; its umbrella header
-        // re-includes the canonical file, which lives beside `Shaders.metal`
+        // re-includes the canonical file, which lives beside the shader segments
         // (see Sources/Ollin/Renderer/OllinShaderTypes.h).
         .target(
             name: "COllinShaders",
@@ -317,20 +317,24 @@ let package = Package(
         .target(
             name: "Ollin",
             dependencies: ["CLibtess2", "CClipper2", "COllinShaders"],
-            // Declaring the `.metal` file as a resource makes SwiftPM copy it
+            // Declaring the `.metal` files as resources makes SwiftPM copy them
             // into the target's resource bundle and synthesize `Bundle.module`,
-            // which MetalRenderer.loadLibrary uses to read and compile the shader
-            // source at runtime. Use `.copy` so the *raw source* ships: on current
-            // toolchains `.process` instead precompiles a single `default.metallib`,
-            // which can't carry the device-conditional `OLLIN_RT_SHADOWS` define
-            // (ray-traced point shadows on a capable GPU) — runtime compilation is
-            // what makes that variant, the hot-reload seam, and user shaders possible.
+            // which MetalRenderer.loadLibrary reads and concatenates (ShaderCore
+            // first, then the rest) into one library it compiles at runtime. Use
+            // `.copy` so the *raw source* ships: on current toolchains `.process`
+            // instead precompiles a single `default.metallib`, which can't carry
+            // the device-conditional `OLLIN_RT_SHADOWS` define (ray-traced point
+            // shadows on a capable GPU) — runtime compilation is what makes that
+            // variant, the hot-reload seam, and user shaders possible.
             //
-            // `OllinShaderTypes.h` ships beside it: the runtime shader compiler
+            // `OllinShaderTypes.h` ships beside them: the runtime shader compiler
             // has no include path, so MetalRenderer splices this header into the
-            // source in place of its `#include` directive.
+            // concatenated source in place of its `#include` directive.
             resources: [
-                .copy("Renderer/Shaders.metal"),
+                .copy("Renderer/ShaderCore.metal"),
+                .copy("Renderer/ShaderShapes.metal"),
+                .copy("Renderer/Shader3D.metal"),
+                .copy("Renderer/ShaderEffects.metal"),
                 .copy("Renderer/OllinShaderTypes.h"),
                 // The MSL compute prelude (hash/noise/curl/disc), spliced into
                 // user compute-kernel source at runtime like OllinShaderTypes.h.

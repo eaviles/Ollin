@@ -9,11 +9,12 @@
 //   - Swift imports it through the `COllinShaders` C module (whose bridge
 //     header re-includes this file), so `OllinVertex`, `Uniforms`, and
 //     `SDFInstance` are ordinary Swift structs.
-//   - `Shaders.metal` `#include`s it for the GPU-side definitions.
+//   - `ShaderCore.metal` (the first shader segment) `#include`s it for the
+//     GPU-side definitions.
 //   - At runtime the shader source is compiled with `makeLibrary(source:)`,
 //     which has no include search path, so `MetalRenderer` splices this file's
 //     text in place of the `#include` directive. That's why the header ships
-//     beside `Shaders.metal` as a resource. A precompiled metallib, by
+//     beside the shader segments as a resource. A precompiled metallib, by
 //     contrast, resolves the include at build time and never goes through that.
 //
 // Vector and matrix fields use the `simd_*` spellings: on the CPU side those

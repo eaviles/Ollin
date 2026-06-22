@@ -88,7 +88,7 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
    swift run OllinLive Examples/Basic/HelloCircle/Sketch.swift
    ```
 
-   It takes a path to any sketch file, so there's no target to register first. Run it from the repo and it live-reloads `Shaders.metal` as well. Each reload starts the sketch fresh by default: `setup()` runs again and the clock resets. Pass `--keep-clock` to keep `time` and `frameCount` running across reloads, so an animation doesn't jump back to the start. There's an `onReload()` hook for work you want to run on each reload. If an edit doesn't compile, the error prints and the running sketch keeps going, so a typo won't close the window.
+   It takes a path to any sketch file, so there's no target to register first. Run it from the repo and it live-reloads the framework's shaders as well. Each reload starts the sketch fresh by default: `setup()` runs again and the clock resets. Pass `--keep-clock` to keep `time` and `frameCount` running across reloads, so an animation doesn't jump back to the start. There's an `onReload()` hook for work you want to run on each reload. If an edit doesn't compile, the error prints and the running sketch keeps going, so a typo won't close the window.
 
    For a heavy sketch, build the host in release so the drawing runs at full speed while you tweak; hot-reloads stay fast because only the sketch file recompiles. `Scripts/OllinLive` does this for you (it's `swift run -c release OllinLive`, with `--debug` to opt out):
 

@@ -4,7 +4,7 @@ import Foundation
 // access to the GPU fragment that normally evaluates them). The polygonal shapes
 // build their corners directly; the curved ones are traced with marching squares
 // over the *same* signed-distance functions the shader uses (ported to Swift in
-// this file, mirroring Shaders.metal), so the exported outline matches the render.
+// this file, mirroring ShaderShapes.metal), so the exported outline matches the render.
 //
 // All builders return points in the shape's *local* space, centered on the same
 // point the draw call anchors at; the `Drawer` offsets them into user space and
@@ -323,7 +323,7 @@ private extension SDFOutline {
     }
 }
 
-// MARK: - Ported signed-distance functions (mirror Shaders.metal, from iq's 2D
+// MARK: - Ported signed-distance functions (mirror ShaderShapes.metal, from iq's 2D
 // distance functions). CPU copies used only to trace outlines for SVG export.
 
 private func dot(_ a: Vector2, _ b: Vector2) -> Double { a.x * b.x + a.y * b.y }

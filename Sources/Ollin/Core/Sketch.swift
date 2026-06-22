@@ -1,7 +1,7 @@
 import Foundation
 import CoreGraphics
 import Metal
-import COllinShaders   // OllinParticle (the GPU particle struct, shared with Shaders.metal)
+import COllinShaders   // OllinParticle (the GPU particle struct, shared with the shaders)
 
 /// How a sketch's preview window behaves and is sized, relative to its
 /// `canvasSize`. `.auto` and `.fixed` are fixed-size (export-first): the window

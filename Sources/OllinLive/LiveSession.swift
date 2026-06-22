@@ -80,9 +80,10 @@ final class LiveSession {
     @ObservationIgnored private let loader: SketchLoader
     @ObservationIgnored private let sketchPath: String
     @ObservationIgnored private let keepClock: Bool
-    /// The framework's shader source, watched for live shader reload — set only
-    /// when running from the Ollin repo (where `Sources/Ollin/Renderer` exists).
-    @ObservationIgnored private let shaderPath: String?
+    /// The framework's shader source directory, watched for live shader reload,
+    /// set only when running from the Ollin repo (where `Sources/Ollin/Renderer`
+    /// exists). Its `Shader*.metal` segments are concatenated on each reload.
+    @ObservationIgnored private let shaderDir: String?
     @ObservationIgnored private var runner: SketchRunner?
     @ObservationIgnored private var watcher: FileWatcher?
     @ObservationIgnored private var didStart = false
@@ -100,9 +101,11 @@ final class LiveSession {
         self.displayName = displayName
         self.keepClock = keepClock
 
-        let shader = (FileManager.default.currentDirectoryPath as NSString)
-            .appendingPathComponent("Sources/Ollin/Renderer/Shaders.metal")
-        self.shaderPath = FileManager.default.fileExists(atPath: shader) ? shader : nil
+        let dir = (FileManager.default.currentDirectoryPath as NSString)
+            .appendingPathComponent("Sources/Ollin/Renderer")
+        var isDir: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: dir, isDirectory: &isDir) && isDir.boolValue
+        self.shaderDir = exists ? dir : nil
     }
 
     /// Called once from the root view's `.task`, after the window has appeared —
@@ -126,8 +129,8 @@ final class LiveSession {
 
     private func startWatching() {
         var dirs = [(sketchPath as NSString).deletingLastPathComponent]
-        if let shaderPath {                   // also watch the shader's folder
-            dirs.append((shaderPath as NSString).deletingLastPathComponent)
+        if let shaderDir {                    // also watch the shader folder
+            dirs.append(shaderDir)
         }
         watcher = FileWatcher(paths: dirs) { [weak self] changed in
             // Called on the watcher's background queue; hop to the main actor.
@@ -135,14 +138,14 @@ final class LiveSession {
         }
         watcher?.start()
         print("OllinLive: watching \(displayName) — edit and save to hot-reload.")
-        if shaderPath != nil { print("OllinLive: also live-reloading Shaders.metal.") }
+        if shaderDir != nil { print("OllinLive: also live-reloading the framework shaders.") }
     }
 
     /// Dispatch a coalesced batch of changed paths by file type.
     private func handle(_ paths: [String]) {
         if paths.contains(where: { $0.hasSuffix(".swift") }) {
             compileAndApply()
-        } else if shaderPath != nil, paths.contains(where: { $0.hasSuffix(".metal") }) {
+        } else if shaderDir != nil, paths.contains(where: { $0.hasSuffix(".metal") }) {
             reloadShaders()
         } else if paths.contains(where: { Self.assetExtensions.contains(($0 as NSString).pathExtension.lowercased()) }) {
             runner?.rerunSetup()
@@ -218,11 +221,10 @@ final class LiveSession {
     }
 
     private func reloadShaders() {
-        guard let shaderPath,
-              let source = try? String(contentsOfFile: shaderPath, encoding: .utf8) else { return }
+        guard let shaderDir else { return }
         do {
-            try runner?.reloadShaderLibrary(source: source)
-            print("OllinLive: reloaded Shaders.metal ✓")
+            try runner?.reloadShaderLibrary(fromDirectory: shaderDir)
+            print("OllinLive: reloaded framework shaders ✓")
         } catch {
             FileHandle.standardError.write(
                 Data("OllinLive: shader reload skipped (kept running) — \(error)\n".utf8))

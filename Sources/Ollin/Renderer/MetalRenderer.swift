@@ -4,7 +4,7 @@ import MetalKit
 import MetalPerformanceShaders   // tuned image kernels (Gaussian blur) behind the effect filters
 import simd
 import CoreGraphics
-import COllinShaders   // OllinVertex / Uniforms / SDFInstance, shared with Shaders.metal
+import COllinShaders   // OllinVertex / Uniforms / SDFInstance, shared with the shaders
 
 /// The Metal back end. Deliberately small: one command queue, an enum-keyed
 /// cache of render pipelines (keyed by shader pair × blend mode — solid
@@ -16,7 +16,7 @@ import COllinShaders   // OllinVertex / Uniforms / SDFInstance, shared with Shad
 ///      `[OllinVertex]` array (triangles, in sketch-space points).
 ///   2. `render(...)` uploads that array into `vertexBuffer`, clears to the
 ///      background color, and issues a single `drawPrimitives(.triangle)`.
-///   3. `Shaders.metal` maps points -> clip space and outputs the vertex color.
+///   3. the shaders map points -> clip space and output the vertex color.
 ///
 /// To add a new primitive you usually only touch `Drawer` (more triangles).
 /// You only touch this file when you need a *new pipeline* (e.g. instanced or
@@ -287,7 +287,7 @@ final class MetalRenderer {
     /// Whether this device can trace rays from the render stages. When true, a point
     /// caster is shadowed by *ray tracing* (an exact visibility ray against a per-frame
     /// acceleration structure built from the shadow casters) instead of the mid-point
-    /// cube — no depth compare, so no acne/peter-pan/teeth tradeoff. The `Shaders.metal`
+    /// cube — no depth compare, so no acne/peter-pan/teeth tradeoff. The `Shader3D.metal`
     /// mesh fragments are compiled with `OLLIN_RT_SHADOWS` set from this, and the cube
     /// path stays the byte-identical fallback on devices without it.
     private let rayTracedShadows: Bool
@@ -2300,16 +2300,16 @@ final class MetalRenderer {
 
     /// Splice the shared CPU/GPU type header into shader source for runtime
     /// compilation. `makeLibrary(source:)` has no include search path, so the
-    /// `#include "OllinShaderTypes.h"` directive in `Shaders.metal` can't be
-    /// resolved the normal way; we replace it with the header's text (the header
-    /// ships beside the shader as a resource). A precompiled metallib resolves
-    /// the include at build time and never reaches this path.
+    /// `#include "OllinShaderTypes.h"` directive in `ShaderCore.metal` (the first
+    /// concatenated segment) can't be resolved the normal way; we replace it with
+    /// the header's text (the header ships beside the segments as a resource). A
+    /// precompiled metallib resolves the include at build time and skips this path.
     ///
     /// If the header resource is missing we leave the source untouched and let
     /// the compiler report the undefined types — louder than a silent fallback.
     static func composeShaderSource(_ source: String, rayTracing: Bool = false) -> String {
         // Gate the inline-RT mesh-shadow path on device capability (the symbol the
-        // `#if OLLIN_RT_SHADOWS` blocks in Shaders.metal read). A device without
+        // `#if OLLIN_RT_SHADOWS` blocks in Shader3D.metal read). A device without
         // render-stage ray tracing compiles it out entirely, so the cube path stays.
         let prefix = "#define OLLIN_RT_SHADOWS \(rayTracing ? 1 : 0)\n"
         guard let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
@@ -2347,27 +2347,56 @@ final class MetalRenderer {
         return hash
     }
 
-    /// Load the shader library for `Shaders.metal`.
+    /// The shader source segments, in concatenation order. They're compiled as one
+    /// library, so order matters: `ShaderCore` carries the preamble and the shared
+    /// color/dither/hash helpers the rest depend on, so it goes first (Metal needs a
+    /// declaration before its use). The single `Shaders.metal` split into these once
+    /// it crossed ~2,000 lines; the renderer never assumes one file.
+    static let shaderSourceNames = ["ShaderCore", "ShaderShapes", "Shader3D", "ShaderEffects"]
+
+    /// Read and concatenate the shader segments from a filesystem `directory`, in
+    /// `shaderSourceNames` order. This is the source live shader reload feeds back
+    /// in (the `Bundle.module` copy is built, not the file being edited). `nil` if
+    /// any segment is unreadable.
+    static func concatenatedShaderSource(fromDirectory directory: String) -> String? {
+        var parts: [String] = []
+        for name in shaderSourceNames {
+            let path = (directory as NSString).appendingPathComponent("\(name).metal")
+            guard let part = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+            parts.append(part)
+        }
+        return parts.joined(separator: "\n")
+    }
+
+    /// Load the built-in shader library.
     ///
-    /// SwiftPM's resource rule copies `Shaders.metal` into `Bundle.module` as
-    /// *source* — it does not produce a precompiled `default.metallib`. So the
-    /// reliable path is to read that source and compile it at runtime. We still
-    /// try a precompiled `default.metallib` first in case a future build step
-    /// (e.g. a build-tool plugin) produces one.
+    /// SwiftPM's resource rule copies the `Shader*.metal` segments into
+    /// `Bundle.module` as *source*; it does not produce a precompiled
+    /// `default.metallib`. So the reliable path is to read those segments, splice
+    /// the shared header, and compile at runtime. We still try a precompiled
+    /// `default.metallib` first in case a future build step produces one.
     private static func loadLibrary(device: MTLDevice) throws -> MTLLibrary {
         let rt = device.supportsRaytracing && device.supportsRaytracingFromRender
         // A precompiled `default.metallib` is built without the device-conditional
         // `OLLIN_RT_SHADOWS` define (it can hold only one variant — the *non*-RT
         // mesh-shadow path). Use it only on a device without render-stage ray tracing;
-        // an RT device compiles `Shaders.metal` from source with the define set, which is
-        // Ollin's standard runtime-compile path (and what live shader reload already uses).
+        // an RT device compiles from source with the define set, which is Ollin's
+        // standard runtime-compile path (and what live shader reload already uses).
         if !rt, let library = try? device.makeDefaultLibrary(bundle: Bundle.module) {
             return library
         }
-        if let url = Bundle.module.url(forResource: "Shaders", withExtension: "metal"),
-           let source = try? String(contentsOf: url, encoding: .utf8) {
+        // Read every segment from the bundle and concatenate in order; the combined
+        // source is one compile unit (ShaderCore's `#include` is spliced by
+        // composeShaderSource). Require all of them, so a missing segment fails
+        // loudly rather than compiling an incomplete library.
+        let parts = shaderSourceNames.map { name in
+            Bundle.module.url(forResource: name, withExtension: "metal")
+                .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+        }
+        if parts.allSatisfy({ $0 != nil }) {
+            let combined = parts.compactMap { $0 }.joined(separator: "\n")
             // Let compile errors propagate: a bad shader should fail loudly here.
-            return try device.makeLibrary(source: composeShaderSource(source, rayTracing: rt), options: nil)
+            return try device.makeLibrary(source: composeShaderSource(combined, rayTracing: rt), options: nil)
         }
         if !rt, let library = device.makeDefaultLibrary() {
             return library

@@ -3,7 +3,7 @@ import simd
 import COllinShaders
 
 // `OllinVertex`, `Uniforms`, and `SDFInstance` are imported from the
-// `COllinShaders` C module: one definition shared with `Shaders.metal`, so their
+// `COllinShaders` C module: one definition shared with the shaders, so their
 // CPU/GPU memory layout can't drift. See Sources/Ollin/Renderer/OllinShaderTypes.h.
 
 extension OllinVertex {
@@ -17,7 +17,7 @@ extension OllinVertex {
 /// Which analytic shape an `SDFInstance` carries. The fragment shader switches
 /// on this tag and evaluates the matching signed-distance field, so one pipeline
 /// and one instance buffer serve every SDF primitive. Raw values must match the
-/// `shape` codes the fragment in `Shaders.metal` tests.
+/// `shape` codes the fragment in `ShaderShapes.metal` tests.
 enum SDFShape: UInt32 {
     case ellipse  = 0   // size = (rx, ry); circle is rx == ry
     case box      = 1   // size = (w/2, h/2); extra = corner radius
@@ -1932,7 +1932,7 @@ final class Drawer {
     }
 
     /// Shared builder for `drawNgon`/`drawStar`. Encodes the star into the SDF
-    /// slots the way `sdStar` (in `Shaders.metal`) reads them: `size = (R, R)` (R is
+    /// slots the way `sdStar` (in `ShaderShapes.metal`) reads them: `size = (R, R)` (R is
     /// both the outer radius and the bounding half-extent), `param0 = (cos, sin)` of
     /// the half-sector angle `an = π/points`, `param1 = (cos, sin)` of the edge angle
     /// `en`, and `extra = an`. The inner radius sets `en` via

@@ -102,6 +102,17 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         try renderer.reloadLibrary(source: source)
     }
 
+    /// Live shader reload from the framework's split `Shader*.metal` segments in
+    /// `directory` (the repo source the user is editing), read and concatenated in
+    /// the renderer's fixed order. Throws if a segment is missing or doesn't
+    /// compile, leaving the current shaders in place. **Call on the main thread.**
+    public func reloadShaderLibrary(fromDirectory directory: String) throws {
+        guard let source = MetalRenderer.concatenatedShaderSource(fromDirectory: directory) else {
+            throw MetalRenderer.RendererError.shaderLibrary
+        }
+        try renderer.reloadLibrary(source: source)
+    }
+
     /// Re-run the current sketch's `setup()` on the next frame without swapping
     /// the instance or resetting the clock — for when a co-located asset changes
     /// and `setup()` is where it'd be (re)loaded. **Call on the main thread.**

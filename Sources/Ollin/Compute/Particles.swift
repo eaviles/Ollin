@@ -1,6 +1,6 @@
 import Foundation
 import simd
-import COllinShaders   // OllinParticle (the GPU particle struct, shared with Shaders.metal)
+import COllinShaders   // OllinParticle (the GPU particle struct, shared with the shaders)
 
 /// A GPU particle system in a few lines — the headline of the compute path.
 ///
