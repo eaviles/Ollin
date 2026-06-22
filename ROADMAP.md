@@ -31,7 +31,7 @@ Near-term, fairly self-contained pieces, each small and well-scoped.
 
 ## Layered effects and compositing
 
-OPENRNDR-style effects that compose in layers: draw into off-screen targets, run filters (blur, bloom, feedback, color grades) over them, and composite with blend modes. The natural home for post-processing, building on the off-screen render path the exporter already uses. Shape, references, and the design are in the [design notes](DESIGN-NOTES.md#layered-effects-and-compositing-not-started).
+Building on the off-screen-layer + filter substrate (`renderTarget` / `withTarget` / `Filter`, with blur and bloom), the work ahead is the **broader filter catalog** — color grading and LUTs, chromatic aberration and other distortions, edge and threshold passes, feedback (the previous frame as an input), and a depth-driven blur for depth of field — and the **`compose { }` composition DSL**: declaring layers, their post-filters, and their blend together (with `aside` helper layers that feed another layer's filter), so a multi-layer effect graph reads as one block. Shape, references, and the design are in the [design notes](DESIGN-NOTES.md#layered-effects-and-compositing-partly-shipped).
 
 ## Shader composition and live-coding
 

@@ -388,6 +388,11 @@ let package = Package(
             path: "Examples/Basic/Blending"
         ),
         .executableTarget(
+            name: "Example-Bloom",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Bloom"
+        ),
+        .executableTarget(
             name: "Example-Accumulation",
             dependencies: ["Ollin"],
             path: "Examples/Basic/Accumulation"

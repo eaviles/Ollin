@@ -117,6 +117,15 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func effectsLayersMatchReference() throws {
+        // Two off-screen layers, one blurred and one bloomed, composited back. Pins
+        // the whole effects path: withTarget recording, the per-target render pass,
+        // the MPS Gaussian + bloom filters, and the texture-backed-Image hand-off.
+        let diff = try Snapshot.meanDifference(of: EffectsLayers(), against: "effects-layers")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func pointCloud3DMatchesReference() throws {
         // A static 3D heightfield through a fixed camera — pins the 3D camera, the
         // depth-tested point pipeline, and the instanced disc splats.
@@ -1165,5 +1174,43 @@ private final class ToneMappedBloom: Sketch {
         drawCircle(cx - off, cy + off * 0.7, r)
         fill(Color(red: 0.2, green: 0.4, blue: 1, alpha: 0.95))
         drawCircle(cx + off, cy + off * 0.7, r)
+    }
+}
+
+/// Layered effects: a blurred soft rectangle behind a row of bloomed disks, each
+/// drawn into its own off-screen `renderTarget` and filtered on the GPU before
+/// compositing. Deterministic (no time/random), so it pins the effects pipeline —
+/// target render passes, the Gaussian-blur and bloom filters, and the
+/// texture-backed-`Image` composite.
+private final class EffectsLayers: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+
+        // A blurred soft band (target → gaussianBlur → composite).
+        let soft = renderTarget()
+        withTarget(soft) {
+            background(.clear)
+            noStroke()
+            fill(Color(red: 0.2, green: 0.5, blue: 1))
+            drawRect(width * 0.18, height * 0.24, width * 0.64, height * 0.26)
+        }
+        drawImage(soft.filtered(.gaussianBlur(radius: 12)).image, 0, 0)
+
+        // A row of bright disks that bloom (target → bloom → additive composite).
+        let marks = renderTarget()
+        withTarget(marks) {
+            background(.clear)
+            noStroke()
+            fill(.white)
+            drawCircle(width * 0.5, height * 0.68, 22)
+            fill(Color(red: 1, green: 0.4, blue: 0.1))
+            drawCircle(width * 0.30, height * 0.68, 15)
+            fill(Color(red: 0.3, green: 1, blue: 0.5))
+            drawCircle(width * 0.70, height * 0.68, 15)
+        }
+        blendMode(.add)
+        drawImage(marks.filtered(.bloom(threshold: 0.4, intensity: 1.6, radius: 14)).image, 0, 0)
     }
 }

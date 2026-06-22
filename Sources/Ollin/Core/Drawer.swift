@@ -141,6 +141,10 @@ struct GeometryBatch {
     /// texture and lighting/material/shadow are bypassed. `nil` for a lit mesh. A matcap
     /// mesh opens its own batch (one texture per batch), like a textured one.
     var matcap: Image?
+    /// The off-screen effects layer this run draws into — `nil` (the default) is the
+    /// main canvas. Set while inside a `withTarget` block, so the renderer routes the
+    /// run into that target's texture in a pass before the main one (see `RenderTarget`).
+    var target: RenderTarget?
 }
 
 /// The drawing state machine and per-frame geometry recorder.
@@ -322,6 +326,42 @@ final class Drawer {
     /// The 2D depth of the currently-open batch, so a `depth(at:)`/`noDepth()`
     /// change opens a fresh batch even when kind and blend are unchanged.
     private var currentBatchDepth: Float? = nil
+
+    // MARK: Effects layers (render targets, per-frame)
+
+    /// The off-screen-target redirection stack: while non-empty, drawing is tagged
+    /// for the innermost target instead of the main canvas (see `withTarget`). Each
+    /// frame records the buffer/batch counts at push, so `background(_:)` inside a
+    /// block can clear *just that target*.
+    private var targetStack: [TargetFrame] = []
+    /// The target drawing currently lands in, if any (the innermost active block).
+    private var currentTarget: RenderTarget? { targetStack.last?.target }
+    /// Geometry targets drawn into this frame, in first-use order — the renderer
+    /// fills each before the main pass that samples it.
+    private(set) var renderTargets: [RenderTarget] = []
+    /// Filter outputs recorded this frame (`target.filtered(...)`), in record order —
+    /// the renderer runs each after the geometry targets it reads are filled.
+    private(set) var filterOps: [RenderTarget] = []
+    /// Whole-frame filters from `postProcess(_:)`, applied to the finished frame
+    /// before the present pass, in record order.
+    private(set) var frameFilters: [Filter] = []
+
+    /// A `withTarget` block's start state, so `background(_:)` inside it truncates
+    /// back to here (clearing only this target's own geometry).
+    private struct TargetFrame {
+        let target: RenderTarget
+        let snapshot: GeometrySnapshot
+    }
+    /// Buffer/batch lengths at one moment, for rolling target geometry back.
+    private struct GeometrySnapshot {
+        let batches, vertices, sdf, image, glyph, points, mesh: Int
+    }
+    private func snapshot() -> GeometrySnapshot {
+        GeometrySnapshot(batches: batches.count, vertices: vertices.count,
+                         sdf: sdfInstances.count, image: imageVertices.count,
+                         glyph: glyphVertices.count, points: points.count,
+                         mesh: meshVertices.count)
+    }
     /// The surface finish of the currently-open *solid* mesh batch, so a `material(_:)`
     /// change opens a fresh batch (the finish is bound once per batch as a uniform).
     private var currentBatchMaterial = Material()
@@ -377,7 +417,8 @@ final class Drawer {
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
-                                     blendMode: currentBlend, depth: currentDepth))
+                                     blendMode: currentBlend, depth: currentDepth,
+                                     target: currentTarget))
     }
 
     /// Open a fresh `.image` batch carrying `image` as its texture. Unlike
@@ -393,7 +434,8 @@ final class Drawer {
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
-                                     blendMode: currentBlend, image: image, depth: currentDepth))
+                                     blendMode: currentBlend, image: image, depth: currentDepth,
+                                     target: currentTarget))
     }
 
     /// Open a fresh `.mesh3D` batch for a *textured*, *wireframe*, or *matcap* mesh
@@ -411,7 +453,8 @@ final class Drawer {
                                      meshStart: meshVertices.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      material: material, finish: finish,
-                                     meshWireframe: wireframe, matcap: matcap))
+                                     meshWireframe: wireframe, matcap: matcap,
+                                     target: currentTarget))
         currentKind = nil
     }
 
@@ -435,7 +478,7 @@ final class Drawer {
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
                                      blendMode: currentBlend, depth: currentDepth,
-                                     finish: m.gpuMaterial()))
+                                     finish: m.gpuMaterial(), target: currentTarget))
     }
 
     /// Open a fresh `.glyphAtlas` batch carrying `atlas` as its texture. One
@@ -450,11 +493,51 @@ final class Drawer {
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
-                                     blendMode: currentBlend, atlas: atlas, depth: currentDepth))
+                                     blendMode: currentBlend, atlas: atlas, depth: currentDepth,
+                                     target: currentTarget))
     }
 
     /// Record a compute dispatch for this frame (see `Sketch.compute` / `Particles`).
     func recordDispatch(_ dispatch: RecordedDispatch) { dispatches.append(dispatch) }
+
+    // MARK: Effects layers
+
+    /// Redirect drawing in `body` into `target` instead of the main canvas: every
+    /// primitive drawn inside the closure is tagged for the target, which the
+    /// renderer fills in its own pass before the main one. Nestable; a fresh batch
+    /// is forced at each boundary so target and main geometry never merge.
+    func withTarget(_ target: RenderTarget, _ body: () -> Void) {
+        if !renderTargets.contains(where: { $0 === target }) { renderTargets.append(target) }
+        targetStack.append(TargetFrame(target: target, snapshot: snapshot()))
+        currentKind = nil    // force the first draw inside the target into a fresh batch
+        body()
+        targetStack.removeLast()
+        currentKind = nil    // and force the next main draw into a fresh, untagged batch
+    }
+
+    /// Record a filter of `input`, returning the output layer the renderer will fill.
+    func recordFilter(_ filter: Filter, of input: RenderTarget) -> RenderTarget {
+        let output = RenderTarget(width: input.width, height: input.height, scale: input.scale,
+                                  drawer: self, origin: .filter(input: input, filter: filter))
+        filterOps.append(output)
+        return output
+    }
+
+    /// Queue a whole-frame filter, applied to the finished frame before present.
+    func postProcess(_ filter: Filter) { frameFilters.append(filter) }
+
+    /// Roll the recorded geometry back to `s` — used by `background(_:)` inside a
+    /// `withTarget` block to clear just that target's geometry. (Gradient rows are
+    /// left as-is: any orphaned row is an unused strip texel, harmless.)
+    private func truncate(to s: GeometrySnapshot) {
+        if batches.count > s.batches { batches.removeLast(batches.count - s.batches) }
+        if vertices.count > s.vertices { vertices.removeLast(vertices.count - s.vertices) }
+        if sdfInstances.count > s.sdf { sdfInstances.removeLast(sdfInstances.count - s.sdf) }
+        if imageVertices.count > s.image { imageVertices.removeLast(imageVertices.count - s.image) }
+        if glyphVertices.count > s.glyph { glyphVertices.removeLast(glyphVertices.count - s.glyph) }
+        if points.count > s.points { points.removeLast(points.count - s.points) }
+        if meshVertices.count > s.mesh { meshVertices.removeLast(meshVertices.count - s.mesh) }
+    }
 
     /// Open a `.particles` batch drawing `count` instances from the GPU `buffer`.
     /// Like `beginImageBatch`, it always appends (each draw carries its own buffer)
@@ -472,7 +555,7 @@ final class Drawer {
                                      pointStart: points.count,
                                      blendMode: currentBlend,
                                      particleBuffer: buffer, particleCount: count,
-                                     depth: currentDepth))
+                                     depth: currentDepth, target: currentTarget))
     }
 
     /// Set the standard compute uniforms for this frame (called by the runner before
@@ -559,6 +642,16 @@ final class Drawer {
     /// (`noClear`) it additionally wipes the persistent canvas this frame — the
     /// way to reset a long exposure (see `backgroundSetThisFrame`).
     func background(_ color: Color) {
+        // Inside a `withTarget` block, background clears *that target* (its clear
+        // color + its geometry so far), leaving the main canvas and global clear
+        // color untouched.
+        if let frame = targetStack.last {
+            frame.target.clearColor = color
+            truncate(to: frame.snapshot)
+            currentKind = nil
+            currentBatchDepth = nil
+            return
+        }
         backgroundColor = color
         backgroundSetThisFrame = true
         vertices.removeAll(keepingCapacity: true)
@@ -1115,6 +1208,12 @@ final class Drawer {
         // meaningful against this frame's strip); the bake cache persists.
         gradientRows.removeAll(keepingCapacity: true)
         gradientRowIndex.removeAll(keepingCapacity: true)
+        // Effects layers are per-frame: targets are created inside draw() and their
+        // recorded geometry/filters reset here with everything else.
+        targetStack.removeAll(keepingCapacity: true)
+        renderTargets.removeAll(keepingCapacity: true)
+        filterOps.removeAll(keepingCapacity: true)
+        frameFilters.removeAll(keepingCapacity: true)
         transform = matrix_identity_float3x3
         transformIsIdentity = true
         modelMatrix = matrix_identity_float4x4
@@ -2240,7 +2339,8 @@ final class Drawer {
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
                                      blendMode: currentBlend, image: color,
-                                     depthImage: depth, metricDepth: metricDepth))
+                                     depthImage: depth, metricDepth: metricDepth,
+                                     target: currentTarget))
     }
 
     /// Build one textured-quad vertex, transforming its position by the current

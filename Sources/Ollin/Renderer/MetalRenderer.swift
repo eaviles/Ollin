@@ -1,6 +1,7 @@
 import Foundation
 import Metal
 import MetalKit
+import MetalPerformanceShaders   // tuned image kernels (Gaussian blur) behind the effect filters
 import simd
 import CoreGraphics
 import COllinShaders   // OllinVertex / Uniforms / SDFInstance, shared with Shaders.metal
@@ -66,6 +67,11 @@ final class MetalRenderer {
         /// two passes: 1 = MIN-blend into R (nearest), 2 = MAX-blend into G (farthest),
         /// for mid-point shadow mapping. 0 = not a point-shadow pipeline.
         var pointShadowOp = 0
+        /// An effects filter pass: a fullscreen-triangle fragment shader writing the
+        /// linear-float intermediate format, single-sample, blending off (replace).
+        /// Like `isPresent`, an exception to the geometry-pipeline shape kept in the
+        /// same cache so live shader reload rebuilds it too.
+        var isEffect = false
 
         // tessellated triangles (rects, lines, polygons, arcs)
         static func solid(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -129,6 +135,11 @@ final class MetalRenderer {
         // final fullscreen tone-map pass, float -> sRGB drawable
         static let present = PipelineKey(vertex: "ollin_present_vertex",
                                          fragment: "ollin_present_fragment", isPresent: true)
+        // an effects filter pass: a fullscreen-triangle `fragment` (sharing the
+        // present vertex) writing the linear-float intermediate, single-sample, replace.
+        static func effect(_ fragment: String) -> PipelineKey {
+            PipelineKey(vertex: "ollin_present_vertex", fragment: fragment, isEffect: true)
+        }
         // depth-only shadow pass (mesh geometry from the light's point of view)
         static let meshShadow = PipelineKey(vertex: "ollin_mesh_shadow_vertex",
                                             fragment: "", isShadow: true)
@@ -330,6 +341,18 @@ final class MetalRenderer {
     /// sketch never makes one. Memoryless: depth lives only in tile memory.
     private var mainDepth: MTLTexture?
 
+    /// Per-frame-ring pools of effects-layer textures, reused across frames so a
+    /// sketch that uses render targets every frame allocates them once. Keyed by the
+    /// ring slot (`frameIndex`) so a texture is never reused while an in-flight frame
+    /// still reads it — the same discipline as the vertex-buffer ring. `*Next` is the
+    /// per-frame acquisition cursor, reset at the start of the effects graph.
+    private var targetTexPool: [[(msaa: MTLTexture, resolve: MTLTexture, w: Int, h: Int)]] =
+        Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
+    private var filterTexPool: [[(tex: MTLTexture, w: Int, h: Int)]] =
+        Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
+    private var targetTexNext = 0
+    private var filterTexNext = 0
+
     /// Off-screen targets for the GPU-texture frame hook (`texture(of:)`), kept and
     /// reused across frames — rebuilt only when the canvas size changes, so live
     /// frame-sharing (Syphon) doesn't allocate a texture every frame. Geometry
@@ -469,6 +492,18 @@ final class MetalRenderer {
         // It shares the mesh vertex buffer the geometry pass uses.
         let meshBuf = meshBuffer(at: frameIndex, for: drawer.meshVertices.count)
         let renderedShadow = encodeShadowPass(drawer, into: commandBuffer, meshBuffer: meshBuf)
+
+        // Effects layers fill before the main pass (which samples them via drawImage),
+        // sharing this frame's geometry buffers. A no-op when the frame used none.
+        let buffers = GeometryBuffers(
+            triangle: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
+            sdf: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count),
+            image: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
+            glyph: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
+            point: pointBuffer(at: frameIndex, for: drawer.points.count),
+            mesh: meshBuf)
+        encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: true)
+
         guard let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
             return
@@ -476,19 +511,19 @@ final class MetalRenderer {
         commandBuffer.addCompletedHandler { [frameBoundary] _ in frameBoundary.signal() }
 
         encode(drawer, viewport: viewport, into: geomEncoder,
-               triangleBuffer: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
-               sdfBuffer: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count),
-               imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
-               glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
-               pointBuffer: pointBuffer(at: frameIndex, for: drawer.points.count),
-               meshBuffer: meshBuf,
+               triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
+               imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
+               pointBuffer: buffers.point, meshBuffer: buffers.mesh,
                depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                shadowCube: renderedShadow.cube,
                shadowAccel: renderedShadow.accel)
         geomEncoder.endEncoding()
 
+        // Whole-frame postProcess filters run over the resolved frame before present.
+        let presented = applyFrameFilters(drawer, resolved: resolve, width: width, height: height,
+                                          into: commandBuffer, pooled: true)
         if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: drawable.texture)) {
-            encodePresent(from: resolve, drawer: drawer, into: presentEncoder)
+            encodePresent(from: presented, drawer: drawer, into: presentEncoder)
             presentEncoder.endEncoding()
         }
         commandBuffer.present(drawable)
@@ -734,23 +769,35 @@ final class MetalRenderer {
         // mesh buffer; so the headless/snapshot path shadows exactly like the window.
         let meshBuf = exportMeshBuffer(for: drawer.meshVertices.count)
         let renderedShadow = encodeShadowPass(drawer, into: commandBuffer, meshBuffer: meshBuf)
+
+        // Effects layers fill before the main pass, sharing the export buffers, so
+        // the headless/snapshot path renders targets exactly like the window.
+        let buffers = GeometryBuffers(
+            triangle: exportVertexBuffer(for: drawer.vertices.count),
+            sdf: exportSDFBuffer(for: drawer.sdfInstances.count),
+            image: exportImageBuffer(for: drawer.imageVertices.count),
+            glyph: exportGlyphBuffer(for: drawer.glyphVertices.count),
+            point: exportPointBuffer(for: drawer.points.count),
+            mesh: meshBuf)
+        encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false)
+
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
         encode(drawer, viewport: viewport, into: encoder,
-               triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
-               sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
-               imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
-               glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
-               pointBuffer: exportPointBuffer(for: drawer.points.count),
-               meshBuffer: meshBuf,
+               triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
+               imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
+               pointBuffer: buffers.point, meshBuffer: buffers.mesh,
                depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                shadowCube: renderedShadow.cube,
                shadowAccel: renderedShadow.accel)
         encoder.endEncoding()
 
-        // Tone-map the resolved float frame into the sRGB display texture.
+        // Tone-map the resolved float frame (after whole-frame postProcess filters)
+        // into the sRGB display texture.
+        let presented = applyFrameFilters(drawer, resolved: resolveTexture, width: width, height: height,
+                                          into: commandBuffer, pooled: false)
         guard let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: displayTexture)) else { return nil }
-        encodePresent(from: resolveTexture, drawer: drawer, into: presentEncoder)
+        encodePresent(from: presented, drawer: drawer, into: presentEncoder)
         presentEncoder.endEncoding()
 
         // Copy the display texture into a CPU-readable buffer (works on every
@@ -882,6 +929,166 @@ final class MetalRenderer {
         return displayTexture
     }
 
+    // MARK: Layered effects (render targets + filters)
+
+    /// The frame's geometry buffers, bundled so the effect-target passes and the
+    /// main pass draw from the same uploads.
+    private struct GeometryBuffers {
+        var triangle: MTLBuffer?
+        var sdf: MTLBuffer?
+        var image: MTLBuffer?
+        var glyph: MTLBuffer?
+        var point: MTLBuffer?
+        var mesh: MTLBuffer?
+    }
+
+    /// Fill every effects layer this frame, ahead of the main pass: render each
+    /// geometry target's tagged batches into its own texture, then run each filter
+    /// op into its output texture. Each layer ends with `texture` set, so the main
+    /// pass (and later filters) can sample it. A no-op when the frame used no
+    /// targets, so the ordinary path is byte-identical. `pooled` reuses per-frame
+    /// textures on the live ring; the headless paths allocate fresh and wait.
+    private func encodeEffectTargets(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                                     buffers: GeometryBuffers, pooled: Bool) {
+        guard !drawer.renderTargets.isEmpty || !drawer.filterOps.isEmpty
+            || !drawer.frameFilters.isEmpty else { return }
+        targetTexNext = 0
+        filterTexNext = 0
+        for target in drawer.renderTargets {
+            guard case .geometry = target.origin else { continue }
+            let pw = target.pixelWidth, ph = target.pixelHeight
+            guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled) else { continue }
+            let pass = MTLRenderPassDescriptor()
+            pass.colorAttachments[0].texture = tex.msaa
+            pass.colorAttachments[0].resolveTexture = tex.resolve
+            pass.colorAttachments[0].loadAction = .clear
+            pass.colorAttachments[0].clearColor = target.clearColor.mtlClearColor
+            pass.colorAttachments[0].storeAction = .multisampleResolve
+            guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
+            // Geometry inside the block used canvas coordinates, so map by the logical
+            // size; a fraction-res layer's smaller attachment just downsamples.
+            encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
+                   triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
+                   glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   depthFormat: nil, target: target)
+            enc.endEncoding()
+            target.texture = tex.resolve
+        }
+        for output in drawer.filterOps {
+            guard case let .filter(input, filter) = output.origin, let src = input.texture else { continue }
+            output.texture = applyFilter(filter, input: src,
+                                         width: output.pixelWidth, height: output.pixelHeight,
+                                         into: cb, pooled: pooled)
+        }
+    }
+
+    /// Apply the whole-frame `postProcess` filters to the resolved float frame,
+    /// returning the texture to present (the input itself when there are none).
+    private func applyFrameFilters(_ drawer: Drawer, resolved: MTLTexture,
+                                   width: Int, height: Int, into cb: MTLCommandBuffer,
+                                   pooled: Bool) -> MTLTexture {
+        var current = resolved
+        for filter in drawer.frameFilters {
+            if let out = applyFilter(filter, input: current, width: width, height: height,
+                                     into: cb, pooled: pooled) {
+                current = out
+            }
+        }
+        return current
+    }
+
+    /// Run one `filter` from `input` into a freshly acquired output texture. Gaussian
+    /// blur is a hardware MPS kernel; bloom is a bright-pass + blur + add-back chain.
+    private func applyFilter(_ filter: Filter, input: MTLTexture, width: Int, height: Int,
+                             into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        switch filter.kind {
+        case .gaussianBlur(let radius):
+            guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            let blur = MPSImageGaussianBlur(device: device, sigma: Float(max(0.1, radius)))
+            blur.edgeMode = .clamp
+            blur.encode(commandBuffer: cb, sourceTexture: input, destinationTexture: output)
+            return output
+        case .bloom(let threshold, let intensity, let radius):
+            guard let bright = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let blurred = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            // Bright-pass → blur → add the glow back onto the original.
+            encodeEffectFragment("ollin_fx_brightpass", inputs: [input], output: bright,
+                                 params: SIMD4(Float(threshold), 0, 0, 0), into: cb)
+            let blur = MPSImageGaussianBlur(device: device, sigma: Float(max(0.1, radius)))
+            blur.edgeMode = .clamp
+            blur.encode(commandBuffer: cb, sourceTexture: bright, destinationTexture: blurred)
+            encodeEffectFragment("ollin_fx_bloom_combine", inputs: [input, blurred], output: output,
+                                 params: SIMD4(Float(intensity), 0, 0, 0), into: cb)
+            return output
+        }
+    }
+
+    /// Encode one fullscreen filter fragment pass: bind `inputs` as fragment
+    /// textures 0…, `params` as fragment buffer 0, and draw the present triangle
+    /// into `output` (single-sample, replace).
+    private func encodeEffectFragment(_ fragment: String, inputs: [MTLTexture],
+                                      output: MTLTexture, params: SIMD4<Float>,
+                                      into cb: MTLCommandBuffer) {
+        guard let state = try? pipeline(.effect(fragment)) else { return }
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = output
+        pass.colorAttachments[0].loadAction = .dontCare
+        pass.colorAttachments[0].storeAction = .store
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return }
+        enc.setRenderPipelineState(state)
+        for (i, tex) in inputs.enumerated() { enc.setFragmentTexture(tex, index: i) }
+        enc.setFragmentSamplerState(imageSampler, index: 0)
+        var p = params
+        enc.setFragmentBytes(&p, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        enc.endEncoding()
+    }
+
+    /// Acquire an MSAA + resolve pair for a geometry target. Pooled: reuse the slot
+    /// for this frame-ring index (safe — the frame semaphore gates slot reuse).
+    private func acquireTargetTextures(width: Int, height: Int, pooled: Bool) -> (msaa: MTLTexture, resolve: MTLTexture)? {
+        guard pooled else {
+            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless),
+                  let resolve = makeFloatResolve(width: width, height: height) else { return nil }
+            return (msaa, resolve)
+        }
+        let slot = targetTexNext; targetTexNext += 1
+        var pool = targetTexPool[frameIndex]
+        if slot < pool.count, pool[slot].w == width, pool[slot].h == height {
+            return (pool[slot].msaa, pool[slot].resolve)
+        }
+        guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless),
+              let resolve = makeFloatResolve(width: width, height: height) else { return nil }
+        let entry = (msaa, resolve, width, height)
+        if slot < pool.count { pool[slot] = entry } else { pool.append(entry) }
+        targetTexPool[frameIndex] = pool
+        return (msaa, resolve)
+    }
+
+    /// Acquire a single-sample linear-float intermediate for a filter result.
+    private func acquireFilterTexture(width: Int, height: Int, pooled: Bool) -> MTLTexture? {
+        guard pooled else { return makeFilterTexture(width: width, height: height) }
+        let slot = filterTexNext; filterTexNext += 1
+        var pool = filterTexPool[frameIndex]
+        if slot < pool.count, pool[slot].w == width, pool[slot].h == height { return pool[slot].tex }
+        guard let tex = makeFilterTexture(width: width, height: height) else { return nil }
+        let entry = (tex, width, height)
+        if slot < pool.count { pool[slot] = entry } else { pool.append(entry) }
+        filterTexPool[frameIndex] = pool
+        return tex
+    }
+
+    /// A single-sample linear-float texture for an intermediate filter result —
+    /// sampled, MPS-written, and fragment-rendered, so it carries all three usages.
+    private func makeFilterTexture(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: linearFormat, width: width, height: height, mipmapped: false)
+        desc.usage = [.shaderRead, .shaderWrite, .renderTarget]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
+    }
+
     /// Upload `drawer`'s recorded geometry and issue its draws into `encoder`,
     /// one per batch in call order so triangles and SDF shapes composite
     /// front-to-back as the sketch drew them. Shared by the on-screen and
@@ -893,7 +1100,8 @@ final class MetalRenderer {
                         pointBuffer: MTLBuffer?, meshBuffer: MTLBuffer?,
                         depthFormat: MTLPixelFormat?, shadowMap: MTLTexture? = nil,
                         shadowCube: MTLTexture? = nil,
-                        shadowAccel: MTLAccelerationStructure? = nil) {
+                        shadowAccel: MTLAccelerationStructure? = nil,
+                        target passTarget: RenderTarget? = nil) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
         let imageVertices = drawer.imageVertices
@@ -983,6 +1191,10 @@ final class MetalRenderer {
         for i in batches.indices {
             let batch = batches[i]
             let next = i + 1 < batches.count ? batches[i + 1] : nil
+            // Each pass draws only its own batches: the main pass (passTarget nil)
+            // skips target-tagged runs, and a target pass skips everything but its
+            // own. `next` stays the globally-next batch so the buffer range is right.
+            if batch.target !== passTarget { continue }
             // The pipeline for this batch's geometry kind, blend mode, *and* the
             // pass's depth format; built on first use of a combination. A mesh batch
             // selects its variant: wireframe (edges only) or textured (a material
@@ -1734,6 +1946,9 @@ final class MetalRenderer {
         if key.isPresent {
             return try makePresentPipeline(using: library)
         }
+        if key.isEffect {
+            return try makeEffectPipeline(key, using: library)
+        }
         if key.isShadow {
             return try makeShadowPipeline(key, using: library)
         }
@@ -1796,6 +2011,22 @@ final class MetalRenderer {
         descriptor.fragmentFunction = fragmentFunction
         descriptor.rasterSampleCount = 1
         descriptor.colorAttachments[0].pixelFormat = pixelFormat
+        return try device.makeRenderPipelineState(descriptor: descriptor)
+    }
+
+    /// An effects filter pass: a fullscreen-triangle fragment writing the
+    /// linear-float intermediate, single-sample (it runs between resolves, not in an
+    /// MSAA pass) with blending off — the filter shader produces the final texel.
+    private func makeEffectPipeline(_ key: PipelineKey, using library: MTLLibrary) throws -> MTLRenderPipelineState {
+        guard let vertexFunction = library.makeFunction(name: key.vertex),
+              let fragmentFunction = library.makeFunction(name: key.fragment) else {
+            throw RendererError.shaderFunctions
+        }
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = vertexFunction
+        descriptor.fragmentFunction = fragmentFunction
+        descriptor.rasterSampleCount = 1
+        descriptor.colorAttachments[0].pixelFormat = linearFormat
         return try device.makeRenderPipelineState(descriptor: descriptor)
     }
 

@@ -63,6 +63,12 @@ public final class Image {
     /// the latest kernel write. CPU pixel paths are inert, as for `externalTexture`.
     private var computeTextureSource: ComputeTextureBindable?
 
+    /// A `RenderTarget` (effects layer) this image wraps. Resolved lazily at draw
+    /// time — the target's texture is filled by the renderer earlier in the same
+    /// frame, before any draw that samples it — so `drawImage(layer.image)` always
+    /// composites what was drawn into the layer this frame. CPU pixel paths are inert.
+    private var renderTargetSource: RenderTarget?
+
     /// Draw a texture-backed image with its rows flipped (V coordinate inverted).
     /// Syphon textures follow the GL/Syphon bottom-left origin convention, the
     /// opposite of Ollin's top-left image space, so a consumed feed sets this to
@@ -113,6 +119,16 @@ public final class Image {
         self.computeTextureSource = source
         self.width = source.width
         self.height = source.height
+        self.cgImage = Image.placeholderCGImage
+    }
+
+    /// Wrap a `RenderTarget` so an effects layer draws through `drawImage` like any
+    /// other image, resolved lazily each frame (see `renderTargetSource`). Built by
+    /// `RenderTarget.image`; CPU pixel paths are inert.
+    init(renderTarget: RenderTarget) {
+        self.renderTargetSource = renderTarget
+        self.width = renderTarget.width
+        self.height = renderTarget.height
         self.cgImage = Image.placeholderCGImage
     }
 
@@ -213,6 +229,10 @@ public final class Image {
         // A compute-texture-backed image resolves the kernel's output texture now,
         // at draw time (realizing it on first use), so it picks up this frame's write.
         if let computeTextureSource { return computeTextureSource.metalTexture(for: device) }
+        // An effects layer hands back the texture the renderer filled for it earlier
+        // this frame (linear rgba16Float, premultiplied — the image path composites
+        // it correctly, no flip).
+        if let renderTargetSource { return renderTargetSource.texture }
 
         let id = ObjectIdentifier(device)
         if let cachedTexture, cachedDeviceID == id { return cachedTexture }

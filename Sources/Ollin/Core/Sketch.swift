@@ -1095,6 +1095,36 @@ open class Sketch {
     public func drawImage(_ image: Image, in rect: Rectangle) {
         drawer.drawImage(image, in: rect)
     }
+
+    // MARK: Layered effects
+
+    /// Make a full-canvas off-screen layer to draw into and then read back or
+    /// filter (see `RenderTarget`). `scale` is the layer's internal resolution as a
+    /// fraction of the canvas (1 = full); drop it for cheap blur/glow layers.
+    /// Create it inside `draw()` — it's a per-frame handle.
+    public func renderTarget(scale: Double = 1) -> RenderTarget {
+        RenderTarget(width: Int(width.rounded()), height: Int(height.rounded()),
+                     scale: scale, drawer: drawer)
+    }
+
+    /// Make an off-screen layer of an explicit pixel size (rather than the canvas
+    /// size), for a layer that isn't full-canvas.
+    public func renderTarget(width: Int, height: Int, scale: Double = 1) -> RenderTarget {
+        RenderTarget(width: width, height: height, scale: scale, drawer: drawer)
+    }
+
+    /// Redirect everything drawn in `body` into `target` instead of the canvas.
+    /// Scoped like `withState { }`: drawing state and transforms carry in, and the
+    /// target holds the result for `target.image` / `target.filtered(_:)`.
+    /// Call `background(_:)` inside to clear the layer (it clears only this layer).
+    public func withTarget(_ target: RenderTarget, _ body: () -> Void) {
+        drawer.withTarget(target, body)
+    }
+
+    /// Apply `filter` to the whole finished frame, before it's shown — the quick
+    /// way to bloom or blur everything without managing a layer. Call it in
+    /// `draw()`; multiple calls chain in order.
+    public func postProcess(_ filter: Filter) { drawer.postProcess(filter) }
     /// Tint every following `drawImage`: each texel is multiplied by `color`, so
     /// its RGB recolors the image and its alpha fades it. White at full alpha (the
     /// default) leaves the image unchanged. Like other state, it's saved and

@@ -1867,3 +1867,44 @@ fragment float4 ollin_present_fragment(PresentOut in [[stage_in]],
     // is a function of the pixel coordinate, identical to the geometry path's.
     return finalizeColor(float4(c, 1.0), in.position.xy);
 }
+
+// MARK: - Effects filters (texture -> texture, linear-float intermediate)
+//
+// These run between resolves on the off-screen effects layers, reusing the
+// present fullscreen triangle (PresentOut.uv, top-left origin). They read and
+// write the linear `rgba16Float` intermediate directly (no tone-map, no dither —
+// that's the present pass's job) and operate on premultiplied-alpha color, the
+// form an Ollin render target already holds after source-over compositing.
+
+// Bloom bright-pass: keep the part of each texel above a brightness threshold —
+// the glow source. The key is the max channel (HSV "value"), not luminance, so a
+// vivid full-brightness mark blooms the same whatever its hue — luminance would
+// drop saturated reds and especially blues below the threshold while greens pass,
+// which reads as a bug in a tool where colors are picked by brightness. A soft
+// knee gives a smooth onset; over the linear-light frame, values above 1 (HDR
+// highlights) bloom hardest.
+fragment float4 ollin_fx_brightpass(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 &params [[buffer(0)]]) {
+    float4 c = src.sample(samp, in.uv);
+    float threshold = params.x;
+    float key = max(c.r, max(c.g, c.b));
+    float knee = max(threshold * 0.5, 1e-3);
+    float w = clamp((key - threshold) / knee, 0.0, 1.0);   // 0 below the knee, ramp to 1
+    return c * w;
+}
+
+// Bloom combine: the original image plus its blurred glow at `intensity`. Both
+// inputs are premultiplied linear, so adding rgb is additive light; the result is
+// a self-contained glowing copy ready to composite (often additively).
+fragment float4 ollin_fx_bloom_combine(PresentOut in [[stage_in]],
+                                       texture2d<float> base [[texture(0)]],
+                                       texture2d<float> glow [[texture(1)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 &params [[buffer(0)]]) {
+    float4 b = base.sample(samp, in.uv);
+    float4 g = glow.sample(samp, in.uv);
+    float intensity = params.x;
+    return float4(b.rgb + g.rgb * intensity, min(1.0, b.a + g.a * intensity));
+}
