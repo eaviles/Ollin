@@ -630,6 +630,7 @@ public enum OllinApp {
         // surface, so render every frame into it — the captured frame N is the
         // built-up canvas, not a fresh draw of frame N alone.
         var accumulated: CGImage?
+        var fedBack: CGImage?
         let target = max(0, frame)
         for k in 0...target {                        // advance so frame N is correct
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
@@ -637,6 +638,12 @@ public enum OllinApp {
             if sketch.drawer.accumulates {
                 accumulated = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
                                                         width: width, height: height)
+            } else if sketch.drawer.usesFeedback {
+                // Feedback state lives in render-pass-filled ping-pong textures, so
+                // (like accumulation) every intermediate frame must render (which also
+                // steps compute) for the layer to evolve; only the last frame is kept.
+                fedBack = renderer.image(of: sketch.drawer, viewport: viewport,
+                                         width: width, height: height)
             } else if k < target {
                 // A stateful compute sim must run on the GPU every frame to evolve;
                 // the intermediate frames we don't capture still need their steps
@@ -645,6 +652,7 @@ public enum OllinApp {
             }
         }
         if sketch.drawer.accumulates { return accumulated }
+        if sketch.drawer.usesFeedback { return fedBack }
         return renderer.image(of: sketch.drawer, viewport: viewport, width: width, height: height)
     }
 

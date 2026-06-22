@@ -353,6 +353,32 @@ final class MetalRenderer {
     private var targetTexNext = 0
     private var filterTexNext = 0
 
+    /// One `Feedback` layer's persistent ping-pong pair: two single-sample
+    /// linear-float resolve textures. Each frame the block renders into the *back*
+    /// (`flipped ? a : b`) while the sketch reads the *front* (`flipped ? b : a`),
+    /// then `flipped` toggles so the back becomes next frame's front. `owner` is held
+    /// weakly so the slot is pruned once the sketch releases its `Feedback` (a live
+    /// reload, or a layer no longer used) and to catch an address reused by a new
+    /// layer.
+    private final class FeedbackSlot {
+        let a: MTLTexture, b: MTLTexture
+        let w: Int, h: Int
+        var flipped = false
+        weak var owner: Feedback?
+        init(a: MTLTexture, b: MTLTexture, w: Int, h: Int, owner: Feedback) {
+            self.a = a; self.b = b; self.w = w; self.h = h; self.owner = owner
+        }
+    }
+    /// Persistent feedback storage, kept across frames (and across the live `pooled`
+    /// ring and the headless path alike), distinct from the per-frame pools above,
+    /// which is the whole point of feedback. Feedback is inherently serial (frame
+    /// N+1 reads frame N's output), so Metal's automatic GPU↔GPU hazard tracking
+    /// across command buffers serializes the dependency with no extra semaphore.
+    private var feedbackSlots: [ObjectIdentifier: FeedbackSlot] = [:]
+    /// Feedback layers drawn into this frame, so only those flip after the frame
+    /// (a layer skipped this frame keeps its content as the next front).
+    private var feedbackUsedThisFrame: Set<ObjectIdentifier> = []
+
     /// Off-screen targets for the GPU-texture frame hook (`texture(of:)`), kept and
     /// reused across frames — rebuilt only when the canvas size changes, so live
     /// frame-sharing (Syphon) doesn't allocate a texture every frame. Geometry
@@ -984,11 +1010,45 @@ final class MetalRenderer {
             enc.endEncoding()
             target.texture = tex.resolve
         }
+        // Feedback layers: like a geometry target, but rendered into persistent
+        // ping-pong storage. The block reads the *front* (last frame, exposed as
+        // `previous`) while drawing into the *back*; the pair flips after the frame.
+        for target in drawer.renderTargets {
+            guard case let .feedback(fb) = target.origin else { continue }
+            let pw = target.pixelWidth, ph = target.pixelHeight
+            guard let slot = feedbackSlot(for: fb, width: pw, height: ph, into: cb),
+                  let msaa = makeFloatMSAA(width: pw, height: ph, storage: .memoryless) else { continue }
+            let front = slot.flipped ? slot.b : slot.a
+            let back  = slot.flipped ? slot.a : slot.b
+            fb.previousLayer.texture = front     // `previous` resolves to last frame
+            let pass = MTLRenderPassDescriptor()
+            pass.colorAttachments[0].texture = msaa
+            pass.colorAttachments[0].resolveTexture = back
+            pass.colorAttachments[0].loadAction = .clear
+            pass.colorAttachments[0].clearColor = target.clearColor.mtlClearColor
+            pass.colorAttachments[0].storeAction = .multisampleResolve
+            guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
+            encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
+                   triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
+                   glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   depthFormat: nil, target: target)
+            enc.endEncoding()
+            target.texture = back                // `image` resolves to this frame
+            feedbackUsedThisFrame.insert(ObjectIdentifier(fb))
+        }
         for output in drawer.filterOps {
             guard case let .filter(input, filter) = output.origin, let src = input.texture else { continue }
             output.texture = applyFilter(filter, input: src,
                                          width: output.pixelWidth, height: output.pixelHeight,
                                          into: cb, pooled: pooled)
+        }
+        // Advance each feedback layer drawn this frame (its back becomes next frame's
+        // front), then prune slots whose owner the sketch has released (live reload,
+        // or a layer no longer held) so the map stays bounded.
+        for id in feedbackUsedThisFrame { feedbackSlots[id]?.flipped.toggle() }
+        feedbackUsedThisFrame.removeAll(keepingCapacity: true)
+        if feedbackSlots.contains(where: { $0.value.owner == nil }) {
+            feedbackSlots = feedbackSlots.filter { $0.value.owner != nil }
         }
     }
 
@@ -1143,6 +1203,36 @@ final class MetalRenderer {
                         withBytes: $0.baseAddress!, bytesPerRow: samples.count * MemoryLayout<SIMD4<Float>>.stride)
         }
         return tex
+    }
+
+    /// `fb`'s persistent ping-pong slot, allocating both textures (and clearing them
+    /// to transparent, so the very first frame's `previous` reads clean) on first use,
+    /// a size change, or after the address was reused by a different layer.
+    private func feedbackSlot(for fb: Feedback, width: Int, height: Int,
+                              into cb: MTLCommandBuffer) -> FeedbackSlot? {
+        let id = ObjectIdentifier(fb)
+        if let slot = feedbackSlots[id], slot.owner === fb, slot.w == width, slot.h == height {
+            return slot
+        }
+        guard let a = makeFloatResolve(width: width, height: height),
+              let b = makeFloatResolve(width: width, height: height) else { return nil }
+        clearFloatTexture(a, into: cb)
+        clearFloatTexture(b, into: cb)
+        let slot = FeedbackSlot(a: a, b: b, w: width, h: height, owner: fb)
+        feedbackSlots[id] = slot
+        return slot
+    }
+
+    /// Clear `tex` to transparent with an empty render pass (a render target has no
+    /// blit fill-to-color), so a freshly allocated feedback texture starts clean
+    /// rather than with undefined contents.
+    private func clearFloatTexture(_ tex: MTLTexture, into cb: MTLCommandBuffer) {
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = tex
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        pass.colorAttachments[0].storeAction = .store
+        cb.makeRenderCommandEncoder(descriptor: pass)?.endEncoding()
     }
 
     /// Acquire an MSAA + resolve pair for a geometry target. Pooled: reuse the slot

@@ -136,6 +136,16 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func effectsFeedbackMatchesReference() throws {
+        // A feedback layer built up over 24 frames: each frame redraws the last,
+        // zoomed + spun + faded, plus a new dot. Pins the persistent ping-pong
+        // (previous read while writing back, the per-frame swap kept across frames)
+        // and the headless render-every-frame warmup the built-up state needs.
+        let diff = try Snapshot.meanDifference(of: EffectsFeedback(), against: "effects-feedback", frame: 24)
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func pointCloud3DMatchesReference() throws {
         // A static 3D heightfield through a fixed camera — pins the 3D camera, the
         // depth-tested point pipeline, and the instanced disc splats.
@@ -1245,5 +1255,32 @@ private final class EffectsCatalog: Sketch {
         drawImage(scene.filtered(.gradientMap(.turbo)).image, in: Rectangle(x: 128, y: 0, width: 128, height: 128))
         drawImage(scene.filtered(.edges(intensity: 2)).image, in: Rectangle(x: 0, y: 128, width: 128, height: 128))
         drawImage(generate(.checkers(scale: 6)).image, in: Rectangle(x: 128, y: 128, width: 128, height: 128))
+    }
+}
+
+private final class EffectsFeedback: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var trail: Feedback!
+
+    override func setup() { trail = feedback() }
+
+    override func draw() {
+        background(.black)
+        withFeedback(trail) { prev in
+            withState {
+                translate(width / 2, height / 2)
+                rotate(0.12)
+                scale(0.95)
+                translate(-width / 2, -height / 2)
+                tint(Color(white: 1, alpha: 0.9))
+                drawImage(prev, 0, 0)
+            }
+            noStroke()
+            let x = width * 0.5 + sin(time * 2.0) * width * 0.3
+            let y = height * 0.5 + cos(time * 2.6) * height * 0.3
+            fill(Color(red: 1, green: 0.5, blue: 0.1))
+            drawCircle(x, y, 12)
+        }
+        drawImage(trail.image, 0, 0)
     }
 }

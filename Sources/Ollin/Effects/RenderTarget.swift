@@ -39,14 +39,19 @@ public final class RenderTarget {
 
     /// How this target gets filled. A `.geometry` target is drawn into by a
     /// `withTarget` block; a `.generator` target is filled by a procedural pattern
-    /// pass; a `.filter` target is the output of `filtered(_:)`, run from `input`.
-    /// Internal: the renderer reads it at render time.
+    /// pass; a `.filter` target is the output of `filtered(_:)`, run from `input`;
+    /// a `.feedback` target is a `Feedback` layer's per-frame write surface, filled
+    /// like a `.geometry` target but into persistent ping-pong storage the renderer
+    /// keeps across frames. Internal: the renderer reads it at render time.
     enum Origin {
         case geometry
         case generator(Generator)
         case filter(input: RenderTarget, filter: Filter)
+        case feedback(Feedback)
     }
-    let origin: Origin
+    /// Settable so a `Feedback` can stamp its write layer with `.feedback(self)`
+    /// once `self` exists (the layer is built before the back-reference is known).
+    var origin: Origin
 
     /// The drawer that created this target, so `filtered(_:)` can record the effect
     /// op. Weak: the drawer outlives per-frame targets and owns the recording.

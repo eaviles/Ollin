@@ -1129,6 +1129,35 @@ open class Sketch {
                         height: Int(height.rounded()), scale: scale)
     }
 
+    /// Make a full-canvas feedback layer: a layer that remembers itself across
+    /// frames, for trails, tunnels, and video-feedback looks (see `Feedback`).
+    /// Unlike `renderTarget()`, it's **persistent**: create it once in `setup()`
+    /// and store it; its identity is what carries state from one frame to the next.
+    /// `scale` is its internal resolution as a fraction of the canvas (1 = full).
+    public func feedback(scale: Double = 1) -> Feedback {
+        Feedback(width: Int(width.rounded()), height: Int(height.rounded()),
+                 scale: scale, drawer: drawer)
+    }
+
+    /// Make a feedback layer of an explicit pixel size, rather than the canvas size.
+    public func feedback(width: Int, height: Int, scale: Double = 1) -> Feedback {
+        Feedback(width: width, height: height, scale: scale, drawer: drawer)
+    }
+
+    /// Draw into `feedback`, with last frame's content handed in as `prev`. Read,
+    /// fade, and transform `prev`, then draw new content on top; the result becomes
+    /// next frame's `prev`. Composite the layer onto the canvas with
+    /// `drawImage(feedback.image, 0, 0)`. Scoped like `withTarget { }`.
+    public func withFeedback(_ feedback: Feedback, _ body: (Image) -> Void) {
+        drawer.withFeedback(feedback, body)
+    }
+
+    /// Draw into `feedback` without the closure parameter, reading last frame by name
+    /// via `feedback.previous` inside. The `withTarget`-shaped form of `withFeedback`.
+    public func withTarget(_ feedback: Feedback, _ body: () -> Void) {
+        drawer.withTarget(feedback, body)
+    }
+
     /// Apply `filter` to the whole finished frame, before it's shown: the quick
     /// way to bloom or blur everything without managing a layer. Call it in
     /// `draw()`; multiple calls chain in order.

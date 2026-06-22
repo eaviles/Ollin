@@ -33,6 +33,7 @@ override func draw() {
 - [Filter](#filter) - the filter catalog (blur, bloom, color, stylize)
 - [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
+- [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
 - [Notes](#notes)
 
 <a id="rendertarget"></a>
@@ -194,6 +195,40 @@ override func draw() {
 ```
 
 Call it in `draw()`; multiple calls chain in order.
+
+<a id="feedback"></a>
+### feedback(scale:) and withFeedback(_:_:)
+
+A `Feedback` layer **remembers itself across frames**. Each frame you read last frame's content, transform it (fade, zoom, rotate, offset), and draw new content on top; the result becomes next frame's content. That read-transform-write loop is what makes trails, tunnels, and the video-feedback look of a camera pointed at its own screen.
+
+It's distinct from the [accumulation surface](./Accumulation.md) (`noClear`), which piles new draws onto an *unchanging* canvas. Feedback hands you the previous frame as an **image you can transform** before drawing it back, and that transform step is the whole effect.
+
+Unlike `renderTarget()` (a per-frame handle), a `Feedback` is **persistent**: make it once in `setup()` and hold it. Its identity is what ties this frame's write to last frame's read, so make a fresh one each `draw()` and it never builds up.
+
+```swift
+var trail: Feedback!
+
+override func setup() { trail = feedback() }      // make once, store it
+
+override func draw() {
+    background(.black)                            // clears the canvas (resets the frame)
+    withFeedback(trail) { prev in                 // prev = last frame's content
+        translate(width / 2, height / 2)          // spin + shrink the old frame
+        rotate(0.06); scale(0.98)                 //   about the canvas centre
+        translate(-width / 2, -height / 2)
+        tint(Color(white: 1, alpha: 0.94))        // gentle decay so trails fade
+        drawImage(prev, 0, 0)
+        noTint()
+        fill(.white); drawCircle(mouseX, mouseY, 12)   // a fresh mark on top
+    }
+    drawImage(trail.image, 0, 0)                  // composite the result to the canvas
+}
+```
+
+- `withFeedback(_:_:)` hands the previous frame in as the closure parameter. The `withTarget(feedback) { … }` form works too: read last frame by name with `feedback.previous` inside.
+- `feedback.previous` is last frame's content; `feedback.image` is this frame's, for compositing.
+- Call `background(_:)` **before** the block. On the canvas it resets the whole frame, so calling it after would wipe the layer's geometry (like any other `withTarget` layer). Inside the block, `background(_:)` clears just the feedback layer.
+- See the `Basic/Feedback` example for a spiralling tunnel.
 
 <a id="notes"></a>
 ### Notes

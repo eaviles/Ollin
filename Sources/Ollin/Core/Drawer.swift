@@ -515,6 +515,33 @@ final class Drawer {
         currentKind = nil    // and force the next main draw into a fresh, untagged batch
     }
 
+    /// Redirect `body` into a persistent `Feedback` layer's write surface, handing
+    /// it last frame's content as `prev`. The block lands in the layer's back buffer
+    /// (cleared transparent each frame unless `background(_:)` sets it); the renderer
+    /// keeps the ping-pong pair across frames, so what's drawn becomes next frame's
+    /// `prev`. Records exactly like `withTarget(_:)`, just with the previous-frame
+    /// image passed in.
+    func withFeedback(_ feedback: Feedback, _ body: (Image) -> Void) {
+        feedback.writeLayer.clearColor = .clear
+        withTarget(feedback.writeLayer) { body(feedback.previous) }
+    }
+
+    /// The no-argument form: redirect `body` into a `Feedback` layer's write surface,
+    /// reading last frame by name via `feedback.previous` inside. Same recording as
+    /// `withFeedback`; the closure parameter is the only difference.
+    func withTarget(_ feedback: Feedback, _ body: () -> Void) {
+        feedback.writeLayer.clearColor = .clear
+        withTarget(feedback.writeLayer, body)
+    }
+
+    /// Whether any `Feedback` layer was drawn into this frame. The renderer keeps
+    /// feedback state in render-pass-filled ping-pong textures, so (like the
+    /// accumulation surface) the headless frame-grab must render every warmup frame
+    /// (not just step compute) for the state to evolve. See `OllinApp.image(of:)`.
+    var usesFeedback: Bool {
+        renderTargets.contains { if case .feedback = $0.origin { return true }; return false }
+    }
+
     /// Record a procedural generator as a source layer the renderer fills before
     /// any filters run (it reads no input). Returns the layer for compositing/filtering.
     func generate(_ generator: Generator, width: Int, height: Int, scale: Double) -> RenderTarget {

@@ -397,6 +397,11 @@ let package = Package(
             path: "Examples/Basic/Bloom"
         ),
         .executableTarget(
+            name: "Example-Feedback",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Feedback"
+        ),
+        .executableTarget(
             name: "Example-Accumulation",
             dependencies: ["Ollin"],
             path: "Examples/Basic/Accumulation"
