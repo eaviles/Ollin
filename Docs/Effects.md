@@ -31,10 +31,12 @@ override func draw() {
 - [RenderTarget.image](#image) - composite a layer back
 - [filtered](#filtered) - run a filter over a layer
 - [Filter](#filter) - the filter catalog (blur, bloom, color, stylize)
+- [combined / Combine](#combined) - combine two layers (mask, displace, mix)
 - [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
 - [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
 - [compose / layer](#compose) - declare a stack of layers as one block
+- [aside](#aside) - a helper layer that feeds another layer's effect
 - [Notes](#notes)
 
 <a id="rendertarget"></a>
@@ -155,6 +157,29 @@ Filters chain, so an effect reads as one expression:
 layer.filtered(.threshold(0.5)).filtered(.gaussianBlur(radius: 3)).filtered(.gradientMap(.magma))
 ```
 
+<a id="combined"></a>
+### combined(with:_:) and Combine
+
+A [`Filter`](#filter) reads one layer; a `Combine` reads **two**: a base layer and an auxiliary layer that modulates it, which is what masking, displacement, and cross-dissolve need. `base.combined(with: aux, op)` runs the op on the GPU and hands back a new layer, itself filterable and combinable, so multi-input effects chain like single-input ones.
+
+A `Combine` is a value descriptor like `Filter`, but the aux layer rides alongside it (a value descriptor can't hold a `RenderTarget`), passed as the `with:` argument. The three ops:
+
+- **`.mask(channel:invert:)`** keep the base where the aux reads **bright** (`channel: .luminance`, the default; draw the mask in white over transparent) or **opaque** (`channel: .alpha`), fading to transparent elsewhere; `invert` flips it. A spotlight reveal, a vignette, a clip to a shape.
+- **`.displace(amount:)`** offset the base's pixels by the aux read as a **vector field**: red → horizontal, green → vertical, mid-gray = no shift, up to `amount` of the layer. Feed it noise or a gradient for ripples, smearing, heat-haze, and refraction.
+- **`.mix(amount:)`** cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux); the transition workhorse.
+
+```swift
+let scene = renderTarget()
+withTarget(scene) { background(.black); fill(.orange); drawCircle(width / 2, height / 2, 300) }
+
+let mask = renderTarget()
+withTarget(mask) { fill(.white); drawCircle(mouseX, mouseY, 200) }   // white = visible
+
+drawImage(scene.combined(with: mask.filtered(.gaussianBlur(radius: 12)), .mask()).image, 0, 0)
+```
+
+The base and aux can render at different `scale`s; the aux is sampled by normalized coordinates. In a `compose { }` block, the same ops read as `aside` modifiers ([below](#aside)). The `Basic/Aside` example shows a displacement map and a spotlight mask in one scene.
+
 <a id="generate"></a>
 ### generate(_:) and Generator
 
@@ -271,6 +296,33 @@ Notes:
 - **A layer clears to transparent.** A `layer { }` that doesn't call `background(_:)` composites only what it draws; call `background(_:)` inside to give it an opaque backdrop (it clears just that layer).
 - **Call it near the top of `draw()`.** Layers composite onto whatever is already on the canvas, so draw a `background(_:)` (or a base layer) first. Like `withTarget`, an active transform carries into each layer's drawing.
 - See the `Basic/Compose` example for a blurred backdrop, a bloomed ring, and a screened edge lattice.
+
+<a id="aside"></a>
+### aside(_:)
+
+An `aside` is a helper layer drawn only to **feed** another layer's effect (a mask, a displacement map, the other half of a cross-dissolve) rather than compositing on its own. It's the [`Combine`](#combined) ops as `compose` modifiers, so a multi-input effect reads as a small graph with the compositor managing the intermediate textures rather than your threading them by hand.
+
+Build the helper with `aside { }` (the same as `layer { }`, named for how it's used; it takes the same `.post(...)` and `.scale(...)` modifiers, but its `.blend(...)` is unused since it never composites) and hand it to a layer's combine modifier:
+
+```swift
+compose {
+    layer { drawImage(photo, 0, 0) }
+        .masked(by: aside {                          // a soft spotlight reveal
+            fill(.white); drawCircle(mouseX, mouseY, 200)
+        }.post(.gaussianBlur(radius: 30)))
+
+    layer { drawImage(scene, 0, 0) }
+        .displaced(by: aside { drawImage(noise, 0, 0) }, amount: 0.04)   // ripple
+}
+```
+
+The combine modifiers mirror the [`Combine`](#combined) ops:
+
+- **`.masked(by:channel:invert:)`** keep the layer where the aside reads bright (or, with `channel: .alpha`, opaque).
+- **`.displaced(by:amount:)`** push the layer's pixels around by the aside read as a vector field.
+- **`.mixed(with:amount:)`** cross-dissolve the layer toward the aside.
+
+They interleave with `.post(_:)` in call order, and an aside can itself carry filters (a blurred mask edge, a softened displacement map). See the `Basic/Aside` example for a displacement map and a spotlight mask in one scene.
 
 <a id="notes"></a>
 ### Notes

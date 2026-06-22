@@ -126,6 +126,56 @@ fragment float4 ollin_fx_bloom_combine(PresentOut in [[stage_in]],
     return float4(b.rgb + g.rgb * intensity, min(1.0, b.a + g.a * intensity));
 }
 
+// MARK: - Combine filters (two inputs: a base layer modulated by an aux layer)
+//
+// Where the single-input filters above read texture(0) and write a new layer,
+// these read two — the base at texture(0) and an auxiliary layer at texture(1) —
+// the multi-input shape that covers masking, displacement, and cross-dissolve. The
+// aux is sampled by the same normalized uv, so it can render at a different scale.
+// All stay premultiplied-linear in and out, like the rest of the chain.
+
+// mask: keep the base where the aux reads bright (luminance) or opaque (alpha),
+// fading to transparent elsewhere. params[0].x selects the channel (0 = luminance,
+// 1 = alpha), .y inverts. The base is premultiplied, so scaling the whole texel by
+// the mask value keeps it premultiplied (rgb and a fade together).
+fragment float4 ollin_fx_mask(PresentOut in [[stage_in]],
+                              texture2d<float> base [[texture(0)]],
+                              texture2d<float> msk [[texture(1)]],
+                              sampler samp [[sampler(0)]],
+                              constant float4 *params [[buffer(0)]]) {
+    float4 b = base.sample(samp, in.uv);
+    float4 m = msk.sample(samp, in.uv);
+    // Luminance reads the premultiplied rgb directly, so a transparent texel (rgb 0)
+    // masks out and coverage is honoured; alpha reads the matte straight.
+    float k = (params[0].x < 0.5) ? ollin_luma(m.rgb) : m.a;
+    if (params[0].y > 0.5) k = 1.0 - k;
+    return b * clamp(k, 0.0, 1.0);
+}
+
+// displace: offset the base's sample by the aux read as a vector field — red/green
+// recentred from [0,1] to [-amount, amount] (mid-gray = no shift). params[0].x is
+// the max shift as a fraction of the layer. The classic displacement map: feed it
+// noise or a gradient for ripples, smearing, and refraction.
+fragment float4 ollin_fx_displace(PresentOut in [[stage_in]],
+                                  texture2d<float> base [[texture(0)]],
+                                  texture2d<float> map [[texture(1)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float2 v = ollin_unpremul(map.sample(samp, in.uv)).rg;
+    float2 off = (v - 0.5) * 2.0 * params[0].x;
+    return base.sample(samp, clamp(in.uv + off, 0.0, 1.0));
+}
+
+// mix: cross-dissolve the base toward the aux by params[0].x. A premultiplied lerp
+// is a valid cross-dissolve (both rgb and a interpolate), the transition workhorse.
+fragment float4 ollin_fx_mix(PresentOut in [[stage_in]],
+                             texture2d<float> base [[texture(0)]],
+                             texture2d<float> other [[texture(1)]],
+                             sampler samp [[sampler(0)]],
+                             constant float4 *params [[buffer(0)]]) {
+    return mix(base.sample(samp, in.uv), other.sample(samp, in.uv), params[0].x);
+}
+
 // MARK: - Color & tone filters
 //
 // Each reads premultiplied-linear input, transforms straight color, and writes

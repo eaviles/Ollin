@@ -156,6 +156,27 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func effectsCombineMatchesReference() throws {
+        // Four tiles, each a two-input combine over the same scene: a luminance mask,
+        // a displacement by a blurred bump, a cross-dissolve toward a checker
+        // generator, and an inverted alpha mask. Pins the multi-input path — the
+        // .combine origin resolved after both inputs, the two-texture bind, and the
+        // mask/displace/mix fragments.
+        let diff = try Snapshot.meanDifference(of: EffectsCombine(), against: "effects-combine")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func effectsComposeAsideMatchesReference() throws {
+        // A compose layer masked by an `aside` (a blurred disc, drawn only to feed the
+        // mask). Pins that the aside sugar resolves to the substrate it stands for: the
+        // aside rendered to its own layer, run through its post, fed to the combine, and
+        // never composited on its own.
+        let diff = try Snapshot.meanDifference(of: EffectsComposeAside(), against: "effects-compose-aside")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func pointCloud3DMatchesReference() throws {
         // A static 3D heightfield through a fixed camera — pins the 3D camera, the
         // depth-tested point pipeline, and the instanced disc splats.
@@ -1321,6 +1342,74 @@ private final class EffectsCompose: Sketch {
             }
             .post(.bloom(threshold: 0.4, intensity: 1.6, radius: 14))
             .blend(.add)
+        }
+    }
+}
+
+/// Multi-input combine ops over the substrate: four tiles, each combining the same
+/// fixed scene with an aux layer. Deterministic (no time/random), so it pins the
+/// two-input path and each combine shader (mask by luminance, displace by a bump,
+/// mix toward a generator, mask by alpha inverted).
+private final class EffectsCombine: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private func scene() -> RenderTarget {
+        let t = renderTarget()
+        withTarget(t) {
+            background(Color(hex: 0x14233B))
+            noStroke()
+            fill(Color(red: 1, green: 0.3, blue: 0.2)); drawCircle(width * 0.38, height * 0.42, 70)
+            fill(Color(red: 0.2, green: 0.8, blue: 1)); drawCircle(width * 0.62, height * 0.58, 70)
+            fill(.white); drawCircle(width * 0.5, height * 0.3, 26)
+        }
+        return t
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+
+        // mask (luminance): the scene seen through a soft white disc.
+        let mask = renderTarget()
+        withTarget(mask) { background(.clear); noStroke(); fill(.white); drawCircle(width * 0.5, height * 0.5, 90) }
+        drawImage(scene().combined(with: mask.filtered(.gaussianBlur(radius: 8)), .mask()).image,
+                  in: Rectangle(x: 0, y: 0, width: 128, height: 128))
+
+        // displace: the scene pushed around by a blurred off-centre bump on mid-gray.
+        let dmap = renderTarget()
+        withTarget(dmap) { background(Color(white: 0.5)); noStroke(); fill(.white); drawCircle(width * 0.65, height * 0.35, 80) }
+        drawImage(scene().combined(with: dmap.filtered(.gaussianBlur(radius: 20)), .displace(amount: 0.08)).image,
+                  in: Rectangle(x: 128, y: 0, width: 128, height: 128))
+
+        // mix: cross-dissolve the scene halfway toward a checker generator.
+        drawImage(scene().combined(with: generate(.checkers(scale: 6)), .mix(amount: 0.5)).image,
+                  in: Rectangle(x: 0, y: 128, width: 128, height: 128))
+
+        // mask (alpha, inverted): hide the scene under an opaque disc, show it around.
+        let amask = renderTarget()
+        withTarget(amask) { background(.clear); noStroke(); fill(.white); drawCircle(width * 0.5, height * 0.5, 70) }
+        drawImage(scene().combined(with: amask, .mask(channel: .alpha, invert: true)).image,
+                  in: Rectangle(x: 128, y: 128, width: 128, height: 128))
+    }
+}
+
+/// The `aside` compose sugar: one layer masked by an aside (a blurred disc fed to a
+/// luminance mask). Deterministic, so it pins the DSL aside path — the aside drawn
+/// to its own layer, run through its post, fed to the combine, and never composited.
+private final class EffectsComposeAside: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        compose {
+            layer {
+                background(Color(hex: 0x14233B))
+                noStroke()
+                fill(Color(red: 1, green: 0.3, blue: 0.2)); drawCircle(width * 0.40, height * 0.44, 64)
+                fill(Color(red: 0.2, green: 0.8, blue: 1)); drawCircle(width * 0.60, height * 0.56, 64)
+            }
+            .masked(by: aside {
+                noStroke(); fill(.white); drawCircle(width * 0.5, height * 0.5, 86)
+            }.post(.gaussianBlur(radius: 10)))
         }
     }
 }

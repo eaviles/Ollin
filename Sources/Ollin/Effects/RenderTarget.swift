@@ -40,13 +40,16 @@ public final class RenderTarget {
     /// How this target gets filled. A `.geometry` target is drawn into by a
     /// `withTarget` block; a `.generator` target is filled by a procedural pattern
     /// pass; a `.filter` target is the output of `filtered(_:)`, run from `input`;
-    /// a `.feedback` target is a `Feedback` layer's per-frame write surface, filled
-    /// like a `.geometry` target but into persistent ping-pong storage the renderer
-    /// keeps across frames. Internal: the renderer reads it at render time.
+    /// a `.combine` target is the output of `combined(with:_:)`, run from `base`
+    /// modulated by `aux`; a `.feedback` target is a `Feedback` layer's per-frame
+    /// write surface, filled like a `.geometry` target but into persistent
+    /// ping-pong storage the renderer keeps across frames. Internal: the renderer
+    /// reads it at render time.
     enum Origin {
         case geometry
         case generator(Generator)
         case filter(input: RenderTarget, filter: Filter)
+        case combine(base: RenderTarget, aux: RenderTarget, op: Combine)
         case feedback(Feedback)
     }
     /// Settable so a `Feedback` can stamp its write layer with `.feedback(self)`
@@ -88,5 +91,15 @@ public final class RenderTarget {
     /// The work runs on the GPU during the frame's render; this just records it.
     public func filtered(_ filter: Filter) -> RenderTarget {
         drawer?.recordFilter(filter, of: self) ?? self
+    }
+
+    /// Combine this layer (the base) with `aux` using a two-input `op` — mask,
+    /// displace, or mix — and return the result as a new layer, itself filterable
+    /// and combinable, so multi-input effects chain like single-input ones
+    /// (`scene.combined(with: mask, .mask()).filtered(.bloom())`). The result takes
+    /// this layer's size and resolution; `aux` is sampled by normalized coordinates,
+    /// so it may render at a different scale. Runs on the GPU at render time.
+    public func combined(with aux: RenderTarget, _ op: Combine) -> RenderTarget {
+        drawer?.recordCombine(self, aux, op) ?? self
     }
 }

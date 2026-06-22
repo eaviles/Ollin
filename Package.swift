@@ -407,6 +407,11 @@ let package = Package(
             path: "Examples/Basic/Compose"
         ),
         .executableTarget(
+            name: "Example-Aside",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Aside"
+        ),
+        .executableTarget(
             name: "Example-Accumulation",
             dependencies: ["Ollin"],
             path: "Examples/Basic/Accumulation"

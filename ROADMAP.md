@@ -31,7 +31,7 @@ Near-term, fairly self-contained pieces, each small and well-scoped.
 
 ## Layered effects and compositing
 
-Building on the off-screen-layer + filter substrate (`renderTarget` / `withTarget` / `Filter` / `generate`, with a broad catalog of color, tone, stylize, and optical filters plus procedural pattern generators, previous-frame feedback for trails and tunnels, and the declarative `compose { }` layer-stack DSL over it), the work ahead is a **depth-driven blur** for depth of field, and the **`aside` helper layer** for `compose`: a layer drawn only to *feed* another layer's filter (a displacement map, a mask), so a multi-input effect (displace, mask, cross-dissolve) reads as a small graph with the compositor managing the intermediate textures rather than the sketch threading them by hand. It needs *multi-input* filters built first. Shape, references, and the design are in the [design notes](DESIGN-NOTES.md#layered-effects-and-compositing-partly-shipped).
+Building on the off-screen-layer + filter substrate (`renderTarget` / `withTarget` / `Filter` / `generate`, with a broad catalog of color, tone, stylize, and optical filters plus procedural pattern generators, previous-frame feedback for trails and tunnels, two-input combine ops — mask, displace, cross-dissolve — with the `aside` helper layer that feeds them, and the declarative `compose { }` layer-stack DSL over it all), the work ahead is a **depth-driven blur** for depth of field. Shape, references, and the design are in the [design notes](DESIGN-NOTES.md#layered-effects-and-compositing-partly-shipped).
 
 ## Shader composition and live-coding
 

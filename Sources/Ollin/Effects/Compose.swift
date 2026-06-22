@@ -41,15 +41,27 @@
 /// ```
 public struct ComposeLayer {
 
+    /// One processing step run over the finished layer before it composites, in the
+    /// order added: either a single-input `Filter`, or a two-input `Combine` with an
+    /// `aside` layer drawn only to feed it (a mask, a displacement map, the other
+    /// half of a cross-dissolve). Both `.post(_:)` and the combine modifiers append
+    /// here, so filters and combines interleave in call order.
+    enum Step {
+        case filter(Filter)
+        case combine(aside: ComposeLayer, op: Combine)
+    }
+
     /// What to draw into this layer's off-screen surface, in canvas coordinates:
     /// the body of the `layer { }` block. Runs inside a `withTarget` during `compose`.
     let content: () -> Void
 
-    /// Filters run over the finished layer, in order, before it composites. Each
-    /// `.post(_:)` appends one, so they chain like `filtered(_:).filtered(_:)`.
-    var posts: [Filter] = []
+    /// The post-processing steps run over the finished layer, in order, before it
+    /// composites — filters and aside combines interleaved as added.
+    var steps: [Step] = []
 
     /// How the finished layer composites onto what's already drawn beneath it.
+    /// (Ignored when the layer is used as an `aside` — an aside is never composited,
+    /// only sampled by the combine it feeds.)
     var blend: BlendMode = .normal
 
     /// The layer's internal resolution as a fraction of the canvas (1 = full), the
@@ -62,7 +74,7 @@ public struct ComposeLayer {
     /// the result.
     public func post(_ filter: Filter) -> ComposeLayer {
         var copy = self
-        copy.posts.append(filter)
+        copy.steps.append(.filter(filter))
         return copy
     }
 
@@ -70,7 +82,42 @@ public struct ComposeLayer {
     /// chaining `.post(_:)`.
     public func post(_ filters: Filter...) -> ComposeLayer {
         var copy = self
-        copy.posts.append(contentsOf: filters)
+        copy.steps.append(contentsOf: filters.map { .filter($0) })
+        return copy
+    }
+
+    /// Mask this layer by an `aside` layer: keep it where the aside reads bright (or,
+    /// with `channel: .alpha`, opaque), fading to transparent elsewhere. The aside is
+    /// drawn only to feed the mask, not composited; build it with `aside { }` (and it
+    /// can carry its own `.post` filters, e.g. a blurred edge):
+    ///
+    /// ```swift
+    /// layer { drawImage(photo, 0, 0) }
+    ///     .masked(by: aside { fill(.white); drawCircle(mouseX, mouseY, 200) })
+    /// ```
+    public func masked(by aside: ComposeLayer,
+                       channel: Combine.MaskChannel = .luminance,
+                       invert: Bool = false) -> ComposeLayer {
+        var copy = self
+        copy.steps.append(.combine(aside: aside, op: .mask(channel: channel, invert: invert)))
+        return copy
+    }
+
+    /// Displace this layer's pixels by an `aside` layer read as a vector field (red →
+    /// horizontal, green → vertical, mid-gray = no shift), up to `amount` of the
+    /// layer. The aside — often a noise or gradient — is drawn only to feed the
+    /// displacement, not composited.
+    public func displaced(by aside: ComposeLayer, amount: Double = 0.05) -> ComposeLayer {
+        var copy = self
+        copy.steps.append(.combine(aside: aside, op: .displace(amount: amount)))
+        return copy
+    }
+
+    /// Cross-dissolve this layer toward an `aside` layer by `amount` (0 = this layer,
+    /// 1 = the aside). The aside is drawn only to feed the mix, not composited.
+    public func mixed(with aside: ComposeLayer, amount: Double = 0.5) -> ComposeLayer {
+        var copy = self
+        copy.steps.append(.combine(aside: aside, op: .mix(amount: amount)))
         return copy
     }
 
@@ -120,6 +167,23 @@ public extension Sketch {
         ComposeLayer(content: content)
     }
 
+    /// Declare a helper layer that *feeds* another layer's combine — a mask, a
+    /// displacement map, the other half of a cross-dissolve — rather than
+    /// compositing on its own. It's the same as `layer { }` (and takes the same
+    /// `.post(_:)` / `.scale(_:)` modifiers), just named for how it's used: hand it
+    /// to `.masked(by:)`, `.displaced(by:)`, or `.mixed(with:)`. The compositor draws
+    /// it into its own off-screen surface and manages the texture; nothing is
+    /// threaded by hand, and its `.blend(_:)` is unused (an aside never composites).
+    ///
+    /// ```swift
+    /// layer { drawImage(scene, 0, 0) }
+    ///     .displaced(by: aside { fill(.gray); drawImage(noise, 0, 0) }.post(.gaussianBlur(radius: 6)),
+    ///                amount: 0.03)
+    /// ```
+    func aside(@_implicitSelfCapture _ content: @escaping () -> Void) -> ComposeLayer {
+        ComposeLayer(content: content)
+    }
+
     /// Composite a stack of layers as one block. Each `layer { }` is drawn into its
     /// own off-screen layer, run through its post-filters, and composited (in its
     /// blend mode) onto whatever is already on the canvas, in the order written, so
@@ -131,14 +195,32 @@ public extension Sketch {
     /// to do by hand, gathered into one readable block.
     func compose(@ComposeBuilder _ build: () -> [ComposeLayer]) {
         for composeLayer in build() {
-            let target = renderTarget(scale: composeLayer.renderScale)
-            withTarget(target) { composeLayer.content() }
-            var result = target
-            for filter in composeLayer.posts { result = result.filtered(filter) }
+            let result = resolveComposeLayer(composeLayer)
             withState {
                 blendMode(composeLayer.blend)
                 drawImage(result.image, 0, 0)
             }
         }
+    }
+
+    /// Draw a `ComposeLayer` into its own off-screen layer and run its steps in order
+    /// — filters via `filtered(_:)`, combines by first resolving the aside (itself a
+    /// `ComposeLayer`, so this recurses) and feeding it to `combined(with:_:)`.
+    /// Returns the finished layer. Used for both the top-level layers `compose`
+    /// composites and the asides those layers reference; an aside is resolved here
+    /// but never composited, which is the whole of "drawn only to feed another".
+    private func resolveComposeLayer(_ cl: ComposeLayer) -> RenderTarget {
+        let target = renderTarget(scale: cl.renderScale)
+        withTarget(target) { cl.content() }
+        var result = target
+        for step in cl.steps {
+            switch step {
+            case .filter(let filter):
+                result = result.filtered(filter)
+            case let .combine(aside, op):
+                result = result.combined(with: resolveComposeLayer(aside), op)
+            }
+        }
+        return result
     }
 }

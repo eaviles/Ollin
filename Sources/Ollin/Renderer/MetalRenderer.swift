@@ -1036,11 +1036,24 @@ final class MetalRenderer {
             target.texture = back                // `image` resolves to this frame
             feedbackUsedThisFrame.insert(ObjectIdentifier(fb))
         }
+        // Filter and combine ops share one list, resolved in record order so an op's
+        // inputs (filled earlier in this loop, or by the geometry/generator passes
+        // above) are ready before it runs.
         for output in drawer.filterOps {
-            guard case let .filter(input, filter) = output.origin, let src = input.texture else { continue }
-            output.texture = applyFilter(filter, input: src,
-                                         width: output.pixelWidth, height: output.pixelHeight,
-                                         into: cb, pooled: pooled)
+            switch output.origin {
+            case let .filter(input, filter):
+                guard let src = input.texture else { continue }
+                output.texture = applyFilter(filter, input: src,
+                                             width: output.pixelWidth, height: output.pixelHeight,
+                                             into: cb, pooled: pooled)
+            case let .combine(base, aux, op):
+                guard let b = base.texture, let a = aux.texture else { continue }
+                output.texture = applyCombine(op, base: b, aux: a,
+                                              width: output.pixelWidth, height: output.pixelHeight,
+                                              into: cb, pooled: pooled)
+            default:
+                continue
+            }
         }
         // Advance each feedback layer drawn this frame (its back becomes next frame's
         // front), then prune slots whose owner the sketch has released (live reload,
@@ -1143,6 +1156,29 @@ final class MetalRenderer {
         case let .lineScreen(scale, softness, angle, foreground, background):
             return pass("ollin_fx_linescreen", [input],
                         [SIMD4(Float(scale), Float(softness), Float(angle), aspect), foreground, background])
+        }
+    }
+
+    /// Run one two-input `op` (mask / displace / mix) over `base` modulated by `aux`
+    /// into a freshly acquired output texture, the multi-input sibling of
+    /// `applyFilter`. Each is a single fullscreen fragment pass binding both layers,
+    /// reading premultiplied-linear and writing the same. The two inputs may differ
+    /// in size; the fragment samples by normalized coordinates, so it doesn't matter.
+    private func applyCombine(_ op: Combine, base: MTLTexture, aux: MTLTexture,
+                              width: Int, height: Int,
+                              into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        func pass(_ fragment: String, _ params: [SIMD4<Float>]) -> MTLTexture? {
+            guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            encodeEffectFragment(fragment, inputs: [base, aux], output: output, params: params, into: cb)
+            return output
+        }
+        switch op.kind {
+        case let .mask(channel, invert):
+            return pass("ollin_fx_mask", [SIMD4(channel.rawIndex, invert ? 1 : 0, 0, 0)])
+        case let .displace(amount):
+            return pass("ollin_fx_displace", [SIMD4(Float(amount), 0, 0, 0)])
+        case let .mix(amount):
+            return pass("ollin_fx_mix", [SIMD4(Float(amount), 0, 0, 0)])
         }
     }
 

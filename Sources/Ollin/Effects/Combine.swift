@@ -1,0 +1,75 @@
+import Foundation
+
+/// A two-input image operation that combines one `RenderTarget` with another on
+/// the GPU: a base layer plus an auxiliary layer that modulates it. Where a
+/// `Filter` transforms a single layer, a `Combine` reads *two* — the base it runs
+/// on and an aux it samples per pixel — so it covers the effects a single-input
+/// filter can't: masking by a second layer, displacing by a second layer, and
+/// cross-dissolving toward one.
+///
+/// Like `Filter` and `Generator`, a `Combine` is a plain value descriptor: it
+/// carries the operation and its scalar parameters, not the aux layer itself (a
+/// `Sendable` value can't hold a `RenderTarget`). The aux is passed alongside it
+/// to `RenderTarget.combined(with:_:)`, which records the op and hands back the
+/// result as a new, filterable layer:
+///
+/// ```swift
+/// let scene = renderTarget()
+/// withTarget(scene) { background(.black); fill(.orange); drawCircle(width / 2, height / 2, 300) }
+/// let mask = renderTarget()
+/// withTarget(mask) { fill(.white); drawCircle(mouseX, mouseY, 200) }   // white where visible
+/// drawImage(scene.combined(with: mask, .mask()).image, 0, 0)           // scene seen through the mask
+/// ```
+///
+/// In a `compose { }` block, the same ops read as `aside` modifiers on a layer
+/// (`.masked(by:)` / `.displaced(by:amount:)` / `.mixed(with:amount:)`), where the
+/// aux is itself a small layer the compositor draws only to feed the combine.
+public struct Combine: Sendable {
+
+    /// Which channel of the aux layer a `mask` reads as its mask value: the aux's
+    /// luminance (draw the mask in white/gray, the default) or its alpha (draw any
+    /// opaque shape, transparent elsewhere).
+    public enum MaskChannel: Sendable {
+        case luminance, alpha
+
+        /// The shader's mode index (kept in step with `ollin_fx_mask`).
+        var rawIndex: Float { self == .luminance ? 0 : 1 }
+    }
+
+    /// The concrete operations the renderer knows how to run. Internal: a sketch
+    /// builds a `Combine` through the static factories below, never this directly.
+    enum Kind: Sendable {
+        /// Keep the base only where the aux is bright (or opaque): multiply the base
+        /// by the aux's `channel` value, optionally inverted.
+        case mask(channel: MaskChannel, invert: Bool)
+        /// Push the base's pixels around: offset each sample by the aux's red/green
+        /// recentred to `±amount` (a fraction of the layer), the classic displacement map.
+        case displace(amount: Double)
+        /// Cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux).
+        case mix(amount: Double)
+    }
+
+    let kind: Kind
+
+    /// Mask: keep the base where the aux layer reads bright (or, with
+    /// `channel: .alpha`, where it's opaque), fading to transparent elsewhere. Draw
+    /// the mask layer in white over transparent and the base shows through just
+    /// those marks; `invert` flips it (hide where the mask is bright).
+    public static func mask(channel: MaskChannel = .luminance, invert: Bool = false) -> Combine {
+        Combine(kind: .mask(channel: channel, invert: invert))
+    }
+
+    /// Displace: offset the base's pixels by the aux layer, read as a vector field
+    /// (red → horizontal, green → vertical, mid-gray = no shift). `amount` is the
+    /// maximum shift as a fraction of the layer, so 0.05 nudges by up to 5%. Feed it
+    /// a noise or gradient layer for ripples, smearing, and refraction looks.
+    public static func displace(amount: Double = 0.05) -> Combine {
+        Combine(kind: .displace(amount: amount))
+    }
+
+    /// Mix (cross-dissolve): blend the base toward the aux layer by `amount`, a
+    /// per-pixel lerp (0 keeps the base, 1 becomes the aux, 0.5 is an even blend).
+    public static func mix(amount: Double = 0.5) -> Combine {
+        Combine(kind: .mix(amount: min(max(amount, 0), 1)))
+    }
+}

@@ -559,6 +559,18 @@ final class Drawer {
         return output
     }
 
+    /// Record a combine of `base` with `aux`, returning the output layer the renderer
+    /// will fill. Output follows `base`'s size/resolution. Recorded into the same op
+    /// list as filters: in record order, so both inputs (which must already exist to
+    /// be referenced, and whose own filter/combine ops were appended earlier) are
+    /// resolved before this op runs.
+    func recordCombine(_ base: RenderTarget, _ aux: RenderTarget, _ op: Combine) -> RenderTarget {
+        let output = RenderTarget(width: base.width, height: base.height, scale: base.scale,
+                                  drawer: self, origin: .combine(base: base, aux: aux, op: op))
+        filterOps.append(output)
+        return output
+    }
+
     /// Queue a whole-frame filter, applied to the finished frame before present.
     func postProcess(_ filter: Filter) { frameFilters.append(filter) }
 
