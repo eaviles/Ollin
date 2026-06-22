@@ -1872,13 +1872,13 @@ fragment float4 ollin_present_fragment(PresentOut in [[stage_in]],
 //
 // These run between resolves on the off-screen effects layers, reusing the
 // present fullscreen triangle (PresentOut.uv, top-left origin). They read and
-// write the linear `rgba16Float` intermediate directly (no tone-map, no dither —
+// write the linear `rgba16Float` intermediate directly (no tone-map, no dither;
 // that's the present pass's job) and operate on premultiplied-alpha color, the
 // form an Ollin render target already holds after source-over compositing.
 
-// Bloom bright-pass: keep the part of each texel above a brightness threshold —
+// Bloom bright-pass: keep the part of each texel above a brightness threshold,
 // the glow source. The key is the max channel (HSV "value"), not luminance, so a
-// vivid full-brightness mark blooms the same whatever its hue — luminance would
+// vivid full-brightness mark blooms the same whatever its hue; luminance would
 // drop saturated reds and especially blues below the threshold while greens pass,
 // which reads as a bug in a tool where colors are picked by brightness. A soft
 // knee gives a smooth onset; over the linear-light frame, values above 1 (HDR

@@ -1101,7 +1101,7 @@ open class Sketch {
     /// Make a full-canvas off-screen layer to draw into and then read back or
     /// filter (see `RenderTarget`). `scale` is the layer's internal resolution as a
     /// fraction of the canvas (1 = full); drop it for cheap blur/glow layers.
-    /// Create it inside `draw()` — it's a per-frame handle.
+    /// Create it inside `draw()`; it's a per-frame handle.
     public func renderTarget(scale: Double = 1) -> RenderTarget {
         RenderTarget(width: Int(width.rounded()), height: Int(height.rounded()),
                      scale: scale, drawer: drawer)
@@ -1121,7 +1121,7 @@ open class Sketch {
         drawer.withTarget(target, body)
     }
 
-    /// Apply `filter` to the whole finished frame, before it's shown — the quick
+    /// Apply `filter` to the whole finished frame, before it's shown: the quick
     /// way to bloom or blur everything without managing a layer. Call it in
     /// `draw()`; multiple calls chain in order.
     public func postProcess(_ filter: Filter) { drawer.postProcess(filter) }

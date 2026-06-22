@@ -344,7 +344,7 @@ final class MetalRenderer {
     /// Per-frame-ring pools of effects-layer textures, reused across frames so a
     /// sketch that uses render targets every frame allocates them once. Keyed by the
     /// ring slot (`frameIndex`) so a texture is never reused while an in-flight frame
-    /// still reads it — the same discipline as the vertex-buffer ring. `*Next` is the
+    /// still reads it: the same discipline as the vertex-buffer ring. `*Next` is the
     /// per-frame acquisition cursor, reset at the start of the effects graph.
     private var targetTexPool: [[(msaa: MTLTexture, resolve: MTLTexture, w: Int, h: Int)]] =
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
@@ -1046,7 +1046,7 @@ final class MetalRenderer {
     }
 
     /// Acquire an MSAA + resolve pair for a geometry target. Pooled: reuse the slot
-    /// for this frame-ring index (safe — the frame semaphore gates slot reuse).
+    /// for this frame-ring index (safe: the frame semaphore gates slot reuse).
     private func acquireTargetTextures(width: Int, height: Int, pooled: Bool) -> (msaa: MTLTexture, resolve: MTLTexture)? {
         guard pooled else {
             guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless),
@@ -1079,7 +1079,7 @@ final class MetalRenderer {
         return tex
     }
 
-    /// A single-sample linear-float texture for an intermediate filter result —
+    /// A single-sample linear-float texture for an intermediate filter result:
     /// sampled, MPS-written, and fragment-rendered, so it carries all three usages.
     private func makeFilterTexture(width: Int, height: Int) -> MTLTexture? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
@@ -2016,7 +2016,7 @@ final class MetalRenderer {
 
     /// An effects filter pass: a fullscreen-triangle fragment writing the
     /// linear-float intermediate, single-sample (it runs between resolves, not in an
-    /// MSAA pass) with blending off — the filter shader produces the final texel.
+    /// MSAA pass) with blending off, since the filter shader produces the final texel.
     private func makeEffectPipeline(_ key: PipelineKey, using library: MTLLibrary) throws -> MTLRenderPipelineState {
         guard let vertexFunction = library.makeFunction(name: key.vertex),
               let fragmentFunction = library.makeFunction(name: key.fragment) else {

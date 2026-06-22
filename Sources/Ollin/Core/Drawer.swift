@@ -141,7 +141,7 @@ struct GeometryBatch {
     /// texture and lighting/material/shadow are bypassed. `nil` for a lit mesh. A matcap
     /// mesh opens its own batch (one texture per batch), like a textured one.
     var matcap: Image?
-    /// The off-screen effects layer this run draws into — `nil` (the default) is the
+    /// The off-screen effects layer this run draws into. `nil` (the default) is the
     /// main canvas. Set while inside a `withTarget` block, so the renderer routes the
     /// run into that target's texture in a pass before the main one (see `RenderTarget`).
     var target: RenderTarget?
@@ -336,10 +336,10 @@ final class Drawer {
     private var targetStack: [TargetFrame] = []
     /// The target drawing currently lands in, if any (the innermost active block).
     private var currentTarget: RenderTarget? { targetStack.last?.target }
-    /// Geometry targets drawn into this frame, in first-use order — the renderer
+    /// Geometry targets drawn into this frame, in first-use order; the renderer
     /// fills each before the main pass that samples it.
     private(set) var renderTargets: [RenderTarget] = []
-    /// Filter outputs recorded this frame (`target.filtered(...)`), in record order —
+    /// Filter outputs recorded this frame (`target.filtered(...)`), in record order;
     /// the renderer runs each after the geometry targets it reads are filled.
     private(set) var filterOps: [RenderTarget] = []
     /// Whole-frame filters from `postProcess(_:)`, applied to the finished frame
@@ -526,7 +526,7 @@ final class Drawer {
     /// Queue a whole-frame filter, applied to the finished frame before present.
     func postProcess(_ filter: Filter) { frameFilters.append(filter) }
 
-    /// Roll the recorded geometry back to `s` — used by `background(_:)` inside a
+    /// Roll the recorded geometry back to `s`, used by `background(_:)` inside a
     /// `withTarget` block to clear just that target's geometry. (Gradient rows are
     /// left as-is: any orphaned row is an unused strip texel, harmless.)
     private func truncate(to s: GeometrySnapshot) {

@@ -64,8 +64,8 @@ public final class Image {
     private var computeTextureSource: ComputeTextureBindable?
 
     /// A `RenderTarget` (effects layer) this image wraps. Resolved lazily at draw
-    /// time — the target's texture is filled by the renderer earlier in the same
-    /// frame, before any draw that samples it — so `drawImage(layer.image)` always
+    /// time (the target's texture is filled by the renderer earlier in the same
+    /// frame, before any draw that samples it), so `drawImage(layer.image)` always
     /// composites what was drawn into the layer this frame. CPU pixel paths are inert.
     private var renderTargetSource: RenderTarget?
 
@@ -230,7 +230,7 @@ public final class Image {
         // at draw time (realizing it on first use), so it picks up this frame's write.
         if let computeTextureSource { return computeTextureSource.metalTexture(for: device) }
         // An effects layer hands back the texture the renderer filled for it earlier
-        // this frame (linear rgba16Float, premultiplied — the image path composites
+        // this frame (linear rgba16Float, premultiplied; the image path composites
         // it correctly, no flip).
         if let renderTargetSource { return renderTargetSource.texture }
 
