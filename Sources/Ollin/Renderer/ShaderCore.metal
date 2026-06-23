@@ -71,8 +71,8 @@ static inline float perceptualCoverage(float c) {
     return 1.0 - srgbToLinear(float3(1.0 - c)).x;
 }
 
-// Hash a pixel coordinate to [0, 1) (Dave Hoskins' hash, written from the
-// technique — a few fract/dot rounds, no texture lookup).
+// Hash a pixel coordinate to [0, 1) (written from the published technique — a
+// few fract/dot rounds, no texture lookup).
 static inline float hash12(float2 p) {
     float3 p3 = fract(float3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);

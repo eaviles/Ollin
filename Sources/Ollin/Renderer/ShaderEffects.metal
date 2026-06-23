@@ -178,7 +178,7 @@ fragment float4 ollin_fx_mix(PresentOut in [[stage_in]],
 
 // depth of field: blur the base by the aux read as a depth map (luminance = depth,
 // 0 near … 1 far). A single-pass scatter-as-gather circle-of-confusion bokeh blur
-// (Gustafsson's running-average form; details and rationale on the gather below).
+// (a running-average form; details and rationale on the gather below).
 // An in-focus region stays crisp, a defocused foreground spills over what's behind
 // it, and overlapping defocused regions blend like real bokeh rather than hard-cutting.
 // params[0] = (focus, range, maxBlur px), params[1].xy = texel size.
@@ -240,7 +240,7 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     // **Near / far separation** (README Techniques for the references) is what a plain
     // single-pass gather can't do: a defocused *foreground* must spread *over* an in-focus
     // subject behind it (covering it), not leave a sharp sliver. So two fields accumulate
-    // separately — background + in-focus, and near (foreground) — each as a Gustafsson
+    // separately — background + in-focus, and near (foreground) — each as a
     // **running average** (`acc += mix(acc/tot, s, reach); tot += 1`, so a tap
     // that doesn't reach contributes the current average, keeping every field grain-free)
     // — and the near field carries a **coverage** that composites it over the background.
@@ -719,7 +719,7 @@ fragment float4 ollin_fx_linescreen(PresentOut in [[stage_in]],
 
 // MARK: - More color & tone filters
 
-// Hue/value helpers (Sam Hocevar's branchless rgb<->hsv, written from the technique).
+// Hue/value helpers (a branchless rgb<->hsv, written from the technique).
 static inline float3 ollin_rgb2hsv(float3 c) {
     float4 K = float4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
     float4 p = mix(float4(c.bg, K.wz), float4(c.gb, K.xy), step(c.b, c.g));
@@ -991,8 +991,8 @@ fragment float4 ollin_fx_toon(PresentOut in [[stage_in]],
     return ollin_premul(clamp(c * edge, 0.0, 1.0), s.a);
 }
 
-// 3×3 median via a min/max sorting network (McGuire's median3x3, written from the
-// technique) — per-channel, so speckle drops while edges hold (params: texel.xy).
+// 3×3 median via a min/max sorting network (written from the technique) — per-channel,
+// so speckle drops while edges hold (params: texel.xy).
 #define OLLIN_S2(a, b) { float3 _t = a; a = min(a, b); b = max(_t, b); }
 #define OLLIN_MN3(a, b, c) OLLIN_S2(a, b); OLLIN_S2(a, c);
 #define OLLIN_MX3(a, b, c) OLLIN_S2(b, c); OLLIN_S2(a, c);

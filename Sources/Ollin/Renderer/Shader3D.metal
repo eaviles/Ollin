@@ -414,7 +414,7 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     }
 
     // Iridescent sheen (thin-film-style): a view-angle rainbow that strengthens toward
-    // grazing angles, the hue cycling through a cosine palette (iq). It's a reflected-
+    // grazing angles, the hue cycling through a cosine palette. It's a reflected-
     // light effect, so it's scaled by the light reaching the surface (with a faint floor
     // so it still reads in shadow) — not pure emission. Inert when strength is 0.
     if (mat.iridescence > 0.0) {

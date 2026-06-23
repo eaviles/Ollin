@@ -92,7 +92,7 @@ vertex SDFOut ollin_sdf_vertex(uint vid [[vertex_id]],
     return out;
 }
 
-// MARK: SDF primitives (from Inigo Quilez's 2D distance functions, implemented
+// MARK: SDF primitives (from the published 2D distance functions, implemented
 // from the technique). Distances are in local sketch units; the fragment turns
 // them into ~1px anti-aliased coverage with fwidth.
 
