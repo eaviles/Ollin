@@ -1127,6 +1127,67 @@ fragment float4 ollin_fx_perturb(PresentOut in [[stage_in]],
     return src.sample(samp, clamp(in.uv + off, 0.0, 1.0));
 }
 
+// MARK: - Simulation fields (stateful ping-pong: a field evolving each frame)
+//
+// A SimField renders the drawn seed marks into one texture, then the renderer runs
+// these passes on its persistent front buffer: `inject` composites the seeds onto the
+// state, then a step fragment advances it. params[0] is the texel size, params[1] the
+// sim's parameters. Neighbour reads wrap toroidally (fract of the uv).
+
+// inject: overwrite the field state where a seed mark was drawn (by the seed's alpha),
+// so drawing into a SimField seeds/forces it; undrawn texels keep their state and
+// evolve. The seed arrives premultiplied (geometry output), so un-premultiply it first.
+fragment float4 ollin_sim_inject(PresentOut in [[stage_in]],
+                                 texture2d<float> state [[texture(0)]],
+                                 texture2d<float> seed [[texture(1)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float4 s = state.sample(samp, in.uv);
+    float4 d = seed.sample(samp, in.uv);
+    return float4(mix(s.rgb, ollin_unpremul(d), d.a), 1.0);
+}
+
+// reaction-diffusion (Gray-Scott): chemical A in .r, B in .g. A 9-point Laplacian
+// stencil diffuses each, then the bimolecular reaction A·B² converts A to B, with A
+// fed back toward 1 and B killed back toward 0. params[1] = (feed, kill).
+fragment float4 ollin_sim_reaction_diffusion(PresentOut in [[stage_in]],
+                                             texture2d<float> src [[texture(0)]],
+                                             sampler samp [[sampler(0)]],
+                                             constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float feed = params[1].x, kill = params[1].y;
+    float2 uv = in.uv;
+#define TAP(DX, DY) src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t)).xy
+    float2 c = src.sample(samp, uv).xy;
+    float2 lap = -c
+        + 0.20 * (TAP(-1, 0) + TAP(1, 0) + TAP(0, -1) + TAP(0, 1))
+        + 0.05 * (TAP(-1, -1) + TAP(1, -1) + TAP(-1, 1) + TAP(1, 1));
+#undef TAP
+    float a = c.x, b = c.y, reaction = a * b * b;
+    float na = a + (1.0 * lap.x - reaction + feed * (1.0 - a));
+    float nb = b + (0.5 * lap.y + reaction - (kill + feed) * b);
+    return float4(clamp(na, 0.0, 1.0), clamp(nb, 0.0, 1.0), 0.0, 1.0);
+}
+
+// Conway's Game of Life: a cell is alive where its red channel > 0.5; it survives on
+// 2-3 live neighbours, is born on exactly 3 (B3/S23). Sampling at exact texel-centre
+// offsets returns each neighbour's value exactly, so the integer counts are exact.
+fragment float4 ollin_sim_life(PresentOut in [[stage_in]],
+                               texture2d<float> src [[texture(0)]],
+                               sampler samp [[sampler(0)]],
+                               constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float2 uv = in.uv;
+#define ALIVE(DX, DY) step(0.5, src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t)).r)
+    float n = ALIVE(-1, -1) + ALIVE(0, -1) + ALIVE(1, -1) + ALIVE(-1, 0)
+            + ALIVE(1, 0) + ALIVE(-1, 1) + ALIVE(0, 1) + ALIVE(1, 1);
+#undef ALIVE
+    float self = step(0.5, src.sample(samp, uv).r);
+    float alive = (self > 0.5) ? ((n == 2.0 || n == 3.0) ? 1.0 : 0.0)
+                               : ((n == 3.0) ? 1.0 : 0.0);
+    return float4(float3(alive), 1.0);
+}
+
 // MARK: - Procedural generators (no input texture)
 //
 // Each fills a layer from its parameters alone (params[0] geometry + aspect,

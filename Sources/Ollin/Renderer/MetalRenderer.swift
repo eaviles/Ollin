@@ -371,8 +371,8 @@ final class MetalRenderer {
         let a: MTLTexture, b: MTLTexture
         let w: Int, h: Int
         var flipped = false
-        weak var owner: Feedback?
-        init(a: MTLTexture, b: MTLTexture, w: Int, h: Int, owner: Feedback) {
+        weak var owner: AnyObject?
+        init(a: MTLTexture, b: MTLTexture, w: Int, h: Int, owner: AnyObject) {
             self.a = a; self.b = b; self.w = w; self.h = h; self.owner = owner
         }
     }
@@ -1076,6 +1076,42 @@ final class MetalRenderer {
             target.texture = back                // `image` resolves to this frame
             feedbackUsedThisFrame.insert(ObjectIdentifier(fb))
         }
+        // Simulation fields: a persistent ping-pong like feedback, but the renderer
+        // evolves the state itself. Render this frame's drawn seeds into a transient
+        // texture, then run the field's `Sim` (inject the seeds onto the front state,
+        // step it N times) writing the result into the back buffer.
+        for target in drawer.renderTargets {
+            guard case let .simField(sf) = target.origin else { continue }
+            let pw = target.pixelWidth, ph = target.pixelHeight
+            let rest = sf.sim.restState
+            guard let slot = feedbackSlot(for: sf, width: pw, height: ph,
+                                          restState: MTLClearColor(red: Double(rest.x), green: Double(rest.y),
+                                                                   blue: Double(rest.z), alpha: Double(rest.w)),
+                                          into: cb),
+                  let msaa = makeFloatMSAA(width: pw, height: ph, storage: .memoryless),
+                  let seed = acquireFilterTexture(width: pw, height: ph, pooled: pooled) else { continue }
+            let front = slot.flipped ? slot.b : slot.a
+            let back  = slot.flipped ? slot.a : slot.b
+            // Render the drawn seed marks into `seed` (cleared transparent so an empty
+            // block seeds nothing and the field just evolves).
+            let pass = MTLRenderPassDescriptor()
+            pass.colorAttachments[0].texture = msaa
+            pass.colorAttachments[0].resolveTexture = seed
+            pass.colorAttachments[0].loadAction = .clear
+            pass.colorAttachments[0].clearColor = target.clearColor.mtlClearColor
+            pass.colorAttachments[0].storeAction = .multisampleResolve
+            if let enc = cb.makeRenderCommandEncoder(descriptor: pass) {
+                encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
+                       triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
+                       glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                       depthFormat: nil, target: target)
+                enc.endEncoding()
+            }
+            runSimulation(sf.sim, state: front, seed: seed, output: back,
+                          width: pw, height: ph, into: cb, pooled: pooled)
+            target.texture = back
+            feedbackUsedThisFrame.insert(ObjectIdentifier(sf))
+        }
         // Filter and combine ops share one list, resolved in record order so an op's
         // inputs (filled earlier in this loop, or by the geometry/generator passes
         // above) are ready before it runs.
@@ -1305,6 +1341,30 @@ final class MetalRenderer {
         }
     }
 
+    /// Evolve a `SimField` one frame: inject the drawn `seed` onto the `state` (the
+    /// front buffer), then run the sim's step fragment N times, ping-ponging between
+    /// two scratch textures and landing the last step in `output` (the back buffer).
+    /// All fragment passes on the effect pipeline, reading/writing the float field.
+    private func runSimulation(_ sim: Sim, state: MTLTexture, seed: MTLTexture, output: MTLTexture,
+                               width: Int, height: Int, into cb: MTLCommandBuffer, pooled: Bool) {
+        guard let s0 = acquireFilterTexture(width: width, height: height, pooled: pooled),
+              let s1 = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return }
+        let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
+        // Inject the seed marks onto the current state (composited by the seed's alpha).
+        encodeEffectFragment("ollin_sim_inject", inputs: [state, seed], output: s0,
+                             params: [texel], into: cb)
+        // Step: read s0, ping-pong s0↔s1 between steps, write the final step into the
+        // back buffer. Read and write are always distinct, so there's no in-pass hazard.
+        var read = s0
+        let steps = max(1, sim.subSteps)
+        for i in 0..<steps {
+            let write = (i == steps - 1) ? output : (read === s0 ? s1 : s0)
+            encodeEffectFragment(sim.stepFragment, inputs: [read], output: write,
+                                 params: [texel, sim.params], into: cb)
+            read = write
+        }
+    }
+
     /// Fill a generator's layer: one fullscreen fragment pass that reads no input,
     /// just its parameters. `aspect` lets the fragment keep cells square.
     private func encodeGenerator(_ generator: Generator, output: MTLTexture,
@@ -1367,7 +1427,8 @@ final class MetalRenderer {
     /// `fb`'s persistent ping-pong slot, allocating both textures (and clearing them
     /// to transparent, so the very first frame's `previous` reads clean) on first use,
     /// a size change, or after the address was reused by a different layer.
-    private func feedbackSlot(for fb: Feedback, width: Int, height: Int,
+    private func feedbackSlot(for fb: AnyObject, width: Int, height: Int,
+                              restState: MTLClearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0),
                               into cb: MTLCommandBuffer) -> FeedbackSlot? {
         let id = ObjectIdentifier(fb)
         if let slot = feedbackSlots[id], slot.owner === fb, slot.w == width, slot.h == height {
@@ -1375,21 +1436,25 @@ final class MetalRenderer {
         }
         guard let a = makeFloatResolve(width: width, height: height),
               let b = makeFloatResolve(width: width, height: height) else { return nil }
-        clearFloatTexture(a, into: cb)
-        clearFloatTexture(b, into: cb)
+        // A freshly allocated pair starts at the owner's rest state (transparent for a
+        // feedback layer, the sim's substrate for a SimField) rather than undefined.
+        clearFloatTexture(a, color: restState, into: cb)
+        clearFloatTexture(b, color: restState, into: cb)
         let slot = FeedbackSlot(a: a, b: b, w: width, h: height, owner: fb)
         feedbackSlots[id] = slot
         return slot
     }
 
-    /// Clear `tex` to transparent with an empty render pass (a render target has no
-    /// blit fill-to-color), so a freshly allocated feedback texture starts clean
+    /// Clear `tex` to `color` with an empty render pass (a render target has no
+    /// blit fill-to-color), so a freshly allocated persistent texture starts clean
     /// rather than with undefined contents.
-    private func clearFloatTexture(_ tex: MTLTexture, into cb: MTLCommandBuffer) {
+    private func clearFloatTexture(_ tex: MTLTexture,
+                                   color: MTLClearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0),
+                                   into cb: MTLCommandBuffer) {
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = tex
         pass.colorAttachments[0].loadAction = .clear
-        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        pass.colorAttachments[0].clearColor = color
         pass.colorAttachments[0].storeAction = .store
         cb.makeRenderCommandEncoder(descriptor: pass)?.endEncoding()
     }

@@ -536,12 +536,23 @@ final class Drawer {
         withTarget(feedback.writeLayer, body)
     }
 
-    /// Whether any `Feedback` layer was drawn into this frame. The renderer keeps
-    /// feedback state in render-pass-filled ping-pong textures, so (like the
+    /// Redirect `body` into a persistent `SimField`'s seed surface: the marks drawn
+    /// inside are composited onto the field's current state, which the renderer then
+    /// evolves one frame by the field's `Sim`. Records exactly like `withTarget(_:)`;
+    /// the field carries its own state across frames (no `previous` to read).
+    func withField(_ field: SimField, _ body: () -> Void) {
+        field.writeLayer.clearColor = .clear
+        withTarget(field.writeLayer, body)
+    }
+
+    /// Whether any `Feedback` or `SimField` layer was drawn into this frame. The
+    /// renderer keeps that state in render-pass-filled ping-pong textures, so (like the
     /// accumulation surface) the headless frame-grab must render every warmup frame
     /// (not just step compute) for the state to evolve. See `OllinApp.image(of:)`.
     var usesFeedback: Bool {
-        renderTargets.contains { if case .feedback = $0.origin { return true }; return false }
+        renderTargets.contains {
+            switch $0.origin { case .feedback, .simField: return true; default: return false }
+        }
     }
 
     /// Record a procedural generator as a source layer the renderer fills before

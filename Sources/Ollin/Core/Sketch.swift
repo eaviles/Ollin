@@ -1158,6 +1158,30 @@ open class Sketch {
         drawer.withTarget(feedback, body)
     }
 
+    /// Make a full-canvas simulation field that evolves by `sim` each frame (see
+    /// `SimField`/`Sim`): reaction-diffusion, Game of Life, and other fields. Like
+    /// `feedback()`, it's **persistent** — create it once in `setup()` and store it.
+    /// `scale` is the field's internal resolution as a fraction of the canvas; lower
+    /// it for coarser features and chunkier cells.
+    public func simField(_ sim: Sim, scale: Double = 1) -> SimField {
+        SimField(sim: sim, width: Int(width.rounded()), height: Int(height.rounded()),
+                 scale: scale, drawer: drawer)
+    }
+
+    /// Make a simulation field of an explicit pixel size, rather than the canvas size.
+    public func simField(_ sim: Sim, width: Int, height: Int, scale: Double = 1) -> SimField {
+        SimField(sim: sim, width: width, height: height, scale: scale, drawer: drawer)
+    }
+
+    /// Draw into `field` to seed or force its simulation: the marks land on the field's
+    /// current state, which then evolves one step. What a mark means is per-sim (white
+    /// = alive for Game of Life, injected chemical for reaction-diffusion). Composite
+    /// the field onto the canvas with `drawImage(field.image, 0, 0)`. Scoped like
+    /// `withTarget { }`; leave the block empty to let the field evolve untouched.
+    public func withField(_ field: SimField, _ body: () -> Void) {
+        drawer.withField(field, body)
+    }
+
     /// Apply `filter` to the whole finished frame, before it's shown: the quick
     /// way to bloom or blur everything without managing a layer. Call it in
     /// `draw()`; multiple calls chain in order.

@@ -51,6 +51,7 @@ public final class RenderTarget {
         case filter(input: RenderTarget, filter: Filter)
         case combine(base: RenderTarget, aux: RenderTarget, op: Combine)
         case feedback(Feedback)
+        case simField(SimField)
     }
     /// Settable so a `Feedback` can stamp its write layer with `.feedback(self)`
     /// once `self` exists (the layer is built before the back-reference is known).

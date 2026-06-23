@@ -36,6 +36,7 @@ override func draw() {
 - [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
 - [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
+- [simField / Sim](#simfield) - a layer that runs a simulation (reaction-diffusion, Game of Life)
 - [compose / layer](#compose) - declare a stack of layers as one block
 - [aside](#aside) - a helper layer that feeds another layer's effect
 - [Notes](#notes)
@@ -329,6 +330,37 @@ override func draw() {
 - `feedback.previous` is last frame's content; `feedback.image` is this frame's, for compositing.
 - Call `background(_:)` **before** the block. On the canvas it resets the whole frame, so calling it after would wipe the layer's geometry (like any other `withTarget` layer). Inside the block, `background(_:)` clears just the feedback layer.
 - See the `Basic/Feedback` example for a spiralling tunnel.
+
+<a id="simfield"></a>
+### simField(_:) and Sim
+
+Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful simulation** on a persistent layer that evolves every frame by reading its own neighbourhood — reaction-diffusion patterns spreading, cellular-automaton cells living and dying. You don't write the kernel: pick a `Sim` from the catalog, make a `SimField` with it, and **draw into the field to seed or force it**.
+
+A `SimField` is **persistent** like `Feedback` (make it once in `setup()` and hold it). Each frame the marks you draw in `withField` land on the field's current state, the renderer steps the simulation, and the result is the field's `image`. The raw state is *data*, so recolor it through the same `Filter` catalog as everything else.
+
+```swift
+var rd: SimField!
+
+override func setup() { rd = simField(.reactionDiffusion(), scale: 0.5) }   // half-res field
+
+override func draw() {
+    withField(rd) {                                  // draw to seed: marks inject chemical
+        noStroke(); fill(.white)
+        if mouseIsPressed { drawCircle(mouseX, mouseY, 16) }
+    }
+    drawImage(rd.filtered(.gradientMap(.magma)).image, 0, 0)   // evolve, then recolor
+}
+```
+
+The catalog:
+
+- **`.reactionDiffusion(feed:kill:)`** Gray-Scott reaction-diffusion: two chemicals diffuse and react into coral, spots, stripes, and dividing cells. Draw light marks to inject chemical B (it spreads from there); `feed`/`kill` pick the regime. State is A in red, B in green — recolor with `.gradientMap`/`.threshold`.
+- **`.gameOfLife()`** Conway's Game of Life (B3/S23). Draw white to make cells alive, black to kill them. Use a low field `scale` so each texel is a visible cell. The `image` is crisp black-and-white.
+
+- `withField(field) { … }` draws into the field's state (scoped like `withTarget`); leave the block empty to let it evolve untouched.
+- `field.image` is the evolved field; `field.filtered(_:)` recolors or post-processes it like any layer.
+- `scale` sets the field's internal resolution — lower it for broader reaction-diffusion features and chunkier automaton cells.
+- See `Basic/Simulation` (reaction-diffusion) and `Basic/GameOfLife`.
 
 <a id="compose"></a>
 ### compose(_:) and layer(_:)

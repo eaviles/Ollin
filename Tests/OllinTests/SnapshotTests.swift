@@ -147,6 +147,16 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func effectsSimFieldMatchesReference() throws {
+        // A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame
+        // 60 and recoloured. Pins the stateful sim substrate end to end: the persistent
+        // ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and
+        // the headless render-every-frame warmup the built-up state depends on.
+        let diff = try Snapshot.meanDifference(of: EffectsSimField(), against: "effects-simfield", frame: 60)
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func effectsFeedbackMatchesReference() throws {
         // A feedback layer built up over 24 frames: each frame redraws the last,
         // zoomed + spun + faded, plus a new dot. Pins the persistent ping-pong
@@ -1380,6 +1390,33 @@ private final class EffectsFilters: Sketch {
             let x = Double(i % 3) * 85, y = Double(i / 3) * 128
             drawImage(scene.filtered(filter).image, in: Rectangle(x: x, y: y, width: 85, height: 128))
         }
+    }
+}
+
+/// A reaction-diffusion `SimField` seeded with a fixed dot grid (no random/time), run
+/// to frame 60. Pins the stateful sim substrate: the persistent ping-pong carried
+/// across frames, the seed-inject pass, and the multi-substep Gray-Scott stepping —
+/// the same path Game of Life rides with a different step fragment.
+private final class EffectsSimField: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var rd: SimField!
+    var seeded = false
+
+    override func setup() { rd = simField(.reactionDiffusion(), scale: 0.5) }
+
+    override func draw() {
+        withField(rd) {
+            if !seeded {
+                noStroke(); fill(.white)
+                for i in 0 ..< 6 {
+                    for j in 0 ..< 6 {
+                        drawCircle((Double(i) + 0.5) * width / 6, (Double(j) + 0.5) * height / 6, 5)
+                    }
+                }
+                seeded = true
+            }
+        }
+        drawImage(rd.filtered(.gradientMap(.magma)).image, 0, 0)
     }
 }
 

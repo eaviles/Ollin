@@ -447,6 +447,16 @@ let package = Package(
             path: "Examples/Basic/Distortion"
         ),
         .executableTarget(
+            name: "Example-Simulation",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Simulation"
+        ),
+        .executableTarget(
+            name: "Example-GameOfLife",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/GameOfLife"
+        ),
+        .executableTarget(
             name: "Example-Patterns",
             dependencies: ["Ollin"],
             path: "Examples/Basic/Patterns"
