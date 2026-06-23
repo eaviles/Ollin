@@ -1,3 +1,4 @@
+import Foundation
 import Metal
 
 /// An off-screen layer a sketch draws into and then reads back: the substrate of
@@ -82,6 +83,12 @@ public final class RenderTarget {
     /// its own occlusion, not the extra depth-resolve + normalize work.
     var depthLayer: RenderTarget?
 
+    /// Camera parameters captured when this layer is filled as a normalized depth layer,
+    /// so a combine that reconstructs view-space geometry from the depth (ambient
+    /// occlusion) can rebuild it. Stamped by the renderer alongside the depth normalize;
+    /// `nil` on any other layer.
+    var depthReconstruction: DepthReconstruction?
+
     /// Pixel dimensions of the backing texture (logical size × `scale`, ≥ 1).
     var pixelWidth: Int { max(1, Int((Double(width) * scale).rounded())) }
     var pixelHeight: Int { max(1, Int((Double(height) * scale).rounded())) }
@@ -140,5 +147,66 @@ public final class RenderTarget {
     /// so it may render at a different scale. Runs on the GPU at render time.
     public func combined(with aux: RenderTarget, _ op: Combine) -> RenderTarget {
         drawer?.recordCombine(self, aux, op) ?? self
+    }
+}
+
+/// The camera geometry needed to rebuild a view-space position from a normalized depth
+/// layer (0 near … 1 far). A unified form for all three projections: `tanHalfFov*` are
+/// the view-frustum half-extents at unit distance (perspective and the intrinsic pinhole
+/// frustum) or the framed half-size (orthographic, where `isPerspective` is false and the
+/// XY isn't scaled by distance); `principal*` shift the projection centre for an off-axis
+/// intrinsic frustum (0.5 for a centred one). View-space distance is `near + t·(far−near)`.
+struct DepthReconstruction {
+    var near: Float
+    var far: Float
+    var tanHalfFovX: Float
+    var tanHalfFovY: Float
+    var principalX: Float
+    var principalY: Float
+    var isPerspective: Bool
+
+    /// A neutral default used when a depth combine reads an aux that carries no camera
+    /// (a hand-drawn depth map): a centred 60° perspective over a 0.1 … 100 range, so the
+    /// op still produces a plausible result rather than nothing.
+    static let neutral = DepthReconstruction(
+        near: 0.1, far: 100, tanHalfFovX: 0.5774, tanHalfFovY: 0.5774,
+        principalX: 0.5, principalY: 0.5, isPerspective: true)
+
+    init(near: Float, far: Float, tanHalfFovX: Float, tanHalfFovY: Float,
+         principalX: Float, principalY: Float, isPerspective: Bool) {
+        self.near = near; self.far = far
+        self.tanHalfFovX = tanHalfFovX; self.tanHalfFovY = tanHalfFovY
+        self.principalX = principalX; self.principalY = principalY
+        self.isPerspective = isPerspective
+    }
+
+    /// Build the reconstruction for `camera` at a layer of `pixelWidth` × `pixelHeight`.
+    /// Perspective/orthographic fold the layer aspect into the X half-extent; the
+    /// intrinsic frustum takes its aspect (and off-axis centre) from the calibration.
+    init(camera: Camera3D, pixelWidth: Int, pixelHeight: Int) {
+        let aspect = Float(pixelWidth) / Float(max(1, pixelHeight))
+        near = Float(camera.near)
+        far = Float(camera.far)
+        principalX = 0.5
+        principalY = 0.5
+        switch camera.projection {
+        case .perspective(let fov):
+            let th = tan(Float(fov) * 0.5)
+            tanHalfFovX = th * aspect
+            tanHalfFovY = th
+            isPerspective = true
+        case .orthographic(let height):
+            let h = Float(height) * 0.5
+            tanHalfFovX = h * aspect
+            tanHalfFovY = h
+            isPerspective = false
+        case .intrinsic(let k):
+            let iw = Float(k.width), ih = Float(k.height)
+            tanHalfFovX = iw / (2 * Float(k.fx))
+            tanHalfFovY = ih / (2 * Float(k.fy))
+            principalX = Float(k.cx) / iw
+            principalY = Float(k.cy) / ih
+            isPerspective = true
+        }
     }
 }

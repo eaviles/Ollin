@@ -230,6 +230,17 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func ssaoMatchesReference() throws {
+        // A packed block field on a ground plane, ambient-occluded by the scene's own
+        // depth (`scene.depth`). Pins the ambient-occlusion combine: the view-space
+        // position + normal reconstructed from the depth (no normal buffer), the camera
+        // geometry stamped on the depth layer, and the spiral obscurance gather darkening
+        // crevices and contacts while flat faces stay clean.
+        let diff = try Snapshot.meanDifference(of: AmbientOcclusionScene(), against: "ssao-3d")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func pointCloud3DMatchesReference() throws {
         // A static 3D heightfield through a fixed camera — pins the 3D camera, the
         // depth-tested point pipeline, and the instanced disc splats.
@@ -462,6 +473,44 @@ private final class SceneDefocus3DScene: Sketch {
         // foreground spreads over it and the background blurs behind.
         drawImage(scene.combined(with: scene.depth,
                                  .defocus(focus: 0.36, range: 0.07, maxBlur: 20)).image, 0, 0)
+    }
+}
+
+private final class AmbientOcclusionScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.07))
+        let scene = renderTarget()
+        withTarget(scene) {
+            background(Color(hex: 0x121318))
+            // Fixed camera + near/far bracketing the block field (deterministic).
+            camera(.orbiting(target: Vector3(0, 0.4, 0), radius: 8,
+                             azimuth: 0.7, elevation: 0.55,
+                             fieldOfView: .pi / 4, near: 3, far: 16))
+            ambientLight(Color(white: 0.55))
+            directionalLight(.white, direction: Vector3(-0.4, -1, -0.3), intensity: 0.7)
+            withState {
+                fill(Color(white: 0.8)); translate(0, -0.2, 0)
+                drawBox(width: 12, height: 0.4, depth: 12)
+            }
+            let n = 4
+            let cell = 1.2, box = 0.95
+            for ix in 0 ..< n {
+                for iz in 0 ..< n {
+                    let fx = Double(ix) - Double(n - 1) / 2
+                    let fz = Double(iz) - Double(n - 1) / 2
+                    let h = 0.6 + 1.2 * (0.5 + 0.5 * sin(Double(ix) * 1.3 + Double(iz) * 0.7))
+                    withState {
+                        translate(fx * cell, h / 2, fz * cell)
+                        fill(Color(hue: 0.07 + 0.12 * Double(ix + iz), saturation: 0.4, brightness: 0.95))
+                        drawBox(width: box, height: h, depth: box)
+                    }
+                }
+            }
+        }
+        drawImage(scene.combined(with: scene.depth,
+                                 .ambientOcclusion(radius: 0.5, intensity: 1.0)).image, 0, 0)
     }
 }
 

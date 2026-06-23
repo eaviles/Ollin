@@ -51,6 +51,12 @@ public struct Combine: Sendable {
         /// `focus ± range` stays sharp; the blur radius grows with distance from it
         /// up to `maxBlur` pixels. `quality` sets the bokeh sample count tier.
         case defocus(focus: Double, range: Double, maxBlur: Double, quality: RenderQuality)
+        /// Ambient occlusion: darken the base in crevices and contacts, reading the aux
+        /// as a depth map. View-space position and normal are reconstructed from the
+        /// depth, and obscurance is gathered over a hemisphere `radius` world units
+        /// across; `intensity` scales the darkening, `bias` rejects self-occlusion, and
+        /// `quality` sets the sample-count tier.
+        case ambientOcclusion(radius: Double, intensity: Double, bias: Double, quality: RenderQuality)
     }
 
     let kind: Kind
@@ -101,5 +107,38 @@ public struct Combine: Sendable {
                                maxBlur: Double = 24, quality: RenderQuality = .default) -> Combine {
         Combine(kind: .defocus(focus: min(max(focus, 0), 1),
                                range: max(0.001, range), maxBlur: max(0, maxBlur), quality: quality))
+    }
+
+    /// Ambient occlusion: darken the base layer where the aux layer's depth says it
+    /// sits in a crevice or against a contact — the soft self-shadowing that grounds a
+    /// 3D scene. Feed it a real 3D scene's own depth as the aux
+    /// (`scene.combined(with: scene.depth, .ambientOcclusion())`): view-space position
+    /// and surface normal are reconstructed from the depth (no separate normal buffer),
+    /// then occlusion is gathered over a smooth spiral of nearby samples — no noise, no
+    /// blur pass — and multiplied into the base.
+    ///
+    /// `scene.depth` carries the camera's near/far and field of view, which set the
+    /// world scale, so `radius` reads in world units. As a post-process it darkens the
+    /// final image (not just the ambient term), the standard screen-space trade; dial it
+    /// with `intensity`.
+    ///
+    /// ```swift
+    /// let scene = renderTarget()
+    /// withTarget(scene) { camera(.perspective(eye: Vector3(0, 3, 7), target: .zero)); drawBox(...) }
+    /// drawImage(scene.combined(with: scene.depth, .ambientOcclusion(radius: 0.6)).image, 0, 0)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - radius: the hemisphere radius the gather samples, in world units. Larger
+    ///     reaches into broader cavities; smaller picks out fine contact shadows.
+    ///   - intensity: how strongly the occlusion darkens (0 = none, 1 = the default).
+    ///   - bias: rejects self-occlusion just off a flat surface, in world units — raise
+    ///     it if flat faces show faint speckle (acne), lower it if contacts look weak.
+    ///   - quality: the sample-count tier (`.default`/`.performance`/`.detail`,
+    ///     hardware-relative). More samples trade frame rate for smoother occlusion.
+    public static func ambientOcclusion(radius: Double = 0.5, intensity: Double = 1.0,
+                                        bias: Double = 0.05, quality: RenderQuality = .default) -> Combine {
+        Combine(kind: .ambientOcclusion(radius: max(0.0001, radius), intensity: max(0, intensity),
+                                        bias: max(0, bias), quality: quality))
     }
 }

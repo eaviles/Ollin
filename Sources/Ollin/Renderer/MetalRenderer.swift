@@ -1072,6 +1072,12 @@ final class MetalRenderer {
             if let depthResolve, let depthLayer = target.depthLayer {
                 depthLayer.texture = normalizeDepth(depthResolve, camera: drawer.camera3D,
                                                     width: pw, height: ph, into: cb, pooled: pooled)
+                // Stamp the camera geometry on the depth layer so a combine that
+                // reconstructs view-space position from it (ambient occlusion) can.
+                if let cam = drawer.camera3D {
+                    depthLayer.depthReconstruction = DepthReconstruction(camera: cam,
+                                                                         pixelWidth: pw, pixelHeight: ph)
+                }
             }
         }
         // Feedback layers: like a geometry target, but rendered into persistent
@@ -1165,7 +1171,7 @@ final class MetalRenderer {
                                              into: cb, pooled: pooled)
             case let .combine(base, aux, op):
                 guard let b = base.texture, let a = aux.texture else { continue }
-                output.texture = applyCombine(op, base: b, aux: a,
+                output.texture = applyCombine(op, base: b, aux: a, depth: aux.depthReconstruction,
                                               width: output.pixelWidth, height: output.pixelHeight,
                                               into: cb, pooled: pooled)
             default:
@@ -1361,6 +1367,7 @@ final class MetalRenderer {
     /// reading premultiplied-linear and writing the same. The two inputs may differ
     /// in size; the fragment samples by normalized coordinates, so it doesn't matter.
     private func applyCombine(_ op: Combine, base: MTLTexture, aux: MTLTexture,
+                              depth: DepthReconstruction? = nil,
                               width: Int, height: Int,
                               into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
         func pass(_ fragment: String, _ params: [SIMD4<Float>]) -> MTLTexture? {
@@ -1384,6 +1391,26 @@ final class MetalRenderer {
             let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), taps, 0)
             return pass("ollin_fx_depth_of_field",
                         [SIMD4(Float(focus), Float(range), Float(maxBlur), 0), texel])
+        case let .ambientOcclusion(radius, intensity, bias, quality):
+            // Two passes: a hemisphere-kernel occlusion estimate (rebuilding view-space
+            // position + normal from the aux depth, with the camera geometry stamped on
+            // the depth layer — a neutral perspective when the aux carries none, e.g. a
+            // hand-drawn depth map), then a depth-aware blur that softens it and multiplies
+            // the base. The sample budget rides the texel row's third slot, as the bokeh
+            // gather's does.
+            let samples = Float(resolveSSAOSamples(quality))
+            let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), samples, 0)
+            let d = depth ?? .neutral
+            guard let aoTex = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let out = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            encodeEffectFragment("ollin_fx_ssao", inputs: [aux], output: aoTex,
+                                 params: [SIMD4(Float(radius), Float(intensity), Float(bias), 0), texel,
+                                          SIMD4(d.near, d.far, d.tanHalfFovX, d.tanHalfFovY),
+                                          SIMD4(d.principalX, d.principalY, d.isPerspective ? 1 : 0, 0)],
+                                 into: cb)
+            encodeEffectFragment("ollin_fx_ssao_blur", inputs: [base, aoTex, aux], output: out,
+                                 params: [SIMD4(Float(intensity), 0, 0, 0), texel], into: cb)
+            return out
         }
     }
 
@@ -2302,6 +2329,23 @@ final class MetalRenderer {
     /// tier — the hook `Scripts/benchmark-dof.sh` uses to sweep tap counts and measure the
     /// real per-GPU frame cost. `nil` in normal use.
     var dofTapsOverride: Int?
+
+    /// Resolve a `.ambientOcclusion` quality tier to a gather sample count. Fewer samples
+    /// than the bokeh gather (each reconstructs a view-space position and accumulates a
+    /// scalar, not a colour), distributed over the same smooth golden-angle spiral so the
+    /// occlusion needs no noise texture or separate blur.
+    private func resolveSSAOSamples(_ quality: RenderQuality) -> Int {
+        if let override = ssaoSamplesOverride { return max(4, min(override, 256)) }
+        switch quality {
+        case .performance: return 16
+        case .default:     return 32
+        case .detail:      return 64
+        }
+    }
+
+    /// An exact ambient-occlusion sample count overriding the resolved `.ambientOcclusion`
+    /// quality tier, the sweep hook mirroring `dofTapsOverride`. `nil` in normal use.
+    var ssaoSamplesOverride: Int?
 
     /// Resolve a `.defocus` quality tier to a bokeh tap count, hardware-relative (richer on
     /// a dedicated-RT GPU). The software-RT (M1/M2) column is **measured** — `Scripts/benchmark.sh

@@ -31,8 +31,8 @@ override func draw() {
 - [RenderTarget.image](#image) - composite a layer back
 - [filtered](#filtered) - run a filter over a layer
 - [Filter](#filter) - the filter catalog (blur, bloom, color, stylize)
-- [combined / Combine](#combined) - combine two layers (mask, displace, mix, defocus)
-- [depth](#depth) - a 3D scene's depth buffer as a layer (feed `.defocus`)
+- [combined / Combine](#combined) - combine two layers (mask, displace, mix, defocus, ambient occlusion)
+- [depth](#depth) - a 3D scene's depth buffer as a layer (feed `.defocus` / `.ambientOcclusion`)
 - [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
 - [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
@@ -224,6 +224,7 @@ A `Combine` is a value descriptor like `Filter`, but the aux layer rides alongsi
 - **`.displace(amount:)`** offset the base's pixels by the aux read as a **vector field**: red → horizontal, green → vertical, mid-gray = no shift, up to `amount` of the layer. Feed it noise or a gradient for ripples, smearing, heat-haze, and refraction.
 - **`.mix(amount:)`** cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux); the transition workhorse.
 - **`.defocus(focus:range:maxBlur:quality:)`** depth of field — blur the base by the aux read as a **depth map** (its luminance is the depth, 0 near … 1 far). The band `focus ± range` stays sharp; the blur grows with distance from it up to `maxBlur` pixels. It's a circle-of-confusion bokeh gather with near/far separation. The depth map can be a smooth gradient (a tilt-shift plane), a real depth feed, or hard-edged discrete per-object depths: overlapping defocused regions blend like real bokeh, a defocused foreground spreads over and covers an in-focus subject behind it, and a sharp subject occludes the blur behind it with a crisp edge. `quality` is a `RenderQuality` tier (`.default`/`.performance`/`.detail`, hardware-relative) setting the bokeh sample count — more taps trade frame rate for creamier, structure-free blur (`maxBlur` is the blur *amount*; `quality` is the blur *smoothness*).
+- **`.ambientOcclusion(radius:intensity:bias:quality:)`** ambient occlusion — darken the base in crevices, gaps, and where surfaces meet, reading the aux as a **depth map**. View-space position and surface normal are reconstructed from the depth (no separate normal buffer), then occlusion is estimated with a hemisphere of samples oriented to the normal (a dense low-discrepancy kernel, so it stays stable without per-pixel jitter, smoothed with a depth-aware blur) and multiplied into the base. Feed it a 3D scene's own [`depth`](#depth): that layer carries the camera's near/far and field of view, so `radius` reads in **world units**. `intensity` scales the darkening, `bias` rejects self-occlusion (raise it if flat faces speckle, lower it if contacts look weak), and `quality` is the sample-count tier. As a post-process it darkens the final image, not just the ambient term — the standard screen-space trade, dialed with `intensity`.
 
 ```swift
 let scene = renderTarget()
@@ -240,7 +241,7 @@ The base and aux can render at different `scale`s; the aux is sampled by normali
 <a id="depth"></a>
 ### depth: a 3D scene's depth as a layer
 
-The depth map `.defocus` reads can be one you draw by hand, but when the scene **is** 3D its depth comes for free. Draw a 3D scene into a render target, and because meshes (or point clouds) land in it the target captures depth, exposed as `target.depth`: a gray layer (0 near … 1 far) the renderer fills from the scene's own depth buffer. Feed it straight to `.defocus` as the aux and a real 3D render racks focus like a lens, no hand-drawn depth map needed.
+The depth map `.defocus` reads can be one you draw by hand, but when the scene **is** 3D its depth comes for free. Draw a 3D scene into a render target, and because meshes (or point clouds) land in it the target captures depth, exposed as `target.depth`: a gray layer (0 near … 1 far) the renderer fills from the scene's own depth buffer. Feed it straight to `.defocus` as the aux and a real 3D render racks focus like a lens, no hand-drawn depth map needed. The same layer feeds `.ambientOcclusion` — and because it carries the camera's near/far and field of view, the occlusion's `radius` reads in world units.
 
 ```swift
 let scene = renderTarget()

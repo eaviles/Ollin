@@ -314,6 +314,160 @@ fragment float4 ollin_fx_depth_normalize(PresentOut in [[stage_in]],
     return float4(srgbToLinear(float3(t)), 1.0);
 }
 
+// Rebuild a view-space position from the gray depth layer (decoded to a 0…1 distance
+// fraction `t`) and the camera geometry packed in params[2..3]. View-space distance is
+// near + t·(far−near); the lateral offset is the frustum half-extent at that distance
+// (scaled by distance for a perspective/intrinsic frustum, constant for orthographic).
+// y is flipped because the layer's uv runs top-down; the chosen frame is internally
+// consistent, which is all the occlusion estimate needs.
+static inline float3 ollin_ssao_viewpos(float2 uv, float t, constant float4 *params) {
+    float near = params[2].x, far = params[2].y;
+    float thx = params[2].z, thy = params[2].w;
+    float px = params[3].x, py = params[3].y;
+    bool persp = params[3].z > 0.5;
+    float viewZ = near + t * (far - near);
+    float ndcX = (uv.x - px) * 2.0;
+    float ndcY = (uv.y - py) * 2.0;
+    float zMul = persp ? viewZ : 1.0;
+    return float3(ndcX * thx * zMul, -ndcY * thy * zMul, -viewZ);
+}
+
+// Project a view-space position back to the depth layer's uv (the inverse of
+// ollin_ssao_viewpos): the forward projection an SSAO hemisphere sample needs to look up
+// the scene depth where it lands.
+static inline float2 ollin_ssao_project(float3 vp, constant float4 *params) {
+    float thx = params[2].z, thy = params[2].w;
+    float px = params[3].x, py = params[3].y;
+    bool persp = params[3].z > 0.5;
+    float div = persp ? max(1e-4, -vp.z) : 1.0;
+    float ndcX =  vp.x / (thx * div);
+    float ndcY = -vp.y / (thy * div);
+    return float2(ndcX * 0.5 + px, ndcY * 0.5 + py);
+}
+
+// Ambient occlusion (pass 1 of 2): the occlusion factor in [0,1] (1 = lit). The view-space
+// hemisphere estimator (written from the published technique; README Techniques),
+// reconstructing position + normal from the aux depth (no normal
+// buffer). The hemisphere is a **dense low-discrepancy Fibonacci kernel oriented to the
+// normal but NOT rotated per pixel** — the design choice that makes the AO stable. The
+// usual SSAO rotates the kernel per pixel to break the coherent-silhouette banding a fixed
+// *sparse/random* kernel paints onto faces (the "projected squares"), then blurs away the
+// resulting noise — but that screen-space noise crawls frame to frame and flickers in
+// crevices. A dense Fibonacci kernel is near-isotropic, so it avoids the banding *without*
+// any per-pixel term, leaving the estimate geometry-locked (it moves with the surface, it
+// doesn't crawl). Each sample is projected back to the depth layer and counts as occluding
+// when the visible surface there sits in front of it, within `radius` (the range check
+// kills haloes). params[0] = (radius, intensity, bias); params[1].xy = texel, .z = sample
+// count; params[2..3] = the depth-reconstruction camera geometry.
+fragment float4 ollin_fx_ssao(PresentOut in [[stage_in]],
+                              texture2d<float> depthMap [[texture(0)]],
+                              sampler samp [[sampler(0)]],
+                              constant float4 *params [[buffer(0)]]) {
+    float radius = params[0].x, bias = params[0].z;
+    float2 texel = params[1].xy;
+    int n = int(max(4.0, params[1].z));
+    float near = params[2].x, far = params[2].y;
+
+    float t = ollin_dof_depth(depthMap.sample(samp, in.uv));
+    if (t >= 0.999) return float4(1.0);                            // background: fully lit
+
+    float3 P = ollin_ssao_viewpos(in.uv, t, params);
+    float distP = near + t * (far - near);
+
+    // Normal from depth: the better-facing of paired neighbours a few texels out (a
+    // 1-texel stencil is near the 16-bit depth quantisation, which bands flat faces).
+    float2 noff = texel * 3.0;
+    float tL = ollin_dof_depth(depthMap.sample(samp, in.uv - float2(noff.x, 0)));
+    float tR = ollin_dof_depth(depthMap.sample(samp, in.uv + float2(noff.x, 0)));
+    float tU = ollin_dof_depth(depthMap.sample(samp, in.uv - float2(0, noff.y)));
+    float tD = ollin_dof_depth(depthMap.sample(samp, in.uv + float2(0, noff.y)));
+    float3 dx = (abs(tR - t) < abs(tL - t))
+        ? ollin_ssao_viewpos(in.uv + float2(noff.x, 0), tR, params) - P
+        : P - ollin_ssao_viewpos(in.uv - float2(noff.x, 0), tL, params);
+    float3 dy = (abs(tD - t) < abs(tU - t))
+        ? ollin_ssao_viewpos(in.uv + float2(0, noff.y), tD, params) - P
+        : P - ollin_ssao_viewpos(in.uv - float2(0, noff.y), tU, params);
+    float3 N = normalize(cross(dx, dy));
+    if (dot(N, -P) < 0.0) N = -N;
+
+    // TBN that orients the hemisphere to the surface — a **continuous** orthonormal basis
+    // (a branchless construction; README Techniques), *not* a per-pixel random one.
+    // Geometry-locked (depends only on N), so it carries no screen-space noise that would
+    // crawl frame to frame, and the dense Fibonacci kernel below is near-isotropic, so it
+    // needs no per-pixel rotation to avoid the coherent-silhouette banding. The basis must be
+    // **continuous in N**: a thresholded axis pick like `abs(N.x) < 0.9 ? x : y` would flip a
+    // whole face's tangent at once as the camera rotates a normal through the threshold, a
+    // face-wide AO pop, so it's built branchless instead (singular only at N.z = −1, a
+    // back-face never visible since N faces the eye).
+    float sgn = N.z >= 0.0 ? 1.0 : -1.0;
+    float a = -1.0 / (sgn + N.z);
+    float b = N.x * N.y * a;
+    float3 tangent   = float3(1.0 + sgn * N.x * N.x * a, sgn * b, -sgn * N.x);
+    float3 bitangent = float3(b, sgn + N.y * N.y * a, -N.y);
+    float3x3 tbn = float3x3(tangent, bitangent, N);
+
+    float occlusion = 0.0;
+    for (int i = 0; i < n; i++) {
+        // A low-discrepancy hemisphere kernel (golden-angle / Fibonacci, depends only on
+        // i) rather than random points: far lower variance for the same count, so the
+        // per-pixel estimate barely shifts frame to frame and a dense spiral is nearly
+        // rotation-invariant — together that's most of what kills the crevice flicker a
+        // random kernel shows. Magnitudes cluster toward the centre (contact-weighted).
+        float u = (float(i) + 0.5) / float(n);
+        float phi = float(i) * 2.399963229728653;                  // golden angle
+        float cosT = 1.0 - u;                                      // hemisphere elevation
+        float sinT = sqrt(max(0.0, 1.0 - cosT * cosT));
+        float3 k = float3(cos(phi) * sinT, sin(phi) * sinT, cosT) * mix(0.1, 1.0, u * u);
+        float3 sp = P + (tbn * k) * radius;                        // view-space sample point
+        float distS = -sp.z;                                       // its distance from the eye
+        float2 suv = ollin_ssao_project(sp, params);
+        if (any(suv < 0.0) || any(suv > 1.0)) continue;            // off-screen: no occluder
+        float ts = ollin_dof_depth(depthMap.sample(samp, suv));
+        if (ts >= 0.999) continue;                                 // sky behind: no occluder
+        float distScene = near + ts * (far - near);                // actual surface distance
+        // Occluded when the visible surface sits in front of the sample, but only when it's
+        // within `radius` of this pixel (else a far background or near foreground haloes in).
+        float rangeCheck = smoothstep(0.0, 1.0, radius / (abs(distP - distScene) + 1e-4));
+        occlusion += (distScene < distS - bias ? 1.0 : 0.0) * rangeCheck;
+    }
+    float ao = saturate(1.0 - occlusion / float(n));
+    return float4(ao, ao, ao, 1.0);
+}
+
+// Ambient occlusion (pass 2 of 2): a depth-aware blur that softens the kernel's residual
+// discretisation (the geometry-locked pass 1 carries no per-pixel noise to remove, so this
+// is a gentle smooth, not a denoise), weighting taps by depth proximity so it doesn't bleed
+// AO across silhouettes (which would re-open the haloes), then multiplies the base by the
+// result. `intensity` scales the darkening. params[0].x = intensity; params[1].xy = texel.
+fragment float4 ollin_fx_ssao_blur(PresentOut in [[stage_in]],
+                                   texture2d<float> base [[texture(0)]],
+                                   texture2d<float> aoTex [[texture(1)]],
+                                   texture2d<float> depthMap [[texture(2)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float intensity = params[0].x;
+    float2 texel = params[1].xy;
+    float4 centerColor = base.sample(samp, in.uv);
+    float tc = ollin_dof_depth(depthMap.sample(samp, in.uv));
+    if (tc >= 0.999 || intensity <= 0.0) return centerColor;       // background / off: passthrough
+
+    // A 5×5 box, each tap weighted
+    // by depth proximity so it doesn't average across a silhouette (which re-opens haloes).
+    float sum = 0.0, wsum = 0.0;
+    for (int y = -2; y <= 2; y++) {
+        for (int x = -2; x <= 2; x++) {
+            float2 uv = in.uv + float2(float(x), float(y)) * texel;
+            float ts = ollin_dof_depth(depthMap.sample(samp, uv));
+            float w = max(0.0, 1.0 - abs(ts - tc) * 40.0);
+            sum  += aoTex.sample(samp, uv).r * w;
+            wsum += w;
+        }
+    }
+    float ao = wsum > 0.0 ? sum / wsum : aoTex.sample(samp, in.uv).r;
+    ao = saturate(1.0 - intensity * (1.0 - ao));                   // scale strength
+    return float4(centerColor.rgb * ao, centerColor.a);
+}
+
 // MARK: - Color & tone filters
 //
 // Each reads premultiplied-linear input, transforms straight color, and writes
