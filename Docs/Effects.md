@@ -36,7 +36,7 @@ override func draw() {
 - [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
 - [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
-- [simField / Sim](#simfield) - a layer that runs a simulation (reaction-diffusion, Game of Life)
+- [simField / Sim](#simfield) - a layer that runs a simulation (reaction-diffusion, Game of Life, fluid)
 - [compose / layer](#compose) - declare a stack of layers as one block
 - [aside](#aside) - a helper layer that feeds another layer's effect
 - [Notes](#notes)
@@ -334,7 +334,7 @@ override func draw() {
 <a id="simfield"></a>
 ### simField(_:) and Sim
 
-Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful simulation** on a persistent layer that evolves every frame by reading its own neighbourhood — reaction-diffusion patterns spreading, cellular-automaton cells living and dying. You don't write the kernel: pick a `Sim` from the catalog, make a `SimField` with it, and **draw into the field to seed or force it**.
+Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful simulation** on a persistent layer that evolves every frame by reading its own neighbourhood — reaction-diffusion patterns spreading, cellular-automaton cells living and dying, a fluid carrying colour. You don't write the kernel: pick a `Sim` from the catalog, make a `SimField` with it, and **draw into the field to seed or force it**.
 
 A `SimField` is **persistent** like `Feedback` (make it once in `setup()` and hold it). Each frame the marks you draw in `withField` land on the field's current state, the renderer steps the simulation, and the result is the field's `image`. The raw state is *data*, so recolor it through the same `Filter` catalog as everything else.
 
@@ -356,11 +356,26 @@ The catalog:
 
 - **`.reactionDiffusion(feed:kill:)`** Gray-Scott reaction-diffusion: two chemicals diffuse and react into coral, spots, stripes, and dividing cells. Draw light marks to inject chemical B (it spreads from there); `feed`/`kill` pick the regime. State is A in red, B in green — recolor with `.gradientMap`/`.threshold`.
 - **`.gameOfLife()`** Conway's Game of Life (B3/S23). Draw white to make cells alive, black to kill them. Use a low field `scale` so each texel is a visible cell. The `image` is crisp black-and-white.
+- **`.fluid(curl:velocityDissipation:densityDissipation:pressureIterations:buoyancy:)`** a real-time fluid: an incompressible flow that carries colour. The mark's *colour* injects dye; `withField`'s `force:` pushes the flow where the mark lands, so dragging (or an animated force) swirls the colour. `curl` is the swirliness, the dissipations how fast flow and dye fade, and `buoyancy` an optional upward lift on bright dye (smoke that rises on its own). The `image` is the dye; composite or `.filtered(.bloom)` it directly.
 
-- `withField(field) { … }` draws into the field's state (scoped like `withTarget`); leave the block empty to let it evolve untouched.
+```swift
+var fluid: SimField!
+override func setup() { fluid = simField(.fluid(curl: 30), scale: 0.5) }
+
+override func draw() {
+    let push = Vector2(cos(time), sin(time)) * 4         // an animated push (or a mouse delta)
+    withField(fluid, force: push) {                      // colour -> dye, motion -> velocity
+        noStroke(); fill(Color(hue: time * 0.08, saturation: 0.9, brightness: 1))
+        drawCircle(width / 2, height / 2, 16)
+    }
+    drawImage(fluid.filtered(.bloom()).image, 0, 0)      // the swirling dye, bloomed
+}
+```
+
+- `withField(field, force:) { … }` draws into the field's state (scoped like `withTarget`); leave the block empty to let it evolve untouched. `force` (canvas points per frame) is the velocity a `.fluid` receives where the marks land; the single-field sims ignore it.
 - `field.image` is the evolved field; `field.filtered(_:)` recolors or post-processes it like any layer.
-- `scale` sets the field's internal resolution — lower it for broader reaction-diffusion features and chunkier automaton cells.
-- See `Basic/Simulation` (reaction-diffusion) and `Basic/GameOfLife`.
+- `scale` sets the field's internal resolution — lower it for broader reaction-diffusion features, chunkier automaton cells, and a cheaper, softer fluid.
+- See `Basic/Simulation` (reaction-diffusion), `Basic/GameOfLife`, and `Basic/Fluid`.
 
 <a id="compose"></a>
 ### compose(_:) and layer(_:)

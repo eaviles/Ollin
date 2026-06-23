@@ -157,6 +157,16 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func effectsFluidMatchesReference() throws {
+        // A fluid SimField driven by a fixed brush path, run to frame 48. Pins the
+        // multi-field fluid pipeline end to end: the velocity + dye splat, curl and
+        // vorticity confinement, the Jacobi pressure projection, semi-Lagrangian
+        // advection, and the persistent two-pair ping-pong with render-every-frame warmup.
+        let diff = try Snapshot.meanDifference(of: EffectsFluid(), against: "effects-fluid", frame: 48)
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func effectsFeedbackMatchesReference() throws {
         // A feedback layer built up over 24 frames: each frame redraws the last,
         // zoomed + spun + faded, plus a new dot. Pins the persistent ping-pong
@@ -1417,6 +1427,34 @@ private final class EffectsSimField: Sketch {
             }
         }
         drawImage(rd.filtered(.gradientMap(.magma)).image, 0, 0)
+    }
+}
+
+/// A fluid `SimField` driven by a fixed brush path (no random/mouse/time spikes), run to
+/// frame 48. Pins the multi-field fluid pipeline: the velocity + dye splat, curl and
+/// vorticity confinement, the Jacobi pressure projection, semi-Lagrangian advection, and
+/// the persistent velocity + dye ping-pong carried across frames.
+private final class EffectsFluid: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var fluid: SimField!
+    var prev = Vector2.zero
+
+    override func setup() {
+        fluid = simField(.fluid(curl: 30), scale: 0.5)
+        prev = Vector2(width / 2, height / 2)   // start at centre = the path's t = 0 (no jump)
+    }
+
+    override func draw() {
+        let t = time * 2
+        let brush = Vector2(width  * (0.5 + 0.30 * sin(t)),
+                            height * (0.5 + 0.30 * sin(t * 1.3)))
+        let force = brush - prev
+        prev = brush
+        withField(fluid, force: force) {
+            noStroke(); fill(Color(hue: time * 0.1, saturation: 0.9, brightness: 1))
+            drawCircle(brush.x, brush.y, 8)
+        }
+        drawImage(fluid.image, 0, 0)
     }
 }
 

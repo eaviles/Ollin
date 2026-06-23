@@ -540,8 +540,9 @@ final class Drawer {
     /// inside are composited onto the field's current state, which the renderer then
     /// evolves one frame by the field's `Sim`. Records exactly like `withTarget(_:)`;
     /// the field carries its own state across frames (no `previous` to read).
-    func withField(_ field: SimField, _ body: () -> Void) {
+    func withField(_ field: SimField, force: Vector2 = .zero, _ body: () -> Void) {
         field.writeLayer.clearColor = .clear
+        field.seedForce = force
         withTarget(field.writeLayer, body)
     }
 

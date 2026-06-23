@@ -386,6 +386,30 @@ final class MetalRenderer {
     /// (a layer skipped this frame keeps its content as the next front).
     private var feedbackUsedThisFrame: Set<ObjectIdentifier> = []
 
+    /// One fluid `SimField`'s persistent state: the velocity and dye ping-pong pairs
+    /// that carry across frames. These are the only fields a fluid must keep — pressure,
+    /// divergence, and curl are recomputed each frame from pooled scratch. Each frame
+    /// reads the current front of each pair and writes the evolved field into the back,
+    /// then `flipped` toggles, exactly like `FeedbackSlot` (just two pairs instead of
+    /// one). `owner` is weak so the slot is pruned once the sketch releases the field.
+    private final class FluidSlot {
+        let velA: MTLTexture, velB: MTLTexture
+        let dyeA: MTLTexture, dyeB: MTLTexture
+        let w: Int, h: Int
+        var flipped = false
+        weak var owner: AnyObject?
+        init(velA: MTLTexture, velB: MTLTexture, dyeA: MTLTexture, dyeB: MTLTexture,
+             w: Int, h: Int, owner: AnyObject) {
+            self.velA = velA; self.velB = velB; self.dyeA = dyeA; self.dyeB = dyeB
+            self.w = w; self.h = h; self.owner = owner
+        }
+    }
+    /// Persistent fluid storage, kept across frames like `feedbackSlots` and pruned the
+    /// same way. Separate map because a fluid keeps two pairs, not the single one a
+    /// `FeedbackSlot` holds.
+    private var fluidSlots: [ObjectIdentifier: FluidSlot] = [:]
+    private var fluidUsedThisFrame: Set<ObjectIdentifier> = []
+
     /// Off-screen targets for the GPU-texture frame hook (`texture(of:)`), kept and
     /// reused across frames — rebuilt only when the canvas size changes, so live
     /// frame-sharing (Syphon) doesn't allocate a texture every frame. Geometry
@@ -1083,17 +1107,11 @@ final class MetalRenderer {
         for target in drawer.renderTargets {
             guard case let .simField(sf) = target.origin else { continue }
             let pw = target.pixelWidth, ph = target.pixelHeight
-            let rest = sf.sim.restState
-            guard let slot = feedbackSlot(for: sf, width: pw, height: ph,
-                                          restState: MTLClearColor(red: Double(rest.x), green: Double(rest.y),
-                                                                   blue: Double(rest.z), alpha: Double(rest.w)),
-                                          into: cb),
-                  let msaa = makeFloatMSAA(width: pw, height: ph, storage: .memoryless),
+            guard let msaa = makeFloatMSAA(width: pw, height: ph, storage: .memoryless),
                   let seed = acquireFilterTexture(width: pw, height: ph, pooled: pooled) else { continue }
-            let front = slot.flipped ? slot.b : slot.a
-            let back  = slot.flipped ? slot.a : slot.b
-            // Render the drawn seed marks into `seed` (cleared transparent so an empty
-            // block seeds nothing and the field just evolves).
+            // Render this frame's drawn seed marks into `seed` (cleared transparent so
+            // an empty block seeds nothing and the field just evolves). Shared by both
+            // the single-field sims and the fluid.
             let pass = MTLRenderPassDescriptor()
             pass.colorAttachments[0].texture = msaa
             pass.colorAttachments[0].resolveTexture = seed
@@ -1107,10 +1125,33 @@ final class MetalRenderer {
                        depthFormat: nil, target: target)
                 enc.endEncoding()
             }
-            runSimulation(sf.sim, state: front, seed: seed, output: back,
-                          width: pw, height: ph, into: cb, pooled: pooled)
-            target.texture = back
-            feedbackUsedThisFrame.insert(ObjectIdentifier(sf))
+            if let config = sf.sim.fluidConfig {
+                // Multi-field fluid: its own persistent velocity + dye pairs, evolved by
+                // the dedicated solver. `image` resolves to the freshly advected dye.
+                guard let slot = fluidSlot(for: sf, width: pw, height: ph, into: cb) else { continue }
+                let velFront = slot.flipped ? slot.velB : slot.velA
+                let velBack  = slot.flipped ? slot.velA : slot.velB
+                let dyeFront = slot.flipped ? slot.dyeB : slot.dyeA
+                let dyeBack  = slot.flipped ? slot.dyeA : slot.dyeB
+                runFluid(config, force: sf.seedForce, seed: seed,
+                         velFront: velFront, velBack: velBack, dyeFront: dyeFront, dyeBack: dyeBack,
+                         width: pw, height: ph, into: cb, pooled: pooled)
+                target.texture = dyeBack
+                fluidUsedThisFrame.insert(ObjectIdentifier(sf))
+            } else {
+                // Single-field sim (reaction-diffusion, Game of Life): one ping-pong pair.
+                let rest = sf.sim.restState
+                guard let slot = feedbackSlot(for: sf, width: pw, height: ph,
+                                              restState: MTLClearColor(red: Double(rest.x), green: Double(rest.y),
+                                                                       blue: Double(rest.z), alpha: Double(rest.w)),
+                                              into: cb) else { continue }
+                let front = slot.flipped ? slot.b : slot.a
+                let back  = slot.flipped ? slot.a : slot.b
+                runSimulation(sf.sim, state: front, seed: seed, output: back,
+                              width: pw, height: ph, into: cb, pooled: pooled)
+                target.texture = back
+                feedbackUsedThisFrame.insert(ObjectIdentifier(sf))
+            }
         }
         // Filter and combine ops share one list, resolved in record order so an op's
         // inputs (filled earlier in this loop, or by the geometry/generator passes
@@ -1138,6 +1179,11 @@ final class MetalRenderer {
         feedbackUsedThisFrame.removeAll(keepingCapacity: true)
         if feedbackSlots.contains(where: { $0.value.owner == nil }) {
             feedbackSlots = feedbackSlots.filter { $0.value.owner != nil }
+        }
+        for id in fluidUsedThisFrame { fluidSlots[id]?.flipped.toggle() }
+        fluidUsedThisFrame.removeAll(keepingCapacity: true)
+        if fluidSlots.contains(where: { $0.value.owner == nil }) {
+            fluidSlots = fluidSlots.filter { $0.value.owner != nil }
         }
     }
 
@@ -1365,6 +1411,62 @@ final class MetalRenderer {
         }
     }
 
+    /// Evolve a fluid `SimField` one frame: splat the drawn `seed` (its colour into the
+    /// dye, the block's `force` into the velocity), confine the vorticity, project the
+    /// velocity to a divergence-free field with a Jacobi pressure solve + gradient
+    /// subtraction, then advect velocity and dye along the flow. The persistent
+    /// `velFront`/`dyeFront` are read; the evolved fields land in `velBack`/`dyeBack`
+    /// (next frame's fronts). Every intermediate field is pooled scratch — each
+    /// `acquireFilterTexture` call returns a distinct texture, so the passes never
+    /// alias — and Metal serializes the read-after-write chain across the passes.
+    private func runFluid(_ config: Sim.FluidConfig, force: Vector2, seed: MTLTexture,
+                          velFront: MTLTexture, velBack: MTLTexture,
+                          dyeFront: MTLTexture, dyeBack: MTLTexture,
+                          width: Int, height: Int, into cb: MTLCommandBuffer, pooled: Bool) {
+        func scratch() -> MTLTexture? { acquireFilterTexture(width: width, height: height, pooled: pooled) }
+        guard let velSplat = scratch(), let dyeSplat = scratch(), let curl = scratch(),
+              let velVort = scratch(), let div = scratch(), let pA = scratch(), let pB = scratch(),
+              let velProj = scratch() else { return }
+        let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
+        let dt = config.dt
+
+        // 1. Splat: push the velocity by `force`, add the dye colour, where marks landed.
+        //    `force` is canvas points per frame (the brush's motion); dividing by the
+        //    timestep turns it into a velocity, so advecting by `dt` moves the dye at the
+        //    brush's own speed.
+        let inv = dt > 0 ? 1 / dt : 0
+        encodeEffectFragment("ollin_fluid_splat_velocity", inputs: [velFront, seed], output: velSplat,
+                             params: [texel, SIMD4(Float(force.x) * inv, Float(force.y) * inv, 0, 0)], into: cb)
+        encodeEffectFragment("ollin_fluid_splat_dye", inputs: [dyeFront, seed], output: dyeSplat,
+                             params: [texel], into: cb)
+        // 2. Vorticity confinement: read the curl of the splatted velocity, push the
+        //    swirl back in (buoyancy reads the dye for an optional upward lift).
+        encodeEffectFragment("ollin_fluid_curl", inputs: [velSplat], output: curl,
+                             params: [texel], into: cb)
+        encodeEffectFragment("ollin_fluid_vorticity", inputs: [velSplat, curl, dyeSplat], output: velVort,
+                             params: [texel, SIMD4(config.curl, dt, config.buoyancy, 0)], into: cb)
+        // 3. Projection: divergence → clear pressure → Jacobi iterations → subtract its
+        //    gradient, leaving the velocity incompressible. The ping-pong leaves the
+        //    converged pressure in `pRead`.
+        encodeEffectFragment("ollin_fluid_divergence", inputs: [velVort], output: div,
+                             params: [texel], into: cb)
+        clearFloatTexture(pA, into: cb)
+        var pRead = pA, pWrite = pB
+        for _ in 0..<max(1, config.pressureIterations) {
+            encodeEffectFragment("ollin_fluid_pressure", inputs: [pRead, div], output: pWrite,
+                                 params: [texel], into: cb)
+            swap(&pRead, &pWrite)
+        }
+        encodeEffectFragment("ollin_fluid_gradient_subtract", inputs: [pRead, velVort], output: velProj,
+                             params: [texel], into: cb)
+        // 4. Advect velocity by itself, then the dye by the new velocity, into the
+        //    persistent back buffers (next frame's fronts).
+        encodeEffectFragment("ollin_fluid_advect", inputs: [velProj, velProj], output: velBack,
+                             params: [texel, SIMD4(dt, config.velocityDissipation, 0, 0)], into: cb)
+        encodeEffectFragment("ollin_fluid_advect", inputs: [velBack, dyeSplat], output: dyeBack,
+                             params: [texel, SIMD4(dt, config.densityDissipation, 0, 0)], into: cb)
+    }
+
     /// Fill a generator's layer: one fullscreen fragment pass that reads no input,
     /// just its parameters. `aspect` lets the fragment keep cells square.
     private func encodeGenerator(_ generator: Generator, output: MTLTexture,
@@ -1442,6 +1544,28 @@ final class MetalRenderer {
         clearFloatTexture(b, color: restState, into: cb)
         let slot = FeedbackSlot(a: a, b: b, w: width, h: height, owner: fb)
         feedbackSlots[id] = slot
+        return slot
+    }
+
+    /// `sf`'s persistent fluid slot, allocating the velocity and dye ping-pong pairs
+    /// (cleared to a still, dye-free rest state) on first use, a size change, or after
+    /// the address was reused by a different field. The fluid analogue of
+    /// `feedbackSlot`, keeping two pairs instead of one.
+    private func fluidSlot(for sf: AnyObject, width: Int, height: Int,
+                           into cb: MTLCommandBuffer) -> FluidSlot? {
+        let id = ObjectIdentifier(sf)
+        if let slot = fluidSlots[id], slot.owner === sf, slot.w == width, slot.h == height {
+            return slot
+        }
+        guard let velA = makeFloatResolve(width: width, height: height),
+              let velB = makeFloatResolve(width: width, height: height),
+              let dyeA = makeFloatResolve(width: width, height: height),
+              let dyeB = makeFloatResolve(width: width, height: height) else { return nil }
+        let rest = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        for tex in [velA, velB, dyeA, dyeB] { clearFloatTexture(tex, color: rest, into: cb) }
+        let slot = FluidSlot(velA: velA, velB: velB, dyeA: dyeA, dyeB: dyeB,
+                             w: width, h: height, owner: sf)
+        fluidSlots[id] = slot
         return slot
     }
 

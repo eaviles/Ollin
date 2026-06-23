@@ -1175,11 +1175,16 @@ open class Sketch {
 
     /// Draw into `field` to seed or force its simulation: the marks land on the field's
     /// current state, which then evolves one step. What a mark means is per-sim (white
-    /// = alive for Game of Life, injected chemical for reaction-diffusion). Composite
-    /// the field onto the canvas with `drawImage(field.image, 0, 0)`. Scoped like
-    /// `withTarget { }`; leave the block empty to let the field evolve untouched.
-    public func withField(_ field: SimField, _ body: () -> Void) {
-        drawer.withField(field, body)
+    /// = alive for Game of Life, injected chemical for reaction-diffusion, the mark's
+    /// colour as injected dye for a fluid). Composite the field onto the canvas with
+    /// `drawImage(field.image, 0, 0)`. Scoped like `withTarget { }`; leave the block
+    /// empty to let the field evolve untouched.
+    ///
+    /// `force` is the velocity impulse a `.fluid` field receives where the block's marks
+    /// land — pass the brush's motion (the change in `mouseX`/`mouseY` since last frame)
+    /// or an animated vector so the painted colour swirls. The single-field sims ignore it.
+    public func withField(_ field: SimField, force: Vector2 = .zero, _ body: () -> Void) {
+        drawer.withField(field, force: force, body)
     }
 
     /// Apply `filter` to the whole finished frame, before it's shown: the quick

@@ -42,6 +42,13 @@ public final class SimField {
     /// The drawer that owns the recording, so a `withField` block records against it.
     weak var drawer: Drawer?
 
+    /// The velocity impulse a `withField(_:force:_:)` block requests this frame: the
+    /// renderer's fluid splat adds it to the velocity where the block's marks landed,
+    /// so dragging or animating a brush pushes the flow. Set each frame the field is
+    /// drawn into (default zero); read by the renderer; ignored by the single-field
+    /// sims. Not state — it doesn't persist across frames.
+    var seedForce: Vector2 = .zero
+
     /// This frame's seed/draw surface: a `RenderTarget` tagged `.simField(self)` so the
     /// renderer routes it to persistent ping-pong storage and runs the sim after the
     /// drawn marks land. Reused across frames (stable identity) so `image` is steady.

@@ -1188,6 +1188,154 @@ fragment float4 ollin_sim_life(PresentOut in [[stage_in]],
     return float4(float3(alive), 1.0);
 }
 
+// MARK: - Fluid simulation (a real-time, splat-driven fluid on the SimField path)
+//
+// A *multi-field* stateful sim, unlike the single-texture RD / Game-of-Life above: it
+// keeps a velocity field and a dye (colour) field across frames, and each frame runs
+// the classic incompressible-flow pipeline — splat the drawn seed in, confine the
+// vorticity, make the velocity divergence-free with a Jacobi pressure solve plus a
+// gradient subtraction, then carry velocity and dye along the flow by semi-Lagrangian
+// advection. The renderer (`runFluid`) drives the pass order and the many pressure
+// iterations; these are the per-pass kernels. params[0].xy is the texel size; later
+// rows carry each pass's parameters (noted per fragment). Velocity rides in .xy, dye in
+// .rgb, the scalar fields (curl / divergence / pressure) in .x. The clamp-to-edge
+// sampler approximates a closed boundary — neighbour reads clamp at the border — so no
+// explicit boundary pass is needed.
+
+// splat velocity: add the forcing velocity, scaled by the seed's coverage, to the
+// velocity field where a mark was drawn, so dragging (or animating) a brush pushes the
+// fluid. params[1].xy = velocity impulse (the renderer converts the block's per-frame
+// force into a velocity).
+fragment float4 ollin_fluid_splat_velocity(PresentOut in [[stage_in]],
+                                           texture2d<float> velocity [[texture(0)]],
+                                           texture2d<float> seed [[texture(1)]],
+                                           sampler samp [[sampler(0)]],
+                                           constant float4 *params [[buffer(0)]]) {
+    float2 v = velocity.sample(samp, in.uv).xy;
+    float coverage = seed.sample(samp, in.uv).a;
+    v += params[1].xy * coverage;
+    return float4(v, 0.0, 1.0);
+}
+
+// splat dye: add the seed's colour into the dye field where drawn, so painting injects
+// colour the flow then carries. The seed arrives premultiplied (geometry output), so
+// it's a premultiplied add — no un-premultiply needed.
+fragment float4 ollin_fluid_splat_dye(PresentOut in [[stage_in]],
+                                      texture2d<float> dye [[texture(0)]],
+                                      texture2d<float> seed [[texture(1)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float3 d = dye.sample(samp, in.uv).rgb;
+    d += seed.sample(samp, in.uv).rgb;
+    return float4(d, 1.0);
+}
+
+// curl: the scalar vorticity (the z of ∇×u) at each texel, from central differences of
+// the velocity's neighbours — the swirl strength the confinement pass reads back.
+fragment float4 ollin_fluid_curl(PresentOut in [[stage_in]],
+                                texture2d<float> velocity [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float l = velocity.sample(samp, in.uv - float2(t.x, 0.0)).y;
+    float r = velocity.sample(samp, in.uv + float2(t.x, 0.0)).y;
+    float b = velocity.sample(samp, in.uv - float2(0.0, t.y)).x;
+    float tp = velocity.sample(samp, in.uv + float2(0.0, t.y)).x;
+    return float4(0.5 * ((r - l) - (tp - b)), 0.0, 0.0, 1.0);
+}
+
+// vorticity confinement (+ optional buoyancy): push velocity back toward the swirl that
+// numerical advection smears out, along the gradient of |curl| scaled by the local
+// curl, restoring fine turbulent detail. Buoyancy adds a lift (toward -y, screen-up)
+// proportional to dye brightness, so painted colour can rise like smoke.
+// params[1] = (curlStrength, dt, buoyancy, 0).
+fragment float4 ollin_fluid_vorticity(PresentOut in [[stage_in]],
+                                     texture2d<float> velocity [[texture(0)]],
+                                     texture2d<float> curlTex [[texture(1)]],
+                                     texture2d<float> dye [[texture(2)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float curlStrength = params[1].x, dt = params[1].y, buoyancy = params[1].z;
+    float l = curlTex.sample(samp, in.uv - float2(t.x, 0.0)).x;
+    float r = curlTex.sample(samp, in.uv + float2(t.x, 0.0)).x;
+    float b = curlTex.sample(samp, in.uv - float2(0.0, t.y)).x;
+    float tp = curlTex.sample(samp, in.uv + float2(0.0, t.y)).x;
+    float c = curlTex.sample(samp, in.uv).x;
+    float2 force = float2(abs(tp) - abs(b), abs(r) - abs(l));
+    force /= length(force) + 1e-5;
+    force *= curlStrength * c;
+    force.y *= -1.0;
+    float2 v = velocity.sample(samp, in.uv).xy + force * dt;
+    v.y -= buoyancy * ollin_luma(dye.sample(samp, in.uv).rgb) * dt;
+    return float4(v, 0.0, 1.0);
+}
+
+// divergence: how much the velocity field is locally expanding or compressing — the
+// right-hand side of the pressure solve. Central differences of u.x across x, u.y up y.
+fragment float4 ollin_fluid_divergence(PresentOut in [[stage_in]],
+                                      texture2d<float> velocity [[texture(0)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float l = velocity.sample(samp, in.uv - float2(t.x, 0.0)).x;
+    float r = velocity.sample(samp, in.uv + float2(t.x, 0.0)).x;
+    float b = velocity.sample(samp, in.uv - float2(0.0, t.y)).y;
+    float tp = velocity.sample(samp, in.uv + float2(0.0, t.y)).y;
+    return float4(0.5 * ((r - l) + (tp - b)), 0.0, 0.0, 1.0);
+}
+
+// pressure (one Jacobi iteration): relax the pressure field toward solving the Poisson
+// equation ∇²p = divergence. The renderer runs this many times, ping-ponging; each
+// texel becomes the average of its four neighbours minus the local divergence.
+fragment float4 ollin_fluid_pressure(PresentOut in [[stage_in]],
+                                    texture2d<float> pressure [[texture(0)]],
+                                    texture2d<float> divergence [[texture(1)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float l = pressure.sample(samp, in.uv - float2(t.x, 0.0)).x;
+    float r = pressure.sample(samp, in.uv + float2(t.x, 0.0)).x;
+    float b = pressure.sample(samp, in.uv - float2(0.0, t.y)).x;
+    float tp = pressure.sample(samp, in.uv + float2(0.0, t.y)).x;
+    float div = divergence.sample(samp, in.uv).x;
+    return float4((l + r + b + tp - div) * 0.25, 0.0, 0.0, 1.0);
+}
+
+// gradient subtract (projection): remove the pressure gradient from the velocity,
+// leaving it divergence-free (incompressible).
+fragment float4 ollin_fluid_gradient_subtract(PresentOut in [[stage_in]],
+                                             texture2d<float> pressure [[texture(0)]],
+                                             texture2d<float> velocity [[texture(1)]],
+                                             sampler samp [[sampler(0)]],
+                                             constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float l = pressure.sample(samp, in.uv - float2(t.x, 0.0)).x;
+    float r = pressure.sample(samp, in.uv + float2(t.x, 0.0)).x;
+    float b = pressure.sample(samp, in.uv - float2(0.0, t.y)).x;
+    float tp = pressure.sample(samp, in.uv + float2(0.0, t.y)).x;
+    float2 v = velocity.sample(samp, in.uv).xy - 0.5 * float2(r - l, tp - b);
+    return float4(v, 0.0, 1.0);
+}
+
+// advect: carry a quantity along the flow by tracing each texel back along the velocity
+// and sampling there (semi-Lagrangian — unconditionally stable for any step), with a
+// gentle per-step dissipation so the field relaxes instead of accumulating forever.
+// texture(0) is the velocity doing the carrying, texture(1) the carried field; the
+// fourth channel passes through (dye stays opaque, velocity's is unused).
+// params[1] = (dt, dissipation, 0, 0).
+fragment float4 ollin_fluid_advect(PresentOut in [[stage_in]],
+                                  texture2d<float> velocity [[texture(0)]],
+                                  texture2d<float> quantity [[texture(1)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float dt = params[1].x, dissipation = params[1].y;
+    float2 v = velocity.sample(samp, in.uv).xy;
+    float4 result = quantity.sample(samp, in.uv - dt * v * t);
+    return float4(result.rgb / (1.0 + dissipation * dt), result.a);
+}
+
 // MARK: - Procedural generators (no input texture)
 //
 // Each fills a layer from its parameters alone (params[0] geometry + aspect,

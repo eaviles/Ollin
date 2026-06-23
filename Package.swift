@@ -457,6 +457,11 @@ let package = Package(
             path: "Examples/Basic/GameOfLife"
         ),
         .executableTarget(
+            name: "Example-Fluid",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Fluid"
+        ),
+        .executableTarget(
             name: "Example-Patterns",
             dependencies: ["Ollin"],
             path: "Examples/Basic/Patterns"

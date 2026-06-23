@@ -32,9 +32,23 @@ public struct Sim: Sendable {
     enum Kind: Sendable {
         case reactionDiffusion(feed: Double, kill: Double)
         case gameOfLife
+        case fluid(FluidConfig)
     }
 
     let kind: Kind
+
+    /// The fixed configuration a `.fluid` hands the renderer's multi-pass solver. A
+    /// fluid is the one multi-field sim: it bypasses the single-texture step hooks
+    /// below and runs a dedicated pipeline (`runFluid`) over its own velocity + dye
+    /// state, so its parameters travel here rather than in `params`.
+    struct FluidConfig: Sendable {
+        var curl: Float                 // vorticity-confinement strength (swirl detail)
+        var velocityDissipation: Float  // how fast the flow slows
+        var densityDissipation: Float   // how fast the dye fades
+        var pressureIterations: Int     // Jacobi iterations of the pressure solve
+        var buoyancy: Float             // upward lift per unit dye brightness (smoke)
+        var dt: Float                   // fixed timestep (deterministic; not frame time)
+    }
 
     /// Gray-Scott **reaction-diffusion**: two chemicals diffuse and react, and where
     /// they balance, Turing patterns emerge — coral, spots, stripes, mitosis. Draw
@@ -53,7 +67,35 @@ public struct Sim: Sendable {
     /// for visible, chunky cells (one texel is one cell).
     public static func gameOfLife() -> Sim { Sim(kind: .gameOfLife) }
 
+    /// A real-time **fluid**: an incompressible flow that carries colour. Draw into the
+    /// field to inject dye (the mark's colour) and push the fluid with `withField`'s
+    /// `force:` (so dragging or an animated force swirls the colour). The flow advects,
+    /// confines its vorticity (for fine swirling detail), and stays divergence-free via
+    /// a Jacobi pressure solve. The raw `image` is the dye, ready to composite or
+    /// `.filtered(.bloom)`. `curl` sets the swirliness, the dissipations how fast flow
+    /// and dye fade, `pressureIterations` the solve accuracy, and `buoyancy` an optional
+    /// upward lift on bright dye (a smoke that rises on its own, even unforced). Use a
+    /// `scale` below 1 on the field for a cheaper, softer-featured fluid.
+    public static func fluid(curl: Double = 30, velocityDissipation: Double = 0.2,
+                             densityDissipation: Double = 1.0, pressureIterations: Int = 20,
+                             buoyancy: Double = 0) -> Sim {
+        Sim(kind: .fluid(FluidConfig(
+            curl: Float(max(0, curl)),
+            velocityDissipation: Float(max(0, velocityDissipation)),
+            densityDissipation: Float(max(0, densityDissipation)),
+            pressureIterations: max(1, min(60, pressureIterations)),
+            buoyancy: Float(max(0, buoyancy)),
+            dt: 0.016)))
+    }
+
     // MARK: Renderer hooks (internal)
+
+    /// Whether this sim runs the dedicated multi-field fluid pipeline (`runFluid`)
+    /// rather than the single-texture step path. Its parameters live in `fluidConfig`.
+    var isFluid: Bool { if case .fluid = kind { return true }; return false }
+
+    /// The fluid configuration, when this is a `.fluid` (else `nil`).
+    var fluidConfig: FluidConfig? { if case let .fluid(c) = kind { return c }; return nil }
 
     /// How many kernel steps run per frame. Reaction-diffusion takes many small steps
     /// for a lively, stable integration; a cellular automaton is one discrete
@@ -62,6 +104,7 @@ public struct Sim: Sendable {
         switch kind {
         case .reactionDiffusion: return 14
         case .gameOfLife:        return 1
+        case .fluid:             return 1   // unused: the fluid runs its own pipeline
         }
     }
 
@@ -72,6 +115,7 @@ public struct Sim: Sendable {
         switch kind {
         case .reactionDiffusion: return SIMD4(1, 0, 0, 1)
         case .gameOfLife:        return SIMD4(0, 0, 0, 1)
+        case .fluid:             return SIMD4(0, 0, 0, 1)   // unused: runFluid clears its own fields
         }
     }
 
@@ -80,6 +124,7 @@ public struct Sim: Sendable {
         switch kind {
         case .reactionDiffusion: return "ollin_sim_reaction_diffusion"
         case .gameOfLife:        return "ollin_sim_life"
+        case .fluid:             return ""   // unused: the fluid dispatches its own fragments
         }
     }
 
@@ -89,6 +134,7 @@ public struct Sim: Sendable {
         switch kind {
         case let .reactionDiffusion(feed, kill): return SIMD4(Float(feed), Float(kill), 0, 0)
         case .gameOfLife:                        return SIMD4(repeating: 0)
+        case .fluid:                             return SIMD4(repeating: 0)   // unused
         }
     }
 }
