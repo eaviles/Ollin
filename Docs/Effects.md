@@ -114,8 +114,8 @@ has a contact-sheet example: `Basic/ColorFilters`, `Basic/BlurFilters`,
 
 - **`.gaussianBlur(radius:)`** a Gaussian blur; `radius` is the extent in pixels (larger is softer). Backed by a hardware Gaussian kernel.
 - **`.bloom(threshold:intensity:radius:)`** glow: pixels brighter than `threshold` bleed light into their surroundings. The bright parts are extracted, blurred by `radius`, and added back at `intensity`, so the result is the original **plus** its glow, ready to composite (often additively). Brightness is the **max color channel** (HSV "value"), not luminance, so a vivid full-brightness mark blooms the same whatever its hue. `threshold` runs `0…1` over the linear-light frame, so HDR highlights (values above 1, from additive light) bloom hardest.
-- **`.bilateral(radius:sigma:)`** edge-preserving smoothing: blur flat areas while keeping edges sharp (the cartoon / denoise base). `sigma` is how different a neighbour's color may be before it stops blending — smaller keeps more edges.
-- **`.motionBlur(angle:distance:)`** directional smear along `angle`, `distance` a fraction of the layer — the streak of a moving subject.
+- **`.bilateral(radius:sigma:)`** edge-preserving smoothing: blur flat areas while keeping edges sharp (the cartoon / denoise base). `sigma` is how different a neighbour's color may be before it stops blending. Smaller keeps more edges.
+- **`.motionBlur(angle:distance:)`** directional smear along `angle`, `distance` a fraction of the layer: the streak of a moving subject.
 - **`.radialBlur(amount:)`** zoom blur smearing outward from the center, `amount` a fraction of the layer.
 
 ```swift
@@ -135,11 +135,11 @@ layer.filtered(.bilateral(radius: 6, sigma: 0.18))
 - **`.gradientMap(_:amount:)`** read luminance and look its color up along a [`Ramp`](./Color.md) or [`Colormap`](./Color.md) (viridis, magma, turbo, …). A fast recolor of a grayscale field or a whole scene.
 - **`.exposure(stops:)`** scale the light in linear-light stops (+1 doubles, −1 halves).
 - **`.levels(blackPoint:whitePoint:gamma:)`** the photo-tool staple: pull `blackPoint` to black and `whitePoint` to white, then bend the midtones by `gamma` (>1 darkens).
-- **`.solarize(_:softness:)`** invert the tones above a brightness with a soft fold — the part-positive, part-negative darkroom (Sabattier) look.
+- **`.solarize(_:softness:)`** invert the tones above a brightness with a soft fold: the part-positive, part-negative darkroom (Sabattier) look.
 - **`.temperature(amount:tint:)`** white balance: `amount` warms (>0) or cools (<0), `tint` pushes toward magenta (>0) or green (<0).
 - **`.vibrance(amount:)`** smart saturation that lifts the muted colors most and the vivid ones least (so it punches a flat image without blowing already-saturated tones).
 - **`.colorama(cycles:shift:)`** cycle the hue wheel `cycles` times across luminance, turning a gradient into rainbow bands; `shift` spins the wheel.
-- **`.lumaKey(low:high:invert:)`** make the image transparent outside a brightness band, so a dark or light backdrop drops out — a luminance key.
+- **`.lumaKey(low:high:invert:)`** make the image transparent outside a brightness band, so a dark or light backdrop drops out: a luminance key.
 
 ```swift
 layer.filtered(.colorGrade(contrast: 1.3, saturation: 1.6, hue: 0.05))
@@ -165,7 +165,7 @@ layer.filtered(.vibrance(amount: 0.6))
 - **`.toon(levels:edges:)`** cel shading: flatten into `levels` brightness bands and ink the Sobel edges over them.
 - **`.median()`** a 3×3 median, knocking out speckle and stray pixels while keeping edges sharp.
 - **`.contour(levels:intensity:)`** dark iso-brightness lines (one every `1/levels` of the range), turning tone into a topographic map.
-- **`.cmykHalftone(scale:)`** separate into cyan/magenta/yellow/black and screen each as rotated dots at the classic print angles — the colour-process look.
+- **`.cmykHalftone(scale:)`** separate into cyan/magenta/yellow/black and screen each as rotated dots at the classic print angles: the colour-process look.
 - **`.normalMap(strength:)`** read the image as a height field and output its surface normal as an RGB vector (the bluish bump-map look), ready to feed `.displace` (see [combine](#combined)) or a lighting pass.
 
 ```swift
@@ -189,15 +189,15 @@ postProcess(.glitch(amount: 0.3, seed: time * 8))
 
 #### Distortion
 
-These warp the image's *coordinates* — they re-sample the source at a remapped position, so color passes through untouched. Center-relative warps stay round on a non-square layer.
+These warp the image's *coordinates*: they re-sample the source at a remapped position, so color passes through untouched. Center-relative warps stay round on a non-square layer.
 
 - **`.kaleidoscope(segments:angle:)`** fold into mirrored wedges around the center, rotated by `angle`.
-- **`.swirl(angle:radius:)`** twirl into a vortex — rotation strongest at the center, fading to none at `radius`.
+- **`.swirl(angle:radius:)`** twirl into a vortex: rotation strongest at the center, fading to none at `radius`.
 - **`.bulge(amount:radius:)`** a radial lens: `amount` > 0 bulges (fisheye), < 0 pinches; it eases back to the image at `radius`.
 - **`.wave(amplitude:frequency:phase:vertical:)`** ripple rows side to side (or columns up and down); animate `phase` for motion.
 - **`.ripple(amplitude:frequency:phase:)`** concentric waves from the center, like a drop in water.
 - **`.mirror(vertical:flip:)`** reflect one half of the image onto the other.
-- **`.polar(amount:)`** bend around the center by remapping between Cartesian and polar coordinates — a tunnel / fold.
+- **`.polar(amount:)`** bend around the center by remapping between Cartesian and polar coordinates: a tunnel / fold.
 - **`.tile(count:mirror:)`** repeat the image in a `count`×`count` grid; `mirror` flips alternate cells for a seamless tiling.
 - **`.perturb(amount:scale:phase:)`** warp by the image's own internal fbm noise (no map needed), for a smoky / heat-haze ripple.
 
@@ -223,8 +223,8 @@ A `Combine` is a value descriptor like `Filter`, but the aux layer rides alongsi
 - **`.mask(channel:invert:)`** keep the base where the aux reads **bright** (`channel: .luminance`, the default; draw the mask in white over transparent) or **opaque** (`channel: .alpha`), fading to transparent elsewhere; `invert` flips it. A spotlight reveal, a vignette, a clip to a shape.
 - **`.displace(amount:)`** offset the base's pixels by the aux read as a **vector field**: red → horizontal, green → vertical, mid-gray = no shift, up to `amount` of the layer. Feed it noise or a gradient for ripples, smearing, heat-haze, and refraction.
 - **`.mix(amount:)`** cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux); the transition workhorse.
-- **`.defocus(focus:range:maxBlur:quality:)`** depth of field — blur the base by the aux read as a **depth map** (its luminance is the depth, 0 near … 1 far). The band `focus ± range` stays sharp; the blur grows with distance from it up to `maxBlur` pixels. It's a circle-of-confusion bokeh gather with near/far separation. The depth map can be a smooth gradient (a tilt-shift plane), a real depth feed, or hard-edged discrete per-object depths: overlapping defocused regions blend like real bokeh, a defocused foreground spreads over and covers an in-focus subject behind it, and a sharp subject occludes the blur behind it with a crisp edge. `quality` is a `RenderQuality` tier (`.default`/`.performance`/`.detail`, hardware-relative) setting the bokeh sample count — more taps trade frame rate for creamier, structure-free blur (`maxBlur` is the blur *amount*; `quality` is the blur *smoothness*).
-- **`.ambientOcclusion(radius:intensity:bias:quality:)`** ambient occlusion — darken the base in crevices, gaps, and where surfaces meet, reading the aux as a **depth map**. View-space position and surface normal are reconstructed from the depth (no separate normal buffer), then occlusion is estimated with a hemisphere of samples oriented to the normal (a dense low-discrepancy kernel, so it stays stable without per-pixel jitter, smoothed with a depth-aware blur) and multiplied into the base. Feed it a 3D scene's own [`depth`](#depth): that layer carries the camera's near/far and field of view, so `radius` reads in **world units**. `intensity` scales the darkening, `bias` rejects self-occlusion (raise it if flat faces speckle, lower it if contacts look weak), and `quality` is the sample-count tier. As a post-process it darkens the final image, not just the ambient term — the standard screen-space trade, dialed with `intensity`.
+- **`.defocus(focus:range:maxBlur:quality:)`** depth of field: blur the base by the aux read as a **depth map** (its luminance is the depth, 0 near … 1 far). The band `focus ± range` stays sharp; the blur grows with distance from it up to `maxBlur` pixels. It's a circle-of-confusion bokeh gather with near/far separation. The depth map can be a smooth gradient (a tilt-shift plane), a real depth feed, or hard-edged discrete per-object depths: overlapping defocused regions blend like real bokeh, a defocused foreground spreads over and covers an in-focus subject behind it, and a sharp subject occludes the blur behind it with a crisp edge. `quality` is a `RenderQuality` tier (`.default`/`.performance`/`.detail`, hardware-relative) setting the bokeh sample count. More taps trade frame rate for creamier, structure-free blur (`maxBlur` is the blur *amount*; `quality` is the blur *smoothness*).
+- **`.ambientOcclusion(radius:intensity:bias:quality:)`** ambient occlusion: darken the base in crevices, gaps, and where surfaces meet, reading the aux as a **depth map**. View-space position and surface normal are reconstructed from the depth (no separate normal buffer), then occlusion is estimated with a hemisphere of samples oriented to the normal (a dense low-discrepancy kernel, so it stays stable without per-pixel jitter, smoothed with a depth-aware blur) and multiplied into the base. Feed it a 3D scene's own [`depth`](#depth): that layer carries the camera's near/far and field of view, so `radius` reads in **world units**. `intensity` scales the darkening, `bias` rejects self-occlusion (raise it if flat faces speckle, lower it if contacts look weak), and `quality` is the sample-count tier. As a post-process it darkens the final image, not just the ambient term: the standard screen-space trade, dialed with `intensity`.
 
 ```swift
 let scene = renderTarget()
@@ -241,7 +241,7 @@ The base and aux can render at different `scale`s; the aux is sampled by normali
 <a id="depth"></a>
 ### depth: a 3D scene's depth as a layer
 
-The depth map `.defocus` reads can be one you draw by hand, but when the scene **is** 3D its depth comes for free. Draw a 3D scene into a render target, and because meshes (or point clouds) land in it the target captures depth, exposed as `target.depth`: a gray layer (0 near … 1 far) the renderer fills from the scene's own depth buffer. Feed it straight to `.defocus` as the aux and a real 3D render racks focus like a lens, no hand-drawn depth map needed. The same layer feeds `.ambientOcclusion` — and because it carries the camera's near/far and field of view, the occlusion's `radius` reads in world units.
+The depth map `.defocus` reads can be one you draw by hand, but when the scene **is** 3D its depth comes for free. Draw a 3D scene into a render target, and because meshes (or point clouds) land in it the target captures depth, exposed as `target.depth`: a gray layer (0 near … 1 far) the renderer fills from the scene's own depth buffer. Feed it straight to `.defocus` as the aux and a real 3D render racks focus like a lens, no hand-drawn depth map needed. The same layer feeds `.ambientOcclusion`, and because it carries the camera's near/far and field of view, the occlusion's `radius` reads in world units.
 
 ```swift
 let scene = renderTarget()
@@ -335,7 +335,7 @@ override func draw() {
 <a id="simfield"></a>
 ### simField(_:) and Sim
 
-Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful simulation** on a persistent layer that evolves every frame by reading its own neighbourhood — reaction-diffusion patterns spreading, cellular-automaton cells living and dying, a fluid carrying colour. You don't write the kernel: pick a `Sim` from the catalog, make a `SimField` with it, and **draw into the field to seed or force it**.
+Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful simulation** on a persistent layer that evolves every frame by reading its own neighbourhood: reaction-diffusion patterns spreading, cellular-automaton cells living and dying, a fluid carrying colour. You don't write the kernel: pick a `Sim` from the catalog, make a `SimField` with it, and **draw into the field to seed or force it**.
 
 A `SimField` is **persistent** like `Feedback` (make it once in `setup()` and hold it). Each frame the marks you draw in `withField` land on the field's current state, the renderer steps the simulation, and the result is the field's `image`. The raw state is *data*, so recolor it through the same `Filter` catalog as everything else.
 
@@ -355,7 +355,7 @@ override func draw() {
 
 The catalog:
 
-- **`.reactionDiffusion(feed:kill:)`** Gray-Scott reaction-diffusion: two chemicals diffuse and react into coral, spots, stripes, and dividing cells. Draw light marks to inject chemical B (it spreads from there); `feed`/`kill` pick the regime. State is A in red, B in green — recolor with `.gradientMap`/`.threshold`.
+- **`.reactionDiffusion(feed:kill:)`** Gray-Scott reaction-diffusion: two chemicals diffuse and react into coral, spots, stripes, and dividing cells. Draw light marks to inject chemical B (it spreads from there); `feed`/`kill` pick the regime. State is A in red, B in green. Recolor with `.gradientMap`/`.threshold`.
 - **`.gameOfLife()`** Conway's Game of Life (B3/S23). Draw white to make cells alive, black to kill them. Use a low field `scale` so each texel is a visible cell. The `image` is crisp black-and-white.
 - **`.fluid(curl:velocityDissipation:densityDissipation:pressureIterations:buoyancy:)`** a real-time fluid: an incompressible flow that carries colour. The mark's *colour* injects dye; `withField`'s `force:` pushes the flow where the mark lands, so dragging (or an animated force) swirls the colour. `curl` is the swirliness, the dissipations how fast flow and dye fade, and `buoyancy` an optional upward lift on bright dye (smoke that rises on its own). The `image` is the dye; composite or `.filtered(.bloom)` it directly.
 
@@ -375,7 +375,7 @@ override func draw() {
 
 - `withField(field, force:) { … }` draws into the field's state (scoped like `withTarget`); leave the block empty to let it evolve untouched. `force` (canvas points per frame) is the velocity a `.fluid` receives where the marks land; the single-field sims ignore it.
 - `field.image` is the evolved field; `field.filtered(_:)` recolors or post-processes it like any layer.
-- `scale` sets the field's internal resolution — lower it for broader reaction-diffusion features, chunkier automaton cells, and a cheaper, softer fluid.
+- `scale` sets the field's internal resolution: lower it for broader reaction-diffusion features, chunkier automaton cells, and a cheaper, softer fluid.
 - See `Basic/Simulation` (reaction-diffusion), `Basic/GameOfLife`, and `Basic/Fluid`.
 
 <a id="compose"></a>
@@ -443,7 +443,7 @@ The combine modifiers mirror the [`Combine`](#combined) ops:
 - **`.masked(by:channel:invert:)`** keep the layer where the aside reads bright (or, with `channel: .alpha`, opaque).
 - **`.displaced(by:amount:)`** push the layer's pixels around by the aside read as a vector field.
 - **`.mixed(with:amount:)`** cross-dissolve the layer toward the aside.
-- **`.defocused(by:focus:range:maxBlur:)`** depth of field — blur the layer by the aside read as a depth map.
+- **`.defocused(by:focus:range:maxBlur:)`** depth of field: blur the layer by the aside read as a depth map.
 
 They interleave with `.post(_:)` in call order, and an aside can itself carry filters (a blurred mask edge, a softened displacement map). See the `Basic/Aside` example for a displacement map and a spotlight mask in one scene, and `Basic/Defocus` for racking focus through a depth map.
 

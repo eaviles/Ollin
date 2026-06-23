@@ -240,7 +240,7 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     // **Near / far separation** (README Techniques for the references) is what a plain
     // single-pass gather can't do: a defocused *foreground* must spread *over* an in-focus
     // subject behind it (covering it), not leave a sharp sliver. So two fields accumulate
-    // separately — background + in-focus, and near (foreground) — each as a
+    // separately, background + in-focus, and near (foreground), each as a
     // **running average** (`acc += mix(acc/tot, s, reach); tot += 1`, so a tap
     // that doesn't reach contributes the current average, keeping every field grain-free)
     // — and the near field carries a **coverage** that composites it over the background.
@@ -349,10 +349,10 @@ static inline float2 ollin_ssao_project(float3 vp, constant float4 *params) {
 // hemisphere estimator (written from the published technique; README Techniques),
 // reconstructing position + normal from the aux depth (no normal
 // buffer). The hemisphere is a **dense low-discrepancy Fibonacci kernel oriented to the
-// normal but NOT rotated per pixel** — the design choice that makes the AO stable. The
+// normal but NOT rotated per pixel**, the design choice that makes the AO stable. The
 // usual SSAO rotates the kernel per pixel to break the coherent-silhouette banding a fixed
 // *sparse/random* kernel paints onto faces (the "projected squares"), then blurs away the
-// resulting noise — but that screen-space noise crawls frame to frame and flickers in
+// resulting noise, but that screen-space noise crawls frame to frame and flickers in
 // crevices. A dense Fibonacci kernel is near-isotropic, so it avoids the banding *without*
 // any per-pixel term, leaving the estimate geometry-locked (it moves with the surface, it
 // doesn't crawl). Each sample is projected back to the depth layer and counts as occluding
@@ -390,7 +390,7 @@ fragment float4 ollin_fx_ssao(PresentOut in [[stage_in]],
     float3 N = normalize(cross(dx, dy));
     if (dot(N, -P) < 0.0) N = -N;
 
-    // TBN that orients the hemisphere to the surface — a **continuous** orthonormal basis
+    // TBN that orients the hemisphere to the surface, a **continuous** orthonormal basis
     // (a branchless construction; README Techniques), *not* a per-pixel random one.
     // Geometry-locked (depends only on N), so it carries no screen-space noise that would
     // crawl frame to frame, and the dense Fibonacci kernel below is near-isotropic, so it
@@ -411,7 +411,7 @@ fragment float4 ollin_fx_ssao(PresentOut in [[stage_in]],
         // A low-discrepancy hemisphere kernel (golden-angle / Fibonacci, depends only on
         // i) rather than random points: far lower variance for the same count, so the
         // per-pixel estimate barely shifts frame to frame and a dense spiral is nearly
-        // rotation-invariant — together that's most of what kills the crevice flicker a
+        // rotation-invariant, together that's most of what kills the crevice flicker a
         // random kernel shows. Magnitudes cluster toward the centre (contact-weighted).
         float u = (float(i) + 0.5) / float(n);
         float phi = float(i) * 2.399963229728653;                  // golden angle
@@ -991,7 +991,7 @@ fragment float4 ollin_fx_toon(PresentOut in [[stage_in]],
     return ollin_premul(clamp(c * edge, 0.0, 1.0), s.a);
 }
 
-// 3×3 median via a min/max sorting network (written from the technique) — per-channel,
+// 3×3 median via a min/max sorting network (written from the technique), per-channel,
 // so speckle drops while edges hold (params: texel.xy).
 #define OLLIN_S2(a, b) { float3 _t = a; a = min(a, b); b = max(_t, b); }
 #define OLLIN_MN3(a, b, c) OLLIN_S2(a, b); OLLIN_S2(a, c);

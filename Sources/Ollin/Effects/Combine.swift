@@ -110,12 +110,12 @@ public struct Combine: Sendable {
     }
 
     /// Ambient occlusion: darken the base layer where the aux layer's depth says it
-    /// sits in a crevice or against a contact — the soft self-shadowing that grounds a
+    /// sits in a crevice or against a contact: the soft self-shadowing that grounds a
     /// 3D scene. Feed it a real 3D scene's own depth as the aux
     /// (`scene.combined(with: scene.depth, .ambientOcclusion())`): view-space position
     /// and surface normal are reconstructed from the depth (no separate normal buffer),
-    /// then occlusion is gathered over a smooth spiral of nearby samples — no noise, no
-    /// blur pass — and multiplied into the base.
+    /// then occlusion is estimated over a hemisphere of nearby samples and smoothed with
+    /// a depth-aware blur, then multiplied into the base.
     ///
     /// `scene.depth` carries the camera's near/far and field of view, which set the
     /// world scale, so `radius` reads in world units. As a post-process it darkens the
@@ -132,7 +132,7 @@ public struct Combine: Sendable {
     ///   - radius: the hemisphere radius the gather samples, in world units. Larger
     ///     reaches into broader cavities; smaller picks out fine contact shadows.
     ///   - intensity: how strongly the occlusion darkens (0 = none, 1 = the default).
-    ///   - bias: rejects self-occlusion just off a flat surface, in world units — raise
+    ///   - bias: rejects self-occlusion just off a flat surface, in world units. Raise
     ///     it if flat faces show faint speckle (acne), lower it if contacts look weak.
     ///   - quality: the sample-count tier (`.default`/`.performance`/`.detail`,
     ///     hardware-relative). More samples trade frame rate for smoother occlusion.

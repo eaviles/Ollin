@@ -1394,7 +1394,7 @@ final class MetalRenderer {
         case let .ambientOcclusion(radius, intensity, bias, quality):
             // Two passes: a hemisphere-kernel occlusion estimate (rebuilding view-space
             // position + normal from the aux depth, with the camera geometry stamped on
-            // the depth layer — a neutral perspective when the aux carries none, e.g. a
+            // the depth layer, a neutral perspective when the aux carries none, e.g. a
             // hand-drawn depth map), then a depth-aware blur that softens it and multiplies
             // the base. The sample budget rides the texel row's third slot, as the bokeh
             // gather's does.
