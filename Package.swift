@@ -335,6 +335,7 @@ let package = Package(
                 .copy("Renderer/ShaderShapes.metal"),
                 .copy("Renderer/ShaderCombinator.metal"),
                 .copy("Renderer/Shader3D.metal"),
+                .copy("Renderer/ShaderRaymarch.metal"),
                 .copy("Renderer/ShaderEffects.metal"),
                 .copy("Renderer/OllinShaderTypes.h"),
                 // The MSL compute prelude (hash/noise/curl/disc), spliced into
@@ -509,6 +510,11 @@ let package = Package(
             name: "Example-Solids",
             dependencies: ["Ollin"],
             path: "Examples/3D/Solids"
+        ),
+        .executableTarget(
+            name: "Example-RaymarchedSDF",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/RaymarchedSDF"
         ),
         .executableTarget(
             name: "Example-SceneDefocus",

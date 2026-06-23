@@ -96,6 +96,7 @@ enum GeometryKind {
     case fringe       // edge-expanded stroke + ~1px AA fringe in `vertices` (the high-quality stroke path)
     case depthScene   // a backdrop quad in `imageVertices` that also primes the depth buffer from a depth map
     case sdfGroup     // composed SDF field (combinator) in `sdfGroups`, evaluating `sdfNodes`
+    case sdfGroup3D   // raymarched composed 3D SDF field in `sdf3DGroups`, evaluating `sdf3DNodes`
 }
 
 struct GeometryBatch {
@@ -107,6 +108,7 @@ struct GeometryBatch {
     var pointStart: Int = 0  // first point (points3D batches)
     var meshStart: Int = 0   // first mesh vertex (mesh3D batches)
     var sdfGroupStart: Int = 0 // first SDF-combinator group (sdfGroup batches)
+    var sdf3DGroupStart: Int = 0 // first 3D SDF-combinator field (sdfGroup3D batches)
     /// The blend mode active when this run was recorded; selects the pipeline.
     /// A run breaks (a new batch opens) whenever the blend mode changes, so each
     /// batch composites with a single mode.
@@ -234,6 +236,8 @@ final class Drawer {
     /// ShaderCombinator.metal). One `drawSDF` call appends one group + its nodes.
     private(set) var sdfGroups: [SDFGroupInstance] = []
     private(set) var sdfNodes: [SDFNode] = []
+    private(set) var sdf3DGroups: [SDF3DGroupInstance] = []
+    private(set) var sdf3DNodes: [SDFNode3D] = []
 
     /// The open scoped-combine blocks (`smoothUnion { … }` etc.). While the stack is
     /// non-empty, SDF region draw calls are captured as `SDF` leaves into the innermost
@@ -385,13 +389,15 @@ final class Drawer {
     /// Buffer/batch lengths at one moment, for rolling target geometry back.
     private struct GeometrySnapshot {
         let batches, vertices, sdf, image, glyph, points, mesh, sdfGroup, sdfNode: Int
+        let sdf3DGroup, sdf3DNode: Int
     }
     private func snapshot() -> GeometrySnapshot {
         GeometrySnapshot(batches: batches.count, vertices: vertices.count,
                          sdf: sdfInstances.count, image: imageVertices.count,
                          glyph: glyphVertices.count, points: points.count,
                          mesh: meshVertices.count,
-                         sdfGroup: sdfGroups.count, sdfNode: sdfNodes.count)
+                         sdfGroup: sdfGroups.count, sdfNode: sdfNodes.count,
+                         sdf3DGroup: sdf3DGroups.count, sdf3DNode: sdf3DNodes.count)
     }
     /// The surface finish of the currently-open *solid* mesh batch, so a `material(_:)`
     /// change opens a fresh batch (the finish is bound once per batch as a uniform).
@@ -449,6 +455,7 @@ final class Drawer {
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
                                      sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      target: currentTarget))
     }
@@ -468,6 +475,7 @@ final class Drawer {
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
                                      sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, image: image, depth: currentDepth,
                                      target: currentTarget))
     }
@@ -486,6 +494,7 @@ final class Drawer {
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
                                      sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      material: material, finish: finish,
                                      meshWireframe: wireframe, matcap: matcap,
@@ -513,6 +522,7 @@ final class Drawer {
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
                                      sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      finish: m.gpuMaterial(), target: currentTarget))
     }
@@ -531,6 +541,7 @@ final class Drawer {
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
                                      sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, atlas: atlas, depth: currentDepth,
                                      target: currentTarget))
     }
@@ -637,6 +648,8 @@ final class Drawer {
         if meshVertices.count > s.mesh { meshVertices.removeLast(meshVertices.count - s.mesh) }
         if sdfGroups.count > s.sdfGroup { sdfGroups.removeLast(sdfGroups.count - s.sdfGroup) }
         if sdfNodes.count > s.sdfNode { sdfNodes.removeLast(sdfNodes.count - s.sdfNode) }
+        if sdf3DGroups.count > s.sdf3DGroup { sdf3DGroups.removeLast(sdf3DGroups.count - s.sdf3DGroup) }
+        if sdf3DNodes.count > s.sdf3DNode { sdf3DNodes.removeLast(sdf3DNodes.count - s.sdf3DNode) }
     }
 
     /// Open a `.particles` batch drawing `count` instances from the GPU `buffer`.
@@ -655,6 +668,7 @@ final class Drawer {
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
                                      sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend,
                                      particleBuffer: buffer, particleCount: count,
                                      depth: currentDepth, target: currentTarget))
@@ -764,6 +778,8 @@ final class Drawer {
         meshVertices.removeAll(keepingCapacity: true)
         sdfGroups.removeAll(keepingCapacity: true)
         sdfNodes.removeAll(keepingCapacity: true)
+        sdf3DGroups.removeAll(keepingCapacity: true)
+        sdf3DNodes.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
         currentBatchDepth = nil
@@ -1293,6 +1309,8 @@ final class Drawer {
         meshVertices.removeAll(keepingCapacity: true)
         sdfGroups.removeAll(keepingCapacity: true)
         sdfNodes.removeAll(keepingCapacity: true)
+        sdf3DGroups.removeAll(keepingCapacity: true)
+        sdf3DNodes.removeAll(keepingCapacity: true)
         combineStack.removeAll(keepingCapacity: true)   // close any block left open by an early exit
         combineGroupTransform = nil
         batches.removeAll(keepingCapacity: true)
@@ -2194,6 +2212,67 @@ final class Drawer {
             bandWidth: 0, nodeStart: UInt32(nodeStart), nodeCount: UInt32(nodes.count)))
     }
 
+    /// Draw a composed 3D signed-distance field: sphere-traced through the active
+    /// camera, lit by the scene's lights, and depth-composited with the rasterized
+    /// meshes (see SDF3D / ShaderRaymarch.metal). Requires a camera (3D only). Solid
+    /// color per leaf in v1 — a gradient fill is ignored (set per-leaf with `.colored`).
+    func drawSDF3D(_ sdf: SDF3D) {
+        guard camera3D != nil else { return }   // 3D only — needs an active camera
+        // SVG export is 2D vector only; a sphere-traced surface has no vector outline.
+        if svgRecorder != nil { return }
+        currentTarget?.needsDepth = true        // 3D in a target → that pass carries depth
+
+        let defaultFill: Color = {
+            if case .some(.color(let c)) = fillPaint { return c }
+            return .white
+        }()
+        let nodeStart = sdf3DNodes.count
+        var nodes: [SDFNode3D] = []
+        let bounds = sdf.flatten(defaultFill: defaultFill, into: &nodes)
+        guard !nodes.isEmpty else { return }
+        // Bound the work to the shader's fixed stacks: skip (loudly) a field too large
+        // or too deeply nested rather than mis-drawing it.
+        if nodes.count > SDF3D.maxNodes {
+            print("Ollin: drawSDF3D — field has \(nodes.count) nodes (max \(SDF3D.maxNodes)); skipping.")
+            return
+        }
+        if bounds.valueDepth > SDF3D.maxValueDepth || bounds.pointDepth > SDF3D.maxPointDepth {
+            print("Ollin: drawSDF3D — field nests too deep (combine \(bounds.valueDepth)/\(SDF3D.maxValueDepth), transform \(bounds.pointDepth)/\(SDF3D.maxPointDepth)); skipping.")
+            return
+        }
+
+        // Place the field in world space by the current 3D model matrix. The march runs
+        // in world space and maps each sample back into the field's local frame, so the
+        // group carries the inverse model + the uniform scale (local distance → world
+        // distance) and the field's world-space AABB (the 8 local corners transformed,
+        // padded a touch for the smooth-blend bulge + AA so the box never clips).
+        let m = modelMatrix
+        let inv = m.inverse
+        let scale = simd_length(SIMD3<Float>(m.columns.0.x, m.columns.0.y, m.columns.0.z))
+        var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude)
+        var hi = SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
+        for cx in [bounds.lo.x, bounds.hi.x] {
+            for cy in [bounds.lo.y, bounds.hi.y] {
+                for cz in [bounds.lo.z, bounds.hi.z] {
+                    let w = m * SIMD4<Float>(cx, cy, cz, 1)
+                    let p = SIMD3<Float>(w.x, w.y, w.z)
+                    lo = simd_min(lo, p); hi = simd_max(hi, p)
+                }
+            }
+        }
+        let pad = SIMD3<Float>(repeating: 0.05 * max(scale, 1e-4))
+        lo -= pad; hi += pad
+
+        sdf3DNodes.append(contentsOf: nodes)
+        ensureBatch(.sdfGroup3D)
+        sdf3DGroups.append(SDF3DGroupInstance(
+            inverseModel: inv,
+            boundsMin: SIMD4<Float>(lo.x, lo.y, lo.z, 0),
+            boundsMax: SIMD4<Float>(hi.x, hi.y, hi.z, 0),
+            modelScale: scale, nodeStart: UInt32(nodeStart),
+            nodeCount: UInt32(nodes.count), _pad0: 0))
+    }
+
     // MARK: SDF-combinator scoped blocks (sugar over the `SDF` value type)
 
     private enum CombineFrameKind {
@@ -2596,6 +2675,7 @@ final class Drawer {
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
                                      sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, image: color,
                                      depthImage: depth, metricDepth: metricDepth,
                                      target: currentTarget))

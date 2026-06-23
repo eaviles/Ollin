@@ -64,6 +64,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func raymarchedSDF3DMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DScene(), against: "sdf-combinators-3d")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -1158,6 +1164,42 @@ private final class SDFCombinatorsScene: Sketch {
                 }
             }
         }
+    }
+}
+
+/// The raymarched 3D SDF combinators (`drawSDF3D` / `SDF3D`): a fixed metaball of
+/// spheres melting together (the smooth-union color blend) with a sphere carved off
+/// the top, skewered by a rasterized box that pins the depth compositing (the bar and
+/// the marched field occlude each other). Static, so it's deterministic at frame 0.
+private final class RaymarchedSDF3DScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0e1116))
+        // Fixed camera + near/far bracketing the field (deterministic).
+        camera(.orbiting(target: .zero, radius: 5.5, azimuth: 0.6, elevation: 0.4,
+                         fieldOfView: .pi / 4, near: 2, far: 12))
+        directionalLight(.white, direction: Vector3(-0.6, 0.7, 0.5),
+                         intensity: 1.1, softness: 0.3)
+        ambientLight(Color(white: 0.18))
+
+        // A rasterized bar interpenetrating the field (pins depth compositing).
+        withState {
+            material(.glossy)
+            fill(Color(hex: 0xf2c14e))
+            rotateZ(0.3)
+            drawBox(width: 4.4, height: 0.42, depth: 0.42)
+        }
+
+        // A merged metaball: spheres melting (the smin color-melt), a sphere carved off.
+        material(.jade)
+        let blob = SDF3D.sphere(radius: 1.05).colored(Color(hex: 0x39d0ff))
+            .smoothUnion(SDF3D.sphere(radius: 0.85).at(x: 1.0, y: 0.4, z: 0.6)
+                .colored(Color(hex: 0xff4f97)), k: 0.7)
+            .smoothUnion(SDF3D.sphere(radius: 0.6).at(x: -1.1, y: 0.7, z: 0.4)
+                .colored(Color(hex: 0xb6ff5a)), k: 0.5)
+            .smoothSubtract(SDF3D.sphere(radius: 0.7).at(x: 0.2, y: 1.15, z: 0), k: 0.25)
+        drawSDF3D(blob)
     }
 }
 

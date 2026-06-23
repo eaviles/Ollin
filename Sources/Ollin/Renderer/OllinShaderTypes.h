@@ -65,6 +65,10 @@ typedef struct {
 typedef struct {
     simd_float4x4 view;        // world -> camera space
     simd_float4x4 projection;  // camera -> clip space (Metal z in [0,1])
+    simd_float4x4 inverseViewProjection;  // clip -> world; the raymarch pass rebuilds a
+                               // world ray from each pixel's NDC through this. The
+                               // mesh/point/wireframe pipelines never read it, so it's
+                               // free for them (the field is just set each frame).
     simd_float2 viewport;      // drawable size in points (for any screen-space math)
 } Uniforms3D;
 
@@ -174,6 +178,57 @@ typedef struct {
     unsigned int nodeStart;  // first SDFNode for this group (absolute index)
     unsigned int nodeCount;  // number of nodes
 } SDFGroupInstance;
+
+// One instruction of the *3D* SDF-combinator VM (see ShaderRaymarch.metal) — the
+// raymarched sibling of `SDFNode`. A composed 3D field (the `SDF3D` value type)
+// flattens to a flat array of these that the raymarch fragment walks at each march
+// step, with a *value* stack of (distance, color) for the combine/modify ops and a
+// *point* stack (float3 this time) for the transform scopes. Same instruction
+// classes as the 2D `SDFNode`; leaves evaluate 3D distance functions:
+//   kind 0 EVAL   leaf: sel = SDF3DShape tag; evaluate that 3D SDF at the current
+//                 point, push (distance, color). geo0 packs the shape params — sphere
+//                 radius in .x; box half-extents in .xyz; torus (major, tube) in .xy;
+//                 capsule (radius, half-height) in .xy — and color is the leaf's RGBA.
+//   kind 1 OP     binary combine, pop 2 / push 1: sel = 0 union, 1 smoothUnion, 2
+//                 subtract, 3 smoothSubtract, 4 intersect, 5 smoothIntersect, 6 morph
+//                 (the 2D ops exactly). k = smoothing radius / morph amount; the
+//                 smooth ops lerp color by the smin blend factor.
+//   kind 2 MOD    unary value op, pop 1 / push 1: sel = 0 round, 1 onion. k = amount.
+//   kind 3 XFORM  push the current point, transform it for the enclosing scope: sel =
+//                 0 translate (geo0.xyz), 1 rotate (geo0.xyz = unit axis, geo1.x =
+//                 angle), 2 scale (k = factor s, p /= s). Translate/rotate are rigid;
+//                 scale multiplies the child distance back at RESTORE_P.
+//   kind 4 RESTORE_P  pop the point; k = the distance scale (s for a scale scope, else 1).
+// Stride 64 (four 16-byte rows), matching `SDFNode`.
+typedef struct {
+    unsigned int kind;     // 0 EVAL, 1 OP, 2 MOD, 3 XFORM, 4 RESTORE_P
+    unsigned int sel;      // shape tag / op kind / mod kind / xform kind
+    float k;               // OP smin k or morph; MOD radius/thickness; XFORM scale s; RESTORE_P distance scale
+    float extra;           // reserved (spare per-kind scalar)
+    simd_float4 color;     // EVAL leaf straight RGBA
+    simd_float4 geo0;      // EVAL shape params; XFORM vector param (translate xyz / rotate axis xyz)
+    simd_float4 geo1;      // EVAL extra params; XFORM scalar param (rotate angle in .x)
+} SDFNode3D;
+
+// One composed 3D SDF field for the raymarch pipeline (see ShaderRaymarch.metal),
+// drawn as a fullscreen triangle whose fragment sphere-traces the field's `SDFNode3D`
+// program. The march runs in WORLD space, so the surface normal (a 4-tap gradient)
+// and the written depth are world-space directly — no normal matrix. Each step maps
+// the world sample point into the field's local frame by `inverseModel`, evaluates
+// the node VM there, and multiplies the local distance by `modelScale` to get the
+// world step. `boundsMin`/`boundsMax` are the field's world-space AABB; a pixel whose
+// ray misses that box bails in O(1), so the fullscreen pass is cheap where the field
+// isn't. The fill color comes from the nodes (each leaf carries its own, baked from
+// the current `fill` at flatten time). Stride 112 (16-aligned).
+typedef struct {
+    simd_float4x4 inverseModel; // world -> field-local space (the inverse 3D model matrix)
+    simd_float4 boundsMin;      // field world-space AABB min (xyz; w unused)
+    simd_float4 boundsMax;      // field world-space AABB max (xyz; w unused)
+    float modelScale;           // uniform scale of the model matrix (local distance -> world distance)
+    unsigned int nodeStart;     // first SDFNode3D for this field (absolute index)
+    unsigned int nodeCount;     // number of nodes
+    float _pad0;                // pads the stride to 112 (16-aligned)
+} SDF3DGroupInstance;
 
 // One particle for the GPU compute path: a persistent buffer of these is updated
 // by a compute kernel each frame (positions never round-trip through the CPU) and

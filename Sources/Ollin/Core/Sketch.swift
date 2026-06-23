@@ -843,6 +843,14 @@ open class Sketch {
     public func drawSDF(_ sdf: SDF) {
         drawer.drawSDF(sdf)
     }
+    /// Draw a composed *3D* signed-distance field — its solids merge (smooth union,
+    /// subtract, intersect, morph) into one sphere-traced surface, lit by the scene's
+    /// lights and depth-composited with the meshes. Requires an active camera; build
+    /// the field with the `SDF3D` value type, e.g.
+    /// `drawSDF3D(SDF3D.sphere(radius: 1).smoothUnion(.box(size: 1).at(x: 1.2, y: 0, z: 0), k: 0.5))`.
+    public func drawSDF3D(_ sdf: SDF3D) {
+        drawer.drawSDF3D(sdf)
+    }
 
     // MARK: SDF-combinator blocks (sugar over `SDF` + `drawSDF`)
     //

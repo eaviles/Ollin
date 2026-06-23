@@ -27,6 +27,7 @@ only for now (a gradient on a merged field is a later addition).
 - [Placing and coloring](#placing)
 - [Domain operators](#domain)
 - [Scoped blocks](#scoped-blocks)
+- [3D fields](#fields-3d)
 - [Notes and limits](#notes)
 
 <a name="quick-start"></a>
@@ -190,6 +191,53 @@ exactly as with `.colored`. Set up position with the [transform stack](./Drawing
 (`translate`/`rotate`) around the block; non-region draws inside a block (lines, text,
 images) are ignored.
 
+<a name="fields-3d"></a>
+
+### 3D fields
+
+The same idea lifts into space: `SDF3D` builds a 3D field and `drawSDF3D` sphere-traces it as
+one merged surface inside an active [3D camera](./3D.md), lit by the scene's lights and
+depth-composited with the rasterized meshes (each occludes the other where they meet). It is
+the 3D sibling of `SDF` / `drawSDF`, with the same combine, modifier, and transform vocabulary.
+
+```swift
+override func draw() {
+    camera(.orbiting(target: .zero, radius: 5.5, azimuth: time * 0.35,
+                     elevation: 0.4, fieldOfView: .pi / 4))
+    directionalLight(.white, direction: Vector3(-0.6, 0.7, 0.5))
+    material(.jade)
+
+    let blob = SDF3D.sphere(radius: 1).colored(.init(hex: 0x39d0ff))
+        .smoothUnion(SDF3D.sphere(radius: 0.8)
+            .at(x: cos(time) * 1.2, y: 0, z: sin(time) * 1.2)
+            .colored(.init(hex: 0xff4f97)), k: 0.6)
+        .smoothSubtract(SDF3D.sphere(radius: 0.7).at(x: 0, y: 1, z: 0), k: 0.2)
+
+    drawSDF3D(blob)
+}
+```
+
+The leaf constructors are the common centered solids:
+
+| Constructor | Solid |
+| --- | --- |
+| `SDF3D.sphere(radius:)` | a sphere |
+| `SDF3D.box(width:height:depth:)` / `SDF3D.box(size:)` | a box / cube |
+| `SDF3D.torus(radius:tube:)` | a torus, lying in the xz-plane |
+| `SDF3D.capsule(radius:height:)` | a capsule along the y-axis |
+
+The combinators (`.union` / `.smoothUnion(_:k:)` / `.subtract` / `.smoothSubtract(_:k:)` /
+`.intersect` / `.smoothIntersect(_:k:)` / `.morph(_:amount:)`), the modifiers (`.rounded` /
+`.onion`), and `.colored` all behave exactly as in 2D, the smooth ops blending the leaf colors
+across the seam. Positioning is in three dimensions: `.at(x:y:z:)` / `.at(_ p: Vector3)`,
+`.rotated(_:axis:)` (plus `.rotatedX` / `.rotatedY` / `.rotatedZ`), and `.scaled(_:)` (uniform).
+
+The 3D path is opt-in like the rest of [3D mode](./3D.md), so a 2D sketch never pays for it.
+Today it covers the four leaves above with solid color per leaf and uniform scale, and the
+surface self-shades but does not yet cast a shadow into a light's shadow map. The scoped block
+form, a broader primitive set, domain operators, and softer shadows are on the
+[roadmap](../ROADMAP.md).
+
 <a name="notes"></a>
 
 ### Notes and limits
@@ -199,8 +247,9 @@ images) are ignored.
 - **Closed regions only.** Combinators merge fillable shapes. Open marks (lines, open arcs,
   Bézier strokes) have no interior to merge, so they are not combinator leaves.
 - **Uniform scale only**, as above.
-- **2D today.** A 3D raymarched version (the same fields, sphere-traced in space) is a
-  separate, later step; see the [roadmap](../ROADMAP.md).
+- **2D and 3D.** `SDF` / `drawSDF` are the 2D fields here; `SDF3D` / `drawSDF3D` sphere-trace
+  the same kind of field in space (see [3D fields](#fields-3d)). The 3D form is opt-in and
+  shares these limits (solid color, uniform scale).
 - A composition is bounded (a generous node and nesting budget); a field past it is skipped
   with a console note rather than mis-drawn.
 
@@ -208,5 +257,6 @@ images) are ignored.
 
 See also [`Drawing`](./Drawing.md) for the immediate-mode shapes and the transform stack,
 [`Geometry`](./Geometry.md) for the vector `Shape` booleans (which combine *filled outlines*,
-the polygonal counterpart to these field operators), and [`Color`](./Color.md) for the color
-types the leaves carry. The example is `Examples/Basic/Combinators`.
+the polygonal counterpart to these field operators), [`Color`](./Color.md) for the color
+types the leaves carry, and [`3D`](./3D.md) for the camera and lights the 3D fields draw
+through. The examples are `Examples/Basic/Combinators` (2D) and `Examples/3D/RaymarchedSDF`.

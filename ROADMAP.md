@@ -31,7 +31,7 @@ Near-term, fairly self-contained pieces, each small and well-scoped.
 
 ## Shader composition and live-coding
 
-Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. A third strand here is the **raymarched 3D version of the SDF combinators**: the 2D `SDF` field merging (smooth-minimum union, subtraction, intersection, and morph, the gooey "melt two objects together" look) carried into a sphere-traced 3D scene, where solids blend and morph in one marched field instead of rasterizing as separate meshes. It needs a 3D signed-distance primitive set, the raymarcher, normals, lighting, and depth integration so it composites with the mesh path. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
+Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. A third strand is **broadening the 3D SDF combinators**: the sphere-traced field merging (`drawSDF3D`) growing toward the full ShaderPark "sculpting" experience, a wider 3D primitive set, domain operators (mirror and linear/polar tile), contact-hardening soft shadows, a scoped `smoothUnion(k:) { }` block form, and analytic silhouette anti-aliasing. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
 
 ## Generative geometry
 
