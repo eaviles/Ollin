@@ -1196,6 +1196,80 @@ final class MetalRenderer {
         case let .lineScreen(scale, softness, angle, foreground, background):
             return pass("ollin_fx_linescreen", [input],
                         [SIMD4(Float(scale), Float(softness), Float(angle), aspect), foreground, background])
+
+        // Color & tone (continued)
+        case let .solarize(value, softness):
+            return pass("ollin_fx_solarize", [input], [f(value, softness, 0, 0)])
+        case let .temperature(amount, tint):
+            return pass("ollin_fx_temperature", [input], [f(amount, tint, 0, 0)])
+        case .vibrance(let amount):
+            return pass("ollin_fx_vibrance", [input], [f(amount, 0, 0, 0)])
+        case .exposure(let gain):
+            return pass("ollin_fx_exposure", [input], [f(gain, 0, 0, 0)])
+        case let .levels(blackPoint, whitePoint, gamma):
+            return pass("ollin_fx_levels", [input], [f(blackPoint, whitePoint, gamma, 0)])
+        case let .colorama(cycles, shift):
+            return pass("ollin_fx_colorama", [input], [f(cycles, shift, 0, 0)])
+        case let .lumaKey(low, high, invert):
+            return pass("ollin_fx_lumakey", [input], [f(low, high, invert ? 1 : 0, 0)])
+
+        // Blur
+        case let .motionBlur(angle, distance):
+            return pass("ollin_fx_motion_blur", [input], [f(angle, distance, 0, 0)])
+        case .radialBlur(let amount):
+            return pass("ollin_fx_radial_blur", [input], [f(amount, 0, 0, 0)])
+        case let .bilateral(radius, sigma):
+            return pass("ollin_fx_bilateral", [input], [SIMD4(texel.x, texel.y, Float(radius), Float(sigma))])
+
+        // Stylize & optical (continued)
+        case let .emboss(amount, angle):
+            return pass("ollin_fx_emboss", [input], [SIMD4(texel.x, texel.y, Float(amount), Float(angle))])
+        case .oilPaint(let radius):
+            return pass("ollin_fx_oilpaint", [input], [SIMD4(texel.x, texel.y, Float(radius), 0)])
+        case let .crosshatch(scale, foreground, background):
+            return pass("ollin_fx_crosshatch", [input],
+                        [SIMD4(Float(scale), aspect, 0, 0), foreground, background])
+        case let .toon(levels, edges):
+            return pass("ollin_fx_toon", [input], [SIMD4(Float(levels), Float(edges), texel.x, texel.y)])
+        case .median:
+            return pass("ollin_fx_median", [input], [SIMD4(texel.x, texel.y, 0, 0)])
+        case let .contour(levels, intensity):
+            return pass("ollin_fx_contour", [input], [f(levels, intensity, 0, 0)])
+        case .cmykHalftone(let scale):
+            return pass("ollin_fx_cmyk_halftone", [input], [SIMD4(Float(scale), aspect, 0, 0)])
+        case .normalMap(let strength):
+            return pass("ollin_fx_normal_map", [input], [SIMD4(texel.x, texel.y, Float(strength), 0)])
+
+        // Retro / optical
+        case let .scanlines(count, intensity):
+            return pass("ollin_fx_scanlines", [input], [f(count, intensity, 0, 0)])
+        case let .glitch(amount, seed):
+            return pass("ollin_fx_glitch", [input], [f(amount, seed, 0, 0)])
+        case let .crt(curvature, scanline, aberration):
+            return pass("ollin_fx_crt", [input], [f(curvature, scanline, aberration, 0)])
+
+        // Distortion
+        case let .kaleidoscope(segments, angle):
+            return pass("ollin_fx_kaleidoscope", [input], [SIMD4(Float(segments), Float(angle), aspect, 0)])
+        case let .swirl(angle, radius):
+            return pass("ollin_fx_swirl", [input], [SIMD4(Float(angle), Float(radius), aspect, 0)])
+        case let .bulge(amount, radius):
+            return pass("ollin_fx_bulge", [input], [SIMD4(Float(amount), Float(radius), aspect, 0)])
+        case let .wave(amplitude, frequency, phase, vertical):
+            return pass("ollin_fx_wave", [input],
+                        [SIMD4(Float(amplitude), Float(frequency), Float(phase), vertical ? 1 : 0)])
+        case let .ripple(amplitude, frequency, phase):
+            return pass("ollin_fx_ripple", [input],
+                        [SIMD4(Float(amplitude), Float(frequency), Float(phase), aspect)])
+        case let .mirror(vertical, flip):
+            return pass("ollin_fx_mirror", [input], [SIMD4(vertical ? 1 : 0, flip ? 1 : 0, 0, 0)])
+        case .polar(let amount):
+            return pass("ollin_fx_polar", [input], [SIMD4(Float(amount), aspect, 0, 0)])
+        case let .tile(count, mirror):
+            return pass("ollin_fx_tile", [input], [SIMD4(Float(count), mirror ? 1 : 0, 0, 0)])
+        case let .perturb(amount, scale, phase):
+            return pass("ollin_fx_perturb", [input],
+                        [SIMD4(Float(amount), Float(scale), Float(phase), aspect)])
         }
     }
 

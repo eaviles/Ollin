@@ -563,6 +563,570 @@ fragment float4 ollin_fx_linescreen(PresentOut in [[stage_in]],
     return mix(params[1], params[2], bar);                  // fg inside, bg outside
 }
 
+// MARK: - More color & tone filters
+
+// Hue/value helpers (Sam Hocevar's branchless rgb<->hsv, written from the technique).
+static inline float3 ollin_rgb2hsv(float3 c) {
+    float4 K = float4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    float4 p = mix(float4(c.bg, K.wz), float4(c.gb, K.xy), step(c.b, c.g));
+    float4 q = mix(float4(p.xyw, c.r), float4(c.r, p.yzx), step(p.x, c.r));
+    float d = q.x - min(q.w, q.y);
+    return float3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x);
+}
+static inline float3 ollin_hsv2rgb(float3 c) {
+    float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    float3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+// solarize (Sabattier): invert the tones above `value` with a soft fold (params: value, softness).
+fragment float4 ollin_fx_solarize(PresentOut in [[stage_in]],
+                                  texture2d<float> src [[texture(0)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float v = params[0].x, soft = params[0].y;
+    float3 w = soft <= 0.0 ? step(v, c) : smoothstep(v - soft, v + soft, c);
+    return ollin_premul(clamp(mix(c, 1.0 - c, w), 0.0, 1.0), s.a);
+}
+
+// temperature & tint (white balance): warm/cool by trading red against blue, tint toward
+// magenta/green (params: amount, tint).
+fragment float4 ollin_fx_temperature(PresentOut in [[stage_in]],
+                                     texture2d<float> src [[texture(0)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float amount = params[0].x, tint = params[0].y;
+    c.r *= 1.0 + amount * 0.25;
+    c.b *= 1.0 - amount * 0.25;
+    c.g *= 1.0 - tint * 0.25;
+    return ollin_premul(max(c, 0.0), s.a);
+}
+
+// vibrance: lift saturation most on the muted colours, least on the already-vivid ones
+// (params: amount). Negative dulls.
+fragment float4 ollin_fx_vibrance(PresentOut in [[stage_in]],
+                                  texture2d<float> src [[texture(0)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float amount = params[0].x;
+    float sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+    float l = ollin_luma(c);
+    c = mix(float3(l), c, 1.0 + amount * (1.0 - sign(amount) * sat));
+    return ollin_premul(max(c, 0.0), s.a);
+}
+
+// exposure: scale linear color by a gain (an exposure stop is 2^stops). Premultiplied:
+// scaling rgb and leaving alpha scales the straight color, so it's correct as-is.
+fragment float4 ollin_fx_exposure(PresentOut in [[stage_in]],
+                                  texture2d<float> src [[texture(0)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    return float4(s.rgb * params[0].x, s.a);
+}
+
+// levels: pull [black,white] to [0,1], then bend midtones by gamma.
+fragment float4 ollin_fx_levels(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float b = params[0].x, w = params[0].y, g = params[0].z;
+    c = clamp((c - b) / max(w - b, 1e-4), 0.0, 1.0);
+    c = pow(c, float3(g));
+    return ollin_premul(c, s.a);
+}
+
+// colorama: cycle the hue wheel by luminance (params: cycles, shift) — rainbow banding.
+fragment float4 ollin_fx_colorama(PresentOut in [[stage_in]],
+                                  texture2d<float> src [[texture(0)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float3 hsv = ollin_rgb2hsv(c);
+    hsv.x = fract(hsv.x + ollin_luma(c) * params[0].x + params[0].y);
+    return ollin_premul(ollin_hsv2rgb(hsv), s.a);
+}
+
+// lumaKey: set alpha from a luminance band (params: low, high, invert). Keeps the color,
+// scales alpha, so a too-dark or too-light backdrop drops out (premultiplied stays valid).
+fragment float4 ollin_fx_lumakey(PresentOut in [[stage_in]],
+                                 texture2d<float> src [[texture(0)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float lo = params[0].x, hi = params[0].y; bool inv = params[0].z > 0.5;
+    float l = ollin_luma(c);
+    float soft = 0.03;
+    float kLow = lo <= 0.001 ? 1.0 : smoothstep(lo - soft, lo + soft, l);
+    float kHigh = hi >= 0.999 ? 1.0 : 1.0 - smoothstep(hi - soft, hi + soft, l);
+    float k = kLow * kHigh;
+    if (inv) k = 1.0 - k;
+    return ollin_premul(c, s.a * clamp(k, 0.0, 1.0));
+}
+
+// MARK: - Blur filters
+
+// motion blur: average taps along a direction (params: angle, distance fraction).
+fragment float4 ollin_fx_motion_blur(PresentOut in [[stage_in]],
+                                     texture2d<float> src [[texture(0)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float angle = params[0].x, dist = params[0].y;
+    float2 dir = float2(cos(angle), sin(angle)) * dist;
+    const int N = 16;
+    float4 acc = float4(0.0);
+    for (int i = 0; i < N; i++) {
+        float t = float(i) / float(N - 1) - 0.5;            // -0.5 … 0.5
+        acc += src.sample(samp, clamp(in.uv + dir * t, 0.0, 1.0));
+    }
+    return acc / float(N);
+}
+
+// radial (zoom) blur: average taps along the ray from center, scaling inward (params: amount).
+fragment float4 ollin_fx_radial_blur(PresentOut in [[stage_in]],
+                                     texture2d<float> src [[texture(0)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float amount = params[0].x;
+    float2 dir = in.uv - 0.5;
+    const int N = 16;
+    float4 acc = float4(0.0);
+    for (int i = 0; i < N; i++) {
+        float scale = 1.0 - amount * (float(i) / float(N - 1));
+        acc += src.sample(samp, clamp(0.5 + dir * scale, 0.0, 1.0));
+    }
+    return acc / float(N);
+}
+
+// bilateral: edge-preserving smoothing — a spatial Gaussian weighted down where a
+// neighbour's color differs (params: texel.xy, radius, sigma). Flat areas blur, edges stay.
+fragment float4 ollin_fx_bilateral(PresentOut in [[stage_in]],
+                                   texture2d<float> src [[texture(0)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    int radius = int(clamp(params[0].z, 1.0, 6.0));
+    float sigma = params[0].w;
+    float4 centre = src.sample(samp, in.uv);
+    float3 cc = ollin_unpremul(centre);
+    float sigS = max(1.0, float(radius)) * 0.5;
+    float3 sum = float3(0.0); float wsum = 0.0;
+    for (int j = -6; j <= 6; j++) {
+        if (j < -radius || j > radius) continue;
+        for (int i = -6; i <= 6; i++) {
+            if (i < -radius || i > radius) continue;
+            float2 off = float2(float(i), float(j));
+            float3 s = ollin_unpremul(src.sample(samp, in.uv + off * texel));
+            float ws = exp(-dot(off, off) / (2.0 * sigS * sigS));
+            float3 dc = s - cc;
+            float wr = exp(-dot(dc, dc) / (2.0 * sigma * sigma));
+            float w = ws * wr;
+            sum += s * w; wsum += w;
+        }
+    }
+    return ollin_premul(sum / max(wsum, 1e-4), centre.a);
+}
+
+// MARK: - More stylize filters
+
+// emboss: light the luminance slope along `angle` as a gray relief (params: texel.xy, amount, angle).
+fragment float4 ollin_fx_emboss(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float amount = params[0].z, angle = params[0].w;
+    float2 dir = float2(cos(angle), sin(angle)) * t;
+    float a = ollin_luma(ollin_unpremul(src.sample(samp, in.uv - dir)));
+    float b = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + dir)));
+    float e = clamp((b - a) * amount + 0.5, 0.0, 1.0);
+    return float4(float3(e), 1.0);
+}
+
+// oil paint (Kuwahara region filter, written from the technique): replace each pixel with
+// the mean of whichever of its four corner quadrants has the least colour variance, so
+// detail flattens into paint patches but edges stay crisp (params: texel.xy, radius).
+fragment float4 ollin_fx_oilpaint(PresentOut in [[stage_in]],
+                                  texture2d<float> src [[texture(0)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    int radius = int(clamp(params[0].z, 1.0, 8.0));
+    float4 centre = src.sample(samp, in.uv);
+    float n = float((radius + 1) * (radius + 1));
+    float3 bestMean = ollin_unpremul(centre);
+    float bestVar = 1e9;
+    int2 quad[4] = { int2(-1, -1), int2(1, -1), int2(-1, 1), int2(1, 1) };
+    for (int k = 0; k < 4; k++) {
+        float3 m = float3(0.0), s2 = float3(0.0);
+        for (int j = 0; j <= 8; j++) {
+            if (j > radius) break;
+            for (int i = 0; i <= 8; i++) {
+                if (i > radius) break;
+                float2 off = float2(float(i * quad[k].x), float(j * quad[k].y)) * t;
+                float3 c = ollin_unpremul(src.sample(samp, in.uv + off));
+                m += c; s2 += c * c;
+            }
+        }
+        m /= n;
+        float3 v3 = abs(s2 / n - m * m);
+        float v = v3.r + v3.g + v3.b;
+        if (v < bestVar) { bestVar = v; bestMean = m; }
+    }
+    return ollin_premul(bestMean, centre.a);
+}
+
+// One AA'd hatch stripe set: ~0 on a stripe, →1 between, oriented by `angle`.
+static inline float ollin_hatch(float2 p, float angle, float phase) {
+    float v = abs(sin((cos(angle) * p.x + sin(angle) * p.y) * 3.14159265 + phase));
+    float aa = fwidth(v) + 1e-4;
+    return smoothstep(0.0, aa * 3.0, v);
+}
+
+// crosshatch: stack rotated hatch sets at darkening thresholds (params: scale, aspect;
+// params[1] fg, params[2] bg) — the pencil-shading look.
+fragment float4 ollin_fx_crosshatch(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float scale = params[0].x, aspect = params[0].y;
+    float l = ollin_luma(ollin_unpremul(src.sample(samp, in.uv)));
+    float2 p = float2(in.uv.x * aspect, in.uv.y) * scale;
+    float ink = 1.0;                                   // 1 = paper, 0 = full ink
+    if (l < 0.85) ink = min(ink, ollin_hatch(p, 0.785, 0.0));     //  /
+    if (l < 0.60) ink = min(ink, ollin_hatch(p, -0.785, 0.0));    //  \
+    if (l < 0.35) ink = min(ink, ollin_hatch(p, 0.0, 0.0));       //  |
+    if (l < 0.15) ink = min(ink, ollin_hatch(p, 1.5708, 0.0));    //  —
+    return mix(params[1], params[2], ink);
+}
+
+// toon: quantize brightness into bands (keeping hue) and ink the Sobel edges over them
+// (params: levels, edges, texel.xy).
+fragment float4 ollin_fx_toon(PresentOut in [[stage_in]],
+                              texture2d<float> src [[texture(0)]],
+                              sampler samp [[sampler(0)]],
+                              constant float4 *params [[buffer(0)]]) {
+    float levels = params[0].x, edgeAmt = params[0].y;
+    float2 t = params[0].zw;
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float l = ollin_luma(c);
+    float ql = floor(l * levels) / levels + 0.5 / levels;
+    c *= (l > 1e-4) ? (ql / l) : 1.0;                  // rescale to the band, keep hue
+    float l00 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2(-1, -1))));
+    float l10 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 0, -1))));
+    float l20 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 1, -1))));
+    float l01 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2(-1,  0))));
+    float l21 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 1,  0))));
+    float l02 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2(-1,  1))));
+    float l12 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 0,  1))));
+    float l22 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 1,  1))));
+    float gx = (l20 + 2.0 * l21 + l22) - (l00 + 2.0 * l01 + l02);
+    float gy = (l02 + 2.0 * l12 + l22) - (l00 + 2.0 * l10 + l20);
+    float edge = 1.0 - clamp(length(float2(gx, gy)) * edgeAmt, 0.0, 1.0);
+    return ollin_premul(clamp(c * edge, 0.0, 1.0), s.a);
+}
+
+// 3×3 median via a min/max sorting network (McGuire's median3x3, written from the
+// technique) — per-channel, so speckle drops while edges hold (params: texel.xy).
+#define OLLIN_S2(a, b) { float3 _t = a; a = min(a, b); b = max(_t, b); }
+#define OLLIN_MN3(a, b, c) OLLIN_S2(a, b); OLLIN_S2(a, c);
+#define OLLIN_MX3(a, b, c) OLLIN_S2(b, c); OLLIN_S2(a, c);
+#define OLLIN_MNMX3(a, b, c) OLLIN_MX3(a, b, c); OLLIN_S2(a, b);
+#define OLLIN_MNMX4(a, b, c, d) OLLIN_S2(a, b); OLLIN_S2(c, d); OLLIN_S2(a, c); OLLIN_S2(b, d);
+#define OLLIN_MNMX5(a, b, c, d, e) OLLIN_S2(a, b); OLLIN_S2(c, d); OLLIN_MN3(a, c, e); OLLIN_MX3(b, d, e);
+#define OLLIN_MNMX6(a, b, c, d, e, f) OLLIN_S2(a, d); OLLIN_S2(b, e); OLLIN_S2(c, f); OLLIN_MN3(a, b, c); OLLIN_MX3(d, e, f);
+fragment float4 ollin_fx_median(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float a0 = src.sample(samp, in.uv).a;
+    float3 v[9];
+    int idx = 0;
+    for (int j = -1; j <= 1; j++)
+        for (int i = -1; i <= 1; i++)
+            v[idx++] = ollin_unpremul(src.sample(samp, in.uv + float2(float(i), float(j)) * t));
+    OLLIN_MNMX6(v[0], v[1], v[2], v[3], v[4], v[5]);
+    OLLIN_MNMX5(v[1], v[2], v[3], v[4], v[6]);
+    OLLIN_MNMX4(v[2], v[3], v[4], v[7]);
+    OLLIN_MNMX3(v[3], v[4], v[8]);
+    return ollin_premul(v[4], a0);
+}
+#undef OLLIN_S2
+#undef OLLIN_MN3
+#undef OLLIN_MX3
+#undef OLLIN_MNMX3
+#undef OLLIN_MNMX4
+#undef OLLIN_MNMX5
+#undef OLLIN_MNMX6
+
+// contour: darken iso-luminance lines (params: levels, intensity) — the topographic look.
+fragment float4 ollin_fx_contour(PresentOut in [[stage_in]],
+                                 texture2d<float> src [[texture(0)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float levels = params[0].x, intensity = params[0].y;
+    float f = ollin_luma(c) * levels;
+    float ff = fract(f);
+    float dist = min(ff, 1.0 - ff);                    // 0 on a contour line
+    float aa = fwidth(f) + 1e-4;
+    float line = 1.0 - smoothstep(0.0, aa, dist);
+    return ollin_premul(mix(c, c * (1.0 - intensity), line), s.a);
+}
+
+// One channel's halftone dot (1 = ink) at a screen angle, dot area ∝ value.
+static inline float ollin_screen_dot(float2 uv, float angle, float scale, float aspect, float value) {
+    float2 p = float2(uv.x * aspect, uv.y) * scale;
+    float2 g = ollin_rot2(p, angle);
+    float2 cell = fract(g) - 0.5;
+    float d = length(cell) * 2.0;
+    float radius = sqrt(clamp(value, 0.0, 1.0));
+    float aa = fwidth(d) + 1e-4;
+    return smoothstep(radius + aa, radius - aa, d);
+}
+
+// cmyk halftone: separate into CMYK, screen each as rotated dots at the classic print
+// angles, composite subtractively over white (params: scale, aspect).
+fragment float4 ollin_fx_cmyk_halftone(PresentOut in [[stage_in]],
+                                       texture2d<float> src [[texture(0)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 *params [[buffer(0)]]) {
+    float scale = params[0].x, aspect = params[0].y;
+    float3 rgb = ollin_unpremul(src.sample(samp, in.uv));
+    float k = 1.0 - max(rgb.r, max(rgb.g, rgb.b));
+    float3 cmy = (1.0 - rgb - k) / max(1.0 - k, 1e-4);
+    float dc = ollin_screen_dot(in.uv, 0.2618, scale, aspect, cmy.x);   // C 15°
+    float dm = ollin_screen_dot(in.uv, 1.3090, scale, aspect, cmy.y);   // M 75°
+    float dy = ollin_screen_dot(in.uv, 0.0,    scale, aspect, cmy.z);   // Y 0°
+    float dk = ollin_screen_dot(in.uv, 0.7854, scale, aspect, k);       // K 45°
+    float3 col = float3(1.0);
+    col *= mix(float3(1.0), float3(0.0, 1.0, 1.0), dc);
+    col *= mix(float3(1.0), float3(1.0, 0.0, 1.0), dm);
+    col *= mix(float3(1.0), float3(1.0, 1.0, 0.0), dy);
+    col *= mix(float3(1.0), float3(0.0, 0.0, 0.0), dk);
+    return float4(col, 1.0);
+}
+
+// normal map: encode the luma gradient as an RGB surface normal (params: texel.xy, strength).
+// Written into the linear layer as raw data (no decode), so `displace` reads the rg straight.
+fragment float4 ollin_fx_normal_map(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float strength = params[0].z;
+    float l00 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2(-1, -1))));
+    float l10 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 0, -1))));
+    float l20 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 1, -1))));
+    float l01 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2(-1,  0))));
+    float l21 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 1,  0))));
+    float l02 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2(-1,  1))));
+    float l12 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 0,  1))));
+    float l22 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 1,  1))));
+    float gx = (l20 + 2.0 * l21 + l22) - (l00 + 2.0 * l01 + l02);
+    float gy = (l02 + 2.0 * l12 + l22) - (l00 + 2.0 * l10 + l20);
+    float3 nrm = normalize(float3(-gx * strength, -gy * strength, 1.0));
+    return float4(nrm * 0.5 + 0.5, 1.0);
+}
+
+// MARK: - Retro / optical filters
+
+// scanlines: darken alternating rows (params: count, intensity).
+fragment float4 ollin_fx_scanlines(PresentOut in [[stage_in]],
+                                   texture2d<float> src [[texture(0)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float count = params[0].x, intensity = params[0].y;
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float line = 0.5 + 0.5 * sin(in.uv.y * count * 6.28318530718);
+    return ollin_premul(c * (1.0 - intensity * (1.0 - line)), s.a);
+}
+
+// glitch: shove random bands of rows sideways and split their channels (params: amount, seed).
+fragment float4 ollin_fx_glitch(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float amount = params[0].x, seed = params[0].y;
+    float band = floor(in.uv.y * 24.0);
+    float active = step(0.7, hash12(float2(band, floor(seed))));
+    float shift = (hash12(float2(band, floor(seed) + 11.0)) - 0.5) * amount * active;
+    float2 uv = float2(fract(in.uv.x + shift), in.uv.y);
+    float split = amount * 0.05 * active;
+    float4 r = src.sample(samp, float2(fract(uv.x + split), uv.y));
+    float4 g = src.sample(samp, uv);
+    float4 b = src.sample(samp, float2(fract(uv.x - split), uv.y));
+    return float4(r.r, g.g, b.b, g.a);
+}
+
+// crt: barrel-warp, scanline, corner vignette, and a touch of aberration in one pass
+// (params: curvature, scanline, aberration).
+fragment float4 ollin_fx_crt(PresentOut in [[stage_in]],
+                             texture2d<float> src [[texture(0)]],
+                             sampler samp [[sampler(0)]],
+                             constant float4 *params [[buffer(0)]]) {
+    float curv = params[0].x, scan = params[0].y, ab = params[0].z;
+    float2 uv = in.uv * 2.0 - 1.0;
+    uv += uv * (uv.yx * uv.yx) * curv;                 // barrel bow
+    uv = uv * 0.5 + 0.5;
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return float4(0.0, 0.0, 0.0, 1.0);
+    float2 dir = uv - 0.5;
+    float3 c = float3(src.sample(samp, uv + dir * ab).r,
+                      src.sample(samp, uv).g,
+                      src.sample(samp, uv - dir * ab).b);
+    float line = 0.5 + 0.5 * sin(uv.y * 3.14159265 * 480.0);
+    c *= 1.0 - scan * (1.0 - line);
+    c *= clamp(1.0 - dot(dir, dir) * 1.2, 0.0, 1.0);   // vignette
+    return float4(c, 1.0);
+}
+
+// MARK: - Distortion filters (uv warps: re-sample the source at a remapped coordinate)
+//
+// These don't touch a texel's value, they re-sample at a transformed uv, so the
+// premultiplied-linear color passes through untouched (like displace/chromatic above).
+// Center-relative coords are aspect-corrected so the warp stays round on a non-square layer.
+
+// kaleidoscope: fold into `segments` mirrored wedges, rotated by `angle`; outside coords
+// mirror-repeat back in (params: segments, angle, aspect).
+fragment float4 ollin_fx_kaleidoscope(PresentOut in [[stage_in]],
+                                      texture2d<float> src [[texture(0)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float segments = max(1.0, params[0].x);
+    float angle = params[0].y, aspect = params[0].z;
+    float2 p = (in.uv - 0.5) * float2(aspect, 1.0);
+    float r = length(p);
+    float a = atan2(p.y, p.x) - angle;
+    float seg = 6.28318530718 / segments;
+    a = a - seg * floor(a / seg);                      // into [0, seg)
+    a = abs(a - seg * 0.5);                             // mirror within the wedge
+    float2 uv = float2(cos(a), sin(a)) * r / float2(aspect, 1.0) + 0.5;
+    uv = abs(fract(uv * 0.5) * 2.0 - 1.0);             // mirror-repeat into [0,1]
+    return src.sample(samp, uv);
+}
+
+// swirl (twirl): rotate around center, strongest at the middle, fading to `radius`
+// (params: angle, radius, aspect).
+fragment float4 ollin_fx_swirl(PresentOut in [[stage_in]],
+                               texture2d<float> src [[texture(0)]],
+                               sampler samp [[sampler(0)]],
+                               constant float4 *params [[buffer(0)]]) {
+    float angle = params[0].x, radius = max(1e-3, params[0].y), aspect = params[0].z;
+    float2 p = (in.uv - 0.5) * float2(aspect, 1.0);
+    float t = clamp(1.0 - length(p) / radius, 0.0, 1.0);
+    float2 q = ollin_rot2(p, angle * t * t) / float2(aspect, 1.0) + 0.5;
+    return src.sample(samp, clamp(q, 0.0, 1.0));
+}
+
+// bulge / pinch: radial magnification within `radius`, easing to identity at the rim
+// (params: amount, radius, aspect). amount>0 bulges, <0 pinches.
+fragment float4 ollin_fx_bulge(PresentOut in [[stage_in]],
+                               texture2d<float> src [[texture(0)]],
+                               sampler samp [[sampler(0)]],
+                               constant float4 *params [[buffer(0)]]) {
+    float amount = params[0].x, radius = max(1e-3, params[0].y), aspect = params[0].z;
+    float2 d = (in.uv - 0.5) * float2(aspect, 1.0);
+    float r = length(d);
+    float rn = r / radius;
+    if (rn < 1.0 && r > 1e-5) {
+        float rp = pow(rn, 1.0 + amount);
+        d *= (rp * radius) / r;
+    }
+    return src.sample(samp, clamp(d / float2(aspect, 1.0) + 0.5, 0.0, 1.0));
+}
+
+// wave: sinusoidal row/column displacement (params: amplitude, frequency, phase, vertical).
+fragment float4 ollin_fx_wave(PresentOut in [[stage_in]],
+                              texture2d<float> src [[texture(0)]],
+                              sampler samp [[sampler(0)]],
+                              constant float4 *params [[buffer(0)]]) {
+    float amp = params[0].x, freq = params[0].y, phase = params[0].z;
+    bool vertical = params[0].w > 0.5;
+    float2 uv = in.uv;
+    if (vertical) uv.y += sin(uv.x * freq * 6.28318530718 + phase) * amp;
+    else          uv.x += sin(uv.y * freq * 6.28318530718 + phase) * amp;
+    return src.sample(samp, clamp(uv, 0.0, 1.0));
+}
+
+// ripple: concentric radial sine displacement from center (params: amplitude, frequency,
+// phase, aspect).
+fragment float4 ollin_fx_ripple(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float amp = params[0].x, freq = params[0].y, phase = params[0].z, aspect = params[0].w;
+    float2 d = (in.uv - 0.5) * float2(aspect, 1.0);
+    float r = length(d);
+    float2 dir = r > 1e-5 ? d / r : float2(0.0);
+    float offset = sin(r * freq * 6.28318530718 - phase) * amp;
+    float2 uv = (d + dir * offset) / float2(aspect, 1.0) + 0.5;
+    return src.sample(samp, clamp(uv, 0.0, 1.0));
+}
+
+// mirror: reflect one half onto the other (params: vertical, flip).
+fragment float4 ollin_fx_mirror(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    bool vertical = params[0].x > 0.5, flip = params[0].y > 0.5;
+    float2 uv = in.uv;
+    if (!vertical) uv.x = flip ? 0.5 + abs(uv.x - 0.5) : 0.5 - abs(uv.x - 0.5);
+    else           uv.y = flip ? 0.5 + abs(uv.y - 0.5) : 0.5 - abs(uv.y - 0.5);
+    return src.sample(samp, uv);
+}
+
+// polar: blend toward a polar remap of the image (params: amount, aspect) — a tunnel/fold.
+fragment float4 ollin_fx_polar(PresentOut in [[stage_in]],
+                               texture2d<float> src [[texture(0)]],
+                               sampler samp [[sampler(0)]],
+                               constant float4 *params [[buffer(0)]]) {
+    float amount = params[0].x, aspect = params[0].y;
+    float2 d = (in.uv - 0.5) * float2(aspect, 1.0);
+    float r = length(d) * 2.0;
+    float a = atan2(d.y, d.x) / 6.28318530718 + 0.5;
+    float2 uv = mix(in.uv, float2(a, r), amount);
+    return src.sample(samp, clamp(uv, 0.0, 1.0));
+}
+
+// tile: repeat the image count×count, optionally mirror-tiled (params: count, mirror).
+fragment float4 ollin_fx_tile(PresentOut in [[stage_in]],
+                              texture2d<float> src [[texture(0)]],
+                              sampler samp [[sampler(0)]],
+                              constant float4 *params [[buffer(0)]]) {
+    float count = params[0].x; bool mir = params[0].y > 0.5;
+    float2 uv = in.uv * count;
+    uv = mir ? abs(fract(uv * 0.5) * 2.0 - 1.0) : fract(uv);
+    return src.sample(samp, uv);
+}
+
+// perturb: displace by internal fbm noise — an organic heat-haze warp, no map needed
+// (params: amount, scale, phase, aspect).
+fragment float4 ollin_fx_perturb(PresentOut in [[stage_in]],
+                                 texture2d<float> src [[texture(0)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float amount = params[0].x, scale = params[0].y, phase = params[0].z, aspect = params[0].w;
+    float2 p = float2(in.uv.x * aspect, in.uv.y) * scale;
+    float nx = ollin_fbm(p + float2(phase, 0.0));
+    float ny = ollin_fbm(p + float2(0.0, phase) + 31.4);
+    float2 off = (float2(nx, ny) - 0.5) * 2.0 * amount;
+    return src.sample(samp, clamp(in.uv + off, 0.0, 1.0));
+}
+
 // MARK: - Procedural generators (no input texture)
 //
 // Each fills a layer from its parameters alone (params[0] geometry + aspect,

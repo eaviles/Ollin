@@ -66,6 +66,30 @@ public struct Filter: Sendable {
         /// Map luminance through a baked 256-step color ramp (linear, straight alpha),
         /// blended over the original by `amount`.
         case gradientMap(lut: [SIMD4<Float>], amount: Double)
+        /// Invert the tones above `value` (with a `softness`-wide fold) — the
+        /// part-positive, part-negative darkroom solarization.
+        case solarize(value: Double, softness: Double)
+        /// White balance: `amount` warms (>0) or cools (<0); `tint` shifts toward
+        /// magenta (>0) or green (<0).
+        case temperature(amount: Double, tint: Double)
+        /// Smart saturation: raise the muted colors most, the already-vivid ones least.
+        case vibrance(amount: Double)
+        /// Multiply linear-light color by `gain` (an exposure stop is `2^stops`).
+        case exposure(gain: Double)
+        /// Remap tones: lift `blackPoint` to 0 and `whitePoint` to 1, then apply `gamma`.
+        case levels(blackPoint: Double, whitePoint: Double, gamma: Double)
+        /// Cycle the hue wheel `cycles` times across the luminance range (rainbow banding).
+        case colorama(cycles: Double, shift: Double)
+        /// Set alpha from a luminance band (`low`…`high`), optionally inverted — a luma key.
+        case lumaKey(low: Double, high: Double, invert: Bool)
+
+        // Blur ---------------------------------------------------------------
+        /// Directional (motion) blur: average `samples` taps along `angle`, span `distance`.
+        case motionBlur(angle: Double, distance: Double)
+        /// Zoom (radial) blur: average taps along the ray from center, strength `amount`.
+        case radialBlur(amount: Double)
+        /// Edge-preserving smoothing: a spatial+range Gaussian (bilateral) of pixel `radius`.
+        case bilateral(radius: Double, sigma: Double)
 
         // Stylize & optical --------------------------------------------------
         /// Sobel edge magnitude, scaled by `intensity`.
@@ -90,6 +114,54 @@ public struct Filter: Sendable {
         /// `angle` (radians), `softness`-wide edges, painted `foreground` over `background`.
         case lineScreen(scale: Double, softness: Double, angle: Double,
                         foreground: SIMD4<Float>, background: SIMD4<Float>)
+        /// Directional relief: the luminance slope along `angle` lit as gray, scaled by `amount`.
+        case emboss(amount: Double, angle: Double)
+        /// Kuwahara region filter: replace each pixel with its lowest-variance quadrant
+        /// mean, flattening detail into oil-paint patches. `radius` is the quadrant size (px).
+        case oilPaint(radius: Double)
+        /// Pencil cross-hatching: stack rotated line screens at brightness thresholds,
+        /// painted `foreground` over `background`. `scale` sets the hatch density.
+        case crosshatch(scale: Double, foreground: SIMD4<Float>, background: SIMD4<Float>)
+        /// Cel shading: quantize luminance into `levels` bands and ink `edges` (Sobel) over them.
+        case toon(levels: Double, edges: Double)
+        /// 3×3 median: replace each pixel with the per-channel median of its neighbourhood
+        /// (removes speckle while keeping edges).
+        case median
+        /// Iso-luminance contour lines: dark lines where brightness crosses each of `levels`
+        /// steps, drawn over the image at `intensity` (the topographic look).
+        case contour(levels: Double, intensity: Double)
+        /// CMYK halftone: four rotated dot screens (cyan/magenta/yellow/black at the classic
+        /// print angles), dot size tracking each channel — the colour-process look.
+        case cmykHalftone(scale: Double)
+        /// Height-field normal map: encode the luminance gradient as an RGB surface normal
+        /// (feeds `displace` or lighting). `strength` exaggerates the slope.
+        case normalMap(strength: Double)
+        /// Scanlines: darken alternating horizontal lines (`count` across the height) by `intensity`.
+        case scanlines(count: Double, intensity: Double)
+        /// Glitch: shove random blocks of rows sideways and split their channels; `seed` reshuffles.
+        case glitch(amount: Double, seed: Double)
+        /// CRT display: barrel curvature + scanlines + edge vignette + a touch of aberration.
+        case crt(curvature: Double, scanline: Double, aberration: Double)
+
+        // Distortion (uv warps) ----------------------------------------------
+        /// Mirror the image into `segments` reflected wedges around the center, rotated by `angle`.
+        case kaleidoscope(segments: Double, angle: Double)
+        /// Twirl: rotate around the center by `angle`, strongest at the center, fading by `radius`.
+        case swirl(angle: Double, radius: Double)
+        /// Bulge (>0, fisheye) / pinch (<0) within `radius`, magnitude `amount`.
+        case bulge(amount: Double, radius: Double)
+        /// Sinusoidal displacement: `amplitude` (fraction), `frequency` cycles, `phase`, `vertical` axis.
+        case wave(amplitude: Double, frequency: Double, phase: Double, vertical: Bool)
+        /// Concentric ripples from the center: `amplitude`, `frequency` rings, `phase`.
+        case ripple(amplitude: Double, frequency: Double, phase: Double)
+        /// Reflect one half of the image onto the other; `vertical` axis, `flip` chooses the source half.
+        case mirror(vertical: Bool, flip: Bool)
+        /// Cartesian↔polar warp, blended by `amount` (a tunnel / fold of the image around the center).
+        case polar(amount: Double)
+        /// Repeat the image in a `count`×`count` grid, optionally mirror-tiled.
+        case tile(count: Double, mirror: Bool)
+        /// Self-displace by internal fbm noise: organic warp of `amount`, noise `scale`, `phase`.
+        case perturb(amount: Double, scale: Double, phase: Double)
     }
 
     let kind: Kind
@@ -238,6 +310,209 @@ public struct Filter: Sendable {
         Filter(kind: .lineScreen(scale: max(1, scale), softness: max(0, softness),
                                  angle: angle, foreground: foreground.linearRGBA,
                                  background: background.linearRGBA))
+    }
+
+    // MARK: Color & tone (continued)
+
+    /// Solarize (Sabattier): invert the tones above `value` while leaving the shadows,
+    /// the part-positive, part-negative darkroom look. `softness` blurs the fold.
+    public static func solarize(_ value: Double = 0.5, softness: Double = 0.05) -> Filter {
+        Filter(kind: .solarize(value: min(max(value, 0), 1), softness: max(0, softness)))
+    }
+
+    /// White balance. `amount` warms (>0, toward orange) or cools (<0, toward blue);
+    /// `tint` pushes toward magenta (>0) or green (<0). Both clamp to ±1.
+    public static func temperature(amount: Double = 0.3, tint: Double = 0) -> Filter {
+        Filter(kind: .temperature(amount: min(max(amount, -1), 1), tint: min(max(tint, -1), 1)))
+    }
+
+    /// Vibrance: a smart saturation that lifts the muted colors most and the already-vivid
+    /// ones least (so it punches up a flat image without blowing skin tones). Negative dulls.
+    public static func vibrance(amount: Double = 0.5) -> Filter {
+        Filter(kind: .vibrance(amount: min(max(amount, -1), 2)))
+    }
+
+    /// Exposure in `stops` (linear-light): +1 doubles the light, −1 halves it.
+    public static func exposure(stops: Double = 0) -> Filter {
+        Filter(kind: .exposure(gain: pow(2, stops)))
+    }
+
+    /// Levels: pull `blackPoint` down to black and `whitePoint` up to white (both 0…1),
+    /// then bend the midtones by `gamma` (>1 darkens, <1 lifts). The photo-tool staple.
+    public static func levels(blackPoint: Double = 0, whitePoint: Double = 1,
+                              gamma: Double = 1) -> Filter {
+        Filter(kind: .levels(blackPoint: min(max(blackPoint, 0), 1),
+                             whitePoint: min(max(whitePoint, 0), 1), gamma: max(0.01, gamma)))
+    }
+
+    /// Colorama: cycle the hue wheel `cycles` times across the image's luminance, turning a
+    /// gradient into rainbow bands. `shift` rotates the whole wheel (animate it to spin).
+    public static func colorama(cycles: Double = 1, shift: Double = 0) -> Filter {
+        Filter(kind: .colorama(cycles: cycles, shift: shift))
+    }
+
+    /// Luma key: make the image transparent outside the `low`…`high` brightness band (so a
+    /// dark or light backdrop drops out). `invert` keeps the band and cuts the rest instead.
+    public static func lumaKey(low: Double = 0.1, high: Double = 1, invert: Bool = false) -> Filter {
+        Filter(kind: .lumaKey(low: min(max(low, 0), 1), high: min(max(high, 0), 1), invert: invert))
+    }
+
+    // MARK: Blur (continued)
+
+    /// Directional (motion) blur: smear along `angle` (radians) over `distance` (a fraction
+    /// of the layer), the streak of a moving subject.
+    public static func motionBlur(angle: Double = 0, distance: Double = 0.04) -> Filter {
+        Filter(kind: .motionBlur(angle: angle, distance: max(0, distance)))
+    }
+
+    /// Zoom (radial) blur: smear outward from the center by `amount` (a fraction of the
+    /// layer), the rushing-toward-you streak.
+    public static func radialBlur(amount: Double = 0.1) -> Filter {
+        Filter(kind: .radialBlur(amount: max(0, amount)))
+    }
+
+    /// Bilateral blur: smooth flat areas while keeping edges sharp (the cartoon/denoise
+    /// base). `radius` is the blur extent in pixels, `sigma` how different a neighbour's
+    /// color may be before it stops blending (smaller = more edges preserved).
+    public static func bilateral(radius: Double = 4, sigma: Double = 0.2) -> Filter {
+        Filter(kind: .bilateral(radius: max(1, radius), sigma: max(0.001, sigma)))
+    }
+
+    // MARK: Stylize & optical (continued)
+
+    /// Emboss: light the luminance slope along `angle` as a gray relief, like stamped metal.
+    /// `amount` scales the relief; flat areas sit at mid-gray.
+    public static func emboss(amount: Double = 1, angle: Double = 0) -> Filter {
+        Filter(kind: .emboss(amount: amount, angle: angle))
+    }
+
+    /// Oil paint (Kuwahara): flatten detail into paint-like patches while keeping edges
+    /// crisp. `radius` is the brush size in pixels (bigger = broader strokes, and costlier —
+    /// it samples ~4·(radius+1)² texels, so keep it small).
+    public static func oilPaint(radius: Double = 4) -> Filter {
+        Filter(kind: .oilPaint(radius: min(max(radius, 1), 8)))
+    }
+
+    /// Cross-hatch: shade the image with layered diagonal pen strokes that thicken as it
+    /// darkens, in `foreground` over `background`. `scale` sets the hatch density.
+    public static func crosshatch(scale: Double = 80, foreground: Color = .black,
+                                  background: Color = .white) -> Filter {
+        Filter(kind: .crosshatch(scale: max(1, scale), foreground: foreground.linearRGBA,
+                                 background: background.linearRGBA))
+    }
+
+    /// Cel / toon shading: flatten the image into `levels` brightness bands and ink the
+    /// edges over them (`edges` scales the outline strength), the cartoon look.
+    public static func toon(levels: Double = 4, edges: Double = 1) -> Filter {
+        Filter(kind: .toon(levels: max(2, levels), edges: max(0, edges)))
+    }
+
+    /// Median: replace each pixel with the median of its 3×3 neighbourhood, knocking out
+    /// speckle and stray pixels while leaving edges sharp.
+    public static func median() -> Filter { Filter(kind: .median) }
+
+    /// Contour: draw dark iso-brightness lines (a contour every `1/levels` of the range)
+    /// over the image at `intensity`, turning tone into a topographic map.
+    public static func contour(levels: Double = 10, intensity: Double = 1) -> Filter {
+        Filter(kind: .contour(levels: max(1, levels), intensity: min(max(intensity, 0), 1)))
+    }
+
+    /// CMYK halftone: separate the image into cyan/magenta/yellow/black and screen each as
+    /// rotated dots at the classic print angles. `scale` sets the dot frequency.
+    public static func cmykHalftone(scale: Double = 70) -> Filter {
+        Filter(kind: .cmykHalftone(scale: max(1, scale)))
+    }
+
+    /// Normal map: read the image as a height field and output its surface normal as an RGB
+    /// vector (the bluish bump-map look), ready to feed `displace` or a lighting pass.
+    /// `strength` exaggerates the slope.
+    public static func normalMap(strength: Double = 1) -> Filter {
+        Filter(kind: .normalMap(strength: max(0, strength)))
+    }
+
+    // MARK: Retro / optical
+
+    /// Scanlines: darken alternating horizontal lines, the CRT look. `count` is how many
+    /// lines span the height, `intensity` (0…1) how dark the gaps go.
+    public static func scanlines(count: Double = 240, intensity: Double = 0.4) -> Filter {
+        Filter(kind: .scanlines(count: max(1, count), intensity: min(max(intensity, 0), 1)))
+    }
+
+    /// Glitch: tear random blocks of rows sideways and split their channels, the corrupted-
+    /// signal look. `amount` is the max jump (fraction of width); feed `seed` `time`/`frameCount`
+    /// so it flickers.
+    public static func glitch(amount: Double = 0.1, seed: Double = 0) -> Filter {
+        Filter(kind: .glitch(amount: max(0, amount), seed: seed))
+    }
+
+    /// CRT: the full old-monitor look in one pass — `curvature` bows the screen, `scanline`
+    /// (0…1) darkens the lines, the corners vignette, and `aberration` fringes the edges.
+    public static func crt(curvature: Double = 0.15, scanline: Double = 0.3,
+                           aberration: Double = 0.004) -> Filter {
+        Filter(kind: .crt(curvature: max(0, curvature), scanline: min(max(scanline, 0), 1),
+                          aberration: max(0, aberration)))
+    }
+
+    // MARK: Distortion
+
+    /// Kaleidoscope: fold the image into `segments` mirrored wedges around the center, the
+    /// wheel rotated by `angle` (radians). Coordinates outside the layer mirror-repeat in.
+    public static func kaleidoscope(segments: Double = 6, angle: Double = 0) -> Filter {
+        Filter(kind: .kaleidoscope(segments: max(1, segments), angle: angle))
+    }
+
+    /// Swirl (twirl): wind the image into a vortex — rotate by `angle` (radians) strongest at
+    /// the center, easing to none at `radius` (in fractions of the layer).
+    public static func swirl(angle: Double = 3, radius: Double = 0.5) -> Filter {
+        Filter(kind: .swirl(angle: angle, radius: max(0.001, radius)))
+    }
+
+    /// Bulge / pinch: a radial lens within `radius`. `amount` > 0 bulges (fisheye magnifying
+    /// the center), < 0 pinches (sucks toward it); the warp eases back to the image at `radius`.
+    public static func bulge(amount: Double = 0.5, radius: Double = 0.5) -> Filter {
+        Filter(kind: .bulge(amount: max(-0.95, min(amount, 4)), radius: max(0.001, radius)))
+    }
+
+    /// Wave: ripple the image sinusoidally. `vertical` false ripples rows side to side, true
+    /// ripples columns up and down. `amplitude` is the shift (fraction of the layer),
+    /// `frequency` the cycles across it, `phase` slides the wave (animate it).
+    public static func wave(amplitude: Double = 0.02, frequency: Double = 8,
+                            phase: Double = 0, vertical: Bool = false) -> Filter {
+        Filter(kind: .wave(amplitude: max(0, amplitude), frequency: frequency,
+                           phase: phase, vertical: vertical))
+    }
+
+    /// Ripple: concentric waves spreading from the center, like a drop in water.
+    /// `amplitude` is the shift (fraction of the layer), `frequency` the number of rings,
+    /// `phase` moves them outward (animate it).
+    public static func ripple(amplitude: Double = 0.02, frequency: Double = 12,
+                              phase: Double = 0) -> Filter {
+        Filter(kind: .ripple(amplitude: max(0, amplitude), frequency: frequency, phase: phase))
+    }
+
+    /// Mirror: reflect one half of the image onto the other. `vertical` false mirrors left↔
+    /// right, true mirrors top↔bottom; `flip` chooses which half is the source.
+    public static func mirror(vertical: Bool = false, flip: Bool = false) -> Filter {
+        Filter(kind: .mirror(vertical: vertical, flip: flip))
+    }
+
+    /// Polar warp: bend the image around the center by remapping between Cartesian and polar
+    /// coordinates, blended by `amount` (1 = full warp), a tunnel / fold effect.
+    public static func polar(amount: Double = 1) -> Filter {
+        Filter(kind: .polar(amount: min(max(amount, 0), 1)))
+    }
+
+    /// Tile: repeat the image in a `count`×`count` grid. `mirror` flips alternate cells so
+    /// the tiling is seamless (a mirror-repeat) instead of hard-edged.
+    public static func tile(count: Double = 3, mirror: Bool = false) -> Filter {
+        Filter(kind: .tile(count: max(1, count), mirror: mirror))
+    }
+
+    /// Perturb: warp the image by its own internal fbm noise (no map needed), for a
+    /// smoky / heat-haze ripple. `amount` is the displacement (fraction of the layer),
+    /// `scale` the noise frequency, `phase` animates it.
+    public static func perturb(amount: Double = 0.03, scale: Double = 4, phase: Double = 0) -> Filter {
+        Filter(kind: .perturb(amount: max(0, amount), scale: max(0.001, scale), phase: phase))
     }
 }
 

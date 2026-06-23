@@ -136,6 +136,17 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func effectsFiltersMatchReference() throws {
+        // A sample of the extended catalog — vibrance, oilPaint (Kuwahara), emboss,
+        // cmykHalftone, kaleidoscope, scanlines — one per family. Pins the added
+        // dispatch and the new fragments: a straight-color tone op, a multi-tap
+        // variance gather, a neighbourhood relief, a print screen, a uv warp, and a
+        // retro line pass.
+        let diff = try Snapshot.meanDifference(of: EffectsFilters(), against: "effects-filters")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func effectsFeedbackMatchesReference() throws {
         // A feedback layer built up over 24 frames: each frame redraws the last,
         // zoomed + spun + faded, plus a new dot. Pins the persistent ping-pong
@@ -1339,6 +1350,36 @@ private final class EffectsCatalog: Sketch {
         drawImage(scene.filtered(.gradientMap(.turbo)).image, in: Rectangle(x: 128, y: 0, width: 128, height: 128))
         drawImage(scene.filtered(.edges(intensity: 2)).image, in: Rectangle(x: 0, y: 128, width: 128, height: 128))
         drawImage(generate(.checkers(scale: 6)).image, in: Rectangle(x: 128, y: 128, width: 128, height: 128))
+    }
+}
+
+/// A representative sample of the extended filter catalog — one tile per family,
+/// covering a color/tone pass (vibrance), a multi-tap stylize gather (oilPaint), a
+/// neighbourhood pass (emboss), a print screen (cmykHalftone), a uv warp
+/// (kaleidoscope), and a retro pass (scanlines). Deterministic (no time/random), so
+/// it pins the added `applyFilter` dispatch and the new `ollin_fx_*` fragments.
+private final class EffectsFilters: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let scene = renderTarget()
+        withTarget(scene) {
+            background(Color(hex: 0x14233B))
+            noStroke()
+            fill(Color(red: 1, green: 0.3, blue: 0.2)); drawCircle(width * 0.36, height * 0.40, 64)
+            fill(Color(red: 0.2, green: 0.8, blue: 1)); drawRect(width * 0.5, height * 0.5, 90, 78)
+            fill(.white); drawCircle(width * 0.5, height * 0.3, 22)
+        }
+        let filters: [Filter] = [
+            .vibrance(amount: 0.9), .oilPaint(radius: 4), .emboss(amount: 2),
+            .cmykHalftone(scale: 22), .kaleidoscope(segments: 6), .scanlines(count: 64),
+        ]
+        // 3×2 grid of 85×128 tiles.
+        for (i, filter) in filters.enumerated() {
+            let x = Double(i % 3) * 85, y = Double(i / 3) * 128
+            drawImage(scene.filtered(filter).image, in: Rectangle(x: x, y: y, width: 85, height: 128))
+        }
     }
 }
 

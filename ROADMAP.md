@@ -35,7 +35,7 @@ Building on the off-screen-layer + filter substrate (`renderTarget` / `withTarge
 
 ## Shader composition and live-coding
 
-Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
+Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. A third strand here is **SDF geometry combinators** — composing signed-distance fields rather than image layers, so shapes *merge* instead of just stacking: smooth-minimum union, subtraction, intersection, and morph (the gooey "melt two objects together" look), in 2D over the existing analytic shapes and in a 3D raymarched scene. This is the field-combining capability the per-instance SDF primitive path and the mesh path can't express, and it's the geometry analogue of the image-space `Filter`/`Combine` catalog. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
 
 ## Generative geometry
 

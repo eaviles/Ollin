@@ -105,17 +105,22 @@ The work runs on the GPU during the frame's render; `filtered` just records it.
 ### Filter
 
 Filters are value descriptors built with static factories. They composite in
-[linear light](./HDR.md), so grades and blends are physically correct. The `Basic/Filters`
-example is a contact sheet of the whole set. The catalog:
+[linear light](./HDR.md), so grades and blends are physically correct. Each family
+has a contact-sheet example: `Basic/ColorFilters`, `Basic/BlurFilters`,
+`Basic/StylizeFilters`, `Basic/RetroFilters`, and `Basic/Distortion`. The catalog:
 
 #### Blur & glow
 
 - **`.gaussianBlur(radius:)`** a Gaussian blur; `radius` is the extent in pixels (larger is softer). Backed by a hardware Gaussian kernel.
 - **`.bloom(threshold:intensity:radius:)`** glow: pixels brighter than `threshold` bleed light into their surroundings. The bright parts are extracted, blurred by `radius`, and added back at `intensity`, so the result is the original **plus** its glow, ready to composite (often additively). Brightness is the **max color channel** (HSV "value"), not luminance, so a vivid full-brightness mark blooms the same whatever its hue. `threshold` runs `0…1` over the linear-light frame, so HDR highlights (values above 1, from additive light) bloom hardest.
+- **`.bilateral(radius:sigma:)`** edge-preserving smoothing: blur flat areas while keeping edges sharp (the cartoon / denoise base). `sigma` is how different a neighbour's color may be before it stops blending — smaller keeps more edges.
+- **`.motionBlur(angle:distance:)`** directional smear along `angle`, `distance` a fraction of the layer — the streak of a moving subject.
+- **`.radialBlur(amount:)`** zoom blur smearing outward from the center, `amount` a fraction of the layer.
 
 ```swift
 layer.filtered(.gaussianBlur(radius: 24))
 layer.filtered(.bloom(threshold: 0.6, intensity: 1.4, radius: 24))
+layer.filtered(.bilateral(radius: 6, sigma: 0.18))
 ```
 
 #### Color & tone
@@ -127,11 +132,19 @@ layer.filtered(.bloom(threshold: 0.6, intensity: 1.4, radius: 24))
 - **`.sepia(amount:)`** a warm monochrome tone, blended by `amount`.
 - **`.duotone(dark:light:amount:)`** map luminance between two colors (shadows → `dark`, highlights → `light`).
 - **`.gradientMap(_:amount:)`** read luminance and look its color up along a [`Ramp`](./Color.md) or [`Colormap`](./Color.md) (viridis, magma, turbo, …). A fast recolor of a grayscale field or a whole scene.
+- **`.exposure(stops:)`** scale the light in linear-light stops (+1 doubles, −1 halves).
+- **`.levels(blackPoint:whitePoint:gamma:)`** the photo-tool staple: pull `blackPoint` to black and `whitePoint` to white, then bend the midtones by `gamma` (>1 darkens).
+- **`.solarize(_:softness:)`** invert the tones above a brightness with a soft fold — the part-positive, part-negative darkroom (Sabattier) look.
+- **`.temperature(amount:tint:)`** white balance: `amount` warms (>0) or cools (<0), `tint` pushes toward magenta (>0) or green (<0).
+- **`.vibrance(amount:)`** smart saturation that lifts the muted colors most and the vivid ones least (so it punches a flat image without blowing already-saturated tones).
+- **`.colorama(cycles:shift:)`** cycle the hue wheel `cycles` times across luminance, turning a gradient into rainbow bands; `shift` spins the wheel.
+- **`.lumaKey(low:high:invert:)`** make the image transparent outside a brightness band, so a dark or light backdrop drops out — a luminance key.
 
 ```swift
 layer.filtered(.colorGrade(contrast: 1.3, saturation: 1.6, hue: 0.05))
 layer.filtered(.gradientMap(.turbo))
-layer.filtered(.duotone(dark: Color(hex: 0x14233B), light: Color(hex: 0xFFD27D)))
+layer.filtered(.levels(blackPoint: 0.08, whitePoint: 0.92, gamma: 1.4))
+layer.filtered(.vibrance(amount: 0.6))
 ```
 
 #### Stylize & optical
@@ -145,11 +158,52 @@ layer.filtered(.duotone(dark: Color(hex: 0x14233B), light: Color(hex: 0xFFD27D))
 - **`.grain(amount:seed:)`** film grain; feed `seed` your `time` or `frameCount` for grain that moves.
 - **`.pixelate(size:channel:tint:)`** mosaic into blocks `size` canvas-pixels across; `channel` can read one channel out as gray and `tint` recolor it.
 - **`.lineScreen(scale:softness:angle:foreground:background:)`** a brightness-driven line screen: each cell paints a centered bar whose width tracks its brightness, painted `foreground` over `background`.
+- **`.emboss(amount:angle:)`** light the luminance slope along `angle` as a gray relief, like stamped metal.
+- **`.oilPaint(radius:)`** the Kuwahara region filter: flatten detail into oil-paint patches while keeping edges crisp. `radius` is the brush size in pixels (bigger is broader and costlier).
+- **`.crosshatch(scale:foreground:background:)`** pencil shading: layered diagonal strokes that thicken as the image darkens.
+- **`.toon(levels:edges:)`** cel shading: flatten into `levels` brightness bands and ink the Sobel edges over them.
+- **`.median()`** a 3×3 median, knocking out speckle and stray pixels while keeping edges sharp.
+- **`.contour(levels:intensity:)`** dark iso-brightness lines (one every `1/levels` of the range), turning tone into a topographic map.
+- **`.cmykHalftone(scale:)`** separate into cyan/magenta/yellow/black and screen each as rotated dots at the classic print angles — the colour-process look.
+- **`.normalMap(strength:)`** read the image as a height field and output its surface normal as an RGB vector (the bluish bump-map look), ready to feed `.displace` (see [combine](#combined)) or a lighting pass.
 
 ```swift
 layer.filtered(.halftone(scale: 48))
-layer.filtered(.pixelate(size: 24, channel: .gray, tint: .orange))
+layer.filtered(.oilPaint(radius: 5))
+layer.filtered(.toon(levels: 5))
 layer.filtered(.lineScreen(scale: 60, angle: .pi / 6))
+```
+
+#### Retro / optical
+
+- **`.scanlines(count:intensity:)`** darken alternating horizontal lines, the CRT look. `count` is how many lines span the height.
+- **`.glitch(amount:seed:)`** tear random blocks of rows sideways and split their channels; feed `seed` your `time`/`frameCount` so it flickers.
+- **`.crt(curvature:scanline:aberration:)`** the full old-monitor look in one pass: barrel curvature, scanlines, a corner vignette, and a touch of aberration.
+
+```swift
+layer.filtered(.scanlines(count: 240))
+layer.filtered(.crt())
+postProcess(.glitch(amount: 0.3, seed: time * 8))
+```
+
+#### Distortion
+
+These warp the image's *coordinates* — they re-sample the source at a remapped position, so color passes through untouched. Center-relative warps stay round on a non-square layer.
+
+- **`.kaleidoscope(segments:angle:)`** fold into mirrored wedges around the center, rotated by `angle`.
+- **`.swirl(angle:radius:)`** twirl into a vortex — rotation strongest at the center, fading to none at `radius`.
+- **`.bulge(amount:radius:)`** a radial lens: `amount` > 0 bulges (fisheye), < 0 pinches; it eases back to the image at `radius`.
+- **`.wave(amplitude:frequency:phase:vertical:)`** ripple rows side to side (or columns up and down); animate `phase` for motion.
+- **`.ripple(amplitude:frequency:phase:)`** concentric waves from the center, like a drop in water.
+- **`.mirror(vertical:flip:)`** reflect one half of the image onto the other.
+- **`.polar(amount:)`** bend around the center by remapping between Cartesian and polar coordinates — a tunnel / fold.
+- **`.tile(count:mirror:)`** repeat the image in a `count`×`count` grid; `mirror` flips alternate cells for a seamless tiling.
+- **`.perturb(amount:scale:phase:)`** warp by the image's own internal fbm noise (no map needed), for a smoky / heat-haze ripple.
+
+```swift
+layer.filtered(.kaleidoscope(segments: 8))
+layer.filtered(.swirl(angle: 3, radius: 0.6))
+postProcess(.ripple(amplitude: 0.02, frequency: 12, phase: time * 3))
 ```
 
 Filters chain, so an effect reads as one expression:

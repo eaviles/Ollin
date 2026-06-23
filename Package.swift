@@ -422,9 +422,29 @@ let package = Package(
             path: "Examples/Basic/Accumulation"
         ),
         .executableTarget(
-            name: "Example-Filters",
+            name: "Example-ColorFilters",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Filters"
+            path: "Examples/Basic/ColorFilters"
+        ),
+        .executableTarget(
+            name: "Example-BlurFilters",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/BlurFilters"
+        ),
+        .executableTarget(
+            name: "Example-StylizeFilters",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/StylizeFilters"
+        ),
+        .executableTarget(
+            name: "Example-RetroFilters",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/RetroFilters"
+        ),
+        .executableTarget(
+            name: "Example-Distortion",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Distortion"
         ),
         .executableTarget(
             name: "Example-Patterns",
