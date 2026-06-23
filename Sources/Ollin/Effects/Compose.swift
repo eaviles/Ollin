@@ -131,10 +131,12 @@ public struct ComposeLayer {
     ///     .defocused(by: aside { drawDepthRamp() }, focus: 0.4, maxBlur: 28)
     /// ```
     public func defocused(by aside: ComposeLayer, focus: Double = 0.5,
-                          range: Double = 0.1, maxBlur: Double = 24) -> ComposeLayer {
+                          range: Double = 0.1, maxBlur: Double = 24,
+                          quality: RenderQuality = .default) -> ComposeLayer {
         var copy = self
         copy.steps.append(.combine(aside: aside,
-                                   op: .defocus(focus: focus, range: range, maxBlur: maxBlur)))
+                                   op: .defocus(focus: focus, range: range, maxBlur: maxBlur,
+                                                quality: quality)))
         return copy
     }
 

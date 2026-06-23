@@ -202,6 +202,9 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
                                         constant float4 *params [[buffer(0)]]) {
     float focus = params[0].x, range = params[0].y, maxBlur = params[0].z;
     float2 texel = params[1].xy;
+    // The bokeh tap budget (resolved from the `.defocus` quality on the CPU side); falls
+    // back to the default if a caller leaves the slot empty.
+    float budget = params[1].z >= 1.0 ? params[1].z : float(OLLIN_DOF_TAPS);
 
     // No blur asked for (or a degenerate layer): pass the base through untouched, so
     // the op is a cheap no-op at maxBlur 0 and snapshot-safe in that case.
@@ -242,13 +245,14 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     // that doesn't reach contributes the current average, keeping every field grain-free)
     // — and the near field carries a **coverage** that composites it over the background.
     const float goldenAngle = 2.399963229728653;
-    float radScale = max(0.5, maxBlur * maxBlur / float(OLLIN_DOF_TAPS * 2));
+    float radScale = max(0.5, maxBlur * maxBlur / (budget * 2.0));   // ≈ `budget` taps to the rim
+    int maxIters = int(budget * 2.0);                               // safety cap (the break ends it first)
     float4 centerColor = base.sample(samp, in.uv);
     float3 bgColor = centerColor.rgb; float bgTotal = 1.0;   // background + in-focus
     float3 fgColor = float3(0.0);     float fgTotal = 1.0;   // near (foreground)
     float fgCoverage = 0.0;
     float radius = radScale;
-    for (int i = 0; i < OLLIN_DOF_TAPS * 2; i++) {
+    for (int i = 0; i < maxIters; i++) {
         if (radius >= maxBlur) break;
         float a = float(i) * goldenAngle;
         float2 uv = clamp(in.uv + float2(cos(a), sin(a)) * radius * texel, 0.0, 1.0);

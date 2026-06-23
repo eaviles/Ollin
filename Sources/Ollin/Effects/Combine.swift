@@ -49,8 +49,8 @@ public struct Combine: Sendable {
         case mix(amount: Double)
         /// Depth-of-field: blur the base by the aux read as a depth map. The band
         /// `focus ± range` stays sharp; the blur radius grows with distance from it
-        /// up to `maxBlur` pixels.
-        case defocus(focus: Double, range: Double, maxBlur: Double)
+        /// up to `maxBlur` pixels. `quality` sets the bokeh sample count tier.
+        case defocus(focus: Double, range: Double, maxBlur: Double, quality: RenderQuality)
     }
 
     let kind: Kind
@@ -95,9 +95,11 @@ public struct Combine: Sendable {
     ///   - range: half-width of the sharp band, *and* the width of the falloff beyond
     ///     it (full blur is reached `2 × range` from `focus`). Smaller racks focus tighter.
     ///   - maxBlur: the largest blur radius, in layer pixels.
+    ///   - quality: the bokeh sample-count tier (`.default`/`.performance`/`.detail`,
+    ///     hardware-relative). More taps trade frame rate for creamier, structure-free blur.
     public static func defocus(focus: Double = 0.5, range: Double = 0.1,
-                               maxBlur: Double = 24) -> Combine {
+                               maxBlur: Double = 24, quality: RenderQuality = .default) -> Combine {
         Combine(kind: .defocus(focus: min(max(focus, 0), 1),
-                               range: max(0.001, range), maxBlur: max(0, maxBlur)))
+                               range: max(0.001, range), maxBlur: max(0, maxBlur), quality: quality))
     }
 }

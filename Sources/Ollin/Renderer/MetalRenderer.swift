@@ -856,6 +856,15 @@ final class MetalRenderer {
               let displayTexture = makeDisplayTexture(width: width, height: height) else { return 0 }
         let depthTexture = drawer.usesDepthBuffer ? makeDepthMSAA(width: width, height: height) : nil
         let meshBuf = exportMeshBuffer(for: drawer.meshVertices.count)
+        // The frame's geometry uploads, shared by the effect-target passes and the main
+        // pass, so a sketch that uses effects (e.g. a `.defocus` combine) is timed in full.
+        let buffers = GeometryBuffers(
+            triangle: exportVertexBuffer(for: drawer.vertices.count),
+            sdf: exportSDFBuffer(for: drawer.sdfInstances.count),
+            image: exportImageBuffer(for: drawer.imageVertices.count),
+            glyph: exportGlyphBuffer(for: drawer.glyphVertices.count),
+            point: exportPointBuffer(for: drawer.points.count),
+            mesh: meshBuf)
         var totalMs = 0.0, counted = 0
         for i in 0..<iterations {
             let pass = MTLRenderPassDescriptor()
@@ -875,19 +884,19 @@ final class MetalRenderer {
             guard let cb = commandQueue.makeCommandBuffer() else { continue }
             encodeCompute(drawer, into: cb)
             let renderedShadow = encodeShadowPass(drawer, into: cb, meshBuffer: meshBuf)
+            encodeEffectTargets(drawer, into: cb, buffers: buffers, pooled: false)
             guard let encoder = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
             encode(drawer, viewport: viewport, into: encoder,
-                   triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
-                   sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
-                   imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
-                   glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
-                   pointBuffer: exportPointBuffer(for: drawer.points.count),
-                   meshBuffer: meshBuf,
+                   triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
+                   imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
+                   pointBuffer: buffers.point, meshBuffer: buffers.mesh,
                    depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                    shadowCube: renderedShadow.cube, shadowAccel: renderedShadow.accel)
             encoder.endEncoding()
+            let presented = applyFrameFilters(drawer, resolved: resolveTexture, width: width,
+                                              height: height, into: cb, pooled: false)
             if let presentEncoder = cb.makeRenderCommandEncoder(descriptor: presentPass(into: displayTexture)) {
-                encodePresent(from: resolveTexture, drawer: drawer, into: presentEncoder)
+                encodePresent(from: presented, drawer: drawer, into: presentEncoder)
                 presentEncoder.endEncoding()
             }
             cb.commit()
@@ -1179,11 +1188,13 @@ final class MetalRenderer {
             return pass("ollin_fx_displace", [SIMD4(Float(amount), 0, 0, 0)])
         case let .mix(amount):
             return pass("ollin_fx_mix", [SIMD4(Float(amount), 0, 0, 0)])
-        case let .defocus(focus, range, maxBlur):
+        case let .defocus(focus, range, maxBlur, quality):
             // maxBlur is in layer pixels; the gather works in texels, so at this
             // layer's resolution one is the other (the texel-size row keeps the disk
-            // round on a non-square layer).
-            let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
+            // round on a non-square layer). The third texel slot carries the resolved
+            // bokeh tap budget for the gather.
+            let taps = Float(resolveDofTaps(quality))
+            let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), taps, 0)
             return pass("ollin_fx_depth_of_field",
                         [SIMD4(Float(focus), Float(range), Float(maxBlur), 0), texel])
         }
@@ -1935,6 +1946,27 @@ final class MetalRenderer {
             case .default:     return hw ? 16 : 4
             case .detail:      return hw ? 32 : 8
             }
+        }
+    }
+
+    /// An exact bokeh tap count that, when set, overrides the resolved `.defocus` quality
+    /// tier — the hook `Scripts/benchmark-dof.sh` uses to sweep tap counts and measure the
+    /// real per-GPU frame cost. `nil` in normal use.
+    var dofTapsOverride: Int?
+
+    /// Resolve a `.defocus` quality tier to a bokeh tap count, hardware-relative (richer on
+    /// a dedicated-RT GPU). The software-RT (M1/M2) column is **measured** — `Scripts/benchmark.sh
+    /// dof` on an M2 at 1080² gives 64 → 5.3ms, 128 → 9.9ms (holds 60fps with headroom),
+    /// 256 → 19ms (drops to 30fps live, the favor-quality tier). `.default` = 128 is also the
+    /// value the gather was tuned and snapshot-recorded at. The dedicated-RT column is a ~1.5×
+    /// estimate until the benchmark is run on such a GPU (M3+).
+    private func resolveDofTaps(_ quality: RenderQuality) -> Int {
+        if let override = dofTapsOverride { return max(8, min(override, 1024)) }
+        let hw = hasHardwareRayTracing
+        switch quality {
+        case .performance: return hw ? 96  : 64
+        case .default:     return hw ? 192 : 128
+        case .detail:      return hw ? 384 : 256
         }
     }
 

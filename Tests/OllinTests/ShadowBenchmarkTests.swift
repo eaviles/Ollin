@@ -10,7 +10,7 @@ import AppKit
 /// so it's vsync-independent), and recommends per-tier ray counts for *this* GPU. Run it on
 /// each machine (Intel / M-series) to tune `MetalRenderer.resolveShadowSamples`.
 ///
-/// Run via `Scripts/benchmark-shadows.sh [resolution]`.
+/// Run via `Scripts/benchmark.sh shadows [resolution]`.
 @Suite(.serialized)
 struct ShadowBenchmarkTests {
 
