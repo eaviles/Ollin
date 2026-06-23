@@ -121,6 +121,23 @@ public struct ComposeLayer {
         return copy
     }
 
+    /// Defocus this layer by an `aside` layer read as a *depth map* (its luminance is
+    /// the depth, 0 near … 1 far): the band `focus ± range` stays sharp, and the blur
+    /// grows with distance from it up to `maxBlur` pixels. The aside — a depth gradient,
+    /// or a monocular-depth feed — is drawn only to feed the blur, not composited.
+    ///
+    /// ```swift
+    /// layer { drawScene() }
+    ///     .defocused(by: aside { drawDepthRamp() }, focus: 0.4, maxBlur: 28)
+    /// ```
+    public func defocused(by aside: ComposeLayer, focus: Double = 0.5,
+                          range: Double = 0.1, maxBlur: Double = 24) -> ComposeLayer {
+        var copy = self
+        copy.steps.append(.combine(aside: aside,
+                                   op: .defocus(focus: focus, range: range, maxBlur: maxBlur)))
+        return copy
+    }
+
     /// Composite this layer with `mode` instead of the default `.normal` (so a glow
     /// layer can add as light, a shade layer can multiply, and so on).
     public func blend(_ mode: BlendMode) -> ComposeLayer {

@@ -47,6 +47,10 @@ public struct Combine: Sendable {
         case displace(amount: Double)
         /// Cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux).
         case mix(amount: Double)
+        /// Depth-of-field: blur the base by the aux read as a depth map. The band
+        /// `focus ± range` stays sharp; the blur radius grows with distance from it
+        /// up to `maxBlur` pixels.
+        case defocus(focus: Double, range: Double, maxBlur: Double)
     }
 
     let kind: Kind
@@ -71,5 +75,29 @@ public struct Combine: Sendable {
     /// per-pixel lerp (0 keeps the base, 1 becomes the aux, 0.5 is an even blend).
     public static func mix(amount: Double = 0.5) -> Combine {
         Combine(kind: .mix(amount: min(max(amount, 0), 1)))
+    }
+
+    /// Depth of field: blur the base layer by the aux layer, read as a *depth map*
+    /// (its luminance is the depth, 0 near … 1 far). Pixels whose depth lands in the
+    /// band `focus ± range` stay sharp; outside it the blur grows with distance from
+    /// the band, reaching `maxBlur` pixels one further `range` out. It's a circle-of-
+    /// confusion bokeh gather with near/far separation, so the depth map can be anything
+    /// the sketch supplies.
+    ///
+    /// The depth map can be a smooth gradient (a tilt-shift plane), a real depth feed, or
+    /// hard-edged discrete per-object depths. Overlapping defocused regions blend like
+    /// real bokeh; a defocused *foreground* spreads over what's behind it (covering an
+    /// in-focus subject it sits in front of); and a sharp in-focus subject occludes the
+    /// blurred things behind it with a crisp edge.
+    ///
+    /// - Parameters:
+    ///   - focus: the depth (0…1) that stays in focus.
+    ///   - range: half-width of the sharp band, *and* the width of the falloff beyond
+    ///     it (full blur is reached `2 × range` from `focus`). Smaller racks focus tighter.
+    ///   - maxBlur: the largest blur radius, in layer pixels.
+    public static func defocus(focus: Double = 0.5, range: Double = 0.1,
+                               maxBlur: Double = 24) -> Combine {
+        Combine(kind: .defocus(focus: min(max(focus, 0), 1),
+                               range: max(0.001, range), maxBlur: max(0, maxBlur)))
     }
 }

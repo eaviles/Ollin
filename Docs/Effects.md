@@ -31,7 +31,7 @@ override func draw() {
 - [RenderTarget.image](#image) - composite a layer back
 - [filtered](#filtered) - run a filter over a layer
 - [Filter](#filter) - the filter catalog (blur, bloom, color, stylize)
-- [combined / Combine](#combined) - combine two layers (mask, displace, mix)
+- [combined / Combine](#combined) - combine two layers (mask, displace, mix, defocus)
 - [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
 - [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
@@ -162,11 +162,12 @@ layer.filtered(.threshold(0.5)).filtered(.gaussianBlur(radius: 3)).filtered(.gra
 
 A [`Filter`](#filter) reads one layer; a `Combine` reads **two**: a base layer and an auxiliary layer that modulates it, which is what masking, displacement, and cross-dissolve need. `base.combined(with: aux, op)` runs the op on the GPU and hands back a new layer, itself filterable and combinable, so multi-input effects chain like single-input ones.
 
-A `Combine` is a value descriptor like `Filter`, but the aux layer rides alongside it (a value descriptor can't hold a `RenderTarget`), passed as the `with:` argument. The three ops:
+A `Combine` is a value descriptor like `Filter`, but the aux layer rides alongside it (a value descriptor can't hold a `RenderTarget`), passed as the `with:` argument. The ops:
 
 - **`.mask(channel:invert:)`** keep the base where the aux reads **bright** (`channel: .luminance`, the default; draw the mask in white over transparent) or **opaque** (`channel: .alpha`), fading to transparent elsewhere; `invert` flips it. A spotlight reveal, a vignette, a clip to a shape.
 - **`.displace(amount:)`** offset the base's pixels by the aux read as a **vector field**: red → horizontal, green → vertical, mid-gray = no shift, up to `amount` of the layer. Feed it noise or a gradient for ripples, smearing, heat-haze, and refraction.
 - **`.mix(amount:)`** cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux); the transition workhorse.
+- **`.defocus(focus:range:maxBlur:)`** depth of field — blur the base by the aux read as a **depth map** (its luminance is the depth, 0 near … 1 far). The band `focus ± range` stays sharp; the blur grows with distance from it up to `maxBlur` pixels. It's a circle-of-confusion bokeh gather with near/far separation. The depth map can be a smooth gradient (a tilt-shift plane), a real depth feed, or hard-edged discrete per-object depths: overlapping defocused regions blend like real bokeh, a defocused foreground spreads over and covers an in-focus subject behind it, and a sharp subject occludes the blur behind it with a crisp edge.
 
 ```swift
 let scene = renderTarget()
@@ -321,8 +322,9 @@ The combine modifiers mirror the [`Combine`](#combined) ops:
 - **`.masked(by:channel:invert:)`** keep the layer where the aside reads bright (or, with `channel: .alpha`, opaque).
 - **`.displaced(by:amount:)`** push the layer's pixels around by the aside read as a vector field.
 - **`.mixed(with:amount:)`** cross-dissolve the layer toward the aside.
+- **`.defocused(by:focus:range:maxBlur:)`** depth of field — blur the layer by the aside read as a depth map.
 
-They interleave with `.post(_:)` in call order, and an aside can itself carry filters (a blurred mask edge, a softened displacement map). See the `Basic/Aside` example for a displacement map and a spotlight mask in one scene.
+They interleave with `.post(_:)` in call order, and an aside can itself carry filters (a blurred mask edge, a softened displacement map). See the `Basic/Aside` example for a displacement map and a spotlight mask in one scene, and `Basic/Defocus` for racking focus through a depth map.
 
 <a id="notes"></a>
 ### Notes

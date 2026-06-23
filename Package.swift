@@ -412,6 +412,11 @@ let package = Package(
             path: "Examples/Basic/Aside"
         ),
         .executableTarget(
+            name: "Example-Defocus",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Defocus"
+        ),
+        .executableTarget(
             name: "Example-Accumulation",
             dependencies: ["Ollin"],
             path: "Examples/Basic/Accumulation"

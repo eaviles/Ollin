@@ -176,6 +176,113 @@ fragment float4 ollin_fx_mix(PresentOut in [[stage_in]],
     return mix(base.sample(samp, in.uv), other.sample(samp, in.uv), params[0].x);
 }
 
+// depth of field: blur the base by the aux read as a depth map (luminance = depth,
+// 0 near … 1 far). A single-pass scatter-as-gather circle-of-confusion bokeh blur
+// (Gustafsson's running-average form; details and rationale on the gather below).
+// An in-focus region stays crisp, a defocused foreground spills over what's behind
+// it, and overlapping defocused regions blend like real bokeh rather than hard-cutting.
+// params[0] = (focus, range, maxBlur px), params[1].xy = texel size.
+// Premultiplied-linear in and out.
+//
+// Depth is read perceptually (linearToSrgb of luminance), matching the depth-feed
+// read on the depth-composite path — so the gray a sketch draws is the depth it means.
+//
+// CoC(d): zero inside focus ± range, then ramps to maxBlur one further `range` out.
+static inline float ollin_dof_coc(float depth, float focus, float range, float maxBlur) {
+    return saturate((abs(depth - focus) - range) / range) * maxBlur;
+}
+static inline float ollin_dof_depth(float4 texel) { return linearToSrgb(float3(ollin_luma(texel.rgb))).x; }
+
+#define OLLIN_DOF_TAPS 128
+
+fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
+                                        texture2d<float> base [[texture(0)]],
+                                        texture2d<float> depthMap [[texture(1)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float focus = params[0].x, range = params[0].y, maxBlur = params[0].z;
+    float2 texel = params[1].xy;
+
+    // No blur asked for (or a degenerate layer): pass the base through untouched, so
+    // the op is a cheap no-op at maxBlur 0 and snapshot-safe in that case.
+    if (maxBlur < 0.5) return base.sample(samp, in.uv);
+
+    // This pixel's own depth and circle-of-confusion radius (its "blur size" in px),
+    // the reference every tap is measured against.
+    float centerDepth = ollin_dof_depth(depthMap.sample(samp, in.uv));
+    float centerSize  = ollin_dof_coc(centerDepth, focus, range, maxBlur);
+
+    // Dilate the blur into thin in-focus seams. A hard-edged depth map crosses the focal
+    // plane at every silhouette (its anti-aliased boundary sweeps through `focus`),
+    // leaving a ~1px in-focus ring bracketed by blur that traces each defocused mark and,
+    // left sharp, reads as a thin dotted circle. Taking the centre's blur size as the max
+    // over a small neighbourhood consumes that seam (it has defocus on both sides), while
+    // a real in-focus subject is thick enough to keep its own (near-zero) size and stay
+    // sharp but for a few px of softened edge.
+    float dilate = max(3.0, maxBlur * 0.06);
+    for (int k = 0; k < 8; k++) {
+        float ka = float(k) * 0.78539816;   // 8 directions
+        float2 ko = float2(cos(ka), sin(ka)) * dilate * texel;
+        float kd = ollin_dof_depth(depthMap.sample(samp, clamp(in.uv + ko, 0.0, 1.0)));
+        centerSize = max(centerSize, ollin_dof_coc(kd, focus, range, maxBlur));
+    }
+
+    // The gather. An *expanding* golden-angle spiral (`radius += radScale/radius`) packs
+    // rings progressively denser toward the rim, so a bokeh disc's edge stays smooth
+    // without a per-pixel jitter (which would add grain to the near/far fields below);
+    // `radScale` is scaled by maxBlur² so the tap count stays bounded (~OLLIN_DOF_TAPS).
+    // A tap reaches this pixel where its own blur size spans the tap's distance (`pct`,
+    // the scatter-as-gather test).
+    //
+    // **Near / far separation** (README Techniques for the references) is what a plain
+    // single-pass gather can't do: a defocused *foreground* must spread *over* an in-focus
+    // subject behind it (covering it), not leave a sharp sliver. So two fields accumulate
+    // separately — background + in-focus, and near (foreground) — each as a Gustafsson
+    // **running average** (`acc += mix(acc/tot, s, reach); tot += 1`, so a tap
+    // that doesn't reach contributes the current average, keeping every field grain-free)
+    // — and the near field carries a **coverage** that composites it over the background.
+    const float goldenAngle = 2.399963229728653;
+    float radScale = max(0.5, maxBlur * maxBlur / float(OLLIN_DOF_TAPS * 2));
+    float4 centerColor = base.sample(samp, in.uv);
+    float3 bgColor = centerColor.rgb; float bgTotal = 1.0;   // background + in-focus
+    float3 fgColor = float3(0.0);     float fgTotal = 1.0;   // near (foreground)
+    float fgCoverage = 0.0;
+    float radius = radScale;
+    for (int i = 0; i < OLLIN_DOF_TAPS * 2; i++) {
+        if (radius >= maxBlur) break;
+        float a = float(i) * goldenAngle;
+        float2 uv = clamp(in.uv + float2(cos(a), sin(a)) * radius * texel, 0.0, 1.0);
+        float3 s = base.sample(samp, uv).rgb;
+        float sd = ollin_dof_depth(depthMap.sample(samp, uv));
+        float sSize = ollin_dof_coc(sd, focus, range, maxBlur);
+        bool isNear = sd < focus;                            // nearer than the focal plane
+        // background + in-focus field: every non-near tap that reaches blends in, so
+        // overlapping defocused orbs merge like real bokeh (no hard occlusion cut of a
+        // farther disc along a nearer one's silhouette). A sharp subject doesn't need an
+        // occlusion clamp here — it's protected by the `blend` term below, which ignores
+        // this field where the centre is in focus and no foreground covers it.
+        float bgReach = isNear ? 0.0 : smoothstep(radius - 0.5, radius + 0.5, sSize);
+        bgColor += mix(bgColor / bgTotal, s, bgReach); bgTotal += 1.0;
+        // near field: foreground taps only, plus how much foreground covers this pixel.
+        float fgReach = isNear ? smoothstep(radius - 0.5, radius + 0.5, sSize) : 0.0;
+        fgColor += mix(fgColor / fgTotal, s, fgReach); fgTotal += 1.0;
+        fgCoverage += fgReach;
+        radius += radScale / radius;
+    }
+    float3 bg = bgColor / bgTotal;
+    float3 fg = fgColor / fgTotal;
+    // Foreground coverage → an alpha (normalised by the tap count, tuned so a foreground
+    // that fills a good fraction of the disc reads as full cover); composite it over the
+    // background, then blend the sharp centre toward that bokeh by how defocused the
+    // centre is *or* how much foreground covers it — the latter is what hides an in-focus
+    // subject under a blurry foreground instead of leaving the sharp crescent.
+    float fgAlpha = saturate(fgCoverage / (fgTotal * 0.4));
+    float3 bokeh = mix(bg, fg, fgAlpha);
+    float dofStrength = smoothstep(0.5, 1.5, centerSize);
+    float blend = max(dofStrength, fgAlpha);
+    return float4(mix(centerColor.rgb, bokeh, blend), centerColor.a);
+}
+
 // MARK: - Color & tone filters
 //
 // Each reads premultiplied-linear input, transforms straight color, and writes

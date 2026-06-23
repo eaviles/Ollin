@@ -1179,6 +1179,13 @@ final class MetalRenderer {
             return pass("ollin_fx_displace", [SIMD4(Float(amount), 0, 0, 0)])
         case let .mix(amount):
             return pass("ollin_fx_mix", [SIMD4(Float(amount), 0, 0, 0)])
+        case let .defocus(focus, range, maxBlur):
+            // maxBlur is in layer pixels; the gather works in texels, so at this
+            // layer's resolution one is the other (the texel-size row keeps the disk
+            // round on a non-square layer).
+            let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
+            return pass("ollin_fx_depth_of_field",
+                        [SIMD4(Float(focus), Float(range), Float(maxBlur), 0), texel])
         }
     }
 

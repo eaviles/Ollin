@@ -177,6 +177,17 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func effectsDefocusMatchesReference() throws {
+        // Three discs at near/mid/far depths, combined with a matching depth map and
+        // defocused with the focal plane on the middle disc. Pins the depth-of-field
+        // combine: the depth read (perceptual luminance), the circle-of-confusion
+        // gather keeping the in-focus band crisp while near and far blur, and the
+        // jittered spiral (a reproducible function of pixel position).
+        let diff = try Snapshot.meanDifference(of: EffectsDefocus(), against: "effects-defocus")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func pointCloud3DMatchesReference() throws {
         // A static 3D heightfield through a fixed camera — pins the 3D camera, the
         // depth-tested point pipeline, and the instanced disc splats.
@@ -1411,5 +1422,36 @@ private final class EffectsComposeAside: Sketch {
                 noStroke(); fill(.white); drawCircle(width * 0.5, height * 0.5, 86)
             }.post(.gaussianBlur(radius: 10)))
         }
+    }
+}
+
+/// Depth of field over *overlapping* discs at near / mid / far depths with a hard-edged
+/// depth map (matching discs on a far background), focused on the middle disc. Pins the
+/// gather's hard cases: the mid disc stays crisp, the near and far ones blur into clean
+/// bokeh, and where the defocused discs overlap they blend (no hard occlusion cut of the
+/// farther along the nearer's silhouette). Deterministic (a fixed golden-angle gather).
+private final class EffectsDefocus: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        // Drawn far → near (blue, green, red) so the nearer discs occlude, in both the
+        // colour scene and the matching depth map.
+        let far   = (x: 0.60, gray: 0.82, color: Color(red: 0.3, green: 0.6, blue: 1))
+        let mid   = (x: 0.50, gray: 0.50, color: Color(red: 0.3, green: 1, blue: 0.5))
+        let near  = (x: 0.40, gray: 0.18, color: Color(red: 1, green: 0.35, blue: 0.2))
+        let discs = [far, mid, near]
+
+        let scene = renderTarget()
+        withTarget(scene) {
+            background(Color(white: 0.05)); noStroke()
+            for d in discs { fill(d.color); drawCircle(width * d.x, height * 0.5, 58) }
+        }
+        let depth = renderTarget()
+        withTarget(depth) {
+            background(.white); noStroke()   // gaps read as far
+            for d in discs { fill(Color(white: d.gray)); drawCircle(width * d.x, height * 0.5, 58) }
+        }
+        drawImage(scene.combined(with: depth, .defocus(focus: 0.5, range: 0.08, maxBlur: 22)).image, 0, 0)
     }
 }
