@@ -287,6 +287,33 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     return float4(mix(centerColor.rgb, bokeh, blend), centerColor.a);
 }
 
+// depth normalize: turn a 3D render target's resolved clip-space depth into the gray
+// depth layer the depth-of-field combine reads (0 near … 1 far). params[0] =
+// (near, far, perspective?). A perspective (and the intrinsic pinhole) projection
+// stores depth non-linearly (almost all of [0,1] sits near the far plane), so most
+// of a scene would land outside any usable focus band; inverting the depth curve to a
+// linear distance makes `focus`/`range` step evenly through the scene. Orthographic
+// depth is already linear, and a no-camera depth scene already wrote normalized depth,
+// so both pass through. The result is sRGB-encoded into the linear layer so the DoF's
+// perceptual decode (linearToSrgb of luminance) reads back exactly the depth, which
+// is why `ollin_fx_depth_of_field` itself needs no change.
+fragment float4 ollin_fx_depth_normalize(PresentOut in [[stage_in]],
+                                         depth2d<float> depthTex [[texture(0)]],
+                                         sampler samp [[sampler(0)]],
+                                         constant float4 *params [[buffer(0)]]) {
+    float near = params[0].x, far = params[0].y;
+    bool perspective = params[0].z > 0.5;
+    float d = depthTex.sample(samp, in.uv);                 // clip-space depth, near→0 far→1
+    float t;
+    if (perspective && far > near) {
+        float L = (near * far) / max(1e-6, far - d * (far - near));   // view-space distance
+        t = saturate((L - near) / (far - near));                     // 0 near … 1 far
+    } else {
+        t = saturate(d);
+    }
+    return float4(srgbToLinear(float3(t)), 1.0);
+}
+
 // MARK: - Color & tone filters
 //
 // Each reads premultiplied-linear input, transforms straight color, and writes

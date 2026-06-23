@@ -470,6 +470,11 @@ let package = Package(
             path: "Examples/3D/Solids"
         ),
         .executableTarget(
+            name: "Example-SceneDefocus",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/SceneDefocus"
+        ),
+        .executableTarget(
             name: "Example-TexturedMesh",
             dependencies: ["Ollin"],
             path: "Examples/3D/TexturedMesh"

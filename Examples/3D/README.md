@@ -18,6 +18,7 @@ right-handed and y-up.
 | [LoadedMesh](LoadedMesh/) | A mesh loaded from a file (`.obj`/`.usdz`/`.gltf`/…) — drop one in with `OLLIN_MESH=<path>`, or the bundled crystal — recentered, scaled to fit, and lit. |
 | [TexturedMesh](TexturedMesh/) | A UV-gridded globe textured with an image over a base-color-tinted floor, both lit. |
 | [Wireframe](Wireframe/) | Orbiting solids drawn as their triangle edges (`wireframe()`), faces see-through. |
+| [SceneDefocus](SceneDefocus/) | Depth of field on a 3D scene defocused by its *own* depth buffer: a row of orbs drawn into a render target, then `scene.combined(with: scene.depth, .defocus(...))` racks focus through them. Drag to rack by hand. |
 | [DepthCloud](DepthCloud/) | A live 3D point cloud from one webcam: a neural depth model lifts each pixel into space, colored by the camera image, orbiting. Needs `Scripts/fetch-models.sh`. |
 | [Record3DCloud](Record3DCloud/) | An iPhone RGBD recording orbited as a point cloud: a `.r3d` clip from the Record3D app, unprojected with its true camera intrinsics. Drop a recording in `~/Downloads`. Needs `import OllinRecord3D`. |
 | [Record3DLiveCloud](Record3DLiveCloud/) | A **live** RGBD cloud streamed from a tethered iPhone: open Record3D, turn on USB streaming, and the phone's depth camera becomes a real-time point cloud on the Mac. Needs `import OllinRecord3D`. |

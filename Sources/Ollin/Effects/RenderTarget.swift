@@ -69,6 +69,18 @@ public final class RenderTarget {
     /// draws sample. Set during the render pass; `nil` before the frame renders.
     var texture: MTLTexture?
 
+    /// Set during recording when 3D geometry (a mesh or point cloud) is drawn into
+    /// this target. 3D needs a depth attachment to z-test correctly, so this both
+    /// makes the target's pass carry depth *and* makes `depth` available. A pure-2D
+    /// target leaves it false and allocates no depth, so the 2D path is untouched.
+    var needsDepth = false
+
+    /// The depth layer (`depth`), created lazily the first time it's read. Held here
+    /// so the renderer can fill its texture from this target's resolved depth buffer.
+    /// `nil` until accessed, so a 3D target you draw but never defocus pays only for
+    /// its own occlusion, not the extra depth-resolve + normalize work.
+    var depthLayer: RenderTarget?
+
     /// Pixel dimensions of the backing texture (logical size × `scale`, ≥ 1).
     var pixelWidth: Int { max(1, Int((Double(width) * scale).rounded())) }
     var pixelHeight: Int { max(1, Int((Double(height) * scale).rounded())) }
@@ -85,6 +97,32 @@ public final class RenderTarget {
     /// target's GPU texture lazily at draw time, so it always reflects what was
     /// drawn into the layer this frame.
     public var image: Image { Image(renderTarget: self) }
+
+    /// This target's per-pixel depth as a sampleable gray layer (0 near … 1 far),
+    /// linearized over the camera's near/far range. Feed it to `.defocus` as the aux
+    /// to defocus a real 3D scene by its own depth
+    /// (`scene.combined(with: scene.depth, .defocus(...))`), or draw/filter it like
+    /// any layer to visualize the scene's depth.
+    ///
+    /// Available only after 3D geometry was drawn into this target (the depth buffer
+    /// the layer reads from doesn't exist otherwise). On a 2D-only target it stays
+    /// empty, so the combine that reads it is a no-op.
+    ///
+    /// ```swift
+    /// let scene = renderTarget()
+    /// withTarget(scene) {
+    ///     camera(.perspective(eye: Vector3(0, 0, 6), target: .zero))
+    ///     drawSphere(radius: 1)                       // 3D → depth captured
+    /// }
+    /// let dof = scene.combined(with: scene.depth, .defocus(focus: 0.4, maxBlur: 30))
+    /// drawImage(dof.image, 0, 0)
+    /// ```
+    public var depth: RenderTarget {
+        if let depthLayer { return depthLayer }
+        let layer = RenderTarget(width: width, height: height, scale: scale, drawer: drawer)
+        depthLayer = layer
+        return layer
+    }
 
     /// Run `filter` over this layer and return the result as a new layer, itself
     /// filterable, so effects chain (`layer.filtered(.bloom()).filtered(...)`).

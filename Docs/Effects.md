@@ -32,6 +32,7 @@ override func draw() {
 - [filtered](#filtered) - run a filter over a layer
 - [Filter](#filter) - the filter catalog (blur, bloom, color, stylize)
 - [combined / Combine](#combined) - combine two layers (mask, displace, mix, defocus)
+- [depth](#depth) - a 3D scene's depth buffer as a layer (feed `.defocus`)
 - [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
 - [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
@@ -180,6 +181,24 @@ drawImage(scene.combined(with: mask.filtered(.gaussianBlur(radius: 12)), .mask()
 ```
 
 The base and aux can render at different `scale`s; the aux is sampled by normalized coordinates. In a `compose { }` block, the same ops read as `aside` modifiers ([below](#aside)). The `Basic/Aside` example shows a displacement map and a spotlight mask in one scene.
+
+<a id="depth"></a>
+### depth: a 3D scene's depth as a layer
+
+The depth map `.defocus` reads can be one you draw by hand, but when the scene **is** 3D its depth comes for free. Draw a 3D scene into a render target, and because meshes (or point clouds) land in it the target captures depth, exposed as `target.depth`: a gray layer (0 near … 1 far) the renderer fills from the scene's own depth buffer. Feed it straight to `.defocus` as the aux and a real 3D render racks focus like a lens, no hand-drawn depth map needed.
+
+```swift
+let scene = renderTarget()
+withTarget(scene) {
+    perspective(eye: Vector3(0, 2, 18), target: .zero, near: 5, far: 34)   // bracket the scene
+    drawSphere(radius: 1.5)                                                 // 3D → depth captured
+    // … more meshes …
+}
+let dof = scene.combined(with: scene.depth, .defocus(focus: 0.4, maxBlur: 30))
+drawImage(dof.image, 0, 0)
+```
+
+`scene.depth` maps over the camera's `near`/`far`, so **set them to bracket your scene**: tight planes both make the focal plane sweep usefully and give the depth buffer its best precision. It's a normal layer otherwise: draw it (`drawImage(scene.depth.image, 0, 0)`) to see the depth, or filter it. Depth capture costs nothing on a 2D target (no 3D drawn means no depth buffer), and the extra normalize pass runs only when you actually read `.depth`. The `3D/SceneDefocus` example racks focus through a row of orbs by their own depth.
 
 <a id="generate"></a>
 ### generate(_:) and Generator

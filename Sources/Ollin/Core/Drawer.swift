@@ -434,6 +434,7 @@ final class Drawer {
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
+                                     meshStart: meshVertices.count,
                                      blendMode: currentBlend, image: image, depth: currentDepth,
                                      target: currentTarget))
     }
@@ -493,6 +494,7 @@ final class Drawer {
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
+                                     meshStart: meshVertices.count,
                                      blendMode: currentBlend, atlas: atlas, depth: currentDepth,
                                      target: currentTarget))
     }
@@ -601,6 +603,7 @@ final class Drawer {
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
+                                     meshStart: meshVertices.count,
                                      blendMode: currentBlend,
                                      particleBuffer: buffer, particleCount: count,
                                      depth: currentDepth, target: currentTarget))
@@ -1060,6 +1063,7 @@ final class Drawer {
         guard camera3D != nil, !cloud.isEmpty else { return }
         // SVG export is 2D vector only; a splat cloud has no vector outline.
         if svgRecorder != nil { return }
+        currentTarget?.needsDepth = true   // 3D in a target → that pass carries depth
         ensureBatch(.points3D)
         points.reserveCapacity(points.count + cloud.count)
         // The model matrix bakes into each point CPU-side (the 2D affine bakes the
@@ -1093,6 +1097,7 @@ final class Drawer {
         guard camera3D != nil, !mesh.isEmpty else { return }
         // SVG export is 2D vector only; a shaded solid has no vector outline.
         if svgRecorder != nil { return }
+        currentTarget?.needsDepth = true   // 3D in a target → that pass carries depth
         // Wireframe draws the triangle edges only (the faces are see-through), so it
         // ignores the texture and lighting; otherwise a texture maps when matching UVs
         // are present, else a flat base-color surface. Wireframe and textured meshes
@@ -2316,6 +2321,7 @@ final class Drawer {
               color.width > 0, color.height > 0, depth.width > 0, depth.height > 0 else { return }
         if svgRecorder != nil { return }   // a depth scene has no vector form
         hasDepthScene = true
+        currentTarget?.needsDepth = true   // depth scene in a target → that pass carries depth
         let x0 = Float(rect.x), y0 = Float(rect.y)
         let x1 = Float(rect.x + rect.width), y1 = Float(rect.y + rect.height)
         let (vTop, vBot): (Float, Float) = color.flipsVertically ? (1, 0) : (0, 1)
@@ -2347,6 +2353,7 @@ final class Drawer {
         guard let camera = camera3D else { return }   // metric depth needs near/far
         if svgRecorder != nil { return }
         hasDepthScene = true
+        currentTarget?.needsDepth = true   // depth scene in a target → that pass carries depth
         // Map metric depth d → Metal NDC z ∈ [0,1] as ndc_z = P − Q/d, where
         // P = far/(far−near), Q = far·near/(far−near) (the perspective depth curve).
         // These ride in the quad's vertex tint so the fragment needs no extra buffer.
@@ -2386,6 +2393,7 @@ final class Drawer {
                                      imageStart: imageVertices.count,
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
+                                     meshStart: meshVertices.count,
                                      blendMode: currentBlend, image: color,
                                      depthImage: depth, metricDepth: metricDepth,
                                      target: currentTarget))

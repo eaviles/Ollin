@@ -188,6 +188,17 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func sceneDefocus3DMatchesReference() throws {
+        // A 3D scene drawn into a render target, defocused by the target's own depth
+        // buffer (`scene.depth`) with the focal plane on the middle sphere. Pins the
+        // 3D-in-target path: the target's depth attachment + resolve, the depth
+        // normalize pass (clip-space depth linearized over near/far, encoded for the
+        // perceptual DoF decode), and the depth layer feeding `.defocus` as the aux.
+        let diff = try Snapshot.meanDifference(of: SceneDefocus3DScene(), against: "scene-defocus-3d")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func pointCloud3DMatchesReference() throws {
         // A static 3D heightfield through a fixed camera — pins the 3D camera, the
         // depth-tested point pipeline, and the instanced disc splats.
@@ -392,6 +403,37 @@ private final class SolidPrimitives3DScene: Sketch {
 /// Custom lighting on solids: ambient + a directional key + a point light + a spot,
 /// with a specular material — pins the three light kinds, the spot cone, ambient, and
 /// the specular highlight (the parts the auto-lit default doesn't exercise). No `time`.
+/// A 3D scene defocused by its own depth buffer: three spheres at staggered depths
+/// drawn into a depth-capturing render target, then `scene.combined(with: scene.depth,
+/// .defocus(...))` with the focal plane on the middle one. Pins the 3D-in-target depth
+/// path end to end. No `time`.
+private final class SceneDefocus3DScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        let spheres: [(x: Double, z: Double, hue: Double)] =
+            [(-2.5, 8, 0.0), (0, 0, 0.35), (2.5, -8, 0.62)]   // near → far
+        let scene = renderTarget()
+        withTarget(scene) {
+            background(Color(white: 0.04))
+            perspective(eye: Vector3(0, 1.5, 14), target: Vector3(0, 0, -3),
+                        fieldOfView: .pi / 4, near: 5, far: 30)
+            for s in spheres {
+                withState {
+                    translate(s.x, 0, s.z)
+                    fill(Color(hue: s.hue, saturation: 0.65, brightness: 1.0))
+                    drawSphere(radius: 1.5)
+                }
+            }
+        }
+        // The middle sphere sits at depth ≈0.36 over near/far; focus there so the
+        // foreground spreads over it and the background blurs behind.
+        drawImage(scene.combined(with: scene.depth,
+                                 .defocus(focus: 0.36, range: 0.07, maxBlur: 20)).image, 0, 0)
+    }
+}
+
 private final class MeshLightingScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

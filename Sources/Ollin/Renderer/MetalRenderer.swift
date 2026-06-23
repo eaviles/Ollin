@@ -350,8 +350,15 @@ final class MetalRenderer {
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
     private var filterTexPool: [[(tex: MTLTexture, w: Int, h: Int)]] =
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
+    /// Depth attachments for a render target that holds a 3D scene: an MSAA depth
+    /// buffer (memoryless, tile-only) that resolves into a single-sample sampleable
+    /// `depth32Float`, the `depth` layer reads from. Pooled like the color targets,
+    /// but only a depth-carrying target ever pulls from it, so 2D targets cost nothing.
+    private var targetDepthPool: [[(msaa: MTLTexture, resolve: MTLTexture, w: Int, h: Int)]] =
+        Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
     private var targetTexNext = 0
     private var filterTexNext = 0
+    private var targetDepthNext = 0
 
     /// One `Feedback` layer's persistent ping-pong pair: two single-sample
     /// linear-float resolve textures. Each frame the block renders into the *back*
@@ -989,6 +996,7 @@ final class MetalRenderer {
             || !drawer.frameFilters.isEmpty else { return }
         targetTexNext = 0
         filterTexNext = 0
+        targetDepthNext = 0
         // Generators read no input, so fill them first (a filter may sample one),
         // each a single fullscreen fragment pass into a sampleable filter texture.
         for target in drawer.renderTargets {
@@ -1009,15 +1017,38 @@ final class MetalRenderer {
             pass.colorAttachments[0].loadAction = .clear
             pass.colorAttachments[0].clearColor = target.clearColor.mtlClearColor
             pass.colorAttachments[0].storeAction = .multisampleResolve
+            // A target that holds a 3D scene carries a depth attachment so its meshes
+            // z-test (and so the `depth` layer can read it). The MSAA depth resolves
+            // (nearest sample) into a sampleable single-sample buffer; a 2D target
+            // takes none of this, so its pass is byte-identical to before.
+            var depthResolve: MTLTexture? = nil
+            if target.needsDepth, let depth = acquireTargetDepth(width: pw, height: ph, pooled: pooled) {
+                pass.depthAttachment.texture = depth.msaa
+                pass.depthAttachment.resolveTexture = depth.resolve
+                pass.depthAttachment.loadAction = .clear
+                pass.depthAttachment.clearDepth = 1.0
+                pass.depthAttachment.storeAction = .multisampleResolve
+                pass.depthAttachment.depthResolveFilter = .min
+                depthResolve = depth.resolve
+            }
             guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
             // Geometry inside the block used canvas coordinates, so map by the logical
             // size; a fraction-res layer's smaller attachment just downsamples.
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
                    glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
-                   depthFormat: nil, target: target)
+                   depthFormat: depthResolve != nil ? depthPixelFormat : nil, target: target)
             enc.endEncoding()
             target.texture = tex.resolve
+            // Expose the scene's depth as a gray layer when the sketch read `.depth`:
+            // linearize the clip-space depth over the camera's near/far into 0…1,
+            // encoded so the existing perceptual DoF decode recovers it exactly. Only
+            // run when the layer was actually accessed: a 3D target you don't defocus
+            // pays only for its own occlusion above, not this pass.
+            if let depthResolve, let depthLayer = target.depthLayer {
+                depthLayer.texture = normalizeDepth(depthResolve, camera: drawer.camera3D,
+                                                    width: pw, height: ph, into: cb, pooled: pooled)
+            }
         }
         // Feedback layers: like a geometry target, but rendered into persistent
         // ping-pong storage. The block reads the *front* (last frame, exposed as
@@ -1307,6 +1338,28 @@ final class MetalRenderer {
         let entry = (msaa, resolve, width, height)
         if slot < pool.count { pool[slot] = entry } else { pool.append(entry) }
         targetTexPool[frameIndex] = pool
+        return (msaa, resolve)
+    }
+
+    /// Acquire an MSAA + resolve depth pair for a 3D-holding render target, mirroring
+    /// `acquireTargetTextures`. The MSAA buffer is memoryless (tile-only); the resolve
+    /// is the sampleable single-sample `depth32Float` the `depth` layer reads from.
+    private func acquireTargetDepth(width: Int, height: Int, pooled: Bool) -> (msaa: MTLTexture, resolve: MTLTexture)? {
+        guard pooled else {
+            guard let msaa = makeDepthMSAA(width: width, height: height),
+                  let resolve = makeDepthResolve(width: width, height: height) else { return nil }
+            return (msaa, resolve)
+        }
+        let slot = targetDepthNext; targetDepthNext += 1
+        var pool = targetDepthPool[frameIndex]
+        if slot < pool.count, pool[slot].w == width, pool[slot].h == height {
+            return (pool[slot].msaa, pool[slot].resolve)
+        }
+        guard let msaa = makeDepthMSAA(width: width, height: height),
+              let resolve = makeDepthResolve(width: width, height: height) else { return nil }
+        let entry = (msaa, resolve, width, height)
+        if slot < pool.count { pool[slot] = entry } else { pool.append(entry) }
+        targetDepthPool[frameIndex] = pool
         return (msaa, resolve)
     }
 
@@ -1716,6 +1769,39 @@ final class MetalRenderer {
         desc.usage = .renderTarget
         desc.storageMode = .memoryless
         return device.makeTexture(descriptor: desc)
+    }
+
+    /// A single-sample `depth32Float` the MSAA depth attachment of a 3D render target
+    /// resolves into, sampled afterward by the depth-normalize pass. `.shaderRead` so
+    /// it's sampleable, `.private` since it lives only on the GPU.
+    private func makeDepthResolve(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: depthPixelFormat, width: width, height: height, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
+    }
+
+    /// Turn a 3D render target's resolved clip-space depth into a sampleable gray
+    /// layer (0 near … 1 far): one fullscreen pass that linearizes the depth over the
+    /// camera's near/far and encodes it so the perceptual depth-of-field decode reads
+    /// back exactly that value (so `ollin_fx_depth_of_field` needs no change). A nil
+    /// camera (a non-metric depth scene wrote normalized depth itself) passes through.
+    private func normalizeDepth(_ depth: MTLTexture, camera: Camera3D?,
+                                width: Int, height: Int,
+                                into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+        let near = Float(camera?.near ?? 0)
+        let far = Float(camera?.far ?? 1)
+        // Orthographic depth is already linear in distance; perspective and the
+        // intrinsic (pinhole) projection are not, so the shader inverts the curve.
+        // No camera → the depth is already normalized, so pass it straight through.
+        var perspective: Float = 1
+        if camera == nil { perspective = 0 }
+        else if case .orthographic = camera?.projection { perspective = 0 }
+        encodeEffectFragment("ollin_fx_depth_normalize", inputs: [depth], output: output,
+                             params: [SIMD4(near, far, perspective, 0)], into: cb)
+        return output
     }
 
     /// The shadow map: a square single-sample `.private` depth texture the shadow
