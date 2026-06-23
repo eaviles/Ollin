@@ -66,6 +66,19 @@ extension SDFShape {
             return true
         }
     }
+
+    /// Whether this shape is a closed region the SDF-combinator VM can evaluate
+    /// (`ollin_sdf_distance` handles it). The open marks (lines, the open/chord/pie
+    /// arcs, and the Bézier stroke) have no interior to merge, so a combine block
+    /// skips them.
+    var isCombinable: Bool {
+        switch self {
+        case .capsule, .arcOpen, .arcChord, .arcPie, .bezier:
+            return false
+        default:
+            return true
+        }
+    }
 }
 
 /// Which pipeline a run of recorded geometry needs. Primitives are recorded in
@@ -82,6 +95,7 @@ enum GeometryKind {
     case mesh3D       // solid triangle-mesh geometry in `meshVertices`, through the camera
     case fringe       // edge-expanded stroke + ~1px AA fringe in `vertices` (the high-quality stroke path)
     case depthScene   // a backdrop quad in `imageVertices` that also primes the depth buffer from a depth map
+    case sdfGroup     // composed SDF field (combinator) in `sdfGroups`, evaluating `sdfNodes`
 }
 
 struct GeometryBatch {
@@ -92,6 +106,7 @@ struct GeometryBatch {
     var glyphStart: Int = 0  // first glyph vertex (glyphAtlas batches)
     var pointStart: Int = 0  // first point (points3D batches)
     var meshStart: Int = 0   // first mesh vertex (mesh3D batches)
+    var sdfGroupStart: Int = 0 // first SDF-combinator group (sdfGroup batches)
     /// The blend mode active when this run was recorded; selects the pipeline.
     /// A run breaks (a new batch opens) whenever the blend mode changes, so each
     /// batch composites with a single mode.
@@ -213,6 +228,21 @@ final class Drawer {
 
     /// Instanced SDF shapes recorded this frame (see `SDFInstance`).
     private(set) var sdfInstances: [SDFInstance] = []
+
+    /// Composed SDF fields (combinator groups) recorded this frame, plus the flat
+    /// instruction nodes they index into (see `SDFGroupInstance` / `SDFNode` and
+    /// ShaderCombinator.metal). One `drawSDF` call appends one group + its nodes.
+    private(set) var sdfGroups: [SDFGroupInstance] = []
+    private(set) var sdfNodes: [SDFNode] = []
+
+    /// The open scoped-combine blocks (`smoothUnion { … }` etc.). While the stack is
+    /// non-empty, SDF region draw calls are captured as `SDF` leaves into the innermost
+    /// frame instead of drawn; closing the outermost frame builds the field and draws
+    /// it. `combineGroupTransform` is the CTM when the outermost block opened, so a leaf
+    /// drawn under a changed CTM lands in the group's field space.
+    private var combineStack: [CombineFrame] = []
+    private var combineGroupTransform: matrix_float3x3?
+    private var warnedNonCombinable = false
 
     /// Textured-quad vertices recorded this frame (see `drawImage`). Each image
     /// draw appends 6 vertices (two triangles) and opens its own `.image` batch,
@@ -354,13 +384,14 @@ final class Drawer {
     }
     /// Buffer/batch lengths at one moment, for rolling target geometry back.
     private struct GeometrySnapshot {
-        let batches, vertices, sdf, image, glyph, points, mesh: Int
+        let batches, vertices, sdf, image, glyph, points, mesh, sdfGroup, sdfNode: Int
     }
     private func snapshot() -> GeometrySnapshot {
         GeometrySnapshot(batches: batches.count, vertices: vertices.count,
                          sdf: sdfInstances.count, image: imageVertices.count,
                          glyph: glyphVertices.count, points: points.count,
-                         mesh: meshVertices.count)
+                         mesh: meshVertices.count,
+                         sdfGroup: sdfGroups.count, sdfNode: sdfNodes.count)
     }
     /// The surface finish of the currently-open *solid* mesh batch, so a `material(_:)`
     /// change opens a fresh batch (the finish is bound once per batch as a uniform).
@@ -417,6 +448,7 @@ final class Drawer {
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      target: currentTarget))
     }
@@ -435,6 +467,7 @@ final class Drawer {
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
                                      blendMode: currentBlend, image: image, depth: currentDepth,
                                      target: currentTarget))
     }
@@ -452,6 +485,7 @@ final class Drawer {
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      material: material, finish: finish,
                                      meshWireframe: wireframe, matcap: matcap,
@@ -478,6 +512,7 @@ final class Drawer {
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      finish: m.gpuMaterial(), target: currentTarget))
     }
@@ -495,6 +530,7 @@ final class Drawer {
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
                                      blendMode: currentBlend, atlas: atlas, depth: currentDepth,
                                      target: currentTarget))
     }
@@ -599,6 +635,8 @@ final class Drawer {
         if glyphVertices.count > s.glyph { glyphVertices.removeLast(glyphVertices.count - s.glyph) }
         if points.count > s.points { points.removeLast(points.count - s.points) }
         if meshVertices.count > s.mesh { meshVertices.removeLast(meshVertices.count - s.mesh) }
+        if sdfGroups.count > s.sdfGroup { sdfGroups.removeLast(sdfGroups.count - s.sdfGroup) }
+        if sdfNodes.count > s.sdfNode { sdfNodes.removeLast(sdfNodes.count - s.sdfNode) }
     }
 
     /// Open a `.particles` batch drawing `count` instances from the GPU `buffer`.
@@ -616,6 +654,7 @@ final class Drawer {
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
                                      blendMode: currentBlend,
                                      particleBuffer: buffer, particleCount: count,
                                      depth: currentDepth, target: currentTarget))
@@ -723,6 +762,8 @@ final class Drawer {
         glyphVertices.removeAll(keepingCapacity: true)
         points.removeAll(keepingCapacity: true)
         meshVertices.removeAll(keepingCapacity: true)
+        sdfGroups.removeAll(keepingCapacity: true)
+        sdfNodes.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         currentKind = nil
         currentBatchDepth = nil
@@ -1250,6 +1291,10 @@ final class Drawer {
         glyphVertices.removeAll(keepingCapacity: true)
         points.removeAll(keepingCapacity: true)
         meshVertices.removeAll(keepingCapacity: true)
+        sdfGroups.removeAll(keepingCapacity: true)
+        sdfNodes.removeAll(keepingCapacity: true)
+        combineStack.removeAll(keepingCapacity: true)   // close any block left open by an early exit
+        combineGroupTransform = nil
         batches.removeAll(keepingCapacity: true)
         dispatches.removeAll(keepingCapacity: true)
         currentKind = nil
@@ -2051,6 +2096,13 @@ final class Drawer {
                            param0: SIMD2<Float> = .zero, param1: SIMD2<Float> = .zero,
                            param2: SIMD2<Float> = .zero,
                            applyHollow: Bool = true) {
+        // Inside a scoped-combine block, capture this shape as an SDF leaf instead of
+        // drawing it (it merges with its siblings when the block closes).
+        if !combineStack.isEmpty {
+            captureCombineLeaf(shape: shape, center: center, size: size, fill: fill,
+                               extra: extra, param0: param0, param1: param1, param2: param2)
+            return
+        }
         // SVG export safety net: the only SDF that still funnels here while
         // recording is the bitmap-text pixel (a `.box`); every other shape is
         // intercepted at its public draw method. Emit it as a `<rect>`.
@@ -2089,6 +2141,143 @@ final class Drawer {
                  | (fillEnc.kind << 10) | (strokeEnc.kind << 12),
             fillGradient: fillEnc.row,
             strokeGradient: strokeEnc.row))
+    }
+
+    /// Draw a composed signed-distance field (`SDF`): its shapes merge into one
+    /// region, filled with the current `fill` (or each leaf's `.colored`) and
+    /// stroked along the *merged* outline with the current `stroke`/`strokeWeight`.
+    /// The tree is flattened to an instruction program the fragment evaluates per
+    /// pixel (see ShaderCombinator.metal). Solid color only in v1 — a gradient
+    /// fill/stroke is ignored (set per-leaf colors with `.colored`).
+    func drawSDF(_ sdf: SDF) {
+        // A field has no polygonal outline to serialize; SVG export of one would need
+        // marching-squares contouring (a follow-up), so for now it records nothing.
+        if svgRecorder != nil { return }
+
+        let defaultFill: Color = {
+            if case .some(.color(let c)) = fillPaint { return c }
+            return .white
+        }()
+        let nodeStart = sdfNodes.count
+        var nodes: [SDFNode] = []
+        let bounds = sdf.flatten(defaultFill: defaultFill, into: &nodes)
+        guard !nodes.isEmpty else { return }
+        // Bound the work: skip (loudly) a field too large or too deeply nested for the
+        // shader's fixed stacks, rather than mis-drawing it silently.
+        if nodes.count > SDF.maxNodes {
+            print("Ollin: drawSDF — field has \(nodes.count) nodes (max \(SDF.maxNodes)); skipping.")
+            return
+        }
+        if bounds.valueDepth > SDF.maxValueDepth || bounds.pointDepth > SDF.maxPointDepth {
+            print("Ollin: drawSDF — field nests too deep (combine \(bounds.valueDepth)/\(SDF.maxValueDepth), transform \(bounds.pointDepth)/\(SDF.maxPointDepth)); skipping.")
+            return
+        }
+
+        // Covering quad = the whole-tree AABB, grown by half the stroke + a small AA
+        // margin. The field origin is the CTM origin; `center` offsets the quad onto
+        // the AABB while the VM still evaluates in field coordinates.
+        let center = (bounds.lo + bounds.hi) * 0.5
+        var strokeIsSolid = false
+        var strokeSlot = SIMD4<Float>(repeating: 0)
+        if strokeWidth > 0, case .some(.color(let c)) = strokePaint {
+            strokeIsSolid = true
+            strokeSlot = c.simd4
+        }
+        let hw = strokeIsSolid ? Float(strokeWidth) * 0.5 : 0
+        let ext = (bounds.hi - bounds.lo) * 0.5 + SIMD2<Float>(repeating: hw + 2)
+
+        sdfNodes.append(contentsOf: nodes)
+        ensureBatch(.sdfGroup)
+        sdfGroups.append(SDFGroupInstance(
+            transform: transform, center: center, size: ext,
+            strokeColor: strokeSlot, strokeWidth: strokeIsSolid ? Float(strokeWidth) : 0,
+            bandWidth: 0, nodeStart: UInt32(nodeStart), nodeCount: UInt32(nodes.count)))
+    }
+
+    // MARK: SDF-combinator scoped blocks (sugar over the `SDF` value type)
+
+    private enum CombineFrameKind {
+        case combine(SDF.Combine, Float)   // fold children under this op (k = smoothing, 0 = hard)
+        case domain(SDF.Transform)         // union the children, then apply this transform/domain op
+    }
+    private final class CombineFrame {
+        let kind: CombineFrameKind
+        var children: [SDF] = []
+        init(_ kind: CombineFrameKind) { self.kind = kind }
+    }
+
+    /// Open a scoped combine block (`smoothUnion(k:) { … }` etc.). SDF region draw calls
+    /// inside are captured and folded under `op` when the block closes.
+    func beginCombine(op: SDF.Combine, k: Double) {
+        if combineStack.isEmpty { combineGroupTransform = transform }
+        combineStack.append(CombineFrame(.combine(op, Float(k))))
+    }
+    /// Open a scoped domain block (`mirrored { … }` / `repeated(…) { … }`): the contents
+    /// are unioned, then the transform is applied to the whole field.
+    func beginCombineDomain(_ op: SDF.Transform) {
+        if combineStack.isEmpty { combineGroupTransform = transform }
+        combineStack.append(CombineFrame(.domain(op)))
+    }
+    /// Close the innermost combine block: fold its children into one field, then attach
+    /// it to the enclosing block, or (if this was the outermost) draw it.
+    func endCombine() {
+        guard let frame = combineStack.popLast() else { return }
+        let field = buildCombineField(frame)
+        if let parent = combineStack.last {
+            if let field { parent.children.append(field) }
+            return
+        }
+        // Outermost: draw under the group's CTM (captured when it opened), restored after
+        // in case the body changed the CTM without scoping it.
+        let groupT = combineGroupTransform
+        combineGroupTransform = nil
+        warnedNonCombinable = false
+        guard let field else { return }
+        let saved = transform
+        if let groupT { transform = groupT }
+        drawSDF(field)
+        transform = saved
+    }
+    private func buildCombineField(_ frame: CombineFrame) -> SDF? {
+        guard var result = frame.children.first else { return nil }
+        let rest = frame.children.dropFirst()
+        switch frame.kind {
+        case let .combine(op, k):
+            for child in rest { result = SDF(.combine(op, result, child, k)) }
+            return result
+        case let .domain(t):
+            for child in rest { result = SDF(.combine(.union, result, child, 0)) }
+            return SDF(.transformed(t, result))
+        }
+    }
+    /// Capture one region shape (already decoded by its draw method) as an `SDF` leaf,
+    /// placed in the active group's field space via the relative CTM.
+    private func captureCombineLeaf(shape: SDFShape, center: Vector2, size: SIMD2<Float>,
+                                    fill: Paint?, extra: Float,
+                                    param0: SIMD2<Float>, param1: SIMD2<Float>, param2: SIMD2<Float>) {
+        guard let frame = combineStack.last else { return }
+        guard shape.isCombinable else {
+            if !warnedNonCombinable {
+                print("Ollin: a non-region shape inside a combine block is ignored; a combine merges filled regions (circle/rect/ngon/star/…).")
+                warnedNonCombinable = true
+            }
+            return
+        }
+        let color: Color? = { if case .some(.color(let c)) = fill { return c }; return nil }()
+        var leaf = SDF(.leaf(shape: shape, size: size, p0: param0, p1: param1, p2: param2,
+                             extra: extra, color: color))
+        // Map the shape into the group's field space: rel = groupCTM⁻¹ · drawCTM, applied
+        // to the shape center (position) and decomposed into a uniform scale + rotation.
+        let groupT = combineGroupTransform ?? transform
+        let rel = simd_inverse(groupT) * transform
+        let cc = rel * SIMD3<Float>(Float(center.x), Float(center.y), 1)
+        let col0 = SIMD2<Float>(rel.columns.0.x, rel.columns.0.y)
+        let scale = simd_length(col0)
+        let angle = atan2(col0.y, col0.x)
+        if abs(scale - 1) > 1e-4 { leaf = leaf.scaled(Double(scale)) }
+        if abs(angle) > 1e-4 { leaf = leaf.rotated(Double(angle)) }
+        leaf = leaf.at(Vector2(Double(cc.x), Double(cc.y)))
+        frame.children.append(leaf)
     }
 
     /// An elliptical arc centered at `(x, y)` with radii `rx`/`ry`, sweeping from
@@ -2406,6 +2595,7 @@ final class Drawer {
                                      glyphStart: glyphVertices.count,
                                      pointStart: points.count,
                                      meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
                                      blendMode: currentBlend, image: color,
                                      depthImage: depth, metricDepth: metricDepth,
                                      target: currentTarget))

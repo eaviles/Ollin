@@ -117,6 +117,64 @@ typedef struct {
     float strokeGradient;      // gradient-strip row index for a gradient stroke
 } SDFInstance;
 
+// One instruction of the SDF-combinator "VM" (see ShaderCombinator.metal). A
+// composed field (the `SDF` value type) flattens to a flat array of these that the
+// fragment interprets with two small fixed-depth stacks — a *value* stack of
+// (distance, color) for the combine/modify ops and a *point* stack for the
+// transform/domain scopes. Unlike `SDFInstance` (one shape per quad), many nodes
+// evaluate at the *same* point and combine, which is why they ride their own buffer.
+//
+// `kind` is the instruction class; `sel` its sub-selector; the rest are read per
+// kind (most fields unused outside EVAL). Leaves carry NO transform — all
+// positioning (the shape's own anchor, the user's .at/.rotated/.scaled, and the
+// domain ops) is XFORM nodes, so method-chain order is preserved exactly:
+//   kind 0 EVAL   leaf: sel = SDFShape tag; evaluate that region SDF
+//                 (ollin_sdf_distance) at the current point, push (distance, color).
+//                 geo0 = (size.xy, param0.xy), geo1 = (param1.xy, param2.xy),
+//                 extra = shape `extra`, color = the leaf's straight RGBA.
+//   kind 1 OP     binary combine, pop 2 / push 1: sel = 0 union, 1 smoothUnion,
+//                 2 subtract, 3 smoothSubtract, 4 intersect, 5 smoothIntersect,
+//                 6 morph. k = smoothing radius (distance units) / morph amount.
+//                 The smooth ops lerp color by the smin blend factor.
+//   kind 2 MOD    unary value op, pop 1 / push 1: sel = 0 round, 1 onion. k =
+//                 radius / thickness.
+//   kind 3 XFORM  push the current point, then transform it for the enclosing scope
+//                 (a complete child subtree evaluates to one value-stack entry):
+//                 sel = 0 translate (geo0.xy), 1 rotate (geo0.xy = cos, sin),
+//                 2 scale (k = factor s, applied as p /= s), 3 mirror (geo0 =
+//                 (mirrorX flag, mirrorY flag, offX, offY)), 4 repeat (geo0.xy =
+//                 spacing, geo1.xy = per-side limit, extra >= 0.5 = limited else
+//                 infinite). Translate/rotate/mirror/repeat are rigid (distance
+//                 unchanged); scale multiplies the child distance back at RESTORE_P.
+//   kind 4 RESTORE_P  pop the point (leave the scope); k = the distance scale to
+//                 multiply the child result by (s for a scale scope, else 1).
+// Stride 64 (four 16-byte rows), sized to the EVAL case; other kinds use a subset.
+typedef struct {
+    unsigned int kind;     // 0 EVAL, 1 OP, 2 MOD, 3 XFORM, 4 RESTORE_P
+    unsigned int sel;      // shape tag / op kind / mod kind / xform kind
+    float k;               // OP smin k or morph; MOD radius/thickness; XFORM scale s; RESTORE_P distance scale
+    float extra;           // EVAL shape `extra`; XFORM repeat limited flag
+    simd_float4 color;     // EVAL leaf straight RGBA
+    simd_float4 geo0;      // EVAL (size.xy, param0.xy); XFORM params
+    simd_float4 geo1;      // EVAL (param1.xy, param2.xy); XFORM params
+} SDFNode;
+
+// One composed SDF field for the combinator pipeline, drawn as a single covering
+// quad (like `SDFInstance`) whose fragment runs the VM over `nodeCount` `SDFNode`s
+// starting at `nodeStart` in the shared node buffer. The fill color comes from the
+// nodes (each leaf carries its own, baked from the current `fill` at flatten time),
+// so the group carries only the merged-outline *stroke*. Stride 96 (16-aligned).
+typedef struct {
+    simd_float3x3 transform; // local sketch space -> sketch space (the CTM)
+    simd_float2 center;      // group center, local sketch space
+    simd_float2 size;        // conservative covering-quad half-extent (whole-tree AABB)
+    simd_float4 strokeColor; // straight RGBA; alpha 0 means no stroke
+    float strokeWidth;       // points; 0 means no stroke
+    float bandWidth;         // hollow-band width (points); 0 = solid (reserved)
+    unsigned int nodeStart;  // first SDFNode for this group (absolute index)
+    unsigned int nodeCount;  // number of nodes
+} SDFGroupInstance;
+
 // One particle for the GPU compute path: a persistent buffer of these is updated
 // by a compute kernel each frame (positions never round-trip through the CPU) and
 // drawn by the instanced particle render path (`ollin_particle_vertex`). The

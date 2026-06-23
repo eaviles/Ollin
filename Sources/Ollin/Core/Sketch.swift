@@ -835,6 +835,57 @@ open class Sketch {
     public func drawCircle(_ circle: Circle) {
         drawer.drawCircle(circle)
     }
+    /// Draw a composed signed-distance field — its shapes merge (smooth union,
+    /// subtract, intersect, morph) into one region, filled with the current `fill`
+    /// (or each leaf's `.colored`) and stroked along the merged outline. Build the
+    /// field with the `SDF` value type, e.g.
+    /// `drawSDF(SDF.circle(radius: 120).smoothUnion(.rect(width: 200, height: 80).at(x: 90, y: 0), k: 40))`.
+    public func drawSDF(_ sdf: SDF) {
+        drawer.drawSDF(sdf)
+    }
+
+    // MARK: SDF-combinator blocks (sugar over `SDF` + `drawSDF`)
+    //
+    // Inside a block, the SDF region draw calls (`drawCircle`/`drawRect`/`drawNgon`/…)
+    // are captured and merged under the block's operator instead of drawn one by one;
+    // the merged field is drawn (with the current fill/stroke) when the block closes.
+    // Blocks nest. Each call's own `fill` becomes that leaf's color (so colors blend at
+    // a smooth seam). Non-region draws (lines, text, images) inside a block are ignored.
+
+    /// Merge the shapes drawn inside (hard union: the area covered by any of them).
+    public func union(_ body: () -> Void) {
+        drawer.beginCombine(op: .union, k: 0); body(); drawer.endCombine()
+    }
+    /// Smoothly merge the shapes drawn inside: they melt together over a blend of `k`.
+    public func smoothUnion(k: Double, _ body: () -> Void) {
+        drawer.beginCombine(op: .smoothUnion, k: k); body(); drawer.endCombine()
+    }
+    /// Carve the later shapes out of the first one drawn inside.
+    public func subtract(_ body: () -> Void) {
+        drawer.beginCombine(op: .subtract, k: 0); body(); drawer.endCombine()
+    }
+    /// Smoothly carve the later shapes out of the first (blend of radius `k`).
+    public func smoothSubtract(k: Double, _ body: () -> Void) {
+        drawer.beginCombine(op: .smoothSubtract, k: k); body(); drawer.endCombine()
+    }
+    /// Keep only where every shape drawn inside overlaps.
+    public func intersect(_ body: () -> Void) {
+        drawer.beginCombine(op: .intersect, k: 0); body(); drawer.endCombine()
+    }
+    /// Smooth intersection of the shapes drawn inside (blend of radius `k`).
+    public func smoothIntersect(k: Double, _ body: () -> Void) {
+        drawer.beginCombine(op: .smoothIntersect, k: k); body(); drawer.endCombine()
+    }
+    /// Mirror the field drawn inside across the x and/or y axis of the current frame.
+    public func mirrored(x: Bool = true, y: Bool = false, _ body: () -> Void) {
+        drawer.beginCombineDomain(.mirror(x: x, y: y)); body(); drawer.endCombine()
+    }
+    /// Tile the field drawn inside on a grid of `spacing`, `count` copies to each side.
+    public func repeated(spacing: Vector2, count: Int, _ body: () -> Void) {
+        drawer.beginCombineDomain(.repeatTiles(
+            spacing: SIMD2<Float>(Float(spacing.x), Float(spacing.y)),
+            count: SIMD2<Float>(Float(max(0, count)), Float(max(0, count))))); body(); drawer.endCombine()
+    }
     public func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double) {
         drawer.drawEllipse(x, y, rx, ry)
     }

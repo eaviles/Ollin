@@ -333,6 +333,7 @@ let package = Package(
             resources: [
                 .copy("Renderer/ShaderCore.metal"),
                 .copy("Renderer/ShaderShapes.metal"),
+                .copy("Renderer/ShaderCombinator.metal"),
                 .copy("Renderer/Shader3D.metal"),
                 .copy("Renderer/ShaderEffects.metal"),
                 .copy("Renderer/OllinShaderTypes.h"),
@@ -395,6 +396,11 @@ let package = Package(
             name: "Example-Bloom",
             dependencies: ["Ollin"],
             path: "Examples/Basic/Bloom"
+        ),
+        .executableTarget(
+            name: "Example-Combinators",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/Combinators"
         ),
         .executableTarget(
             name: "Example-Feedback",

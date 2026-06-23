@@ -87,6 +87,11 @@ final class MetalRenderer {
         static func sdf(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_sdf_vertex", fragment: "ollin_sdf_fragment", blend: blend, depthFormat: depth)
         }
+        // composed SDF fields (combinators): a covering quad whose fragment runs the
+        // node-program VM (smooth union/subtract/intersect/morph + domain ops)
+        static func sdfGroup(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_sdfgroup_vertex", fragment: "ollin_sdfgroup_fragment", blend: blend, depthFormat: depth)
+        }
         // textured quads (images); the texture keeps the CGImage's premultiplied alpha
         static func image(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_image_vertex", fragment: "ollin_image_fragment",
@@ -163,6 +168,7 @@ final class MetalRenderer {
             case .triangles:  return .solid(blend, depth: depth)
             case .fringe:     return .fringe(blend, depth: depth)
             case .sdf:        return .sdf(blend, depth: depth)
+            case .sdfGroup:   return .sdfGroup(blend, depth: depth)
             case .image:      return .image(blend, depth: depth)
             case .glyphAtlas: return .glyphAtlas(blend, depth: depth)
             case .particles:  return .points(blend, depth: depth)
@@ -230,6 +236,13 @@ final class MetalRenderer {
     /// could still be reading for an in-flight frame.
     private var exportBuffer: MTLBuffer?
     private var sdfExportBuffer: MTLBuffer?
+
+    /// Parallel ring + export buffers for the SDF-combinator group instances and
+    /// their flat node programs, advanced with `frameIndex` like the others.
+    private var sdfGroupBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    private var sdfNodeBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    private var sdfGroupExportBuffer: MTLBuffer?
+    private var sdfNodeExportBuffer: MTLBuffer?
 
     /// Parallel ring + export buffer for textured-quad (image) vertices, advanced
     /// with `frameIndex` like the others.
@@ -558,7 +571,9 @@ final class MetalRenderer {
             image: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
             glyph: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
             point: pointBuffer(at: frameIndex, for: drawer.points.count),
-            mesh: meshBuf)
+            mesh: meshBuf,
+            sdfGroup: sdfGroupBuffer(at: frameIndex, for: drawer.sdfGroups.count),
+            sdfNode: sdfNodeBuffer(at: frameIndex, for: drawer.sdfNodes.count))
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: true)
 
         guard let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
@@ -571,6 +586,7 @@ final class MetalRenderer {
                triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                shadowCube: renderedShadow.cube,
                shadowAccel: renderedShadow.accel)
@@ -622,6 +638,8 @@ final class MetalRenderer {
                glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
                pointBuffer: pointBuffer(at: frameIndex, for: drawer.points.count),
                meshBuffer: meshBuffer(at: frameIndex, for: drawer.meshVertices.count),
+               sdfGroupBuffer: sdfGroupBuffer(at: frameIndex, for: drawer.sdfGroups.count),
+               sdfNodeBuffer: sdfNodeBuffer(at: frameIndex, for: drawer.sdfNodes.count),
                depthFormat: nil)   // 3D + accumulation isn't supported in M1
         encoder.endEncoding()
 
@@ -656,6 +674,8 @@ final class MetalRenderer {
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
                pointBuffer: exportPointBuffer(for: drawer.points.count),
                meshBuffer: exportMeshBuffer(for: drawer.meshVertices.count),
+               sdfGroupBuffer: exportSDFGroupBuffer(for: drawer.sdfGroups.count),
+               sdfNodeBuffer: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
                depthFormat: nil)   // 3D + accumulation isn't supported in M1
         encoder.endEncoding()
 
@@ -835,7 +855,9 @@ final class MetalRenderer {
             image: exportImageBuffer(for: drawer.imageVertices.count),
             glyph: exportGlyphBuffer(for: drawer.glyphVertices.count),
             point: exportPointBuffer(for: drawer.points.count),
-            mesh: meshBuf)
+            mesh: meshBuf,
+            sdfGroup: exportSDFGroupBuffer(for: drawer.sdfGroups.count),
+            sdfNode: exportSDFNodeBuffer(for: drawer.sdfNodes.count))
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false)
 
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
@@ -844,6 +866,7 @@ final class MetalRenderer {
                triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                shadowCube: renderedShadow.cube,
                shadowAccel: renderedShadow.accel)
@@ -895,7 +918,9 @@ final class MetalRenderer {
             image: exportImageBuffer(for: drawer.imageVertices.count),
             glyph: exportGlyphBuffer(for: drawer.glyphVertices.count),
             point: exportPointBuffer(for: drawer.points.count),
-            mesh: meshBuf)
+            mesh: meshBuf,
+            sdfGroup: exportSDFGroupBuffer(for: drawer.sdfGroups.count),
+            sdfNode: exportSDFNodeBuffer(for: drawer.sdfNodes.count))
         var totalMs = 0.0, counted = 0
         for i in 0..<iterations {
             let pass = MTLRenderPassDescriptor()
@@ -921,6 +946,7 @@ final class MetalRenderer {
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                    imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                    pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                    shadowCube: renderedShadow.cube, shadowAccel: renderedShadow.accel)
             encoder.endEncoding()
@@ -982,6 +1008,8 @@ final class MetalRenderer {
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
                pointBuffer: exportPointBuffer(for: drawer.points.count),
                meshBuffer: exportMeshBuffer(for: drawer.meshVertices.count),
+               sdfGroupBuffer: exportSDFGroupBuffer(for: drawer.sdfGroups.count),
+               sdfNodeBuffer: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
                depthFormat: nil)   // 3D over the texture/Syphon hand-off isn't supported in M1
         encoder.endEncoding()
 
@@ -1006,6 +1034,8 @@ final class MetalRenderer {
         var glyph: MTLBuffer?
         var point: MTLBuffer?
         var mesh: MTLBuffer?
+        var sdfGroup: MTLBuffer?
+        var sdfNode: MTLBuffer?
     }
 
     /// Fill every effects layer this frame, ahead of the main pass: render each
@@ -1061,6 +1091,7 @@ final class MetalRenderer {
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
                    glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    depthFormat: depthResolve != nil ? depthPixelFormat : nil, target: target)
             enc.endEncoding()
             target.texture = tex.resolve
@@ -1101,6 +1132,7 @@ final class MetalRenderer {
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
                    glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    depthFormat: nil, target: target)
             enc.endEncoding()
             target.texture = back                // `image` resolves to this frame
@@ -1128,6 +1160,7 @@ final class MetalRenderer {
                 encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                        triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
                        glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                        depthFormat: nil, target: target)
                 enc.endEncoding()
             }
@@ -1685,6 +1718,7 @@ final class MetalRenderer {
                         triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?,
                         imageBuffer: MTLBuffer?, glyphBuffer: MTLBuffer?,
                         pointBuffer: MTLBuffer?, meshBuffer: MTLBuffer?,
+                        sdfGroupBuffer: MTLBuffer? = nil, sdfNodeBuffer: MTLBuffer? = nil,
                         depthFormat: MTLPixelFormat?, shadowMap: MTLTexture? = nil,
                         shadowCube: MTLTexture? = nil,
                         shadowAccel: MTLAccelerationStructure? = nil,
@@ -1695,6 +1729,8 @@ final class MetalRenderer {
         let glyphVertices = drawer.glyphVertices
         let points = drawer.points
         let meshVertices = drawer.meshVertices
+        let groups = drawer.sdfGroups
+        let nodes = drawer.sdfNodes
         let batches = drawer.batches
         guard !batches.isEmpty else { return }
 
@@ -1726,6 +1762,16 @@ final class MetalRenderer {
         if !meshVertices.isEmpty, let meshBuffer {
             meshVertices.withUnsafeBytes { raw in
                 meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
+        if !groups.isEmpty, let sdfGroupBuffer {
+            groups.withUnsafeBytes { raw in
+                sdfGroupBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
+        if !nodes.isEmpty, let sdfNodeBuffer {
+            nodes.withUnsafeBytes { raw in
+                sdfNodeBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
             }
         }
 
@@ -1772,6 +1818,7 @@ final class MetalRenderer {
 
         let vertexStride = MemoryLayout<OllinVertex>.stride
         let instanceStride = MemoryLayout<SDFInstance>.stride
+        let groupStride = MemoryLayout<SDFGroupInstance>.stride
         let imageStride = MemoryLayout<OllinImageVertex>.stride
         let pointStride = MemoryLayout<OllinPoint>.stride
         let meshStride = MemoryLayout<OllinMeshVertex>.stride
@@ -1829,6 +1876,18 @@ final class MetalRenderer {
                 // texture at the same index.
                 encoder.setFragmentTexture(strip, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
+            case .sdfGroup:
+                // Composed SDF fields: each group is a covering quad whose fragment runs
+                // the node VM. The group buffer is offset to this batch's first group; the
+                // node buffer is bound whole to the fragment (groups carry an absolute
+                // nodeStart), which walks [nodeStart, nodeStart + nodeCount).
+                let end = next?.sdfGroupStart ?? groups.count
+                let count = end - batch.sdfGroupStart
+                guard count > 0, let sdfGroupBuffer, let sdfNodeBuffer else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(sdfGroupBuffer, offset: batch.sdfGroupStart * groupStride, index: 0)
+                encoder.setFragmentBuffer(sdfNodeBuffer, offset: 0, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .image:
                 let end = next?.imageStart ?? imageVertices.count
@@ -2776,6 +2835,33 @@ final class MetalRenderer {
         return sdfExportBuffer
     }
 
+    /// Ring + export buffers for the SDF-combinator group instances and node
+    /// programs, grown on demand. Mirror `sdfBuffer(at:for:)`/`exportSDFBuffer(for:)`.
+    private func sdfGroupBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFGroupInstance>.stride
+        if let buffer = sdfGroupBuffers[index], buffer.length >= needed { return buffer }
+        sdfGroupBuffers[index] = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdfGroupBuffers[index]
+    }
+    private func exportSDFGroupBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFGroupInstance>.stride
+        if let buffer = sdfGroupExportBuffer, buffer.length >= needed { return buffer }
+        sdfGroupExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdfGroupExportBuffer
+    }
+    private func sdfNodeBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFNode>.stride
+        if let buffer = sdfNodeBuffers[index], buffer.length >= needed { return buffer }
+        sdfNodeBuffers[index] = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdfNodeBuffers[index]
+    }
+    private func exportSDFNodeBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFNode>.stride
+        if let buffer = sdfNodeExportBuffer, buffer.length >= needed { return buffer }
+        sdfNodeExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdfNodeExportBuffer
+    }
+
     /// Return the image-vertex ring buffer at `index`, grown on demand. Mirrors
     /// `vertexBuffer(at:for:)`.
     private func imageBuffer(at index: Int, for count: Int) -> MTLBuffer? {
@@ -2910,7 +2996,7 @@ final class MetalRenderer {
     /// color/dither/hash helpers the rest depend on, so it goes first (Metal needs a
     /// declaration before its use). The single `Shaders.metal` split into these once
     /// it crossed ~2,000 lines; the renderer never assumes one file.
-    static let shaderSourceNames = ["ShaderCore", "ShaderShapes", "Shader3D", "ShaderEffects"]
+    static let shaderSourceNames = ["ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderEffects"]
 
     /// Read and concatenate the shader segments from a filesystem `directory`, in
     /// `shaderSourceNames` order. This is the source live shader reload feeds back

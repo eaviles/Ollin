@@ -1,4 +1,4 @@
-// Ollin shader library (3 of 4), concatenated after ShaderCore (whose preamble and
+// Ollin shader library (4 of 5), concatenated after ShaderCore (whose preamble and
 // shared helpers it relies on) and compiled as one library, not on its own. See
 // MetalRenderer.loadLibrary.
 

@@ -1,4 +1,4 @@
-// Ollin shader library (1 of 4). The renderer concatenates the Renderer/Shader*.metal
+// Ollin shader library (1 of 5). The renderer concatenates the Renderer/Shader*.metal
 // segments in a fixed order and compiles them as one library, so this file carries the
 // preamble and the shared color / dither / hash helpers the later segments depend on,
 // and is concatenated first. See MetalRenderer.loadLibrary / composeShaderSource.

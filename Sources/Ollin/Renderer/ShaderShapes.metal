@@ -1,4 +1,4 @@
-// Ollin shader library (2 of 4), concatenated after ShaderCore (whose preamble and
+// Ollin shader library (2 of 5), concatenated after ShaderCore (whose preamble and
 // shared helpers it relies on) and compiled as one library, not on its own. See
 // MetalRenderer.loadLibrary.
 
@@ -599,6 +599,119 @@ static float4 resolvePaint(float4 slot, uint kind, float row, float2 p, float pa
     float u = (clamp(t, 0.0, 1.0) * (w - 1.0) + 0.5) / w;
     float v = (row + 0.5) / float(gradients.get_height());
     return gradients.sample(gradientSampler, float2(u, v));
+}
+
+// Signed distance for the *closed region* shapes — every SDFShape except the open
+// marks (capsule/line, the open/chord/pie arcs, the Bézier stroke), which have no
+// interior to fill. This is the SDF-combinator VM's leaf evaluator
+// (ShaderCombinator.metal): given a shape tag + the generic slots (read per shape
+// exactly as SDFShape encodes them), it returns the signed distance at local point
+// `p`. It mirrors the per-shape param decoding (Y-flips, recentering, insets) in
+// ollin_sdf_fragment's region cases below — they're kept in sync deliberately, so a
+// new region shape must be added in *both* places (here for combinators, the
+// fragment switch for the single-shape draw).
+static float ollin_sdf_distance(uint shape, float2 p, float2 size,
+                                float2 param0, float2 param1, float2 param2, float extra) {
+    switch (shape) {
+    case 1u:     // rounded box
+        return sdRoundBox(p, size, extra);
+    case 6u:     // isosceles triangle: apex at center, size = (base/2, height)
+        return sdTriangleIsosceles(p, size);
+    case 7u:     // regular polygon / star: size.x = outer radius. sdStar's native
+                 // vertex points +Y (down in y-down space), so mirror Y.
+        return sdStar(float2(p.x, -p.y), size.x, param0, param1, extra);
+    case 8u: {   // point marker: size = (h, h); extra = kind; param0.x = arm half-width
+        float h = size.x;
+        float t = param0.x;
+        uint kind = uint(extra + 0.5);
+        if (kind == 0u) {          // square: side 2h
+            return sdRoundBox(p, size, 0.0);
+        } else if (kind == 1u) {   // diamond: a rhombus with diagonal 2h
+            return sdRhombus(p, size);
+        } else if (kind == 2u) {   // cross (+): arms reach ±h, half-width t
+            return sdCross(p, float2(h, t), 0.0);
+        }                          // x (✕): the sharp cross (+) rotated 45°
+        const float k = 0.70710678;
+        float2 q = float2((p.x - p.y) * k, (p.x + p.y) * k);
+        return sdCross(q, float2(h * 1.41421356 - t, t), 0.0);
+    }
+    case 9u: {   // rhombus (diamond): inset by r and round by r to keep the footprint
+        float r = extra;
+        return sdRhombus(p, max(size - r, float2(1e-4))) - r;
+    }
+    case 10u: {  // vesica (pointed lens): param1.x flags a horizontal lens
+        float2 q = (param1.x > 0.5) ? p.yx : p.xy;
+        return sdVesica(q, param0.x, param0.y) - extra;
+    }
+    case 11u:    // moon (crescent)
+        return sdMoon(p, param1.x, param0.x, param0.y) - extra;
+    case 12u: {  // cross (plus): union of two rounded boxes (sharp inner notches)
+        float L = size.x, w = param0.x, r = extra;
+        return min(sdRoundBox(p, float2(L, w), r), sdRoundBox(p, float2(w, L), r));
+    }
+    case 13u:    // ring (filled annulus): the disk SDF turned into a band (opOnion)
+        return abs(length(p) - param0.x) - param0.y;
+    case 14u:    // trapezoid (symmetric in y)
+        return sdTrapezoid(p, param0.x, param0.y, size.y);
+    case 15u:    // parallelogram: flip Y so a positive skew leans the top edge +x
+        return sdParallelogram(float2(p.x, -p.y), param0.x, size.y, extra);
+    case 16u: {  // egg: flip Y (fat end down) and recenter on the quad
+        float ra = param0.x, rb = param0.y;
+        float A = 1.7320508 * (ra - rb) + rb;
+        float yc = (A - ra) * 0.5;
+        return sdEgg(float2(p.x, -p.y + yc), ra, rb);
+    }
+    case 17u: {  // heart: flip Y (lobes up) and recenter (unit center at y = 0.5538)
+        float s = param0.x;
+        float2 u = float2(p.x, -p.y) / s + float2(0.0, 0.5538);
+        return sdHeart(u) * s;
+    }
+    case 18u:    // cut disk: flip Y so the flat edge faces down
+        return sdCutDisk(float2(p.x, -p.y), param0.x, param0.y);
+    case 19u: {  // uneven capsule: param1 = (cos, sin) into the axis frame; shift r1 end to origin
+        float2 q = float2(p.x * param1.x - p.y * param1.y,
+                          p.x * param1.y + p.y * param1.x);
+        q.y += extra * 0.5;
+        return sdUnevenCapsule(q, param0.x, param0.y, extra);
+    }
+    case 20u:    // horseshoe: flip Y so the opening faces down
+        return sdHorseshoe(float2(p.x, -p.y), param0, extra, param1);
+    case 21u: {  // parabola arch: flip Y so the curve peaks up; clip the open base
+        float wi = param0.x, he = param0.y;
+        float2 u = float2(p.x, he * 0.5 - p.y);
+        return max(sdParabolaSegment(u, wi, he), -u.y);
+    }
+    case 22u:    // rounded X
+        return sdRoundedX(p, param0.x, extra);
+    case 23u: {  // blobby cross: evaluate the unit shape and rescale the distance
+        float s = param0.x, he = param0.y;
+        return sdBlobbyCross(p / s, he) * s;
+    }
+    case 24u: {  // tunnel / archway: recenter and flip Y so the rounded top faces up
+        float2 wh = param0;
+        float yc = (wh.x - wh.y) * 0.5;
+        return sdTunnel(float2(p.x, yc - p.y), wh);
+    }
+    case 25u: {  // staircase: recenter and flip Y so it ascends upward to the right
+        float2 wh = param0;
+        float n = extra;
+        float bx = wh.x * n, by = wh.y * n;
+        float2 u = float2(p.x + bx * 0.5, by * 0.5 - p.y);
+        return sdStairs(u, wh, n);
+    }
+    case 26u: {  // cool S: 180°-symmetric, so no Y flip needed
+        float s = param0.x;
+        return sdCoolS(p / s) * s;
+    }
+    case 27u:    // general triangle: param0/param1/param2 = the three corners
+        return sdTriangle(p, param0, param1, param2);
+    case 29u:    // oriented box: param0/param1 = centerline endpoints; extra = thickness
+        return sdOrientedBox(p, param0, param1, extra);
+    case 30u:    // oriented vesica: param0/param1 = tip endpoints; extra = waist half-width
+        return sdOrientedVesica(p, param0, param1, extra);
+    default:     // 0: ellipse / circle
+        return sdEllipse(p, size);
+    }
 }
 
 fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],

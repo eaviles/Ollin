@@ -58,6 +58,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func sdfCombinatorsMatchReference() throws {
+        let diff = try Snapshot.meanDifference(of: SDFCombinatorsScene(), against: "sdf-combinators")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -1091,6 +1097,67 @@ private final class OrientedVesicas: Sketch {
         stroke(.black); strokeWeight(5); strokeAlign(.outside)
         drawOrientedVesica(Vector2(50, 224), Vector2(206, 224), width: 40)
         strokeAlign(.center)
+    }
+}
+
+/// SDF combinators: composed signed-distance fields via `drawSDF` and the scoped
+/// block sugar: smooth union (with per-leaf color melt), smooth subtract, intersect,
+/// morph, onion, and the domain ops (mirror / repeat). Static, so it's deterministic
+/// at frame 0; large flat fills keep the AA-edge fraction (cross-GPU jitter) low.
+private final class SDFCombinatorsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.12))
+        noStroke()
+
+        // Smooth union: two colors melt across the seam.
+        drawSDF(SDF.circle(radius: 34).colored(Color(red: 1, green: 0.33, blue: 0.44))
+            .smoothUnion(SDF.rect(width: 56, height: 40, cornerRadius: 8)
+                .colored(Color(red: 0.23, green: 0.52, blue: 1)).at(x: 34, y: 0), k: 16)
+            .at(x: 64, y: 56))
+
+        // Smooth subtract: a bite carved out.
+        drawSDF(SDF.rect(width: 64, height: 52, cornerRadius: 10)
+            .colored(Color(red: 0.02, green: 0.82, blue: 0.63))
+            .smoothSubtract(SDF.circle(radius: 26).at(x: 18, y: 0), k: 10)
+            .at(x: 192, y: 56))
+
+        // Intersect: the lens where two disks overlap.
+        drawSDF(SDF.circle(radius: 38).colored(Color(red: 1, green: 0.82, blue: 0.4))
+            .intersect(SDF.circle(radius: 38).at(x: 34, y: 0))
+            .at(x: 56, y: 150))
+
+        // Morph (star ⇄ circle) hollowed into a shell with onion.
+        drawSDF(SDF.star(outerRadius: 40, innerRadius: 18, points: 5)
+            .colored(Color(red: 0.74, green: 0.70, blue: 1))
+            .morph(SDF.circle(radius: 36), amount: 0.45)
+            .onion(7)
+            .at(x: 150, y: 150))
+
+        // Block sugar + domain mirror: a little cluster reflected into a symmetric form.
+        withState {
+            translate(214, 150)
+            fill(Color(red: 0.95, green: 0.60, blue: 0.20))
+            mirrored(x: true) {
+                smoothUnion(k: 8) {
+                    drawCircle(12, 0, 15)
+                    drawCircle(26, -12, 9)
+                }
+            }
+        }
+
+        // Block sugar + domain repeat: one melted cell tiled into a row.
+        withState {
+            translate(128, 224)
+            fill(Color(red: 0.50, green: 0.85, blue: 0.95))
+            repeated(spacing: Vector2(56, 0), count: 1) {
+                smoothUnion(k: 8) {
+                    drawRect(-16, -16, 32, 32, cornerRadius: 8)
+                    drawCircle(16, 0, 10)
+                }
+            }
+        }
     }
 }
 
