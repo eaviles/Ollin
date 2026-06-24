@@ -399,19 +399,19 @@ let package = Package(
             path: "Examples/Effects/Bloom"
         ),
         .executableTarget(
-            name: "Example-Basic-Combinators",
+            name: "Example-Shapes-Combinators",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Combinators"
+            path: "Examples/Shapes/Combinators"
         ),
         .executableTarget(
-            name: "Example-Basic-CombinatorsGradient",
+            name: "Example-Shapes-CombinatorsGradient",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/CombinatorsGradient"
+            path: "Examples/Shapes/CombinatorsGradient"
         ),
         .executableTarget(
-            name: "Example-Basic-CombinatorsStretch",
+            name: "Example-Shapes-CombinatorsStretch",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/CombinatorsStretch"
+            path: "Examples/Shapes/CombinatorsStretch"
         ),
         .executableTarget(
             name: "Example-3D-RaymarchedReceiveShadow",
@@ -920,29 +920,29 @@ let package = Package(
             path: "Examples/Patterns/LifeQuilt"
         ),
         .executableTarget(
-            name: "Example-Patterns-Markers",
+            name: "Example-Shapes-Markers",
             dependencies: ["Ollin"],
-            path: "Examples/Patterns/Markers"
+            path: "Examples/Shapes/Markers"
         ),
         .executableTarget(
-            name: "Example-Patterns-NamedPolygons",
+            name: "Example-Shapes-NamedPolygons",
             dependencies: ["Ollin"],
-            path: "Examples/Patterns/NamedPolygons"
+            path: "Examples/Shapes/NamedPolygons"
         ),
         .executableTarget(
-            name: "Example-Patterns-ShapeMenagerie",
+            name: "Example-Shapes-ShapeMenagerie",
             dependencies: ["Ollin"],
-            path: "Examples/Patterns/ShapeMenagerie"
+            path: "Examples/Shapes/ShapeMenagerie"
         ),
         .executableTarget(
-            name: "Example-Patterns-Primitives",
+            name: "Example-Shapes-Primitives",
             dependencies: ["Ollin"],
-            path: "Examples/Patterns/Primitives"
+            path: "Examples/Shapes/Primitives"
         ),
         .executableTarget(
-            name: "Example-Patterns-Booleans",
+            name: "Example-Shapes-Booleans",
             dependencies: ["Ollin"],
-            path: "Examples/Patterns/Booleans"
+            path: "Examples/Shapes/Booleans"
         ),
         .executableTarget(
             name: "Example-Patterns-Topography",
@@ -955,19 +955,19 @@ let package = Package(
             path: "Examples/Patterns/Voronoi"
         ),
         .executableTarget(
-            name: "Example-Patterns-HollowShapes",
+            name: "Example-Shapes-HollowShapes",
             dependencies: ["Ollin"],
-            path: "Examples/Patterns/HollowShapes"
+            path: "Examples/Shapes/HollowShapes"
         ),
         .executableTarget(
-            name: "Example-Patterns-StrokeAlignment",
+            name: "Example-Shapes-StrokeAlignment",
             dependencies: ["Ollin"],
-            path: "Examples/Patterns/StrokeAlignment"
+            path: "Examples/Shapes/StrokeAlignment"
         ),
         .executableTarget(
-            name: "Example-Patterns-StrokeJoinsAndCaps",
+            name: "Example-Shapes-StrokeJoinsAndCaps",
             dependencies: ["Ollin"],
-            path: "Examples/Patterns/StrokeJoinsAndCaps"
+            path: "Examples/Shapes/StrokeJoinsAndCaps"
         ),
         .executableTarget(
             name: "Example-Motion-Mandala",

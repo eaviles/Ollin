@@ -152,7 +152,7 @@ A gradient `stroke` traces the merged outline the same way. The gradient is samp
 field's own coordinates (so it turns with `rotated`/`at`), and a gradient fill bypasses the
 per-leaf `.colored` colors. **Along-path** gradients aren't supported on a merged field (there's
 no single path to run along); that paint falls back to no gradient. See
-`Examples/Basic/CombinatorsGradient`. (The 3D fields paint a gradient too, but in screen space;
+`Examples/Shapes/CombinatorsGradient`. (The 3D fields paint a gradient too, but in screen space;
 see [3D fields](#fields-3d).)
 
 **Per-axis sizing.** `scaled(_:)` scales uniformly. For per-axis sizing there are two tools, and
@@ -383,9 +383,9 @@ See also [`Drawing`](../Drawing/Drawing.md) for the immediate-mode shapes and th
 [`Geometry`](../Drawing/Geometry.md) for the vector `Shape` booleans (which combine *filled outlines*,
 the polygonal counterpart to these field operators), [`Color`](../Drawing/Color.md) for the color
 types the leaves carry, and [`3D`](../3D/3D.md) for the camera and lights the 3D fields draw
-through. The examples are `Examples/Basic/Combinators` (2D),
-`Examples/Basic/CombinatorsGradient` (2D gradient fill + stroke on a merged field),
-`Examples/Basic/CombinatorsStretch` (2D per-axis stretch + non-uniform scale),
+through. The examples are `Examples/Shapes/Combinators` (2D),
+`Examples/Shapes/CombinatorsGradient` (2D gradient fill + stroke on a merged field),
+`Examples/Shapes/CombinatorsStretch` (2D per-axis stretch + non-uniform scale),
 `Examples/3D/RaymarchedSDF`
 (merged metaball, depth-composited with a mesh), `Examples/3D/RaymarchedShapes` (the 3D
 primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form),

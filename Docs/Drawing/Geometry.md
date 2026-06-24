@@ -421,7 +421,7 @@ fill(.black)
 drawShape(bite)
 ```
 
-The `Examples/Patterns/Booleans` sketch shows all four operations side by side over the same two moving shapes.
+The `Examples/Shapes/Booleans` sketch shows all four operations side by side over the same two moving shapes.
 
 <a name="shape-offset"></a>
 
