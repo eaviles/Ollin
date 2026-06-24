@@ -15,8 +15,9 @@ you composite finished *layers*; here you combine the *distance fields* before t
 ever drawn, so the shapes fuse rather than overlap.
 
 You build a field with the `SDF` value type and draw it with `drawSDF`. The value type is
-the core; the [scoped block form](#scoped-blocks) is sugar over it. Both are solid color
-only for now (a gradient on a merged field is a later addition).
+the core; the [scoped block form](#scoped-blocks) is sugar over it. A solid `fill` colors the
+leaves individually (melting at smooth seams); a linear or radial `fill`/`stroke` paints the
+*whole* merged region/outline as one continuous surface instead (see [Gradient paint](#gradient-paint)).
 
 ### Contents
 
@@ -134,6 +135,25 @@ scales the moved circle (so it also moves twice as far from the origin); `circle
 scales in place, then moves. `colored` fills only leaves that have no color yet, so set a
 leaf's own color before combining for a two-color melt, and use `colored` on the whole field
 as a fallback. A leaf with no color, and no enclosing `colored`, takes the current `fill`.
+
+<a name="gradient-paint"></a>
+
+**Gradient paint.** Solid leaf colors are one way; the other is a single gradient over the
+*whole* merged region. Set a linear or radial `fill` (the same `Gradient` any 2D shape uses) and
+the ramp paints the field by position, flowing unbroken across a smooth-union seam, where the
+leaves' own colors would instead meet and melt:
+
+```swift
+fill(.linear(from: Vector2(-160, -140), to: Vector2(200, 160), warmRamp))
+drawSDF(SDF.circle(radius: 120).smoothUnion(SDF.rect(width: 210, height: 120).at(x: 135, y: 0), k: 60))
+```
+
+A gradient `stroke` traces the merged outline the same way. The gradient is sampled in the
+field's own coordinates (so it turns with `rotated`/`at`), and a gradient fill bypasses the
+per-leaf `.colored` colors. **Along-path** gradients aren't supported on a merged field (there's
+no single path to run along); that paint falls back to no gradient. See
+`Examples/Basic/CombinatorsGradient`. (The 3D fields paint a gradient too, but in screen space;
+see [3D fields](#fields-3d).)
 
 Only **uniform** scale is supported: a non-uniform scale is not a valid distance field, so it
 would distort the smoothing and the outline.
@@ -330,14 +350,15 @@ an exact, machine-independent *march budget* use `raymarchSteps(_:)` (always ful
 
 ### Notes and limits
 
-- **Solid color only.** A field fills with solid colors (per leaf, or the current `fill`);
-  gradient paint on a merged field is a later addition.
+- **Solid or linear/radial gradient.** A field fills with solid leaf colors, or a single linear/
+  radial gradient over the whole merged region/outline (above). Along-path gradients have no
+  single path on a merged field, so they aren't supported there.
 - **Closed regions only.** Combinators merge fillable shapes. Open marks (lines, open arcs,
   Bézier strokes) have no interior to merge, so they are not combinator leaves.
 - **Uniform scale only**, as above.
 - **2D and 3D.** `SDF` / `drawSDF` are the 2D fields here; `SDF3D` / `drawSDF3D` sphere-trace
   the same kind of field in space (see [3D fields](#fields-3d)). The 3D form is opt-in and
-  shares these limits (solid color, uniform scale).
+  shares these limits (uniform scale), and its gradient paint is screen-space rather than field-space.
 - A composition is bounded (a generous node and nesting budget); a field past it is skipped
   with a console note rather than mis-drawn.
 
@@ -347,7 +368,9 @@ See also [`Drawing`](../Drawing/Drawing.md) for the immediate-mode shapes and th
 [`Geometry`](../Drawing/Geometry.md) for the vector `Shape` booleans (which combine *filled outlines*,
 the polygonal counterpart to these field operators), [`Color`](../Drawing/Color.md) for the color
 types the leaves carry, and [`3D`](../3D/3D.md) for the camera and lights the 3D fields draw
-through. The examples are `Examples/Basic/Combinators` (2D), `Examples/3D/RaymarchedSDF`
+through. The examples are `Examples/Basic/Combinators` (2D),
+`Examples/Basic/CombinatorsGradient` (2D gradient fill + stroke on a merged field),
+`Examples/3D/RaymarchedSDF`
 (merged metaball, depth-composited with a mesh), `Examples/3D/RaymarchedShapes` (the 3D
 primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form),
 `Examples/3D/RaymarchedDomain` (the mirror and repeat domain operators),

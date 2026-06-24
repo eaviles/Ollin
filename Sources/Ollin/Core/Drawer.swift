@@ -2195,8 +2195,10 @@ final class Drawer {
     /// region, filled with the current `fill` (or each leaf's `.colored`) and
     /// stroked along the *merged* outline with the current `stroke`/`strokeWeight`.
     /// The tree is flattened to an instruction program the fragment evaluates per
-    /// pixel (see ShaderCombinator.metal). Solid color only in v1 — a gradient
-    /// fill/stroke is ignored (set per-leaf colors with `.colored`).
+    /// pixel (see ShaderCombinator.metal). A solid `fill` colors leaves individually
+    /// (`.colored` per leaf, melted at smooth seams); a linear/radial gradient `fill`
+    /// or `stroke` paints the whole merged region/outline by field position instead
+    /// (along-path has no single path on a merged field, so it isn't supported there).
     func drawSDF(_ sdf: SDF) {
         // A field has no polygonal outline to serialize; SVG export of one would need
         // marching-squares contouring (a follow-up), so for now it records nothing.
@@ -2225,21 +2227,49 @@ final class Drawer {
         // margin. The field origin is the CTM origin; `center` offsets the quad onto
         // the AABB while the VM still evaluates in field coordinates.
         let center = (bounds.lo + bounds.hi) * 0.5
-        var strokeIsSolid = false
-        var strokeSlot = SIMD4<Float>(repeating: 0)
-        if strokeWidth > 0, case .some(.color(let c)) = strokePaint {
-            strokeIsSolid = true
-            strokeSlot = c.simd4
+
+        // Fill: the leaves' own (melted) colors by default, or — when the current `fill` is a
+        // linear/radial gradient — that gradient painting the whole merged region by field
+        // position (the leaf colors bypassed). Geometry is in field coords (`center: .zero`,
+        // sampled at `in.field`); along-path has no single path on a merged field, so it's skipped.
+        var fillGeo = SIMD4<Float>(repeating: 0)
+        var fillKind: Float = 0
+        var fillRow: Float = 0
+        if let fillPaint, case .gradient = fillPaint {
+            let enc = encodePaint(fillPaint, center: .zero)
+            if enc.kind == 1 || enc.kind == 2 {
+                fillGeo = enc.slot; fillKind = Float(enc.kind); fillRow = enc.row
+            }
         }
-        let hw = strokeIsSolid ? Float(strokeWidth) * 0.5 : 0
+
+        // Stroke: a solid color, or a linear/radial gradient traced along the merged outline
+        // (its geometry rides the `strokeColor` slot, as `SDFInstance` reuses its color slots).
+        // An along-path gradient has no single path on a merged outline, so it draws no stroke.
+        var strokeSlot = SIMD4<Float>(repeating: 0)
+        var strokeKind: Float = 0
+        var strokeRow: Float = 0
+        var strokeOn = false
+        if strokeWidth > 0, let strokePaint {
+            let enc = encodePaint(strokePaint, center: .zero)
+            if enc.kind <= 2 {            // 0 solid, 1 linear, 2 radial (3 along-path: unsupported)
+                strokeSlot = enc.slot
+                strokeKind = Float(enc.kind)
+                strokeRow = enc.row
+                strokeOn = true
+            }
+        }
+        let weight: Float = strokeOn ? Float(strokeWidth) : 0
+        let hw = strokeOn ? Float(strokeWidth) * 0.5 : 0
         let ext = (bounds.hi - bounds.lo) * 0.5 + SIMD2<Float>(repeating: hw + 2)
 
         sdfNodes.append(contentsOf: nodes)
         ensureBatch(.sdfGroup)
         sdfGroups.append(SDFGroupInstance(
             transform: transform, center: center, size: ext,
-            strokeColor: strokeSlot, strokeWidth: strokeIsSolid ? Float(strokeWidth) : 0,
-            bandWidth: 0, nodeStart: UInt32(nodeStart), nodeCount: UInt32(nodes.count)))
+            strokeColor: strokeSlot, strokeWidth: weight,
+            bandWidth: 0, nodeStart: UInt32(nodeStart), nodeCount: UInt32(nodes.count),
+            fillGradientGeo: fillGeo, fillGradientKind: fillKind, fillGradientRow: fillRow,
+            strokeGradientKind: strokeKind, strokeGradientRow: strokeRow))
     }
 
     /// Draw a composed 3D signed-distance field: sphere-traced through the active

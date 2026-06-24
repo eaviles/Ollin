@@ -22,10 +22,16 @@ constant constexpr int OLLIN_SDF_POINT_STACK = 16;
 struct SDFGroupOut {
     float4 position [[position]];
     float2 field;                 // field-local point the VM evaluates the program at
-    float4 strokeColor;           // merged-outline stroke (straight RGBA; a=0 none)
+    float4 strokeColor;           // merged-outline stroke (straight RGBA; a=0 none) — or, when
+                                  // strokeKind != 0, the stroke gradient's geometry (field coords)
     float  strokeWidth;           // points
     uint   nodeStart [[flat]];    // first SDFNode for this group (absolute)
     uint   nodeCount [[flat]];    // node count
+    float4 fillGeo    [[flat]];   // fill gradient geometry (field coords), read when fillKind != 0
+    uint   fillKind   [[flat]];   // 0 solid (leaf colors), 1 linear, 2 radial
+    float  fillRow    [[flat]];   // gradient-strip row for the fill ramp
+    uint   strokeKind [[flat]];   // 0 solid, 1 linear, 2 radial
+    float  strokeRow  [[flat]];   // gradient-strip row for the stroke ramp
 };
 
 vertex SDFGroupOut ollin_sdfgroup_vertex(uint vid [[vertex_id]],
@@ -51,6 +57,11 @@ vertex SDFGroupOut ollin_sdfgroup_vertex(uint vid [[vertex_id]],
     out.strokeWidth = g.strokeWidth;
     out.nodeStart = g.nodeStart;
     out.nodeCount = g.nodeCount;
+    out.fillGeo = g.fillGradientGeo;
+    out.fillKind = uint(g.fillGradientKind);
+    out.fillRow = g.fillGradientRow;
+    out.strokeKind = uint(g.strokeGradientKind);
+    out.strokeRow = g.strokeGradientRow;
     return out;
 }
 
@@ -133,7 +144,9 @@ static float2 ollin_sdf_xform(float2 p, SDFNode nd) {
 }
 
 fragment float4 ollin_sdfgroup_fragment(SDFGroupOut in [[stage_in]],
-                                        const device SDFNode *nodes [[buffer(0)]]) {
+                                        const device SDFNode *nodes [[buffer(0)]],
+                                        texture2d<float> gradients [[texture(0)]],
+                                        sampler gradientSamp [[sampler(0)]]) {
     float2 p = in.field;
     float distStack[OLLIN_SDF_VALUE_STACK];
     float4 colStack[OLLIN_SDF_VALUE_STACK];
@@ -185,12 +198,27 @@ fragment float4 ollin_sdfgroup_fragment(SDFGroupOut in [[stage_in]],
     float hw = in.strokeWidth * 0.5;
     regionCoverage(d, hw, in.strokeWidth, 0.0, fillCov, strokeCov);
 
+    // Resolve fill + stroke to linear straight-alpha: the leaves' melted color (solid), or a
+    // linear/radial gradient sampled at the field point (`resolvePaint` returns linear, and
+    // reads `in.strokeColor` as the stroke gradient's geometry when strokeKind != 0).
+    float3 fillLin; float fillBaseA;
+    if (in.fillKind == 0u) { fillLin = srgbToLinear(fillColor.rgb); fillBaseA = fillColor.a; }
+    else {
+        float4 fp = resolvePaint(in.fillGeo, in.fillKind, in.fillRow, in.field, 0.0, gradients, gradientSamp);
+        fillLin = fp.rgb; fillBaseA = fp.a;
+    }
+    float fillA = fillBaseA * fillCov;
+
+    float3 strokeLin; float strokeBaseA;
+    if (in.strokeKind == 0u) { strokeLin = srgbToLinear(in.strokeColor.rgb); strokeBaseA = in.strokeColor.a; }
+    else {
+        float4 sp2 = resolvePaint(in.strokeColor, in.strokeKind, in.strokeRow, in.field, 0.0, gradients, gradientSamp);
+        strokeLin = sp2.rgb; strokeBaseA = sp2.a;
+    }
+    float strokeA = strokeBaseA * strokeCov;
+
     // Composite stroke over fill in premultiplied linear, return straight-alpha linear
     // (the present pass tone-maps + dithers), matching ollin_sdf_fragment.
-    float3 fillLin = srgbToLinear(fillColor.rgb);
-    float fillA = fillColor.a * fillCov;
-    float3 strokeLin = srgbToLinear(in.strokeColor.rgb);
-    float strokeA = in.strokeColor.a * strokeCov;
     float3 premul = strokeLin * strokeA + fillLin * fillA * (1.0 - strokeA);
     float a = strokeA + fillA * (1.0 - strokeA);
     if (a <= 0.0) { return float4(0.0); }

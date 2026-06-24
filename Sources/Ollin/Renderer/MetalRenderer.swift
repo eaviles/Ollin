@@ -2031,6 +2031,10 @@ final class MetalRenderer {
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(sdfGroupBuffer, offset: batch.sdfGroupStart * groupStride, index: 0)
                 encoder.setFragmentBuffer(sdfNodeBuffer, offset: 0, index: 0)
+                // The gradient strip + sampler (a gradient `fill`/`stroke` paints the merged
+                // field/outline by field position); bound at 0 like the per-shape SDF path.
+                encoder.setFragmentTexture(strip, index: 0)
+                encoder.setFragmentSamplerState(imageSampler, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .sdfGroup3D:
                 // Half-res tier: the fields were already sphere-traced into the half-res

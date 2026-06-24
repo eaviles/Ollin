@@ -112,6 +112,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func sdfCombinatorsGradientMatchReference() throws {
+        let diff = try Snapshot.meanDifference(of: SDFCombinatorsGradientScene(), against: "sdf-combinators-gradient")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -1205,6 +1211,50 @@ private final class SDFCombinatorsScene: Sketch {
                     drawCircle(16, 0, 10)
                 }
             }
+        }
+    }
+}
+
+// Gradient paint on a merged SDF field: a linear/radial `fill` or `stroke` paints the
+// whole region/outline by field position (the leaf colors bypassed), not per leaf.
+private final class SDFCombinatorsGradientScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.08))
+        let warm = Ramp([Color(hex: 0xFFF3C4), Color(hex: 0xFF8A3D), Color(hex: 0xD81E5B)])
+        let cool = Ramp([Color(hex: 0x2BD9C0), Color(hex: 0x3A86FF), Color(hex: 0x7B2FF7)])
+
+        // Linear fill across a melted blob — one continuous surface across the seams.
+        withState {
+            translate(72, 74)
+            noStroke()
+            fill(.linear(from: Vector2(-44, -40), to: Vector2(52, 44), warm))
+            drawSDF(SDF.circle(radius: 32)
+                .smoothUnion(SDF.rect(width: 56, height: 32, cornerRadius: 8).at(x: 36, y: 4), k: 22)
+                .smoothUnion(SDF.circle(radius: 18).at(x: 12, y: 32), k: 22))
+        }
+
+        // Radial fill on a mandala: a +x petal repeated around the origin; the ramp rings
+        // out evenly through every copy (sampled in field space, not per shape).
+        withState {
+            translate(186, 74)
+            noStroke()
+            fill(.radial(center: .zero, radius: 58, cool))
+            drawSDF(SDF.ellipse(rx: 26, ry: 9).at(x: 34, y: 0)
+                .smoothUnion(SDF.circle(radius: 9).at(x: 46, y: 0), k: 7)
+                .repeatedRadially(count: 8))
+        }
+
+        // Gradient stroke on a merged outline (no fill).
+        withState {
+            translate(128, 188)
+            noFill()
+            stroke(.linear(from: Vector2(-62, 0), to: Vector2(62, 0), warm))
+            strokeWeight(4)
+            drawSDF(SDF.circle(radius: 20).at(x: -42, y: 0)
+                .smoothUnion(SDF.rect(width: 56, height: 12, cornerRadius: 6), k: 12)
+                .smoothUnion(SDF.circle(radius: 20).at(x: 42, y: 0), k: 12))
         }
     }
 }

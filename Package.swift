@@ -404,6 +404,11 @@ let package = Package(
             path: "Examples/Basic/Combinators"
         ),
         .executableTarget(
+            name: "Example-Basic-CombinatorsGradient",
+            dependencies: ["Ollin"],
+            path: "Examples/Basic/CombinatorsGradient"
+        ),
+        .executableTarget(
             name: "Example-Effects-Feedback",
             dependencies: ["Ollin"],
             path: "Examples/Effects/Feedback"

@@ -169,18 +169,33 @@ typedef struct {
 
 // One composed SDF field for the combinator pipeline, drawn as a single covering
 // quad (like `SDFInstance`) whose fragment runs the VM over `nodeCount` `SDFNode`s
-// starting at `nodeStart` in the shared node buffer. The fill color comes from the
-// nodes (each leaf carries its own, baked from the current `fill` at flatten time),
-// so the group carries only the merged-outline *stroke*. Stride 96 (16-aligned).
+// starting at `nodeStart` in the shared node buffer. With a solid `fill` the color
+// comes from the nodes (each leaf carries its own, baked from the current `fill` at
+// flatten time); with a gradient `fill` the whole merged region is painted by
+// `fillGradient*` instead (the leaf colors bypassed, like the 3D field — but in
+// field/canvas space here, sampled at the field point, not a screen projection). The
+// merged-outline *stroke* takes the same treatment (solid `strokeColor`, or a gradient
+// whose geometry rides the `strokeColor` slot when `strokeGradientKind != 0`, exactly
+// as `SDFInstance` reinterprets its color slots). Stride 128 (16-aligned).
 typedef struct {
     simd_float3x3 transform; // local sketch space -> sketch space (the CTM)
     simd_float2 center;      // group center, local sketch space
     simd_float2 size;        // conservative covering-quad half-extent (whole-tree AABB)
-    simd_float4 strokeColor; // straight RGBA; alpha 0 means no stroke
+    simd_float4 strokeColor; // solid stroke straight RGBA (a=0 none) — or, when
+                             // strokeGradientKind != 0, the stroke gradient's geometry
+                             // (field coords): linear (start.xy, end.xy), radial (center.xy, radius, _)
     float strokeWidth;       // points; 0 means no stroke
     float bandWidth;         // hollow-band width (points); 0 = solid (reserved)
     unsigned int nodeStart;  // first SDFNode for this group (absolute index)
     unsigned int nodeCount;  // number of nodes
+    // Gradient paint (linear/radial; along-path has no single path on a merged field). The
+    // fill has no solid slot to reuse (its color is the nodes'), so its geometry is explicit;
+    // the stroke reuses `strokeColor`. Sampled at the field point from the baked gradient strip.
+    simd_float4 fillGradientGeo; // fill gradient geometry (field coords), read when fillGradientKind != 0
+    float fillGradientKind;      // 0 solid (the leaves' own colors), 1 linear, 2 radial
+    float fillGradientRow;       // gradient-strip row index for the fill ramp (when kind != 0)
+    float strokeGradientKind;    // 0 solid, 1 linear, 2 radial
+    float strokeGradientRow;     // gradient-strip row index for the stroke ramp (when kind != 0)
 } SDFGroupInstance;
 
 // One instruction of the *3D* SDF-combinator VM (see ShaderRaymarch.metal) — the
