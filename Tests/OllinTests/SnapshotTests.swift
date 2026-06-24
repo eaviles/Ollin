@@ -94,6 +94,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func raymarchedSDF3DPlaneMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DPlaneScene(), against: "sdf-combinators-3d-plane")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -1348,6 +1354,34 @@ private final class RaymarchedSDF3DRadialScene: Sketch {
                 }
             }
         }
+    }
+}
+
+/// The raymarched 3D SDF infinite plane primitive: a floor with no finite bounds (it marches to
+/// the camera's far plane, not an AABB) merged with three shapes as one field under
+/// `castShadows()`, so the shapes drop soft self-shadows onto it. Pins the plane SDF and the
+/// unbounded-march path. Static at frame 0.
+private final class RaymarchedSDF3DPlaneScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0a0e16))
+        camera(.orbiting(target: Vector3(0, 0.1, 0), radius: 7, azimuth: 0.5, elevation: 0.32,
+                         fieldOfView: .pi / 4, near: 2, far: 60))
+        directionalLight(.white, direction: Vector3(0.4, -0.92, -0.25),
+                         intensity: 1.3, softness: 0.2)
+        ambientLight(Color(white: 0.14))
+        castShadows()
+        material(.glossy)
+
+        let floor = SDF3D.plane(offset: -0.85).colored(Color(hex: 0x5b6472))
+        let ball = SDF3D.sphere(radius: 0.7).colored(Color(hex: 0x38bdf8))
+            .at(x: -1.5, y: -0.15, z: 0.2)
+        let bar = SDF3D.capsule(radius: 0.3, height: 1.0).colored(Color(hex: 0xf472b6))
+            .rotatedZ(0.5).at(x: 0.3, y: 0.05, z: -0.7)
+        let pin = SDF3D.cone(radius: 0.55, height: 1.6).colored(Color(hex: 0xfacc15))
+            .at(x: 1.7, y: -0.05, z: 0.6)
+        drawSDF3D(floor.union(ball).union(bar).union(pin))
     }
 }
 

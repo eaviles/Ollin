@@ -227,7 +227,8 @@ typedef struct {
     float modelScale;           // uniform scale of the model matrix (local distance -> world distance)
     unsigned int nodeStart;     // first SDFNode3D for this field (absolute index)
     unsigned int nodeCount;     // number of nodes
-    float _pad0;                // pads the stride to 112 (16-aligned)
+    float unbounded;            // 1 if the field has no finite AABB (contains a plane): the march
+                                // ignores boundsMin/Max and runs to the camera's far plane instead
 } SDF3DGroupInstance;
 
 // One particle for the GPU compute path: a persistent buffer of these is updated

@@ -62,6 +62,7 @@ public struct SDF3D {
 enum SDF3DShape: UInt32 {
     case sphere = 0, box = 1, torus = 2, capsule = 3
     case roundBox = 4, cylinder = 5, cone = 6, octahedron = 7, ellipsoid = 8
+    case plane = 9
 }
 
 // MARK: Leaf shapes (the common centered solids)
@@ -132,6 +133,19 @@ public extension SDF3D {
         .init(.leaf(shape: .ellipsoid,
                     geo0: SIMD4(Float(max(rx, 1e-4)), Float(max(ry, 1e-4)), Float(max(rz, 1e-4)), 0),
                     geo1: .zero, color: nil))
+    }
+    /// An infinite plane: the half-space boundary at signed distance `offset` from the origin
+    /// along `normal` (the default is a horizontal ground plane through the origin, facing up,
+    /// so `offset` reads as its height). A plane has no finite bounds, so it marches to the
+    /// camera's far plane; merge it with the scene's shapes as one field (and `castShadows()`)
+    /// to ground them with soft self-shadows. A plane is the one leaf the scoped block form
+    /// can't capture (it has no mesh primitive), so build it through the `SDF3D` value type.
+    static func plane(normal: Vector3 = Vector3(0, 1, 0), offset: Double = 0) -> SDF3D {
+        let n = normal.simd3
+        let len = simd_length(n)
+        let unit = len > 1e-6 ? n / len : SIMD3<Float>(0, 1, 0)
+        return .init(.leaf(shape: .plane, geo0: SIMD4(unit.x, unit.y, unit.z, Float(offset)),
+                           geo1: .zero, color: nil))
     }
 }
 
@@ -236,6 +250,7 @@ extension SDF3D {
         var hi: SIMD3<Float>
         var valueDepth: Int
         var pointDepth: Int
+        var unbounded: Bool = false   // contains an infinite plane (no finite AABB)
     }
 
     /// Append this field's instruction nodes to `nodes` (in evaluation order) and
@@ -248,7 +263,8 @@ extension SDF3D {
             nodes.append(SDFNode3D(kind: 0, sel: shape.rawValue, k: 0, extra: 0,
                                    color: rgba, geo0: geo0, geo1: geo1))
             let half = SDF3D.leafHalfExtent(shape, geo0)
-            return FlattenResult(lo: -half, hi: half, valueDepth: 1, pointDepth: 0)
+            return FlattenResult(lo: -half, hi: half, valueDepth: 1, pointDepth: 0,
+                                 unbounded: shape == .plane)
 
         case let .combine(op, a, b, k):
             let ra = a.flatten(defaultFill: defaultFill, into: &nodes)
@@ -256,19 +272,24 @@ extension SDF3D {
             nodes.append(SDFNode3D(kind: 1, sel: op.rawValue, k: k, extra: 0,
                                    color: .zero, geo0: .zero, geo1: .zero))
             var lo: SIMD3<Float>, hi: SIMD3<Float>
+            var unbounded: Bool
             switch op {
             case .union, .smoothUnion, .morph:
                 lo = simd_min(ra.lo, rb.lo); hi = simd_max(ra.hi, rb.hi)
+                unbounded = ra.unbounded || rb.unbounded
             case .subtract, .smoothSubtract:
                 lo = ra.lo; hi = ra.hi                     // result ⊆ lhs
+                unbounded = ra.unbounded
             case .intersect, .smoothIntersect:
                 lo = simd_max(ra.lo, rb.lo); hi = simd_min(ra.hi, rb.hi)
+                unbounded = ra.unbounded && rb.unbounded    // bounded once either operand is
             }
             if k > 0 { lo -= SIMD3(repeating: k); hi += SIMD3(repeating: k) }
             if hi.x < lo.x || hi.y < lo.y || hi.z < lo.z { lo = .zero; hi = .zero }  // empty intersection
             return FlattenResult(lo: lo, hi: hi,
                                  valueDepth: max(ra.valueDepth, 1 + rb.valueDepth),
-                                 pointDepth: max(ra.pointDepth, rb.pointDepth))
+                                 pointDepth: max(ra.pointDepth, rb.pointDepth),
+                                 unbounded: unbounded)
 
         case let .modify(m, c, amount):
             let rc = c.flatten(defaultFill: defaultFill, into: &nodes)
@@ -277,7 +298,8 @@ extension SDF3D {
             let grow = max(amount, 0)
             return FlattenResult(lo: rc.lo - SIMD3(repeating: grow),
                                  hi: rc.hi + SIMD3(repeating: grow),
-                                 valueDepth: rc.valueDepth, pointDepth: rc.pointDepth)
+                                 valueDepth: rc.valueDepth, pointDepth: rc.pointDepth,
+                                 unbounded: rc.unbounded)
 
         case let .transformed(t, c):
             nodes.append(Self.xformNode(t))
@@ -287,7 +309,8 @@ extension SDF3D {
                                    color: .zero, geo0: .zero, geo1: .zero))
             let (lo, hi) = Self.transformBounds(t, lo: rc.lo, hi: rc.hi)
             return FlattenResult(lo: lo, hi: hi,
-                                 valueDepth: rc.valueDepth, pointDepth: rc.pointDepth + 1)
+                                 valueDepth: rc.valueDepth, pointDepth: rc.pointDepth + 1,
+                                 unbounded: rc.unbounded)
         }
     }
 
@@ -303,6 +326,9 @@ extension SDF3D {
         case .cone:       let r = max(g.y, g.z); return SIMD3(r, g.x, r)  // max radius, half-height
         case .octahedron: return SIMD3(repeating: g.x)
         case .ellipsoid:  return SIMD3(g.x, g.y, g.z)
+        case .plane:      return SIMD3(repeating: 64)   // no finite bound; sized only to seed
+                                                        // the self-shadow march budget (the
+                                                        // field is flagged unbounded for the camera)
         }
     }
 

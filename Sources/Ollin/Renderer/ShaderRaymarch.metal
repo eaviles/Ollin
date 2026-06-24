@@ -105,6 +105,13 @@ static float ollin_sd3_ellipsoid(float3 p, float3 r) {
     return k0 * (k0 - 1.0) / k1;
 }
 
+// An infinite plane: the half-space boundary at signed distance `h` from the origin along the
+// unit normal `n` (positive on the +n side). Exact, but unbounded, so its field is flagged
+// `unbounded` and the camera ray marches to the far plane rather than a finite AABB.
+static float ollin_sd3_plane(float3 p, float3 n, float h) {
+    return dot(p, n) - h;
+}
+
 // Evaluate one leaf's 3D SDF. `sel` is the SDF3DShape tag; this switch must stay in
 // sync with SDF3DShape in SDF3D.swift (the EVAL param packing lives there).
 static float ollin_sdf3d_eval(uint shape, float3 p, float4 geo0) {
@@ -117,7 +124,8 @@ static float ollin_sdf3d_eval(uint shape, float3 p, float4 geo0) {
     case 5u: return ollin_sd3_cylinder(p, geo0.x, geo0.y);            // cylinder: radius, half-height
     case 6u: return ollin_sd3_cone(p, geo0.x, geo0.y, geo0.z);        // cone: half-height, r1, r2
     case 7u: return ollin_sd3_octahedron(p, geo0.x);                  // octahedron: radius
-    default: return ollin_sd3_ellipsoid(p, geo0.xyz);                 // ellipsoid: radii
+    case 8u: return ollin_sd3_ellipsoid(p, geo0.xyz);                 // ellipsoid: radii
+    default: return ollin_sd3_plane(p, geo0.xyz, geo0.w);             // plane: unit normal, signed offset
     }
 }
 
@@ -367,11 +375,20 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     float3 ro = nearW;
     float3 rd = normalize(farW - nearW);
 
-    // Bound the march to the field's world AABB so a pixel whose ray misses bails O(1).
-    float2 tb = ollin_ray_aabb(ro, rd, g.boundsMin.xyz, g.boundsMax.xyz);
-    float t0 = max(tb.x, 0.0);
-    float t1 = tb.y;
-    if (t1 < t0) { discard_fragment(); return miss; }
+    // Bound the march. A finite field clips to its world AABB so a pixel whose ray misses bails
+    // O(1). An unbounded field (one containing an infinite plane) has no AABB to clip against, so
+    // it marches the whole near..far span; sphere tracing keeps that cheap where it's open sky
+    // (the distance grows, so the steps do too).
+    float t0, t1;
+    if (g.unbounded != 0.0) {
+        t0 = 0.0;
+        t1 = length(farW - nearW);
+    } else {
+        float2 tb = ollin_ray_aabb(ro, rd, g.boundsMin.xyz, g.boundsMax.xyz);
+        t0 = max(tb.x, 0.0);
+        t1 = tb.y;
+        if (t1 < t0) { discard_fragment(); return miss; }
+    }
 
     // Sphere-trace, also tracking the closest the ray ever came to the surface relative to
     // the pixel's own footprint (a cone widening with distance). A direct hit drives that

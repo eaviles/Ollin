@@ -233,6 +233,14 @@ The leaf constructors are the common centered solids:
 | `SDF3D.cone(radius:height:)` / `SDF3D.cone(bottomRadius:topRadius:height:)` | a cone / frustum along the y-axis |
 | `SDF3D.octahedron(radius:)` | an octahedron |
 | `SDF3D.ellipsoid(rx:ry:rz:)` | an ellipsoid |
+| `SDF3D.plane(normal:offset:)` | an infinite plane (default a horizontal floor; `offset` is its height) |
+
+`plane` is the one **unbounded** leaf: it has no finite extent, so its field marches to the
+camera's far plane rather than a bounding box (a ray that sees only open sky steps quickly out
+to the horizon). It's value-type-only: the scoped block form can't capture it, since a plane
+has no mesh primitive. Merge it with the scene's shapes as one field and call `castShadows()`,
+and the shapes drop soft self-shadows onto it: a true infinite floor (see
+`Examples/3D/RaymarchedPlane`).
 
 The combinators (`.union` / `.smoothUnion(_:k:)` / `.subtract` / `.smoothSubtract(_:k:)` /
 `.intersect` / `.smoothIntersect(_:k:)` / `.morph(_:amount:)`), the modifiers (`.rounded` /
@@ -313,5 +321,6 @@ through. The examples are `Examples/Basic/Combinators` (2D), `Examples/3D/Raymar
 (merged metaball, depth-composited with a mesh), `Examples/3D/RaymarchedShapes` (the 3D
 primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form),
 `Examples/3D/RaymarchedDomain` (the mirror and repeat domain operators),
-`Examples/3D/RaymarchedRadial` (the radial/polar repeat operator), and
+`Examples/3D/RaymarchedRadial` (the radial/polar repeat operator),
+`Examples/3D/RaymarchedPlane` (the infinite plane grounding shapes with self-shadows), and
 `Examples/3D/RaymarchedShadow` (self-shadowing under `castShadows()`).

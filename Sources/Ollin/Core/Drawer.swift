@@ -2283,7 +2283,7 @@ final class Drawer {
             boundsMin: SIMD4<Float>(lo.x, lo.y, lo.z, 0),
             boundsMax: SIMD4<Float>(hi.x, hi.y, hi.z, 0),
             modelScale: scale, nodeStart: UInt32(nodeStart),
-            nodeCount: UInt32(nodes.count), _pad0: 0))
+            nodeCount: UInt32(nodes.count), unbounded: bounds.unbounded ? 1 : 0))
     }
 
     // MARK: SDF-combinator scoped blocks (sugar over the `SDF` value type)
