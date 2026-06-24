@@ -58,6 +58,7 @@ public struct SDF3D {
 /// carries; the shader's `ollin_sdf3d_eval` switch must stay in sync with these.
 enum SDF3DShape: UInt32 {
     case sphere = 0, box = 1, torus = 2, capsule = 3
+    case roundBox = 4, cylinder = 5, cone = 6, octahedron = 7, ellipsoid = 8
 }
 
 // MARK: Leaf shapes (the common centered solids)
@@ -86,6 +87,47 @@ public extension SDF3D {
     /// cap centers (so the full extent is `height + 2·radius`).
     static func capsule(radius: Double, height: Double) -> SDF3D {
         .init(.leaf(shape: .capsule, geo0: SIMD4(Float(radius), Float(height / 2), 0, 0),
+                    geo1: .zero, color: nil))
+    }
+    /// An axis-aligned box with rounded edges, `width` × `height` × `depth` (the outer
+    /// extent), the edges and corners filleted by `radius`.
+    static func roundBox(width: Double, height: Double, depth: Double, radius: Double) -> SDF3D {
+        .init(.leaf(shape: .roundBox,
+                    geo0: SIMD4(Float(width / 2), Float(height / 2), Float(depth / 2),
+                                Float(max(radius, 0))),
+                    geo1: .zero, color: nil))
+    }
+    /// A rounded cube of the given `size` on each edge, filleted by `radius`.
+    static func roundBox(size: Double, radius: Double) -> SDF3D {
+        roundBox(width: size, height: size, depth: size, radius: radius)
+    }
+    /// A cylinder along the y-axis, centered at the origin: `radius` in the xz-plane,
+    /// `height` the full length along y.
+    static func cylinder(radius: Double, height: Double) -> SDF3D {
+        .init(.leaf(shape: .cylinder, geo0: SIMD4(Float(radius), Float(height / 2), 0, 0),
+                    geo1: .zero, color: nil))
+    }
+    /// A cone along the y-axis, centered at the origin: a base of `radius` at the bottom
+    /// rising to a point at the top, `height` the full length along y.
+    static func cone(radius: Double, height: Double) -> SDF3D {
+        cone(bottomRadius: radius, topRadius: 0, height: height)
+    }
+    /// A truncated cone (frustum) along the y-axis, centered at the origin: `bottomRadius`
+    /// at the bottom, `topRadius` at the top, `height` the full length along y.
+    static func cone(bottomRadius: Double, topRadius: Double, height: Double) -> SDF3D {
+        .init(.leaf(shape: .cone,
+                    geo0: SIMD4(Float(height / 2), Float(bottomRadius), Float(topRadius), 0),
+                    geo1: .zero, color: nil))
+    }
+    /// An octahedron centered at the origin, its vertices `radius` along each axis.
+    static func octahedron(radius: Double) -> SDF3D {
+        .init(.leaf(shape: .octahedron, geo0: SIMD4(Float(radius), 0, 0, 0),
+                    geo1: .zero, color: nil))
+    }
+    /// An ellipsoid centered at the origin, with semi-axis radii `rx`/`ry`/`rz`.
+    static func ellipsoid(rx: Double, ry: Double, rz: Double) -> SDF3D {
+        .init(.leaf(shape: .ellipsoid,
+                    geo0: SIMD4(Float(max(rx, 1e-4)), Float(max(ry, 1e-4)), Float(max(rz, 1e-4)), 0),
                     geo1: .zero, color: nil))
     }
 }
@@ -227,10 +269,15 @@ extension SDF3D {
     /// The local-space half-extent of a leaf shape (for the conservative AABB).
     static func leafHalfExtent(_ shape: SDF3DShape, _ g: SIMD4<Float>) -> SIMD3<Float> {
         switch shape {
-        case .sphere:  return SIMD3(repeating: g.x)
-        case .box:     return SIMD3(g.x, g.y, g.z)
-        case .torus:   return SIMD3(g.x + g.y, g.y, g.x + g.y)
-        case .capsule: return SIMD3(g.x, g.y + g.x, g.x)
+        case .sphere:     return SIMD3(repeating: g.x)
+        case .box:        return SIMD3(g.x, g.y, g.z)
+        case .torus:      return SIMD3(g.x + g.y, g.y, g.x + g.y)
+        case .capsule:    return SIMD3(g.x, g.y + g.x, g.x)
+        case .roundBox:   return SIMD3(g.x, g.y, g.z)             // outer half-extents (rounding is inset)
+        case .cylinder:   return SIMD3(g.x, g.y, g.x)            // radius, half-height, radius
+        case .cone:       let r = max(g.y, g.z); return SIMD3(r, g.x, r)  // max radius, half-height
+        case .octahedron: return SIMD3(repeating: g.x)
+        case .ellipsoid:  return SIMD3(g.x, g.y, g.z)
         }
     }
 

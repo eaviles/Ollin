@@ -35,11 +35,19 @@ constant constexpr float OLLIN_RAYMARCH_STEP_SCALE = 0.85;
 constant constexpr float OLLIN_RAYMARCH_EPS        = 0.001;
 
 // --- 3D distance functions ---
+static float ollin_dot2(float2 v) { return dot(v, v); }
+
 static float ollin_sd3_sphere(float3 p, float r) { return length(p) - r; }
 
 static float ollin_sd3_box(float3 p, float3 b) {
     float3 d = abs(p) - b;
     return length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
+}
+
+// A box with rounded edges: `b` is the outer half-extents, `r` the fillet radius.
+static float ollin_sd3_round_box(float3 p, float3 b, float r) {
+    float3 q = abs(p) - b + r;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0) - r;
 }
 
 static float ollin_sd3_torus(float3 p, float major, float minor) {
@@ -54,14 +62,58 @@ static float ollin_sd3_capsule(float3 p, float r, float hh) {
     return length(p) - r;
 }
 
+// A capped cylinder along the y-axis, centered at the origin: `r` radius, `hh` half-height.
+static float ollin_sd3_cylinder(float3 p, float r, float hh) {
+    float2 d = abs(float2(length(p.xz), p.y)) - float2(r, hh);
+    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+
+// A capped cone along the y-axis, centered at the origin: `hh` half-height, `r1` the
+// bottom radius (at y = -hh), `r2` the top radius (at y = +hh; 0 gives a sharp apex).
+static float ollin_sd3_cone(float3 p, float hh, float r1, float r2) {
+    float2 q = float2(length(p.xz), p.y);
+    float2 k1 = float2(r2, hh);
+    float2 k2 = float2(r2 - r1, 2.0 * hh);
+    float2 ca = float2(q.x - min(q.x, (q.y < 0.0) ? r1 : r2), abs(q.y) - hh);
+    float2 cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / ollin_dot2(k2), 0.0, 1.0);
+    float s = (cb.x < 0.0 && ca.y < 0.0) ? -1.0 : 1.0;
+    return s * sqrt(min(ollin_dot2(ca), ollin_dot2(cb)));
+}
+
+// An octahedron centered at the origin, vertices `s` along each axis (the exact form).
+static float ollin_sd3_octahedron(float3 p, float s) {
+    p = abs(p);
+    float m = p.x + p.y + p.z - s;
+    float3 q;
+    if (3.0 * p.x < m)      q = p.xyz;
+    else if (3.0 * p.y < m) q = p.yzx;
+    else if (3.0 * p.z < m) q = p.zxy;
+    else return m * 0.57735027;
+    float k = clamp(0.5 * (q.z - q.y + s), 0.0, s);
+    return length(float3(q.x, q.y - s + k, q.z - k));
+}
+
+// An ellipsoid with semi-axis radii `r`. A lower bound (not exact), so it never overshoots
+// the surface; the global step scale covers the slightly slower convergence.
+static float ollin_sd3_ellipsoid(float3 p, float3 r) {
+    float k0 = length(p / r);
+    float k1 = length(p / (r * r));
+    return k0 * (k0 - 1.0) / k1;
+}
+
 // Evaluate one leaf's 3D SDF. `sel` is the SDF3DShape tag; this switch must stay in
 // sync with SDF3DShape in SDF3D.swift (the EVAL param packing lives there).
 static float ollin_sdf3d_eval(uint shape, float3 p, float4 geo0) {
     switch (shape) {
-    case 0u: return ollin_sd3_sphere(p, geo0.x);             // sphere: radius
-    case 1u: return ollin_sd3_box(p, geo0.xyz);             // box: half-extents
-    case 2u: return ollin_sd3_torus(p, geo0.x, geo0.y);     // torus: major, tube
-    default: return ollin_sd3_capsule(p, geo0.x, geo0.y);   // capsule: radius, half-height
+    case 0u: return ollin_sd3_sphere(p, geo0.x);                       // sphere: radius
+    case 1u: return ollin_sd3_box(p, geo0.xyz);                       // box: half-extents
+    case 2u: return ollin_sd3_torus(p, geo0.x, geo0.y);               // torus: major, tube
+    case 3u: return ollin_sd3_capsule(p, geo0.x, geo0.y);             // capsule: radius, half-height
+    case 4u: return ollin_sd3_round_box(p, geo0.xyz, geo0.w);         // round box: half-extents, fillet
+    case 5u: return ollin_sd3_cylinder(p, geo0.x, geo0.y);            // cylinder: radius, half-height
+    case 6u: return ollin_sd3_cone(p, geo0.x, geo0.y, geo0.z);        // cone: half-height, r1, r2
+    case 7u: return ollin_sd3_octahedron(p, geo0.x);                  // octahedron: radius
+    default: return ollin_sd3_ellipsoid(p, geo0.xyz);                 // ellipsoid: radii
     }
 }
 

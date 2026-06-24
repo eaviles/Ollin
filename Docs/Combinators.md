@@ -223,8 +223,13 @@ The leaf constructors are the common centered solids:
 | --- | --- |
 | `SDF3D.sphere(radius:)` | a sphere |
 | `SDF3D.box(width:height:depth:)` / `SDF3D.box(size:)` | a box / cube |
+| `SDF3D.roundBox(width:height:depth:radius:)` / `SDF3D.roundBox(size:radius:)` | a box / cube with filleted edges |
 | `SDF3D.torus(radius:tube:)` | a torus, lying in the xz-plane |
 | `SDF3D.capsule(radius:height:)` | a capsule along the y-axis |
+| `SDF3D.cylinder(radius:height:)` | a cylinder along the y-axis |
+| `SDF3D.cone(radius:height:)` / `SDF3D.cone(bottomRadius:topRadius:height:)` | a cone / frustum along the y-axis |
+| `SDF3D.octahedron(radius:)` | an octahedron |
+| `SDF3D.ellipsoid(rx:ry:rz:)` | an ellipsoid |
 
 The combinators (`.union` / `.smoothUnion(_:k:)` / `.subtract` / `.smoothSubtract(_:k:)` /
 `.intersect` / `.smoothIntersect(_:k:)` / `.morph(_:amount:)`), the modifiers (`.rounded` /
@@ -233,10 +238,9 @@ across the seam. Positioning is in three dimensions: `.at(x:y:z:)` / `.at(_ p: V
 `.rotated(_:axis:)` (plus `.rotatedX` / `.rotatedY` / `.rotatedZ`), and `.scaled(_:)` (uniform).
 
 The 3D path is opt-in like the rest of [3D mode](./3D.md), so a 2D sketch never pays for it.
-Today it covers the four leaves above with solid color per leaf and uniform scale, and the
+Today it covers the leaves above with solid color per leaf and uniform scale, and the
 surface self-shades but does not yet cast a shadow into a light's shadow map. The scoped block
-form, a broader primitive set, domain operators, and softer shadows are on the
-[roadmap](../ROADMAP.md).
+form, domain operators, and softer shadows are on the [roadmap](../ROADMAP.md).
 
 <a name="notes"></a>
 
@@ -259,4 +263,6 @@ See also [`Drawing`](./Drawing.md) for the immediate-mode shapes and the transfo
 [`Geometry`](./Geometry.md) for the vector `Shape` booleans (which combine *filled outlines*,
 the polygonal counterpart to these field operators), [`Color`](./Color.md) for the color
 types the leaves carry, and [`3D`](./3D.md) for the camera and lights the 3D fields draw
-through. The examples are `Examples/Basic/Combinators` (2D) and `Examples/3D/RaymarchedSDF`.
+through. The examples are `Examples/Basic/Combinators` (2D), `Examples/3D/RaymarchedSDF`
+(merged metaball, depth-composited with a mesh), and `Examples/3D/RaymarchedShapes` (the
+3D primitive catalog).
