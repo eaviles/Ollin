@@ -542,6 +542,11 @@ let package = Package(
             path: "Examples/3D/RaymarchedPlane"
         ),
         .executableTarget(
+            name: "Example-RaymarchedCastShadow",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/RaymarchedCastShadow"
+        ),
+        .executableTarget(
             name: "Example-RaymarchedShadow",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedShadow"

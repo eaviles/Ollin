@@ -469,3 +469,61 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     out.depth = clip.z / clip.w;
     return out;
 }
+
+// Render a composed 3D field into the directional/spot 2D shadow map so meshes receive its cast
+// shadow. One fullscreen triangle per field (the same vertex shader), but marched from the
+// *light's* point of view: the pixel's light-space NDC reconstructs a world ray through the
+// inverse light view-projection, the field is sphere-traced along it, and the hit's depth is
+// written through the same `lightViewProjection` the mesh shadow caster uses, so the stored
+// values are directly comparable. Depth-only (no color); a miss discards. The field still
+// self-shadows analytically in the main pass and doesn't sample this map (no double-shadowing).
+struct RaymarchShadowOut {
+    float depth [[depth(any)]];
+};
+
+fragment RaymarchShadowOut ollin_raymarch_shadow_fragment(
+        RaymarchOut in [[stage_in]],
+        const device SDF3DGroupInstance *groups [[buffer(0)]],
+        const device SDFNode3D *nodes [[buffer(1)]],
+        constant OllinRaymarchShadowUniforms &u [[buffer(2)]]) {
+    RaymarchShadowOut out;
+    out.depth = 1.0;
+
+    SDF3DGroupInstance g = groups[in.gid];
+
+    // Rebuild the world ray for this shadow-map pixel from the light's clip space (orthographic
+    // for a directional light, perspective for a spot; the inverse handles both).
+    float4 nearH = u.inverseLightViewProjection * float4(in.clipXY, 0.0, 1.0);
+    float4 farH  = u.inverseLightViewProjection * float4(in.clipXY, 1.0, 1.0);
+    float3 nearW = nearH.xyz / nearH.w;
+    float3 farW  = farH.xyz / farH.w;
+    float3 ro = nearW;
+    float3 rd = normalize(farW - nearW);
+
+    float t0, t1;
+    if (g.unbounded != 0.0) {
+        t0 = 0.0;
+        t1 = length(farW - nearW);
+    } else {
+        float2 tb = ollin_ray_aabb(ro, rd, g.boundsMin.xyz, g.boundsMax.xyz);
+        t0 = max(tb.x, 0.0);
+        t1 = tb.y;
+        if (t1 < t0) { discard_fragment(); return out; }
+    }
+
+    float t = t0;
+    bool hit = false;
+    float4 col;
+    for (int i = 0; i < OLLIN_RAYMARCH_STEPS; i++) {
+        if (t > t1) break;
+        float3 pw = ro + rd * t;
+        float d = ollin_sdf3d_world(pw, g, nodes, col);
+        if (d < OLLIN_RAYMARCH_EPS) { hit = true; break; }
+        t += d * OLLIN_RAYMARCH_STEP_SCALE;
+    }
+    if (!hit) { discard_fragment(); return out; }
+
+    float4 clip = u.lightViewProjection * float4(ro + rd * t, 1.0);
+    out.depth = clip.z / clip.w;
+    return out;
+}

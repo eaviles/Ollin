@@ -280,12 +280,15 @@ block to mirror or tile a whole built cell. A primitive that has no analytic fie
 (`drawIcosphere`, `drawTorusKnot`, a custom `Mesh`, …) inside a block is ignored with a
 one-time note.
 
-**Self-shadowing.** With [`castShadows()`](./3D.md), a merged field drops soft shadows onto
-itself: a penumbra march toward the casting light, contact-hardening (sharper where shapes
-meet, softer as the shadow falls away). It's the same opt-in as mesh shadows, so a field
-without `castShadows()` shades unshadowed (and stays byte-identical). The field self-shadows
-but does not yet cast a shadow into the *mesh* shadow maps, so build a slab and the shapes on
-it as one field to see them shadow one another.
+**Self-shadowing and cast shadows.** With [`castShadows()`](./3D.md), a merged field drops soft
+shadows onto itself: a penumbra march toward the casting light, contact-hardening (sharper
+where shapes meet, softer as the shadow falls away). It's the same opt-in as mesh shadows, so a
+field without `castShadows()` shades unshadowed (and stays byte-identical). A field also **casts
+onto rasterized meshes** under a directional or spot light: it renders into the same 2D shadow
+map the meshes sample, so a mesh floor catches a floating field's shadow (see
+`Examples/3D/RaymarchedCastShadow`). Still open: a field doesn't yet *receive* a mesh's shadow
+(it keeps its own analytic self-shadow), and field casting is directional/spot only, not
+point/ray-traced.
 
 The merged surface's **silhouette is anti-aliased** analytically (a sphere-traced fullscreen
 pass gets no MSAA at its hit/miss edge): the march measures how closely a ray that misses the
@@ -293,8 +296,7 @@ surface grazed it, relative to the pixel's own footprint, and the edge fades by 
 It's automatic, so any field's outline stays smooth without supersampling.
 
 The 3D path is opt-in like the rest of [3D mode](./3D.md), so a 2D sketch never pays for it.
-Today it covers the leaves above with solid color per leaf and uniform scale. Casting into the
-mesh shadow maps is on the [roadmap](../ROADMAP.md).
+Today it covers the leaves above with solid color per leaf and uniform scale.
 
 <a name="notes"></a>
 
@@ -322,5 +324,6 @@ through. The examples are `Examples/Basic/Combinators` (2D), `Examples/3D/Raymar
 primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form),
 `Examples/3D/RaymarchedDomain` (the mirror and repeat domain operators),
 `Examples/3D/RaymarchedRadial` (the radial/polar repeat operator),
-`Examples/3D/RaymarchedPlane` (the infinite plane grounding shapes with self-shadows), and
-`Examples/3D/RaymarchedShadow` (self-shadowing under `castShadows()`).
+`Examples/3D/RaymarchedPlane` (the infinite plane grounding shapes with self-shadows),
+`Examples/3D/RaymarchedShadow` (self-shadowing under `castShadows()`), and
+`Examples/3D/RaymarchedCastShadow` (a field casting its shadow onto a rasterized mesh).

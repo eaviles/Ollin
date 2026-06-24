@@ -153,6 +153,11 @@ final class MetalRenderer {
         // depth-only shadow pass (mesh geometry from the light's point of view)
         static let meshShadow = PipelineKey(vertex: "ollin_mesh_shadow_vertex",
                                             fragment: "", isShadow: true)
+        // depth-only shadow pass for a raymarched 3D field: the same fullscreen-tri vertex as
+        // the main raymarch, marched from the light's POV, writing the hit's light-clip depth
+        // into the directional/spot 2D map so meshes receive the field's cast shadow.
+        static let raymarchShadow = PipelineKey(vertex: "ollin_raymarch_vertex",
+                                                fragment: "ollin_raymarch_shadow_fragment", isShadow: true)
         // omnidirectional shadow pass: six cube faces in one layered pass (instanced,
         // `render_target_array_index`) for a point caster. Two draws into one rg32Float
         // cube (mid-point shadow mapping): MIN-blend the distance into R (nearest),
@@ -571,7 +576,10 @@ final class MetalRenderer {
         // same command buffer (a no-op returning nil when this frame casts no shadow).
         // It shares the mesh vertex buffer the geometry pass uses.
         let meshBuf = meshBuffer(at: frameIndex, for: drawer.meshVertices.count)
-        let renderedShadow = encodeShadowPass(drawer, into: commandBuffer, meshBuffer: meshBuf)
+        let renderedShadow = encodeShadowPass(
+            drawer, into: commandBuffer, meshBuffer: meshBuf,
+            sdf3DGroupBuffer: sdf3DGroupBuffer(at: frameIndex, for: drawer.sdf3DGroups.count),
+            sdf3DNodeBuffer: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count))
 
         // Effects layers fill before the main pass (which samples them via drawImage),
         // sharing this frame's geometry buffers. A no-op when the frame used none.
@@ -862,7 +870,10 @@ final class MetalRenderer {
         // Shadow depth pass (nil when this frame casts no shadow), sharing the export
         // mesh buffer; so the headless/snapshot path shadows exactly like the window.
         let meshBuf = exportMeshBuffer(for: drawer.meshVertices.count)
-        let renderedShadow = encodeShadowPass(drawer, into: commandBuffer, meshBuffer: meshBuf)
+        let renderedShadow = encodeShadowPass(
+            drawer, into: commandBuffer, meshBuffer: meshBuf,
+            sdf3DGroupBuffer: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
+            sdf3DNodeBuffer: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count))
 
         // Effects layers fill before the main pass, sharing the export buffers, so
         // the headless/snapshot path renders targets exactly like the window.
@@ -961,7 +972,9 @@ final class MetalRenderer {
             }
             guard let cb = commandQueue.makeCommandBuffer() else { continue }
             encodeCompute(drawer, into: cb)
-            let renderedShadow = encodeShadowPass(drawer, into: cb, meshBuffer: meshBuf)
+            let renderedShadow = encodeShadowPass(
+                drawer, into: cb, meshBuffer: meshBuf,
+                sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode)
             encodeEffectTargets(drawer, into: cb, buffers: buffers, pooled: false)
             guard let encoder = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
             encode(drawer, viewport: viewport, into: encoder,
@@ -2330,7 +2343,9 @@ final class MetalRenderer {
     /// `meshBuffer` the geometry pass will use (it uploads the vertices here; the
     /// geometry pass re-copies the same bytes).
     private func encodeShadowPass(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
-                                  meshBuffer: MTLBuffer?) -> ShadowMaps {
+                                  meshBuffer: MTLBuffer?,
+                                  sdf3DGroupBuffer: MTLBuffer? = nil,
+                                  sdf3DNodeBuffer: MTLBuffer? = nil) -> ShadowMaps {
         let lighting = drawer.makeLighting()
         let meshVertices = drawer.meshVertices
         guard lighting.shadowLight >= 0, lighting.enabled != 0, !meshVertices.isEmpty,
@@ -2369,8 +2384,45 @@ final class MetalRenderer {
         var lightVP = lighting.lightViewProjection
         encoder.setVertexBytes(&lightVP, length: MemoryLayout<simd_float4x4>.stride, index: 2)
         drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 1)
+        // Marched 3D fields cast into the same map: sphere-trace each from the light's POV and
+        // write its depth, z-tested against the mesh casters already there, so meshes receive a
+        // field's shadow too. The field keeps its analytic self-shadow in the main pass and
+        // doesn't sample this map, so there's no double-shadowing (directional/spot only).
+        encodeFieldShadowCasters(drawer, encoder: encoder, lighting: lighting,
+                                 groupBuffer: sdf3DGroupBuffer, nodeBuffer: sdf3DNodeBuffer)
         encoder.endEncoding()
         return ShadowMaps(twoD: shadowMap)
+    }
+
+    /// Render the marched 3D fields into the active 2D shadow map (directional/spot). Each field
+    /// is one instanced fullscreen triangle whose fragment sphere-traces it from the light's
+    /// point of view and writes the hit's light-clip depth (depth-only, z-tested against the
+    /// mesh casters already in the map). A no-op when the frame has no fields or no buffers.
+    private func encodeFieldShadowCasters(_ drawer: Drawer, encoder: MTLRenderCommandEncoder,
+                                          lighting: OllinLighting,
+                                          groupBuffer: MTLBuffer?, nodeBuffer: MTLBuffer?) {
+        let groups3D = drawer.sdf3DGroups
+        let nodes3D = drawer.sdf3DNodes
+        guard !groups3D.isEmpty, !nodes3D.isEmpty,
+              let groupBuffer, let nodeBuffer,
+              let fieldPipeline = try? pipeline(.raymarchShadow) else { return }
+        // Fill the field buffers here: the shadow pass runs before the main encode (which
+        // re-uploads the same bytes), so the GPU sees the geometry when it marches the map.
+        groups3D.withUnsafeBytes { raw in
+            groupBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+        }
+        nodes3D.withUnsafeBytes { raw in
+            nodeBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+        }
+        var u = OllinRaymarchShadowUniforms(
+            lightViewProjection: lighting.lightViewProjection,
+            inverseLightViewProjection: simd_inverse(lighting.lightViewProjection))
+        encoder.setRenderPipelineState(fieldPipeline)
+        encoder.setFragmentBuffer(groupBuffer, offset: 0, index: 0)
+        encoder.setFragmentBuffer(nodeBuffer, offset: 0, index: 1)
+        encoder.setFragmentBytes(&u, length: MemoryLayout<OllinRaymarchShadowUniforms>.stride, index: 2)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3,
+                               instanceCount: groups3D.count)
     }
 
     /// The omnidirectional (point) shadow pass: render the scene into all six cube faces

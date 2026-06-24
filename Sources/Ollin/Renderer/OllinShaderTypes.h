@@ -231,6 +231,15 @@ typedef struct {
                                 // ignores boundsMin/Max and runs to the camera's far plane instead
 } SDF3DGroupInstance;
 
+// The light-space matrices for rendering a raymarched 3D field into the directional/spot 2D
+// shadow map (`ollin_raymarch_shadow_fragment`): the field is sphere-traced from the light's
+// point of view, and the hit's depth is written through `lightViewProjection`, so meshes
+// sampling the map receive the field's cast shadow exactly as they do another mesh's.
+typedef struct {
+    simd_float4x4 lightViewProjection;         // world -> light clip (writes the hit's depth)
+    simd_float4x4 inverseLightViewProjection;  // light clip -> world (rebuilds the march ray)
+} OllinRaymarchShadowUniforms;
+
 // One particle for the GPU compute path: a persistent buffer of these is updated
 // by a compute kernel each frame (positions never round-trip through the CPU) and
 // drawn by the instanced particle render path (`ollin_particle_vertex`). The
