@@ -317,6 +317,10 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
 #if OLLIN_RT_SHADOWS
                                   , float rtShadow
 #endif
+                                  // A marched SDF field passes its own self-shadow factor
+                                  // (0…1) here since it isn't in the shadow maps; a mesh
+                                  // passes -1 to sample the maps as usual (byte-identical).
+                                  , float fieldShadow
                                   ) {
     float3 n = normalize(normal);
     if (light.enabled == 0) {
@@ -356,16 +360,20 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         // A directional/spot caster samples the 2D map; a point caster the cube.
         if (i == light.shadowLight) {
             float lit01;
+            if (fieldShadow >= 0.0) {
+                lit01 = fieldShadow;   // a marched field self-shadows (it isn't in the maps)
+            } else {
 #if OLLIN_RT_SHADOWS
-            // shadowKind 2 = ray-traced point caster (computed in the fragment).
-            if (light.shadowKind == 2) lit01 = rtShadow;
-            else
+                // shadowKind 2 = ray-traced point caster (computed in the fragment).
+                if (light.shadowKind == 2) lit01 = rtShadow;
+                else
 #endif
-            lit01 = (light.shadowKind == 1)
-                ? shadowFactorCube(worldPos, n, L.position.xyz, light.shadowDepthA,
-                                   light.shadowTexelWorld, shadowCube, shadowCubeSamp)
-                : shadowFactor(worldPos, n, toLight, light.lightViewProjection,
-                               light.shadowTexelWorld, shadowMap, shadowSamp);
+                lit01 = (light.shadowKind == 1)
+                    ? shadowFactorCube(worldPos, n, L.position.xyz, light.shadowDepthA,
+                                       light.shadowTexelWorld, shadowCube, shadowCubeSamp)
+                    : shadowFactor(worldPos, n, toLight, light.lightViewProjection,
+                                   light.shadowTexelWorld, shadowMap, shadowSamp);
+            }
             atten *= mix(1.0, lit01, light.shadowStrength);
         }
         if (!haveKey) { keyToLight = toLight; haveKey = true; }
@@ -501,11 +509,11 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
     return meshLitColor(srgbToLinear(in.color.rgb), in.color.a, in.normal,
                         in.worldPos, mat, light, shadowMap, shadowSamp,
-                        shadowCube, shadowCubeSamp, rtShadow);
+                        shadowCube, shadowCubeSamp, rtShadow, -1.0);
 #else
     return meshLitColor(srgbToLinear(in.color.rgb), in.color.a, in.normal,
                         in.worldPos, mat, light, shadowMap, shadowSamp,
-                        shadowCube, shadowCubeSamp);
+                        shadowCube, shadowCubeSamp, -1.0);
 #endif
 }
 
@@ -560,10 +568,10 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
 #if OLLIN_RT_SHADOWS
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
     return meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
-                        shadowMap, shadowSamp, shadowCube, shadowCubeSamp, rtShadow);
+                        shadowMap, shadowSamp, shadowCube, shadowCubeSamp, rtShadow, -1.0);
 #else
     return meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
-                        shadowMap, shadowSamp, shadowCube, shadowCubeSamp);
+                        shadowMap, shadowSamp, shadowCube, shadowCubeSamp, -1.0);
 #endif
 }
 

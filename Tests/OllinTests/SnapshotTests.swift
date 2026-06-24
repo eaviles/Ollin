@@ -82,6 +82,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func raymarchedSDF3DShadowMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DShadowScene(), against: "sdf-combinators-3d-shadow")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -1269,6 +1275,35 @@ private final class RaymarchedSDF3DDomainScene: Sketch {
         let wedge = SDF3D.cone(radius: 0.4, height: 0.9).colored(Color(hex: 0xfacc15))
             .at(x: 0.7, y: 0, z: 0.7)
         drawSDF3D(wedge.mirrored(x: true, y: false, z: true).at(x: 0, y: 1.6, z: 0))
+    }
+}
+
+/// The raymarched 3D SDF self-shadowing: with `castShadows()`, a merged field (a slab and
+/// the shapes standing on it) drops soft penumbra shadows onto itself. Pins the self-shadow
+/// march and its gating on the caster light. Static at frame 0.
+private final class RaymarchedSDF3DShadowScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0c0f14))
+        camera(.orbiting(target: Vector3(0, -0.2, 0), radius: 8.0, azimuth: 0.4, elevation: 0.32,
+                         fieldOfView: .pi / 4, near: 2, far: 16))
+        directionalLight(.white, direction: Vector3(0.7, -0.95, -0.35),
+                         intensity: 1.25, softness: 0.2)
+        ambientLight(Color(white: 0.13))
+        castShadows()
+        material(.glossy)
+
+        union {
+            fill(Color(hex: 0x6b7280))
+            withState { translate(0, -0.95, 0); drawBox(width: 7, height: 0.4, depth: 7) }
+            fill(Color(hex: 0x38bdf8))
+            withState { translate(-1.7, -0.05, 0.2); drawSphere(radius: 0.7) }
+            fill(Color(hex: 0xf472b6))
+            withState { translate(0.4, 0.15, -0.6); rotateZ(0.25); drawCapsule(radius: 0.34, height: 1.2) }
+            fill(Color(hex: 0xfacc15))
+            withState { translate(1.8, -0.05, 0.7); drawCone(radius: 0.6, height: 1.5) }
+        }
     }
 }
 

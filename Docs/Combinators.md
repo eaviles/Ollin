@@ -264,10 +264,18 @@ The block form's domain blocks work in 3D too (`mirrored(x:y:z:) { … }`,
 `repeated(spacing:count:) { … }`, the `Vector3` spacing for 3D tiling), wrapping a combine
 block to mirror or tile a whole built cell. A primitive that has no analytic field
 (`drawIcosphere`, `drawTorusKnot`, a custom `Mesh`, …) inside a block is ignored with a
-one-time note. The 3D path is opt-in like the rest of [3D mode](./3D.md), so a 2D sketch
-never pays for it. Today it covers the leaves above with solid color per leaf and uniform
-scale, and the surface self-shades but does not yet cast a shadow into a light's shadow map.
-Softer shadows are on the [roadmap](../ROADMAP.md).
+one-time note.
+
+**Self-shadowing.** With [`castShadows()`](./3D.md), a merged field drops soft shadows onto
+itself: a penumbra march toward the casting light, contact-hardening (sharper where shapes
+meet, softer as the shadow falls away). It's the same opt-in as mesh shadows, so a field
+without `castShadows()` shades unshadowed (and stays byte-identical). The field self-shadows
+but does not yet cast a shadow into the *mesh* shadow maps, so build a slab and the shapes on
+it as one field to see them shadow one another.
+
+The 3D path is opt-in like the rest of [3D mode](./3D.md), so a 2D sketch never pays for it.
+Today it covers the leaves above with solid color per leaf and uniform scale. Casting into the
+mesh shadow maps is on the [roadmap](../ROADMAP.md).
 
 <a name="notes"></a>
 
@@ -292,5 +300,6 @@ the polygonal counterpart to these field operators), [`Color`](./Color.md) for t
 types the leaves carry, and [`3D`](./3D.md) for the camera and lights the 3D fields draw
 through. The examples are `Examples/Basic/Combinators` (2D), `Examples/3D/RaymarchedSDF`
 (merged metaball, depth-composited with a mesh), `Examples/3D/RaymarchedShapes` (the 3D
-primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form), and
-`Examples/3D/RaymarchedDomain` (the mirror and repeat domain operators).
+primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form),
+`Examples/3D/RaymarchedDomain` (the mirror and repeat domain operators), and
+`Examples/3D/RaymarchedShadow` (self-shadowing under `castShadows()`).

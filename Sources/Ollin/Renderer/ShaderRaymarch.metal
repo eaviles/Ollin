@@ -33,6 +33,10 @@ constant constexpr int   OLLIN_RAYMARCH_STEPS    = 128;
 // holes. Scaling every step by <1 is the standard mitigation.
 constant constexpr float OLLIN_RAYMARCH_STEP_SCALE = 0.85;
 constant constexpr float OLLIN_RAYMARCH_EPS        = 0.001;
+// Self-shadow march budget + hardness (larger = sharper penumbra, related to the inverse
+// of the light's angular size). Active only when a light casts (castShadows()).
+constant constexpr int   OLLIN_SDF3D_SHADOW_STEPS  = 48;
+constant constexpr float OLLIN_SDF3D_SHADOW_K      = 10.0;
 
 // --- 3D distance functions ---
 static float ollin_dot2(float2 v) { return dot(v, v); }
@@ -262,6 +266,28 @@ static float3 ollin_sdf3d_normal(float3 pw, SDF3DGroupInstance g, const device S
         k.xxx * ollin_sdf3d_world(pw + k.xxx * e, g, nodes, dummy));
 }
 
+// Analytic soft self-shadow: march from a hit point toward the light through the same
+// field, tracking the closest-approach penumbra ratio `k·h/t` (how narrowly the ray clears
+// the surface, scaled by the hardness `k`). 1 = fully lit, 0 = fully occluded. `maxt` bounds
+// the march to the field's own extent, since only the field can occlude itself. The field
+// self-shadows but casts no shadow into the maps. (The plain ratio is used rather than the
+// previous-step closest-approach refinement, which divides by zero on a receding ray and
+// would shadow lit surfaces; the slight penumbra banding it trades for is acceptable.)
+static float ollin_sdf3d_softshadow(float3 ro, float3 rd, float maxt, float k,
+                                    SDF3DGroupInstance g, const device SDFNode3D *nodes) {
+    float res = 1.0;
+    float t = 0.02;          // start off the surface to skip the origin's own zero distance
+    float4 dummy;
+    for (int i = 0; i < OLLIN_SDF3D_SHADOW_STEPS; i++) {
+        if (t >= maxt) break;
+        float h = ollin_sdf3d_world(ro + rd * t, g, nodes, dummy);
+        if (h < 0.001) return 0.0;
+        res = min(res, k * h / t);
+        t += h * OLLIN_RAYMARCH_STEP_SCALE;
+    }
+    return clamp(res, 0.0, 1.0);
+}
+
 // Ray vs AABB slab test -> [t0, t1] along the ray (t1 < t0 means the ray misses the box).
 // IEEE infinities handle an axis-parallel ray (rd component 0) correctly.
 static float2 ollin_ray_aabb(float3 ro, float3 rd, float3 lo, float3 hi) {
@@ -345,15 +371,35 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     float3 pw = ro + rd * t;
     float3 n = ollin_sdf3d_normal(pw, g, nodes);
 
+    // Analytic self-shadow toward the casting light, but only when one is set
+    // (castShadows()); otherwise -1 tells the shading tail to shade unshadowed. The field
+    // self-shadows (sculpts its own form) but casts no shadow into the maps in v1.
+    float fieldShadow = -1.0;
+    if (light.enabled != 0 && light.shadowLight >= 0 && light.shadowLight < light.lightCount) {
+        OllinLight caster = light.lights[light.shadowLight];
+        float fieldDiag = length(g.boundsMax.xyz - g.boundsMin.xyz);
+        float3 toLight; float maxt;
+        if (caster.kind == 0) {                       // directional: a fixed direction
+            toLight = caster.direction.xyz; maxt = fieldDiag;
+        } else {                                      // point / spot: toward its position
+            float3 dl = caster.position.xyz - pw;
+            float dist = length(dl);
+            toLight = dl / max(dist, 1e-5);
+            maxt = min(dist, fieldDiag);
+        }
+        fieldShadow = ollin_sdf3d_softshadow(pw + n * 0.015, toLight, maxt,
+                                             OLLIN_SDF3D_SHADOW_K, g, nodes);
+    }
+
     // Shade through the shared mesh tail (returns the surface flat when no light is set,
-    // so an unlit field shows its leaf colors). The marched field self-shades but casts
-    // no shadow into the maps in v1, so pass a lit (1.0) ray-traced factor.
+    // so an unlit field shows its leaf colors). The marched field self-shadows via
+    // `fieldShadow` (it isn't in the maps); pass a lit (1.0) ray-traced point factor.
     float4 lit = meshLitColor(srgbToLinear(col.rgb), col.a, n, pw, mat, light,
                               shadowMap, shadowSamp, shadowCube, shadowCubeSamp
 #if OLLIN_RT_SHADOWS
                               , 1.0
 #endif
-                              );
+                              , fieldShadow);
 
     // Depth: the world hit point through the *same* view-projection the meshes use, so
     // marched and rasterized geometry z-test in one space (Metal NDC z is already [0,1]).

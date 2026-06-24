@@ -1844,7 +1844,12 @@ final class MetalRenderer {
         // caster index there and bind the 1×1 / dummy stand-ins so the fragment never
         // reads them. A directional/spot caster populates the 2D map, a point caster the
         // cube — or, on a ray-tracing device, the acceleration structure.
-        if shadowMap == nil && shadowCube == nil && shadowAccel == nil { lighting.shadowLight = -1 }
+        // Clear the caster only when nothing can use it: a marched SDF field self-shadows
+        // analytically (no map), so it keeps the caster index even when the map pass didn't
+        // run. Meshes still see no shadow without a map (they'd sample the all-lit dummy).
+        if shadowMap == nil && shadowCube == nil && shadowAccel == nil && drawer.sdf3DGroups.isEmpty {
+            lighting.shadowLight = -1
+        }
         // A ray-traced point caster: switch the fragment to the RT path (shadowKind 2) and
         // resolve the sketch's quality tier to a concrete ray count for this GPU.
         if shadowAccel != nil {
