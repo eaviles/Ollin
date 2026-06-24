@@ -376,7 +376,7 @@ override func draw() {
 - `withField(field, force:) { … }` draws into the field's state (scoped like `withTarget`); leave the block empty to let it evolve untouched. `force` (canvas points per frame) is the velocity a `.fluid` receives where the marks land; the single-field sims ignore it.
 - `field.image` is the evolved field; `field.filtered(_:)` recolors or post-processes it like any layer.
 - `scale` sets the field's internal resolution: lower it for broader reaction-diffusion features, chunkier automaton cells, and a cheaper, softer fluid.
-- See `Simulation/Simulation` (reaction-diffusion), `Simulation/GameOfLife`, and `Simulation/Fluid`.
+- See `Simulation/GrayScott` (reaction-diffusion), `Simulation/GameOfLife`, and `Simulation/Fluid`.
 
 <a id="compose"></a>
 ### compose(_:) and layer(_:)

@@ -7,7 +7,7 @@ import Ollin
 /// the gliders and oscillators are big enough to watch.
 ///
 /// Drag to draw living cells; hold any key while dragging to erase. See
-/// `Simulation/Simulation` for the reaction-diffusion sibling.
+/// `Simulation/GrayScott` for the reaction-diffusion sibling.
 @main
 final class GameOfLife_Example: Sketch {
     private let cells = 130

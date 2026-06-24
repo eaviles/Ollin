@@ -1,7 +1,7 @@
 import Ollin
 
 /// A Gray-Scott **reaction-diffusion** field evolving on the GPU through the effects
-/// substrate — the stateful sibling of a `Filter`. A `SimField` is a *persistent*
+/// substrate, the stateful sibling of a `Filter`. A `SimField` is a *persistent*
 /// layer (like `Feedback`) that the renderer steps every frame; you seed it by
 /// *drawing into it* with `withField`, and the chemicals spread from your marks into
 /// coral-like Turing patterns. The raw field is data (chemical A in red, B in green),
@@ -10,7 +10,7 @@ import Ollin
 /// Drag to inject more chemical and watch the reaction chase your cursor. See
 /// `Simulation/GameOfLife` for the cellular-automaton sibling.
 @main
-final class Simulation_Example: Sketch {
+final class GrayScott: Sketch {
     private var rd: SimField!
     private var seeded = false
 

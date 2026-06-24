@@ -454,9 +454,9 @@ let package = Package(
             path: "Examples/Effects/Distortion"
         ),
         .executableTarget(
-            name: "Example-Simulation-Simulation",
+            name: "Example-Simulation-GrayScott",
             dependencies: ["Ollin"],
-            path: "Examples/Simulation/Simulation"
+            path: "Examples/Simulation/GrayScott"
         ),
         .executableTarget(
             name: "Example-Simulation-GameOfLife",
