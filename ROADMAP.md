@@ -31,7 +31,7 @@ Near-term, fairly self-contained pieces, each small and well-scoped.
 
 ## Shader composition and live-coding
 
-Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. A third strand is **broadening the 3D SDF combinators**: the sphere-traced field merging (`drawSDF3D`) growing toward the full ShaderPark "sculpting" experience. What's left there is point and ray-traced field shadow *casting* (only the directional and spot casters drive a field today, both ways), and per-axis non-uniform scale. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
+Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. A third strand is **broadening the 3D SDF combinators**: the sphere-traced field merging (`drawSDF3D`) growing toward the full ShaderPark "sculpting" experience. What's left there is point and ray-traced field shadow *casting* (only the directional and spot casters drive a field today, both ways). See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
 
 ## Generative geometry
 

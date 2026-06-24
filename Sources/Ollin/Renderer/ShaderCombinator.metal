@@ -132,7 +132,7 @@ static float2 ollin_sdf_xform(float2 p, SDFNode nd) {
         if (sp.y > 0.0) { float r = clamp(round(q.y / sp.y), -lim.y, lim.y); q.y -= sp.y * r; }
         return q;
     }
-    default: {                                        // polar (radial repeat around the origin)
+    case 5u: {                                        // polar (radial repeat around the origin)
         float reps = max(nd.geo1.x, 1.0);
         float ang = 6.28318530718 / reps;
         float a = atan2(p.y, p.x) + ang * 0.5;
@@ -140,6 +140,12 @@ static float2 ollin_sdf_xform(float2 p, SDFNode nd) {
         a = a - ang * floor(a / ang) - ang * 0.5;
         return float2(cos(a), sin(a)) * r;
     }
+    case 6u:                                          // non-uniform scale (p /= per-axis factors;
+        return p / max(nd.geo0.xy, float2(1e-4));     // distance rescaled by the min factor at
+                                                      // RESTORE_P, a conservative bound)
+    default:                                          // stretch / elongate (sel 7): insert straight
+        return p - clamp(p, -nd.geo0.xy, nd.geo0.xy); // space along each axis (splits the shape),
+                                                      // an exact SDF (distance preserved, scale 1)
     }
 }
 

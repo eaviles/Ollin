@@ -18,9 +18,10 @@ import COllinShaders
 // is exact: `a.at(p).repeated(...)` tiles the moved shape, `a.repeated(...).at(p)`
 // shifts the whole tiling.
 //
-// v1 is solid color only (set per-leaf with `.colored(_:)`, or the current `fill`
-// is the default); gradient paint on a merged field is a follow-up. The leaf
-// constructors cover the common centered shapes; the scoped block form
+// A leaf takes a solid color (`.colored(_:)`, or the current `fill`); a linear/radial
+// gradient `fill` or `stroke` paints the whole merged region/outline by field position.
+// Per-axis sizing is `stretched` (an exact elongation) or `scaled(x:y:)` (a conservative
+// bound). The leaf constructors cover the common centered shapes; the scoped block form
 // (`smoothUnion { drawCircle… }`) reaches every SDF primitive.
 public struct SDF {
     /// Binary combine ops. Raw values are the `sel` the shader's OP node reads.
@@ -35,6 +36,8 @@ public struct SDF {
         case translate(SIMD2<Float>)
         case rotate(Float)                 // radians
         case scale(Float)                  // uniform factor > 0
+        case scaleXYZ(SIMD2<Float>)        // non-uniform factors (conservative SDF bound)
+        case stretch(SIMD2<Float>)         // per-axis elongation half-extent (exact SDF)
         case mirror(x: Bool, y: Bool)      // reflect across the field axes
         case repeatTiles(spacing: SIMD2<Float>, count: SIMD2<Float>)  // limited tiling
         case polar(count: Float)           // radial repeat around the origin
@@ -134,8 +137,24 @@ public extension SDF {
     func at(_ p: Vector2) -> SDF { translated(SIMD2(Float(p.x), Float(p.y))) }
     /// Rotate the field about its origin by `radians` (clockwise in y-down space).
     func rotated(_ radians: Double) -> SDF { .init(.transformed(.rotate(Float(radians)), self)) }
-    /// Uniformly scale the field about its origin (non-uniform scale isn't a valid SDF).
+    /// Uniformly scale the field about its origin. Uniform scale is an exact SDF operation;
+    /// for per-axis sizing prefer `stretched` (exact) or `scaled(x:y:)` (a bound).
     func scaled(_ s: Double) -> SDF { .init(.transformed(.scale(Float(max(s, 1e-4))), self)) }
+    /// Non-uniformly scale the field per axis about its origin. Non-uniform scale isn't a valid
+    /// distance field (it distorts space), so the result is a conservative *bound*: the outline
+    /// is right, but smooth blends, rounding, and onion shells distort under strong anisotropy
+    /// (fine up to ~2–3×). For the common "stretch a shape longer" case, prefer `stretched`,
+    /// which stays exact.
+    func scaled(x: Double, y: Double) -> SDF {
+        .init(.transformed(.scaleXYZ(SIMD2(Float(max(x, 1e-4)), Float(max(y, 1e-4)))), self))
+    }
+    /// Stretch (elongate) the field per axis by inserting straight space, the way a circle becomes
+    /// a stadium: each value extends the field by that much in *each* direction along the axis (a
+    /// circle of radius r stretched by `x` reaches r + x along ±x). Unlike `scaled(x:y:)` this
+    /// stays an exact distance field, so smooth blends, rounding, and onion shells don't distort.
+    func stretched(x: Double = 0, y: Double = 0) -> SDF {
+        .init(.transformed(.stretch(SIMD2(Float(max(x, 0)), Float(max(y, 0)))), self))
+    }
     /// Paint every still-unpainted leaf of the field this color (an explicit leaf
     /// `.colored` wins; the current `fill` is the fallback for whatever's left).
     func colored(_ color: Color) -> SDF { painting(color) }
@@ -262,7 +281,16 @@ extension SDF {
         case let .transformed(t, c):
             nodes.append(Self.xformNode(t))
             let rc = c.flatten(defaultFill: defaultFill, into: &nodes)
-            let distanceScale: Float = { if case .scale(let s) = t { return s } else { return 1 } }()
+            // RESTORE_P rescales the child distance: uniform scale by `s`, non-uniform by its
+            // *min* component (the conservative Lipschitz bound that keeps the field safe);
+            // translate/rotate/stretch/mirror/repeat are distance-preserving (scale 1).
+            let distanceScale: Float = {
+                switch t {
+                case .scale(let s): return s
+                case .scaleXYZ(let v): return min(v.x, v.y)
+                default: return 1
+                }
+            }()
             nodes.append(SDFNode(kind: 4, sel: 0, k: distanceScale, extra: 0,
                                  color: .zero, geo0: .zero, geo1: .zero))
             let (lo, hi) = Self.transformBounds(t, lo: rc.lo, hi: rc.hi)
@@ -283,6 +311,12 @@ extension SDF {
         case let .scale(s):
             return SDFNode(kind: 3, sel: 2, k: s, extra: 0, color: .zero,
                            geo0: .zero, geo1: .zero)
+        case let .scaleXYZ(v):
+            return SDFNode(kind: 3, sel: 6, k: 0, extra: 0, color: .zero,
+                           geo0: SIMD4(v.x, v.y, 0, 0), geo1: .zero)
+        case let .stretch(h):
+            return SDFNode(kind: 3, sel: 7, k: 0, extra: 0, color: .zero,
+                           geo0: SIMD4(h.x, h.y, 0, 0), geo1: .zero)
         case let .mirror(x, y):
             return SDFNode(kind: 3, sel: 3, k: 0, extra: 0, color: .zero,
                            geo0: SIMD4(x ? 1 : 0, y ? 1 : 0, 0, 0), geo1: .zero)
@@ -315,6 +349,10 @@ extension SDF {
             return (nlo, nhi)
         case let .scale(s):
             return (lo * s, hi * s)
+        case let .scaleXYZ(v):
+            return (lo * v, hi * v)
+        case let .stretch(h):
+            return (lo - h, hi + h)   // elongation extends the extent by h on each side
         case let .mirror(x, y):
             var nlo = lo, nhi = hi
             if x { let m = max(abs(lo.x), abs(hi.x)); nlo.x = -m; nhi.x = m }

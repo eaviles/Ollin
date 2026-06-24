@@ -124,6 +124,18 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func sdfCombinatorsStretchMatchReference() throws {
+        let diff = try Snapshot.meanDifference(of: SDFCombinatorsStretchScene(), against: "sdf-combinators-stretch")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func raymarchedSDF3DStretchMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DStretchScene(), against: "sdf-combinators-3d-stretch")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -1262,6 +1274,45 @@ private final class SDFCombinatorsGradientScene: Sketch {
                 .smoothUnion(SDF.rect(width: 56, height: 12, cornerRadius: 6), k: 12)
                 .smoothUnion(SDF.circle(radius: 20).at(x: 42, y: 0), k: 12))
         }
+    }
+}
+
+// Per-axis sizing of a 2D SDF field: `stretched` (exact elongation, a clean cross) beside
+// `scaled(x:y:)` (a non-uniform-scale bound, an ellipse + bead). Pins both new XFORM sels. Static.
+private final class SDFCombinatorsStretchScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.08))
+        noStroke()
+        // Stretch (exact): two elongated circles smooth-union into a clean cross.
+        let cross = SDF.circle(radius: 16).stretched(y: 30).colored(Color(hex: 0x4cc9f0))
+            .smoothUnion(SDF.circle(radius: 16).stretched(x: 30).colored(Color(hex: 0xff5d8f)), k: 14)
+        withState { translate(78, 128); drawSDF(cross) }
+        // Non-uniform scale (bound): a circle scaled into an ellipse, smooth-unioned with a bead.
+        let ell = SDF.circle(radius: 30).scaled(x: 1.5, y: 0.55).colored(Color(hex: 0xffd166))
+            .smoothUnion(SDF.circle(radius: 13).at(x: 44, y: 0).colored(Color(hex: 0x8ac926)), k: 14)
+        withState { translate(180, 128); drawSDF(ell) }
+    }
+}
+
+// Per-axis sizing of a raymarched 3D SDF field: `stretched` (a clean cross of two capsules) beside
+// `scaled(x:y:z:)` (a sphere as an ellipsoid bound). Pins both new 3D XFORM sels. Static.
+private final class RaymarchedSDF3DStretchScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0d1018))
+        camera(.orbiting(target: Vector3(0, 0, 0), radius: 8.5, azimuth: 0.5, elevation: 0.3,
+                         fieldOfView: .pi / 4, near: 2, far: 50))
+        directionalLight(.white, direction: Vector3(-0.3, -0.8, -0.5), intensity: 1.2, softness: 0.3)
+        ambientLight(Color(white: 0.2))
+        material(.glossy)
+        let cross = SDF3D.sphere(radius: 0.55).stretched(y: 1.0).colored(Color(hex: 0x67c1ff))
+            .smoothUnion(SDF3D.sphere(radius: 0.55).stretched(x: 1.0).colored(Color(hex: 0xff7ab0)), k: 0.5)
+        withState { translate(-2.4, 0, 0); drawSDF3D(cross) }
+        let ellipsoid = SDF3D.sphere(radius: 1.0).scaled(x: 1.5, y: 0.6, z: 1.0).colored(Color(hex: 0xffd166))
+        withState { translate(2.4, 0, 0); drawSDF3D(ellipsoid) }
     }
 }
 

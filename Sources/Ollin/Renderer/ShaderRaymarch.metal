@@ -205,7 +205,7 @@ static float3 ollin_sdf3d_xform(float3 p, SDFNode3D nd) {
         if (sp.z > 0.0) { float r = clamp(round(q.z / sp.z), -lim.z, lim.z); q.z -= sp.z * r; }
         return q;
     }
-    default: {                                        // polar (radial repeat around an axis)
+    case 5u: {                                        // polar (radial repeat around an axis)
         float3 axis = normalize(nd.geo0.xyz);
         float reps = max(nd.geo1.x, 1.0);
         // An orthonormal basis for the plane perpendicular to the axis (the fold plane), with
@@ -223,6 +223,12 @@ static float3 ollin_sdf3d_xform(float3 p, SDFNode3D nd) {
         a = a - ang * floor(a / ang) - ang * 0.5;
         return u * (cos(a) * r) + v * (sin(a) * r) + axis * axial;
     }
+    case 6u:                                          // non-uniform scale (p /= per-axis factors;
+        return p / max(nd.geo0.xyz, float3(1e-4));    // the distance is rescaled by the min factor
+                                                      // at RESTORE_P, a conservative bound)
+    default:                                          // stretch / elongate (sel 7): insert straight
+        return p - clamp(p, -nd.geo0.xyz, nd.geo0.xyz);  // space along each axis (splits the shape),
+                                                      // an exact SDF (distance preserved, scale 1)
     }
 }
 

@@ -155,8 +155,21 @@ no single path to run along); that paint falls back to no gradient. See
 `Examples/Basic/CombinatorsGradient`. (The 3D fields paint a gradient too, but in screen space;
 see [3D fields](#fields-3d).)
 
-Only **uniform** scale is supported: a non-uniform scale is not a valid distance field, so it
-would distort the smoothing and the outline.
+**Per-axis sizing.** `scaled(_:)` scales uniformly. For per-axis sizing there are two tools, and
+the difference matters:
+
+```swift
+field.stretched(x: 80)         // elongate along x by inserting straight space (circle -> stadium)
+field.scaled(x: 1.5, y: 0.6)   // non-uniform scale (circle -> ellipse)
+```
+
+`stretched` (an elongation: it splits the shape and inserts straight space, so a circle becomes a
+stadium and a sphere a capsule) **stays an exact distance field**, so smooth blends, rounding, and
+onion shells keep their even width. `scaled(x:y:)` is a true non-uniform scale, but a non-uniform
+scale isn't a valid distance field, so it's a conservative *bound*: the outline is right, yet the
+smoothing distorts under strong anisotropy (fine up to ~2–3×). **Prefer `stretched` for per-axis
+sizing**; reach for `scaled(x:y:)` only when you actually want the squashed-ellipse look. Both have
+3D forms (`stretched(x:y:z:)`, `scaled(x:y:z:)`).
 
 <a name="domain"></a>
 
@@ -356,10 +369,11 @@ an exact, machine-independent *march budget* use `raymarchSteps(_:)` (always ful
   single path on a merged field, so they aren't supported there.
 - **Closed regions only.** Combinators merge fillable shapes. Open marks (lines, open arcs,
   Bézier strokes) have no interior to merge, so they are not combinator leaves.
-- **Uniform scale only**, as above.
+- **Per-axis sizing** is `stretched` (exact) or `scaled(x:y[:z])` (a bound), as above; plain
+  `scaled(_:)` is uniform.
 - **2D and 3D.** `SDF` / `drawSDF` are the 2D fields here; `SDF3D` / `drawSDF3D` sphere-trace
   the same kind of field in space (see [3D fields](#fields-3d)). The 3D form is opt-in and
-  shares these limits (uniform scale), and its gradient paint is screen-space rather than field-space.
+  shares the same per-axis tools, and its gradient paint is screen-space rather than field-space.
 - A composition is bounded (a generous node and nesting budget); a field past it is skipped
   with a console note rather than mis-drawn.
 
@@ -371,6 +385,7 @@ the polygonal counterpart to these field operators), [`Color`](../Drawing/Color.
 types the leaves carry, and [`3D`](../3D/3D.md) for the camera and lights the 3D fields draw
 through. The examples are `Examples/Basic/Combinators` (2D),
 `Examples/Basic/CombinatorsGradient` (2D gradient fill + stroke on a merged field),
+`Examples/Basic/CombinatorsStretch` (2D per-axis stretch + non-uniform scale),
 `Examples/3D/RaymarchedSDF`
 (merged metaball, depth-composited with a mesh), `Examples/3D/RaymarchedShapes` (the 3D
 primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form),
@@ -379,5 +394,6 @@ primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form),
 `Examples/3D/RaymarchedPlane` (the infinite plane grounding shapes with self-shadows),
 `Examples/3D/RaymarchedShadow` (self-shadowing under `castShadows()`),
 `Examples/3D/RaymarchedCastShadow` (a field casting its shadow onto a rasterized mesh),
-`Examples/3D/RaymarchedReceiveShadow` (a field receiving a mesh's shadow), and
+`Examples/3D/RaymarchedReceiveShadow` (a field receiving a mesh's shadow),
+`Examples/3D/RaymarchedStretch` (per-axis stretch and non-uniform scale), and
 `Examples/3D/RaymarchedGradient` (a screen-space gradient painting the merged surface).

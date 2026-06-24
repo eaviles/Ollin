@@ -18,9 +18,9 @@ import COllinShaders
 // no transform; positioning is transform nodes, so method-chain order is exact:
 // `a.at(p).repeated…` moves then repeats, `a.repeated….at(p)` repeats then shifts.
 //
-// v1 is solid color per leaf (`.colored(_:)`, or the current `fill` as the default),
-// uniform scale only, and self-shading without cast shadows from the marched field;
-// gradient paint, domain mirror/repeat, and the scoped block form are follow-ups.
+// Per-axis sizing is `stretched` (an exact elongation) or `scaled(x:y:z:)` (a conservative
+// bound); a leaf takes a solid color (`.colored(_:)`, or the current `fill`), and a gradient
+// `fill` paints the whole merged surface by screen position.
 public struct SDF3D {
     /// Binary combine ops. Raw values are the `sel` the shader's OP node reads
     /// (shared with the 2D `SDF.Combine` encoding).
@@ -35,6 +35,8 @@ public struct SDF3D {
         case translate(SIMD3<Float>)
         case rotate(axis: SIMD3<Float>, angle: Float)   // unit axis, radians
         case scale(Float)                               // uniform factor > 0
+        case scaleXYZ(SIMD3<Float>)                     // non-uniform factors (conservative SDF bound)
+        case stretch(SIMD3<Float>)                      // per-axis elongation half-extent (exact SDF)
         case mirror(x: Bool, y: Bool, z: Bool)          // reflect across the field planes
         case repeatTiles(spacing: SIMD3<Float>, count: SIMD3<Float>)  // limited tiling
         case polar(axis: SIMD3<Float>, count: Float)    // radial repeat around an axis
@@ -171,8 +173,24 @@ public extension SDF3D {
     func rotatedY(_ radians: Double) -> SDF3D { rotated(radians, axis: Vector3(0, 1, 0)) }
     /// Rotate the field about the z-axis by `radians`.
     func rotatedZ(_ radians: Double) -> SDF3D { rotated(radians, axis: Vector3(0, 0, 1)) }
-    /// Uniformly scale the field about its origin (non-uniform scale isn't a valid SDF).
+    /// Uniformly scale the field about its origin. Uniform scale is an exact SDF operation;
+    /// for per-axis sizing prefer `stretched` (exact) or `scaled(x:y:z:)` (a bound).
     func scaled(_ s: Double) -> SDF3D { .init(.transformed(.scale(Float(max(s, 1e-4))), self)) }
+    /// Non-uniformly scale the field per axis about its origin. Non-uniform scale isn't a valid
+    /// distance field (it distorts space), so the result is a conservative *bound*: the surface
+    /// is right, but smooth blends, rounding, and onion shells distort under strong anisotropy
+    /// (fine up to ~2–3×). For the common "stretch a shape longer" case, prefer `stretched`,
+    /// which stays exact.
+    func scaled(x: Double, y: Double, z: Double) -> SDF3D {
+        .init(.transformed(.scaleXYZ(SIMD3(Float(max(x, 1e-4)), Float(max(y, 1e-4)), Float(max(z, 1e-4)))), self))
+    }
+    /// Stretch (elongate) the field per axis by inserting straight space, the way a sphere becomes
+    /// a capsule: each value extends the field by that much in *each* direction along the axis (a
+    /// sphere of radius r stretched by `x` reaches r + x along ±x). Unlike `scaled(x:y:z:)` this
+    /// stays an exact distance field, so smooth blends, rounding, and onion shells don't distort.
+    func stretched(x: Double = 0, y: Double = 0, z: Double = 0) -> SDF3D {
+        .init(.transformed(.stretch(SIMD3(Float(max(x, 0)), Float(max(y, 0)), Float(max(z, 0)))), self))
+    }
     /// Mirror the field across the chosen field planes (folds the negative side onto the
     /// positive), so one built lobe reflects into a symmetric set.
     func mirrored(x: Bool = true, y: Bool = false, z: Bool = false) -> SDF3D {
@@ -304,7 +322,17 @@ extension SDF3D {
         case let .transformed(t, c):
             nodes.append(Self.xformNode(t))
             let rc = c.flatten(defaultFill: defaultFill, into: &nodes)
-            let distanceScale: Float = { if case .scale(let s) = t { return s } else { return 1 } }()
+            // RESTORE_P rescales the child distance back to world units: a uniform scale by `s`,
+            // a non-uniform scale by its *min* component (the conservative Lipschitz bound that
+            // keeps the march safe), everything else (translate/rotate/stretch/mirror/repeat) is
+            // distance-preserving (scale 1).
+            let distanceScale: Float = {
+                switch t {
+                case .scale(let s): return s
+                case .scaleXYZ(let v): return min(v.x, min(v.y, v.z))
+                default: return 1
+                }
+            }()
             nodes.append(SDFNode3D(kind: 4, sel: 0, k: distanceScale, extra: 0,
                                    color: .zero, geo0: .zero, geo1: .zero))
             let (lo, hi) = Self.transformBounds(t, lo: rc.lo, hi: rc.hi)
@@ -345,6 +373,12 @@ extension SDF3D {
         case let .scale(s):
             return SDFNode3D(kind: 3, sel: 2, k: s, extra: 0, color: .zero,
                              geo0: .zero, geo1: .zero)
+        case let .scaleXYZ(v):
+            return SDFNode3D(kind: 3, sel: 6, k: 0, extra: 0, color: .zero,
+                             geo0: SIMD4(v.x, v.y, v.z, 0), geo1: .zero)
+        case let .stretch(h):
+            return SDFNode3D(kind: 3, sel: 7, k: 0, extra: 0, color: .zero,
+                             geo0: SIMD4(h.x, h.y, h.z, 0), geo1: .zero)
         case let .mirror(x, y, z):
             return SDFNode3D(kind: 3, sel: 3, k: 0, extra: 0, color: .zero,
                              geo0: SIMD4(x ? 1 : 0, y ? 1 : 0, z ? 1 : 0, 0), geo1: .zero)
@@ -381,6 +415,10 @@ extension SDF3D {
             return (nlo, nhi)
         case let .scale(s):
             return (lo * s, hi * s)
+        case let .scaleXYZ(v):
+            return (lo * v, hi * v)
+        case let .stretch(h):
+            return (lo - h, hi + h)   // elongation extends the extent by h on each side
         case let .mirror(x, y, z):
             var nlo = lo, nhi = hi
             if x { let m = max(abs(lo.x), abs(hi.x)); nlo.x = -m; nhi.x = m }
