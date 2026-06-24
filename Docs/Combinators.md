@@ -305,6 +305,27 @@ bypassed while a gradient fill is active.
 The 3D path is opt-in like the rest of [3D mode](./3D.md), so a 2D sketch never pays for it.
 Coloring is solid per leaf or a screen-space gradient (above), and scaling is uniform only.
 
+**Frame rate: `raymarchQuality(_:)`.** A field is a fullscreen sphere-tracer, so its cost is
+bound to pixel count: the more of the window it covers, the more it costs. The
+`raymarchQuality` dial trades resolution for frame rate on the **live preview**:
+
+```swift
+raymarchQuality(.performance)   // quarter-resolution: the heaviest fields
+raymarchQuality(.default)       // half-resolution (the default, keeps a busy field smooth)
+raymarchQuality(.detail)        // full resolution
+```
+
+`.default` (half resolution) is already in effect with no code, so most fields stay smooth out
+of the box; reach for `.performance` only on the heaviest scenes (an infinite plane, dense
+self-shadows). A depth-aware upsample composites the field back to full size, and meshes still
+occlude it correctly, so the lower resolution mainly softens the field's silhouette a little.
+**Only the live window scales:** `--export` and headless renders always sphere-trace at full
+resolution (see [Export ▸ Render quality](./Export.md#render-quality)), so exported art is never
+downscaled. For an exact resolution instead of the tiers, `raymarchResolution(_:)` takes a
+custom fraction: `raymarchResolution(0.75)` traces at 75% (the tiers are 1.0 / 0.5 / 0.25). For
+an exact, machine-independent *march budget* use `raymarchSteps(_:)` (always full resolution).
+`Scripts/benchmark.sh raymarch` measures the per-GPU cost.
+
 <a name="notes"></a>
 
 ### Notes and limits

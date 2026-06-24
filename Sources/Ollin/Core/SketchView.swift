@@ -615,12 +615,19 @@ public enum OllinApp {
     /// snapshot tests compare its result against a committed reference. Returns
     /// `nil` if there's no Metal device or the render fails (a library-friendly
     /// soft failure, unlike `export`'s hard exit).
-    public static func image(of sketch: Sketch, frame: Int = 0, fps: Double = 60) -> CGImage? {
+    ///
+    /// `quality` is the **automatic** render-quality fallback for features the sketch left at
+    /// `.default`: it defaults to `.detail` (best quality; export has no frame-rate pressure),
+    /// the `--render-quality` flag overrides it, and a feature the sketch dialled explicitly is
+    /// always honoured regardless.
+    public static func image(of sketch: Sketch, frame: Int = 0, fps: Double = 60,
+                             quality: RenderQuality = .detail) -> CGImage? {
         guard let device = MTLCreateSystemDefaultDevice(),
               let renderer = try? MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
                                                 sampleCount: ollinPreferredSampleCount(device)) else {
             return nil
         }
+        renderer.automaticQuality = quality
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.setup()
@@ -661,8 +668,9 @@ public enum OllinApp {
     /// at `fps` (so animated/stateful sketches export the right moment). The
     /// headless frame-grab (`image(of:)`) plus a PNG write, and the basis for PNG
     /// sequences → video.
-    public static func export(_ sketch: Sketch, to path: String, frame: Int = 0, fps: Double = 60) {
-        guard let cgImage = image(of: sketch, frame: frame, fps: fps) else {
+    public static func export(_ sketch: Sketch, to path: String, frame: Int = 0, fps: Double = 60,
+                              quality: RenderQuality = .detail) {
+        guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
             fatalError("Ollin: failed to render the frame for export (no Metal device?)")
         }
         guard let data = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else {
@@ -694,7 +702,8 @@ public enum OllinApp {
     /// unseeded, it's internally consistent within a run but differs between runs.
     public static func exportSequence(_ sketch: Sketch, to directory: String,
                                       frames: Int, fps: Double = 60,
-                                      startFrame: Int = 1, skipSeconds: Double = 0) {
+                                      startFrame: Int = 1, skipSeconds: Double = 0,
+                                      quality: RenderQuality = .detail) {
         guard frames > 0 else { return }
         do {
             try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
@@ -707,7 +716,8 @@ public enum OllinApp {
         let skipNote = skipFrames > 0 ? String(format: " (after %gs warmup)", skipSeconds) : ""
         print("Ollin: exporting \(frames) frames at \(Int(fps)) fps\(skipNote) → \(directory) (\(size.width)×\(size.height))")
 
-        let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds) { cgImage, index in
+        let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
+                                   quality: quality) { cgImage, index in
             guard let data = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else {
                 fatalError("Ollin: failed to encode PNG for frame \(index)")
             }
@@ -737,7 +747,7 @@ public enum OllinApp {
     /// pct done · render throughput. Returns the elapsed wall-clock seconds.
     @discardableResult
     static func renderFrames(_ sketch: Sketch, frames: Int, fps: Double,
-                             skipSeconds: Double,
+                             skipSeconds: Double, quality: RenderQuality = .detail,
                              write: (CGImage, Int) -> Void) -> Double {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Ollin requires a Metal-capable GPU.")
@@ -749,6 +759,7 @@ public enum OllinApp {
         } catch {
             fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
         }
+        renderer.automaticQuality = quality   // the fallback for features the sketch left at .default
 
         let size = sketch.canvasSize
         let width = size.width, height = size.height
@@ -815,9 +826,14 @@ public enum OllinApp {
         sketch.advance(time: 0, deltaTime: 1 / fps, frameRate: fps)
         sketch.performDraw()
 
-        // Optional end-to-end timing: render each frame off-screen on the GPU.
-        // Conservative — it also pays per-frame MSAA texture allocation and a
-        // full readback the live path doesn't — so the real headroom is higher.
+        // Optional GPU timing. Three numbers, because they answer different questions:
+        //   • CPU draw   : the per-frame `performDraw()` tessellation cost alone.
+        //   • GPU        : the *pure* per-frame GPU cost from command-buffer timestamps
+        //                  (vsync- and readback-independent, the real live render cost),
+        //                  the same measurement the `.defocus`/shadow benchmarks report.
+        //   • end-to-end : CPU + GPU + a full read-back, run fully serially; conservative
+        //                  (the live path triple-buffers, so live ≈ max(CPU, GPU)).
+        // The live frame rate is bounded by max(CPU, GPU), printed as the estimate.
         if gpu {
             guard let device = MTLCreateSystemDefaultDevice() else {
                 fatalError("Ollin requires a Metal-capable GPU.")
@@ -828,17 +844,35 @@ public enum OllinApp {
             }
             let w = size.width, h = size.height
             let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
-            _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)  // warm GPU
-
-            let start = CACurrentMediaTime()
-            for k in 1...n {
+            // Warm up: render several real frames so first-time buffer growth is paid and
+            // any stateful layer (feedback, a sim field) settles into its steady-state cost.
+            for k in 0..<8 {
                 sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
                 sketch.performDraw()
                 _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)
             }
-            let ms = (CACurrentMediaTime() - start) / Double(n) * 1000
-            print(String(format: "Ollin bench: %d frames · %.3f ms/frame (CPU+GPU, incl. readback) · ~%.0f fps",
-                         n, ms, ms > 0 ? 1000 / ms : 0))
+
+            // CPU draw cost and the end-to-end (serial CPU + GPU + readback) cost, one loop.
+            let start = CACurrentMediaTime()
+            var cpuTotal = 0.0
+            for k in 1...n {
+                sketch.advance(time: Double(n + k) / fps, deltaTime: 1 / fps, frameRate: fps)
+                let drawStart = CACurrentMediaTime()
+                sketch.performDraw()
+                cpuTotal += CACurrentMediaTime() - drawStart
+                _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)
+            }
+            let endToEnd = (CACurrentMediaTime() - start) / Double(n) * 1000
+            let cpuMs = cpuTotal / Double(n) * 1000
+            // Pure per-frame GPU cost on the last drawn frame (vsync- and readback-free).
+            let gpuMs = renderer.benchmarkGPUMilliseconds(sketch.drawer, viewport: viewport,
+                                                          width: w, height: h, iterations: max(8, n / 4))
+            let liveMs = max(cpuMs, gpuMs)
+            print(String(format: "Ollin bench: %d frames @ %d×%d · CPU %.2f ms · GPU %.2f ms · end-to-end %.2f ms",
+                         n, w, h, cpuMs, gpuMs, endToEnd))
+            print(String(format: "  → live ~%.0f fps (bound by %@) · end-to-end ~%.0f fps",
+                         liveMs > 0 ? 1000 / liveMs : 0, cpuMs >= gpuMs ? "CPU" : "GPU",
+                         endToEnd > 0 ? 1000 / endToEnd : 0))
             return
         }
 
@@ -880,6 +914,15 @@ public extension Sketch {
         // `swift run Example-X --export <path> [--frame N]` writes a PNG and
         // exits (no window); otherwise the sketch runs in a window as usual.
         let args = CommandLine.arguments
+        // `--render-quality <performance|default|detail>` sets the render-quality fallback for
+        // the export paths, applied to any feature the sketch left at `.default` (an explicit
+        // sketch dial still wins). Defaults to `.detail`: exported art is full quality unless
+        // asked otherwise. (Distinct from `--quality`, the video *encoding* quality.)
+        let renderQuality: RenderQuality = {
+            guard let i = args.firstIndex(of: "--render-quality"), i + 1 < args.count,
+                  let q = RenderQuality(name: args[i + 1]) else { return .detail }
+            return q
+        }()
         // `--export-sequence <dir> (--frames N | --seconds S) [--fps F] [--start N]`
         // renders a deterministic numbered PNG sequence and exits.
         if let i = args.firstIndex(of: "--export-sequence"), i + 1 < args.count {
@@ -901,7 +944,7 @@ public extension Sketch {
                 return
             }
             OllinApp.exportSequence(Self(), to: dir, frames: frames, fps: fps,
-                                    startFrame: start, skipSeconds: skip)
+                                    startFrame: start, skipSeconds: skip, quality: renderQuality)
             return
         }
         // `--export-video <path> (--frames N | --seconds S) [--fps F] [--skip S]
@@ -936,7 +979,7 @@ public extension Sketch {
             }
             OllinApp.exportVideo(Self(), to: args[i + 1], frames: frames, fps: fps,
                                  codec: codec, bitsPerSecond: bitrate, quality: quality,
-                                 skipSeconds: skip)
+                                 renderQuality: renderQuality, skipSeconds: skip)
             return
         }
         // `--export-gif <path> (--frames N | --seconds S) [--fps F] [--skip S]
@@ -959,7 +1002,7 @@ public extension Sketch {
                 return
             }
             OllinApp.exportGIF(Self(), to: args[i + 1], frames: frames, fps: fps,
-                               width: width, skipSeconds: skip)
+                               width: width, skipSeconds: skip, renderQuality: renderQuality)
             return
         }
         if let i = args.firstIndex(of: "--export"), i + 1 < args.count {
@@ -967,7 +1010,7 @@ public extension Sketch {
             if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {
                 frame = Int(args[f + 1]) ?? 0
             }
-            OllinApp.export(Self(), to: args[i + 1], frame: frame)
+            OllinApp.export(Self(), to: args[i + 1], frame: frame, quality: renderQuality)
             return
         }
         // `swift run Example-X --export-svg <path> [--frame N]` writes a vector SVG

@@ -11,6 +11,7 @@ Most exports are reached by a command-line flag on any example's executable; the
 ### Contents
 
 - [Raster: PNG and sequences](#raster-png-and-sequences) — `--export`, `--export-sequence`
+- [Render quality](#render-quality) — `--render-quality`, the live vs. export default
 - [Video](#video) — `--export-video`, `OllinApp.exportVideo`
 - [Animated GIF](#animated-gif) — `--export-gif`, `OllinApp.exportGIF`
 - [Vector: SVG](#vector-svg) — `--export-svg`, `OllinApp.svg` / `exportSVG`
@@ -37,6 +38,25 @@ swift run Example-Breathing --export-sequence /tmp/out --seconds 5 --fps 60
 Both render through Metal off-screen (MSAA, then resolve), so the pixels match the live window. The same capability is available as `OllinApp.image(of:frame:)` (returns a `CGImage`), `OllinApp.export(_:to:frame:)`, and `OllinApp.exportSequence(...)`. For a *reproducible* sequence, seed the sketch (`seed(…)` in `setup()`).
 
 The sequence is the raw-material path: it keeps every frame as a lossless PNG for an external encoder or an edit. When the goal is just a file to share, the next two sections encode directly and skip the stitching step.
+
+### Render quality
+
+A few features trade visual fidelity for frame rate through the shared `RenderQuality` dial: soft shadows, depth of field, ambient occlusion, and the raymarched-3D-SDF render resolution (`drawSDF3D`). The tiers are `.performance`, `.default`, and `.detail`. **Export and the live window pick a different default**, because they have different constraints:
+
+- **Live window** defaults to `.default`, the frame-rate-safe tier (e.g. the raymarcher runs at half resolution so a busy field stays smooth).
+- **Export / headless** (`--export`, `--export-sequence`, `--export-video`, `--export-gif`, `OllinApp.image(of:)`) defaults to **`.detail`**, the best quality. There's no frame-rate pressure when writing a file, and you never want exported art downscaled, so an export is full resolution with the richest samples by default.
+
+Override the export default with `--render-quality`:
+
+```sh
+swift run Example-RaymarchedSDF --export field.png                              # .detail (default, full quality)
+swift run Example-RaymarchedSDF --export field.png --render-quality performance # fast/low: quarter-res raymarch, fewer samples
+swift run Example-Defocus      --export-video dof.mp4 --seconds 6 --render-quality default
+```
+
+It takes `performance`, `default`, or `detail` (aliases: `fast` / `balanced` / `high`) and applies to every raster/video/GIF export. It is **distinct from `--quality`**, which is the video *encoding* quality (0…1) for `--export-video`.
+
+**A quality the sketch sets itself always wins.** `--render-quality` (and the automatic live/export defaults) only fill in features the sketch left alone. If a sketch dials a feature explicitly (`raymarchQuality(.performance)`, `shadowQuality(.detail)`, `.defocus(…, quality: .performance)`), that choice is honoured on every path, live and export alike. In code the same control is the `quality:` argument on `OllinApp.image(of:frame:fps:quality:)` / `export` / `exportSequence` (and `renderQuality:` on `exportVideo` / `exportGIF`), defaulting to `.detail`.
 
 ### Video
 

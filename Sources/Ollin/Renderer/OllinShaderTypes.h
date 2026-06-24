@@ -70,6 +70,10 @@ typedef struct {
                                // mesh/point/wireframe pipelines never read it, so it's
                                // free for them (the field is just set each frame).
     simd_float2 viewport;      // drawable size in points (for any screen-space math)
+    simd_float2 raymarchSteps; // the RenderQuality raymarch dial, read only by the raymarch
+                               // fragment: .x = camera-march step budget, .y = self-shadow
+                               // march budget. Default (128, 48) reproduces the pre-dial
+                               // constants exactly, so default-quality snapshots are unchanged.
 } Uniforms3D;
 
 // One vertex of a textured quad (the image pipeline). Position is already in
@@ -247,6 +251,8 @@ typedef struct {
 typedef struct {
     simd_float4x4 lightViewProjection;         // world -> light clip (writes the hit's depth)
     simd_float4x4 inverseLightViewProjection;  // light clip -> world (rebuilds the march ray)
+    float raymarchSteps;                       // the field's camera-march budget (the
+                                               // RenderQuality dial; default 128 unchanged)
 } OllinRaymarchShadowUniforms;
 
 // One particle for the GPU compute path: a persistent buffer of these is updated

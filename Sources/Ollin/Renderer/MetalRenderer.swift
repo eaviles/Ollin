@@ -72,6 +72,11 @@ final class MetalRenderer {
         /// Like `isPresent`, an exception to the geometry-pipeline shape kept in the
         /// same cache so live shader reload rebuilds it too.
         var isEffect = false
+        /// Force `rasterSampleCount = 1` instead of the view's MSAA count. The half-res
+        /// raymarch pass (and its upsample composite) run single-sample, since the raymarch's
+        /// silhouette AA is analytic, so it needs no MSAA, and the half-res target is a
+        /// plain (non-multisampled) sampleable texture.
+        var singleSample = false
 
         // tessellated triangles (rects, lines, polygons, arcs)
         static func solid(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -96,6 +101,22 @@ final class MetalRenderer {
         // triangle whose fragment sphere-traces the field and writes depth
         static func raymarch(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_raymarch_vertex", fragment: "ollin_raymarch_fragment", blend: blend, depthFormat: depth)
+        }
+        // the same raymarch fragment, but single-sample into a half-resolution color + depth
+        // target (the `.performance` tier marches a quarter of the pixels). Always `.normal`
+        // straight-alpha over a transparent clear, so the stored color is premultiplied.
+        static func raymarchHalfRes(depth: MTLPixelFormat) -> PipelineKey {
+            PipelineKey(vertex: "ollin_raymarch_vertex", fragment: "ollin_raymarch_fragment",
+                        depthFormat: depth, singleSample: true)
+        }
+        // composite the half-resolution field back at full resolution: a fullscreen tri that
+        // upsamples the half-res color (bilinear) + depth (point) and re-emits the depth, so a
+        // mesh still z-tests against the field. Premultiplied `.normal` (the half-res color is
+        // premultiplied); not single-sample, since it runs in the MSAA main pass and inherits
+        // the view sample count (singleSample stays false).
+        static func raymarchUpsample(depth: MTLPixelFormat) -> PipelineKey {
+            PipelineKey(vertex: "ollin_raymarch_vertex", fragment: "ollin_raymarch_upsample_fragment",
+                        premultiplied: true, depthFormat: depth)
         }
         // textured quads (images); the texture keeps the CGImage's premultiplied alpha
         static func image(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -369,6 +390,14 @@ final class MetalRenderer {
     /// sketch never makes one. Memoryless: depth lives only in tile memory.
     private var mainDepth: MTLTexture?
 
+    /// The half-resolution color + depth targets for the `.performance` raymarch tier: the
+    /// field is sphere-traced into these at half the drawable size, then a fullscreen pass
+    /// upsamples + composites them at full res (writing depth so meshes still occlude it).
+    /// Both are sampleable single-sample textures, cached and rebuilt only on a size change.
+    private var halfResColor: MTLTexture?
+    private var halfResDepth: MTLTexture?
+    private var halfResSize = (width: 0, height: 0)
+
     /// Per-frame-ring pools of effects-layer textures, reused across frames so a
     /// sketch that uses render targets every frame allocates them once. Keyed by the
     /// ring slot (`frameIndex`) so a texture is never reused while an in-flight frame
@@ -596,6 +625,20 @@ final class MetalRenderer {
             sdf3DNode: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count))
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: true)
 
+        // Half-res raymarch pre-pass (the `.performance` tier): sphere-trace the fields at half
+        // resolution into a sampleable color+depth that the main pass upsamples + composites.
+        // `nil` on the full-res tiers or a frame with no fields, so those stay byte-identical.
+        let halfResField = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 in
+            let fieldLight = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD,
+                                                  shadowCube: renderedShadow.cube,
+                                                  shadowAccelPresent: renderedShadow.accel != nil)
+            return encodeRaymarchHalfRes(drawer, into: commandBuffer,
+                groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
+                uniforms3D: u3, lighting: fieldLight.lighting,
+                shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
+                fullWidth: width, fullHeight: height)
+        }
+
         guard let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
             return
@@ -610,7 +653,8 @@ final class MetalRenderer {
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                shadowCube: renderedShadow.cube,
-               shadowAccel: renderedShadow.accel)
+               shadowAccel: renderedShadow.accel,
+               halfResField: halfResField)
         geomEncoder.endEncoding()
 
         // Whole-frame postProcess filters run over the resolved frame before present.
@@ -890,6 +934,20 @@ final class MetalRenderer {
             sdf3DNode: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count))
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false)
 
+        // Half-res raymarch pre-pass: honours the resolution tier on export too, so an
+        // explicit `.performance`/`.default` raymarch quality downscales here as it does live.
+        // At `.detail` (the export default) the scale is 1 and this is nil (full resolution).
+        let halfResField = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 in
+            let fieldLight = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD,
+                                                  shadowCube: renderedShadow.cube,
+                                                  shadowAccelPresent: renderedShadow.accel != nil)
+            return encodeRaymarchHalfRes(drawer, into: commandBuffer,
+                groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
+                uniforms3D: u3, lighting: fieldLight.lighting,
+                shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
+                fullWidth: width, fullHeight: height)
+        }
+
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
         encode(drawer, viewport: viewport, into: encoder,
@@ -900,7 +958,8 @@ final class MetalRenderer {
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                shadowCube: renderedShadow.cube,
-               shadowAccel: renderedShadow.accel)
+               shadowAccel: renderedShadow.accel,
+               halfResField: halfResField)
         encoder.endEncoding()
 
         // Tone-map the resolved float frame (after whole-frame postProcess filters)
@@ -976,6 +1035,18 @@ final class MetalRenderer {
                 drawer, into: cb, meshBuffer: meshBuf,
                 sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode)
             encodeEffectTargets(drawer, into: cb, buffers: buffers, pooled: false)
+            // Half-res raymarch pre-pass (the `.performance` tier), so the benchmark measures
+            // the same cost the live path pays. nil otherwise.
+            let halfResField = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 in
+                let fieldLight = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD,
+                                                      shadowCube: renderedShadow.cube,
+                                                      shadowAccelPresent: renderedShadow.accel != nil)
+                return encodeRaymarchHalfRes(drawer, into: cb,
+                    groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
+                    uniforms3D: u3, lighting: fieldLight.lighting,
+                    shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
+                    fullWidth: width, fullHeight: height)
+            }
             guard let encoder = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
             encode(drawer, viewport: viewport, into: encoder,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
@@ -984,7 +1055,8 @@ final class MetalRenderer {
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                    depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
-                   shadowCube: renderedShadow.cube, shadowAccel: renderedShadow.accel)
+                   shadowCube: renderedShadow.cube, shadowAccel: renderedShadow.accel,
+                   halfResField: halfResField)
             encoder.endEncoding()
             let presented = applyFrameFilters(drawer, resolved: resolveTexture, width: width,
                                               height: height, into: cb, pooled: false)
@@ -1766,6 +1838,7 @@ final class MetalRenderer {
                         depthFormat: MTLPixelFormat?, shadowMap: MTLTexture? = nil,
                         shadowCube: MTLTexture? = nil,
                         shadowAccel: MTLAccelerationStructure? = nil,
+                        halfResField: (color: MTLTexture, depth: MTLTexture)? = nil,
                         target passTarget: RenderTarget? = nil) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
@@ -1841,11 +1914,13 @@ final class MetalRenderer {
         if let camera = drawer.camera3D {
             let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
             let proj = camera.projectionMatrix(aspect: aspect)
+            let steps = resolveRaymarchSteps(drawer.raymarchQualitySetting)
             var u3 = Uniforms3D(view: camera.viewMatrix, projection: proj,
                                 inverseViewProjection: simd_inverse(proj * camera.viewMatrix),
-                                viewport: viewport)
+                                viewport: viewport,
+                                raymarchSteps: SIMD2<Float>(Float(steps.march), Float(steps.shadow)))
             encoder.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
-            uniforms3D = u3   // the raymarch fragment also reads it (the ray + depth)
+            uniforms3D = u3   // the raymarch fragment also reads it (the ray + depth + step budget)
         }
 
         // 3D mesh lighting (per-frame), bound to the mesh fragment per mesh batch
@@ -1887,6 +1962,9 @@ final class MetalRenderer {
         let imageStride = MemoryLayout<OllinImageVertex>.stride
         let pointStride = MemoryLayout<OllinPoint>.stride
         let meshStride = MemoryLayout<OllinMeshVertex>.stride
+        // On the half-res raymarch tier all fields composite in one upsample at the first field
+        // batch; this flag skips the rest (their geometry already merged into the half-res target).
+        var compositedHalfResFields = false
         for i in batches.indices {
             let batch = batches[i]
             let next = i + 1 < batches.count ? batches[i + 1] : nil
@@ -1955,6 +2033,19 @@ final class MetalRenderer {
                 encoder.setFragmentBuffer(sdfNodeBuffer, offset: 0, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .sdfGroup3D:
+                // Half-res tier: the fields were already sphere-traced into the half-res
+                // color+depth in the pre-pass, and all of them composite in one upsample at
+                // the first field batch (depth still decides mesh occlusion), so skip the rest.
+                if let hf = halfResField {
+                    if compositedHalfResFields { continue }
+                    compositedHalfResFields = true
+                    guard let upState = try? pipeline(.raymarchUpsample(depth: depthFormat ?? depthPixelFormat)) else { continue }
+                    encoder.setRenderPipelineState(upState)
+                    encoder.setFragmentTexture(hf.color, index: 0)
+                    encoder.setFragmentTexture(hf.depth, index: 1)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    continue
+                }
                 // Raymarched composed 3D fields: one instanced fullscreen triangle per
                 // field, the fragment sphere-tracing it and writing depth so it z-tests
                 // against the meshes (state set above). The group buffer is offset to this
@@ -2418,9 +2509,11 @@ final class MetalRenderer {
         nodes3D.withUnsafeBytes { raw in
             nodeBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
         }
+        let casterSteps = resolveRaymarchSteps(drawer.raymarchQualitySetting).march
         var u = OllinRaymarchShadowUniforms(
             lightViewProjection: lighting.lightViewProjection,
-            inverseLightViewProjection: simd_inverse(lighting.lightViewProjection))
+            inverseLightViewProjection: simd_inverse(lighting.lightViewProjection),
+            raymarchSteps: Float(casterSteps))
         encoder.setRenderPipelineState(fieldPipeline)
         encoder.setFragmentBuffer(groupBuffer, offset: 0, index: 0)
         encoder.setFragmentBuffer(nodeBuffer, offset: 0, index: 1)
@@ -2494,23 +2587,22 @@ final class MetalRenderer {
     }
 
     /// Resolve the sketch's soft-shadow quality intent to a concrete ray count for this GPU.
-    /// A `Quality` tier scales with the hardware (a dedicated-RT GPU affords ~2× the rays of a
+    /// A `Quality` tier scales with the hardware (a dedicated-RT GPU affords more rays of a
     /// software-RT one at the same tier, so better hardware lifts the default quality on its
-    /// own); an absolute count passes through unchanged. The defaults are tuned so `.medium`
-    /// holds 60fps on each tier (4 rays in software, 8 with hardware RT).
+    /// own); an absolute count passes through unchanged. Frame-rate-band tiers (the software-RT
+    /// M2 column is measured at the live drawable via `Scripts/benchmark.sh shadows`):
+    /// `.performance` ~120fps (2 rays = 149fps), `.default` 60–90fps (4 = 88fps), `.detail`
+    /// 15–30fps (16 = 25fps). The hw (apple9+) column is an estimate until benchmarked there.
     private func resolveShadowSamples(_ setting: ShadowQualitySetting) -> Int32 {
         switch setting {
         case .absolute(let n):
             return Int32(n)
         case .tier(let quality):
-            // Software RT (M1/M2) values are measured: `.default` = 4 holds 60fps. A
-            // dedicated-RT GPU gets 4× at each tier (a placeholder until a per-GPU
-            // benchmark — Scripts/benchmark-shadows — tunes real numbers per machine).
             let hw = hasHardwareRayTracing
-            switch quality {
-            case .performance: return hw ? 8 : 2
+            switch effectiveQuality(quality) {
+            case .performance: return hw ? 8  : 2
             case .default:     return hw ? 16 : 4
-            case .detail:      return hw ? 32 : 8
+            case .detail:      return hw ? 48 : 16
             }
         }
     }
@@ -2520,16 +2612,35 @@ final class MetalRenderer {
     /// real per-GPU frame cost. `nil` in normal use.
     var dofTapsOverride: Int?
 
+    /// The fallback quality for a feature the sketch left at `.default` (i.e. didn't explicitly
+    /// dial). `.default` for the live window (the frame-rate-safe tier); `.detail` for export /
+    /// headless (no frame-rate pressure, so best quality), overridable by `--render-quality`. A
+    /// sketch that sets a *non-default* tier (`.performance`/`.detail`, or an absolute count) is
+    /// treated as explicit and respected as-is on every path, so `.default` doubles as "automatic".
+    var automaticQuality: RenderQuality = .default
+
+    /// Map a feature's requested quality through the automatic fallback: `.default` means
+    /// "unset", so it resolves to `automaticQuality`; anything else is an explicit choice and
+    /// passes through. (Live keeps `.default` as `.default`; export lifts it to `.detail`.)
+    private func effectiveQuality(_ q: RenderQuality) -> RenderQuality {
+        q == .default ? automaticQuality : q
+    }
+
     /// Resolve a `.ambientOcclusion` quality tier to a gather sample count. Fewer samples
     /// than the bokeh gather (each reconstructs a view-space position and accumulates a
     /// scalar, not a colour), distributed over the same smooth golden-angle spiral so the
     /// occlusion needs no noise texture or separate blur.
     private func resolveSSAOSamples(_ quality: RenderQuality) -> Int {
         if let override = ssaoSamplesOverride { return max(4, min(override, 256)) }
-        switch quality {
-        case .performance: return 16
-        case .default:     return 32
-        case .detail:      return 64
+        // Frame-rate-band tiers (measured on M2 at 1080² via `Scripts/benchmark.sh ssao`):
+        // `.performance` ~120fps headroom (64 = 192fps), `.default` 60–90fps with headroom
+        // (128 = 117fps). SSAO is cheap enough that reaching `.detail`'s 15–30fps target would
+        // need ~600+ samples (far past where the occlusion estimate stops improving), so
+        // `.detail` is capped at the useful ceiling (256 = 66fps), not the frame-rate band.
+        switch effectiveQuality(quality) {
+        case .performance: return 64
+        case .default:     return 128
+        case .detail:      return 256
         }
     }
 
@@ -2537,20 +2648,202 @@ final class MetalRenderer {
     /// quality tier, the sweep hook mirroring `dofTapsOverride`. `nil` in normal use.
     var ssaoSamplesOverride: Int?
 
-    /// Resolve a `.defocus` quality tier to a bokeh tap count, hardware-relative (richer on
-    /// a dedicated-RT GPU). The software-RT (M1/M2) column is **measured** — `Scripts/benchmark.sh
-    /// dof` on an M2 at 1080² gives 64 → 5.3ms, 128 → 9.9ms (holds 60fps with headroom),
-    /// 256 → 19ms (drops to 30fps live, the favor-quality tier). `.default` = 128 is also the
-    /// value the gather was tuned and snapshot-recorded at. The dedicated-RT column is a ~1.5×
-    /// estimate until the benchmark is run on such a GPU (M3+).
+    /// Resolve a `.defocus` quality tier to a bokeh tap count, hardware-relative (richer on a
+    /// dedicated-RT GPU). The software-RT (M1/M2) column is measured (`Scripts/benchmark.sh dof`
+    /// on an M2 at 1080²: 96 taps hold ~120fps, 192 hold 60–90fps, 512 hold 15–30fps); the
+    /// dedicated-RT column is a ~1.5× estimate until the benchmark is run on such a GPU (M3+).
     private func resolveDofTaps(_ quality: RenderQuality) -> Int {
         if let override = dofTapsOverride { return max(8, min(override, 1024)) }
+        // The tiers target frame-rate bands (measured on M2 at the 1080² `.defocus` layer via
+        // `Scripts/benchmark.sh dof`): `.performance` ~120fps (96 taps = 126fps), `.default`
+        // 60–90fps (192 = 69fps), `.detail` 15–30fps (512 = 27fps). The hw column (apple9+) is a
+        // ~1.5× estimate until benchmarked on such a GPU.
         let hw = hasHardwareRayTracing
-        switch quality {
-        case .performance: return hw ? 96  : 64
-        case .default:     return hw ? 192 : 128
-        case .detail:      return hw ? 384 : 256
+        switch effectiveQuality(quality) {
+        case .performance: return hw ? 144 : 96
+        case .default:     return hw ? 288 : 192
+        case .detail:      return hw ? 768 : 512
         }
+    }
+
+    /// An exact camera-march step count overriding the resolved `drawSDF3D` quality tier: the
+    /// hook `Scripts/benchmark.sh raymarch` sweeps to measure the real per-GPU march cost.
+    /// `nil` in normal use. (The shadow budget tracks it at the same 3/8 ratio.)
+    var raymarchStepsOverride: Int?
+
+    /// Resolve a raymarch quality setting to the camera-march and self-shadow step budgets.
+    /// The `.default` tier returns the pre-dial constants (128 / 48) **exactly**, so a sketch
+    /// that sets no quality renders byte-identically to before. The step budget is a fidelity
+    /// (surface-resolution) knob, not a hardware-RT one, so the tiers are GPU-independent; the
+    /// `.performance` *render-scale* drop (`resolveRaymarchScale`) is the bigger lever.
+    private func resolveRaymarchSteps(_ setting: RaymarchQualitySetting) -> (march: Int32, shadow: Int32) {
+        func pair(_ march: Int) -> (Int32, Int32) {
+            let m = max(16, min(march, 512))
+            return (Int32(m), Int32(max(8, m * 3 / 8)))   // shadow ≈ 3/8 of the march (128→48)
+        }
+        if let override = raymarchStepsOverride { return pair(override) }
+        switch setting {
+        case .absolute(let n): return pair(n)
+        case .resolution: return (128, 48)   // a custom-resolution field keeps the default march budget
+        case .tier(let quality):
+            switch effectiveQuality(quality) {
+            case .performance: return (64, 24)
+            case .default:     return (128, 48)   // live `.default`; export lifts to `.detail`
+            case .detail:      return (192, 72)
+            }
+        }
+    }
+
+    /// The internal live-preview render scale (a fraction of full resolution) for the raymarch,
+    /// the dominant lever: the fullscreen sphere-tracer's cost is bound to pixel count (step
+    /// count barely moves it), so the tiers scale resolution: `.detail` full (1.0), `.default`
+    /// half (0.5, ¼ the pixels), `.performance` quarter (0.25, 1/16 the pixels), or an exact
+    /// fraction from `raymarchResolution`. An upsample composites it back at full res. **This
+    /// applies to the live preview only:** a `.detail` export marches at full resolution (scale
+    /// 1.0 skips the pre-pass), so `--export`/snapshots are never downscaled and stay
+    /// byte-identical. An absolute step count also marches at full resolution.
+    private func resolveRaymarchScale(_ setting: RaymarchQualitySetting) -> Double {
+        switch setting {
+        case .absolute: return 1.0
+        case .resolution(let f): return min(1.0, max(0.1, f))   // an exact fraction (clamped)
+        case .tier(let q):
+            switch effectiveQuality(q) {
+            case .detail:      return 1.0
+            case .default:     return 0.5
+            case .performance: return 0.25
+            }
+        }
+    }
+
+    /// Build the per-frame 3D camera constants (used by the points/mesh/raymarch pipelines),
+    /// including the dial-resolved march-step budget. `nil` when no 3D camera is active. Shared
+    /// by the main `encode` and the half-res raymarch pre-pass so they can't drift.
+    private func makeRaymarchUniforms3D(_ drawer: Drawer, viewport: SIMD2<Float>) -> Uniforms3D? {
+        guard let camera = drawer.camera3D else { return nil }
+        let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
+        let proj = camera.projectionMatrix(aspect: aspect)
+        let steps = resolveRaymarchSteps(drawer.raymarchQualitySetting)
+        return Uniforms3D(view: camera.viewMatrix, projection: proj,
+                          inverseViewProjection: simd_inverse(proj * camera.viewMatrix),
+                          viewport: viewport,
+                          raymarchSteps: SIMD2<Float>(Float(steps.march), Float(steps.shadow)))
+    }
+
+    /// Resolve this frame's lighting + shadow bindings (caster index, RT vs map kind, and the
+    /// real-or-dummy shadow textures), the block shared by the main `encode` and the half-res
+    /// raymarch pre-pass so a marched field shades identically at half resolution. `shadowAccel`
+    /// is the frame's acceleration structure (RT point shadows), nil otherwise.
+    private func resolveFieldLighting(_ drawer: Drawer, shadowMap: MTLTexture?, shadowCube: MTLTexture?,
+                                      shadowAccelPresent: Bool)
+        -> (lighting: OllinLighting, shadowTexture: MTLTexture?, shadowCubeTexture: MTLTexture?) {
+        var lighting = drawer.makeLighting()
+        if shadowMap == nil && shadowCube == nil && !shadowAccelPresent && drawer.sdf3DGroups.isEmpty {
+            lighting.shadowLight = -1
+        }
+        if shadowAccelPresent {
+            lighting.shadowKind = 2
+            lighting.shadowSamples = resolveShadowSamples(drawer.shadowQualitySetting)
+        }
+        return (lighting, shadowMap ?? ensureDummyShadowMap(), shadowCube ?? ensureDummyPointShadowMap())
+    }
+
+    /// Sphere-trace every `.normal`-blend field batch into the cached half-resolution color +
+    /// depth targets (the `.performance` raymarch tier). Returns the targets for the main pass
+    /// to upsample + composite, or `nil` when half-res doesn't apply (full-res tier, no fields,
+    /// or any field uses a non-`.normal` blend, which would not composite premultiplied-over,
+    /// so the whole frame falls back to the full-res inline march). The field batches share one
+    /// depth-tested target, so they occlude one another exactly as in the full-res pass; each is
+    /// drawn with its own material, the same fragment + bindings as the inline path.
+    private func encodeRaymarchHalfRes(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                                       groupBuffer: MTLBuffer?, nodeBuffer: MTLBuffer?,
+                                       uniforms3D: Uniforms3D, lighting: OllinLighting,
+                                       shadowTexture: MTLTexture?, shadowCubeTexture: MTLTexture?,
+                                       fullWidth: Int, fullHeight: Int)
+        -> (color: MTLTexture, depth: MTLTexture)? {
+        let scale = resolveRaymarchScale(drawer.raymarchQualitySetting)
+        let groups3D = drawer.sdf3DGroups
+        guard scale < 1.0, !groups3D.isEmpty, let groupBuffer, let nodeBuffer else { return nil }
+        for b in drawer.batches where b.kind == .sdfGroup3D && b.blendMode != .normal { return nil }
+
+        let w = max(1, Int((Double(fullWidth) * scale).rounded()))
+        let h = max(1, Int((Double(fullHeight) * scale).rounded()))
+        if halfResSize != (w, h) || halfResColor == nil || halfResDepth == nil {
+            guard let c = makeHalfResColor(width: w, height: h),
+                  let d = makeHalfResDepth(width: w, height: h) else { return nil }
+            halfResColor = c; halfResDepth = d; halfResSize = (w, h)
+        }
+        guard let color = halfResColor, let depth = halfResDepth,
+              let pipe = try? pipeline(.raymarchHalfRes(depth: depthPixelFormat)) else { return nil }
+
+        // Upload the field buffers here: the pre-pass runs before the main encode (which
+        // re-uploads the same bytes), and when the frame casts no shadow nothing else has
+        // uploaded them yet, so the GPU would otherwise march stale geometry.
+        groups3D.withUnsafeBytes { groupBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count) }
+        let nodes3D = drawer.sdf3DNodes
+        if !nodes3D.isEmpty {
+            nodes3D.withUnsafeBytes { nodeBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count) }
+        }
+
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = color
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)  // over transparent → premultiplied
+        pass.colorAttachments[0].storeAction = .store
+        pass.depthAttachment.texture = depth
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.clearDepth = 1.0
+        pass.depthAttachment.storeAction = .store
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(w), height: Double(h), znear: 0, zfar: 1))
+        enc.setRenderPipelineState(pipe)
+        enc.setDepthStencilState(depthTestState)
+        var u3 = uniforms3D
+        var lit = lighting
+        enc.setFragmentBuffer(nodeBuffer, offset: 0, index: 1)
+        enc.setFragmentBytes(&lit, length: MemoryLayout<OllinLighting>.stride, index: 2)
+        enc.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 4)
+        enc.setFragmentTexture(shadowTexture, index: 1)
+        enc.setFragmentTexture(shadowCubeTexture, index: 2)
+        if let shadowSampler { enc.setFragmentSamplerState(shadowSampler, index: 1) }
+        if let shadowCubeSampler { enc.setFragmentSamplerState(shadowCubeSampler, index: 2) }
+        enc.setFragmentTexture(gradientStripTexture(for: drawer.gradientRows), index: 0)
+        enc.setFragmentSamplerState(imageSampler, index: 0)
+
+        let group3DStride = MemoryLayout<SDF3DGroupInstance>.stride
+        let batches = drawer.batches
+        for i in batches.indices {
+            let batch = batches[i]
+            guard batch.kind == .sdfGroup3D else { continue }
+            let next = i + 1 < batches.count ? batches[i + 1] : nil
+            let end = next?.sdf3DGroupStart ?? groups3D.count
+            let count = end - batch.sdf3DGroupStart
+            guard count > 0 else { continue }
+            enc.setFragmentBuffer(groupBuffer, offset: batch.sdf3DGroupStart * group3DStride, index: 0)
+            var finish = batch.finish
+            enc.setFragmentBytes(&finish, length: MemoryLayout<OllinMaterial>.stride, index: 3)
+            enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3, instanceCount: count)
+        }
+        enc.endEncoding()
+        return (color, depth)
+    }
+
+    /// A half-resolution sampleable linear-float color target for the raymarch pre-pass.
+    private func makeHalfResColor(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: linearFormat, width: width, height: height, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
+    }
+
+    /// A half-resolution sampleable depth target for the raymarch pre-pass (read in the
+    /// upsample as a `depth2d<float>`, so meshes still z-test against the field).
+    private func makeHalfResDepth(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: depthPixelFormat, width: width, height: height, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
     }
 
     /// Build (in place) the per-frame primitive acceleration structure over the shadow
@@ -2802,7 +3095,7 @@ final class MetalRenderer {
         }
         return try makePipeline(vertex: key.vertex, fragment: key.fragment, using: library,
                                 premultiplied: key.premultiplied, blend: key.blend,
-                                depthFormat: key.depthFormat)
+                                depthFormat: key.depthFormat, singleSample: key.singleSample)
     }
 
     /// A shadow pass pipeline. Two shapes share this factory: the **2D map**
@@ -2888,7 +3181,8 @@ final class MetalRenderer {
                               using library: MTLLibrary,
                               premultiplied: Bool = false,
                               blend: BlendMode = .normal,
-                              depthFormat: MTLPixelFormat? = nil) throws -> MTLRenderPipelineState {
+                              depthFormat: MTLPixelFormat? = nil,
+                              singleSample: Bool = false) throws -> MTLRenderPipelineState {
         guard let vertexFunction = library.makeFunction(name: vertex),
               let fragmentFunction = library.makeFunction(name: fragment) else {
             throw RendererError.shaderFunctions
@@ -2897,8 +3191,9 @@ final class MetalRenderer {
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
         descriptor.fragmentFunction = fragmentFunction
-        // Must match the MTKView's MSAA sample count or pipeline creation fails.
-        descriptor.rasterSampleCount = sampleCount
+        // Must match the pass's sample count or pipeline creation fails: the view's MSAA count
+        // for the geometry pass, or 1 for the single-sample half-res raymarch pass.
+        descriptor.rasterSampleCount = singleSample ? 1 : sampleCount
         // A depth-tested pass (an active 3D camera) needs the pipeline to declare
         // its depth format; 2D leaves it unset (.invalid), so 2D pipelines stay
         // byte-identical to before this descriptor migration.

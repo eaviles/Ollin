@@ -1,14 +1,17 @@
-/// A coarse quality dial — three intent tiers — shared across the rendering knobs that
-/// trade fidelity for frame rate (today the soft-shadow ray count; the same shape fits
-/// future ones like blur or ambient-occlusion sample counts).
+/// A coarse quality dial (three intent tiers) shared across the rendering knobs that trade
+/// fidelity for frame rate: soft-shadow ray count, depth-of-field bokeh taps, ambient-occlusion
+/// samples, and the raymarched-3D-SDF render resolution. A feature maps each tier to a concrete
+/// setting tuned for the frame-rate band it should hold (`.performance` ~120fps, `.default`
+/// 60–90fps, `.detail` 15–30fps, measured per GPU; `Scripts/benchmark.sh` recommends the
+/// values), and where a GPU affords more (a hardware-RT GPU vs software-RT) the same tier lifts
+/// on its own, like a game's quality presets.
 ///
-/// The tiers are **relative to the GPU**: a feature maps each one to a concrete setting
-/// chosen for the hardware it's running on, the way a game's quality presets scale to your
-/// machine. So `.default` is the balanced choice on whatever GPU you have — the frame-rate-
-/// safe count on a software-ray-tracing GPU (M1/M2), a richer one on a hardware-RT GPU (M3
-/// and up) — and a sketch that does nothing gets nicer shadows for free on better hardware.
-/// `.performance` favors frame rate, `.detail` favors visual quality. For an exact, hardware-
-/// independent value use the feature's raw setter instead (for shadows, `Sketch.shadowSamples`).
+/// **`.default` doubles as "automatic":** a feature left at `.default` follows the *render
+/// path*, resolving to `.default` on the live window (frame-rate-safe) and `.detail` on
+/// `--export`/headless (no frame-rate pressure, so best quality; the `--render-quality` flag
+/// overrides it). A sketch that dials a *non-default* tier is making an explicit choice and is
+/// honoured on every path. For an exact, hardware-independent value use the feature's raw setter
+/// instead (for shadows, `Sketch.shadowSamples`; for the raymarch, `Sketch.raymarchSteps`).
 public enum RenderQuality: Sendable, Equatable, CaseIterable {
     /// Favor frame rate.
     case performance
@@ -18,10 +21,36 @@ public enum RenderQuality: Sendable, Equatable, CaseIterable {
     case detail
 }
 
+public extension RenderQuality {
+    /// Parse a CLI / config string (the `--render-quality` flag): `performance`/`perf`/`fast`,
+    /// `default`/`balanced`/`auto`, or `detail`/`high`/`best` (case-insensitive). `nil` otherwise.
+    init?(name: String) {
+        switch name.lowercased() {
+        case "performance", "perf", "fast": self = .performance
+        case "default", "balanced", "auto": self = .default
+        case "detail", "high", "best":      self = .detail
+        default:                            return nil
+        }
+    }
+}
+
 /// The soft-shadow quality intent a sketch sets: a hardware-relative `RenderQuality` tier
 /// (the renderer turns it into a concrete ray count for the GPU it's on) or an exact ray
 /// count (hardware-independent). Default is `.tier(.default)`.
 enum ShadowQualitySetting: Sendable, Equatable {
     case tier(RenderQuality)
     case absolute(Int)
+}
+
+/// The raymarched-3D-SDF quality intent a sketch sets (`drawSDF3D`): a `RenderQuality` tier
+/// the renderer resolves to an internal **live-preview** render scale (the dominant lever,
+/// since the fullscreen sphere-tracer's cost is bound to pixel count) plus a march-step budget,
+/// or an exact camera-march step count. The tier scales the live preview's resolution
+/// (`.detail` full, `.default` half so ¼ the pixels, `.performance` quarter so 1/16), a
+/// depth-aware upsample compositing it back; `--export`/headless always trace at full
+/// resolution. Default is `.tier(.default)`.
+enum RaymarchQualitySetting: Sendable, Equatable {
+    case tier(RenderQuality)
+    case absolute(Int)        // an exact camera-march step count (full resolution)
+    case resolution(Double)   // an exact live-preview resolution fraction, 0…1 (default steps)
 }

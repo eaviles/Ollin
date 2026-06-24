@@ -27,15 +27,18 @@
 
 constant constexpr int   OLLIN_SDF3D_VALUE_STACK = 16;
 constant constexpr int   OLLIN_SDF3D_POINT_STACK = 16;
-constant constexpr int   OLLIN_RAYMARCH_STEPS    = 128;
+// The camera-march and self-shadow step budgets come from the RenderQuality raymarch dial
+// (Sketch.raymarchQuality), resolved per frame: the renderer passes them in
+// `Uniforms3D.raymarchSteps` (.x camera, .y shadow) and the shadow caster's
+// `OllinRaymarchShadowUniforms.raymarchSteps`. The default tier resolves to 128 / 48.
 // A full step (`t += d`) is only safe for a Euclidean-exact field; smooth-min, scale,
 // and other ops return a distance *bound*, so a full step overshoots and the surface
 // holes. Scaling every step by <1 is the standard mitigation.
 constant constexpr float OLLIN_RAYMARCH_STEP_SCALE = 0.85;
 constant constexpr float OLLIN_RAYMARCH_EPS        = 0.001;
-// Self-shadow march budget + hardness (larger = sharper penumbra, related to the inverse
-// of the light's angular size). Active only when a light casts (castShadows()).
-constant constexpr int   OLLIN_SDF3D_SHADOW_STEPS  = 48;
+// Self-shadow hardness (larger = sharper penumbra, related to the inverse of the light's
+// angular size). Active only when a light casts (castShadows()); the step budget is the
+// dial-resolved `Uniforms3D.raymarchSteps.y`.
 constant constexpr float OLLIN_SDF3D_SHADOW_K      = 10.0;
 
 // --- 3D distance functions ---
@@ -299,12 +302,12 @@ static float3 ollin_sdf3d_normal(float3 pw, SDF3DGroupInstance g, const device S
 // self-shadows but casts no shadow into the maps. (The plain ratio is used rather than the
 // previous-step closest-approach refinement, which divides by zero on a receding ray and
 // would shadow lit surfaces; the slight penumbra banding it trades for is acceptable.)
-static float ollin_sdf3d_softshadow(float3 ro, float3 rd, float maxt, float k,
+static float ollin_sdf3d_softshadow(float3 ro, float3 rd, float maxt, float k, int steps,
                                     SDF3DGroupInstance g, const device SDFNode3D *nodes) {
     float res = 1.0;
     float t = 0.02;          // start off the surface to skip the origin's own zero distance
     float4 dummy;
-    for (int i = 0; i < OLLIN_SDF3D_SHADOW_STEPS; i++) {
+    for (int i = 0; i < steps; i++) {
         if (t >= maxt) break;
         float h = ollin_sdf3d_world(ro + rd * t, g, nodes, dummy);
         if (h < 0.001) return 0.0;
@@ -405,7 +408,8 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     bool hit = false;
     float minRatio = 1.0e9;
     float tNear = t0;
-    for (int i = 0; i < OLLIN_RAYMARCH_STEPS; i++) {
+    int steps = int(u.raymarchSteps.x);
+    for (int i = 0; i < steps; i++) {
         if (t > t1) break;
         float3 pw = ro + rd * t;
         float d = ollin_sdf3d_world(pw, g, nodes, col);
@@ -447,7 +451,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
             maxt = min(dist, fieldDiag);
         }
         fieldShadow = ollin_sdf3d_softshadow(pw + n * 0.015, toLight, maxt,
-                                             OLLIN_SDF3D_SHADOW_K, g, nodes);
+                                             OLLIN_SDF3D_SHADOW_K, int(u.raymarchSteps.y), g, nodes);
     }
 
     // The surface color: a solid `fill` comes from the leaves (the VM-melted `col`, linearized
@@ -485,6 +489,35 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // mesh path unchanged.
     out.color = float4(lit.rgb, lit.a * coverage);
     out.depth = clip.z / clip.w;
+    return out;
+}
+
+// Upsample a half-resolution raymarched field to full resolution and composite it. On the
+// `.performance` raymarch tier the expensive sphere-tracing ran once at half resolution into
+// `halfColor` (premultiplied: the field's straight-alpha colour composited over a transparent
+// clear) + `halfDepth` (each hit's clip-space z). This fullscreen pass reads them back:
+// colour bilinear (a soft ~half-res silhouette, the cost of the tier) but depth POINT-sampled
+// (so the field's depth never bleeds across its own edge), then re-emits the depth as the
+// fragment's own, so the hardware depth test lets a rasterised mesh occlude or interpenetrate
+// the field exactly as the full-resolution march does. A premultiplied `.normal` blend
+// composites the result over the scene. Quartering the marched pixels is the tier's big lever.
+struct RaymarchUpsampleOut {
+    float4 color [[color(0)]];
+    float  depth [[depth(any)]];
+};
+
+fragment RaymarchUpsampleOut ollin_raymarch_upsample_fragment(
+        RaymarchOut in [[stage_in]],
+        texture2d<float> halfColor [[texture(0)]],
+        depth2d<float>   halfDepth [[texture(1)]]) {
+    constexpr sampler linSamp(filter::linear, address::clamp_to_edge);
+    constexpr sampler ptSamp(filter::nearest, address::clamp_to_edge);
+    float2 uv = float2(in.clipXY.x * 0.5 + 0.5, 0.5 - in.clipXY.y * 0.5);
+    float4 c = halfColor.sample(linSamp, uv);
+    if (c.a < 0.004) discard_fragment();   // background: leave the scene (and its depth) alone
+    RaymarchUpsampleOut out;
+    out.color = c;                             // premultiplied linear → composited premult-over
+    out.depth = halfDepth.sample(ptSamp, uv);  // point-sampled so the silhouette depth stays crisp
     return out;
 }
 
@@ -532,7 +565,8 @@ fragment RaymarchShadowOut ollin_raymarch_shadow_fragment(
     float t = t0;
     bool hit = false;
     float4 col;
-    for (int i = 0; i < OLLIN_RAYMARCH_STEPS; i++) {
+    int steps = int(u.raymarchSteps);
+    for (int i = 0; i < steps; i++) {
         if (t > t1) break;
         float3 pw = ro + rd * t;
         float d = ollin_sdf3d_world(pw, g, nodes, col);

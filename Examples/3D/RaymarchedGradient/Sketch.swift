@@ -8,6 +8,7 @@ import Foundation
 @main
 final class RaymarchedGradient: Sketch {
     override func draw() {
+        raymarchResolution(0.35)   // a heavier gradient field, so traced below the default half-res
         background(Color(hex: 0x0b1020))
         let t = time
 

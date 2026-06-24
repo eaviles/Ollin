@@ -10,6 +10,7 @@ import Foundation
 @main
 final class RaymarchedSculpt: Sketch {
     override func draw() {
+        raymarchResolution(0.35)   // a heavier sculpted field, so traced below the default half-res
         background(Color(hex: 0x101418))
         let t = time
 

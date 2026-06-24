@@ -9,6 +9,7 @@ import Foundation
 @main
 final class RaymarchedDomain: Sketch {
     override func draw() {
+        raymarchResolution(0.35)   // a heavier melting lattice, so traced below the default half-res
         background(Color(hex: 0x0d1117))
         let t = time
 

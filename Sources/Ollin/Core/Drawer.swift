@@ -306,6 +306,11 @@ final class Drawer {
     /// non-RT cube fallback ignore it.
     private(set) var shadowQualitySetting: ShadowQualitySetting = .tier(.default)
 
+    /// The raymarched-3D-SDF (`drawSDF3D`) quality intent: a `RenderQuality` tier the renderer
+    /// resolves to a march-step budget + internal render scale, or an exact step count. Read
+    /// only by the raymarch path; `.tier(.default)` reproduces the pre-dial constants.
+    private(set) var raymarchQualitySetting: RaymarchQualitySetting = .tier(.default)
+
     /// The shadow map resolution the renderer renders the depth pass into. Kept here
     /// only to size the normal-offset bias in world units (`shadowTexelWorld`); the
     /// renderer owns the actual texture and must use the same value (`MetalRenderer`).
@@ -974,6 +979,18 @@ final class Drawer {
     /// Set the soft-shadow ray count to an exact value, clamped to 1…64 (hardware-independent).
     /// Persistent.
     func shadowSamples(_ count: Int) { shadowQualitySetting = .absolute(max(1, min(count, 64))) }
+
+    /// Set the raymarched-SDF (`drawSDF3D`) quality to a `RenderQuality` tier (the renderer
+    /// resolves a march-step budget + internal render scale). Persistent.
+    func raymarchQuality(_ quality: RenderQuality) { raymarchQualitySetting = .tier(quality) }
+
+    /// Set the raymarched-SDF camera-march step count to an exact value, clamped to 16…512
+    /// (full resolution). Persistent.
+    func raymarchSteps(_ count: Int) { raymarchQualitySetting = .absolute(max(16, min(count, 512))) }
+
+    /// Set the raymarched-SDF live-preview resolution to an exact fraction (0.1…1.0), the
+    /// custom alternative to the `raymarchQuality` tiers' 1.0/0.5/0.25. Persistent.
+    func raymarchResolution(_ fraction: Double) { raymarchQualitySetting = .resolution(min(1.0, max(0.1, fraction))) }
 
     /// Pack this frame's effective lighting into the GPU uniform. The mode decides
     /// the source: `.off` shades nothing (flat unlit, `enabled == 0`), `.auto` uses

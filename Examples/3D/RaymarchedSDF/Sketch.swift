@@ -10,6 +10,7 @@ import Foundation
 @main
 final class RaymarchedSDF: Sketch {
     override func draw() {
+        raymarchResolution(0.35)   // a heavier metaball field, so traced below the default half-res
         background(Color(hex: 0x0e1116))
         let t = time
 

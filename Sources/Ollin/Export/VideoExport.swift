@@ -61,6 +61,7 @@ public extension OllinApp {
                             codec: VideoCodec = .h264,
                             bitsPerSecond: Int? = nil,
                             quality: Double? = nil,
+                            renderQuality: RenderQuality = .detail,
                             skipSeconds: Double = 0) {
         guard frames > 0 else { return }
 
@@ -138,7 +139,8 @@ public extension OllinApp {
         let timescale = Int32((fps * 1000).rounded())
 
         print("Ollin: exporting \(frames) frames at \(Int(fps)) fps → \(path) (\(size.width)×\(size.height), \(codec.rawValue))")
-        let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds) { cgImage, index in
+        let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
+                                   quality: renderQuality) { cgImage, index in
             while !input.isReadyForMoreMediaData { usleep(1000) }
             guard let pool = adaptor.pixelBufferPool else {
                 fatalError("Ollin: video encoder rejected the settings: \(writer.error?.localizedDescription ?? "unknown error")")
@@ -191,7 +193,8 @@ public extension OllinApp {
     static func exportGIF(_ sketch: Sketch, to path: String,
                           frames: Int, fps: Double = 25,
                           width targetWidth: Int? = nil,
-                          skipSeconds: Double = 0) {
+                          skipSeconds: Double = 0,
+                          renderQuality: RenderQuality = .detail) {
         guard frames > 0 else { return }
 
         let delay = Double(max(2, Int((100 / fps).rounded()))) / 100   // decoders clamp delays under 2cs
@@ -224,7 +227,7 @@ public extension OllinApp {
 
         print("Ollin: exporting \(effectiveFrames) frames at \(Int(effectiveFPS.rounded())) fps → \(path) (\(outWidth)×\(outHeight), gif)")
         let elapsed = renderFrames(sketch, frames: effectiveFrames, fps: effectiveFPS,
-                                   skipSeconds: skipSeconds) { cgImage, index in
+                                   skipSeconds: skipSeconds, quality: renderQuality) { cgImage, index in
             var frame = cgImage
             if outWidth != size.width {
                 guard let context = CGContext(data: nil, width: outWidth, height: outHeight,
