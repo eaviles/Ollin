@@ -925,6 +925,20 @@ open class Sketch {
                          count: SIMD3(n, n, n)))
         body(); drawer.endCombine()
     }
+    /// Repeat the field drawn inside as `count` evenly spaced copies around a center (2D) or
+    /// an axis (3D), folding one built wedge into a radial ring (a mandala in 2D, a rosette or
+    /// sunburst in 3D). Draw the wedge off the center/axis (e.g. `translate(r, 0)` in 2D,
+    /// `translate(r, 0, 0)` in 3D) so the copies fan out around it. The `axis` only applies in 3D.
+    public func repeatedRadially(count: Int, around axis: Vector3 = Vector3(0, 1, 0),
+                                 _ body: () -> Void) {
+        let n = Float(max(count, 1))
+        let len = (axis.x * axis.x + axis.y * axis.y + axis.z * axis.z).squareRoot()
+        let unit: SIMD3<Float> = len > 1e-6
+            ? SIMD3(Float(axis.x / len), Float(axis.y / len), Float(axis.z / len))
+            : SIMD3(0, 1, 0)
+        drawer.beginCombineDomain(.polar(count: n), .polar(axis: unit, count: n))
+        body(); drawer.endCombine()
+    }
     public func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double) {
         drawer.drawEllipse(x, y, rx, ry)
     }

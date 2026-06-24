@@ -115,11 +115,19 @@ static float2 ollin_sdf_xform(float2 p, SDFNode nd) {
         if (nd.geo0.y > 0.5) q.y = abs(q.y);
         return q;
     }
-    default: {                                        // repeat (limited tiling)
+    case 4u: {                                        // repeat (limited tiling)
         float2 q = p, sp = nd.geo0.xy, lim = nd.geo1.xy;
         if (sp.x > 0.0) { float r = clamp(round(q.x / sp.x), -lim.x, lim.x); q.x -= sp.x * r; }
         if (sp.y > 0.0) { float r = clamp(round(q.y / sp.y), -lim.y, lim.y); q.y -= sp.y * r; }
         return q;
+    }
+    default: {                                        // polar (radial repeat around the origin)
+        float reps = max(nd.geo1.x, 1.0);
+        float ang = 6.28318530718 / reps;
+        float a = atan2(p.y, p.x) + ang * 0.5;
+        float r = length(p);
+        a = a - ang * floor(a / ang) - ang * 0.5;
+        return float2(cos(a), sin(a)) * r;
     }
     }
 }

@@ -37,6 +37,7 @@ public struct SDF3D {
         case scale(Float)                               // uniform factor > 0
         case mirror(x: Bool, y: Bool, z: Bool)          // reflect across the field planes
         case repeatTiles(spacing: SIMD3<Float>, count: SIMD3<Float>)  // limited tiling
+        case polar(axis: SIMD3<Float>, count: Float)    // radial repeat around an axis
     }
 
     indirect enum Node {
@@ -170,6 +171,15 @@ public extension SDF3D {
         return .init(.transformed(.repeatTiles(
             spacing: SIMD3(Float(spacing.x), Float(spacing.y), Float(spacing.z)),
             count: SIMD3(n, n, n)), self))
+    }
+    /// Repeat the field as an evenly spaced ring of `count` copies around `axis` (through the
+    /// origin), folding one built wedge into a radial array (a rosette or sunburst). Offset
+    /// the wedge off the axis first (`.at(x: r, …)`) so the copies fan out around it.
+    func repeatedRadially(count: Int, around axis: Vector3 = Vector3(0, 1, 0)) -> SDF3D {
+        let a = axis.simd3
+        let len = simd_length(a)
+        let unit = len > 1e-6 ? a / len : SIMD3<Float>(0, 1, 0)
+        return .init(.transformed(.polar(axis: unit, count: Float(max(count, 1))), self))
     }
     /// Paint every still-unpainted leaf of the field this color (an explicit leaf
     /// `.colored` wins; the current `fill` is the fallback for whatever's left).
@@ -316,6 +326,10 @@ extension SDF3D {
             return SDFNode3D(kind: 3, sel: 4, k: 0, extra: 0, color: .zero,
                              geo0: SIMD4(spacing.x, spacing.y, spacing.z, 0),
                              geo1: SIMD4(count.x, count.y, count.z, 0))
+        case let .polar(axis, count):
+            return SDFNode3D(kind: 3, sel: 5, k: 0, extra: 0, color: .zero,
+                             geo0: SIMD4(axis.x, axis.y, axis.z, 0),
+                             geo1: SIMD4(count, 0, 0, 0))
         }
     }
 
@@ -350,6 +364,16 @@ extension SDF3D {
         case let .repeatTiles(spacing, count):
             let pad = spacing * count
             return (lo - pad, hi + pad)
+        case .polar:
+            // A ring of copies rotated around an axis through the origin; rotation preserves
+            // distance-from-origin, so the union fits the child's bounding sphere (axis-free).
+            var rad: Float = 0
+            for cx in [lo.x, hi.x] {
+                for cy in [lo.y, hi.y] {
+                    for cz in [lo.z, hi.z] { rad = max(rad, simd_length(SIMD3(cx, cy, cz))) }
+                }
+            }
+            return (SIMD3(repeating: -rad), SIMD3(repeating: rad))
         }
     }
 }

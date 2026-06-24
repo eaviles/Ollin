@@ -187,12 +187,30 @@ static float3 ollin_sdf3d_xform(float3 p, SDFNode3D nd) {
         if (nd.geo0.z > 0.5) q.z = abs(q.z);
         return q;
     }
-    default: {                                        // repeat (limited tiling)
+    case 4u: {                                        // repeat (limited tiling)
         float3 q = p, sp = nd.geo0.xyz, lim = nd.geo1.xyz;
         if (sp.x > 0.0) { float r = clamp(round(q.x / sp.x), -lim.x, lim.x); q.x -= sp.x * r; }
         if (sp.y > 0.0) { float r = clamp(round(q.y / sp.y), -lim.y, lim.y); q.y -= sp.y * r; }
         if (sp.z > 0.0) { float r = clamp(round(q.z / sp.z), -lim.z, lim.z); q.z -= sp.z * r; }
         return q;
+    }
+    default: {                                        // polar (radial repeat around an axis)
+        float3 axis = normalize(nd.geo0.xyz);
+        float reps = max(nd.geo1.x, 1.0);
+        // An orthonormal basis for the plane perpendicular to the axis (the fold plane), with
+        // `u` along +X (or +Y if the axis is ~parallel to X) so wedge 0 is centered on +X —
+        // i.e. a shape placed off-axis with `.at(x: r)` lands in the canonical wedge.
+        float3 ref = (abs(axis.x) < 0.99) ? float3(1.0, 0.0, 0.0) : float3(0.0, 1.0, 0.0);
+        float3 u = normalize(ref - axis * dot(axis, ref));
+        float3 v = cross(axis, u);
+        float a0 = dot(p, u), b0 = dot(p, v), axial = dot(p, axis);
+        // Fold the angle into one wedge centered on the basis (radius preserved), then rebuild
+        // the point, so every wedge evaluates the field as the single canonical copy.
+        float ang = 6.28318530718 / reps;
+        float a = atan2(b0, a0) + ang * 0.5;
+        float r = length(float2(a0, b0));
+        a = a - ang * floor(a / ang) - ang * 0.5;
+        return u * (cos(a) * r) + v * (sin(a) * r) + axis * axial;
     }
     }
 }

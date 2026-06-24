@@ -148,11 +148,14 @@ Domain operators transform the *space* the field lives in, so one shape becomes 
 field.mirrored(x: true)                       // reflect across the y axis (kaleidoscope)
 field.mirrored(x: true, y: true)              // reflect across both axes
 field.repeated(spacing: Vector2(160, 0), count: 3)   // tile: 3 copies each side, on a 160 grid
+field.at(x: 120, y: 0).repeatedRadially(count: 8)   // fold a wedge into a ring of 8 (a mandala)
 ```
 
 `repeated`'s `count` is the number of copies to each side of the origin on each axis; a
-`spacing` component of `0` leaves that axis untiled. Because a domain operator wraps a whole
-field, you can tile a melted cluster or mirror a carved shape.
+`spacing` component of `0` leaves that axis untiled. `repeatedRadially`'s `count` is the
+number of copies evenly spaced around the origin; offset the wedge from the origin first
+(`.at`) so the copies fan out around it. Because a domain operator wraps a whole field, you
+can tile a melted cluster, mirror a carved shape, or ring a wedge into a mandala.
 
 <a name="scoped-blocks"></a>
 
@@ -173,8 +176,8 @@ smoothUnion(k: 18) {
 
 The blocks mirror the combinators and domain operators: `union { }`, `smoothUnion(k:) { }`,
 `subtract { }`, `smoothSubtract(k:) { }`, `intersect { }`, `smoothIntersect(k:) { }`,
-`mirrored(x:y:) { }`, `repeated(spacing:count:) { }`. They nest, so a domain block can wrap a
-combine block:
+`mirrored(x:y:) { }`, `repeated(spacing:count:) { }`, `repeatedRadially(count:) { }`. They
+nest, so a domain block can wrap a combine block:
 
 ```swift
 fill(.indigo)
@@ -233,14 +236,17 @@ The leaf constructors are the common centered solids:
 
 The combinators (`.union` / `.smoothUnion(_:k:)` / `.subtract` / `.smoothSubtract(_:k:)` /
 `.intersect` / `.smoothIntersect(_:k:)` / `.morph(_:amount:)`), the modifiers (`.rounded` /
-`.onion`), the domain operators (`.mirrored(x:y:z:)` and `.repeated(spacing:count:)`), and
-`.colored` all behave exactly as in 2D, the smooth ops blending the leaf colors across the
-seam. Positioning is in three dimensions: `.at(x:y:z:)` / `.at(_ p: Vector3)`,
-`.rotated(_:axis:)` (plus `.rotatedX` / `.rotatedY` / `.rotatedZ`), and `.scaled(_:)` (uniform).
-The domain operators rewrite the query point as point-space scopes, so the whole mirrored /
-tiled field is still one sphere-traced surface (no per-copy draw cost), and method-chain order
-stays exact: `a.at(p).repeated(…)` tiles the moved field, `a.repeated(…).at(p)` shifts the
-tiling. `repeated` is finite (`count` copies to each side), so the field stays bounded.
+`.onion`), the domain operators (`.mirrored(x:y:z:)`, `.repeated(spacing:count:)`, and
+`.repeatedRadially(count:around:)`), and `.colored` all behave exactly as in 2D, the smooth
+ops blending the leaf colors across the seam. Positioning is in three dimensions:
+`.at(x:y:z:)` / `.at(_ p: Vector3)`, `.rotated(_:axis:)` (plus `.rotatedX` / `.rotatedY` /
+`.rotatedZ`), and `.scaled(_:)` (uniform). The domain operators rewrite the query point as
+point-space scopes, so the whole mirrored / tiled / radially repeated field is still one
+sphere-traced surface (no per-copy draw cost), and method-chain order stays exact:
+`a.at(p).repeated(…)` tiles the moved field, `a.repeated(…).at(p)` shifts the tiling.
+`repeated` is finite (`count` copies to each side), so the field stays bounded;
+`repeatedRadially` folds a wedge into a ring of `count` copies around `axis` (default the
+y-axis), so offset the wedge off the axis first (`.at(x: r, …)`) for the copies to fan out.
 
 The **scoped block form** works in 3D too, and it's the same `smoothUnion(k:) { }` (and the
 other combine blocks) as 2D. Inside a block with a camera set, the bare mesh primitives
@@ -306,5 +312,6 @@ types the leaves carry, and [`3D`](./3D.md) for the camera and lights the 3D fie
 through. The examples are `Examples/Basic/Combinators` (2D), `Examples/3D/RaymarchedSDF`
 (merged metaball, depth-composited with a mesh), `Examples/3D/RaymarchedShapes` (the 3D
 primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form),
-`Examples/3D/RaymarchedDomain` (the mirror and repeat domain operators), and
+`Examples/3D/RaymarchedDomain` (the mirror and repeat domain operators),
+`Examples/3D/RaymarchedRadial` (the radial/polar repeat operator), and
 `Examples/3D/RaymarchedShadow` (self-shadowing under `castShadows()`).

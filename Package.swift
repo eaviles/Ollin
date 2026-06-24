@@ -532,6 +532,11 @@ let package = Package(
             path: "Examples/3D/RaymarchedDomain"
         ),
         .executableTarget(
+            name: "Example-RaymarchedRadial",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/RaymarchedRadial"
+        ),
+        .executableTarget(
             name: "Example-RaymarchedShadow",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedShadow"

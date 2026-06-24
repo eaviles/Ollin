@@ -88,6 +88,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func raymarchedSDF3DRadialMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DRadialScene(), against: "sdf-combinators-3d-radial")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -1303,6 +1309,44 @@ private final class RaymarchedSDF3DShadowScene: Sketch {
             withState { translate(0.4, 0.15, -0.6); rotateZ(0.25); drawCapsule(radius: 0.34, height: 1.2) }
             fill(Color(hex: 0xfacc15))
             withState { translate(1.8, -0.05, 0.7); drawCone(radius: 0.6, height: 1.5) }
+        }
+    }
+}
+
+/// The raymarched 3D SDF polar (radial) domain repetition: `repeatedRadially` folds one built
+/// wedge into a ring of evenly spaced copies around an axis. A value-type sunburst (a radial
+/// capsule spoke folded 14-fold onto a hub) and a block-form flower (a cone petal folded into a
+/// ring of 6 around a bud). Pins the polar fold + its bounding-sphere AABB. Static at frame 0.
+private final class RaymarchedSDF3DRadialScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0b1020))
+        camera(.orbiting(target: Vector3(0, 0.2, 0), radius: 7.5, azimuth: 0.5, elevation: 0.5,
+                         fieldOfView: .pi / 4, near: 2, far: 18))
+        directionalLight(.white, direction: Vector3(-0.4, 0.9, 0.35),
+                         intensity: 1.25, softness: 0.35)
+        ambientLight(Color(white: 0.15))
+        material(.glossy)
+
+        // Value-type: a radial capsule spoke folded into a 14-spoke sunburst melted onto a hub.
+        let spoke = SDF3D.capsule(radius: 0.12, height: 1.25).rotatedZ(.pi / 2)
+            .at(x: 0.95, y: 0, z: 0).colored(Color(hex: 0x38bdf8))
+        let hub = SDF3D.sphere(radius: 0.55).colored(Color(hex: 0x22d3ee))
+        drawSDF3D(spoke.repeatedRadially(count: 14).smoothUnion(hub, k: 0.25)
+            .at(x: 0, y: -0.7, z: 0))
+
+        // Block-form: a cone petal folded into a ring of 6 melted with a central bud.
+        withState {
+            translate(0, 1.4, 0)
+            repeatedRadially(count: 6) {
+                smoothUnion(k: 0.22) {
+                    fill(Color(hex: 0xfacc15))
+                    drawSphere(radius: 0.4)
+                    fill(Color(hex: 0xf472b6))
+                    withState { translate(1.05, 0.1, 0); rotateZ(-0.7); drawCone(radius: 0.28, height: 1.05) }
+                }
+            }
         }
     }
 }

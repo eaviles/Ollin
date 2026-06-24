@@ -37,6 +37,7 @@ public struct SDF {
         case scale(Float)                  // uniform factor > 0
         case mirror(x: Bool, y: Bool)      // reflect across the field axes
         case repeatTiles(spacing: SIMD2<Float>, count: SIMD2<Float>)  // limited tiling
+        case polar(count: Float)           // radial repeat around the origin
     }
 
     indirect enum Node {
@@ -196,6 +197,12 @@ public extension SDF {
         return .init(.transformed(.repeatTiles(spacing: SIMD2(Float(spacing.x), Float(spacing.y)),
                                                count: SIMD2(n, n)), self))
     }
+    /// Repeat the field as `count` evenly spaced copies around the origin, folding one built
+    /// wedge into a radial ring (a mandala). Offset the wedge off the origin first (`.at`) so
+    /// the copies fan out around it.
+    func repeatedRadially(count: Int) -> SDF {
+        .init(.transformed(.polar(count: Float(max(count, 1))), self))
+    }
 }
 
 // MARK: Flattening (tree -> SDFNode program + bounds)
@@ -283,6 +290,9 @@ extension SDF {
             return SDFNode(kind: 3, sel: 4, k: 0, extra: 1, color: .zero,
                            geo0: SIMD4(spacing.x, spacing.y, 0, 0),
                            geo1: SIMD4(count.x, count.y, 0, 0))
+        case let .polar(count):
+            return SDFNode(kind: 3, sel: 5, k: 0, extra: 0, color: .zero,
+                           geo0: .zero, geo1: SIMD4(count, 0, 0, 0))
         }
     }
 
@@ -313,6 +323,14 @@ extension SDF {
         case let .repeatTiles(spacing, count):
             let pad = spacing * count
             return (lo - pad, hi + pad)
+        case .polar:
+            // A ring of copies rotated around the origin; rotation preserves distance-from-
+            // origin, so the union fits the child's bounding circle.
+            var rad: Float = 0
+            for p in [SIMD2(lo.x, lo.y), SIMD2(hi.x, lo.y), SIMD2(hi.x, hi.y), SIMD2(lo.x, hi.y)] {
+                rad = max(rad, simd_length(p))
+            }
+            return (SIMD2(repeating: -rad), SIMD2(repeating: rad))
         }
     }
 }
