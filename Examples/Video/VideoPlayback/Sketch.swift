@@ -9,7 +9,7 @@ import OllinVideo
 /// — so it runs out of the box. Pass a path on launch to play your own video:
 ///
 /// ```
-/// swift run Example-VideoPlayback /path/to/your/clip.mp4
+/// swift run Example-Video-VideoPlayback /path/to/your/clip.mp4
 /// ```
 ///
 /// Each decoded frame arrives as a GPU texture wrapped in an `Image`, drawn

@@ -2,7 +2,7 @@ import Ollin
 
 /// Depth of field on a real 3D scene, defocused by the scene's **own** depth buffer.
 ///
-/// Where `Basic/Defocus` hands `.defocus` a depth map you draw by hand, here the
+/// Where `Effects/Defocus` hands `.defocus` a depth map you draw by hand, here the
 /// depth comes for free: draw a 3D scene into a render target, and because meshes
 /// land in it the target captures depth, exposed as `scene.depth`, a gray layer
 /// (0 near … 1 far) the renderer fills from the scene's depth buffer. Feed that to

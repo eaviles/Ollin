@@ -37,14 +37,14 @@ OllinApp.run(HelloCircle())
 
 That's the whole program: a black circle outline, breathing on a white canvas. There's no call to start the animation, because the draw loop is already running at the display's refresh rate, and `time` (seconds since start) is ready to use in any sketch. Delete `+ sin(time) * 40` and you have a still circle.
 
-Every sketch also gets temporal state out of the box (`frameCount`, `deltaTime`, `frameRate`), live `width`/`height`, a resolution-relative `scale`, and `noLoop()` / `loop()` for still images. The [`Sketch`](Docs/Sketch.md) reference covers them all.
+Every sketch also gets temporal state out of the box (`frameCount`, `deltaTime`, `frameRate`), live `width`/`height`, a resolution-relative `scale`, and `noLoop()` / `loop()` for still images. The [`Sketch`](Docs/Core/Sketch.md) reference covers them all.
 
 ## Run it
 
 From the terminal, no Xcode required:
 
 ```sh
-swift run Example-HelloCircle
+swift run Example-Basic-HelloCircle
 ```
 
 That builds the package and opens a window with the breathing circle above (a 1080² canvas, fit to your screen). More runnable sketches live in [`Examples/`](Examples/); `swift run` with no argument lists every example target.
@@ -59,7 +59,7 @@ p5.js, OPENRNDR, and openFrameworks run everywhere; Ollin only runs on Apple har
 
 The default canvas is **1080×1080**, the 1:1 size for square social and video posts. `canvasSize` sets the resolution a sketch renders and exports at (override it for a hi-res master or a different aspect), and `windowMode` sizes the preview window relative to it (`.auto` fits the screen, `.fixed(_)` pins a zoom, `.resizable` follows the window live).
 
-Write sketches relative to the canvas so they hold up at any size: multiply feature sizes by `scale` and lay out with `width`/`height` fractions. The [`Canvas` reference](Docs/Canvas.md#resolution-independence) has the presets and the rest.
+Write sketches relative to the canvas so they hold up at any size: multiply feature sizes by `scale` and lay out with `width`/`height` fractions. The [`Canvas` reference](Docs/Core/Canvas.md#resolution-independence) has the presets and the rest.
 
 ## Add Ollin to your own package (SPM)
 
@@ -96,7 +96,7 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
    Scripts/OllinLive Examples/Motion/ArcField/Sketch.swift
    ```
 2. **Edit & re-run.** Tweak an example (or your own sketch) and re-run, e.g.
-   `swift run Example-Breathing`. Incremental builds keep this snappy.
+   `swift run Example-Motion-Breathing`. Incremental builds keep this snappy.
 3. **Keep it open in Xcode.** `open Package.swift` (or just open the folder).
    Edit, ⌘R, repeat, with breakpoints and the debugger when you need them.
 4. **Single-file scripts (planned).** [`swift-sh`](https://github.com/mxcl/swift-sh)
@@ -108,42 +108,42 @@ In creative coding, the speed of the edit-then-see cycle matters more than almos
 
 The names are familiar and the calls are short. The full API reference lives in [`Docs/`](Docs/). Most of this ships with the core `import Ollin` (the few satellite pieces show their own `import` in the bullet):
 
-- [Sketch](Docs/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), and loop control.
-- [Canvas](Docs/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
-- [Drawing](Docs/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawRect`, `drawLine`, `drawShape`, and a full catalog of analytic SDF shapes; see the reference), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
-- [Accumulation](Docs/Accumulation.md) - `noClear` to keep the canvas across frames so drawing piles up: long exposures, paint-on-canvas, and light accumulation (paired with `blendMode(.add)`).
-- [HDR & tone-mapping](Docs/HDR.md) - `toneMap` to roll bright, out-of-range light off the screen instead of clipping it, with an `exposure` dial, for the glow/bloom and light-accumulation looks, over a linear-float pipeline that also kills 8-bit gradient banding.
-- [Layered effects](Docs/Effects.md) - `renderTarget` / `withTarget` to draw into off-screen layers, then `filtered` / `postProcess` to run GPU filters (blur, bloom, color grade, gradient map, edges, halftone, pixelate, and more) over them, composited back with blend modes; `combined` to combine two layers (mask, displace, cross-dissolve, depth-of-field defocus, ambient occlusion); plus `generate` for procedural pattern sources (checkers, grid, bars, noise) and `feedback` for layers that remember themselves across frames (trails, tunnels, video feedback); plus `compose { }` to declare a whole stack of layers (each with its own filters, blend, and `aside` helper layers) as one block, for glow, soft backdrops, color grading, and post-processing.
-- [Compute & GPU particles](Docs/Compute.md) - GPU compute over buffers and textures, the per-element update written as a Metal snippet (inline or in its own `.metal` file): `Particles` runs a million particles updated and drawn on the GPU each frame, never touching the CPU (the "sandpainting" engine); `Simulation` runs reaction-diffusion, cellular automata, and other ping-pong texture sims, drawn as an `Image`. Over the `ComputeKernel`/`ComputeBuffer`/`ComputeTexture` core.
-- [Text](Docs/Text.md) - `drawText` with bitmap, outline (`.ttf`/`.otf`), and single-line/plotter (Hershey) fonts (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`/`OutlineFont`/`StrokeFont`), `textToShapes` for text as geometry, and loading BDF, Playdate `.fnt`, and Hershey `.jhf` fonts.
-- [Images](Docs/Images.md) - `loadImage` / `drawImage` for raster images (PNG, JPEG, HEIC, …), with `tint` recoloring and an `Image[x, y]` pixel subscript for sampling or authoring.
-- [Color](Docs/Color.md) - the `Color` type, the OKLab family and mixing, `Ramp`s and `Palette`s, and perceptual `Colormap`s.
-- [Geometry](Docs/Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines, shape booleans, and offsetting).
-- [Voronoi & Delaunay](Docs/Voronoi.md) - tessellate points into vector geometry: Voronoi cells and the dual Delaunay triangle mesh, with Lloyd relaxation.
-- [SDF combinators](Docs/Combinators.md) - compose signed-distance fields so shapes *merge* instead of stack: smooth union/subtract/intersect and morph, round/onion, and domain mirror/tile/radial, built with the `SDF` value type + `drawSDF` or a scoped `smoothUnion { }` block, in 2D and a raymarched 3D form (`SDF3D` + `drawSDF3D`) with an infinite plane, cast shadows onto meshes, and gradient paint.
-- [3D](Docs/3D.md) - opt into a 3D camera and depth buffer: orbit a `Camera3D` (perspective or orthographic) and draw `PointCloud`s as instanced disc splats and a catalog of solid primitives (box, sphere, capsule, the Platonic solids, …) plus parametric and profile shapes (supershape, extrude, lathe), lit by directional, point, and spot lights with a Blinn-Phong material (shaded out of the box by an auto-lit default), give a surface a stylized finish from the material library (iridescent, velvet, jade, toon, gooch) or a matcap (a whole look baked into one sphere texture, sampled by the view normal, with 26 bundled looks plus a generator), wrap an image onto a surface (textured meshes), including a live webcam depth cloud (the Mac-side preview of the iPhone LiDAR cloud to come).
-- [Depth compositing](Docs/DepthCompositing.md) - place 2D drawing *inside* a 3D scene so it occludes and is occluded by the geometry: `depth(at:)`, `project`, and `withBillboard` (a 2D label hidden when it swings behind the cloud), or against a live depth feed with `drawDepthScene`, including in true metric space (`Camera3D.fromIntrinsics`), so an object sits at a real distance inside a LiDAR feed.
-- [Record3D](Docs/Record3D.md) - `import OllinRecord3D` to turn an iPhone's color-plus-depth into a 3D point cloud, from a recorded `.r3d` file or a tethered phone's live USB stream (the iPhone's depth camera, borrowed by the Mac in real time).
-- [RGBD](Docs/RGBD.md) - the source-agnostic `RGBDFrame` (color + depth + intrinsics) any depth source produces: unproject a point cloud, lift a single image point to metric 3D, or lift a 2D body pose into space at its true distance (`Body.lifted(through:)`).
-- [Phone](Docs/Phone.md) - `import OllinPhone` to read a tethered iPhone's live on-device ARKit sensor stream from Ollin's own capture app ([`Apps/OllinPhoneApp`](Apps/OllinPhoneApp/README.md)): a 3D body skeleton, a face mesh with its 52 expression blendshapes, a world-facing rear-LiDAR depth cloud (with the camera's 6DoF pose), a person-segmentation matte and cutout, and device motion over the USB cable, drawn in space as a `PointCloud`.
-- [Random](Docs/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
-- [Noise](Docs/Noise.md) - Perlin `noise`/`signedNoise` and `curlNoise` flow fields.
-- [Math](Docs/Math.md) - `map`, `dist`, `lerp`.
-- [Animation](Docs/Animation.md) - the `Easing` curves, the `@Eased` value that tweens toward a target, and `@Smoothed` for cleaning up a noisy signal.
-- [Parameters](Docs/Parameters.md) - `@Param` tunable knobs: live sliders in the inspector, optional smoothing, and binding from OSC or MIDI.
-- [Input](Docs/Input.md) - mouse and keyboard.
-- [Export](Docs/Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters).
+- [Sketch](Docs/Core/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), and loop control.
+- [Canvas](Docs/Core/Canvas.md) - `scale`, the `canvasSize` export presets, and the preview window.
+- [Drawing](Docs/Drawing/Drawing.md) - `background`, `fill`/`stroke`, the shapes (`drawCircle`, `drawRect`, `drawLine`, `drawShape`, and a full catalog of analytic SDF shapes; see the reference), and the transform stack (`translate`/`rotate`/`scale`, `withState`).
+- [Accumulation](Docs/Drawing/Accumulation.md) - `noClear` to keep the canvas across frames so drawing piles up: long exposures, paint-on-canvas, and light accumulation (paired with `blendMode(.add)`).
+- [HDR & tone-mapping](Docs/Drawing/HDR.md) - `toneMap` to roll bright, out-of-range light off the screen instead of clipping it, with an `exposure` dial, for the glow/bloom and light-accumulation looks, over a linear-float pipeline that also kills 8-bit gradient banding.
+- [Layered effects](Docs/Drawing/Effects.md) - `renderTarget` / `withTarget` to draw into off-screen layers, then `filtered` / `postProcess` to run GPU filters (blur, bloom, color grade, gradient map, edges, halftone, pixelate, and more) over them, composited back with blend modes; `combined` to combine two layers (mask, displace, cross-dissolve, depth-of-field defocus, ambient occlusion); plus `generate` for procedural pattern sources (checkers, grid, bars, noise) and `feedback` for layers that remember themselves across frames (trails, tunnels, video feedback); plus `compose { }` to declare a whole stack of layers (each with its own filters, blend, and `aside` helper layers) as one block, for glow, soft backdrops, color grading, and post-processing.
+- [Compute & GPU particles](Docs/Drawing/Compute.md) - GPU compute over buffers and textures, the per-element update written as a Metal snippet (inline or in its own `.metal` file): `Particles` runs a million particles updated and drawn on the GPU each frame, never touching the CPU (the "sandpainting" engine); `Simulation` runs reaction-diffusion, cellular automata, and other ping-pong texture sims, drawn as an `Image`. Over the `ComputeKernel`/`ComputeBuffer`/`ComputeTexture` core.
+- [Text](Docs/Drawing/Text.md) - `drawText` with bitmap, outline (`.ttf`/`.otf`), and single-line/plotter (Hershey) fonts (`textFont`/`textSize`/`textAlign`/`textWidth`, `BitmapFont`/`OutlineFont`/`StrokeFont`), `textToShapes` for text as geometry, and loading BDF, Playdate `.fnt`, and Hershey `.jhf` fonts.
+- [Images](Docs/Drawing/Images.md) - `loadImage` / `drawImage` for raster images (PNG, JPEG, HEIC, …), with `tint` recoloring and an `Image[x, y]` pixel subscript for sampling or authoring.
+- [Color](Docs/Drawing/Color.md) - the `Color` type, the OKLab family and mixing, `Ramp`s and `Palette`s, and perceptual `Colormap`s.
+- [Geometry](Docs/Drawing/Geometry.md) - the `Vector2`, `Rectangle`, `Shape`/`Contour`, and `Path` value types (including curved outlines, shape booleans, and offsetting).
+- [Voronoi & Delaunay](Docs/Drawing/Voronoi.md) - tessellate points into vector geometry: Voronoi cells and the dual Delaunay triangle mesh, with Lloyd relaxation.
+- [SDF combinators](Docs/Drawing/Combinators.md) - compose signed-distance fields so shapes *merge* instead of stack: smooth union/subtract/intersect and morph, round/onion, and domain mirror/tile/radial, built with the `SDF` value type + `drawSDF` or a scoped `smoothUnion { }` block, in 2D and a raymarched 3D form (`SDF3D` + `drawSDF3D`) with an infinite plane, cast shadows onto meshes, and gradient paint.
+- [3D](Docs/3D/3D.md) - opt into a 3D camera and depth buffer: orbit a `Camera3D` (perspective or orthographic) and draw `PointCloud`s as instanced disc splats and a catalog of solid primitives (box, sphere, capsule, the Platonic solids, …) plus parametric and profile shapes (supershape, extrude, lathe), lit by directional, point, and spot lights with a Blinn-Phong material (shaded out of the box by an auto-lit default), give a surface a stylized finish from the material library (iridescent, velvet, jade, toon, gooch) or a matcap (a whole look baked into one sphere texture, sampled by the view normal, with 26 bundled looks plus a generator), wrap an image onto a surface (textured meshes), including a live webcam depth cloud (the Mac-side preview of the iPhone LiDAR cloud to come).
+- [Depth compositing](Docs/3D/DepthCompositing.md) - place 2D drawing *inside* a 3D scene so it occludes and is occluded by the geometry: `depth(at:)`, `project`, and `withBillboard` (a 2D label hidden when it swings behind the cloud), or against a live depth feed with `drawDepthScene`, including in true metric space (`Camera3D.fromIntrinsics`), so an object sits at a real distance inside a LiDAR feed.
+- [Record3D](Docs/3D/Record3D.md) - `import OllinRecord3D` to turn an iPhone's color-plus-depth into a 3D point cloud, from a recorded `.r3d` file or a tethered phone's live USB stream (the iPhone's depth camera, borrowed by the Mac in real time).
+- [RGBD](Docs/3D/RGBD.md) - the source-agnostic `RGBDFrame` (color + depth + intrinsics) any depth source produces: unproject a point cloud, lift a single image point to metric 3D, or lift a 2D body pose into space at its true distance (`Body.lifted(through:)`).
+- [Phone](Docs/3D/Phone.md) - `import OllinPhone` to read a tethered iPhone's live on-device ARKit sensor stream from Ollin's own capture app ([`Apps/OllinPhoneApp`](Apps/OllinPhoneApp/README.md)): a 3D body skeleton, a face mesh with its 52 expression blendshapes, a world-facing rear-LiDAR depth cloud (with the camera's 6DoF pose), a person-segmentation matte and cutout, and device motion over the USB cable, drawn in space as a `PointCloud`.
+- [Random](Docs/Generators/Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers.
+- [Noise](Docs/Generators/Noise.md) - Perlin `noise`/`signedNoise` and `curlNoise` flow fields.
+- [Math](Docs/Helpers/Math.md) - `map`, `dist`, `lerp`.
+- [Animation](Docs/Helpers/Animation.md) - the `Easing` curves, the `@Eased` value that tweens toward a target, and `@Smoothed` for cleaning up a noisy signal.
+- [Parameters](Docs/Helpers/Parameters.md) - `@Param` tunable knobs: live sliders in the inspector, optional smoothing, and binding from OSC or MIDI.
+- [Input](Docs/Helpers/Input.md) - mouse and keyboard.
+- [Export](Docs/Output/Export.md) - save frames as raster (PNG, sequences) or vector (SVG, for pen plotters).
 
 Ten satellite libraries live in the same package behind their own `import`, so a sketch only links what it uses (Record3D and Phone, grouped with the 3D docs above, are two of them):
 
-- [Audio](Docs/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`, `spectrum`, and band values (`bass`/`mid`/`treble`) a sketch reads in `draw()`.
-- [OSC](Docs/OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`.
-- [MIDI](Docs/MIDI.md) - `import OllinMIDI` to read from and send to MIDI controllers and keyboards over Core MIDI, read in `draw()` or bound to a `@Param`.
-- [Physics](Docs/Physics.md) - `import OllinPhysics` for a `World` you step each frame, so motion comes from simulation instead of hand-tuned values: a soft Verlet side (particles, springs, disk collisions) and a rigid side (bodies, colliders, and joints, backed by Box2D).
-- [Vision](Docs/Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results a sketch reads in `draw()`: sixteen trackers spanning detection (rectangles, barcodes/QR, text/OCR, contours into vector `Shape`s), tracking (lock onto a patch, parabolic trajectories, dense optical flow), segmentation (person and subject mattes and cutouts as drawable `Image`s), pose (face landmarks and head pose, hand and body skeletons, the 3D body in meters from one webcam), classification, and saliency, plus any custom Core ML model run the same way. Trackers attach to any frame source: the live camera, a playing video, or a frame producer of your own.
-- [Syphon](Docs/Syphon.md) - `import OllinSyphon` to share live visuals with other Mac apps (openFrameworks, Resolume, MadMapper, VDMX, …): publish a sketch's frames as a Syphon source, and draw an incoming Syphon feed as an `Image`.
-- [Virtual camera](Docs/VirtualCamera.md) - `import OllinCamera` to feed a sketch's frames to the Ollin Camera system camera, so anything that takes a webcam (Zoom, OBS, QuickTime, and browser tools like Hydra through `getUserMedia`) reads the sketch as a live camera; the device itself installs once from [`Apps/OllinCameraApp`](Apps/OllinCameraApp/README.md).
-- [Video](Docs/Video.md) - `import OllinVideo` to play a video file into a sketch as a live image: each decoded frame arrives as a GPU texture drawn with `drawImage`, riding the transform stack and `tint`, with a CPU `snapshot()` for pixel reads and vision trackers attaching directly to analyze the footage as it plays.
+- [Audio](Docs/Helpers/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`, `spectrum`, and band values (`bass`/`mid`/`treble`) a sketch reads in `draw()`.
+- [OSC](Docs/Integration/OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`.
+- [MIDI](Docs/Integration/MIDI.md) - `import OllinMIDI` to read from and send to MIDI controllers and keyboards over Core MIDI, read in `draw()` or bound to a `@Param`.
+- [Physics](Docs/Simulation/Physics.md) - `import OllinPhysics` for a `World` you step each frame, so motion comes from simulation instead of hand-tuned values: a soft Verlet side (particles, springs, disk collisions) and a rigid side (bodies, colliders, and joints, backed by Box2D).
+- [Vision](Docs/Vision/Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results a sketch reads in `draw()`: sixteen trackers spanning detection (rectangles, barcodes/QR, text/OCR, contours into vector `Shape`s), tracking (lock onto a patch, parabolic trajectories, dense optical flow), segmentation (person and subject mattes and cutouts as drawable `Image`s), pose (face landmarks and head pose, hand and body skeletons, the 3D body in meters from one webcam), classification, and saliency, plus any custom Core ML model run the same way. Trackers attach to any frame source: the live camera, a playing video, or a frame producer of your own.
+- [Syphon](Docs/Integration/Syphon.md) - `import OllinSyphon` to share live visuals with other Mac apps (openFrameworks, Resolume, MadMapper, VDMX, …): publish a sketch's frames as a Syphon source, and draw an incoming Syphon feed as an `Image`.
+- [Virtual camera](Docs/Integration/VirtualCamera.md) - `import OllinCamera` to feed a sketch's frames to the Ollin Camera system camera, so anything that takes a webcam (Zoom, OBS, QuickTime, and browser tools like Hydra through `getUserMedia`) reads the sketch as a live camera; the device itself installs once from [`Apps/OllinCameraApp`](Apps/OllinCameraApp/README.md).
+- [Video](Docs/Video/Video.md) - `import OllinVideo` to play a video file into a sketch as a live image: each decoded frame arrives as a GPU texture drawn with `drawImage`, riding the transform stack and `tint`, with a CPU `snapshot()` for pixel reads and vision trackers attaching directly to analyze the footage as it plays.
 
 New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.
 
@@ -168,16 +168,16 @@ GPU supports it) covers the triangle path. The renderer is heavily commented bec
 Any sketch can render a frame to a PNG **headlessly**, with no window. That's handy for grabbing a still to share, for checking a sketch on a machine without a display, and as the basis for PNG sequences you can stitch into video:
 
 ```sh
-swift run Example-HelloCircle --export frame.png
-swift run Example-Orbits --export frame.png --frame 120   # the 120th frame
+swift run Example-Basic-HelloCircle --export frame.png
+swift run Example-Motion-Orbits --export frame.png --frame 120   # the 120th frame
 ```
 
-It drives the sketch off-screen (`setup()`, then `draw()` advanced to the requested `--frame`) and writes a PNG at the sketch's `canvasSize` (1080×1080 by default), rendered with the same MSAA as the window. In code it's `OllinApp.export(sketch, to:frame:)`, or `OllinApp.image(of: sketch, frame:)` if you'd rather have the `CGImage` in memory than a file on disk. An extension can also grab each frame as it renders, through the `frameRendered` hook on the `extend(...)` seam. See [`Examples/Basic/Capture`](Examples/Basic/Capture/Sketch.swift).
+It drives the sketch off-screen (`setup()`, then `draw()` advanced to the requested `--frame`) and writes a PNG at the sketch's `canvasSize` (1080×1080 by default), rendered with the same MSAA as the window. In code it's `OllinApp.export(sketch, to:frame:)`, or `OllinApp.image(of: sketch, frame:)` if you'd rather have the `CGImage` in memory than a file on disk. An extension can also grab each frame as it renders, through the `frameRendered` hook on the `extend(...)` seam. See [`Examples/Export/Capture`](Examples/Export/Capture/Sketch.swift).
 
 For an animation, `--export-sequence` writes a numbered PNG sequence you can stitch into video:
 
 ```sh
-swift run Example-Breathing --export-sequence frames/ --skip 5 --seconds 20 --fps 60
+swift run Example-Motion-Breathing --export-sequence frames/ --skip 5 --seconds 20 --fps 60
 ```
 
 It advances the clock at a fixed timestep rather than wall-clock, so each frame renders the moment it should regardless of how long the render takes. A slow render still plays back smoothly. Pass `--seconds` for a duration instead of `--frames`, and `--skip` to run the sketch a while first without writing, so a sketch that needs to settle into motion is already going when capture starts. Frames are written as `frame-00001.png`, `frame-00002.png`, and so on, and the command prints an `ffmpeg` line to assemble them. In code it's `OllinApp.exportSequence(sketch, to:frames:fps:)` (plus optional `startFrame:` / `skipSeconds:`).
@@ -185,11 +185,11 @@ It advances the clock at a fixed timestep rather than wall-clock, so each frame 
 For a file you can share directly, `--export-video` encodes the same deterministic render straight to `.mp4` or `.mov` (H.264 by default; HEVC and ProRes via `--codec`, `--bitrate` as the file-size dial), and `--export-gif` writes a short looping GIF (`--gif-width` to shrink it). No external tool needed:
 
 ```sh
-swift run Example-Breathing --export-video breathing.mp4 --seconds 6
-swift run Example-Breathing --export-gif breathing.gif --seconds 4 --gif-width 540
+swift run Example-Motion-Breathing --export-video breathing.mp4 --seconds 6
+swift run Example-Motion-Breathing --export-gif breathing.gif --seconds 4 --gif-width 540
 ```
 
-In code they're `OllinApp.exportVideo(...)` and `OllinApp.exportGIF(...)`; codec choice, size and quality control, and the GIF timing details are in [`Docs/Export.md`](Docs/Export.md).
+In code they're `OllinApp.exportVideo(...)` and `OllinApp.exportGIF(...)`; codec choice, size and quality control, and the GIF timing details are in [`Docs/Output/Export.md`](Docs/Output/Export.md).
 
 ## Roadmap
 

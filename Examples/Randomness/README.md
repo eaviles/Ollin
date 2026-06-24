@@ -14,4 +14,4 @@
 | [RandomBand](RandomBand/Sketch.swift) | a band of dots jittered by `random` (jagged); re-rolls with the mouse |
 | [Ring](Ring/Sketch.swift) | dots scattered in an annulus by `ring()`, `scale`-relative so it holds its proportion |
 
-Run one with `swift run Example-<Name>`, e.g. `swift run Example-NoiseField`.
+Run one with `swift run Example-Randomness-<Name>`, e.g. `swift run Example-Randomness-NoiseField`.

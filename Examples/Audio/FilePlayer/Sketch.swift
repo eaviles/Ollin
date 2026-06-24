@@ -8,7 +8,7 @@ import OllinAudio
 /// Pass a path on launch to play your own track instead:
 ///
 /// ```
-/// swift run Example-FilePlayer /path/to/your/track.mp3
+/// swift run Example-Audio-FilePlayer /path/to/your/track.mp3
 /// ```
 ///
 /// The violin spreads energy across the spectrum: the bars along the bottom are

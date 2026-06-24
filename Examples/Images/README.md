@@ -10,4 +10,4 @@ Loading, drawing, tinting, and authoring raster images — the `Image` value typ
 |---|---|
 | [PixelField](PixelField/Sketch.swift) | a blank image painted pixel by pixel into a flowing colormap field, drawn under an animated warm↔cool `tint`, with a row of swatches read back with `get` (`Image(width:height:)`, `image[x, y]`, `tint`) |
 
-Run one with `swift run Example-<Name>`, e.g. `swift run Example-PixelField`.
+Run one with `swift run Example-Images-<Name>`, e.g. `swift run Example-Images-PixelField`.

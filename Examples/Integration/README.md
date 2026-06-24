@@ -4,7 +4,7 @@
 
 ## Integration
 
-Sketches that talk to the other apps and gear in a rig: control in over OSC and MIDI, visuals out (and in) over Syphon, and the sketch itself as a system-wide virtual camera. Each integration lives in its own library — `import OllinOSC`, `import OllinMIDI`, `import OllinSyphon`, `import OllinCamera` — see the [OSC](../../Docs/OSC.md), [MIDI](../../Docs/MIDI.md), [Syphon](../../Docs/Syphon.md), and [Virtual camera](../../Docs/VirtualCamera.md) references.
+Sketches that talk to the other apps and gear in a rig: control in over OSC and MIDI, visuals out (and in) over Syphon, and the sketch itself as a system-wide virtual camera. Each integration lives in its own library — `import OllinOSC`, `import OllinMIDI`, `import OllinSyphon`, `import OllinCamera` — see the [OSC](../../Docs/Integration/OSC.md), [MIDI](../../Docs/Integration/MIDI.md), [Syphon](../../Docs/Integration/Syphon.md), and [Virtual camera](../../Docs/Integration/VirtualCamera.md) references.
 
 | Example | What it shows |
 |---|---|
@@ -16,4 +16,4 @@ Sketches that talk to the other apps and gear in a rig: control in over OSC and 
 | [SyphonViewer](SyphonViewer/Sketch.swift) | subscribes to any external Syphon source (openFrameworks, Resolume, …) and draws it letterboxed, listing what it sees while it waits (`SyphonClient`, `availableServers`) |
 | [VirtualCamera](VirtualCamera/Sketch.swift) | publishes the sketch to the system-wide **Ollin Camera**, so Photo Booth, QuickTime, Zoom, and any browser read it as a live webcam — a broadcast-style "on air" scene so the feed is obviously live; needs the camera extension installed once, and explains what to do when it isn't (`publishVirtualCamera`) |
 
-Run one with `swift run Example-<Name>`, e.g. `swift run Example-OSCLoopback`.
+Run one with `swift run Example-Integration-<Name>`, e.g. `swift run Example-Integration-OSCLoopback`.

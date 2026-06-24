@@ -1,4 +1,8 @@
-# 3D
+#### <sup>[Ollin](../../README.md) → [Examples](../README.md) → 3D</sup>
+
+---
+
+## 3D
 
 Sketches that opt into Ollin's 3D mode. 2D stays the default — a sketch becomes
 3D by setting a `camera` (`perspective`/`ortho`/`camera`), which makes the renderer
@@ -32,4 +36,4 @@ right-handed and y-up.
 | [PhoneWorldScan](PhoneWorldScan/) | Sweep the phone (tap **World**) and each depth frame is placed by its camera pose into one fused `WorldCloud` of the room — **R** to reset. Needs `import OllinPhone`. |
 | [PhoneSegmentation](PhoneSegmentation/) | Ollin Capture's on-device person matte (tap **Segment**): the cutout lifted onto a live gradient backdrop, the tinted matte as a drop shadow. Needs `import OllinPhone`. |
 
-See [`Docs/3D.md`](../../Docs/3D.md) for the 3D guide. Record3D recordings have their own guide in [`Docs/Record3D.md`](../../Docs/Record3D.md); the Ollin Capture stream is documented in [`Docs/Phone.md`](../../Docs/Phone.md).
+See [`Docs/3D/3D.md`](../../Docs/3D/3D.md) for the 3D guide. Record3D recordings have their own guide in [`Docs/3D/Record3D.md`](../../Docs/3D/Record3D.md); the Ollin Capture stream is documented in [`Docs/3D/Phone.md`](../../Docs/3D/Phone.md).

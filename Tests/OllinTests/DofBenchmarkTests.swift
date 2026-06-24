@@ -5,7 +5,7 @@ import AppKit
 @testable import Ollin
 
 /// A depth-of-field micro-benchmark — **gated by `OLLIN_BENCH=1`** so the normal test suite
-/// skips it. It renders the `Basic/Defocus` scene (an orb field through a `.defocus` combine)
+/// skips it. It renders the `Effects/Defocus` scene (an orb field through a `.defocus` combine)
 /// at the canvas resolution the layer actually runs at live, across a sweep of bokeh tap
 /// counts, prints the true per-frame GPU cost (from command-buffer timestamps, so it's
 /// vsync-independent), and recommends per-tier tap counts for *this* GPU. Run it on each
@@ -15,7 +15,7 @@ import AppKit
 @Suite(.serialized)
 struct DofBenchmarkTests {
 
-    /// The `Basic/Defocus` scene: an orb field drawn into a layer, defocused by a matching
+    /// The `Effects/Defocus` scene: an orb field drawn into a layer, defocused by a matching
     /// per-orb depth map — the realistic cost of the effect. The `.defocus` quality is
     /// irrelevant here; the benchmark drives the tap count through `dofTapsOverride`.
     final class BenchScene: Sketch {

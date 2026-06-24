@@ -14,7 +14,7 @@ import OllinVision
 /// — so it runs out of the box. Pass a path on launch to trace your own video:
 ///
 /// ```
-/// swift run Example-VideoTrace /path/to/your/clip.mp4
+/// swift run Example-Vision-VideoTrace /path/to/your/clip.mp4
 /// ```
 @main
 final class VideoTrace: Sketch {

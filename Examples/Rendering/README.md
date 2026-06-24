@@ -1,0 +1,16 @@
+#### <sup>[Ollin](../../README.md) → [Examples](../README.md) → Rendering</sup>
+
+---
+
+## Rendering
+
+How the frame composites. Every frame is built in a linear floating-point canvas a final pass tone-maps to the screen, so light can sum past white, blend modes add as light, and marks accumulate across frames instead of clearing: the "sandpainting" track. See the [Drawing](../../Docs/Drawing/Drawing.md), [HDR & tone-mapping](../../Docs/Drawing/HDR.md), and [Accumulation](../../Docs/Drawing/Accumulation.md) references.
+
+| Example | What it shows |
+|---|---|
+| [Blending](Blending/Sketch.swift) | additive blending: faint disks summing as light (`blendMode(.add)`) |
+| [Accumulation](Accumulation/Sketch.swift) | a persistent canvas that builds up over frames (`noClear()`) |
+| [ToneMapping](ToneMapping/Sketch.swift) | HDR light summed in float, rolled onto the screen instead of clipping (`toneMap(_:)`) |
+| [DepthOfField](DepthOfField/Sketch.swift) | sandpainting depth of field: bokeh earned by scattering accumulated samples (drag to rack focus) |
+
+Run one with `swift run Example-Rendering-<Name>`, e.g. `swift run Example-Rendering-Blending`.

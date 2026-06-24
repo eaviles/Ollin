@@ -16,6 +16,8 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Basic](Basic/) | the smallest starting point |
 | [Color](Color/) | palettes, colormaps, and color over time |
 | [Compute](Compute/) | GPU compute — a million particles, and reaction-diffusion / texture simulations |
+| [Effects](Effects/) | layered effects — GPU filters, feedback, generators, and the `compose { }` stack |
+| [Export](Export/) | saving a sketch out — raster frame grab, vector SVG, and plotter hatching |
 | [Images](Images/) | loading, drawing, tinting, and authoring images |
 | [Input](Input/) | mouse-driven sketches |
 | [Integration](Integration/) | talking to other apps and gear — OSC, MIDI, Syphon (`import OllinOSC` / `OllinMIDI` / `OllinSyphon`) |
@@ -24,6 +26,8 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Patterns](Patterns/) | grids and rule-based repetition |
 | [Physics](Physics/) | simulated motion (`import OllinPhysics`) |
 | [Randomness](Randomness/) | `random`, `noise`, and scatter |
+| [Rendering](Rendering/) | how the frame composites — blending, accumulation, HDR tone-mapping, sandpainting |
+| [Simulation](Simulation/) | stateful GPU fields you draw into — fluid, Game of Life, reaction-diffusion (`simField`) |
 | [Text](Text/) | drawing text — bitmap, outline, and stroke fonts over one `drawText` |
 | [Video](Video/) | recorded footage as drawing material (`import OllinVideo`) |
 | [Vision](Vision/) | the camera plus on-device perception (`import OllinVision`) |
@@ -34,8 +38,8 @@ Examples are grouped into **category** folders, and each example gets its own fo
 Each example is its own target, prefixed `Example-`:
 
 ```sh
-swift run Example-HelloCircle
-swift run Example-Breathing
+swift run Example-Basic-HelloCircle
+swift run Example-Motion-Breathing
 ```
 
 (Run `swift run` with no argument to list every runnable target.)
@@ -51,7 +55,7 @@ A sidebar lists every example; click one and it compiles and renders on the righ
 ### Adding an example
 
 1. Create `Examples/<Category>/<Name>/Sketch.swift` with an `@main final class <Name>: Sketch { … }`. No `OllinApp.run(...)` line; `Sketch.main()` boots it for you.
-2. Add a matching `.executableTarget(name: "Example-<Name>", dependencies: ["Ollin"], path: "Examples/<Category>/<Name>")` in `Package.swift`.
+2. Add a matching `.executableTarget(name: "Example-<Category>-<Name>", dependencies: ["Ollin"], path: "Examples/<Category>/<Name>")` in `Package.swift`.
 3. Add a row to the category's `README.md` (and a new category gets its own `README.md` plus a row in the table above).
 
 Convention: a feature isn't considered done until it has an example, and every example must compile. If a sketch is awkward to write, treat that as a signal that the API needs work rather than the example.
@@ -61,7 +65,7 @@ Convention: a feature isn't considered done until it has an example, and every e
 `Recreations/` is a special section: sketches that **recreate the work of past computer artists**, organized by artist, inspired by SFPC's [Recreating the Past](https://sfpc.io/recreatingthepast-spring2020/) class. Each one is a homage after the artist, not a reproduction and not endorsed by them, with a short per-artist `README.md` introducing them. Their targets are namespaced by artist:
 
 ```sh
-swift run Example-VeraMolnar-Interruptions
+swift run Example-Recreations-VeraMolnar-Interruptions
 ```
 
 See [`Recreations/README.md`](Recreations/) for the full idea.

@@ -152,4 +152,4 @@ do {
     fail("couldn't write \(outURL.path): \(error.localizedDescription)")
 }
 print("✓ trained in \(Int(Date().timeIntervalSince(start)))s → \(outURL.path)")
-print("  swift run Example-StyleMirror   (or keep it running — it picks the file up live)")
+print("  swift run Example-Vision-StyleMirror   (or keep it running — it picks the file up live)")

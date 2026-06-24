@@ -4,7 +4,7 @@
 
 ## Vision
 
-Computer vision on the Mac. Vision lives in a separate library — add `import OllinVision` — for the Mac's camera (built-in, a Continuity Camera iPhone, or an external webcam) plus Apple's on-device perception. Build a `Camera` in `setup()` and `start()` it, draw `camera.frame` in `draw()`, and attach a tracker (like `FaceTracker`) to the same camera to read recognition results. See the [Vision reference](../../Docs/Vision.md).
+Computer vision on the Mac. Vision lives in a separate library — add `import OllinVision` — for the Mac's camera (built-in, a Continuity Camera iPhone, or an external webcam) plus Apple's on-device perception. Build a `Camera` in `setup()` and `start()` it, draw `camera.frame` in `draw()`, and attach a tracker (like `FaceTracker`) to the same camera to read recognition results. See the [Vision reference](../../Docs/Vision/Vision.md).
 
 | Example | What it shows |
 |---|---|
@@ -32,7 +32,7 @@ Computer vision on the Mac. Vision lives in a separate library — add `import O
 | [VideoTrace](VideoTrace/Sketch.swift) | vision over recorded footage — the bundled clip traced into line art as it plays, with the clip itself in a corner inset; a tracker attaches to a `VideoPlayer` exactly the way it attaches to a camera (`ContourDetector` over `VideoPlayer`, the frame-source seam) |
 | [TrajectoryTracking](TrajectoryTracking/Sketch.swift) | ballistic arcs found and *predicted* in a synthetic ball-launcher feed — the example conforms its own `FrameSource`, so a simulation is the tracker's camera (`TrajectoryTracker`, `DetectedTrajectory`) |
 
-These examples need a camera and ask for camera permission on first run (the system prompts from `swift run`) — except VideoTrace, TrajectoryTracking, and DigitReader, which are self-contained and run with no camera at all. DepthRelief, ObjectDetection, PaintByClass, and DigitReader additionally need their models downloaded once (`Scripts/fetch-models.sh` — the weights are fetched, never committed), and StyleMirror wants a model you train yourself (below). Run one with `swift run Example-<Name>`, e.g. `swift run Example-WebcamFeed`.
+These examples need a camera and ask for camera permission on first run (the system prompts from `swift run`) — except VideoTrace, TrajectoryTracking, and DigitReader, which are self-contained and run with no camera at all. DepthRelief, ObjectDetection, PaintByClass, and DigitReader additionally need their models downloaded once (`Scripts/fetch-models.sh` — the weights are fetched, never committed), and StyleMirror wants a model you train yourself (below). Run one with `swift run Example-Vision-<Name>`, e.g. `swift run Example-Vision-WebcamFeed`.
 
 ### Training the StyleMirror model
 

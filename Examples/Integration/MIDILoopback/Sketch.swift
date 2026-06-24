@@ -5,13 +5,13 @@ import OllinMIDI
 /// *virtual source* and sends control-change messages to itself; a `MIDIInput`
 /// connected to that source reads them back, and the picture is what it receives.
 ///
-///   swift run Example-MIDILoopback
+///   swift run Example-Integration-MIDILoopback
 ///
 /// It also shows the softening a `@Param` can carry: the incoming value steps
 /// (like a knob jumped to a new position every so often), but `radius` is bound to
 /// a smoothed param, so the filled circle *glides* toward each new step while the
 /// thin ring marks the raw target it's chasing. The companion `MIDIMonitor`
-/// example is the one for real gear. See `Docs/MIDI.md`.
+/// example is the one for real gear. See `Docs/Integration/MIDI.md`.
 @main
 final class MIDILoopback: Sketch {
 

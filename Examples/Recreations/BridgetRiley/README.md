@@ -19,13 +19,13 @@ Learn more:
 - [**Fragment 3**](Fragment3/): a field of black-and-white chevron stripes (horizontal bands bent into a zigzag), after Riley's *Fragment 3* (1965).
 
   ```sh
-  swift run Example-BridgetRiley-Fragment3
+  swift run Example-Recreations-BridgetRiley-Fragment3
   ```
 
 - [**Current**](Current/): a field of parallel undulating lines that shimmer, after Riley's *Current* (1964). Each line is a smooth `drawCurve` through sampled points.
 
   ```sh
-  swift run Example-BridgetRiley-Current
+  swift run Example-Recreations-BridgetRiley-Current
   ```
 
 These are homages after Bridget Riley, made for learning. They aren't reproductions of specific works, and they aren't affiliated with or endorsed by the artist.

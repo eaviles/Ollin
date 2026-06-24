@@ -6,12 +6,12 @@ import OllinOSC
 /// at this Mac and discover the addresses each control sends just by touching
 /// them.
 ///
-///   swift run Example-OSCMonitor
+///   swift run Example-Integration-OSCMonitor
 ///
 /// On the sender, set the destination host to this Mac's IP (find it with
 /// `ipconfig getifaddr en0`) and the port to 8000, matching `listenPort` below.
 /// The companion `OSCLoopback` example needs no external app; this one is for
-/// talking to real gear. See `Docs/OSC.md` for the full walkthrough.
+/// talking to real gear. See `Docs/Integration/OSC.md` for the full walkthrough.
 @main
 final class OSCMonitor: Sketch {
 

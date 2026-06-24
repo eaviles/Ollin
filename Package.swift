@@ -5,7 +5,7 @@ import PackageDescription
 //
 // One product: the `Ollin` library you `import Ollin` in your sketches.
 // Runnable sketches live as executable targets under `Examples/` — run one
-// with e.g. `swift run Example-HelloCircle`.
+// with e.g. `swift run Example-Basic-HelloCircle`.
 //
 // The `.metal` shader in Sources/Ollin/Renderer is declared as a resource (see
 // the Ollin target below) so SwiftPM copies it into the target's resource
@@ -360,136 +360,136 @@ let package = Package(
         ),
         // Examples — one runnable sketch per executable target, grouped into
         // category folders (openFrameworks-style). Each example is a single
-        // `@main` Sketch file; run one with e.g. `swift run Example-HelloCircle`.
+        // `@main` Sketch file; run one with e.g. `swift run Example-Basic-HelloCircle`.
         // Hand-written for now; generate these stanzas once the set grows
         // (see CLAUDE.md: don't hand-maintain dozens of target blocks).
         .executableTarget(
-            name: "Example-HelloCircle",
+            name: "Example-Basic-HelloCircle",
             dependencies: ["Ollin"],
             path: "Examples/Basic/HelloCircle"
         ),
         .executableTarget(
-            name: "Example-Guides",
+            name: "Example-Basic-Guides",
             dependencies: ["Ollin"],
             path: "Examples/Basic/Guides"
         ),
         .executableTarget(
-            name: "Example-Capture",
+            name: "Example-Export-Capture",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Capture"
+            path: "Examples/Export/Capture"
         ),
         .executableTarget(
-            name: "Example-VectorExport",
+            name: "Example-Export-VectorExport",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/VectorExport"
+            path: "Examples/Export/VectorExport"
         ),
         .executableTarget(
-            name: "Example-Hatching",
+            name: "Example-Export-Hatching",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Hatching"
+            path: "Examples/Export/Hatching"
         ),
         .executableTarget(
-            name: "Example-Blending",
+            name: "Example-Rendering-Blending",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Blending"
+            path: "Examples/Rendering/Blending"
         ),
         .executableTarget(
-            name: "Example-Bloom",
+            name: "Example-Effects-Bloom",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Bloom"
+            path: "Examples/Effects/Bloom"
         ),
         .executableTarget(
-            name: "Example-Combinators",
+            name: "Example-Basic-Combinators",
             dependencies: ["Ollin"],
             path: "Examples/Basic/Combinators"
         ),
         .executableTarget(
-            name: "Example-Feedback",
+            name: "Example-Effects-Feedback",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Feedback"
+            path: "Examples/Effects/Feedback"
         ),
         .executableTarget(
-            name: "Example-Compose",
+            name: "Example-Effects-Compose",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Compose"
+            path: "Examples/Effects/Compose"
         ),
         .executableTarget(
-            name: "Example-Aside",
+            name: "Example-Effects-Aside",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Aside"
+            path: "Examples/Effects/Aside"
         ),
         .executableTarget(
-            name: "Example-Defocus",
+            name: "Example-Effects-Defocus",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Defocus"
+            path: "Examples/Effects/Defocus"
         ),
         .executableTarget(
-            name: "Example-Accumulation",
+            name: "Example-Rendering-Accumulation",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Accumulation"
+            path: "Examples/Rendering/Accumulation"
         ),
         .executableTarget(
-            name: "Example-ColorFilters",
+            name: "Example-Effects-ColorFilters",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/ColorFilters"
+            path: "Examples/Effects/ColorFilters"
         ),
         .executableTarget(
-            name: "Example-BlurFilters",
+            name: "Example-Effects-BlurFilters",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/BlurFilters"
+            path: "Examples/Effects/BlurFilters"
         ),
         .executableTarget(
-            name: "Example-StylizeFilters",
+            name: "Example-Effects-StylizeFilters",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/StylizeFilters"
+            path: "Examples/Effects/StylizeFilters"
         ),
         .executableTarget(
-            name: "Example-RetroFilters",
+            name: "Example-Effects-RetroFilters",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/RetroFilters"
+            path: "Examples/Effects/RetroFilters"
         ),
         .executableTarget(
-            name: "Example-Distortion",
+            name: "Example-Effects-Distortion",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Distortion"
+            path: "Examples/Effects/Distortion"
         ),
         .executableTarget(
-            name: "Example-Simulation",
+            name: "Example-Simulation-Simulation",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Simulation"
+            path: "Examples/Simulation/Simulation"
         ),
         .executableTarget(
-            name: "Example-GameOfLife",
+            name: "Example-Simulation-GameOfLife",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/GameOfLife"
+            path: "Examples/Simulation/GameOfLife"
         ),
         .executableTarget(
-            name: "Example-Fluid",
+            name: "Example-Simulation-Fluid",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Fluid"
+            path: "Examples/Simulation/Fluid"
         ),
         .executableTarget(
-            name: "Example-Patterns",
+            name: "Example-Effects-Patterns",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/Patterns"
+            path: "Examples/Effects/Patterns"
         ),
         .executableTarget(
-            name: "Example-ToneMapping",
+            name: "Example-Rendering-ToneMapping",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/ToneMapping"
+            path: "Examples/Rendering/ToneMapping"
         ),
         .executableTarget(
-            name: "Example-DepthOfField",
+            name: "Example-Rendering-DepthOfField",
             dependencies: ["Ollin"],
-            path: "Examples/Basic/DepthOfField"
+            path: "Examples/Rendering/DepthOfField"
         ),
         .executableTarget(
-            name: "Example-CurlField",
+            name: "Example-Compute-CurlField",
             dependencies: ["Ollin"],
             path: "Examples/Compute/CurlField"
         ),
         .executableTarget(
-            name: "Example-ReactionDiffusion",
+            name: "Example-Compute-ReactionDiffusion",
             dependencies: ["Ollin"],
             path: "Examples/Compute/ReactionDiffusion",
             // The kernels live in their own .metal file (highlighted, editor-checked);
@@ -497,475 +497,475 @@ let package = Package(
             resources: [.copy("Kernels.metal")]
         ),
         .executableTarget(
-            name: "Example-PointCloud",
+            name: "Example-3D-PointCloud",
             dependencies: ["Ollin"],
             path: "Examples/3D/PointCloud"
         ),
         .executableTarget(
-            name: "Example-Transforms",
+            name: "Example-3D-Transforms",
             dependencies: ["Ollin"],
             path: "Examples/3D/Transforms"
         ),
         .executableTarget(
-            name: "Example-Solids",
+            name: "Example-3D-Solids",
             dependencies: ["Ollin"],
             path: "Examples/3D/Solids"
         ),
         .executableTarget(
-            name: "Example-RaymarchedSDF",
+            name: "Example-3D-RaymarchedSDF",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedSDF"
         ),
         .executableTarget(
-            name: "Example-RaymarchedShapes",
+            name: "Example-3D-RaymarchedShapes",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedShapes"
         ),
         .executableTarget(
-            name: "Example-RaymarchedSculpt",
+            name: "Example-3D-RaymarchedSculpt",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedSculpt"
         ),
         .executableTarget(
-            name: "Example-RaymarchedDomain",
+            name: "Example-3D-RaymarchedDomain",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedDomain"
         ),
         .executableTarget(
-            name: "Example-RaymarchedRadial",
+            name: "Example-3D-RaymarchedRadial",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedRadial"
         ),
         .executableTarget(
-            name: "Example-RaymarchedPlane",
+            name: "Example-3D-RaymarchedPlane",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedPlane"
         ),
         .executableTarget(
-            name: "Example-RaymarchedCastShadow",
+            name: "Example-3D-RaymarchedCastShadow",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedCastShadow"
         ),
         .executableTarget(
-            name: "Example-RaymarchedGradient",
+            name: "Example-3D-RaymarchedGradient",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedGradient"
         ),
         .executableTarget(
-            name: "Example-RaymarchedShadow",
+            name: "Example-3D-RaymarchedShadow",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedShadow"
         ),
         .executableTarget(
-            name: "Example-SceneDefocus",
+            name: "Example-3D-SceneDefocus",
             dependencies: ["Ollin"],
             path: "Examples/3D/SceneDefocus"
         ),
         .executableTarget(
-            name: "Example-AmbientOcclusion",
+            name: "Example-3D-AmbientOcclusion",
             dependencies: ["Ollin"],
             path: "Examples/3D/AmbientOcclusion"
         ),
         .executableTarget(
-            name: "Example-TexturedMesh",
+            name: "Example-3D-TexturedMesh",
             dependencies: ["Ollin"],
             path: "Examples/3D/TexturedMesh"
         ),
         .executableTarget(
-            name: "Example-Wireframe",
+            name: "Example-3D-Wireframe",
             dependencies: ["Ollin"],
             path: "Examples/3D/Wireframe"
         ),
         .executableTarget(
-            name: "Example-LoadedMesh",
+            name: "Example-3D-LoadedMesh",
             dependencies: ["Ollin"],
             path: "Examples/3D/LoadedMesh",
             resources: [.copy("model.gltf"), .copy("model.obj")]
         ),
         .executableTarget(
-            name: "Example-ShapeFactory",
+            name: "Example-3D-ShapeFactory",
             dependencies: ["Ollin"],
             path: "Examples/3D/ShapeFactory"
         ),
         .executableTarget(
-            name: "Example-Lighting",
+            name: "Example-3D-Lighting",
             dependencies: ["Ollin"],
             path: "Examples/3D/Lighting"
         ),
         .executableTarget(
-            name: "Example-LightingPresets",
+            name: "Example-3D-LightingPresets",
             dependencies: ["Ollin"],
             path: "Examples/3D/LightingPresets"
         ),
         .executableTarget(
-            name: "Example-Materials",
+            name: "Example-3D-Materials",
             dependencies: ["Ollin"],
             path: "Examples/3D/Materials"
         ),
         .executableTarget(
-            name: "Example-Matcap",
+            name: "Example-3D-Matcap",
             dependencies: ["Ollin"],
             path: "Examples/3D/Matcap"
         ),
         .executableTarget(
-            name: "Example-Shadows",
+            name: "Example-3D-Shadows",
             dependencies: ["Ollin"],
             path: "Examples/3D/Shadows"
         ),
         .executableTarget(
-            name: "Example-SpotShadow",
+            name: "Example-3D-SpotShadow",
             dependencies: ["Ollin"],
             path: "Examples/3D/SpotShadow"
         ),
         .executableTarget(
-            name: "Example-PointShadow",
+            name: "Example-3D-PointShadow",
             dependencies: ["Ollin"],
             path: "Examples/3D/PointShadow"
         ),
         .executableTarget(
-            name: "Example-DepthCompositing",
+            name: "Example-3D-DepthCompositing",
             dependencies: ["Ollin"],
             path: "Examples/3D/DepthCompositing"
         ),
         .executableTarget(
-            name: "Example-DepthCloud",
+            name: "Example-3D-DepthCloud",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/3D/DepthCloud"
         ),
         .executableTarget(
-            name: "Example-DepthOcclusion",
+            name: "Example-3D-DepthOcclusion",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/3D/DepthOcclusion"
         ),
         .executableTarget(
-            name: "Example-Record3DCloud",
+            name: "Example-3D-Record3DCloud",
             dependencies: ["Ollin", "OllinRecord3D"],
             path: "Examples/3D/Record3DCloud"
         ),
         .executableTarget(
-            name: "Example-Record3DLiveCloud",
+            name: "Example-3D-Record3DLiveCloud",
             dependencies: ["Ollin", "OllinRecord3D"],
             path: "Examples/3D/Record3DLiveCloud"
         ),
         // 2D markers floating at true metric depths inside a live RGBD feed — the
         // metric (meters) sibling of DepthOcclusion, via a Camera3D.fromIntrinsics.
         .executableTarget(
-            name: "Example-MetricDepthScene",
+            name: "Example-3D-MetricDepthScene",
             dependencies: ["Ollin", "OllinRecord3D"],
             path: "Examples/3D/MetricDepthScene"
         ),
         .executableTarget(
-            name: "Example-DepthLiftedPose",
+            name: "Example-3D-DepthLiftedPose",
             dependencies: ["Ollin", "OllinVision", "OllinRecord3D"],
             path: "Examples/3D/DepthLiftedPose"
         ),
         // The Ollin iPhone capture app's live body pose drawn as an orbiting 3D
         // stick figure — the own-app sibling of Record3DLiveCloud.
         .executableTarget(
-            name: "Example-PhoneBodyPose",
+            name: "Example-3D-PhoneBodyPose",
             dependencies: ["Ollin", "OllinPhone"],
             path: "Examples/3D/PhoneBodyPose"
         ),
         // The Ollin capture app's live face mesh + blendshapes, orbited as a point
         // cloud with expression bars — the front-camera sibling of PhoneBodyPose.
         .executableTarget(
-            name: "Example-PhoneFace",
+            name: "Example-3D-PhoneFace",
             dependencies: ["Ollin", "OllinPhone"],
             path: "Examples/3D/PhoneFace"
         ),
         // The Ollin capture app's live rear-LiDAR RGBD cloud — the depth sibling of
         // PhoneBodyPose and PhoneFace.
         .executableTarget(
-            name: "Example-PhoneDepthCloud",
+            name: "Example-3D-PhoneDepthCloud",
             dependencies: ["Ollin", "OllinPhone"],
             path: "Examples/3D/PhoneDepthCloud"
         ),
         // Sweep the phone around a room and fuse every depth frame, by its camera
         // pose, into one accumulated world cloud — the fusion sibling of PhoneDepthCloud.
         .executableTarget(
-            name: "Example-PhoneWorldScan",
+            name: "Example-3D-PhoneWorldScan",
             dependencies: ["Ollin", "OllinPhone"],
             path: "Examples/3D/PhoneWorldScan"
         ),
         // The phone's on-device person segmentation lifted onto a live backdrop —
         // the rear-camera Segment-mode sibling of the depth/pose/face examples.
         .executableTarget(
-            name: "Example-PhoneSegmentation",
+            name: "Example-3D-PhoneSegmentation",
             dependencies: ["Ollin", "OllinPhone"],
             path: "Examples/3D/PhoneSegmentation"
         ),
         .executableTarget(
-            name: "Example-Breathing",
+            name: "Example-Motion-Breathing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Breathing"
         ),
         .executableTarget(
-            name: "Example-SineSweep",
+            name: "Example-Motion-SineSweep",
             dependencies: ["Ollin"],
             path: "Examples/Motion/SineSweep"
         ),
         .executableTarget(
-            name: "Example-Easing",
+            name: "Example-Motion-Easing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Easing"
         ),
         .executableTarget(
-            name: "Example-EasingGallery",
+            name: "Example-Motion-EasingGallery",
             dependencies: ["Ollin"],
             path: "Examples/Motion/EasingGallery"
         ),
         .executableTarget(
-            name: "Example-Smoothing",
+            name: "Example-Motion-Smoothing",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Smoothing"
         ),
         .executableTarget(
-            name: "Example-Orbits",
+            name: "Example-Motion-Orbits",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Orbits"
         ),
         .executableTarget(
-            name: "Example-Linkage",
+            name: "Example-Motion-Linkage",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Linkage"
         ),
         .executableTarget(
-            name: "Example-Petals",
+            name: "Example-Motion-Petals",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Petals"
         ),
         .executableTarget(
-            name: "Example-Parameters",
+            name: "Example-Live-Parameters",
             dependencies: ["Ollin"],
             path: "Examples/Live/Parameters"
         ),
         .executableTarget(
-            name: "Example-Trail",
+            name: "Example-Motion-Trail",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Trail"
         ),
         .executableTarget(
-            name: "Example-ColorWaves",
+            name: "Example-Color-ColorWaves",
             dependencies: ["Ollin"],
             path: "Examples/Color/ColorWaves"
         ),
         .executableTarget(
-            name: "Example-HSBWheel",
+            name: "Example-Color-HSBWheel",
             dependencies: ["Ollin"],
             path: "Examples/Color/HSBWheel"
         ),
         .executableTarget(
-            name: "Example-Mixing",
+            name: "Example-Color-Mixing",
             dependencies: ["Ollin"],
             path: "Examples/Color/Mixing"
         ),
         .executableTarget(
-            name: "Example-Gradients",
+            name: "Example-Color-Gradients",
             dependencies: ["Ollin"],
             path: "Examples/Color/Gradients"
         ),
         .executableTarget(
-            name: "Example-Harmonies",
+            name: "Example-Color-Harmonies",
             dependencies: ["Ollin"],
             path: "Examples/Color/Harmonies"
         ),
         .executableTarget(
-            name: "Example-Swatchbook",
+            name: "Example-Color-Swatchbook",
             dependencies: ["Ollin"],
             path: "Examples/Color/Swatchbook"
         ),
         .executableTarget(
-            name: "Example-Palettes",
+            name: "Example-Color-Palettes",
             dependencies: ["Ollin"],
             path: "Examples/Color/Palettes"
         ),
         .executableTarget(
-            name: "Example-Colormaps",
+            name: "Example-Color-Colormaps",
             dependencies: ["Ollin"],
             path: "Examples/Color/Colormaps"
         ),
         .executableTarget(
-            name: "Example-FlowField",
+            name: "Example-Motion-FlowField",
             dependencies: ["Ollin"],
             path: "Examples/Motion/FlowField"
         ),
         .executableTarget(
-            name: "Example-EllipseField",
+            name: "Example-Motion-EllipseField",
             dependencies: ["Ollin"],
             path: "Examples/Motion/EllipseField"
         ),
         .executableTarget(
-            name: "Example-Attractor",
+            name: "Example-Motion-Attractor",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Attractor"
         ),
         .executableTarget(
-            name: "Example-Myriad",
+            name: "Example-Motion-Myriad",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Myriad"
         ),
         .executableTarget(
-            name: "Example-RectField",
+            name: "Example-Motion-RectField",
             dependencies: ["Ollin"],
             path: "Examples/Motion/RectField"
         ),
         .executableTarget(
-            name: "Example-Spokes",
+            name: "Example-Motion-Spokes",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Spokes"
         ),
         .executableTarget(
-            name: "Example-Star",
+            name: "Example-Motion-Star",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Star"
         ),
         .executableTarget(
-            name: "Example-Polygons",
+            name: "Example-Motion-Polygons",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Polygons"
         ),
         .executableTarget(
-            name: "Example-ArcField",
+            name: "Example-Motion-ArcField",
             dependencies: ["Ollin"],
             path: "Examples/Motion/ArcField"
         ),
         .executableTarget(
-            name: "Example-ArcModes",
+            name: "Example-Motion-ArcModes",
             dependencies: ["Ollin"],
             path: "Examples/Motion/ArcModes"
         ),
         .executableTarget(
-            name: "Example-Gaussian",
+            name: "Example-Randomness-Gaussian",
             dependencies: ["Ollin"],
             path: "Examples/Randomness/Gaussian"
         ),
         .executableTarget(
-            name: "Example-Ring",
+            name: "Example-Randomness-Ring",
             dependencies: ["Ollin"],
             path: "Examples/Randomness/Ring"
         ),
         .executableTarget(
-            name: "Example-DotGrid",
+            name: "Example-Patterns-DotGrid",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/DotGrid"
         ),
         .executableTarget(
-            name: "Example-Phyllotaxis",
+            name: "Example-Patterns-Phyllotaxis",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/Phyllotaxis"
         ),
         .executableTarget(
-            name: "Example-RepelGrid",
+            name: "Example-Input-RepelGrid",
             dependencies: ["Ollin"],
             path: "Examples/Input/RepelGrid"
         ),
         .executableTarget(
-            name: "Example-Keys",
+            name: "Example-Input-Keys",
             dependencies: ["Ollin"],
             path: "Examples/Input/Keys"
         ),
         .executableTarget(
-            name: "Example-WarpGrid",
+            name: "Example-Patterns-WarpGrid",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/WarpGrid"
         ),
         .executableTarget(
-            name: "Example-EnergyGrid",
+            name: "Example-Patterns-EnergyGrid",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/EnergyGrid"
         ),
         .executableTarget(
-            name: "Example-NoiseField",
+            name: "Example-Randomness-NoiseField",
             dependencies: ["Ollin"],
             path: "Examples/Randomness/NoiseField"
         ),
         .executableTarget(
-            name: "Example-RandomBand",
+            name: "Example-Randomness-RandomBand",
             dependencies: ["Ollin"],
             path: "Examples/Randomness/RandomBand"
         ),
         .executableTarget(
-            name: "Example-NoiseWave",
+            name: "Example-Randomness-NoiseWave",
             dependencies: ["Ollin"],
             path: "Examples/Randomness/NoiseWave"
         ),
         .executableTarget(
-            name: "Example-Triangles",
+            name: "Example-Motion-Triangles",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Triangles"
         ),
         .executableTarget(
-            name: "Example-LifeQuilt",
+            name: "Example-Patterns-LifeQuilt",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/LifeQuilt"
         ),
         .executableTarget(
-            name: "Example-Markers",
+            name: "Example-Patterns-Markers",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/Markers"
         ),
         .executableTarget(
-            name: "Example-NamedPolygons",
+            name: "Example-Patterns-NamedPolygons",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/NamedPolygons"
         ),
         .executableTarget(
-            name: "Example-ShapeMenagerie",
+            name: "Example-Patterns-ShapeMenagerie",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/ShapeMenagerie"
         ),
         .executableTarget(
-            name: "Example-Primitives",
+            name: "Example-Patterns-Primitives",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/Primitives"
         ),
         .executableTarget(
-            name: "Example-Booleans",
+            name: "Example-Patterns-Booleans",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/Booleans"
         ),
         .executableTarget(
-            name: "Example-Topography",
+            name: "Example-Patterns-Topography",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/Topography"
         ),
         .executableTarget(
-            name: "Example-Voronoi",
+            name: "Example-Patterns-Voronoi",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/Voronoi"
         ),
         .executableTarget(
-            name: "Example-HollowShapes",
+            name: "Example-Patterns-HollowShapes",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/HollowShapes"
         ),
         .executableTarget(
-            name: "Example-StrokeAlignment",
+            name: "Example-Patterns-StrokeAlignment",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/StrokeAlignment"
         ),
         .executableTarget(
-            name: "Example-StrokeJoinsAndCaps",
+            name: "Example-Patterns-StrokeJoinsAndCaps",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/StrokeJoinsAndCaps"
         ),
         .executableTarget(
-            name: "Example-Mandala",
+            name: "Example-Motion-Mandala",
             dependencies: ["Ollin"],
             path: "Examples/Motion/Mandala"
         ),
         .executableTarget(
-            name: "Example-HelloText",
+            name: "Example-Text-HelloText",
             dependencies: ["Ollin"],
             path: "Examples/Text/HelloText"
         ),
         .executableTarget(
-            name: "Example-TextVolume",
+            name: "Example-Text-TextVolume",
             dependencies: ["Ollin"],
             path: "Examples/Text/TextVolume"
         ),
         .executableTarget(
-            name: "Example-PlaydateFont",
+            name: "Example-Text-PlaydateFont",
             dependencies: ["Ollin"],
             path: "Examples/Text/PlaydateFont",
             // The font lives beside the sketch (the per-example asset convention)
@@ -973,72 +973,72 @@ let package = Package(
             resources: [.copy("MarbleMadness.fnt")]
         ),
         .executableTarget(
-            name: "Example-OutlineText",
+            name: "Example-Text-OutlineText",
             dependencies: ["Ollin"],
             path: "Examples/Text/OutlineText"
         ),
         .executableTarget(
-            name: "Example-GlyphWave",
+            name: "Example-Text-GlyphWave",
             dependencies: ["Ollin"],
             path: "Examples/Text/GlyphWave"
         ),
         .executableTarget(
-            name: "Example-TextOnPath",
+            name: "Example-Text-TextOnPath",
             dependencies: ["Ollin"],
             path: "Examples/Text/TextOnPath"
         ),
         .executableTarget(
-            name: "Example-TextBox",
+            name: "Example-Text-TextBox",
             dependencies: ["Ollin"],
             path: "Examples/Text/TextBox"
         ),
         .executableTarget(
-            name: "Example-VariableFont",
+            name: "Example-Text-VariableFont",
             dependencies: ["Ollin"],
             path: "Examples/Text/VariableFont"
         ),
         .executableTarget(
-            name: "Example-StrokeText",
+            name: "Example-Text-StrokeText",
             dependencies: ["Ollin"],
             path: "Examples/Text/StrokeText"
         ),
         .executableTarget(
-            name: "Example-TextMetrics",
+            name: "Example-Text-TextMetrics",
             dependencies: ["Ollin"],
             path: "Examples/Text/TextMetrics"
         ),
         .executableTarget(
-            name: "Example-GlyphContours",
+            name: "Example-Text-GlyphContours",
             dependencies: ["Ollin"],
             path: "Examples/Text/GlyphContours"
         ),
         .executableTarget(
-            name: "Example-PointShimmer",
+            name: "Example-Text-PointShimmer",
             dependencies: ["Ollin"],
             path: "Examples/Text/PointShimmer"
         ),
         .executableTarget(
-            name: "Example-JitterType",
+            name: "Example-Text-JitterType",
             dependencies: ["Ollin"],
             path: "Examples/Text/JitterType"
         ),
         .executableTarget(
-            name: "Example-PixelField",
+            name: "Example-Images-PixelField",
             dependencies: ["Ollin"],
             path: "Examples/Images/PixelField"
         ),
         .executableTarget(
-            name: "Example-Spectrum",
+            name: "Example-Audio-Spectrum",
             dependencies: ["Ollin", "OllinAudio"],
             path: "Examples/Audio/Spectrum"
         ),
         .executableTarget(
-            name: "Example-Microphone",
+            name: "Example-Audio-Microphone",
             dependencies: ["Ollin", "OllinAudio"],
             path: "Examples/Audio/Microphone"
         ),
         .executableTarget(
-            name: "Example-FilePlayer",
+            name: "Example-Audio-FilePlayer",
             dependencies: ["Ollin", "OllinAudio"],
             path: "Examples/Audio/FilePlayer",
             // The bundled clip the sketch loads via Bundle.module (a launch path
@@ -1049,28 +1049,28 @@ let package = Package(
         // sketch sends OSC to itself on loopback and visualizes what it receives,
         // so it needs no external app to run.
         .executableTarget(
-            name: "Example-OSCLoopback",
+            name: "Example-Integration-OSCLoopback",
             dependencies: ["Ollin", "OllinOSC"],
             path: "Examples/Integration/OSCLoopback"
         ),
         // Listens for OSC and prints/draws every message — point a phone or any
         // OSC source at this Mac to discover what its controls send.
         .executableTarget(
-            name: "Example-OSCMonitor",
+            name: "Example-Integration-OSCMonitor",
             dependencies: ["Ollin", "OllinOSC"],
             path: "Examples/Integration/OSCMonitor"
         ),
         // Self-contained: a virtual-source output sends animated MIDI to itself and
         // the input draws it back, so it runs with no hardware (like OSCLoopback).
         .executableTarget(
-            name: "Example-MIDILoopback",
+            name: "Example-Integration-MIDILoopback",
             dependencies: ["Ollin", "OllinMIDI"],
             path: "Examples/Integration/MIDILoopback"
         ),
         // Listens to every MIDI source and prints/draws what arrives — connect a
         // controller and discover what each knob/pad sends just by touching it.
         .executableTarget(
-            name: "Example-MIDIMonitor",
+            name: "Example-Integration-MIDIMonitor",
             dependencies: ["Ollin", "OllinMIDI"],
             path: "Examples/Integration/MIDIMonitor"
         ),
@@ -1078,14 +1078,14 @@ let package = Package(
         // subscribes to them, so the feedback inset is the round-trip (like
         // OSCLoopback). Open Syphon's Simple Client to see it cross-app.
         .executableTarget(
-            name: "Example-SyphonLoopback",
+            name: "Example-Integration-SyphonLoopback",
             dependencies: ["Ollin", "OllinSyphon"],
             path: "Examples/Integration/SyphonLoopback"
         ),
         // Subscribes to any external Syphon source (openFrameworks, Resolume, …)
         // and draws it letterboxed — the "see what's out there" viewer.
         .executableTarget(
-            name: "Example-SyphonViewer",
+            name: "Example-Integration-SyphonViewer",
             dependencies: ["Ollin", "OllinSyphon"],
             path: "Examples/Integration/SyphonViewer"
         ),
@@ -1094,34 +1094,34 @@ let package = Package(
         // camera; the canvas shows the connection state. Needs the Ollin
         // Camera extension installed (Apps/OllinCameraApp).
         .executableTarget(
-            name: "Example-VirtualCamera",
+            name: "Example-Integration-VirtualCamera",
             dependencies: ["Ollin", "OllinCamera"],
             path: "Examples/Integration/VirtualCamera"
         ),
         // Physics — a Verlet world stepped each frame. Packing is a field of
         // colliding discs; Blobs are spring-built soft bodies that squish.
         .executableTarget(
-            name: "Example-Packing",
+            name: "Example-Physics-Packing",
             dependencies: ["Ollin", "OllinPhysics"],
             path: "Examples/Physics/Packing"
         ),
         .executableTarget(
-            name: "Example-Blobs",
+            name: "Example-Physics-Blobs",
             dependencies: ["Ollin", "OllinPhysics"],
             path: "Examples/Physics/Blobs"
         ),
         .executableTarget(
-            name: "Example-Stack",
+            name: "Example-Physics-Stack",
             dependencies: ["Ollin", "OllinPhysics"],
             path: "Examples/Physics/Stack"
         ),
         .executableTarget(
-            name: "Example-Tumble",
+            name: "Example-Physics-Tumble",
             dependencies: ["Ollin", "OllinPhysics"],
             path: "Examples/Physics/Tumble"
         ),
         .executableTarget(
-            name: "Example-Chain",
+            name: "Example-Physics-Chain",
             dependencies: ["Ollin", "OllinPhysics"],
             path: "Examples/Physics/Chain"
         ),
@@ -1129,7 +1129,7 @@ let package = Package(
         // image. The clip is the example's own asset (CC BY-SA, provenance in
         // THIRD-PARTY-NOTICES.md), per the per-example asset convention.
         .executableTarget(
-            name: "Example-VideoPlayback",
+            name: "Example-Video-VideoPlayback",
             dependencies: ["Ollin", "OllinVideo"],
             path: "Examples/Video/VideoPlayback",
             resources: [.copy("voladores.mp4")]
@@ -1138,104 +1138,104 @@ let package = Package(
         // the live feed; FaceTracking overlays detected faces and landmarks. Both
         // need a camera and grant camera permission on first run.
         .executableTarget(
-            name: "Example-WebcamFeed",
+            name: "Example-Vision-WebcamFeed",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/WebcamFeed"
         ),
         .executableTarget(
-            name: "Example-FaceTracking",
+            name: "Example-Vision-FaceTracking",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/FaceTracking"
         ),
         // The camera transformed so the face stays locked level and centered —
         // the room moves, not the head.
         .executableTarget(
-            name: "Example-FaceAlign",
+            name: "Example-Vision-FaceAlign",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/FaceAlign"
         ),
         // Traces the camera's edges into vector contours (Shapes); self-contained,
         // falling back to a generated pattern when there's no camera.
         .executableTarget(
-            name: "Example-ContourTrace",
+            name: "Example-Vision-ContourTrace",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/ContourTrace"
         ),
         // Hand skeletons (21 joints, up to two hands) drawn over the live feed.
         .executableTarget(
-            name: "Example-HandTracking",
+            name: "Example-Vision-HandTracking",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/HandTracking"
         ),
         // A person's 2D pose drawn as a stick figure over the live feed.
         .executableTarget(
-            name: "Example-BodyPose",
+            name: "Example-Vision-BodyPose",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/BodyPose"
         ),
         // The 3D pose: the skeleton in meters, overlaid on the feed and re-drawn
         // from the side — a view no camera is at.
         .executableTarget(
-            name: "Example-BodyPose3D",
+            name: "Example-Vision-BodyPose3D",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/BodyPose3D"
         ),
         // People lifted off the background and composited over a drawn gradient
         // (background replacement; the matte doubles as the drop shadow).
         .executableTarget(
-            name: "Example-PersonSegmentation",
+            name: "Example-Vision-PersonSegmentation",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/PersonSegmentation"
         ),
         // The salient subject lifted into a spotlight: dimmed frame, full-color
         // cutout, matte halo.
         .executableTarget(
-            name: "Example-SubjectLift",
+            name: "Example-Vision-SubjectLift",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/SubjectLift"
         ),
         // Rectangular shapes (paper, screens, cards) highlighted as quads.
         .executableTarget(
-            name: "Example-RectangleScan",
+            name: "Example-Vision-RectangleScan",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/RectangleScan"
         ),
         // Barcodes / QR codes outlined and their payload printed.
         .executableTarget(
-            name: "Example-BarcodeReader",
+            name: "Example-Vision-BarcodeReader",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/BarcodeReader"
         ),
         // OCR — text read from the feed, each line boxed and printed.
         .executableTarget(
-            name: "Example-TextScan",
+            name: "Example-Vision-TextScan",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/TextScan"
         ),
         // Object tracking — click to lock onto a patch and follow it across frames.
         .executableTarget(
-            name: "Example-ObjectTracking",
+            name: "Example-Vision-ObjectTracking",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/ObjectTracking"
         ),
         // Optical flow — the camera's motion as a field of arrows, with dust
         // particles riding it.
         .executableTarget(
-            name: "Example-OpticalFlow",
+            name: "Example-Vision-OpticalFlow",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/OpticalFlow"
         ),
         // Image classification — what the camera sees, named live as animated
         // label bars.
         .executableTarget(
-            name: "Example-SceneLabels",
+            name: "Example-Vision-SceneLabels",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/SceneLabels"
         ),
         // Saliency — where the eye goes, as a warm heat-map glow over the feed
         // with the salient regions boxed and a marker gliding to the hottest spot.
         .executableTarget(
-            name: "Example-EyeCatcher",
+            name: "Example-Vision-EyeCatcher",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/EyeCatcher"
         ),
@@ -1243,7 +1243,7 @@ let package = Package(
         // depth map sampled into a relief of disks. The model weights download
         // via Scripts/fetch-models.sh (never committed).
         .executableTarget(
-            name: "Example-DepthRelief",
+            name: "Example-Vision-DepthRelief",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/DepthRelief"
         ),
@@ -1251,7 +1251,7 @@ let package = Package(
         // The model weights download via Scripts/fetch-models.sh (never
         // committed).
         .executableTarget(
-            name: "Example-ObjectDetection",
+            name: "Example-Vision-ObjectDetection",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/ObjectDetection"
         ),
@@ -1259,7 +1259,7 @@ let package = Package(
         // The model weights download via Scripts/fetch-models.sh (never
         // committed).
         .executableTarget(
-            name: "Example-PaintByClass",
+            name: "Example-Vision-PaintByClass",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/PaintByClass"
         ),
@@ -1267,21 +1267,21 @@ let package = Package(
         // mouse, MNIST classifies it; no camera at all. The model weights
         // download via Scripts/fetch-models.sh (never committed).
         .executableTarget(
-            name: "Example-DigitReader",
+            name: "Example-Vision-DigitReader",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/DigitReader"
         ),
         // The camera through a Create ML style-transfer model you train
         // yourself (no download — the model is the user's own work).
         .executableTarget(
-            name: "Example-StyleMirror",
+            name: "Example-Vision-StyleMirror",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/StyleMirror"
         ),
         // Trajectory detection — ballistic arcs found in a synthetic feed (a
         // custom FrameSource the example conforms itself).
         .executableTarget(
-            name: "Example-TrajectoryTracking",
+            name: "Example-Vision-TrajectoryTracking",
             dependencies: ["Ollin", "OllinVision"],
             path: "Examples/Vision/TrajectoryTracking"
         ),
@@ -1290,7 +1290,7 @@ let package = Package(
         // it attaches to a Camera). Bundles the same CC BY-SA clip as
         // VideoPlayback; provenance in THIRD-PARTY-NOTICES.md.
         .executableTarget(
-            name: "Example-VideoTrace",
+            name: "Example-Vision-VideoTrace",
             dependencies: ["Ollin", "OllinVision", "OllinVideo"],
             path: "Examples/Vision/VideoTrace",
             resources: [.copy("voladores.mp4")]
@@ -1298,32 +1298,32 @@ let package = Package(
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         .executableTarget(
-            name: "Example-VeraMolnar-Interruptions",
+            name: "Example-Recreations-VeraMolnar-Interruptions",
             dependencies: ["Ollin"],
             path: "Examples/Recreations/VeraMolnar/Interruptions"
         ),
         .executableTarget(
-            name: "Example-VeraMolnar-DesOrdres",
+            name: "Example-Recreations-VeraMolnar-DesOrdres",
             dependencies: ["Ollin"],
             path: "Examples/Recreations/VeraMolnar/DesOrdres"
         ),
         .executableTarget(
-            name: "Example-BridgetRiley-Fragment3",
+            name: "Example-Recreations-BridgetRiley-Fragment3",
             dependencies: ["Ollin"],
             path: "Examples/Recreations/BridgetRiley/Fragment3"
         ),
         .executableTarget(
-            name: "Example-BridgetRiley-Current",
+            name: "Example-Recreations-BridgetRiley-Current",
             dependencies: ["Ollin"],
             path: "Examples/Recreations/BridgetRiley/Current"
         ),
         .executableTarget(
-            name: "Example-OsamuSato-Totem",
+            name: "Example-Recreations-OsamuSato-Totem",
             dependencies: ["Ollin"],
             path: "Examples/Recreations/OsamuSato/Totem"
         ),
         .executableTarget(
-            name: "Example-OsamuSato-Alphabet",
+            name: "Example-Recreations-OsamuSato-Alphabet",
             dependencies: ["Ollin"],
             path: "Examples/Recreations/OsamuSato/Alphabet"
         ),

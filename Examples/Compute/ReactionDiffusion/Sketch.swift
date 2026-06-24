@@ -41,8 +41,8 @@ final class ReactionDiffusion_Example: Sketch {
     override func draw() {
         guard let seedKernel, let colorizeKernel else {
             // The .metal resource only ships with this example's own target; run the
-            // Example-ReactionDiffusion product (not the dynamic gallery loader).
-            drawStatus("ReactionDiffusion needs its Kernels.metal — run the Example-ReactionDiffusion target.",
+            // Example-Compute-ReactionDiffusion product (not the dynamic gallery loader).
+            drawStatus("ReactionDiffusion needs its Kernels.metal — run the Example-Compute-ReactionDiffusion target.",
                        style: .warning)
             return
         }

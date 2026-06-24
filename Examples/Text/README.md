@@ -22,4 +22,4 @@ Drawing text with `drawText` — bitmap (pixel-grid) and outline (`.ttf`/`.otf`)
 | [PointShimmer](PointShimmer/Sketch.swift) | type dissolved into a point field that wobbles like heat haze — each point pushed sideways by a sine of its height (`textToShapes` → points) |
 | [JitterType](JitterType/Sketch.swift) | letters rattling like a bad photocopy — each glyph's vertices jittered by a pulsing random offset (`textToShapes`, `Shape.mapPoints`, `randomSeed`) |
 
-Run one with `swift run Example-<Name>`, e.g. `swift run Example-HelloText`.
+Run one with `swift run Example-Text-<Name>`, e.g. `swift run Example-Text-HelloText`.

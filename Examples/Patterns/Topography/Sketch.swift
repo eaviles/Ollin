@@ -7,7 +7,7 @@ import Ollin
 /// climbing a steep slope. Pure line work, so it plots straight to a pen:
 ///
 /// ```sh
-/// swift run Example-Topography --export-svg /tmp/topography.svg
+/// swift run Example-Patterns-Topography --export-svg /tmp/topography.svg
 /// ```
 @main
 final class Topography_Example: Sketch {

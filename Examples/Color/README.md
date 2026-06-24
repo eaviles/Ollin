@@ -17,4 +17,4 @@ Palettes, colormaps, and driving color from a value or from time.
 | [Palettes](Palettes/Sketch.swift) | seven cosine-gradient `CosinePalette` presets, each swept across the canvas and scrolled |
 | [Swatchbook](Swatchbook/Sketch.swift) | the built-in qualitative `Palette` sets as labeled swatch rows, with a wrapping-index highlight |
 
-Run one with `swift run Example-<Name>`, e.g. `swift run Example-Palettes`.
+Run one with `swift run Example-Color-<Name>`, e.g. `swift run Example-Color-Palettes`.

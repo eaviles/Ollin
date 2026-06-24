@@ -16,13 +16,13 @@ Learn more:
 - [**Interruptions**](Interruptions/), a field of short line segments at random rotations, some omitted by a noise threshold: the grid is the order, the rotations and gaps are the disorder. After Molnár, in the spirit of her *Interruptions* (1969). **Click to recreate** a new variation.
 
   ```sh
-  swift run Example-VeraMolnar-Interruptions
+  swift run Example-Recreations-VeraMolnar-Interruptions
   ```
 
 - [**(Dés)Ordres**](DesOrdres/), after Molnár's [*(Dés)Ordres*](https://dam.org/museum/artists_ui/artists/molnar-vera/des-ordres/) (1974): a grid of concentric squares, each drawn only ~95% of the time so the orderly nesting frays into disorder. The title is a pun: *désordres* (disorders) versus *des ordres* (some orders), finding logic within the apparent disarray. `mouseX` seeds the randomness, so moving the mouse scrubs the pattern.
 
   ```sh
-  swift run Example-VeraMolnar-DesOrdres
+  swift run Example-Recreations-VeraMolnar-DesOrdres
   ```
 
 These are homages after Vera Molnár, made for learning. They aren't reproductions of specific works, and they aren't affiliated with or endorsed by the artist or her estate.

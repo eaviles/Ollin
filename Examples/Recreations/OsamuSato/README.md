@@ -19,13 +19,13 @@ Learn more:
 - [**Totem**](Totem/): a symmetric "computer totem" assembled from Ollin's analytic SDF primitives — a horseshoe crown and ears, a parabola finial, a tunnel torso, a blobby-cross heart, cool-S ornaments, tapered-capsule legs, and a stairs pedestal around the core circle/ring/moon set — after the figures of the book's "Circles" chapter.
 
   ```sh
-  swift run Example-OsamuSato-Totem
+  swift run Example-Recreations-OsamuSato-Totem
   ```
 
 - [**Alphabet**](Alphabet/): a type-specimen sheet of A–Z and 0–9 in a square-module font (each glyph a 5×7 grid of `drawRect` squares), after the shape-built alphabets of the book's "Squares" chapter. The squares shimmer on a travelling wave and a red accent sweeps through the glyphs.
 
   ```sh
-  swift run Example-OsamuSato-Alphabet
+  swift run Example-Recreations-OsamuSato-Alphabet
   ```
 
 These are homages after Osamu Sato, made for learning. They aren't reproductions of specific works, and they aren't affiliated with or endorsed by the artist.

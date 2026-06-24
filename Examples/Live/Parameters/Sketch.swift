@@ -6,7 +6,7 @@ import Ollin
 //
 //   swift run OllinLive Examples/Live/Parameters/Sketch.swift
 //
-// Standalone (`swift run Example-Parameters`) shows the same knobs in the
+// Standalone (`swift run Example-Live-Parameters`) shows the same knobs in the
 // inspector panel: View ▸ Show Inspector (⌘/).
 
 @main

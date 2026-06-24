@@ -5,11 +5,11 @@ import OllinMIDI
 /// everything that arrives, so you can plug in a controller and discover what each
 /// knob, pad, and key sends just by touching it.
 ///
-///   swift run Example-MIDIMonitor
+///   swift run Example-Integration-MIDIMonitor
 ///
 /// Devices plugged in while it's running connect automatically. The companion
 /// `MIDILoopback` example needs no hardware; this one is for real gear. See
-/// `Docs/MIDI.md` for the full walkthrough.
+/// `Docs/Integration/MIDI.md` for the full walkthrough.
 @main
 final class MIDIMonitor: Sketch {
 

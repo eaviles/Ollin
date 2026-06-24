@@ -30,4 +30,4 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | [Trail](Trail/Sketch.swift) | a Lissajous point traced by a 600-segment polyline |
 | [Triangles](Triangles/Sketch.swift) | the two `drawTriangle` forms side by side — equilateral pivoting on its center, isosceles wedge pivoting on its apex (SDF) |
 
-Run one with `swift run Example-<Name>`, e.g. `swift run Example-Breathing`.
+Run one with `swift run Example-Motion-<Name>`, e.g. `swift run Example-Motion-Breathing`.

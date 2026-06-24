@@ -24,4 +24,4 @@ Grids and rule-based repetition.
 | [Voronoi](Voronoi/Sketch.swift) | a field of noise-drifting sites partitioned into Voronoi cells, evened out with Lloyd relaxation and colored by a sweeping focal point — the cursor is a live site, so the cells crystallize around the mouse (`voronoi`/`lloyd`) |
 | [WarpGrid](WarpGrid/Sketch.swift) | a checkerboard of rects warped under the mouse (`drawRect`) |
 
-Run one with `swift run Example-<Name>`, e.g. `swift run Example-DotGrid`.
+Run one with `swift run Example-Patterns-<Name>`, e.g. `swift run Example-Patterns-DotGrid`.

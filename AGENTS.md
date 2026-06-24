@@ -12,7 +12,7 @@ Building and running needs **macOS 26+ and a Metal-capable GPU**. The Swift tool
 
 ```sh
 swift build                       # compile the framework and examples
-swift run Example-HelloCircle     # open a window running an example
+swift run Example-Basic-HelloCircle     # open a window running an example
 swift test --skip SnapshotTests   # GPU-independent tests (snapshots stay local)
 ```
 

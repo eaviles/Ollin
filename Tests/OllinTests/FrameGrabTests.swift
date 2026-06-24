@@ -6,7 +6,7 @@ import Testing
 /// an extension is handed the rendered frame only when it opts in, and the
 /// opt-in is read live so it can arm and disarm between frames. (The full
 /// live path — the runner re-rendering off-screen and calling the hook — is
-/// demonstrated by `Examples/Basic/Capture`; the headless render the hook
+/// demonstrated by `Examples/Export/Capture`; the headless render the hook
 /// hands over is covered by the snapshot tests.)
 @Suite
 @MainActor

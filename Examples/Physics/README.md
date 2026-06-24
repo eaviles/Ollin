@@ -4,7 +4,7 @@
 
 ## Physics
 
-Sketches whose motion comes from simulation. Physics lives in a separate library — add `import OllinPhysics` — built around one `World` with two sides: a **soft** Verlet side of particles and the springs between them, and a **rigid** side of bodies, colliders, and joints, both sharing the world's gravity, container, bounce, and drag. Build the world in `setup()`, `step` it each frame, and draw from its particles and bodies. See the [Physics reference](../../Docs/Physics.md).
+Sketches whose motion comes from simulation. Physics lives in a separate library — add `import OllinPhysics` — built around one `World` with two sides: a **soft** Verlet side of particles and the springs between them, and a **rigid** side of bodies, colliders, and joints, both sharing the world's gravity, container, bounce, and drag. Build the world in `setup()`, `step` it each frame, and draw from its particles and bodies. See the [Physics reference](../../Docs/Simulation/Physics.md).
 
 | Example | What it shows |
 |---|---|
@@ -14,4 +14,4 @@ Sketches whose motion comes from simulation. Physics lives in a separate library
 | [Tumble](Tumble/Sketch.swift) | a heap of assorted rigid shapes — boxes, disks, capsules, and random convex polygons — raining down and piling up against the floor; click dumps a burst at the cursor, space clears. The mixed-collider showcase: every form is one `addBody` with a different `Collider`. |
 | [Chain](Chain/Sketch.swift) | hanging chains of capsule links hinged by free-swinging revolute joints, ending in heavy balls — click a link to grab and fling it (a cursor-drag mouse joint), click again to let go, space resets. The joints showcase (`connect`, `JointKind.revolute`, `grab`). |
 
-Run one with `swift run Example-<Name>`, e.g. `swift run Example-Packing`.
+Run one with `swift run Example-Physics-<Name>`, e.g. `swift run Example-Physics-Packing`.
