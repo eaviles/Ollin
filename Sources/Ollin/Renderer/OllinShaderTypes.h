@@ -333,11 +333,15 @@ typedef struct {
 // color (which is the baked vertex color = the current `fill`). A material is constant
 // across a mesh, so it's bound per mesh batch as a fragment uniform rather than baked into
 // every vertex. It composes a base **shading model** (0 standard Lambert, 1 toon/cel,
-// 2 Gooch warm–cool) with layered **finishes** evaluated in the shared `meshLitColor`
-// tail — Blinn-Phong specular, a Fresnel **rim** glow, fake **subsurface** scattering, and
-// a Fresnel-driven **iridescent** sheen. Each finish is inert at its zero value, so the
-// default material (specular 0, shininess 32, everything else 0, shading model 0) shades
-// byte-identically to the plain Lambert path. Colors are linear (sRGB→linear CPU-side).
+// 2 Gooch warm–cool, 3 physically-based metallic-roughness) with layered **finishes**
+// evaluated in the shared `meshLitColor` tail — Blinn-Phong specular, a Fresnel **rim**
+// glow, fake **subsurface** scattering, and a Fresnel-driven **iridescent** sheen. Each
+// finish is inert at its zero value, so the default material (specular 0, shininess 32,
+// everything else 0, shading model 0) shades byte-identically to the plain Lambert path.
+// Shading model 3 swaps the diffuse+Blinn-Phong term for a Cook-Torrance microfacet BRDF
+// driven by `metallic`/`roughness` (the surface color stays the baked vertex color =
+// `fill`); the other models ignore those two fields, so they're unchanged.
+// Colors are linear (sRGB→linear CPU-side).
 typedef struct {
     simd_float4 rimColor;         // rgb linear rim color; a = rim strength (0 = no rim)
     simd_float4 subsurfaceColor;  // rgb linear subsurface tint; a = subsurface strength (0 = none)
@@ -349,8 +353,9 @@ typedef struct {
     float iridescenceScale;       // iridescence band count, head-on -> grazing
     float rimPower;               // Fresnel exponent for the rim falloff
     float toonBands;              // number of cel bands (toon shading)
-    int   shadingModel;           // 0 standard (Lambert), 1 toon (cel), 2 Gooch (warm-cool)
-    int   _pad;
+    int   shadingModel;           // 0 standard (Lambert), 1 toon (cel), 2 Gooch (warm-cool), 3 physically-based
+    float metallic;               // PBR (shading model 3): 0 dielectric … 1 metal; ignored otherwise
+    float roughness;              // PBR (shading model 3): 0 mirror-smooth … 1 fully rough; ignored otherwise
 } OllinMaterial;
 
 // Lighting for the 3D mesh model (the Blinn-Phong material on `ollin_mesh_fragment`).

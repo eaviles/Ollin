@@ -359,15 +359,42 @@ fragment float4 ollin_mesh_fieldshadow_fragment(MeshOut in [[stage_in]],
     return float4(f, f, f, 1.0);
 }
 
+// Physically-based (Cook-Torrance microfacet) BRDF terms for the metallic-roughness
+// model (shading model 3). Each takes the *perceptual* roughness and squares it for the
+// linear α internally, so the three stay in step. Written from the published technique
+// (GGX/Trowbridge-Reitz distribution, height-correlated Smith visibility, which folds in
+// the 1/(4·N·L·N·V) denominator, and Schlick's Fresnel); see the README Techniques list.
+static inline float ollin_pbr_D_GGX(float NoH, float roughness) {
+    float a = roughness * roughness;             // α (linear roughness)
+    float d = NoH * a;
+    float k = a / (1.0 - NoH * NoH + d * d);     // fp16-safe optimized GGX
+    return k * k * (1.0 / 3.14159265);
+}
+
+static inline float ollin_pbr_V_SmithGGX(float NoV, float NoL, float roughness) {
+    float a = roughness * roughness;             // α
+    float a2 = a * a;
+    float GGXV = NoL * sqrt(NoV * NoV * (1.0 - a2) + a2);
+    float GGXL = NoV * sqrt(NoL * NoL * (1.0 - a2) + a2);
+    return 0.5 / max(GGXV + GGXL, 1e-5);         // includes /(4·NoL·NoV)
+}
+
+static inline float3 ollin_pbr_F_Schlick(float VoH, float3 F0) {
+    float f = pow(1.0 - VoH, 5.0);
+    return F0 + (float3(1.0) - F0) * f;
+}
+
 // The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
 // surface `normal`, `worldPos`, and the per-batch `mat` finish. It composes a base
-// shading model (standard Lambert / toon cel / Gooch warm–cool) with the layered
-// finishes — Blinn-Phong specular, fake subsurface scattering, a Fresnel-driven
-// iridescent sheen, and a Fresnel rim glow — each inert at its zero value, so a default
-// material shades exactly like the plain Lambert path. The one shadow-casting light
-// (`light.shadowLight`, -1 when off) is dimmed where the receiver is occluded. Shared by
-// the solid and textured mesh fragments so they stay in step; with `enabled == 0` it
-// returns the surface flat (the unlit look).
+// shading model (standard Lambert / toon cel / Gooch warm–cool / physically-based) with
+// the layered finishes — Blinn-Phong specular, fake subsurface scattering, a Fresnel-
+// driven iridescent sheen, and a Fresnel rim glow — each inert at its zero value, so a
+// default material shades exactly like the plain Lambert path. Shading model 3 swaps the
+// diffuse+specular term for a Cook-Torrance microfacet BRDF (metallic-roughness); the
+// `fill` is its albedo. The one shadow-casting light (`light.shadowLight`, -1 when off)
+// is dimmed where the receiver is occluded. Shared by the solid and textured mesh
+// fragments so they stay in step; with `enabled == 0` it returns the surface flat (the
+// unlit look).
 static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   float3 worldPos, constant OllinMaterial &mat,
                                   constant OllinLighting &light,
@@ -397,7 +424,12 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     bool wantsSSS = mat.subsurfaceColor.a > 0.0;
 
     // Gooch sets its own diffuse tone below; the others start from the flat ambient term.
-    float3 lit = (model == 2) ? float3(0.0) : light.ambient.rgb * base;
+    // A physically-based metal has no diffuse, so its flat ambient is killed by metalness
+    // (its environment reflection is the IBL specular term, added once an environment is set).
+    float3 lit;
+    if (model == 2)      lit = float3(0.0);
+    else if (model == 3) lit = light.ambient.rgb * base * (1.0 - mat.metallic);
+    else                 lit = light.ambient.rgb * base;
     float3 incoming = light.ambient.rgb;     // light reaching the surface (drives the sheen)
     float3 sssAccum = float3(0.0);           // accumulated back-translucency
     float3 keyToLight = float3(0.0, 1.0, 0.0);   // the primary light dir (Gooch tone axis)
@@ -460,6 +492,25 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         } else if (model == 2) {
             // Gooch tone is set after the loop; each light still adds a highlight.
             lit += atten * specCol;
+        } else if (model == 3) {
+            // Physically-based: Cook-Torrance microfacet specular + Lambert diffuse, the
+            // (1−metallic) diffuse-kill folded once into kD. `base` is the albedo, the
+            // light's `color` the (intensity-premultiplied, linear) radiance.
+            float NoL = max(raw, 0.0);
+            if (NoL > 0.0) {
+                float rough = clamp((float)mat.roughness, 0.045, 1.0);
+                float NoV = max(dot(n, viewDir), 1e-4);
+                float NoH = max(dot(n, h), 0.0);
+                float VoH = max(dot(viewDir, h), 0.0);
+                float3 F0 = mix(float3(0.04), base, mat.metallic);
+                float  D   = ollin_pbr_D_GGX(NoH, rough);
+                float  Vis = ollin_pbr_V_SmithGGX(NoV, NoL, rough);
+                float3 F   = ollin_pbr_F_Schlick(VoH, F0);
+                float3 spec = D * Vis * F;
+                float3 kD   = (float3(1.0) - F) * (1.0 - mat.metallic);
+                float3 diff = kD * base * (1.0 / 3.14159265);
+                lit += (diff + spec) * L.color.rgb * (atten * NoL);
+            }
         } else {
             // Standard Lambert diffuse + Blinn-Phong specular.
             lit += atten * (L.color.rgb * base * ndl + specCol);

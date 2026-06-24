@@ -628,6 +628,11 @@ let package = Package(
             path: "Examples/3D/Materials"
         ),
         .executableTarget(
+            name: "Example-3D-PhysicalMaterials",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/PhysicalMaterials"
+        ),
+        .executableTarget(
             name: "Example-3D-Matcap",
             dependencies: ["Ollin"],
             path: "Examples/3D/Matcap"

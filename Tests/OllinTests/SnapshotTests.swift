@@ -417,6 +417,16 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func pbrMaterialsMatchReference() throws {
+        // A metal / mixed / dielectric × roughness sweep in the physically-based shading
+        // model (shadingModel 3) — pins the new OllinMaterial metallic/roughness fields and
+        // the Cook-Torrance branch (GGX distribution, Smith visibility, Schlick Fresnel,
+        // the (1-metallic) diffuse kill). No `time`, so it's deterministic.
+        let diff = try Snapshot.meanDifference(of: PBRMaterialsScene(), against: "pbr-materials")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func matcapMeshMatchesReference() throws {
         // Three spheres wearing built-in matcaps (chrome/clay/toon) — pins the matcap
         // pipeline: the view-space normal sampled into the sphere texture, bypassing the
@@ -810,6 +820,42 @@ private final class MeshMaterialsScene: Sketch {
                 fill(m.1)
                 material(m.0)
                 drawSphere(radius: 0.7)
+            }
+        }
+    }
+}
+
+/// A metal / mixed / dielectric × roughness grid in the physically-based shading model
+/// under a fixed camera and custom lights — pins the metallic/roughness fields and the
+/// Cook-Torrance branch (no IBL: the smooth metals read dark, which is correct). No `time`.
+private final class PBRMaterialsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: .zero, radius: 8,
+                         azimuth: 0.3, elevation: 0.26, fieldOfView: .pi / 3.4))
+        ambientLight(Color(white: 0.12))
+        directionalLight(Color(kelvin: 5400), direction: Vector3(-0.4, -0.6, -0.5), intensity: 1.0)
+        pointLight(.white, at: Vector3(3, 4, 4), intensity: 1.2)
+
+        let albedos = [
+            Color(hue: 0.11, saturation: 0.65, brightness: 0.95),   // gold-ish metal
+            Color(white: 0.72),                                     // neutral
+            Color(hue: 0.58, saturation: 0.70, brightness: 0.90),   // blue dielectric
+        ]
+        let cols = 4
+        for row in 0..<3 {
+            let metallic = 1.0 - Double(row) / 2.0                  // 1, 0.5, 0
+            for col in 0..<cols {
+                let roughness = map(Double(col), 0, Double(cols - 1), 0.08, 1.0)
+                withState {
+                    translate(-2.4 + Double(col) * 1.6, 1.7 - Double(row) * 1.7, 0)
+                    fill(albedos[row])
+                    material(Material(shading: .physicallyBased,
+                                      metallic: metallic, roughness: roughness))
+                    drawSphere(radius: 0.65)
+                }
             }
         }
     }

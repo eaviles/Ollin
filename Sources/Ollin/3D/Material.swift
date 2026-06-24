@@ -40,11 +40,13 @@ import COllinShaders
 /// directional/point/spot light model, so it needs lights set (the auto-lit default
 /// rig counts), and a fully unlit surface (`noLights()`) shows none of the finishes.
 ///
-/// The built-ins cover the **dielectric** finishes the model represents faithfully
-/// (matte through polished) plus the stylized families above. True *metal* (a
-/// highlight tinted by the surface, environment reflections) and *glass* (refraction,
-/// real transparency) are the physically-based / environment-lighting tier;
-/// `.polished` is the closest this model reaches.
+/// For an **energy-conserving, physically-based** finish (true *metal* whose reflection
+/// is tinted by the surface, and dielectrics parameterized by `roughness` rather than a
+/// Blinn-Phong exponent), set `shading: .physicallyBased` (or use the `.metal(roughness:)`
+/// / `.dielectric(roughness:)` helpers and the `.brushedMetal` / `.polishedMetal` /
+/// `.smoothPlastic` / `.roughPlastic` built-ins). It shades through the same lights;
+/// reflections of the surroundings layer on once an environment is set (image-based
+/// lighting). *Glass* (refraction, real transparency) remains a later tier.
 public struct Material: Equatable, Sendable {
 
     /// How the diffuse term is shaded.
@@ -56,13 +58,31 @@ public struct Material: Equatable, Sendable {
         /// Warm→cool tonal shading (`goochWarm` on the lit side, `goochCool` in shadow):
         /// the non-photorealistic technical-illustration look.
         case gooch = 2
+        /// Energy-conserving physically-based shading: a Cook-Torrance microfacet model
+        /// driven by `metallic` and `roughness`, the way modern real-time 3D gets its
+        /// photographic look. The surface color stays the current `fill`; a metal tints
+        /// its highlight by that color, a dielectric keeps a neutral one. The Blinn-Phong
+        /// finish fields (`specular`/`shininess`) are ignored in this mode. Reflections of
+        /// the surroundings layer on once an environment is set (image-based lighting).
+        case physicallyBased = 3
     }
 
-    /// The diffuse shading model (`.standard` / `.toon` / `.gooch`).
+    /// The diffuse shading model (`.standard` / `.toon` / `.gooch` / `.physicallyBased`).
     public var shading: Shading
     /// Toon shading: the number of cel bands (more = smoother steps). Ignored unless
     /// `shading == .toon`.
     public var toonBands: Double
+
+    /// Physically-based shading: how metallic the surface is, `0…1`. At `0` it's a
+    /// dielectric (plastic, ceramic, stone) with a neutral highlight and a diffuse body;
+    /// at `1` it's a conductor (gold, copper, steel) whose reflection is tinted by the
+    /// surface color and which has no diffuse term. Ignored unless `shading ==
+    /// .physicallyBased`.
+    public var metallic: Double
+    /// Physically-based shading: surface roughness, `0…1`. `0` is mirror-smooth (a tight,
+    /// sharp reflection), `1` is fully rough (a broad, soft one). Ignored unless `shading
+    /// == .physicallyBased`.
+    public var roughness: Double
 
     /// Specular highlight strength: `0` matte, `~0.5` glossy, `1` a bright hotspot.
     public var specular: Double
@@ -98,6 +118,7 @@ public struct Material: Equatable, Sendable {
     /// `Material(specular: 0.5)` is a plain glossy surface and the finishes only appear
     /// when you set them.
     public init(shading: Shading = .standard, toonBands: Double = 4,
+                metallic: Double = 0, roughness: Double = 0.5,
                 specular: Double = 0, shininess: Double = 32,
                 iridescence: Double = 0, iridescenceScale: Double = 1,
                 rim: Double = 0, rimPower: Double = 2, rimColor: Color = .white,
@@ -106,6 +127,8 @@ public struct Material: Equatable, Sendable {
                 goochCool: Color = Color(red: 0.05, green: 0.1, blue: 0.35)) {
         self.shading = shading
         self.toonBands = max(1, toonBands)
+        self.metallic = min(1, max(0, metallic))
+        self.roughness = min(1, max(0, roughness))
         self.specular = max(0, specular)
         self.shininess = max(1, shininess)
         self.iridescence = min(1, max(0, iridescence))
@@ -141,6 +164,8 @@ public struct Material: Equatable, Sendable {
         m.rimPower = Float(rimPower)
         m.toonBands = Float(toonBands)
         m.shadingModel = Int32(shading.rawValue)
+        m.metallic = Float(metallic)
+        m.roughness = Float(roughness)
         return m
     }
 
@@ -233,4 +258,33 @@ public extension Material {
     /// Gooch warm–cool shading: the technical-illustration / blueprint aesthetic,
     /// warm where lit and cool in shadow, with a faint highlight.
     static let gooch = Material(shading: .gooch, specular: 0.25, shininess: 48)
+
+    // Physically-based (metallic-roughness) family, the energy-conserving tier. The
+    // surface *color* is still the current `fill`; these set the `metallic`/`roughness`
+    // that drive the Cook-Torrance shading (and, with an environment, the reflections).
+
+    /// A physically-based **metal** of the given roughness (`0` mirror-smooth … `1` fully
+    /// rough). The reflection is tinted by the surface `fill`. `Material.metal(roughness:
+    /// 0.2)` is a lightly-brushed steel; pair with a gold/copper `fill` for those metals.
+    static func metal(roughness: Double = 0.25) -> Material {
+        Material(shading: .physicallyBased, metallic: 1, roughness: roughness)
+    }
+
+    /// A physically-based **dielectric** (non-metal: plastic, ceramic, stone, paint) of
+    /// the given roughness. Keeps a neutral highlight over a diffuse body colored by `fill`.
+    static func dielectric(roughness: Double = 0.5) -> Material {
+        Material(shading: .physicallyBased, metallic: 0, roughness: roughness)
+    }
+
+    /// Brushed metal: a physically-based conductor with a soft, satin reflection.
+    static let brushedMetal = Material(shading: .physicallyBased, metallic: 1, roughness: 0.4)
+
+    /// Polished metal: a physically-based conductor with a tight, near-mirror reflection.
+    static let polishedMetal = Material(shading: .physicallyBased, metallic: 1, roughness: 0.08)
+
+    /// Smooth plastic: a physically-based dielectric with a clean, fairly sharp highlight.
+    static let smoothPlastic = Material(shading: .physicallyBased, metallic: 0, roughness: 0.25)
+
+    /// Rough plastic / matte paint: a physically-based dielectric with a broad, soft sheen.
+    static let roughPlastic = Material(shading: .physicallyBased, metallic: 0, roughness: 0.7)
 }
