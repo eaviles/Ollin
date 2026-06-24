@@ -547,6 +547,11 @@ let package = Package(
             path: "Examples/3D/RaymarchedCastShadow"
         ),
         .executableTarget(
+            name: "Example-RaymarchedGradient",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/RaymarchedGradient"
+        ),
+        .executableTarget(
             name: "Example-RaymarchedShadow",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedShadow"

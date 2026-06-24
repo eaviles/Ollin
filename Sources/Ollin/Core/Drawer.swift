@@ -2227,8 +2227,9 @@ final class Drawer {
 
     /// Draw a composed 3D signed-distance field: sphere-traced through the active
     /// camera, lit by the scene's lights, and depth-composited with the rasterized
-    /// meshes (see SDF3D / ShaderRaymarch.metal). Requires a camera (3D only). Solid
-    /// color per leaf in v1 — a gradient fill is ignored (set per-leaf with `.colored`).
+    /// meshes (see SDF3D / ShaderRaymarch.metal). Requires a camera (3D only). A solid
+    /// `fill` colors leaves individually (`.colored` per leaf, melted at smooth seams);
+    /// a gradient `fill` paints the whole merged surface by screen position instead.
     func drawSDF3D(_ sdf: SDF3D) {
         guard camera3D != nil else { return }   // 3D only — needs an active camera
         // SVG export is 2D vector only; a sphere-traced surface has no vector outline.
@@ -2276,14 +2277,33 @@ final class Drawer {
         let pad = SIMD3<Float>(repeating: 0.05 * max(scale, 1e-4))
         lo -= pad; hi += pad
 
+        // A gradient `fill` paints the whole merged surface by screen position (the leaves'
+        // own colors are bypassed). The geometry is in absolute canvas points (center .zero),
+        // since the raymarch fragment samples it at each hit's projected screen position;
+        // along-path has no meaning on a field, so only linear/radial paint the surface.
+        var gradientGeo = SIMD4<Float>(repeating: 0)
+        var gradientKind: Float = 0
+        var gradientRow: Float = 0
+        if let fillPaint, case .gradient = fillPaint {
+            let encoded = encodePaint(fillPaint, center: .zero)
+            if encoded.kind == 1 || encoded.kind == 2 {
+                gradientGeo = encoded.slot
+                gradientKind = Float(encoded.kind)
+                gradientRow = encoded.row
+            }
+        }
+
         sdf3DNodes.append(contentsOf: nodes)
         ensureBatch(.sdfGroup3D)
         sdf3DGroups.append(SDF3DGroupInstance(
             inverseModel: inv,
             boundsMin: SIMD4<Float>(lo.x, lo.y, lo.z, 0),
             boundsMax: SIMD4<Float>(hi.x, hi.y, hi.z, 0),
+            fillGradientGeo: gradientGeo,
             modelScale: scale, nodeStart: UInt32(nodeStart),
-            nodeCount: UInt32(nodes.count), unbounded: bounds.unbounded ? 1 : 0))
+            nodeCount: UInt32(nodes.count), unbounded: bounds.unbounded ? 1 : 0,
+            fillGradientKind: gradientKind, fillGradientRow: gradientRow,
+            _pad0: 0, _pad1: 0))
     }
 
     // MARK: SDF-combinator scoped blocks (sugar over the `SDF` value type)

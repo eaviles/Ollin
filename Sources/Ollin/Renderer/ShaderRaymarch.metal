@@ -359,7 +359,9 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  depth2d<float> shadowMap [[texture(1)]],
                                                  sampler shadowSamp [[sampler(1)]],
                                                  texturecube<float> shadowCube [[texture(2)]],
-                                                 sampler shadowCubeSamp [[sampler(2)]]) {
+                                                 sampler shadowCubeSamp [[sampler(2)]],
+                                                 texture2d<float> gradients [[texture(0)]],
+                                                 sampler gradientSamp [[sampler(0)]]) {
     RaymarchFragOut miss;
     miss.color = float4(0.0);
     miss.depth = 1.0;
@@ -448,10 +450,26 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                              OLLIN_SDF3D_SHADOW_K, g, nodes);
     }
 
-    // Shade through the shared mesh tail (returns the surface flat when no light is set,
-    // so an unlit field shows its leaf colors). The marched field self-shadows via
-    // `fieldShadow` (it isn't in the maps); pass a lit (1.0) ray-traced point factor.
-    float4 lit = meshLitColor(srgbToLinear(col.rgb), col.a, n, pw, mat, light,
+    // The surface color: a solid `fill` comes from the leaves (the VM-melted `col`, linearized
+    // like the mesh path); a gradient `fill` paints the whole merged surface by this hit's
+    // projected screen position (canvas points), sampled from the gradient strip.
+    float3 baseRGB = srgbToLinear(col.rgb);
+    float baseA = col.a;
+    if (g.fillGradientKind != 0.0) {
+        float4 clipP = u.projection * (u.view * float4(pw, 1.0));
+        float2 ndc = clipP.xy / clipP.w;
+        float2 screenP = float2((ndc.x * 0.5 + 0.5) * u.viewport.x,
+                                (0.5 - ndc.y * 0.5) * u.viewport.y);
+        float4 grad = resolvePaint(g.fillGradientGeo, uint(g.fillGradientKind), g.fillGradientRow,
+                                   screenP, 0.0, gradients, gradientSamp);
+        baseRGB = grad.rgb;   // resolvePaint returns linear straight-alpha
+        baseA = grad.a;
+    }
+
+    // Shade through the shared mesh tail (returns the surface flat when no light is set, so an
+    // unlit field shows its colors). The marched field self-shadows via `fieldShadow` (it isn't
+    // in the maps); pass a lit (1.0) ray-traced point factor.
+    float4 lit = meshLitColor(baseRGB, baseA, n, pw, mat, light,
                               shadowMap, shadowSamp, shadowCube, shadowCubeSamp
 #if OLLIN_RT_SHADOWS
                               , 1.0

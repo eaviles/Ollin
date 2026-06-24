@@ -218,17 +218,26 @@ typedef struct {
 // the node VM there, and multiplies the local distance by `modelScale` to get the
 // world step. `boundsMin`/`boundsMax` are the field's world-space AABB; a pixel whose
 // ray misses that box bails in O(1), so the fullscreen pass is cheap where the field
-// isn't. The fill color comes from the nodes (each leaf carries its own, baked from
-// the current `fill` at flatten time). Stride 112 (16-aligned).
+// isn't. With a solid `fill`, the color comes from the nodes (each leaf carries its own,
+// baked at flatten time); with a gradient `fill`, the whole merged surface is painted by
+// `fillGradient*` instead, sampled by each hit's projected screen position. Stride 144.
 typedef struct {
     simd_float4x4 inverseModel; // world -> field-local space (the inverse 3D model matrix)
     simd_float4 boundsMin;      // field world-space AABB min (xyz; w unused)
     simd_float4 boundsMax;      // field world-space AABB max (xyz; w unused)
+    simd_float4 fillGradientGeo;// screen-space gradient geometry in canvas points (read when
+                                // fillGradientKind != 0): linear (start.xy, end.xy), radial
+                                // (center.xy, radius, _). The gradient paints the whole merged
+                                // surface by each hit's projected screen position
     float modelScale;           // uniform scale of the model matrix (local distance -> world distance)
     unsigned int nodeStart;     // first SDFNode3D for this field (absolute index)
     unsigned int nodeCount;     // number of nodes
     float unbounded;            // 1 if the field has no finite AABB (contains a plane): the march
                                 // ignores boundsMin/Max and runs to the camera's far plane instead
+    float fillGradientKind;     // 0 solid (the leaves' own colors), 1 linear, 2 radial (screen-space)
+    float fillGradientRow;      // gradient-strip row index for the ramp (when kind != 0)
+    float _pad0;                // pads the stride to 144 (16-aligned)
+    float _pad1;
 } SDF3DGroupInstance;
 
 // The light-space matrices for rendering a raymarched 3D field into the directional/spot 2D

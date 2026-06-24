@@ -1976,6 +1976,10 @@ final class MetalRenderer {
                 encoder.setFragmentTexture(shadowCubeTexture, index: 2)
                 if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
                 if let shadowCubeSampler { encoder.setFragmentSamplerState(shadowCubeSampler, index: 2) }
+                // The gradient strip + sampler (a gradient `fill` paints the field by screen
+                // position); bound at 0, free here since the shadow textures take 1/2.
+                encoder.setFragmentTexture(strip, index: 0)
+                encoder.setFragmentSamplerState(imageSampler, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3, instanceCount: count)
             case .image:
                 let end = next?.imageStart ?? imageVertices.count

@@ -295,8 +295,15 @@ pass gets no MSAA at its hit/miss edge): the march measures how closely a ray th
 surface grazed it, relative to the pixel's own footprint, and the edge fades by that coverage.
 It's automatic, so any field's outline stays smooth without supersampling.
 
+**Gradient paint.** A solid `fill` colors the leaves individually (melting at smooth seams); a
+gradient `fill` paints the *whole* merged surface instead, sampled by each hit's projected
+screen position. It's the same canvas-space `Gradient` every 2D shape uses
+(`fill(.linear(from:to:_:))` / `.radial(center:radius:_:)`), so it stays fixed to the frame as
+the field turns beneath it (see `Examples/3D/RaymarchedGradient`). A per-leaf `.colored` is
+bypassed while a gradient fill is active.
+
 The 3D path is opt-in like the rest of [3D mode](./3D.md), so a 2D sketch never pays for it.
-Today it covers the leaves above with solid color per leaf and uniform scale.
+Coloring is solid per leaf or a screen-space gradient (above), and scaling is uniform only.
 
 <a name="notes"></a>
 
@@ -325,5 +332,6 @@ primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form),
 `Examples/3D/RaymarchedDomain` (the mirror and repeat domain operators),
 `Examples/3D/RaymarchedRadial` (the radial/polar repeat operator),
 `Examples/3D/RaymarchedPlane` (the infinite plane grounding shapes with self-shadows),
-`Examples/3D/RaymarchedShadow` (self-shadowing under `castShadows()`), and
-`Examples/3D/RaymarchedCastShadow` (a field casting its shadow onto a rasterized mesh).
+`Examples/3D/RaymarchedShadow` (self-shadowing under `castShadows()`),
+`Examples/3D/RaymarchedCastShadow` (a field casting its shadow onto a rasterized mesh), and
+`Examples/3D/RaymarchedGradient` (a screen-space gradient painting the merged surface).

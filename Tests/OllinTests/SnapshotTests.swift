@@ -106,6 +106,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func raymarchedSDF3DGradientMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DGradientScene(), against: "sdf-combinators-3d-gradient")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -1418,6 +1424,31 @@ private final class RaymarchedSDF3DCastShadowScene: Sketch {
             .smoothUnion(SDF3D.sphere(radius: 0.5).at(x: -0.2, y: 0.5, z: -0.4), k: 0.45)
             .colored(Color(hex: 0x38bdf8))
         withState { translate(-1.8, 0.1, 0); drawSDF3D(blob) }
+    }
+}
+
+/// Gradient paint on a merged raymarched 3D SDF field: a vertical screen-space gradient painting
+/// the whole sphere-traced blob by each hit's projected screen position (rather than a solid
+/// color per leaf). Pins the gradient-resolve path on the raymarch fragment. Static at frame 0.
+private final class RaymarchedSDF3DGradientScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0b1020))
+        camera(.orbiting(target: Vector3(0, 0, 0), radius: 6, azimuth: 0.5, elevation: 0.25,
+                         fieldOfView: .pi / 4, near: 2, far: 16))
+        directionalLight(.white, direction: Vector3(-0.3, -0.85, -0.45),
+                         intensity: 1.2, softness: 0.35)
+        ambientLight(Color(white: 0.22))
+        material(.glossy)
+
+        fill(.linear(from: Vector2(0, height * 0.18), to: Vector2(0, height * 0.82),
+                     [Color(hex: 0xfb923c), Color(hex: 0xec4899), Color(hex: 0x6366f1)]))
+        let blob = SDF3D.sphere(radius: 1.05)
+            .smoothUnion(SDF3D.sphere(radius: 0.7).at(x: 1.3, y: 0.4, z: 0), k: 0.55)
+            .smoothUnion(SDF3D.sphere(radius: 0.7).at(x: -1.1, y: 0.55, z: 0.3), k: 0.55)
+            .smoothUnion(SDF3D.sphere(radius: 0.6).at(x: 0.1, y: -1.15, z: 0), k: 0.55)
+        drawSDF3D(blob)
     }
 }
 
