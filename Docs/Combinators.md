@@ -233,9 +233,14 @@ The leaf constructors are the common centered solids:
 
 The combinators (`.union` / `.smoothUnion(_:k:)` / `.subtract` / `.smoothSubtract(_:k:)` /
 `.intersect` / `.smoothIntersect(_:k:)` / `.morph(_:amount:)`), the modifiers (`.rounded` /
-`.onion`), and `.colored` all behave exactly as in 2D, the smooth ops blending the leaf colors
-across the seam. Positioning is in three dimensions: `.at(x:y:z:)` / `.at(_ p: Vector3)`,
+`.onion`), the domain operators (`.mirrored(x:y:z:)` and `.repeated(spacing:count:)`), and
+`.colored` all behave exactly as in 2D, the smooth ops blending the leaf colors across the
+seam. Positioning is in three dimensions: `.at(x:y:z:)` / `.at(_ p: Vector3)`,
 `.rotated(_:axis:)` (plus `.rotatedX` / `.rotatedY` / `.rotatedZ`), and `.scaled(_:)` (uniform).
+The domain operators rewrite the query point as point-space scopes, so the whole mirrored /
+tiled field is still one sphere-traced surface (no per-copy draw cost), and method-chain order
+stays exact: `a.at(p).repeated(…)` tiles the moved field, `a.repeated(…).at(p)` shifts the
+tiling. `repeated` is finite (`count` copies to each side), so the field stays bounded.
 
 The **scoped block form** works in 3D too, and it's the same `smoothUnion(k:) { }` (and the
 other combine blocks) as 2D. Inside a block with a camera set, the bare mesh primitives
@@ -255,12 +260,14 @@ smoothUnion(k: 0.35) {
 }
 ```
 
-A primitive that has no analytic field (`drawIcosphere`, `drawTorusKnot`, a custom `Mesh`, …)
-inside a block is ignored with a one-time note. The 3D path is opt-in like the rest of
-[3D mode](./3D.md), so a 2D sketch never pays for it. Today it covers the leaves above with
-solid color per leaf and uniform scale, and the surface self-shades but does not yet cast a
-shadow into a light's shadow map. Domain operators and softer shadows are on the
-[roadmap](../ROADMAP.md).
+The block form's domain blocks work in 3D too (`mirrored(x:y:z:) { … }`,
+`repeated(spacing:count:) { … }`, the `Vector3` spacing for 3D tiling), wrapping a combine
+block to mirror or tile a whole built cell. A primitive that has no analytic field
+(`drawIcosphere`, `drawTorusKnot`, a custom `Mesh`, …) inside a block is ignored with a
+one-time note. The 3D path is opt-in like the rest of [3D mode](./3D.md), so a 2D sketch
+never pays for it. Today it covers the leaves above with solid color per leaf and uniform
+scale, and the surface self-shades but does not yet cast a shadow into a light's shadow map.
+Softer shadows are on the [roadmap](../ROADMAP.md).
 
 <a name="notes"></a>
 
@@ -285,4 +292,5 @@ the polygonal counterpart to these field operators), [`Color`](./Color.md) for t
 types the leaves carry, and [`3D`](./3D.md) for the camera and lights the 3D fields draw
 through. The examples are `Examples/Basic/Combinators` (2D), `Examples/3D/RaymarchedSDF`
 (merged metaball, depth-composited with a mesh), `Examples/3D/RaymarchedShapes` (the 3D
-primitive catalog), and `Examples/3D/RaymarchedSculpt` (the scoped block form).
+primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form), and
+`Examples/3D/RaymarchedDomain` (the mirror and repeat domain operators).

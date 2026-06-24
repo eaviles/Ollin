@@ -165,6 +165,34 @@ static float3 ollin_sdf3d_unrotate(float3 p, float3 axis, float angle) {
     return p * c + cross(axis, p) * s + axis * dot(axis, p) * (1.0 - c);
 }
 
+// Transform the query point for an XFORM scope (sel = the XFORM kind). The point gets the
+// *inverse* of what the shape gets. All are rigid except scale (its distance fix-up rides
+// RESTORE_P). Mirror and repeat mirror the 2D `ollin_sdf_xform` ops in three dimensions.
+static float3 ollin_sdf3d_xform(float3 p, SDFNode3D nd) {
+    switch (nd.sel) {
+    case 0u:                                          // translate
+        return p - nd.geo0.xyz;
+    case 1u:                                          // rotate (point by -angle)
+        return ollin_sdf3d_unrotate(p, nd.geo0.xyz, nd.geo1.x);
+    case 2u:                                          // scale (p /= s)
+        return p / max(nd.k, 1e-4);
+    case 3u: {                                        // mirror across the field planes
+        float3 q = p;
+        if (nd.geo0.x > 0.5) q.x = abs(q.x);
+        if (nd.geo0.y > 0.5) q.y = abs(q.y);
+        if (nd.geo0.z > 0.5) q.z = abs(q.z);
+        return q;
+    }
+    default: {                                        // repeat (limited tiling)
+        float3 q = p, sp = nd.geo0.xyz, lim = nd.geo1.xyz;
+        if (sp.x > 0.0) { float r = clamp(round(q.x / sp.x), -lim.x, lim.x); q.x -= sp.x * r; }
+        if (sp.y > 0.0) { float r = clamp(round(q.y / sp.y), -lim.y, lim.y); q.y -= sp.y * r; }
+        if (sp.z > 0.0) { float r = clamp(round(q.z / sp.z), -lim.z, lim.z); q.z -= sp.z * r; }
+        return q;
+    }
+    }
+}
+
 // Walk the field's node program at field-local point `p0`, returning distance + color
 // (the value-stack top). Two fixed-depth stacks, clamped on overflow (the CPU also caps).
 static float ollin_sdf3d_field(float3 p0, const device SDFNode3D *nodes,
@@ -201,9 +229,7 @@ static float ollin_sdf3d_field(float3 p0, const device SDFNode3D *nodes,
             break;
         case 3u:     // XFORM -> push point, transform it for the scope
             if (pp < OLLIN_SDF3D_POINT_STACK) { pointStack[pp] = p; pp++; }
-            if (nd.sel == 0u)      { p = p - nd.geo0.xyz; }                       // translate
-            else if (nd.sel == 1u) { p = ollin_sdf3d_unrotate(p, nd.geo0.xyz, nd.geo1.x); }  // rotate
-            else                   { p = p / max(nd.k, 1e-4); }                   // scale (p /= s)
+            p = ollin_sdf3d_xform(p, nd);
             break;
         default:     // RESTORE_P -> pop point, apply the scope's distance scale
             if (pp > 0) { pp--; p = pointStack[pp]; }

@@ -35,6 +35,8 @@ public struct SDF3D {
         case translate(SIMD3<Float>)
         case rotate(axis: SIMD3<Float>, angle: Float)   // unit axis, radians
         case scale(Float)                               // uniform factor > 0
+        case mirror(x: Bool, y: Bool, z: Bool)          // reflect across the field planes
+        case repeatTiles(spacing: SIMD3<Float>, count: SIMD3<Float>)  // limited tiling
     }
 
     indirect enum Node {
@@ -156,6 +158,19 @@ public extension SDF3D {
     func rotatedZ(_ radians: Double) -> SDF3D { rotated(radians, axis: Vector3(0, 0, 1)) }
     /// Uniformly scale the field about its origin (non-uniform scale isn't a valid SDF).
     func scaled(_ s: Double) -> SDF3D { .init(.transformed(.scale(Float(max(s, 1e-4))), self)) }
+    /// Mirror the field across the chosen field planes (folds the negative side onto the
+    /// positive), so one built lobe reflects into a symmetric set.
+    func mirrored(x: Bool = true, y: Bool = false, z: Bool = false) -> SDF3D {
+        .init(.transformed(.mirror(x: x, y: y, z: z), self))
+    }
+    /// Tile the field on a grid of `spacing`, `count` copies to each side along each axis
+    /// (a zero spacing component leaves that axis untiled). Finite, so the field stays bounded.
+    func repeated(spacing: Vector3, count: Int) -> SDF3D {
+        let n = Float(max(0, count))
+        return .init(.transformed(.repeatTiles(
+            spacing: SIMD3(Float(spacing.x), Float(spacing.y), Float(spacing.z)),
+            count: SIMD3(n, n, n)), self))
+    }
     /// Paint every still-unpainted leaf of the field this color (an explicit leaf
     /// `.colored` wins; the current `fill` is the fallback for whatever's left).
     func colored(_ color: Color) -> SDF3D { painting(color) }
@@ -294,6 +309,13 @@ extension SDF3D {
         case let .scale(s):
             return SDFNode3D(kind: 3, sel: 2, k: s, extra: 0, color: .zero,
                              geo0: .zero, geo1: .zero)
+        case let .mirror(x, y, z):
+            return SDFNode3D(kind: 3, sel: 3, k: 0, extra: 0, color: .zero,
+                             geo0: SIMD4(x ? 1 : 0, y ? 1 : 0, z ? 1 : 0, 0), geo1: .zero)
+        case let .repeatTiles(spacing, count):
+            return SDFNode3D(kind: 3, sel: 4, k: 0, extra: 0, color: .zero,
+                             geo0: SIMD4(spacing.x, spacing.y, spacing.z, 0),
+                             geo1: SIMD4(count.x, count.y, count.z, 0))
         }
     }
 
@@ -319,6 +341,15 @@ extension SDF3D {
             return (nlo, nhi)
         case let .scale(s):
             return (lo * s, hi * s)
+        case let .mirror(x, y, z):
+            var nlo = lo, nhi = hi
+            if x { let m = max(abs(lo.x), abs(hi.x)); nlo.x = -m; nhi.x = m }
+            if y { let m = max(abs(lo.y), abs(hi.y)); nlo.y = -m; nhi.y = m }
+            if z { let m = max(abs(lo.z), abs(hi.z)); nlo.z = -m; nhi.z = m }
+            return (nlo, nhi)
+        case let .repeatTiles(spacing, count):
+            let pad = spacing * count
+            return (lo - pad, hi + pad)
         }
     }
 }

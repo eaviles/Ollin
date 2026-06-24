@@ -2290,7 +2290,9 @@ final class Drawer {
 
     private enum CombineFrameKind {
         case combine(SDF.Combine, Float)   // fold children under this op (k = smoothing, 0 = hard)
-        case domain(SDF.Transform)         // union the children, then apply this transform/domain op
+        // Union the children, then apply this domain op. Carried for both dimensions (the
+        // 2D `SDF.Transform` for captured 2D shapes, the 3D `SDF3D.Transform` for 3D ones).
+        case domain(SDF.Transform, SDF3D.Transform)
     }
     private final class CombineFrame {
         let kind: CombineFrameKind
@@ -2308,11 +2310,11 @@ final class Drawer {
         combineStack.append(CombineFrame(.combine(op, Float(k))))
     }
     /// Open a scoped domain block (`mirrored { … }` / `repeated(…) { … }`): the contents
-    /// are unioned, then the transform is applied to the whole field. (2D only for now; a
-    /// 3D domain block unions its leaves without a domain transform until 3D domain ops land.)
-    func beginCombineDomain(_ op: SDF.Transform) {
+    /// are unioned, then the matching domain op is applied to the whole field (the 2D op to
+    /// captured 2D shapes, the 3D op to captured 3D primitives; one block serves both).
+    func beginCombineDomain(_ op2D: SDF.Transform, _ op3D: SDF3D.Transform) {
         if combineStack.isEmpty { combineGroupTransform = transform; combineGroupModel = modelMatrix }
-        combineStack.append(CombineFrame(.domain(op)))
+        combineStack.append(CombineFrame(.domain(op2D, op3D)))
     }
     /// Close the innermost combine block: fold its children into one field (per dimension),
     /// then attach to the enclosing block, or (if this was the outermost) draw it.
@@ -2353,7 +2355,7 @@ final class Drawer {
         case let .combine(op, k):
             for child in rest { result = SDF(.combine(op, result, child, k)) }
             return result
-        case let .domain(t):
+        case let .domain(t, _):
             for child in rest { result = SDF(.combine(.union, result, child, 0)) }
             return SDF(.transformed(t, result))
         }
@@ -2366,10 +2368,9 @@ final class Drawer {
             let op3 = SDF3D.Combine(rawValue: op.rawValue) ?? .union
             for child in rest { result = SDF3D(.combine(op3, result, child, k)) }
             return result
-        case .domain:
-            // 3D domain transforms aren't a thing yet; union the leaves so the block still works.
+        case let .domain(_, t):
             for child in rest { result = SDF3D(.combine(.union, result, child, 0)) }
-            return result
+            return SDF3D(.transformed(t, result))
         }
     }
     /// Capture one region shape (already decoded by its draw method) as an `SDF` leaf,

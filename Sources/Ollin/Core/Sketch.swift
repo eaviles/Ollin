@@ -901,15 +901,29 @@ open class Sketch {
     public func smoothIntersect(k: Double, _ body: () -> Void) {
         drawer.beginCombine(op: .smoothIntersect, k: k); body(); drawer.endCombine()
     }
-    /// Mirror the field drawn inside across the x and/or y axis of the current frame.
-    public func mirrored(x: Bool = true, y: Bool = false, _ body: () -> Void) {
-        drawer.beginCombineDomain(.mirror(x: x, y: y)); body(); drawer.endCombine()
+    /// Mirror the field drawn inside across the x and/or y (and, in 3D, z) plane of the
+    /// current frame. The `z` flag only applies to a 3D field.
+    public func mirrored(x: Bool = true, y: Bool = false, z: Bool = false, _ body: () -> Void) {
+        drawer.beginCombineDomain(.mirror(x: x, y: y), .mirror(x: x, y: y, z: z))
+        body(); drawer.endCombine()
     }
     /// Tile the field drawn inside on a grid of `spacing`, `count` copies to each side.
     public func repeated(spacing: Vector2, count: Int, _ body: () -> Void) {
-        drawer.beginCombineDomain(.repeatTiles(
-            spacing: SIMD2<Float>(Float(spacing.x), Float(spacing.y)),
-            count: SIMD2<Float>(Float(max(0, count)), Float(max(0, count))))); body(); drawer.endCombine()
+        let n = Float(max(0, count))
+        drawer.beginCombineDomain(
+            .repeatTiles(spacing: SIMD2(Float(spacing.x), Float(spacing.y)), count: SIMD2(n, n)),
+            .repeatTiles(spacing: SIMD3(Float(spacing.x), Float(spacing.y), 0), count: SIMD3(n, n, n)))
+        body(); drawer.endCombine()
+    }
+    /// Tile a 3D field drawn inside on a grid of `spacing`, `count` copies to each side
+    /// along each axis (a zero spacing component leaves that axis untiled).
+    public func repeated(spacing: Vector3, count: Int, _ body: () -> Void) {
+        let n = Float(max(0, count))
+        drawer.beginCombineDomain(
+            .repeatTiles(spacing: SIMD2(Float(spacing.x), Float(spacing.y)), count: SIMD2(n, n)),
+            .repeatTiles(spacing: SIMD3(Float(spacing.x), Float(spacing.y), Float(spacing.z)),
+                         count: SIMD3(n, n, n)))
+        body(); drawer.endCombine()
     }
     public func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double) {
         drawer.drawEllipse(x, y, rx, ry)

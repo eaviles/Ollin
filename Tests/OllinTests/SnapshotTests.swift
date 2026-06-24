@@ -76,6 +76,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func raymarchedSDF3DDomainMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DDomainScene(), against: "sdf-combinators-3d-domain")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -1235,6 +1241,34 @@ private final class RaymarchedSDF3DBlockScene: Sketch {
             fill(Color(hex: 0xff5d73))
             withState { translate(0, 1.5, 0); drawCone(radius: 0.45, height: 0.7) }   // hat
         }
+    }
+}
+
+/// The 3D SDF-combinator domain operators: a smooth-union cell tiled into a finite lattice
+/// by `repeated`, and a wedge folded four-fold by `mirrored(x:z:)`. Pins the point-rewriting
+/// XFORM scopes (the limited tiling + the axis-plane fold). Static at frame 0.
+private final class RaymarchedSDF3DDomainScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0d1117))
+        camera(.orbiting(target: .zero, radius: 7.0, azimuth: 0.5, elevation: 0.5,
+                         fieldOfView: .pi / 4, near: 2, far: 16))
+        directionalLight(.white, direction: Vector3(-0.5, 0.85, 0.4),
+                         intensity: 1.2, softness: 0.3)
+        ambientLight(Color(white: 0.16))
+        material(.glossy)
+
+        // A unit cell (sphere melted with a box), tiled into a 3×3 lattice.
+        let cell = SDF3D.sphere(radius: 0.4).colored(Color(hex: 0x38bdf8))
+            .smoothUnion(SDF3D.box(size: 0.4).at(x: 0, y: 0.5, z: 0)
+                .colored(Color(hex: 0xf472b6)), k: 0.25)
+        drawSDF3D(cell.repeated(spacing: Vector3(1.6, 0, 1.6), count: 1).at(x: 0, y: -0.6, z: 0))
+
+        // One wedge folded four-fold across x and z.
+        let wedge = SDF3D.cone(radius: 0.4, height: 0.9).colored(Color(hex: 0xfacc15))
+            .at(x: 0.7, y: 0, z: 0.7)
+        drawSDF3D(wedge.mirrored(x: true, y: false, z: true).at(x: 0, y: 1.6, z: 0))
     }
 }
 
