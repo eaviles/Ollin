@@ -323,6 +323,29 @@ static float ollin_sdf3d_softshadow(float3 ro, float3 rd, float maxt, float k, i
     return clamp(res, 0.0, 1.0);
 }
 
+// A *mesh* receiver's occlusion by the marched SDF fields under a point / ray-traced caster (a
+// directional/spot caster instead has each field render into the 2D map, so this isn't used
+// there). March each field from the surface toward the light position and keep the darkest;
+// 1 = lit, 0 = fully occluded. The march is bounded by the surface→light distance, since only a
+// field between the two occludes. Declared in Shader3D (an earlier segment) so the lit mesh
+// fragments there can call it; defined here, where the 3D field VM lives.
+static float ollin_fields_shadow(float3 worldPos, float3 n, float3 lightPos,
+                                 const device SDF3DGroupInstance *fields,
+                                 const device SDFNode3D *fieldNodes,
+                                 int fieldCount, int steps) {
+    float3 dl = lightPos - worldPos;
+    float dist = length(dl);
+    if (dist < 1e-4) { return 1.0; }
+    float3 rd = dl / dist;
+    float3 ro = worldPos + n * 0.02;   // step off the receiver to skip its own surface
+    float res = 1.0;
+    for (int f = 0; f < fieldCount; f++) {
+        res = min(res, ollin_sdf3d_softshadow(ro, rd, dist, OLLIN_SDF3D_SHADOW_K, steps,
+                                              fields[f], fieldNodes));
+    }
+    return res;
+}
+
 // Ray vs AABB slab test -> [t0, t1] along the ray (t1 < t0 means the ray misses the box).
 // IEEE infinities handle an axis-parallel ray (rd component 0) correctly.
 static float2 ollin_ray_aabb(float3 ro, float3 rd, float3 lo, float3 hi) {

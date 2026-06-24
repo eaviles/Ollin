@@ -300,6 +300,31 @@ static inline float meshRTShadow(float3 worldPos, float3 normal,
 }
 #endif
 
+// A mesh receiver's occlusion by the raymarched SDF fields under a point / ray-traced caster.
+// Defined in the later ShaderRaymarch segment (it marches the 3D field VM); forward-declared
+// here so the lit mesh fragments below can call it (one concatenated compile unit). The march
+// budget is a fixed step count (the lit mesh fragments have no Uniforms3D / quality dial bound).
+constant constexpr int OLLIN_MESH_FIELD_SHADOW_STEPS = 48;
+static float ollin_fields_shadow(float3 worldPos, float3 n, float3 lightPos,
+                                 const device SDF3DGroupInstance *fields,
+                                 const device SDFNode3D *fieldNodes,
+                                 int fieldCount, int steps);
+
+// The mesh-receiver field-shadow factor: march the SDF fields toward the caster (gated on
+// `fieldCasterCount`, which the renderer sets only for a point/ray-traced caster; a
+// directional/spot caster has the field in the 2D map instead). 1.0 when there are no field
+// casters, so a mesh-only / directional scene takes the byte-identical path.
+static inline float meshFieldShadowFactor(float3 worldPos, float3 normal,
+                                          constant OllinLighting &light,
+                                          const device SDF3DGroupInstance *fields,
+                                          const device SDFNode3D *fieldNodes) {
+    if (light.fieldCasterCount <= 0 || light.shadowLight < 0) { return 1.0; }
+    float3 lightPos = light.lights[light.shadowLight].position.xyz;
+    return ollin_fields_shadow(worldPos, normalize(normal), lightPos,
+                               fields, fieldNodes, light.fieldCasterCount,
+                               OLLIN_MESH_FIELD_SHADOW_STEPS);
+}
+
 // The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
 // surface `normal`, `worldPos`, and the per-batch `mat` finish. It composes a base
 // shading model (standard Lambert / toon cel / Gooch warm–cool) with the layered
@@ -321,6 +346,10 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   // (0…1) here since it isn't in the shadow maps; a mesh
                                   // passes -1 to sample the maps as usual (byte-identical).
                                   , float fieldShadow
+                                  // A mesh receiver also folds in its occlusion by the marched
+                                  // SDF fields under a point/RT caster (1.0 = lit / none, the
+                                  // byte-identical default; the raymarch caller leaves it 1.0).
+                                  , float meshFieldShadow = 1.0
                                   ) {
     float3 n = normalize(normal);
     if (light.enabled == 0) {
@@ -373,6 +402,7 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                        light.shadowTexelWorld, shadowCube, shadowCubeSamp)
                     : shadowFactor(worldPos, n, toLight, light.lightViewProjection,
                                    light.shadowTexelWorld, shadowMap, shadowSamp);
+                lit01 *= meshFieldShadow;   // also occluded by the marched fields (point/RT; 1.0 otherwise)
             }
             atten *= mix(1.0, lit01, light.shadowStrength);
         }
@@ -497,7 +527,9 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     depth2d<float> shadowMap [[texture(1)]],
                                     sampler shadowSamp [[sampler(1)]],
                                     texturecube<float> shadowCube [[texture(2)]],
-                                    sampler shadowCubeSamp [[sampler(2)]]
+                                    sampler shadowCubeSamp [[sampler(2)]],
+                                    const device SDF3DGroupInstance *fields [[buffer(4)]],
+                                    const device SDFNode3D *fieldNodes [[buffer(5)]]
 #if OLLIN_RT_SHADOWS
                                     , primitive_acceleration_structure shadowAccel [[buffer(3)]]
 #endif
@@ -505,15 +537,16 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     // Linearize the surface color so the present pass's sRGB re-encode lands the
     // on-screen pixel at the fill color, then shade + shadow it through the shared
     // tail (which returns it flat unchanged when no light is set).
+    float meshFieldShadow = meshFieldShadowFactor(in.worldPos, in.normal, light, fields, fieldNodes);
 #if OLLIN_RT_SHADOWS
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
     return meshLitColor(srgbToLinear(in.color.rgb), in.color.a, in.normal,
                         in.worldPos, mat, light, shadowMap, shadowSamp,
-                        shadowCube, shadowCubeSamp, rtShadow, -1.0);
+                        shadowCube, shadowCubeSamp, rtShadow, -1.0, meshFieldShadow);
 #else
     return meshLitColor(srgbToLinear(in.color.rgb), in.color.a, in.normal,
                         in.worldPos, mat, light, shadowMap, shadowSamp,
-                        shadowCube, shadowCubeSamp, -1.0);
+                        shadowCube, shadowCubeSamp, -1.0, meshFieldShadow);
 #endif
 }
 
@@ -553,7 +586,9 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              depth2d<float> shadowMap [[texture(1)]],
                                              sampler shadowSamp [[sampler(1)]],
                                              texturecube<float> shadowCube [[texture(2)]],
-                                             sampler shadowCubeSamp [[sampler(2)]]
+                                             sampler shadowCubeSamp [[sampler(2)]],
+                                             const device SDF3DGroupInstance *fields [[buffer(4)]],
+                                             const device SDFNode3D *fieldNodes [[buffer(5)]]
 #if OLLIN_RT_SHADOWS
                                              , primitive_acceleration_structure shadowAccel [[buffer(3)]]
 #endif
@@ -565,13 +600,14 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     float4 tex = baseColorTex.sample(samp, in.uv);
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
+    float meshFieldShadow = meshFieldShadowFactor(in.worldPos, in.normal, light, fields, fieldNodes);
 #if OLLIN_RT_SHADOWS
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
     return meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
-                        shadowMap, shadowSamp, shadowCube, shadowCubeSamp, rtShadow, -1.0);
+                        shadowMap, shadowSamp, shadowCube, shadowCubeSamp, rtShadow, -1.0, meshFieldShadow);
 #else
     return meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
-                        shadowMap, shadowSamp, shadowCube, shadowCubeSamp, -1.0);
+                        shadowMap, shadowSamp, shadowCube, shadowCubeSamp, -1.0, meshFieldShadow);
 #endif
 }
 

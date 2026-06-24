@@ -124,6 +124,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func raymarchedSDF3DPointCastMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DPointCastScene(), against: "sdf-combinators-3d-pointcast")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func sdfCombinatorsStretchMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: SDFCombinatorsStretchScene(), against: "sdf-combinators-stretch")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -1558,6 +1564,32 @@ private final class RaymarchedSDF3DReceiveShadowScene: Sketch {
 
         fill(Color(hex: 0xf472b6))
         withState { translate(0.5, 1.15, 0.4); drawSphere(radius: 0.65) }
+    }
+}
+
+/// A raymarched 3D SDF field casting a shadow onto a rasterized mesh under a *point* light: the lit
+/// mesh fragments march the field inline toward the bulb (no 2D map for a point caster). A floating
+/// blob and a mesh sphere drop shadows onto the floor; the field's should match the mesh's. Static.
+private final class RaymarchedSDF3DPointCastScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0A0B10))
+        camera(.orbiting(target: Vector3(0, 0.8, 0), radius: 11, azimuth: 0.6, elevation: 0.5,
+                         fieldOfView: .pi / 4.6, near: 2, far: 50))
+        ambientLight(Color(white: 0.1))
+        pointLight(.white, at: Vector3(0, 5.5, 0), intensity: 1.8, specular: .white)
+        castShadows()
+        material(.glossy)
+
+        withState { fill(Color(white: 0.8)); specular(0.05); translate(0, -0.5, 0); drawPlane(width: 24, depth: 24) }
+        withState { fill(Color(hex: 0xf472b6)); translate(2.2, 1.4, 0); drawSphere(radius: 0.8) }
+
+        let blob = SDF3D.sphere(radius: 0.8)
+            .smoothUnion(SDF3D.sphere(radius: 0.6).at(x: 0.9, y: 0.3, z: 0.2), k: 0.5)
+            .smoothUnion(SDF3D.sphere(radius: 0.55).at(x: -0.3, y: 0.5, z: -0.4), k: 0.5)
+            .colored(Color(hex: 0x38bdf8))
+        withState { translate(-2.0, 1.5, 0); drawSDF3D(blob) }
     }
 }
 

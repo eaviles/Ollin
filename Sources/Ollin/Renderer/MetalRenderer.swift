@@ -1944,6 +1944,13 @@ final class MetalRenderer {
             lighting.shadowKind = 2
             lighting.shadowSamples = resolveShadowSamples(drawer.shadowQualitySetting)
         }
+        // A directional/spot caster has each field render into the 2D map (so meshes receive it
+        // from there); a point/ray-traced caster has no map a field can render into, so the lit
+        // mesh fragments march the fields inline toward the light. Turn that on only then;
+        // 0 keeps the mesh path byte-identical (a mesh-only or directional/spot scene).
+        if lighting.shadowLight >= 0 && lighting.shadowKind != 0 && !drawer.sdf3DGroups.isEmpty {
+            lighting.fieldCasterCount = Int32(drawer.sdf3DGroups.count)
+        }
         let shadowTexture = shadowMap ?? ensureDummyShadowMap()
         let shadowCubeTexture = shadowCube ?? ensureDummyPointShadowMap()
         // When the mesh fragments are compiled with RT shadows, an acceleration structure
@@ -2163,6 +2170,12 @@ final class MetalRenderer {
                         encoder.useResource(accel, usage: .read, stages: .fragment)
                         encoder.setFragmentAccelerationStructure(accel, bufferIndex: 3)
                     }
+                    // The SDF field group + nodes (buffers 4/5) so a lit mesh can march them
+                    // toward a point/ray-traced caster (a field's cast shadow). Always allocated
+                    // (min one element) for a 3D frame; `lighting.fieldCasterCount` gates the
+                    // march, so this is inert (and byte-identical) when there are no fields.
+                    if let sdf3DGroupBuffer { encoder.setFragmentBuffer(sdf3DGroupBuffer, offset: 0, index: 4) }
+                    if let sdf3DNodeBuffer { encoder.setFragmentBuffer(sdf3DNodeBuffer, offset: 0, index: 5) }
                 }
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .depthScene:

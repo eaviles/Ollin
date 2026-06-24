@@ -409,6 +409,11 @@ typedef struct {
     float shadowDepthA;           // cube kind: the far plane; ray-traced kind: unused
     float shadowDepthB;           // ray-traced kind: the area-light radius (softness); else unused
     int   shadowSamples;          // ray-traced kind: rays per pixel (penumbra quality; default 4)
+    int   fieldCasterCount;       // number of raymarched SDF fields casting onto meshes under a
+                                  // point/ray-traced caster (the lit mesh fragments march them
+                                  // toward the light; 0 = none, the byte-identical mesh path). A
+                                  // directional/spot caster instead has the field render into the
+                                  // 2D map, so this stays 0 for shadowKind 0.
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

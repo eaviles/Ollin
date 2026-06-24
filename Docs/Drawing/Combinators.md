@@ -316,13 +316,15 @@ one-time note.
 **Self-shadowing and cast shadows.** With [`castShadows()`](../3D/3D.md), a merged field drops soft
 shadows onto itself: a penumbra march toward the casting light, contact-hardening (sharper
 where shapes meet, softer as the shadow falls away). It's the same opt-in as mesh shadows, so a
-field without `castShadows()` shades unshadowed (and stays byte-identical). Under a directional or
-spot light a field also **casts onto rasterized meshes** (it renders into the same 2D shadow map
-the meshes sample, so a mesh floor catches a floating field's shadow, see
-`Examples/3D/RaymarchedCastShadow`) and **receives a mesh's shadow** in return (it samples that
-same map at the surface, so a floating mesh drops its shadow onto the field, see
-`Examples/3D/RaymarchedReceiveShadow`). Still open: field *casting* is directional/spot only, not
-point/ray-traced.
+field without `castShadows()` shades unshadowed (and stays byte-identical). A field also **casts
+onto rasterized meshes** under every light: a directional or spot caster has the field render into
+the 2D shadow map the meshes sample (a mesh floor catches a floating field's shadow, see
+`Examples/3D/RaymarchedCastShadow`), and a point or ray-traced caster (which has no such map)
+has the lit mesh fragments march the field inline toward the light instead (see
+`Examples/3D/RaymarchedPointCast`). Under a directional or spot light a field also **receives a
+mesh's shadow** in return (it samples that same map at the surface, so a floating mesh drops its
+shadow onto the field, see `Examples/3D/RaymarchedReceiveShadow`). Still open: a field doesn't yet
+*receive* a mesh's shadow under a **point/ray-traced** light (the symmetric gap to casting).
 
 The merged surface's **silhouette is anti-aliased** analytically (a sphere-traced fullscreen
 pass gets no MSAA at its hit/miss edge): the march measures how closely a ray that misses the
@@ -395,5 +397,6 @@ primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form),
 `Examples/3D/RaymarchedShadow` (self-shadowing under `castShadows()`),
 `Examples/3D/RaymarchedCastShadow` (a field casting its shadow onto a rasterized mesh),
 `Examples/3D/RaymarchedReceiveShadow` (a field receiving a mesh's shadow),
+`Examples/3D/RaymarchedPointCast` (a field casting onto a mesh under a point light),
 `Examples/3D/RaymarchedStretch` (per-axis stretch and non-uniform scale), and
 `Examples/3D/RaymarchedGradient` (a screen-space gradient painting the merged surface).
