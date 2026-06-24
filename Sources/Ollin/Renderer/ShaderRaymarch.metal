@@ -323,6 +323,18 @@ static float ollin_sdf3d_softshadow(float3 ro, float3 rd, float maxt, float k, i
     return clamp(res, 0.0, 1.0);
 }
 
+// Ray vs AABB slab test -> [t0, t1] along the ray (t1 < t0 means the ray misses the box).
+// IEEE infinities handle an axis-parallel ray (rd component 0) correctly.
+static float2 ollin_ray_aabb(float3 ro, float3 rd, float3 lo, float3 hi) {
+    float3 inv = 1.0 / rd;
+    float3 ta = (lo - ro) * inv;
+    float3 tb = (hi - ro) * inv;
+    float3 tmn = min(ta, tb), tmx = max(ta, tb);
+    float t0 = max(max(tmn.x, tmn.y), tmn.z);
+    float t1 = min(min(tmx.x, tmx.y), tmx.z);
+    return float2(t0, t1);
+}
+
 // A *mesh* receiver's occlusion by the marched SDF fields under a point / ray-traced caster (a
 // directional/spot caster instead has each field render into the 2D map, so this isn't used
 // there). March each field from the surface toward the light position and keep the darkest;
@@ -340,22 +352,22 @@ static float ollin_fields_shadow(float3 worldPos, float3 n, float3 lightPos,
     float3 ro = worldPos + n * 0.02;   // step off the receiver to skip its own surface
     float res = 1.0;
     for (int f = 0; f < fieldCount; f++) {
+        // Skip the march for a ray that can't reach this (finite) field's AABB — most receiver
+        // pixels when the field is small relative to the floor, which is exactly where the
+        // per-pixel march was costly. The box is inflated by the soft-shadow penumbra reach
+        // (`dist/k`, the widest closest-approach that still darkens), so a grazing near-miss
+        // still marches and the shadow edge stays soft (the result for a skipped ray is the 1.0
+        // the full march would return anyway, so it's exact). An unbounded field (a plane) has
+        // no finite box, so it always marches.
+        if (fields[f].unbounded == 0.0) {
+            float3 m = float3(dist / OLLIN_SDF3D_SHADOW_K);
+            float2 tb = ollin_ray_aabb(ro, rd, fields[f].boundsMin.xyz - m, fields[f].boundsMax.xyz + m);
+            if (tb.y < max(tb.x, 0.0) || tb.x > dist) { continue; }
+        }
         res = min(res, ollin_sdf3d_softshadow(ro, rd, dist, OLLIN_SDF3D_SHADOW_K, steps,
                                               fields[f], fieldNodes));
     }
     return res;
-}
-
-// Ray vs AABB slab test -> [t0, t1] along the ray (t1 < t0 means the ray misses the box).
-// IEEE infinities handle an axis-parallel ray (rd component 0) correctly.
-static float2 ollin_ray_aabb(float3 ro, float3 rd, float3 lo, float3 hi) {
-    float3 inv = 1.0 / rd;
-    float3 ta = (lo - ro) * inv;
-    float3 tb = (hi - ro) * inv;
-    float3 tmn = min(ta, tb), tmx = max(ta, tb);
-    float t0 = max(max(tmn.x, tmn.y), tmn.z);
-    float t1 = min(min(tmx.x, tmx.y), tmx.z);
-    return float2(t0, t1);
 }
 
 struct RaymarchOut {
