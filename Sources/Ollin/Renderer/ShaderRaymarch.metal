@@ -355,20 +355,42 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     float t1 = tb.y;
     if (t1 < t0) { discard_fragment(); return miss; }
 
-    // Sphere-trace.
+    // Sphere-trace, also tracking the closest the ray ever came to the surface relative to
+    // the pixel's own footprint (a cone widening with distance). A direct hit drives that
+    // ratio to 0 (fully covered); a ray that clears the silhouette by a whole pixel or more
+    // keeps it >= 1 (a clean miss); a grazing near-miss lands in between, and `1 - ratio`
+    // is the analytic edge coverage that anti-aliases the silhouette without supersampling
+    // (the fullscreen pass gets no MSAA there). `kPixel·t` is the cone's half-width at t:
+    // tan(fovY/2)/height, with tan(fovY/2) = 1/projection[1][1].
+    float kPixel = 1.0 / (max(u.projection[1][1], 1e-4) * max(u.viewport.y, 1.0));
     float t = t0;
     float4 col = float4(0.0);
     bool hit = false;
+    float minRatio = 1.0e9;
+    float tNear = t0;
     for (int i = 0; i < OLLIN_RAYMARCH_STEPS; i++) {
         if (t > t1) break;
         float3 pw = ro + rd * t;
         float d = ollin_sdf3d_world(pw, g, nodes, col);
         if (d < OLLIN_RAYMARCH_EPS) { hit = true; break; }
+        float ratio = d / max(t * kPixel, 1e-6);
+        if (ratio < minRatio) { minRatio = ratio; tNear = t; }
         t += d * OLLIN_RAYMARCH_STEP_SCALE;
     }
-    if (!hit) { discard_fragment(); return miss; }
 
-    float3 pw = ro + rd * t;
+    // Coverage: 1 on a hit, a fraction on a grazing near-miss, 0 on a clean miss (discard).
+    // A near-miss shades at the closest-approach point (within ~a pixel of the surface) and
+    // composites by `coverage` over whatever's behind.
+    float coverage = 1.0;
+    float3 pw;
+    if (hit) {
+        pw = ro + rd * t;
+    } else {
+        coverage = clamp(1.0 - minRatio, 0.0, 1.0);
+        if (coverage < 0.004) { discard_fragment(); return miss; }
+        pw = ro + rd * tNear;
+        ollin_sdf3d_world(pw, g, nodes, col);   // the leaf color at the closest approach
+    }
     float3 n = ollin_sdf3d_normal(pw, g, nodes);
 
     // Analytic self-shadow toward the casting light, but only when one is set
@@ -405,7 +427,10 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // marched and rasterized geometry z-test in one space (Metal NDC z is already [0,1]).
     float4 clip = u.projection * (u.view * float4(pw, 1.0));
     RaymarchFragOut out;
-    out.color = lit;                 // straight-alpha linear, like the mesh fragment
+    // Straight-alpha linear, like the mesh fragment; the silhouette edge rides in the alpha
+    // (the .normal blend composites it over what's behind). A solid hit (coverage 1) is the
+    // mesh path unchanged.
+    out.color = float4(lit.rgb, lit.a * coverage);
     out.depth = clip.z / clip.w;
     return out;
 }

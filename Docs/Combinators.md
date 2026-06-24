@@ -273,6 +273,11 @@ without `castShadows()` shades unshadowed (and stays byte-identical). The field 
 but does not yet cast a shadow into the *mesh* shadow maps, so build a slab and the shapes on
 it as one field to see them shadow one another.
 
+The merged surface's **silhouette is anti-aliased** analytically (a sphere-traced fullscreen
+pass gets no MSAA at its hit/miss edge): the march measures how closely a ray that misses the
+surface grazed it, relative to the pixel's own footprint, and the edge fades by that coverage.
+It's automatic, so any field's outline stays smooth without supersampling.
+
 The 3D path is opt-in like the rest of [3D mode](./3D.md), so a 2D sketch never pays for it.
 Today it covers the leaves above with solid color per leaf and uniform scale. Casting into the
 mesh shadow maps is on the [roadmap](../ROADMAP.md).
