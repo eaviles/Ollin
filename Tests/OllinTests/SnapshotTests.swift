@@ -118,6 +118,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func raymarchedSDF3DReceiveShadowMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DReceiveShadowScene(), against: "sdf-combinators-3d-receive")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -1474,6 +1480,33 @@ private final class RaymarchedSDF3DCastShadowScene: Sketch {
             .smoothUnion(SDF3D.sphere(radius: 0.5).at(x: -0.2, y: 0.5, z: -0.4), k: 0.45)
             .colored(Color(hex: 0x38bdf8))
         withState { translate(-1.8, 0.1, 0); drawSDF3D(blob) }
+    }
+}
+
+/// A raymarched 3D SDF field *receiving* a rasterized mesh's cast shadow: a mesh sphere floats
+/// above a wide SDF slab, dropping a round shadow onto the field surface (sampled from the 2D
+/// shadow map in the raymarch fragment), beside the slab's own self-shadowed bumps. Static.
+private final class RaymarchedSDF3DReceiveShadowScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0c0f16))
+        camera(.orbiting(target: Vector3(0, -0.2, 0), radius: 7.0, azimuth: 0.5, elevation: 0.5,
+                         fieldOfView: .pi / 4, near: 2, far: 50))
+        directionalLight(.white, direction: Vector3(0.3, -0.95, -0.1),
+                         intensity: 1.3, softness: 0.2)
+        ambientLight(Color(white: 0.16))
+        castShadows()
+        material(.glossy)
+
+        let slab = SDF3D.roundBox(width: 5.0, height: 0.6, depth: 4.0, radius: 0.25)
+            .smoothUnion(SDF3D.sphere(radius: 0.7).at(x: -1.3, y: 0.4, z: 0.6), k: 0.5)
+            .smoothUnion(SDF3D.sphere(radius: 0.55).at(x: 1.4, y: 0.35, z: -0.7), k: 0.5)
+            .colored(Color(hex: 0x6aa9ff))
+        withState { translate(0, -1.0, 0); drawSDF3D(slab) }
+
+        fill(Color(hex: 0xf472b6))
+        withState { translate(0.5, 1.15, 0.4); drawSphere(radius: 0.65) }
     }
 }
 

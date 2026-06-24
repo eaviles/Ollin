@@ -434,9 +434,11 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     }
     float3 n = ollin_sdf3d_normal(pw, g, nodes);
 
-    // Analytic self-shadow toward the casting light, but only when one is set
-    // (castShadows()); otherwise -1 tells the shading tail to shade unshadowed. The field
-    // self-shadows (sculpts its own form) but casts no shadow into the maps in v1.
+    // Shadow toward the casting light, but only when one is set (castShadows()); otherwise -1
+    // tells the shading tail to shade unshadowed. The field gets an analytic self-shadow (it
+    // sculpts its own form) and, under a directional/spot caster, also *receives* a rasterized
+    // mesh's cast shadow from the 2D map. Either way the marched field uses this factor in place
+    // of the maps in `meshLitColor` (>= 0), so the sentinel for a mesh stays -1.
     float fieldShadow = -1.0;
     if (light.enabled != 0 && light.shadowLight >= 0 && light.shadowLight < light.lightCount) {
         OllinLight caster = light.lights[light.shadowLight];
@@ -452,6 +454,16 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
         }
         fieldShadow = ollin_sdf3d_softshadow(pw + n * 0.015, toLight, maxt,
                                              OLLIN_SDF3D_SHADOW_K, int(u.raymarchSteps.y), g, nodes);
+        // Receive a mesh's cast shadow: the directional/spot 2D map carries the mesh casters
+        // (and this field's own cast), so sample it like a mesh receiver and keep the darker of
+        // the two. The normal-offset bias keeps the field's own lit front surface out of it; its
+        // self-occlusion stays the analytic march's job. A point/RT caster (shadowKind != 0)
+        // can't hold a field-receivable occluder in a 2D map, so it receives self-shadow only.
+        if (light.shadowKind == 0) {
+            float mapLit = shadowFactor(pw, n, toLight, light.lightViewProjection,
+                                        light.shadowTexelWorld, shadowMap, shadowSamp);
+            fieldShadow = min(fieldShadow, mapLit);
+        }
     }
 
     // The surface color: a solid `fill` comes from the leaves (the VM-melted `col`, linearized
@@ -471,8 +483,8 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     }
 
     // Shade through the shared mesh tail (returns the surface flat when no light is set, so an
-    // unlit field shows its colors). The marched field self-shadows via `fieldShadow` (it isn't
-    // in the maps); pass a lit (1.0) ray-traced point factor.
+    // unlit field shows its colors). The marched field's own shadow factor (`fieldShadow` >= 0)
+    // stands in for the map sampling there; pass a lit (1.0) ray-traced point factor.
     float4 lit = meshLitColor(baseRGB, baseA, n, pw, mat, light,
                               shadowMap, shadowSamp, shadowCube, shadowCubeSamp
 #if OLLIN_RT_SHADOWS

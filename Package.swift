@@ -409,6 +409,11 @@ let package = Package(
             path: "Examples/Basic/CombinatorsGradient"
         ),
         .executableTarget(
+            name: "Example-3D-RaymarchedReceiveShadow",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/RaymarchedReceiveShadow"
+        ),
+        .executableTarget(
             name: "Example-Effects-Feedback",
             dependencies: ["Ollin"],
             path: "Examples/Effects/Feedback"
