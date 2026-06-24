@@ -445,23 +445,28 @@ open class Sketch {
     /// Draw a box centered at the model origin, `width` (x) × `height` (y) ×
     /// `depth` (z) world units. Position it with the transform stack.
     public func drawBox(width: Double, height: Double, depth: Double) {
-        drawer.drawMesh(.box(width: width, height: height, depth: depth))
+        drawer.drawMeshPrimitive(.box(width: width, height: height, depth: depth),
+                                 mesh: .box(width: width, height: height, depth: depth))
     }
 
     /// Draw a cube centered at the model origin, `size` world units on each edge.
-    public func drawBox(size: Double = 1) { drawer.drawMesh(.box(size: size)) }
+    public func drawBox(size: Double = 1) {
+        drawer.drawMeshPrimitive(.box(size: size), mesh: .box(size: size))
+    }
 
     /// Draw a sphere centered at the model origin. `segments` divide it around the
     /// equator, `rings` from pole to pole.
     public func drawSphere(radius: Double = 0.5, segments: Int = 32, rings: Int = 16) {
-        drawer.drawMesh(.sphere(radius: radius, segments: segments, rings: rings))
+        drawer.drawMeshPrimitive(.sphere(radius: radius),
+                                 mesh: .sphere(radius: radius, segments: segments, rings: rings))
     }
 
     /// Draw a cylinder centered at the model origin, its axis along y. `caps`
     /// closes the two ends (on by default).
     public func drawCylinder(radius: Double = 0.5, height: Double = 1,
                              segments: Int = 32, caps: Bool = true) {
-        drawer.drawMesh(.cylinder(radius: radius, height: height, segments: segments, caps: caps))
+        drawer.drawMeshPrimitive(.cylinder(radius: radius, height: height),
+                                 mesh: .cylinder(radius: radius, height: height, segments: segments, caps: caps))
     }
 
     /// Draw a flat plane centered at the model origin in the x–z ground plane,
@@ -474,12 +479,14 @@ open class Sketch {
     /// from the center to the tube's center, `tube` the tube's own radius.
     public func drawTorus(radius: Double = 0.5, tube: Double = 0.2,
                           segments: Int = 48, sides: Int = 24) {
-        drawer.drawMesh(.torus(radius: radius, tube: tube, segments: segments, sides: sides))
+        drawer.drawMeshPrimitive(.torus(radius: radius, tube: tube),
+                                 mesh: .torus(radius: radius, tube: tube, segments: segments, sides: sides))
     }
 
     /// Draw a cone centered at the model origin, its axis along y (base down, apex up).
     public func drawCone(radius: Double = 0.5, height: Double = 1, segments: Int = 32) {
-        drawer.drawMesh(.cone(radius: radius, height: height, segments: segments))
+        drawer.drawMeshPrimitive(.cone(radius: radius, height: height),
+                                 mesh: .cone(radius: radius, height: height, segments: segments))
     }
 
     /// Draw a square-base pyramid centered at the model origin, `width` (x) ×
@@ -520,27 +527,32 @@ open class Sketch {
     public func drawTetrahedron(radius: Double = 0.5) { drawer.drawMesh(.tetrahedron(radius: radius)) }
 
     /// Draw a regular octahedron (8 faces) centered at the model origin.
-    public func drawOctahedron(radius: Double = 0.5) { drawer.drawMesh(.octahedron(radius: radius)) }
+    public func drawOctahedron(radius: Double = 0.5) {
+        drawer.drawMeshPrimitive(.octahedron(radius: radius), mesh: .octahedron(radius: radius))
+    }
 
     /// Draw a capsule (cylinder with hemispherical caps) centered at the model
     /// origin, axis along y. `height` is the straight section (total = height + 2·radius).
     public func drawCapsule(radius: Double = 0.4, height: Double = 0.8,
                             segments: Int = 32, rings: Int = 8) {
-        drawer.drawMesh(.capsule(radius: radius, height: height, segments: segments, rings: rings))
+        drawer.drawMeshPrimitive(.capsule(radius: radius, height: height),
+                                 mesh: .capsule(radius: radius, height: height, segments: segments, rings: rings))
     }
 
     /// Draw a box with rounded edges centered at the model origin, the edges
     /// filleted by `radius`. `segments` is the per-face grid resolution.
     public func drawRoundedBox(width: Double = 1, height: Double = 1, depth: Double = 1,
                                radius: Double = 0.15, segments: Int = 20) {
-        drawer.drawMesh(.roundedBox(width: width, height: height, depth: depth,
-                                    radius: radius, segments: segments))
+        drawer.drawMeshPrimitive(.roundBox(width: width, height: height, depth: depth, radius: radius),
+                                 mesh: .roundedBox(width: width, height: height, depth: depth,
+                                                   radius: radius, segments: segments))
     }
 
     /// Draw a rounded cube `size` on each edge, filleted by `radius`.
     public func drawRoundedBox(size: Double, radius: Double = 0.15, segments: Int = 20) {
-        drawer.drawMesh(.roundedBox(width: size, height: size, depth: size,
-                                    radius: radius, segments: segments))
+        drawer.drawMeshPrimitive(.roundBox(size: size, radius: radius),
+                                 mesh: .roundedBox(width: size, height: size, depth: size,
+                                                   radius: radius, segments: segments))
     }
 
     /// Draw a geodesic sphere (subdivided icosahedron) centered at the model origin
@@ -852,13 +864,18 @@ open class Sketch {
         drawer.drawSDF3D(sdf)
     }
 
-    // MARK: SDF-combinator blocks (sugar over `SDF` + `drawSDF`)
+    // MARK: SDF-combinator blocks (sugar over `SDF` + `drawSDF`, and `SDF3D` + `drawSDF3D`)
     //
-    // Inside a block, the SDF region draw calls (`drawCircle`/`drawRect`/`drawNgon`/…)
-    // are captured and merged under the block's operator instead of drawn one by one;
-    // the merged field is drawn (with the current fill/stroke) when the block closes.
-    // Blocks nest. Each call's own `fill` becomes that leaf's color (so colors blend at
-    // a smooth seam). Non-region draws (lines, text, images) inside a block are ignored.
+    // Inside a block, the bare draw calls are captured and merged under the block's
+    // operator instead of drawn one by one; the merged field is drawn (with the current
+    // fill/stroke) when the block closes. In 2D that's the SDF region shapes
+    // (`drawCircle`/`drawRect`/`drawNgon`/…); in 3D (with a camera set) it's the SDF-able
+    // mesh primitives (`drawSphere`/`drawBox`/`drawCapsule`/`drawCone`/`drawTorus`/
+    // `drawCylinder`/`drawRoundedBox`/`drawOctahedron`), which merge as raymarched fields
+    // rather than rasterizing as separate solids; the same block serves both. Blocks
+    // nest, the transform stack works inside them, and each call's own `fill` becomes that
+    // leaf's color (so colors blend at a smooth seam). Non-mergeable draws (2D lines/text/
+    // images, or a non-primitive mesh in 3D) inside a block are ignored.
 
     /// Merge the shapes drawn inside (hard union: the area covered by any of them).
     public func union(_ body: () -> Void) {

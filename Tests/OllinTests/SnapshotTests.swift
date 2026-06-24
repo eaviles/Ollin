@@ -70,6 +70,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func raymarchedSDF3DBlockMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DBlockScene(), against: "sdf-combinators-3d-block")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func curvedPathsMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
@@ -1200,6 +1206,35 @@ private final class RaymarchedSDF3DScene: Sketch {
                 .colored(Color(hex: 0xb6ff5a)), k: 0.5)
             .smoothSubtract(SDF3D.sphere(radius: 0.7).at(x: 0.2, y: 1.15, z: 0), k: 0.25)
         drawSDF3D(blob)
+    }
+}
+
+/// The 3D SDF-combinator scoped block form: bare mesh primitives (`drawSphere`/`drawBox`/
+/// `drawCapsule`/`drawCone`) inside `smoothUnion(k:) { }` captured as fields, posed with the
+/// transform stack and per-`fill` colored, melted into one sphere-traced surface. Pins the
+/// mesh-builder interception and the relative-model decomposition. Static at frame 0.
+private final class RaymarchedSDF3DBlockScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101418))
+        camera(.orbiting(target: Vector3(0, 0.2, 0), radius: 6.0, azimuth: 0.5, elevation: 0.25,
+                         fieldOfView: .pi / 4, near: 2, far: 14))
+        directionalLight(.white, direction: Vector3(-0.5, 0.8, 0.4),
+                         intensity: 1.2, softness: 0.3)
+        ambientLight(Color(white: 0.18))
+        material(.jade)
+
+        smoothUnion(k: 0.35) {
+            fill(Color(hex: 0x3ad6c5))
+            withState { translate(0, -0.6, 0); drawSphere(radius: 0.95) }   // body
+            withState { translate(0, 0.7, 0); drawSphere(radius: 0.62) }    // head
+            fill(Color(hex: 0xffb84d))
+            withState { translate(-0.9, -0.4, 0); rotateZ(0.6); drawCapsule(radius: 0.16, height: 0.7) }
+            withState { translate(0.9, -0.4, 0); rotateZ(-0.6); drawCapsule(radius: 0.16, height: 0.7) }
+            fill(Color(hex: 0xff5d73))
+            withState { translate(0, 1.5, 0); drawCone(radius: 0.45, height: 0.7) }   // hat
+        }
     }
 }
 

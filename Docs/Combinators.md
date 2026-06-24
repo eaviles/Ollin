@@ -237,10 +237,30 @@ The combinators (`.union` / `.smoothUnion(_:k:)` / `.subtract` / `.smoothSubtrac
 across the seam. Positioning is in three dimensions: `.at(x:y:z:)` / `.at(_ p: Vector3)`,
 `.rotated(_:axis:)` (plus `.rotatedX` / `.rotatedY` / `.rotatedZ`), and `.scaled(_:)` (uniform).
 
-The 3D path is opt-in like the rest of [3D mode](./3D.md), so a 2D sketch never pays for it.
-Today it covers the leaves above with solid color per leaf and uniform scale, and the
-surface self-shades but does not yet cast a shadow into a light's shadow map. The scoped block
-form, domain operators, and softer shadows are on the [roadmap](../ROADMAP.md).
+The **scoped block form** works in 3D too, and it's the same `smoothUnion(k:) { }` (and the
+other combine blocks) as 2D. Inside a block with a camera set, the bare mesh primitives
+(`drawSphere` / `drawBox` / `drawCapsule` / `drawCone` / `drawTorus` / `drawCylinder` /
+`drawRoundedBox` / `drawOctahedron`) are captured and merged as raymarched fields rather than
+rasterized as separate solids. The transform stack works inside the block, and each call's own
+`fill` becomes that lobe's color:
+
+```swift
+material(.jade)
+smoothUnion(k: 0.35) {
+    fill(.init(hex: 0x3ad6c5))
+    withState { translate(0, -0.6, 0); drawSphere(radius: 0.95) }   // body
+    withState { translate(0, 0.7, 0);  drawSphere(radius: 0.62) }   // head
+    fill(.init(hex: 0xff5d73))
+    withState { translate(0, 1.5, 0); drawCone(radius: 0.45, height: 0.7) }  // hat
+}
+```
+
+A primitive that has no analytic field (`drawIcosphere`, `drawTorusKnot`, a custom `Mesh`, …)
+inside a block is ignored with a one-time note. The 3D path is opt-in like the rest of
+[3D mode](./3D.md), so a 2D sketch never pays for it. Today it covers the leaves above with
+solid color per leaf and uniform scale, and the surface self-shades but does not yet cast a
+shadow into a light's shadow map. Domain operators and softer shadows are on the
+[roadmap](../ROADMAP.md).
 
 <a name="notes"></a>
 
@@ -264,5 +284,5 @@ See also [`Drawing`](./Drawing.md) for the immediate-mode shapes and the transfo
 the polygonal counterpart to these field operators), [`Color`](./Color.md) for the color
 types the leaves carry, and [`3D`](./3D.md) for the camera and lights the 3D fields draw
 through. The examples are `Examples/Basic/Combinators` (2D), `Examples/3D/RaymarchedSDF`
-(merged metaball, depth-composited with a mesh), and `Examples/3D/RaymarchedShapes` (the
-3D primitive catalog).
+(merged metaball, depth-composited with a mesh), `Examples/3D/RaymarchedShapes` (the 3D
+primitive catalog), and `Examples/3D/RaymarchedSculpt` (the scoped block form).

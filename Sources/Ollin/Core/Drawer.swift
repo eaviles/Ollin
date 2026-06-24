@@ -246,7 +246,9 @@ final class Drawer {
     /// drawn under a changed CTM lands in the group's field space.
     private var combineStack: [CombineFrame] = []
     private var combineGroupTransform: matrix_float3x3?
+    private var combineGroupModel: matrix_float4x4?
     private var warnedNonCombinable = false
+    private var warnedMeshInCombine = false
 
     /// Textured-quad vertices recorded this frame (see `drawImage`). Each image
     /// draw appends 6 vertices (two triangles) and opens its own `.image` batch,
@@ -1164,6 +1166,15 @@ final class Drawer {
     /// shaded once a light is added. A no-op without a camera or when the mesh is empty.
     func drawMesh(_ mesh: Mesh) {
         guard camera3D != nil, !mesh.isEmpty else { return }
+        // Inside a combine block, only the SDF-able primitives (which route through
+        // `drawMeshPrimitive` and never reach here) merge; any other mesh is ignored.
+        if !combineStack.isEmpty {
+            if !warnedMeshInCombine {
+                print("Ollin: a mesh inside a combine block is ignored unless it's an SDF-able primitive (drawSphere/drawBox/drawRoundedBox/drawCylinder/drawCone/drawTorus/drawCapsule/drawOctahedron); a 3D combine merges those analytic fields.")
+                warnedMeshInCombine = true
+            }
+            return
+        }
         // SVG export is 2D vector only; a shaded solid has no vector outline.
         if svgRecorder != nil { return }
         currentTarget?.needsDepth = true   // 3D in a target → that pass carries depth
@@ -1313,6 +1324,8 @@ final class Drawer {
         sdf3DNodes.removeAll(keepingCapacity: true)
         combineStack.removeAll(keepingCapacity: true)   // close any block left open by an early exit
         combineGroupTransform = nil
+        combineGroupModel = nil
+        warnedMeshInCombine = false
         batches.removeAll(keepingCapacity: true)
         dispatches.removeAll(keepingCapacity: true)
         currentKind = nil
@@ -2281,41 +2294,57 @@ final class Drawer {
     }
     private final class CombineFrame {
         let kind: CombineFrameKind
-        var children: [SDF] = []
+        var children: [SDF] = []        // 2D region leaves captured in this block
+        var children3D: [SDF3D] = []    // 3D mesh-primitive leaves captured in this block
         init(_ kind: CombineFrameKind) { self.kind = kind }
     }
 
-    /// Open a scoped combine block (`smoothUnion(k:) { … }` etc.). SDF region draw calls
-    /// inside are captured and folded under `op` when the block closes.
+    /// Open a scoped combine block (`smoothUnion(k:) { … }` etc.). Both 2D SDF region
+    /// draws and 3D mesh-primitive draws (`drawSphere`/`drawBox`/…) inside are captured
+    /// and folded under `op` when the block closes; one block serves both dimensions, and
+    /// a sketch is in one or the other (the captured-but-empty dimension just draws nothing).
     func beginCombine(op: SDF.Combine, k: Double) {
-        if combineStack.isEmpty { combineGroupTransform = transform }
+        if combineStack.isEmpty { combineGroupTransform = transform; combineGroupModel = modelMatrix }
         combineStack.append(CombineFrame(.combine(op, Float(k))))
     }
     /// Open a scoped domain block (`mirrored { … }` / `repeated(…) { … }`): the contents
-    /// are unioned, then the transform is applied to the whole field.
+    /// are unioned, then the transform is applied to the whole field. (2D only for now; a
+    /// 3D domain block unions its leaves without a domain transform until 3D domain ops land.)
     func beginCombineDomain(_ op: SDF.Transform) {
-        if combineStack.isEmpty { combineGroupTransform = transform }
+        if combineStack.isEmpty { combineGroupTransform = transform; combineGroupModel = modelMatrix }
         combineStack.append(CombineFrame(.domain(op)))
     }
-    /// Close the innermost combine block: fold its children into one field, then attach
-    /// it to the enclosing block, or (if this was the outermost) draw it.
+    /// Close the innermost combine block: fold its children into one field (per dimension),
+    /// then attach to the enclosing block, or (if this was the outermost) draw it.
     func endCombine() {
         guard let frame = combineStack.popLast() else { return }
         let field = buildCombineField(frame)
+        let field3D = buildCombine3DField(frame)
         if let parent = combineStack.last {
             if let field { parent.children.append(field) }
+            if let field3D { parent.children3D.append(field3D) }
             return
         }
-        // Outermost: draw under the group's CTM (captured when it opened), restored after
-        // in case the body changed the CTM without scoping it.
+        // Outermost: draw under the group's transforms (captured when it opened), restored
+        // after in case the body changed the CTM / model matrix without scoping it.
         let groupT = combineGroupTransform
+        let groupM = combineGroupModel
         combineGroupTransform = nil
+        combineGroupModel = nil
         warnedNonCombinable = false
-        guard let field else { return }
-        let saved = transform
-        if let groupT { transform = groupT }
-        drawSDF(field)
-        transform = saved
+        warnedMeshInCombine = false
+        if let field {
+            let saved = transform
+            if let groupT { transform = groupT }
+            drawSDF(field)
+            transform = saved
+        }
+        if let field3D {
+            let savedM = modelMatrix
+            if let groupM { modelMatrix = groupM }
+            drawSDF3D(field3D)
+            modelMatrix = savedM
+        }
     }
     private func buildCombineField(_ frame: CombineFrame) -> SDF? {
         guard var result = frame.children.first else { return nil }
@@ -2327,6 +2356,20 @@ final class Drawer {
         case let .domain(t):
             for child in rest { result = SDF(.combine(.union, result, child, 0)) }
             return SDF(.transformed(t, result))
+        }
+    }
+    private func buildCombine3DField(_ frame: CombineFrame) -> SDF3D? {
+        guard var result = frame.children3D.first else { return nil }
+        let rest = frame.children3D.dropFirst()
+        switch frame.kind {
+        case let .combine(op, k):
+            let op3 = SDF3D.Combine(rawValue: op.rawValue) ?? .union
+            for child in rest { result = SDF3D(.combine(op3, result, child, k)) }
+            return result
+        case .domain:
+            // 3D domain transforms aren't a thing yet; union the leaves so the block still works.
+            for child in rest { result = SDF3D(.combine(.union, result, child, 0)) }
+            return result
         }
     }
     /// Capture one region shape (already decoded by its draw method) as an `SDF` leaf,
@@ -2357,6 +2400,51 @@ final class Drawer {
         if abs(angle) > 1e-4 { leaf = leaf.rotated(Double(angle)) }
         leaf = leaf.at(Vector2(Double(cc.x), Double(cc.y)))
         frame.children.append(leaf)
+    }
+
+    /// The chokepoint for the SDF-able mesh primitives (`drawSphere`/`drawBox`/…). Inside a
+    /// combine block the primitive is captured as an `SDF3D` leaf (merged with the others on
+    /// close); otherwise it tessellates and draws as a normal mesh. `leaf` is the matching
+    /// analytic field; `mesh` is built lazily so the capture path never tessellates.
+    func drawMeshPrimitive(_ leaf: SDF3D, mesh: @autoclosure () -> Mesh) {
+        if !combineStack.isEmpty {
+            captureCombine3DLeaf(leaf)
+            return
+        }
+        drawMesh(mesh())
+    }
+
+    /// Capture an SDF-able primitive as an `SDF3D` leaf, placed in the active group's field
+    /// space via the relative model matrix (decomposed into translate + rotate + uniform
+    /// scale, the only similarity an SDF respects).
+    private func captureCombine3DLeaf(_ baseLeaf: SDF3D) {
+        guard let frame = combineStack.last, camera3D != nil else { return }
+        var leaf = baseLeaf
+        if case .some(.color(let c)) = fillPaint { leaf = leaf.colored(c) }
+        // rel = groupModel⁻¹ · drawModel — where this leaf sits relative to the group origin.
+        let groupM = combineGroupModel ?? modelMatrix
+        let rel = simd_inverse(groupM) * modelMatrix
+        let t = SIMD3<Float>(rel.columns.3.x, rel.columns.3.y, rel.columns.3.z)
+        let col0 = SIMD3<Float>(rel.columns.0.x, rel.columns.0.y, rel.columns.0.z)
+        let s = simd_length(col0)
+        if abs(s - 1) > 1e-4 { leaf = leaf.scaled(Double(s)) }
+        if s > 1e-6 {
+            // Strip the uniform scale to read the pure rotation, then its axis-angle.
+            let r = simd_float3x3(
+                SIMD3<Float>(rel.columns.0.x, rel.columns.0.y, rel.columns.0.z) / s,
+                SIMD3<Float>(rel.columns.1.x, rel.columns.1.y, rel.columns.1.z) / s,
+                SIMD3<Float>(rel.columns.2.x, rel.columns.2.y, rel.columns.2.z) / s)
+            let q = simd_quatf(r)
+            let angle = q.angle
+            if angle.isFinite && angle > 1e-4 {
+                let a = q.axis
+                if simd_length(a) > 1e-6 {
+                    leaf = leaf.rotated(Double(angle), axis: Vector3(Double(a.x), Double(a.y), Double(a.z)))
+                }
+            }
+        }
+        leaf = leaf.at(x: Double(t.x), y: Double(t.y), z: Double(t.z))
+        frame.children3D.append(leaf)
     }
 
     /// An elliptical arc centered at `(x, y)` with radii `rx`/`ry`, sweeping from

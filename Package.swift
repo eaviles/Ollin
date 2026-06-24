@@ -522,6 +522,11 @@ let package = Package(
             path: "Examples/3D/RaymarchedShapes"
         ),
         .executableTarget(
+            name: "Example-RaymarchedSculpt",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/RaymarchedSculpt"
+        ),
+        .executableTarget(
             name: "Example-SceneDefocus",
             dependencies: ["Ollin"],
             path: "Examples/3D/SceneDefocus"
