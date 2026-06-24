@@ -2002,7 +2002,7 @@ final class MetalRenderer {
         // per-pixel march (full-res / export, byte-identical). The viewport scales the screen uv.
         if halfResFieldShadow != nil {
             lighting.fieldShadowMode = 1
-            lighting.fieldShadowViewport = viewport
+            lighting.fieldShadowScale = Float(resolveRaymarchScale(drawer.raymarchQualitySetting))
         }
         let shadowTexture = shadowMap ?? ensureDummyShadowMap()
         let shadowCubeTexture = shadowCube ?? ensureDummyPointShadowMap()

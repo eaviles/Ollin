@@ -336,7 +336,11 @@ static inline float ollin_resolve_mesh_field_shadow(float2 screenPos, float3 wor
                                                     texture2d<float> fieldShadowTex) {
     if (light.fieldShadowMode == 1) {
         constexpr sampler s(filter::linear, address::clamp_to_edge);
-        float2 uv = screenPos / max(light.fieldShadowViewport, float2(1.0));
+        // The half-res texture covers the full framebuffer; `position.xy` (full-res pixels) maps to
+        // it by the resolution scale, so uv = position·scale / texSize is independent of the
+        // logical viewport (which differs from the pixel size on a Retina drawable).
+        float2 texSize = float2(fieldShadowTex.get_width(), fieldShadowTex.get_height());
+        float2 uv = screenPos * light.fieldShadowScale / max(texSize, float2(1.0));
         return fieldShadowTex.sample(s, uv).r;
     }
     return meshFieldShadowFactor(worldPos, normal, light, fields, fieldNodes);

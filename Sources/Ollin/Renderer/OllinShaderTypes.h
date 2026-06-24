@@ -418,8 +418,10 @@ typedef struct {
                                   // field inline per pixel (full-res / export / the byte-identical
                                   // path); 1 = sample the precomputed half-res field-shadow texture
                                   // by screen position (the live preview, the RenderQuality dial).
-    simd_float2 fieldShadowViewport; // full drawable size in pixels, for the screen-position uv when
-                                     // fieldShadowMode == 1 (the half-res texture covers the screen)
+    float fieldShadowScale;       // the half-res resolution fraction (e.g. 0.5) when fieldShadowMode
+                                  // == 1: the fragment's screen uv is (position.xy · scale) / the
+                                  // half-res texture size, so it's free of any points-vs-pixels
+                                  // (Retina) drawable mismatch (the texture covers the screen).
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer
