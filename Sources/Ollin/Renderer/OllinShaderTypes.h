@@ -414,6 +414,12 @@ typedef struct {
                                   // toward the light; 0 = none, the byte-identical mesh path). A
                                   // directional/spot caster instead has the field render into the
                                   // 2D map, so this stays 0 for shadowKind 0.
+    int   fieldShadowMode;        // how a lit mesh resolves that point/RT field cast: 0 = march the
+                                  // field inline per pixel (full-res / export / the byte-identical
+                                  // path); 1 = sample the precomputed half-res field-shadow texture
+                                  // by screen position (the live preview, the RenderQuality dial).
+    simd_float2 fieldShadowViewport; // full drawable size in pixels, for the screen-position uv when
+                                     // fieldShadowMode == 1 (the half-res texture covers the screen)
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

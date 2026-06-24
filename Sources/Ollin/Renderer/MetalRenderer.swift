@@ -109,6 +109,13 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_raymarch_vertex", fragment: "ollin_raymarch_fragment",
                         depthFormat: depth, singleSample: true)
         }
+        // The half-res point/RT field-cast shadow pre-pass: re-render the receiver meshes
+        // (`ollin_mesh_vertex`) at reduced resolution, outputting only the field-shadow factor;
+        // depth-tested + single-sample (its own small target, no MSAA), like the raymarch half-res.
+        static func fieldShadowHalfRes(depth: MTLPixelFormat) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_vertex", fragment: "ollin_mesh_fieldshadow_fragment",
+                        depthFormat: depth, singleSample: true)
+        }
         // composite the half-resolution field back at full resolution: a fullscreen tri that
         // upsamples the half-res color (bilinear) + depth (point) and re-emits the depth, so a
         // mesh still z-tests against the field. Premultiplied `.normal` (the half-res color is
@@ -398,6 +405,14 @@ final class MetalRenderer {
     private var halfResDepth: MTLTexture?
     private var halfResSize = (width: 0, height: 0)
 
+    /// The half-resolution point/RT field-cast shadow target (the live RenderQuality path): the
+    /// receiver meshes are re-rendered into it (depth-tested) with only their field-shadow factor,
+    /// and the full-res mesh pass samples it instead of marching per pixel. `color` is single-
+    /// channel-by-convention (R holds the factor); `depth` keeps the front surface's factor.
+    private var halfResFieldShadow: MTLTexture?
+    private var halfResFieldShadowDepth: MTLTexture?
+    private var halfResFieldShadowSize = (width: 0, height: 0)
+
     /// Per-frame-ring pools of effects-layer textures, reused across frames so a
     /// sketch that uses render targets every frame allocates them once. Keyed by the
     /// ring slot (`frameIndex`) so a texture is never reused while an in-flight frame
@@ -638,6 +653,17 @@ final class MetalRenderer {
                 shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
                 fullWidth: width, fullHeight: height)
         }
+        // Half-res field-cast shadow pre-pass (the live RenderQuality path): the point/RT field
+        // cast onto meshes is per-pixel-marched, so compute it once at reduced resolution and let
+        // the mesh pass sample it. `nil` at the full-res tier / no point-RT caster (inline → byte-identical).
+        let halfResFieldShadow = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 -> MTLTexture? in
+            var fl = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
+                                          shadowAccelPresent: renderedShadow.accel != nil).lighting
+            fl.fieldCasterCount = resolveFieldCasterCount(fl, drawer)
+            return encodeFieldShadowHalfRes(drawer, into: commandBuffer, meshBuffer: buffers.mesh,
+                groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
+                uniforms3D: u3, lighting: fl, fullWidth: width, fullHeight: height)
+        }
 
         guard let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
@@ -654,7 +680,8 @@ final class MetalRenderer {
                depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                shadowCube: renderedShadow.cube,
                shadowAccel: renderedShadow.accel,
-               halfResField: halfResField)
+               halfResField: halfResField,
+               halfResFieldShadow: halfResFieldShadow)
         geomEncoder.endEncoding()
 
         // Whole-frame postProcess filters run over the resolved frame before present.
@@ -947,6 +974,16 @@ final class MetalRenderer {
                 shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
                 fullWidth: width, fullHeight: height)
         }
+        // Half-res field-cast shadow pre-pass: same tier gating as the raymarch one. `.detail`
+        // (the export default) → scale 1 → nil → the mesh marches inline full-res → byte-identical.
+        let halfResFieldShadow = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 -> MTLTexture? in
+            var fl = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
+                                          shadowAccelPresent: renderedShadow.accel != nil).lighting
+            fl.fieldCasterCount = resolveFieldCasterCount(fl, drawer)
+            return encodeFieldShadowHalfRes(drawer, into: commandBuffer, meshBuffer: buffers.mesh,
+                groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
+                uniforms3D: u3, lighting: fl, fullWidth: width, fullHeight: height)
+        }
 
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
@@ -959,7 +996,8 @@ final class MetalRenderer {
                depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                shadowCube: renderedShadow.cube,
                shadowAccel: renderedShadow.accel,
-               halfResField: halfResField)
+               halfResField: halfResField,
+               halfResFieldShadow: halfResFieldShadow)
         encoder.endEncoding()
 
         // Tone-map the resolved float frame (after whole-frame postProcess filters)
@@ -1047,6 +1085,14 @@ final class MetalRenderer {
                     shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
                     fullWidth: width, fullHeight: height)
             }
+            let halfResFieldShadow = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 -> MTLTexture? in
+                var fl = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
+                                              shadowAccelPresent: renderedShadow.accel != nil).lighting
+                fl.fieldCasterCount = resolveFieldCasterCount(fl, drawer)
+                return encodeFieldShadowHalfRes(drawer, into: cb, meshBuffer: buffers.mesh,
+                    groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
+                    uniforms3D: u3, lighting: fl, fullWidth: width, fullHeight: height)
+            }
             guard let encoder = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
             encode(drawer, viewport: viewport, into: encoder,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
@@ -1056,7 +1102,8 @@ final class MetalRenderer {
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                    depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                    shadowCube: renderedShadow.cube, shadowAccel: renderedShadow.accel,
-                   halfResField: halfResField)
+                   halfResField: halfResField,
+                   halfResFieldShadow: halfResFieldShadow)
             encoder.endEncoding()
             let presented = applyFrameFilters(drawer, resolved: resolveTexture, width: width,
                                               height: height, into: cb, pooled: false)
@@ -1839,6 +1886,7 @@ final class MetalRenderer {
                         shadowCube: MTLTexture? = nil,
                         shadowAccel: MTLAccelerationStructure? = nil,
                         halfResField: (color: MTLTexture, depth: MTLTexture)? = nil,
+                        halfResFieldShadow: MTLTexture? = nil,
                         target passTarget: RenderTarget? = nil) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
@@ -1946,10 +1994,15 @@ final class MetalRenderer {
         }
         // A directional/spot caster has each field render into the 2D map (so meshes receive it
         // from there); a point/ray-traced caster has no map a field can render into, so the lit
-        // mesh fragments march the fields inline toward the light. Turn that on only then;
-        // 0 keeps the mesh path byte-identical (a mesh-only or directional/spot scene).
-        if lighting.shadowLight >= 0 && lighting.shadowKind != 0 && !drawer.sdf3DGroups.isEmpty {
-            lighting.fieldCasterCount = Int32(drawer.sdf3DGroups.count)
+        // mesh fragments resolve the cast another way. `fieldCasterCount` > 0 turns that on (only
+        // for a point/RT caster with fields); 0 keeps the mesh path byte-identical.
+        lighting.fieldCasterCount = resolveFieldCasterCount(lighting, drawer)
+        // How they resolve it: sample a precomputed half-res field-shadow texture by screen
+        // position (the live RenderQuality path) when one was rendered this frame, else the inline
+        // per-pixel march (full-res / export, byte-identical). The viewport scales the screen uv.
+        if halfResFieldShadow != nil {
+            lighting.fieldShadowMode = 1
+            lighting.fieldShadowViewport = viewport
         }
         let shadowTexture = shadowMap ?? ensureDummyShadowMap()
         let shadowCubeTexture = shadowCube ?? ensureDummyPointShadowMap()
@@ -2176,6 +2229,10 @@ final class MetalRenderer {
                     // march, so this is inert (and byte-identical) when there are no fields.
                     if let sdf3DGroupBuffer { encoder.setFragmentBuffer(sdf3DGroupBuffer, offset: 0, index: 4) }
                     if let sdf3DNodeBuffer { encoder.setFragmentBuffer(sdf3DNodeBuffer, offset: 0, index: 5) }
+                    // The half-res field-shadow texture (the live RenderQuality path) the fragment
+                    // samples when `lighting.fieldShadowMode == 1`; a never-sampled stand-in (the
+                    // gradient `strip`) otherwise, so the declared texture is always bound.
+                    encoder.setFragmentTexture(halfResFieldShadow ?? strip, index: 3)
                 }
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .depthScene:
@@ -2842,6 +2899,86 @@ final class MetalRenderer {
         }
         enc.endEncoding()
         return (color, depth)
+    }
+
+    /// The number of raymarched SDF fields casting onto meshes under a point/ray-traced caster
+    /// (0 for a mesh-only or directional/spot scene, the byte-identical mesh path). Shared by the
+    /// main encode and the half-res field-shadow pre-pass so both agree on whether the cast is on.
+    private func resolveFieldCasterCount(_ lighting: OllinLighting, _ drawer: Drawer) -> Int32 {
+        (lighting.shadowLight >= 0 && lighting.shadowKind != 0 && !drawer.sdf3DGroups.isEmpty)
+            ? Int32(drawer.sdf3DGroups.count) : 0
+    }
+
+    /// The point/RT field-cast shadow is per-receiver-pixel (the lit mesh fragments march the field
+    /// toward the light), which is GPU-heavy on a screen-filling receiver. The live RenderQuality
+    /// path computes it once at reduced resolution here (re-rendering the receiver meshes,
+    /// depth-tested so the front surface's factor wins, with a fragment that outputs only the
+    /// field-shadow factor), and the full-res mesh pass samples it (`fieldShadowMode == 1`). `nil`
+    /// at the full-res tier (`.detail`/export march inline → byte-identical), with no fields, or no
+    /// point/RT caster. Mirrors `encodeRaymarchHalfRes` (same scale dial, same live-only gating).
+    private func encodeFieldShadowHalfRes(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                                          meshBuffer: MTLBuffer?, groupBuffer: MTLBuffer?, nodeBuffer: MTLBuffer?,
+                                          uniforms3D: Uniforms3D, lighting: OllinLighting,
+                                          fullWidth: Int, fullHeight: Int) -> MTLTexture? {
+        let scale = resolveRaymarchScale(drawer.raymarchQualitySetting)
+        guard scale < 1.0, lighting.fieldCasterCount > 0,
+              let meshBuffer, let groupBuffer, let nodeBuffer,
+              drawer.batches.contains(where: { $0.kind == .mesh3D }) else { return nil }
+
+        let w = max(1, Int((Double(fullWidth) * scale).rounded()))
+        let h = max(1, Int((Double(fullHeight) * scale).rounded()))
+        if halfResFieldShadowSize != (w, h) || halfResFieldShadow == nil || halfResFieldShadowDepth == nil {
+            guard let c = makeHalfResColor(width: w, height: h),
+                  let d = makeHalfResDepth(width: w, height: h) else { return nil }
+            halfResFieldShadow = c; halfResFieldShadowDepth = d; halfResFieldShadowSize = (w, h)
+        }
+        guard let color = halfResFieldShadow, let depth = halfResFieldShadowDepth,
+              let pipe = try? pipeline(.fieldShadowHalfRes(depth: depthPixelFormat)) else { return nil }
+
+        // Upload the field buffers here (this pre-pass may run before anything else uploads them).
+        let groups3D = drawer.sdf3DGroups, nodes3D = drawer.sdf3DNodes
+        groups3D.withUnsafeBytes { groupBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count) }
+        if !nodes3D.isEmpty {
+            nodes3D.withUnsafeBytes { nodeBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count) }
+        }
+
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = color
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: 1, green: 1, blue: 1, alpha: 1)  // lit where no mesh
+        pass.colorAttachments[0].storeAction = .store
+        pass.depthAttachment.texture = depth
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.clearDepth = 1.0
+        pass.depthAttachment.storeAction = .dontCare
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(w), height: Double(h), znear: 0, zfar: 1))
+        enc.setRenderPipelineState(pipe)
+        enc.setDepthStencilState(depthTestState)
+        var u3 = uniforms3D
+        var lit = lighting
+        enc.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
+        enc.setFragmentBytes(&lit, length: MemoryLayout<OllinLighting>.stride, index: 0)
+        enc.setFragmentBuffer(groupBuffer, offset: 0, index: 4)
+        enc.setFragmentBuffer(nodeBuffer, offset: 0, index: 5)
+
+        // Every mesh batch (every receiver) renders, for correct depth occlusion; the factor for a
+        // matcap/wireframe mesh is computed but unused (those fragments don't sample it).
+        let meshStride = MemoryLayout<OllinMeshVertex>.stride
+        let meshCount = drawer.meshVertices.count
+        let batches = drawer.batches
+        for i in batches.indices {
+            let batch = batches[i]
+            guard batch.kind == .mesh3D else { continue }
+            let next = i + 1 < batches.count ? batches[i + 1] : nil
+            let end = next?.meshStart ?? meshCount
+            let count = end - batch.meshStart
+            guard count > 0 else { continue }
+            enc.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
+            enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+        }
+        enc.endEncoding()
+        return color
     }
 
     /// A half-resolution sampleable linear-float color target for the raymarch pre-pass.
