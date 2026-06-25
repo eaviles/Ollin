@@ -639,6 +639,12 @@ final class Drawer {
     /// be referenced, and whose own filter/combine ops were appended earlier) are
     /// resolved before this op runs.
     func recordCombine(_ base: RenderTarget, _ aux: RenderTarget, _ op: Combine) -> RenderTarget {
+        // Ambient occlusion reads a surface normal: ask the renderer to capture a true
+        // mesh-normal layer for `base` (instead of the shader reconstructing one from
+        // depth, which is ambiguous at concave seams). Only when `base` actually holds a
+        // 3D scene; a hand-drawn depth map leaves `needsDepth` false, so the shader
+        // keeps its depth-reconstruction path and the frame stays byte-identical.
+        if case .ambientOcclusion = op.kind, base.needsDepth { base.needsNormals = true }
         let output = RenderTarget(width: base.width, height: base.height, scale: base.scale,
                                   drawer: self, origin: .combine(base: base, aux: aux, op: op))
         filterOps.append(output)

@@ -83,6 +83,21 @@ public final class RenderTarget {
     /// its own occlusion, not the extra depth-resolve + normalize work.
     var depthLayer: RenderTarget?
 
+    /// Set during recording when this 3D target feeds an ambient-occlusion combine
+    /// (`combined(with:.ambientOcclusion(...))`). It asks the renderer to also capture
+    /// true mesh normals into a `normals` layer, so the occlusion reads a stable
+    /// surface normal instead of one reconstructed from depth (which is ambiguous at a
+    /// concave seam and flickers slightly as the camera turns). Stays false on a 2D
+    /// target or a 3D target that doesn't run AO, so the normal pass (and any cost)
+    /// is skipped and the frame is byte-identical to before.
+    var needsNormals = false
+
+    /// The view-space normal layer (`normals`), created lazily the first time it's
+    /// read. Filled by the renderer's dedicated mesh-normal pass when `needsNormals`,
+    /// so a combine that needs a true surface normal (ambient occlusion) can sample it.
+    /// `nil` until accessed, like `depthLayer`.
+    var normalLayer: RenderTarget?
+
     /// Camera parameters captured when this layer is filled as a normalized depth layer,
     /// so a combine that reconstructs view-space geometry from the depth (ambient
     /// occlusion) can rebuild it. Stamped by the renderer alongside the depth normalize;
@@ -129,6 +144,18 @@ public final class RenderTarget {
         if let depthLayer { return depthLayer }
         let layer = RenderTarget(width: width, height: height, scale: scale, drawer: drawer)
         depthLayer = layer
+        return layer
+    }
+
+    /// This target's per-pixel view-space surface normal as a sampleable layer, filled
+    /// by the renderer's mesh-normal pass when the target captured 3D geometry. Internal
+    /// plumbing: the ambient-occlusion combine reads it to occlude against a true normal
+    /// rather than one reconstructed from depth. Like `depth`, it exists only after 3D
+    /// was drawn into this target; on a 2D-only target it stays empty.
+    var normals: RenderTarget {
+        if let normalLayer { return normalLayer }
+        let layer = RenderTarget(width: width, height: height, scale: scale, drawer: drawer)
+        normalLayer = layer
         return layer
     }
 

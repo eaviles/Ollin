@@ -361,9 +361,11 @@ static inline float2 ollin_ssao_project(float3 vp, constant float4 *params) {
 // count; params[2..3] = the depth-reconstruction camera geometry.
 fragment float4 ollin_fx_ssao(PresentOut in [[stage_in]],
                               texture2d<float> depthMap [[texture(0)]],
+                              texture2d<float> normalMap [[texture(1)]],
                               sampler samp [[sampler(0)]],
                               constant float4 *params [[buffer(0)]]) {
     float radius = params[0].x, bias = params[0].z;
+    bool hasNormals = params[0].w > 0.5;
     float2 texel = params[1].xy;
     int n = int(max(4.0, params[1].z));
     float near = params[2].x, far = params[2].y;
@@ -374,21 +376,32 @@ fragment float4 ollin_fx_ssao(PresentOut in [[stage_in]],
     float3 P = ollin_ssao_viewpos(in.uv, t, params);
     float distP = near + t * (far - near);
 
-    // Normal from depth: the better-facing of paired neighbours a few texels out (a
-    // 1-texel stencil is near the 16-bit depth quantisation, which bands flat faces).
-    float2 noff = texel * 3.0;
-    float tL = ollin_dof_depth(depthMap.sample(samp, in.uv - float2(noff.x, 0)));
-    float tR = ollin_dof_depth(depthMap.sample(samp, in.uv + float2(noff.x, 0)));
-    float tU = ollin_dof_depth(depthMap.sample(samp, in.uv - float2(0, noff.y)));
-    float tD = ollin_dof_depth(depthMap.sample(samp, in.uv + float2(0, noff.y)));
-    float3 dx = (abs(tR - t) < abs(tL - t))
-        ? ollin_ssao_viewpos(in.uv + float2(noff.x, 0), tR, params) - P
-        : P - ollin_ssao_viewpos(in.uv - float2(noff.x, 0), tL, params);
-    float3 dy = (abs(tD - t) < abs(tU - t))
-        ? ollin_ssao_viewpos(in.uv + float2(0, noff.y), tD, params) - P
-        : P - ollin_ssao_viewpos(in.uv - float2(0, noff.y), tU, params);
-    float3 N = normalize(cross(dx, dy));
-    if (dot(N, -P) < 0.0) N = -N;
+    // Surface normal: a true view-space normal sampled from the mesh G-buffer when one
+    // was captured (the `.ambientOcclusion` over a 3D scene; alpha 1 marks a real
+    // normal): stable at a concave seam where the depth reconstruction is ambiguous and
+    // flickers as the camera turns. Otherwise reconstruct it from depth: the better-facing
+    // of paired neighbours a few texels out (a 1-texel stencil is near the 16-bit depth
+    // quantisation, which bands flat faces). The G-buffer is stored in the same view space
+    // `ollin_ssao_viewpos` works in, so no transform is needed here.
+    float3 N;
+    float4 nSample = hasNormals ? normalMap.sample(samp, in.uv) : float4(0);
+    if (hasNormals && nSample.a > 0.5) {
+        N = normalize(nSample.xyz);
+    } else {
+        float2 noff = texel * 3.0;
+        float tL = ollin_dof_depth(depthMap.sample(samp, in.uv - float2(noff.x, 0)));
+        float tR = ollin_dof_depth(depthMap.sample(samp, in.uv + float2(noff.x, 0)));
+        float tU = ollin_dof_depth(depthMap.sample(samp, in.uv - float2(0, noff.y)));
+        float tD = ollin_dof_depth(depthMap.sample(samp, in.uv + float2(0, noff.y)));
+        float3 dx = (abs(tR - t) < abs(tL - t))
+            ? ollin_ssao_viewpos(in.uv + float2(noff.x, 0), tR, params) - P
+            : P - ollin_ssao_viewpos(in.uv - float2(noff.x, 0), tL, params);
+        float3 dy = (abs(tD - t) < abs(tU - t))
+            ? ollin_ssao_viewpos(in.uv + float2(0, noff.y), tD, params) - P
+            : P - ollin_ssao_viewpos(in.uv - float2(0, noff.y), tU, params);
+        N = normalize(cross(dx, dy));
+    }
+    if (dot(N, -P) < 0.0) N = -N;                                  // ensure N faces the eye
 
     // TBN that orients the hemisphere to the surface, a **continuous** orthonormal basis
     // (a branchless construction; README Techniques), *not* a per-pixel random one.

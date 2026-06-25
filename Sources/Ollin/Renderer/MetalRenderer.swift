@@ -184,6 +184,15 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_mesh_matcap_vertex", fragment: "ollin_mesh_matcap_fragment",
                         blend: blend, depthFormat: depth)
         }
+        // mesh view-space normal G-buffer: re-render the meshes single-sample, depth-tested,
+        // writing each surface's view-space normal (alpha 1) so the ambient-occlusion combine
+        // reads a true normal instead of reconstructing one from depth. Material-agnostic:
+        // one pipeline for the solid / textured / matcap meshes. `.normal` blend with the
+        // fragment's alpha 1 over a transparent clear is effectively a replace.
+        static func meshNormal(depth: MTLPixelFormat) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_normal_vertex", fragment: "ollin_mesh_normal_fragment",
+                        depthFormat: depth, singleSample: true)
+        }
         // depth-scene backdrop: a textured quad that also writes per-pixel depth from
         // a depth map (premultiplied color, like the image path; outputs [[depth]]).
         static func depthScene(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -1314,6 +1323,17 @@ final class MetalRenderer {
                                                                          pixelWidth: pw, pixelHeight: ph)
                 }
             }
+            // The mesh-normal G-buffer, when this 3D target feeds an ambient-occlusion
+            // combine: a dedicated single-sample mesh pass so SSAO occludes against a true
+            // surface normal rather than one reconstructed from depth. Gated on
+            // `needsNormals` (set when an `.ambientOcclusion` combine reads a 3D target), so
+            // a target that doesn't run AO never encodes it and stays byte-identical. The
+            // `normals` accessor instantiates the layer here (the sketch never names it, so
+            // unlike `depth` nothing else creates it); the combine then reads its texture.
+            if target.needsNormals {
+                target.normals.texture = encodeMeshNormals(drawer, into: cb, meshBuffer: buffers.mesh,
+                                                           width: pw, height: ph, pooled: pooled)
+            }
         }
         // Feedback layers: like a geometry target, but rendered into persistent
         // ping-pong storage. The block reads the *front* (last frame, exposed as
@@ -1410,7 +1430,11 @@ final class MetalRenderer {
                                              into: cb, pooled: pooled)
             case let .combine(base, aux, op):
                 guard let b = base.texture, let a = aux.texture else { continue }
+                // Ambient occlusion reads the base's mesh-normal G-buffer when it was
+                // captured (a 3D base feeding AO); nil otherwise → the shader's
+                // depth-reconstruction fallback.
                 output.texture = applyCombine(op, base: b, aux: a, depth: aux.depthReconstruction,
+                                              normals: base.normalLayer?.texture,
                                               width: output.pixelWidth, height: output.pixelHeight,
                                               into: cb, pooled: pooled)
             default:
@@ -1606,7 +1630,7 @@ final class MetalRenderer {
     /// reading premultiplied-linear and writing the same. The two inputs may differ
     /// in size; the fragment samples by normalized coordinates, so it doesn't matter.
     private func applyCombine(_ op: Combine, base: MTLTexture, aux: MTLTexture,
-                              depth: DepthReconstruction? = nil,
+                              depth: DepthReconstruction? = nil, normals: MTLTexture? = nil,
                               width: Int, height: Int,
                               into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
         func pass(_ fragment: String, _ params: [SIMD4<Float>]) -> MTLTexture? {
@@ -1642,8 +1666,13 @@ final class MetalRenderer {
             let d = depth ?? .neutral
             guard let aoTex = acquireFilterTexture(width: width, height: height, pooled: pooled),
                   let out = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
-            encodeEffectFragment("ollin_fx_ssao", inputs: [aux], output: aoTex,
-                                 params: [SIMD4(Float(radius), Float(intensity), Float(bias), 0), texel,
+            // The mesh-normal G-buffer at texture index 1 (depth stays 0) when it was
+            // captured: the shader reads a true view-space normal instead of reconstructing
+            // one from depth. A never-sampled stand-in (the depth) keeps the binding valid
+            // otherwise, gated by the `hasNormals` flag in params[0].w.
+            let hasNormals: Float = normals != nil ? 1 : 0
+            encodeEffectFragment("ollin_fx_ssao", inputs: [aux, normals ?? aux], output: aoTex,
+                                 params: [SIMD4(Float(radius), Float(intensity), Float(bias), hasNormals), texel,
                                           SIMD4(d.near, d.far, d.tanHalfFovX, d.tanHalfFovY),
                                           SIMD4(d.principalX, d.principalY, d.isPerspective ? 1 : 0, 0)],
                                  into: cb)
@@ -2004,13 +2033,7 @@ final class MetalRenderer {
         // one are undisturbed. Built from the camera and the viewport's aspect.
         var uniforms3D: Uniforms3D? = nil
         if let camera = drawer.camera3D {
-            let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
-            let proj = camera.projectionMatrix(aspect: aspect)
-            let steps = resolveRaymarchSteps(drawer.raymarchQualitySetting)
-            var u3 = Uniforms3D(view: camera.viewMatrix, projection: proj,
-                                inverseViewProjection: simd_inverse(proj * camera.viewMatrix),
-                                viewport: viewport,
-                                raymarchSteps: SIMD2<Float>(Float(steps.march), Float(steps.shadow)))
+            var u3 = makeUniforms3D(drawer, camera: camera, viewport: viewport)
             encoder.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
             uniforms3D = u3   // the raymarch fragment also reads it (the ray + depth + step budget)
         }
@@ -3001,6 +3024,77 @@ final class MetalRenderer {
     /// field-shadow factor), and the full-res mesh pass samples it (`fieldShadowMode == 1`). `nil`
     /// at the full-res tier (`.detail`/export march inline → byte-identical), with no fields, or no
     /// point/RT caster. Mirrors `encodeRaymarchHalfRes` (same scale dial, same live-only gating).
+    /// Build the 3D camera constants (`Uniforms3D`) for a camera + viewport: the same
+    /// view / projection / inverse the geometry pass binds at vertex index 2. Shared with
+    /// the inline build in `encode` so the auxiliary mesh passes (the normal G-buffer)
+    /// build them identically.
+    private func makeUniforms3D(_ drawer: Drawer, camera: Camera3D, viewport: SIMD2<Float>) -> Uniforms3D {
+        let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
+        let proj = camera.projectionMatrix(aspect: aspect)
+        let steps = resolveRaymarchSteps(drawer.raymarchQualitySetting)
+        return Uniforms3D(view: camera.viewMatrix, projection: proj,
+                          inverseViewProjection: simd_inverse(proj * camera.viewMatrix),
+                          viewport: viewport,
+                          raymarchSteps: SIMD2<Float>(Float(steps.march), Float(steps.shadow)))
+    }
+
+    /// The mesh-normal G-buffer pass: re-render a target's meshes single-sample,
+    /// depth-tested, writing each surface's view-space normal so the ambient-occlusion
+    /// combine reads a true normal instead of one reconstructed from depth (which is
+    /// ambiguous at a concave seam and flickers as the camera turns). Mirrors the
+    /// half-res field-shadow pass: a dedicated mesh-only re-encode, not a second
+    /// attachment on the shared geometry pass (which would force every 2D pipeline in
+    /// that pass to be MRT-compatible). Runs only when the target asked for normals
+    /// (`needsNormals`, set when an `.ambientOcclusion` combine reads a 3D target), so a
+    /// frame without AO pays nothing and is byte-identical. Returns the filled normal
+    /// texture at the target's pixel size, or nil when there's no mesh to draw.
+    private func encodeMeshNormals(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                                   meshBuffer: MTLBuffer?, width: Int, height: Int,
+                                   pooled: Bool) -> MTLTexture? {
+        guard let camera = drawer.camera3D, let meshBuffer,
+              drawer.batches.contains(where: { $0.kind == .mesh3D }),
+              let color = acquireFilterTexture(width: width, height: height, pooled: pooled),
+              let depth = makeHalfResDepth(width: width, height: height),
+              let pipe = try? pipeline(.meshNormal(depth: depthPixelFormat)) else { return nil }
+
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = color
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)  // alpha 0 = no normal here
+        pass.colorAttachments[0].storeAction = .store
+        pass.depthAttachment.texture = depth
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.clearDepth = 1.0
+        pass.depthAttachment.storeAction = .dontCare
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(width), height: Double(height), znear: 0, zfar: 1))
+        enc.setRenderPipelineState(pipe)
+        enc.setDepthStencilState(depthTestState)
+        var u3 = makeUniforms3D(drawer, camera: camera, viewport: SIMD2(Float(width), Float(height)))
+        enc.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
+
+        let meshStride = MemoryLayout<OllinMeshVertex>.stride
+        let meshCount = drawer.meshVertices.count
+        let batches = drawer.batches
+        for i in batches.indices {
+            let batch = batches[i]
+            guard batch.kind == .mesh3D else { continue }
+            // Wireframe meshes have no surface to occlude; their sparse edge fragments
+            // would write stray normals, so skip them. Solid / textured / matcap all
+            // carry a real per-vertex normal and feed the buffer (the normal shader
+            // ignores material).
+            if batch.meshWireframe { continue }
+            let next = i + 1 < batches.count ? batches[i + 1] : nil
+            let end = next?.meshStart ?? meshCount
+            let count = end - batch.meshStart
+            guard count > 0 else { continue }
+            enc.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
+            enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+        }
+        enc.endEncoding()
+        return color
+    }
+
     private func encodeFieldShadowHalfRes(_ drawer: Drawer, into cb: MTLCommandBuffer,
                                           meshBuffer: MTLBuffer?, groupBuffer: MTLBuffer?, nodeBuffer: MTLBuffer?,
                                           uniforms3D: Uniforms3D, lighting: OllinLighting,

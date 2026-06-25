@@ -798,6 +798,44 @@ fragment float4 ollin_mesh_matcap_fragment(MeshMatcapOut in [[stage_in]],
     return float4(tex.rgb * srgbToLinear(in.color.rgb), in.color.a);
 }
 
+// MARK: - Mesh normal G-buffer
+//
+// A depth-tested pass that writes each mesh's view-space surface normal into a float
+// target, so the ambient-occlusion combine can read a true normal instead of
+// reconstructing one from depth (which is ambiguous at a concave seam and flickers
+// slightly as the camera turns). Same vertex stream + camera as the lit pass; the
+// material is ignored, so the solid / textured / matcap meshes all feed it.
+//
+// The frame is the same camera view space the occlusion estimator works in
+// (`ollin_ssao_viewpos`): x right, y up, looking down −z. That estimator's `-ndcY`
+// term converts its top-down uv back into this y-up frame, so the reconstructed
+// normal it currently builds (and therefore the one stored here) is just the world
+// normal rotated by the view matrix, with no extra Y flip. Alpha 1 marks "a real
+// surface normal is here": a pixel the pass didn't cover stays at the cleared alpha 0,
+// and the AO shader falls back to depth reconstruction there (so a mesh-free or mixed
+// region degrades gracefully).
+
+struct MeshNormalOut {
+    float4 position [[position]];
+    float3 viewNormal;   // view-space normal, interpolated
+};
+
+vertex MeshNormalOut ollin_mesh_normal_vertex(uint vid [[vertex_id]],
+                                              const device OllinMeshVertex *verts [[buffer(0)]],
+                                              constant Uniforms3D &u [[buffer(2)]]) {
+    OllinMeshVertex v = verts[vid];
+    MeshNormalOut out;
+    out.position = u.projection * (u.view * float4(v.position.xyz, 1.0));
+    // World → view normal: the upper 3×3 of the view matrix (a rigid camera transform,
+    // so no normal matrix needed), the same transform the matcap path uses.
+    out.viewNormal = float3x3(u.view[0].xyz, u.view[1].xyz, u.view[2].xyz) * v.normal.xyz;
+    return out;
+}
+
+fragment float4 ollin_mesh_normal_fragment(MeshNormalOut in [[stage_in]]) {
+    return float4(normalize(in.viewNormal), 1.0);     // alpha 1 = real surface normal
+}
+
 // MARK: - Wireframe 3D mesh
 //
 // Draws a mesh's triangle edges only (the faces are see-through), unlit. The mesh
