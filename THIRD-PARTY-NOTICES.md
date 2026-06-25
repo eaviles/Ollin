@@ -94,6 +94,23 @@ redistributed inside this repository.
 
 ---
 
+## Hosek-Wilkie sky model
+
+- **Used for:** the procedural-sky environment (`Environment.sky(...)`). Its coefficient dataset and per-channel configuration code (RGB path) are cooked once on the CPU; Ollin's own Metal shader evaluates the sky radiance per texel from the result. Wrapped behind Ollin's own API.
+- **Location in this repo:** [`External/CHosekWilkie/`](External/CHosekWilkie/), holding the upstream header and RGB dataset verbatim, with `ArHosekSkyModel.c` trimmed to the RGB path (the spectral/CIE models and their large datasets removed; see the directory's `README.md`).
+- **Upstream:** https://github.com/mmp/pbrt-v3 (`src/ext`), the reference implementation by Lukas Hosek and Alexander Wilkie (Charles University), v1.4a. Papers: "An Analytic Model for Full Spectral Sky-Dome Radiance" (SIGGRAPH 2012) and "Adding a Solar-Radiance Function to the Hosek-Wilkie Skylight Model" (IEEE CG&A 2013).
+- **License:** 3-clause BSD, full text at [`External/CHosekWilkie/LICENSE`](External/CHosekWilkie/LICENSE)
+
+> Copyright (c) 2012 - 2013, Lukas Hosek and Alexander Wilkie. All rights reserved.
+>
+> Redistribution and use in source and binary forms, with or without modification,
+> are permitted provided that the copyright notice, the list of conditions, and the
+> disclaimer are retained, and the contributors' names are not used to endorse
+> derived products without permission. (The software is provided "as is"; see
+> `LICENSE` for the full text and warranty disclaimer.)
+
+---
+
 ## Cozette
 
 - **Used for:** the bundled default bitmap font (`BitmapFont.builtin`), loaded at runtime from its BDF by the font loader and rendered by `drawText`.

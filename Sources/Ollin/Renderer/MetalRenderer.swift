@@ -6,6 +6,7 @@ import simd
 import CoreGraphics
 import os   // OSAllocatedUnfairLock for the off-thread equirect decode handoff
 import COllinShaders   // OllinVertex / Uniforms / SDFInstance, shared with the shaders
+import CHosekWilkie   // ollin_hosek_rgb_configs, the procedural-sky coefficient cook
 
 /// The Metal back end. Deliberately small: one command queue, an enum-keyed
 /// cache of render pipelines (keyed by shader pair × blend mode — solid
@@ -3772,7 +3773,8 @@ private final class IBLMaps {
     let prefilter: MTLTexture
     let envCube: MTLTexture
     /// The full-resolution equirectangular source, kept so the skybox samples it directly
-    /// (sharp) rather than the low-resolution cube. Nil for a procedural sky.
+    /// (sharp) rather than the low-resolution cube. For a procedural sky it's the generated
+    /// equirect. Optional only for a bake that produced no source texture.
     let equirect: MTLTexture?
     let maxMip: Int
     /// An auto-exposure factor: the environments range ~800× in average brightness, so each
@@ -3797,6 +3799,11 @@ extension MetalRenderer {
     private static let iblPrefilterMips = 6
     private static let iblBRDFSize = 256
     private static let iblTargetLuminance: Float = 0.4   // auto-exposure target average
+    /// A neutral midday sky used to light a scene while a non-bundled HDRI downloads, instead
+    /// of leaving it unlit (see resolveEnvironmentSources). The env's own intensity/rotation
+    /// still apply, since the placeholder is a copy of it with only the source swapped.
+    static let skyPlaceholderSource = Environment.Source.sky(turbidity: 2.5, sunElevation: 0.6,
+                                                             groundAlbedo: 0.3)
 
     /// Resolve the frame's environment to its baked IBL maps, baking once on the given
     /// command buffer and caching by source (the bake is a few fullscreen passes; a frame
@@ -3824,11 +3831,35 @@ extension MetalRenderer {
     /// source so the bake runs once; the raw float pixels are freed once baked into textures.
     private func bakeReady(_ env: Environment, blocking: Bool,
                            commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {
+        // A static sky (or an HDRI) keys on its exact source, so it bakes once and then reuses
+        // the cache every frame. An animated sky is a fresh source each frame, so it re-bakes
+        // entirely on the GPU (no CPU read-back), which a smoothly moving sun needs.
         if let cached = iblCache[env.source] { return cached }
-        guard let bytes = equirectBytes(for: env, blocking: blocking) else { return nil }
-        guard let maps = bakeIBL(env, equirect: bytes, commandBuffer: cb) else { return nil }
+
+        let loaded: MTLTexture, avg: Float
+        let isSky: Bool
+        if case .sky(let t, let e, let a) = env.source {
+            guard let sky = generateSkyEquirectTexture(turbidity: t, sunElevation: e,
+                                                       groundAlbedo: a, commandBuffer: cb) else { return nil }
+            (loaded, avg) = sky
+            isSky = true
+        } else {
+            guard let bytes = equirectBytes(for: env, blocking: blocking),
+                  let tex = uploadEquirect(bytes) else { return nil }
+            (loaded, avg) = (tex, bytes.avg)
+            equirectReady.withLock { $0[env.source] = nil }
+            isSky = false
+        }
+        guard let maps = bakeIBL(env, equirectTexture: loaded, avgLuminance: avg,
+                                 fastSky: isSky, commandBuffer: cb) else { return nil }
+        // An animated sky makes a fresh source each frame; drop the previous sky bake so its GPU
+        // textures don't accumulate over the animation (a static sky keeps its one entry).
+        if case .sky = env.source {
+            for k in iblCache.keys where k != env.source {
+                if case .sky = k { iblCache[k] = nil }
+            }
+        }
         iblCache[env.source] = maps
-        equirectReady.withLock { $0[env.source] = nil }
         return maps
     }
 
@@ -3843,10 +3874,14 @@ extension MetalRenderer {
         case .resource, .url:
             return (env, nil)
         case .sky:
-            return (nil, nil)   // procedural sky bake is a follow-up
+            return (env, nil)   // generated on the GPU when its pixels are baked
         case .remote(let url, let fallback):
             let cache = EnvironmentCache.shared
+            // While a non-bundled HDRI downloads, light the scene with a procedural sky
+            // (keeping the env's own intensity/rotation/backdrop) instead of leaving it
+            // unlit, unless an explicit bundled placeholder was given.
             let placeholder = fallback.map { with(.resource(name: $0, bundleID: nil)) }
+                ?? with(Self.skyPlaceholderSource)
             if let file = cache.cachedFile(for: url) {
                 return (with(.url(file)), placeholder)
             }
@@ -3891,6 +3926,8 @@ extension MetalRenderer {
             }
             return nil
         case .sky, .remote:
+            // .sky is generated as a texture directly in bakeReady (no CPU pixels); .remote was
+            // resolved to a cached .url or a placeholder before reaching here.
             return nil
         }
     }
@@ -3906,9 +3943,10 @@ extension MetalRenderer {
     var currentIBLNormalization: Float { currentIBL?.normalization ?? 1 }
     var iblBRDFLUTTexture: MTLTexture? { iblBRDFLUT }
 
-    private func bakeIBL(_ environment: Environment, equirect bytes: EquirectBytes,
+    private func bakeIBL(_ environment: Environment, equirectTexture loaded: MTLTexture,
+                         avgLuminance: Float, fastSky: Bool = false,
                          commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {
-        guard let env = makeEnvCube(equirect: bytes, commandBuffer: cb) else { return nil }
+        guard let env = makeEnvCube(equirectTexture: loaded, commandBuffer: cb) else { return nil }
         let envCube = env.cube
         if let blit = cb.makeBlitCommandEncoder() {
             blit.generateMipmaps(for: envCube)   // the prefilter samples these mips
@@ -3919,37 +3957,40 @@ extension MetalRenderer {
               let irrPipe = try? pipeline(.ibl("ollin_ibl_irradiance")),
               let prePipe = try? pipeline(.ibl("ollin_ibl_prefilter")) else { return nil }
 
+        // A procedural sky is low-frequency, so its convolutions converge with far fewer samples
+        // than an HDRI; the cheaper bake lets a moving sun re-bake every frame smoothly. `0`
+        // selects the default fine bake in the shader, keeping the HDRI path byte-identical.
+        let irrStep: Float = fastSky ? 0.08 : 0      // coarser hemisphere step (~10x fewer samples)
+        let preSamples: Float = fastSky ? 32 : 0     // fewer GGX samples (vs the default 256)
         for face in 0..<6 {
             bakeIBLFace(pipeline: irrPipe, inputs: [envCube], output: irradiance, slice: face,
-                        level: 0, params: SIMD4<Float>(Float(face), 0, 0, 0), commandBuffer: cb)
+                        level: 0, params: SIMD4<Float>(Float(face), 0, irrStep, 0), commandBuffer: cb)
         }
         let mips = Self.iblPrefilterMips
         for mip in 0..<mips {
             let roughness = mips > 1 ? Float(mip) / Float(mips - 1) : 0
             for face in 0..<6 {
                 bakeIBLFace(pipeline: prePipe, inputs: [envCube], output: prefilter, slice: face,
-                            level: mip, params: SIMD4<Float>(Float(face), roughness, 0, 0),
+                            level: mip, params: SIMD4<Float>(Float(face), roughness, preSamples, 0),
                             commandBuffer: cb)
             }
         }
         ensureBRDFLUT(commandBuffer: cb)
         // Auto-exposure: scale to a common target average luminance (clamped so a near-black
         // night or a blinding noon stays sane), applied to the lighting and the skybox.
-        let normalization = env.avgLuminance > 1e-5
-            ? min(max(Self.iblTargetLuminance / env.avgLuminance, 0.01), 12)
+        let normalization = avgLuminance > 1e-5
+            ? min(max(Self.iblTargetLuminance / avgLuminance, 0.01), 12)
             : 1
         return IBLMaps(irradiance: irradiance, prefilter: prefilter, envCube: envCube,
                        equirect: env.equirect, maxMip: mips - 1, normalization: normalization)
     }
 
-    /// The environment as a cube map (plus the source equirect for the skybox and its
-    /// solid-angle-weighted average luminance for auto-exposure): the processed HDRI pixels
-    /// uploaded and reprojected equirect→cube. Returns nil on upload/pipeline failure, so the
-    /// frame stays on the no-IBL path.
-    private func makeEnvCube(equirect bytes: EquirectBytes, commandBuffer cb: MTLCommandBuffer)
-        -> (cube: MTLTexture, equirect: MTLTexture?, avgLuminance: Float)? {
-        guard let loaded = uploadEquirect(bytes),
-              let cube = makeCubeTexture(face: Self.iblEnvFace, mipped: true),
+    /// Reproject an equirect texture (a decoded HDRI or a generated sky) into an environment
+    /// cube map for the bake, returning the cube and the equirect itself (the skybox samples it
+    /// directly). Returns nil on cube/pipeline failure, so the frame stays on the no-IBL path.
+    private func makeEnvCube(equirectTexture loaded: MTLTexture, commandBuffer cb: MTLCommandBuffer)
+        -> (cube: MTLTexture, equirect: MTLTexture)? {
+        guard let cube = makeCubeTexture(face: Self.iblEnvFace, mipped: true),
               let pipe = try? pipeline(.ibl("ollin_ibl_equirect_to_cube")) else { return nil }
         // Mip the equirect *before* the cube bake: a high-res equirect → small cube face is a
         // big minification, so the equirect→cube sample needs valid mips (and the skybox blur
@@ -3962,7 +4003,7 @@ extension MetalRenderer {
             bakeIBLFace(pipeline: pipe, inputs: [loaded], output: cube, slice: face, level: 0,
                         params: SIMD4<Float>(Float(face), 0, 0, 0), commandBuffer: cb)
         }
-        return (cube, loaded, bytes.avg)
+        return (cube, loaded)
     }
 
     /// Upload processed equirect float pixels into a mipmapped `rgba16Float` texture (the
@@ -3980,6 +4021,104 @@ extension MetalRenderer {
                         withBytes: raw.baseAddress!, bytesPerRow: bytes.width * 8)
         }
         return tex
+    }
+
+    /// Generate a Hosek-Wilkie procedural sky directly as a mipmapped equirect *texture* on the
+    /// given (frame) command buffer, plus its average luminance for auto-exposure. The
+    /// per-channel sky coefficients are cooked once on the CPU (the vendored model, the step
+    /// that reads its dataset); a fullscreen pass then fills the equirect on the GPU. Crucially
+    /// there's no CPU round-trip: the texture feeds the cube / irradiance / prefilter bake on the
+    /// same command buffer, and the average is integrated analytically from the same coefficients
+    /// (a cheap CPU sphere sum), so an animated sun re-bakes entirely on the GPU with no stall.
+    /// 1024x512 is ample for the lighting and a smooth backdrop.
+    private func generateSkyEquirectTexture(turbidity: Double, sunElevation: Double,
+                                            groundAlbedo: Double, commandBuffer cb: MTLCommandBuffer)
+        -> (texture: MTLTexture, avgLuminance: Float)? {
+        let width = 1024, height = 512
+        let turb = min(max(turbidity, 1), 10)
+        let albedo = min(max(groundAlbedo, 0), 1)
+        let elevation = min(max(sunElevation, 0.001), Double.pi / 2 - 0.001)
+        var configs = [Double](repeating: 0, count: 27)
+        var radiances = [Double](repeating: 0, count: 3)
+        configs.withUnsafeMutableBufferPointer { cp in
+            radiances.withUnsafeMutableBufferPointer { rp in
+                ollin_hosek_rgb_configs(turb, albedo, elevation, cp.baseAddress, rp.baseAddress)
+            }
+        }
+        // Pack 11 float4s (see ollin_ibl_sky_gen): 9 coefficient rows (rgb = the R/G/B value of
+        // coefficient i), the per-channel radiance + ground albedo, the sun direction + radius.
+        var sky = [SIMD4<Float>](repeating: .zero, count: 11)
+        for i in 0..<9 {
+            sky[i] = SIMD4<Float>(Float(configs[i]), Float(configs[9 + i]), Float(configs[18 + i]), 0)
+        }
+        sky[9] = SIMD4<Float>(Float(radiances[0]), Float(radiances[1]), Float(radiances[2]), Float(albedo))
+        // The sun rises in a fixed compass direction (+Z), raised by its elevation; rotated(_:) spins it.
+        let solarRadius: Float = 0.0255   // ~1.5 deg disc, a touch wider than the sun for visible reflections
+        let sunDir = SIMD3<Float>(0, Float(sin(elevation)), Float(cos(elevation)))
+        sky[10] = SIMD4<Float>(sunDir.x, sunDir.y, sunDir.z, solarRadius)
+
+        // Render the sky equirect on the frame's command buffer (no read-back), mipmapped so the
+        // cube bake and the skybox blur sample valid levels (makeEnvCube generates the mips).
+        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float,
+                                                            width: width, height: height, mipmapped: true)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        guard let tex = device.makeTexture(descriptor: desc),
+              let pipe = try? pipeline(.ibl("ollin_ibl_sky_gen")) else { return nil }
+        let rp = MTLRenderPassDescriptor()
+        rp.colorAttachments[0].texture = tex
+        rp.colorAttachments[0].loadAction = .dontCare
+        rp.colorAttachments[0].storeAction = .store
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: rp) else { return nil }
+        enc.setRenderPipelineState(pipe)
+        enc.setFragmentBytes(&sky, length: sky.count * MemoryLayout<SIMD4<Float>>.stride, index: 0)
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        enc.endEncoding()
+        let avg = Self.skyAverageLuminance(configs: configs, radiances: radiances,
+                                           albedo: albedo, sunDir: sunDir)
+        return (tex, avg)
+    }
+
+    /// The solid-angle-weighted average luminance of the procedural sky, integrated on the CPU
+    /// from the Hosek-Wilkie coefficients over a coarse sphere (the same upper-hemisphere-sky /
+    /// lower-hemisphere-ground-bounce split the shader uses), so auto-exposure needs no GPU
+    /// read-back. Coarse is fine: it only sets the exposure scale.
+    nonisolated private static func skyAverageLuminance(configs: [Double], radiances: [Double],
+                                                        albedo: Double, sunDir: SIMD3<Float>) -> Float {
+        func radiance(_ cosTheta: Double, _ gamma: Double, _ c: Int) -> Double {
+            let b = c * 9
+            let A = configs[b], B = configs[b + 1], C = configs[b + 2], D = configs[b + 3], E = configs[b + 4]
+            let F = configs[b + 5], G = configs[b + 6], H = configs[b + 7], I = configs[b + 8]
+            let cg = cos(gamma)
+            let mieM = (1 + cg * cg) / pow(max(1 + I * I - 2 * I * cg, 1e-4), 1.5)
+            let zenith = cosTheta > 0 ? sqrt(cosTheta) : 0
+            let v = (1 + A * exp(B / (cosTheta + 0.01)))
+                  * (C + D * exp(E * gamma) + F * cg * cg + G * mieM + H * zenith)
+            return max(v, 0) * radiances[c]
+        }
+        let sx = Double(sunDir.x), sy = Double(sunDir.y), sz = Double(sunDir.z)
+        let rows = 32, cols = 16   // coarse: it only sets the exposure scale, and runs per re-bake
+        var lumSum = 0.0, weightSum = 0.0
+        for y in 0..<rows {
+            let lat = (Double(y) + 0.5) / Double(rows) * Double.pi   // 0 top .. pi bottom
+            let rowWeight = sin(lat)
+            var rowLum = 0.0
+            for x in 0..<cols {
+                let lon = (Double(x) + 0.5) / Double(cols) * 2 * Double.pi
+                var dy = cos(lat)
+                let dxz = sin(lat)
+                let dx = dxz * cos(lon), dz = dxz * sin(lon)
+                var ground = 1.0
+                if dy < 0 { dy = -dy; ground = albedo }              // ground = dimmed mirror sky
+                let gamma = acos(max(-1, min(1, dx * sx + dy * sy + dz * sz)))
+                rowLum += (0.2126 * radiance(dy, gamma, 0)
+                         + 0.7152 * radiance(dy, gamma, 1)
+                         + 0.0722 * radiance(dy, gamma, 2)) * ground
+            }
+            lumSum += rowLum / Double(cols) * rowWeight
+            weightSum += rowWeight
+        }
+        return weightSum > 0 ? Float(lumSum / weightSum) : 1
     }
 
     private func makeCubeTexture(face size: Int, mipped: Bool) -> MTLTexture? {
@@ -4061,10 +4200,19 @@ extension MetalRenderer {
         ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
         guard let raw = ctx.data else { return nil }
         let halfs = raw.bindMemory(to: UInt16.self, capacity: w * h * 4)
+        let avg = clampAndAverageLuminance(halfs, width: w, height: h)
+        return EquirectBytes(data: Data(bytes: raw, count: w * h * 8), width: w, height: h, avg: avg)
+    }
+
+    /// Clamp any blown-out (inf/NaN) half to the max finite half (so a bright sun doesn't push
+    /// inf through the convolutions) and return the solid-angle-weighted average luminance (rows
+    /// near the poles cover less sky), for auto-exposure. Shared by the HDRI decode and the
+    /// procedural-sky readback; mutates the pixels in place.
+    nonisolated private static func clampAndAverageLuminance(
+        _ halfs: UnsafeMutablePointer<UInt16>, width w: Int, height h: Int) -> Float {
         for i in 0..<(w * h * 4) where (halfs[i] & 0x7C00) == 0x7C00 {
             halfs[i] = (halfs[i] & 0x8000) | 0x7BFF
         }
-        // Solid-angle-weighted average luminance (rows near the poles cover less sky).
         var lumSum = 0.0, weightSum = 0.0
         for y in 0..<h {
             let rowWeight = Double(sin((Double(y) + 0.5) / Double(h) * Double.pi))
@@ -4080,8 +4228,7 @@ extension MetalRenderer {
             lumSum += rowLum / Double(w) * rowWeight
             weightSum += rowWeight
         }
-        let avg = weightSum > 0 ? Float(lumSum / weightSum) : 1
-        return EquirectBytes(data: Data(bytes: raw, count: w * h * 8), width: w, height: h, avg: avg)
+        return weightSum > 0 ? Float(lumSum / weightSum) : 1
     }
 
     /// Write processed equirect pixels to a cache blob (a small header + raw float16 pixels),

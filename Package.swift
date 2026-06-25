@@ -133,6 +133,21 @@ let package = Package(
             exclude: ["LICENSE.txt", "README.md"],
             publicHeadersPath: "Include"
         ),
+        // Vendored Hosek-Wilkie analytic sky model (RGB path): Lukas Hosek and
+        // Alexander Wilkie's coefficient dataset + configuration code, the model
+        // behind the procedural-sky environment (`Environment.sky`). Bundled
+        // third-party C source under its own 3-clause BSD license. See
+        // External/CHosekWilkie/README.md and the repo-root THIRD-PARTY-NOTICES.md.
+        // Wrapped behind Ollin's own API (the `arhosek_*` symbols stay off Ollin's
+        // public surface); the upstream model + private headers live in Source/,
+        // and `publicHeadersPath: Include` exposes only the thin Ollin-authored
+        // ollin_hosek_bridge.h.
+        .target(
+            name: "CHosekWilkie",
+            path: "External/CHosekWilkie",
+            exclude: ["LICENSE", "README.md"],
+            publicHeadersPath: "Include"
+        ),
         // Vendored Clipper2 (Angus Johnson's polygon clipping + offsetting
         // library, C++), the engine behind `Shape`'s booleans (union/
         // intersection/subtracting/symmetricDifference) and `offset(by:join:)`.
@@ -316,7 +331,7 @@ let package = Package(
         ),
         .target(
             name: "Ollin",
-            dependencies: ["CLibtess2", "CClipper2", "COllinShaders"],
+            dependencies: ["CLibtess2", "CClipper2", "COllinShaders", "CHosekWilkie"],
             // Declaring the `.metal` files as resources makes SwiftPM copy them
             // into the target's resource bundle and synthesize `Bundle.module`,
             // which MetalRenderer.loadLibrary reads and concatenates (ShaderCore
@@ -647,6 +662,11 @@ let package = Package(
             name: "Example-3D-EnvironmentGallery",
             dependencies: ["Ollin"],
             path: "Examples/3D/EnvironmentGallery"
+        ),
+        .executableTarget(
+            name: "Example-3D-ProceduralSky",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/ProceduralSky"
         ),
         .executableTarget(
             name: "Example-3D-HighResEnvironment",

@@ -437,6 +437,16 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func proceduralSkyMatchesReference() throws {
+        // PBR balls + a floor lit by a procedural Hosek-Wilkie sky (no asset): pins the .sky
+        // path: the CPU coefficient cook (vendored model), the GPU sky-equirect generation, and
+        // the same equirect→cube / irradiance / GGX-prefilter bake + skybox the HDRI path uses.
+        // Fixed sun elevation + camera, no `time`, so the generation and bake are deterministic.
+        let diff = try Snapshot.meanDifference(of: ProceduralSkyScene(), against: "procedural-sky")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func matcapMeshMatchesReference() throws {
         // Three spheres wearing built-in matcaps (chrome/clay/toon) — pins the matcap
         // pipeline: the view-space normal sampled into the sphere texture, bypassing the
@@ -890,6 +900,31 @@ private final class IBLScene: Sketch {
         ]
         for (m, c, x) in balls {
             withState { translate(x, 0, 0); fill(c); material(m); drawSphere(radius: 0.8) }
+        }
+    }
+}
+
+/// PBR balls + a floor lit by a procedural Hosek-Wilkie sky (no asset) under a fixed sun and
+/// camera, pins the `.sky` path end to end: the CPU coefficient cook, the GPU sky-equirect
+/// generation, and the same cube / irradiance / prefilter bake + skybox the HDRI path uses.
+private final class ProceduralSkyScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        toneMap(.aces)
+        camera(.orbiting(target: Vector3(0, 0.4, 0), radius: 7,
+                         azimuth: 0.4, elevation: 0.12, fieldOfView: .pi / 3.4))
+        environment(.sky(turbidity: 3, sunElevation: 0.5))
+        let balls: [(Material, Double)] = [
+            (.polishedMetal, -2.0), (.metal(roughness: 0.4), 0), (.dielectric(roughness: 0.4), 2.0),
+        ]
+        for (m, x) in balls {
+            withState { translate(x, 0.4, 0); fill(.white); material(m); drawSphere(radius: 0.8) }
+        }
+        withState {
+            translate(0, -0.6, 0); fill(Color(white: 0.55)); material(.roughPlastic)
+            drawBox(width: 20, height: 0.3, depth: 20)
         }
     }
 }
