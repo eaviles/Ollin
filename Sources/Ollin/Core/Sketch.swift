@@ -367,6 +367,18 @@ open class Sketch {
     /// (unlit), overriding the auto-lit default.
     public func noLights() { drawer.noLights() }
 
+    /// Light this frame through an image-based-lighting `Environment` — a bundled CC0
+    /// HDRI (`.studio`, `.sunset`, `.day`, …), your own (`Environment.hdri(path:)`), or a
+    /// procedural `.sky()`. Physically-based materials (`material(.metal…)`) gather their
+    /// ambient and reflections from it, so metals read as metal. It adds to any
+    /// `directionalLight`/`pointLight`/`spotLight` you set; with no other lights, the
+    /// environment alone lights the scene. Per-frame state like the lights, so call it in
+    /// `draw()`; the renderer bakes its lighting maps once and caches them.
+    public func environment(_ environment: Environment) { drawer.environment(environment) }
+
+    /// Clear the image-based-lighting environment for this frame (the default).
+    public func noEnvironment() { drawer.noEnvironment() }
+
     /// Set the material's specular highlight strength (`0` matte, the default;
     /// `~0.5` glossy). Drawing state, saved by `withState`.
     public func specular(_ strength: Double) { drawer.specular(strength) }

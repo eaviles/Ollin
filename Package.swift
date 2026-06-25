@@ -337,6 +337,7 @@ let package = Package(
                 .copy("Renderer/Shader3D.metal"),
                 .copy("Renderer/ShaderRaymarch.metal"),
                 .copy("Renderer/ShaderEffects.metal"),
+                .copy("Renderer/ShaderIBL.metal"),
                 .copy("Renderer/OllinShaderTypes.h"),
                 // The MSL compute prelude (hash/noise/curl/disc), spliced into
                 // user compute-kernel source at runtime like OllinShaderTypes.h.
@@ -355,7 +356,12 @@ let package = Package(
                 // runtime by Matcap.chrome/clay/jade/… The whole directory is copied
                 // (a Matcaps/ subdirectory in the bundle), CC0 license kept beside
                 // them; derived from Blender's CC0 matcaps, see THIRD-PARTY-NOTICES.md.
-                .copy("Resources/Matcaps")
+                .copy("Resources/Matcaps"),
+                // Built-in HDRI environment maps for image-based lighting, loaded at
+                // runtime by Environment.studio/sunset/… (equirectangular EXR, half-float
+                // PIZ so ImageIO decodes them). CC0; per-file provenance + credits in the
+                // resource LICENSE file and THIRD-PARTY-NOTICES.md.
+                .copy("Resources/Environments")
             ]
         ),
         // Examples — one runnable sketch per executable target, grouped into
@@ -631,6 +637,26 @@ let package = Package(
             name: "Example-3D-PhysicalMaterials",
             dependencies: ["Ollin"],
             path: "Examples/3D/PhysicalMaterials"
+        ),
+        .executableTarget(
+            name: "Example-3D-ImageBasedLighting",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/ImageBasedLighting"
+        ),
+        .executableTarget(
+            name: "Example-3D-EnvironmentGallery",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/EnvironmentGallery"
+        ),
+        .executableTarget(
+            name: "Example-3D-HighResEnvironment",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/HighResEnvironment"
+        ),
+        .executableTarget(
+            name: "Example-3D-EnvironmentURL",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/EnvironmentURL"
         ),
         .executableTarget(
             name: "Example-3D-Matcap",

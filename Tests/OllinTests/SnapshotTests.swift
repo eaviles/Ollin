@@ -427,6 +427,16 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func imageBasedLightingMatchesReference() throws {
+        // Physically-based balls lit by a bundled HDRI environment (image-based lighting):
+        // pins the whole IBL path — the equirect→cube / irradiance / GGX-prefilter / BRDF-LUT
+        // bake, the split-sum ambient on the mesh fragment, and the skybox backdrop. Fixed
+        // camera + environment, no `time`, so the bake is deterministic.
+        let diff = try Snapshot.meanDifference(of: IBLScene(), against: "pbr-ibl")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func matcapMeshMatchesReference() throws {
         // Three spheres wearing built-in matcaps (chrome/clay/toon) — pins the matcap
         // pipeline: the view-space normal sampled into the sphere texture, bypassing the
@@ -857,6 +867,29 @@ private final class PBRMaterialsScene: Sketch {
                     drawSphere(radius: 0.65)
                 }
             }
+        }
+    }
+}
+
+/// Physically-based balls (polished metal, brushed metal, dielectric) lit by the bundled
+/// `studio` HDRI environment, which also shows as the backdrop — pins the IBL bake, the
+/// split-sum ambient, and the skybox. Fixed camera + environment, no `time`, deterministic.
+private final class IBLScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        toneMap(.aces)
+        camera(.orbiting(target: .zero, radius: 6,
+                         azimuth: 0.4, elevation: 0.14, fieldOfView: .pi / 3.4))
+        environment(.studio)
+        let balls: [(Material, Color, Double)] = [
+            (.polishedMetal,              .white,                                            -2.0),
+            (.metal(roughness: 0.4),      Color(hue: 0.09, saturation: 0.45, brightness: 0.95), 0),
+            (.dielectric(roughness: 0.4), Color(hue: 0.58, saturation: 0.55, brightness: 0.9),  2.0),
+        ]
+        for (m, c, x) in balls {
+            withState { translate(x, 0, 0); fill(c); material(m); drawSphere(radius: 0.8) }
         }
     }
 }

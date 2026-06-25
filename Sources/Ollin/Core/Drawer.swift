@@ -292,6 +292,12 @@ final class Drawer {
     }
     private(set) var lightingMode: LightingMode = .auto
 
+    /// The image-based-lighting environment set this frame (see `Environment`), or `nil`
+    /// for none. Per-frame state like the lights; when set, the renderer bakes its IBL
+    /// maps once (cached by source) and the physically-based materials gather their
+    /// ambient and reflections from it.
+    private(set) var environment: Environment?
+
     /// Whether this frame casts shadows (see `castShadows`). Per-frame state like the
     /// lights — reset each frame, set in `draw()`. When on, the scene's primary
     /// directional light casts; the renderer renders a depth pass from it and the mesh
@@ -921,6 +927,9 @@ final class Drawer {
     /// replaces the default rig (an ambient alone is a flat, unshaded fill).
     func ambientLight(_ color: Color) { ambientLightColor = color; lightingMode = .custom }
 
+    func environment(_ env: Environment) { environment = env }
+    func noEnvironment() { environment = nil }
+
     /// Turn off lighting for this frame: meshes draw flat in their `fill` color
     /// (unlit), overriding the auto-lit default.
     func noLights() {
@@ -1009,8 +1018,16 @@ final class Drawer {
             u.enabled = 0
             return u   // flat, unlit; lights/ambient/shadows unused
         case .auto:
-            ambient = Drawer.defaultAmbient
-            activeLights = Drawer.defaultLights
+            if environment != nil {
+                // An environment lights the scene through IBL, so it stands in for the
+                // auto rig: no default lights, no flat ambient (the irradiance map is the
+                // ambient). A sketch that wants both adds its own lights (→ `.custom`).
+                ambient = .black
+                activeLights = []
+            } else {
+                ambient = Drawer.defaultAmbient
+                activeLights = Drawer.defaultLights
+            }
         case .custom:
             ambient = ambientLightColor ?? .black
             activeLights = lights
@@ -1353,6 +1370,7 @@ final class Drawer {
         lights.removeAll(keepingCapacity: true)
         ambientLightColor = nil
         lightingMode = .auto
+        environment = nil
         castsShadows = false
         hasDepthScene = false
         // The 2D depth is camera-derived (a clip-z against this frame's camera), so

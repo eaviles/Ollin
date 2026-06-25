@@ -53,7 +53,7 @@ struct LiveRootView: View {
     /// collapse. `@AppStorage` so the choice persists across launches and the
     /// View ▸ Show Inspector command drives the same state.
     @AppStorage(Self.sidebarShownKey) private var sidebarShown = true
-    @Environment(\.colorScheme) private var colorScheme
+    @SwiftUI.Environment(\.colorScheme) private var colorScheme
 
     /// The sketch's on-screen size (or the default before one loads). The sidebar
     /// and sketch are framed to this height so the layout is rigid and
@@ -217,7 +217,7 @@ struct LiveRootView: View {
 /// while the stage is still empty — reload compiles leave the canvas to the
 /// running sketch, with the amber title-bar chip as the signal.
 private struct CompilingState: View {
-    @Environment(\.colorScheme) private var colorScheme
+    @SwiftUI.Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 16) {
@@ -241,8 +241,8 @@ private struct CompilingState: View {
 /// Under Reduce Motion the arc holds still: a static progress glyph instead of
 /// a rotating one.
 private struct RingSpinner: View {
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @SwiftUI.Environment(\.colorScheme) private var colorScheme
+    @SwiftUI.Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var spinning = false
 
     private var track: SwiftUI.Color {
@@ -273,7 +273,7 @@ private struct CompileErrorState: View {
     /// Float over the dimmed last good frame (a reload error) rather than
     /// covering the stage (a first-build error, with nothing behind it).
     var dimsStage = false
-    @Environment(\.colorScheme) private var colorScheme
+    @SwiftUI.Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 16) {
@@ -477,7 +477,7 @@ private struct ReloadedToast: View {
     let count: Int
     var buildSeconds: Double?
 
-    @Environment(\.colorScheme) private var colorScheme
+    @SwiftUI.Environment(\.colorScheme) private var colorScheme
 
     /// `--hud`, dialed translucent at the shared chrome opacity: a dark tint over
     /// the material blur, light enough that the frosted blur reads through (the

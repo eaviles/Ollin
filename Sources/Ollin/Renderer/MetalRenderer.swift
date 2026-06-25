@@ -4,6 +4,7 @@ import MetalKit
 import MetalPerformanceShaders   // tuned image kernels (Gaussian blur) behind the effect filters
 import simd
 import CoreGraphics
+import os   // OSAllocatedUnfairLock for the off-thread equirect decode handoff
 import COllinShaders   // OllinVertex / Uniforms / SDFInstance, shared with the shaders
 
 /// The Metal back end. Deliberately small: one command queue, an enum-keyed
@@ -77,6 +78,24 @@ final class MetalRenderer {
         /// silhouette AA is analytic, so it needs no MSAA, and the half-res target is a
         /// plain (non-multisampled) sampleable texture.
         var singleSample = false
+        /// An image-based-lighting bake pass: a fullscreen-triangle `ollin_ibl_vertex`
+        /// fragment rendering into one cube face (or the BRDF LUT), single-sample, replace.
+        /// Its color format varies (`rgba16Float` cubes, `rg16Float` LUT), so it's part of
+        /// the key. Run once per environment (cached), not per frame.
+        var isIBL = false
+        var iblColorFormat: MTLPixelFormat = .rgba16Float
+
+        // an IBL bake pass (equirect→cube / irradiance / prefilter / BRDF LUT)
+        static func ibl(_ fragment: String, color: MTLPixelFormat = .rgba16Float) -> PipelineKey {
+            PipelineKey(vertex: "ollin_ibl_vertex", fragment: fragment,
+                        isIBL: true, iblColorFormat: color)
+        }
+        // the environment skybox backdrop: a fullscreen view-ray cube sample into the
+        // geometry pass (the view's MSAA + depth format), drawn with depth disabled.
+        static func skybox(depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_ibl_skybox_vertex", fragment: "ollin_ibl_skybox_fragment",
+                        depthFormat: depth)
+        }
 
         // tessellated triangles (rects, lines, polygons, arcs)
         static func solid(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -482,6 +501,24 @@ final class MetalRenderer {
     private var fluidSlots: [ObjectIdentifier: FluidSlot] = [:]
     private var fluidUsedThisFrame: Set<ObjectIdentifier> = []
 
+    /// Baked image-based-lighting maps, cached by environment source so the bake (a few
+    /// fullscreen passes) runs once, not per frame. `iblBRDFLUT` is environment-independent
+    /// (the split-sum scale/bias integral) so it's baked once globally. `currentIBL` is the
+    /// set resolved for the frame being encoded, bound to the mesh fragment.
+    private var iblCache: [Environment.Source: IBLMaps] = [:]
+    private var iblBRDFLUT: MTLTexture?
+    private var currentIBL: IBLMaps?
+    /// A 1×1 cube bound at the IBL texture slots when no environment is set, so the mesh
+    /// fragment's declared cube samplers are always bound (never sampled in that case).
+    private var iblPlaceholderCube: MTLTexture?
+    /// Processed equirect pixels ready to bake, keyed by source. A heavy `.url` HDRI decodes
+    /// off the render thread (live) and lands here for the next frame to upload + bake; the
+    /// bundled placeholder shows meanwhile. Locked because the background decode writes it.
+    private let equirectReady = OSAllocatedUnfairLock(initialState: [Environment.Source: EquirectBytes]())
+    /// Sources whose off-thread decode is in flight, so a repeat request each frame doesn't
+    /// start a second decode.
+    private let equirectLoading = OSAllocatedUnfairLock(initialState: Set<Environment.Source>())
+
     /// Off-screen targets for the GPU-texture frame hook (`texture(of:)`), kept and
     /// reused across frames — rebuilt only when the canvas size changes, so live
     /// frame-sharing (Syphon) doesn't allocate a texture every frame. Geometry
@@ -616,6 +653,9 @@ final class MetalRenderer {
             return
         }
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        // Bake the IBL environment maps (once, cached) ahead of the geometry pass, so the
+        // mesh fragments can sample them. A no-op when no environment is set.
+        _ = resolveIBL(for: drawer.environment, commandBuffer: commandBuffer)
         // Shadow depth pass from the casting light, ahead of the geometry pass in the
         // same command buffer (a no-op returning nil when this frame casts no shadow).
         // It shares the mesh vertex buffer the geometry pass uses.
@@ -938,6 +978,8 @@ final class MetalRenderer {
         guard let readback = device.makeBuffer(length: byteCount, options: .storageModeShared),
               let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        // Export blocks on a remote-environment download so the exported frame is full-res.
+        _ = resolveIBL(for: drawer.environment, commandBuffer: commandBuffer, blocking: true)
         // Shadow depth pass (nil when this frame casts no shadow), sharing the export
         // mesh buffer; so the headless/snapshot path shadows exactly like the window.
         let meshBuf = exportMeshBuffer(for: drawer.meshVertices.count)
@@ -1069,6 +1111,7 @@ final class MetalRenderer {
             }
             guard let cb = commandQueue.makeCommandBuffer() else { continue }
             encodeCompute(drawer, into: cb)
+            _ = resolveIBL(for: drawer.environment, commandBuffer: cb)   // bake IBL once
             let renderedShadow = encodeShadowPass(
                 drawer, into: cb, meshBuffer: meshBuf,
                 sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode)
@@ -1975,6 +2018,39 @@ final class MetalRenderer {
         // below. `enabled` is 0 when the sketch set no light, so the mesh fragment
         // keeps the byte-identical normal-as-color path.
         var lighting = drawer.makeLighting()
+        // Image-based lighting: when an environment baked successfully this frame (resolved
+        // by the caller before this pass), light the physically-based materials through its
+        // maps. Otherwise leave iblEnabled 0 — the flat-ambient path, byte-identical.
+        if lighting.enabled != 0, drawer.environment != nil, currentIBL != nil {
+            lighting.iblEnabled = 1
+            // The user intensity times the per-environment auto-exposure normalization.
+            lighting.iblIntensity = Float(drawer.environment?.intensity ?? 1) * currentIBLNormalization
+            lighting.iblMaxMip = Float(currentIBLMaxMip)
+            lighting.iblRotation = Float(drawer.environment?.rotation ?? 0)
+        } else {
+            lighting.iblEnabled = 0   // noLights() stays flat; no environment → flat ambient
+        }
+        // Skybox backdrop: when the environment shows as the scene's background, fill the
+        // frame with it (a fullscreen view-ray cube sample) before the geometry, with depth
+        // disabled, so the depth-tested meshes composite in front and a mirror's reflection
+        // matches what's behind it. The per-batch loop resets the pipeline + depth state.
+        if lighting.iblEnabled != 0, drawer.environment?.showsBackground == true,
+           var skyUniforms = uniforms3D, let skyTex = currentIBLSkyboxTexture,
+           let skyPipe = try? pipeline(.skybox(depth: depthFormat)) {
+            encoder.setRenderPipelineState(skyPipe)
+            encoder.setDepthStencilState(nil)   // always-pass, no write
+            encoder.setFragmentBytes(&skyUniforms, length: MemoryLayout<Uniforms3D>.stride, index: 0)
+            // params.y is the auto-exposure-normalized intensity (shared with the lighting);
+            // params.z the backdrop blur as an equirect mip LOD. The blur is the user's value
+            // or auto — a gentle soft-focus at 1K easing to sharp at 4K (a magnified low-res
+            // backdrop wants softening; the bicubic reconstruction keeps it un-blocky either way).
+            let autoBlur = max(0, min(0.15, 0.15 * (4096 - Float(skyTex.width)) / 3072))
+            let blur = drawer.environment?.backgroundBlur.map { Float($0) } ?? autoBlur
+            var skyParams = SIMD4<Float>(lighting.iblRotation, lighting.iblIntensity, blur * 4.0, 0)
+            encoder.setFragmentBytes(&skyParams, length: MemoryLayout<SIMD4<Float>>.stride, index: 1)
+            encoder.setFragmentTexture(skyTex, index: 0)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        }
         // Shadows only apply when the shadow pass actually populated a map / structure
         // (the render/image paths); the accumulation/texture paths pass nil, so clear the
         // caster index there and bind the 1×1 / dummy stand-ins so the fragment never
@@ -2233,6 +2309,14 @@ final class MetalRenderer {
                     // samples when `lighting.fieldShadowMode == 1`; a never-sampled stand-in (the
                     // gradient `strip`) otherwise, so the declared texture is always bound.
                     encoder.setFragmentTexture(halfResFieldShadow ?? strip, index: 3)
+                    // The image-based-lighting maps the physically-based fragment samples when
+                    // `lighting.iblEnabled == 1`: the irradiance + prefiltered cubes (tex 4/5)
+                    // and the BRDF LUT (tex 6). Never-sampled stand-ins (a 1×1 cube, the
+                    // gradient strip) otherwise, so the declared textures are always bound.
+                    if iblPlaceholderCube == nil { iblPlaceholderCube = makeCubeTexture(face: 1, mipped: false) }
+                    encoder.setFragmentTexture(currentIBLIrradiance ?? iblPlaceholderCube, index: 4)
+                    encoder.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
+                    encoder.setFragmentTexture(iblBRDFLUTTexture ?? strip, index: 6)
                 }
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .depthScene:
@@ -3247,6 +3331,18 @@ final class MetalRenderer {
         if key.isShadow {
             return try makeShadowPipeline(key, using: library)
         }
+        if key.isIBL {
+            guard let v = library.makeFunction(name: key.vertex),
+                  let f = library.makeFunction(name: key.fragment) else {
+                throw RendererError.shaderFunctions
+            }
+            let d = MTLRenderPipelineDescriptor()
+            d.vertexFunction = v
+            d.fragmentFunction = f
+            d.rasterSampleCount = 1
+            d.colorAttachments[0].pixelFormat = key.iblColorFormat
+            return try device.makeRenderPipelineState(descriptor: d)
+        }
         return try makePipeline(vertex: key.vertex, fragment: key.fragment, using: library,
                                 premultiplied: key.premultiplied, blend: key.blend,
                                 depthFormat: key.depthFormat, singleSample: key.singleSample)
@@ -3603,7 +3699,7 @@ final class MetalRenderer {
     /// color/dither/hash helpers the rest depend on, so it goes first (Metal needs a
     /// declaration before its use). The single `Shaders.metal` split into these once
     /// it crossed ~2,000 lines; the renderer never assumes one file.
-    static let shaderSourceNames = ["ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderEffects"]
+    static let shaderSourceNames = ["ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderEffects", "ShaderIBL"]
 
     /// Read and concatenate the shader segments from a filesystem `directory`, in
     /// `shaderSourceNames` order. This is the source live shader reload feeds back
@@ -3666,4 +3762,362 @@ extension Color {
         MTLClearColorMake(Color.srgbToLinear(red), Color.srgbToLinear(green),
                           Color.srgbToLinear(blue), alpha)
     }
+}
+
+/// The baked image-based-lighting maps for one environment, cached by source. The
+/// `envCube` is the environment itself (for a skybox and mirror reflections), `irradiance`
+/// the cosine-convolved diffuse cube, `prefilter` the GGX-prefiltered specular mip-cube.
+private final class IBLMaps {
+    let irradiance: MTLTexture
+    let prefilter: MTLTexture
+    let envCube: MTLTexture
+    /// The full-resolution equirectangular source, kept so the skybox samples it directly
+    /// (sharp) rather than the low-resolution cube. Nil for a procedural sky.
+    let equirect: MTLTexture?
+    let maxMip: Int
+    /// An auto-exposure factor: the environments range ~800× in average brightness, so each
+    /// is scaled to a common target average luminance, applied to both the lighting and the
+    /// skybox. Keeps a bright noon or a night from blowing out or crushing.
+    let normalization: Float
+    init(irradiance: MTLTexture, prefilter: MTLTexture, envCube: MTLTexture,
+         equirect: MTLTexture?, maxMip: Int, normalization: Float) {
+        self.irradiance = irradiance
+        self.prefilter = prefilter
+        self.envCube = envCube
+        self.equirect = equirect
+        self.maxMip = maxMip
+        self.normalization = normalization
+    }
+}
+
+extension MetalRenderer {
+    private static let iblEnvFace = 256
+    private static let iblIrradianceFace = 32
+    private static let iblPrefilterFace = 256   // mirror (roughness 0) reflection sharpness
+    private static let iblPrefilterMips = 6
+    private static let iblBRDFSize = 256
+    private static let iblTargetLuminance: Float = 0.4   // auto-exposure target average
+
+    /// Resolve the frame's environment to its baked IBL maps, baking once on the given
+    /// command buffer and caching by source (the bake is a few fullscreen passes; a frame
+    /// that reuses an environment pays nothing). A `.remote` source resolves to its cached
+    /// file (or a downloading placeholder); `blocking` true (the export path) waits for the
+    /// download so exported art is the full-resolution version. Returns whether IBL is active.
+    func resolveIBL(for environment: Environment?, commandBuffer cb: MTLCommandBuffer,
+                    blocking: Bool = false) -> Bool {
+        guard let environment else { currentIBL = nil; return false }
+        let (primary, placeholder) = resolveEnvironmentSources(environment, blocking: blocking)
+        // Bake the requested environment once its pixels are ready; until then (a heavy HDRI
+        // still downloading, or decoding off-thread) show the bundled placeholder, so the
+        // scene is never unlit and the live window never blocks on the decode.
+        if let primary, let maps = bakeReady(primary, blocking: blocking, commandBuffer: cb) {
+            currentIBL = maps; return true
+        }
+        if let placeholder, let maps = bakeReady(placeholder, blocking: false, commandBuffer: cb) {
+            currentIBL = maps; return true
+        }
+        currentIBL = nil; return false
+    }
+
+    /// Bake (or reuse) the IBL maps for an already-resolved `.resource`/`.url` environment, or
+    /// nil when its equirect isn't decoded yet (a heavy `.url` decodes off-thread). Cached by
+    /// source so the bake runs once; the raw float pixels are freed once baked into textures.
+    private func bakeReady(_ env: Environment, blocking: Bool,
+                           commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {
+        if let cached = iblCache[env.source] { return cached }
+        guard let bytes = equirectBytes(for: env, blocking: blocking) else { return nil }
+        guard let maps = bakeIBL(env, equirect: bytes, commandBuffer: cb) else { return nil }
+        iblCache[env.source] = maps
+        equirectReady.withLock { $0[env.source] = nil }
+        return maps
+    }
+
+    /// Resolve an environment to (primary, placeholder): the form to bake when its pixels are
+    /// ready, and a bundled fallback to show meanwhile. Handles a `.remote` source: the
+    /// cached download if present, else (export) a synchronous download, else (live) kick off
+    /// the download and offer the placeholder until it lands.
+    private func resolveEnvironmentSources(_ env: Environment, blocking: Bool)
+        -> (primary: Environment?, placeholder: Environment?) {
+        func with(_ source: Environment.Source) -> Environment { var e = env; e.source = source; return e }
+        switch env.source {
+        case .resource, .url:
+            return (env, nil)
+        case .sky:
+            return (nil, nil)   // procedural sky bake is a follow-up
+        case .remote(let url, let fallback):
+            let cache = EnvironmentCache.shared
+            let placeholder = fallback.map { with(.resource(name: $0, bundleID: nil)) }
+            if let file = cache.cachedFile(for: url) {
+                return (with(.url(file)), placeholder)
+            }
+            if blocking, let file = cache.downloadBlocking(url) {
+                return (with(.url(file)), nil)
+            }
+            cache.ensureDownloading(url)
+            return (nil, placeholder)   // not downloaded yet: only the placeholder
+        }
+    }
+
+    /// The processed equirect pixels for a bakeable env, or nil if not ready. A bundled
+    /// `.resource` decodes inline (small, fast). A `.url` HDRI can be large, so it decodes off
+    /// the render thread (live), returning nil until it lands, or synchronously when
+    /// `blocking` (export). A disk blob of the processed pixels makes a relaunch skip the
+    /// expensive PIZ decode.
+    private func equirectBytes(for env: Environment, blocking: Bool) -> EquirectBytes? {
+        if let ready = equirectReady.withLock({ $0[env.source] }) { return ready }
+        switch env.source {
+        case .resource:
+            guard let bytes = Self.loadEquirectBytes(env) else { return nil }
+            equirectReady.withLock { $0[env.source] = bytes }
+            return bytes
+        case .url:
+            if blocking {
+                guard let bytes = Self.loadEquirectBytes(env) else { return nil }
+                equirectReady.withLock { $0[env.source] = bytes }
+                return bytes
+            }
+            let source = env.source
+            let started = equirectLoading.withLock { loading -> Bool in
+                guard !loading.contains(source) else { return false }
+                loading.insert(source); return true
+            }
+            if started {
+                let envCopy = env, ready = equirectReady, loading = equirectLoading
+                Task.detached {
+                    let bytes = Self.loadEquirectBytes(envCopy)
+                    if let bytes { ready.withLock { $0[source] = bytes } }
+                    loading.withLock { $0.remove(source) }
+                }
+            }
+            return nil
+        case .sky, .remote:
+            return nil
+        }
+    }
+
+    /// The IBL maps bound to the mesh fragment this frame (irradiance / prefilter / BRDF
+    /// LUT), or `nil` when no environment is set. `nil` for any of these keeps the mesh
+    /// fragment on its byte-identical no-IBL path.
+    var currentIBLIrradiance: MTLTexture? { currentIBL?.irradiance }
+    var currentIBLPrefilter: MTLTexture? { currentIBL?.prefilter }
+    var currentIBLEnvCube: MTLTexture? { currentIBL?.envCube }
+    var currentIBLSkyboxTexture: MTLTexture? { currentIBL?.equirect }
+    var currentIBLMaxMip: Int { currentIBL?.maxMip ?? 0 }
+    var currentIBLNormalization: Float { currentIBL?.normalization ?? 1 }
+    var iblBRDFLUTTexture: MTLTexture? { iblBRDFLUT }
+
+    private func bakeIBL(_ environment: Environment, equirect bytes: EquirectBytes,
+                         commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {
+        guard let env = makeEnvCube(equirect: bytes, commandBuffer: cb) else { return nil }
+        let envCube = env.cube
+        if let blit = cb.makeBlitCommandEncoder() {
+            blit.generateMipmaps(for: envCube)   // the prefilter samples these mips
+            blit.endEncoding()
+        }
+        guard let irradiance = makeCubeTexture(face: Self.iblIrradianceFace, mipped: false),
+              let prefilter = makeCubeTexture(face: Self.iblPrefilterFace, mipped: true),
+              let irrPipe = try? pipeline(.ibl("ollin_ibl_irradiance")),
+              let prePipe = try? pipeline(.ibl("ollin_ibl_prefilter")) else { return nil }
+
+        for face in 0..<6 {
+            bakeIBLFace(pipeline: irrPipe, inputs: [envCube], output: irradiance, slice: face,
+                        level: 0, params: SIMD4<Float>(Float(face), 0, 0, 0), commandBuffer: cb)
+        }
+        let mips = Self.iblPrefilterMips
+        for mip in 0..<mips {
+            let roughness = mips > 1 ? Float(mip) / Float(mips - 1) : 0
+            for face in 0..<6 {
+                bakeIBLFace(pipeline: prePipe, inputs: [envCube], output: prefilter, slice: face,
+                            level: mip, params: SIMD4<Float>(Float(face), roughness, 0, 0),
+                            commandBuffer: cb)
+            }
+        }
+        ensureBRDFLUT(commandBuffer: cb)
+        // Auto-exposure: scale to a common target average luminance (clamped so a near-black
+        // night or a blinding noon stays sane), applied to the lighting and the skybox.
+        let normalization = env.avgLuminance > 1e-5
+            ? min(max(Self.iblTargetLuminance / env.avgLuminance, 0.01), 12)
+            : 1
+        return IBLMaps(irradiance: irradiance, prefilter: prefilter, envCube: envCube,
+                       equirect: env.equirect, maxMip: mips - 1, normalization: normalization)
+    }
+
+    /// The environment as a cube map (plus the source equirect for the skybox and its
+    /// solid-angle-weighted average luminance for auto-exposure): the processed HDRI pixels
+    /// uploaded and reprojected equirect→cube. Returns nil on upload/pipeline failure, so the
+    /// frame stays on the no-IBL path.
+    private func makeEnvCube(equirect bytes: EquirectBytes, commandBuffer cb: MTLCommandBuffer)
+        -> (cube: MTLTexture, equirect: MTLTexture?, avgLuminance: Float)? {
+        guard let loaded = uploadEquirect(bytes),
+              let cube = makeCubeTexture(face: Self.iblEnvFace, mipped: true),
+              let pipe = try? pipeline(.ibl("ollin_ibl_equirect_to_cube")) else { return nil }
+        // Mip the equirect *before* the cube bake: a high-res equirect → small cube face is a
+        // big minification, so the equirect→cube sample needs valid mips (and the skybox blur
+        // samples them too). Generating them afterward would leave the cube reading empty mips.
+        if let blit = cb.makeBlitCommandEncoder() {
+            blit.generateMipmaps(for: loaded)
+            blit.endEncoding()
+        }
+        for face in 0..<6 {
+            bakeIBLFace(pipeline: pipe, inputs: [loaded], output: cube, slice: face, level: 0,
+                        params: SIMD4<Float>(Float(face), 0, 0, 0), commandBuffer: cb)
+        }
+        return (cube, loaded, bytes.avg)
+    }
+
+    /// Upload processed equirect float pixels into a mipmapped `rgba16Float` texture (the
+    /// skybox samples a blurred level for soft focus; `makeEnvCube` generates the mips). The
+    /// `.shared` storage lets the level-0 upload run regardless of thread.
+    private func uploadEquirect(_ bytes: EquirectBytes) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float,
+                                                            width: bytes.width, height: bytes.height,
+                                                            mipmapped: true)
+        desc.usage = [.shaderRead]
+        desc.storageMode = .shared
+        guard let tex = device.makeTexture(descriptor: desc) else { return nil }
+        bytes.data.withUnsafeBytes { raw in
+            tex.replace(region: MTLRegionMake2D(0, 0, bytes.width, bytes.height), mipmapLevel: 0,
+                        withBytes: raw.baseAddress!, bytesPerRow: bytes.width * 8)
+        }
+        return tex
+    }
+
+    private func makeCubeTexture(face size: Int, mipped: Bool) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .rgba16Float,
+                                                              size: size, mipmapped: mipped)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
+    }
+
+    /// Render one fullscreen-triangle bake pass into a cube face (slice) at a mip level.
+    private func bakeIBLFace(pipeline: MTLRenderPipelineState, inputs: [MTLTexture],
+                             output: MTLTexture, slice: Int, level: Int,
+                             params: SIMD4<Float>, commandBuffer cb: MTLCommandBuffer) {
+        let rp = MTLRenderPassDescriptor()
+        rp.colorAttachments[0].texture = output
+        rp.colorAttachments[0].slice = slice
+        rp.colorAttachments[0].level = level
+        rp.colorAttachments[0].loadAction = .dontCare
+        rp.colorAttachments[0].storeAction = .store
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: rp) else { return }
+        enc.setRenderPipelineState(pipeline)
+        for (i, t) in inputs.enumerated() { enc.setFragmentTexture(t, index: i) }
+        var p = params
+        enc.setFragmentBytes(&p, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        enc.endEncoding()
+    }
+
+    /// Bake the environment-independent BRDF integration LUT once (the split-sum scale/bias).
+    private func ensureBRDFLUT(commandBuffer cb: MTLCommandBuffer) {
+        guard iblBRDFLUT == nil else { return }
+        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rg16Float,
+                                                            width: Self.iblBRDFSize,
+                                                            height: Self.iblBRDFSize, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        guard let lut = device.makeTexture(descriptor: desc),
+              let pipe = try? pipeline(.ibl("ollin_ibl_brdf_lut", color: .rg16Float)) else { return }
+        let rp = MTLRenderPassDescriptor()
+        rp.colorAttachments[0].texture = lut
+        rp.colorAttachments[0].loadAction = .dontCare
+        rp.colorAttachments[0].storeAction = .store
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: rp) else { return }
+        enc.setRenderPipelineState(pipe)
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        enc.endEncoding()
+        iblBRDFLUT = lut
+    }
+
+    /// The processed equirect pixels for a `.resource`/`.url` env: a cached blob if present (a
+    /// fast read, no decode), else decode the source HDRI and (for a `.url`) write the blob
+    /// so the next launch skips the decode. CPU-only, so it can run off the render thread.
+    nonisolated fileprivate static func loadEquirectBytes(_ env: Environment) -> EquirectBytes? {
+        let blobURL: URL? = {
+            if case .url(let file) = env.source { return EnvironmentCache.shared.equirectBlobFile(for: file) }
+            return nil   // a bundled .resource decodes fast and its EXR is compact: skip the blob
+        }()
+        if let blobURL, let bytes = readEquirectBlob(blobURL) { return bytes }
+        guard let cg = env.loadEquirectImage(), let bytes = processEquirect(cg) else { return nil }
+        if let blobURL { writeEquirectBlob(bytes, to: blobURL) }
+        return bytes
+    }
+
+    nonisolated private static let equirectBlobMagic: UInt32 = 0x4F4C4548   // "OLEH"
+
+    /// Decode a linear-HDR equirectangular `CGImage` into `rgba16Float` pixels, clamping any
+    /// blown-out (inf/NaN half) texel to the max finite half so a bright sun doesn't propagate
+    /// inf through the convolutions, and computing the solid-angle-weighted average luminance
+    /// (for auto-exposure: the environments range ~800× in brightness).
+    nonisolated private static func processEquirect(_ cg: CGImage) -> EquirectBytes? {
+        let w = cg.width, h = cg.height
+        guard w > 0, h > 0, let cs = CGColorSpace(name: CGColorSpace.extendedLinearSRGB) else { return nil }
+        let bpr = w * 8
+        let info = CGBitmapInfo.floatComponents.rawValue | CGBitmapInfo.byteOrder16Little.rawValue
+                 | CGImageAlphaInfo.premultipliedLast.rawValue
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 16,
+                                  bytesPerRow: bpr, space: cs, bitmapInfo: info) else { return nil }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        guard let raw = ctx.data else { return nil }
+        let halfs = raw.bindMemory(to: UInt16.self, capacity: w * h * 4)
+        for i in 0..<(w * h * 4) where (halfs[i] & 0x7C00) == 0x7C00 {
+            halfs[i] = (halfs[i] & 0x8000) | 0x7BFF
+        }
+        // Solid-angle-weighted average luminance (rows near the poles cover less sky).
+        var lumSum = 0.0, weightSum = 0.0
+        for y in 0..<h {
+            let rowWeight = Double(sin((Double(y) + 0.5) / Double(h) * Double.pi))
+            var rowLum = 0.0
+            let row = y * w * 4
+            for x in 0..<w {
+                let i = row + x * 4
+                let r = Float(Float16(bitPattern: halfs[i]))
+                let g = Float(Float16(bitPattern: halfs[i + 1]))
+                let b = Float(Float16(bitPattern: halfs[i + 2]))
+                rowLum += Double(0.2126 * r + 0.7152 * g + 0.0722 * b)
+            }
+            lumSum += rowLum / Double(w) * rowWeight
+            weightSum += rowWeight
+        }
+        let avg = weightSum > 0 ? Float(lumSum / weightSum) : 1
+        return EquirectBytes(data: Data(bytes: raw, count: w * h * 8), width: w, height: h, avg: avg)
+    }
+
+    /// Write processed equirect pixels to a cache blob (a small header + raw float16 pixels),
+    /// best-effort — a failed write just means the next launch re-decodes.
+    nonisolated private static func writeEquirectBlob(_ bytes: EquirectBytes, to url: URL) {
+        var header: [UInt32] = [equirectBlobMagic, 1, UInt32(bytes.width), UInt32(bytes.height),
+                                bytes.avg.bitPattern]
+        var out = Data(bytes: &header, count: header.count * MemoryLayout<UInt32>.size)
+        out.append(bytes.data)
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                 withIntermediateDirectories: true)
+        let tmp = url.appendingPathExtension("writing")
+        if (try? out.write(to: tmp, options: .atomic)) != nil {
+            try? FileManager.default.removeItem(at: url)
+            try? FileManager.default.moveItem(at: tmp, to: url)
+        }
+    }
+
+    /// Read a processed-equirect blob, or nil if absent / corrupt / size-mismatched (any of
+    /// which falls back to a fresh decode).
+    nonisolated private static func readEquirectBlob(_ url: URL) -> EquirectBytes? {
+        guard let data = try? Data(contentsOf: url, options: .mappedIfSafe), data.count >= 20 else { return nil }
+        let header = data.prefix(20).withUnsafeBytes { Array($0.bindMemory(to: UInt32.self)) }
+        guard header[0] == equirectBlobMagic, header[1] == 1 else { return nil }
+        let w = Int(header[2]), h = Int(header[3]), avg = Float(bitPattern: header[4])
+        guard w > 0, h > 0, data.count == 20 + w * h * 8 else { return nil }
+        return EquirectBytes(data: data.subdata(in: 20..<data.count), width: w, height: h, avg: avg)
+    }
+}
+
+/// Processed equirect float pixels (`rgba16Float`, `width·height·8` bytes) plus the source's
+/// solid-angle-weighted average luminance, handed from the decode (possibly off-thread) to
+/// the bake. `Sendable` so the off-thread load can return it across the task boundary.
+fileprivate struct EquirectBytes: Sendable {
+    let data: Data
+    let width: Int
+    let height: Int
+    let avg: Float
 }

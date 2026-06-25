@@ -18,7 +18,7 @@ struct DetachedInspectorView: View {
     let stats: FrameStats
     let params: [ParamHandle]
 
-    @Environment(\.colorScheme) private var scheme
+    @SwiftUI.Environment(\.colorScheme) private var scheme
 
     /// A scrim toward the design's `--glass` tone, at the shared chrome opacity, so
     /// the frosted panel isn't too see-through over a bright sketch (the bare

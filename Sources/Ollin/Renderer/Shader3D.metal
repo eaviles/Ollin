@@ -428,7 +428,9 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     // (its environment reflection is the IBL specular term, added once an environment is set).
     float3 lit;
     if (model == 2)      lit = float3(0.0);
-    else if (model == 3) lit = light.ambient.rgb * base * (1.0 - mat.metallic);
+    else if (model == 3) lit = (light.iblEnabled != 0)
+                             ? float3(0.0)   // the IBL ambient is added by the mesh fragment
+                             : light.ambient.rgb * base * (1.0 - mat.metallic);
     else                 lit = light.ambient.rgb * base;
     float3 incoming = light.ambient.rgb;     // light reaching the surface (drives the sheen)
     float3 sssAccum = float3(0.0);           // accumulated back-translucency
@@ -606,6 +608,40 @@ fragment float4 ollin_mesh_point_shadow_fragment(MeshCubeShadowOut in [[stage_in
     return float4(dist, dist, 0.0, 0.0);
 }
 
+// The image-based-lighting ambient for a physically-based surface: the split-sum
+// approximation (Karis), gathering the environment's diffuse irradiance and its
+// GGX-prefiltered specular reflection, recombined through the BRDF integration LUT. Added
+// by the lit mesh fragments on top of `meshLitColor`'s direct lighting when an environment
+// is set (`light.iblEnabled`) and the material is physically-based (shading model 3). The
+// three textures are the baked irradiance cube, the prefiltered specular mip-cube, and the
+// 2D BRDF LUT. `base` is the linear albedo. Written from the published technique (README
+// Techniques list).
+static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir,
+                                           constant OllinMaterial &mat,
+                                           constant OllinLighting &light,
+                                           texturecube<float> irradianceTex,
+                                           texturecube<float> prefilterTex,
+                                           texture2d<float> brdfTex) {
+    constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
+    constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
+    float NoV = max(dot(n, viewDir), 1e-4);
+    float rough = clamp((float)mat.roughness, 0.045, 1.0);
+    float3 R = reflect(-viewDir, n);
+    // Spin the sample directions about Y by the environment rotation.
+    float cs = cos(light.iblRotation), sn = sin(light.iblRotation);
+    float3x3 rot = float3x3(float3(cs, 0.0, -sn), float3(0.0, 1.0, 0.0), float3(sn, 0.0, cs));
+    float3 F0 = mix(float3(0.04), base, mat.metallic);
+    // Roughness-aware Fresnel so rough grazing angles don't blow out.
+    float3 F = F0 + (max(float3(1.0 - rough), F0) - F0) * pow(1.0 - NoV, 5.0);
+    float3 kD = (float3(1.0) - F) * (1.0 - mat.metallic);
+    float3 irradiance = irradianceTex.sample(cubeSamp, rot * n).rgb;
+    float3 diffuse = irradiance * base;
+    float3 prefiltered = prefilterTex.sample(cubeSamp, rot * R, level(rough * light.iblMaxMip)).rgb;
+    float2 brdf = brdfTex.sample(lutSamp, float2(NoV, rough)).rg;
+    float3 specular = prefiltered * (F0 * brdf.x + brdf.y);
+    return (kD * diffuse + specular) * light.iblIntensity;
+}
+
 fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     constant OllinLighting &light [[buffer(0)]],
                                     constant OllinMaterial &mat [[buffer(1)]],
@@ -615,7 +651,10 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     sampler shadowCubeSamp [[sampler(2)]],
                                     const device SDF3DGroupInstance *fields [[buffer(4)]],
                                     const device SDFNode3D *fieldNodes [[buffer(5)]],
-                                    texture2d<float> fieldShadowTex [[texture(3)]]
+                                    texture2d<float> fieldShadowTex [[texture(3)]],
+                                    texturecube<float> iblIrradiance [[texture(4)]],
+                                    texturecube<float> iblPrefilter [[texture(5)]],
+                                    texture2d<float> iblBRDF [[texture(6)]]
 #if OLLIN_RT_SHADOWS
                                     , primitive_acceleration_structure shadowAccel [[buffer(3)]]
 #endif
@@ -623,18 +662,26 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     // Linearize the surface color so the present pass's sRGB re-encode lands the
     // on-screen pixel at the fill color, then shade + shadow it through the shared
     // tail (which returns it flat unchanged when no light is set).
+    float3 base = srgbToLinear(in.color.rgb);
     float meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                             light, fields, fieldNodes, fieldShadowTex);
 #if OLLIN_RT_SHADOWS
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
-    return meshLitColor(srgbToLinear(in.color.rgb), in.color.a, in.normal,
-                        in.worldPos, mat, light, shadowMap, shadowSamp,
-                        shadowCube, shadowCubeSamp, rtShadow, -1.0, meshFieldShadow);
+    float4 c = meshLitColor(base, in.color.a, in.normal,
+                            in.worldPos, mat, light, shadowMap, shadowSamp,
+                            shadowCube, shadowCubeSamp, rtShadow, -1.0, meshFieldShadow);
 #else
-    return meshLitColor(srgbToLinear(in.color.rgb), in.color.a, in.normal,
-                        in.worldPos, mat, light, shadowMap, shadowSamp,
-                        shadowCube, shadowCubeSamp, -1.0, meshFieldShadow);
+    float4 c = meshLitColor(base, in.color.a, in.normal,
+                            in.worldPos, mat, light, shadowMap, shadowSamp,
+                            shadowCube, shadowCubeSamp, -1.0, meshFieldShadow);
 #endif
+    // Physically-based surfaces gather their ambient + reflections from the environment.
+    if (mat.shadingModel == 3 && light.iblEnabled != 0) {
+        float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
+        c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
+                                       iblIrradiance, iblPrefilter, iblBRDF);
+    }
+    return c;
 }
 
 // MARK: - Textured 3D mesh
@@ -676,7 +723,10 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              sampler shadowCubeSamp [[sampler(2)]],
                                              const device SDF3DGroupInstance *fields [[buffer(4)]],
                                              const device SDFNode3D *fieldNodes [[buffer(5)]],
-                                             texture2d<float> fieldShadowTex [[texture(3)]]
+                                             texture2d<float> fieldShadowTex [[texture(3)]],
+                                             texturecube<float> iblIrradiance [[texture(4)]],
+                                             texturecube<float> iblPrefilter [[texture(5)]],
+                                             texture2d<float> iblBRDF [[texture(6)]]
 #if OLLIN_RT_SHADOWS
                                              , primitive_acceleration_structure shadowAccel [[buffer(3)]]
 #endif
@@ -692,12 +742,18 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                                             light, fields, fieldNodes, fieldShadowTex);
 #if OLLIN_RT_SHADOWS
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
-    return meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
-                        shadowMap, shadowSamp, shadowCube, shadowCubeSamp, rtShadow, -1.0, meshFieldShadow);
+    float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
+                            shadowMap, shadowSamp, shadowCube, shadowCubeSamp, rtShadow, -1.0, meshFieldShadow);
 #else
-    return meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
-                        shadowMap, shadowSamp, shadowCube, shadowCubeSamp, -1.0, meshFieldShadow);
+    float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
+                            shadowMap, shadowSamp, shadowCube, shadowCubeSamp, -1.0, meshFieldShadow);
 #endif
+    if (mat.shadingModel == 3 && light.iblEnabled != 0) {
+        float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
+        c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
+                                       iblIrradiance, iblPrefilter, iblBRDF);
+    }
+    return c;
 }
 
 // MARK: - Matcap 3D mesh

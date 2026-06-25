@@ -210,7 +210,7 @@ public struct MonitorCardView: View {
     let stats: FrameStats
     let clockSize: CGFloat
 
-    @Environment(\.colorScheme) private var scheme
+    @SwiftUI.Environment(\.colorScheme) private var scheme
 
     public init(identity: MonitorIdentity, stats: FrameStats, clockSize: CGFloat = 30) {
         self.identity = identity
@@ -396,7 +396,7 @@ public struct ParametersListView: View {
     let params: [ParamHandle]
     let onChange: (String, Double) -> Void
 
-    @Environment(\.colorScheme) private var scheme
+    @SwiftUI.Environment(\.colorScheme) private var scheme
 
     public init(params: [ParamHandle], onChange: @escaping (String, Double) -> Void = { _, _ in }) {
         self.params = params

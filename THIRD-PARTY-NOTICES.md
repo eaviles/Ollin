@@ -140,6 +140,19 @@ redistributed inside this repository.
 
 ---
 
+## Bundled HDRI environments
+
+- **Used for:** the built-in HDRI environment maps that light 3D surfaces through image-based lighting. **Eight are bundled** in this repo (`Environment.studio`, `.city`, `.courtyard`, `.forest`, `.interior`, `.night`, `.sunrise`, `.sunset`), loaded at runtime. A curated dozen more (`.day`, `.dusk`, `.snow`, …), plus any `highRes(_:)` 2K/4K/8K upgrade and any user `hdri(downloadURL:)`, **download on demand from Poly Haven** and are cached on the user's machine, not redistributed in this repo.
+- **Location in this repo:** [`Sources/Ollin/Resources/Environments/`](Sources/Ollin/Resources/Environments/) (the eight bundled files; per-file mapping + provenance in [`Sources/Ollin/Resources/Environments/Environments-LICENSE.txt`](Sources/Ollin/Resources/Environments/Environments-LICENSE.txt))
+- **Upstream:** two CC0 sources. Blender's bundled "world" studiolights (https://projects.blender.org/blender/blender/src/branch/main/release/datafiles/studiolights/world), themselves created by Greg Zaal from Poly Haven; and Poly Haven directly (https://polyhaven.com/hdris), by Greg Zaal and contributors. Each bundled file was resampled to 1024×512 and saved as a half-float PIZ OpenEXR (the most compact HDR format ImageIO decodes natively); the on-demand downloads come from Poly Haven at their native resolution.
+- **License:** CC0 1.0 / public domain, per the upstream license pages ([Blender world](https://projects.blender.org/blender/blender/src/branch/main/release/datafiles/studiolights/world/license.txt), [Poly Haven](https://polyhaven.com/license)).
+
+> These HDRIs are licensed as CC0 / public domain. Thanks to Greg Zaal, Poly Haven,
+> and the Blender community. CC0 carries no attribution requirement; the credit above
+> is given freely, and provenance is recorded for the bundled assets.
+
+---
+
 ## Marble Madness (example font)
 
 - **Used for:** the `PlaydateFont` example sketch only — a sample Playdate `.fnt` font, loaded at runtime to demonstrate the loader. Not part of the Ollin framework; Ollin bundles no `.fnt` fonts itself.

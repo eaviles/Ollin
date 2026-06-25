@@ -427,6 +427,12 @@ typedef struct {
                                   // == 1: the fragment's screen uv is (position.xy · scale) / the
                                   // half-res texture size, so it's free of any points-vs-pixels
                                   // (Retina) drawable mismatch (the texture covers the screen).
+    int   iblEnabled;             // 1 = an image-based-lighting environment is bound (the
+                                  // physically-based ambient samples the irradiance/prefilter/BRDF
+                                  // textures); 0 = none, the flat-ambient path, byte-identical.
+    float iblIntensity;           // brightness multiplier on the IBL ambient term
+    float iblMaxMip;              // top mip index of the prefiltered specular cube (roughness 1)
+    float iblRotation;            // environment Y rotation (radians), applied to the sample dirs
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

@@ -1,0 +1,37 @@
+Bundled HDRI environment maps
+=============================
+
+The equirectangular HDRI environment maps in this directory light 3D surfaces
+through image-based lighting (Environment.studio / .sunset / …, loaded at
+runtime). Every one is dedicated to the public domain under CC0 1.0, which
+places no conditions on use or modification. The authors are credited here as a
+courtesy (CC0 requires no attribution).
+
+These eight ship bundled at 1K, for instant offline use. They come from
+Blender's bundled "world" studiolights, themselves created by Greg Zaal from
+Poly Haven.
+
+  Source:   blender/blender, release/datafiles/studiolights/world/
+  License:  CC0 1.0 / public domain
+  Upstream license file:
+    https://projects.blender.org/blender/blender/src/branch/main/release/datafiles/studiolights/world/license.txt
+
+  Bundled here (Ollin name  <-  Poly Haven slug):
+    studio    <- studio_small_01
+    city      <- portland_landing_pad
+    courtyard <- courtyard
+    forest    <- ninomaru_teien
+    interior  <- hotel_room
+    night     <- moonless_golf
+    sunrise   <- spruit_sunrise
+    sunset    <- venice_sunset
+
+Each was resampled to 1024x512 and saved as a half-float OpenEXR with PIZ
+compression (the most compact HDR format ImageIO decodes natively on this
+platform; the upstream dwab compression is not decoded by ImageIO).
+
+The other built-in environments (Environment.photoStudio / .day / .noon / …),
+and the higher-resolution 2K/4K/8K versions reached with highRes(_:), are NOT
+bundled: they download from Poly Haven (https://polyhaven.com, also CC0, by Greg
+Zaal and contributors) on first use and cache locally. So Ollin ships only this
+small offline set; everything else is fetched on demand.
