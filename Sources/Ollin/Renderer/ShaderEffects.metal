@@ -377,15 +377,19 @@ fragment float4 ollin_fx_ssao(PresentOut in [[stage_in]],
     float distP = near + t * (far - near);
 
     // Surface normal: a true view-space normal sampled from the mesh G-buffer when one
-    // was captured (the `.ambientOcclusion` over a 3D scene; alpha 1 marks a real
-    // normal): stable at a concave seam where the depth reconstruction is ambiguous and
-    // flickers as the camera turns. Otherwise reconstruct it from depth: the better-facing
-    // of paired neighbours a few texels out (a 1-texel stencil is near the 16-bit depth
-    // quantisation, which bands flat faces). The G-buffer is stored in the same view space
-    // `ollin_ssao_viewpos` works in, so no transform is needed here.
+    // was captured (the `.ambientOcclusion` over a 3D scene; alpha marks coverage, > 0 = a
+    // real normal is here): stable at a concave seam where the depth reconstruction is
+    // ambiguous and flickers as the camera turns. The G-buffer is MSAA-resolved, so a
+    // silhouette pixel holds a coverage-weighted mesh normal (alpha = coverage); any
+    // coverage uses it (renormalize drops the coverage scale, recovering the surface
+    // direction), so the edge stays put instead of toggling to the depth reconstruction.
+    // Where no mesh covered the pixel (alpha 0), reconstruct it from depth: the
+    // better-facing of paired neighbours a few texels out (a 1-texel stencil is near the
+    // 16-bit depth quantisation, which bands flat faces). The G-buffer is stored in the
+    // same view space `ollin_ssao_viewpos` works in, so no transform is needed here.
     float3 N;
     float4 nSample = hasNormals ? normalMap.sample(samp, in.uv) : float4(0);
-    if (hasNormals && nSample.a > 0.5) {
+    if (hasNormals && nSample.a > 0.001) {
         N = normalize(nSample.xyz);
     } else {
         float2 noff = texel * 3.0;
@@ -464,14 +468,21 @@ fragment float4 ollin_fx_ssao_blur(PresentOut in [[stage_in]],
     float tc = ollin_dof_depth(depthMap.sample(samp, in.uv));
     if (tc >= 0.999 || intensity <= 0.0) return centerColor;       // background / off: passthrough
 
-    // A 5×5 box, each tap weighted
-    // by depth proximity so it doesn't average across a silhouette (which re-opens haloes).
+    // A 7×7 Gaussian-weighted kernel, each tap weighted by depth proximity so it doesn't
+    // average across a silhouette (which re-opens haloes). The Gaussian spatial falloff keeps
+    // it a *gentle* smooth (not a hard box), and the wider reach softens the thin, sharp
+    // contact lines that the depth-aware normal resolve leaves at internal silhouettes
+    // (a clean front-surface normal there gives a continuous crevice line; spreading it over
+    // a couple more pixels lowers its peak so it reads as a soft contact, not a drawn line),
+    // while the depth weight still confines the blur to the same surface.
     float sum = 0.0, wsum = 0.0;
-    for (int y = -2; y <= 2; y++) {
-        for (int x = -2; x <= 2; x++) {
+    for (int y = -3; y <= 3; y++) {
+        for (int x = -3; x <= 3; x++) {
             float2 uv = in.uv + float2(float(x), float(y)) * texel;
             float ts = ollin_dof_depth(depthMap.sample(samp, uv));
-            float w = max(0.0, 1.0 - abs(ts - tc) * 40.0);
+            float wDepth = max(0.0, 1.0 - abs(ts - tc) * 40.0);
+            float wSpace = exp(-float(x * x + y * y) * 0.18);          // gentle Gaussian falloff
+            float w = wDepth * wSpace;
             sum  += aoTex.sample(samp, uv).r * w;
             wsum += w;
         }
@@ -479,6 +490,49 @@ fragment float4 ollin_fx_ssao_blur(PresentOut in [[stage_in]],
     float ao = wsum > 0.0 ? sum / wsum : aoTex.sample(samp, in.uv).r;
     ao = saturate(1.0 - intensity * (1.0 - ao));                   // scale strength
     return float4(centerColor.rgb * ao, centerColor.a);
+}
+
+// Depth-aware resolve of the MSAA mesh-normal G-buffer, in place of a hardware box-average.
+// A plain average is right at a mesh-vs-*background* silhouette (the background
+// samples contribute the cleared zero, so the average is just the front normal scaled by
+// coverage, renormalising back to it: the smooth coverage that fixed the edge flicker). But
+// at an *internal* silhouette (a near box's edge against a farther box) both surfaces cover
+// some of the N samples, and a box-average blends the front and back normals into a tilted
+// one that varies along the edge as the coverage pattern shifts, tilting the AO hemisphere
+// into a dashed occlusion line. So average **only the front surface's** samples: take the
+// nearest covered sample's depth, then mean the normals of samples within half the covered
+// depth span of it (scale-free: a single slanted face has a tiny span so all its samples
+// count; two surfaces split at the midpoint, so the far one drops out). The output matches
+// the scene depth the SSAO reconstructs position from (`.min`-resolved, i.e. the front
+// surface), so normal and position stay consistent at the edge. Coverage rides in alpha
+// (front-sample count / N); a pixel no mesh covered stays at the cleared zero, and the AO
+// falls back to depth reconstruction there.
+fragment float4 ollin_mesh_normal_resolve(float4 pos [[position]],
+                                          texture2d_ms<float> normalMS [[texture(0)]],
+                                          depth2d_ms<float> depthMS [[texture(1)]]) {
+    uint2 c = uint2(pos.xy);
+    uint n = normalMS.get_num_samples();
+    float minD = 1.0, maxD = 0.0;
+    bool any = false;
+    for (uint s = 0; s < n; s++) {
+        if (normalMS.read(c, s).a > 0.5) {                         // a covered (mesh) sample
+            float d = depthMS.read(c, s);
+            minD = min(minD, d); maxD = max(maxD, d); any = true;
+        }
+    }
+    if (!any) return float4(0.0);                                  // no mesh here → cleared
+    float thresh = minD + (maxD - minD) * 0.5 + 1e-6;              // front surface only
+    float3 nsum = float3(0.0);
+    float cov = 0.0;
+    for (uint s = 0; s < n; s++) {
+        float4 v = normalMS.read(c, s);
+        if (v.a > 0.5 && depthMS.read(c, s) <= thresh) { nsum += v.xyz; cov += 1.0; }
+    }
+    // Store coverage-scaled (sum / N), the convention the hardware box average uses, so the
+    // magnitude ramps smoothly with coverage (the SSAO renormalises the direction on read, so
+    // this is equivalent there); the only difference from the box average is that a farther
+    // surface's samples are excluded, which is the whole point.
+    return float4(nsum / float(n), cov / float(n));
 }
 
 // MARK: - Color & tone filters

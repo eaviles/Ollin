@@ -184,14 +184,18 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_mesh_matcap_vertex", fragment: "ollin_mesh_matcap_fragment",
                         blend: blend, depthFormat: depth)
         }
-        // mesh view-space normal G-buffer: re-render the meshes single-sample, depth-tested,
-        // writing each surface's view-space normal (alpha 1) so the ambient-occlusion combine
-        // reads a true normal instead of reconstructing one from depth. Material-agnostic:
-        // one pipeline for the solid / textured / matcap meshes. `.normal` blend with the
-        // fragment's alpha 1 over a transparent clear is effectively a replace.
+        // mesh view-space normal G-buffer: re-render the meshes MSAA + depth-tested, writing
+        // each surface's view-space normal (alpha 1) so the ambient-occlusion combine reads a
+        // true normal instead of reconstructing one from depth. MSAA (not single-sample) so a
+        // silhouette pixel resolves to a coverage-weighted mesh normal (renormalized on read)
+        // rather than toggling between the mesh normal and the cleared background sub-pixel,
+        // which shimmered the AO at edges; the resolved alpha carries that coverage. Inherits
+        // the view sample count, matching the resolved scene depth the SSAO reads alongside it.
+        // Material-agnostic: one pipeline for the solid / textured / matcap meshes. `.normal`
+        // blend with the fragment's alpha 1 over a transparent clear is effectively a replace.
         static func meshNormal(depth: MTLPixelFormat) -> PipelineKey {
             PipelineKey(vertex: "ollin_mesh_normal_vertex", fragment: "ollin_mesh_normal_fragment",
-                        depthFormat: depth, singleSample: true)
+                        depthFormat: depth)
         }
         // depth-scene backdrop: a textured quad that also writes per-pixel depth from
         // a depth map (premultiplied color, like the image path; outputs [[depth]]).
@@ -3038,25 +3042,38 @@ final class MetalRenderer {
                           raymarchSteps: SIMD2<Float>(Float(steps.march), Float(steps.shadow)))
     }
 
-    /// The mesh-normal G-buffer pass: re-render a target's meshes single-sample,
-    /// depth-tested, writing each surface's view-space normal so the ambient-occlusion
-    /// combine reads a true normal instead of one reconstructed from depth (which is
-    /// ambiguous at a concave seam and flickers as the camera turns). Mirrors the
-    /// half-res field-shadow pass: a dedicated mesh-only re-encode, not a second
-    /// attachment on the shared geometry pass (which would force every 2D pipeline in
-    /// that pass to be MRT-compatible). Runs only when the target asked for normals
-    /// (`needsNormals`, set when an `.ambientOcclusion` combine reads a 3D target), so a
-    /// frame without AO pays nothing and is byte-identical. Returns the filled normal
-    /// texture at the target's pixel size, or nil when there's no mesh to draw.
+    /// The mesh-normal G-buffer pass: re-render a target's meshes MSAA + depth-tested,
+    /// writing each surface's view-space normal so the ambient-occlusion combine reads a
+    /// true normal instead of one reconstructed from depth (which is ambiguous at a concave
+    /// seam and flickers as the camera turns). MSAA (not single-sample) then a depth-aware
+    /// resolve (`ollin_mesh_normal_resolve`, front-surface samples only): a silhouette pixel
+    /// carries a coverage-weighted mesh normal (renormalized on read) that matches the
+    /// `.min`-resolved scene depth the SSAO reconstructs position from, instead of toggling to
+    /// the cleared background sub-pixel (which shimmered the edge AO) or blending a farther
+    /// surface's normal across an internal silhouette (which dashed it). A dedicated mesh-only
+    /// re-encode, not a second attachment on the shared geometry pass (which would force
+    /// every 2D pipeline in that pass to be MRT-compatible). Runs only when the target asked
+    /// for normals (`needsNormals`, set when an `.ambientOcclusion` combine reads a 3D
+    /// target), so a frame without AO pays nothing and is byte-identical. Returns the filled
+    /// normal texture at the target's pixel size, or nil when there's no mesh to draw.
     private func encodeMeshNormals(_ drawer: Drawer, into cb: MTLCommandBuffer,
                                    meshBuffer: MTLBuffer?, width: Int, height: Int,
                                    pooled: Bool) -> MTLTexture? {
         guard let camera = drawer.camera3D, let meshBuffer,
               drawer.batches.contains(where: { $0.kind == .mesh3D }),
-              let color = acquireFilterTexture(width: width, height: height, pooled: pooled),
-              let depth = makeHalfResDepth(width: width, height: height),
+              let resolve = acquireFilterTexture(width: width, height: height, pooled: pooled),
+              let color = makeReadableFloatMSAA(width: width, height: height),
+              let depth = makeReadableDepthMSAA(width: width, height: height),
               let pipe = try? pipeline(.meshNormal(depth: depthPixelFormat)) else { return nil }
 
+        // MSAA into a stored target, then a *depth-aware* resolve (`ollin_mesh_normal_resolve`)
+        // into the single-sample `resolve` texture the SSAO samples, not the hardware box
+        // average, which at an internal silhouette (a near box's edge against a farther box)
+        // would blend the front and back surface normals into a tilted one that dashes the AO.
+        // The custom resolve averages only the front surface's samples, so the stored normal
+        // matches the `.min`-resolved scene depth the SSAO reconstructs position from; the
+        // per-sample normal + depth therefore both `.store` (read back in the resolve pass).
+        // The resolved alpha is the front-surface coverage (0 = a pixel no mesh touched).
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = color
         pass.colorAttachments[0].loadAction = .clear
@@ -3065,7 +3082,7 @@ final class MetalRenderer {
         pass.depthAttachment.texture = depth
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
-        pass.depthAttachment.storeAction = .dontCare
+        pass.depthAttachment.storeAction = .store
         guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
         enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(width), height: Double(height), znear: 0, zfar: 1))
         enc.setRenderPipelineState(pipe)
@@ -3092,7 +3109,36 @@ final class MetalRenderer {
             enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
         }
         enc.endEncoding()
-        return color
+
+        // Depth-aware resolve: front-surface-only normal average (see above), into `resolve`.
+        encodeEffectFragment("ollin_mesh_normal_resolve", inputs: [color, depth],
+                             output: resolve, params: [], into: cb)
+        return resolve
+    }
+
+    /// A multisample `linearFormat` colour target that is *also* shader-readable (per-sample,
+    /// as a `texture2d_ms`), for the depth-aware mesh-normal resolve. `.private` + `.store`,
+    /// unlike the geometry path's memoryless MSAA (which is hardware-resolved within its pass).
+    private func makeReadableFloatMSAA(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: linearFormat, width: width, height: height, mipmapped: false)
+        desc.textureType = .type2DMultisample
+        desc.sampleCount = sampleCount
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
+    }
+
+    /// A multisample depth target that is shader-readable per-sample (as a `depth2d_ms`), so
+    /// the normal resolve can tell the front surface's samples from a farther surface's.
+    private func makeReadableDepthMSAA(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: depthPixelFormat, width: width, height: height, mipmapped: false)
+        desc.textureType = .type2DMultisample
+        desc.sampleCount = sampleCount
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
     }
 
     private func encodeFieldShadowHalfRes(_ drawer: Drawer, into cb: MTLCommandBuffer,

@@ -811,9 +811,11 @@ fragment float4 ollin_mesh_matcap_fragment(MeshMatcapOut in [[stage_in]],
 // term converts its top-down uv back into this y-up frame, so the reconstructed
 // normal it currently builds (and therefore the one stored here) is just the world
 // normal rotated by the view matrix, with no extra Y flip. Alpha 1 marks "a real
-// surface normal is here": a pixel the pass didn't cover stays at the cleared alpha 0,
-// and the AO shader falls back to depth reconstruction there (so a mesh-free or mixed
-// region degrades gracefully).
+// surface normal is here"; the pass is MSAA-resolved, so a silhouette pixel resolves to
+// a coverage-weighted normal with alpha = its coverage (the AO renormalizes, recovering
+// the direction). A pixel the pass didn't cover stays at the cleared alpha 0, and the AO
+// shader falls back to depth reconstruction there (so a mesh-free or mixed region degrades
+// gracefully).
 
 struct MeshNormalOut {
     float4 position [[position]];
