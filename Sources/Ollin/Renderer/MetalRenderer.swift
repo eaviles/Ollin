@@ -4300,7 +4300,7 @@ extension MetalRenderer {
                 Task.detached {
                     let bytes = Self.loadEquirectBytes(envCopy)
                     if let bytes { ready.withLock { $0[source] = bytes } }
-                    loading.withLock { $0.remove(source) }
+                    loading.withLock { _ = $0.remove(source) }
                 }
             }
             return nil
@@ -4557,6 +4557,9 @@ extension MetalRenderer {
             return nil   // a bundled .resource decodes fast and its EXR is compact: skip the blob
         }()
         if let blobURL, let bytes = readEquirectBlob(blobURL) { return bytes }
+        // A real `.url` decode (blob miss): the heavy step after a download, so note it. A
+        // bundled `.resource` decodes fast from a compact EXR, so it stays silent.
+        if case .url(let file) = env.source { print("Ollin: decoding \(EnvironmentCache.displayName(for: file))…") }
         guard let cg = env.loadEquirectImage(), let bytes = processEquirect(cg) else { return nil }
         if let blobURL { writeEquirectBlob(bytes, to: blobURL) }
         return bytes

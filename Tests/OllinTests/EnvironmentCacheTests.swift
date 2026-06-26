@@ -22,6 +22,18 @@ import os
         #expect(cache.cacheFile(for: a).lastPathComponent.hasSuffix("sky_4k.exr"))   // recognizable
     }
 
+    @Test func displayNameStripsCacheHashPrefix() {
+        let cache = EnvironmentCache(cacheDirectory: tempDir())
+        // A cache file carries a `<16-hex-hash>-` prefix; displayName drops it back to the
+        // original name for progress lines.
+        let url = URL(string: "https://example.com/golden_gate_hills_4k.exr")!
+        #expect(EnvironmentCache.displayName(for: cache.cacheFile(for: url)) == "golden_gate_hills_4k.exr")
+        // A user's own file (no hash prefix) is returned unchanged.
+        #expect(EnvironmentCache.displayName(for: URL(fileURLWithPath: "/tmp/studio.hdr")) == "studio.hdr")
+        // A name that merely starts with a dash, or non-hex chars before the dash, isn't stripped.
+        #expect(EnvironmentCache.displayName(for: URL(fileURLWithPath: "/tmp/not-a-hash-name.exr")) == "not-a-hash-name.exr")
+    }
+
     @Test func downloadFetchesOnceThenServesFromCache() throws {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }

@@ -16,10 +16,11 @@ final class EnvironmentCache: @unchecked Sendable {
     /// default per-user caches location.
     let cacheDirectory: URL
 
-    /// The fetch used to download a URL's bytes. Defaults to `URLSession`; a test replaces it
-    /// with a stub that returns canned data, so the cache logic runs without the network.
+    /// The fetch used to download a URL's bytes. Defaults to a `URLSession` download that
+    /// prints terminal progress (so a large HDRI fetch isn't a silent pause); a test replaces
+    /// it with a stub that returns canned data, so the cache logic runs without the network.
     var fetch: @Sendable (URL) async throws -> Data = { url in
-        try await URLSession.shared.data(from: url).0
+        try await EnvironmentCache.downloadReportingProgress(url)
     }
 
     /// URLs currently downloading, so a repeated request (every frame, while it's in flight)
@@ -46,6 +47,16 @@ final class EnvironmentCache: @unchecked Sendable {
         for byte in url.absoluteString.utf8 { hash = (hash ^ UInt64(byte)) &* 1099511628211 }
         let name = String(format: "%016llx-%@", hash, url.lastPathComponent)
         return cacheDirectory.appendingPathComponent(name)
+    }
+
+    /// A cache file's friendly display name: the original file name with the `<16-hex-hash>-`
+    /// prefix that `cacheFile(for:)` prepends stripped off, so a progress line reads as the
+    /// plain HDRI name. A file with no such prefix (a user's own `hdri(path:)`) is unchanged.
+    static func displayName(for fileURL: URL) -> String {
+        let name = fileURL.lastPathComponent
+        guard name.count > 17, name[name.index(name.startIndex, offsetBy: 16)] == "-",
+              name.prefix(16).allSatisfy(\.isHexDigit) else { return name }
+        return String(name.dropFirst(17))
     }
 
     /// The cached file for a URL if it has already been downloaded, else nil.
@@ -75,7 +86,7 @@ final class EnvironmentCache: @unchecked Sendable {
         let file = cacheFile(for: url), dir = cacheDirectory, fetch = self.fetch, inFlight = self.inFlight
         Task.detached {
             _ = try? await EnvironmentCache.store(url, to: file, in: dir, fetch: fetch)
-            inFlight.withLock { $0.remove(url) }
+            inFlight.withLock { _ = $0.remove(url) }
         }
     }
 
@@ -108,5 +119,90 @@ final class EnvironmentCache: @unchecked Sendable {
         try? FileManager.default.removeItem(at: file)
         try FileManager.default.moveItem(at: tmp, to: file)
         return file
+    }
+
+    /// Download a URL's bytes, printing throttled progress to the terminal. A remote HDRI (and
+    /// then a large EXR decode) is otherwise a silent multi-second pause on the first run; this
+    /// names the file and shows MB/percent as it downloads, then a "decoding…" note follows from
+    /// the renderer where the decode happens.
+    ///
+    /// Uses a classic `URLSessionDownloadTask` on a delegate-configured session (not the async
+    /// `download(from:delegate:)` convenience, whose per-task delegate doesn't get the
+    /// `didWriteData` progress callback), bridged to async with a continuation. The download
+    /// task streams to a temp file natively, so there's no per-byte copy cost.
+    static func downloadReportingProgress(_ url: URL) async throws -> Data {
+        let name = url.lastPathComponent
+        print("Ollin: downloading \(name)…")
+        let data = try await withCheckedThrowingContinuation { continuation in
+            let delegate = DownloadProgress(name: name, continuation: continuation)
+            // The session strongly retains the delegate, and the delegate holds the session, so
+            // the pair stays alive through the running task; the delegate breaks the cycle by
+            // invalidating the session once it finishes.
+            let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+            delegate.session = session
+            session.downloadTask(with: url).resume()
+        }
+        print(String(format: "Ollin: downloaded %@ (%.1f MB)", name, Double(data.count) / 1_048_576))
+        return data
+    }
+}
+
+/// Drives a download task: prints throttled byte/percent progress, and resumes a continuation
+/// once the file lands (read in the callback, where the temp file is still valid) or the task
+/// fails. Progress prints only when the bucket advances (every 10%, or every ~8 MB when the
+/// server gives no content length), so a fast download stays a few lines, not a flood.
+private final class DownloadProgress: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    private let name: String
+    private let continuation: CheckedContinuation<Data, Error>
+    private let lastBucket = OSAllocatedUnfairLock(initialState: -1)
+    private let finished = OSAllocatedUnfairLock(initialState: false)
+    var session: URLSession?
+
+    init(name: String, continuation: CheckedContinuation<Data, Error>) {
+        self.name = name
+        self.continuation = continuation
+    }
+
+    /// Resume the continuation exactly once and tear down the session (breaking its retain cycle
+    /// with this delegate). `didFinishDownloadingTo` is followed by a `didCompleteWithError(nil)`,
+    /// so the guard keeps the second from double-resuming.
+    private func finish(_ result: Result<Data, Error>) {
+        let first = finished.withLock { done -> Bool in
+            guard !done else { return false }
+            done = true
+            return true
+        }
+        guard first else { return }
+        continuation.resume(with: result)
+        session?.finishTasksAndInvalidate()
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData _: Int64,
+                    totalBytesWritten written: Int64, totalBytesExpectedToWrite total: Int64) {
+        let mb = Double(written) / 1_048_576
+        let bucket: Int
+        let line: String
+        if total > 0 {
+            let pct = Int(Double(written) / Double(total) * 100)
+            bucket = pct / 10
+            line = String(format: "Ollin:   %@ %d%% (%.1f / %.1f MB)", name, pct, mb, Double(total) / 1_048_576)
+        } else {
+            bucket = Int(mb / 8)
+            line = String(format: "Ollin:   %@ %.1f MB", name, mb)
+        }
+        let advanced = lastBucket.withLock { (last: inout Int) -> Bool in
+            guard bucket > last else { return false }
+            last = bucket
+            return true
+        }
+        if advanced { print(line) }
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        finish(Result { try Data(contentsOf: location) })
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error { finish(.failure(error)) }
     }
 }
