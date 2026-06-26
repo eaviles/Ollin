@@ -2215,6 +2215,10 @@ final class MetalRenderer {
         if shadowAccel != nil {
             lighting.shadowKind = 2
             lighting.shadowSamples = resolveShadowSamples(drawer.shadowQualitySetting)
+        } else if lighting.shadowLight >= 0 && lighting.shadowKind == 0 {
+            // A directional/spot 2D caster runs PCSS (soft shadows): it budgets texture taps,
+            // not rays, and the count is hardware-independent (cheap samples on any GPU).
+            lighting.shadowSamples = resolveShadowTaps2D(drawer.shadowQualitySetting)
         }
         // Ray-traced reflections: a physically-based metal traces the caster accel for its
         // reflection (replacing the IBL prefilter sample). The flag gates it; off → the
@@ -2959,6 +2963,25 @@ final class MetalRenderer {
         }
     }
 
+    /// Resolve the soft-shadow quality intent to a PCSS **tap budget** for the directional/spot
+    /// 2D maps (shared between the blocker search and the variable-kernel PCF). Unlike the
+    /// ray-traced path, these are cheap texture samples that run on every GPU, so the budget is
+    /// hardware-independent (a tier maps to a fixed count, not a per-GPU one). Export/headless
+    /// lands on `.detail` via `effectiveQuality` for the creamiest penumbra; live stays at
+    /// `.default`. An absolute `shadowSamples(_:)` is clamped to a sane disk range.
+    private func resolveShadowTaps2D(_ setting: ShadowQualitySetting) -> Int32 {
+        switch setting {
+        case .absolute(let n):
+            return Int32(min(max(n, 12), 96))
+        case .tier(let quality):
+            switch effectiveQuality(quality) {
+            case .performance: return 24
+            case .default:     return 40
+            case .detail:      return 72
+            }
+        }
+    }
+
     /// An exact bokeh tap count that, when set, overrides the resolved `.defocus` quality
     /// tier — the hook `Scripts/benchmark-dof.sh` uses to sweep tap counts and measure the
     /// real per-GPU frame cost. `nil` in normal use.
@@ -3141,6 +3164,8 @@ final class MetalRenderer {
         if shadowAccelPresent {
             lighting.shadowKind = 2
             lighting.shadowSamples = resolveShadowSamples(drawer.shadowQualitySetting)
+        } else if lighting.shadowLight >= 0 && lighting.shadowKind == 0 {
+            lighting.shadowSamples = resolveShadowTaps2D(drawer.shadowQualitySetting)
         }
         return (lighting, shadowMap ?? ensureDummyShadowMap(), shadowCube ?? ensureDummyPointShadowMap())
     }

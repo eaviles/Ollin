@@ -455,6 +455,14 @@ open class Sketch {
     /// GPU, or a render that should look identical across machines. Persistent.
     public func shadowSamples(_ count: Int) { drawer.shadowSamples(count) }
 
+    /// Set how **soft** a cast shadow's penumbra is, 0…1 (the contact-hardening dial). `0` is a
+    /// hard edge (the classic shadow look); the `0.5` default sharpens the shadow where an object
+    /// meets a surface and blurs it as it falls away (physically plausible soft shadows); `1` is
+    /// very soft. It softens the directional and spot casters (a variable-kernel filter on their
+    /// shadow maps) **and** the ray-traced point caster's area light, so one knob controls every
+    /// shadow kind. A persistent setting; set it once in `setup()` or `draw()`.
+    public func shadowSoftness(_ amount: Double = 0.5) { drawer.shadowSoftness(amount) }
+
     /// Set the raymarched-SDF (`drawSDF3D`) quality: the dial to trade fidelity for frame rate
     /// on the fullscreen sphere-tracer, whose cost is bound to pixel count. It scales the
     /// **live preview's** internal resolution (a depth-aware upsample composites it back to the

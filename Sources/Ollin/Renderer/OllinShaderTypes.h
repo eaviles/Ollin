@@ -411,9 +411,14 @@ typedef struct {
     simd_float4x4 lightViewProjection;  // world -> shadow-caster clip space (2D kind)
     float shadowTexelWorld;       // world-space size of one shadow-map texel (bias / PCF-spread unit)
     int   shadowKind;             // 0 = 2D map (directional/spot), 1 = cube map (point), 2 = ray-traced point
-    float shadowDepthA;           // cube kind: the far plane; ray-traced kind: unused
-    float shadowDepthB;           // ray-traced kind: the area-light radius (softness); else unused
-    int   shadowSamples;          // ray-traced kind: rays per pixel (penumbra quality; default 4)
+    float shadowDepthA;           // cube kind: the far plane; 2D kind: the PCSS penumbra radius
+                                  // in texels (0 = the hard legacy 3x3 path); ray-traced: unused
+    float shadowDepthB;           // ray-traced kind: the area-light radius (softness); 2D kind:
+                                  // the perspective projection's [2][2] term to linearize a spot
+                                  // map's depth for the penumbra ratio (0 = an ortho/directional
+                                  // map, the sentinel for plain separation); cube kind: unused
+    int   shadowSamples;          // ray-traced kind: rays per pixel; 2D kind: the PCSS tap budget
+                                  // (split blocker search / PCF); cube kind: unused (default 0)
     int   fieldCasterCount;       // number of raymarched SDF fields casting onto meshes under a
                                   // point/ray-traced caster (the lit mesh fragments march them
                                   // toward the light; 0 = none, the byte-identical mesh path). A

@@ -320,6 +320,12 @@ final class Drawer {
     /// non-RT cube fallback ignore it.
     private(set) var shadowQualitySetting: ShadowQualitySetting = .tier(.default)
 
+    /// How soft a cast shadow's penumbra is, 0…1. 0 = a hard edge (the legacy 3×3 PCF, so
+    /// `shadowSoftness(0)` is byte-identical to the old look); the 0.5 default is contact-
+    /// hardening soft (PCSS for the directional/spot 2D maps); 1 = very soft. It drives the
+    /// ray-traced point caster's area-light radius too, so one knob softens every caster kind.
+    private(set) var shadowSoftnessAmount: Double = 0.5
+
     /// The raymarched-3D-SDF (`drawSDF3D`) quality intent: a `RenderQuality` tier the renderer
     /// resolves to a march-step budget + internal render scale, or an exact step count. Read
     /// only by the raymarch path; `.tier(.default)` reproduces the pre-dial constants.
@@ -1020,6 +1026,10 @@ final class Drawer {
     /// Persistent.
     func shadowSamples(_ count: Int) { shadowQualitySetting = .absolute(max(1, min(count, 64))) }
 
+    /// Set how soft a cast shadow's penumbra is, 0…1 (clamped). 0 = a hard edge, 0.5 = the
+    /// contact-hardening default, 1 = very soft. Persistent.
+    func shadowSoftness(_ amount: Double) { shadowSoftnessAmount = min(1, max(0, amount)) }
+
     /// Set the raymarched-SDF (`drawSDF3D`) quality to a `RenderQuality` tier (the renderer
     /// resolves a march-step budget + internal render scale). Persistent.
     func raymarchQuality(_ quality: RenderQuality) { raymarchQualitySetting = .tier(quality) }
@@ -1095,6 +1105,11 @@ final class Drawer {
             // The eye→target distance (the orbit radius) is the scene-size proxy that
             // frames the box / fits the frustum, matching what the camera frames.
             let r = max(Float(simd_distance(camera.eye.simd3, target)), 1)
+            // The directional/spot caster's penumbra radius in shadow-map texels (0 = the hard
+            // legacy 3×3). Texel-space, so it's scene-scale-invariant: `shadowTexelWorld` already
+            // scales with the scene, so the world penumbra (size · texelWorld) scales with it too,
+            // and `castShadows()` "just works" at any scale with no per-scene tuning.
+            let lightSizeTexels = shadowSoftnessAmount <= 0 ? Float(0) : Float(1 + shadowSoftnessAmount * 18)
             if let caster = (0..<count).first(where: { activeLights[$0].kind == .directional }) {
                 // Directional: look from above the target along the light's travel
                 // direction, an orthographic box sized to the scene.
@@ -1110,6 +1125,11 @@ final class Drawer {
                 u.shadowLight = Int32(caster)
                 u.shadowStrength = 1
                 u.shadowTexelWorld = (2 * r) / Float(Drawer.shadowMapResolution)
+                // PCSS (`shadowKind` 0): the penumbra radius in texels, and `shadowDepthB` = 0,
+                // the sentinel for an orthographic map (the shader uses plain depth separation,
+                // no perspective linearization).
+                u.shadowDepthA = lightSizeTexels
+                u.shadowDepthB = 0
             } else if let caster = (0..<count).first(where: { activeLights[$0].kind == .spot }) {
                 // Spot: a perspective frustum from the light's position, aimed down its
                 // cone axis, the vertical field of view set to the full cone angle (a
@@ -1130,6 +1150,12 @@ final class Drawer {
                 // A perspective texel grows with depth; size the normal-offset bias from
                 // the frustum at the scene center (where the receivers mostly sit).
                 u.shadowTexelWorld = (2 * tan(fovY * 0.5) * dist) / Float(Drawer.shadowMapResolution)
+                // PCSS (`shadowKind` 0): the penumbra radius in texels. `shadowDepthB` carries
+                // the projection's [2][2] term (column 2, z in column-major simd), which is all
+                // the shader needs to linearize the perspective depth for the penumbra ratio
+                // (the [3][2] term cancels). It's negative, which also flags the spot path.
+                u.shadowDepthA = lightSizeTexels
+                u.shadowDepthB = proj.columns.2.z
             } else if let caster = (0..<count).first(where: { activeLights[$0].kind == .point }) {
                 // Point: an omnidirectional caster. The renderer renders the scene into a
                 // six-face cube from the light, each face storing the nearest occluder's
@@ -1150,8 +1176,10 @@ final class Drawer {
                 // sampling the cube (it bumps `shadowKind` to 2); `shadowDepthB` then
                 // carries the area-light radius that softens the traced shadow into a
                 // contact-hardening penumbra (light-relative, so it's camera-independent).
-                // The cube path ignores it, so it's harmless to always pack.
-                u.shadowDepthB = dist * 0.03
+                // The cube path ignores it, so it's harmless to always pack. Driven by the
+                // same `shadowSoftness` knob as the 2D casters (one control for every kind);
+                // the default 0.5 reproduces the previous fixed `dist · 0.03` exactly.
+                u.shadowDepthB = dist * 0.06 * Float(shadowSoftnessAmount)
                 // `shadowSamples` (rays/pixel) is resolved by the renderer from the GPU's
                 // capability + the sketch's quality tier; left 0 here (it has no device).
             }

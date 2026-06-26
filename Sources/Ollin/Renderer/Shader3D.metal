@@ -175,6 +175,78 @@ static inline float shadowFactor(float3 worldPos, float3 n, float3 toLight,
     return sum / 9.0;
 }
 
+// Vogel (golden-angle) disk sample `i` of `n`, rotated by `rot` radians: a near-uniform
+// spiral over the unit disk with a procedural count, so a tap budget can vary at runtime
+// without a fixed offset table.
+static inline float2 vogelDisk(int i, int n, float rot) {
+    float r = sqrt((float(i) + 0.5) / float(n));
+    float theta = float(i) * 2.39996323 + rot;   // 2.399… = the golden angle
+    return float2(cos(theta), sin(theta)) * r;
+}
+
+// Percentage-Closer Soft Shadows for the 2D (directional/spot) caster: a shadow that is
+// sharp at contact and blurs as it falls away (contact-hardening), 1 fully lit → 0 fully
+// shadowed. Three phases (Fernando): (1) a blocker search averages the depth of
+// texels nearer the light than the receiver; (2) the receiver/blocker separation estimates
+// a penumbra width; (3) a variable-radius PCF kernel sized by that penumbra filters the
+// edge. The separation ratio must be formed in depths linear in distance from the light: an
+// orthographic (directional) map's ndc.z already is, so it uses the plain separation; a
+// perspective (spot) map's ndc.z is not, so it linearizes via `linA` = the projection's
+// [2][2] term (the only constant needed; the [3][2] term cancels in the ratio). `lightSize`
+// is the max penumbra radius in shadow-map texels (the caller routes size 0 to the legacy
+// hard `shadowFactor`); `taps` is the total budget, split between the two disks. Same
+// normal-offset + constant bias and early-outs as `shadowFactor`. The blocker search reads
+// raw stored depth through a plain (non-comparison) sampler; the PCF uses the comparison one.
+static inline float shadowFactorPCSS(float3 worldPos, float3 n, float3 toLight,
+                                     float4x4 lightVP, float texelWorld,
+                                     float lightSize, float linA, int taps,
+                                     depth2d<float> shadowMap,
+                                     sampler shadowSamp, sampler depthSamp) {
+    float cosTheta = clamp(dot(n, toLight), 0.0, 1.0);
+    float3 biased = worldPos + n * (texelWorld * (1.5 + 2.0 * (1.0 - cosTheta)));
+    float4 lc = lightVP * float4(biased, 1.0);
+    if (lc.w <= 0.0) return 1.0;
+    float3 ndc = lc.xyz / lc.w;
+    if (ndc.x < -1.0 || ndc.x > 1.0 || ndc.y < -1.0 || ndc.y > 1.0 || ndc.z > 1.0) return 1.0;
+    float2 uv = ndc.xy * float2(0.5, -0.5) + 0.5;
+    float ref = ndc.z - 0.0015;                      // same constant depth bias as legacy
+    float2 texel = 1.0 / float2(shadowMap.get_width(), shadowMap.get_height());
+
+    bool perspective = (linA < -1e-4);               // spot (perspective) vs directional (ortho)
+    // Per-pixel disk rotation decorrelates the taps so the kernel doesn't band; deterministic
+    // in worldPos, so a still frame is stable (no temporal crawl, and snapshot-reproducible).
+    float rot = fract(sin(dot(worldPos.xy + worldPos.z, float2(12.9898, 78.233))) * 43758.5453)
+                * 6.2831853;
+    int blockerTaps = max(8, taps / 3);
+    int pcfTaps = clamp(taps - blockerTaps, 12, 48);
+
+    // Phase 1: blocker search. The search region grows toward the light for a perspective
+    // map (a floor across the cone), stays fixed for a parallel one.
+    float searchScale = perspective ? clamp(-ndc.z / linA, 0.05, 1.0) : 1.0;
+    float searchRadius = lightSize * searchScale;
+    float blockerSum = 0.0;
+    int blockerCount = 0;
+    for (int i = 0; i < blockerTaps; i++) {
+        float d = shadowMap.sample(depthSamp, uv + vogelDisk(i, blockerTaps, rot) * searchRadius * texel);
+        if (d < ref) { blockerSum += d; blockerCount++; }
+    }
+    if (blockerCount == 0) return 1.0;               // no occluder found → fully lit
+    float avgBlocker = blockerSum / float(blockerCount);
+
+    // Phase 2: penumbra estimate from the receiver/blocker separation (linearized for the
+    // perspective map), then the standard penumbra-width shaping heuristic.
+    float ratio = perspective ? (ndc.z - avgBlocker) / (ndc.z + linA)   // linear: [3][2] cancels
+                              : (ndc.z - avgBlocker);                    // ortho: plain separation
+    float penumbra = clamp(abs(ratio) * 4.0, 0.0, 1.0) * lightSize + lightSize * 0.01;
+
+    // Phase 3: variable-kernel PCF over the comparison sampler, sized by the penumbra.
+    float sum = 0.0;
+    for (int i = 0; i < pcfTaps; i++) {
+        sum += shadowMap.sample_compare(shadowSamp, uv + vogelDisk(i, pcfTaps, rot) * penumbra * texel, ref);
+    }
+    return sum / float(pcfTaps);
+}
+
 // PCF tap directions for the cube shadow — a roughly even spread over the sphere so
 // the kernel softens edges and breaks up residual self-shadow stripes regardless of
 // which cube face the receiver looks toward.
@@ -564,8 +636,15 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 lit01 = (light.shadowKind == 1)
                     ? shadowFactorCube(worldPos, n, L.position.xyz, light.shadowDepthA,
                                        light.shadowTexelWorld, shadowCube, shadowCubeSamp)
-                    : shadowFactor(worldPos, n, toLight, light.lightViewProjection,
-                                   light.shadowTexelWorld, shadowMap, shadowSamp);
+                    // shadowDepthA > 0 = a soft (PCSS) directional/spot caster; 0 = the legacy
+                    // hard 3x3 (so `shadowSoftness(0)` is byte-identical to before).
+                    : (light.shadowDepthA > 0.0)
+                        ? shadowFactorPCSS(worldPos, n, toLight, light.lightViewProjection,
+                                           light.shadowTexelWorld, light.shadowDepthA,
+                                           light.shadowDepthB, light.shadowSamples,
+                                           shadowMap, shadowSamp, shadowCubeSamp)
+                        : shadowFactor(worldPos, n, toLight, light.lightViewProjection,
+                                       light.shadowTexelWorld, shadowMap, shadowSamp);
                 lit01 *= meshFieldShadow;   // also occluded by the marched fields (point/RT; 1.0 otherwise)
             }
             atten *= mix(1.0, lit01, light.shadowStrength);
