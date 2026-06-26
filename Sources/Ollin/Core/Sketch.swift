@@ -429,6 +429,17 @@ open class Sketch {
     /// Stop casting shadows (the default).
     public func noShadows() { drawer.noShadows() }
 
+    /// Ray-trace reflections of the scene off its physically-based (metallic-roughness)
+    /// surfaces this frame, so a metal mirrors the *actual scene around it*: other meshes,
+    /// the floor, even geometry off the edge of the screen, instead of only its environment.
+    /// This is the clean, artifact-free reflection: it traces the real geometry, so there are
+    /// none of screen-space reflection's contact-edge streaks or off-screen cutoffs. Per-frame
+    /// state like the lights and camera, so call it in `draw()`. Needs a ray-tracing GPU (Apple
+    /// silicon) and an `environment(_:)` (a metal reflects its environment where a ray leaves
+    /// the scene); every solid mesh in the frame reflects. A no-op without those: the
+    /// environment reflection remains. Pass `false` to turn it back off.
+    public func rayTracedReflections(_ on: Bool = true) { drawer.rayTracedReflections(on) }
+
     /// Set the soft-shadow quality — how many rays the ray-traced point caster traces per
     /// pixel — as a **hardware-relative** tier (the dial to trade frame rate for nicer
     /// shadows). The tier scales with the GPU, like a game's Low/Medium/High: `.medium` (the

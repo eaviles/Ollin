@@ -433,6 +433,12 @@ typedef struct {
     float iblIntensity;           // brightness multiplier on the IBL ambient term
     float iblMaxMip;              // top mip index of the prefiltered specular cube (roughness 1)
     float iblRotation;            // environment Y rotation (radians), applied to the sample dirs
+    int   rtReflections;          // 1 = trace the actual scene as the physically-based reflection
+                                  // (in place of the IBL prefilter sample, falling back to it on a
+                                  // miss), on a ray-tracing device with the `rayTracedReflections()`
+                                  // opt-in; 0 = the IBL-prefilter reflection only (byte-identical).
+    float rtReflectionBias;       // world-space self-hit normal offset for the reflection ray's
+                                  // origin (sized from the scene scale in `makeLighting`).
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

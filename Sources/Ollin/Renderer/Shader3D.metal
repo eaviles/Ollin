@@ -298,6 +298,102 @@ static inline float meshRTShadow(float3 worldPos, float3 normal,
                                  light.shadowDepthB, light.shadowTexelWorld,
                                  light.shadowSamples, accel);
 }
+
+// A ray-traced scene reflection for a physically-based surface: the hybrid-rendering
+// reflection (rasterize the primary surfaces, trace one reflection ray per reflective
+// pixel, shade the hit). It returns the radiance arriving along the mirror direction `R`,
+// used in place of the IBL prefilter sample in `ollin_pbr_ibl_ambient`, so it composites
+// through the same Fresnel/BRDF weighting (a reflection only shows where the metal is
+// reflective). Unlike screen-space reflections it reflects the *actual* scene (off-screen
+// geometry included, no contact-seam streaks) because it traces world-space geometry.
+//
+// The trace is one closest-hit query against the per-frame mesh acceleration structure (so
+// every solid mesh in the frame is reflectable). On a **miss** the ray left
+// the scene, so it returns the environment reflection (`envReflection`, the prefilter sample
+// the caller already computed), the standard hybrid-rendering miss fallback.
+// On a **hit** it fetches the hit triangle's three vertices from the flat (non-indexed) mesh
+// buffer (`geoOffsets[geometryId]` is the geometry's base vertex, `primId·3 + {0,1,2}` the
+// corners), interpolates the world-space normal + color by the barycentric coordinate, and
+// shades the hit **one bounce** (no recursion), **metalness-aware**: the hit's metalness +
+// roughness are baked per vertex (the spare `OllinMeshVertex` w slots), so a metal hit shows
+// its colour-tinted environment reflection (reading as the metal it is, and a near-mirror floor
+// shows a reflection rather than its raw albedo) while a dielectric shows a diffuse body (the
+// environment's irradiance + the scene's direct lights as Lambert). One bounce, so a reflected
+// metal mirrors the *environment*, not recursively the rest of the scene. **Glossy:** one ray is
+// a sharp mirror, so for a rough *primary* surface it blends toward the prefiltered environment by
+// roughness (a single ray can't blur). The hit radiance is left in the same un-exposed units as
+// the prefilter sample, so the caller's outer IBL-intensity scale applies to hit and miss alike.
+static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, float rough,
+                                         primitive_acceleration_structure accel,
+                                         const device OllinMeshVertex *verts,
+                                         const device uint *geoOffsets,
+                                         constant OllinLighting &light,
+                                         texturecube<float> irradianceTex,
+                                         texturecube<float> prefilterTex,
+                                         sampler cubeSamp, float3x3 rot,
+                                         float3 envReflection) {
+    float eps = max(light.rtReflectionBias, 1e-4);
+    ray r;
+    r.origin = worldPos + n * eps;        // lift off the surface (self-hit guard)
+    r.direction = R;
+    r.min_distance = eps;
+    r.max_distance = 1e9;                 // exact trace; a long ray is no costlier than a short one
+    intersection_params params;           // default = closest hit (no accept_any)
+    intersection_query<triangle_data> q;
+    q.reset(r, accel, params);
+    while (q.next()) {
+        if (q.get_candidate_intersection_type() == intersection_type::triangle)
+            q.commit_triangle_intersection();
+    }
+    if (q.get_committed_intersection_type() != intersection_type::triangle)
+        return envReflection;             // the ray left the scene -> the environment
+
+    // Fetch the hit triangle from the flat mesh buffer and interpolate its attributes.
+    uint base = geoOffsets[q.get_committed_geometry_id()] + q.get_committed_primitive_id() * 3u;
+    OllinMeshVertex a = verts[base + 0u];
+    OllinMeshVertex b = verts[base + 1u];
+    OllinMeshVertex c = verts[base + 2u];
+    float2 bc = q.get_committed_triangle_barycentric_coord();
+    float3 w = float3(1.0 - bc.x - bc.y, bc.x, bc.y);
+    float3 hitN = normalize(w.x * a.normal.xyz + w.y * b.normal.xyz + w.z * c.normal.xyz);
+    // Vertex color is straight sRGB (the baked `fill`), like the rasterized fragment.
+    float3 albedo = srgbToLinear(w.x * a.color.rgb + w.y * b.color.rgb + w.z * c.color.rgb);
+    // Metalness + roughness are baked per vertex into the spare w slots (constant across the
+    // triangle), so the hit shades as the surface it is: a metal mirrors the environment
+    // tinted by its colour, a dielectric shows a diffuse body.
+    float metal = clamp(a.normal.w, 0.0, 1.0);
+    float hitRough = clamp(a.position.w, 0.045, 1.0);
+    float3 hitP = r.origin + R * q.get_committed_distance();
+    float3 hitNr = rot * hitN;
+
+    // One-bounce, metalness-aware shade (no recursion, no secondary shadows). Specular: the
+    // environment reflected at the hit (the prefiltered env at the mirror direction, sampled
+    // at the hit's roughness), F0-tinted, so a metal reads as a colour-tinted mirror rather
+    // than a flat blob, and a near-mirror floor shows a reflection, not its raw albedo. Diffuse
+    // (faded out as metalness rises): the environment's irradiance + the scene's direct lights
+    // as Lambert. Un-exposed radiance; the caller scales the whole reflection by the IBL
+    // intensity, so hit and miss stay consistent. (1 bounce: the reflected metal mirrors the
+    // *environment*, not recursively the rest of the scene.)
+    float3 F0 = mix(float3(0.04), albedo, metal);
+    float NoV = max(dot(hitN, -R), 0.0);
+    float3 F = F0 + (max(float3(1.0 - hitRough), F0) - F0) * pow(1.0 - NoV, 5.0);
+    float3 envAtHit = prefilterTex.sample(cubeSamp, rot * reflect(R, hitN),
+                                          level(hitRough * light.iblMaxMip)).rgb;
+    float3 col = envAtHit * F;
+    float3 diffuse = albedo * irradianceTex.sample(cubeSamp, hitNr).rgb;
+    for (int i = 0; i < light.lightCount; i++) {
+        OllinLight L = light.lights[i];
+        float3 toLight = (L.kind == 0) ? L.direction.xyz : normalize(L.position.xyz - hitP);
+        float atten = 1.0;
+        if (L.kind == 2) atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
+        diffuse += albedo * L.color.rgb * (max(dot(hitN, toLight), 0.0) * atten);
+    }
+    col += diffuse * (1.0 - metal);
+
+    // Glossy: blend the sharp mirror toward the prefiltered environment by the *primary*
+    // surface's roughness (a single ray can't blur).
+    return mix(col, envReflection, smoothstep(0.12, 0.55, rough));
+}
 #endif
 
 // A mesh receiver's occlusion by the raymarched SDF fields under a point / ray-traced caster.
@@ -621,7 +717,18 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                            constant OllinLighting &light,
                                            texturecube<float> irradianceTex,
                                            texturecube<float> prefilterTex,
-                                           texture2d<float> brdfTex) {
+                                           texture2d<float> brdfTex
+#if OLLIN_RT_SHADOWS
+                                           // The reflection trace's inputs (see ollin_rt_reflection):
+                                           // the world position + the caster accel + the flat mesh
+                                           // buffer + its per-geometry base-vertex offsets. Inert
+                                           // unless `light.rtReflections != 0`.
+                                           , float3 worldPos,
+                                           primitive_acceleration_structure reflAccel,
+                                           const device OllinMeshVertex *meshVerts,
+                                           const device uint *meshGeoOffsets
+#endif
+                                           ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
     float NoV = max(dot(n, viewDir), 1e-4);
@@ -637,6 +744,15 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     float3 irradiance = irradianceTex.sample(cubeSamp, rot * n).rgb;
     float3 diffuse = irradiance * base;
     float3 prefiltered = prefilterTex.sample(cubeSamp, rot * R, level(rough * light.iblMaxMip)).rgb;
+#if OLLIN_RT_SHADOWS
+    // Trade the environment reflection for a traced reflection of the actual scene (the
+    // environment remains the miss fallback) when ray-traced reflections are on.
+    if (light.rtReflections != 0) {
+        prefiltered = ollin_rt_reflection(worldPos, n, R, rough, reflAccel, meshVerts,
+                                          meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                          cubeSamp, rot, prefiltered);
+    }
+#endif
     float2 brdf = brdfTex.sample(lutSamp, float2(NoV, rough)).rg;
     float3 specular = prefiltered * (F0 * brdf.x + brdf.y);
     return (kD * diffuse + specular) * light.iblIntensity;
@@ -657,6 +773,10 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     texture2d<float> iblBRDF [[texture(6)]]
 #if OLLIN_RT_SHADOWS
                                     , primitive_acceleration_structure shadowAccel [[buffer(3)]]
+                                    // The flat mesh buffer + its per-geometry base-vertex offsets, so a
+                                    // physically-based fragment can fetch a reflection hit's triangle.
+                                    , const device OllinMeshVertex *meshVerts [[buffer(6)]]
+                                    , const device uint *meshGeoOffsets [[buffer(7)]]
 #endif
                                     ) {
     // Linearize the surface color so the present pass's sRGB re-encode lands the
@@ -679,7 +799,11 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
-                                       iblIrradiance, iblPrefilter, iblBRDF);
+                                       iblIrradiance, iblPrefilter, iblBRDF
+#if OLLIN_RT_SHADOWS
+                                       , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets
+#endif
+                                       );
     }
     return c;
 }
@@ -729,6 +853,8 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              texture2d<float> iblBRDF [[texture(6)]]
 #if OLLIN_RT_SHADOWS
                                              , primitive_acceleration_structure shadowAccel [[buffer(3)]]
+                                             , const device OllinMeshVertex *meshVerts [[buffer(6)]]
+                                             , const device uint *meshGeoOffsets [[buffer(7)]]
 #endif
                                              ) {
     // The base-color texture is sRGB, so the sample comes back already linear and
@@ -751,7 +877,11 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
-                                       iblIrradiance, iblPrefilter, iblBRDF);
+                                       iblIrradiance, iblPrefilter, iblBRDF
+#if OLLIN_RT_SHADOWS
+                                       , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets
+#endif
+                                       );
     }
     return c;
 }

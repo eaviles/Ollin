@@ -618,6 +618,11 @@ let package = Package(
             path: "Examples/3D/ScreenSpaceReflections"
         ),
         .executableTarget(
+            name: "Example-3D-RayTracedReflections",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/RayTracedReflections"
+        ),
+        .executableTarget(
             name: "Example-3D-TexturedMesh",
             dependencies: ["Ollin"],
             path: "Examples/3D/TexturedMesh"

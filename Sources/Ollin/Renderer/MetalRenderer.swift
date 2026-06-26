@@ -394,6 +394,13 @@ final class MetalRenderer {
     private var shadowAccelScratch: MTLBuffer?
     private var shadowAccelCapacity = 0
     private var dummyShadowAccel: MTLAccelerationStructure?
+    /// Ray-traced reflections: per-geometry base-vertex offsets (one `UInt32` per coalesced
+    /// caster geometry in `shadowAccel`) so a reflection hit's `(geometryId, primitiveId)`
+    /// resolves to a vertex in the flat mesh buffer. Grown in place, filled in `buildShadowAccel`.
+    /// `dummyGeoOffsets` is the 1-element stand-in bound when reflections are off, so the
+    /// RT-compiled mesh fragment's declared offsets argument is always satisfied.
+    private var meshGeoOffsetBuffer: MTLBuffer?
+    private var dummyGeoOffsets: MTLBuffer?
     private lazy var shadowSampler: MTLSamplerState? = {
         let d = MTLSamplerDescriptor()
         d.minFilter = .linear
@@ -759,6 +766,8 @@ final class MetalRenderer {
                depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                shadowCube: renderedShadow.cube,
                shadowAccel: renderedShadow.accel,
+               reflectAccel: renderedShadow.reflectAccel,
+               reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
                halfResField: halfResField,
                halfResFieldShadow: halfResFieldShadow)
         geomEncoder.endEncoding()
@@ -1077,6 +1086,8 @@ final class MetalRenderer {
                depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                shadowCube: renderedShadow.cube,
                shadowAccel: renderedShadow.accel,
+               reflectAccel: renderedShadow.reflectAccel,
+               reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
                halfResField: halfResField,
                halfResFieldShadow: halfResFieldShadow)
         encoder.endEncoding()
@@ -1184,6 +1195,8 @@ final class MetalRenderer {
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                    depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
                    shadowCube: renderedShadow.cube, shadowAccel: renderedShadow.accel,
+                   reflectAccel: renderedShadow.reflectAccel,
+                   reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
                    halfResField: halfResField,
                    halfResFieldShadow: halfResFieldShadow)
             encoder.endEncoding()
@@ -2067,6 +2080,8 @@ final class MetalRenderer {
                         depthFormat: MTLPixelFormat?, shadowMap: MTLTexture? = nil,
                         shadowCube: MTLTexture? = nil,
                         shadowAccel: MTLAccelerationStructure? = nil,
+                        reflectAccel: MTLAccelerationStructure? = nil,
+                        reflectGeoOffsets: MTLBuffer? = nil,
                         halfResField: (color: MTLTexture, depth: MTLTexture)? = nil,
                         halfResFieldShadow: MTLTexture? = nil,
                         target passTarget: RenderTarget? = nil) {
@@ -2201,6 +2216,11 @@ final class MetalRenderer {
             lighting.shadowKind = 2
             lighting.shadowSamples = resolveShadowSamples(drawer.shadowQualitySetting)
         }
+        // Ray-traced reflections: a physically-based metal traces the caster accel for its
+        // reflection (replacing the IBL prefilter sample). The flag gates it; off → the
+        // byte-identical IBL-prefilter path. The renderer owns the hardware check, so this is
+        // set only when the shadow pass actually built a reflection accel on a tracing device.
+        if reflectAccel != nil { lighting.rtReflections = 1 }
         // A directional/spot caster has each field render into the 2D map (so meshes receive it
         // from there); a point/ray-traced caster has no map a field can render into, so the lit
         // mesh fragments resolve the cast another way. `fieldCasterCount` > 0 turns that on (only
@@ -2218,7 +2238,13 @@ final class MetalRenderer {
         // When the mesh fragments are compiled with RT shadows, an acceleration structure
         // is always part of their signature, so bind the real one this frame or a dummy
         // that's never traced (the fragment only traces it when shadowKind == 2).
-        let shadowAccelStructure = rayTracedShadows ? (shadowAccel ?? ensureDummyShadowAccel()) : nil
+        // Bind one acceleration structure at fragment buffer 3: the fragment traces it for
+        // both the point shadow (shadowKind 2) and the reflection (rtReflections); when both
+        // are active they're the same object, otherwise whichever is set (a never-traced dummy
+        // when neither). The per-geometry offsets at buffer 7 feed the reflection hit fetch.
+        let traceAccel = shadowAccel ?? reflectAccel
+        let shadowAccelStructure = rayTracedShadows ? (traceAccel ?? ensureDummyShadowAccel()) : nil
+        let geoOffsetsBuffer = rayTracedShadows ? (reflectGeoOffsets ?? ensureDummyGeoOffsets()) : nil
 
         // The strip must be bound whenever the SDF fragment runs (it references
         // the texture even for all-solid frames), so resolve it once per encode.
@@ -2431,6 +2457,17 @@ final class MetalRenderer {
                     if let accel = shadowAccelStructure {
                         encoder.useResource(accel, usage: .read, stages: .fragment)
                         encoder.setFragmentAccelerationStructure(accel, bufferIndex: 3)
+                    }
+                    // Ray-traced reflections: the flat mesh buffer (whole, offset 0, for absolute
+                    // indexing) at fragment buffer 6 and the per-geometry base-vertex offsets at 7,
+                    // so a physically-based fragment can fetch a reflection hit's triangle. Bound
+                    // whenever the fragment is RT-compiled (a dummy offsets buffer when reflections
+                    // are off; `lighting.rtReflections` gates the read). Both feed `ollin_rt_reflection`.
+                    if rayTracedShadows {
+                        encoder.setFragmentBuffer(meshBuffer, offset: 0, index: 6)
+                    }
+                    if let geoOffsetsBuffer {
+                        encoder.setFragmentBuffer(geoOffsetsBuffer, offset: 0, index: 7)
                     }
                     // The SDF field group + nodes (buffers 4/5) so a lit mesh can march them
                     // toward a point/ray-traced caster (a field's cast shadow). Always allocated
@@ -2717,6 +2754,12 @@ final class MetalRenderer {
         /// The ray-traced point caster's acceleration structure (RT devices), in place
         /// of the cube; the lit mesh fragment traces a visibility ray against it.
         var accel: MTLAccelerationStructure?
+        /// Ray-traced reflections: the caster acceleration structure to trace reflection
+        /// rays against (the same object as `accel` when an RT point caster is also present)
+        /// and the per-geometry base-vertex offsets to fetch a hit triangle from the flat
+        /// mesh buffer. Set only when `rayTracedReflections()` is on and the device can trace.
+        var reflectAccel: MTLAccelerationStructure?
+        var reflectGeoOffsets: MTLBuffer?
     }
 
     /// Render the scene's mesh geometry into the shadow map from the casting light's
@@ -2734,28 +2777,46 @@ final class MetalRenderer {
                                   sdf3DNodeBuffer: MTLBuffer? = nil) -> ShadowMaps {
         let lighting = drawer.makeLighting()
         let meshVertices = drawer.meshVertices
-        guard lighting.shadowLight >= 0, lighting.enabled != 0, !meshVertices.isEmpty,
-              let meshBuffer else { return ShadowMaps() }
+        // Ray-traced reflections want a caster acceleration structure even when no light casts
+        // a shadow; build it once and reuse it for both. (A non-RT device can't reflect, so
+        // `wantReflect` is already false there and the shadow paths stay byte-identical.)
+        let wantReflect = drawer.rayTracedReflectionsEnabled && rayTracedShadows
+        guard lighting.enabled != 0, !meshVertices.isEmpty, let meshBuffer,
+              lighting.shadowLight >= 0 || wantReflect else { return ShadowMaps() }
 
         meshVertices.withUnsafeBytes { raw in
             meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
         }
 
         // A point caster: ray-trace it on a capable device (exact, no cube/depth-compare
-        // artifacts), else render the omnidirectional mid-point cube. Directional/spot
-        // always use the 2D map below (untouched by the RT path).
-        if lighting.shadowKind == 1 {
+        // artifacts), else render the omnidirectional mid-point cube. The one accel serves
+        // both the shadow (shadowKind 2) and, when on, reflections.
+        if lighting.shadowLight >= 0, lighting.shadowKind == 1 {
             if rayTracedShadows,
-               let accel = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) {
-                return ShadowMaps(accel: accel)
+               let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) {
+                return ShadowMaps(accel: built.accel,
+                                  reflectAccel: wantReflect ? built.accel : nil,
+                                  reflectGeoOffsets: wantReflect ? built.offsets : nil)
             }
             let cube = encodePointShadowPass(drawer, lighting: lighting,
                                              into: commandBuffer, meshBuffer: meshBuffer)
             return ShadowMaps(cube: cube)
         }
 
+        // Reflections with no shadow-casting light: build only the reflection accel.
+        if lighting.shadowLight < 0 {
+            guard let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer)
+            else { return ShadowMaps() }
+            return ShadowMaps(reflectAccel: built.accel, reflectGeoOffsets: built.offsets)
+        }
+
+        // A directional/spot caster's 2D map below, plus a reflection accel when reflections
+        // are on (both precede the main geometry pass, so trace order is satisfied either way).
+        let reflect = wantReflect ? buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) : nil
         guard let shadowMap = ensureShadowMap(),
-              let shadowPipeline = try? pipeline(.meshShadow) else { return ShadowMaps() }
+              let shadowPipeline = try? pipeline(.meshShadow) else {
+            return ShadowMaps(reflectAccel: reflect?.accel, reflectGeoOffsets: reflect?.offsets)
+        }
         let pass = MTLRenderPassDescriptor()
         pass.depthAttachment.texture = shadowMap
         pass.depthAttachment.loadAction = .clear
@@ -2777,7 +2838,7 @@ final class MetalRenderer {
         encodeFieldShadowCasters(drawer, encoder: encoder, lighting: lighting,
                                  groupBuffer: sdf3DGroupBuffer, nodeBuffer: sdf3DNodeBuffer)
         encoder.endEncoding()
-        return ShadowMaps(twoD: shadowMap)
+        return ShadowMaps(twoD: shadowMap, reflectAccel: reflect?.accel, reflectGeoOffsets: reflect?.offsets)
     }
 
     /// Render the marched 3D fields into the active 2D shadow map (directional/spot). Each field
@@ -3385,7 +3446,8 @@ final class MetalRenderer {
     /// trace. The structure + scratch grow in place only when the scene outgrows them.
     /// Returns nil when there's nothing to cast (the caller then falls back / unshadows).
     private func buildShadowAccel(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
-                                  meshBuffer: MTLBuffer) -> MTLAccelerationStructure? {
+                                  meshBuffer: MTLBuffer)
+        -> (accel: MTLAccelerationStructure, offsets: MTLBuffer)? {
         let meshStride = MemoryLayout<OllinMeshVertex>.stride
         let meshVertices = drawer.meshVertices
         let batches = drawer.batches
@@ -3395,6 +3457,9 @@ final class MetalRenderer {
         // them; fewer descriptors means a cheaper structure build (its per-geometry overhead
         // dominates at creative-coding triangle counts). A fully solid scene becomes one.
         var geometries: [MTLAccelerationStructureTriangleGeometryDescriptor] = []
+        // The base vertex index (the run start) of each geometry, in build order, so a
+        // reflection hit's `geometryId` recovers where its triangles begin in `meshBuffer`.
+        var geoOffsets: [UInt32] = []
         var runStart = -1, runEnd = 0
         func flushRun() {
             guard runStart >= 0, runEnd - runStart >= 3 else { runStart = -1; return }
@@ -3406,6 +3471,7 @@ final class MetalRenderer {
             geo.triangleCount = (runEnd - runStart) / 3
             geo.opaque = true                 // load-bearing: else triangle hits never commit
             geometries.append(geo)
+            geoOffsets.append(UInt32(runStart))
             runStart = -1
         }
         for i in batches.indices {
@@ -3443,7 +3509,17 @@ final class MetalRenderer {
         enc.build(accelerationStructure: accel, descriptor: desc,
                   scratchBuffer: scratch, scratchBufferOffset: 0)
         enc.endEncoding()
-        return accel
+        // The per-geometry base-vertex offsets, uploaded for the reflection hit fetch. Filled
+        // CPU-side here (before the command buffer commits), so the main pass reads them this frame.
+        let offsetsLength = max(MemoryLayout<UInt32>.stride, geoOffsets.count * MemoryLayout<UInt32>.stride)
+        if (meshGeoOffsetBuffer?.length ?? 0) < offsetsLength {
+            meshGeoOffsetBuffer = device.makeBuffer(length: offsetsLength, options: .storageModeShared)
+        }
+        guard let offsetsBuffer = meshGeoOffsetBuffer else { return nil }
+        geoOffsets.withUnsafeBytes { raw in
+            offsetsBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+        }
+        return (accel, offsetsBuffer)
     }
 
     /// A 1-triangle acceleration structure bound to the lit mesh fragment whenever no
@@ -3474,6 +3550,18 @@ final class MetalRenderer {
         enc.endEncoding(); cb.commit(); cb.waitUntilCompleted()
         dummyShadowAccel = accel
         return dummyShadowAccel
+    }
+
+    /// A 1-element per-geometry-offset buffer bound at fragment buffer 7 whenever ray-traced
+    /// reflections aren't producing real offsets this frame, so the RT-compiled mesh
+    /// fragment's declared offsets argument is always satisfied (it's read only on a
+    /// reflection hit, which can't happen when `lighting.rtReflections == 0`).
+    private func ensureDummyGeoOffsets() -> MTLBuffer? {
+        if let b = dummyGeoOffsets { return b }
+        var zero: UInt32 = 0
+        dummyGeoOffsets = device.makeBuffer(bytes: &zero, length: MemoryLayout<UInt32>.stride,
+                                            options: .storageModeShared)
+        return dummyGeoOffsets
     }
 
     /// Draw every shadow-casting mesh batch into the active shadow encoder. Solid and

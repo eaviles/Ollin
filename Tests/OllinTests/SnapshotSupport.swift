@@ -32,6 +32,14 @@ enum Snapshot {
     /// fail) on a machine or CI runner without a usable GPU.
     static var hasMetal: Bool { MTLCreateSystemDefaultDevice() != nil }
 
+    /// Whether the default device can ray-trace from the render stages, the gate for
+    /// ray-traced point shadows + reflections. RT-only snapshots use it so they skip
+    /// (rather than diverge) on a non-ray-tracing GPU / CI runner.
+    static var hasRaytracing: Bool {
+        guard let device = MTLCreateSystemDefaultDevice() else { return false }
+        return device.supportsRaytracing && device.supportsRaytracingFromRender
+    }
+
     enum Failure: Error, CustomStringConvertible {
         case renderFailed
         case missingReference(String)

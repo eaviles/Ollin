@@ -304,6 +304,14 @@ final class Drawer {
     /// fragment dims that light where a receiver is occluded.
     private(set) var castsShadows = false
 
+    /// Whether this frame ray-traces scene reflections off its physically-based surfaces
+    /// (see `rayTracedReflections`). Per-frame state like the lights. When on (and the
+    /// device can trace from the render stages), a PBR metal's environment reflection is
+    /// replaced by a traced reflection of the actual scene; the renderer builds the caster
+    /// acceleration structure for it and sets `OllinLighting.rtReflections`. A no-op on a
+    /// non-ray-tracing GPU (the IBL-prefilter reflection remains).
+    private(set) var rayTracedReflectionsEnabled = false
+
     /// The soft-shadow quality knob (`shadowQuality`/`shadowSamples`) — a persistent setting
     /// (not reset each frame, like `toneMap`): more rays give a smoother ray-traced penumbra
     /// at proportional GPU cost. A `Quality` tier scales with the GPU (the renderer resolves
@@ -998,6 +1006,12 @@ final class Drawer {
     /// Stop casting shadows (the default). Per-frame state.
     func noShadows() { castsShadows = false }
 
+    /// Ray-trace reflections of the scene off its physically-based surfaces this frame.
+    /// Per-frame state like the lights; set it in `draw()`. Every solid mesh reflects (the
+    /// renderer reuses the shadow-caster acceleration structure, which already covers them all);
+    /// a no-op without a ray-tracing device or an environment to fall back to on a miss.
+    func rayTracedReflections(_ enabled: Bool = true) { rayTracedReflectionsEnabled = enabled }
+
     /// Set the soft-shadow quality to a hardware-relative tier (the renderer picks the ray
     /// count for the GPU). Persistent (set once, in `setup()` or `draw()`).
     func shadowQuality(_ quality: RenderQuality) { shadowQualitySetting = .tier(quality) }
@@ -1050,6 +1064,14 @@ final class Drawer {
             activeLights = lights
         }
         u.enabled = 1
+        // Ray-traced reflections' self-hit ray-origin offset, sized to the scene (the
+        // eye→target distance, the scene-scale proxy the shadow framing also uses). The
+        // renderer sets `rtReflections` itself (it owns the hardware check); this is inert
+        // until then, so it's harmless to always pack.
+        if let camera = camera3D {
+            let radius = max(Float(simd_distance(camera.eye.simd3, camera.target.simd3)), 1)
+            u.rtReflectionBias = radius * 0.0015
+        }
         u.ambient = SIMD4<Float>(Float(Color.srgbToLinear(ambient.red)),
                                  Float(Color.srgbToLinear(ambient.green)),
                                  Float(Color.srgbToLinear(ambient.blue)), 0)
@@ -1264,10 +1286,17 @@ final class Drawer {
         } else {
             color = meshSurfaceColor.simd4 * (material?.baseColor.simd4 ?? SIMD4<Float>(1, 1, 1, 1))
         }
-        // The material finish is bound per batch as an `OllinMaterial` uniform (not baked
-        // per-vertex), so the only `w` slot still used is the wireframe line width in
-        // `position.w` (0 for a lit mesh — the lit vertex shader reads only the xyz).
-        let lineW = wireframe ? Float(strokeWidth) : 0
+        // The material finish is bound per batch as an `OllinMaterial` uniform, with two
+        // exceptions baked into the otherwise-spare vertex `w` slots: the wireframe line width
+        // (position.w, 0 for a lit mesh) and, for a physically-based lit mesh, its metalness
+        // (normal.w) + roughness (position.w). A ray-traced reflection hit reads those to shade
+        // the surface as the metal it is (its tinted environment reflection) instead of a flat
+        // diffuse blob. The lit vertex shaders read only the xyz, so this is inert for the
+        // primary render; non-PBR / wireframe bake metalness 0 (a reflection treats them as
+        // diffuse).
+        let pbr = !wireframe && currentMaterial.shading == .physicallyBased
+        let metalW: Float = pbr ? Float(currentMaterial.metallic) : 0
+        let posW: Float = wireframe ? Float(strokeWidth) : (pbr ? Float(currentMaterial.roughness) : 1)
         meshVertices.reserveCapacity(meshVertices.count + mesh.indices.count)
         for idx in mesh.indices {
             let i = Int(idx)
@@ -1276,14 +1305,14 @@ final class Drawer {
             let n = i < mesh.normals.count ? mesh.normals[i] : Vector3.unitZ
             var v = OllinMeshVertex()
             if modelIsIdentity {
-                v.position = SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), lineW)
+                v.position = SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), posW)
                 let nn = n.normalized
-                v.normal = SIMD4<Float>(Float(nn.x), Float(nn.y), Float(nn.z), 0)
+                v.normal = SIMD4<Float>(Float(nn.x), Float(nn.y), Float(nn.z), metalW)
             } else {
                 let wp = m * SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), 1)
-                v.position = SIMD4<Float>(wp.x, wp.y, wp.z, lineW)
+                v.position = SIMD4<Float>(wp.x, wp.y, wp.z, posW)
                 let wn = simd_normalize(nm * SIMD3<Float>(Float(n.x), Float(n.y), Float(n.z)))
-                v.normal = SIMD4<Float>(wn.x, wn.y, wn.z, 0)
+                v.normal = SIMD4<Float>(wn.x, wn.y, wn.z, metalW)
             }
             v.color = color
             if textured {
@@ -1389,6 +1418,7 @@ final class Drawer {
         lightingMode = .auto
         environment = nil
         castsShadows = false
+        rayTracedReflectionsEnabled = false
         hasDepthScene = false
         // The 2D depth is camera-derived (a clip-z against this frame's camera), so
         // it resets with the camera each frame — set it from `draw()` after the

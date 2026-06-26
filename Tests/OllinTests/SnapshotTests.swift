@@ -335,6 +335,17 @@ struct SnapshotTests {
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
 
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func rtReflectionsMatchesReference() throws {
+        // A near-mirror metal floor under fixed metal spheres + a cube, lit by an environment,
+        // with `rayTracedReflections()` on. Pins the hybrid reflection path: the per-pixel
+        // closest-hit trace against the caster acceleration structure, the barycentric attribute
+        // fetch + 1-bounce hit shade, and the environment miss fallback composited through the
+        // PBR IBL specular. RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.
+        let diff = try Snapshot.meanDifference(of: RayTracedReflectionsScene(), against: "rt-reflections-3d")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func pointCloud3DMatchesReference() throws {
         // A static 3D heightfield through a fixed camera — pins the 3D camera, the
@@ -675,6 +686,39 @@ private final class ScreenSpaceReflectionsScene: Sketch {
         drawImage(scene.combined(with: scene.depth,
                                  .screenSpaceReflections(intensity: 0.9, roughness: 0.15,
                                                          fresnel: 0.8)).image, 0, 0)
+    }
+}
+
+private final class RayTracedReflectionsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x14171d))
+        // Fixed camera + near/far bracketing the scene (deterministic).
+        camera(.orbiting(target: Vector3(0, 0.7, 0), radius: 8,
+                         azimuth: 0.6, elevation: 0.36,
+                         fieldOfView: .pi / 4, near: 2, far: 24))
+        environment(.studio.intensity(1.1))
+        directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.7)
+        castShadows()
+        rayTracedReflections()
+        // A near-mirror metal floor reflecting the meshes above it.
+        withState {
+            material(.metal(roughness: 0.06)); fill(Color(hex: 0x8a8f9c))
+            translate(0, -0.5, 0); drawBox(width: 24, height: 1.0, depth: 24)
+        }
+        withState {
+            material(.polishedMetal); fill(Color(hex: 0xe8ebf2))
+            translate(-2.4, 1.0, 0); drawSphere(radius: 1.0)
+        }
+        withState {
+            material(.metal(roughness: 0.12)); fill(Color(hex: 0xffc94a))
+            translate(2.4, 1.0, 0.4); drawSphere(radius: 1.0)
+        }
+        withState {
+            material(.polishedMetal); fill(Color(hex: 0xe2e6f0))
+            translate(0, 1.1, -1.2); drawBox(width: 0.9, height: 2.2, depth: 0.9)
+        }
     }
 }
 
