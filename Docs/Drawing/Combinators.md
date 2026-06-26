@@ -321,10 +321,11 @@ onto rasterized meshes** under every light: a directional or spot caster has the
 the 2D shadow map the meshes sample (a mesh floor catches a floating field's shadow, see
 `Examples/3D/RaymarchedCastShadow`), and a point or ray-traced caster (which has no such map)
 has the lit mesh fragments march the field inline toward the light instead (see
-`Examples/3D/RaymarchedPointCast`). Under a directional or spot light a field also **receives a
-mesh's shadow** in return (it samples that same map at the surface, so a floating mesh drops its
-shadow onto the field, see `Examples/3D/RaymarchedReceiveShadow`). Still open: a field doesn't yet
-*receive* a mesh's shadow under a **point/ray-traced** light (the symmetric gap to casting).
+`Examples/3D/RaymarchedPointCast`). A field also **receives a mesh's shadow** in return, under every
+light type: it samples whichever shadow the caster wrote (the 2D map for a directional or spot light,
+the omnidirectional cube or the traced mesh structure for a point light), so a floating mesh drops
+its shadow onto the field just as onto another mesh (see `Examples/3D/RaymarchedReceiveShadow` for a
+directional caster, `Examples/3D/RaymarchedPointReceive` for a point caster).
 
 The merged surface's **silhouette is anti-aliased** analytically (a sphere-traced fullscreen
 pass gets no MSAA at its hit/miss edge): the march measures how closely a ray that misses the
@@ -398,5 +399,6 @@ primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form),
 `Examples/3D/RaymarchedCastShadow` (a field casting its shadow onto a rasterized mesh),
 `Examples/3D/RaymarchedReceiveShadow` (a field receiving a mesh's shadow),
 `Examples/3D/RaymarchedPointCast` (a field casting onto a mesh under a point light),
+`Examples/3D/RaymarchedPointReceive` (a field receiving a mesh's shadow under a point light),
 `Examples/3D/RaymarchedStretch` (per-axis stretch and non-uniform scale), and
 `Examples/3D/RaymarchedGradient` (a screen-space gradient painting the merged surface).

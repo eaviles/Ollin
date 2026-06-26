@@ -445,6 +445,11 @@ let package = Package(
             path: "Examples/3D/RaymarchedPointCast"
         ),
         .executableTarget(
+            name: "Example-3D-RaymarchedPointReceive",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/RaymarchedPointReceive"
+        ),
+        .executableTarget(
             name: "Example-3D-RaymarchedStretch",
             dependencies: ["Ollin"],
             path: "Examples/3D/RaymarchedStretch"

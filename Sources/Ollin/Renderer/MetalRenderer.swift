@@ -737,7 +737,7 @@ final class MetalRenderer {
                 groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
                 uniforms3D: u3, lighting: fieldLight.lighting,
                 shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
-                fullWidth: width, fullHeight: height)
+                shadowAccel: renderedShadow.accel, fullWidth: width, fullHeight: height)
         }
         // Half-res field-cast shadow pre-pass (the live RenderQuality path): the point/RT field
         // cast onto meshes is per-pixel-marched, so compute it once at reduced resolution and let
@@ -1062,7 +1062,7 @@ final class MetalRenderer {
                 groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
                 uniforms3D: u3, lighting: fieldLight.lighting,
                 shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
-                fullWidth: width, fullHeight: height)
+                shadowAccel: renderedShadow.accel, fullWidth: width, fullHeight: height)
         }
         // Half-res field-cast shadow pre-pass: same tier gating as the raymarch one. `.detail`
         // (the export default) → scale 1 → nil → the mesh marches inline full-res → byte-identical.
@@ -1176,7 +1176,7 @@ final class MetalRenderer {
                     groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
                     uniforms3D: u3, lighting: fieldLight.lighting,
                     shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
-                    fullWidth: width, fullHeight: height)
+                    shadowAccel: renderedShadow.accel, fullWidth: width, fullHeight: height)
             }
             let halfResFieldShadow = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 -> MTLTexture? in
                 var fl = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
@@ -2374,6 +2374,14 @@ final class MetalRenderer {
                 // position); bound at 0, free here since the shadow textures take 1/2.
                 encoder.setFragmentTexture(strip, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                // The mesh acceleration structure at buffer 5 so a marched field receives a mesh's
+                // cast shadow under a ray-traced point caster (it traces toward the light, the
+                // reverse of the cast). A dummy when shadowKind != 2, never traced; the cube path
+                // (shadowKind 1) needs nothing, its cube + sampler are already bound at 2.
+                if let accel = shadowAccelStructure {
+                    encoder.useResource(accel, usage: .read, stages: .fragment)
+                    encoder.setFragmentAccelerationStructure(accel, bufferIndex: 5)
+                }
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3, instanceCount: count)
             case .image:
                 let end = next?.imageStart ?? imageVertices.count
@@ -3181,6 +3189,7 @@ final class MetalRenderer {
                                        groupBuffer: MTLBuffer?, nodeBuffer: MTLBuffer?,
                                        uniforms3D: Uniforms3D, lighting: OllinLighting,
                                        shadowTexture: MTLTexture?, shadowCubeTexture: MTLTexture?,
+                                       shadowAccel: MTLAccelerationStructure? = nil,
                                        fullWidth: Int, fullHeight: Int)
         -> (color: MTLTexture, depth: MTLTexture)? {
         let scale = resolveRaymarchScale(drawer.raymarchQualitySetting)
@@ -3231,6 +3240,12 @@ final class MetalRenderer {
         if let shadowCubeSampler { enc.setFragmentSamplerState(shadowCubeSampler, index: 2) }
         enc.setFragmentTexture(gradientStripTexture(for: drawer.gradientRows), index: 0)
         enc.setFragmentSamplerState(imageSampler, index: 0)
+        // The mesh acceleration structure at buffer 5 (RT point shadows received by the field),
+        // matching the main pass; a dummy when shadowKind != 2, never traced.
+        if let accel = rayTracedShadows ? (shadowAccel ?? ensureDummyShadowAccel()) : nil {
+            enc.useResource(accel, usage: .read, stages: .fragment)
+            enc.setFragmentAccelerationStructure(accel, bufferIndex: 5)
+        }
 
         let group3DStride = MemoryLayout<SDF3DGroupInstance>.stride
         let batches = drawer.batches

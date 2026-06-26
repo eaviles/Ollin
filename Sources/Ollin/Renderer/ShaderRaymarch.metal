@@ -405,7 +405,11 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  texturecube<float> shadowCube [[texture(2)]],
                                                  sampler shadowCubeSamp [[sampler(2)]],
                                                  texture2d<float> gradients [[texture(0)]],
-                                                 sampler gradientSamp [[sampler(0)]]) {
+                                                 sampler gradientSamp [[sampler(0)]]
+#if OLLIN_RT_SHADOWS
+                                                 , primitive_acceleration_structure accel [[buffer(5)]]
+#endif
+                                                 ) {
     RaymarchFragOut miss;
     miss.color = float4(0.0);
     miss.depth = 1.0;
@@ -495,16 +499,28 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
         }
         fieldShadow = ollin_sdf3d_softshadow(pw + n * 0.015, toLight, maxt,
                                              OLLIN_SDF3D_SHADOW_K, int(u.raymarchSteps.y), g, nodes);
-        // Receive a mesh's cast shadow: the directional/spot 2D map carries the mesh casters
-        // (and this field's own cast), so sample it like a mesh receiver and keep the darker of
-        // the two. The normal-offset bias keeps the field's own lit front surface out of it; its
-        // self-occlusion stays the analytic march's job. A point/RT caster (shadowKind != 0)
-        // can't hold a field-receivable occluder in a 2D map, so it receives self-shadow only.
+        // Receive a mesh's cast shadow, keeping the darker of it and the self-shadow. Where the
+        // mesh occluder lives depends on the caster: a directional/spot caster renders the casters
+        // (and this field's own cast) into the 2D map, a point caster into the omnidirectional
+        // cube, and a ray-traced point caster leaves them in the acceleration structure to trace.
+        // Sample whichever the same way a mesh receiver does; the normal-offset bias keeps the
+        // field's own lit front surface out of it (its self-occlusion stays the analytic march's
+        // job). A scene with no mesh occluder samples an all-lit map/cube (or skips the trace),
+        // so the factor stays 1 and the field receives self-shadow only.
         if (light.shadowKind == 0) {
             float mapLit = shadowFactor(pw, n, toLight, light.lightViewProjection,
                                         light.shadowTexelWorld, shadowMap, shadowSamp);
             fieldShadow = min(fieldShadow, mapLit);
+        } else if (light.shadowKind == 1) {
+            float cubeLit = shadowFactorCube(pw, n, caster.position.xyz, light.shadowDepthA,
+                                             light.shadowTexelWorld, shadowCube, shadowCubeSamp);
+            fieldShadow = min(fieldShadow, cubeLit);
         }
+#if OLLIN_RT_SHADOWS
+        else if (light.shadowKind == 2) {
+            fieldShadow = min(fieldShadow, meshRTShadow(pw, n, light, accel));
+        }
+#endif
     }
 
     // The surface color: a solid `fill` comes from the leaves (the VM-melted `col`, linearized

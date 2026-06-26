@@ -129,6 +129,15 @@ struct SnapshotTests {
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
 
+    // RT-gated: on a ray-tracing GPU a point caster resolves to the RT path (the field traces the
+    // mesh accel), which the reference is recorded against; the non-RT cube fallback differs and
+    // isn't snapshot-testable here. Mirrors `rt-reflections-3d`.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func raymarchedSDF3DPointReceiveMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DPointReceiveScene(), against: "sdf-combinators-3d-pointreceive")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func sdfCombinatorsStretchMatchReference() throws {
         let diff = try Snapshot.meanDifference(of: SDFCombinatorsStretchScene(), against: "sdf-combinators-stretch")
@@ -1798,6 +1807,33 @@ private final class RaymarchedSDF3DPointCastScene: Sketch {
             .smoothUnion(SDF3D.sphere(radius: 0.55).at(x: -0.3, y: 0.5, z: -0.4), k: 0.5)
             .colored(Color(hex: 0x38bdf8))
         withState { translate(-2.0, 1.5, 0); drawSDF3D(blob) }
+    }
+}
+
+/// A raymarched 3D SDF field *receiving* a rasterized mesh's cast shadow under a *point* light: the
+/// field samples the omnidirectional cube (or, on an RT GPU, traces the mesh structure) toward the
+/// bulb, the reverse of casting. A mesh sphere drops a round shadow onto a wide SDF slab, beside the
+/// slab's own self-shadowed bumps. Static.
+private final class RaymarchedSDF3DPointReceiveScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0b0d14))
+        camera(.orbiting(target: Vector3(0, -0.2, 0), radius: 7.0, azimuth: 0.5, elevation: 0.5,
+                         fieldOfView: .pi / 4, near: 2, far: 50))
+        pointLight(.white, at: Vector3(0, 4.5, 0.5), intensity: 2.0, specular: .white)
+        ambientLight(Color(white: 0.16))
+        castShadows()
+        material(.glossy)
+
+        let slab = SDF3D.roundBox(width: 5.0, height: 0.6, depth: 4.0, radius: 0.25)
+            .smoothUnion(SDF3D.sphere(radius: 0.7).at(x: -1.3, y: 0.4, z: 0.6), k: 0.5)
+            .smoothUnion(SDF3D.sphere(radius: 0.55).at(x: 1.4, y: 0.35, z: -0.7), k: 0.5)
+            .colored(Color(hex: 0x6aa9ff))
+        withState { translate(0, -1.0, 0); drawSDF3D(slab) }
+
+        fill(Color(hex: 0xf472b6))
+        withState { translate(0.4, 1.0, 0.4); drawSphere(radius: 0.65) }
     }
 }
 
