@@ -1683,6 +1683,31 @@ final class MetalRenderer {
             encodeEffectFragment("ollin_fx_ssao_blur", inputs: [base, aoTex, aux], output: out,
                                  params: [SIMD4(Float(intensity), 0, 0, 0), texel], into: cb)
             return out
+        case let .screenSpaceReflections(intensity, maxDistance, thickness, roughness, fresnel, edgeFade, quality):
+            // Two passes mirroring SSAO: a screen-space ray march (rebuilding view-space
+            // position + normal from the aux depth, reflecting the eye ray about the
+            // normal, then marching until it crosses the depth buffer) writes a
+            // premultiplied reflection layer, then a depth-aware, roughness-scaled blur
+            // softens it and composites it over the base. The camera geometry rides
+            // params[2..3] byte-for-byte as SSAO's does, so the shared reconstruction and
+            // forward-projection helpers read it unchanged; the march budget rides the
+            // texel row's third slot, the bokeh/AO convention.
+            let steps = Float(resolveSSRSteps(quality))
+            let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), steps, Float(fresnel))
+            let d = depth ?? .neutral
+            guard let reflTex = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let out = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            let hasNormals: Float = normals != nil ? 1 : 0
+            encodeEffectFragment("ollin_fx_ssr", inputs: [base, aux, normals ?? aux], output: reflTex,
+                                 params: [SIMD4(Float(intensity), Float(maxDistance), Float(thickness), hasNormals),
+                                          texel,
+                                          SIMD4(d.near, d.far, d.tanHalfFovX, d.tanHalfFovY),
+                                          SIMD4(d.principalX, d.principalY, d.isPerspective ? 1 : 0, 0),
+                                          SIMD4(Float(edgeFade), Float(roughness), 6, 0)],
+                                 into: cb)
+            encodeEffectFragment("ollin_fx_ssr_resolve", inputs: [base, reflTex, aux], output: out,
+                                 params: [SIMD4(Float(roughness), 0, 0, 0), texel], into: cb)
+            return out
         }
     }
 
@@ -2833,6 +2858,24 @@ final class MetalRenderer {
     /// An exact ambient-occlusion sample count overriding the resolved `.ambientOcclusion`
     /// quality tier, the sweep hook mirroring `dofTapsOverride`. `nil` in normal use.
     var ssaoSamplesOverride: Int?
+
+    /// Resolve a `.screenSpaceReflections` quality tier to a coarse-march step count. The DDA
+    /// covers the *whole* reflection ray in this many steps (the stride scales with the ray's
+    /// pixel span), so the reach is resolution-independent and this is purely a precision knob:
+    /// fewer coarse steps trade hit precision (before the binary refinement) for frame rate.
+    /// GPU-independent, like the raymarch resolution. Tune later via `Scripts/benchmark.sh ssr`.
+    private func resolveSSRSteps(_ quality: RenderQuality) -> Int {
+        if let override = ssrStepsOverride { return max(8, min(override, 1024)) }
+        switch effectiveQuality(quality) {
+        case .performance: return 128
+        case .default:     return 256
+        case .detail:      return 512
+        }
+    }
+
+    /// An exact SSR march-step count overriding the resolved `.screenSpaceReflections`
+    /// quality tier, the sweep hook mirroring `ssaoSamplesOverride`. `nil` in normal use.
+    var ssrStepsOverride: Int?
 
     /// Resolve a `.defocus` quality tier to a bokeh tap count, hardware-relative (richer on a
     /// dedicated-RT GPU). The software-RT (M1/M2) column is measured (`Scripts/benchmark.sh dof`

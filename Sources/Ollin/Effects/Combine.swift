@@ -57,6 +57,15 @@ public struct Combine: Sendable {
         /// across; `intensity` scales the darkening, `bias` rejects self-occlusion, and
         /// `quality` sets the sample-count tier.
         case ambientOcclusion(radius: Double, intensity: Double, bias: Double, quality: RenderQuality)
+        /// Screen-space reflections: reflect the rendered scene onto its own surfaces,
+        /// reading the aux as a depth map and the base's mesh normals. Each pixel's
+        /// reflection ray is marched through screen space; where it meets the scene the
+        /// base colour there is sampled and composited back, weighted by Fresnel, an edge
+        /// fade, and reflection distance. `roughness` blurs the reflection for a glossy
+        /// finish. Only on-screen geometry can reflect (the screen-space limit).
+        case screenSpaceReflections(intensity: Double, maxDistance: Double, thickness: Double,
+                                    roughness: Double, fresnel: Double, edgeFade: Double,
+                                    quality: RenderQuality)
     }
 
     let kind: Kind
@@ -140,5 +149,48 @@ public struct Combine: Sendable {
                                         bias: Double = 0.05, quality: RenderQuality = .default) -> Combine {
         Combine(kind: .ambientOcclusion(radius: max(0.0001, radius), intensity: max(0, intensity),
                                         bias: max(0, bias), quality: quality))
+    }
+
+    /// Screen-space reflections: make the scene reflect off its own surfaces (a glossy
+    /// floor, wet asphalt, a polished tabletop). Feed the scene's own depth as the aux
+    /// (`scene.combined(with: scene.depth, .screenSpaceReflections())`); view-space
+    /// position and surface normal are reconstructed from it (a true mesh normal when the
+    /// base holds a 3D scene), the reflection ray is marched through the depth buffer, and
+    /// the scene colour at the hit is composited back over the surface.
+    ///
+    /// It's a post-process over colour + depth + normal, so every surface reflects
+    /// (modulated by Fresnel and view angle), rather than a per-material property. Only
+    /// what's already on screen can appear in a reflection: rays that leave the frame fade
+    /// out (`edgeFade`), and off-screen or hidden geometry can't be reflected.
+    ///
+    /// ```swift
+    /// let scene = renderTarget()
+    /// withTarget(scene) { camera(.perspective(eye: Vector3(0, 2, 6), target: .zero)); drawBox(...) }
+    /// drawImage(scene.combined(with: scene.depth, .screenSpaceReflections()).image, 0, 0)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - intensity: overall reflection strength (0 = off, 1 = a full mirror at the
+    ///     reflecting angle).
+    ///   - maxDistance: how far a reflection ray travels, in world units (the depth layer
+    ///     carries the camera scale). Longer reaches farther reflections at more cost.
+    ///   - thickness: how close a reflection ray must pass a surface to count as a hit,
+    ///     measured as a **fraction of that surface's distance** (so it scales with the scene).
+    ///     Larger fills gaps between surfaces; too large smears a reflection past an edge into a
+    ///     "cylinder". The 0.025 default suits most scenes.
+    ///   - roughness: blurs the reflection for a glossy (rather than mirror) finish, 0…1.
+    ///   - fresnel: how much the reflection strengthens at grazing angles (0 = flat
+    ///     reflectivity, 1 = a strong grazing rim).
+    ///   - edgeFade: fraction of the layer over which a reflection fades as its hit nears
+    ///     the screen border, hiding the screen-space cutoff.
+    ///   - quality: the ray-march step-count tier (`.default`/`.performance`/`.detail`).
+    public static func screenSpaceReflections(
+        intensity: Double = 0.6, maxDistance: Double = 8, thickness: Double = 0.025,
+        roughness: Double = 0, fresnel: Double = 0.5, edgeFade: Double = 0.1,
+        quality: RenderQuality = .default) -> Combine {
+        Combine(kind: .screenSpaceReflections(
+            intensity: max(0, intensity), maxDistance: max(0.0001, maxDistance),
+            thickness: max(0.0001, thickness), roughness: min(max(roughness, 0), 1),
+            fresnel: max(0, fresnel), edgeFade: min(max(edgeFade, 0), 0.5), quality: quality))
     }
 }

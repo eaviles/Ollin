@@ -492,6 +492,185 @@ fragment float4 ollin_fx_ssao_blur(PresentOut in [[stage_in]],
     return float4(centerColor.rgb * ao, centerColor.a);
 }
 
+// Screen-space reflections (pass 1 of 2): march each surface's reflection ray through the
+// depth buffer and return the reflected scene colour, premultiplied by its strength (so the
+// resolve pass blurs and composites it correctly). Reconstruct the view-space position +
+// normal from the aux depth exactly as SSAO does (a true mesh normal when the G-buffer was
+// captured, else a depth-reconstructed one), reflect the eye ray about the normal, then trace
+// the ray as a screen-space DDA (the canonical screen-space ray trace, written from the
+// published technique; README Techniques). The hit test is detailed at the loop below; the short
+// version: the whole ray is covered in a fixed step budget (the stride scales with its pixel
+// span, so the REACH is resolution-independent rather than truncating at high resolution), the
+// hit is a depth-interval *crossing* (the ray's per-step depth span brackets the surface, which
+// rejects a ray grazing a silhouette beside an object since that never crosses its depth) pinned
+// by a binary search, plus a front-face check.
+// params[0] = (intensity, maxDistance, thickness, hasNormals); params[1] = (texel.xy, stepCount,
+// fresnel); params[2..3] = the depth-reconstruction camera geometry; params[4] = (edgeFade,
+// roughness, refineSteps, 0).
+fragment float4 ollin_fx_ssr(PresentOut in [[stage_in]],
+                             texture2d<float> base [[texture(0)]],
+                             texture2d<float> depthMap [[texture(1)]],
+                             texture2d<float> normalMap [[texture(2)]],
+                             sampler samp [[sampler(0)]],
+                             constant float4 *params [[buffer(0)]]) {
+    float intensity = params[0].x, maxDistance = params[0].y, thickness = params[0].z;
+    bool hasNormals = params[0].w > 0.5;
+    float2 texel = params[1].xy;
+    int steps = int(max(1.0, params[1].z));
+    float fresnelAmt = params[1].w;
+    float near = params[2].x, far = params[2].y;
+    float edgeFade = params[4].x;
+    if (intensity <= 0.0) return float4(0.0);
+
+    float t = ollin_dof_depth(depthMap.sample(samp, in.uv));
+    if (t >= 0.999) return float4(0.0);                            // background doesn't reflect
+
+    float3 P = ollin_ssao_viewpos(in.uv, t, params);
+
+    // Surface normal: the same true-mesh-normal-with-depth-fallback read SSAO uses (see
+    // `ollin_fx_ssao`). A reflection wants the geometric surface normal, so the G-buffer's
+    // stability at concave seams matters here as much as it does for occlusion.
+    float3 N;
+    float4 nSample = hasNormals ? normalMap.sample(samp, in.uv) : float4(0);
+    if (hasNormals && nSample.a > 0.001) {
+        N = normalize(nSample.xyz);
+    } else {
+        float2 noff = texel * 3.0;
+        float tL = ollin_dof_depth(depthMap.sample(samp, in.uv - float2(noff.x, 0)));
+        float tR = ollin_dof_depth(depthMap.sample(samp, in.uv + float2(noff.x, 0)));
+        float tU = ollin_dof_depth(depthMap.sample(samp, in.uv - float2(0, noff.y)));
+        float tD = ollin_dof_depth(depthMap.sample(samp, in.uv + float2(0, noff.y)));
+        float3 dx = (abs(tR - t) < abs(tL - t))
+            ? ollin_ssao_viewpos(in.uv + float2(noff.x, 0), tR, params) - P
+            : P - ollin_ssao_viewpos(in.uv - float2(noff.x, 0), tL, params);
+        float3 dy = (abs(tD - t) < abs(tU - t))
+            ? ollin_ssao_viewpos(in.uv + float2(0, noff.y), tD, params) - P
+            : P - ollin_ssao_viewpos(in.uv - float2(0, noff.y), tU, params);
+        N = normalize(cross(dx, dy));
+    }
+    if (dot(N, -P) < 0.0) N = -N;                                  // ensure N faces the eye
+
+    float3 V = normalize(P);                                       // eye ray (camera at origin)
+    float3 R = reflect(V, N);                                      // mirror direction off the surface
+
+    // Trace in SCREEN space along the ray's projection. The ray runs from P to P + R·maxDistance,
+    // clipped to the near plane; project both ends to pixel coordinates and walk between them.
+    // The stride and the hit test are detailed where they're used below; the hit is a
+    // depth-interval *crossing* with a front-face check.
+    float3 Pend = P + R * maxDistance;
+    if (Pend.z > -near) Pend = P + R * ((-near - P.z) / R.z);       // clip to the near plane
+    float2 res = 1.0 / texel;                                       // layer resolution in pixels
+    float2 d0 = in.uv * res;
+    float2 d1 = ollin_ssao_project(Pend, params) * res;
+    float2 dd = d1 - d0;
+    // Cover the WHOLE ray in ~`steps` coarse steps (the stride scales with the ray's pixel
+    // span), so the reflection's REACH is resolution-independent. A fixed *pixel* budget would
+    // truncate a long reflection at high resolution, cutting its far end into a flat-bottomed
+    // capsule. The depth-interval test below tolerates the coarse stride; a binary search then
+    // pins the crossing within the last stride. (Coarse-stride + refinement screen-space DDA,
+    // written from the published technique; README Techniques.)
+    float majorStep = max(abs(dd.x), abs(dd.y));                  // the ray's pixel span (DDA major axis)
+    float nF = clamp(majorStep, 1.0, float(steps));              // coarse step count (<= budget, covers the ray)
+    float invD0 = 1.0 / (-P.z), invD1 = 1.0 / (-Pend.z);         // 1/depth at the ray's ends (positive)
+
+    float2 hitUV = float2(-1.0);
+    float hitDist = 0.0;                                          // world distance the ray travelled to the hit
+    bool hit = false;
+    float prevRayDepth = -P.z, prevFrac = 0.0;                   // ray depth + screen fraction, previous step
+    for (int i = 1; i <= int(nF); i++) {
+        float frac = float(i) / nF;                              // fraction along the full screen segment
+        float2 uv = (d0 + dd * frac) * texel;
+        if (any(uv < 0.0) || any(uv > 1.0)) break;                // left the screen
+        float rayDepth = 1.0 / (invD0 + frac * (invD1 - invD0));  // perspective-correct ray depth (positive)
+        float tS = ollin_dof_depth(depthMap.sample(samp, uv));
+        if (tS >= 0.999) { prevRayDepth = rayDepth; prevFrac = frac; continue; }  // sky: advance
+        float sceneDepth = near + tS * (far - near);              // = -vP.z
+        // **Depth-INTERVAL crossing** (not a "near the ray line" distance): the ray's depth
+        // spans [prevRayDepth, rayDepth] across this step; a hit is when the surface lies inside
+        // that span (the ray genuinely *crosses* the surface depth), widened behind by
+        // `thickness` (the assumed solid thickness, depth-relative). A crossing test rejects a
+        // ray that merely grazes a silhouette beside an object, since it never crosses that depth.
+        float dmin = min(prevRayDepth, rayDepth), dmax = max(prevRayDepth, rayDepth);
+        if (i > 1 && dmax >= sceneDepth && dmin <= sceneDepth + thickness * sceneDepth) {
+            // Binary-refine the crossing fraction within (prevFrac, frac] so the hit is precise
+            // even when the coarse stride spans several pixels (at high resolution).
+            float lo = prevFrac, hi = frac;
+            for (int j = 0; j < 8; j++) {
+                float mid = 0.5 * (lo + hi);
+                float mt = ollin_dof_depth(depthMap.sample(samp, (d0 + dd * mid) * texel));
+                float mRay = 1.0 / (invD0 + mid * (invD1 - invD0));
+                if (mt < 0.999 && mRay >= near + mt * (far - near)) hi = mid; else lo = mid;
+            }
+            float2 huv = (d0 + dd * hi) * texel;
+            float ht = ollin_dof_depth(depthMap.sample(samp, huv));
+            float4 nS = hasNormals ? normalMap.sample(samp, huv) : float4(0);
+            if (nS.a > 0.001 && dot(R, nS.xyz) >= 0.0) { prevRayDepth = rayDepth; prevFrac = frac; continue; }  // back face
+            float3 vP = ollin_ssao_viewpos(huv, ht, params);
+            hitUV = huv; hitDist = length(vP - P); hit = true; break;
+        }
+        prevRayDepth = rayDepth; prevFrac = frac;
+    }
+    if (!hit) return float4(0.0);
+
+    // Strength: a Schlick grazing term blended toward flat reflectivity by `fresnel`
+    // (0 = an even mirror at every angle, 1 = reflective only at grazing angles), an edge fade
+    // as the hit nears the screen border (hiding the screen-space cutoff), and a **distance
+    // fade by how far the ray travelled to the hit**, physically motivated (a longer
+    // reflection path scatters more, so the reflection weakens). It's also the lever that turns
+    // the genuine grazing-angle stretch of a reflection into a natural taper instead of a hard,
+    // full-strength elongated "cylinder". Fades over a fraction of `maxDistance`, so a near
+    // reflection (an object's own mirror image) stays strong and the far stretch dissolves.
+    float cosV = saturate(dot(N, -V));
+    float schlick = pow(1.0 - cosV, 5.0);
+    float fres = mix(1.0, schlick, saturate(fresnelAmt));
+    float2 edge = min(hitUV, 1.0 - hitUV);
+    float edgeW = smoothstep(0.0, max(1e-4, edgeFade), min(edge.x, edge.y));
+    float distW = 1.0 - smoothstep(maxDistance * 0.35, maxDistance * 0.9, hitDist);
+    float strength = saturate(intensity * fres * edgeW * distW);
+    float3 refl = base.sample(samp, hitUV).rgb;
+    return float4(refl * strength, strength);                      // premultiplied
+}
+
+// Screen-space reflections (pass 2 of 2): blur the reflection layer for a glossy finish and
+// composite it over the base. At `roughness == 0` it's a single tap (a sharp mirror, the
+// cheap default); above it, a depth-aware Gaussian whose radius grows with roughness, weighting
+// taps by depth proximity so a reflection doesn't bleed across a silhouette onto a different
+// surface. The reflection layer is premultiplied, so the blur averages it cleanly and the
+// composite is a straight premultiplied over. params[0].x = roughness; params[1].xy = texel.
+fragment float4 ollin_fx_ssr_resolve(PresentOut in [[stage_in]],
+                                     texture2d<float> base [[texture(0)]],
+                                     texture2d<float> reflTex [[texture(1)]],
+                                     texture2d<float> depthMap [[texture(2)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float roughness = params[0].x;
+    float2 texel = params[1].xy;
+    float4 baseColor = base.sample(samp, in.uv);
+    float4 refl;
+    if (roughness <= 0.0) {
+        refl = reflTex.sample(samp, in.uv);
+    } else {
+        float tc = ollin_dof_depth(depthMap.sample(samp, in.uv));
+        float radiusTexels = roughness * 6.0;                      // up to ~6px of blur at full roughness
+        float4 sum = float4(0.0);
+        float wsum = 0.0;
+        for (int y = -3; y <= 3; y++) {
+            for (int x = -3; x <= 3; x++) {
+                float2 uv = in.uv + float2(float(x), float(y)) * texel * (radiusTexels / 3.0);
+                float ts = ollin_dof_depth(depthMap.sample(samp, uv));
+                float wDepth = max(0.0, 1.0 - abs(ts - tc) * 40.0);
+                float wSpace = exp(-float(x * x + y * y) * 0.18);
+                float w = wDepth * wSpace;
+                sum  += reflTex.sample(samp, uv) * w;
+                wsum += w;
+            }
+        }
+        refl = wsum > 0.0 ? sum / wsum : reflTex.sample(samp, in.uv);
+    }
+    float a = refl.a;                                              // premultiplied over the base
+    return float4(refl.rgb + baseColor.rgb * (1.0 - a), a + baseColor.a * (1.0 - a));
+}
+
 // Depth-aware resolve of the MSAA mesh-normal G-buffer, in place of a hardware box-average.
 // A plain average is right at a mesh-vs-*background* silhouette (the background
 // samples contribute the cleared zero, so the average is just the front normal scaled by

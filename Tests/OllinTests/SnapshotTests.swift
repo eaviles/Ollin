@@ -325,6 +325,17 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func ssrMatchesReference() throws {
+        // A dark glossy floor under fixed bright spheres + a pillar, reflected by the
+        // scene's own depth (`scene.depth`). Pins the screen-space-reflection combine: the
+        // view-space position + mesh normal feeding the reflection march, the forward
+        // projection back to the depth layer, the thickness-banded hit + binary refine, and
+        // the Fresnel/edge/distance-weighted glossy composite over the base.
+        let diff = try Snapshot.meanDifference(of: ScreenSpaceReflectionsScene(), against: "ssr-3d")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func pointCloud3DMatchesReference() throws {
         // A static 3D heightfield through a fixed camera — pins the 3D camera, the
         // depth-tested point pipeline, and the instanced disc splats.
@@ -625,6 +636,45 @@ private final class AmbientOcclusionScene: Sketch {
         }
         drawImage(scene.combined(with: scene.depth,
                                  .ambientOcclusion(radius: 0.5, intensity: 1.0)).image, 0, 0)
+    }
+}
+
+private final class ScreenSpaceReflectionsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        let scene = renderTarget()
+        withTarget(scene) {
+            background(Color(hex: 0x06080d))
+            // Fixed camera + near/far bracketing the scene (deterministic).
+            camera(.orbiting(target: Vector3(0, 0.7, 0), radius: 10,
+                             azimuth: 0.5, elevation: 0.55,
+                             fieldOfView: .pi / 4, near: 2, far: 24))
+            ambientLight(Color(white: 0.3))
+            directionalLight(.white, direction: Vector3(-0.35, -1, -0.2), intensity: 0.95)
+            withState {
+                fill(Color(white: 0.05)); translate(0, -0.05, 0)
+                drawBox(width: 40, height: 0.1, depth: 40)
+            }
+            // A loose scatter of well-separated spheres + a cube on a glossy floor.
+            let spheres: [(x: Double, z: Double, hue: Double)] = [
+                (-3.8, 1.5, 0.02), (3.6, 2.0, 0.33), (-1.0, -3.5, 0.58), (5.2, -2.5, 0.85),
+            ]
+            for s in spheres {
+                withState {
+                    translate(s.x, 1.0, s.z)
+                    fill(Color(hue: s.hue, saturation: 0.75, brightness: 1.0))
+                    drawSphere(radius: 1.0)
+                }
+            }
+            withState {
+                fill(Color(hex: 0xeef0fa)); translate(-4.5, 0.7, -3.0); rotateY(0.6)
+                drawBox(width: 1.4, height: 1.4, depth: 1.4)
+            }
+        }
+        drawImage(scene.combined(with: scene.depth,
+                                 .screenSpaceReflections(intensity: 0.9, roughness: 0.15,
+                                                         fresnel: 0.8)).image, 0, 0)
     }
 }
 
