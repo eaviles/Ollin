@@ -606,13 +606,18 @@ final class Drawer {
         withTarget(field.writeLayer, body)
     }
 
-    /// Whether any `Feedback` or `SimField` layer was drawn into this frame. The
-    /// renderer keeps that state in render-pass-filled ping-pong textures, so (like the
-    /// accumulation surface) the headless frame-grab must render every warmup frame
-    /// (not just step compute) for the state to evolve. See `OllinApp.image(of:)`.
+    /// Whether this frame holds cross-frame state the renderer keeps in ping-pong textures:
+    /// a `Feedback`/`SimField` layer, or a `.screenSpaceReflections` combine (its temporal
+    /// resolve accumulates the reflection across frames). Like the accumulation surface, the
+    /// headless frame-grab must render every warmup frame (not just step compute) for that
+    /// state to evolve, so a single-frame export of an SSR scene captures the converged
+    /// reflection. See `OllinApp.image(of:)`.
     var usesFeedback: Bool {
         renderTargets.contains {
             switch $0.origin { case .feedback, .simField: return true; default: return false }
+        } || filterOps.contains {
+            if case let .combine(_, _, op) = $0.origin, case .screenSpaceReflections = op.kind { return true }
+            return false
         }
     }
 

@@ -515,6 +515,31 @@ final class MetalRenderer {
     private var fluidSlots: [ObjectIdentifier: FluidSlot] = [:]
     private var fluidUsedThisFrame: Set<ObjectIdentifier> = []
 
+    /// One screen-space-reflections layer's temporal-accumulation history: the ping-pong pair
+    /// carrying the reflection across frames (the back is written this frame and becomes the
+    /// front next frame), plus the previous frame's scene view·projection used to reproject it,
+    /// and a `valid` flag gating the very first frame (no history yet). Keyed by the SSR op's
+    /// ordinal in the frame rather than a layer identity: a sketch makes its render target fresh
+    /// each frame, so there is no stable owner to key on the way feedback and fluid do.
+    private final class SSRHistorySlot {
+        let a: MTLTexture, b: MTLTexture
+        let w: Int, h: Int
+        var flipped = false
+        var valid = false
+        var previousViewProjection = matrix_identity_float4x4
+        init(a: MTLTexture, b: MTLTexture, w: Int, h: Int) {
+            self.a = a; self.b = b; self.w = w; self.h = h
+        }
+    }
+    /// Persistent SSR history, kept across frames like `feedbackSlots`, keyed by SSR-op ordinal.
+    /// Bounded by the (small, contiguous) ordinal count, so it isn't pruned per frame; a skipped
+    /// SSR frame keeps its history (the reprojection clamp reconverges if it went stale).
+    private var ssrHistorySlots: [Int: SSRHistorySlot] = [:]
+    /// SSR ops resolved this frame, so only those flip their ping-pong.
+    private var ssrHistoryUsedThisFrame: Set<Int> = []
+    /// The next SSR op's ordinal this frame; reset at the start of `encodeEffectTargets`.
+    private var ssrOrdinalNext = 0
+
     /// Baked image-based-lighting maps, cached by environment source so the bake (a few
     /// fullscreen passes) runs once, not per frame. `iblBRDFLUT` is environment-independent
     /// (the split-sum scale/bias integral) so it's baked once globally. `currentIBL` is the
@@ -1267,6 +1292,7 @@ final class MetalRenderer {
         targetTexNext = 0
         filterTexNext = 0
         targetDepthNext = 0
+        ssrOrdinalNext = 0
         // Generators read no input, so fill them first (a filter may sample one),
         // each a single fullscreen fragment pass into a sampleable filter texture.
         for target in drawer.renderTargets {
@@ -1458,6 +1484,11 @@ final class MetalRenderer {
         if fluidSlots.contains(where: { $0.value.owner == nil }) {
             fluidSlots = fluidSlots.filter { $0.value.owner != nil }
         }
+        // Advance each SSR temporal history drawn this frame (its back becomes next frame's
+        // front). Slots aren't pruned (the ordinal key bounds the map), so a skipped SSR frame
+        // keeps its accumulation.
+        for id in ssrHistoryUsedThisFrame { ssrHistorySlots[id]?.flipped.toggle() }
+        ssrHistoryUsedThisFrame.removeAll(keepingCapacity: true)
     }
 
     /// Apply the whole-frame `postProcess` filters to the resolved float frame,
@@ -1684,20 +1715,30 @@ final class MetalRenderer {
                                  params: [SIMD4(Float(intensity), 0, 0, 0), texel], into: cb)
             return out
         case let .screenSpaceReflections(intensity, maxDistance, thickness, roughness, fresnel, edgeFade, quality):
-            // Two passes mirroring SSAO: a screen-space ray march (rebuilding view-space
-            // position + normal from the aux depth, reflecting the eye ray about the
-            // normal, then marching until it crosses the depth buffer) writes a
-            // premultiplied reflection layer, then a depth-aware, roughness-scaled blur
-            // softens it and composites it over the base. The camera geometry rides
-            // params[2..3] byte-for-byte as SSAO's does, so the shared reconstruction and
-            // forward-projection helpers read it unchanged; the march budget rides the
-            // texel row's third slot, the bokeh/AO convention.
+            // Four passes: a screen-space ray march (rebuilding view-space position + normal from
+            // the aux depth, reflecting the eye ray about the normal, then marching until it
+            // crosses the depth buffer) writes a premultiplied reflection; a depth-aware,
+            // roughness-scaled blur softens it; a temporal pass reprojects last frame's reflection
+            // and accumulates it (killing the contact-seam flicker that no spatial filter removes);
+            // a final pass composites the accumulated reflection over the base. The march/blur/
+            // temporal run at a quality-resolved fraction of the resolution and the composite
+            // upsamples back to full, so live trades reflection resolution for frame rate while
+            // export resolves to full (snapshots and exported art are never downscaled). The
+            // camera geometry rides params[2..3] byte-for-byte as SSAO's does; the march budget
+            // rides the texel row's third slot.
             let steps = Float(resolveSSRSteps(quality))
-            let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), steps, Float(fresnel))
+            let scale = resolveSSRScale(quality)
+            let sw = max(1, Int((Double(width) * scale).rounded()))
+            let sh = max(1, Int((Double(height) * scale).rounded()))
+            let texel = SIMD4<Float>(1 / Float(sw), 1 / Float(sh), steps, Float(fresnel))
             let d = depth ?? .neutral
-            guard let reflTex = acquireFilterTexture(width: width, height: height, pooled: pooled),
+            let ordinal = ssrOrdinalNext; ssrOrdinalNext += 1
+            guard let reflTex = acquireFilterTexture(width: sw, height: sh, pooled: pooled),
+                  let reflBlur = acquireFilterTexture(width: sw, height: sh, pooled: pooled),
+                  let slot = ssrHistorySlot(ordinal: ordinal, width: sw, height: sh, into: cb),
                   let out = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
             let hasNormals: Float = normals != nil ? 1 : 0
+            // Pass 1: trace the premultiplied reflection.
             encodeEffectFragment("ollin_fx_ssr", inputs: [base, aux, normals ?? aux], output: reflTex,
                                  params: [SIMD4(Float(intensity), Float(maxDistance), Float(thickness), hasNormals),
                                           texel,
@@ -1705,8 +1746,30 @@ final class MetalRenderer {
                                           SIMD4(d.principalX, d.principalY, d.isPerspective ? 1 : 0, 0),
                                           SIMD4(Float(edgeFade), Float(roughness), 6, 0)],
                                  into: cb)
-            encodeEffectFragment("ollin_fx_ssr_resolve", inputs: [base, reflTex, aux], output: out,
+            // Pass 2: roughness blur, reflection only (composite flag 0).
+            encodeEffectFragment("ollin_fx_ssr_resolve", inputs: [base, reflTex, aux], output: reflBlur,
                                  params: [SIMD4(Float(roughness), 0, 0, 0), texel], into: cb)
+            // Pass 3: temporal accumulation into the history back buffer (reading the front +
+            // last frame's view·projection), then advance the slot's previous transform.
+            let front = slot.flipped ? slot.b : slot.a
+            let back  = slot.flipped ? slot.a : slot.b
+            let alpha = slot.valid ? Float(resolveSSRAlpha(quality)) : 0
+            let iv = d.inverseView, pv = slot.previousViewProjection
+            encodeEffectFragment("ollin_fx_ssr_temporal", inputs: [reflBlur, aux, front], output: back,
+                                 params: [SIMD4(1 / Float(sw), 1 / Float(sh), alpha, slot.valid ? 1 : 0),
+                                          SIMD4(0, 0, 0, 0),
+                                          SIMD4(d.near, d.far, d.tanHalfFovX, d.tanHalfFovY),
+                                          SIMD4(d.principalX, d.principalY, d.isPerspective ? 1 : 0, 0),
+                                          iv.columns.0, iv.columns.1, iv.columns.2, iv.columns.3,
+                                          pv.columns.0, pv.columns.1, pv.columns.2, pv.columns.3],
+                                 into: cb)
+            slot.previousViewProjection = d.viewProjection
+            slot.valid = true
+            ssrHistoryUsedThisFrame.insert(ordinal)
+            // Pass 4: composite the accumulated reflection (upsampled from `back`) over the base.
+            encodeEffectFragment("ollin_fx_ssr_composite", inputs: [base, back], output: out,
+                                 params: [SIMD4(0, 0, 0, 0),
+                                          SIMD4(1 / Float(width), 1 / Float(height), 0, 0)], into: cb)
             return out
         }
     }
@@ -1868,6 +1931,23 @@ final class MetalRenderer {
         clearFloatTexture(b, color: restState, into: cb)
         let slot = FeedbackSlot(a: a, b: b, w: width, h: height, owner: fb)
         feedbackSlots[id] = slot
+        return slot
+    }
+
+    /// The SSR temporal-history slot for `ordinal`, allocating the ping-pong pair (cleared to
+    /// zero, so the first frame's accumulation starts from a clean, reflection-free history) on
+    /// first use or a size change. The key is the op ordinal, so a size change (live half-res
+    /// versus full-res export) reallocates and reconverges rather than reading a mismatched slot.
+    private func ssrHistorySlot(ordinal: Int, width: Int, height: Int,
+                                into cb: MTLCommandBuffer) -> SSRHistorySlot? {
+        if let slot = ssrHistorySlots[ordinal], slot.w == width, slot.h == height { return slot }
+        guard let a = makeFloatResolve(width: width, height: height),
+              let b = makeFloatResolve(width: width, height: height) else { return nil }
+        let clear = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        clearFloatTexture(a, color: clear, into: cb)
+        clearFloatTexture(b, color: clear, into: cb)
+        let slot = SSRHistorySlot(a: a, b: b, w: width, h: height)
+        ssrHistorySlots[ordinal] = slot
         return slot
     }
 
@@ -2876,6 +2956,34 @@ final class MetalRenderer {
     /// An exact SSR march-step count overriding the resolved `.screenSpaceReflections`
     /// quality tier, the sweep hook mirroring `ssaoSamplesOverride`. `nil` in normal use.
     var ssrStepsOverride: Int?
+
+    /// Resolve a `.screenSpaceReflections` quality tier to the fraction of the resolution the
+    /// march/blur/temporal passes run at (the composite upsamples back to full). Live trades
+    /// reflection resolution for frame rate; export resolves to full (1.0) so exported art and
+    /// snapshots are never downscaled. Mirrors `resolveRaymarchScale`.
+    private func resolveSSRScale(_ quality: RenderQuality) -> Double {
+        if let s = ssrScaleOverride { return min(1.0, max(0.1, s)) }
+        switch effectiveQuality(quality) {
+        case .detail:      return 1.0
+        case .default:     return 1.0    // full-res by default: reflections stay sharp + clean
+        case .performance: return 0.5    // half-res only when trading quality for frame rate
+        }
+    }
+
+    /// A scale fraction overriding the resolved SSR tier, the sweep hook for the half-res win
+    /// (`Scripts/benchmark.sh ssr`). `nil` in normal use.
+    var ssrScaleOverride: Double?
+
+    /// Resolve a `.screenSpaceReflections` quality tier to the temporal history weight (the
+    /// exponential-moving-average factor): more accumulation at higher tiers (steadier, slower to
+    /// react), lighter at `.performance`. Reprojection + neighborhood clamping keep it responsive.
+    private func resolveSSRAlpha(_ quality: RenderQuality) -> Double {
+        switch effectiveQuality(quality) {
+        case .detail:      return 0.92
+        case .default:     return 0.88
+        case .performance: return 0.80
+        }
+    }
 
     /// Resolve a `.defocus` quality tier to a bokeh tap count, hardware-relative (richer on a
     /// dedicated-RT GPU). The software-RT (M1/M2) column is measured (`Scripts/benchmark.sh dof`

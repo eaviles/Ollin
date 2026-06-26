@@ -628,15 +628,28 @@ fragment float4 ollin_fx_ssr(PresentOut in [[stage_in]],
     float distW = 1.0 - smoothstep(maxDistance * 0.35, maxDistance * 0.9, hitDist);
     float strength = saturate(intensity * fres * edgeW * distW);
     float3 refl = base.sample(samp, hitUV).rgb;
+    // Firefly clamp: the contact seam foreshortens a surface's whole curve into a thin floor
+    // band, so a small camera move shifts which source pixel each reflection samples by a lot,
+    // and a reflected bright spot (a chrome surface catching a light) jitters into a flashing
+    // streak. Cap the reflected highlight luminance: keep bright reflections, kill the blinding
+    // fireflies. (Full temporal stability of this band wants TAA accumulation, a later lever.)
+    float lum = ollin_luma(refl);
+    refl *= lum > 4.0 ? 4.0 / lum : 1.0;
     return float4(refl * strength, strength);                      // premultiplied
 }
 
-// Screen-space reflections (pass 2 of 2): blur the reflection layer for a glossy finish and
-// composite it over the base. At `roughness == 0` it's a single tap (a sharp mirror, the
-// cheap default); above it, a depth-aware Gaussian whose radius grows with roughness, weighting
-// taps by depth proximity so a reflection doesn't bleed across a silhouette onto a different
-// surface. The reflection layer is premultiplied, so the blur averages it cleanly and the
-// composite is a straight premultiplied over. params[0].x = roughness; params[1].xy = texel.
+// Screen-space reflections (pass 2 of 2): denoise the reflection layer and composite it over the
+// base. A deterministic ray march leaves salt-and-pepper hit/miss speckle on curved and grazing
+// surfaces (adjacent rays land on or miss the scene inconsistently). One depth-aware neighborhood
+// pass cleans it two ways: a 3x3 conservative smoothing clamps each pixel into its same-surface
+// neighbors' premultiplied range (removing an isolated outlier *without* blurring consistent
+// reflection detail, edge-preserving unlike a plain blur), then the result blends toward a wider
+// depth-weighted average by roughness for a glossy finish. Depth weighting keeps a reflection
+// from bleeding across a silhouette onto another surface. The layer is premultiplied, so the
+// averages composite cleanly. (The spatial companion to the temporal resolve; written from the
+// published technique, README Techniques.) params[0].x = roughness; params[0].y = composite over
+// base (1) or output the reflection alone (0, for the temporal path that composites later);
+// params[1].xy = texel.
 fragment float4 ollin_fx_ssr_resolve(PresentOut in [[stage_in]],
                                      texture2d<float> base [[texture(0)]],
                                      texture2d<float> reflTex [[texture(1)]],
@@ -644,30 +657,120 @@ fragment float4 ollin_fx_ssr_resolve(PresentOut in [[stage_in]],
                                      sampler samp [[sampler(0)]],
                                      constant float4 *params [[buffer(0)]]) {
     float roughness = params[0].x;
+    bool composite = params[0].y > 0.5;
     float2 texel = params[1].xy;
     float4 baseColor = base.sample(samp, in.uv);
-    float4 refl;
-    if (roughness <= 0.0) {
-        refl = reflTex.sample(samp, in.uv);
-    } else {
-        float tc = ollin_dof_depth(depthMap.sample(samp, in.uv));
-        float radiusTexels = roughness * 6.0;                      // up to ~6px of blur at full roughness
-        float4 sum = float4(0.0);
-        float wsum = 0.0;
-        for (int y = -3; y <= 3; y++) {
-            for (int x = -3; x <= 3; x++) {
-                float2 uv = in.uv + float2(float(x), float(y)) * texel * (radiusTexels / 3.0);
-                float ts = ollin_dof_depth(depthMap.sample(samp, uv));
-                float wDepth = max(0.0, 1.0 - abs(ts - tc) * 40.0);
-                float wSpace = exp(-float(x * x + y * y) * 0.18);
-                float w = wDepth * wSpace;
-                sum  += reflTex.sample(samp, uv) * w;
-                wsum += w;
-            }
+
+    float tc = ollin_dof_depth(depthMap.sample(samp, in.uv));
+    float dGrad = fwidth(tc);                                  // depth change per pixel (the local surface slope)
+    float4 c = reflTex.sample(samp, in.uv);
+    // A *dense* (contiguous-texel) Gaussian whose radius grows with roughness. Density is
+    // load-bearing: a strided kernel skips over the fine grazing-contact streaks and never
+    // smooths them, so the blur reads every pixel out to the radius. Capped so the widest gloss
+    // stays affordable as a single fullscreen pass.
+    float radiusTexels = max(1.0, roughness * 8.0);
+    int R = clamp(int(round(radiusTexels)), 1, 6);            // up to a 13x13 dense kernel
+    float invTwoSigma2 = 1.0 / (2.0 * max(1.0, float(R) * 0.6) * max(1.0, float(R) * 0.6));
+    float4 lo = c, hi = c, sum = c;                           // lo/hi for the conservative clamp, sum the average
+    float wsum = 1.0;
+    float lSum = ollin_luma(c.rgb), lSum2 = lSum * lSum, lN = 1.0;  // luma moments for the variance estimate
+    for (int y = -R; y <= R; y++) {
+        for (int x = -R; x <= R; x++) {
+            if (x == 0 && y == 0) continue;
+            float2 uv = clamp(in.uv + float2(float(x), float(y)) * texel, 0.0, 1.0);
+            // Accept a neighbor on the *same* surface, rejecting a silhouette jump. The tolerance
+            // follows the local depth slope (a grazing/curved surface changes depth fast across a
+            // pixel, so a fixed threshold would wrongly reject its neighbors exactly where the
+            // streaks are worst), so only a depth break much larger than the smooth gradient is cut.
+            float expected = dGrad * length(float2(float(x), float(y))) + 0.01;
+            if (abs(ollin_dof_depth(depthMap.sample(samp, uv)) - tc) > expected * 6.0) continue;
+            float4 s = reflTex.sample(samp, uv);
+            float w = exp(-float(x * x + y * y) * invTwoSigma2);
+            sum += s * w; wsum += w;
+            if (abs(x) <= 1 && abs(y) <= 1) { lo = min(lo, s); hi = max(hi, s); }  // 3x3 despeckle range
+            float l = ollin_luma(s.rgb); lSum += l; lSum2 += l * l; lN += 1.0;
         }
-        refl = wsum > 0.0 ? sum / wsum : reflTex.sample(samp, in.uv);
     }
-    float a = refl.a;                                              // premultiplied over the base
+    float4 despeckled = clamp(c, lo, hi);                      // pull an outlier into its neighbors' range
+    float4 avg = sum / wsum;
+    // Blur toward the average where the local reflection is noisy (high luminance variance =
+    // hit/miss speckle or grazing streaks) and stay sharp where it is consistent (real reflection
+    // detail), plus a baseline gloss softening that grows with roughness. The adaptive term is
+    // what cleans the noisy regions without smearing the crisp reflections.
+    float mean = lSum / lN;
+    float variance = max(0.0, lSum2 / lN - mean * mean);
+    float noisiness = saturate(variance * 90.0);
+    float4 refl = mix(despeckled, avg, max(saturate(roughness * 2.0), noisiness));
+    if (!composite) return refl;                              // reflection alone (the temporal path composites later)
+    float a = refl.a;                                          // premultiplied over the base
+    return float4(refl.rgb + baseColor.rgb * (1.0 - a), a + baseColor.a * (1.0 - a));
+}
+
+// Screen-space reflections (temporal resolve): accumulate the reflection across frames to kill
+// the contact-seam flicker. Where a curved surface foreshortens its reflection into a thin band,
+// a small camera move shifts which source pixel each reflection samples by a lot, so a reflected
+// highlight jitters into a flashing streak — temporal undersampling that no spatial filter
+// removes. Reproject last frame's reflection by the camera's motion (reconstruct the receiver's
+// world point, project it through the previous frame's view·projection to its previous uv),
+// reject ghosting by clamping the history to the current reflection's local neighborhood, then
+// blend as an exponential moving average. Reflection-only, so the base stays crisp. (Reprojection
+// temporal accumulation with neighborhood clamping, written from the published technique; README
+// Techniques.)
+// params[0] = (texel.xy, alpha, hasHistory); params[2..3] = the depth-reconstruction camera
+// geometry (so ollin_ssao_viewpos reads it unchanged); params[4..7] = the current inverse-view
+// columns; params[8..11] = the previous view·projection columns.
+fragment float4 ollin_fx_ssr_temporal(PresentOut in [[stage_in]],
+                                      texture2d<float> reflTex [[texture(0)]],
+                                      texture2d<float> depthMap [[texture(1)]],
+                                      texture2d<float> history [[texture(2)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float alpha = params[0].z;                                    // history weight (0 = no accumulation)
+    bool hasHistory = params[0].w > 0.5;
+    float4 current = reflTex.sample(samp, in.uv);                 // this frame's premultiplied reflection
+    if (!hasHistory || alpha <= 0.0) return current;
+
+    // Reconstruct the receiver's view-space position, lift it to world with the current
+    // inverse-view, then project it through the previous frame's view·projection to find where
+    // this surface point sat last frame. A static camera makes the previous transform equal the
+    // current one, so the reprojection is the identity (the history aligns exactly).
+    float t = ollin_dof_depth(depthMap.sample(samp, in.uv));
+    if (t >= 0.999) return current;                              // background carries no reflection
+    float3 P = ollin_ssao_viewpos(in.uv, t, params);
+    float4x4 invView = float4x4(params[4], params[5], params[6], params[7]);
+    float4x4 prevVP  = float4x4(params[8], params[9], params[10], params[11]);
+    float4 clip = prevVP * (invView * float4(P, 1.0));
+    if (clip.w <= 0.0) return current;                           // behind the previous camera
+    float2 ndc = clip.xy / clip.w;
+    float2 prevUV = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5); // Metal top-down framebuffer uv
+    if (any(prevUV < 0.0) || any(prevUV > 1.0)) return current;  // disoccluded / off last frame
+
+    // Neighborhood clamp (reject ghosting): bound the reprojected history to the min/max of the
+    // current reflection's 3x3 neighborhood (premultiplied RGBA). A fast move that lands a stale
+    // reflection here is pulled back toward what the surface now reflects, so it can't trail.
+    float4 lo = current, hi = current;
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            float4 s = reflTex.sample(samp, in.uv + float2(float(x), float(y)) * texel);
+            lo = min(lo, s); hi = max(hi, s);
+        }
+    }
+    float4 hist = clamp(history.sample(samp, prevUV), lo, hi);
+    return mix(current, hist, alpha);                            // exponential moving average
+}
+
+// Screen-space reflections (composite): lay the temporally-accumulated reflection over the base.
+// The history holds the (possibly half-resolution) accumulated reflection; sampling it bilinearly
+// upsamples it into the full-resolution base. Premultiplied over. params[1].xy = texel.
+fragment float4 ollin_fx_ssr_composite(PresentOut in [[stage_in]],
+                                       texture2d<float> base [[texture(0)]],
+                                       texture2d<float> history [[texture(1)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 *params [[buffer(0)]]) {
+    float4 baseColor = base.sample(samp, in.uv);
+    float4 refl = history.sample(samp, in.uv);                   // bilinear: upsamples a half-res layer
+    float a = refl.a;
     return float4(refl.rgb + baseColor.rgb * (1.0 - a), a + baseColor.a * (1.0 - a));
 }
 

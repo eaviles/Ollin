@@ -3,69 +3,73 @@ import Ollin
 /// Screen-space reflections turning a 3D scene's own surfaces into mirrors.
 ///
 /// Image-based lighting lets a metal reflect its *environment*; screen-space
-/// reflections let surfaces reflect the *scene around them*: bright objects above a
-/// glossy floor appear inverted on it, a polished tabletop catches what sits on it,
-/// wet asphalt doubles the lights. It reads only what's already on screen, so it
-/// costs nothing extra to author: draw a 3D scene into a render target, which
-/// captures depth, and feed `scene.depth` to `.screenSpaceReflections` as the aux.
-/// View-space position and surface normal come from the depth (a true mesh normal
-/// here), the reflection ray is marched through the depth buffer, and the scene
-/// colour at the hit is composited back over the surface:
+/// reflections let surfaces reflect the *scene around them*. Here both run at once:
+/// a ring of reflective-metal spheres (each a different finish: polished, brushed,
+/// gold, copper) reflect a studio `environment`, and the dark glossy floor reflects
+/// *them* by screen-space reflection. Draw a 3D scene into a render target, which
+/// captures depth, and feed `scene.depth` to `.screenSpaceReflections`:
 ///
 /// ```swift
 /// let scene = renderTarget()
-/// withTarget(scene) { camera(...); drawBox(...) }      // 3D -> depth captured
+/// withTarget(scene) { camera(...); material(.polishedMetal); drawSphere(...) }   // depth captured
 /// let ssr = scene.combined(with: scene.depth, .screenSpaceReflections())
 /// drawImage(ssr.image, 0, 0)
 /// ```
 ///
-/// A glossy dark floor is where screen-space reflection shines: a broad flat surface
-/// reflects the well-separated objects standing on it as clean mirror images. The
-/// camera orbits at a low angle so the floor catches them. **Hold the mouse** to drop
-/// the reflections and compare. Only on-screen geometry can reflect, so reflections
-/// fade as their rays reach the frame edge; `fresnel` concentrates them at grazing
-/// angles (where a wet floor reflects most), and a little `roughness` keeps them
-/// glossy rather than a hard mirror.
+/// A metal needs an environment to reflect (without one it reads dark), so a studio
+/// `environment` lights them; `.lightingOnly()` keeps the background dark so the floor's
+/// reflections stand out. **Hold the mouse** to drop the screen-space reflections and
+/// compare: the metals keep their environment reflections, but their mirror images on
+/// the floor vanish. `fresnel` concentrates the floor reflection at grazing angles;
+/// `roughness` blurs it for a glossy (rather than mirror) floor.
 @main
 final class ScreenSpaceReflections: Sketch {
 
     override func draw() {
         let scene = renderTarget()
         withTarget(scene) {
-            background(Color(hex: 0x06080d))
-            camera(.orbiting(target: Vector3(0, 0.7, 0), radius: 10,
-                             azimuth: time * 0.1, elevation: 0.55,
-                             fieldOfView: .pi / 4, near: 2, far: 24))
-            ambientLight(Color(white: 0.3))
-            directionalLight(.white, direction: Vector3(-0.35, -1, -0.2), intensity: 0.95)
+            background(Color(hex: 0x20242c))
+            camera(.orbiting(target: Vector3(0, 0.9, 0), radius: 9,
+                             azimuth: time * 0.12, elevation: 0.5,
+                             fieldOfView: .pi / 4, near: 2, far: 20))
+            // A bright studio environment: it lights and reflects in the metals, and its softly
+            // blurred backdrop fills the scene with light (a bright scene reveals the reflections
+            // a dark one would hide).
+            environment(.studio.intensity(1.15).backgroundBlur(0.6))
+            directionalLight(.white, direction: Vector3(-0.3, -1, -0.2), intensity: 0.85)
 
-            // The glossy floor: dark, so the reflections stand out against it.
+            // A light glossy showroom floor: bright, and its reflection comes from SSR.
             withState {
-                fill(Color(white: 0.05))
+                fill(Color(white: 0.45))
                 translate(0, -0.05, 0)
-                drawBox(width: 40, height: 0.1, depth: 40)
+                drawBox(width: 28, height: 0.1, depth: 28)
             }
 
-            // A loose scatter of spheres standing on the floor, spaced well apart so each
-            // reads its own clean mirror image (curved surfaces reflecting a close neighbour
-            // is where screen-space reflection frays, so they're kept separated). Each tuple
-            // is (x, z, hue).
-            let spheres: [(x: Double, z: Double, hue: Double)] = [
-                (-3.8, 1.5, 0.02), (3.6, 2.0, 0.33), (-1.0, -3.5, 0.58), (5.2, -2.5, 0.85),
+            // A polished-metal monolith in the middle.
+            withState {
+                material(.polishedMetal)
+                fill(Color(hex: 0xe2e6f0))
+                translate(0, 1.2, 0)
+                drawBox(width: 1.0, height: 2.4, depth: 1.0)
+            }
+
+            // A ring of spheres, each a different reflective metal finish.
+            let spheres: [(color: Color, finish: Material)] = [
+                (Color(hex: 0xf2f3f7), .polishedMetal),           // chrome
+                (Color(hex: 0xffcc4a), .metal(roughness: 0.12)),  // gold
+                (Color(hex: 0x5a86d8), .brushedMetal),            // brushed steel-blue
+                (Color(hex: 0xd07a3a), .metal(roughness: 0.1)),   // copper
+                (Color(hex: 0x37c879), .polishedMetal),           // emerald
+                (Color(hex: 0xc54baa), .metal(roughness: 0.22)),  // satin magenta
             ]
-            for s in spheres {
+            for (i, s) in spheres.enumerated() {
+                let a = Double(i) / Double(spheres.count) * .tau
                 withState {
-                    translate(s.x, 1.0, s.z)
-                    fill(Color(hue: s.hue, saturation: 0.75, brightness: 1.0))
+                    material(s.finish)
+                    fill(s.color)
+                    translate(cos(a) * 4.2, 1.0, sin(a) * 4.2)
                     drawSphere(radius: 1.0)
                 }
-            }
-            // One reflective cube, off to the side: a broad flat face reflects cleanly.
-            withState {
-                fill(Color(hex: 0xeef0fa))
-                translate(-4.5, 0.7, -3.0)
-                rotateY(0.6)
-                drawBox(width: 1.4, height: 1.4, depth: 1.4)
             }
         }
 
@@ -75,7 +79,7 @@ final class ScreenSpaceReflections: Sketch {
             drawCaption("Screen-space reflections: OFF (release the mouse to compare)")
         } else {
             let ssr = scene.combined(with: scene.depth,
-                                     .screenSpaceReflections(intensity: 0.9, roughness: 0.15, fresnel: 0.8))
+                                     .screenSpaceReflections(intensity: 0.9, roughness: 0.2, fresnel: 0.5))
             drawImage(ssr.image, 0, 0)
             drawCaption("Screen-space reflections: ON (hold the mouse to compare)")
         }

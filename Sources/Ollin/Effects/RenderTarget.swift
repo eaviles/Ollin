@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import simd
 
 /// An off-screen layer a sketch draws into and then reads back: the substrate of
 /// layered effects. Draw into it with `withTarget(_:)`, sample it as an `Image`
@@ -191,6 +192,13 @@ struct DepthReconstruction {
     var principalX: Float
     var principalY: Float
     var isPerspective: Bool
+    /// The scene camera's view→clip and inverse view→world transforms, stamped so a
+    /// combine that reprojects across frames (screen-space reflections' temporal
+    /// resolve) can map a reconstructed view-space point to world and into the previous
+    /// frame. Identity when the aux carries no camera; only the temporal pass reads
+    /// them, so every other depth combine is unaffected.
+    var viewProjection: simd_float4x4 = matrix_identity_float4x4
+    var inverseView: simd_float4x4 = matrix_identity_float4x4
 
     /// A neutral default used when a depth combine reads an aux that carries no camera
     /// (a hand-drawn depth map): a centred 60° perspective over a 0.1 … 100 range, so the
@@ -235,5 +243,8 @@ struct DepthReconstruction {
             principalY = Float(k.cy) / ih
             isPerspective = true
         }
+        let view = camera.viewMatrix
+        viewProjection = camera.projectionMatrix(aspect: Double(aspect)) * view
+        inverseView = simd_inverse(view)
     }
 }

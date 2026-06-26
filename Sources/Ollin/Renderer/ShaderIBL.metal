@@ -201,7 +201,7 @@ fragment float4 ollin_ibl_prefilter(OllinIBLVaryings in [[stage_in]],
     float3 r = n, v = n;
     // Sample count: params.z when set (fewer for the smooth procedural sky), else the default.
     // 0 -> default keeps the HDRI bake exact.
-    const uint N = params.z > 0.0 ? uint(params.z) : 256u;
+    const uint N = params.z > 0.0 ? uint(params.z) : 1024u;
     float3 sum = float3(0.0);
     float total = 0.0;
     float envSize = float(env.get_width());
