@@ -182,15 +182,413 @@ static inline float3 oklchToOklab(float3 lch) { return float3(lch.x, lch.y * cos
 // OLLIN_LIB_END color
 
 // OLLIN_LIB_BEGIN sdf
-// MARK: - SDF combine operators
+// MARK: - SDF helpers
 //
 // The smooth-minimum that melts two signed-distance fields over a radius `k`
-// (k -> 0 reduces to a hard min). The 2D primitive distance functions
-// (sdCircle, sdBox, and the rest) join this section in a follow-up; for now the
-// shared `smin` is the combine operator user shaders most often want.
+// (k -> 0 reduces to a hard min), followed by the 2D primitive distance functions
+// (ellipse/box/segment/star/... the catalog the framework's own shapes use, shared
+// with user shaders). Distances are in local units; a caller turns them into ~1px
+// coverage with fwidth.
 static inline float smin(float a, float b, float k) {
     float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
     return mix(b, a, h) - k * h * (1.0 - h);
+}
+
+// MARK: SDF primitives (from the published 2D distance functions, implemented
+// from the technique). Distances are in local sketch units; the fragment turns
+// them into ~1px anti-aliased coverage with fwidth.
+
+// Approximate ellipse SDF — exact for a circle (ab.x == ab.y).
+static float sdEllipse(float2 p, float2 ab) {
+    ab = max(ab, float2(1e-4));
+    float k1 = length(p / ab);
+    float k2 = length(p / (ab * ab));
+    return (k2 > 0.0) ? k1 * (k1 - 1.0) / k2 : -min(ab.x, ab.y);
+}
+
+// Rounded box of half-extent b and corner radius r.
+static float sdRoundBox(float2 p, float2 b, float r) {
+    float2 q = abs(p) - b + r;
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+
+// Oriented box: the rectangle whose centerline runs from `a` to `b` with full
+// width (thickness) `th`. `a`/`b` arrive relative to the shape center, so their
+// midpoint is the origin. The plane is rotated into the box's own frame (x along
+// the centerline, y across it), then it's an axis-aligned box. Exact signed
+// distance, negative inside.
+static float sdOrientedBox(float2 p, float2 a, float2 b, float th) {
+    float2 ba = b - a;
+    float l = length(ba);
+    float2 d = ba / l;
+    float2 q = p - (a + b) * 0.5;
+    q = float2(dot(q, d), dot(q, float2(-d.y, d.x)));
+    q = abs(q) - float2(l, th) * 0.5;
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+}
+
+// Distance to the segment a–b; a capsule of radius r is this minus r (round caps).
+static float sdSegment(float2 p, float2 a, float2 b) {
+    float2 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-12), 0.0, 1.0);
+    return length(pa - ba * h);
+}
+
+// Pie (filled wedge) of radius r, symmetric about +Y, opening to a half-aperture
+// whose (sin, cos) is `sc`. Negative inside the wedge.
+static float sdPie(float2 p, float2 sc, float r) {
+    p.x = abs(p.x);
+    float l = length(p) - r;
+    float m = length(p - sc * clamp(dot(p, sc), 0.0, r));
+    return max(l, m * sign(sc.y * p.x - sc.x * p.y));
+}
+
+// Thick arc band: a slice of the circle of radius `ra`, half-thickness `rb`,
+// symmetric about +Y over a half-aperture `sc` = (sin, cos), with round ends.
+static float sdArc(float2 p, float2 sc, float ra, float rb) {
+    p.x = abs(p.x);
+    return ((sc.y * p.x > sc.x * p.y) ? length(p - sc * ra) : abs(length(p) - ra)) - rb;
+}
+
+// Isosceles triangle: apex at the origin, base of half-width q.x centered at
+// y = q.y (it opens toward +Y). Symmetric about x = 0. Exact signed distance,
+// negative inside. An equilateral triangle is the special case q = (r*√3/2, r*3/2).
+static float sdTriangleIsosceles(float2 p, float2 q) {
+    p.x = abs(p.x);
+    float2 a = p - q * clamp(dot(p, q) / dot(q, q), 0.0, 1.0);
+    float2 b = p - q * float2(clamp(p.x / q.x, 0.0, 1.0), 1.0);
+    float k = sign(q.y);
+    float d = min(dot(a, a), dot(b, b));
+    float s = max(k * (p.x * q.y - p.y * q.x), k * (p.y - q.y));
+    return sqrt(d) * sign(s);
+}
+
+// Regular polygon / star of circumradius `r` with one vertex along +Y. `acs` =
+// (cos, sin) of the half-sector angle `an` (= π / point-count); `ecs` = (cos, sin)
+// of the edge angle the inner radius sets (a star's "pointiness"; π/2 straightens
+// the points into a regular polygon's edges); `an` is that half-sector angle.
+// The plane folds into one half-sector, then it's the distance to the single
+// tip→valley edge. Exact signed distance, negative inside. The Drawer encodes a
+// regular n-gon as the star whose inner radius is the apothem.
+static float sdStar(float2 p, float r, float2 acs, float2 ecs, float an) {
+    // Fold into the half-sector. GLSL's mod returns 0..2*an; Metal's fmod truncates
+    // toward zero, so spell out the floor form to get the same wrap.
+    float a = atan2(p.x, p.y);
+    float twoAn = 2.0 * an;
+    float bn = (a - twoAn * floor(a / twoAn)) - an;
+    p = length(p) * float2(cos(bn), abs(sin(bn)));
+    p -= r * acs;
+    p += ecs * clamp(-dot(p, ecs), 0.0, r * acs.y / ecs.y);
+    return length(p) * sign(p.x);
+}
+
+static float ndot(float2 a, float2 b) { return a.x * b.x - a.y * b.y; }
+
+// Rhombus (a diamond) with axis half-extents `b`: vertices at (±b.x, 0) and
+// (0, ±b.y). Exact signed distance, negative inside.
+static float sdRhombus(float2 p, float2 b) {
+    p = abs(p);
+    float h = clamp(ndot(b - 2.0 * p, b) / dot(b, b), -1.0, 1.0);
+    float d = length(p - 0.5 * b * float2(1.0 - h, 1.0 + h));
+    return d * sign(p.x * b.y + p.y * b.x - b.x * b.y);
+}
+
+// Plus sign (+): a cross of arm half-length `b.x` and arm half-width `b.y`
+// (with b.x >= b.y), corner rounding `r`. Reaches ±b.x on both axes.
+static float sdCross(float2 p, float2 b, float r) {
+    p = abs(p);
+    p = (p.y > p.x) ? p.yx : p.xy;
+    float2 q = p - b;
+    float k = max(q.y, q.x);
+    float2 w = (k > 0.0) ? q : float2(b.y - p.x, -k);
+    return sign(k) * length(max(w, 0.0)) + r;
+}
+
+// Vesica (a pointed lens): the two tips lie on the y-axis at (0, ±a) where
+// a = sqrt(r*r - d*d), and the waist half-width is r - d. `r` is the radius of
+// the two generating circles, centered at (±d, 0). Exact signed distance,
+// negative inside.
+static float sdVesica(float2 p, float r, float d) {
+    p = abs(p);
+    float b = sqrt(r * r - d * d);
+    return ((p.y - b) * d > p.x * b)
+        ? length(p - float2(0.0, b)) * sign(d)
+        : length(p - float2(-d, 0.0)) - r;
+}
+
+// Oriented vesica: the pointed lens whose two tips are at `a` and `b`, bulging to
+// a waist half-width `w` across the middle. `a`/`b` arrive relative to the shape
+// center, so their midpoint is the origin. The plane is rotated into the lens's
+// own frame, then it's the canonical vesica. Exact signed distance, negative
+// inside.
+static float sdOrientedVesica(float2 p, float2 a, float2 b, float w) {
+    w = max(w, 1e-4);
+    float r = 0.5 * length(b - a);
+    float d = 0.5 * (r * r - w * w) / w;
+    float2 v = (b - a) / r;
+    float2 pc = p - (a + b) * 0.5;
+    float2 q = 0.5 * abs(float2(v.y * pc.x - v.x * pc.y, v.x * pc.x + v.y * pc.y));
+    float3 h = (r * q.x < d * (q.y - r)) ? float3(0.0, r, 0.0) : float3(-d, 0.0, d + w);
+    return length(q - h.xy) - h.z;
+}
+
+// Crescent moon: the disk of radius `ra` at the origin with the disk of radius
+// `rb` subtracted, the latter centered at (d, 0). Symmetric about the x-axis,
+// opening toward +x. Exact signed distance, negative inside.
+static float sdMoon(float2 p, float d, float ra, float rb) {
+    p.y = abs(p.y);
+    float a = (ra * ra - rb * rb + d * d) / (2.0 * d);
+    float b = sqrt(max(ra * ra - a * a, 0.0));
+    if (d * (p.x * b - p.y * a) > d * d * max(b - p.y, 0.0)) {
+        return length(p - float2(a, b));
+    }
+    return max(length(p) - ra, -(length(p - float2(d, 0.0)) - rb));
+}
+
+static float dot2(float2 v) { return dot(v, v); }
+
+// Isosceles trapezoid symmetric about the y-axis, spanning y in [-he, he], with
+// half-width r1 at y = -he and r2 at y = +he. Exact signed distance, negative
+// inside. r1 == r2 is a rectangle; r2 == 0 is a triangle.
+static float sdTrapezoid(float2 p, float r1, float r2, float he) {
+    float2 k1 = float2(r2, he);
+    float2 k2 = float2(r2 - r1, 2.0 * he);
+    p.x = abs(p.x);
+    float2 ca = float2(p.x - min(p.x, (p.y < 0.0) ? r1 : r2), abs(p.y) - he);
+    float2 cb = p - k1 + k2 * clamp(dot(k1 - p, k2) / dot2(k2), 0.0, 1.0);
+    float s = (cb.x < 0.0 && ca.y < 0.0) ? -1.0 : 1.0;
+    return s * sqrt(min(dot2(ca), dot2(cb)));
+}
+
+// Parallelogram: base half-width `wi`, half-height `he`, top edge sheared `sk`
+// along x relative to the bottom. 180°-symmetric about the center. Exact signed
+// distance, negative inside.
+static float sdParallelogram(float2 p, float wi, float he, float sk) {
+    float2 e = float2(sk, he);
+    p = (p.y < 0.0) ? -p : p;
+    float2 w = p - e; w.x -= clamp(w.x, -wi, wi);
+    float2 d = float2(dot(w, w), -w.y);
+    float s = p.x * e.y - p.y * e.x;
+    p = (s < 0.0) ? -p : p;
+    float2 v = p - float2(wi, 0.0);
+    v -= e * clamp(dot(v, e) / dot2(e), -1.0, 1.0);
+    d = min(d, float2(dot(v, v), wi * he - abs(s)));
+    return sqrt(d.x) * sign(-d.y);
+}
+
+// Egg: a circle of radius `ra` at the origin tapering to a rounded tip of radius
+// `rb` above it (ra >= rb). Native orientation points +y. Exact signed distance,
+// negative inside.
+static float sdEgg(float2 p, float ra, float rb) {
+    const float k = 1.7320508;   // sqrt(3)
+    p.x = abs(p.x);
+    float r = ra - rb;
+    return ((p.y < 0.0)           ? length(float2(p.x, p.y))           - r :
+            (k * (p.x + r) < p.y) ? length(float2(p.x, p.y - k * r))       :
+                                    length(float2(p.x + r, p.y))       - 2.0 * r) - rb;
+}
+
+// Heart fitting the unit box (width ~1.2036, height ~1.0985): the point sits near
+// (0, 0), the two lobes peak near y = 1.1. Native orientation points +y (lobes
+// up). Signed distance, negative inside (very close to exact near the boundary).
+static float sdHeart(float2 p) {
+    p.x = abs(p.x);
+    if (p.y + p.x > 1.0) {
+        return sqrt(dot2(p - float2(0.25, 0.75))) - 0.35355339;   // sqrt(2)/4
+    }
+    return sqrt(min(dot2(p - float2(0.0, 1.0)),
+                    dot2(p - 0.5 * max(p.x + p.y, 0.0)))) * sign(p.x - p.y);
+}
+
+// Disk of radius `r` with a straight cut at y = h (-r < h < r): keeps the part
+// with y <= h. Exact signed distance, negative inside.
+static float sdCutDisk(float2 p, float r, float h) {
+    float w = sqrt(r * r - h * h);
+    p.x = abs(p.x);
+    float s = max((h - r) * p.x * p.x + w * w * (h + r - 2.0 * p.y), h * p.x - w * p.y);
+    return (s < 0.0) ? length(p) - r :
+           (p.x < w) ? h - p.y :
+                       length(p - float2(w, h));
+}
+
+// Uneven capsule: the convex hull of a circle of radius `r1` at the origin and a
+// circle of radius `r2` at (0, h) — a tapered, round-capped bar along +y. Exact
+// signed distance, negative inside. Needs h >= |r1 - r2|.
+static float sdUnevenCapsule(float2 p, float r1, float r2, float h) {
+    p.x = abs(p.x);
+    float b = (r1 - r2) / h;
+    float a = sqrt(1.0 - b * b);
+    float k = dot(p, float2(-b, a));
+    if (k < 0.0)   return length(p) - r1;
+    if (k > a * h) return length(p - float2(0.0, h)) - r2;
+    return dot(p, float2(a, b)) - r1;
+}
+
+// Horseshoe (a thick arc with a gap): a band at mid-radius `r`, half-thickness
+// `w.y`, with end caps of tangential half-length `w.x`, opening downward. `c` is
+// the (cos, sin) of the half-angle from straight up to where the band starts.
+// Exact signed distance, negative inside.
+static float sdHorseshoe(float2 p, float2 c, float r, float2 w) {
+    p.x = abs(p.x);
+    float l = length(p);
+    p = float2x2(float2(-c.x, c.y), float2(c.y, c.x)) * p;
+    p = float2((p.y > 0.0 || p.x > 0.0) ? p.x : l * sign(-c.x),
+               (p.x > 0.0) ? p.y : l);
+    p = float2(p.x, abs(p.y - r)) - w;
+    return length(max(p, 0.0)) + min(0.0, max(p.x, p.y));
+}
+
+// Parabola segment: the region under the parabola through (±wi, 0) peaking at
+// (0, he), measured to the curve (the open base is clipped by the caller). The
+// sign is negative below the curve. Native orientation peaks toward +y.
+static float sdParabolaSegment(float2 pos, float wi, float he) {
+    pos.x = abs(pos.x);
+    float ik = wi * wi / he;
+    float p = ik * (he - pos.y - 0.5 * ik) / 3.0;
+    float q = pos.x * ik * ik / 4.0;
+    float h = q * q - p * p * p;
+    float x;
+    if (h > 0.0) { float r = pow(q + sqrt(h), 1.0 / 3.0); x = r + p / r; }
+    else         { float r = sqrt(p); x = 2.0 * r * cos(acos(q / (p * r)) / 3.0); }
+    x = min(x, wi);
+    return length(pos - float2(x, he - x * x / ik)) * sign(ik * (pos.y - he) + pos.x * pos.x);
+}
+
+// Rounded X (saltire): two crossed bars of half-width `r` reaching `w` along the
+// diagonal, with round ends. Exact signed distance, negative inside.
+static float sdRoundedX(float2 p, float w, float r) {
+    p = abs(p);
+    return length(p - min(p.x + p.y, w) * 0.5) - r;
+}
+
+// Blobby cross: a four-armed cross with concave, inward-curving sides, `he`
+// setting how pinched the waist is. Tips reach ~±1 along the axes. Signed
+// distance, negative inside (very close to exact near the boundary).
+static float sdBlobbyCross(float2 pos, float he) {
+    pos = abs(pos);
+    pos = float2(abs(pos.x - pos.y), 1.0 - pos.x - pos.y) / sqrt(2.0);
+    float p = (he - pos.y - 0.25 / he) / (6.0 * he);
+    float q = pos.x / (he * he * 16.0);
+    float h = q * q - p * p * p;
+    float x;
+    if (h > 0.0) { float r = sqrt(h); x = pow(q + r, 1.0 / 3.0) - pow(abs(q - r), 1.0 / 3.0) * sign(r - q); }
+    else         { float r = sqrt(p); x = 2.0 * r * cos(acos(q / (p * r)) / 3.0); }
+    x = min(x, sqrt(2.0) / 2.0);
+    float2 z = float2(x, he * (1.0 - 2.0 * x * x)) - pos;
+    return length(z) * sign(z.y);
+}
+
+// Tunnel / archway: vertical walls and a flat base under a semicircular top of
+// radius `wh.x`, the walls `wh.y` tall. Native rounded top toward +y. Exact
+// signed distance, negative inside.
+static float sdTunnel(float2 p, float2 wh) {
+    p.x = abs(p.x); p.y = -p.y;
+    float2 q = p - wh;
+    float d1 = dot2(float2(max(q.x, 0.0), q.y));
+    q.x = (p.y > 0.0) ? q.x : length(p) - wh.x;
+    float d2 = dot2(float2(q.x, max(q.y, 0.0)));
+    float d = sqrt(min(d1, d2));
+    return (max(q.x, q.y) < 0.0) ? -d : d;
+}
+
+// Staircase of `n` steps, each `wh.x` wide and `wh.y` tall, rising from the origin
+// toward +x/+y. The filled region is the solid under the step profile. Exact
+// signed distance, negative inside.
+static float sdStairs(float2 p, float2 wh, float n) {
+    float2 ba = wh * n;
+    float d = min(dot2(p - float2(clamp(p.x, 0.0, ba.x), 0.0)),
+                  dot2(p - float2(ba.x, clamp(p.y, 0.0, ba.y))));
+    float s = sign(max(-p.y, p.x - ba.x));
+    float dia = length(wh);
+    p = float2x2(float2(wh.x, -wh.y), float2(wh.y, wh.x)) * p / dia;
+    float id = clamp(round(p.x / dia), 0.0, n - 1.0);
+    p.x = p.x - id * dia;
+    p = float2x2(float2(wh.x, wh.y), float2(-wh.y, wh.x)) * p / dia;
+    float hh = wh.y / 2.0;
+    p.y -= hh;
+    if (p.y > hh * sign(p.x)) s = 1.0;
+    p = (id < 0.5 || p.x > 0.0) ? p : -p;
+    d = min(d, dot2(p - float2(0.0, clamp(p.y, -hh, hh))));
+    d = min(d, dot2(p - float2(clamp(p.x, 0.0, wh.x), hh)));
+    return sqrt(d) * s;
+}
+
+// The iconic hand-drawn "S", fit to roughly the unit box (180°-symmetric). Signed
+// distance, negative inside.
+static float sdCoolS(float2 p) {
+    float six = (p.y < 0.0) ? -p.x : p.x;
+    p.x = abs(p.x);
+    p.y = abs(p.y) - 0.2;
+    float rex = p.x - min(round(p.x / 0.4), 0.4);
+    float aby = abs(p.y - 0.2) - 0.6;
+    float d = dot2(float2(six, -p.y) - clamp(0.5 * (six - p.y), 0.0, 0.2));
+    d = min(d, dot2(float2(p.x, -aby) - clamp(0.5 * (p.x - aby), 0.0, 0.4)));
+    d = min(d, dot2(float2(rex, p.y - clamp(p.y, 0.0, 0.4))));
+    float s = 2.0 * p.x + aby + abs(aby + 0.4) - 0.4;
+    return sqrt(d) * sign(s);
+}
+
+// General triangle through three arbitrary corners `a`, `b`, `c` (any winding).
+// Exact signed distance, negative inside.
+static float sdTriangle(float2 p, float2 a, float2 b, float2 c) {
+    float2 e0 = b - a, e1 = c - b, e2 = a - c;
+    float2 v0 = p - a, v1 = p - b, v2 = p - c;
+    float2 pq0 = v0 - e0 * clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0);
+    float2 pq1 = v1 - e1 * clamp(dot(v1, e1) / dot(e1, e1), 0.0, 1.0);
+    float2 pq2 = v2 - e2 * clamp(dot(v2, e2) / dot(e2, e2), 0.0, 1.0);
+    float s = sign(e0.x * e2.y - e0.y * e2.x);
+    float2 d = min(min(float2(dot(pq0, pq0), s * (v0.x * e0.y - v0.y * e0.x)),
+                       float2(dot(pq1, pq1), s * (v1.x * e1.y - v1.y * e1.x))),
+                       float2(dot(pq2, pq2), s * (v2.x * e2.y - v2.y * e2.x)));
+    return -sqrt(d.x) * sign(d.y);
+}
+
+// Unsigned distance to the quadratic Bézier curve with control points A, B, C
+// (B is the off-curve handle). The cubic that locates the nearest parameter has
+// one or three real roots; both branches are handled. Stroked by thresholding
+// this distance against the half-width (round caps fall out of the unsigned
+// form). `outT` returns the curve parameter of the nearest point — the
+// along-path coordinate a gradient stroke samples.
+static float sdBezier(float2 pos, float2 A, float2 B, float2 C, thread float &outT) {
+    float2 a = B - A;
+    float2 b = A - 2.0 * B + C;
+    float2 c = a * 2.0;
+    float2 d = A - pos;
+    // Collinear control points collapse `b` to zero (the curve is a straight
+    // line); fall back to the segment A–C so 1/dot(b,b) can't blow up to NaN.
+    if (dot(b, b) < 1e-4) {
+        float2 pa = pos - A, ba = C - A;
+        float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-12), 0.0, 1.0);
+        outT = h;
+        return length(pa - ba * h);
+    }
+    float kk = 1.0 / dot(b, b);
+    float kx = kk * dot(a, b);
+    float ky = kk * (2.0 * dot(a, a) + dot(d, b)) / 3.0;
+    float kz = kk * dot(d, a);
+    float res = 0.0;
+    float p = ky - kx * kx;
+    float q = kx * (2.0 * kx * kx - 3.0 * ky) + kz;
+    float h = q * q + 4.0 * p * p * p;
+    if (h >= 0.0) {
+        h = sqrt(h);
+        float2 x = (float2(h, -h) - q) / 2.0;
+        float2 uv = sign(x) * pow(abs(x), float2(1.0 / 3.0));
+        float t = clamp(uv.x + uv.y - kx, 0.0, 1.0);
+        res = dot2(d + (c + b * t) * t);
+        outT = t;
+    } else {
+        float z = sqrt(-p);
+        float v = acos(q / (p * z * 2.0)) / 3.0;
+        float m = cos(v);
+        float n = sin(v) * 1.7320508;
+        float3 t = clamp(float3(m + m, -n - m, n - m) * z - kx, 0.0, 1.0);
+        float resX = dot2(d + (c + b * t.x) * t.x);
+        float resY = dot2(d + (c + b * t.y) * t.y);
+        res = min(resX, resY);
+        outT = (resX <= resY) ? t.x : t.y;
+    }
+    return sqrt(res);
 }
 // OLLIN_LIB_END sdf
 
