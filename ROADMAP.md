@@ -27,6 +27,7 @@ Near-term, fairly self-contained pieces, each small and well-scoped.
 - **Retained geometry buffers.** Every frame currently re-uploads everything; keeping static geometry (a large point cloud, a fixed background) in a persistent buffer would drop its per-frame cost to zero.
 - **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
 - **More model examples over `ModelTracker`.** The custom-model tracker runs anything converted to Core ML; a well-known model can make a strong example, with the weights always fetched by `Scripts/fetch-models.sh` rather than committed. Candidates, licenses, and the surfaces involved are in the [design notes](DESIGN-NOTES.md#model-examples-and-modeltracker-surfaces-not-started).
+- **Unify the shader preludes.** GPU compute kernels and fragment shaders each get a helper set spliced in for free, but they're two different sets that overlap and disagree on names (the same hash is `hash21` for a kernel and `hash12` for a shader). Fold them into one shared library with consistent names, so a helper learned in one works the same in the other. See the [design notes](DESIGN-NOTES.md#unify-the-shader-preludes-not-started).
 
 ## Shader composition and live-coding
 
