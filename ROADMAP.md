@@ -39,7 +39,7 @@ A tier of classic generative-art building blocks that emit vector geometry — p
 
 ## Project generator
 
-An openFrameworks-style generator that scaffolds a ready-to-run sketch folder from a few questions (which capabilities, which canvas size), instead of hand-copying boilerplate. See the [design notes](DESIGN-NOTES.md#project-generator--sketch-scaffolding-not-started).
+An openFrameworks-style generator that scaffolds a ready-to-run sketch folder from a few questions (which capabilities, which canvas size), instead of hand-copying boilerplate. Beyond a blank scaffold, it could also emit a sketch *from an existing artifact*: a 3D scene file (glTF/USD) as placed `drawMesh`/`camera`/light calls, or a Shadertoy URL/GLSL shader translated into an Ollin sketch plus shader code. See the [design notes](DESIGN-NOTES.md#project-generator--sketch-scaffolding-not-started).
 
 ## Variation galleries and seed exploration
 
