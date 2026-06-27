@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Drawing](./README.md) → `Shaders`</sup>
+#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Shaders](./README.md) → `Shaders`</sup>
 
 ---
 
@@ -70,7 +70,7 @@ How many input layers your shader reads decides what kind of pass it is. Each is
 | one | **filter** | `layer.filtered(.shader(shader))` | `sample(info, uv)` |
 | two | **combine** | `a.combined(with: b, .shader(shader))` | `sample(info, uv)`, `sampleAux(info, uv)` |
 
-A generator paints from math alone (the plasma above). A filter transforms a layer you drew. A combine reads two layers at once (a shader-defined blend or warp). All three return a [`RenderTarget`](./Effects.md) you draw with `.image`, filter again, or feed into another effect.
+A generator paints from math alone (the plasma above). A filter transforms a layer you drew. A combine reads two layers at once (a shader-defined blend or warp). All three return a [`RenderTarget`](../Drawing/Effects.md) you draw with `.image`, filter again, or feed into another effect.
 
 ---
 
@@ -100,11 +100,13 @@ Ollin's shader library is spliced into every user shader, so these helpers are a
 
 | Group | Helpers |
 | --- | --- |
-| **color** | `srgbToLinear` / `linearToSrgb`, `palette(t, a, b, c, d)` (cosine gradient), `linearToOklab` / `oklabToLinear` / `oklabToOklch` / `oklchToOklab` |
+| **color** | `srgbToLinear` / `linearToSrgb` / `luma` / `rotate2D`, `palette(t, a, b, c, d)` (cosine gradient), `linearToOklab` / `oklabToLinear` / `oklabToOklch` / `oklchToOklab` |
 | **hash** | `hash12`, `hash22`, `hash33` |
 | **noise** | `valueNoise`, `fbm`, `gradientNoise` |
-| **sdf** | `smin(a, b, k)` (smooth minimum) |
-| **domain** | `pmod` / `pmod2` (repeat), `mirror`, `pmodPolar` (radial fold), `rotate2D` |
+| **sdf** | `smin(a, b, k)` (smooth minimum) plus the 2D distance catalog (`sdEllipse`, `sdRoundBox`, `sdSegment`, `sdStar`, `sdHeart`, `sdBezier`, …) |
+| **domain** | `pmod` / `pmod2` (repeat), `mirror`, `pmodPolar` (radial fold) |
+
+See the **[shader library reference](./ShaderLibrary.md)** for every function with its full signature.
 
 By default the whole library is spliced. Unused helpers are dead-code-eliminated, so on the GPU the choice costs nothing; it only affects *compile* time, which matters when many shaders compile or hot-reload at once. To trim it, pass an explicit `Modules` set:
 
@@ -142,7 +144,7 @@ In a plain `swift run`, the message goes to the terminal. In [OllinLive](../../R
 
 ### See also
 
-- [Layered effects](./Effects.md): the off-screen layers, filters, and `compose { }` your shader plugs into
+- [Layered effects](../Drawing/Effects.md): the off-screen layers, filters, and `compose { }` your shader plugs into
 - [Compute & GPU particles](./Compute.md): runtime-compiled compute kernels (the sibling for buffer/texture work)
-- [SDF combinators](./Combinators.md): compose signed-distance fields without writing raw shader code
+- [SDF combinators](../Drawing/Combinators.md): compose signed-distance fields without writing raw shader code
 - [Parameters](../Helpers/Parameters.md): `@Param` knobs to drive a shader's `params` live

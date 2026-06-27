@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Drawing](./README.md) → `Compute`</sup>
+#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Shaders](./README.md) → `Compute`</sup>
 
 ---
 
@@ -85,6 +85,8 @@ Particles start zeroed, so `life` begins at 0 — the `if (life <= 0.0)` spawn p
 
 <a id="prelude"></a>
 ### The prelude
+
+This is the *compute* prelude. Fragment shaders ([Shaders](./Shaders.md)) get a different, drawing-tuned one (cosine palettes, OKLab, the SDF catalog, domain operators): the [shader library](./ShaderLibrary.md). The two overlap on hashing and value noise but are separate sets.
 
 Every kernel gets a set of helpers for free (written from the published techniques — Dave Hoskins' hashing, the Book of Shaders value noise, the standard curl-of-a-potential):
 
