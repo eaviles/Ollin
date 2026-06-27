@@ -4115,11 +4115,12 @@ final class MetalRenderer {
     }
 
     /// The shader source segments, in concatenation order. They're compiled as one
-    /// library, so order matters: `ShaderCore` carries the preamble and the shared
-    /// color/dither/hash helpers the rest depend on, so it goes first (Metal needs a
-    /// declaration before its use). The single `Shaders.metal` split into these once
-    /// it crossed ~2,000 lines; the renderer never assumes one file.
-    static let shaderSourceNames = ["ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderEffects", "ShaderIBL"]
+    /// library, so order matters: `OllinShaderLib` carries the preamble, the shared
+    /// CPU/GPU structs, and the general color/hash/noise helpers the rest depend on,
+    /// so it goes first (Metal needs a declaration before its use); `ShaderCore`
+    /// follows with the 2D core pipelines. The single `Shaders.metal` split into
+    /// these once it crossed ~2,000 lines; the renderer never assumes one file.
+    static let shaderSourceNames = ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderEffects", "ShaderIBL"]
 
     /// Read and concatenate the shader segments from a filesystem `directory`, in
     /// `shaderSourceNames` order. This is the source live shader reload feeds back

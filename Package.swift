@@ -346,6 +346,7 @@ let package = Package(
             // has no include path, so MetalRenderer splices this header into the
             // concatenated source in place of its `#include` directive.
             resources: [
+                .copy("Renderer/OllinShaderLib.metal"),
                 .copy("Renderer/ShaderCore.metal"),
                 .copy("Renderer/ShaderShapes.metal"),
                 .copy("Renderer/ShaderCombinator.metal"),

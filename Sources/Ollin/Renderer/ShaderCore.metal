@@ -1,10 +1,7 @@
-// Ollin shader library (1 of 5). The renderer concatenates the Renderer/Shader*.metal
-// segments in a fixed order and compiles them as one library, so this file carries the
-// preamble and the shared color / dither / hash helpers the later segments depend on,
-// and is concatenated first. See MetalRenderer.loadLibrary / composeShaderSource.
-
-#include <metal_stdlib>
-using namespace metal;
+// Ollin shader library: the 2D core pipelines (solid / fringe / image / glyph /
+// depth-scene) plus the present-pass dither. Concatenated after OllinShaderLib,
+// which provides the preamble, the shared CPU/GPU structs, and the color / hash
+// helpers this segment uses. See MetalRenderer.loadLibrary / composeShaderSource.
 
 // Inline ray tracing for point-light shadows, compiled in only when the device
 // supports tracing from the render stages (`OLLIN_RT_SHADOWS`, spliced in by
@@ -19,65 +16,13 @@ using namespace metal;
 using namespace metal::raytracing;
 #endif
 
-// The CPU/GPU shared structs (`OllinVertex`, `Uniforms`, `SDFInstance`) are
-// defined once in this header so their layout can't drift from the Swift side.
-// At runtime the shader compiler has no include path, so MetalRenderer splices
-// the header's text in here before compiling (see composeShaderSource).
-#include "OllinShaderTypes.h"
-
-// MARK: - Color management & dithering
+// MARK: - Present-pass dithering
 //
-// The render targets are sRGB-encoded 8-bit, so the hardware blends and resolves
-// MSAA in *linear* light: fragments output linear color and the target encodes
-// to sRGB on store. Incoming colors arrive sRGB-encoded (their on-screen 0–1
-// tones), so they're linearized before compositing — anti-aliased edges and
-// translucent stacks then composite physically, without the too-dark fringes a
-// gamma-space blend leaves behind.
-//
-// A small triangular-PDF dither is then applied in the *output* (sRGB) space,
-// just before the hardware quantizes to 8 bits, to break up the banding that
-// smooth gradients otherwise show at 8-bit. It's a deterministic function of the
-// pixel position, so renders stay reproducible (snapshot tests).
-
-static inline float3 srgbToLinear(float3 c) {
-    float3 lo = c * (1.0 / 12.92);
-    float3 hi = pow(max((c + 0.055) * (1.0 / 1.055), 0.0), float3(2.4));
-    return select(lo, hi, c > 0.04045);
-}
-
-static inline float3 linearToSrgb(float3 c) {
-    c = clamp(c, 0.0, 1.0);
-    float3 lo = c * 12.92;
-    float3 hi = 1.055 * pow(c, float3(1.0 / 2.4)) - 0.055;
-    return select(lo, hi, c > 0.0031308);
-}
-
-// Linear-light blending makes a partially-covered dark mark on a light ground
-// read lighter than its coverage (a 50%-covered black pixel composites to sRGB
-// ~0.74, not 0.5). For strokes and small dots that turns correctly-conserved ink
-// into a faint, "beaded" look: as a diagonal 1px line marches, its ink shifts
-// between sitting in one pixel (dark) and splitting across two (each ~50%, so each
-// light), and the eye reads the alternation as dashes. This remaps geometric AA
-// coverage to the alpha that, blended in linear light over a light ground, lands
-// at the perceptual (gamma-space) darkness the coverage implies — so a 1px stroke
-// reads evenly dark at any angle and a sub-pixel mark still fades smoothly from n
-// to 0. It is applied to *stroke* coverage and the disk fill (marks that should
-// stay visible when thin/small), never to region *fills* — those keep plain linear
-// coverage so abutting edges stay seamless and solid fills merge in linear light.
-// It only touches partial coverage: perceptualCoverage(1) == 1 (solid interiors)
-// and perceptualCoverage(0) == 0, and it never touches a shape's own fill/stroke
-// alpha, so overlap blending stays linear.
-static inline float perceptualCoverage(float c) {
-    return 1.0 - srgbToLinear(float3(1.0 - c)).x;
-}
-
-// Hash a pixel coordinate to [0, 1) (written from the published technique, a
-// few fract/dot rounds, no texture lookup).
-static inline float hash12(float2 p) {
-    float3 p3 = fract(float3(p.xyx) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
-}
+// A small triangular-PDF dither is applied in the output (sRGB) space, just
+// before the hardware quantizes to 8 bits, to break up the banding smooth
+// gradients otherwise show. It's a deterministic function of pixel position, so
+// renders stay reproducible (snapshot tests). The color conversions and hash it
+// builds on (srgbToLinear / linearToSrgb / hash12) live in OllinShaderLib.
 
 // Triangular-PDF dither in [-1, 1]: the difference of two uniform samples, the
 // right noise shape for de-banding a quantizer.

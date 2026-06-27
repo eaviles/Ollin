@@ -59,39 +59,12 @@ fragment float4 ollin_present_fragment(PresentOut in [[stage_in]],
 // that's the present pass's job) and operate on premultiplied-alpha color, the
 // form an Ollin render target already holds after source-over compositing.
 
-// Shared helpers for the filter/generator fragments below. They read `constant
-// float4 *params` (the packed rows the renderer binds at buffer 0) and operate on
-// premultiplied-linear color, the form an Ollin layer holds after compositing.
-
-// Linear-light luminance (Rec. 709), the value the tone/stylize filters key on.
-static inline float ollin_luma(float3 c) { return dot(c, float3(0.2126, 0.7152, 0.0722)); }
-
-// Un-premultiply / re-premultiply: a color op acts on straight color, but the
-// layer stays premultiplied. Matters only where alpha < 1; an opaque frame (the
-// usual postProcess case) is byte-unchanged.
-static inline float3 ollin_unpremul(float4 c) { return c.a > 1e-4 ? c.rgb / c.a : c.rgb; }
-static inline float4 ollin_premul(float3 rgb, float a) { return float4(rgb * a, a); }
-
-// Rotate a 2D coordinate by `a` radians (for the rotated screens below).
-static inline float2 ollin_rot2(float2 p, float a) {
-    float c = cos(a), s = sin(a);
-    return float2(p.x * c - p.y * s, p.x * s + p.y * c);
-}
-
-// Hash-based value noise + 4-octave FBM, normalized to ~[0, 1] (Book-of-Shaders
-// value noise, written from the technique; reuses hash12 above). For the generator.
-static inline float ollin_vnoise(float2 p) {
-    float2 i = floor(p), f = fract(p);
-    float2 u = f * f * (3.0 - 2.0 * f);
-    float a = hash12(i), b = hash12(i + float2(1, 0));
-    float c = hash12(i + float2(0, 1)), d = hash12(i + float2(1, 1));
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-}
-static inline float ollin_fbm(float2 p) {
-    float v = 0.0, amp = 0.5;
-    for (int i = 0; i < 4; i++) { v += amp * ollin_vnoise(p); p *= 2.0; amp *= 0.5; }
-    return v / 0.9375;   // sum of amplitudes (0.5+0.25+0.125+0.0625)
-}
+// The shared helpers these filter/generator fragments use (ollin_luma,
+// ollin_unpremul / ollin_premul, ollin_rot2, ollin_vnoise / ollin_fbm, the
+// hashes, and srgbToLinear / linearToSrgb) live in OllinShaderLib, the first
+// segment, so they're in scope here and available to user shaders alike. They
+// read and write premultiplied-linear color, the form an Ollin layer holds
+// after compositing.
 
 // Bloom bright-pass: keep the part of each texel above a brightness threshold,
 // the glow source. The key is the max channel (HSV "value"), not luminance, so a
