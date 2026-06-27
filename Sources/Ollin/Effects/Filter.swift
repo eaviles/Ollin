@@ -44,6 +44,9 @@ public struct Filter: Sendable {
     /// The concrete operations the renderer knows how to run. Internal: a sketch
     /// builds a `Filter` through the static factories below, never this directly.
     enum Kind: Sendable {
+        /// A user-supplied `Shader` run as a one-input filter (reads the layer with
+        /// `sample(info, uv)`).
+        case shader(Shader)
         /// Separable Gaussian blur of the given pixel radius (≈ the kernel sigma).
         case gaussianBlur(radius: Double)
         /// Bloom: keep the part of the image above `threshold` brightness, blur it by
@@ -165,6 +168,11 @@ public struct Filter: Sendable {
     }
 
     let kind: Kind
+
+    /// A user-supplied `Shader` as a one-input filter: it reads this layer with
+    /// `sample(info, uv)` and returns a new color. Use with `filtered(_:)` /
+    /// `postProcess(_:)`.
+    public static func shader(_ shader: Shader) -> Filter { Filter(kind: .shader(shader)) }
 
     // MARK: Blur & glow
 

@@ -526,6 +526,21 @@ let package = Package(
             path: "Examples/Effects/Patterns"
         ),
         .executableTarget(
+            name: "Example-Shaders-HelloShader",
+            dependencies: ["Ollin"],
+            path: "Examples/Shaders/HelloShader"
+        ),
+        .executableTarget(
+            name: "Example-Shaders-ShaderFilter",
+            dependencies: ["Ollin"],
+            path: "Examples/Shaders/ShaderFilter"
+        ),
+        .executableTarget(
+            name: "Example-Shaders-ShaderBlend",
+            dependencies: ["Ollin"],
+            path: "Examples/Shaders/ShaderBlend"
+        ),
+        .executableTarget(
             name: "Example-Rendering-ToneMapping",
             dependencies: ["Ollin"],
             path: "Examples/Rendering/ToneMapping"

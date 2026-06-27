@@ -1,0 +1,148 @@
+#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Drawing](./README.md) → `Shaders`</sup>
+
+---
+
+## User-supplied shaders
+
+Write your own **fragment shader** and run it through Ollin's effect graph. You supply a small Metal function and Ollin wraps it into a full GPU pass, so you get the speed of a hand-written shader without the pipeline boilerplate, and with friendly errors when something doesn't compile.
+
+```swift
+let plasma = Shader("""
+float4 shade(float2 uv, ShaderInfo info) {
+    float2 p = (uv * 2.0 - 1.0) * 6.0;
+    float fx = cos(p.x) * cos(p.y);
+    float fy = sin(p.x) * sin(p.y);
+    float v = 0.5 + 0.5 * sin((fx * fx + fy * fy) * 6.28318 + info.time);
+    float3 col = palette(v, float3(0.5), float3(0.5),
+                         float3(1.0), float3(0.0, 0.33, 0.67));   // a library helper
+    return float4(col, 1.0);
+}
+""")
+
+override func draw() {
+    drawImage(generate(plasma).image, 0, 0)   // run it as a full-canvas source layer
+}
+```
+
+### Contents
+
+- [The contract: `shade(uv, info)`](#the-contract)
+- [Generator, filter, combine](#generator-filter-combine)
+- [`ShaderInfo` and params](#shaderinfo-and-params)
+- [The shader library](#the-shader-library)
+- [Inline source or a `.metal` file](#inline-source-or-a-metal-file)
+- [Errors](#errors)
+
+---
+
+## The contract
+
+Your shader defines one function:
+
+```metal
+float4 shade(float2 uv, ShaderInfo info) { ... }
+```
+
+- **`uv`** runs `0…1` across the layer, **top-left origin** (`(0,0)` top-left, `(1,1)` bottom-right), the same orientation as the rest of the canvas. A shader ported from a bottom-left convention needs `uv.y = 1.0 - uv.y`.
+- **`info`** carries the per-frame values: `info.time`, `info.deltaTime`, `info.frame`, `info.resolution` (the layer size in pixels), `info.mouse` (in points), and your `params` (see below).
+- **Return** a straight (non-premultiplied) **sRGB** color, `0…1`. Ollin handles the conversion to the premultiplied linear color a layer composites in, so `float4(0.5, 0.5, 0.5, 1.0)` reads as mid-gray on screen.
+
+```
+uv = (0,0) ┌───────────────┐
+           │               │
+           │   uv = (.5,.5) │   info.resolution = layer size in px
+           │       •        │   info.time       = seconds, animates on its own
+           │               │
+           └───────────────┘ uv = (1,1)
+```
+
+Ollin generates the surrounding Metal fragment (and a fullscreen vertex) for you and calls `shade` once per pixel.
+
+---
+
+## Generator, filter, combine
+
+How many input layers your shader reads decides what kind of pass it is. Each is just a different entry point into the same effect graph:
+
+| Inputs | Kind | How you run it | Read inputs with |
+| --- | --- | --- | --- |
+| none | **generator** | `generate(shader)` or `generate(.shader(shader))` | (no input) |
+| one | **filter** | `layer.filtered(.shader(shader))` | `sample(info, uv)` |
+| two | **combine** | `a.combined(with: b, .shader(shader))` | `sample(info, uv)`, `sampleAux(info, uv)` |
+
+A generator paints from math alone (the plasma above). A filter transforms a layer you drew. A combine reads two layers at once (a shader-defined blend or warp). All three return a [`RenderTarget`](./Effects.md) you draw with `.image`, filter again, or feed into another effect.
+
+---
+
+## `ShaderInfo` and params
+
+Beyond the per-frame fields, you can pass your own floats and read them with `param(info, i)`:
+
+```swift
+let warp = Shader(metalSource, params: [0.3, 1.2, 6.0])
+```
+
+```metal
+float4 shade(float2 uv, ShaderInfo info) {
+    float strength = param(info, 0);   // 0.3
+    float scale    = param(info, 1);   // 1.2
+    ...
+}
+```
+
+Up to 32 floats; `info.paramCount` is how many you passed. Drive them from a [`@Param`](../Helpers/Parameters.md) knob to make a shader tunable live.
+
+---
+
+## The shader library
+
+Ollin's shader library is spliced into every user shader, so these helpers are available inside `shade` with no import. They're the same helpers Ollin's own shaders use, written from the published techniques (credited in the README's *Techniques* list).
+
+| Group | Helpers |
+| --- | --- |
+| **color** | `srgbToLinear` / `linearToSrgb`, `palette(t, a, b, c, d)` (cosine gradient), `linearToOklab` / `oklabToLinear` / `oklabToOklch` / `oklchToOklab` |
+| **hash** | `hash12`, `hash22`, `hash33` |
+| **noise** | `valueNoise`, `fbm`, `gradientNoise` |
+| **sdf** | `smin(a, b, k)` (smooth minimum) |
+| **domain** | `pmod` / `pmod2` (repeat), `mirror`, `pmodPolar` (radial fold), `rotate2D` |
+
+By default the whole library is spliced. Unused helpers are dead-code-eliminated, so on the GPU the choice costs nothing; it only affects *compile* time, which matters when many shaders compile or hot-reload at once. To trim it, pass an explicit `Modules` set:
+
+```swift
+let s = Shader(metalSource, using: [.noise, .domain])   // splice only these sections
+```
+
+---
+
+## Inline source or a `.metal` file
+
+The body can be an inline Swift string (the simplest form, and it hot-reloads with the sketch under [OllinLive](../../README.md): edit the string, save, and the sketch recompiles with the new shader) or a `.metal` resource file beside your sketch:
+
+```swift
+let s = Shader(resource: "warp", in: .module)   // reads warp.metal from the sketch's bundle
+```
+
+`in:` is required (it can't default to Ollin's own bundle). The file is read when the `Shader` is created, so editing it takes effect on the next sketch reload.
+
+---
+
+## Errors
+
+A shader that doesn't compile is reported with **line numbers relative to your own source** (not the wrapper Ollin adds around it), with the offending line and a caret. The frame keeps running with the broken pass skipped, so a typo never crashes the sketch.
+
+```
+Shader:8:5: error: use of undeclared identifier 'vec4'; did you mean 'vec'?
+    vec4 v = 0.5 + 0.5 * sin(...);
+    ^~~~
+```
+
+In a plain `swift run`, the message goes to the terminal. In [OllinLive](../../README.md), it appears in the on-screen error overlay and clears when you fix it.
+
+---
+
+### See also
+
+- [Layered effects](./Effects.md): the off-screen layers, filters, and `compose { }` your shader plugs into
+- [Compute & GPU particles](./Compute.md): runtime-compiled compute kernels (the sibling for buffer/texture work)
+- [SDF combinators](./Combinators.md): compose signed-distance fields without writing raw shader code
+- [Parameters](../Helpers/Parameters.md): `@Param` knobs to drive a shader's `params` live

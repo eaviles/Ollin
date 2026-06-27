@@ -30,6 +30,8 @@ public struct Generator: Sendable {
         /// Fractal value noise, `scale` features across. `sharpness` 0 is a soft
         /// cloud blending `background`→`foreground`; 1 is a hard two-tone threshold.
         case noise(scale: Double, sharpness: Double, foreground: SIMD4<Float>, background: SIMD4<Float>)
+        /// A user-supplied `Shader` run as a source layer (it reads no input).
+        case shader(Shader)
     }
 
     let kind: Kind
@@ -71,4 +73,8 @@ public struct Generator: Sendable {
                                foreground: foreground.linearRGBA,
                                background: background.linearRGBA))
     }
+
+    /// A user-supplied `Shader` as a procedural source layer: it reads no input and
+    /// fills the layer from its `shade(uv, info)` function. Use it with `generate`.
+    public static func shader(_ shader: Shader) -> Generator { Generator(kind: .shader(shader)) }
 }

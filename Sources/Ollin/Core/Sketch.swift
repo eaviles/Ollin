@@ -1288,6 +1288,13 @@ open class Sketch {
                         height: Int(height.rounded()), scale: scale)
     }
 
+    /// Run a user-supplied `Shader` as a source layer, returning the `RenderTarget`
+    /// it filled. Sugar for `generate(.shader(shader))`; draw it with `.image`,
+    /// filter it, or feed it into another effect.
+    public func generate(_ shader: Shader, scale: Double = 1) -> RenderTarget {
+        generate(.shader(shader), scale: scale)
+    }
+
     /// Make a full-canvas feedback layer: a layer that remembers itself across
     /// frames, for trails, tunnels, and video-feedback looks (see `Feedback`).
     /// Unlike `renderTarget()`, it's **persistent**: create it once in `setup()`

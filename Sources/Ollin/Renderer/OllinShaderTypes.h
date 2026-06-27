@@ -462,6 +462,24 @@ typedef struct {
     simd_float4 custom;         // four free per-dispatch floats (see ComputeParams)
 } OllinComputeUniforms;
 
+// Per-frame constants bound to a user-supplied shader's fragment (buffer 1). The
+// generated wrapper exposes these to the sketch's `shade(uv, info)` as a
+// `ShaderInfo` value, so a shader reads `info.time` / `info.resolution` / … with
+// no plumbing. Scalars only (no array member), so the Swift side fills it with the
+// plain memberwise initializer; the user's free `params` ride a separate `float4`
+// buffer (index 0), read through the `param(info, i)` helper the wrapper defines.
+// Stride 32 (16-aligned).
+#define OLLIN_SHADER_PARAM_ROWS 8
+#define OLLIN_SHADER_PARAM_COUNT (OLLIN_SHADER_PARAM_ROWS * 4)
+typedef struct {
+    simd_float2 resolution;     // the layer this shader draws into, in pixels
+    simd_float2 mouse;          // cursor position in points (top-left origin)
+    float time;                 // seconds since the sketch started
+    float deltaTime;            // seconds since the previous frame
+    unsigned int frame;         // frames drawn so far
+    unsigned int paramCount;    // number of valid user floats in the params buffer
+} OllinShaderUniforms;
+
 // Constants for the final present/tone-map pass (`ollin_present_fragment`). The
 // frame renders into a linear `rgba16Float` intermediate; this pass reads it,
 // scales by `exposure`, maps high-dynamic-range values into displayable range

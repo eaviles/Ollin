@@ -26,6 +26,12 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func userShaderGeneratorMatchesReference() throws {
+        let diff = try Snapshot.meanDifference(of: UserShaderGenerator(), against: "user-shader")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func easedValuesMatchReference() throws {
         // Rendered mid-tween (frame 30), so the per-frame auto-advance has run and
         // the three curves have pulled the dots to different positions.
@@ -1238,6 +1244,29 @@ private final class MetricDepthSceneScene: Sketch {
 
 /// A few solid SDF fills on white — large flat regions, so anti-aliased edges
 /// are a small fraction of the frame. Pure SDF pipeline.
+/// A user-supplied `Shader` run as a generator: pins the compose + compile path,
+/// the `ShaderInfo` binding, the wrapper's sRGB round-trip, and the `palette`
+/// library helper. Time-independent so the reference is stable at any frame.
+private final class UserShaderGenerator: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let shader = Shader("""
+    float4 shade(float2 uv, ShaderInfo info) {
+        float2 p = (uv * 2.0 - 1.0) * 4.0;
+        float fx = cos(p.x) * cos(p.y);
+        float fy = sin(p.x) * sin(p.y);
+        float v = 0.5 + 0.5 * sin((fx * fx + fy * fy) * 6.28318);
+        float3 col = palette(v, float3(0.5), float3(0.5),
+                             float3(1.0), float3(0.0, 0.33, 0.67));
+        return float4(col, 1.0);
+    }
+    """)
+
+    override func draw() {
+        drawImage(generate(shader).image, 0, 0)
+    }
+}
+
 private final class SolidShapes: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

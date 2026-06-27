@@ -39,6 +39,9 @@ public struct Combine: Sendable {
     /// The concrete operations the renderer knows how to run. Internal: a sketch
     /// builds a `Combine` through the static factories below, never this directly.
     enum Kind: Sendable {
+        /// A user-supplied `Shader` run as a two-input combine (reads the base with
+        /// `sample(info, uv)` and the aux with `sampleAux(info, uv)`).
+        case shader(Shader)
         /// Keep the base only where the aux is bright (or opaque): multiply the base
         /// by the aux's `channel` value, optionally inverted.
         case mask(channel: MaskChannel, invert: Bool)
@@ -69,6 +72,11 @@ public struct Combine: Sendable {
     }
 
     let kind: Kind
+
+    /// A user-supplied `Shader` as a two-input combine: it reads the base with
+    /// `sample(info, uv)` and `aux` with `sampleAux(info, uv)`. Use with
+    /// `base.combined(with: aux, .shader(myShader))`.
+    public static func shader(_ shader: Shader) -> Combine { Combine(kind: .shader(shader)) }
 
     /// Mask: keep the base where the aux layer reads bright (or, with
     /// `channel: .alpha`, where it's opaque), fading to transparent elsewhere. Draw

@@ -26,6 +26,13 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// with the new instance. Set via `observeStats(into:)`; nil for headless runs.
     private var statsExtension: StatsExtension?
 
+    /// Called after each frame with the renderer's current user-shader compile error
+    /// (`nil` when every shader compiled). The live host shows it in the error
+    /// overlay; a standalone run leaves it unset (the message also goes to stderr).
+    /// Invoked on the main thread, deduped so it fires only when the error changes.
+    public var onUserShaderError: (@MainActor (ShaderCompileError?) -> Void)?
+    private var lastForwardedShaderError: String?
+
     private var didSetup = false
     private var didReload = false        // call onReload() after the post-reload setup()
     private var pendingSetupRerun = false // re-run setup() in place (e.g. an asset changed)
@@ -178,6 +185,16 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         renderer.render(sketch.drawer,
                         viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
                         in: view)
+
+        // Surface any user-shader compile error to the host (deduped) for the error
+        // overlay. The draw callback runs on the main thread, so the handler does too.
+        if let handler = onUserShaderError {
+            let current = renderer.currentUserShaderError
+            if current?.message != lastForwardedShaderError {
+                lastForwardedShaderError = current?.message
+                MainActor.assumeIsolated { handler(current) }
+            }
+        }
 
         // Hand the frame's timing to any extensions (the stats observer, a
         // recorder). Counts are still valid here — the drawer clears next frame.

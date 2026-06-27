@@ -54,17 +54,25 @@ final class LiveSession {
     /// The running sketch's `@Param` knobs, surfaced as sliders in the inspector.
     private(set) var params: [ParamHandle] = []
 
-    /// The last compile error, when `status` is `.error`.
+    /// A user shader's compile error, reported by the runner after a frame (`nil`
+    /// when every shader compiles). Distinct from `status`, which tracks the Swift
+    /// hot-reload, so a shader error and a sketch-compile error don't clear each
+    /// other; the overlay shows whichever is present.
+    private(set) var shaderError: String?
+
+    /// The error shown in the overlay: the Swift compile error first (the sketch
+    /// isn't even running), otherwise a user-shader compile error.
     var errorMessage: String? {
         if case .error(let message) = status { return message }
-        return nil
+        return shaderError
     }
 
-    /// The watcher state mapped onto the shared inspector chip.
+    /// The watcher state mapped onto the shared inspector chip. A user-shader error
+    /// turns the chip red too, even while the Swift side is happily watching.
     var inspectorStatus: InspectorStatus {
         switch status {
         case .compiling: return .compiling
-        case .watching: return .watching
+        case .watching: return shaderError == nil ? .watching : .error
         case .error: return .error
         }
     }
@@ -124,7 +132,11 @@ final class LiveSession {
     func attach(_ runner: SketchRunner) {
         self.runner = runner
         // `stats` is wired into the runner by the `SketchView` (it's passed in as
-        // the shared instance), so there's nothing to hook up here.
+        // the shared instance). Wire the user-shader error channel here, so a shader
+        // that fails to compile surfaces in the error overlay (and clears when fixed).
+        runner.onUserShaderError = { [weak self] error in
+            self?.shaderError = error?.message
+        }
     }
 
     private func startWatching() {
@@ -224,10 +236,14 @@ final class LiveSession {
         guard let shaderDir else { return }
         do {
             try runner?.reloadShaderLibrary(fromDirectory: shaderDir)
+            shaderError = nil
             print("OllinLive: reloaded framework shaders ✓")
         } catch {
+            // Surface the Metal compiler's diagnostics in the same overlay user
+            // shaders use, instead of only the terminal.
+            shaderError = "\(error)"
             FileHandle.standardError.write(
-                Data("OllinLive: shader reload skipped (kept running) — \(error)\n".utf8))
+                Data("OllinLive: shader reload skipped (kept running)\n\(error)\n".utf8))
         }
     }
 }

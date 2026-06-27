@@ -287,6 +287,29 @@ final class MetalRenderer {
     private var computePipelines: [ComputeKey: MTLComputePipelineState] = [:]
     private var computeLibraries: [UInt64: MTLLibrary] = [:]
 
+    /// User-supplied shaders (the `Shader` type) compile to their own small library,
+    /// like compute kernels: keyed by a hash of the composed source (lib + wrapper +
+    /// user code), so a shader recompiles only when its source changes, not per frame.
+    /// A *failed* compile is cached too (`userShaderErrors`) so a broken shader doesn't
+    /// retry every frame; the cache is cleared on a framework-shader reload.
+    enum UserShaderVariant { case generator, filter, combine }
+    private var userShaderLibraries: [UInt64: MTLLibrary] = [:]
+    private var userShaderPipelines: [UInt64: MTLRenderPipelineState] = [:]
+    private var userShaderErrors: [UInt64: ShaderCompileError] = [:]
+    /// Hashes already printed to stderr, so a broken shader logs once (for a plain
+    /// `swift run`), not every frame.
+    private var printedShaderErrorHashes: Set<UInt64> = []
+    /// This frame's user-shader compile state, reset to `nil` at the top of each
+    /// render and set when a shader fails to compile. The host (OllinLive) reads it
+    /// after each frame to drive the on-screen error overlay; a standalone run
+    /// ignores it and relies on the stderr print.
+    private(set) var currentUserShaderError: ShaderCompileError?
+    /// The current frame's time/mouse/frame values, snapshotted at the top of the
+    /// effect pass so a user shader (generator, filter, or combine) can fill its
+    /// `ShaderInfo` without threading the drawer through every effect call site.
+    private var frameComputeUniforms = OllinComputeUniforms(
+        resolution: .zero, mouse: .zero, time: 0, dt: 0, frameCount: 0, particleCount: 0, custom: .zero)
+
     /// Triple-buffered vertex storage, gated by a semaphore so the CPU never
     /// overwrites vertices the GPU is still reading. Writing one shared buffer
     /// every frame with no synchronization tears the on-screen geometry (e.g.
@@ -1300,6 +1323,10 @@ final class MetalRenderer {
     /// textures on the live ring; the headless paths allocate fresh and wait.
     private func encodeEffectTargets(_ drawer: Drawer, into cb: MTLCommandBuffer,
                                      buffers: GeometryBuffers, pooled: Bool) {
+        // Reset the user-shader error state for this frame; any failing shader below
+        // sets it, and the host reads it afterward to drive the error overlay.
+        currentUserShaderError = nil
+        frameComputeUniforms = drawer.computeUniforms   // for user-shader ShaderInfo
         guard !drawer.renderTargets.isEmpty || !drawer.filterOps.isEmpty
             || !drawer.frameFilters.isEmpty else { return }
         targetTexNext = 0
@@ -1537,6 +1564,11 @@ final class MetalRenderer {
             SIMD4<Float>(Float(a), Float(b), Float(c), Float(d)) }
 
         switch filter.kind {
+        case let .shader(shader):
+            guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            encodeUserShader(shader, variant: .filter, inputs: [input], output: output,
+                             width: width, height: height, into: cb)
+            return output
         case .gaussianBlur(let radius):
             guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
             let blur = MPSImageGaussianBlur(device: device, sigma: Float(max(0.1, radius)))
@@ -1687,6 +1719,11 @@ final class MetalRenderer {
             return output
         }
         switch op.kind {
+        case let .shader(shader):
+            guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            encodeUserShader(shader, variant: .combine, inputs: [base, aux], output: output,
+                             width: width, height: height, into: cb)
+            return output
         case let .mask(channel, invert):
             return pass("ollin_fx_mask", [SIMD4(channel.rawIndex, invert ? 1 : 0, 0, 0)])
         case let .displace(amount):
@@ -1873,6 +1910,9 @@ final class MetalRenderer {
                                  width: Int, height: Int, into cb: MTLCommandBuffer) {
         let aspect = Float(width) / Float(max(1, height))
         switch generator.kind {
+        case let .shader(shader):
+            encodeUserShader(shader, variant: .generator, inputs: [], output: output,
+                             width: width, height: height, into: cb)
         case let .checkers(scale, fg, bg):
             encodeEffectFragment("ollin_gen_checkers", inputs: [], output: output,
                                  params: [SIMD4(Float(scale), aspect, 0, 0), fg, bg], into: cb)
@@ -1908,6 +1948,98 @@ final class MetalRenderer {
         p.withUnsafeBytes { enc.setFragmentBytes($0.baseAddress!, length: $0.count, index: 0) }
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
+    }
+
+    /// Encode one user-supplied `Shader` pass: compile (and cache) its pipeline, then
+    /// draw the present triangle into `output`, binding the input layer(s) as fragment
+    /// textures 0…, the user `params` at buffer 0, and the per-frame `OllinShaderUniforms`
+    /// at buffer 1. A compile error is reported (stderr once per source, and to the host
+    /// sink) and the pass is skipped, so a broken shader never crashes the frame; a
+    /// later clean compile clears the reported error.
+    private func encodeUserShader(_ shader: Shader, variant: UserShaderVariant,
+                                  inputs: [MTLTexture], output: MTLTexture,
+                                  width: Int, height: Int,
+                                  into cb: MTLCommandBuffer) {
+        let (state, hash) = userShaderState(for: shader, variant: variant)
+        guard let state else {
+            if let err = userShaderErrors[hash] {
+                currentUserShaderError = err   // surfaced to the host after the frame
+                if !printedShaderErrorHashes.contains(hash) {
+                    FileHandle.standardError.write(Data(
+                        "Ollin: shader compile failed\n\(err.message)\n".utf8))
+                    printedShaderErrorHashes.insert(hash)
+                }
+            }
+            return
+        }
+
+        var u = OllinShaderUniforms(
+            resolution: SIMD2(Float(width), Float(height)),
+            mouse: frameComputeUniforms.mouse,
+            time: frameComputeUniforms.time,
+            deltaTime: frameComputeUniforms.dt,
+            frame: frameComputeUniforms.frameCount,
+            paramCount: UInt32(min(shader.params.count, Int(OLLIN_SHADER_PARAM_COUNT))))
+        let params = shader.paddedParams
+
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = output
+        pass.colorAttachments[0].loadAction = .dontCare
+        pass.colorAttachments[0].storeAction = .store
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return }
+        enc.setRenderPipelineState(state)
+        for (i, tex) in inputs.enumerated() { enc.setFragmentTexture(tex, index: i) }
+        enc.setFragmentSamplerState(imageSampler, index: 0)
+        params.withUnsafeBytes { enc.setFragmentBytes($0.baseAddress!, length: $0.count, index: 0) }
+        enc.setFragmentBytes(&u, length: MemoryLayout<OllinShaderUniforms>.stride, index: 1)
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        enc.endEncoding()
+    }
+
+    /// The compiled pipeline for a user shader, built and cached on first use (keyed by
+    /// the composed-source hash, returned alongside). Returns `(nil, hash)` on a compile
+    /// error, recording it in `userShaderErrors[hash]` so it isn't retried every frame.
+    private func userShaderState(for shader: Shader,
+                                 variant: UserShaderVariant) -> (MTLRenderPipelineState?, UInt64) {
+        let (composed, offset) = MetalRenderer.composeUserShaderSource(shader, variant: variant)
+        let hash = MetalRenderer.fnv1a(composed)
+        if let p = userShaderPipelines[hash] { return (p, hash) }
+        if userShaderErrors[hash] != nil { return (nil, hash) }   // cached failure
+        do {
+            let lib: MTLLibrary
+            if let cached = userShaderLibraries[hash] { lib = cached }
+            else { lib = try device.makeLibrary(source: composed, options: nil); userShaderLibraries[hash] = lib }
+            guard let vfn = lib.makeFunction(name: "ollin_user_vertex"),
+                  let ffn = lib.makeFunction(name: "ollin_user_fragment") else {
+                userShaderErrors[hash] = ShaderCompileError(
+                    message: "The shader has no shade(float2 uv, ShaderInfo info) function.", raw: "")
+                return (nil, hash)
+            }
+            let desc = MTLRenderPipelineDescriptor()
+            desc.vertexFunction = vfn
+            desc.fragmentFunction = ffn
+            desc.rasterSampleCount = 1
+            desc.colorAttachments[0].pixelFormat = linearFormat
+            let state = try device.makeRenderPipelineState(descriptor: desc)
+            userShaderPipelines[hash] = state
+            return (state, hash)
+        } catch {
+            let cleaned = MetalRenderer.cleanShaderDiagnostics(
+                (error as NSError).localizedDescription, userLineOffset: offset)
+            userShaderErrors[hash] = ShaderCompileError(
+                message: cleaned, raw: (error as NSError).localizedDescription)
+            return (nil, hash)
+        }
+    }
+
+    /// Drop every cached user-shader library, pipeline, and error, so the next encode
+    /// recompiles from source. Used on a framework-shader reload (the spliced library
+    /// may have changed) and when OllinLive reloads a watched user `.metal` file.
+    func invalidateUserShaderCaches() {
+        userShaderLibraries.removeAll()
+        userShaderPipelines.removeAll()
+        userShaderErrors.removeAll()
+        printedShaderErrorHashes.removeAll()
     }
 
     /// A small linear-float lookup texture (256×1) for `gradientMap`, uploaded from
@@ -3728,6 +3860,7 @@ final class MetalRenderer {
         // too so they rebuild against any edited shared types/prelude on next use.
         computePipelines.removeAll()
         computeLibraries.removeAll()
+        invalidateUserShaderCaches()
     }
 
     /// The single place pipeline descriptors are constructed. Add a `case` here
@@ -4112,6 +4245,182 @@ final class MetalRenderer {
         var hash: UInt64 = 0xcbf29ce484222325
         for byte in string.utf8 { hash = (hash ^ UInt64(byte)) &* 0x100000001b3 }
         return hash
+    }
+
+    /// Build the full MSL source for a user-supplied `Shader`: the OllinShaderLib
+    /// segment (preamble + shared types + helpers, with the header spliced in place of
+    /// its `#include` since the runtime compiler has no include path), then the wrapper
+    /// (the fullscreen vertex, the `ShaderInfo` struct, the `param`/`sample` helpers),
+    /// then the user's source tagged `#line 1 "Shader"` so the compiler reports errors
+    /// at the user's own line numbers, then the generated `ollin_user_fragment` that
+    /// calls their `shade(uv, info)`. Returns the source and the number of lines that
+    /// precede the user's source (the fallback rebase offset for a toolchain that
+    /// ignores `#line`).
+    static func composeUserShaderSource(_ shader: Shader,
+                                        variant: UserShaderVariant) -> (source: String, userLineOffset: Int) {
+        var lib = ""
+        if let url = Bundle.module.url(forResource: "OllinShaderLib", withExtension: "metal"),
+           let text = try? String(contentsOf: url, encoding: .utf8) {
+            lib = filterLibModules(text, shader.modules)
+        }
+        if let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
+           let header = try? String(contentsOf: url, encoding: .utf8) {
+            lib = lib.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
+        }
+        let head = lib + "\n" + userShaderWrapperHead(variant) + "\n#line 1 \"Shader\"\n"
+        let offset = head.reduce(0) { $0 + ($1 == "\n" ? 1 : 0) }
+        let tail = "\n#line 1 \"ollin-wrapper\"\n" + userShaderWrapperTail(variant)
+        return (head + shader.source + tail, offset)
+    }
+
+    /// Keep only the requested sections of the shader library, by the
+    /// `// OLLIN_LIB_BEGIN <module>` / `// OLLIN_LIB_END <module>` markers. Unmarked
+    /// lines (the preamble and the always-on `base` section) are always kept; a
+    /// section whose module isn't requested is dropped, trimming compile time. The
+    /// dependency `noise → hash` is resolved so a noise-only request still compiles.
+    private static func filterLibModules(_ lib: String, _ modules: Shader.Modules) -> String {
+        if modules == .all { return lib }   // the common case: splice everything
+        var mods = modules
+        if mods.contains(.noise) { mods.insert(.hash) }
+        let nameToModule: [String: Shader.Modules] = [
+            "hash": .hash, "noise": .noise, "color": .color, "sdf": .sdf, "domain": .domain]
+        var out: [Substring] = []
+        var skipping = false
+        for line in lib.split(separator: "\n", omittingEmptySubsequences: false) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("// OLLIN_LIB_BEGIN ") {
+                let name = String(trimmed.dropFirst("// OLLIN_LIB_BEGIN ".count))
+                skipping = nameToModule[name].map { !mods.contains($0) } ?? false
+                continue
+            }
+            if trimmed.hasPrefix("// OLLIN_LIB_END ") { skipping = false; continue }
+            if !skipping { out.append(line) }
+        }
+        return out.joined(separator: "\n")
+    }
+
+    /// The wrapper preamble: the fullscreen vertex, the user-facing `ShaderInfo`
+    /// struct, and the `param`/`sample` accessors. The struct carries the input
+    /// layer(s) for the filter (one) and combine (two) variants, so the user reads
+    /// them with `sample(info, uv)` / `sampleAux(info, uv)`.
+    private static func userShaderWrapperHead(_ variant: UserShaderVariant) -> String {
+        let layerFields: String
+        let sampleMacros: String
+        switch variant {
+        case .generator:
+            layerFields = ""
+            sampleMacros = ""
+        case .filter:
+            layerFields = "    texture2d<float> in0; sampler in0samp;\n"
+            sampleMacros = "#define sample(info, p) ollin_layer_sample((info).in0, (info).in0samp, (p))\n"
+        case .combine:
+            layerFields = "    texture2d<float> in0; sampler in0samp;\n    texture2d<float> in1; sampler in1samp;\n"
+            sampleMacros = """
+            #define sample(info, p) ollin_layer_sample((info).in0, (info).in0samp, (p))
+            #define sampleAux(info, p) ollin_layer_sample((info).in1, (info).in1samp, (p))
+
+            """
+        }
+        return """
+        struct OllinUserVertexOut { float4 position [[position]]; float2 uv; };
+        vertex OllinUserVertexOut ollin_user_vertex(uint vid [[vertex_id]]) {
+            float2 p = float2((vid << 1) & 2, vid & 2);
+            OllinUserVertexOut o;
+            o.position = float4(p * 2.0 - 1.0, 0.0, 1.0);
+            o.uv = float2(p.x, 1.0 - p.y);
+            return o;
+        }
+        // Read an input layer as straight sRGB (it's stored premultiplied linear), so
+        // a shader works in the same color space it returns.
+        inline float4 ollin_layer_sample(texture2d<float> t, sampler s, float2 uv) {
+            float4 c = t.sample(s, clamp(uv, 0.0, 1.0));
+            return float4(linearToSrgb(ollin_unpremul(c)), c.a);
+        }
+        struct ShaderInfo {
+            float2 resolution;
+            float2 mouse;
+            float time;
+            float deltaTime;
+            uint frame;
+            uint paramCount;
+            float4 params[OLLIN_SHADER_PARAM_ROWS];
+        \(layerFields)};
+        #define param(info, i) ((info).params[(i) >> 2][(i) & 3])
+        \(sampleMacros)
+        """
+    }
+
+    /// The generated fragment: bind the input layer(s) for the variant, assemble
+    /// `ShaderInfo` from the uniforms, call the user's `shade`, and convert its
+    /// straight sRGB result to the premultiplied linear an Ollin layer composites in.
+    private static func userShaderWrapperTail(_ variant: UserShaderVariant) -> String {
+        let textureParams: String
+        let layerAssign: String
+        switch variant {
+        case .generator:
+            textureParams = ""
+            layerAssign = ""
+        case .filter:
+            textureParams = "                                    texture2d<float> ollin_src0 [[texture(0)]],\n"
+                + "                                    sampler ollin_samp [[sampler(0)]],\n"
+            layerAssign = "    info.in0 = ollin_src0; info.in0samp = ollin_samp;\n"
+        case .combine:
+            textureParams = "                                    texture2d<float> ollin_src0 [[texture(0)]],\n"
+                + "                                    texture2d<float> ollin_src1 [[texture(1)]],\n"
+                + "                                    sampler ollin_samp [[sampler(0)]],\n"
+            layerAssign = "    info.in0 = ollin_src0; info.in0samp = ollin_samp;\n"
+                + "    info.in1 = ollin_src1; info.in1samp = ollin_samp;\n"
+        }
+        return """
+        fragment float4 ollin_user_fragment(OllinUserVertexOut in [[stage_in]],
+        \(textureParams)                                    constant float4 *ollin_params [[buffer(0)]],
+                                            constant OllinShaderUniforms &ollin_u [[buffer(1)]]) {
+            ShaderInfo info;
+            info.resolution = ollin_u.resolution;
+            info.mouse = ollin_u.mouse;
+            info.time = ollin_u.time;
+            info.deltaTime = ollin_u.deltaTime;
+            info.frame = ollin_u.frame;
+            info.paramCount = ollin_u.paramCount;
+            for (uint i = 0u; i < OLLIN_SHADER_PARAM_ROWS; ++i) info.params[i] = ollin_params[i];
+        \(layerAssign)    float4 c = shade(in.uv, info);
+            return float4(srgbToLinear(c.rgb) * c.a, c.a);
+        }
+        """
+    }
+
+    /// Tidy a Metal compiler diagnostic for a user shader: relabel and rebase the
+    /// composed-source line numbers (`program_source:N`) to the user's own source
+    /// (`shader:N-offset`), so a reported line matches what they wrote, and drop the
+    /// boilerplate header. When the compiler honors `#line` it already reports
+    /// `Shader:N`, which passes through unchanged.
+    static func cleanShaderDiagnostics(_ raw: String, userLineOffset: Int) -> String {
+        let text = raw
+            .replacingOccurrences(of: "Compilation failed: \n", with: "")
+            .replacingOccurrences(of: "Compilation failed:\n", with: "")
+        guard let rx = try? NSRegularExpression(pattern: #"program_source:(\d+):(\d+):"#) else {
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let ns = text as NSString
+        var out = ""
+        var last = 0
+        rx.enumerateMatches(in: text, range: NSRange(location: 0, length: ns.length)) { m, _, _ in
+            guard let m = m else { return }
+            out += ns.substring(with: NSRange(location: last, length: m.range.location - last))
+            let lineNo = Int(ns.substring(with: m.range(at: 1))) ?? 0
+            let col = ns.substring(with: m.range(at: 2))
+            out += "shader:\(max(1, lineNo - userLineOffset)):\(col):"
+            last = m.range.location + m.range.length
+        }
+        out += ns.substring(from: last)
+        // Drop compiler-internal notes that point at system framework headers (e.g. a
+        // "did you mean" suggestion from the Metal standard library): they reference
+        // absolute paths a sketch author can't act on and only clutter the message.
+        let kept = out.split(separator: "\n", omittingEmptySubsequences: false).filter { line in
+            !(line.contains("/System/") || line.contains("GPUCompiler.framework")
+              || line.contains("/Applications/") || line.contains("/usr/"))
+        }
+        return kept.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// The shader source segments, in concatenation order. They're compiled as one
