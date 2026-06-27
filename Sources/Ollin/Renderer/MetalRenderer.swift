@@ -296,6 +296,9 @@ final class MetalRenderer {
     private var userShaderLibraries: [UInt64: MTLLibrary] = [:]
     private var userShaderPipelines: [UInt64: MTLRenderPipelineState] = [:]
     private var userShaderErrors: [UInt64: ShaderCompileError] = [:]
+    /// Contents of `.metal` resource shaders, cached by absolute path (read once, not
+    /// per frame). Cleared on invalidation so an edited `.metal` is re-read.
+    private var userShaderSources: [String: String] = [:]
     /// Hashes already printed to stderr, so a broken shader logs once (for a plain
     /// `swift run`), not every frame.
     private var printedShaderErrorHashes: Set<UInt64> = []
@@ -2001,7 +2004,9 @@ final class MetalRenderer {
     /// error, recording it in `userShaderErrors[hash]` so it isn't retried every frame.
     private func userShaderState(for shader: Shader,
                                  variant: UserShaderVariant) -> (MTLRenderPipelineState?, UInt64) {
-        let (composed, offset) = MetalRenderer.composeUserShaderSource(shader, variant: variant)
+        let userSource = resolveUserShaderSource(shader)
+        let (composed, offset) = MetalRenderer.composeUserShaderSource(
+            userSource: userSource, modules: shader.modules, variant: variant)
         let hash = MetalRenderer.fnv1a(composed)
         if let p = userShaderPipelines[hash] { return (p, hash) }
         if userShaderErrors[hash] != nil { return (nil, hash) }   // cached failure
@@ -2039,7 +2044,20 @@ final class MetalRenderer {
         userShaderLibraries.removeAll()
         userShaderPipelines.removeAll()
         userShaderErrors.removeAll()
+        userShaderSources.removeAll()
         printedShaderErrorHashes.removeAll()
+    }
+
+    /// The user's MSL for a shader: the inline source, or the cached contents of its
+    /// `.metal` resource (read once per path, re-read after an invalidation so an
+    /// edited file hot-reloads).
+    private func resolveUserShaderSource(_ shader: Shader) -> String {
+        if !shader.source.isEmpty { return shader.source }
+        guard !shader.resourcePath.isEmpty else { return "" }
+        if let cached = userShaderSources[shader.resourcePath] { return cached }
+        let content = (try? String(contentsOfFile: shader.resourcePath, encoding: .utf8)) ?? ""
+        userShaderSources[shader.resourcePath] = content
+        return content
     }
 
     /// A small linear-float lookup texture (256×1) for `gradientMap`, uploaded from
@@ -4256,12 +4274,12 @@ final class MetalRenderer {
     /// calls their `shade(uv, info)`. Returns the source and the number of lines that
     /// precede the user's source (the fallback rebase offset for a toolchain that
     /// ignores `#line`).
-    static func composeUserShaderSource(_ shader: Shader,
+    static func composeUserShaderSource(userSource: String, modules: Shader.Modules,
                                         variant: UserShaderVariant) -> (source: String, userLineOffset: Int) {
         var lib = ""
         if let url = Bundle.module.url(forResource: "OllinShaderLib", withExtension: "metal"),
            let text = try? String(contentsOf: url, encoding: .utf8) {
-            lib = filterLibModules(text, shader.modules)
+            lib = filterLibModules(text, modules)
         }
         if let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
            let header = try? String(contentsOf: url, encoding: .utf8) {
@@ -4270,7 +4288,7 @@ final class MetalRenderer {
         let head = lib + "\n" + userShaderWrapperHead(variant) + "\n#line 1 \"Shader\"\n"
         let offset = head.reduce(0) { $0 + ($1 == "\n" ? 1 : 0) }
         let tail = "\n#line 1 \"ollin-wrapper\"\n" + userShaderWrapperTail(variant)
-        return (head + shader.source + tail, offset)
+        return (head + userSource + tail, offset)
     }
 
     /// Keep only the requested sections of the shader library, by the

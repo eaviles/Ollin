@@ -122,7 +122,7 @@ The body can be an inline Swift string (the simplest form, and it hot-reloads wi
 let s = Shader(resource: "warp", in: .module)   // reads warp.metal from the sketch's bundle
 ```
 
-`in:` is required (it can't default to Ollin's own bundle). The file is read when the `Shader` is created, so editing it takes effect on the next sketch reload.
+`in:` is required (it can't default to Ollin's own bundle). Under OllinLive the file hot-reloads too: edit the `.metal`, save, and it recompiles in place without restarting the sketch (the file is re-read on change, so a line-accurate error in the `.metal` shows in the overlay just like an inline one).
 
 ---
 

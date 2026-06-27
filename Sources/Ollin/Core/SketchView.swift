@@ -127,6 +127,17 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         pendingSetupRerun = true
     }
 
+    /// Drop the cached compiled user shaders so a `.metal` resource shader is re-read
+    /// and recompiled on the next frame: the live-reload hook for a user's own shader
+    /// file. The `Shader` value is unchanged (it holds the file path, not the source),
+    /// so a property-initialized shader picks up the edit too. **Call on the main
+    /// thread.** Forces one frame if the sketch paused itself with `noLoop()`, so a
+    /// still sketch still updates.
+    public func invalidateUserShaders() {
+        renderer.invalidateUserShaderCaches()
+        if view?.isPaused == true { view?.draw() }
+    }
+
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         updateCanvasSize(from: view, drawableSize: size)
     }

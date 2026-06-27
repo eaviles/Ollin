@@ -541,6 +541,12 @@ let package = Package(
             path: "Examples/Shaders/ShaderBlend"
         ),
         .executableTarget(
+            name: "Example-Shaders-ShaderFile",
+            dependencies: ["Ollin"],
+            path: "Examples/Shaders/ShaderFile",
+            resources: [.copy("ripple.metal")]
+        ),
+        .executableTarget(
             name: "Example-Rendering-ToneMapping",
             dependencies: ["Ollin"],
             path: "Examples/Rendering/ToneMapping"

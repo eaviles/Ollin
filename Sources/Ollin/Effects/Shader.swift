@@ -48,11 +48,13 @@ public struct Shader: Sendable {
         public static let all: Modules = [.color, .hash, .noise, .sdf, .domain]
     }
 
-    /// The MSL source the user wrote (the body that defines `shade`), resolved to a
-    /// string at construction so the descriptor stays `Sendable` and the render
-    /// thread never reads a file. For a `.metal` resource, the path it was read from
-    /// (so OllinLive can watch it); empty for an inline string.
+    /// The MSL source for an inline shader (the body that defines `shade`); empty for
+    /// a `.metal` resource, whose source the renderer reads from `resourcePath` (and
+    /// caches), re-reading when the file changes so editing a `.metal` hot-reloads.
     let source: String
+    /// Absolute path of a `.metal` resource shader, resolved through the bundle at
+    /// construction (so the descriptor stays `Sendable`: it carries the path, not a
+    /// `Bundle`, and the content read is deferred to the renderer); empty for inline.
     let resourcePath: String
     let params: [Float]
     let modules: Modules
@@ -67,13 +69,14 @@ public struct Shader: Sendable {
     }
 
     /// A shader from a `.metal` resource file. `in:` is required (it can't default to
-    /// Ollin's own bundle); the file is read now, on the calling thread, so the
-    /// descriptor carries the source itself.
+    /// Ollin's own bundle). The path is resolved through the bundle now; the renderer
+    /// reads and caches the file's contents on first use and re-reads when the file
+    /// changes, so editing the `.metal` hot-reloads under OllinLive.
     public init(resource name: String, in bundle: Bundle,
                 params: [Float] = [], using modules: Modules = .all) {
         let url = bundle.url(forResource: name, withExtension: "metal")
             ?? bundle.url(forResource: name, withExtension: nil)
-        self.source = url.flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
+        self.source = ""
         self.resourcePath = url?.path ?? ""
         self.params = params
         self.modules = modules

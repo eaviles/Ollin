@@ -157,12 +157,36 @@ final class LiveSession {
     private func handle(_ paths: [String]) {
         if paths.contains(where: { $0.hasSuffix(".swift") }) {
             compileAndApply()
-        } else if shaderDir != nil, paths.contains(where: { $0.hasSuffix(".metal") }) {
-            reloadShaders()
-        } else if paths.contains(where: { Self.assetExtensions.contains(($0 as NSString).pathExtension.lowercased()) }) {
+            return
+        }
+        let metal = paths.filter { $0.hasSuffix(".metal") }
+        if !metal.isEmpty {
+            // A framework segment (under the repo's shader dir) reloads the built-in
+            // library; a `.metal` beside the sketch is a user shader, recompiled by
+            // dropping its cache so the renderer re-reads the file.
+            if let shaderDir, metal.contains(where: { $0.hasPrefix(shaderDir) }) {
+                reloadShaders()
+            }
+            if metal.contains(where: { path in
+                guard let shaderDir else { return true }   // no framework dir: it's a user shader
+                return !path.hasPrefix(shaderDir)
+            }) {
+                reloadUserShaders()
+            }
+            return
+        }
+        if paths.contains(where: { Self.assetExtensions.contains(($0 as NSString).pathExtension.lowercased()) }) {
             runner?.rerunSetup()
             print("OllinLive: asset changed — re-running setup() ✓")
         }
+    }
+
+    /// A user's own `.metal` shader file changed: drop the compiled-shader cache so the
+    /// renderer re-reads and recompiles it on the next frame, and clear any stale error.
+    private func reloadUserShaders() {
+        runner?.invalidateUserShaders()
+        shaderError = nil
+        print("OllinLive: reloaded user shader ✓")
     }
 
     /// Compile (slow `swiftc`) off the main actor; apply on the main actor. The
