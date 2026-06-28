@@ -140,6 +140,22 @@ Apple-native, low-ceremony ways several machines share one piece: **Multipeer** 
 
 The concerns of a piece that runs unattended for days in a gallery rather than for a session at a desk: checkpoint and restore of generative state, restart on failure, scheduled evolution, and graceful handling of display sleep and wake. A documented, supported way to run long rather than a hope. See the [design notes](DESIGN-NOTES.md#installation-mode-not-started).
 
+## Learning: a user guide and tutorials
+
+**Near-term.** The reference docs ([`Docs/`](Docs/)) answer "what does this function do"; what's missing is the narrative layer that answers "how do I think in Ollin" and "how do I build a piece," the way OPENRNDR ships a Guide beside its API reference and openFrameworks ships the ofBook and tutorials beside its documentation. Three pieces: a **narrative user guide** (concepts and workflows, read start to finish rather than looked up), a **"coming from p5.js" migration guide** (a side-by-side mapping for the audience: `circle()` to `drawCircle()`, `createCanvas` to `canvasSize`, `push()`/`pop()` to `withState { }`, what's the same and what's idiomatically different), and a **guided tutorial series** that builds a finished piece end to end. The shipped examples and the *Nature of Code* framing of the [technique catalog](#technique-and-algorithm-helpers) are the raw material. See the [design notes](DESIGN-NOTES.md#learning-a-user-guide-and-tutorials-not-started).
+
+## A third-party extension ecosystem
+
+**Near-term.** The framework grows past the core team only when other people can publish and find extensions, the contributed-addon ecosystems p5.js, openFrameworks (`ofx*`), and OPENRNDR (`orx-*`) all have. SwiftPM already makes the mechanics free (a package that depends on `Ollin`), so the work is *convention and discovery*: a naming convention (an `ollinx-*` prefix in the `ofx*` spirit), a documented set of stable extension points (the `SketchExtension` seam, custom `Filter` / `Generator` / `Sim` / `Shader` types, the `FrameSource` protocol, the satellite-package pattern), a starter template for a new extension, and a curated list so they are findable. Deciding the conventions early keeps the ecosystem consistent. See the [design notes](DESIGN-NOTES.md#a-third-party-extension-ecosystem-not-started).
+
+## Performance profiling and GPU debugging
+
+Ollin sits on a GPU core and pitches the rendering ceiling, but it doesn't yet help a sketch author see *their own* cost. The FPS and stats overlay is the seed; the gap is a real profiler: a per-frame breakdown (draw calls, vertices, tessellation, and SDF vs triangle vs fringe batches), an honest CPU-versus-GPU frame-time split so the CPU-tessellation cost is visible when it bites, and a hook into Metal's frame capture for the deep cases. A framework that's fast should make it easy to find out why a particular sketch isn't. See the [design notes](DESIGN-NOTES.md#performance-profiling-and-gpu-debugging-not-started).
+
+## Accessibility and inclusive text
+
+Making Ollin and the work people make with it more inclusive, on the platform's native support. For **authors**: colorblind-safe palette helpers and a color-vision *simulation* filter (preview a sketch as it reads under deuteranopia and friends), plus reduced-motion awareness for the motion-by-default model. For **viewers**: a describable-output path, the native counterpart to p5's `textOutput()`, so a generative piece can carry an accessible description. And **robust complex-script text**: verifying and surfacing Core Text's handling of CJK, right-to-left scripts, emoji, and combining marks, so the text system serves a global audience. See the [design notes](DESIGN-NOTES.md#accessibility-and-inclusive-text-not-started).
+
 ## Further out / exploratory
 
 Lower-confidence ideas kept on record but deliberately not near-term: each is plausible on the platform, but speculative enough that it shouldn't crowd the planned work above. Distinct from [On the horizon](#on-the-horizon), which is the platform-gated later legs (iOS, visionOS, AR), not uncertainty.

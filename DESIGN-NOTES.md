@@ -224,6 +224,44 @@ Apple-native, low-ceremony ways several machines share one piece.
 
 The needs of a piece running unattended for days in a gallery, which none of the desktop creative-coding frameworks treat as first-class: checkpoint and restore of generative state (a relaunch resumes rather than restarts), restart on failure (a watchdog), scheduled evolution (behavior by time of day), and graceful display sleep, wake, and resolution-change handling. Reproducibility (seeded `random` / `noise`, the deterministic clock) is the foundation a checkpoint rides on. Mostly a robustness-and-lifecycle track over the existing loop rather than new rendering, and the natural companion to the installation audience the framework keeps drawing.
 
+## Learning: a user guide and tutorials (not started)
+
+The reference docs in `Docs/` are per-function lookup (signature, one example); the missing layer is narrative learning, the split OPENRNDR draws between its API reference and its Guide, and openFrameworks between its documentation and the ofBook plus tutorials. Three artifacts, distinct from the reference and from the examples:
+
+- **A user guide** read start to finish: the mental model (the sketch lifecycle, motion by default, the typed-core-under-bare-API split, the drawing-state stack), the workflows (drawing, color, geometry, 3D, effects, export), and the conventions, so a newcomer learns *how to think in Ollin* rather than looking up one call. Lives beside the reference (a `Guide/` tree or a guide site), cross-linking into `Docs/` for detail.
+- **A "coming from p5.js" migration guide.** The audience is p5 and Processing users, so a concrete mapping earns its keep: the noun-to-verb renames (`circle()` to `drawCircle()`), `createCanvas(w,h)` to the `canvasSize` enum, `push()`/`pop()` to `withState { }`, `"CENTER"` strings to enums, global functions to `Sketch` methods, and the genuinely different parts (value types, motion by default, Swift's type system). What's the same, what's spelled differently, and what's idiomatically better.
+- **A tutorial series** that builds a finished piece end to end, not isolated feature demos (that is what `Examples/` already is). The shipped examples and the *Nature of Code* mapping of the technique catalog are the spine.
+
+Constraint: a guide drifts from the API faster than reference docs (it narrates, so a rename can silently invalidate a passage). Keep its code snippets compile-checked the way examples are, or it rots. The docs-hygiene discipline that governs the reference applies here too.
+
+## A third-party extension ecosystem (not started)
+
+The contributed-addon ecosystems are a large part of why p5.js, openFrameworks (`ofxAddons`, the `ofx*` convention), and OPENRNDR (`orx-*`) have the reach they do, and it's the one incumbent advantage no Ollin *feature* closes. SwiftPM makes the mechanics free: a third-party Swift package that declares `Ollin` as a dependency and adds types or `SketchExtension`s is already a working extension, installed by URL like any Swift package. So the work is not plumbing, it is **convention and discoverability**:
+
+- **A naming convention.** An `ollinx-*` prefix (the `ofx*` / `orx-*` lineage) so extensions are recognizable and searchable.
+- **Documented, stable extension points.** Name what an extension hangs off: the `extend(...)` / `SketchExtension` lifecycle seam, custom `Filter` / `Generator` / `Sim` / `Shader` / `Combine` cases, the `FrameSource` protocol (a new capture source), `Material` / `Light`, and the satellite-package pattern the first-party `OllinAudio` / `OllinVision` packages already follow. These are the public surface a third party builds on, so they carry an implied stability promise (ties to the pre-1.0 deprecation discipline).
+- **A starter template plus a curated list.** A `swift package` template for a new extension (the [project generator](#project-generator--sketch-scaffolding-not-started) can emit it), and a curated, awesome-list-style index so extensions are findable without a registry of our own.
+
+Deciding the conventions now, while the surface is small, keeps the ecosystem coherent later. License hygiene carries over: a third-party extension is the author's own package under their own license, not bundled, so it sidesteps the vendoring rules entirely.
+
+## Performance profiling and GPU debugging (not started)
+
+Ollin's pitch is the GPU rendering ceiling, but a sketch author has no view into *their own* sketch's cost beyond the FPS and stats overlay (`FrameStats`: fps, CPU frame time, vertex and SDF draw counts). The gap is a real profiler. The renderer's performance model (recorded in `CLAUDE.md`) is that CPU tessellation is the first bottleneck, not the GPU, so the author needs to *see* where the frame goes:
+
+- **A per-frame cost breakdown:** draw calls, vertices, and tessellation cost split by batch kind (SDF vs triangle vs fringe vs image vs glyph vs 3D), so a hot loop is attributable to a primitive.
+- **An honest CPU-versus-GPU frame-time split.** The FPS overlay already learned that timing across the present semaphore measures vsync, not work, so the split times `performDraw()` apart from the GPU submit.
+- **A Metal frame-capture hook** for the deep cases, handing the author off to Xcode's GPU frame debugger on the actual render.
+
+It builds on the shipped `FrameStats` and extension-seam machinery (the overlay is the first reader of the same data), so it's a richer reader plus more counters, not new infrastructure. The audience is anyone whose sketch dropped below 60, which on an immediate-mode GPU framework is a when, not an if.
+
+## Accessibility and inclusive text (not started)
+
+Inclusivity on the platform's native support, split by who it serves.
+
+- **For authors (color and motion).** Colorblind-safe palette helpers (palettes that stay distinguishable under the common color-vision deficiencies, beside the ColorBrewer and harmony builders already shipped) and a color-vision **simulation** `Filter` (preview a sketch as it reads under deuteranopia, protanopia, tritanopia, the standard transform, a sibling of the existing stylize filters). Plus reduced-motion awareness: motion is the default, so honor the system Reduce Motion setting (a readable flag a sketch can check, and a sensible default for built-in animation).
+- **For viewers (describable output).** The native counterpart to p5.js's `textOutput()` / `gridOutput()`: a way to attach an accessible text description to a sketch (and, where it can be derived, to the drawn structure), so a generative piece is not opaque to a screen reader. The hardest and most valuable part; scope it to author-provided descriptions first, derived ones later.
+- **Robust complex-script text.** The text system rides Core Text, which shapes CJK, Arabic and other right-to-left scripts, Indic scripts, emoji, and combining marks correctly, but that path needs verifying and surfacing (bidi handling, cluster-aware `textToShapes`, font fallback for missing glyphs) so a global audience is served, not just Latin. Pairs with the text work already shipped.
+
 ## Examples folder (maintained ongoing)
 
 The `Examples/` set is shipped and maintained — small, runnable sketches that double as the "learn it in an afternoon" on-ramp and the compile-tested showroom (current status, the `OllinExamples` gallery, and CI are described in [`CLAUDE.md`](CLAUDE.md)). The design decisions worth keeping, because they guide *extending* the set:
