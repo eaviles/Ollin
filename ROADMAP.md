@@ -77,6 +77,18 @@ A Mac has no depth camera, inertial sensors, or spare Neural Engine for live per
 
 It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode-partly-shipped).
 
+## Photorealistic 3D
+
+The high-end, well-curated realism tier, opt-in on the shipped PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. The techniques that separate a polished product render or film still from "CG," each Metal-native and written from the published technique (credited in the README's Techniques list):
+
+- **Area lights and light shaping.** Rectangular, disk, and tube **area lights** (Linearly Transformed Cosines) for the soft, believable studio lighting a point light can't make, plus IES photometric profiles and light cookies / gobos for realistic falloff and textured light.
+- **Real-time global illumination.** Indirect bounce light beyond the IBL ambient term: light probes / irradiance volumes, screen-space GI, or a dynamic-diffuse-GI scheme (DDGI). The single biggest "it looks real" lever after direct lighting.
+- **Volumetrics and atmosphere.** Volumetric lighting (god rays / light shafts through participating media), height and distance fog, atmospheric / aerial-perspective scattering, and raymarched volumetric clouds over the procedural sky.
+- **Advanced materials.** Glass and **transmission / refraction** (frosted, thin-film, the glTF `KHR_materials_transmission` / `_volume` set), **clearcoat** (car paint and lacquer's second specular lobe), real **subsurface scattering** (skin, wax, jade, beyond the stylized finish), **sheen** (fabric and velvet), and surface detail (parallax-occlusion and displacement, triplanar and detail maps, decals).
+- **Image quality and motion.** **Temporal anti-aliasing** (and the temporal accumulation that also cleans SSAO / SSR / GI noise), **MetalFX** temporal upscaling for quality and headroom, **contact shadows** (short-range screen-space) to seat objects on surfaces, and per-object and camera **motion blur** via a velocity buffer for cinematic movement.
+
+See the [design notes](DESIGN-NOTES.md#photorealistic-3d-not-started).
+
 ## Camera control and cinematic moves
 
 **Near-term.** Two opt-in halves on the shipped 3D camera. The first is **interactive control at parity with `ofEasyCam` and p5's EasyCam**, with their ease of use as the bar: drag to orbit, scroll to dolly, modifier-drag to pan, damped so it feels good, mapped onto the existing `Camera3D.orbiting` pose so a sketch gets "look around the scene" in one call. The second is the part that's awkward to hand-roll and worth curating: **cinematic camera moves**, a small set of named, ready-to-use motions a sketch picks instead of keyframing by hand. A slow orbit, a push-in, a crane, an orbit-and-rise, a gentle handheld drift, each easing over a duration so the shot reads as composed. They ride a small reusable animation primitive (a value advanced over time by an easing curve) that also serves general property tweening and the eventual `@Param` keyframing. See the [design notes](DESIGN-NOTES.md#camera-control-and-cinematic-moves-not-started).
