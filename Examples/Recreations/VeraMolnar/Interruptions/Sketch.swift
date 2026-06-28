@@ -36,22 +36,19 @@ final class Interruptions: Sketch {
         randomSeed(seed)   // re-seed each frame so the image is stable until a click
         noiseSeed(seed)
 
-        // Canvas-relative: a 1/16 inset, with each segment ~0.3 of the inset long.
-        let s = min(width, height)
-        let margin = s * 0.0625
+        // Canvas-relative: a 1/16 inset, the segments spanning it edge to edge,
+        // with each ~0.3 of the inset long.
+        let margin = min(width, height) * 0.0625
         let half = margin * 0.3
-        for i in 0..<40 {
-            for j in 0..<40 {
-                let x = map(Double(i), 0, 39, margin, width - margin)
-                let y = map(Double(j), 0, 39, margin, height - margin)
-                withState {
-                    translate(x, y)
-                    rotate(random(0, .tau))
-                    // 0.7 (the source uses 0.6) keeps the intended density
-                    // against Ollin's contrast-calibrated noise: gate is raw < 0.2.
-                    if noise(Double(i) * 0.1, Double(j) * 0.1) < 0.7 {
-                        drawLine(-half, 0, half, 0)
-                    }
+        let g = grid(columns: 40, rows: 40, padding: .all(margin), distribution: .spanning)
+        for dot in g.points {
+            withState {
+                translate(dot.position)
+                rotate(random(0, .tau))
+                // 0.7 (the source uses 0.6) keeps the intended density
+                // against Ollin's contrast-calibrated noise: gate is raw < 0.2.
+                if noise(Double(dot.column) * 0.1, Double(dot.row) * 0.1) < 0.7 {
+                    drawLine(-half, 0, half, 0)
                 }
             }
         }

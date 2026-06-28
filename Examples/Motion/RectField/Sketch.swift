@@ -19,30 +19,25 @@ final class RectField: Sketch {
 
     override func draw() {
         background(.black)
-        let cell = width / Double(cols)
+        let g = grid(columns: cols, rows: rows)
         let t = time * 0.2
-        for j in 0..<rows {
-            for i in 0..<cols {
-                let x = (Double(i) + 0.5) * cell
-                let y = (Double(j) + 0.5) * cell
+        for dot in g.points {
+            let n = noise(Double(dot.column) * 0.08, Double(dot.row) * 0.08, t)
+            let size = map(n, 0, 1, g.cellWidth * 0.25, g.cellWidth * 0.95)
 
-                let n = noise(Double(i) * 0.08, Double(j) * 0.08, t)
-                let size = map(n, 0, 1, cell * 0.25, cell * 0.95)
+            // A second, decorrelated field drives the corner radius across
+            // its full range: 0 (sharp square) up to size/2 (a pill/circle).
+            let rn = noise(Double(dot.column) * 0.08, Double(dot.row) * 0.08, t + 40)
+            let radius = map(rn, 0, 1, 0, size / 2)
 
-                // A second, decorrelated field drives the corner radius across
-                // its full range: 0 (sharp square) up to size/2 (a pill/circle).
-                let rn = noise(Double(i) * 0.08, Double(j) * 0.08, t + 40)
-                let radius = map(rn, 0, 1, 0, size / 2)
+            let angle = map(noise(Double(dot.column) * 0.05, Double(dot.row) * 0.05, t + 80),
+                            0, 1, -0.5, 0.5)
 
-                let angle = map(noise(Double(i) * 0.05, Double(j) * 0.05, t + 80),
-                                0, 1, -0.5, 0.5)
-
-                fill(palette.color(at: n + time * 0.05))
-                withState {
-                    translate(x, y)
-                    rotate(angle)
-                    drawRect(center: .zero, width: size, height: size, cornerRadius: radius)
-                }
+            fill(palette.color(at: n + time * 0.05))
+            withState {
+                translate(dot.position)
+                rotate(angle)
+                drawRect(center: .zero, width: size, height: size, cornerRadius: radius)
             }
         }
     }

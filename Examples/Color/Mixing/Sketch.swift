@@ -26,20 +26,22 @@ final class Mixing: Sketch {
         let b = Color(OKHSL(h: time * 0.02 + 0.45, s: 0.95, l: 0.7))
 
         let margin = width * 0.08
-        let bandWidth = width - margin * 2
         let bandHeight = height * 0.1
         let gap = (height - Double(spaces.count) * bandHeight) / Double(spaces.count + 1)
-        let columns = 180
-        for (row, entry) in spaces.enumerated() {
-            let y = gap + Double(row) * (bandHeight + gap)
-            for i in 0..<columns {
-                let t = Double(i) / Double(columns - 1)
+        // One band per space, with an even gap above, below, and between them.
+        let g = grid(columns: 1, rows: spaces.count,
+                     padding: .symmetric(horizontal: margin, vertical: gap), gutter: gap)
+        let samples = 180
+        for (cell, entry) in zip(g.cells, spaces) {
+            let band = cell.frame
+            for i in 0..<samples {
+                let t = Double(i) / Double(samples - 1)
                 fill(Color.mix(a, b, t: t, in: entry.space))
-                drawRect(margin + bandWidth * Double(i) / Double(columns), y,
-                         bandWidth / Double(columns) + 1, bandHeight)
+                drawRect(band.x + band.width * Double(i) / Double(samples), band.y,
+                         band.width / Double(samples) + 1, band.height)
             }
             fill(Color(hex: 0x9AA3AD))
-            drawText(entry.label, margin, y - 14)
+            drawText(entry.label, band.x, band.y - 14)
         }
     }
 }

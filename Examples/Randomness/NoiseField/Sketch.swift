@@ -19,15 +19,11 @@ final class NoiseField: Sketch {
 
     override func draw() {
         // The 80×80 grid fills the whole canvas, so each cell is 1/80 of it.
-        let cols = 80, rows = 80
-        let cellW = width / Double(cols)
-        let cellH = height / Double(rows)
-        for i in 0..<cols {
-            for j in 0..<rows {
-                let shade = noise(Double(i) * 0.01, Double(j) * 0.01, mouseX * 0.1)
-                fill(Color(white: shade))
-                drawRect(Double(i) * cellW, Double(j) * cellH, cellW, cellH)
-            }
+        let g = grid(columns: 80, rows: 80)
+        for cell in g.cells {
+            let shade = noise(Double(cell.column) * 0.01, Double(cell.row) * 0.01, mouseX * 0.1)
+            fill(Color(white: shade))
+            drawRect(cell.frame)
         }
     }
 }

@@ -52,30 +52,32 @@ final class LifeQuilt: Sketch {
         background(.black)
         noStroke()
         let n = Self.gridSize
-        let side = width / Double(n)
+        // The grid gives each cell's center and size; the nested loops stay,
+        // since they walk the four Game-of-Life state grids, not the layout.
+        let g = grid(columns: n, rows: n)
+        let side = g.cellWidth
         let half = side / 2
-        let center = Vector2(width / 2, height / 2)
+        let canvasCenter = g.bounds.center
         let t = time * 0.02   // slow color drift
 
         for layer in 0..<Self.layerCount {
             let off = map(Double(layer), 0, 3, 0.8, 1.2)
             for i in 0..<n {
-                let cx = (Double(i) + 0.5) * side
                 for j in 0..<n {
                     let step = cells[layer][i][j].alive ? 0.01 : -0.01
                     let alpha = Swift.max(0, Swift.min(1, cells[layer][i][j].alpha + step))
                     cells[layer][i][j].alpha = alpha
                     guard alpha > 0 else { continue }
 
-                    let cy = (Double(j) + 0.5) * side
-                    let diff = Vector2(cx, cy) - center
+                    let c = g.cell(column: i, row: j).center
+                    let diff = c - canvasCenter
                     let ci = map(atan2(diff.y, diff.x), -.pi, .pi, 0, 1)
                     let hue = CosinePalette.rainbow.color(at: ci * off + t)
                     // Fade toward black with the cell's life.
                     fill(Color(red: hue.red * alpha, green: hue.green * alpha, blue: hue.blue * alpha))
 
                     withState {
-                        translate(cx, cy)
+                        translate(c)
                         rotate(Double(layer) * .pi / 2)
                         drawTriangle(0, 0, side, half)   // wedge: apex at the cell center
                     }

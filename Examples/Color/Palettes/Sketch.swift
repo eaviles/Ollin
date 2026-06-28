@@ -13,16 +13,11 @@ final class Palettes: Sketch {
 
     override func draw() {
         background(.black)
-        let bandHeight = height / Double(presets.count)
-        let columns = 160
-        let columnWidth = width / Double(columns)
-        for (row, palette) in presets.enumerated() {
-            for i in 0..<columns {
-                let t = Double(i) / Double(columns) + time * 0.1
-                fill(palette.color(at: t))
-                drawRect(Double(i) * columnWidth, Double(row) * bandHeight,
-                     columnWidth + 1, bandHeight)
-            }
+        let g = grid(columns: 160, rows: presets.count)
+        for cell in g.cells {
+            let t = Double(cell.column) / Double(g.columns) + time * 0.1
+            fill(presets[cell.row].color(at: t))
+            drawRect(cell.frame)
         }
     }
 }

@@ -31,18 +31,14 @@ final class DesOrdres: Sketch {
 
         // A 5×5 grid of centers inset ⅛ from each edge; each holds 10 nested
         // squares, the outermost nearly filling its cell. All canvas-relative.
-        let side = min(width, height)
-        let lo = side * 0.125, hi = side * 0.875
-        let cell = (hi - lo) / 4
-        for i in 0..<5 {
-            for j in 0..<5 {
-                let center = Vector2(map(Double(i), 0, 4, lo, hi),
-                                     map(Double(j), 0, 4, lo, hi))
-                for k in 0..<10 {
-                    let size = map(Double(k), 0, 9, cell * 0.04, cell * 0.95)
-                    if random() < 0.95 {
-                        drawRect(center: center, width: size, height: size)
-                    }
+        let margin = min(width, height) * 0.125
+        let g = grid(columns: 5, rows: 5, padding: .all(margin), distribution: .spanning)
+        let cell = g.bounds.width / 4   // spacing between adjacent centers
+        for p in g.points {
+            for k in 0..<10 {
+                let size = map(Double(k), 0, 9, cell * 0.04, cell * 0.95)
+                if random() < 0.95 {
+                    drawRect(center: p.position, width: size, height: size)
                 }
             }
         }

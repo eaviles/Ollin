@@ -19,8 +19,8 @@ final class Patterns_Example: Sketch {
         // Build each tile's layer up front, then lay them out below.
         let checkers = generate(.checkers(scale: s * 2, foreground: Color(hex: 0xF2C14E),
                                           background: Color(hex: 0x222B3A)))
-        let grid = generate(.gridLines(scale: s * 3, weight: 0.12,
-                                       foreground: Color(hex: 0x55D6BE), background: Color(hex: 0x12161F)))
+        let gridTile = generate(.gridLines(scale: s * 3, weight: 0.12,
+                                           foreground: Color(hex: 0x55D6BE), background: Color(hex: 0x12161F)))
         let bars = generate(.bars(scale: s * 3, foreground: Color(hex: 0xE85D75),
                                   background: Color(hex: 0x1B1F2A)))
         let clouds = generate(.noise(scale: s, sharpness: 0))
@@ -32,19 +32,15 @@ final class Patterns_Example: Sketch {
                                           foreground: Color(white: 0.1), background: .white))
 
         let labelled: [(String, RenderTarget)] = [
-            ("checkers", checkers), ("gridLines", grid), ("bars", bars),
+            ("checkers", checkers), ("gridLines", gridTile), ("bars", bars),
             ("noise", clouds), ("noise → turbo", mapped), ("mix: noise × grid", mapped),
         ]
 
-        let cols = 3, rows = 2
+        // Six tiles with an even gutter inside and between them.
         let gutter = width * 0.015
-        let cellW = (width - gutter * Double(cols + 1)) / Double(cols)
-        let cellH = (height - gutter * Double(rows + 1)) / Double(rows)
-        for (i, item) in labelled.enumerated() {
-            let r = i / cols, c = i % cols
-            let x = gutter + Double(c) * (cellW + gutter)
-            let y = gutter + Double(r) * (cellH + gutter)
-            let rect = Rectangle(x: x, y: y, width: cellW, height: cellH)
+        let g = grid(columns: 3, rows: 2, padding: .all(gutter), gutter: gutter)
+        for (i, (cell, item)) in zip(g.cells, labelled).enumerated() {
+            let rect = cell.frame
             drawImage(item.1.image, in: rect)
             if i == 5 {                                  // the last tile multiplies a grid over the field
                 withState { blendMode(.multiply); drawImage(mixGrid.image, in: rect) }
@@ -52,10 +48,10 @@ final class Patterns_Example: Sketch {
             withState {
                 blendMode(.normal)
                 fill(Color(white: 0, alpha: 0.55)); noStroke()
-                drawRect(x, y + cellH - 32, cellW, 32)
+                drawRect(rect.x, rect.y + rect.height - 32, rect.width, 32)
                 fill(.white)
                 textFont(labelFont); textSize(18); textAlign(.left, .middle)
-                drawText(item.0, x + 10, y + cellH - 16)
+                drawText(item.0, rect.x + 10, rect.y + rect.height - 16)
             }
         }
     }

@@ -71,22 +71,19 @@ final class Alphabet: Sketch {
 
     override func draw() {
         background(Color(white: 0.96))
-        let cols = 6, rows = 6
-        let margin = width * 0.06
-        let cellW = (width - 2 * margin) / Double(cols)
-        let cellH = (height - 2 * margin) / Double(rows)
+        let g = grid(columns: 6, rows: 6, padding: .all(width * 0.06))
         // 5 modules wide, 7 tall, with a little padding inside each cell.
-        let module = min(cellW / 6.0, cellH / 8.5)
+        let module = min(g.cellWidth / 6.0, g.cellHeight / 8.5)
         let glyphW = 5 * module, glyphH = 7 * module
 
-        for g in 0..<order.count {
-            guard let pattern = glyphs[order[g]] else { continue }
-            let col = g % cols, row = g / cols
-            let originX = margin + Double(col) * cellW + (cellW - glyphW) / 2
-            let originY = margin + Double(row) * cellH + (cellH - glyphH) / 2
+        // One cell per glyph, in order; the inner loops walk each glyph's bitmap.
+        for (cell, char) in zip(g.cells, order) {
+            guard let pattern = glyphs[char] else { continue }
+            let originX = cell.frame.x + (g.cellWidth - glyphW) / 2
+            let originY = cell.frame.y + (g.cellHeight - glyphH) / 2
 
             // A red accent that sweeps diagonally across the grid over time.
-            let onAccent = sin(Double(col + row) * 0.6 - time * sweepSpeed) > 0.45
+            let onAccent = sin(Double(cell.column + cell.row) * 0.6 - time * sweepSpeed) > 0.45
             fill(onAccent ? sato : ink)
 
             for (my, line) in pattern.enumerated() {
@@ -94,7 +91,7 @@ final class Alphabet: Sketch {
                     // The square's size eases on a wave travelling across the sheet,
                     // keyed to its absolute module position, so the shimmer flows
                     // glyph-to-glyph instead of resetting per cell.
-                    let phase = Double(col * 6 + mx + row * 8 + my) * 0.35 - time * 3.0
+                    let phase = Double(cell.column * 6 + mx + cell.row * 8 + my) * 0.35 - time * 3.0
                     let frac = 0.80 + 0.14 * shimmer * sin(phase)
                     let cx = originX + (Double(mx) + 0.5) * module
                     let cy = originY + (Double(my) + 0.5) * module

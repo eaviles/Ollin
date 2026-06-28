@@ -17,15 +17,12 @@ final class Myriad: Sketch {
 
     override func draw() {
         background(.black)
-        let cell = width / Double(cols)
-        for j in 0..<rows {
-            for i in 0..<cols {
-                let x = (Double(i) + 0.5) * cell
-                let y = (Double(j) + 0.5) * cell
-                let n = noise(Double(i) * 0.06, Double(j) * 0.06, time * 0.25)
-                fill(palette.color(at: n + time * 0.05))
-                drawCircle(x, y, map(n, 0, 1, cell * 0.05, cell * 0.7))
-            }
+        let g = grid(columns: cols, rows: rows)
+        for dot in g.points {
+            let n = noise(Double(dot.column) * 0.06, Double(dot.row) * 0.06, time * 0.25)
+            fill(palette.color(at: n + time * 0.05))
+            drawCircle(center: dot.position,
+                       radius: map(n, 0, 1, g.cellWidth * 0.05, g.cellWidth * 0.7))
         }
     }
 }

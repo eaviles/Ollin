@@ -963,6 +963,11 @@ let package = Package(
             path: "Examples/Patterns/DotGrid"
         ),
         .executableTarget(
+            name: "Example-Patterns-Grid",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/Grid"
+        ),
+        .executableTarget(
             name: "Example-Patterns-Phyllotaxis",
             dependencies: ["Ollin"],
             path: "Examples/Patterns/Phyllotaxis"

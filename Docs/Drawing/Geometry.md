@@ -17,6 +17,8 @@
   - [Putting it together](#v2-together)
 - [Vector3](#vector3)
 - [Rectangle](#rectangle)
+- [Grid](#grid)
+- [Insets](#insets)
 - [Circle](#circle)
 - [Contour](#contour)
 - [Shape](#shape)
@@ -320,6 +322,7 @@ Rectangle(fitting size: Vector2, in container: Rectangle)
 - **Properties:** `corner`, `width`, `height`, `x`, `y`, `center`.
 - **Corners:** `topLeft`, `topRight`, `bottomRight`, `bottomLeft`.
 - **Test:** `contains(_ point: Vector2)` (the boundary counts as inside).
+- **Inset:** `inset(by: Insets)`, the rectangle shrunk inward by a per-edge margin (see [`Grid`](#grid)).
 
 `Rectangle(fitting:in:)` is the letterbox fit: the largest rectangle of `size`'s aspect ratio centered inside `container` — the box to draw an image or video frame into without stretching it (the fit behind `drawFrame` and `fittedRect(in:)`).
 
@@ -327,6 +330,97 @@ Rectangle(fitting size: Vector2, in container: Rectangle)
 let box = Rectangle(center: Vector2(width / 2, height / 2), width: 200, height: 120)
 drawRect(box)
 let p = randomVector(in: box)       // a random point inside it
+```
+
+<a name="grid"></a>
+
+### `Grid`
+
+A regular grid of `columns × rows` over a rectangle: the typed answer to the margin-then-nested-loop boilerplate so many sketches repeat. `Grid` is geometry, not a draw call. It gives you two things, and you loop whichever you're drawing: the **points** (the dots) or the **cells** (the rectangles). Each element carries its `column`/`row`, so **one** loop covers the indexed cases too, with no nested `for`.
+
+```swift
+Grid(in: Rectangle, columns: Int, rows: Int, padding: Insets = .zero, gutter: Double = 0, distribution: Distribution = .center)
+grid(columns: Int, rows: Int, padding: Insets = .zero, gutter: Double = 0, distribution: Distribution = .center)   // Sketch sugar, over the canvas
+```
+
+The `Sketch` form `grid(columns:rows:…)` lays the grid over the canvas `bounds`; the `Grid(in:…)` initializer takes any rectangle, so a grid can fill a render target, or a single cell, since grids nest. `padding` insets the whole grid from the edges; `gutter` is the gap *between* cells.
+
+- **Layout:** `bounds` (the region the cells fill, after `padding`), `columns`, `rows`, `gutter`, `cellWidth`, `cellHeight`, `cellSize`.
+- **Points:** `points`, every dot (`[Point]`, row-major); each a `column`, `row`, and `position`, laid out per the grid's `distribution` (below); `point(column:row:)` for one.
+- **Cells:** `cells`, every cell (`[Cell]`, row-major); each a `column`, `row`, true `center`, and `frame` rectangle; `cell(column:row:)` for one.
+
+Loop whichever you're drawing; the indices ride along, so a checkerboard or a hue-by-position is still one loop:
+
+```swift
+for dot in grid.points {                          // dots
+    drawCircle(center: dot.position, radius: 6)
+}
+for cell in grid.cells {                          // cells, with indices
+    fill((cell.column + cell.row) % 2 == 0 ? .white : .black)
+    drawRect(cell.frame)
+}
+```
+
+**Cells or dots: `distribution`.** A grid gives you the same `columns × rows` count either way; `distribution` only chooses where the **points** fall (`cells` always tile the bounds):
+
+- `.center` (default): one dot at the center of each cell, inset half a cell from the edges. The "a thing in every cell" layout.
+- `.spanning`: the dots form a lattice spanning the bounds edge to edge, the outer ones sitting on the boundary (the four corners at the rectangle's corners). The "grid of dots" layout, when you want the dots to reach the edges rather than float inside. (`gutter` doesn't apply; spanning dots span the full bounds.)
+
+```
+   .center (5×5)                 .spanning (5×5)
+   ┌─────────────┐               ●───●───●───●───●
+   │ ·  ·  ·  ·  ·│               │             │
+   │ ·  ·  ·  ·  ·│               ●   ●   ●   ●   ●
+   │ ·  ·  ·  ·  ·│               │             │
+   │ ·  ·  ·  ·  ·│               ●   ●   ●   ●   ●
+   │ ·  ·  ·  ·  ·│               │             │
+   └─────────────┘               ●───●───●───●───●
+   dots inset half a cell        outer dots on the edges
+```
+
+```swift
+for dot in grid(columns: 24, rows: 24, padding: 60, distribution: .spanning).points {
+    drawCircle(center: dot.position, radius: 6)   // dots reaching the edges
+}
+```
+
+**Gaps between cells: `gutter`.** `padding` is the margin around the whole grid; `gutter` is the gap *between* cells (0 = they touch). A contact sheet of tiles with an even gap inside and between them:
+
+```swift
+let g = grid(columns: 3, rows: 2, padding: .all(12), gutter: 12)
+for cell in g.cells {
+    drawImage(thumbnails[cell.row * g.columns + cell.column], in: cell.frame)
+}
+```
+
+Grids nest because a cell's `frame` is just another `Rectangle`:
+
+```swift
+for cell in grid(columns: 4, rows: 4, padding: 20).cells {
+    for sub in Grid(in: cell.frame, columns: 3, rows: 3, padding: 6).cells {
+        drawRect(sub.frame)
+    }
+}
+```
+
+<a name="insets"></a>
+
+### `Insets`
+
+A per-edge margin in sketch points (`top`, `right`, `bottom`, `left`), the currency for a `Grid`'s `padding` and `Rectangle.inset(by:)`. Build it the way the layout reads:
+
+```swift
+.all(20)                                 // every edge
+.symmetric(horizontal: 40, vertical: 20) // left/right vs top/bottom
+.horizontal(40)                          // left and right only
+.vertical(20)                            // top and bottom only
+Insets(top: 10, right: 0, bottom: 30, left: 0)
+```
+
+A bare number is an even inset on every edge, so `padding: 20` reads as `.all(20)`:
+
+```swift
+let g = grid(columns: 12, rows: 8, padding: 24)   // 24pt margin all around
 ```
 
 <a name="circle"></a>

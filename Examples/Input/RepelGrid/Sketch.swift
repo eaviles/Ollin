@@ -27,25 +27,23 @@ final class RepelGrid: Sketch {
         let margin = s * 0.0625
         let reach = s * 0.25
         let push = s * 0.0625
-        for i in 0..<30 {
-            for j in 0..<30 {
-                let x = map(Double(i), 0, 29, margin, width - margin)
-                let y = map(Double(j), 0, 29, margin, height - margin)
+        let g = grid(columns: 30, rows: 30, padding: .all(margin), distribution: .spanning)
+        for dot in g.points {
+            let x = dot.position.x, y = dot.position.y
 
-                let distance = dist(x, y, mouseX, mouseY)
-                let pct = map(distance, 0, reach, 1, 0, clamp: true)
+            let distance = dist(x, y, mouseX, mouseY)
+            let pct = map(distance, 0, reach, 1, 0, clamp: true)
 
-                var dx = x - mouseX
-                var dy = y - mouseY
-                if distance > 0 {            // normalize to a unit push direction
-                    dx /= distance
-                    dy /= distance
-                }
-
-                drawCircle(x + dx * pct * push,
-                           y + dy * pct * push,
-                           margin * (0.1 + 0.16 * pct))
+            var dx = x - mouseX
+            var dy = y - mouseY
+            if distance > 0 {            // normalize to a unit push direction
+                dx /= distance
+                dy /= distance
             }
+
+            drawCircle(x + dx * pct * push,
+                       y + dy * pct * push,
+                       margin * (0.1 + 0.16 * pct))
         }
     }
 }

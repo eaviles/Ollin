@@ -13,16 +13,11 @@ final class Colormaps: Sketch {
 
     override func draw() {
         background(.black)
-        let bandHeight = height / Double(maps.count)
-        let columns = 256
-        let columnWidth = width / Double(columns)
-        for (row, map) in maps.enumerated() {
-            for i in 0..<columns {
-                let t = Double(i) / Double(columns - 1)
-                fill(map.color(at: t))
-                drawRect(Double(i) * columnWidth, Double(row) * bandHeight,
-                     columnWidth + 1, bandHeight)
-            }
+        let g = grid(columns: 256, rows: maps.count)
+        for cell in g.cells {
+            let t = Double(cell.column) / Double(g.columns - 1)
+            fill(maps[cell.row].color(at: t))
+            drawRect(cell.frame)
         }
     }
 }

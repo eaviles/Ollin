@@ -16,24 +16,30 @@ final class Markers: Sketch {
 
     override func draw() {
         background(Color(white: 0.08))
-        let gutter = width * 0.16                 // left column reserved for labels
+        // The left strip holds the row labels; each marker row spans the rest in
+        // evenly spaced interior points (the grid is inset one gap off each edge,
+        // plus the label strip on the left).
+        let labelStrip = width * 0.16
+        let colGap = (width - labelStrip) / Double(columns + 1)
         let rowGap = height / Double(markers.count + 1)
-        let colGap = (width - gutter) / Double(columns + 1)
+        let g = grid(columns: columns, rows: markers.count,
+                     padding: Insets(top: rowGap, right: colGap, bottom: rowGap, left: labelStrip + colGap),
+                     distribution: .spanning)
         textSize(24 * scale)
         textAlign(.right, .middle)
-        for (row, marker) in markers.enumerated() {
-            pointMarker(marker)
-            let y = rowGap * Double(row + 1)
-            for col in 0..<columns {
-                let x = gutter + colGap * Double(col + 1)
-                let t = Double(col) / Double(columns - 1)
-                fill(Colormap.turbo.color(at: t))
-                let diameter = map(t, 0, 1, 10, 64) * scale
-                let pulse = 1 + 0.2 * sin(time * 2 + Double(col) * 0.4 + Double(row) * 0.8)
-                drawPoint(x, y, diameter * pulse)
+        for p in g.points {
+            let marker = markers[p.row]
+            pointMarker(marker)                       // the row's glyph, set per stamp
+            let x = p.position.x, y = p.position.y
+            if p.column == 0 {                        // one label per row, in the left strip
+                fill(.white)
+                drawText(name(marker), labelStrip - 24 * scale, y)
             }
-            fill(.white)
-            drawText(name(marker), gutter - 24 * scale, y)
+            let t = Double(p.column) / Double(columns - 1)
+            fill(Colormap.turbo.color(at: t))
+            let diameter = map(t, 0, 1, 10, 64) * scale
+            let pulse = 1 + 0.2 * sin(time * 2 + Double(p.column) * 0.4 + Double(p.row) * 0.8)
+            drawPoint(x, y, diameter * pulse)
         }
     }
 
