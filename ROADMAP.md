@@ -12,6 +12,7 @@ A few things worth knowing before you pick something up:
 - New drawing features are built on the typed core first (the `Drawer` and the value types), then given the bare p5-style call as sugar. Anything the bare API can do, the core should be able to do too, with more control.
 - A feature isn't considered done until it has an example. Examples live in [`Examples/`](Examples/), one idea per sketch, and they're compile-tested in CI so they don't rot. Writing the example is also how the API gets a sanity check: if it's awkward to write, the API probably needs work.
 - The items under [Up next](#up-next) are the most self-contained, so they tend to make the best first contributions.
+- A rough priority sits under sections where it helps: **Near-term** marks well-scoped, good next pickups; **Later** marks bigger items that lean on earlier work. Untagged sections are substantial and wanted, just not the very next thing. Genuinely speculative ideas live under [Further out / exploratory](#further-out--exploratory); the platform-gated legs under [On the horizon](#on-the-horizon).
 
 If you're coming from p5.js or JavaScript, [`Docs/Swift.md`](Docs/Swift.md) covers just enough Swift to get productive.
 
@@ -32,11 +33,23 @@ Near-term, fairly self-contained pieces, each small and well-scoped.
 
 ## Shader composition and live-coding
 
-Two linked directions: a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`), and a separate live-coding performance app built on top of it. Both are distinct from `OllinLive`, which is edit-loop hot-reload, not a performance tool. A third strand is **broadening the 3D SDF combinators**: the sphere-traced field merging (`drawSDF3D`) growing toward the full ShaderPark "sculpting" experience. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
+Two linked directions. First, a composable API for chaining and mixing shader-driven visuals fluently (in the spirit of Hydra's `osc().rotate().modulate(noise())`). Second, a separate **live-coding performance app** (working title `OllinLiveCoding`) built on top of the framework, a host app in the same tier as `OllinLive` and `OllinExamples`: you write and evaluate sketch code live with the code shown to the audience (the Hydra model, where the writing is the show). Its target is live-coding **the Ollin sketch in Swift**, not only shader expressions, built on the shipped dylib hot-reload engine. Both are distinct from `OllinLive`, which is file-watch dev hot-reload, not a performance tool. A third strand is **broadening the 3D SDF combinators**: the sphere-traced field merging (`drawSDF3D`) growing toward the full ShaderPark "sculpting" experience. See the [design notes](DESIGN-NOTES.md#shader-composition-and-live-coding-not-started).
 
 ## Generative geometry
 
-A tier of classic generative-art building blocks that emit vector geometry — points, `Contour`s, `Shape`s — feeding the existing draw, shape-boolean, hatching, and SVG paths rather than the renderer: **circle and shape packing** (grow-to-touch and front relaxation), **L-systems** (grammar-driven recursive structure), and **differential growth** (organic line and curve accretion). They share the plotter-friendly, geometry-first shape the shape booleans set, all driven by the existing seedable `random`/`noise` so a run is reproducible, and each ships with an example — several are the natural implementation behind a [recreation](DESIGN-NOTES.md#examples-folder-maintained-ongoing) of the artist who pioneered them. See the [design notes](DESIGN-NOTES.md#generative-geometry-not-started).
+**Near-term.** A tier of classic generative-art building blocks that emit vector geometry (points, `Contour`s, `Shape`s) feeding the existing draw, shape-boolean, hatching, and SVG paths rather than the renderer: **circle and shape packing** (grow-to-touch and front relaxation), **L-systems** (grammar-driven recursive structure), **differential growth** (organic line and curve accretion), **blue-noise and Poisson-disk sampling** (even-but-organic point distributions), **Wave Function Collapse** (constraint-solved tile layouts), and **Truchet tiling** (rotated tile sets that read as flowing pattern). They share the plotter-friendly, geometry-first shape the shape booleans set, all driven by the existing seedable `random`/`noise` so a run is reproducible, and each ships with an example, and several are the natural implementation behind a [recreation](DESIGN-NOTES.md#examples-folder-maintained-ongoing) of the artist who pioneered them. See the [design notes](DESIGN-NOTES.md#generative-geometry-not-started).
+
+## Technique and algorithm helpers
+
+**Near-term.** A standing, growing catalog of classic creative-coding techniques and algorithms as first-class helpers, the way the SDF shapes, the effect `Filter`s, and the [generative-geometry](#generative-geometry) builders are catalogs that keep growing. Each one lands wherever it fits the existing core (a geometry emitter beside the shape builders, a GPU `Generator` or shader for an escape-time or field technique, a simulation beside the compute and `SimField` paths), ships with an example, runs off the seedable `random`/`noise` so a result reproduces, and is implemented from the published technique (credited in the README's Techniques list). The families worth working through, none considered yet:
+
+- **Strange attractors and chaotic maps.** Lorenz, Rössler, Aizawa, Clifford, Peter de Jong, and friends: iterate the map or integrate the system and plot the orbit, in 2D and 3D, as a point cloud, a density field, or a traced polyline. The logistic and Hénon maps and the bifurcation diagram sit here too.
+- **Fractals.** Escape-time sets (Mandelbrot, Julia) as a GPU `Generator`; iterated function systems and fractal flames; diffusion-limited aggregation (dendritic growth).
+- **Agent and life simulations.** Boids flocking, physarum slime-mold agents, and a general cellular-automata helper (Wolfram and totalistic rules beyond the shipped Game of Life), each on the compute path the particle and `SimField` systems already use.
+- **Classic curves and distributions.** Phyllotaxis (the golden-angle spiral), Lissajous and rose curves, spirograph (hypotrochoids and epicycloids), and the space-filling curves (Hilbert, Peano, Gosper, dragon) that are a gift for the plotter. Low-discrepancy sampling (Halton, Sobol) and weighted-Voronoi stippling for even, organic point sets.
+- **Plotter line art.** TSP and minimum-spanning-tree single-line renderings of an image, and contour extraction via marching squares (already used internally for SDF outlines, worth surfacing).
+
+See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers-not-started).
 
 ## Project generator
 
@@ -44,7 +57,7 @@ An openFrameworks-style generator that scaffolds a ready-to-run sketch folder fr
 
 ## Variation galleries and seed exploration
 
-Ollin sketches are already reproducible (`seed()` makes a run deterministic) and tunable (`@Param`); the missing piece is *exploring the seed space* the way Art Blocks-style generators do. Navigate a sketch's variations — step through seeds, jump to one, randomize — and export a contact sheet of many seeds as a single image (the fixed-timestep frame driver behind `OllinApp.image(of:)` already renders any frame off-screen). Distinct from the [project generator](#project-generator), which scaffolds a *new* sketch; this explores the variation space of an existing one. See the [design notes](DESIGN-NOTES.md#variation-galleries-and-seed-exploration-not-started).
+**Near-term.** Ollin sketches are already reproducible (`seed()` makes a run deterministic) and tunable (`@Param`); the missing piece is *exploring the seed space* the way Art Blocks-style generators do. Navigate a sketch's variations (step through seeds, jump to one, randomize) and export a contact sheet of many seeds as a single image (the fixed-timestep frame driver behind `OllinApp.image(of:)` already renders any frame off-screen). Distinct from the [project generator](#project-generator), which scaffolds a *new* sketch; this explores the variation space of an existing one. See the [design notes](DESIGN-NOTES.md#variation-galleries-and-seed-exploration-not-started).
 
 ## iPhone as a sensor array
 
@@ -58,6 +71,79 @@ A Mac has no depth camera, inertial sensors, or spare Neural Engine for live per
 - **A live camera environment.** Image-based lighting bakes from a fixed texture; a *live* environment would re-bake (throttled) from a `FrameSource` so 3D objects reflect the real world, AR-style: `environment(.feed(camera))` from the Mac webcam, or the iPhone camera over the `OllinPhone` link, the same way ARKit's environment probes light virtual objects with the surrounding scene. It connects image-based lighting to the vision and phone-capture stack already in place.
 
 It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode-partly-shipped).
+
+## Camera control and cinematic moves
+
+**Near-term.** Two opt-in halves on the shipped 3D camera. The first is **interactive control at parity with `ofEasyCam` and p5's EasyCam**, with their ease of use as the bar: drag to orbit, scroll to dolly, modifier-drag to pan, damped so it feels good, mapped onto the existing `Camera3D.orbiting` pose so a sketch gets "look around the scene" in one call. The second is the part that's awkward to hand-roll and worth curating: **cinematic camera moves**, a small set of named, ready-to-use motions a sketch picks instead of keyframing by hand. A slow orbit, a push-in, a crane, an orbit-and-rise, a gentle handheld drift, each easing over a duration so the shot reads as composed. They ride a small reusable animation primitive (a value advanced over time by an easing curve) that also serves general property tweening and the eventual `@Param` keyframing. See the [design notes](DESIGN-NOTES.md#camera-control-and-cinematic-moves-not-started).
+
+## Sound, synthesis, and spatial audio
+
+The audio layer listens today (FFT, bands, beat detection) but can't make or place sound. Three additions turn it into an output channel: **synthesis** (oscillators with envelopes, filters, delay and reverb, a small patchable graph, so a sketch can voice itself), **spatial audio** (a drawn object emits sound from its position in the 3D scene, the camera as the listener), and **modal synthesis** (a shape rings at the frequencies its geometry implies, so form and timbre move together). **Sonification**, turning a data series or a field into sound, falls out of the same machinery. See the [design notes](DESIGN-NOTES.md#sound-synthesis-and-spatial-audio-not-started).
+
+## Tempo sync
+
+**Near-term.** Lock a sketch's motion to a live music setup, the way a VJ syncs visuals to a DJ. The clean first form rides the shipped MIDI transport: receive **MIDI clock** (plus start/stop/continue), derive tempo and beat phase, and expose `tempo` / `beat` / `phase` as values a sketch reads in `draw()` so animation falls on the beat, with the timeline primitive from [camera moves](#camera-control-and-cinematic-moves) able to run on musical time. The cross-app, cross-machine standard is **Ableton Link** (shared tempo and beat phase across apps and devices on a network); its own SDK is GPLv2 or a paid license, so it stays the inspiration-only tier (reimplement the protocol, never vendor it, the same posture as Hydra's AGPL). See the [design notes](DESIGN-NOTES.md#tempo-sync-not-started).
+
+## New input sources
+
+More of the platform's live signals, each a `FrameSource` or a simple value read in `draw()`:
+
+- **Screen and window capture.** Any app's window or the whole screen as a live texture, processed like a video feed (the non-cooperative complement to Syphon, which needs the other app to publish).
+- **Voice and sound events.** Speech recognition as drawable live captions, and sound-event classification (a clap, a genre, a bark) as a trigger, the audio analogue of the vision trackers.
+- **Rich controllers.** Game controllers (gyro, triggers, touchpad), trackpad pressure, and, on the iOS leg, Apple Pencil tilt and azimuth.
+- **Body and world data.** Heart rate from a paired Watch for biofeedback, and real-world ambient data (weather, location) as a slow live input.
+
+Several overlap the [iPhone sensor array](#iphone-as-a-sensor-array); these are the Mac-side direct sources. See the [design notes](DESIGN-NOTES.md#new-input-sources-not-started).
+
+## New output surfaces
+
+Ways a sketch leaves the window:
+
+- **Haptics.** A `draw()` that also emits a felt pattern synced to the visuals, on Force Touch trackpads and on the phone.
+- **The OS as a canvas.** Wrap a sketch as a macOS screen saver, a dynamic wallpaper, a desktop widget, or a menu-bar piece, so the output lives in the system rather than a window.
+- **Spatial export.** Export a 3D sketch as a USDZ (for AR Quick Look, sharing, and visionOS) or as spatial video, so the artifact stays three-dimensional instead of flattening to a frame.
+
+See the [design notes](DESIGN-NOTES.md#new-output-surfaces-not-started).
+
+## Rendering and color frontier
+
+Deeper use of the Metal core and Apple displays, all opt-in so the 2D path stays untaxed:
+
+- **Wide-gamut and HDR.** Composite and present through Display P3 (and Rec. 2020) end to end, and export true HDR video (HDR10 / Dolby Vision) from the float pipeline that already exists, for richer color than an 8-bit sRGB target can hold.
+- **GPU-driven rendering.** Indirect command buffers and mesh shaders to scale past instancing: many more distinct, GPU-encoded or GPU-generated objects with the CPU out of the per-object loop.
+- **Film-quality export.** An offline path-traced render path a sketch can switch to for gallery-grade stills and sequences, from the same scene tuned live (an extension of the ray-tracing direction noted under [3D mode](#3d-mode)).
+
+See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier-not-started). (The most speculative items here, spectral rendering, AI frame interpolation, and optical-flow self-warp, sit under [Further out / exploratory](#further-out--exploratory).)
+
+## Authoring and editor tooling
+
+**Later.** Editing experiences the live-reload core makes possible, and where Ollin draws its line on AI. The public stance already holds (the README's "It's a tool for making art ... Ollin is not a generative-art model"), and it extends to any AI *feature*: **AI is a tool for operating the framework, never an author of sketches.** Helping wire a generator, suggest a filter, or move knobs toward a look is in scope; generating a whole sketch or its imagery from a prompt is deliberately out. Within that line:
+
+- **A visual node editor** over the effect, SDF-combinator, and shader graphs, living in the live host and round-tripping to Swift source.
+- **Direct manipulation.** Drag a shape in the running window and have the edit written back into the source, the way a SwiftUI preview manipulates a layout.
+- **Record and replay.** Capture a run's input and parameter timeline and scrub it backward, a rewind for generative work.
+- **AI at the controls.** Drive the knobs, wire and parameterize generators, and tune toward a described look, all as operations on the typed `@Param` and effect graph, with the artist composing the sketch.
+- **On-device ML as a material.** Apple-silicon models a sketch invokes deliberately, like a noise function: semantic parameter control, neural style as a `Filter`, segmentation-driven generators. Image generation from a text prompt is the one to weigh most carefully against the stance above; if it ships, it is an optional material the artist composes with, never the framework making the piece.
+
+See the [design notes](DESIGN-NOTES.md#authoring-and-editor-tooling-not-started).
+
+## Collaboration and multi-device
+
+Apple-native, low-ceremony ways several machines share one piece: **Multipeer** local networking so several Macs and iPhones form one canvas with no server, the **iPhone as a 6DoF wand** (extending the sensor stream the phone already sends). (A more speculative **SharePlay** co-creation idea sits under [Further out / exploratory](#further-out--exploratory).) See the [design notes](DESIGN-NOTES.md#collaboration-and-multi-device-not-started).
+
+## Installation mode
+
+The concerns of a piece that runs unattended for days in a gallery rather than for a session at a desk: checkpoint and restore of generative state, restart on failure, scheduled evolution, and graceful handling of display sleep and wake. A documented, supported way to run long rather than a hope. See the [design notes](DESIGN-NOTES.md#installation-mode-not-started).
+
+## Further out / exploratory
+
+Lower-confidence ideas kept on record but deliberately not near-term: each is plausible on the platform, but speculative enough that it shouldn't crowd the planned work above. Distinct from [On the horizon](#on-the-horizon), which is the platform-gated later legs (iOS, visionOS, AR), not uncertainty.
+
+- **Spectral rendering.** Composite in spectra rather than RGB, for physically-correct subtractive color mixing, thin-film iridescence, and diffraction. (Detail under [rendering and color frontier](DESIGN-NOTES.md#rendering-and-color-frontier-not-started).)
+- **AI frame interpolation.** Render at a lower frame rate and ship smooth slow-motion via an on-device interpolation model.
+- **Optical-flow self-warp.** Feed the sketch's own motion field, from the shipped Vision optical flow, back into its history for flow and glitch looks.
+- **Text-to-image as a material.** On-device diffusion a sketch could invoke as an optional, labelled material. The one to weigh hardest against the AI boundary, since it sits closest to the contested use, so it lives here rather than in the planned [authoring tier](#authoring-and-editor-tooling); see the AI stance stated there.
+- **SharePlay co-creation.** Two people tuning one sketch together over a FaceTime call (GroupActivities). The most speculative of the [collaboration](#collaboration-and-multi-device) ideas.
 
 ## On the horizon
 
