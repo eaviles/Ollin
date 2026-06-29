@@ -74,7 +74,10 @@ struct OllinLiveApp: App {
         // The sidebar toggle as a menu command (⌘/, matching the standalone
         // hosts' Show Inspector). No "Show FPS"/detached-panel command here:
         // the sidebar is the live host's stats display.
-        .commands { LiveSidebarCommands() }
+        .commands {
+            LiveSidebarCommands()
+            OllinCameraCommands()
+        }
     }
 }
 

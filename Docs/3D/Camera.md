@@ -16,6 +16,7 @@ Each is a single call you make in `draw()`, like `camera(...)`. A sketch that ca
 - [Cinematic moves](#moves) - `cameraMove(_:)`
 - [The move catalog](#catalog) - `CameraMove`
 - [Composing: frame, then drift](#compose)
+- [Scene inspection views](#views) - `cameraView(_:)` / `resetCamera()`, the Camera menu
 - [Notes](#notes)
 
 <a id="showcase"></a>
@@ -129,6 +130,28 @@ override func draw() {
     drawScene()
 }
 ```
+
+<a id="views"></a>
+### Scene inspection views
+
+While building a 3D scene it helps to look at it from a known angle, the way a modeling tool's numpad snaps the viewport. `cameraView(_:)` does that: it glides the camera to a canonical orientation, then hands the pose back to whatever motion was running.
+
+```swift
+cameraView(.front)                  // look straight down +Z
+cameraView(.corner)                 // the isometric three-quarter, all three axes at once
+resetCamera()                       // back to the opening framing
+cameraView(.top, animated: false)   // cut instantly instead of gliding
+```
+
+The views:
+
+- `.reset` returns to the sketch's opening framing (its center, distance, and angle), the shot the first `cameraShowcase` / `cameraControl` / `cameraMove` call set. `resetCamera()` is sugar for it.
+- `.front` / `.back` / `.left` / `.right` / `.top` / `.bottom` look straight down each axis (each flattens the scene to two axes). They keep the current center and distance and only swing the orbit angle.
+- `.corner` is the isometric three-quarter (45° around, tilted so the three axes foreshorten equally), the one angle that shows all three axes at once.
+
+By default the camera glides over `duration` seconds (reusing the rig's eased return); pass `animated: false` to cut. A snap works with the rig (`cameraShowcase` / `cameraControl` / `cameraMove`): after gliding it resumes that motion from the snapped pose. A sketch that drives the camera by hand with `camera(...)` overrides the pose every frame, so a snap has no effect there, and a 2D sketch ignores it.
+
+**From the menu.** The host apps (a standalone `swift run Example-X`, the examples gallery, and OllinLive) carry a **Camera** menu with the same snaps and keyboard shortcuts, so you can orbit by hand and snap back without the sketch wiring anything: Reset View (⌘0), Front (⌘1), Back (⌘2), Right (⌘3), Left (⌘4), Top (⌘5), Bottom (⌘6), Corner (⌘7). The menu drives whatever 3D sketch is running.
 
 <a id="notes"></a>
 ### Notes

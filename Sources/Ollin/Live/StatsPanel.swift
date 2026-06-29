@@ -186,3 +186,33 @@ public struct OllinHUDCommands: Commands {
         }
     }
 }
+
+/// The "Camera" menu: snap the running 3D sketch to a canonical inspection view
+/// the way a modeling tool's numpad does. Add it to a host's scene with
+/// `.commands { OllinCameraCommands() }`; each item reaches the running sketch
+/// through `OllinActiveSketch`, so it works in every host (standalone examples,
+/// the gallery, OllinLive) with no per-scene wiring. A 2D sketch, or one that
+/// drives the camera by hand rather than through the rig, simply ignores it.
+public struct OllinCameraCommands: Commands {
+    public init() {}
+
+    public var body: some Commands {
+        CommandMenu("Camera") {
+            Button("Reset View") { Self.snap(.reset) }
+                .keyboardShortcut("0", modifiers: .command)
+            Divider()
+            Button("Front")  { Self.snap(.front) }.keyboardShortcut("1", modifiers: .command)
+            Button("Back")   { Self.snap(.back) }.keyboardShortcut("2", modifiers: .command)
+            Button("Right")  { Self.snap(.right) }.keyboardShortcut("3", modifiers: .command)
+            Button("Left")   { Self.snap(.left) }.keyboardShortcut("4", modifiers: .command)
+            Button("Top")    { Self.snap(.top) }.keyboardShortcut("5", modifiers: .command)
+            Button("Bottom") { Self.snap(.bottom) }.keyboardShortcut("6", modifiers: .command)
+            Button("Corner (Isometric)") { Self.snap(.corner) }
+                .keyboardShortcut("7", modifiers: .command)
+        }
+    }
+
+    @MainActor private static func snap(_ view: CameraView) {
+        OllinActiveSketch.runner?.requestCameraView(view)
+    }
+}

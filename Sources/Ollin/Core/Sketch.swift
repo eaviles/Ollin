@@ -337,8 +337,10 @@ open class Sketch {
     public func cameraMove(_ move: CameraMove, target: Vector3 = .zero, radius: Double = 10,
                            elevation: Double = 0.3, fieldOfView: Double = .pi / 3,
                            near: Double = 0.1, far: Double = 1000) {
+        cameraRig.driver = .move
         cameraRig.seed(target: target, radius: radius, elevation: elevation, fieldOfView: fieldOfView)
         cameraRig.updateMove(move, dt: deltaTime)
+        cameraRig.applyViewSnap(dt: deltaTime)
         camera(cameraRig.makeCamera(near: near, far: far))
     }
 
@@ -356,12 +358,14 @@ open class Sketch {
                               azimuth: Double = 0, elevation: Double = 0.3,
                               fieldOfView: Double = .pi / 3,
                               near: Double = 0.1, far: Double = 1000) {
+        cameraRig.driver = .control
         cameraRig.seed(target: target, radius: radius, azimuth: azimuth,
                        elevation: elevation, fieldOfView: fieldOfView)
         let input = CameraInput(mouseX: mouseX, mouseY: mouseY,
                                 leftPressed: mouseIsPressed, rightPressed: rightMouseIsPressed,
                                 modifiers: modifiers, scrollDeltaY: scrollDeltaY)
         cameraRig.updateControl(input: input, dt: deltaTime, viewportHeight: height)
+        cameraRig.applyViewSnap(dt: deltaTime)
         camera(cameraRig.makeCamera(near: near, far: far))
     }
 
@@ -383,6 +387,7 @@ open class Sketch {
                             elevation: Double = 0.3, fieldOfView: Double = .pi / 3,
                             near: Double = 0.1, far: Double = 1000,
                             idleReturn: Double = 10, returnDuration: Double = 4) {
+        cameraRig.driver = .showcase
         cameraRig.seed(target: target, radius: radius, elevation: elevation, fieldOfView: fieldOfView)
         let input = CameraInput(mouseX: mouseX, mouseY: mouseY,
                                 leftPressed: mouseIsPressed, rightPressed: rightMouseIsPressed,
@@ -390,7 +395,31 @@ open class Sketch {
         cameraRig.updateInteractiveMove(move, input: input, dt: deltaTime,
                                         viewportHeight: height, idleTimeout: idleReturn,
                                         returnDuration: returnDuration)
+        cameraRig.applyViewSnap(dt: deltaTime)
         camera(cameraRig.makeCamera(near: near, far: far))
+    }
+
+    /// Snap the camera to a canonical inspection angle, the way a modeling tool's
+    /// numpad jumps the viewport to a known view. `.reset` returns to the sketch's
+    /// opening framing; the six axis views (`.front`/`.back`/`.left`/`.right`/`.top`/
+    /// `.bottom`) look straight down each axis; and `.corner` is the isometric
+    /// three-quarter view that shows all three axes at once. The axis and corner
+    /// views keep the current center and distance and only swing the orbit angle.
+    ///
+    /// Works with the camera rig (`cameraShowcase`/`cameraControl`/`cameraMove`): a
+    /// snap glides the rig's pose, then hands back to the running motion from there.
+    /// A sketch driving the camera by hand with `camera(...)` overrides the pose
+    /// every frame, so a snap has no effect there. By default the camera glides over
+    /// `duration` seconds; pass `animated: false` to cut instantly.
+    public func cameraView(_ view: CameraView, animated: Bool = true, duration: Double = 0.6) {
+        cameraRig.requestView(view, animated: animated, duration: duration)
+    }
+
+    /// Return the camera to the sketch's opening framing (its center, distance, and
+    /// angle), as set by the first `cameraShowcase`/`cameraControl`/`cameraMove`
+    /// call. Sugar for `cameraView(.reset)`.
+    public func resetCamera(animated: Bool = true, duration: Double = 0.6) {
+        cameraView(.reset, animated: animated, duration: duration)
     }
 
     /// Draw a 3D `PointCloud` as camera-facing disc splats through the active

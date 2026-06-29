@@ -199,4 +199,72 @@ struct CameraRigTests {
         for _ in 0..<30 { step(input()) }                 // 0.5s settle (< idle 1)
         #expect(rig.radius < midReturn)                   // followed the new dolly, not the return
     }
+
+    // MARK: Scene inspection views
+
+    /// The true isometric elevation, `asin(1/√3)` — what `.corner` snaps to.
+    private let isoElevation = 0.6154797086703873
+
+    /// A cut (animated: false) snaps the orbit angle to the canonical view at once,
+    /// keeping the current center and distance.
+    @Test func viewCutsToAxisAngle() {
+        let rig = fresh(radius: 7)
+        rig.requestView(.front, animated: false, duration: 0)
+        #expect(abs(rig.azimuth) < 1e-9)
+        #expect(abs(rig.elevation) < 1e-9)
+        #expect(rig.radius == 7)                          // distance unchanged
+
+        rig.requestView(.right, animated: false, duration: 0)
+        #expect(abs(rig.azimuth - .pi / 2) < 1e-9)
+
+        rig.requestView(.top, animated: false, duration: 0)
+        #expect(rig.elevation > 1.5 && rig.elevation < .pi / 2)   // near the pole, never on it
+    }
+
+    /// `.corner` is the isometric three-quarter angle (45° around, `asin(1/√3)` up).
+    @Test func cornerViewIsIsometric() {
+        let rig = fresh()
+        rig.requestView(.corner, animated: false, duration: 0)
+        #expect(abs(rig.azimuth - .pi / 4) < 1e-9)
+        #expect(abs(rig.elevation - isoElevation) < 1e-9)
+    }
+
+    /// An animated snap glides to the target angle over its duration: partway it is
+    /// between the start and the destination, and by the end it has arrived.
+    @Test func viewGlidesToAngle() {
+        let rig = fresh()
+        rig.requestView(.right, animated: true, duration: 0.5)
+        for _ in 0..<15 { rig.applyViewSnap(dt: dt) }     // 0.25s of 0.5
+        #expect(rig.azimuth > 0.1 && rig.azimuth < .pi / 2 - 0.1)
+        for _ in 0..<30 { rig.applyViewSnap(dt: dt) }     // finish
+        #expect(abs(rig.azimuth - .pi / 2) < 1e-6)
+    }
+
+    /// `.reset` restores the full opening framing (target, radius, and angle), even
+    /// after the viewer has dollied and panned away.
+    @Test func resetRestoresOpeningFraming() {
+        let rig = fresh(radius: 6, elevation: 0.3)
+        for _ in 0..<10 { rig.updateControl(input: input(scroll: 3), dt: dt, viewportHeight: height) }
+        rig.updateControl(input: input(right: true), dt: dt, viewportHeight: height)
+        var x = 500.0
+        for _ in 0..<30 { x += 6; rig.updateControl(input: input(x: x, right: true), dt: dt, viewportHeight: height) }
+        for _ in 0..<60 { rig.updateControl(input: input(x: x), dt: dt, viewportHeight: height) }
+        #expect(rig.radius < 5.5 || rig.target.distance(to: .zero) > 0.1)   // drifted away
+
+        rig.requestView(.reset, animated: false, duration: 0)
+        #expect(abs(rig.radius - 6) < 1e-9)
+        #expect(abs(rig.elevation - 0.3) < 1e-9)
+        #expect(abs(rig.azimuth) < 1e-9)
+        #expect(rig.target.distance(to: .zero) < 1e-9)
+    }
+
+    /// After a snap, interactive control resumes from the snapped pose with no jump
+    /// (the hand-back resyncs the controller's goal to it).
+    @Test func controlResumesFromSnappedPose() {
+        let rig = fresh(radius: 6)
+        rig.requestView(.right, animated: false, duration: 0)   // driver defaults to .control
+        let snapped = rig.azimuth
+        for _ in 0..<60 { rig.updateControl(input: input(), dt: dt, viewportHeight: height) }
+        #expect(abs(rig.azimuth - snapped) < 1e-3)              // held, not drifted
+    }
 }

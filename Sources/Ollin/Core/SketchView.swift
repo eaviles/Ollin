@@ -5,6 +5,16 @@ import MetalKit
 import QuartzCore
 import simd
 
+/// The sketch runner currently drawing, so a host menu command can reach the
+/// running sketch without a per-scene reference (the camera-view snaps in
+/// `OllinCameraCommands`). Set each frame by the drawing runner; weak, so a closed
+/// window's runner is released. The shipping hosts show one sketch window at a
+/// time, so the most-recently-drawn runner is the right target.
+@MainActor
+enum OllinActiveSketch {
+    static weak var runner: SketchRunner?
+}
+
 // MARK: - The continuous draw loop
 
 /// Bridges an `MTKView`'s per-frame callback to a `Sketch`: it advances the
@@ -42,6 +52,11 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private var smoothedFrameRate: Double = 0
     private var smoothedCPUMS: Double = 0
 
+    /// A camera-view snap requested from the host menu (`OllinCameraCommands`),
+    /// applied at the top of the next frame so it rides the rig exactly like a
+    /// `cameraView(_:)` call from `draw()`.
+    private var pendingCameraView: CameraView?
+
     public init(sketch: Sketch, view: MTKView, device: MTLDevice) {
         self.sketch = sketch
         do {
@@ -64,6 +79,15 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         sketch.loopStateDidChange = { [weak self] looping in
             self?.view?.isPaused = !looping
         }
+    }
+
+    /// Snap the running sketch's camera to a canonical inspection view, requested
+    /// from a host menu command. Applied at the top of the next frame, so it rides
+    /// the camera rig like a `cameraView(_:)` call from `draw()`; a sketch that
+    /// doesn't use the rig (or is 2D) simply ignores it.
+    func requestCameraView(_ view: CameraView) {
+        pendingCameraView = view
+        self.view?.isPaused = false   // a noLoop() sketch must still snap on demand
     }
 
     /// Swap in a freshly loaded sketch without tearing down the window or GPU
@@ -143,6 +167,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     }
 
     public func draw(in view: MTKView) {
+        // The drawing runner is the one a host menu command should reach.
+        OllinActiveSketch.runner = self
+
         // Make sure the sketch knows its size before the first setup()/draw().
         if sketch.width == 0 || sketch.height == 0 {
             updateCanvasSize(from: view, drawableSize: view.drawableSize)
@@ -183,6 +210,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
 
         sketch.advance(time: now - startTime, deltaTime: dt, frameRate: smoothedFrameRate)
+
+        // A camera-view snap from the host menu: request it before the sketch's
+        // draw() runs, so its cameraShowcase/cameraControl/cameraMove call applies
+        // it this frame.
+        if let view = pendingCameraView {
+            pendingCameraView = nil
+            sketch.cameraView(view)
+        }
 
         // Time only the CPU tessellation (`performDraw`), not the render: the
         // renderer blocks on the triple-buffer semaphore (the vsync wait), which
@@ -1139,6 +1174,7 @@ struct OllinSketchApp: App {
             .commands {
                 CommandGroup(replacing: .appSettings) {}
                 OllinHUDCommands()
+                OllinCameraCommands()
             }
     }
 }

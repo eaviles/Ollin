@@ -681,6 +681,11 @@ let package = Package(
             path: "Examples/3D/CameraMoves"
         ),
         .executableTarget(
+            name: "Example-3D-SceneViews",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/SceneViews"
+        ),
+        .executableTarget(
             name: "Example-3D-Lighting",
             dependencies: ["Ollin"],
             path: "Examples/3D/Lighting"

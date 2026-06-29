@@ -13,6 +13,20 @@ struct CameraInput {
     var scrollDeltaY: Double
 }
 
+/// A canonical camera angle for inspecting a 3D scene, the way a modeling tool's
+/// numpad snaps the viewport to a known orientation.
+///
+/// `reset` returns to the sketch's opening framing (its center, distance, and
+/// angle); the six axis views look straight down each axis (each flattens the
+/// scene to two axes); and `corner` is the isometric three-quarter view that shows
+/// all three axes at once. The axis and corner views keep the current center and
+/// distance and only swing the orbit angle.
+public enum CameraView: String, Sendable, CaseIterable {
+    case reset
+    case front, back, left, right, top, bottom
+    case corner
+}
+
 /// Owns the canonical orbit pose (target, radius, azimuth, elevation, field of
 /// view) that both the interactive controller and the cinematic moves drive, and
 /// turns it into a `Camera3D` each frame.
@@ -41,6 +55,12 @@ final class CameraRig {
     /// frame), letting "frame by hand, run a move, grab it again" pick up smoothly.
     private enum Mode { case none, control, move }
     private var lastMode: Mode = .none
+
+    /// Which public camera API is driving the rig this frame, set by the `Sketch`
+    /// before its per-frame update so a finished view snap knows how to hand the
+    /// pose back to the right motion with no jump.
+    enum Driver { case control, move, showcase }
+    var driver: Driver = .control
 
     // MARK: Interactive control state
 
@@ -382,6 +402,110 @@ final class CameraRig {
         if diff > .pi { diff -= .tau }
         if diff < -.pi { diff += .tau }
         return a + diff * t
+    }
+
+    // MARK: View snap (the scene-inspection standard views)
+
+    /// An in-progress snap toward a canonical angle, eased over `snapDuration`.
+    /// While active it overrides whatever the per-frame motion produced, so the
+    /// camera glides to the view regardless of which driver is running.
+    private var snapActive = false
+    private var snapClock = 0.0
+    private var snapDuration = 0.0
+    private var snapFromAzimuth = 0.0
+    private var snapFromElevation = 0.0
+    private var snapFromRadius = 0.0
+    private var snapFromTarget = Vector3.zero
+    private var snapToAzimuth = 0.0
+    private var snapToElevation = 0.0
+    private var snapToRadius = 0.0
+    private var snapToTarget = Vector3.zero
+
+    /// The isometric three-quarter elevation: tilted so the three axes foreshorten
+    /// equally (45° around, `asin(1/√3)` up).
+    private static let isoElevation = asin(1.0 / sqrt(3.0))
+
+    /// Begin a snap to a canonical inspection angle. `reset` restores the opening
+    /// framing (target, radius, and angle); the others keep the current target and
+    /// radius and only swing the orbit angle. `animated: false` (or a non-positive
+    /// `duration`) cuts instantly.
+    func requestView(_ view: CameraView, animated: Bool, duration: Double) {
+        var toTarget = target
+        var toRadius = radius
+        var toAzimuth = azimuth
+        var toElevation = elevation
+
+        switch view {
+        case .reset:
+            toTarget = anchorTarget
+            toRadius = anchorRadius
+            toAzimuth = anchorAzimuth
+            toElevation = anchorElevation
+        case .front:  toAzimuth = 0;          toElevation = 0
+        case .back:   toAzimuth = .pi;        toElevation = 0
+        case .right:  toAzimuth = .pi / 2;    toElevation = 0
+        case .left:   toAzimuth = -.pi / 2;   toElevation = 0
+        case .top:    toAzimuth = 0;          toElevation = maxElevation
+        case .bottom: toAzimuth = 0;          toElevation = -maxElevation
+        case .corner: toAzimuth = .pi / 4;    toElevation = CameraRig.isoElevation
+        }
+        toElevation = clampedElevation(toElevation)
+
+        if !animated || duration <= 0 {
+            target = toTarget; radius = toRadius
+            azimuth = toAzimuth; elevation = toElevation
+            snapActive = false
+            handBackAfterSnap()
+            return
+        }
+
+        snapFromAzimuth = azimuth
+        snapFromElevation = elevation
+        snapFromRadius = radius
+        snapFromTarget = target
+        snapToAzimuth = toAzimuth
+        snapToElevation = toElevation
+        snapToRadius = toRadius
+        snapToTarget = toTarget
+        snapClock = 0
+        snapDuration = duration
+        snapActive = true
+    }
+
+    /// While a snap is in progress, override this frame's pose with the eased blend
+    /// toward the canonical angle. Called by the `Sketch` after its per-frame update
+    /// and before `makeCamera`. Returns whether the snap owned the pose this frame.
+    @discardableResult
+    func applyViewSnap(dt: Double) -> Bool {
+        guard snapActive else { return false }
+        snapClock += dt
+        let t = snapDuration > 0 ? Swift.min(snapClock / snapDuration, 1) : 1
+        let e = easeInOut(t)
+        azimuth = lerpAngle(snapFromAzimuth, snapToAzimuth, e)
+        elevation = snapFromElevation + (snapToElevation - snapFromElevation) * e
+        radius = snapFromRadius + (snapToRadius - snapFromRadius) * e
+        target = snapFromTarget.lerp(to: snapToTarget, e)
+        if t >= 1 {
+            snapActive = false
+            handBackAfterSnap()
+        }
+        return true
+    }
+
+    /// Hand the pose back to the active driver once a snap finishes, so the
+    /// underlying motion resumes from the snapped pose rather than jumping to where
+    /// it had drifted underneath.
+    private func handBackAfterSnap() {
+        switch driver {
+        case .control:
+            lastMode = .none              // updateControl resyncs its goal to the snapped pose
+        case .move:
+            activeMove = nil              // updateMove re-bases from the snapped pose
+        case .showcase:
+            interactivePhase = .manual    // hold the snapped view, then idle-return to the opening shot
+            idleClock = 0
+            lastMode = .none
+        }
     }
 
     // MARK: Pose
