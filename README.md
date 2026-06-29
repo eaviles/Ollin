@@ -165,6 +165,8 @@ or the instanced-SDF one), so shapes composite in the order you drew them. A
 vertex shader maps points to clip space (flipping Y), and MSAA (8× where the
 GPU supports it) covers the triangle path. The renderer is heavily commented because you'll be extending it.
 
+For how the larger systems work inside (the frame lifecycle, the screen-space effects, the SDF combinators, and more as they're written up), see [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ## Exporting frames
 
 Any sketch can render a frame to a PNG **headlessly**, with no window. That's handy for grabbing a still to share, for checking a sketch on a machine without a display, and as the basis for PNG sequences you can stitch into video:
@@ -317,4 +319,4 @@ Ollin is **alpha and pre-1.0**, developed in the open. Practically, that means:
 - **No support guarantee.** This is built nights and weekends. Issues and discussions get read, but a response time isn't promised.
 - **macOS 26+ and a Metal-capable GPU are required.** That's the trade described up top, not a gap to be filled later: no Linux or Windows path, by design.
 
-That said, contributions and ideas are genuinely welcome. [`ROADMAP.md`](ROADMAP.md) is the best source of bite-size work; its [Up next](ROADMAP.md#up-next) section maps onto small, self-contained pull requests. For anything larger, please open an issue to discuss it before sending a big change.
+That said, contributions and ideas are genuinely welcome. [`ROADMAP.md`](ROADMAP.md) is the best source of bite-size work; its [Up next](ROADMAP.md#up-next) section maps onto small, self-contained pull requests. For anything larger, please open an issue to discuss it before sending a big change. To get your bearings before touching one of the bigger systems, [`ARCHITECTURE.md`](ARCHITECTURE.md) explains how they work inside (and [`DESIGN-NOTES.md`](DESIGN-NOTES.md) covers the intent behind what's still planned).

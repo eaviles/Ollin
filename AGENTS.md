@@ -4,7 +4,7 @@ Ollin is a creative-coding framework for Swift and Metal on Apple platforms, aim
 
 ## Read this first
 
-The full development guidance lives in [`CLAUDE.md`](CLAUDE.md). It's the single source of truth for how the project is built and the conventions that hold it together, so read it before making changes. This file is a short orientation that points there rather than restating it.
+The full development guidance lives in [`CLAUDE.md`](CLAUDE.md). It's the single source of truth for how the project is built and the conventions that hold it together, so read it before making changes. This file is a short orientation that points there rather than restating it. When you're about to change one of the larger systems (the renderer, the effects, the 3D path), [`ARCHITECTURE.md`](ARCHITECTURE.md) is the companion that explains how it works inside, the how-and-why behind the terse invariants in `CLAUDE.md`.
 
 ## Build and verify
 
@@ -33,5 +33,6 @@ These come up most often. `CLAUDE.md` has the full reasoning; the short version:
 - [`README.md`](README.md) - what Ollin is, and how to run it
 - [`ROADMAP.md`](ROADMAP.md) - what's planned, and good first contributions
 - [`DESIGN-NOTES.md`](DESIGN-NOTES.md) - the engineering design behind planned work
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) - how the larger shipped systems work inside (the how and why, beyond the conventions)
 - [`Docs/`](Docs/) - the user-facing API reference
 - [`Examples/`](Examples/) - small, runnable sketches, one idea each
