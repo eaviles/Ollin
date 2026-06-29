@@ -48,7 +48,7 @@ final class LoadedMesh: Sketch {
 
     override func draw() {
         background(Color(hex: 0x0E1117))
-        camera(.orbiting(radius: 7, azimuth: time * 0.3, elevation: 0.2, fieldOfView: .pi / 4))
+        cameraShowcase(.turntable(period: .tau / 0.3), radius: 7, elevation: 0.2, fieldOfView: .pi / 4)
 
         if let mesh {
             let textured = mesh.material != nil

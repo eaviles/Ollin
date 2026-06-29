@@ -11,8 +11,8 @@ final class RaymarchedPointCast: Sketch {
         background(Color(hex: 0x0A0B10))
         let t = time
 
-        camera(.orbiting(target: Vector3(0, 0.8, 0), radius: 11,
-                         azimuth: t * 0.2, elevation: 0.5, fieldOfView: .pi / 4.6))
+        cameraShowcase(.turntable(period: .tau / 0.2), target: Vector3(0, 0.8, 0), radius: 11,
+                    elevation: 0.5, fieldOfView: .pi / 4.6)
 
         ambientLight(Color(white: 0.1))
         let bulb = Vector3(0, 5.5, 0)

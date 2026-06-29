@@ -18,9 +18,8 @@ final class PointShadow3D: Sketch {
     override func draw() {
         background(Color(hex: 0x0A0B10))
 
-        camera(.orbiting(target: Vector3(0, 1.0, 0), radius: 15,
-                         azimuth: time * 0.16, elevation: 0.55,
-                         fieldOfView: .pi / 4.6))
+        cameraShowcase(.turntable(period: .tau / 0.16), target: Vector3(0, 1.0, 0), radius: 15,
+                    elevation: 0.55, fieldOfView: .pi / 4.6)
 
         // The bulb hangs high above the center (well over the solids), so each one's
         // shadow fans down and outward onto the lit floor near its base rather than

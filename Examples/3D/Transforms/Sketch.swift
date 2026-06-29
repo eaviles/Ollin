@@ -35,9 +35,8 @@ final class Transforms3D: Sketch {
         background(Color(hex: 0x04050A))
 
         // Orbit the camera slowly around the whole mobile, looking slightly down.
-        camera(.orbiting(target: .zero, radius: 8.5,
-                         azimuth: time * 0.12, elevation: 0.40,
-                         fieldOfView: .pi / 3.2))
+        cameraShowcase(.turntable(period: .tau / 0.12), target: .zero, radius: 8.5,
+                    elevation: 0.40, fieldOfView: .pi / 3.2)
 
         withState {
             rotateY(time * 0.35)                 // the system turns as a whole

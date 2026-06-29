@@ -22,14 +22,13 @@ final class Lighting3D: Sketch {
     override func draw() {
         background(Color(hex: 0x0A0B10))
 
-        camera(.orbiting(target: Vector3(0, -0.2, 0), radius: 11,
-                         azimuth: sin(time * 0.15) * 0.5, elevation: 0.35,
-                         fieldOfView: .pi / 4))
+        cameraShowcase(.sway(amplitude: 0.5, period: .tau / 0.15), target: Vector3(0, -0.2, 0), radius: 11,
+                    elevation: 0.35, fieldOfView: .pi / 4)
 
         // The moving lights' positions, reused for their marker balls below.
         let pointPos = Vector3(cos(time * 0.7) * 3.5, 1.8, sin(time * 0.7) * 3.5)
         let spotPos = Vector3(sin(time * 0.5) * 3.0, 4.5, 0.5)
-        let spotAim = (Vector3(sin(time * 0.5) * 1.2, -1, 0) - Vector3(0, 0, 0)).normalized
+        let spotAim = Vector3(sin(time * 0.5) * 1.2, -1, 0).normalized
 
         // --- Lights (per-frame; set once, shade every mesh drawn this frame) ---
         ambientLight(Color(white: 0.12))

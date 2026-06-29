@@ -14,9 +14,8 @@ final class RaymarchedSculpt: Sketch {
         background(Color(hex: 0x101418))
         let t = time
 
-        camera(.orbiting(target: Vector3(0, 0.2, 0), radius: 6.0,
-                         azimuth: t * 0.4, elevation: 0.25,
-                         fieldOfView: .pi / 4, near: 0.1, far: 40))
+        cameraShowcase(.turntable(period: .tau / 0.4), target: Vector3(0, 0.2, 0), radius: 6.0,
+                    elevation: 0.25, fieldOfView: .pi / 4, near: 0.1, far: 40)
 
         directionalLight(.white, direction: Vector3(-0.5, 0.8, 0.4),
                          intensity: 1.2, softness: 0.3)

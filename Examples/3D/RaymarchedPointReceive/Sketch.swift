@@ -13,9 +13,8 @@ final class RaymarchedPointReceive: Sketch {
         background(Color(hex: 0x0b0d14))
         let t = time
 
-        camera(.orbiting(target: Vector3(0, -0.2, 0), radius: 7.0,
-                         azimuth: t * 0.25, elevation: 0.5,
-                         fieldOfView: .pi / 4, near: 0.1, far: 50))
+        cameraShowcase(.turntable(period: .tau / 0.25), target: Vector3(0, -0.2, 0), radius: 7.0,
+                    elevation: 0.5, fieldOfView: .pi / 4, near: 0.1, far: 50)
 
         pointLight(.white, at: Vector3(0, 4.5, 0.5), intensity: 2.0, specular: .white)
         ambientLight(Color(white: 0.16))

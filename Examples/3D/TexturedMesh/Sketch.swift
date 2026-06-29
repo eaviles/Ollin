@@ -19,9 +19,8 @@ final class TexturedMeshExample: Sketch {
     override func draw() {
         background(Color(hex: 0x0A0C12))
 
-        let azimuth = mouseIsPressed ? map(mouseX, 0, width, .pi, -.pi) : time * 0.4
-        camera(.orbiting(target: Vector3(0, 0.2, 0), radius: 6,
-                         azimuth: azimuth, elevation: 0.5, fieldOfView: .pi / 3.4))
+        cameraShowcase(.turntable(period: .tau / 0.4), target: Vector3(0, 0.2, 0), radius: 6,
+                    elevation: 0.5, fieldOfView: .pi / 3.4)
 
         // The floor wears the same grid, dimmed by its base color so the globe reads
         // as the subject. A textured mesh still takes the lights — here the auto-lit

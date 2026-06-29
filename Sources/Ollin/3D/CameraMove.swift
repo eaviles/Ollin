@@ -92,6 +92,14 @@ public struct CameraMove: Sendable, Equatable {
         CameraMove(kind: .handheld(amount: amount, speed: speed))
     }
 
+    /// The curated default motion for `cameraShowcase(_:)`: a gentle, slow product-shot
+    /// turntable, one revolution every `period` seconds. A calm orbit that showcases
+    /// the object without drawing attention to the camera. (A `.turntable` under the
+    /// hood, so `cameraShowcase` lets the viewer take it over and eases back when idle.)
+    public static func autoOrbit(period: Double = 24) -> CameraMove {
+        CameraMove(kind: .turntable(period: period))
+    }
+
     /// Two moves are the same motion when their numeric parameters match; the
     /// easing curve is excluded (it is a closure, not comparable), which is enough
     /// for the rig to tell when a *different* move has been handed in.

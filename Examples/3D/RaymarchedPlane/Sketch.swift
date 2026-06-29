@@ -10,11 +10,9 @@ import Foundation
 final class RaymarchedPlane: Sketch {
     override func draw() {
         background(Color(hex: 0x0a0e16))
-        let t = time
 
-        camera(.orbiting(target: Vector3(0, 0.1, 0), radius: 7,
-                         azimuth: t * 0.22, elevation: 0.32,
-                         fieldOfView: .pi / 4, near: 0.1, far: 60))
+        cameraShowcase(.turntable(period: .tau / 0.22), target: Vector3(0, 0.1, 0), radius: 7,
+                    elevation: 0.32, fieldOfView: .pi / 4, near: 0.1, far: 60)
 
         directionalLight(.white, direction: Vector3(0.4, -0.92, -0.25),
                          intensity: 1.3, softness: 0.2)

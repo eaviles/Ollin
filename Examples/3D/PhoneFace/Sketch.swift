@@ -70,10 +70,9 @@ final class PhoneFace3D: Sketch {
         center = center / Double(faces.count)
 
         // Widen the orbit as more faces spread out so they all stay in frame.
-        let azimuth = mouseIsPressed ? map(mouseX, 0, width, .pi, -.pi) : time * 0.4
         let radius = 0.42 + Double(faces.count - 1) * 0.3
-        camera(.orbiting(target: center, radius: radius, azimuth: azimuth,
-                         elevation: 0.04, fieldOfView: .pi / 3))
+        cameraShowcase(.turntable(period: .tau / 0.4), target: center, radius: radius,
+                    elevation: 0.04, fieldOfView: .pi / 3)
 
         // Each face as its triangle net — the recognizable AR face mesh — placed at its
         // head's world position.

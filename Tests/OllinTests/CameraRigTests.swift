@@ -118,4 +118,85 @@ struct CameraRigTests {
         rig.updateMove(.turntable(period: 100), dt: dt)   // slow, so frame 1 barely moves
         #expect(abs(rig.azimuth - framed) < 0.05)
     }
+
+    // MARK: Interactive move (auto-orbit the viewer can take over)
+
+    private let move = CameraMove.turntable(period: 8)
+
+    private func interactive(_ rig: CameraRig, _ inp: CameraInput,
+                             idleTimeout: Double = 10, returnDuration: Double = 4) {
+        rig.updateInteractiveMove(move, input: inp, dt: dt, viewportHeight: height,
+                                  idleTimeout: idleTimeout, returnDuration: returnDuration)
+    }
+
+    /// While no one touches it, the auto-orbit just spins (the move drives).
+    @Test func interactiveMoveSpinsWhenIdle() {
+        let rig = fresh(radius: 6)
+        let start = rig.azimuth
+        for _ in 0..<60 { interactive(rig, input()) }     // 1s of a period-8 turn
+        #expect(abs((rig.azimuth - start) - Double.tau / 8) < 0.05)
+    }
+
+    /// A drag hands off to the controller: the turntable stops advancing, and once
+    /// released (still well within the idle window) the pose settles to rest rather
+    /// than spinning on at the move's rate.
+    @Test func dragInterruptsTheAutoOrbit() {
+        let rig = fresh(radius: 6)
+        for _ in 0..<30 { interactive(rig, input()) }     // let it spin a bit
+        interactive(rig, input(left: true))
+        var x = 500.0
+        for _ in 0..<30 { x -= 6; interactive(rig, input(x: x, left: true)) }
+        for _ in 0..<120 { interactive(rig, input(x: x)) }   // 2s idle (< 10), settles
+        let a1 = rig.azimuth
+        interactive(rig, input(x: x))
+        // If the turntable were still active it would advance ~tau/8/60 ≈ 0.013 rad.
+        #expect(abs(rig.azimuth - a1) < 1e-3)
+    }
+
+    /// After the idle timeout the camera glides back to the *opening* framing: a
+    /// viewer who dollied in and tilted away ends up at the seeded radius/elevation.
+    @Test func idleReturnsToOpeningFraming() {
+        let rig = fresh(radius: 6, elevation: 0.3)
+        func step(_ inp: CameraInput) { interactive(rig, inp, idleTimeout: 1, returnDuration: 1) }
+        for _ in 0..<10 { step(input(scroll: 3)) }        // dolly in, away from radius 6
+        step(input(left: true)); var y = 500.0
+        for _ in 0..<30 { y += 6; step(input(y: y, left: true)) }   // tilt away from 0.3
+        for _ in 0..<30 { step(input(y: y)) }             // 0.5s settle (< idle 1)
+        #expect(rig.radius < 5.5)
+        #expect(abs(rig.elevation - 0.3) > 0.1)
+        for _ in 0..<300 { step(input()) }                // idle past timeout + full return
+        #expect(abs(rig.radius - 6) < 0.05)
+        #expect(abs(rig.elevation - 0.3) < 0.05)
+    }
+
+    /// No discontinuity at the manual→returning seam: the pose is held at the
+    /// viewer's pose when the return begins and blends in from there.
+    @Test func returnStartsWithoutAJump() {
+        let rig = fresh(radius: 6)
+        func step(_ inp: CameraInput) { interactive(rig, inp, idleTimeout: 1, returnDuration: 4) }
+        step(input(left: true)); var x = 500.0
+        for _ in 0..<20 { x += 4; step(input(x: x, left: true)) }
+        var prev = rig.azimuth
+        var maxJump = 0.0
+        for _ in 0..<120 {                                // 2s, crosses the 1s seam at 60
+            step(input(x: x))
+            maxJump = Swift.max(maxJump, abs(rig.azimuth - prev))
+            prev = rig.azimuth
+        }
+        #expect(maxJump < 0.1)                            // a seam jump would be far larger
+    }
+
+    /// Grabbing the camera again mid-return cancels it: the new input drives the
+    /// pose instead of snapping back to the opening shot.
+    @Test func interactionCancelsReturn() {
+        let rig = fresh(radius: 6)
+        func step(_ inp: CameraInput) { interactive(rig, inp, idleTimeout: 1, returnDuration: 4) }
+        for _ in 0..<10 { step(input(scroll: 3)) }        // dolly in
+        for _ in 0..<90 { step(input()) }                 // 1.5s: into the (4s) return
+        let midReturn = rig.radius
+        #expect(midReturn < 5.9)                          // not yet back at 6
+        for _ in 0..<10 { step(input(scroll: 3)) }        // grab again, dolly further
+        for _ in 0..<30 { step(input()) }                 // 0.5s settle (< idle 1)
+        #expect(rig.radius < midReturn)                   // followed the new dolly, not the return
+    }
 }

@@ -44,9 +44,8 @@ final class PhoneBodyPose: Sketch {
         let center = body.center
         if let c = orbitCenter { orbitCenter = c.lerp(to: center, 0.12) } else { orbitCenter = center }
 
-        let azimuth = mouseIsPressed ? map(mouseX, 0, width, .pi, -.pi) : time * 0.4
-        camera(.orbiting(target: orbitCenter ?? center, radius: 2.6, azimuth: azimuth,
-                         elevation: 0.12, fieldOfView: .pi / 3))
+        cameraShowcase(.turntable(period: .tau / 0.4), target: orbitCenter ?? center, radius: 2.6,
+                    elevation: 0.12, fieldOfView: .pi / 3)
 
         // Tracked = warm white; extrapolated (ARKit lost the person) = dim blue.
         let tint = body.isTracked ? Color(white: 0.95) : Color(hex: 0x5C6B8A)

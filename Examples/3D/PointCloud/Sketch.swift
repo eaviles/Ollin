@@ -20,9 +20,8 @@ final class PointCloud3D: Sketch {
         background(Color(hex: 0x05060A))
 
         // Orbit the camera slowly around the field, looking slightly down.
-        camera(.orbiting(target: Vector3(0, -0.1, 0), radius: 5.4,
-                         azimuth: time * 0.3, elevation: 0.5,
-                         fieldOfView: .pi / 3.4))
+        cameraShowcase(.turntable(period: .tau / 0.3), target: Vector3(0, -0.1, 0), radius: 5.4,
+                    elevation: 0.5, fieldOfView: .pi / 3.4)
 
         var cloud = PointCloud()
         cloud.points.reserveCapacity(n * n)

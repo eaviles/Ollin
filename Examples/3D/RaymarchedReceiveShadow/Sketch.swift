@@ -11,9 +11,8 @@ final class RaymarchedReceiveShadow: Sketch {
         background(Color(hex: 0x0c0f16))
         let t = time
 
-        camera(.orbiting(target: Vector3(0, -0.2, 0), radius: 7.0,
-                         azimuth: t * 0.25, elevation: 0.5,
-                         fieldOfView: .pi / 4, near: 0.1, far: 50))
+        cameraShowcase(.turntable(period: .tau / 0.25), target: Vector3(0, -0.2, 0), radius: 7.0,
+                    elevation: 0.5, fieldOfView: .pi / 4, near: 0.1, far: 50)
 
         directionalLight(.white, direction: Vector3(0.3, -0.95, -0.1),
                          intensity: 1.3, softness: 0.2)

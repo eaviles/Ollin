@@ -16,9 +16,8 @@ final class SpotShadow3D: Sketch {
     override func draw() {
         background(Color(hex: 0x0C0E13))
 
-        camera(.orbiting(target: Vector3(0, 1.0, 0), radius: 14,
-                         azimuth: time * 0.18, elevation: 0.5,
-                         fieldOfView: .pi / 4.4))
+        cameraShowcase(.turntable(period: .tau / 0.18), target: Vector3(0, 1.0, 0), radius: 14,
+                    elevation: 0.5, fieldOfView: .pi / 4.4)
 
         // No directional light in the scene, so the spot is the caster. A dim point
         // light fills the shaded sides (point lights aren't shadow casters yet, so it

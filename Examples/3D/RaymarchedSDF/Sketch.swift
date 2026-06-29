@@ -14,9 +14,8 @@ final class RaymarchedSDF: Sketch {
         background(Color(hex: 0x0e1116))
         let t = time
 
-        camera(.orbiting(target: .zero, radius: 5.5,
-                         azimuth: t * 0.35, elevation: 0.45,
-                         fieldOfView: .pi / 4, near: 0.1, far: 40))
+        cameraShowcase(.turntable(period: .tau / 0.35), target: .zero, radius: 5.5,
+                    elevation: 0.45, fieldOfView: .pi / 4, near: 0.1, far: 40)
 
         // A key light from the upper left plus a soft ambient, so the blob reads as form.
         directionalLight(.white, direction: Vector3(-0.6, 0.7, 0.5),

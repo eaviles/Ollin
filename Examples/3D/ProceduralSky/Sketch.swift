@@ -29,9 +29,8 @@ final class ProceduralSky: Sketch {
         background(.black)
         toneMap(.aces)   // a filmic rolloff for the sky's bright highlights and the sun
 
-        camera(.orbiting(target: Vector3(0, 0.55, 0), radius: 12,
-                         azimuth: sin(time * 0.08) * 0.5, elevation: 0.10,
-                         fieldOfView: .pi / 4.2))
+        cameraShowcase(.sway(amplitude: 0.5, period: .tau / 0.08), target: Vector3(0, 0.55, 0), radius: 12,
+                    elevation: 0.10, fieldOfView: .pi / 4.2)
 
         // The sky is the only light. It both lights the materials and draws as the backdrop.
         environment(.sky(turbidity: turbidity, sunElevation: elevation).rotated(azimuth))

@@ -82,6 +82,27 @@ final class CameraRig {
     /// sketch's `noise()` so a handheld move neither reads nor disturbs it.
     private let breath = PerlinNoise(seed: 0x0A11_0CA3_CA3E_0B07)
 
+    // MARK: Interactive-move state
+
+    /// `updateInteractiveMove` is a small state machine over the two halves above:
+    /// the move plays (`driving`) until the viewer touches the camera (`manual`),
+    /// and after an idle stretch it eases back to the opening shot (`returning`).
+    private enum InteractivePhase { case driving, manual, returning }
+    private var interactivePhase: InteractivePhase = .driving
+    private var idleClock = 0.0
+    private var returnClock = 0.0
+    private var returnFromAzimuth = 0.0
+    private var returnFromElevation = 0.0
+    private var returnFromRadius = 0.0
+    private var returnFromTarget = Vector3.zero
+
+    /// The opening framing captured at `seed()`, so the idle return glides back to
+    /// the shot the sketch framed rather than wherever the viewer left the camera.
+    private var anchorTarget = Vector3.zero
+    private var anchorRadius = 10.0
+    private var anchorAzimuth = 0.0
+    private var anchorElevation = 0.3
+
     /// Seed the starting pose once. The first `cameraControl()` / `cameraMove()`
     /// call wins; later calls keep whatever the controller or move has reached, so
     /// passing framing arguments every frame does not snap the pose back.
@@ -94,6 +115,10 @@ final class CameraRig {
         self.azimuth = azimuth
         self.elevation = elevation
         self.fieldOfView = fieldOfView
+        anchorTarget = target
+        anchorRadius = radius
+        anchorAzimuth = azimuth
+        anchorElevation = elevation
     }
 
     // MARK: Interactive control
@@ -255,6 +280,108 @@ final class CameraRig {
 
     private func angularSpeed(_ period: Double) -> Double {
         period != 0 ? Double.tau / period : 0
+    }
+
+    // MARK: Interactive move (auto-orbit the viewer can take over)
+
+    /// Play `move` as an auto-orbit the viewer can grab. A drag / dolly / pan hands
+    /// off to the interactive controller; after `idleTimeout` seconds of no input the
+    /// pose eases back over `returnDuration` seconds to the opening framing and the
+    /// move resumes. Reuses `updateMove` and `updateControl` for the two halves, so
+    /// it adds only the phase bookkeeping and the return blend.
+    func updateInteractiveMove(_ move: CameraMove, input: CameraInput, dt: Double,
+                               viewportHeight: Double, idleTimeout: Double,
+                               returnDuration: Double) {
+        // Any fresh touch (in driving or returning) hands off to the controller this
+        // very frame, so the input that started it (a scroll tick included) lands.
+        let interacting = isInteracting(input)
+        if interacting && interactivePhase != .manual {
+            interactivePhase = .manual
+            idleClock = 0
+        }
+
+        switch interactivePhase {
+        case .driving:
+            updateMove(move, dt: dt)
+
+        case .manual:
+            updateControl(input: input, dt: dt, viewportHeight: viewportHeight)
+            if interacting {
+                idleClock = 0
+            } else {
+                idleClock += dt
+                if idleClock >= idleTimeout { beginReturn(to: move) }
+            }
+
+        case .returning:
+            advanceReturn(move, dt: dt, returnDuration: returnDuration)
+        }
+    }
+
+    /// Whether this frame's input is the viewer driving the camera: an orbit drag, a
+    /// pan (right-drag or modifier-drag), or a scroll dolly.
+    private func isInteracting(_ input: CameraInput) -> Bool {
+        let panModifier = input.modifiers.contains(.shift) || input.modifiers.contains(.option)
+        let isOrbit = input.leftPressed && !panModifier
+        let isPan = input.rightPressed || (input.leftPressed && panModifier)
+        return isOrbit || isPan || input.scrollDeltaY != 0
+    }
+
+    /// Snapshot the viewer's pose, restart the move from the *opening* framing (so the
+    /// blend's destination is the original shot, still orbiting), then hold the
+    /// displayed pose at the viewer's pose; the return blends in from there.
+    private func beginReturn(to move: CameraMove) {
+        returnFromAzimuth = azimuth
+        returnFromElevation = elevation
+        returnFromRadius = radius
+        returnFromTarget = target
+
+        target = anchorTarget
+        radius = anchorRadius
+        elevation = anchorElevation
+        azimuth = anchorAzimuth
+        startMove(move)                  // base = opening framing, clock 0
+
+        azimuth = returnFromAzimuth       // restore the displayed pose to the viewer's
+        elevation = returnFromElevation
+        radius = returnFromRadius
+        target = returnFromTarget
+
+        returnClock = 0
+        interactivePhase = .returning
+    }
+
+    /// Ease from the viewer's pose toward the opening-shot orbit; when the blend
+    /// completes the move owns the pose again. The move keeps advancing underneath,
+    /// so the destination is a live orbit, not a frozen frame.
+    private func advanceReturn(_ move: CameraMove, dt: Double, returnDuration: Double) {
+        returnClock += dt
+        let t = returnDuration > 0 ? Swift.min(returnClock / returnDuration, 1) : 1
+        let e = easeInOut(t)
+
+        updateMove(move, dt: dt)          // the opening-framing pose, still orbiting
+        let moveAzimuth = azimuth, moveElevation = elevation
+        let moveRadius = radius, moveTarget = target
+
+        azimuth = lerpAngle(returnFromAzimuth, moveAzimuth, e)
+        elevation = returnFromElevation + (moveElevation - returnFromElevation) * e
+        radius = returnFromRadius + (moveRadius - returnFromRadius) * e
+        target = returnFromTarget.lerp(to: moveTarget, e)
+
+        if returnClock >= returnDuration { interactivePhase = .driving }
+    }
+
+    /// Hermite smoothstep (flat slope at both ends), so the return ramps in and out
+    /// smoothly (the orbit's angular velocity rises from rest to full).
+    private func easeInOut(_ t: Double) -> Double { t * t * (3 - 2 * t) }
+
+    /// Interpolate an angle along the shortest arc, so a viewer who spun the camera
+    /// far around returns the short way instead of unwinding every turn.
+    private func lerpAngle(_ a: Double, _ b: Double, _ t: Double) -> Double {
+        var diff = (b - a).truncatingRemainder(dividingBy: .tau)
+        if diff > .pi { diff -= .tau }
+        if diff < -.pi { diff += .tau }
+        return a + diff * t
     }
 
     // MARK: Pose

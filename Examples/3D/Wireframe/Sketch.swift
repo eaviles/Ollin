@@ -18,9 +18,8 @@ final class WireframeExample: Sketch {
 
     override func draw() {
         background(Color(hex: 0x07080D))
-        camera(.orbiting(target: .zero, radius: 9,
-                         azimuth: mouseIsPressed ? map(mouseX, 0, width, .pi, -.pi) : time * 0.3,
-                         elevation: 0.25, fieldOfView: .pi / 4))
+        cameraShowcase(.turntable(period: .tau / 0.3), target: .zero, radius: 9,
+                    elevation: 0.25, fieldOfView: .pi / 4)
 
         wireframe()                 // every mesh from here draws as edges
         strokeWeight(1.5)

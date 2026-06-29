@@ -20,9 +20,8 @@ final class ImageBasedLighting: Sketch {
         background(Color(hex: 0x0B0C12))
         toneMap(.aces)   // a filmic highlight rolloff for the HDR environment
 
-        camera(.orbiting(target: Vector3(0, 0, 0), radius: 16,
-                         azimuth: sin(time * 0.12) * 0.5, elevation: 0.16,
-                         fieldOfView: .pi / 4.2))
+        cameraShowcase(.sway(amplitude: 0.5, period: .tau / 0.12), target: .zero, radius: 16,
+                    elevation: 0.16, fieldOfView: .pi / 4.2)
 
         // The environment is the only light. Spin it slowly so the key light and the
         // reflections drift across the spheres.

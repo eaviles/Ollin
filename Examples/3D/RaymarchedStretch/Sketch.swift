@@ -11,8 +11,8 @@ final class RaymarchedStretch: Sketch {
     override func draw() {
         background(Color(hex: 0x0d1018))
         let t = time
-        camera(.orbiting(target: Vector3(0, 0, 0), radius: 8.5, azimuth: t * 0.3, elevation: 0.3,
-                         fieldOfView: .pi / 4, near: 0.1, far: 50))
+        cameraShowcase(.turntable(period: .tau / 0.3), target: .zero, radius: 8.5,
+                    elevation: 0.3, fieldOfView: .pi / 4, near: 0.1, far: 50)
         directionalLight(.white, direction: Vector3(-0.3, -0.8, -0.5), intensity: 1.2, softness: 0.3)
         ambientLight(Color(white: 0.2))
         material(.glossy)

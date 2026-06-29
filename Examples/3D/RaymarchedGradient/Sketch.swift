@@ -12,9 +12,8 @@ final class RaymarchedGradient: Sketch {
         background(Color(hex: 0x0b1020))
         let t = time
 
-        camera(.orbiting(target: Vector3(0, 0, 0), radius: 6,
-                         azimuth: t * 0.3, elevation: 0.25,
-                         fieldOfView: .pi / 4, near: 0.1, far: 40))
+        cameraShowcase(.turntable(period: .tau / 0.3), target: .zero, radius: 6,
+                    elevation: 0.25, fieldOfView: .pi / 4, near: 0.1, far: 40)
 
         directionalLight(.white, direction: Vector3(-0.3, -0.85, -0.45),
                          intensity: 1.2, softness: 0.35)

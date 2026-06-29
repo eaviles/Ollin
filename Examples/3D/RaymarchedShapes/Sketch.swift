@@ -13,9 +13,8 @@ final class RaymarchedShapes: Sketch {
         background(Color(hex: 0x0f1014))
         let t = time
 
-        camera(.orbiting(target: Vector3(0, 0.3, 0), radius: 9.5,
-                         azimuth: sin(t * 0.25) * 0.12, elevation: 0.22,
-                         fieldOfView: .pi / 4, near: 0.1, far: 40))
+        cameraShowcase(.sway(amplitude: 0.12, period: .tau / 0.25), target: Vector3(0, 0.3, 0), radius: 9.5,
+                    elevation: 0.22, fieldOfView: .pi / 4, near: 0.1, far: 40)
 
         directionalLight(.white, direction: Vector3(-0.5, 0.8, 0.5),
                          intensity: 1.15, softness: 0.25)

@@ -41,9 +41,8 @@ final class ShapeFactory: Sketch {
 
     override func draw() {
         background(Color(hex: 0x07080D))
-        camera(.orbiting(target: .zero, radius: 13,
-                         azimuth: sin(time * 0.18) * 0.16, elevation: 0.18,
-                         fieldOfView: .pi / 3.4))
+        cameraShowcase(.sway(amplitude: 0.16, period: .tau / 0.18), target: .zero, radius: 13,
+                    elevation: 0.18, fieldOfView: .pi / 3.4)
 
         // The two morphing shapes, rebuilt from time-driven parameters.
         let wobble = sin(time * 0.4) * 0.5 + 0.5                // 0…1

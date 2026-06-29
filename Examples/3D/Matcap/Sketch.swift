@@ -44,9 +44,8 @@ final class MatcapGallery: Sketch {
         background(Color(hex: 0x0B0C12))
 
         // Orbit so the view-keyed matcap shading shifts as the spheres turn.
-        camera(.orbiting(target: Vector3(0, 0, 0), radius: 21,
-                         azimuth: sin(time * 0.15) * 0.5, elevation: 0.18,
-                         fieldOfView: .pi / 4.5))
+        cameraShowcase(.sway(amplitude: 0.5, period: .tau / 0.15), target: .zero, radius: 21,
+                    elevation: 0.18, fieldOfView: .pi / 4.5)
 
         fill(.white)   // show each matcap as captured (fill tints it)
         let rows = (entries.count + columns - 1) / columns

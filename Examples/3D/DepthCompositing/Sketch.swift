@@ -39,16 +39,11 @@ final class DepthCompositing: Sketch {
 
         // Orbit the camera, looking along the ring's plane so orbs pass clearly in
         // front of and behind the card at the center.
-        let azimuth = time * 0.35, elevation = 0.22, orbitRadius = 5.2
-        camera(.orbiting(target: .zero, radius: orbitRadius,
-                         azimuth: azimuth, elevation: elevation,
-                         fieldOfView: .pi / 3.6))
-        // The eye position (same formula the orbiting camera uses), to seat each
-        // pin on the camera-facing surface of its orb rather than buried in it.
-        let ce = cos(elevation)
-        let eye = Vector3(orbitRadius * ce * sin(azimuth),
-                          orbitRadius * sin(elevation),
-                          orbitRadius * ce * cos(azimuth))
+        cameraShowcase(.turntable(period: .tau / 0.35), radius: 5.2, elevation: 0.22,
+                    fieldOfView: .pi / 3.6)
+        // The camera's eye, to seat each pin on the camera-facing surface of its orb
+        // rather than buried in it; it tracks the viewer when they take the camera.
+        let eye = activeCamera?.eye ?? .zero
 
         // The ring of orbs (3D point cloud). Each orb is a little cluster of splats
         // so it reads as a glowing ball and occludes solidly.

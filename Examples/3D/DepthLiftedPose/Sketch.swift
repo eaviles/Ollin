@@ -84,9 +84,8 @@ final class DepthLiftedPose: Sketch {
             orbitRadius = radius
         }
 
-        let azimuth = mouseIsPressed ? map(mouseX, 0, width, .pi, -.pi) : time * 0.3
-        camera(.orbiting(target: orbitCenter ?? center, radius: orbitRadius, azimuth: azimuth,
-                         elevation: 0.18, fieldOfView: .pi / 3))
+        cameraShowcase(.turntable(period: .tau / 0.3), target: orbitCenter ?? center, radius: orbitRadius,
+                    elevation: 0.18, fieldOfView: .pi / 3)
 
         drawPointCloud(cloud)
         // One bright color per person so several skeletons read apart in the cloud.

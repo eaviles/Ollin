@@ -22,8 +22,8 @@ final class HighResEnvironment: Sketch {
     override func draw() {
         background(.black)
         toneMap(.aces)
-        camera(.orbiting(target: Vector3(0, 0, 0), radius: 6.5,
-                         azimuth: sin(time * 0.12) * 0.4, elevation: 0.12, fieldOfView: .pi / 4.2))
+        cameraShowcase(.sway(amplitude: 0.4, period: .tau / 0.12), target: .zero, radius: 6.5,
+                    elevation: 0.12, fieldOfView: .pi / 4.2)
 
         // A 4K Venice sunset, downloaded once and cached. The bundled 1K shows until it arrives.
         environment(.sunset.highRes(.fourK).rotated(time * 0.05))

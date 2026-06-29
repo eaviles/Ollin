@@ -72,9 +72,8 @@ final class PhoneWorldScan: Sketch {
             framed = true
         }
 
-        let azimuth = mouseIsPressed ? map(mouseX, 0, width, .pi, -.pi) : time * 0.2
-        camera(.orbiting(target: orbitCenter, radius: orbitRadius, azimuth: azimuth,
-                         elevation: 0.22, fieldOfView: .pi / 3))
+        cameraShowcase(.turntable(period: .tau / 0.2), target: orbitCenter, radius: orbitRadius,
+                    elevation: 0.22, fieldOfView: .pi / 3)
         drawPointCloud(world.cloud)
 
         drawCaption("PhoneWorldScan — \(world.count) pts fused; sweep the phone, R to reset")

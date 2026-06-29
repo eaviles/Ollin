@@ -20,9 +20,8 @@ final class Shadows3D: Sketch {
 
         // Orbit the scene. The shadow frustum auto-fits to the eye→target distance,
         // so a radius that frames the scene also sizes the shadow map's coverage.
-        camera(.orbiting(target: Vector3(0, 1.2, 0), radius: 13,
-                         azimuth: time * 0.2, elevation: 0.5,
-                         fieldOfView: .pi / 4.2))
+        cameraShowcase(.turntable(period: .tau / 0.2), target: Vector3(0, 1.2, 0), radius: 13,
+                    elevation: 0.5, fieldOfView: .pi / 4.2)
 
         // A warm key from the upper-left (the caster, since it's the first
         // directional), gently swinging so the shadows move; a soft cool fill and a

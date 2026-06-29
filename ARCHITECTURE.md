@@ -505,6 +505,58 @@ occlusion, and raymarch resolution) target frame-rate bands.
 
 ---
 
+## Showcase camera (interactive auto-orbit)
+
+`cameraShowcase(_:)` (the default the 3D examples use) is an auto-orbit the viewer can
+take over, easing back to the opening shot when left alone. It adds no new camera
+math: it is a small state machine in `CameraRig` (`Sources/Ollin/3D/CameraRig.swift`)
+that orchestrates the two halves that already exist: the cinematic-move driver
+(`updateMove`/`startMove`/`apply`) and the damped interactive controller
+(`updateControl`).
+
+**Three phases.** `updateInteractiveMove(move:input:dt:viewportHeight:idleTimeout:returnDuration:)`
+runs one of:
+
+- `driving`: calls `updateMove` verbatim (the move plays). A drag, dolly, or pan
+  this frame switches to `manual` and resets the idle clock. The interaction check
+  runs *before* the branch, so the input that starts the takeover (a single scroll
+  tick included) lands the same frame.
+- `manual`: calls `updateControl`. Each input frame zeroes the idle clock; each
+  idle frame accumulates it. At `idleTimeout` (10s default) it begins the return.
+- `returning`: eases the displayed pose from where the viewer left it toward the
+  *opening* orbit, then hands back to `driving`.
+
+**Reset to the original shot, not resume-in-place.** The opening framing (target,
+radius, elevation, azimuth) is captured once in `seed()` as the `anchor*` fields,
+separate from the live pose the controller mutates. When the return begins,
+`beginReturn` snapshots the viewer's pose (`returnFrom*`), restarts the move at the
+anchor framing (`startMove` with the pose temporarily set to the anchor, so the
+move's base is the opening shot), then restores the displayed pose to the viewer's
+so the blend starts there with no jump. `advanceReturn` advances the move (a *live*
+orbit at the opening framing) and blends `returnFrom → movePose` by a Hermite
+`easeInOut(returnClock/returnDuration)` (4s default). Hermite is flat at both ends,
+so the orbit's angular velocity ramps from rest to full, the "progressive" return.
+Azimuth blends along the shortest arc (`lerpAngle`) so a viewer who spun several
+turns returns the short way instead of unwinding every turn. At `t=1` the blend
+equals `movePose`, and `driving`'s next `updateMove` reads the same base/clock, so
+the handoff is seamless; a fresh interaction during the return cancels straight back
+to `manual`.
+
+**Byte-identical when uninteracted (load-bearing).** With no input the machine never
+leaves `driving` and runs the unchanged `updateMove`, so the headless/export and
+snapshot paths are pixel-identical to a plain cinematic move, and `cameraMove` /
+`camera` themselves are untouched, so every existing 3D snapshot is unaffected
+(`cameraShowcase` is a *new* opt-in call, not a behavior change to the old ones). The
+state machine is exercised by CPU units in `CameraRigTests` (interrupt, idle return
+to the anchor framing, seam continuity, mid-return cancel), since a snapshot cannot
+drive synthetic input events.
+
+`activeCamera` (on `Sketch`) returns the resolved `Camera3D` for the frame, so a
+sketch that places geometry relative to the camera (e.g. `DepthCompositing` seats
+its pins at the camera `eye`) keeps working when the interactive rig owns the pose.
+
+---
+
 ## Status of this document
 
 The renderer overview and the two effect areas above are the current contents.

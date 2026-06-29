@@ -301,6 +301,12 @@ open class Sketch {
     /// usually animates an orbit; a 2D sketch never calls it and is unaffected.
     public func camera(_ camera: Camera3D) { drawer.camera(camera) }
 
+    /// The 3D camera in effect for this frame, if one has been set this `draw()` (by
+    /// `camera`/`perspective`/`ortho`/`cameraMove`/`cameraControl`/`cameraShowcase`),
+    /// else `nil`. Read it to find where the camera ended up (e.g. its `eye`) when
+    /// an interactive rig (`cameraShowcase`) owns the pose. `nil` in a 2D frame.
+    public var activeCamera: Camera3D? { drawer.camera3D }
+
     /// A perspective 3D camera looking from `eye` at `target` (sugar over `camera`);
     /// `fieldOfView` is the vertical angle in radians.
     public func perspective(eye: Vector3, target: Vector3 = .zero, up: Vector3 = .unitY,
@@ -316,7 +322,7 @@ open class Sketch {
         drawer.ortho(eye: eye, target: target, up: up, height: height, near: near, far: far)
     }
 
-    /// The shared rig behind `cameraControl()` and `cameraMove(_:)`. Created once
+    /// The shared rig behind `cameraControl()`, `cameraMove(_:)`, and `cameraShowcase(_:)`. Created once
     /// and carried across frames so the pose (and a move's clock) persists; a
     /// sketch that never calls those methods never touches it.
     let cameraRig = CameraRig()
@@ -356,6 +362,34 @@ open class Sketch {
                                 leftPressed: mouseIsPressed, rightPressed: rightMouseIsPressed,
                                 modifiers: modifiers, scrollDeltaY: scrollDeltaY)
         cameraRig.updateControl(input: input, dt: deltaTime, viewportHeight: height)
+        camera(cameraRig.makeCamera(near: near, far: far))
+    }
+
+    /// The interactive orbit: play `move` as an auto-orbit the viewer can take over.
+    /// The camera orbits on its own; the moment the viewer drags to orbit, scrolls to
+    /// dolly, or right/modifier-drags to pan, the automatic motion yields and they
+    /// drive. After `idleReturn` seconds of no input the camera eases back over
+    /// `returnDuration` seconds to the opening framing and the orbit resumes, so a
+    /// sketch is alive on its own yet always explorable. Opt-in, like `cameraMove`/
+    /// `cameraControl`: call it each `draw()`; a sketch that never calls it keeps its
+    /// own camera.
+    ///
+    /// The `target`/`radius`/`elevation`/`fieldOfView` arguments frame the opening
+    /// shot on the *first* call only, and are where the idle return glides back to.
+    /// `move` defaults to `.autoOrbit()`, a gentle slow turntable; pass a tuned
+    /// `.turntable`/`.sway`/… to keep a specific motion.
+    public func cameraShowcase(_ move: CameraMove = .autoOrbit(),
+                            target: Vector3 = .zero, radius: Double = 10,
+                            elevation: Double = 0.3, fieldOfView: Double = .pi / 3,
+                            near: Double = 0.1, far: Double = 1000,
+                            idleReturn: Double = 10, returnDuration: Double = 4) {
+        cameraRig.seed(target: target, radius: radius, elevation: elevation, fieldOfView: fieldOfView)
+        let input = CameraInput(mouseX: mouseX, mouseY: mouseY,
+                                leftPressed: mouseIsPressed, rightPressed: rightMouseIsPressed,
+                                modifiers: modifiers, scrollDeltaY: scrollDeltaY)
+        cameraRig.updateInteractiveMove(move, input: input, dt: deltaTime,
+                                        viewportHeight: height, idleTimeout: idleReturn,
+                                        returnDuration: returnDuration)
         camera(cameraRig.makeCamera(near: near, far: far))
     }
 

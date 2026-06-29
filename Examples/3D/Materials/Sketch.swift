@@ -51,9 +51,8 @@ final class Materials3D: Sketch {
 
         // Orbit the grid slowly so the view-angle finishes (iridescence, rim, jade)
         // shift and shimmer rather than sitting frozen.
-        camera(.orbiting(target: Vector3(0, 0, 0), radius: 12.5,
-                         azimuth: sin(time * 0.12) * 0.6, elevation: 0.32,
-                         fieldOfView: .pi / 4.5))
+        cameraShowcase(.sway(amplitude: 0.6, period: .tau / 0.12), target: .zero, radius: 12.5,
+                    elevation: 0.32, fieldOfView: .pi / 4.5)
 
         // A point light orbiting with us keeps the highlights sliding; a warm key and a
         // soft ambient fill out the modeling.

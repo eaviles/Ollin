@@ -11,9 +11,8 @@ final class RaymarchedRadial: Sketch {
         background(Color(hex: 0x0b1020))
         let t = time
 
-        camera(.orbiting(target: Vector3(0, 0.2, 0), radius: 8,
-                         azimuth: t * 0.25, elevation: 0.5,
-                         fieldOfView: .pi / 4, near: 0.1, far: 40))
+        cameraShowcase(.turntable(period: .tau / 0.25), target: Vector3(0, 0.2, 0), radius: 8,
+                    elevation: 0.5, fieldOfView: .pi / 4, near: 0.1, far: 40)
 
         directionalLight(.white, direction: Vector3(-0.4, 0.9, 0.35),
                          intensity: 1.25, softness: 0.35)

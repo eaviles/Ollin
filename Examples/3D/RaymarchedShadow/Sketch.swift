@@ -10,11 +10,9 @@ import Foundation
 final class RaymarchedShadow: Sketch {
     override func draw() {
         background(Color(hex: 0x0c0f14))
-        let t = time
 
-        camera(.orbiting(target: Vector3(0, -0.2, 0), radius: 8.0,
-                         azimuth: t * 0.25, elevation: 0.32,
-                         fieldOfView: .pi / 4, near: 0.1, far: 40))
+        cameraShowcase(.turntable(period: .tau / 0.25), target: Vector3(0, -0.2, 0), radius: 8.0,
+                    elevation: 0.32, fieldOfView: .pi / 4, near: 0.1, far: 40)
 
         // A key from the upper left (travels down-right) so the shapes throw their shadows
         // across the slab.

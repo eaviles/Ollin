@@ -29,9 +29,8 @@ final class EnvironmentGallery: Sketch {
 
         background(.black)
         toneMap(.aces)   // a filmic highlight rolloff for the HDR environments
-        camera(.orbiting(target: Vector3(0, 0, 0), radius: 7.5,
-                         azimuth: sin(time * 0.15) * 0.35, elevation: 0.1,
-                         fieldOfView: .pi / 4.2))
+        cameraShowcase(.sway(amplitude: 0.35, period: .tau / 0.15), target: .zero, radius: 7.5,
+                    elevation: 0.1, fieldOfView: .pi / 4.2)
 
         // The current environment lights the balls and shows as the backdrop, spinning
         // slowly so the reflections drift.

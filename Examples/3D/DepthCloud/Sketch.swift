@@ -66,9 +66,8 @@ final class DepthCloud: Sketch {
         }
 
         // Orbit gently so the depth reads as space; drag left/right to spin it.
-        let azimuth = mouseIsPressed ? map(mouseX, 0, width, .pi, -.pi) : sin(time * 0.4) * 0.6
-        camera(.orbiting(target: .zero, radius: 4.4, azimuth: azimuth,
-                         elevation: 0.1, fieldOfView: .pi / 3.2))
+        cameraShowcase(.sway(amplitude: 0.6, period: .tau / 0.4), target: .zero, radius: 4.4,
+                    elevation: 0.1, fieldOfView: .pi / 3.2)
         drawPointCloud(cloud)
 
         drawCaption("DepthCloud — a live 3D point cloud from one webcam; drag to orbit")

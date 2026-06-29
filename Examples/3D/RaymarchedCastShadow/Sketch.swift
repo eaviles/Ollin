@@ -11,9 +11,8 @@ final class RaymarchedCastShadow: Sketch {
         background(Color(hex: 0x0c0f16))
         let t = time
 
-        camera(.orbiting(target: Vector3(0, 0, 0), radius: 7.5,
-                         azimuth: t * 0.25, elevation: 0.4,
-                         fieldOfView: .pi / 4, near: 0.1, far: 50))
+        cameraShowcase(.turntable(period: .tau / 0.25), target: .zero, radius: 7.5,
+                    elevation: 0.4, fieldOfView: .pi / 4, near: 0.1, far: 50)
 
         directionalLight(.white, direction: Vector3(0.35, -0.92, -0.2),
                          intensity: 1.3, softness: 0.2)

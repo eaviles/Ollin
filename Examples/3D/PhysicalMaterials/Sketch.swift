@@ -35,9 +35,8 @@ final class PhysicalMaterials: Sketch {
         // A gentle sway: the highlights slide because the point light below orbits, so
         // the camera barely needs to move; this keeps the chart centered and its labels
         // on-canvas. The radius/FOV leave a margin past the outer spheres for the labels.
-        camera(.orbiting(target: Vector3(0, 0, 0), radius: 19,
-                         azimuth: sin(time * 0.1) * 0.22, elevation: 0.26,
-                         fieldOfView: .pi / 4))
+        cameraShowcase(.sway(amplitude: 0.22, period: .tau / 0.1), target: .zero, radius: 19,
+                    elevation: 0.26, fieldOfView: .pi / 4)
 
         // A warm key plus a cool fill, and a point light orbiting with us to keep the
         // hotspots moving across every sphere.

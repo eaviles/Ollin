@@ -48,9 +48,8 @@ final class LightingPresets3D: Sketch {
         // Auto-advance unless the viewer is stepping by hand.
         if time - lastStep > holdSeconds { step() }
 
-        camera(.orbiting(target: Vector3(0, -0.1, 0), radius: 9,
-                         azimuth: sin(time * 0.12) * 0.45, elevation: 0.32,
-                         fieldOfView: .pi / 4))
+        cameraShowcase(.sway(amplitude: 0.45, period: .tau / 0.12), target: Vector3(0, -0.1, 0), radius: 9,
+                    elevation: 0.32, fieldOfView: .pi / 4)
 
         let current = presets[index]
         lightingPreset(current.preset)

@@ -42,9 +42,8 @@ final class Solids3D: Sketch {
 
         // A catalog wall: shapes on an x–y grid facing a gently swaying camera, so
         // the rows don't stack front-to-back and every label sits above its shape.
-        camera(.orbiting(target: .zero, radius: 15,
-                         azimuth: sin(time * 0.18) * 0.14, elevation: 0.12,
-                         fieldOfView: .pi / 3.4))
+        cameraShowcase(.sway(amplitude: 0.14, period: .tau / 0.18), target: .zero, radius: 15,
+                    elevation: 0.12, fieldOfView: .pi / 3.4)
 
         let columns = 4, spacing = 3.0
         let rows = (shapes.count + columns - 1) / columns

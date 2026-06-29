@@ -13,9 +13,8 @@ final class RaymarchedDomain: Sketch {
         background(Color(hex: 0x0d1117))
         let t = time
 
-        camera(.orbiting(target: Vector3(0, 0, 0), radius: 8.5,
-                         azimuth: t * 0.3, elevation: 0.5,
-                         fieldOfView: .pi / 4, near: 0.1, far: 40))
+        cameraShowcase(.turntable(period: .tau / 0.3), target: .zero, radius: 8.5,
+                    elevation: 0.5, fieldOfView: .pi / 4, near: 0.1, far: 40)
 
         directionalLight(.white, direction: Vector3(-0.5, 0.85, 0.4),
                          intensity: 1.2, softness: 0.3)
