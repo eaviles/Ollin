@@ -77,6 +77,10 @@ A Mac has no depth camera, inertial sensors, or spare Neural Engine for live per
 
 It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode-partly-shipped).
 
+## Scene inspection views
+
+**Near-term.** Quick ways to look at a 3D scene from a known angle, the way a modeling tool offers numpad views, so a sketch is easy to inspect while building it. Two pieces: a **reset** that returns the camera to the sketch's opening framing (the shot before you started moving), and **standard views** (front, back, left, right, top, bottom) that snap the camera to look straight down each axis. Both build on the [shipped camera rig](Docs/3D/Camera.md): the rig already remembers the opening framing as its anchor (the target the `cameraShowcase` idle-return glides back to), so reset is that pose on demand, and each standard view is a fixed azimuth/elevation around the current target. Surfaced two ways: as **menu commands (with key bindings) in the host apps** (OllinLive and the examples gallery, beside the existing FPS overlay), so you can orbit by hand and snap back; and as a small framework API so a sketch can trigger the same snaps from `draw()` or a `@Param`. A snap can cut or glide, reusing the rig's eased return. A viewer convenience that reads the running sketch, not a scene editor, so it stays in the framework lane.
+
 ## Photorealistic 3D
 
 The high-end, well-curated realism tier, opt-in on the shipped PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. The techniques that separate a polished product render or film still from "CG," each Metal-native and written from the published technique (credited in the README's Techniques list):
