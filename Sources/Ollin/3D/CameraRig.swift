@@ -1,0 +1,286 @@
+import Foundation
+
+/// The input a `CameraRig` reads to drive the interactive controller, filled by
+/// the `Sketch` from its own input fields so the rig stays free of any windowing
+/// framework. Mouse coordinates are in canvas units (the same space `viewportHeight`
+/// is measured in), so the rotation and pan scalings are unit-consistent.
+struct CameraInput {
+    var mouseX: Double
+    var mouseY: Double
+    var leftPressed: Bool
+    var rightPressed: Bool
+    var modifiers: ModifierKeys
+    var scrollDeltaY: Double
+}
+
+/// Owns the canonical orbit pose (target, radius, azimuth, elevation, field of
+/// view) that both the interactive controller and the cinematic moves drive, and
+/// turns it into a `Camera3D` each frame.
+///
+/// Internal: the `Sketch` holds one and advances it explicitly from
+/// `cameraControl()` / `cameraMove(_:)`, so it never relies on the per-frame
+/// reflection pass that auto-advances `@Eased` and stored `Timeline`s. Because
+/// both halves write the same pose, framing a shot by hand and then handing off
+/// to a cinematic move continues from where the hands left it.
+final class CameraRig {
+    // The canonical pose `Camera3D.orbiting` consumes.
+    var target: Vector3 = .zero
+    var radius: Double = 10
+    var azimuth: Double = 0
+    var elevation: Double = 0.3
+    var fieldOfView: Double = .pi / 3
+
+    private var seeded = false
+
+    /// Keep the elevation a hair off the poles so the look-at frame never degenerates
+    /// (eye straight above the target leaves the up vector parallel to the view).
+    private let maxElevation = Double.pi / 2 - 0.01
+
+    /// Which half drove the pose last, so the controller re-syncs its goal to the
+    /// current pose whenever it resumes after a cinematic move (or on the first
+    /// frame), letting "frame by hand, run a move, grab it again" pick up smoothly.
+    private enum Mode { case none, control, move }
+    private var lastMode: Mode = .none
+
+    // MARK: Interactive control state
+
+    // The input-driven goal the smoothed pose eases toward (the damping target).
+    private var goalAzimuth = 0.0
+    private var goalElevation = 0.0
+    private var goalRadius = 0.0
+    private var goalTarget = Vector3.zero
+    private var lastMouseX = 0.0
+    private var lastMouseY = 0.0
+    private var wasInteracting = false
+    // Release momentum: a smoothed, capped angular velocity (rad/s) carried after an
+    // orbit ends, so a flick keeps a little spin before settling.
+    private var velAzimuth = 0.0
+    private var velElevation = 0.0
+
+    // Tunables (good defaults; reimplemented from the canonical orbit-control model).
+    private let orbitSensitivity = 1.0          // a full canvas-height drag is one turn
+    private let dollyBase = 0.97                 // radius multiply per scroll unit
+    private let minRadius = 0.05
+    private let maxRadius = 1e6
+    private let smoothRate = 14.0                // pose-to-goal easing rate (1/s)
+    private let momentumDecay = 5.0              // how fast a released spin dies (1/s)
+    private let velSmoothing = 0.35             // EMA factor for the release velocity
+    private let maxSpin = 6.0                   // cap on carried velocity (rad/s)
+
+    // MARK: Cinematic-move state
+
+    private var activeMove: CameraMove?
+    private var moveClock: Double = 0
+    private var baseAzimuth = 0.0
+    private var baseElevation = 0.0
+    private var baseRadius = 0.0
+    private var baseTarget = Vector3.zero
+    private var radiusTimeline: Timeline<Double>?
+    private var elevationTimeline: Timeline<Double>?
+
+    /// A private smooth field for the handheld drift, seeded independently of the
+    /// sketch's `noise()` so a handheld move neither reads nor disturbs it.
+    private let breath = PerlinNoise(seed: 0x0A11_0CA3_CA3E_0B07)
+
+    /// Seed the starting pose once. The first `cameraControl()` / `cameraMove()`
+    /// call wins; later calls keep whatever the controller or move has reached, so
+    /// passing framing arguments every frame does not snap the pose back.
+    func seed(target: Vector3, radius: Double, azimuth: Double = 0,
+              elevation: Double, fieldOfView: Double) {
+        guard !seeded else { return }
+        seeded = true
+        self.target = target
+        self.radius = radius
+        self.azimuth = azimuth
+        self.elevation = elevation
+        self.fieldOfView = fieldOfView
+    }
+
+    // MARK: Interactive control
+
+    /// Drive the pose from this frame's `input` with damped orbit / dolly / pan.
+    func updateControl(input: CameraInput, dt: Double, viewportHeight: Double) {
+        // Resume cleanly after a move (or on the first control frame): the goal
+        // starts at wherever the pose currently is, and a fresh drag won't jump.
+        if lastMode != .control {
+            syncControlGoal()
+            lastMouseX = input.mouseX
+            lastMouseY = input.mouseY
+            wasInteracting = false
+        }
+        lastMode = .control
+
+        let panModifier = input.modifiers.contains(.shift) || input.modifiers.contains(.option)
+        let isOrbit = input.leftPressed && !panModifier
+        let isPan = input.rightPressed || (input.leftPressed && panModifier)
+        let interacting = isOrbit || isPan
+
+        // Seed the reference point when a drag starts, so the first frame has no
+        // delta (otherwise an earlier hover position would snap the camera), and a
+        // fresh orbit starts from rest.
+        if interacting && !wasInteracting {
+            lastMouseX = input.mouseX
+            lastMouseY = input.mouseY
+            if isOrbit { velAzimuth = 0; velElevation = 0 }
+        }
+        let dx = input.mouseX - lastMouseX
+        let dy = input.mouseY - lastMouseY
+        lastMouseX = input.mouseX
+        lastMouseY = input.mouseY
+        wasInteracting = interacting
+
+        let height = Swift.max(viewportHeight, 1)
+
+        if isOrbit {
+            let rot = Double.tau / height * orbitSensitivity
+            goalAzimuth -= dx * rot
+            goalElevation += dy * rot
+            // Track a smoothed, capped velocity for the release flick.
+            let instAz = (-dx * rot) / Swift.max(dt, 1e-4)
+            let instEl = (dy * rot) / Swift.max(dt, 1e-4)
+            velAzimuth = clampSpin(velAzimuth + (instAz - velAzimuth) * velSmoothing)
+            velElevation = clampSpin(velElevation + (instEl - velElevation) * velSmoothing)
+        } else if isPan {
+            velAzimuth = 0   // a deliberate pan cancels any carried orbit spin
+            velElevation = 0
+        } else {
+            // Idle: coast on the released orbit's momentum, decaying to rest.
+            goalAzimuth += velAzimuth * dt
+            goalElevation += velElevation * dt
+            let decay = exp(-momentumDecay * dt)
+            velAzimuth *= decay
+            velElevation *= decay
+        }
+
+        if isPan {
+            // Move the target across the focal plane so it tracks the cursor: world
+            // units per canvas unit is 2 * radius * tan(fov/2) / height.
+            let scale = 2 * goalRadius * tan(fieldOfView / 2) / height
+            let basis = orbitBasis(azimuth: goalAzimuth, elevation: clampedElevation(goalElevation))
+            goalTarget = goalTarget - basis.right * (dx * scale) + basis.up * (dy * scale)
+        }
+
+        if input.scrollDeltaY != 0 {
+            goalRadius *= pow(dollyBase, input.scrollDeltaY)
+            goalRadius = Swift.min(Swift.max(goalRadius, minRadius), maxRadius)
+        }
+
+        goalElevation = clampedElevation(goalElevation)
+
+        // Ease the actual pose toward the goal, frame-rate-independently.
+        let f = 1 - exp(-smoothRate * dt)
+        azimuth += (goalAzimuth - azimuth) * f
+        elevation += (goalElevation - elevation) * f
+        radius += (goalRadius - radius) * f
+        target = target.lerp(to: goalTarget, f)
+    }
+
+    private func syncControlGoal() {
+        goalAzimuth = azimuth
+        goalElevation = elevation
+        goalRadius = radius
+        goalTarget = target
+        velAzimuth = 0
+        velElevation = 0
+    }
+
+    private func clampSpin(_ v: Double) -> Double {
+        Swift.min(Swift.max(v, -maxSpin), maxSpin)
+    }
+
+    // MARK: Cinematic moves
+
+    /// Advance the active cinematic `move` by `dt` seconds, writing the pose. When a
+    /// different move is handed in, its clock restarts and it departs from the
+    /// current pose (so moves chain smoothly).
+    func updateMove(_ move: CameraMove, dt: Double) {
+        lastMode = .move
+        if move != activeMove { startMove(move) }
+        moveClock += dt
+        radiusTimeline?.advance(by: dt)
+        elevationTimeline?.advance(by: dt)
+        apply(move, clock: moveClock)
+    }
+
+    private func startMove(_ move: CameraMove) {
+        activeMove = move
+        moveClock = 0
+        baseAzimuth = azimuth
+        baseElevation = elevation
+        baseRadius = radius
+        baseTarget = target
+        radiusTimeline = nil
+        elevationTimeline = nil
+
+        switch move.kind {
+        case let .pushIn(factor, duration, ease), let .pullOut(factor, duration, ease):
+            radiusTimeline = Timeline(baseRadius).to(baseRadius * factor, in: duration, ease: ease)
+        case let .tilt(to, duration, ease):
+            elevationTimeline = Timeline(baseElevation).to(to, in: duration, ease: ease)
+        case let .orbitAndRise(_, rise, duration):
+            elevationTimeline = Timeline(baseElevation).to(baseElevation + rise, in: duration, ease: .easeInOut)
+        case let .reveal(duration, ease):
+            radiusTimeline = Timeline(baseRadius * 0.45).to(baseRadius, in: duration, ease: ease)
+            let low = Swift.max(0.05, baseElevation * 0.35)
+            elevationTimeline = Timeline(low).to(baseElevation, in: duration, ease: ease)
+        case .turntable, .sway, .handheld:
+            break
+        }
+    }
+
+    private func apply(_ move: CameraMove, clock: Double) {
+        // Start from the departure pose; any finite eased property overrides via its
+        // timeline, any cyclic property via the clock below.
+        azimuth = baseAzimuth
+        elevation = elevationTimeline?.value ?? baseElevation
+        radius = radiusTimeline?.value ?? baseRadius
+        target = baseTarget
+
+        switch move.kind {
+        case let .turntable(period):
+            azimuth = baseAzimuth + clock * angularSpeed(period)
+        case let .sway(amplitude, period):
+            azimuth = baseAzimuth + amplitude * sin(clock * angularSpeed(period))
+        case let .orbitAndRise(period, _, _):
+            azimuth = baseAzimuth + clock * angularSpeed(period)
+        case let .handheld(amount, speed):
+            let t = clock * speed
+            azimuth = baseAzimuth + breath.signedValue(t, 0, 0) * amount
+            elevation = baseElevation + breath.signedValue(t, 10, 0) * amount
+            radius = baseRadius * (1 + breath.signedValue(t, 20, 0) * amount)
+        case .pushIn, .pullOut, .tilt, .reveal:
+            break   // radius / elevation already taken from the timelines
+        }
+    }
+
+    private func angularSpeed(_ period: Double) -> Double {
+        period != 0 ? Double.tau / period : 0
+    }
+
+    // MARK: Pose
+
+    private func clampedElevation(_ e: Double) -> Double {
+        Swift.min(Swift.max(e, -maxElevation), maxElevation)
+    }
+
+    /// The eye position for a pose, and the camera right / up basis at it, used to
+    /// pan the target across the focal plane.
+    private func orbitBasis(azimuth: Double, elevation: Double) -> (right: Vector3, up: Vector3) {
+        let up = Vector3.unitY
+        let ce = cos(elevation)
+        let offset = Vector3(radius * ce * sin(azimuth),
+                             radius * sin(elevation),
+                             radius * ce * cos(azimuth))
+        let forward = (-offset).normalized               // from eye toward target
+        let right = forward.cross(up).normalized
+        let camUp = right.cross(forward)
+        return (right, camUp)
+    }
+
+    /// The current pose as a perspective `Camera3D` orbiting the target.
+    func makeCamera(near: Double, far: Double) -> Camera3D {
+        .orbiting(target: target, radius: radius, azimuth: azimuth,
+                  elevation: clampedElevation(elevation), fieldOfView: fieldOfView,
+                  near: near, far: far)
+    }
+}

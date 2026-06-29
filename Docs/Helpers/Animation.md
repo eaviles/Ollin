@@ -12,6 +12,7 @@ Motion is the default in Ollin, so most movement falls out of a `time`-driven te
 - [The curve catalog](#catalog)
 - [`@Eased`](#eased)
 - [`@Smoothed`](#smoothed)
+- [`Timeline`](#timeline)
 
 <a name="easing"></a>
 
@@ -145,3 +146,23 @@ let clean = filter.filter(noisy, dt: deltaTime)
 ```
 
 The [Smoothing example](../../Examples/Motion/Smoothing/Sketch.swift) shakes jitter onto a moving target so you can watch the filter glide through the noise.
+
+<a name="timeline"></a>
+
+### `Timeline`
+
+`@Eased` eases toward a single moving target. When you instead want to *sequence* a value through several timed keyframes, each with its own easing (start here, glide to a value over a duration, hold, glide on), reach for `Timeline`. Build it fluently, then read `value` each frame:
+
+```swift
+let move = Timeline(0.0)
+    .to(100, in: 1.5, ease: .easeOut)   // glide 0 -> 100 over 1.5s
+    .hold(for: 0.5)                       // sit at 100 for 0.5s
+    .to(0, in: 1.0)                       // glide back to 0
+// each frame:
+x = move.value
+```
+
+The clock advances in seconds, so a timeline runs the same at any frame rate. `loops` wraps it; `progress` is `0...1` over the whole sequence; `isFinished` reports when a non-looping run reaches the end; `restart()` and `seek(to:)` move the clock. It works on any `Tweenable` value (`Double`, `Vector2`, `Vector3`), so a `Timeline<Vector3>` sequences a position through space.
+
+Like `@Eased`, a `Timeline` is advanced for you once per frame, but only when it is a **stored property on the sketch that exists before the first frame** (declared as a property, or assigned in `setup()`), the same rule `@Eased` follows. One created later inside `draw()`, or held in a local or a collection, is not picked up; advance it by hand with `tl.advance(by: deltaTime)` each frame. The cinematic [camera moves](../3D/Camera.md#catalog) drive their own timelines internally, so this rule never bites there.
+

@@ -22,6 +22,8 @@ right-handed and y-up.
 | [LoadedMesh](LoadedMesh/) | A mesh loaded from a file (`.obj`/`.usdz`/`.gltf`/…) — drop one in with `OLLIN_MESH=<path>`, or the bundled crystal — recentered, scaled to fit, and lit. |
 | [TexturedMesh](TexturedMesh/) | A UV-gridded globe textured with an image over a base-color-tinted floor, both lit. |
 | [Wireframe](Wireframe/) | Orbiting solids drawn as their triangle edges (`wireframe()`), faces see-through. |
+| [CameraControl](CameraControl/) | Interactive camera control: `cameraControl()` lets the viewer drag to orbit a still life, scroll to dolly, and right-drag (or shift/option-drag) to pan, damped so it settles and a flick keeps a little spin. |
+| [CameraMoves](CameraMoves/) | Cinematic camera moves over one still life: a `.turntable` spin, a `.sway`, a `.pushIn`/`.pullOut` dolly, a `.tilt`, the `.orbitAndRise` beauty pass, a `.reveal`, and a `.handheld` drift, each one `cameraMove(_:)` call composing over the pose the last one left. Click or press a key to step. |
 | [SceneDefocus](SceneDefocus/) | Depth of field on a 3D scene defocused by its *own* depth buffer: a row of orbs drawn into a render target, then `scene.combined(with: scene.depth, .defocus(...))` racks focus through them. Drag to rack by hand. |
 | [DepthCloud](DepthCloud/) | A live 3D point cloud from one webcam: a neural depth model lifts each pixel into space, colored by the camera image, orbiting. Needs `Scripts/fetch-models.sh`. |
 | [Record3DCloud](Record3DCloud/) | An iPhone RGBD recording orbited as a point cloud: a `.r3d` clip from the Record3D app, unprojected with its true camera intrinsics. Drop a recording in `~/Downloads`. Needs `import OllinRecord3D`. |

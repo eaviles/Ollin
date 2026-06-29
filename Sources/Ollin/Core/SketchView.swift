@@ -309,6 +309,30 @@ private final class OllinMTKView: MTKView {
         sketch?.mouseReleased()
     }
 
+    // The secondary (right) button drives the camera-control pan (alongside a
+    // modifier-drag). Report the pointer on a right-drag too, since AppKit sends
+    // `rightMouseDragged` (not `mouseDragged`) while it's held.
+    override func rightMouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+        reportPointer(event)
+        sketch?.setRightMousePressed(true)
+    }
+    override func rightMouseDragged(with event: NSEvent) { reportPointer(event) }
+    override func rightMouseUp(with event: NSEvent) {
+        reportPointer(event)
+        sketch?.setRightMousePressed(false)
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        sketch?.handleScroll(deltaY: Double(event.scrollingDeltaY))
+    }
+
+    /// Modifier keys (shift / option / command / control) changed: map AppKit's
+    /// flags onto Ollin's platform-neutral set.
+    override func flagsChanged(with event: NSEvent) {
+        sketch?.setModifiers(ModifierKeys(event.modifierFlags))
+    }
+
     // MARK: Keyboard
 
     /// Required for the view to receive `keyDown`/`keyUp`.
@@ -345,10 +369,13 @@ private final class OllinMTKView: MTKView {
         dispatchKey(event, pressed: false)
     }
 
-    /// Drop held keys when focus leaves; without a matching `keyUp` a key held
-    /// across a focus change would otherwise stay stuck down.
+    /// Drop held keys and modifiers when focus leaves; without a matching `keyUp` /
+    /// `flagsChanged` a key or modifier held across a focus change would otherwise
+    /// stay stuck down.
     override func resignFirstResponder() -> Bool {
         sketch?.clearHeldKeys()
+        sketch?.setModifiers([])
+        sketch?.setRightMousePressed(false)
         return super.resignFirstResponder()
     }
 
@@ -394,6 +421,20 @@ private final class OllinMTKView: MTKView {
         let x = bw > 0 ? Double(p.x) / bw * sketch.width : Double(p.x)
         let y = bh > 0 ? (bh - Double(p.y)) / bh * sketch.height : bh - Double(p.y)
         sketch.setMouse(x: x, y: y)
+    }
+}
+
+/// Maps AppKit's modifier flags onto Ollin's platform-neutral `ModifierKeys`.
+/// Lives on the AppKit side of the seam so `ModifierKeys` stays free of AppKit for
+/// the eventual UIKit path.
+private extension ModifierKeys {
+    init(_ flags: NSEvent.ModifierFlags) {
+        var mods: ModifierKeys = []
+        if flags.contains(.shift) { mods.insert(.shift) }
+        if flags.contains(.option) { mods.insert(.option) }
+        if flags.contains(.command) { mods.insert(.command) }
+        if flags.contains(.control) { mods.insert(.control) }
+        self = mods
     }
 }
 

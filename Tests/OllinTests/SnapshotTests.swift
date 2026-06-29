@@ -541,9 +541,43 @@ struct SnapshotTests {
         let diff = try Snapshot.meanDifference(of: MetricDepthSceneScene(), against: "metric-depth-scene")
         #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func cameraMoveTurntableMatchesReference() throws {
+        // A ring of solids viewed through a .turntable cinematic move, captured at a
+        // fixed frame, pins the cameraMove() rig (its pose -> Camera3D.orbiting) and the
+        // deterministic per-frame dt accumulation (the headless driver advances 1/60).
+        let diff = try Snapshot.meanDifference(of: CameraMoveScene(), against: "camera-move", frame: 30)
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
 }
 
 // MARK: - Fixtures
+
+/// A ring of solids on a ground plane, viewed through a `.turntable` cinematic move
+/// captured at frame 30, pinning the `cameraMove()` rig (its pose feeding
+/// `Camera3D.orbiting`) and the deterministic per-frame dt accumulation. Auto-lit,
+/// no hand-set camera.
+private final class CameraMoveScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        cameraMove(.turntable(period: 8), radius: 6, elevation: 0.4, fieldOfView: .pi / 3.2)
+        ambientLight(Color(white: 0.12))
+        directionalLight(.white, direction: Vector3(-0.4, -0.85, -0.5), intensity: 0.9)
+        let count = 6
+        for i in 0..<count {
+            let a = Double(i) / Double(count) * .tau
+            withState {
+                fill(Color(hue: Double(i) / Double(count), saturation: 0.6, brightness: 0.9))
+                translate(cos(a) * 2.2, 0, sin(a) * 2.2)
+                drawBox(size: 1.0)
+            }
+        }
+        withState { fill(Color(white: 0.35)); translate(0, -0.8, 0); drawPlane(width: 8, depth: 8) }
+    }
+}
 
 /// A static 3D heightfield drawn as a point cloud from a fixed camera — exercises
 /// the 3D camera, the depth-tested point pipeline, and the instanced disc splats.

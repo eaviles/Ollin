@@ -94,6 +94,22 @@ open class Sketch {
     /// per press, not continuously.
     public internal(set) var mouseIsPressed = false
 
+    /// Whether the secondary (right) mouse button is held over the canvas. The
+    /// `cameraControl()` rig pans on a right-drag (as well as a modifier-drag);
+    /// a sketch can also poll it for its own secondary action.
+    public internal(set) var rightMouseIsPressed = false
+
+    /// How far the scroll wheel (or a trackpad two-finger scroll) moved this frame,
+    /// summed since the last frame; `0` when nothing scrolled. Positive is a scroll
+    /// up. Read it in `draw()` (it is a per-frame value, like `mouseX`); the
+    /// `cameraControl()` rig reads it to dolly. The `mouseWheel()` hook fires per
+    /// event for one-shot response.
+    public internal(set) var scrollDeltaY: Double = 0
+
+    /// The modifier keys (shift, option, command, control) currently held. Combine
+    /// with a drag for a modified gesture, e.g. `if modifiers.contains(.shift) { … }`.
+    public internal(set) var modifiers: ModifierKeys = []
+
     // MARK: Keyboard (input)
 
     /// The character of the most recent key event — `"a"`, `" "`, `"5"` — or
@@ -158,6 +174,10 @@ open class Sketch {
     /// `mouseX`/`mouseY` hold the release location — the natural moment to act
     /// on a finished drag or stroke.
     open func mouseReleased() {}
+    /// Called once each time the scroll wheel moves; `scrollDeltaY` holds this
+    /// event's movement. Override for one-shot response (a discrete zoom step, a
+    /// page); for continuous response poll `scrollDeltaY` in `draw()` instead.
+    open func mouseWheel() {}
     /// Called once each time a key is pressed (auto-repeat doesn't re-fire it).
     /// Override to respond to keys; `key`/`keyCode` hold the key. For movement
     /// while a key is held, poll `isKeyDown(_:)` in `draw()` instead.
@@ -294,6 +314,49 @@ open class Sketch {
     public func ortho(eye: Vector3, target: Vector3 = .zero, up: Vector3 = .unitY,
                       height: Double, near: Double = 0.1, far: Double = 1000) {
         drawer.ortho(eye: eye, target: target, up: up, height: height, near: near, far: far)
+    }
+
+    /// The shared rig behind `cameraControl()` and `cameraMove(_:)`. Created once
+    /// and carried across frames so the pose (and a move's clock) persists; a
+    /// sketch that never calls those methods never touches it.
+    let cameraRig = CameraRig()
+
+    /// Run a ready-made cinematic `move` over the camera and set it for this frame,
+    /// instead of keyframing the camera by hand. Each move is a way to look at an
+    /// object on a turntable (`.turntable`, `.pushIn`, `.tilt`, `.orbitAndRise`, …),
+    /// modulating the orbit pose around `target`. The `target`/`radius`/`elevation`/
+    /// `fieldOfView` arguments frame the shot on the first call; after that the move
+    /// owns the pose (and a preceding `cameraControl()` frames it instead). Call it
+    /// each `draw()`, like `camera(...)`.
+    public func cameraMove(_ move: CameraMove, target: Vector3 = .zero, radius: Double = 10,
+                           elevation: Double = 0.3, fieldOfView: Double = .pi / 3,
+                           near: Double = 0.1, far: Double = 1000) {
+        cameraRig.seed(target: target, radius: radius, elevation: elevation, fieldOfView: fieldOfView)
+        cameraRig.updateMove(move, dt: deltaTime)
+        camera(cameraRig.makeCamera(near: near, far: far))
+    }
+
+    /// Let the viewer move the camera by hand: drag to orbit the object, scroll to
+    /// dolly in and out, and either right-drag or shift/option-drag to pan the
+    /// target. The motion is damped, so it settles smoothly and a flick keeps a
+    /// little spin. Opt-in, like `lights()`: call it each `draw()` and it sets the
+    /// camera for the frame; a sketch that never calls it keeps its own camera.
+    ///
+    /// The `target`/`radius`/`azimuth`/`elevation`/`fieldOfView` arguments frame the
+    /// starting shot on the *first* call only; after that the viewer (or a
+    /// `cameraMove(_:)` you switch to) owns the pose, so passing them every frame
+    /// does not fight the interaction.
+    public func cameraControl(target: Vector3 = .zero, radius: Double = 10,
+                              azimuth: Double = 0, elevation: Double = 0.3,
+                              fieldOfView: Double = .pi / 3,
+                              near: Double = 0.1, far: Double = 1000) {
+        cameraRig.seed(target: target, radius: radius, azimuth: azimuth,
+                       elevation: elevation, fieldOfView: fieldOfView)
+        let input = CameraInput(mouseX: mouseX, mouseY: mouseY,
+                                leftPressed: mouseIsPressed, rightPressed: rightMouseIsPressed,
+                                modifiers: modifiers, scrollDeltaY: scrollDeltaY)
+        cameraRig.updateControl(input: input, dt: deltaTime, viewportHeight: height)
+        camera(cameraRig.makeCamera(near: near, far: far))
     }
 
     /// Draw a 3D `PointCloud` as camera-facing disc splats through the active
@@ -1539,6 +1602,26 @@ open class Sketch {
         mouseY = y
     }
 
+    func setRightMousePressed(_ pressed: Bool) {
+        rightMouseIsPressed = pressed
+    }
+
+    /// Scroll delivered between frames, summed here and surfaced as `scrollDeltaY`
+    /// at the start of the next `advance()`, so no wheel movement is lost.
+    private var pendingScroll: Double = 0
+
+    /// Record scroll-wheel movement from the view and fire the per-event hook. The
+    /// accumulated total becomes `scrollDeltaY` next frame.
+    func handleScroll(deltaY: Double) {
+        pendingScroll += deltaY
+        mouseWheel()
+    }
+
+    /// Record the held modifier keys from the view.
+    func setModifiers(_ mods: ModifierKeys) {
+        modifiers = mods
+    }
+
     /// Record a key event from the view and update the held-key set. The view
     /// passes exactly one of `character`/`code` (a printing key vs. a named one);
     /// the other is `nil`. Updates `key`/`keyCode`/`keyIsPressed`, then the view
@@ -1565,6 +1648,10 @@ open class Sketch {
         self.time = time
         self.deltaTime = deltaTime
         self.frameRate = frameRate
+        // Surface scroll accumulated since the last frame, then reset the collector
+        // so this frame's wheel events are gathered for the next one (nothing lost).
+        scrollDeltaY = pendingScroll
+        pendingScroll = 0
         for value in collectAdvancingValues() { value.advance(by: deltaTime) }
     }
 

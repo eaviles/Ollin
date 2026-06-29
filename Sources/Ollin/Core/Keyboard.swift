@@ -27,3 +27,21 @@ enum KeyToken: Hashable {
     case character(Character)
     case code(KeyCode)
 }
+
+/// The modifier keys held during an input event (shift, option (alt), command,
+/// and control), as an `OptionSet`, so a sketch reads `modifiers.contains(.shift)`
+/// or tests `modifiers == [.command, .shift]`. Platform-neutral; the live view
+/// maps the system's modifier flags onto it. Read it through `Sketch.modifiers`.
+public struct ModifierKeys: OptionSet, Sendable {
+    public let rawValue: Int
+    public init(rawValue: Int) { self.rawValue = rawValue }
+
+    /// The Shift key.
+    public static let shift = ModifierKeys(rawValue: 1 << 0)
+    /// The Option (Alt) key.
+    public static let option = ModifierKeys(rawValue: 1 << 1)
+    /// The Command key.
+    public static let command = ModifierKeys(rawValue: 1 << 2)
+    /// The Control key.
+    public static let control = ModifierKeys(rawValue: 1 << 3)
+}
