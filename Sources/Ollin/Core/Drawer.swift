@@ -1314,14 +1314,14 @@ final class Drawer {
         } else {
             color = meshSurfaceColor.simd4 * (material?.baseColor.simd4 ?? SIMD4<Float>(1, 1, 1, 1))
         }
-        // The material finish is bound per batch as an `OllinMaterial` uniform, with two
-        // exceptions baked into the otherwise-spare vertex `w` slots: the wireframe line width
-        // (position.w, 0 for a lit mesh) and, for a physically-based lit mesh, its metalness
-        // (normal.w) + roughness (position.w). A ray-traced reflection hit reads those to shade
-        // the surface as the metal it is (its tinted environment reflection) instead of a flat
-        // diffuse blob. The lit vertex shaders read only the xyz, so this is inert for the
-        // primary render; non-PBR / wireframe bake metalness 0 (a reflection treats them as
-        // diffuse).
+        // The material finish is bound per batch as an `OllinMaterial` uniform; two values
+        // also ride the otherwise-spare vertex `w` slots for the ray-traced reflection path
+        // to read: metalness in normal.w and roughness in position.w. A physically-based lit
+        // mesh bakes its own metalness + roughness, so a reflection hit shades it as the metal
+        // it is (its tinted environment reflection); a non-PBR lit mesh bakes metalness 0 +
+        // roughness 1, so a reflection treats it as a flat diffuse surface. A wireframe instead
+        // stores its line width in position.w (it has no specular to reflect). The lit vertex
+        // shaders read only the xyz, so all of this is inert for the primary render.
         let pbr = !wireframe && currentMaterial.shading == .physicallyBased
         let metalW: Float = pbr ? Float(currentMaterial.metallic) : 0
         let posW: Float = wireframe ? Float(strokeWidth) : (pbr ? Float(currentMaterial.roughness) : 1)

@@ -197,8 +197,11 @@ struct LightingTests {
         let finish = d.batches.last!.finish
         #expect(close(finish.specular, 0.6))   // bound per batch as a uniform
         #expect(close(finish.shininess, 50))
-        // The vertex w slots no longer carry the material (only the wireframe line width).
-        #expect(close(d.meshVertices.first!.position.w, 0))
+        // The Blinn-Phong material rides the batch uniform, not the vertices. The w slots
+        // carry only the ray-traced-reflection finish: a non-PBR mesh bakes metalness 0
+        // (normal.w) and roughness 1 (position.w), so a reflection treats it as diffuse.
+        #expect(close(d.meshVertices.first!.position.w, 1))
+        #expect(close(d.meshVertices.first!.normal.w, 0))
     }
 
     @Test func materialIsSavedByState() {
