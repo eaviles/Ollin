@@ -227,8 +227,10 @@ public final class AudioAnalyzer: @unchecked Sendable {
 
     // MARK: Processing (audio thread, serial)
 
-    /// Analyze a buffer of mono float samples. Called from the audio render
-    /// thread; see the type note on why that's the only writer.
+    /// Analyze a buffer of mono float samples. Drive this from one source only
+    /// (the audio render thread, via the source's tap): it owns the FFT and onset
+    /// scratch lock-free, so a second concurrent caller would race it. See the type
+    /// note on why that single writer is the safe contract.
     public func process(samples: UnsafePointer<Float>, count: Int) {
         guard count > 0 else { return }
         let n = fftSize

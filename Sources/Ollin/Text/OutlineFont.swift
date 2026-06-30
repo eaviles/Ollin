@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import CoreText
+import os
 
 /// A scalable outline font — a real `.ttf`/`.otf` (TrueType or OpenType) loaded
 /// from the system, a file, raw data, or a bundle. Unlike a `BitmapFont` (a fixed
@@ -593,10 +594,17 @@ enum ActiveFont {
 /// fallback can place glyphs from several faces on one line.
 private final class GlyphPathCache: @unchecked Sendable {
     private var fonts: [(font: CTFont, paths: [CGGlyph: CGPath])] = []
+    /// Guards `fonts`. The framework only touches the cache from the main draw
+    /// thread, but `OutlineFont` is a public `Sendable` value reachable from the
+    /// `.system` globals, so a sketch could read a glyph off the main actor; the
+    /// lock keeps that from corrupting the array. Uncontended with one thread, and
+    /// a cache hit holds it only for a dictionary lookup.
+    private let lock = OSAllocatedUnfairLock()
 
     /// The outline for `glyph` in `font` (em units, y-up), or `nil` for a glyph
     /// with no contours (a space). Created on first use, then cached.
     func path(for glyph: CGGlyph, font: CTFont) -> CGPath? {
+        lock.lock(); defer { lock.unlock() }
         for index in fonts.indices where CFEqual(fonts[index].font, font) {
             if let cached = fonts[index].paths[glyph] { return cached }
             let created = CTFontCreatePathForGlyph(font, glyph, nil)
@@ -627,27 +635,43 @@ private final class GlyphGeometryCache: @unchecked Sendable {
     private var count = 0
     /// Bound memory for text whose size animates (each size is a distinct key).
     private static let cap = 8192
+    /// Guards `fonts`/`count` (see `GlyphPathCache.lock`). The expensive build runs
+    /// *outside* the lock, so the lock is held only for a lookup or an insert, never
+    /// the flatten + triangulate; two threads racing a cold miss just build the same
+    /// glyph twice (harmless, the inserts are idempotent).
+    private let lock = OSAllocatedUnfairLock()
 
     /// Cached local geometry for `glyph` at `size`, built via `make` on first use.
     func geometry(for glyph: CGGlyph, font: CTFont, size: Double,
                   make: () -> Local) -> Local {
         let key = Key(glyph: glyph, sizeBits: size.bitPattern)
-        for index in fonts.indices where CFEqual(fonts[index].font, font) {
-            if let hit = fonts[index].glyphs[key] { return hit }
-            let made = make()
-            fonts[index].glyphs[key] = made
-            note()
-            return made
-        }
-        let made = make()
-        fonts.append((font: font, glyphs: [key: made]))
-        note()
+        lock.lock()
+        let cached = lookup(key, font)
+        lock.unlock()
+        if let cached { return cached }
+        let made = make()                       // flatten + triangulate, off the lock
+        lock.lock(); defer { lock.unlock() }
+        insert(key, font, made)
         return made
     }
 
-    /// Count a new entry; clear everything if the cache has grown past the cap (a
-    /// blunt bound — fine since size-animating text is the only way to reach it).
-    private func note() {
+    /// Locked lookup helper: the caller holds `lock`.
+    private func lookup(_ key: Key, _ font: CTFont) -> Local? {
+        for index in fonts.indices where CFEqual(fonts[index].font, font) {
+            return fonts[index].glyphs[key]
+        }
+        return nil
+    }
+
+    /// Locked insert helper: the caller holds `lock`. Also bounds the cache, clearing
+    /// everything past the cap (a blunt bound, fine since size-animating text is the
+    /// only way to reach it).
+    private func insert(_ key: Key, _ font: CTFont, _ made: Local) {
+        if let index = fonts.firstIndex(where: { CFEqual($0.font, font) }) {
+            fonts[index].glyphs[key] = made
+        } else {
+            fonts.append((font: font, glyphs: [key: made]))
+        }
         count += 1
         if count > Self.cap { fonts.removeAll(); count = 0 }
     }

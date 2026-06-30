@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 import CoreText
 import Metal
+import os
 
 /// A single-channel signed-distance-field (SDF) texture atlas for an outline
 /// font — the performance path behind `textMode(.atlas)`. Each glyph is
@@ -67,12 +68,21 @@ final class GlyphAtlas: @unchecked Sendable {
     private var cachedTexture: MTLTexture?
     private var cachedDeviceID: ObjectIdentifier?
 
+    /// Guards all the mutable page/packer/cache state above. `slot(for:)`
+    /// (recording) and `texture(for:)` (encoding) both run on the main draw thread
+    /// in normal use, but `OutlineFont` is a public `Sendable` reachable from the
+    /// `.system` globals, so a sketch could reach the atlas off the main actor; the
+    /// lock keeps the shared `page`/packer/cache from corrupting. A cache hit holds
+    /// it only briefly; the one-time rasterize-and-pack runs under it during warm-up.
+    private let lock = OSAllocatedUnfairLock()
+
     // MARK: Slots
 
     /// The atlas slot for `glyph` in `font`, built on first use. `nil` for a glyph
     /// with no contours (a space) or one that can't be placed (oversized, or the
     /// page is full after a rebuild) — the caller simply draws nothing for it.
     func slot(for glyph: CGGlyph, font: CTFont) -> Slot? {
+        lock.lock(); defer { lock.unlock() }
         for index in fonts.indices where CFEqual(fonts[index].font, font) {
             if let hit = fonts[index].slots[glyph] { return hit }
             let made = make(glyph, font)
@@ -279,6 +289,7 @@ final class GlyphAtlas: @unchecked Sendable {
     /// Built and updated on the main thread during encoding, mirroring
     /// `Image.texture(for:)`.
     func texture(for device: MTLDevice) -> MTLTexture? {
+        lock.lock(); defer { lock.unlock() }
         let id = ObjectIdentifier(device)
         if let cachedTexture, cachedDeviceID == id, !dirty { return cachedTexture }
 

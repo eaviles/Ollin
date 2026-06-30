@@ -30,6 +30,13 @@ import UniformTypeIdentifiers
 ///     }
 /// }
 /// ```
+///
+/// An `Image` is **main-thread-affine**: its texture and pixel caches realize
+/// lazily on first use, so don't touch the same instance from two threads at once
+/// (e.g. don't hand one to a `Task.detached` and read its pixels or draw it while
+/// the main draw loop also uses it). Building an image off the main thread and then
+/// handing it to the sketch to use on the main thread (as video and the Vision
+/// trackers do) is fine; concurrent use of a single instance is not.
 public final class Image {
 
     /// Pixel width of the decoded image.

@@ -128,11 +128,12 @@ public final class ComputeTexture: ComputeTextureBindable, @unchecked Sendable {
     public var image: Image { Image(computeTexture: self) }
 
     /// Read the texture's current contents back to the CPU as interleaved floats
-    /// (row-major, `width * height * channels` long) — only valid once the texture
-    /// has been realized and the GPU work that wrote it has completed. For the float
+    /// (row-major, `width * height * channels` long): only valid once the texture
+    /// has been realized and the GPU work that wrote it has completed, so it's
+    /// `@MainActor` (read it on the frame loop after the render). For the float
     /// formats only (returns `nil` for `.rgba8Unorm`, and `nil` before the texture is
     /// first bound). Mainly for tests and debugging; a per-frame sim never needs it.
-    public func snapshot() -> [Float]? {
+    @MainActor public func snapshot() -> [Float]? {
         guard let texture else { return nil }
         let bytesPerRow = width * format.bytesPerPixel
         var raw = [UInt8](repeating: 0, count: bytesPerRow * height)
