@@ -238,8 +238,8 @@ final class OllinCameraDeviceSource: NSObject, CMIOExtensionDeviceSource, @unche
             guard let self else { return }
             // The buffer CMIO handed us is forwarded on frameQueue; move it there.
             nonisolated(unsafe) let sampleBuffer = sampleBuffer
-            self.frameQueue.async {
-                guard self.sinkActive else { return }
+            self.frameQueue.async { [weak self] in
+                guard let self, self.sinkActive else { return }
                 if let sampleBuffer {
                     self.forwardSinkFrame(sampleBuffer, sequenceNumber: sequenceNumber)
                     self.pumpSinkFrames()
