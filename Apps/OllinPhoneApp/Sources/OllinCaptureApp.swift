@@ -29,21 +29,22 @@ enum CaptureMode: String, CaseIterable, Identifiable {
 /// Owns the network server and the sensor streamers, and publishes the live status
 /// the screen shows. `@MainActor` — the AR/motion callbacks land on main.
 @MainActor
-final class SensorStreamer: ObservableObject {
+@Observable
+final class SensorStreamer {
 
-    @Published var clientCount = 0
-    @Published var mode: CaptureMode = .body
-    @Published var bodyTracked = false
-    @Published var jointCount = 0
-    @Published var faceTracked = false
-    @Published var topExpression = ""
-    @Published var depthTracked = false
-    @Published var depthInfo = ""
-    @Published var segTracked = false
-    @Published var segInfo = ""
-    @Published var gravity = SIMD3<Float>(0, 0, 0)
-    @Published var motionLive = false
-    @Published var status = "Starting…"
+    var clientCount = 0
+    var mode: CaptureMode = .body
+    var bodyTracked = false
+    var jointCount = 0
+    var faceTracked = false
+    var topExpression = ""
+    var depthTracked = false
+    var depthInfo = ""
+    var segTracked = false
+    var segInfo = ""
+    var gravity = SIMD3<Float>(0, 0, 0)
+    var motionLive = false
+    var status = "Starting…"
 
     let bodySupported = ARBodyTrackingConfiguration.isSupported
     let faceSupported = ARFaceTrackingConfiguration.isSupported
@@ -158,7 +159,7 @@ final class SensorStreamer: ObservableObject {
 }
 
 struct ContentView: View {
-    @StateObject private var streamer = SensorStreamer()
+    @State private var streamer = SensorStreamer()
 
     private var connected: Bool { streamer.clientCount > 0 }
 
