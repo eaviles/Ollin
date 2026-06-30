@@ -358,6 +358,29 @@ typedef struct {
     float roughness;              // PBR (shading model 3): 0 mirror-smooth … 1 fully rough; ignored otherwise
 } OllinMaterial;
 
+// Parameters for the live ground-grid overlay (`ollin_grid_fragment`): a shader-drawn
+// reference floor at y=0, host chrome shown in the live preview only, never in an
+// export. The grid is computed per pixel from the plane's interpolated world XZ via
+// screen-space derivatives (an anti-aliased "pristine grid"), so lines hold a constant
+// ~`lineWidthPixels` screen width at any distance or grazing angle and blend to a flat
+// tone before they would Moiré. The X (z=0) and Z (x=0) world axes take their own
+// colors. Everything fades out radially between `fadeStart` and `fadeEnd` (world
+// distance from the camera) so the finite plane reads as infinite. Colors are straight
+// sRGB (the fragment linearizes them); each color's `a` is its own opacity (the grid
+// line's `a` the master grid opacity). Bound once per grid batch as a fragment uniform.
+typedef struct {
+    simd_float4 cameraPos;   // world-space camera eye (xyz; w unused), for the distance fade
+    simd_float4 lineColor;   // minor (fine) grid line color: sRGB rgb + a = opacity
+    simd_float4 majorColor;  // major (every 10th) grid line color: sRGB rgb + a = opacity
+    simd_float4 xAxisColor;  // X-axis (z=0) line color: sRGB rgb + a = opacity
+    simd_float4 zAxisColor;  // Z-axis (x=0) line color: sRGB rgb + a = opacity
+    float cellSize;          // the finest division reference (base cell), world units; the shader
+                             // picks the on-screen level of detail from this via a smooth log blend
+    float lineWidthPixels;   // grid + axis line width, in screen pixels
+    float fadeStart;         // world distance from the camera where the fade begins
+    float fadeEnd;           // world distance where the grid has fully faded out
+} OllinGridParams;
+
 // Lighting for the 3D mesh model (the Blinn-Phong material on `ollin_mesh_fragment`).
 // Per-frame state, like the camera: the sketch sets lights each `draw()` (see
 // `Sketch.directionalLight`/`pointLight`/`spotLight`/`ambientLight`), and the renderer

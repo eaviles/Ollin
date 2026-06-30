@@ -5,7 +5,7 @@ import Ollin
 /// The camera auto-orbits (and you can grab it with a drag), but the host's
 /// **Camera menu** jumps it to a canonical view, the way a modeling tool's numpad
 /// does: Reset (⌘0) returns to the opening framing, Front/Back/Left/Right/Top/
-/// Bottom (⌘1–⌘6) look straight down each axis, and Corner (⌘7) is the isometric
+/// Bottom (⌘1–⌘6) look straight down each axis, and Isometric (⌘7) is the
 /// three-quarter that shows all three axes at once. Each snap glides via the camera
 /// rig, then hands back to the orbit.
 ///
@@ -16,9 +16,11 @@ import Ollin
 final class SceneViews: Sketch {
 
     override func draw() {
-        background(Color(white: 0.05))
+        background(Color(white: 0.11))
         cameraShowcase(.autoOrbit(period: 32), target: .zero, radius: 9,
                        elevation: 0.35, fieldOfView: .pi / 4)
+        cameraAxis()        // the orientation widget: click an axis to snap the view
+        groundGrid()        // a faint reference floor at y = 0
 
         lightingPreset(.threePoint)
         castShadows()
@@ -43,8 +45,9 @@ final class SceneViews: Sketch {
         axisRod(.y, .green)
         axisRod(.z, .blue)
 
+        // Top edge so it clears the orientation axis widget parked at bottom-center.
         drawCaption("Camera menu: Reset · Front · Back · Left · Right · Top · " +
-                    "Bottom · Corner    (or drag to orbit)")
+                    "Bottom · Isometric    (or drag to orbit)", edge: .top)
     }
 
     private enum Axis { case x, y, z }

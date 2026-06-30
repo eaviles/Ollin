@@ -402,9 +402,9 @@ open class Sketch {
     /// Snap the camera to a canonical inspection angle, the way a modeling tool's
     /// numpad jumps the viewport to a known view. `.reset` returns to the sketch's
     /// opening framing; the six axis views (`.front`/`.back`/`.left`/`.right`/`.top`/
-    /// `.bottom`) look straight down each axis; and `.corner` is the isometric
-    /// three-quarter view that shows all three axes at once. The axis and corner
-    /// views keep the current center and distance and only swing the orbit angle.
+    /// `.bottom`) look straight down each axis; and `.isometric` is the three-quarter
+    /// view that shows all three axes at once. The axis and isometric views keep the
+    /// current center and distance and only swing the orbit angle.
     ///
     /// Works with the camera rig (`cameraShowcase`/`cameraControl`/`cameraMove`): a
     /// snap glides the rig's pose, then hands back to the running motion from there.
@@ -421,6 +421,29 @@ open class Sketch {
     public func resetCamera(animated: Bool = true, duration: Double = 0.6) {
         cameraView(.reset, animated: animated, duration: duration)
     }
+
+    // MARK: 3D scene inspection chrome (live-only, never exported)
+
+    /// Show the orientation axis: a small interactive indicator, drawn over the
+    /// canvas, of which way the 3D scene is oriented. Click an axis to snap the
+    /// camera to look down it; its controls also reset the view, frame an
+    /// isometric angle, and switch between perspective and orthographic. It is a
+    /// debugging aid for keeping your bearings in a 3D sketch, so it is host chrome
+    /// and never appears in an export. No effect in a 2D sketch (there is no camera
+    /// to orient to). Read live each frame: set it once in `setup()` for a fixed
+    /// choice, or in `draw()` to toggle it (e.g. on a key).
+    public func cameraAxis(_ visible: Bool = true) { showsCameraAxis = visible }
+
+    /// Show the ground grid: a faint reference plane of lines at y = 0 that the
+    /// scene sits on, for reading scale and placement while building. Like the
+    /// orientation axis it is a debugging aid, so it draws only in the live window
+    /// and never in an export. No effect in a 2D sketch. Read live each frame.
+    public func groundGrid(_ visible: Bool = true) { showsGroundGrid = visible }
+
+    /// Whether the orientation axis / ground grid are showing, read by the host
+    /// each frame. Internal; the public surface is `cameraAxis(_:)`/`groundGrid(_:)`.
+    var showsCameraAxis = false
+    var showsGroundGrid = false
 
     /// Draw a 3D `PointCloud` as camera-facing disc splats through the active
     /// camera (set one first with `camera`/`perspective`/`ortho`). Splats are sized

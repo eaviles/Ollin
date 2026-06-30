@@ -194,6 +194,10 @@ public struct OllinHUDCommands: Commands {
 /// the gallery, OllinLive) with no per-scene wiring. A 2D sketch, or one that
 /// drives the camera by hand rather than through the rig, simply ignores it.
 public struct OllinCameraCommands: Commands {
+    @AppStorage(OllinHUD.orthographicKey) private var orthographic = false
+    @AppStorage(OllinHUD.showAxisKey) private var showAxis = false
+    @AppStorage(OllinHUD.showGridKey) private var showGrid = false
+
     public init() {}
 
     public var body: some Commands {
@@ -207,8 +211,14 @@ public struct OllinCameraCommands: Commands {
             Button("Left")   { Self.snap(.left) }.keyboardShortcut("4", modifiers: .command)
             Button("Top")    { Self.snap(.top) }.keyboardShortcut("5", modifiers: .command)
             Button("Bottom") { Self.snap(.bottom) }.keyboardShortcut("6", modifiers: .command)
-            Button("Corner (Isometric)") { Self.snap(.corner) }
+            Button("Isometric") { Self.snap(.isometric) }
                 .keyboardShortcut("7", modifiers: .command)
+            Divider()
+            Toggle("Orthographic", isOn: $orthographic)
+                .keyboardShortcut("8", modifiers: .command)
+            Divider()
+            Toggle("Show Axis", isOn: $showAxis)
+            Toggle("Show Ground Grid", isOn: $showGrid)
         }
     }
 

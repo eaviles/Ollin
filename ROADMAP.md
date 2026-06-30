@@ -77,10 +77,6 @@ A Mac has no depth camera, inertial sensors, or spare Neural Engine for live per
 
 It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode-partly-shipped).
 
-## Orientation gizmo
-
-**Near-term.** The small XYZ axis indicator (the six labelled arrows) a modeling tool parks in a corner of the viewport, showing which way the scene is oriented as the camera orbits. It pairs naturally with the standard views on the [camera rig](Docs/3D/Camera.md): clicking an arrow snaps the camera to look down that axis, the same snap a menu command or the framework API triggers. Two flavors share the axis geometry: host chrome (a SwiftUI sibling of the canvas, like the FPS overlay, so it stays out of exports and can be clicked), and an opt-in in-canvas helper a sketch calls when it wants the axes drawn into the frame itself. It reads the running camera, a viewer convenience in the framework lane, not a scene editor.
-
 ## Photorealistic 3D
 
 The high-end, well-curated realism tier, opt-in on the shipped PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. The techniques that separate a polished product render or film still from "CG," each Metal-native and written from the published technique (credited in the README's Techniques list):

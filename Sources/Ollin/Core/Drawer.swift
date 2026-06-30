@@ -153,6 +153,11 @@ struct GeometryBatch {
     /// the wireframe pipeline. The edge color is baked into the vertices and the line
     /// width rides `position.w`; lighting/material are unused.
     var meshWireframe = false
+    /// Whether a `.mesh3D` batch is the live ground-grid overlay (a y=0 plane drawn
+    /// through `ollin_grid_fragment`), selecting the grid pipeline + its no-depth-write
+    /// state. `gridParams` carries its cell size / axis colors / fade. Live host chrome.
+    var meshGrid = false
+    var gridParams = OllinGridParams()
     /// The matcap sphere texture for a `.mesh3D` batch — sampled by the view-space
     /// normal, selecting the matcap pipeline. When set, the whole look comes from this
     /// texture and lighting/material/shadow are bypassed. `nil` for a lit mesh. A matcap
@@ -513,7 +518,8 @@ final class Drawer {
     /// and clears `currentKind` so a following mesh (any mode) opens its own batch
     /// rather than merging into this one.
     private func beginMeshBatch(material: MeshMaterial?, finish: OllinMaterial,
-                                wireframe: Bool = false, matcap: Image? = nil) {
+                                wireframe: Bool = false, matcap: Image? = nil,
+                                grid: Bool = false, gridParams: OllinGridParams = OllinGridParams()) {
         batches.append(GeometryBatch(kind: .mesh3D, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -524,7 +530,8 @@ final class Drawer {
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      material: material, finish: finish,
-                                     meshWireframe: wireframe, matcap: matcap,
+                                     meshWireframe: wireframe, meshGrid: grid,
+                                     gridParams: gridParams, matcap: matcap,
                                      target: currentTarget))
         currentKind = nil
     }
@@ -552,6 +559,26 @@ final class Drawer {
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      finish: m.gpuMaterial(), target: currentTarget))
+    }
+
+    /// Draw the live ground-grid overlay: one large y=0 quad (centered at `center`'s XZ,
+    /// half-width `halfExtent`) routed to the grid pipeline, which computes the
+    /// anti-aliased reference grid per pixel from the world XZ. Host chrome the runner
+    /// injects after the sketch's `draw()` (live preview only, never an export), so it
+    /// opens its own grid batch and reads nothing from the current fill/material.
+    func drawGroundGrid(_ params: OllinGridParams, center: Vector3, halfExtent: Double) {
+        beginMeshBatch(material: nil, finish: OllinMaterial(), grid: true, gridParams: params)
+        let cx = Float(center.x), cz = Float(center.z), h = Float(halfExtent)
+        let corners = [SIMD3<Float>(cx - h, 0, cz - h), SIMD3<Float>(cx + h, 0, cz - h),
+                       SIMD3<Float>(cx + h, 0, cz + h), SIMD3<Float>(cx - h, 0, cz + h)]
+        meshVertices.reserveCapacity(meshVertices.count + 6)
+        for k in [0, 1, 2, 0, 2, 3] {
+            var v = OllinMeshVertex()
+            v.position = SIMD4<Float>(corners[k], 1)
+            v.normal = SIMD4<Float>(0, 1, 0, 0)
+            v.color = SIMD4<Float>(1, 1, 1, 1)
+            meshVertices.append(v)
+        }
     }
 
     /// Open a fresh `.glyphAtlas` batch carrying `atlas` as its texture. One

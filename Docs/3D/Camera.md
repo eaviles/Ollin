@@ -17,6 +17,7 @@ Each is a single call you make in `draw()`, like `camera(...)`. A sketch that ca
 - [The move catalog](#catalog) - `CameraMove`
 - [Composing: frame, then drift](#compose)
 - [Scene inspection views](#views) - `cameraView(_:)` / `resetCamera()`, the Camera menu
+- [Orientation axis & ground grid](#chrome) - `cameraAxis()` / `groundGrid()`, the live-only viewport aids
 - [Notes](#notes)
 
 <a id="showcase"></a>
@@ -138,7 +139,7 @@ While building a 3D scene it helps to look at it from a known angle, the way a m
 
 ```swift
 cameraView(.front)                  // look straight down +Z
-cameraView(.corner)                 // the isometric three-quarter, all three axes at once
+cameraView(.isometric)              // the three-quarter, all three axes at once
 resetCamera()                       // back to the opening framing
 cameraView(.top, animated: false)   // cut instantly instead of gliding
 ```
@@ -147,11 +148,27 @@ The views:
 
 - `.reset` returns to the sketch's opening framing (its center, distance, and angle), the shot the first `cameraShowcase` / `cameraControl` / `cameraMove` call set. `resetCamera()` is sugar for it.
 - `.front` / `.back` / `.left` / `.right` / `.top` / `.bottom` look straight down each axis (each flattens the scene to two axes). They keep the current center and distance and only swing the orbit angle.
-- `.corner` is the isometric three-quarter (45° around, tilted so the three axes foreshorten equally), the one angle that shows all three axes at once.
+- `.isometric` is the three-quarter (45° around, tilted so the three axes foreshorten equally), the one angle that shows all three axes at once. Pair it with the axis widget's Ortho toggle for a textbook isometric look.
 
 By default the camera glides over `duration` seconds (reusing the rig's eased return); pass `animated: false` to cut. A snap works with the rig (`cameraShowcase` / `cameraControl` / `cameraMove`): after gliding it resumes that motion from the snapped pose. A sketch that drives the camera by hand with `camera(...)` overrides the pose every frame, so a snap has no effect there, and a 2D sketch ignores it.
 
-**From the menu.** The host apps (a standalone `swift run Example-X`, the examples gallery, and OllinLive) carry a **Camera** menu with the same snaps and keyboard shortcuts, so you can orbit by hand and snap back without the sketch wiring anything: Reset View (⌘0), Front (⌘1), Back (⌘2), Right (⌘3), Left (⌘4), Top (⌘5), Bottom (⌘6), Corner (⌘7). The menu drives whatever 3D sketch is running.
+**From the menu.** The host apps (a standalone `swift run Example-X`, the examples gallery, and OllinLive) carry a **Camera** menu with the same snaps and keyboard shortcuts, so you can orbit by hand and snap back without the sketch wiring anything: Reset View (⌘0), Front (⌘1), Back (⌘2), Right (⌘3), Left (⌘4), Top (⌘5), Bottom (⌘6), Isometric (⌘7). The menu drives whatever 3D sketch is running.
+
+<a id="chrome"></a>
+### Orientation axis & ground grid
+
+Two aids for keeping your bearings while you build a 3D scene. Both are *live-only host chrome*: they draw in the preview window but never in an export, and both are no-ops in a 2D sketch (there is no camera to orient to).
+
+```swift
+cameraAxis()    // the interactive orientation widget, bottom-center
+groundGrid()    // a faint reference floor at y = 0
+```
+
+`cameraAxis()` shows a small XYZ indicator that turns with the camera, so you can read which way the scene faces as it orbits. It is interactive: click an axis to snap the view down it (the same snaps as `cameraView`), and its buttons reset the view, frame the isometric angle, and toggle between perspective and orthographic projection (the Ortho look that pairs with `.isometric`).
+
+`groundGrid()` lays a faint grid on the y = 0 plane the scene sits on, for reading scale and placement. It subdivides with the camera (finer lines fade in as you dolly closer, coarser ones as you pull back) and fades toward the horizon, with the X and Z world axes picked out in red and blue.
+
+Both read live each frame, so set them once in `setup()` for a fixed choice, or flip them in `draw()` (say, on a key). The host apps also expose them as **Camera** menu toggles, **Show Axis** and **Show Ground Grid**, so you can turn them on for any running sketch without editing it.
 
 <a id="notes"></a>
 ### Notes

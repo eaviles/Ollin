@@ -184,6 +184,14 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_mesh_matcap_vertex", fragment: "ollin_mesh_matcap_fragment",
                         blend: blend, depthFormat: depth)
         }
+        // the live ground-grid overlay: a large y=0 plane whose fragment draws an
+        // anti-aliased reference grid from the interpolated world XZ (reusing the mesh
+        // vertex stage). Alpha-blended, depth-tested but not depth-writing (the no-write
+        // state is selected on the encoder). Live host chrome, never in an export.
+        static func grid(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_vertex", fragment: "ollin_grid_fragment",
+                        blend: blend, depthFormat: depth)
+        }
         // mesh view-space normal G-buffer: re-render the meshes MSAA + depth-tested, writing
         // each surface's view-space normal (alpha 1) so the ambient-occlusion combine reads a
         // true normal instead of reconstructing one from depth. MSAA (not single-sample) so a
@@ -234,7 +242,8 @@ final class MetalRenderer {
         /// active depth format (nil in 2D), and — for a mesh — whether it's textured.
         static func forBatch(_ kind: GeometryKind, _ blend: BlendMode,
                              depth: MTLPixelFormat? = nil, textured: Bool = false,
-                             wireframe: Bool = false, matcap: Bool = false) -> PipelineKey {
+                             wireframe: Bool = false, matcap: Bool = false,
+                             grid: Bool = false) -> PipelineKey {
             switch kind {
             case .triangles:  return .solid(blend, depth: depth)
             case .fringe:     return .fringe(blend, depth: depth)
@@ -246,7 +255,8 @@ final class MetalRenderer {
             case .particles:  return .points(blend, depth: depth)
             case .points3D:   return .pointCloud(blend, depth: depth)
             case .mesh3D:
-                return wireframe ? .meshWireframe(blend, depth: depth)
+                return grid      ? .grid(blend, depth: depth)
+                     : wireframe ? .meshWireframe(blend, depth: depth)
                      : matcap    ? .meshMatcap(blend, depth: depth)
                      : textured  ? .meshTextured(blend, depth: depth)
                                   : .mesh(blend, depth: depth)
@@ -378,6 +388,14 @@ final class MetalRenderer {
     private lazy var noDepthState: MTLDepthStencilState? = {
         let d = MTLDepthStencilDescriptor()
         d.depthCompareFunction = .always
+        d.isDepthWriteEnabled = false
+        return device.makeDepthStencilState(descriptor: d)
+    }()
+    // The ground-grid overlay: z-tests (so scene meshes occlude it) but does *not* write
+    // depth, so its transparent gaps (and the plane itself) occlude nothing.
+    private lazy var depthTestNoWriteState: MTLDepthStencilState? = {
+        let d = MTLDepthStencilDescriptor()
+        d.depthCompareFunction = .lessEqual
         d.isDepthWriteEnabled = false
         return device.makeDepthStencilState(descriptor: d)
     }()
@@ -2426,11 +2444,12 @@ final class MetalRenderer {
             // selects its variant: wireframe (edges only) or textured (a material
             // texture). Skip the batch if it can't be built (never expected — same shaders).
             let meshWireframe = batch.kind == .mesh3D && batch.meshWireframe
-            let meshMatcap = batch.kind == .mesh3D && !batch.meshWireframe && batch.matcap != nil
-            let meshTextured = batch.kind == .mesh3D && !batch.meshWireframe && !meshMatcap && batch.material?.texture != nil
+            let meshGrid = batch.kind == .mesh3D && batch.meshGrid
+            let meshMatcap = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid && batch.matcap != nil
+            let meshTextured = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid && !meshMatcap && batch.material?.texture != nil
             guard let state = try? pipeline(.forBatch(batch.kind, batch.blendMode, depth: depthFormat,
                                                       textured: meshTextured, wireframe: meshWireframe,
-                                                      matcap: meshMatcap)) else { continue }
+                                                      matcap: meshMatcap, grid: meshGrid)) else { continue }
             // In a depth pass (active camera): 3D batches z-test + write depth. A 2D
             // batch that opted into a depth (`depth(at:)`) does too — its constant
             // clip-z is fed to the 2D vertex shader so it occludes / is occluded by
@@ -2444,7 +2463,9 @@ final class MetalRenderer {
                 // the camera projection), so only plain 2D batches feed `clipDepth`.
                 let wantsDepth = batch.kind == .points3D || batch.kind == .mesh3D
                     || batch.kind == .depthScene || batch.kind == .sdfGroup3D || batch.depth != nil
-                encoder.setDepthStencilState(wantsDepth ? depthTestState : noDepthState)
+                // The grid z-tests but doesn't write depth (occluded by the scene, occludes nothing).
+                encoder.setDepthStencilState(meshGrid ? depthTestNoWriteState
+                                             : (wantsDepth ? depthTestState : noDepthState))
                 if batch.kind != .points3D && batch.kind != .mesh3D && batch.kind != .depthScene && batch.kind != .sdfGroup3D {
                     uniforms.clipDepth = batch.depth ?? 0
                     encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
@@ -2597,8 +2618,12 @@ final class MetalRenderer {
                 encoder.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
                 // Lighting, the shadow map, and the material finish feed only the lit
                 // solid/textured fragments — the wireframe and matcap pipelines declare
-                // none of them (matcap bakes its lighting into the texture).
-                if !meshWireframe && !meshMatcap {
+                // none of them (matcap bakes its lighting into the texture), and the grid
+                // overlay is unlit (it binds only its own params).
+                if meshGrid {
+                    var grid = batch.gridParams
+                    encoder.setFragmentBytes(&grid, length: MemoryLayout<OllinGridParams>.stride, index: 0)
+                } else if !meshWireframe && !meshMatcap {
                     // Shadow maps at fragment textures 1 (2D, directional/spot) and 2
                     // (cube, point): the real map when that caster is active, a 1×1 dummy
                     // otherwise (`lighting.shadowLight`/`shadowKind` gate the sampling).
@@ -3764,7 +3789,10 @@ final class MetalRenderer {
         let batches = drawer.batches
         for i in batches.indices {
             let batch = batches[i]
-            guard batch.kind == .mesh3D, !batch.meshWireframe else { continue }
+            // Solid/textured meshes cast; wireframe (see-through edges) and the live
+            // ground-grid overlay (a mostly-transparent sheet) do not; a grid that cast
+            // would flood the whole floor below it into shadow.
+            guard batch.kind == .mesh3D, !batch.meshWireframe, !batch.meshGrid else { continue }
             let next = i + 1 < batches.count ? batches[i + 1] : nil
             let end = next?.meshStart ?? meshVertices.count
             let count = end - batch.meshStart

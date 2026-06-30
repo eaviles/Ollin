@@ -18,13 +18,20 @@ struct CameraInput {
 ///
 /// `reset` returns to the sketch's opening framing (its center, distance, and
 /// angle); the six axis views look straight down each axis (each flattens the
-/// scene to two axes); and `corner` is the isometric three-quarter view that shows
-/// all three axes at once. The axis and corner views keep the current center and
-/// distance and only swing the orbit angle.
+/// scene to two axes); and `isometric` is the three-quarter view that shows all
+/// three axes at once (the angle where they foreshorten equally). The axis and
+/// isometric views keep the current center and distance and only swing the orbit
+/// angle.
 public enum CameraView: String, Sendable, CaseIterable {
     case reset
     case front, back, left, right, top, bottom
-    case corner
+    case isometric
+}
+
+public extension CameraView {
+    /// Former name for `isometric` (the same three-quarter angle).
+    @available(*, deprecated, renamed: "isometric")
+    static var corner: CameraView { .isometric }
 }
 
 /// Owns the canonical orbit pose (target, radius, azimuth, elevation, field of
@@ -43,6 +50,12 @@ final class CameraRig {
     var azimuth: Double = 0
     var elevation: Double = 0.3
     var fieldOfView: Double = .pi / 3
+
+    /// Whether `makeCamera` flattens with an orthographic projection instead of
+    /// perspective, driven by the axis widget's Ortho|Perspective toggle. The
+    /// orthographic framing matches the perspective view at the target distance, so
+    /// flipping it leaves the scale put.
+    var isOrthographic = false
 
     private var seeded = false
 
@@ -447,7 +460,7 @@ final class CameraRig {
         case .left:   toAzimuth = -.pi / 2;   toElevation = 0
         case .top:    toAzimuth = 0;          toElevation = maxElevation
         case .bottom: toAzimuth = 0;          toElevation = -maxElevation
-        case .corner: toAzimuth = .pi / 4;    toElevation = CameraRig.isoElevation
+        case .isometric: toAzimuth = .pi / 4; toElevation = CameraRig.isoElevation
         }
         toElevation = clampedElevation(toElevation)
 
@@ -528,10 +541,22 @@ final class CameraRig {
         return (right, camUp)
     }
 
-    /// The current pose as a perspective `Camera3D` orbiting the target.
+    /// The current pose as a `Camera3D` orbiting the target, perspective by
+    /// default, orthographic when `isOrthographic` is set. The orthographic framing
+    /// is the perspective view's height at the target distance, so flipping
+    /// projection doesn't jump the scale.
     func makeCamera(near: Double, far: Double) -> Camera3D {
-        .orbiting(target: target, radius: radius, azimuth: azimuth,
-                  elevation: clampedElevation(elevation), fieldOfView: fieldOfView,
-                  near: near, far: far)
+        let e = clampedElevation(elevation)
+        guard isOrthographic else {
+            return .orbiting(target: target, radius: radius, azimuth: azimuth,
+                             elevation: e, fieldOfView: fieldOfView,
+                             near: near, far: far)
+        }
+        let ce = cos(e)
+        let eye = target + Vector3(radius * ce * sin(azimuth),
+                                   radius * sin(e),
+                                   radius * ce * cos(azimuth))
+        let height = 2 * radius * tan(fieldOfView / 2)
+        return .orthographic(eye: eye, target: target, height: height, near: near, far: far)
     }
 }

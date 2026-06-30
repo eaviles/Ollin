@@ -7,6 +7,16 @@ public enum OllinHUD {
     /// panel both bind to, so toggling the menu summons the panel in any run mode
     /// and the choice persists across launches.
     public static let showStatsKey = "ollin.hud.showStats"
+    /// `@AppStorage` key the "Show Axis" camera-menu command and the axis widget
+    /// both bind to, so the menu can summon the orientation widget in any host and
+    /// the choice persists. OR-ed with the sketch's own `cameraAxis(_:)` flag.
+    public static let showAxisKey = "ollin.hud.showAxis"
+    /// `@AppStorage` key for the "Show Ground Grid" command, paired with the
+    /// sketch's `groundGrid(_:)` flag the same way.
+    public static let showGridKey = "ollin.hud.showGrid"
+    /// `@AppStorage` key for the "Orthographic" camera-menu toggle, read each frame
+    /// by the runner and applied to the rig (perspective when off).
+    public static let orthographicKey = "ollin.hud.orthographic"
     /// Window identifier for the floating stats panel, so the standalone app
     /// delegate can tell it apart from the sketch window (and not quit when only
     /// the panel is closed).

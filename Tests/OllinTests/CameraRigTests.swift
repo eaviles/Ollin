@@ -267,4 +267,20 @@ struct CameraRigTests {
         for _ in 0..<60 { rig.updateControl(input: input(), dt: dt, viewportHeight: height) }
         #expect(abs(rig.azimuth - snapped) < 1e-3)              // held, not drifted
     }
+
+    /// The axis widget's Ortho|Perspective toggle drives `isOrthographic`: the rig
+    /// builds a perspective camera by default and an orthographic one when set, with
+    /// the orthographic height matching the perspective frustum at the target
+    /// distance (2·radius·tan(fov/2)) so flipping projection leaves the scale put.
+    @Test func orthographicToggleMatchesFramedScale() {
+        let rig = fresh(radius: 10)
+        guard case .perspective = rig.makeCamera(near: 0.1, far: 100).projection else {
+            Issue.record("default projection should be perspective"); return
+        }
+        rig.isOrthographic = true
+        guard case .orthographic(let h) = rig.makeCamera(near: 0.1, far: 100).projection else {
+            Issue.record("isOrthographic should produce an orthographic projection"); return
+        }
+        #expect(abs(h - 2 * 10 * tan((.pi / 3) / 2)) < 1e-9)
+    }
 }

@@ -4,6 +4,7 @@ import SwiftUI
 import MetalKit
 import QuartzCore
 import simd
+import COllinShaders
 
 /// The sketch runner currently drawing, so a host menu command can reach the
 /// running sketch without a per-scene reference (the camera-view snaps in
@@ -57,6 +58,17 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// `cameraView(_:)` call from `draw()`.
     private var pendingCameraView: CameraView?
 
+    /// The orientation holder the axis widget reads, fed each frame by `publishOrientation`.
+    private var cameraOrientation: CameraOrientationState?
+    /// The sketch mouse position captured when a puck drag begins, so the widget's
+    /// drag drives the camera orbit through the same input the canvas would.
+    private var widgetDragBase: (x: Double, y: Double)?
+    /// The last `cameraAxis()`/`groundGrid()` values pushed to the Camera-menu prefs,
+    /// so the push fires only on a change. Reset on reload so a fresh sketch
+    /// re-asserts its default (and the viewer's session override resets with it).
+    private var lastAxisFlag: Bool?
+    private var lastGridFlag: Bool?
+
     public init(sketch: Sketch, view: MTKView, device: MTLDevice) {
         self.sketch = sketch
         do {
@@ -90,6 +102,30 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         self.view?.isPaused = false   // a noLoop() sketch must still snap on demand
     }
 
+    /// Drive the camera orbit from a drag on the axis widget's puck by feeding the
+    /// sketch's mouse state the way the canvas would, so a rig-driven sketch
+    /// (`cameraShowcase` / `cameraControl`) orbits exactly as if the scene were
+    /// dragged. `translation` is the SwiftUI drag translation in points, scaled to
+    /// canvas units so the feel matches dragging the scene. A hand-`camera()` or 2D
+    /// sketch ignores it.
+    func widgetOrbit(began: Bool, ended: Bool, translation: CGSize) {
+        let viewWidth = Double(view?.bounds.width ?? 0)
+        let scale = viewWidth > 0 ? Double(sketch.width) / viewWidth : 1
+        if began {
+            widgetDragBase = (sketch.mouseX, sketch.mouseY)
+            sketch.mouseIsPressed = true
+        }
+        if let base = widgetDragBase {
+            sketch.setMouse(x: base.x + Double(translation.width) * scale,
+                            y: base.y + Double(translation.height) * scale)
+        }
+        if ended {
+            sketch.mouseIsPressed = false
+            widgetDragBase = nil
+        }
+        view?.isPaused = false
+    }
+
     /// Swap in a freshly loaded sketch without tearing down the window or GPU
     /// resources — the heart of live reload. The new instance starts clean:
     /// `setup()` runs again and the clock resets on the next frame. **Call on the
@@ -112,6 +148,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         renderer.resetAccumulation()   // a reloaded sketch starts on a clean canvas
         didSetup = false            // re-run setup() next frame
         didReload = true            // ...then call onReload() once
+        lastAxisFlag = nil          // re-assert the fresh sketch's axis/grid defaults
+        lastGridFlag = nil
         view?.isPaused = false      // a prior noLoop() must not freeze the reload
     }
 
@@ -123,6 +161,49 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         let ext = StatsExtension(stats: stats)
         statsExtension = ext
         sketch.extend(ext)
+    }
+
+    /// Start feeding the camera orientation into `cameraState` for the axis widget. Set
+    /// once when the view builds; the runner writes it each frame in `publishOrientation`.
+    func observeOrientation(into cameraState: CameraOrientationState) {
+        cameraOrientation = cameraState
+    }
+
+    /// Publish the current camera orientation (and the gate flags) to the axis
+    /// widget's holder, after `draw()` set the frame's camera. Published on the main
+    /// queue, never inline: mutating an observed value inside the render callback
+    /// drives a re-entrant SwiftUI layout pass. Driving the widget from this data
+    /// (rather than a `TimelineView`) is what keeps it from freezing when the window
+    /// loses focus: SwiftUI pauses a free-running timeline there, but honors a data
+    /// update, so the tripod keeps tracking the orbit in the background. Only runs
+    /// the per-frame work while the widget is on screen, so a 2D sketch (or a 3D one
+    /// not showing the axis) pays nothing.
+    private func publishOrientation() {
+        guard let cameraState = cameraOrientation else { return }
+        let cam = sketch.activeCamera
+        let is3D = cam != nil
+        let axisVisible = sketch.showsCameraAxis
+        let gridVisible = sketch.showsGroundGrid
+        let showingAxis = is3D && UserDefaults.standard.bool(forKey: OllinHUD.showAxisKey)
+
+        var rotation: simd_float3x3?
+        if showingAxis, let cam {
+            let v = cam.viewMatrix
+            rotation = simd_float3x3(SIMD3(v.columns.0.x, v.columns.0.y, v.columns.0.z),
+                                     SIMD3(v.columns.1.x, v.columns.1.y, v.columns.1.z),
+                                     SIMD3(v.columns.2.x, v.columns.2.y, v.columns.2.z))
+        }
+
+        let gatesChanged = cameraState.is3D != is3D
+            || cameraState.axisVisible != axisVisible
+            || cameraState.gridVisible != gridVisible
+        guard showingAxis || gatesChanged else { return }
+        DispatchQueue.main.async {
+            if let rotation { cameraState.orientation = rotation }
+            cameraState.is3D = is3D
+            cameraState.axisVisible = axisVisible
+            cameraState.gridVisible = gridVisible
+        }
     }
 
     /// Recompile the shader library from `source` and rebuild the pipelines for
@@ -219,6 +300,10 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             sketch.cameraView(view)
         }
 
+        // Projection (orthographic vs perspective) is a Camera-menu toggle; apply it
+        // to the rig before draw() so a rig-driven camera flattens accordingly.
+        sketch.cameraRig.isOrthographic = UserDefaults.standard.bool(forKey: OllinHUD.orthographicKey)
+
         // Time only the CPU tessellation (`performDraw`), not the render: the
         // renderer blocks on the triple-buffer semaphore (the vsync wait), which
         // would pin this to 1/fps and tell us nothing. CPU tessellation is the
@@ -228,9 +313,54 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         let cpuMS = (CACurrentMediaTime() - drawStart) * 1000
         smoothedCPUMS = smoothedCPUMS == 0 ? cpuMS : smoothedCPUMS + (cpuMS - smoothedCPUMS) * 0.1
 
+        // Bridge the sketch's cameraAxis()/groundGrid() flags to the Camera-menu
+        // prefs, but only on a change, so the sketch sets the default and the menu
+        // becomes the authority that can override it (a per-frame `cameraAxis()`
+        // call no longer fights a viewer's toggle). The prefs reset on reload.
+        if lastAxisFlag != sketch.showsCameraAxis {
+            lastAxisFlag = sketch.showsCameraAxis
+            UserDefaults.standard.set(sketch.showsCameraAxis, forKey: OllinHUD.showAxisKey)
+        }
+        if lastGridFlag != sketch.showsGroundGrid {
+            lastGridFlag = sketch.showsGroundGrid
+            UserDefaults.standard.set(sketch.showsGroundGrid, forKey: OllinHUD.showGridKey)
+        }
+
+        // Ground grid: a shader-drawn y=0 reference floor, injected after the sketch's
+        // draw so it depth-composites with the scene (objects occlude it). Live-only:
+        // the headless `image(of:)` drives the sketch on its own loop, so this never
+        // reaches an export. The grid pattern, anti-aliasing, colored axes, and distance
+        // fade are all computed in `ollin_grid_fragment` from the plane's world XZ, so
+        // lines stay crisp and a constant ~1px at any zoom or grazing angle. The plane
+        // follows the camera's look-at and is sized to cover the fade, so it reads as
+        // infinite; the cell size snaps to a nice step for the current viewing distance.
+        if let cam = sketch.activeCamera, UserDefaults.standard.bool(forKey: OllinHUD.showGridKey) {
+            let eye = cam.eye.simd3
+            let eyeDist = max(Double(simd_distance(eye, cam.target.simd3)), 0.001)
+            let fadeStart = eyeDist * 2.0, fadeEnd = eyeDist * 11.0
+            let params = OllinGridParams(
+                cameraPos: SIMD4<Float>(eye, 0),
+                lineColor:  SIMD4<Float>(0.52, 0.52, 0.56, 0.20),   // faint minor lines
+                majorColor: SIMD4<Float>(0.72, 0.72, 0.76, 0.52),   // brighter every-10th
+                xAxisColor: SIMD4<Float>(0.80, 0.30, 0.32, 0.85),   // red X axis
+                zAxisColor: SIMD4<Float>(0.30, 0.50, 0.85, 0.85),   // blue Z axis
+                cellSize: 1.0,                                       // base division = 1 world unit; shader picks the LOD
+                lineWidthPixels: 1.0,
+                fadeStart: Float(fadeStart), fadeEnd: Float(fadeEnd))
+            // The grid composites straight over the frame; reset blend in case the sketch
+            // left a non-normal mode at the end of its draw.
+            sketch.withState {
+                sketch.blendMode(.normal)
+                sketch.drawer.drawGroundGrid(params, center: cam.target, halfExtent: fadeEnd * 1.15)
+            }
+        }
+
         renderer.render(sketch.drawer,
                         viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
                         in: view)
+
+        // Hand the frame's camera orientation to the axis widget (no-op if unused).
+        publishOrientation()
 
         // Surface any user-shader compile error to the host (deduped) for the error
         // overlay. The draw callback runs on the main thread, so the handler does too.
@@ -570,6 +700,14 @@ public struct SketchView: View {
     /// The shared toggle the "Show FPS" command flips.
     @AppStorage(OllinHUD.showStatsKey) private var showStats = false
 
+    /// The live camera orientation feeding the axis widget. Its observed gate flags
+    /// (`is3D` / `axisVisible`) decide whether the widget mounts, so a 2D sketch
+    /// never creates it.
+    @State private var cameraState = CameraOrientationState()
+    /// The shared toggle the "Show Axis" command flips, OR-ed with the sketch's own
+    /// `cameraAxis(_:)` flag.
+    @AppStorage(OllinHUD.showAxisKey) private var showAxis = false
+
     /// - Parameter showsInspectorPanel: whether this view honors the "Show FPS"
     ///   toggle by summoning the detached inspector panel. The live host passes
     ///   `false` because its sidebar already shows the same content, so the panel
@@ -587,10 +725,21 @@ public struct SketchView: View {
     private var stats: FrameStats { injectedStats ?? ownedStats }
 
     public var body: some View {
-        MetalCanvas(sketch: sketch, stats: stats, onRunner: onRunner)
-            .onAppear { syncPanel() }
-            .onChange(of: showStats) { _, _ in syncPanel() }
-            .onDisappear { statsPanel.close() }
+        ZStack(alignment: .bottom) {
+            MetalCanvas(sketch: sketch, stats: stats, cameraState: cameraState, onRunner: onRunner)
+            // Mounted only for a 3D frame the sketch or the menu asked to annotate,
+            // so a 2D sketch never builds the widget or its animation timeline. The
+            // widget is its own size, so it intercepts clicks only over itself.
+            if cameraState.is3D && showAxis {
+                AxisWidget(cameraState: cameraState)
+                    .padding(.bottom, 26)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: cameraState.is3D)
+        .onAppear { syncPanel() }
+        .onChange(of: showStats) { _, _ in syncPanel() }
+        .onDisappear { statsPanel.close() }
     }
 
     /// Reflect the "Show FPS" toggle onto the floating panel. A no-op for hosts
@@ -608,6 +757,7 @@ public struct SketchView: View {
 private struct MetalCanvas: NSViewRepresentable {
     let sketch: Sketch
     let stats: FrameStats
+    let cameraState: CameraOrientationState
     let onRunner: (@MainActor (SketchRunner) -> Void)?
 
     func makeCoordinator() -> Coordinator {
@@ -622,6 +772,7 @@ private struct MetalCanvas: NSViewRepresentable {
         let view = makeOllinMTKView(device: device, size: sketch.canvasSize.cgSize, sketch: sketch)
         let runner = SketchRunner(sketch: sketch, view: view, device: device)
         runner.observeStats(into: stats)
+        runner.observeOrientation(into: cameraState)
         view.delegate = runner
         context.coordinator.runner = runner   // retain the runner
         onRunner?(runner)
