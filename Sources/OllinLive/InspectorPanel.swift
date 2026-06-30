@@ -12,12 +12,14 @@ struct InspectorPanel: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                MonitorCardView(
-                    identity: MonitorIdentity(name: session.fileName, folder: session.folder),
-                    stats: session.stats)
-                ParametersListView(params: session.params) { name, value in
-                    session.recordParam(name, value)
+            GlassEffectContainer(spacing: 16) {
+                VStack(spacing: 16) {
+                    MonitorCardView(
+                        identity: MonitorIdentity(name: session.fileName, folder: session.folder),
+                        stats: session.stats)
+                    ParametersListView(params: session.params) { name, value in
+                        session.recordParam(name, value)
+                    }
                 }
             }
             .padding(14)

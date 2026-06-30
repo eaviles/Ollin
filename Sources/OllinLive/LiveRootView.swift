@@ -479,20 +479,6 @@ private struct ReloadedToast: View {
 
     @SwiftUI.Environment(\.colorScheme) private var colorScheme
 
-    /// `--hud`, dialed translucent at the shared chrome opacity: a dark tint over
-    /// the material blur, light enough that the frosted blur reads through (the
-    /// 0.78 design token looks opaque over a bright sketch).
-    private var hudTint: SwiftUI.Color {
-        colorScheme == .dark
-            ? SwiftUI.Color(red: 20 / 255, green: 20 / 255, blue: 22 / 255).opacity(LiveChrome.tintOpacity)
-            : SwiftUI.Color(red: 248 / 255, green: 248 / 255, blue: 250 / 255).opacity(LiveChrome.tintOpacity)
-    }
-
-    /// `--glass-stroke`: the hairline edge on the frosted surface.
-    private var glassStroke: SwiftUI.Color {
-        colorScheme == .dark ? .white.opacity(0.12) : .white.opacity(0.7)
-    }
-
     private var subtitle: String {
         if let buildSeconds { return String(format: "build %.2fs · #%d", buildSeconds, count) }
         return "#\(count)"
@@ -513,12 +499,9 @@ private struct ReloadedToast: View {
         .padding(.leading, 11)
         .padding(.trailing, 14)
         .padding(.vertical, 9)
-        .background {
-            shape.fill(.ultraThinMaterial)
-                .overlay(shape.fill(hudTint))
-                .overlay(shape.strokeBorder(glassStroke, lineWidth: 0.5))
-        }
-        // Softer in light mode — the dark-tuned shadow reads as a smudge there.
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.35 : 0.18), radius: 18, y: 8)
+        .glassEffect(.regular, in: shape)
+        // A soft drop shadow lifts the glass off the canvas; gentler in light mode,
+        // where the dark-tuned radius reads as a smudge.
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.14), radius: 16, y: 7)
     }
 }

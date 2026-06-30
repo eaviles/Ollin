@@ -272,11 +272,8 @@ public struct MonitorCardView: View {
             Hairline(palette: palette)
             statStrip
         }
-        .background(palette.cardFill)
         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .strokeBorder(palette.cardStroke, lineWidth: 0.5))
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     private var identityRow: some View {
@@ -429,11 +426,8 @@ public struct ParametersListView: View {
                     }
                 }
             }
-            .background(palette.cardFill)
             .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .strokeBorder(palette.cardStroke, lineWidth: 0.5))
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
     }
 
