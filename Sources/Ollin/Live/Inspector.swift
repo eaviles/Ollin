@@ -187,9 +187,13 @@ public struct StatusChip: View {
 // MARK: - Monitor card
 
 /// Identity for the card header: the source filename and its folder. The folder
-/// is optional (its line is dropped when nil), as is the leading `icon` — pass
+/// is optional (its line is dropped when nil), as is the leading `icon`: pass
 /// `nil` to omit it (e.g. the standalone panel names the app, not a file).
-public struct MonitorIdentity {
+///
+/// `Equatable` so the card's identity block, factored into its own view, is
+/// skipped by SwiftUI on every `FrameStats` tick that leaves the identity
+/// unchanged (the common case between sketch reloads).
+public struct MonitorIdentity: Equatable {
     var name: String
     var folder: String?
     var icon: String?
@@ -200,11 +204,15 @@ public struct MonitorIdentity {
     }
 }
 
-/// The centerpiece: a card with three tiers — an identity row (filename · path,
+/// The centerpiece: a card with three tiers, an identity row (filename · path,
 /// with a Frame counter cell on the right; just the one cell, a second squeezed
 /// the identity block illegibly), the big centered timecode clock, and a
 /// four-up FPS · CPU · Canvas · Geometry stat strip. Driven by a live
 /// `FrameStats`, so it updates a few times a second as the sketch runs.
+///
+/// Each tier is its own `View` so a tick only re-renders the readouts that
+/// changed: the static identity block stays put while the clock and strip
+/// advance, instead of the whole card re-evaluating behind one boundary.
 public struct MonitorCardView: View {
     let identity: MonitorIdentity
     let stats: FrameStats
@@ -220,14 +228,149 @@ public struct MonitorCardView: View {
 
     private var palette: OllinInspector.Palette { .resolve(scheme) }
 
+    public var body: some View {
+        VStack(spacing: 0) {
+            MonitorIdentityRow(identity: identity, frameCount: stats.frameCount)
+            Hairline(palette: palette)
+            MonitorClockRow(time: stats.time, clockSize: clockSize)
+            Hairline(palette: palette)
+            MonitorStatStrip(stats: stats)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+    }
+}
+
+/// The static identity block: icon · filename over the optional folder line, with
+/// the (often truncated) path shown in full on hover. Its own view so the live
+/// `FrameStats` tick re-renders the readouts around it without redrawing this;
+/// `MonitorIdentity` is `Equatable`, so SwiftUI skips it when it hasn't changed.
+private struct IdentityBlock: View {
+    let identity: MonitorIdentity
+
+    @SwiftUI.Environment(\.colorScheme) private var scheme
+    private var palette: OllinInspector.Palette { .resolve(scheme) }
+
+    /// The full path, shown as a tooltip on the (often truncated) block.
+    private var fullPath: String {
+        if let folder = identity.folder { return "\(folder)/\(identity.name)" }
+        return identity.name
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                if let icon = identity.icon {
+                    SwiftUI.Image(systemName: icon)
+                        .font(.system(size: 11))
+                        .foregroundStyle(palette.textTertiary)
+                }
+                Text(identity.name)
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+            }
+            if let folder = identity.folder {
+                Text(folder)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(palette.textTertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .padding(.vertical, 9)
+        .padding(.leading, 13)
+        .padding(.trailing, 12)   // keep the path off the Frame-cell separator
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .help(fullPath)           // hover the truncated path to see it in full
+    }
+}
+
+/// The card's top tier: the static `IdentityBlock` beside a live Frame counter
+/// cell. Only the frame count ticks, so the identity block is left alone.
+private struct MonitorIdentityRow: View {
+    let identity: MonitorIdentity
+    let frameCount: Int
+
+    @SwiftUI.Environment(\.colorScheme) private var scheme
+    private var palette: OllinInspector.Palette { .resolve(scheme) }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            IdentityBlock(identity: identity)
+
+            HStack(spacing: 0) {
+                Hairline(palette: palette, axis: .vertical)
+                MonitorCell(value: "\(frameCount)", label: "Frame",
+                            valueColor: OllinInspector.accent, palette: palette)
+                    // A width floor so the identity row doesn't shift each time
+                    // the running frame count gains a digit.
+                    .frame(minWidth: 56)
+            }
+            .fixedSize(horizontal: true, vertical: false)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// A centered value-over-label cell (a monospaced readout above tiny caps),
+/// used for the header's Frame counter.
+private struct MonitorCell: View {
+    let value: String
+    let label: String
+    let valueColor: SwiftUI.Color
+    let palette: OllinInspector.Palette
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text(value)
+                .font(.system(size: 12.5, design: .monospaced))
+                .foregroundStyle(valueColor)
+            Text(label)
+                .font(.system(size: 9, weight: .semibold))
+                .tracking(0.3)
+                .textCase(.uppercase)
+                .foregroundStyle(palette.textTertiary)
+        }
+        .padding(.horizontal, 12)
+        .frame(maxHeight: .infinity)
+    }
+}
+
+/// The big centered timecode clock.
+private struct MonitorClockRow: View {
+    let time: Double
+    let clockSize: CGFloat
+
+    @SwiftUI.Environment(\.colorScheme) private var scheme
+    private var palette: OllinInspector.Palette { .resolve(scheme) }
+
+    var body: some View {
+        Text(OllinInspector.timecode(time))
+            .font(.system(size: clockSize, weight: .medium, design: .monospaced))
+            .tracking(0.5)
+            .foregroundStyle(palette.readout)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+    }
+}
+
+/// The four-up FPS · CPU · Canvas · Geometry strip. Every cell ticks with the
+/// live `FrameStats`, so it reads the object directly rather than threading nine
+/// scalars through; per-property observation still re-renders only on a change.
+private struct MonitorStatStrip: View {
+    let stats: FrameStats
+
+    @SwiftUI.Environment(\.colorScheme) private var scheme
+    private var palette: OllinInspector.Palette { .resolve(scheme) }
+
     private var canvasLabel: String {
         let w = Int(stats.canvasWidth.rounded()), h = Int(stats.canvasHeight.rounded())
         guard w > 0, h > 0 else { return "—" }
         return w == h ? "\(w)²" : "\(w)×\(h)"
     }
 
-    /// Geometry readout, naming each path in use — e.g. `5 sdf`, `31k tri`,
-    /// `12k pts` (3D point cloud), `1M particles` — space-joined when a sketch
+    /// Geometry readout, naming each path in use (e.g. `5 sdf`, `31k tri`,
+    /// `12k pts` (3D point cloud), `1M particles`), space-joined when a sketch
     /// mixes them (the full breakdown rides the cell's tooltip). Naming the path
     /// rather than showing a bare number keeps a text/shape-heavy *or* a point-cloud
     /// / particle sketch from reading as "0" when it's clearly drawing.
@@ -243,7 +386,7 @@ public struct MonitorCardView: View {
         return parts.isEmpty ? "0" : parts.joined(separator: " ")
     }
 
-    /// The Geometry cell's tooltip — the decoder for the compact value, so it
+    /// The Geometry cell's tooltip: the decoder for the compact value, so it
     /// always spells out every path, zeros included.
     private var geometryDetail: String {
         func line(_ n: Int, _ one: String, _ many: String) -> String {
@@ -258,90 +401,7 @@ public struct MonitorCardView: View {
         return "Geometry this frame: " + parts.joined(separator: " + ")
     }
 
-    /// The full path, shown as a tooltip on the (often truncated) identity block.
-    private var fullPath: String {
-        if let folder = identity.folder { return "\(folder)/\(identity.name)" }
-        return identity.name
-    }
-
-    public var body: some View {
-        VStack(spacing: 0) {
-            identityRow
-            Hairline(palette: palette)
-            clockRow
-            Hairline(palette: palette)
-            statStrip
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-    }
-
-    private var identityRow: some View {
-        HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    if let icon = identity.icon {
-                        SwiftUI.Image(systemName: icon)
-                            .font(.system(size: 11))
-                            .foregroundStyle(palette.textTertiary)
-                    }
-                    Text(identity.name)
-                        .font(.system(size: 13, weight: .semibold))
-                        .lineLimit(1)
-                }
-                if let folder = identity.folder {
-                    Text(folder)
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(palette.textTertiary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-            }
-            .padding(.vertical, 9)
-            .padding(.leading, 13)
-            .padding(.trailing, 12)   // keep the path off the Frame-cell separator
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .help(fullPath)           // hover the truncated path to see it in full
-
-            HStack(spacing: 0) {
-                Hairline(palette: palette, axis: .vertical)
-                cell(value: "\(stats.frameCount)", label: "Frame", valueColor: OllinInspector.accent)
-                    // A width floor so the identity row doesn't shift each time
-                    // the running frame count gains a digit.
-                    .frame(minWidth: 56)
-            }
-            .fixedSize(horizontal: true, vertical: false)
-        }
-        .fixedSize(horizontal: false, vertical: true)
-    }
-
-    /// A centered value-over-label cell, used by both the head cells and the
-    /// stat strip. The value is monospaced (a readout); the label is tiny caps.
-    private func cell(value: String, label: String, valueColor: SwiftUI.Color) -> some View {
-        VStack(spacing: 3) {
-            Text(value)
-                .font(.system(size: 12.5, design: .monospaced))
-                .foregroundStyle(valueColor)
-            Text(label)
-                .font(.system(size: 9, weight: .semibold))
-                .tracking(0.3)
-                .textCase(.uppercase)
-                .foregroundStyle(palette.textTertiary)
-        }
-        .padding(.horizontal, 12)
-        .frame(maxHeight: .infinity)
-    }
-
-    private var clockRow: some View {
-        Text(OllinInspector.timecode(stats.time))
-            .font(.system(size: clockSize, weight: .medium, design: .monospaced))
-            .tracking(0.5)
-            .foregroundStyle(palette.readout)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-    }
-
-    private var statStrip: some View {
+    var body: some View {
         HStack(spacing: 0) {
             statCell(value: stats.hasData ? String(format: "%.0f", stats.fps) : "—",
                      label: "FPS", valueColor: OllinInspector.green)
@@ -358,8 +418,8 @@ public struct MonitorCardView: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    /// Stat-strip cell: like `cell`, but content-sized (`maxWidth: .infinity`
-    /// with even padding) so "60" doesn't strand in an oversized column.
+    /// Stat-strip cell: content-sized (`maxWidth: .infinity`, even padding) so a
+    /// short value doesn't strand in an oversized column.
     private func statCell(value: String, label: String, valueColor: SwiftUI.Color) -> some View {
         VStack(spacing: 3) {
             Text(value)
@@ -372,7 +432,7 @@ public struct MonitorCardView: View {
                 .foregroundStyle(palette.textTertiary)
         }
         .lineLimit(1)
-        // Shrink rather than clip when a value outgrows its quarter-column —
+        // Shrink rather than clip when a value outgrows its quarter-column;
         // no fixedSize here, or the scale factor can never engage.
         .minimumScaleFactor(0.8)
         .padding(.horizontal, 8)
