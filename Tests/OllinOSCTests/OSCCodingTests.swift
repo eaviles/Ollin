@@ -10,7 +10,8 @@ import Testing
 struct OSCCodingTests {
 
     /// Encode then decode, expecting a message back unchanged.
-    func roundTrip(_ message: OSCMessage, sourceLocation: SourceLocation = #_sourceLocation) {
+    func roundTrip(_ message: OSCMessage,
+                   sourceLocation: SourceLocation = SourceLocation(fileID: #fileID, filePath: #filePath, line: #line, column: #column)) {
         let data = message.encode()
         // Length is always a multiple of 4 for a well-formed packet.
         #expect(data.count % 4 == 0, sourceLocation: sourceLocation)

@@ -23,20 +23,27 @@ struct EasingTests {
         ("smoothStep", .smoothStep),
     ]
 
-    @Test func everyCurvePinsItsEndpoints() {
-        for (name, curve) in Self.all {
-            #expect(abs(curve(0) - 0) < 1e-9, "\(name)(0) = \(curve(0))")
-            #expect(abs(curve(1) - 1) < 1e-9, "\(name)(1) = \(curve(1))")
-        }
+    @Test(arguments: EasingTests.all)
+    func everyCurvePinsItsEndpoints(_ name: String, _ curve: Easing) {
+        #expect(abs(curve(0) - 0) < 1e-9, "\(name)(0) = \(curve(0))")
+        #expect(abs(curve(1) - 1) < 1e-9, "\(name)(1) = \(curve(1))")
     }
 
-    @Test func knownMidpoints() {
-        #expect(abs(Easing.linear(0.5) - 0.5) < 1e-12)
-        #expect(abs(Easing.easeInQuad(0.5) - 0.25) < 1e-12)
-        #expect(abs(Easing.easeOutQuad(0.5) - 0.75) < 1e-12)
-        #expect(abs(Easing.easeInOutQuad(0.5) - 0.5) < 1e-12)
-        #expect(abs(Easing.easeInCubic(0.5) - 0.125) < 1e-12)
-        #expect(abs(Easing.smoothStep(0.5) - 0.5) < 1e-12)
+    /// A curve, the input to evaluate, and the value it should produce there.
+    static let midpoints: [(name: String, curve: Easing, input: Double, expected: Double)] = [
+        ("linear", .linear, 0.5, 0.5),
+        ("easeInQuad", .easeInQuad, 0.5, 0.25),
+        ("easeOutQuad", .easeOutQuad, 0.5, 0.75),
+        ("easeInOutQuad", .easeInOutQuad, 0.5, 0.5),
+        ("easeInCubic", .easeInCubic, 0.5, 0.125),
+        ("smoothStep", .smoothStep, 0.5, 0.5),
+    ]
+
+    @Test(arguments: EasingTests.midpoints)
+    func knownMidpoints(_ midpoint: (name: String, curve: Easing, input: Double, expected: Double)) {
+        let got = midpoint.curve(midpoint.input)
+        #expect(abs(got - midpoint.expected) < 1e-12,
+                "\(midpoint.name)(\(midpoint.input)) = \(got), expected \(midpoint.expected)")
     }
 
     @Test func overshootCurvesLeaveTheUnitRange() {
@@ -52,11 +59,10 @@ struct EasingTests {
         #expect(Easing.easeInQuad(2) == 1)   // clamped to 1, then squared
     }
 
-    @Test func friendlyAliasesMatchCubic() {
-        for t in stride(from: 0.0, through: 1.0, by: 0.1) {
-            #expect(Easing.easeIn(t) == Easing.easeInCubic(t))
-            #expect(Easing.easeOut(t) == Easing.easeOutCubic(t))
-            #expect(Easing.easeInOut(t) == Easing.easeInOutCubic(t))
-        }
+    @Test(arguments: Array(stride(from: 0.0, through: 1.0, by: 0.1)))
+    func friendlyAliasesMatchCubic(_ t: Double) {
+        #expect(Easing.easeIn(t) == Easing.easeInCubic(t))
+        #expect(Easing.easeOut(t) == Easing.easeOutCubic(t))
+        #expect(Easing.easeInOut(t) == Easing.easeInOutCubic(t))
     }
 }

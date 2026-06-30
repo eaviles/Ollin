@@ -13,560 +13,235 @@ import Testing
 @MainActor
 struct SnapshotTests {
 
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func solidShapesMatchReference() throws {
-        let diff = try Snapshot.meanDifference(of: SolidShapes(), against: "solid-shapes")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func mixedPipelinesMatchReference() throws {
-        let diff = try Snapshot.meanDifference(of: MixedPipelines(), against: "mixed-pipelines")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func userShaderGeneratorMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: UserShaderGenerator(), against: "user-shader")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func easedValuesMatchReference() throws {
-        // Rendered mid-tween (frame 30), so the per-frame auto-advance has run and
-        // the three curves have pulled the dots to different positions.
-        let diff = try Snapshot.meanDifference(of: EasedDots(), against: "eased-dots", frame: 30)
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func strokeAlignmentMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: StrokeAligned(), against: "stroke-aligned")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func threePointShapesMatchReference() throws {
-        let diff = try Snapshot.meanDifference(of: ThreePointShapes(), against: "three-point-shapes")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func orientedBoxesMatchReference() throws {
-        let diff = try Snapshot.meanDifference(of: OrientedBoxes(), against: "oriented-boxes")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func orientedVesicasMatchReference() throws {
-        let diff = try Snapshot.meanDifference(of: OrientedVesicas(), against: "oriented-vesicas")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func sdfCombinatorsMatchReference() throws {
-        let diff = try Snapshot.meanDifference(of: SDFCombinatorsScene(), against: "sdf-combinators")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func raymarchedSDF3DMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DScene(), against: "sdf-combinators-3d")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func raymarchedSDF3DBlockMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DBlockScene(), against: "sdf-combinators-3d-block")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func raymarchedSDF3DDomainMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DDomainScene(), against: "sdf-combinators-3d-domain")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func raymarchedSDF3DShadowMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DShadowScene(), against: "sdf-combinators-3d-shadow")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func raymarchedSDF3DRadialMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DRadialScene(), against: "sdf-combinators-3d-radial")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func raymarchedSDF3DPlaneMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DPlaneScene(), against: "sdf-combinators-3d-plane")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func raymarchedSDF3DCastShadowMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DCastShadowScene(), against: "sdf-combinators-3d-cast")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func raymarchedSDF3DGradientMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DGradientScene(), against: "sdf-combinators-3d-gradient")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func sdfCombinatorsGradientMatchReference() throws {
-        let diff = try Snapshot.meanDifference(of: SDFCombinatorsGradientScene(), against: "sdf-combinators-gradient")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func raymarchedSDF3DReceiveShadowMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DReceiveShadowScene(), against: "sdf-combinators-3d-receive")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func raymarchedSDF3DPointCastMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DPointCastScene(), against: "sdf-combinators-3d-pointcast")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    // RT-gated: on a ray-tracing GPU a point caster resolves to the RT path (the field traces the
-    // mesh accel), which the reference is recorded against; the non-RT cube fallback differs and
-    // isn't snapshot-testable here. Mirrors `rt-reflections-3d`.
-    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
-    func raymarchedSDF3DPointReceiveMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DPointReceiveScene(), against: "sdf-combinators-3d-pointreceive")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func sdfCombinatorsStretchMatchReference() throws {
-        let diff = try Snapshot.meanDifference(of: SDFCombinatorsStretchScene(), against: "sdf-combinators-stretch")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func raymarchedSDF3DStretchMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: RaymarchedSDF3DStretchScene(), against: "sdf-combinators-3d-stretch")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func curvedPathsMatchReference() throws {
-        let diff = try Snapshot.meanDifference(of: CurvedPaths(), against: "curved-paths")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func strokeJoinsAndCapsMatchReference() throws {
-        let diff = try Snapshot.meanDifference(of: StrokeJoinsCaps(), against: "stroke-joins-caps")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func bitmapTextMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: TextSpecimen(), against: "bitmap-text")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func tintedImageMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: TintedImage(), against: "tinted-image")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func gradientPaintsMatchReference() throws {
-        let diff = try Snapshot.meanDifference(of: GradientShapes(), against: "gradient-shapes")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func statusAndCaptionMatchReference() throws {
-        let diff = try Snapshot.meanDifference(of: StatusNotices(), against: "status-notices")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func additiveBlendMatchesReference() throws {
-        let diff = try Snapshot.meanDifference(of: AdditiveBlend(), against: "additive-blend")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func accumulationMatchesReference() throws {
-        // Captured at frame 12, so the reference can only match if the canvas
-        // accumulated across the prior frames (a single frame is a sparse scatter).
-        let diff = try Snapshot.meanDifference(of: AccumulationField(), against: "accumulation", frame: 12)
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func toneMappedBloomMatchesReference() throws {
-        // Additive light pushes the overlaps well past 1.0; `.aces` rolls them off
-        // instead of clipping. Pins the float intermediate + the present pass's
-        // tone-map (a `.clamp` render would flatten the cores to white).
-        let diff = try Snapshot.meanDifference(of: ToneMappedBloom(), against: "tone-mapped-bloom")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func effectsLayersMatchReference() throws {
-        // Two off-screen layers, one blurred and one bloomed, composited back. Pins
-        // the whole effects path: withTarget recording, the per-target render pass,
-        // the MPS Gaussian + bloom filters, and the texture-backed-Image hand-off.
-        let diff = try Snapshot.meanDifference(of: EffectsLayers(), against: "effects-layers")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func effectsCatalogMatchesReference() throws {
-        // A fixed scene through three filters plus a generator tile. Pins the broader
-        // filter catalog: the packed-param plumbing, a fragment color/tone pass
-        // (posterize), the gradient-map LUT upload + sample, a neighbourhood pass
-        // (Sobel edges), and the input-less generator path.
-        let diff = try Snapshot.meanDifference(of: EffectsCatalog(), against: "effects-catalog")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func effectsFiltersMatchReference() throws {
-        // A sample of the extended catalog — vibrance, oilPaint (Kuwahara), emboss,
-        // cmykHalftone, kaleidoscope, scanlines — one per family. Pins the added
-        // dispatch and the new fragments: a straight-color tone op, a multi-tap
-        // variance gather, a neighbourhood relief, a print screen, a uv warp, and a
-        // retro line pass.
-        let diff = try Snapshot.meanDifference(of: EffectsFilters(), against: "effects-filters")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func effectsSimFieldMatchesReference() throws {
-        // A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame
-        // 60 and recoloured. Pins the stateful sim substrate end to end: the persistent
-        // ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and
-        // the headless render-every-frame warmup the built-up state depends on.
-        let diff = try Snapshot.meanDifference(of: EffectsSimField(), against: "effects-simfield", frame: 60)
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func effectsFluidMatchesReference() throws {
-        // A fluid SimField driven by a fixed brush path, run to frame 48. Pins the
-        // multi-field fluid pipeline end to end: the velocity + dye splat, curl and
-        // vorticity confinement, the Jacobi pressure projection, semi-Lagrangian
-        // advection, and the persistent two-pair ping-pong with render-every-frame warmup.
-        let diff = try Snapshot.meanDifference(of: EffectsFluid(), against: "effects-fluid", frame: 48)
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func effectsFeedbackMatchesReference() throws {
-        // A feedback layer built up over 24 frames: each frame redraws the last,
-        // zoomed + spun + faded, plus a new dot. Pins the persistent ping-pong
-        // (previous read while writing back, the per-frame swap kept across frames)
-        // and the headless render-every-frame warmup the built-up state needs.
-        let diff = try Snapshot.meanDifference(of: EffectsFeedback(), against: "effects-feedback", frame: 24)
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func effectsComposeMatchesReference() throws {
-        // The same blurred-band-plus-bloomed-disks scene as `effects-layers`, declared
-        // through `compose { }`. Pins the DSL's orchestration: per-layer render scale,
-        // a post-filter on each layer, the per-layer blend mode, and the bottom-to-top
-        // composite order, i.e. that the sugar resolves to the substrate it stands for.
-        let diff = try Snapshot.meanDifference(of: EffectsCompose(), against: "effects-compose")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func effectsCombineMatchesReference() throws {
-        // Four tiles, each a two-input combine over the same scene: a luminance mask,
-        // a displacement by a blurred bump, a cross-dissolve toward a checker
-        // generator, and an inverted alpha mask. Pins the multi-input path — the
-        // .combine origin resolved after both inputs, the two-texture bind, and the
-        // mask/displace/mix fragments.
-        let diff = try Snapshot.meanDifference(of: EffectsCombine(), against: "effects-combine")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func effectsComposeAsideMatchesReference() throws {
-        // A compose layer masked by an `aside` (a blurred disc, drawn only to feed the
-        // mask). Pins that the aside sugar resolves to the substrate it stands for: the
-        // aside rendered to its own layer, run through its post, fed to the combine, and
-        // never composited on its own.
-        let diff = try Snapshot.meanDifference(of: EffectsComposeAside(), against: "effects-compose-aside")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func effectsDefocusMatchesReference() throws {
-        // Three discs at near/mid/far depths, combined with a matching depth map and
-        // defocused with the focal plane on the middle disc. Pins the depth-of-field
-        // combine: the depth read (perceptual luminance), the circle-of-confusion
-        // gather keeping the in-focus band crisp while near and far blur, and the
-        // jittered spiral (a reproducible function of pixel position).
-        let diff = try Snapshot.meanDifference(of: EffectsDefocus(), against: "effects-defocus")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func sceneDefocus3DMatchesReference() throws {
-        // A 3D scene drawn into a render target, defocused by the target's own depth
-        // buffer (`scene.depth`) with the focal plane on the middle sphere. Pins the
-        // 3D-in-target path: the target's depth attachment + resolve, the depth
-        // normalize pass (clip-space depth linearized over near/far, encoded for the
-        // perceptual DoF decode), and the depth layer feeding `.defocus` as the aux.
-        let diff = try Snapshot.meanDifference(of: SceneDefocus3DScene(), against: "scene-defocus-3d")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func ssaoMatchesReference() throws {
-        // A packed block field on a ground plane, ambient-occluded by the scene's own
-        // depth (`scene.depth`). Pins the ambient-occlusion combine: the view-space
-        // position + normal reconstructed from the depth (no normal buffer), the camera
-        // geometry stamped on the depth layer, and the spiral obscurance gather darkening
-        // crevices and contacts while flat faces stay clean.
-        let diff = try Snapshot.meanDifference(of: AmbientOcclusionScene(), against: "ssao-3d")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func ssrMatchesReference() throws {
-        // A dark glossy floor under fixed bright spheres + a pillar, reflected by the
-        // scene's own depth (`scene.depth`). Pins the screen-space-reflection combine: the
-        // view-space position + mesh normal feeding the reflection march, the forward
-        // projection back to the depth layer, the thickness-banded hit + binary refine, and
-        // the Fresnel/edge/distance-weighted glossy composite over the base.
-        let diff = try Snapshot.meanDifference(of: ScreenSpaceReflectionsScene(), against: "ssr-3d")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
-    func rtReflectionsMatchesReference() throws {
-        // A near-mirror metal floor under fixed metal spheres + a cube, lit by an environment,
-        // with `rayTracedReflections()` on. Pins the hybrid reflection path: the per-pixel
-        // closest-hit trace against the caster acceleration structure, the barycentric attribute
-        // fetch + 1-bounce hit shade, and the environment miss fallback composited through the
-        // PBR IBL specular. RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.
-        let diff = try Snapshot.meanDifference(of: RayTracedReflectionsScene(), against: "rt-reflections-3d")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func pointCloud3DMatchesReference() throws {
-        // A static 3D heightfield through a fixed camera — pins the 3D camera, the
-        // depth-tested point pipeline, and the instanced disc splats.
-        let diff = try Snapshot.meanDifference(of: PointCloud3DScene(), against: "point-cloud-3d")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func strangeAttractor3DMatchesReference() throws {
-        // A Lorenz orbit, RK4-integrated and splatted through a fixed camera. Pins
-        // the attractor math, the speed coloring, and the additive point cloud.
-        let diff = try Snapshot.meanDifference(of: StrangeAttractorScene(), against: "strange-attractor-3d")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func cliffordAttractorMatchesReference() throws {
-        // A Clifford map accumulated additively over several frames. Pins the
-        // iterated map plus the noClear density build-up.
-        let diff = try Snapshot.meanDifference(of: CliffordAttractorScene(), against: "clifford-attractor", frame: 24)
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func solidPrimitives3DMatchesReference() throws {
-        // The five solid primitives through a fixed camera — pins the depth-tested
-        // mesh pipeline, the auto-lit default material (each fill shaded by the
-        // default rig), and the model-matrix + normal baking (each shape is
-        // placed/rotated by the 3D transform stack).
-        let diff = try Snapshot.meanDifference(of: SolidPrimitives3DScene(), against: "solid-primitives-3d")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func meshLightingMatchesReference() throws {
-        // Custom lighting on solids — pins the directional/point/spot light kinds,
-        // ambient, the spot cone, and the specular highlight (the Blinn-Phong material
-        // the auto-lit default scene doesn't exercise).
-        let diff = try Snapshot.meanDifference(of: MeshLightingScene(), against: "mesh-lighting")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func texturedMeshMatchesReference() throws {
-        // A UV-gridded sphere through a fixed camera — pins the textured-mesh pipeline:
-        // UVs on the sphere generator, the base-color texture sampled per fragment, and
-        // the shared Blinn-Phong tail (textured surface, auto-lit default rig).
-        let diff = try Snapshot.meanDifference(of: TexturedMesh3DScene(), against: "textured-mesh")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func wireframeMeshMatchesReference() throws {
-        // A wireframe icosphere through a fixed camera — pins the wireframe mesh pipeline:
-        // barycentric edge-shading from vid%3, the stroke-colored edges, and the line
-        // width from strokeWeight, with the faces see-through.
-        let diff = try Snapshot.meanDifference(of: WireframeMesh3DScene(), against: "mesh-wireframe")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func meshShadowsMatchesReference() throws {
-        // A box and a sphere above a floor, lit by a directional key with castShadows()
-        // on — pins the shadow pass (the depth render from the light) and the shadow
-        // sample in the lit fragment (the cast shadows on the floor and between solids).
-        let diff = try Snapshot.meanDifference(of: MeshShadowsScene(), against: "mesh-shadows")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func spotShadowsMatchesReference() throws {
-        // A box and a sphere above a floor under a spot light (no directional, so the
-        // spot is the caster) with castShadows() on — pins the spot path: a perspective
-        // shadow map fit to the cone, sampled by the same shadowFactor as the
-        // directional map, dropping shadows inside the lit pool.
-        let diff = try Snapshot.meanDifference(of: SpotShadowsScene(), against: "spot-shadows")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func pointShadowsMatchesReference() throws {
-        // Boxes around a central point light (no directional/spot, so the point light is
-        // the caster) with castShadows() on, pinning the omnidirectional path: the six-face
-        // cube depth pass and the cube depth-compare in the lit fragment, the shadows
-        // radiating outward from the light.
-        let diff = try Snapshot.meanDifference(of: PointShadowsScene(), against: "point-shadows")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func lightingPresetMatchesReference() throws {
-        // A still life lit by the .goldenHour LightingPreset — pins the preset path
-        // (ambient + warm/cool directionals, the light colors from Color(kelvin:))
-        // through the lit-mesh pipeline.
-        let diff = try Snapshot.meanDifference(of: LightingPresetScene(), against: "lighting-presets")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func meshMaterialsMatchReference() throws {
-        // A row of spheres in the stylized materials — pins the per-batch OllinMaterial
-        // uniform and each new shader branch: a Fresnel iridescent sheen, the rim glow
-        // (velvet), fake subsurface (jade), toon cel bands, and Gooch warm–cool. No `time`.
-        let diff = try Snapshot.meanDifference(of: MeshMaterialsScene(), against: "mesh-materials")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func pbrMaterialsMatchReference() throws {
-        // A metal / mixed / dielectric × roughness sweep in the physically-based shading
-        // model (shadingModel 3) — pins the new OllinMaterial metallic/roughness fields and
-        // the Cook-Torrance branch (GGX distribution, Smith visibility, Schlick Fresnel,
-        // the (1-metallic) diffuse kill). No `time`, so it's deterministic.
-        let diff = try Snapshot.meanDifference(of: PBRMaterialsScene(), against: "pbr-materials")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func imageBasedLightingMatchesReference() throws {
-        // Physically-based balls lit by a bundled HDRI environment (image-based lighting):
-        // pins the whole IBL path — the equirect→cube / irradiance / GGX-prefilter / BRDF-LUT
-        // bake, the split-sum ambient on the mesh fragment, and the skybox backdrop. Fixed
-        // camera + environment, no `time`, so the bake is deterministic.
-        let diff = try Snapshot.meanDifference(of: IBLScene(), against: "pbr-ibl")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func proceduralSkyMatchesReference() throws {
-        // PBR balls + a floor lit by a procedural Hosek-Wilkie sky (no asset): pins the .sky
-        // path: the CPU coefficient cook (vendored model), the GPU sky-equirect generation, and
-        // the same equirect→cube / irradiance / GGX-prefilter bake + skybox the HDRI path uses.
-        // Fixed sun elevation + camera, no `time`, so the generation and bake are deterministic.
-        let diff = try Snapshot.meanDifference(of: ProceduralSkyScene(), against: "procedural-sky")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func matcapMeshMatchesReference() throws {
-        // Three spheres wearing built-in matcaps (chrome/clay/toon) — pins the matcap
-        // pipeline: the view-space normal sampled into the sphere texture, bypassing the
-        // scene lights and material model, tinted by fill(.white). No `time`.
-        let diff = try Snapshot.meanDifference(of: MatcapMeshScene(), against: "matcap-mesh")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func transformed3DMatchesReference() throws {
-        // Point-cloud blobs placed entirely by the 3D transform stack — a center blob
-        // plus four satellites positioned by rotateY + translate and sized by scale.
-        // Pins the model-matrix bake (translate/rotate/scale composing) into the point
-        // pipeline; if the stack were ignored every blob would pile at the origin.
-        // Seeded, no `time`.
-        let diff = try Snapshot.meanDifference(of: Transformed3DScene(), against: "transformed-3d")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func voronoiCellsMatchReference() throws {
-        // A Lloyd-relaxed Voronoi diagram — pins the Bowyer–Watson triangulation,
-        // the bisector cell clipping, and the relaxation. Seeded, no `time`.
-        let diff = try Snapshot.meanDifference(of: VoronoiCells(), against: "voronoi-cells")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func depthCompositing2DMatchesReference() throws {
-        // A 2D card standing at a world depth between two point-cloud balls — pins
-        // depth-aware compositing: the near ball draws over the card, the far ball
-        // is hidden by it. If 2D ignored depth (always over), the card would cover
-        // both, so this fails if the depth-participation path breaks. No `time`.
-        let diff = try Snapshot.meanDifference(of: DepthComposited2D(), against: "depth-compositing-2d")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func depthSceneMatchesReference() throws {
-        // A depth-map scene (a near left half, a far right half) with a 2D bar at
-        // mid-depth — pins drawDepthScene + the normalized depth(_:): the bar is
-        // hidden on the near half and drawn over the backdrop on the far half. Pins
-        // the depth-scene pre-pass writing per-pixel SV_Depth. Synthetic, no `time`.
-        let diff = try Snapshot.meanDifference(of: DepthSceneScene(), against: "depth-scene")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func metricDepthSceneMatchesReference() throws {
-        // The same near-left / far-right split, but the depth is real meters and the
-        // camera is built from the frame's intrinsics, so the bar sits at a true
-        // 1.5 m depth — hidden over the near (0.5 m) half, drawn over the far (3 m)
-        // half. Pins Camera3D.fromIntrinsics + the metric drawDepthScene(RGBDFrame)
-        // float-depth path + depth(at: Vector3). Synthetic, no `time`.
-        let diff = try Snapshot.meanDifference(of: MetricDepthSceneScene(), against: "metric-depth-scene")
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
-    }
-
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func cameraMoveTurntableMatchesReference() throws {
-        // A ring of solids viewed through a .turntable cinematic move, captured at a
-        // fixed frame, pins the cameraMove() rig (its pose -> Camera3D.orbiting) and the
-        // deterministic per-frame dt accumulation (the headless driver advances 1/60).
-        let diff = try Snapshot.meanDifference(of: CameraMoveScene(), against: "camera-move", frame: 30)
-        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: snapshotMetalCases)
+    func snapshotMatchesReference(_ snapshot: SnapshotCase) throws {
+        let diff = try Snapshot.meanDifference(of: snapshot.make(),
+                                               against: snapshot.name, frame: snapshot.frame)
+        #expect(diff < Snapshot.tolerance,
+                "\(snapshot.name): \(snapshot.note) (mean per-channel difference \(diff))")
+    }
+
+    // Ray-tracing-gated cases live in their own parameterized test so the extra
+    // `Snapshot.hasRaytracing` gate applies only to them (on a non-RT GPU a point caster
+    // falls back to the cube path, which the references aren't recorded against).
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing), arguments: snapshotRaytracingCases)
+    func raytracingSnapshotMatchesReference(_ snapshot: SnapshotCase) throws {
+        let diff = try Snapshot.meanDifference(of: snapshot.make(),
+                                               against: snapshot.name, frame: snapshot.frame)
+        #expect(diff < Snapshot.tolerance,
+                "\(snapshot.name): \(snapshot.note) (mean per-channel difference \(diff))")
     }
 }
+
+/// One render-correctness snapshot: a deterministic sketch, the committed reference image
+/// it diffs against (`name`), the capture `frame` (0 unless the scene must accumulate
+/// state first), and `note`, the documentation of what the snapshot pins. Identifies by
+/// `name`, so each row surfaces as its own named sub-test.
+struct SnapshotCase: Sendable, CustomTestStringConvertible {
+    let name: String
+    let frame: Int
+    let note: String
+    let make: @MainActor @Sendable () -> Sketch
+
+    init(_ name: String, frame: Int = 0, note: String,
+         make: @escaping @MainActor @Sendable () -> Sketch) {
+        self.name = name
+        self.frame = frame
+        self.note = note
+        self.make = make
+    }
+
+    var testDescription: String { name }
+}
+
+/// The plain-Metal snapshot table. Each row is one scene + reference name + capture frame,
+/// with `note` carrying what that snapshot pins.
+private let snapshotMetalCases: [SnapshotCase] = [
+    SnapshotCase("solid-shapes", note: "Solid SDF + tessellated shapes.",
+                 make: { SolidShapes() }),
+    SnapshotCase("mixed-pipelines",
+                 note: "The instanced SDF path and the tessellated-triangle path composited front-to-back.",
+                 make: { MixedPipelines() }),
+    SnapshotCase("user-shader", note: "A user-supplied generator shader.",
+                 make: { UserShaderGenerator() }),
+    SnapshotCase("eased-dots", frame: 30,
+                 note: "Rendered mid-tween (frame 30), so the per-frame auto-advance has run and the three curves have pulled the dots to different positions.",
+                 make: { EasedDots() }),
+    SnapshotCase("stroke-aligned", note: "strokeAlign center / inside / outside.",
+                 make: { StrokeAligned() }),
+    SnapshotCase("three-point-shapes",
+                 note: "The three-point triangle and quadratic Bezier SDF shapes.",
+                 make: { ThreePointShapes() }),
+    SnapshotCase("oriented-boxes", note: "The oriented box SDF.",
+                 make: { OrientedBoxes() }),
+    SnapshotCase("oriented-vesicas", note: "The oriented vesica SDF.",
+                 make: { OrientedVesicas() }),
+    SnapshotCase("sdf-combinators", note: "The 2D SDF combinator field.",
+                 make: { SDFCombinatorsScene() }),
+    SnapshotCase("sdf-combinators-3d", note: "A raymarched 3D SDF combinator field.",
+                 make: { RaymarchedSDF3DScene() }),
+    SnapshotCase("sdf-combinators-3d-block", note: "The raymarched 3D SDF block form.",
+                 make: { RaymarchedSDF3DBlockScene() }),
+    SnapshotCase("sdf-combinators-3d-domain", note: "Raymarched 3D SDF domain operators.",
+                 make: { RaymarchedSDF3DDomainScene() }),
+    SnapshotCase("sdf-combinators-3d-shadow", note: "Raymarched 3D SDF self-shadows.",
+                 make: { RaymarchedSDF3DShadowScene() }),
+    SnapshotCase("sdf-combinators-3d-radial", note: "Raymarched 3D SDF radial repeat.",
+                 make: { RaymarchedSDF3DRadialScene() }),
+    SnapshotCase("sdf-combinators-3d-plane", note: "The raymarched 3D SDF infinite plane.",
+                 make: { RaymarchedSDF3DPlaneScene() }),
+    SnapshotCase("sdf-combinators-3d-cast", note: "A raymarched 3D field casting onto meshes.",
+                 make: { RaymarchedSDF3DCastShadowScene() }),
+    SnapshotCase("sdf-combinators-3d-gradient", note: "Raymarched 3D SDF gradient paint.",
+                 make: { RaymarchedSDF3DGradientScene() }),
+    SnapshotCase("sdf-combinators-gradient", note: "2D SDF combinator gradient paint.",
+                 make: { SDFCombinatorsGradientScene() }),
+    SnapshotCase("sdf-combinators-3d-receive", note: "A raymarched 3D field receiving a mesh shadow.",
+                 make: { RaymarchedSDF3DReceiveShadowScene() }),
+    SnapshotCase("sdf-combinators-3d-pointcast", note: "A raymarched 3D field casting under a point light.",
+                 make: { RaymarchedSDF3DPointCastScene() }),
+    SnapshotCase("sdf-combinators-stretch", note: "2D SDF combinator per-axis stretch.",
+                 make: { SDFCombinatorsStretchScene() }),
+    SnapshotCase("sdf-combinators-3d-stretch", note: "Raymarched 3D SDF per-axis stretch.",
+                 make: { RaymarchedSDF3DStretchScene() }),
+    SnapshotCase("curved-paths", note: "Curved Path fills and strokes.",
+                 make: { CurvedPaths() }),
+    SnapshotCase("stroke-joins-caps", note: "strokeJoin / strokeCap on the fringe stroke path.",
+                 make: { StrokeJoinsCaps() }),
+    SnapshotCase("bitmap-text", note: "The bitmap font specimen.",
+                 make: { TextSpecimen() }),
+    SnapshotCase("tinted-image", note: "A tinted textured-quad image.",
+                 make: { TintedImage() }),
+    SnapshotCase("gradient-shapes", note: "Gradient paint on shapes.",
+                 make: { GradientShapes() }),
+    SnapshotCase("status-notices", note: "The drawStatus / drawCaption standard notices.",
+                 make: { StatusNotices() }),
+    SnapshotCase("additive-blend", note: "The additive blend mode.",
+                 make: { AdditiveBlend() }),
+    SnapshotCase("accumulation", frame: 12,
+                 note: "Captured at frame 12, so the reference can only match if the canvas accumulated across the prior frames (a single frame is a sparse scatter).",
+                 make: { AccumulationField() }),
+    SnapshotCase("tone-mapped-bloom",
+                 note: "Additive light pushes the overlaps well past 1.0; .aces rolls them off instead of clipping. Pins the float intermediate + the present pass's tone-map (a .clamp render would flatten the cores to white).",
+                 make: { ToneMappedBloom() }),
+    SnapshotCase("effects-layers",
+                 note: "Two off-screen layers, one blurred and one bloomed, composited back. Pins the whole effects path: withTarget recording, the per-target render pass, the MPS Gaussian + bloom filters, and the texture-backed-Image hand-off.",
+                 make: { EffectsLayers() }),
+    SnapshotCase("effects-catalog",
+                 note: "A fixed scene through three filters plus a generator tile. Pins the broader filter catalog: the packed-param plumbing, a fragment color/tone pass (posterize), the gradient-map LUT upload + sample, a neighbourhood pass (Sobel edges), and the input-less generator path.",
+                 make: { EffectsCatalog() }),
+    SnapshotCase("effects-filters",
+                 note: "A sample of the extended catalog (vibrance, oilPaint (Kuwahara), emboss, cmykHalftone, kaleidoscope, scanlines), one per family. Pins the added dispatch and the new fragments: a straight-color tone op, a multi-tap variance gather, a neighbourhood relief, a print screen, a uv warp, and a retro line pass.",
+                 make: { EffectsFilters() }),
+    SnapshotCase("effects-simfield", frame: 60,
+                 note: "A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame 60 and recoloured. Pins the stateful sim substrate end to end: the persistent ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and the headless render-every-frame warmup the built-up state depends on.",
+                 make: { EffectsSimField() }),
+    SnapshotCase("effects-fluid", frame: 48,
+                 note: "A fluid SimField driven by a fixed brush path, run to frame 48. Pins the multi-field fluid pipeline end to end: the velocity + dye splat, curl and vorticity confinement, the Jacobi pressure projection, semi-Lagrangian advection, and the persistent two-pair ping-pong with render-every-frame warmup.",
+                 make: { EffectsFluid() }),
+    SnapshotCase("effects-feedback", frame: 24,
+                 note: "A feedback layer built up over 24 frames: each frame redraws the last, zoomed + spun + faded, plus a new dot. Pins the persistent ping-pong (previous read while writing back, the per-frame swap kept across frames) and the headless render-every-frame warmup the built-up state needs.",
+                 make: { EffectsFeedback() }),
+    SnapshotCase("effects-compose",
+                 note: "The same blurred-band-plus-bloomed-disks scene as effects-layers, declared through compose { }. Pins the DSL's orchestration: per-layer render scale, a post-filter on each layer, the per-layer blend mode, and the bottom-to-top composite order, i.e. that the sugar resolves to the substrate it stands for.",
+                 make: { EffectsCompose() }),
+    SnapshotCase("effects-combine",
+                 note: "Four tiles, each a two-input combine over the same scene: a luminance mask, a displacement by a blurred bump, a cross-dissolve toward a checker generator, and an inverted alpha mask. Pins the multi-input path (the .combine origin resolved after both inputs, the two-texture bind, and the mask/displace/mix fragments).",
+                 make: { EffectsCombine() }),
+    SnapshotCase("effects-compose-aside",
+                 note: "A compose layer masked by an aside (a blurred disc, drawn only to feed the mask). Pins that the aside sugar resolves to the substrate it stands for: the aside rendered to its own layer, run through its post, fed to the combine, and never composited on its own.",
+                 make: { EffectsComposeAside() }),
+    SnapshotCase("effects-defocus",
+                 note: "Three discs at near/mid/far depths, combined with a matching depth map and defocused with the focal plane on the middle disc. Pins the depth-of-field combine: the depth read (perceptual luminance), the circle-of-confusion gather keeping the in-focus band crisp while near and far blur, and the jittered spiral (a reproducible function of pixel position).",
+                 make: { EffectsDefocus() }),
+    SnapshotCase("scene-defocus-3d",
+                 note: "A 3D scene drawn into a render target, defocused by the target's own depth buffer (scene.depth) with the focal plane on the middle sphere. Pins the 3D-in-target path: the target's depth attachment + resolve, the depth normalize pass (clip-space depth linearized over near/far, encoded for the perceptual DoF decode), and the depth layer feeding .defocus as the aux.",
+                 make: { SceneDefocus3DScene() }),
+    SnapshotCase("ssao-3d",
+                 note: "A packed block field on a ground plane, ambient-occluded by the scene's own depth (scene.depth). Pins the ambient-occlusion combine: the view-space position + normal reconstructed from the depth (no normal buffer), the camera geometry stamped on the depth layer, and the spiral obscurance gather darkening crevices and contacts while flat faces stay clean.",
+                 make: { AmbientOcclusionScene() }),
+    SnapshotCase("ssr-3d",
+                 note: "A dark glossy floor under fixed bright spheres + a pillar, reflected by the scene's own depth (scene.depth). Pins the screen-space-reflection combine: the view-space position + mesh normal feeding the reflection march, the forward projection back to the depth layer, the thickness-banded hit + binary refine, and the Fresnel/edge/distance-weighted glossy composite over the base.",
+                 make: { ScreenSpaceReflectionsScene() }),
+    SnapshotCase("point-cloud-3d",
+                 note: "A static 3D heightfield through a fixed camera. Pins the 3D camera, the depth-tested point pipeline, and the instanced disc splats.",
+                 make: { PointCloud3DScene() }),
+    SnapshotCase("strange-attractor-3d",
+                 note: "A Lorenz orbit, RK4-integrated and splatted through a fixed camera. Pins the attractor math, the speed coloring, and the additive point cloud.",
+                 make: { StrangeAttractorScene() }),
+    SnapshotCase("clifford-attractor", frame: 24,
+                 note: "A Clifford map accumulated additively over several frames. Pins the iterated map plus the noClear density build-up.",
+                 make: { CliffordAttractorScene() }),
+    SnapshotCase("solid-primitives-3d",
+                 note: "The five solid primitives through a fixed camera. Pins the depth-tested mesh pipeline, the auto-lit default material (each fill shaded by the default rig), and the model-matrix + normal baking (each shape is placed/rotated by the 3D transform stack).",
+                 make: { SolidPrimitives3DScene() }),
+    SnapshotCase("mesh-lighting",
+                 note: "Custom lighting on solids. Pins the directional/point/spot light kinds, ambient, the spot cone, and the specular highlight (the Blinn-Phong material the auto-lit default scene doesn't exercise).",
+                 make: { MeshLightingScene() }),
+    SnapshotCase("textured-mesh",
+                 note: "A UV-gridded sphere through a fixed camera. Pins the textured-mesh pipeline: UVs on the sphere generator, the base-color texture sampled per fragment, and the shared Blinn-Phong tail (textured surface, auto-lit default rig).",
+                 make: { TexturedMesh3DScene() }),
+    SnapshotCase("mesh-wireframe",
+                 note: "A wireframe icosphere through a fixed camera. Pins the wireframe mesh pipeline: barycentric edge-shading from vid%3, the stroke-colored edges, and the line width from strokeWeight, with the faces see-through.",
+                 make: { WireframeMesh3DScene() }),
+    SnapshotCase("mesh-shadows",
+                 note: "A box and a sphere above a floor, lit by a directional key with castShadows() on. Pins the shadow pass (the depth render from the light) and the shadow sample in the lit fragment (the cast shadows on the floor and between solids).",
+                 make: { MeshShadowsScene() }),
+    SnapshotCase("spot-shadows",
+                 note: "A box and a sphere above a floor under a spot light (no directional, so the spot is the caster) with castShadows() on. Pins the spot path: a perspective shadow map fit to the cone, sampled by the same shadowFactor as the directional map, dropping shadows inside the lit pool.",
+                 make: { SpotShadowsScene() }),
+    SnapshotCase("point-shadows",
+                 note: "Boxes around a central point light (no directional/spot, so the point light is the caster) with castShadows() on, pinning the omnidirectional path: the six-face cube depth pass and the cube depth-compare in the lit fragment, the shadows radiating outward from the light.",
+                 make: { PointShadowsScene() }),
+    SnapshotCase("lighting-presets",
+                 note: "A still life lit by the .goldenHour LightingPreset. Pins the preset path (ambient + warm/cool directionals, the light colors from Color(kelvin:)) through the lit-mesh pipeline.",
+                 make: { LightingPresetScene() }),
+    SnapshotCase("mesh-materials",
+                 note: "A row of spheres in the stylized materials. Pins the per-batch OllinMaterial uniform and each new shader branch: a Fresnel iridescent sheen, the rim glow (velvet), fake subsurface (jade), toon cel bands, and Gooch warm-cool. No time.",
+                 make: { MeshMaterialsScene() }),
+    SnapshotCase("pbr-materials",
+                 note: "A metal / mixed / dielectric x roughness sweep in the physically-based shading model (shadingModel 3). Pins the new OllinMaterial metallic/roughness fields and the Cook-Torrance branch (GGX distribution, Smith visibility, Schlick Fresnel, the (1-metallic) diffuse kill). No time, so it's deterministic.",
+                 make: { PBRMaterialsScene() }),
+    SnapshotCase("pbr-ibl",
+                 note: "Physically-based balls lit by a bundled HDRI environment (image-based lighting): pins the whole IBL path (the equirect->cube / irradiance / GGX-prefilter / BRDF-LUT bake, the split-sum ambient on the mesh fragment, and the skybox backdrop). Fixed camera + environment, no time, so the bake is deterministic.",
+                 make: { IBLScene() }),
+    SnapshotCase("procedural-sky",
+                 note: "PBR balls + a floor lit by a procedural Hosek-Wilkie sky (no asset): pins the .sky path (the CPU coefficient cook (vendored model), the GPU sky-equirect generation, and the same equirect->cube / irradiance / GGX-prefilter bake + skybox the HDRI path uses). Fixed sun elevation + camera, no time, so the generation and bake are deterministic.",
+                 make: { ProceduralSkyScene() }),
+    SnapshotCase("matcap-mesh",
+                 note: "Three spheres wearing built-in matcaps (chrome/clay/toon). Pins the matcap pipeline: the view-space normal sampled into the sphere texture, bypassing the scene lights and material model, tinted by fill(.white). No time.",
+                 make: { MatcapMeshScene() }),
+    SnapshotCase("transformed-3d",
+                 note: "Point-cloud blobs placed entirely by the 3D transform stack (a center blob plus four satellites positioned by rotateY + translate and sized by scale). Pins the model-matrix bake (translate/rotate/scale composing) into the point pipeline; if the stack were ignored every blob would pile at the origin. Seeded, no time.",
+                 make: { Transformed3DScene() }),
+    SnapshotCase("voronoi-cells",
+                 note: "A Lloyd-relaxed Voronoi diagram. Pins the Bowyer-Watson triangulation, the bisector cell clipping, and the relaxation. Seeded, no time.",
+                 make: { VoronoiCells() }),
+    SnapshotCase("depth-compositing-2d",
+                 note: "A 2D card standing at a world depth between two point-cloud balls. Pins depth-aware compositing: the near ball draws over the card, the far ball is hidden by it. If 2D ignored depth (always over), the card would cover both, so this fails if the depth-participation path breaks. No time.",
+                 make: { DepthComposited2D() }),
+    SnapshotCase("depth-scene",
+                 note: "A depth-map scene (a near left half, a far right half) with a 2D bar at mid-depth. Pins drawDepthScene + the normalized depth(_:): the bar is hidden on the near half and drawn over the backdrop on the far half. Pins the depth-scene pre-pass writing per-pixel SV_Depth. Synthetic, no time.",
+                 make: { DepthSceneScene() }),
+    SnapshotCase("metric-depth-scene",
+                 note: "The same near-left / far-right split, but the depth is real meters and the camera is built from the frame's intrinsics, so the bar sits at a true 1.5 m depth (hidden over the near (0.5 m) half, drawn over the far (3 m) half). Pins Camera3D.fromIntrinsics + the metric drawDepthScene(RGBDFrame) float-depth path + depth(at: Vector3). Synthetic, no time.",
+                 make: { MetricDepthSceneScene() }),
+    SnapshotCase("camera-move", frame: 30,
+                 note: "A ring of solids viewed through a .turntable cinematic move, captured at a fixed frame, pins the cameraMove() rig (its pose -> Camera3D.orbiting) and the deterministic per-frame dt accumulation (the headless driver advances 1/60).",
+                 make: { CameraMoveScene() }),
+]
+
+/// The ray-tracing-gated snapshots: on a ray-tracing GPU a point caster resolves to the RT
+/// path (the field traces the mesh accel), which the references are recorded against; the
+/// non-RT cube fallback differs and isn't snapshot-testable here.
+private let snapshotRaytracingCases: [SnapshotCase] = [
+    SnapshotCase("sdf-combinators-3d-pointreceive",
+                 note: "A raymarched 3D field receiving a mesh's shadow under a point light. On a ray-tracing GPU the point caster resolves to the RT path (the field traces the mesh accel), which the reference is recorded against; the non-RT cube fallback differs and isn't snapshot-testable here.",
+                 make: { RaymarchedSDF3DPointReceiveScene() }),
+    SnapshotCase("rt-reflections-3d",
+                 note: "A near-mirror metal floor under fixed metal spheres + a cube, lit by an environment, with rayTracedReflections() on. Pins the hybrid reflection path: the per-pixel closest-hit trace against the caster acceleration structure, the barycentric attribute fetch + 1-bounce hit shade, and the environment miss fallback composited through the PBR IBL specular. RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.",
+                 make: { RayTracedReflectionsScene() }),
+]
 
 // MARK: - Fixtures
 

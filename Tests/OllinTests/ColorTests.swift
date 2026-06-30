@@ -119,13 +119,12 @@ struct ColorTests {
         #expect(close(Color(kelvin: 99999), Color(kelvin: 40000)))
     }
 
-    @Test func kelvinComponentsStayInRange() {
-        for k in stride(from: 1000.0, through: 40000, by: 500) {
-            let c = Color(kelvin: k)
-            #expect(c.red >= 0 && c.red <= 1)
-            #expect(c.green >= 0 && c.green <= 1)
-            #expect(c.blue >= 0 && c.blue <= 1)
-        }
+    @Test(arguments: Array(stride(from: 1000.0, through: 40000, by: 500)))
+    func kelvinComponentsStayInRange(_ k: Double) {
+        let c = Color(kelvin: k)
+        #expect(c.red >= 0 && c.red <= 1)
+        #expect(c.green >= 0 && c.green <= 1)
+        #expect(c.blue >= 0 && c.blue <= 1)
     }
 
     @Test func kelvinAlphaPassesThrough() {
@@ -134,20 +133,27 @@ struct ColorTests {
 
     // MARK: Named colors
 
-    /// The extended named set carries its CSS Color Module Level 4 values, and
-    /// every constant is opaque.
-    @Test func namedColorsMatchCSSValues() {
-        #expect(Color.orange == Color(hex: 0xFFA500))
-        #expect(Color.cyan == Color(hex: 0x00FFFF))
-        #expect(Color.magenta == Color(hex: 0xFF00FF))
-        #expect(Color.teal == Color(hex: 0x008080))
-        #expect(Color.indigo == Color(hex: 0x4B0082))
-        #expect(Color.slateGray == Color(hex: 0x708090))
+    /// Each extended named constant beside its CSS Color Module Level 4 hex value.
+    static let namedCSSValues: [(name: String, color: Color, hex: UInt32)] = [
+        ("orange", .orange, 0xFFA500),
+        ("cyan", .cyan, 0x00FFFF),
+        ("magenta", .magenta, 0xFF00FF),
+        ("teal", .teal, 0x008080),
+        ("indigo", .indigo, 0x4B0082),
+        ("slateGray", .slateGray, 0x708090),
+    ]
 
-        for c in [Color.yellow, .orange, .purple, .crimson, .gold,
-                  .forestGreen, .navy, .violet, .khaki, .silver] {
-            #expect(c.alpha == 1)
-        }
+    /// The extended named set carries its CSS Color Module Level 4 values.
+    @Test(arguments: ColorTests.namedCSSValues)
+    func namedColorsMatchCSSValues(_ named: (name: String, color: Color, hex: UInt32)) {
+        #expect(named.color == Color(hex: named.hex), "\(named.name)")
+    }
+
+    /// Every named constant is opaque.
+    @Test(arguments: [Color.yellow, .orange, .purple, .crimson, .gold,
+                      .forestGreen, .navy, .violet, .khaki, .silver])
+    func namedColorsAreOpaque(_ color: Color) {
+        #expect(color.alpha == 1)
     }
 
     /// The pure additive primaries are kept (deliberately not CSS's darker
