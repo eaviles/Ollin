@@ -10,14 +10,14 @@ import CoreServices
 final class FileWatcher {
     private let paths: [String]
     private let debounce: TimeInterval
-    private let onChange: ([String]) -> Void
+    private let onChange: @Sendable ([String]) -> Void
 
     private let queue = DispatchQueue(label: "studio.ollin.filewatcher")
     private var stream: FSEventStreamRef?
     private var pending: DispatchWorkItem?
     private var changed = Set<String>()
 
-    init(paths: [String], debounce: TimeInterval = 0.15, onChange: @escaping ([String]) -> Void) {
+    init(paths: [String], debounce: TimeInterval = 0.15, onChange: @escaping @Sendable ([String]) -> Void) {
         self.paths = paths
         self.debounce = debounce
         self.onChange = onChange

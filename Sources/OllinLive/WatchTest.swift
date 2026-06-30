@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// `swift run OllinLive --watchtest` — a headless check that the FSEvents
 /// `FileWatcher` fires on an atomic file save (the way editors write). Needs no
@@ -13,9 +14,9 @@ enum WatchTest {
         try? "// v1".write(toFile: file, atomically: true, encoding: .utf8)
 
         let fired = DispatchSemaphore(value: 0)
-        var observed: [String] = []
+        let observed = OSAllocatedUnfairLock<[String]>(initialState: [])
         let watcher = FileWatcher(paths: [dir]) { changed in
-            observed = changed
+            observed.withLock { $0 = changed }
             fired.signal()
         }
         watcher.start()
@@ -29,8 +30,9 @@ enum WatchTest {
         guard fired.wait(timeout: .now() + 5) == .success else {
             fail("watcher did not fire within 5s of a save")
         }
-        guard let swiftPath = observed.first(where: { $0.hasSuffix(".swift") }) else {
-            fail("watcher fired but reported no .swift path: \(observed)")
+        let observedPaths = observed.withLock { $0 }
+        guard let swiftPath = observedPaths.first(where: { $0.hasSuffix(".swift") }) else {
+            fail("watcher fired but reported no .swift path: \(observedPaths)")
         }
         watcher.stop()
         print("OllinLive watchtest: PASS — observed atomic save of \(swiftPath)")

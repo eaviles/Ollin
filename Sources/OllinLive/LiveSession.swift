@@ -95,6 +95,9 @@ final class LiveSession {
     @ObservationIgnored private var runner: SketchRunner?
     @ObservationIgnored private var watcher: FileWatcher?
     @ObservationIgnored private var didStart = false
+    /// The in-flight hot-reload compile, kept so a newer save can cancel it: an
+    /// older, slower compile must not land last and swap in stale code.
+    @ObservationIgnored private var compileTask: Task<Void, Never>?
     /// User-tuned parameter values, keyed by name, re-applied to each freshly
     /// reloaded sketch so a knob doesn't snap back. Only values the user actually
     /// changed are stored — so editing a default in code still takes effect.
@@ -196,11 +199,17 @@ final class LiveSession {
         status = .compiling
         let loader = self.loader
         let keepClock = self.keepClock
-        Task {
+        // Supersede any in-flight compile so a newer save always wins: two saves
+        // within one swiftc run otherwise race, and a slower older compile could
+        // land last and swap in stale code. (The detached swiftc still runs to
+        // completion; we just refuse to apply a superseded result.)
+        compileTask?.cancel()
+        compileTask = Task {
             let started = Date()
             let compiled = await Task.detached(priority: .userInitiated) {
                 loader.compile()
             }.value
+            if Task.isCancelled { return }   // a newer save superseded this one
             switch compiled {
             case .success(let dylibPath):
                 switch loader.instantiate(dylibPath: dylibPath) {

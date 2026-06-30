@@ -310,12 +310,18 @@ final class PhoneStreamReader: @unchecked Sendable {
                 }
             }
 
-            lock.withLock {
-                if $0.fd == fd { $0.fd = -1 }
-                $0.connected = false
-                if $0.running { $0.message = "Reconnecting to the phone…" }
+            // Close the fd only if it's still ours. If stop() already reset
+            // state.fd and closed it, an unconditional close here would
+            // double-close a descriptor another thread may have reused
+            // (mirrors stop()'s own guard).
+            let stillOurs = lock.withLock { state -> Bool in
+                let stillOurs = state.fd == fd
+                if stillOurs { state.fd = -1 }
+                state.connected = false
+                if state.running { state.message = "Reconnecting to the phone…" }
+                return stillOurs
             }
-            close(fd)
+            if stillOurs { close(fd) }
             if isRunning { Thread.sleep(forTimeInterval: 0.5) }
         }
     }
