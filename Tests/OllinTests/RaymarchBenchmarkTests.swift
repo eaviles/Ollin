@@ -41,7 +41,7 @@ struct RaymarchBenchmarkTests {
         }
     }
 
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["OLLIN_BENCH"] != nil))
+    @Test(.benchmark)
     @MainActor
     func raymarchQualityBenchmark() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { print("benchmark: no Metal device"); return }

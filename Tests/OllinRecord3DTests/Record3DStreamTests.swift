@@ -14,7 +14,7 @@ import Darwin
 /// Exercises the live USB stream's frame format — the 104-byte header parser and
 /// the body decoder — against frames synthesized in memory (GPU-free, CI-safe),
 /// plus a live-device test that soft-skips when no phone is streaming.
-@Suite struct Record3DStreamTests {
+@Suite(.timeLimit(.minutes(1))) struct Record3DStreamTests {
 
     // Color frame 16×12, depth grid 8×6 — the same geometry as the file tests, so
     // the intrinsics halve when scaled from capture (16×12) onto the depth grid.

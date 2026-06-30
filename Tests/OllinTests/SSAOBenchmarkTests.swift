@@ -55,7 +55,7 @@ struct SSAOBenchmarkTests {
         }
     }
 
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["OLLIN_BENCH"] != nil))
+    @Test(.benchmark)
     @MainActor
     func ssaoQualityBenchmark() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { print("benchmark: no Metal device"); return }

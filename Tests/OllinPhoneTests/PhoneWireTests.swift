@@ -13,7 +13,7 @@ import Darwin
 /// motion, body-pose, face, depth, and segmentation payload codecs — with encode/decode
 /// round-trips (GPU-free, CI-safe), plus a live-device test that soft-skips when no
 /// phone is streaming.
-@Suite struct PhoneWireTests {
+@Suite(.timeLimit(.minutes(1))) struct PhoneWireTests {
 
     // MARK: Round-trips
 

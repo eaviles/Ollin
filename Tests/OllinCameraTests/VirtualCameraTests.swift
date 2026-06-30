@@ -9,7 +9,7 @@ import Metal
 /// on — no camera required), the GPU letterbox pass (gated on a Metal device),
 /// and a real end-to-end push when the Ollin Camera extension is installed
 /// (soft-skips where it isn't, e.g. CI).
-@Suite struct VirtualCameraTests {
+@Suite(.timeLimit(.minutes(1))) struct VirtualCameraTests {
 
     static var hasMetal: Bool { MTLCreateSystemDefaultDevice() != nil }
 

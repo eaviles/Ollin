@@ -43,15 +43,16 @@ struct ColorSpaceTests {
         #expect(close(blue.b, -0.31153))
     }
 
-    @Test func okLabRoundTrip() {
-        for r in stride(from: 0.0, through: 1.0, by: 0.25) {
-            for g in stride(from: 0.0, through: 1.0, by: 0.25) {
-                for b in stride(from: 0.0, through: 1.0, by: 0.25) {
-                    let c = Color(red: r, green: g, blue: b)
-                    #expect(close(Color(OKLab(c)), c))
-                }
-            }
-        }
+    /// A 5×5×5 sweep of the unit RGB cube: the round-trip grid the OKLab and
+    /// OKLCH conversions must both return unchanged.
+    static let rgbCube: [Color] = {
+        let s = Array(stride(from: 0.0, through: 1.0, by: 0.25))
+        return s.flatMap { r in s.flatMap { g in s.map { b in Color(red: r, green: g, blue: b) } } }
+    }()
+
+    @Test(arguments: ColorSpaceTests.rgbCube)
+    func okLabRoundTrip(_ c: Color) {
+        #expect(close(Color(OKLab(c)), c))
     }
 
     // MARK: OKLCH
@@ -64,15 +65,9 @@ struct ColorSpaceTests {
         #expect(close(OKLCH(.blue).h, 264.052 / 360, 1e-3))
     }
 
-    @Test func okLCHRoundTrip() {
-        for r in stride(from: 0.0, through: 1.0, by: 0.25) {
-            for g in stride(from: 0.0, through: 1.0, by: 0.25) {
-                for b in stride(from: 0.0, through: 1.0, by: 0.25) {
-                    let c = Color(red: r, green: g, blue: b)
-                    #expect(close(Color(OKLCH(c)), c))
-                }
-            }
-        }
+    @Test(arguments: ColorSpaceTests.rgbCube)
+    func okLCHRoundTrip(_ c: Color) {
+        #expect(close(Color(OKLCH(c)), c))
     }
 
     @Test func grayHasNoHue() {
@@ -110,19 +105,23 @@ struct ColorSpaceTests {
 
     // MARK: OKHSL
 
-    @Test func okHSLRoundTrip() {
-        for h in stride(from: 0.05, through: 0.95, by: 0.15) {
-            for s in stride(from: 0.1, through: 0.9, by: 0.2) {
-                for l in stride(from: 0.1, through: 0.9, by: 0.2) {
-                    let c = Color(OKHSL(h: h, s: s, l: l))
-                    #expect(inGamut(c))
-                    let back = OKHSL(c)
-                    #expect(close(back.h, h))
-                    #expect(close(back.s, s))
-                    #expect(close(back.l, l))
-                }
-            }
-        }
+    /// A sweep of OKHSL coordinates well inside the sRGB gamut, each surviving
+    /// the round-trip back through `Color`.
+    static let okHSLGrid: [OKHSL] = {
+        let hs = Array(stride(from: 0.05, through: 0.95, by: 0.15))
+        let ss = Array(stride(from: 0.1, through: 0.9, by: 0.2))
+        let ls = Array(stride(from: 0.1, through: 0.9, by: 0.2))
+        return hs.flatMap { h in ss.flatMap { s in ls.map { l in OKHSL(h: h, s: s, l: l) } } }
+    }()
+
+    @Test(arguments: ColorSpaceTests.okHSLGrid)
+    func okHSLRoundTrip(_ hsl: OKHSL) {
+        let c = Color(hsl)
+        #expect(inGamut(c))
+        let back = OKHSL(c)
+        #expect(close(back.h, hsl.h))
+        #expect(close(back.s, hsl.s))
+        #expect(close(back.l, hsl.l))
     }
 
     @Test func okHSLExtremes() {
@@ -134,26 +133,24 @@ struct ColorSpaceTests {
         #expect(close(red.l, 0.568, 1e-3))
     }
 
-    @Test func okHSLHoldsLightnessAcrossHues() {
+    @Test(arguments: Array(stride(from: 0.1, through: 0.9, by: 0.1)))
+    func okHSLHoldsLightnessAcrossHues(_ h: Double) {
         // The OKHSL pitch: same s and l at any hue reads as the same lightness.
         let reference = OKLab(Color(OKHSL(h: 0, s: 0.9, l: 0.6))).l
-        for h in stride(from: 0.1, through: 0.9, by: 0.1) {
-            let l = OKLab(Color(OKHSL(h: h, s: 0.9, l: 0.6))).l
-            #expect(close(l, reference, 1e-6))
-        }
+        let l = OKLab(Color(OKHSL(h: h, s: 0.9, l: 0.6))).l
+        #expect(close(l, reference, 1e-6))
     }
 
     // MARK: Mixing
 
-    @Test func mixEndpointsAndClampT() {
+    @Test(arguments: [ColorSpace.rgb, .hsb, .oklab, .oklch, .okhsl])
+    func mixEndpointsAndClampT(_ space: ColorSpace) {
         let a = Color(hex: 0x3366FF, alpha: 0.5)
         let b = Color(hex: 0xFFAA00)
-        for space: ColorSpace in [.rgb, .hsb, .oklab, .oklch, .okhsl] {
-            #expect(close(Color.mix(a, b, t: 0, in: space), a), "t = 0 in \(space)")
-            #expect(close(Color.mix(a, b, t: 1, in: space), b), "t = 1 in \(space)")
-            #expect(close(Color.mix(a, b, t: -3, in: space), a), "t clamps low in \(space)")
-            #expect(close(Color.mix(a, b, t: 7, in: space), b), "t clamps high in \(space)")
-        }
+        #expect(close(Color.mix(a, b, t: 0, in: space), a), "t = 0 in \(space)")
+        #expect(close(Color.mix(a, b, t: 1, in: space), b), "t = 1 in \(space)")
+        #expect(close(Color.mix(a, b, t: -3, in: space), a), "t clamps low in \(space)")
+        #expect(close(Color.mix(a, b, t: 7, in: space), b), "t clamps high in \(space)")
     }
 
     @Test func mixDefaultIsPerceptualMidGray() {
@@ -193,13 +190,11 @@ struct ColorSpaceTests {
         #expect(close(Color.mix(a, b, t: 0.25).alpha, 0.25, 1e-12))
     }
 
-    @Test func hsbComponentsRoundTrip() {
-        for h in stride(from: 0.0, to: 1.0, by: 0.125) {
-            for s in stride(from: 0.25, through: 1.0, by: 0.25) {
-                let c = Color(hue: h, saturation: s, brightness: 0.8)
-                let back = Color.mix(c, c, t: 0.5, in: .hsb)
-                #expect(close(back, c, 1e-9))
-            }
-        }
+    @Test(arguments: Array(stride(from: 0.0, to: 1.0, by: 0.125)),
+                     Array(stride(from: 0.25, through: 1.0, by: 0.25)))
+    func hsbComponentsRoundTrip(_ h: Double, _ s: Double) {
+        let c = Color(hue: h, saturation: s, brightness: 0.8)
+        let back = Color.mix(c, c, t: 0.5, in: .hsb)
+        #expect(close(back, c, 1e-9))
     }
 }

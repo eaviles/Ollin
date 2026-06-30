@@ -141,15 +141,19 @@ struct PaletteTests {
 
     // MARK: Built-in sets
 
-    @Test func builtInSetsCarryTheCanonicalData() {
-        #expect(Palette.set1.count == 9)
-        #expect(Palette.set2.count == 8)
-        #expect(Palette.set3.count == 12)
-        #expect(Palette.paired.count == 12)
-        #expect(Palette.pastel1.count == 9)
-        #expect(Palette.pastel2.count == 8)
-        #expect(Palette.dark2.count == 8)
-        #expect(Palette.accent.count == 8)
+    /// Each built-in ColorBrewer set beside its published size.
+    static let builtInSizes: [(name: String, palette: Palette, count: Int)] = [
+        ("set1", .set1, 9), ("set2", .set2, 8), ("set3", .set3, 12),
+        ("paired", .paired, 12), ("pastel1", .pastel1, 9), ("pastel2", .pastel2, 8),
+        ("dark2", .dark2, 8), ("accent", .accent, 8),
+    ]
+
+    @Test(arguments: PaletteTests.builtInSizes)
+    func builtInSetsCarryCanonicalSize(_ set: (name: String, palette: Palette, count: Int)) {
+        #expect(set.palette.count == set.count, "\(set.name)")
+    }
+
+    @Test func builtInSetsCarryCanonicalValues() {
         // Spot-check against the published RGB values.
         #expect(Palette.set1[0] == Color(hex: 0xE41A1C))
         #expect(Palette.set2[0] == Color(red: 102.0 / 255, green: 194.0 / 255, blue: 165.0 / 255))
