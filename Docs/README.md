@@ -24,6 +24,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 - [`Color`](./Drawing/Color.md) - the `Color` type, the OKLab family and mixing, `Ramp`s and `Palette`s, and perceptual `Colormap`s
 - [`Geometry`](./Drawing/Geometry.md) - the `Vector2`, `Rectangle`, `Grid`, `Shape`/`Contour`, and `Path` value types (including the `Grid` layout helper, curved outlines, shape booleans, and offsetting)
 - [`Voronoi & Delaunay`](./Drawing/Voronoi.md) - tessellate points into vector geometry: Voronoi cells (the "crystallization" look) and the dual Delaunay triangle mesh, with Lloyd relaxation
+- [`Strange attractors`](./Drawing/Attractors.md) - chaotic systems as points: continuous 3D orbits (Lorenz, Rössler, Aizawa, …) integrated with Runge-Kutta and orbited through the camera, and 2D iterated maps (Clifford, de Jong, Hénon) accumulated into density fields
 - [`SDF combinators`](./Drawing/Combinators.md) - compose signed-distance fields so shapes *merge* instead of stack: smooth union/subtract/intersect and morph, round/onion, and domain mirror/tile, via the `SDF` value type + `drawSDF` and a scoped `smoothUnion { }` block, in 2D and a raymarched 3D form (`SDF3D` + `drawSDF3D`)
 
 ### Shaders

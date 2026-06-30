@@ -12,6 +12,7 @@ right-handed and y-up.
 | Sketch | What it shows |
 | --- | --- |
 | [PointCloud](PointCloud/) | A rippling heightfield drawn as an orbiting 3D point cloud — camera, depth, and instanced disc splats. |
+| [StrangeAttractor](StrangeAttractor/) | A Lorenz attractor integrated with Runge-Kutta, splatted as a 150k-point cloud colored by orbit speed and lit additively; grab and orbit it (`StrangeAttractor.lorenz`). |
 | [Transforms](Transforms/) | The 3D transform stack: a sun, planets orbiting it, and a moon orbiting each planet — orbits within orbits via nested `withState`, one point-cloud blob placed many ways by `translate`/`rotateY`/`scale`. |
 | [Solids](Solids/) | The closed-solid catalog — box, sphere, cylinder, torus, the Platonics, and more — as colorful clay shaded by the auto-lit default. |
 | [ShapeFactory](ShapeFactory/) | The parametric/profile mesh set (Möbius, Klein, superellipsoid, supershape, extrude, lathe) morphing on `time`. |

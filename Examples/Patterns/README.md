@@ -9,6 +9,7 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 
 | Example | What it shows |
 |---|---|
+| [CliffordAttractor](CliffordAttractor/Sketch.swift) | a Clifford map iterated into an accumulating additive density field, bright filaments where the chaotic orbit returns again and again (`ChaoticMap.clifford`, `noClear`, `blendMode(.add)`) |
 | [DotGrid](DotGrid/Sketch.swift) | a grid of black/white dots woven by a modulo rule |
 | [EnergyGrid](EnergyGrid/Sketch.swift) | columns sized by a moving "energy" share (`translate`, `drawRect`) |
 | [LifeQuilt](LifeQuilt/Sketch.swift) | a four-layer Game of Life filling cells with triangular wedges, colored by a radial cosine palette (`drawTriangle`, SDF) |

@@ -1389,6 +1389,11 @@ final class Drawer {
         }
     }
 
+    /// The current solid `fill` color (white for a gradient or `noFill`), for
+    /// helpers that bake one flat color into geometry (the point-cloud attractor
+    /// sugar).
+    var currentFillColor: Color { meshSurfaceColor }
+
     /// The edge color for a wireframe mesh: the current solid `stroke`, falling back to
     /// the fill color when there's no stroke (so the net is always visible).
     private var meshStrokeColor: Color {

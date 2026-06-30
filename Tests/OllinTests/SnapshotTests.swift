@@ -370,6 +370,22 @@ struct SnapshotTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func strangeAttractor3DMatchesReference() throws {
+        // A Lorenz orbit, RK4-integrated and splatted through a fixed camera. Pins
+        // the attractor math, the speed coloring, and the additive point cloud.
+        let diff = try Snapshot.meanDifference(of: StrangeAttractorScene(), against: "strange-attractor-3d")
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func cliffordAttractorMatchesReference() throws {
+        // A Clifford map accumulated additively over several frames. Pins the
+        // iterated map plus the noClear density build-up.
+        let diff = try Snapshot.meanDifference(of: CliffordAttractorScene(), against: "clifford-attractor", frame: 24)
+        #expect(diff < Snapshot.tolerance, "mean per-channel difference \(diff)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func solidPrimitives3DMatchesReference() throws {
         // The five solid primitives through a fixed camera — pins the depth-tested
         // mesh pipeline, the auto-lit default material (each fill shaded by the
@@ -2491,5 +2507,69 @@ private final class EffectsDefocus: Sketch {
             for d in discs { fill(Color(white: d.gray)); drawCircle(width * d.x, height * 0.5, 58) }
         }
         drawImage(scene.combined(with: depth, .defocus(focus: 0.5, range: 0.08, maxBlur: 22)).image, 0, 0)
+    }
+}
+
+/// A Lorenz attractor, RK4-integrated and splatted through a fixed camera. Pins
+/// the attractor math, the per-point speed coloring, and the additive point
+/// cloud. No `time`/random, so it's deterministic at any frame.
+private final class StrangeAttractorScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x04050A))
+        blendMode(.add)
+        camera(.orbiting(target: .zero, radius: 5.2, azimuth: 0.7,
+                         elevation: 0.32, fieldOfView: .pi / 3.4))
+
+        let attractor = StrangeAttractor.lorenz()
+        let raw = attractor.orbit(count: 40_000, settle: 2000)
+        var lo = raw[0], hi = raw[0]
+        for p in raw {
+            lo = Vector3(min(lo.x, p.x), min(lo.y, p.y), min(lo.z, p.z))
+            hi = Vector3(max(hi.x, p.x), max(hi.y, p.y), max(hi.z, p.z))
+        }
+        let center = (lo + hi) * 0.5
+        let fit = 4.6 / max(hi.x - lo.x, max(hi.y - lo.y, hi.z - lo.z))
+        let speeds = raw.map { attractor.derivative($0).length }
+        let slow = speeds.min() ?? 0, spread = max((speeds.max() ?? 1) - (speeds.min() ?? 0), 1e-6)
+
+        var cloud = PointCloud()
+        for (i, p) in raw.enumerated() {
+            let c = p - center
+            let t = (speeds[i] - slow) / spread
+            cloud.add(Vector3(c.x, c.z, c.y) * fit,
+                      color: Color(hue: 0.62 - t * 0.62, saturation: 0.85, brightness: 0.45 + t * 0.55),
+                      size: 0.02)
+        }
+        drawPointCloud(cloud)
+    }
+}
+
+/// A Clifford map accumulated additively over several frames. Pins the iterated
+/// map and the `noClear` density build-up. Carries the orbit across frames, so
+/// the test renders it at a fixed `frame`.
+private final class CliffordAttractorScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private let map = ChaoticMap.clifford()
+    private let perFrame = 30_000
+    private var current = Vector2(0.1, 0.1)
+
+    override func setup() { noClear(); noStroke() }
+
+    override func draw() {
+        if frameCount == 1 { background(.black) }
+        let reach = Double(min(width, height)) * 0.22
+        let cx = width / 2, cy = height / 2
+        var points = [Vector2]()
+        points.reserveCapacity(perFrame)
+        for _ in 0..<perFrame {
+            current = map.next(current)
+            points.append(Vector2(cx + current.x * reach, cy + current.y * reach))
+        }
+        blendMode(.add)
+        fill(Color(red: 0.42, green: 0.74, blue: 1.0, alpha: 0.06))
+        pointSize(1.0)
+        drawPoints(points)
     }
 }

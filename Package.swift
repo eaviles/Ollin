@@ -575,6 +575,11 @@ let package = Package(
             path: "Examples/3D/PointCloud"
         ),
         .executableTarget(
+            name: "Example-3D-StrangeAttractor",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/StrangeAttractor"
+        ),
+        .executableTarget(
             name: "Example-3D-Transforms",
             dependencies: ["Ollin"],
             path: "Examples/3D/Transforms"
@@ -971,6 +976,11 @@ let package = Package(
             name: "Example-Randomness-Ring",
             dependencies: ["Ollin"],
             path: "Examples/Randomness/Ring"
+        ),
+        .executableTarget(
+            name: "Example-Patterns-CliffordAttractor",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/CliffordAttractor"
         ),
         .executableTarget(
             name: "Example-Patterns-DotGrid",
