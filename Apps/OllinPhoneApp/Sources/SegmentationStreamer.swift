@@ -68,9 +68,13 @@ final class SegmentationStreamer: NSObject, ARSessionDelegate {
     /// turn. (If a hold reads rotated the wrong way on-device, flip the mapping here —
     /// it can't break matte/color alignment, since the Mac turns both by the same N.)
     private static func quarterTurns() -> UInt8 {
-        let orientation = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first?.interfaceOrientation ?? .portrait
+        // ARKit delivers its delegate callbacks on the main thread, so this runs
+        // there; assume the main actor to read UIApplication's interface orientation.
+        let orientation = MainActor.assumeIsolated {
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .first?.interfaceOrientation ?? .portrait
+        }
         switch orientation {
         case .portrait:           return 1
         case .landscapeLeft:      return 2

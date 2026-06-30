@@ -62,7 +62,10 @@ final class OllinCameraProviderSource: NSObject, CMIOExtensionProviderSource {
 
 // MARK: - Device
 
-final class OllinCameraDeviceSource: NSObject, CMIOExtensionDeviceSource {
+/// `@unchecked Sendable`: every mutable property below is confined to `frameQueue`
+/// (the CMIO lifecycle callbacks, the timer tick, and the sink pump all hop onto
+/// it), so the `frameQueue.async` closures capture `self` safely under Swift 6.
+final class OllinCameraDeviceSource: NSObject, CMIOExtensionDeviceSource, @unchecked Sendable {
 
     private(set) var device: CMIOExtensionDevice!
     private var streamSource: OllinCameraStreamSource!
@@ -207,6 +210,9 @@ final class OllinCameraDeviceSource: NSObject, CMIOExtensionDeviceSource {
     // MARK: Sink-stream lifecycle
 
     func startSinkStreaming(client: CMIOExtensionClient) {
+        // The client is handed over once and then lives on frameQueue (stored in
+        // sinkClient); move it across the queue hop deliberately.
+        nonisolated(unsafe) let client = client
         frameQueue.async { [weak self] in
             guard let self else { return }
             self.sinkClient = client
@@ -230,6 +236,8 @@ final class OllinCameraDeviceSource: NSObject, CMIOExtensionDeviceSource {
         guard sinkActive, let client = sinkClient else { return }
         sinkStreamSource.stream.consumeSampleBuffer(from: client) { [weak self] sampleBuffer, sequenceNumber, _, _, error in
             guard let self else { return }
+            // The buffer CMIO handed us is forwarded on frameQueue; move it there.
+            nonisolated(unsafe) let sampleBuffer = sampleBuffer
             self.frameQueue.async {
                 guard self.sinkActive else { return }
                 if let sampleBuffer {

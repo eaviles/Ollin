@@ -7,16 +7,20 @@ import Network
 ///
 /// All connection state lives on the server's serial `queue`, so accepts, removals,
 /// and sends never race. The Mac side never writes back; this is a one-way push.
-final class SensorServer {
+final class SensorServer: @unchecked Sendable {
 
-    /// Called (on the server queue) whenever a client connects or drops.
-    var onClientCountChange: ((Int) -> Void)?
+    /// Called (on the server queue) whenever a client connects or drops. Set at
+    /// init, before the listener starts, so a server-queue accept can't race a
+    /// later assignment. (`connections` and everything below stays on `queue`,
+    /// which is what `@unchecked Sendable` is asserting.)
+    private let onClientCountChange: (@Sendable (Int) -> Void)?
 
     private let listener: NWListener
     private let queue = DispatchQueue(label: "dev.ollin.capture.server")
     private var connections: [ObjectIdentifier: NWConnection] = [:]
 
-    init(port: UInt16) throws {
+    init(port: UInt16, onClientCountChange: (@Sendable (Int) -> Void)? = nil) throws {
+        self.onClientCountChange = onClientCountChange
         let params = NWParameters.tcp
         params.allowLocalEndpointReuse = true
         listener = try NWListener(using: params, on: NWEndpoint.Port(rawValue: port)!)

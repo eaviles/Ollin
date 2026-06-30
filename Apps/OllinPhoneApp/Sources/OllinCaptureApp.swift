@@ -65,8 +65,7 @@ final class SensorStreamer {
         UIApplication.shared.isIdleTimerDisabled = true   // keep streaming while idle
 
         do {
-            let server = try SensorServer(port: PhoneWire.streamPort)
-            server.onClientCountChange = { [weak self] count in
+            let server = try SensorServer(port: PhoneWire.streamPort) { [weak self] count in
                 Task { @MainActor in self?.clientCount = count }
             }
             self.server = server
