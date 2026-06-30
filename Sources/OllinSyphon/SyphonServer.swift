@@ -85,6 +85,12 @@ public final class SyphonServer: SketchExtension {
         server.publishFrameTexture(publishTexture, on: commandBuffer,
                                    imageRegion: region, flipped: true)
         commandBuffer.commit()
+        // The renderer hands out a texture it reuses in place, re-rendering into
+        // it next frame on its own command queue. Metal's hazard tracking doesn't
+        // span queues, so wait for Syphon's copy to finish before returning, or
+        // the next frame's overwrite could race this read. The blit is small and
+        // this already runs on the render loop.
+        commandBuffer.waitUntilCompleted()
         isPublishing = true
     }
 }
