@@ -97,7 +97,7 @@ final class CameraRig {
     private let maxRadius = 1e6
     private let smoothRate = 14.0                // pose-to-goal easing rate (1/s)
     private let momentumDecay = 5.0              // how fast a released spin dies (1/s)
-    private let velSmoothing = 0.35             // EMA factor for the release velocity
+    private let velSmoothingTau = 0.04          // release-velocity EMA time constant (s)
     private let maxSpin = 6.0                   // cap on carried velocity (rad/s)
 
     // MARK: Cinematic-move state
@@ -128,6 +128,13 @@ final class CameraRig {
     private var returnFromElevation = 0.0
     private var returnFromRadius = 0.0
     private var returnFromTarget = Vector3.zero
+    /// The blend's continuously unwrapped azimuth destination. The move keeps
+    /// orbiting underneath the return, so the destination must be tracked by its
+    /// per-frame increments: re-wrapping the shortest arc each frame against the
+    /// moving azimuth flips sign when it crosses the antipode mid-blend (a
+    /// half-turn pop). `nil` until the first return frame establishes it.
+    private var returnToAzimuth: Double?
+    private var returnMoveAzimuth = 0.0
 
     /// The opening framing captured at `seed()`, so the idle return glides back to
     /// the shot the sketch framed rather than wherever the viewer left the camera.
@@ -193,11 +200,15 @@ final class CameraRig {
             let rot = Double.tau / height * orbitSensitivity
             goalAzimuth -= dx * rot
             goalElevation += dy * rot
-            // Track a smoothed, capped velocity for the release flick.
+            // Track a smoothed, capped velocity for the release flick. The EMA blend
+            // derives from a time constant so the same physical flick carries the same
+            // momentum at any frame rate (a fixed per-frame factor lags more at 30fps
+            // than at 120fps).
             let instAz = (-dx * rot) / Swift.max(dt, 1e-4)
             let instEl = (dy * rot) / Swift.max(dt, 1e-4)
-            velAzimuth = clampSpin(velAzimuth + (instAz - velAzimuth) * velSmoothing)
-            velElevation = clampSpin(velElevation + (instEl - velElevation) * velSmoothing)
+            let blend = 1 - exp(-dt / velSmoothingTau)
+            velAzimuth = clampSpin(velAzimuth + (instAz - velAzimuth) * blend)
+            velElevation = clampSpin(velElevation + (instEl - velElevation) * blend)
         } else if isPan {
             velAzimuth = 0   // a deliberate pan cancels any carried orbit spin
             velElevation = 0
@@ -381,6 +392,7 @@ final class CameraRig {
         target = returnFromTarget
 
         returnClock = 0
+        returnToAzimuth = nil
         interactivePhase = .returning
     }
 
@@ -396,7 +408,18 @@ final class CameraRig {
         let moveAzimuth = azimuth, moveElevation = elevation
         let moveRadius = radius, moveTarget = target
 
-        azimuth = lerpAngle(returnFromAzimuth, moveAzimuth, e)
+        // Wrap the destination onto the viewer's winding once, then follow the
+        // move's own increments (small per frame, so they never wrap); see
+        // `returnToAzimuth`. At the end the blend lands on the move's azimuth
+        // modulo a full turn, which is the same pose.
+        if let unwrapped = returnToAzimuth {
+            returnToAzimuth = unwrapped + shortestArc(moveAzimuth - returnMoveAzimuth)
+        } else {
+            returnToAzimuth = returnFromAzimuth + shortestArc(moveAzimuth - returnFromAzimuth)
+        }
+        returnMoveAzimuth = moveAzimuth
+
+        azimuth = returnFromAzimuth + (returnToAzimuth! - returnFromAzimuth) * e
         elevation = returnFromElevation + (moveElevation - returnFromElevation) * e
         radius = returnFromRadius + (moveRadius - returnFromRadius) * e
         target = returnFromTarget.lerp(to: moveTarget, e)
@@ -411,10 +434,15 @@ final class CameraRig {
     /// Interpolate an angle along the shortest arc, so a viewer who spun the camera
     /// far around returns the short way instead of unwinding every turn.
     private func lerpAngle(_ a: Double, _ b: Double, _ t: Double) -> Double {
-        var diff = (b - a).truncatingRemainder(dividingBy: .tau)
+        a + shortestArc(b - a) * t
+    }
+
+    /// The signed angular difference wrapped to (-π, π], the shortest way around.
+    private func shortestArc(_ angle: Double) -> Double {
+        var diff = angle.truncatingRemainder(dividingBy: .tau)
         if diff > .pi { diff -= .tau }
         if diff < -.pi { diff += .tau }
-        return a + diff * t
+        return diff
     }
 
     // MARK: View snap (the scene-inspection standard views)
@@ -513,7 +541,19 @@ final class CameraRig {
         case .control:
             lastMode = .none              // updateControl resyncs its goal to the snapped pose
         case .move:
-            activeMove = nil              // updateMove re-bases from the snapped pose
+            if let move = activeMove, let duration = move.finiteDuration, moveClock >= duration {
+                // The finite move already played out; a restart would replay it from
+                // the snapped pose and compound a relative move (each snap pushing a
+                // `pushIn` further in). Hold the snapped pose as its resting state.
+                baseAzimuth = azimuth
+                baseElevation = elevation
+                baseRadius = radius
+                baseTarget = target
+                radiusTimeline = nil
+                elevationTimeline = nil
+            } else {
+                activeMove = nil          // updateMove re-bases from the snapped pose
+            }
         case .showcase:
             interactivePhase = .manual    // hold the snapped view, then idle-return to the opening shot
             idleClock = 0

@@ -226,6 +226,12 @@ static inline float shadowFactorPCSS(float3 worldPos, float3 n, float3 toLight,
     float searchRadius = lightSize * searchScale;
     float blockerSum = 0.0;
     int blockerCount = 0;
+    // A plain center tap first: the Vogel disk's innermost sample sits a few texels
+    // out, so a very thin occluder crossing only the receiver's own texel would
+    // otherwise count zero blockers and return fully lit (a wire's shadow speckling
+    // away where the legacy 3x3, which reads the center, still shadowed it).
+    float dc = shadowMap.sample(depthSamp, uv);
+    if (dc < ref) { blockerSum += dc; blockerCount++; }
     for (int i = 0; i < blockerTaps; i++) {
         float d = shadowMap.sample(depthSamp, uv + vogelDisk(i, blockerTaps, rot) * searchRadius * texel);
         if (d < ref) { blockerSum += d; blockerCount++; }
@@ -428,6 +434,10 @@ static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, fl
     float2 bc = q.get_committed_triangle_barycentric_coord();
     float3 w = float3(1.0 - bc.x - bc.y, bc.x, bc.y);
     float3 hitN = normalize(w.x * a.normal.xyz + w.y * b.normal.xyz + w.z * c.normal.xyz);
+    // An open mesh's back face (or a ray that started inside geometry) hits with
+    // its normal pointing away from the ray; flip it toward the ray so Fresnel and
+    // irradiance shade the visible side instead of blowing out white at NoV 0.
+    if (dot(hitN, R) > 0.0) hitN = -hitN;
     // Vertex color is straight sRGB (the baked `fill`), like the rasterized fragment.
     float3 albedo = srgbToLinear(w.x * a.color.rgb + w.y * b.color.rgb + w.z * c.color.rgb);
     // Metalness + roughness are baked per vertex into the spare w slots (constant across the
@@ -453,13 +463,20 @@ static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, fl
                                           level(hitRough * light.iblMaxMip)).rgb;
     float3 col = envAtHit * F;
     float3 diffuse = albedo * irradianceTex.sample(cubeSamp, hitNr).rgb;
+    // The scene's direct lights are already in display-linear units, but the caller
+    // scales the whole reflection by the IBL intensity (user intensity x per-environment
+    // auto-exposure), which converts the *un-exposed environment* terms alone. Pre-divide
+    // the direct term so a lit surface seen in a mirror matches the same surface seen
+    // directly (the bundled environments' normalization ranges to ~12x).
+    float3 direct = float3(0.0);
     for (int i = 0; i < light.lightCount; i++) {
         OllinLight L = light.lights[i];
         float3 toLight = (L.kind == 0) ? L.direction.xyz : normalize(L.position.xyz - hitP);
         float atten = 1.0;
         if (L.kind == 2) atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
-        diffuse += albedo * L.color.rgb * (max(dot(hitN, toLight), 0.0) * atten);
+        direct += albedo * L.color.rgb * (max(dot(hitN, toLight), 0.0) * atten);
     }
+    diffuse += direct / max(light.iblIntensity, 1e-3);
     col += diffuse * (1.0 - metal);
 
     // Glossy: blend the sharp mirror toward the prefiltered environment by the *primary*
@@ -837,6 +854,21 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     return (kD * diffuse + specular) * light.iblIntensity;
 }
 
+// Environment ambient for the non-physically-based materials (standard/toon): the
+// diffuse irradiance stands in for the flat ambient, so `environment(_:)` alone
+// lights every material rather than only the metallic-roughness one. (Under the
+// `.auto` rig an environment zeroes the flat ambient and the light list, which
+// otherwise left these materials rendering black against the skybox.) Gooch keeps
+// its own light-independent tone ramp and takes no ambient, as before.
+static inline float3 ollin_ibl_flat_ambient(float3 base, float3 n,
+                                            constant OllinLighting &light,
+                                            texturecube<float> irradianceTex) {
+    constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
+    float cs = cos(light.iblRotation), sn = sin(light.iblRotation);
+    float3x3 rot = float3x3(float3(cs, 0.0, -sn), float3(0.0, 1.0, 0.0), float3(sn, 0.0, cs));
+    return base * irradianceTex.sample(cubeSamp, rot * n).rgb * light.iblIntensity;
+}
+
 fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     constant OllinLighting &light [[buffer(0)]],
                                     constant OllinMaterial &mat [[buffer(1)]],
@@ -874,7 +906,8 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                             in.worldPos, mat, light, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, -1.0, meshFieldShadow);
 #endif
-    // Physically-based surfaces gather their ambient + reflections from the environment.
+    // Physically-based surfaces gather their ambient + reflections from the environment;
+    // the other lit materials take the diffuse irradiance as their ambient (Gooch excepted).
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
@@ -883,6 +916,8 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                        , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets
 #endif
                                        );
+    } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
+        c.rgb += ollin_ibl_flat_ambient(base, normalize(in.normal), light, iblIrradiance);
     }
     return c;
 }
@@ -1064,6 +1099,8 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                        , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets
 #endif
                                        );
+    } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
+        c.rgb += ollin_ibl_flat_ambient(base, normalize(in.normal), light, iblIrradiance);
     }
     return c;
 }

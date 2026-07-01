@@ -83,8 +83,36 @@ clear_dir() {
   fi
 }
 
+# Ollin's entries in the environment cache: the <16-hex-hash>- prefixed downloads
+# and the .equirectf16 decoded-pixel blobs (plus their atomic-write temps, which
+# share those prefixes/suffixes).
+env_cache_files() {
+  find "$1" -maxdepth 1 -type f \
+    \( -name '????????????????-*' -o -name '*.equirectf16' \) 2>/dev/null
+}
+
+# Clear only Ollin's own files from the environment cache. OLLIN_ENVIRONMENT_CACHE
+# may point the cache at a user-chosen (possibly shared) directory, so removing the
+# directory wholesale could take unrelated files with it; delete by pattern instead.
+clear_env_cache() {
+  label="$1"
+  dir="$2"
+  if [ ! -d "$dir" ] || [ -z "$(env_cache_files "$dir")" ]; then
+    echo "· $label: nothing to clear ($dir)"
+    return
+  fi
+  count="$(env_cache_files "$dir" | wc -l | tr -d ' ')"
+  size="$(env_cache_files "$dir" | tr '\n' '\0' | xargs -0 du -ch 2>/dev/null | tail -1 | cut -f1)"
+  if [ "$DRY_RUN" = true ]; then
+    echo "would clear $label: $count files, $size ($dir)"
+  else
+    env_cache_files "$dir" | tr '\n' '\0' | xargs -0 rm -f
+    echo "✓ cleared $label: $count files, $size ($dir)"
+  fi
+}
+
 if [ "$DO_ENV" = true ]; then
-  clear_dir "HDRI environments" "$ENV_CACHE"
+  clear_env_cache "HDRI environments" "$ENV_CACHE"
 fi
 if [ "$DO_COMPILED" = true ]; then
   clear_dir "compiled Core ML models" "$MODEL_CACHE"

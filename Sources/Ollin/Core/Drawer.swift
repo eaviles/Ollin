@@ -561,6 +561,21 @@ final class Drawer {
                                      finish: m.gpuMaterial(), target: currentTarget))
     }
 
+    /// Remove the live ground-grid chrome again, once the on-screen render has
+    /// consumed it. The runner appends the grid after the sketch's own draw, so a
+    /// same-frame re-consumer of this drawer (the frame-grab and Syphon re-renders)
+    /// must not see it. The trailing batch and its vertices go together: a batch's
+    /// vertex count is derived from the next start / `meshVertices.count`, so
+    /// popping the batch without shrinking the array would hand the grid's
+    /// vertices to the preceding mesh batch.
+    func removeGridChrome() {
+        while let last = batches.last, last.meshGrid {
+            meshVertices.removeLast(meshVertices.count - last.meshStart)
+            batches.removeLast()
+            currentKind = nil
+        }
+    }
+
     /// Draw the live ground-grid overlay: one large y=0 quad (centered at `center`'s XZ,
     /// half-width `halfExtent`) routed to the grid pipeline, which computes the
     /// anti-aliased reference grid per pixel from the world XZ. Host chrome the runner

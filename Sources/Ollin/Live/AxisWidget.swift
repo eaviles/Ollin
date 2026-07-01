@@ -27,6 +27,12 @@ struct AxisWidget: View {
     @State private var pointer: CGPoint?
     @State private var hoveredControl: Control?
     @State private var isDragging = false
+    /// The last drag translation forwarded, so a *cancelled* gesture can release the
+    /// synthetic mouse press where it stood (a cancellation never calls `onEnded`).
+    @State private var lastDragTranslation: CGSize = .zero
+    /// Mirrors the drag's lifetime; a gesture the system cancels resets this without
+    /// calling `onEnded`, which is the only signal a cancellation gives us.
+    @GestureState private var dragActive = false
     /// The projection toggle, shared with the Camera menu (the runner reads it each
     /// frame and applies it to the rig).
     @AppStorage(OllinHUD.orthographicKey) private var orthographic = false
@@ -113,11 +119,13 @@ struct AxisWidget: View {
         // (otherwise the puck swallows the drag the canvas needs to orbit).
         .gesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                .updating($dragActive) { _, state, _ in state = true }
                 .onChanged { value in
                     let t = value.translation
                     if (t.width * t.width + t.height * t.height).squareRoot() > 4 {
                         OllinActiveSketch.runner?.widgetOrbit(began: !isDragging, ended: false, translation: t)
                         isDragging = true
+                        lastDragTranslation = t
                     }
                 }
                 .onEnded { value in
@@ -129,6 +137,22 @@ struct AxisWidget: View {
                     }
                 }
         )
+        // A gesture the system cancels (window/session interruption) never calls
+        // `onEnded`, which would leave the synthetic mouse press latched down,
+        // freezing `cameraShowcase`'s idle logic and any `mouseIsPressed` polling.
+        // `dragActive` resets on *any* end; defer one runloop turn so a normal end
+        // (whose `onEnded` clears `isDragging`) is left alone, and only a true
+        // cancellation releases the press here.
+        .onChange(of: dragActive) { _, active in
+            guard !active else { return }
+            DispatchQueue.main.async {
+                if isDragging {
+                    OllinActiveSketch.runner?.widgetOrbit(began: false, ended: true,
+                                                          translation: lastDragTranslation)
+                    isDragging = false
+                }
+            }
+        }
         .help(hovered?.rawValue.capitalized ?? "")
     }
 

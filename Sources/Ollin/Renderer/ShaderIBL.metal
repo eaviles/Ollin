@@ -87,10 +87,13 @@ static inline float3 ollin_ibl_importance_ggx(float2 xi, float3 n, float rough) 
     return normalize(tx * h.x + ty * h.y + n * h.z);
 }
 
-// Smith geometry term with the IBL k remap (k = a²/2), for the BRDF LUT integration.
+// Smith geometry term with the IBL k remap, for the BRDF LUT integration. The
+// remap is k = α/2 with α the *squared* perceptual roughness; `a` below is
+// already α, so it must not be squared again (k = roughness⁴/2 under-shadows,
+// running the environment specular ~15-20% hot at mid roughness).
 static inline float ollin_ibl_geometry(float ndv, float ndl, float rough) {
     float a = rough * rough;
-    float k = a * a * 0.5;
+    float k = a * 0.5;
     float gv = ndv / (ndv * (1.0 - k) + k);
     float gl = ndl / (ndl * (1.0 - k) + k);
     return gv * gl;
@@ -98,15 +101,43 @@ static inline float ollin_ibl_geometry(float ndv, float ndl, float rough) {
 
 constexpr sampler ollin_ibl_equirect_samp(filter::linear, mip_filter::nearest,
                                           s_address::repeat, t_address::clamp_to_edge);
+constexpr sampler ollin_ibl_equirect_lod_samp(filter::linear, mip_filter::linear,
+                                              s_address::repeat, t_address::clamp_to_edge);
 constexpr sampler ollin_ibl_cube_samp(filter::linear, mip_filter::linear,
                                       address::clamp_to_edge);
 
-// 1) Equirectangular HDRI → one cube face. Just a reprojection sample.
+// The mip level for an equirect sample, from the *direction* derivatives. The
+// longitude uv wraps 0↔1 at the atan2 seam, so implicit-derivative sampling sees a
+// whole-texture jump inside the seam's quad and snaps to the coarsest mip: a blurred
+// one-texel stripe baked down that cube column. The analytic uv derivatives below
+// (du from the azimuthal swing, dv from the latitude swing) are continuous
+// everywhere, blow up toward the poles exactly like the hardware's (the equirect
+// oversamples there, so a coarse mip is right), and have no seam.
+static inline float ollin_ibl_equirect_lod(float3 dir, float3 dx, float3 dy,
+                                           float w, float h) {
+    float twoPi = 2.0 * OLLIN_IBL_PI;
+    float denom = max(dir.x * dir.x + dir.z * dir.z, 1e-8);
+    float dux = (dir.x * dx.z - dir.z * dx.x) / (twoPi * denom);
+    float duy = (dir.x * dy.z - dir.z * dy.x) / (twoPi * denom);
+    float sinLat = sqrt(max(1.0 - dir.y * dir.y, 1e-8));
+    float dvx = -dx.y / (OLLIN_IBL_PI * sinLat);
+    float dvy = -dy.y / (OLLIN_IBL_PI * sinLat);
+    float span = max(length(float2(dux * w, dvx * h)),
+                     length(float2(duy * w, dvy * h)));
+    return log2(max(span, 1.0));
+}
+
+// 1) Equirectangular HDRI → one cube face. A reprojection sample, with the LOD
+// computed analytically (see `ollin_ibl_equirect_lod`).
 fragment float4 ollin_ibl_equirect_to_cube(OllinIBLVaryings in [[stage_in]],
                                            constant float4 &params [[buffer(0)]],
                                            texture2d<float> equirect [[texture(0)]]) {
     float3 dir = ollin_ibl_cube_dir(int(params.x), in.uv);
-    float3 c = equirect.sample(ollin_ibl_equirect_samp, ollin_ibl_equirect_uv(dir)).rgb;
+    float lod = ollin_ibl_equirect_lod(dir, dfdx(dir), dfdy(dir),
+                                       float(equirect.get_width()),
+                                       float(equirect.get_height()));
+    float3 c = equirect.sample(ollin_ibl_equirect_lod_samp, ollin_ibl_equirect_uv(dir),
+                               level(lod)).rgb;
     return float4(c, 1.0);
 }
 
@@ -150,15 +181,17 @@ fragment float4 ollin_ibl_sky_gen(OllinIBLVaryings in [[stage_in]],
     // the ground as the sky's dimmed mirror (a plausible bounce floor), so the lower
     // hemisphere of the lighting cube isn't black.
     float ground = 1.0;
-    if (dir.y < 0.0) { dir.y = -dir.y; ground = albedo; }
+    bool mirrored = false;
+    if (dir.y < 0.0) { dir.y = -dir.y; ground = albedo; mirrored = true; }
     float cosTheta = dir.y;
     float gamma = acos(clamp(dot(dir, sunDir), -1.0, 1.0));
     float3 col = ollin_sky_radiance(sky, cosTheta, gamma) * ground;
 
     // A soft sun disc (the sky model carries no solar disc): bright enough that smooth
     // metals catch a highlight, scaled to the sky at the sun so it stays balanced from
-    // noon to a dim sunset. Only above the horizon.
-    if (ground >= 1.0) {
+    // noon to a dim sunset. Only above the horizon: gate on the mirror flag, not the
+    // ground factor (`groundAlbedo: 1` would otherwise paint a second sun below it).
+    if (!mirrored) {
         float disk = 1.0 - smoothstep(solarRadius * 0.6, solarRadius, gamma);
         float3 sunSky = ollin_sky_radiance(sky, max(sunDir.y, 0.02), 0.0);
         col += disk * sunSky * OLLIN_SKY_SUN_FACTOR;

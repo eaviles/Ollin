@@ -440,10 +440,12 @@ final class MetalRenderer {
     private var dummyShadowAccel: MTLAccelerationStructure?
     /// Ray-traced reflections: per-geometry base-vertex offsets (one `UInt32` per coalesced
     /// caster geometry in `shadowAccel`) so a reflection hit's `(geometryId, primitiveId)`
-    /// resolves to a vertex in the flat mesh buffer. Grown in place, filled in `buildShadowAccel`.
+    /// resolves to a vertex in the flat mesh buffer. Filled CPU-side in `buildShadowAccel`,
+    /// so it rides the same per-frame ring as every other CPU-written buffer: an in-flight
+    /// frame may still be tracing with the previous offsets while the next frame encodes.
     /// `dummyGeoOffsets` is the 1-element stand-in bound when reflections are off, so the
     /// RT-compiled mesh fragment's declared offsets argument is always satisfied.
-    private var meshGeoOffsetBuffer: MTLBuffer?
+    private var meshGeoOffsetBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     private var dummyGeoOffsets: MTLBuffer?
     private lazy var shadowSampler: MTLSamplerState? = {
         let d = MTLSamplerDescriptor()
@@ -591,6 +593,21 @@ final class MetalRenderer {
     /// The next SSR op's ordinal this frame; reset at the start of `encodeEffectTargets`.
     private var ssrOrdinalNext = 0
 
+    /// The (drawer, frame) whose stateful passes (feedback / sim fields / fluid / SSR
+    /// temporal) have already advanced, so a same-frame re-encode reuses their results
+    /// instead of stepping them again. The live frame-grab and Syphon hooks re-render
+    /// the frame off-screen after the on-screen render; without this, every recorded
+    /// frame stepped the sims twice (a recording ran feedback at 2x speed) and blended
+    /// the SSR history twice (the recorded frame one temporal step ahead of the
+    /// screen). Keyed by the sketch's frame count (`performDraw` stamps it once per
+    /// frame), so headless warmup frames each still advance exactly once. Note for a
+    /// future benchmark: re-rendering one frame in a timing loop skips these passes
+    /// after the first iteration.
+    private var lastStatefulEncode: (drawer: ObjectIdentifier, frame: UInt32)?
+    /// Whether the encode in progress is such a same-frame repeat (set at the top of
+    /// `encodeEffectTargets`, read by the stateful blocks and `applyCombine`).
+    private var statefulEncodeIsRepeat = false
+
     /// Baked image-based-lighting maps, cached by environment source so the bake (a few
     /// fullscreen passes) runs once, not per frame. `iblBRDFLUT` is environment-independent
     /// (the split-sum scale/bias integral) so it's baked once globally. `currentIBL` is the
@@ -608,6 +625,11 @@ final class MetalRenderer {
     /// Sources whose off-thread decode is in flight, so a repeat request each frame doesn't
     /// start a second decode.
     private let equirectLoading = OSAllocatedUnfairLock(initialState: Set<Environment.Source>())
+    /// Sources whose decode failed (a corrupt or unreadable file). The request repeats every
+    /// frame while unresolved, so without this memo a broken HDRI would re-attempt the
+    /// multi-second decode and log continuously; the same file won't decode differently, so
+    /// the memo holds for the session.
+    private let equirectFailed = OSAllocatedUnfairLock(initialState: Set<Environment.Source>())
 
     /// Off-screen targets for the GPU-texture frame hook (`texture(of:)`), kept and
     /// reused across frames — rebuilt only when the canvas size changes, so live
@@ -1354,6 +1376,12 @@ final class MetalRenderer {
         filterTexNext = 0
         targetDepthNext = 0
         ssrOrdinalNext = 0
+        // A second encode of the same sketch frame (the frame-grab / Syphon off-screen
+        // re-render) must not advance persistent state twice; see `lastStatefulEncode`.
+        let stamp = (drawer: ObjectIdentifier(drawer), frame: drawer.computeUniforms.frameCount)
+        statefulEncodeIsRepeat = lastStatefulEncode?.drawer == stamp.drawer
+            && lastStatefulEncode?.frame == stamp.frame
+        if !statefulEncodeIsRepeat { lastStatefulEncode = stamp }
         // Generators read no input, so fill them first (a filter may sample one),
         // each a single fullscreen fragment pass into a sampleable filter texture.
         for target in drawer.renderTargets {
@@ -1422,7 +1450,8 @@ final class MetalRenderer {
             // `normals` accessor instantiates the layer here (the sketch never names it, so
             // unlike `depth` nothing else creates it); the combine then reads its texture.
             if target.needsNormals {
-                target.normals.texture = encodeMeshNormals(drawer, into: cb, meshBuffer: buffers.mesh,
+                target.normals.texture = encodeMeshNormals(drawer, for: target, into: cb,
+                                                           meshBuffer: buffers.mesh,
                                                            width: pw, height: ph, pooled: pooled)
             }
         }
@@ -1436,6 +1465,15 @@ final class MetalRenderer {
                   let msaa = makeFloatMSAA(width: pw, height: ph, storage: .memoryless) else { continue }
             let front = slot.flipped ? slot.b : slot.a
             let back  = slot.flipped ? slot.a : slot.b
+            if statefulEncodeIsRepeat {
+                // This frame's first encode already rendered into what is now the
+                // front and flipped the pair. Re-rendering would read this frame's
+                // own result as `previous` (one step ahead); serve the existing
+                // textures instead, with no second flip.
+                fb.previousLayer.texture = back  // what the first encode read
+                target.texture = front           // what the first encode produced
+                continue
+            }
             fb.previousLayer.texture = front     // `previous` resolves to last frame
             let pass = MTLRenderPassDescriptor()
             pass.colorAttachments[0].texture = msaa
@@ -1461,6 +1499,18 @@ final class MetalRenderer {
         for target in drawer.renderTargets {
             guard case let .simField(sf) = target.origin else { continue }
             let pw = target.pixelWidth, ph = target.pixelHeight
+            if statefulEncodeIsRepeat {
+                // The sim already stepped (and flipped) for this frame; re-stepping
+                // would run it at 2x speed while recording. Serve the stepped state.
+                if sf.sim.fluidConfig != nil {
+                    if let slot = fluidSlot(for: sf, width: pw, height: ph, into: cb) {
+                        target.texture = slot.flipped ? slot.dyeB : slot.dyeA
+                    }
+                } else if let slot = feedbackSlot(for: sf, width: pw, height: ph, into: cb) {
+                    target.texture = slot.flipped ? slot.b : slot.a
+                }
+                continue
+            }
             guard let msaa = makeFloatMSAA(width: pw, height: ph, storage: .memoryless),
                   let seed = acquireFilterTexture(width: pw, height: ph, pooled: pooled) else { continue }
             // Render this frame's drawn seed marks into `seed` (cleared transparent so
@@ -1809,6 +1859,18 @@ final class MetalRenderer {
                   let slot = ssrHistorySlot(ordinal: ordinal, width: sw, height: sh, into: cb),
                   let out = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
             let hasNormals: Float = normals != nil ? 1 : 0
+            let front = slot.flipped ? slot.b : slot.a
+            let back  = slot.flipped ? slot.a : slot.b
+            if statefulEncodeIsRepeat && slot.valid {
+                // The frame's first encode already traced, blended, and flipped: the
+                // front holds this frame's accumulated reflection. Re-blending would
+                // advance the EMA twice per displayed frame and hand a recorder a
+                // frame one temporal step ahead of the screen; composite only.
+                encodeEffectFragment("ollin_fx_ssr_composite", inputs: [base, front], output: out,
+                                     params: [SIMD4(0, 0, 0, 0),
+                                              SIMD4(1 / Float(width), 1 / Float(height), 0, 0)], into: cb)
+                return out
+            }
             // Pass 1: trace the premultiplied reflection.
             encodeEffectFragment("ollin_fx_ssr", inputs: [base, aux, normals ?? aux], output: reflTex,
                                  params: [SIMD4(Float(intensity), Float(maxDistance), Float(thickness), hasNormals),
@@ -1822,8 +1884,6 @@ final class MetalRenderer {
                                  params: [SIMD4(Float(roughness), 0, 0, 0), texel], into: cb)
             // Pass 3: temporal accumulation into the history back buffer (reading the front +
             // last frame's view·projection), then advance the slot's previous transform.
-            let front = slot.flipped ? slot.b : slot.a
-            let back  = slot.flipped ? slot.a : slot.b
             let alpha = slot.valid ? Float(resolveSSRAlpha(quality)) : 0
             let iv = d.inverseView, pv = slot.previousViewProjection
             encodeEffectFragment("ollin_fx_ssr_temporal", inputs: [reflBlur, aux, front], output: back,
@@ -2967,7 +3027,11 @@ final class MetalRenderer {
         // Ray-traced reflections want a caster acceleration structure even when no light casts
         // a shadow; build it once and reuse it for both. (A non-RT device can't reflect, so
         // `wantReflect` is already false there and the shadow paths stay byte-identical.)
+        // An environment is required too: the traced hit integrates into the IBL specular
+        // (`ollin_pbr_ibl_ambient`), which never runs without one, so building the accel
+        // then would be per-frame GPU work nothing consumes.
         let wantReflect = drawer.rayTracedReflectionsEnabled && rayTracedShadows
+            && drawer.environment != nil
         guard lighting.enabled != 0, !meshVertices.isEmpty, let meshBuffer,
               lighting.shadowLight >= 0 || wantReflect else { return ShadowMaps() }
 
@@ -3483,11 +3547,12 @@ final class MetalRenderer {
     /// for normals (`needsNormals`, set when an `.ambientOcclusion` combine reads a 3D
     /// target), so a frame without AO pays nothing and is byte-identical. Returns the filled
     /// normal texture at the target's pixel size, or nil when there's no mesh to draw.
-    private func encodeMeshNormals(_ drawer: Drawer, into cb: MTLCommandBuffer,
+    private func encodeMeshNormals(_ drawer: Drawer, for target: RenderTarget,
+                                   into cb: MTLCommandBuffer,
                                    meshBuffer: MTLBuffer?, width: Int, height: Int,
                                    pooled: Bool) -> MTLTexture? {
         guard let camera = drawer.camera3D, let meshBuffer,
-              drawer.batches.contains(where: { $0.kind == .mesh3D }),
+              drawer.batches.contains(where: { $0.kind == .mesh3D && $0.target === target }),
               let resolve = acquireFilterTexture(width: width, height: height, pooled: pooled),
               let color = makeReadableFloatMSAA(width: width, height: height),
               let depth = makeReadableDepthMSAA(width: width, height: height),
@@ -3523,6 +3588,12 @@ final class MetalRenderer {
         for i in batches.indices {
             let batch = batches[i]
             guard batch.kind == .mesh3D else { continue }
+            // Only this target's own meshes: a mesh drawn on the main canvas (or in
+            // another target) shares the frame's camera, so without this filter it
+            // would rasterize into this target's normal buffer and disagree with the
+            // target-filtered depth layer wherever it lands nearer, giving wrong
+            // occlusion and wrong reflection rays in those regions.
+            guard batch.target === target else { continue }
             // Wireframe meshes have no surface to occlude; their sparse edge fragments
             // would write stray normals, so skip them. Solid / textured / matcap all
             // carry a real per-vertex normal and feed the buffer (the normal shader
@@ -3691,7 +3762,10 @@ final class MetalRenderer {
         }
         for i in batches.indices {
             let batch = batches[i]
-            let isCaster = batch.kind == .mesh3D && !batch.meshWireframe
+            // Exclude the ground-grid chrome like `drawShadowCasters` does: its huge
+            // opaque y=0 quad would otherwise occlude every downward reflection ray
+            // (and RT shadow ray) whenever the live grid toggle is on.
+            let isCaster = batch.kind == .mesh3D && !batch.meshWireframe && !batch.meshGrid
             let end = i + 1 < batches.count ? batches[i + 1].meshStart : meshVertices.count
             if isCaster {
                 if runStart < 0 { runStart = batch.meshStart }
@@ -3725,12 +3799,13 @@ final class MetalRenderer {
                   scratchBuffer: scratch, scratchBufferOffset: 0)
         enc.endEncoding()
         // The per-geometry base-vertex offsets, uploaded for the reflection hit fetch. Filled
-        // CPU-side here (before the command buffer commits), so the main pass reads them this frame.
+        // CPU-side here (before the command buffer commits), so the main pass reads them this
+        // frame, through the frame ring, never a shared buffer an in-flight frame still reads.
         let offsetsLength = max(MemoryLayout<UInt32>.stride, geoOffsets.count * MemoryLayout<UInt32>.stride)
-        if (meshGeoOffsetBuffer?.length ?? 0) < offsetsLength {
-            meshGeoOffsetBuffer = device.makeBuffer(length: offsetsLength, options: .storageModeShared)
+        if (meshGeoOffsetBuffers[frameIndex]?.length ?? 0) < offsetsLength {
+            meshGeoOffsetBuffers[frameIndex] = device.makeBuffer(length: offsetsLength, options: .storageModeShared)
         }
-        guard let offsetsBuffer = meshGeoOffsetBuffer else { return nil }
+        guard let offsetsBuffer = meshGeoOffsetBuffers[frameIndex] else { return nil }
         geoOffsets.withUnsafeBytes { raw in
             offsetsBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
         }
@@ -4680,9 +4755,13 @@ extension MetalRenderer {
             guard let bytes = Self.loadEquirectBytes(env) else { return nil }
             equirectReady.withLock { $0[env.source] = bytes }
             return bytes
-        case .url:
+        case .url(let file):
+            if equirectFailed.withLock({ $0.contains(env.source) }) { return nil }
             if blocking {
-                guard let bytes = Self.loadEquirectBytes(env) else { return nil }
+                guard let bytes = Self.loadEquirectBytes(env) else {
+                    Self.noteEquirectDecodeFailure(file, memo: equirectFailed, source: env.source)
+                    return nil
+                }
                 equirectReady.withLock { $0[env.source] = bytes }
                 return bytes
             }
@@ -4693,9 +4772,13 @@ extension MetalRenderer {
             }
             if started {
                 let envCopy = env, ready = equirectReady, loading = equirectLoading
+                let failed = equirectFailed
                 Task.detached {
-                    let bytes = Self.loadEquirectBytes(envCopy)
-                    if let bytes { ready.withLock { $0[source] = bytes } }
+                    if let bytes = Self.loadEquirectBytes(envCopy) {
+                        ready.withLock { $0[source] = bytes }
+                    } else {
+                        Self.noteEquirectDecodeFailure(file, memo: failed, source: source)
+                    }
                     loading.withLock { _ = $0.remove(source) }
                 }
             }
@@ -4948,17 +5031,44 @@ extension MetalRenderer {
     /// fast read, no decode), else decode the source HDRI and (for a `.url`) write the blob
     /// so the next launch skips the decode. CPU-only, so it can run off the render thread.
     nonisolated fileprivate static func loadEquirectBytes(_ env: Environment) -> EquirectBytes? {
-        let blobURL: URL? = {
-            if case .url(let file) = env.source { return EnvironmentCache.shared.equirectBlobFile(for: file) }
+        let sourceFile: URL? = {
+            if case .url(let file) = env.source { return file }
             return nil   // a bundled .resource decodes fast and its EXR is compact: skip the blob
         }()
-        if let blobURL, let bytes = readEquirectBlob(blobURL) { return bytes }
+        let blobURL = sourceFile.map { EnvironmentCache.shared.equirectBlobFile(for: $0) }
+        if let blobURL, let sourceFile, let bytes = readEquirectBlob(blobURL, source: sourceFile) {
+            return bytes
+        }
         // A real `.url` decode (blob miss): the heavy step after a download, so note it. A
         // bundled `.resource` decodes fast from a compact EXR, so it stays silent.
-        if case .url(let file) = env.source { print("Ollin: decoding \(EnvironmentCache.displayName(for: file))…") }
+        if let sourceFile { print("Ollin: decoding \(EnvironmentCache.displayName(for: sourceFile))…") }
         guard let cg = env.loadEquirectImage(), let bytes = processEquirect(cg) else { return nil }
-        if let blobURL { writeEquirectBlob(bytes, to: blobURL) }
+        if let blobURL, let sourceFile { writeEquirectBlob(bytes, to: blobURL, source: sourceFile) }
         return bytes
+    }
+
+    /// The source file's (size, mtime-seconds) stamp carried in the blob header, so a
+    /// blob is served only for the exact bytes it was decoded from. Keyed by path alone
+    /// the blob would keep serving stale pixels after a user replaces their own
+    /// `hdri(path:)` EXR at the same path.
+    nonisolated private static func equirectSourceStamp(_ source: URL) -> (size: UInt64, mtime: UInt32) {
+        let attrs = try? FileManager.default.attributesOfItem(atPath: source.path)
+        let size = (attrs?[.size] as? NSNumber)?.uint64Value ?? 0
+        let mtime = (attrs?[.modificationDate] as? Date).map { UInt32(clamping: Int($0.timeIntervalSince1970)) } ?? 0
+        return (size, mtime)
+    }
+
+    /// Record a source whose decode failed and say so once (the memo keeps both the
+    /// re-decode and the message from repeating every frame).
+    nonisolated private static func noteEquirectDecodeFailure(
+        _ file: URL, memo: OSAllocatedUnfairLock<Set<Environment.Source>>,
+        source: Environment.Source) {
+        let fresh = memo.withLock { $0.insert(source).inserted }
+        if fresh {
+            print("Ollin: could not decode \(EnvironmentCache.displayName(for: file)); "
+                + "the file is not a readable HDRI (Scripts/clear-caches.sh --environments "
+                + "discards a broken download)")
+        }
     }
 
     nonisolated private static let equirectBlobMagic: UInt32 = 0x4F4C4548   // "OLEH"
@@ -5010,10 +5120,15 @@ extension MetalRenderer {
     }
 
     /// Write processed equirect pixels to a cache blob (a small header + raw float16 pixels),
-    /// best-effort — a failed write just means the next launch re-decodes.
-    nonisolated private static func writeEquirectBlob(_ bytes: EquirectBytes, to url: URL) {
-        var header: [UInt32] = [equirectBlobMagic, 1, UInt32(bytes.width), UInt32(bytes.height),
-                                bytes.avg.bitPattern]
+    /// best-effort; a failed write just means the next launch re-decodes. Header version 2
+    /// carries the source file's size + mtime, checked on read (see `equirectSourceStamp`).
+    nonisolated private static func writeEquirectBlob(_ bytes: EquirectBytes, to url: URL, source: URL) {
+        let stamp = equirectSourceStamp(source)
+        var header: [UInt32] = [equirectBlobMagic, 2, UInt32(bytes.width), UInt32(bytes.height),
+                                bytes.avg.bitPattern,
+                                UInt32(truncatingIfNeeded: stamp.size),
+                                UInt32(truncatingIfNeeded: stamp.size >> 32),
+                                stamp.mtime]
         var out = Data(bytes: &header, count: header.count * MemoryLayout<UInt32>.size)
         out.append(bytes.data)
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
@@ -5025,15 +5140,21 @@ extension MetalRenderer {
         }
     }
 
-    /// Read a processed-equirect blob, or nil if absent / corrupt / size-mismatched (any of
-    /// which falls back to a fresh decode).
-    nonisolated private static func readEquirectBlob(_ url: URL) -> EquirectBytes? {
-        guard let data = try? Data(contentsOf: url, options: .mappedIfSafe), data.count >= 20 else { return nil }
-        let header = data.prefix(20).withUnsafeBytes { Array($0.bindMemory(to: UInt32.self)) }
-        guard header[0] == equirectBlobMagic, header[1] == 1 else { return nil }
+    /// Read a processed-equirect blob, or nil if absent / corrupt / size-mismatched / decoded
+    /// from different source bytes than `source` now holds (any of which falls back to a
+    /// fresh decode). Version-1 blobs (no source stamp) are rejected and re-created once.
+    nonisolated private static func readEquirectBlob(_ url: URL, source: URL) -> EquirectBytes? {
+        let headerSize = 32
+        guard let data = try? Data(contentsOf: url, options: .mappedIfSafe), data.count >= headerSize
+        else { return nil }
+        let header = data.prefix(headerSize).withUnsafeBytes { Array($0.bindMemory(to: UInt32.self)) }
+        guard header[0] == equirectBlobMagic, header[1] == 2 else { return nil }
         let w = Int(header[2]), h = Int(header[3]), avg = Float(bitPattern: header[4])
-        guard w > 0, h > 0, data.count == 20 + w * h * 8 else { return nil }
-        return EquirectBytes(data: data.subdata(in: 20..<data.count), width: w, height: h, avg: avg)
+        guard w > 0, h > 0, data.count == headerSize + w * h * 8 else { return nil }
+        let stamp = equirectSourceStamp(source)
+        let size = UInt64(header[5]) | (UInt64(header[6]) << 32)
+        guard size == stamp.size, header[7] == stamp.mtime else { return nil }
+        return EquirectBytes(data: data.subdata(in: headerSize..<data.count), width: w, height: h, avg: avg)
     }
 }
 

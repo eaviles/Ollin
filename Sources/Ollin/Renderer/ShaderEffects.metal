@@ -523,7 +523,11 @@ fragment float4 ollin_fx_ssr(PresentOut in [[stage_in]],
     }
     if (dot(N, -P) < 0.0) N = -N;                                  // ensure N faces the eye
 
-    float3 V = normalize(P);                                       // eye ray (camera at origin)
+    // The eye ray: from the origin through P under perspective; the constant view
+    // axis under orthographic (every ortho eye ray is parallel, so normalize(P)
+    // would bend the reflection differently across the image).
+    bool persp = params[3].z > 0.5;
+    float3 V = persp ? normalize(P) : float3(0.0, 0.0, -1.0);
     float3 R = reflect(V, N);                                      // mirror direction off the surface
 
     // Trace in SCREEN space along the ray's projection. The ray runs from P to P + R·maxDistance,
@@ -544,7 +548,12 @@ fragment float4 ollin_fx_ssr(PresentOut in [[stage_in]],
     // written from the published technique; README Techniques.)
     float majorStep = max(abs(dd.x), abs(dd.y));                  // the ray's pixel span (DDA major axis)
     float nF = clamp(majorStep, 1.0, float(steps));              // coarse step count (<= budget, covers the ray)
-    float invD0 = 1.0 / (-P.z), invD1 = 1.0 / (-Pend.z);         // 1/depth at the ray's ends (positive)
+    // Depth at the ray's ends (positive). Under perspective, depth along the screen
+    // segment is hyperbolic in the fraction (the classic 1/z lerp); under
+    // orthographic, screen position is linear in the world parameter and so is
+    // depth, so the same 1/z lerp would misplace every crossing.
+    float d0z = -P.z, d1z = -Pend.z;
+    float invD0 = 1.0 / d0z, invD1 = 1.0 / d1z;
 
     float2 hitUV = float2(-1.0);
     float hitDist = 0.0;                                          // world distance the ray travelled to the hit
@@ -554,7 +563,8 @@ fragment float4 ollin_fx_ssr(PresentOut in [[stage_in]],
         float frac = float(i) / nF;                              // fraction along the full screen segment
         float2 uv = (d0 + dd * frac) * texel;
         if (any(uv < 0.0) || any(uv > 1.0)) break;                // left the screen
-        float rayDepth = 1.0 / (invD0 + frac * (invD1 - invD0));  // perspective-correct ray depth (positive)
+        float rayDepth = persp ? 1.0 / (invD0 + frac * (invD1 - invD0))
+                               : mix(d0z, d1z, frac);            // projection-correct ray depth (positive)
         float tS = ollin_dof_depth(depthMap.sample(samp, uv));
         if (tS >= 0.999) { prevRayDepth = rayDepth; prevFrac = frac; continue; }  // sky: advance
         float sceneDepth = near + tS * (far - near);              // = -vP.z
@@ -571,7 +581,8 @@ fragment float4 ollin_fx_ssr(PresentOut in [[stage_in]],
             for (int j = 0; j < 8; j++) {
                 float mid = 0.5 * (lo + hi);
                 float mt = ollin_dof_depth(depthMap.sample(samp, (d0 + dd * mid) * texel));
-                float mRay = 1.0 / (invD0 + mid * (invD1 - invD0));
+                float mRay = persp ? 1.0 / (invD0 + mid * (invD1 - invD0))
+                                   : mix(d0z, d1z, mid);
                 if (mt < 0.999 && mRay >= near + mt * (far - near)) hi = mid; else lo = mid;
             }
             float2 huv = (d0 + dd * hi) * texel;

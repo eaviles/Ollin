@@ -508,8 +508,17 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
         // job). A scene with no mesh occluder samples an all-lit map/cube (or skips the trace),
         // so the factor stays 1 and the field receives self-shadow only.
         if (light.shadowKind == 0) {
-            float mapLit = shadowFactor(pw, n, toLight, light.lightViewProjection,
-                                        light.shadowTexelWorld, shadowMap, shadowSamp);
+            // Match the mesh receivers' routing (`meshLitColor`): shadowDepthA > 0 is
+            // a soft (PCSS) directional/spot caster, 0 the legacy hard 3x3, so the
+            // same cast shadow reads the same on a field surface as on the mesh
+            // floor beside it (contact-soft on both, not hard-edged on one).
+            float mapLit = (light.shadowDepthA > 0.0)
+                ? shadowFactorPCSS(pw, n, toLight, light.lightViewProjection,
+                                   light.shadowTexelWorld, light.shadowDepthA,
+                                   light.shadowDepthB, light.shadowSamples,
+                                   shadowMap, shadowSamp, shadowCubeSamp)
+                : shadowFactor(pw, n, toLight, light.lightViewProjection,
+                               light.shadowTexelWorld, shadowMap, shadowSamp);
             fieldShadow = min(fieldShadow, mapLit);
         } else if (light.shadowKind == 1) {
             float cubeLit = shadowFactorCube(pw, n, caster.position.xyz, light.shadowDepthA,

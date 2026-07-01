@@ -37,6 +37,20 @@ public struct CameraMove: Sendable, Equatable {
 
     let kind: Kind
 
+    /// The duration after which a finite move has fully played out and holds, or
+    /// `nil` for the continuously running kinds. The rig uses this to keep a
+    /// completed move at rest when a view snap hands the pose back (replaying a
+    /// relative move like `pushIn` from the snapped pose would compound its factor).
+    var finiteDuration: Double? {
+        switch kind {
+        case let .pushIn(_, duration, _), let .pullOut(_, duration, _),
+             let .tilt(_, duration, _), let .reveal(duration, _):
+            return duration
+        case .turntable, .sway, .orbitAndRise, .handheld:
+            return nil
+        }
+    }
+
     /// A continuous turntable spin around the object, one full turn every `period`
     /// seconds. Positive turns one way, negative the other.
     public static func turntable(period: Double) -> CameraMove {

@@ -1697,9 +1697,13 @@ open class Sketch {
     private var pendingScroll: Double = 0
 
     /// Record scroll-wheel movement from the view and fire the per-event hook. The
-    /// accumulated total becomes `scrollDeltaY` next frame.
+    /// accumulated total becomes `scrollDeltaY` next frame; for the hook itself,
+    /// `scrollDeltaY` carries this event's own movement (the documented contract;
+    /// without it the hook would read the previous frame's total, usually 0),
+    /// and `advance()` overwrites it with the frame total before `draw()` polls it.
     func handleScroll(deltaY: Double) {
         pendingScroll += deltaY
+        scrollDeltaY = deltaY
         mouseWheel()
     }
 

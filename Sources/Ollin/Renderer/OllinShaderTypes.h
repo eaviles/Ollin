@@ -310,15 +310,19 @@ typedef struct {
 // are already world space (right-handed, y-up). `color` is the surface (diffuse)
 // color baked from the current `fill` (rgb) with `color.a` the opacity. With no
 // lights set the fragment draws the surface flat in that color (the unlit look);
-// with lights it shades `color` per the material model. The material's specular
-// strength + shininess ride the spare `w` slots
-// (`position.w`/`normal.w`) — the vertex shader reads only `position.xyz`/`normal.xyz`.
+// with lights it shades `color` per the material model. The spare `w` slots carry
+// per-vertex material data for the ray-traced reflection hit shade: `normal.w` is
+// the metalness and `position.w` the roughness of a physically-based mesh (a
+// wireframe reuses `position.w` for its line width instead); the lit vertex
+// shaders read only `position.xyz`/`normal.xyz`, so the slots are inert for the
+// primary render.
 // `uv` carries texture coordinates (0,0 … 1,1) for the textured-mesh pipeline; the
 // solid `ollin_mesh_vertex`/`_fragment` read only position/normal/color, so an
 // untextured mesh leaves `uv` zero and is unaffected by it. The *material finish*
-// (specular, iridescence, rim, subsurface, …) does not ride the vertex — it's constant
-// across a mesh, so it's bound per batch as an `OllinMaterial` uniform (below); only the
-// wireframe line width still uses `position.w`. Triangle indices are expanded into a flat
+// (specular, iridescence, rim, subsurface, …) does not ride the vertex (it's constant
+// across a mesh, so it's bound per batch as an `OllinMaterial` uniform, below); the `w`
+// slots exist for the *per-hit* lookups a per-batch uniform can't serve (a reflection
+// ray lands on someone else's batch). Triangle indices are expanded into a flat
 // list on the CPU (no index buffer), matching the 2D triangle path. Stride 64 (four
 // 16-byte rows): float4 @0, float4 @16, float4 @32, float2 @48 (+ 8 bytes pad, a reserved
 // slot, e.g. a tangent for anisotropic shading later).

@@ -69,6 +69,16 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private var lastAxisFlag: Bool?
     private var lastGridFlag: Bool?
 
+    /// True while a camera snap or axis-widget drag has un-paused a `noLoop()`
+    /// sketch so the glide can animate. The pause must be handed back once the
+    /// camera settles: the sketch itself can't re-pause (its one-shot `noLoop()`
+    /// already ran, and `setLooping` only reacts to changes), so without this a
+    /// single ⌘-view press would leave a still sketch redrawing at full refresh
+    /// forever. `cameraHoldoverPose` is the previous frame's resolved camera; two
+    /// equal consecutive poses (with no pending snap or drag) mean settled.
+    private var cameraHoldover = false
+    private var cameraHoldoverPose: Camera3D?
+
     public init(sketch: Sketch, view: MTKView, device: MTLDevice) {
         self.sketch = sketch
         do {
@@ -99,6 +109,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// doesn't use the rig (or is 2D) simply ignores it.
     func requestCameraView(_ view: CameraView) {
         pendingCameraView = view
+        if !sketch.isLooping { cameraHoldover = true }   // hand the pause back once settled
         self.view?.isPaused = false   // a noLoop() sketch must still snap on demand
     }
 
@@ -123,6 +134,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             sketch.mouseIsPressed = false
             widgetDragBase = nil
         }
+        if !sketch.isLooping { cameraHoldover = true }   // hand the pause back once settled
         view?.isPaused = false
     }
 
@@ -150,6 +162,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         didReload = true            // ...then call onReload() once
         lastAxisFlag = nil          // re-assert the fresh sketch's axis/grid defaults
         lastGridFlag = nil
+        cameraHoldover = false      // any camera-snap holdover belonged to the old sketch
+        cameraHoldoverPose = nil
         view?.isPaused = false      // a prior noLoop() must not freeze the reload
     }
 
@@ -334,7 +348,11 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // lines stay crisp and a constant ~1px at any zoom or grazing angle. The plane
         // follows the camera's look-at and is sized to cover the fade, so it reads as
         // infinite; the cell size snaps to a nice step for the current viewing distance.
-        if let cam = sketch.activeCamera, UserDefaults.standard.bool(forKey: OllinHUD.showGridKey) {
+        // Never inject onto an accumulation surface: `noClear()` composites every
+        // frame's geometry into the persistent pile, so the chrome would burn
+        // permanent grid lines into the artwork.
+        if let cam = sketch.activeCamera, !sketch.drawer.accumulates,
+           UserDefaults.standard.bool(forKey: OllinHUD.showGridKey) {
             let eye = cam.eye.simd3
             let eyeDist = max(Double(simd_distance(eye, cam.target.simd3)), 0.001)
             let fadeStart = eyeDist * 2.0, fadeEnd = eyeDist * 11.0
@@ -358,6 +376,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         renderer.render(sketch.drawer,
                         viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
                         in: view)
+
+        // The grid is host chrome for the live window only. It was appended after the
+        // sketch's own draw, so pop it back off before anything re-consumes the drawer:
+        // the frame-grab and Syphon paths below re-render the same drawer, and a
+        // recorder or a shared feed must never capture the debug grid.
+        sketch.drawer.removeGridChrome()
 
         // Hand the frame's camera orientation to the axis widget (no-op if unused).
         publishOrientation()
@@ -416,6 +440,41 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                                    width: w, height: h)
             if let texture { sketch.runFrameRendered(texture: texture) }
         }
+
+        // Hand the pause back to a `noLoop()` sketch once the camera work that
+        // un-paused it has settled (see `cameraHoldover`). A 2D or hand-`camera()`
+        // sketch has no rig-resolved camera, so it settles right away; a glide or
+        // release momentum keeps the pose changing frame to frame and holds the
+        // view running until it comes to rest.
+        if cameraHoldover {
+            if sketch.isLooping {
+                cameraHoldover = false          // the sketch runs continuously anyway
+                cameraHoldoverPose = nil
+            } else if pendingCameraView == nil, widgetDragBase == nil {
+                let pose = sketch.activeCamera
+                let settled = pose == nil || (cameraHoldoverPose.map { poseSettled($0, pose!) } ?? false)
+                cameraHoldoverPose = pose
+                if settled {
+                    cameraHoldover = false
+                    cameraHoldoverPose = nil
+                    view.isPaused = true
+                }
+            } else {
+                cameraHoldoverPose = sketch.activeCamera
+            }
+        }
+    }
+
+    /// Whether two consecutive frames' camera poses are close enough to call the
+    /// motion finished. The rig's easing converges asymptotically, so exact
+    /// equality would keep a flicked `noLoop()` camera running long after the
+    /// motion stopped being visible; the tolerance is relative to the viewing
+    /// distance, far below a pixel.
+    private func poseSettled(_ a: Camera3D, _ b: Camera3D) -> Bool {
+        let tolerance = max((a.eye - a.target).length, 1e-3) * 1e-6
+        return (a.eye - b.eye).length <= tolerance
+            && (a.target - b.target).length <= tolerance
+            && a.projection == b.projection
     }
 
     /// Resolve the sketch's logical canvas, in points. For `.auto`/`.fixed` that's

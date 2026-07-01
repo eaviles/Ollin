@@ -39,7 +39,10 @@ import os
         defer { try? FileManager.default.removeItem(at: dir) }
         let cache = EnvironmentCache(cacheDirectory: dir)
         let url = URL(string: "https://example.com/test_4k.exr")!
-        let canned = Data("HDRI-BYTES".utf8)
+        // The canned bytes open with the OpenEXR magic: the cache validates that a
+        // download at least starts like an image before writing it (an HTML error
+        // body must never be cached as the HDRI).
+        let canned = Data([0x76, 0x2F, 0x31, 0x01]) + Data("HDRI-BYTES".utf8)
         let fetchCount = OSAllocatedUnfairLock(initialState: 0)
         cache.fetch = { _ in fetchCount.withLock { $0 += 1 }; return canned }
 
@@ -50,6 +53,16 @@ import os
         #expect(cache.cachedFile(for: url) == file)               // now a cache hit
         _ = cache.downloadBlocking(url)                           // second call
         #expect(fetchCount.withLock { $0 } == 1)                  // served from cache, no second fetch
+    }
+
+    @Test func downloadRejectsNonImageBodies() throws {
+        let dir = tempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let cache = EnvironmentCache(cacheDirectory: dir)
+        let url = URL(string: "https://example.com/missing_4k.exr")!
+        cache.fetch = { _ in Data("<html>404 not found</html>".utf8) }
+        #expect(cache.downloadBlocking(url) == nil)   // rejected...
+        #expect(cache.cachedFile(for: url) == nil)    // ...and nothing poisoned the cache
     }
 
     @Test func envVarOverridesCacheDirectory() {

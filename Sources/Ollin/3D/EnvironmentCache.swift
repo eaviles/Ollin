@@ -27,6 +27,13 @@ final class EnvironmentCache: @unchecked Sendable {
     /// doesn't start a second download. An unfair lock is safe from the async download task.
     private let inFlight = OSAllocatedUnfairLock(initialState: Set<URL>())
 
+    /// URLs whose last download failed, with when: `ensureDownloading` is called every frame
+    /// while an environment is unresolved, so without this memo a bad URL (offline, 404,
+    /// server error) retries and logs continuously. A failure blocks retries for a grace
+    /// period, then one fresh attempt is allowed (a transient network blip recovers).
+    private let failures = OSAllocatedUnfairLock(initialState: [URL: Date]())
+    private static let retryInterval: TimeInterval = 30
+
     init(cacheDirectory: URL? = nil) {
         if let cacheDirectory {
             self.cacheDirectory = cacheDirectory
@@ -77,15 +84,28 @@ final class EnvironmentCache: @unchecked Sendable {
     /// Returns immediately; the live render loop picks up the file once it lands.
     func ensureDownloading(_ url: URL) {
         if cachedFile(for: url) != nil { return }
+        let now = Date()
+        let coolingDown = failures.withLock { state in
+            state[url].map { now.timeIntervalSince($0) < Self.retryInterval } ?? false
+        }
+        if coolingDown { return }
         let started = inFlight.withLock { state -> Bool in
             guard !state.contains(url) else { return false }
             state.insert(url); return true
         }
         guard started else { return }
         // Capture only Sendable locals (not self) so the detached task is race-free.
-        let file = cacheFile(for: url), dir = cacheDirectory, fetch = self.fetch, inFlight = self.inFlight
+        let file = cacheFile(for: url), dir = cacheDirectory, fetch = self.fetch
+        let inFlight = self.inFlight, failures = self.failures
         Task.detached {
-            _ = try? await EnvironmentCache.store(url, to: file, in: dir, fetch: fetch)
+            do {
+                _ = try await EnvironmentCache.store(url, to: file, in: dir, fetch: fetch)
+                failures.withLock { _ = $0.removeValue(forKey: url) }
+            } catch {
+                failures.withLock { $0[url] = Date() }
+                print("Ollin: downloading \(url.lastPathComponent) failed (\(error.ollinBriefDescription)); "
+                    + "retrying in \(Int(EnvironmentCache.retryInterval))s")
+            }
             inFlight.withLock { _ = $0.remove(url) }
         }
     }
@@ -98,8 +118,15 @@ final class EnvironmentCache: @unchecked Sendable {
         let result = OSAllocatedUnfairLock<URL?>(initialState: nil)
         let sema = DispatchSemaphore(value: 0)
         Task.detached {
-            let r = try? await EnvironmentCache.store(url, to: file, in: dir, fetch: fetch)
-            result.withLock { $0 = r }
+            do {
+                let r = try await EnvironmentCache.store(url, to: file, in: dir, fetch: fetch)
+                result.withLock { $0 = r }
+            } catch {
+                // The caller falls back to the placeholder; say why, or a failed export
+                // download is a silent quality downgrade.
+                print("Ollin: downloading \(url.lastPathComponent) failed (\(error.ollinBriefDescription)); "
+                    + "rendering with the placeholder environment")
+            }
             sema.signal()
         }
         sema.wait()
@@ -112,6 +139,12 @@ final class EnvironmentCache: @unchecked Sendable {
                               fetch: @Sendable (URL) async throws -> Data) async throws -> URL {
         if FileManager.default.fileExists(atPath: file.path) { return file }
         let data = try await fetch(url)
+        // Never cache something that can't be an HDRI: an HTML error body (a captive
+        // portal, a moved asset behind a soft 200) written to the cache would be
+        // resolved as the environment on every later launch, failing to decode forever
+        // with no re-download ever attempted. The status check in the delegate catches
+        // plain 404/500s; this catches the 200-with-garbage cases.
+        guard looksLikeImageData(data) else { throw EnvironmentDownloadError.notAnImage }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let tmp = file.appendingPathExtension("download")
         try data.write(to: tmp, options: .atomic)
@@ -130,6 +163,22 @@ final class EnvironmentCache: @unchecked Sendable {
     /// `download(from:delegate:)` convenience, whose per-task delegate doesn't get the
     /// `didWriteData` progress callback), bridged to async with a continuation. The download
     /// task streams to a temp file natively, so there's no per-byte copy cost.
+    /// Whether `data` starts like any image format the environment loader can read
+    /// (OpenEXR, Radiance HDR, PNG, JPEG, TIFF, or an ISO-BMFF container like HEIC).
+    /// A cheap magic-bytes gate, not a decode; see the caller for why it exists.
+    static func looksLikeImageData(_ data: Data) -> Bool {
+        guard data.count >= 12 else { return false }
+        let b = [UInt8](data.prefix(12))
+        if b[0] == 0x76, b[1] == 0x2F, b[2] == 0x31, b[3] == 0x01 { return true }   // OpenEXR
+        if b[0] == 0x23, b[1] == 0x3F { return true }                               // Radiance "#?"
+        if b[0] == 0x89, b[1] == 0x50, b[2] == 0x4E, b[3] == 0x47 { return true }   // PNG
+        if b[0] == 0xFF, b[1] == 0xD8 { return true }                               // JPEG
+        if b[0] == 0x49, b[1] == 0x49, b[2] == 0x2A { return true }                 // TIFF LE
+        if b[0] == 0x4D, b[1] == 0x4D, b[2] == 0x00, b[3] == 0x2A { return true }   // TIFF BE
+        if b[4] == 0x66, b[5] == 0x74, b[6] == 0x79, b[7] == 0x70 { return true }   // "ftyp" (HEIC/AVIF)
+        return false
+    }
+
     static func downloadReportingProgress(_ url: URL) async throws -> Data {
         let name = url.lastPathComponent
         print("Ollin: downloading \(name)…")
@@ -144,6 +193,32 @@ final class EnvironmentCache: @unchecked Sendable {
         }
         print(String(format: "Ollin: downloaded %@ (%.1f MB)", name, Double(data.count) / 1_048_576))
         return data
+    }
+}
+
+/// Why a download was rejected before reaching the cache.
+enum EnvironmentDownloadError: Error, CustomStringConvertible {
+    /// The server answered with a non-success HTTP status (a 404 for a moved asset,
+    /// a 5xx outage); the body is an error page, not the HDRI.
+    case httpStatus(Int)
+    /// The bytes don't start like any readable image format (an HTML captive-portal
+    /// or error page delivered with a 200).
+    case notAnImage
+
+    var description: String {
+        switch self {
+        case .httpStatus(let code): return "HTTP \(code)"
+        case .notAnImage: return "the response is not an image"
+        }
+    }
+}
+
+extension Error {
+    /// A one-line, log-friendly rendering: the custom description for Ollin's own
+    /// errors, `localizedDescription` for everything else (URLSession's are already
+    /// human-readable).
+    var ollinBriefDescription: String {
+        (self as? EnvironmentDownloadError)?.description ?? localizedDescription
     }
 }
 
@@ -199,6 +274,13 @@ private final class DownloadProgress: NSObject, URLSessionDownloadDelegate, @unc
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        // A 404/500 error page downloads "successfully"; caching it would poison the
+        // cache permanently (the file's existence blocks any re-download). Reject
+        // non-success statuses here, where the response is at hand.
+        if let http = downloadTask.response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            finish(.failure(EnvironmentDownloadError.httpStatus(http.statusCode)))
+            return
+        }
         finish(Result { try Data(contentsOf: location) })
     }
 

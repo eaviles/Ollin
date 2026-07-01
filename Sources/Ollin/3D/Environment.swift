@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import ImageIO
+import os
 
 /// An environment that lights a 3D scene through *image-based lighting* (IBL): every
 /// surface picks up the color and brightness of its surroundings, metals reflect them,
@@ -153,9 +154,20 @@ public struct Environment: Equatable, Hashable, Sendable {
     /// An equirectangular HDRI downloaded from a URL string (the convenience form, so a
     /// sketch needn't import Foundation for `URL`).
     public static func hdri(downloadURL string: String, placeholder: String? = nil) -> Environment {
-        Environment(source: .remote(url: URL(string: string) ?? URL(fileURLWithPath: "/"),
-                                    fallbackResource: placeholder))
+        guard let url = URL(string: string), url.scheme != nil else {
+            // Environments are typically constructed every frame in draw(), so warn
+            // once per distinct string; the sentinel URL then fails to download
+            // quietly (the cache's failure memo throttles it) and the placeholder shows.
+            let fresh = Self.warnedInvalidURLs.withLock { $0.insert(string).inserted }
+            if fresh { print("Ollin: \"\(string)\" is not a valid URL; showing the placeholder environment") }
+            return Environment(source: .remote(url: URL(fileURLWithPath: "/ollin-invalid-url"),
+                                               fallbackResource: placeholder))
+        }
+        return Environment(source: .remote(url: url, fallbackResource: placeholder))
     }
+
+    /// URL strings already warned about (see `hdri(downloadURL:placeholder:)`).
+    private static let warnedInvalidURLs = OSAllocatedUnfairLock(initialState: Set<String>())
 
     /// A procedural physically-based sky, generated with no asset: a clear-to-hazy daylight
     /// dome. `sunElevation` is the sun's height above the horizon in radians, `turbidity`
