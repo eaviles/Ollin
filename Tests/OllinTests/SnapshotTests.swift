@@ -232,6 +232,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("differential-growth", frame: 130,
                  note: "A seeded ring grown by differential growth to a fixed frame: attraction, alignment, and spatial-hash repulsion per step plus edge-splitting fold it into a brain-coral meander. Pins the stepper (forces, node injection, the spatial hash) at a deterministic frame. Seeded, and the frame is fixed, so the fold is reproducible.",
                  make: { DifferentialGrowthScene() }),
+    SnapshotCase("wave-function-collapse",
+                 note: "A pipe network solved by Wave Function Collapse over a blank + straight/elbow/tee/cross tileset. Pins the solver: min-entropy observation, weighted collapse, and arc-consistency propagation reach a fully legal grid (every internal pipe meets a matching pipe). Seeded, no time, so the layout is deterministic (the sorted-candidate guard keeps the Set-based solve reproducible).",
+                 make: { WaveFunctionCollapseScene() }),
     SnapshotCase("depth-compositing-2d",
                  note: "A 2D card standing at a world depth between two point-cloud balls. Pins depth-aware compositing: the near ball draws over the card, the far ball is hidden by it. If 2D ignored depth (always over), the card would cover both, so this fails if the depth-participation path breaks. No time.",
                  make: { DepthComposited2D() }),
@@ -984,6 +987,38 @@ private final class DifferentialGrowthScene: Sketch {
         strokeJoin(.round)
         stroke(Color(hex: 0x7FE0C4))
         drawPolyline(growth.nodes, closed: true)
+    }
+}
+
+/// A pipe network solved by Wave Function Collapse over a blank + straight /
+/// elbow / tee / cross tileset. Pins the solver (min-entropy observation,
+/// weighted collapse, arc-consistency propagation). Seeded and `time`-free, so
+/// it's deterministic.
+private final class WaveFunctionCollapseScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0E1116))
+        seed(4)
+        let tiles = [WFCTile([0, 0, 0, 0], weight: 1.1)]
+            + WFCTile([1, 0, 1, 0], weight: 1.6).rotations(2)
+            + WFCTile([1, 1, 0, 0], weight: 1.3).rotations(4)
+            + WFCTile([1, 1, 1, 0], weight: 0.5).rotations(4)
+            + [WFCTile([1, 1, 1, 1], weight: 0.3)]
+        guard let grid = wfc(tiles: tiles, columns: 9, rows: 9) else { return }
+
+        strokeCap(.round); strokeJoin(.round); strokeWeight(3); noFill()
+        stroke(Color(hex: 0x6FD3C7))
+        drawWFC(grid, padding: .all(12)) { index, cell in
+            let sockets = tiles[index].sockets
+            let mids = [Vector2(cell.center.x, cell.y),
+                        Vector2(cell.x + cell.width, cell.center.y),
+                        Vector2(cell.center.x, cell.y + cell.height),
+                        Vector2(cell.x, cell.center.y)]
+            for edge in 0 ..< 4 where sockets[edge] != 0 {
+                drawLine(cell.center, mids[edge])
+            }
+        }
     }
 }
 

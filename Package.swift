@@ -1103,6 +1103,11 @@ let package = Package(
             path: "Examples/Patterns/DifferentialGrowth"
         ),
         .executableTarget(
+            name: "Example-Patterns-WaveFunctionCollapse",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/WaveFunctionCollapse"
+        ),
+        .executableTarget(
             name: "Example-Shapes-HollowShapes",
             dependencies: ["Ollin"],
             path: "Examples/Shapes/HollowShapes"
