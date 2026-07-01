@@ -16,7 +16,7 @@ final class DifferentialGrowthSketch: Sketch {
         center: Vector2(540, 540), radius: 70, count: 40, seed: 7,
         maxSegmentLength: 8, repulsionRadius: 16,
         attraction: 0.18, repulsion: 0.6, alignment: 0.25,
-        jitter: 0.4, growthRate: 0.9, maxNodes: 6000,
+        jitter: 0.4, growthRate: 0.9, maxNodes: 4500,
         bounds: Rectangle(x: 40, y: 40, width: 1000, height: 1000))
 
     override func draw() {
