@@ -55,6 +55,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Differential growth`](./Generators/DifferentialGrowth.md) - `DifferentialGrowth`, a line of nodes that grows and folds into organic, brain-coral structure (a stateful stepper)
 - [`Wave Function Collapse`](./Generators/WaveFunctionCollapse.md) - `wfc`, filling a grid from a tileset so every neighbor is legal (constraint-solved tile layouts)
 - [`Shape packing`](./Generators/ShapePacking.md) - `packShapes` and `ContinuousPacking`, filling a region with non-overlapping shapes grown against each other's outlines
+- [`Flow fields`](./Generators/FlowField.md) - `FlowField`, tracing streamlines through a direction field (the flow-field look) and advecting particles along it
 
 ### Helpers
 

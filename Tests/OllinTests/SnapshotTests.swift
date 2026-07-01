@@ -238,6 +238,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("shape-packing",
                  note: "A bag of polygons and a star packed by their bounding circles: big shapes first, smaller ones filling the gaps, each a random pick, rotated and scaled to its packed circle. Pins packShapes (the bounding-circle placement over the circle packer, the random rotation, the fit). Seeded, no time, so the layout is deterministic.",
                  make: { ShapePackingScene() }),
+    SnapshotCase("streamlines",
+                 note: "Evenly-spaced streamlines through a Perlin flow field, seeded from a blue-noise set. Pins the field (angle from noise), the both-directions tracing, and the separation test that keeps the lines from crossing. Seeded, no time, so the lines are deterministic.",
+                 make: { StreamlinesScene() }),
     SnapshotCase("depth-compositing-2d",
                  note: "A 2D card standing at a world depth between two point-cloud balls. Pins depth-aware compositing: the near ball draws over the card, the far ball is hidden by it. If 2D ignored depth (always over), the card would cover both, so this fails if the depth-participation path breaks. No time.",
                  make: { DepthComposited2D() }),
@@ -1053,6 +1056,28 @@ private final class ShapePackingScene: Sketch {
             let c = pts.reduce(Vector2.zero, +) * (1 / Double(max(pts.count, 1)))
             fill(Color.mix(Color(hex: 0x6FD3C7), Color(hex: 0xF2799E), t: c.x / 256))
             drawShape(shape)
+        }
+    }
+}
+
+/// Evenly-spaced streamlines through a Perlin flow field, seeded from a
+/// blue-noise set. Pins the field, the both-directions tracing, and the
+/// separation test that keeps lines from crossing. Seeded and `time`-free.
+private final class StreamlinesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0F1117))
+        seed(7)
+        let field = flowField(scale: 0.006)
+        let seeds = poissonDisk(radius: 6)
+        strokeCap(.round); noFill(); strokeWeight(1.5)
+        for line in field.streamlines(from: seeds, stepLength: 2, steps: 120,
+                                      bounds: bounds, separation: 8) {
+            let mid = line[line.count / 2]
+            let v = (signedNoise(mid.x * 0.004, mid.y * 0.004) + 1) * 0.5
+            stroke(Color(hue: 0.52 + v * 0.34, saturation: 0.5, brightness: 0.96))
+            drawPolyline(line)
         }
     }
 }
