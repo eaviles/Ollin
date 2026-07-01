@@ -1118,6 +1118,11 @@ let package = Package(
             path: "Examples/Patterns/Streamlines"
         ),
         .executableTarget(
+            name: "Example-Patterns-Flocking",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/Flocking"
+        ),
+        .executableTarget(
             name: "Example-Shapes-HollowShapes",
             dependencies: ["Ollin"],
             path: "Examples/Shapes/HollowShapes"

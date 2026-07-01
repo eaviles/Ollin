@@ -241,6 +241,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("streamlines",
                  note: "Evenly-spaced streamlines through a Perlin flow field, seeded from a blue-noise set. Pins the field (angle from noise), the both-directions tracing, and the separation test that keeps the lines from crossing. Seeded, no time, so the lines are deterministic.",
                  make: { StreamlinesScene() }),
+    SnapshotCase("flocking", frame: 120,
+                 note: "A seeded flock of boids stepped to a fixed frame, drawn as heading-colored triangles. Pins Reynolds' separation/alignment/cohesion steering and the spatial-hash neighbor search (the force sums are order-stable, so a seeded flock reproduces). Seeded, fixed frame, so it's deterministic.",
+                 make: { FlockingScene() }),
     SnapshotCase("depth-compositing-2d",
                  note: "A 2D card standing at a world depth between two point-cloud balls. Pins depth-aware compositing: the near ball draws over the card, the far ball is hidden by it. If 2D ignored depth (always over), the card would cover both, so this fails if the depth-participation path breaks. No time.",
                  make: { DepthComposited2D() }),
@@ -1078,6 +1081,31 @@ private final class StreamlinesScene: Sketch {
             let v = (signedNoise(mid.x * 0.004, mid.y * 0.004) + 1) * 0.5
             stroke(Color(hue: 0.52 + v * 0.34, saturation: 0.5, brightness: 0.96))
             drawPolyline(line)
+        }
+    }
+}
+
+/// A seeded flock of boids stepped to a fixed frame, drawn as heading-colored
+/// triangles. Pins Reynolds' separation/alignment/cohesion steering and the
+/// spatial-hash neighbor search. Seeded and stepped to a fixed frame.
+private final class FlockingScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let flock = Boids(count: 180, in: Rectangle(x: 0, y: 0, width: 256, height: 256),
+                              seed: 7, maxSpeed: 1.6, maxForce: 0.08,
+                              perceptionRadius: 22, separationRadius: 11, margin: 24)
+
+    override func draw() {
+        flock.step()
+        background(Color(hex: 0x0E1016))
+        noStroke()
+        let size = 4.0
+        for i in 0 ..< flock.count {
+            let p = flock.positions[i], a = flock.heading(i)
+            fill(Color(hue: (a + .pi) / (2 * .pi), saturation: 0.55, brightness: 0.96))
+            drawTriangle(Vector2(p.x + cos(a) * size, p.y + sin(a) * size),
+                         Vector2(p.x + cos(a + 2.5) * size * 0.7, p.y + sin(a + 2.5) * size * 0.7),
+                         Vector2(p.x + cos(a - 2.5) * size * 0.7, p.y + sin(a - 2.5) * size * 0.7))
         }
     }
 }

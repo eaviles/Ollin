@@ -13,3 +13,4 @@
 - [`Wave Function Collapse`](./WaveFunctionCollapse.md) - `wfc`, filling a grid from a tileset so every neighbor is legal (constraint-solved tile layouts)
 - [`Shape packing`](./ShapePacking.md) - `packShapes` and `ContinuousPacking`, filling a region with non-overlapping shapes grown against each other's outlines
 - [`Flow fields`](./FlowField.md) - `FlowField`, tracing streamlines through a direction field (the flow-field look) and advecting particles along it
+- [`Flocking`](./Boids.md) - `Boids`, a flock steering by separation/alignment/cohesion into emergent flocking motion
