@@ -1093,6 +1093,11 @@ let package = Package(
             path: "Examples/Patterns/CirclePacking"
         ),
         .executableTarget(
+            name: "Example-Patterns-LSystem",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/LSystem"
+        ),
+        .executableTarget(
             name: "Example-Shapes-HollowShapes",
             dependencies: ["Ollin"],
             path: "Examples/Shapes/HollowShapes"

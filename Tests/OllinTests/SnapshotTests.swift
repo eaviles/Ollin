@@ -226,6 +226,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("circle-packing",
                  note: "Circle packing, both grow-to-touch flavors: a self-seeding gap-filling pack in the top half (big circles first, smaller ones filling the gaps) and a blue-noise foam in the bottom half (a circle grown at each Poisson-disk point until it touches its nearest neighbor). Pins that circles never overlap and land the same way. Seeded, no time, so the layout is deterministic.",
                  make: { CirclePackingScene() }),
+    SnapshotCase("l-system",
+                 note: "Four L-system presets in a 2x2: the dragon curve and Hilbert curve (turtle turning and F/G forward, no branching), the fern-like plant (the branch [ ] stack), and the stochastic plant (random productions drawn from the seed). Pins the string expansion, the turtle interpretation, branching, and fit-to-bounds. Seeded, no time, so it is deterministic.",
+                 make: { LSystemScene() }),
     SnapshotCase("depth-compositing-2d",
                  note: "A 2D card standing at a world depth between two point-cloud balls. Pins depth-aware compositing: the near ball draws over the card, the far ball is hidden by it. If 2D ignored depth (always over), the card would cover both, so this fails if the depth-participation path breaks. No time.",
                  make: { DepthComposited2D() }),
@@ -924,6 +927,35 @@ private final class CirclePackingScene: Sketch {
         let sites = poissonDisk(in: bottom, radius: 20)
         fill(Color(hex: 0xE86A5B))
         drawCircles(packCircles(around: sites, in: bottom, padding: 1.5))
+    }
+}
+
+/// Four L-system presets in a 2x2: two curves (dragon, Hilbert), the fern-like
+/// plant (the branch stack), and the stochastic plant (random productions from
+/// the seed). Pins expansion, turtle interpretation, branching, and fit. Seeded
+/// and `time`-free, so it's deterministic.
+private final class LSystemScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0E1013))
+        seed(7)
+        noFill()
+        strokeCap(.round)
+        strokeWeight(1)
+
+        let tiles: [(LSystem, Int, Rectangle, UInt32)] = [
+            (.dragonCurve, 11, Rectangle(x: 0, y: 0, width: 128, height: 128), 0x7EC8E3),
+            (.hilbertCurve, 4, Rectangle(x: 128, y: 0, width: 128, height: 128), 0xB18AE0),
+            (.plant, 5, Rectangle(x: 0, y: 128, width: 128, height: 128), 0x77DD9B),
+            (.randomPlant, 6, Rectangle(x: 128, y: 128, width: 128, height: 128), 0x9BE06E),
+        ]
+        for (system, iterations, frame, hex) in tiles {
+            stroke(Color(hex: hex))
+            for c in lSystem(system, iterations: iterations, in: frame, padding: 8) {
+                drawPolyline(c.points, closed: false)
+            }
+        }
     }
 }
 
