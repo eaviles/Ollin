@@ -220,6 +220,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("blue-noise",
                  note: "A blue-noise (Poisson-disk) point set stippled as dots. Pins Bridson's dart-throwing sampler: the seeded scatter with a minimum spacing (no two dots closer than the radius, no clumps or gaps). Seeded, no time, so the layout is deterministic.",
                  make: { BlueNoiseScene() }),
+    SnapshotCase("truchet",
+                 note: "A Truchet tiling: arc tiles in the top half, diagonal tiles in the bottom, each cell's orientation chosen by the seed. Pins both tile geometries and the cross-cell connectivity (the arcs meet at shared edge midpoints, the diagonals at corners). Seeded, no time, so the layout is deterministic.",
+                 make: { TruchetScene() }),
     SnapshotCase("depth-compositing-2d",
                  note: "A 2D card standing at a world depth between two point-cloud balls. Pins depth-aware compositing: the near ball draws over the card, the far ball is hidden by it. If 2D ignored depth (always over), the card would cover both, so this fails if the depth-participation path breaks. No time.",
                  make: { DepthComposited2D() }),
@@ -866,6 +869,34 @@ private final class BlueNoiseScene: Sketch {
             let flow = signedNoise(p.x * 0.01, p.y * 0.01)
             fill(Color.mix(Color(hex: 0xE8ECF4), Color(hex: 0x5AA9E6), t: (flow + 1) * 0.5))
             drawCircle(center: p, radius: 1.6 + (flow + 1) * 1.4)
+        }
+    }
+}
+
+/// A Truchet tiling with both built-in tiles — arc tiles in the top half,
+/// diagonal tiles in the bottom — exercising both tile geometries and the
+/// cross-cell connectivity (arcs meeting at shared edge midpoints, diagonals at
+/// corners). Seeded and `time`-free, so it's deterministic.
+private final class TruchetScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101418))
+        seed(3)
+        noFill()
+        strokeCap(.round)
+        strokeWeight(4)
+
+        let top = Rectangle(x: 0, y: 0, width: 256, height: 128)
+        let bottom = Rectangle(x: 0, y: 128, width: 256, height: 128)
+
+        stroke(Color(hex: 0x2EC4B6))
+        for c in truchet(in: top, columns: 6, rows: 3, tile: .arcs) {
+            drawPolyline(c.points, closed: false)
+        }
+        stroke(Color(hex: 0xF6511D))
+        for c in truchet(in: bottom, columns: 6, rows: 3, tile: .diagonals) {
+            drawPolyline(c.points, closed: false)
         }
     }
 }
