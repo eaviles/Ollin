@@ -1108,6 +1108,11 @@ let package = Package(
             path: "Examples/Patterns/WaveFunctionCollapse"
         ),
         .executableTarget(
+            name: "Example-Patterns-ShapePacking",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/ShapePacking"
+        ),
+        .executableTarget(
             name: "Example-Shapes-HollowShapes",
             dependencies: ["Ollin"],
             path: "Examples/Shapes/HollowShapes"

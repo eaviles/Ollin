@@ -268,3 +268,365 @@ public extension Sketch {
                            padding: padding)
     }
 }
+
+// MARK: - Shape packing
+
+/// Pack arbitrary shapes into `bounds`, growing each until it touches its
+/// neighbors' *outlines* (not just their bounding circles), so smaller shapes
+/// nestle into the concave gaps a star's notches or a triangle's edges leave.
+/// Big shapes land first and progressively smaller ones fill the space between
+/// them, each a random pick from `shapes`, rotated, and scaled to fit. Output is
+/// `[Shape]`, feeding the fill, stroke, shape-boolean, hatching, and SVG paths.
+///
+/// This is [`ContinuousPacking`](x-source-tag://ContinuousPacking) run to
+/// completion; hold one and `step()` it for the animated, fills-in-over-time
+/// form.
+///
+/// - Parameters:
+///   - shapes: The shapes to draw from (each placed shape is a random pick).
+///   - bounds: The rectangle to pack.
+///   - count: The target number of shapes (a run also stops once no room is left).
+///   - minRadius: The smallest shape (by bounding-circle radius) to place.
+///   - maxRadius: A cap on the bounding-circle radius (the bounds by default).
+///   - padding: A gap left between neighboring shapes.
+///   - rotation: The range a placed shape is randomly rotated within (radians;
+///     pass `0 ... 0` to leave shapes upright).
+///   - scale: How much of its bounding circle each shape fills (1 = touching).
+///   - rng: The random source; seed it for a reproducible packing.
+/// - Returns: The placed, transformed shapes, largest-first.
+public func packShapes<R: RandomNumberGenerator>(
+    _ shapes: [Shape],
+    in bounds: Rectangle,
+    count: Int,
+    minRadius: Double,
+    maxRadius: Double = .infinity,
+    padding: Double = 0,
+    rotation: ClosedRange<Double> = 0 ... Double.tau,
+    scale: Double = 1,
+    using rng: inout R
+) -> [Shape] {
+    guard !shapes.isEmpty, count > 0 else { return [] }
+    let packer = ContinuousPacking(shapes: shapes, in: bounds, seed: rng.next(),
+                                   minRadius: minRadius, maxRadius: maxRadius, padding: padding,
+                                   rotation: rotation, scale: scale, attemptsPerStep: 20)
+    var stalledSteps = 0
+    while packer.count < count, stalledSteps < 80 {
+        let before = packer.count
+        packer.step()
+        stalledSteps = packer.count == before ? stalledSteps + 1 : 0
+    }
+    return packer.shapes
+}
+
+/// Grow-to-touch shape packing from given points: place a shape at each of
+/// `sites`, its bounding circle grown to half the distance to the nearest other
+/// point. A blue-noise set makes an even scatter of non-overlapping shapes. The
+/// circle placement is fixed by the points; `rng` drives only the shape choice
+/// and rotation.
+public func packShapes<R: RandomNumberGenerator>(
+    _ shapes: [Shape],
+    around sites: [Vector2],
+    in bounds: Rectangle? = nil,
+    minRadius: Double = 0,
+    maxRadius: Double = .infinity,
+    padding: Double = 0,
+    rotation: ClosedRange<Double> = 0 ... Double.tau,
+    scale: Double = 1,
+    using rng: inout R
+) -> [Shape] {
+    guard !shapes.isEmpty else { return [] }
+    let circles = packCircles(around: sites, in: bounds, minRadius: minRadius,
+                              maxRadius: maxRadius, padding: padding)
+    return circles.map { placeRandomShape(shapes, in: $0, rotation: rotation, scale: scale, using: &rng) }
+}
+
+// MARK: - Shape-packing helpers (file-private)
+
+/// Pick a random shape and place it inside `circle`.
+private func placeRandomShape<R: RandomNumberGenerator>(
+    _ shapes: [Shape], in circle: Circle,
+    rotation: ClosedRange<Double>, scale: Double, using rng: inout R
+) -> Shape {
+    let proto = shapes[Int.random(in: 0 ..< shapes.count, using: &rng)]
+    let angle = rotation.lowerBound < rotation.upperBound
+        ? Double.random(in: rotation, using: &rng)
+        : rotation.lowerBound
+    return placeShape(proto, in: circle, angle: angle, scale: scale)
+}
+
+// MARK: - Continuous packing (stateful)
+
+/// A continuous (incremental) packer: instead of filling a region in one call,
+/// it adds a few marks per `step()`, each grown to the largest that fits the gaps
+/// left by the marks already placed. Held across frames and stepped in `draw()`,
+/// it *animates* a packing filling in, and because big gaps fill first, each new
+/// mark is smaller than the last, so the region densifies from a few large shapes
+/// down to a scatter of tiny ones.
+///
+/// Pass a bag of `shapes` to pack shapes (each placed pick is rotated and scaled
+/// to its circle, exactly like `packShapes`), or none to pack plain `circles`.
+/// Placed marks never move, so pairing it with accumulation (`noClear()`) and
+/// drawing only the newly added marks each frame keeps the per-frame cost flat no
+/// matter how full the region gets.
+///
+/// ```swift
+/// let packer = ContinuousPacking(shapes: bag, in: bounds, seed: 4,
+///                                minRadius: 3, maxRadius: 130, padding: 4)
+///
+/// override func setup() { noClear() }            // accumulate
+/// override func draw() {
+///     let start = packer.count
+///     packer.step()                              // add a few this frame
+///     for i in start ..< packer.count {          // draw only the new ones
+///         fill(.white); drawShape(packer.shapes[i])
+///     }
+/// }
+/// ```
+///
+/// - Tag: ContinuousPacking
+public final class ContinuousPacking {
+    /// The bounding circles placed so far, largest-first.
+    public private(set) var circles: [Circle] = []
+    /// The placed shapes (parallel to `circles`); empty when no shape bag was given.
+    public private(set) var shapes: [Shape] = []
+
+    private let bag: [Shape]
+    private let bounds: Rectangle
+    /// The smallest mark to place; the packer stops finding room once every gap is
+    /// smaller than this.
+    public var minRadius: Double
+    /// A cap on how large a mark may grow.
+    public var maxRadius: Double
+    /// A gap left between neighboring marks.
+    public var padding: Double
+    /// The range a placed shape is randomly rotated within (radians).
+    public var rotation: ClosedRange<Double>
+    /// How much of its bounding circle each shape fills.
+    public var scale: Double
+    /// How many placements are attempted per `step()`.
+    public var attemptsPerStep: Int
+
+    private var rng: SplitMix64
+    private var grid: [PackingCell: [Int]] = [:]
+    private let cell: Double
+
+    /// A continuous packer over `bounds`, drawing shapes from `shapes` (or packing
+    /// plain circles when it's empty).
+    ///
+    /// - Parameters:
+    ///   - shapes: The shape bag to draw placements from (empty packs circles).
+    ///   - bounds: The rectangle to fill.
+    ///   - seed: The random seed; the same seed grows the same packing.
+    ///   - minRadius: The smallest mark to place.
+    ///   - maxRadius: A cap on the mark radius.
+    ///   - padding: A gap left between marks.
+    ///   - rotation: The random rotation range for shapes (radians).
+    ///   - scale: How much of its circle each shape fills.
+    ///   - attemptsPerStep: Placement attempts per `step()`.
+    public init(shapes: [Shape] = [], in bounds: Rectangle, seed: UInt64 = 0,
+                minRadius: Double, maxRadius: Double, padding: Double = 0,
+                rotation: ClosedRange<Double> = 0 ... Double.tau, scale: Double = 1,
+                attemptsPerStep: Int = 10) {
+        self.bag = shapes
+        self.bounds = bounds
+        self.rng = SplitMix64(seed: seed)
+        self.minRadius = minRadius
+        self.maxRadius = maxRadius
+        self.padding = padding
+        self.rotation = rotation
+        self.scale = scale
+        self.attemptsPerStep = attemptsPerStep
+        // The grid cell is the largest a mark can be, which an unbounded
+        // `maxRadius` clamps to the region size (nothing grows past the bounds).
+        self.cell = Swift.max(Swift.min(maxRadius, Swift.min(bounds.width, bounds.height)), 1e-6)
+    }
+
+    /// The number of marks placed so far.
+    public var count: Int { circles.count }
+
+    /// Attempt `attemptsPerStep` placements, keeping each that finds room.
+    public func step() {
+        guard bounds.width > 0, bounds.height > 0, minRadius > 0 else { return }
+        for _ in 0 ..< Swift.max(attemptsPerStep, 1) {
+            let p = Vector2(bounds.x + Double.random(in: 0 ..< 1, using: &rng) * bounds.width,
+                            bounds.y + Double.random(in: 0 ..< 1, using: &rng) * bounds.height)
+            if let r = fittedRadius(at: p) { place(at: p, radius: r) }
+        }
+    }
+
+    /// The largest mark that fits at `p`, or `nil` if there's no room (or `p`
+    /// falls inside a placed shape). With a shape bag the fit is against each
+    /// shape's *outline* (so a new mark can grow into a star's notch or beside a
+    /// triangle's edge, filling the space the bounding circle would waste); with
+    /// no bag it's the plain circle distance.
+    private func fittedRadius(at p: Vector2) -> Double? {
+        var r = Swift.min(wallGap(p, bounds), maxRadius)
+        if r < minRadius { return nil }
+
+        // Only marks whose center is within `currentBest + maxRadius` can
+        // constrain `p` (a shape's outline lies within its bounding radius of its
+        // center), so scan that neighborhood of the grid.
+        let gridMax = Swift.min(maxRadius, Swift.min(bounds.width, bounds.height))
+        let reach = Int(((2 * gridMax + padding) / cell).rounded(.up)) + 1
+        let col = Int(floor((p.x - bounds.x) / cell)), row = Int(floor((p.y - bounds.y) / cell))
+        let geometryAware = !bag.isEmpty
+        for cc in (col - reach) ... (col + reach) {
+            for rr in (row - reach) ... (row + reach) {
+                guard let bucket = grid[PackingCell(cc, rr)] else { continue }
+                for j in bucket {
+                    let center = circles[j].center, radius = circles[j].radius
+                    if geometryAware {
+                        let dc = p.distance(to: center)
+                        if dc - radius >= r { continue }                    // outline too far to constrain
+                        if dc < radius, shapeContains(shapes[j], p) { return nil }   // inside a shape
+                        r = Swift.min(r, distanceToOutline(shapes[j], p) - padding)
+                    } else {
+                        r = Swift.min(r, p.distance(to: center) - radius - padding)
+                    }
+                    if r < minRadius { return nil }
+                }
+            }
+        }
+        return r >= minRadius ? r : nil
+    }
+
+    /// Run `steps` steps.
+    public func step(_ steps: Int) {
+        for _ in 0 ..< Swift.max(steps, 0) { step() }
+    }
+
+    private func place(at center: Vector2, radius: Double) {
+        let circle = Circle(center: center, radius: radius)
+        let index = circles.count
+        circles.append(circle)
+        let col = Int(floor((center.x - bounds.x) / cell)), row = Int(floor((center.y - bounds.y) / cell))
+        grid[PackingCell(col, row), default: []].append(index)
+        if !bag.isEmpty {
+            shapes.append(placeRandomShape(bag, in: circle, rotation: rotation, scale: scale, using: &rng))
+        }
+    }
+}
+
+/// A uniform-grid cell key for the continuous packer's neighbor search.
+private struct PackingCell: Hashable {
+    let column: Int, row: Int
+    init(_ column: Int, _ row: Int) { self.column = column; self.row = row }
+}
+
+/// Whether `p` is inside `shape` (even-odd ray cast over all its contours).
+private func shapeContains(_ shape: Shape, _ p: Vector2) -> Bool {
+    var inside = false
+    for contour in shape.contours {
+        let pts = contour.points
+        guard pts.count >= 3 else { continue }
+        var j = pts.count - 1
+        for i in pts.indices {
+            let a = pts[i], b = pts[j]
+            if (a.y > p.y) != (b.y > p.y) {
+                let x = a.x + (p.y - a.y) / (b.y - a.y) * (b.x - a.x)
+                if p.x < x { inside.toggle() }
+            }
+            j = i
+        }
+    }
+    return inside
+}
+
+/// The distance from `p` to the nearest edge of `shape` (its outline).
+private func distanceToOutline(_ shape: Shape, _ p: Vector2) -> Double {
+    var best = Double.infinity
+    for contour in shape.contours {
+        let pts = contour.points
+        guard pts.count >= 2 else { continue }
+        for i in pts.indices {
+            best = Swift.min(best, pointSegmentDistance(p, pts[i], pts[(i + 1) % pts.count]))
+        }
+    }
+    return best
+}
+
+/// The distance from `p` to the segment `a`–`b`.
+private func pointSegmentDistance(_ p: Vector2, _ a: Vector2, _ b: Vector2) -> Double {
+    let ab = b - a
+    let lenSq = ab.lengthSquared
+    guard lenSq > 1e-12 else { return p.distance(to: a) }
+    let t = Swift.min(Swift.max((p - a).dot(ab) / lenSq, 0), 1)
+    return p.distance(to: Vector2(a.x + ab.x * t, a.y + ab.y * t))
+}
+
+/// The bounding circle of a shape: its bounding-box center and the distance from
+/// that center to its farthest point.
+private func shapeBoundingCircle(_ shape: Shape) -> (center: Vector2, radius: Double) {
+    let points = shape.contours.flatMap(\.points)
+    guard let first = points.first else { return (.zero, 0) }
+    var minX = first.x, minY = first.y, maxX = first.x, maxY = first.y
+    for p in points {
+        minX = Swift.min(minX, p.x); maxX = Swift.max(maxX, p.x)
+        minY = Swift.min(minY, p.y); maxY = Swift.max(maxY, p.y)
+    }
+    let center = Vector2((minX + maxX) / 2, (minY + maxY) / 2)
+    var r2 = 0.0
+    for p in points { r2 = Swift.max(r2, p.distanceSquared(to: center)) }
+    return (center, r2.squareRoot())
+}
+
+/// Place `shape` inside `circle`: normalized to `scale × circle.radius`, rotated
+/// by `angle`, and centered on the circle. Rotation is bounding-circle-invariant,
+/// so the placed shape always fits the packed circle.
+private func placeShape(_ shape: Shape, in circle: Circle, angle: Double, scale: Double) -> Shape {
+    let (center, radius) = shapeBoundingCircle(shape)
+    guard radius > 0 else { return shape }
+    let factor = scale * circle.radius / radius
+    let cosT = cos(angle), sinT = sin(angle)
+    return shape.mapPoints { p in
+        let dx = (p.x - center.x) * factor, dy = (p.y - center.y) * factor
+        return Vector2(circle.center.x + dx * cosT - dy * sinT,
+                       circle.center.y + dx * sinT + dy * cosT)
+    }
+}
+
+// MARK: - Shape-packing sugar
+
+public extension Sketch {
+    /// Pack shapes into `bounds` (the canvas by default) by packing their
+    /// bounding circles: big shapes land first, smaller ones fill the gaps, each
+    /// a random pick from `shapes`, rotated and scaled to its packed circle.
+    /// Driven by the seeded `random`, so `seed(_:)` makes the packing
+    /// reproducible.
+    ///
+    /// ```swift
+    /// seed(4)
+    /// let bag = [triangle, square, pentagon, star]
+    /// for shape in packShapes(bag, count: 400, minRadius: 8, maxRadius: 120, padding: 4) {
+    ///     fill(.white); drawShape(shape)
+    /// }
+    /// ```
+    func packShapes(_ shapes: [Shape],
+                    in bounds: Rectangle? = nil,
+                    count: Int,
+                    minRadius: Double,
+                    maxRadius: Double = .infinity,
+                    padding: Double = 0,
+                    rotation: ClosedRange<Double> = 0 ... Double.tau,
+                    scale: Double = 1) -> [Shape] {
+        Ollin.packShapes(shapes, in: bounds ?? canvasRectangle, count: count,
+                         minRadius: minRadius, maxRadius: maxRadius, padding: padding,
+                         rotation: rotation, scale: scale, using: &rng)
+    }
+
+    /// Place a shape at each of `sites`, grown to touch its nearest neighbor. A
+    /// blue-noise set (`poissonDisk`) makes an even scatter of non-overlapping
+    /// shapes.
+    func packShapes(_ shapes: [Shape],
+                    around sites: [Vector2],
+                    in bounds: Rectangle? = nil,
+                    minRadius: Double = 0,
+                    maxRadius: Double = .infinity,
+                    padding: Double = 0,
+                    rotation: ClosedRange<Double> = 0 ... Double.tau,
+                    scale: Double = 1) -> [Shape] {
+        Ollin.packShapes(shapes, around: sites, in: bounds ?? canvasRectangle,
+                         minRadius: minRadius, maxRadius: maxRadius, padding: padding,
+                         rotation: rotation, scale: scale, using: &rng)
+    }
+}

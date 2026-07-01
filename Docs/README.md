@@ -54,6 +54,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`L-systems`](./Generators/LSystem.md) - `drawLSystem` and a preset catalog: a rewriting grammar walked by a turtle into fractal curves and branching plants
 - [`Differential growth`](./Generators/DifferentialGrowth.md) - `DifferentialGrowth`, a line of nodes that grows and folds into organic, brain-coral structure (a stateful stepper)
 - [`Wave Function Collapse`](./Generators/WaveFunctionCollapse.md) - `wfc`, filling a grid from a tileset so every neighbor is legal (constraint-solved tile layouts)
+- [`Shape packing`](./Generators/ShapePacking.md) - `packShapes` and `ContinuousPacking`, filling a region with non-overlapping shapes grown against each other's outlines
 
 ### Helpers
 

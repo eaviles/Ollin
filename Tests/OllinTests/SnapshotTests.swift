@@ -235,6 +235,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("wave-function-collapse",
                  note: "A pipe network solved by Wave Function Collapse over a blank + straight/elbow/tee/cross tileset. Pins the solver: min-entropy observation, weighted collapse, and arc-consistency propagation reach a fully legal grid (every internal pipe meets a matching pipe). Seeded, no time, so the layout is deterministic (the sorted-candidate guard keeps the Set-based solve reproducible).",
                  make: { WaveFunctionCollapseScene() }),
+    SnapshotCase("shape-packing",
+                 note: "A bag of polygons and a star packed by their bounding circles: big shapes first, smaller ones filling the gaps, each a random pick, rotated and scaled to its packed circle. Pins packShapes (the bounding-circle placement over the circle packer, the random rotation, the fit). Seeded, no time, so the layout is deterministic.",
+                 make: { ShapePackingScene() }),
     SnapshotCase("depth-compositing-2d",
                  note: "A 2D card standing at a world depth between two point-cloud balls. Pins depth-aware compositing: the near ball draws over the card, the far ball is hidden by it. If 2D ignored depth (always over), the card would cover both, so this fails if the depth-participation path breaks. No time.",
                  make: { DepthComposited2D() }),
@@ -1018,6 +1021,38 @@ private final class WaveFunctionCollapseScene: Sketch {
             for edge in 0 ..< 4 where sockets[edge] != 0 {
                 drawLine(cell.center, mids[edge])
             }
+        }
+    }
+}
+
+/// A bag of polygons and a star packed by their bounding circles, rotated and
+/// scaled to fit. Pins `packShapes` (bounding-circle placement over the circle
+/// packer, random rotation, the fit). Seeded and `time`-free, so it's
+/// deterministic.
+private final class ShapePackingScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private func polygon(_ sides: Int, star: Bool = false) -> Shape {
+        let count = star ? sides * 2 : sides
+        let points = (0 ..< count).map { i -> Vector2 in
+            let a = Double(i) / Double(count) * 2 * .pi - .pi / 2
+            let r = (star && i % 2 == 1) ? 0.46 : 1.0
+            return Vector2(cos(a) * r, sin(a) * r)
+        }
+        return Shape(points, closed: true)
+    }
+
+    override func draw() {
+        background(Color(hex: 0x11121A))
+        seed(4)
+        noStroke()
+        let bag = [polygon(3), polygon(4), polygon(5), polygon(6), polygon(5, star: true)]
+        let packed = packShapes(bag, count: 160, minRadius: 4, maxRadius: 34, padding: 1.5, scale: 0.9)
+        for shape in packed {
+            let pts = shape.contours.flatMap(\.points)
+            let c = pts.reduce(Vector2.zero, +) * (1 / Double(max(pts.count, 1)))
+            fill(Color.mix(Color(hex: 0x6FD3C7), Color(hex: 0xF2799E), t: c.x / 256))
+            drawShape(shape)
         }
     }
 }
