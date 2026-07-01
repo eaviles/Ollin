@@ -37,7 +37,7 @@ complete capability index regardless.
 | Renderer core (frame lifecycle, pipeline families, vertex-buffer ring, coverage models, linear-light present) | This doc, *The renderer at a glance*; the rules live in CLAUDE.md *Shaders & the Metal back end* / *Rendering performance* |
 | Screen-space combine effects (SSAO, SSR, depth of field) | **This doc** |
 | SDF combinators (2D VM + raymarched 3D) | **This doc** |
-| Layered-effects substrate (render targets, filters, compose, combine, feedback, sim fields / fluid) | Partly this doc (the combine substrate); filter / feedback / fluid internals pending here, summarized in CLAUDE.md + `Docs/Drawing/Effects.md` |
+| Layered-effects substrate (render targets, filters, generators, compose, combine, feedback, sim fields / fluid) | **This doc**, *Layered-effects substrate* (the combine wiring under *Screen-space combine effects*) |
 | 3D lighting (PBR / Cook-Torrance, IBL split-sum bake, procedural sky, PCSS + RT shadows, RT reflections) | Pending here; CLAUDE.md *Current state* + `Docs/3D/` |
 | Text & glyphs (libtess2 fill, winding / overlap-clean gotchas, fringe stroke, SDF atlas) | Pending here; CLAUDE.md + `Docs/Drawing/Text.md` |
 | Compute & GPU particles | Pending here; CLAUDE.md + `Docs/Shaders/Compute.md` |
@@ -106,6 +106,181 @@ shared-header discipline, the shader-segment concatenation order, the
 precompiled-metallib path) live in CLAUDE.md under *Shaders & the Metal back end*
 and *Rendering performance*. This section orients you; those sections hold the
 invariants you must not break.
+
+---
+
+## Layered-effects substrate
+
+The layered-effects system (`Sources/Ollin/Effects/`) lets a sketch draw into
+off-screen layers, filter them on the GPU, and composite them back with blend
+modes, following the OPENRNDR `RenderTarget`/`Filter`/`compose` model. The
+public surface is in `Docs/Drawing/Effects.md`; this section explains the
+machinery behind it: how the deferred graph resolves, how filters, generators,
+and the persistent feedback/simulation layers run, and the invariants that were
+each bought with a real bug.
+
+### The deferred render graph
+
+The `Drawer` stays a pure recorder. `withTarget(_:)` redirects drawing by
+tagging each recorded `GeometryBatch` with its `target: RenderTarget?` (forcing
+a fresh batch at each boundary), and the drawer records the frame's
+`renderTargets`, `filterOps`, and `frameFilters` lists. `MetalRenderer` resolves
+that graph at `render()`/`image(of:)` time, in order: each geometry target's
+tagged batches render into their own MSAA-resolve pass; the filter and combine
+ops run (MPS or fragment passes) into pooled textures; the main pass runs and
+samples the results (`target.image` composites through the textured-quad path,
+`Image(renderTarget:)`); and `postProcess` filters run on the resolved frame
+before present. The no-targets path is gated on those three lists being empty
+and is byte-identical to a direct render.
+
+Everything stays GPU-resident: layers are render-pass attachments and filter
+inputs are sampler binds, never a CPU round-trip (the layer-as-uniform upload
+that makes naive layer systems unusably slow). Layers are premultiplied linear,
+so blur and bloom composite physically and tone-map plus dither still happen
+exactly once, at present. A layer's `scale` renders it at fraction resolution
+for fill-rate-bound effects, and layer textures are pooled per frame-ring slot.
+
+**Every `GeometryBatch` begin must snapshot all the `*Start` offsets.** A
+batch's vertex count for each kind is `next.<kind>Start - this.<kind>Start`, so
+a batch creator that omits one offset silently zeroes the count of a *preceding*
+batch of that kind. The image/glyph/particle/depthScene begins once omitted
+`meshStart`, which was harmless until a 3D mesh in a render target was followed
+by `drawImage`/`drawCaption` (the `SceneDefocus` case); all begins now snapshot
+every offset.
+
+### Filters and generators
+
+`Filter` is a ~44-entry catalog in five families (blur/glow, color/tone,
+stylize/optical, retro, and uv-warp distortion; the full per-filter list lives
+in `Docs/Drawing/Effects.md`). Every filter is a fullscreen-triangle fragment
+pass on the `.effect` pipeline, reusing `ollin_present_vertex` plus an
+`ollin_fx_*` fragment, reading and writing premultiplied linear. Most are
+single-sample; a handful (`bilateral`, `motionBlur`, `radialBlur`, `oilPaint`,
+`median`, the halftones) gather several taps; only `.gaussianBlur` and bloom's
+internal blur use MPS (`MPSImageGaussianBlur`). `.bloom` is bright-pass, blur,
+add-back. `.gradientMap` binds a baked 256-step LUT (`rgba32Float`) as a second
+texture.
+
+Two conventions keep the color math honest: the distortion warps only move
+texels (premultiplied values pass through untouched), while the color/stylize
+filters un-premultiply, run the straight-color op, and re-premultiply. The
+per-pass uniform is a packed `[SIMD4<Float>]` (`constant float4 *params`,
+widened from a single `float4`) so one filter can carry several params and
+colors. New filter built-ins are written from the published technique and
+credited in `ATTRIBUTION.md`'s Techniques list, never in `.swift` comments.
+
+`Generator` (`generate(_:)`) is the input-less sibling: a procedural pattern
+(`.checkers`/`.gridLines`/`.bars`/`.noise`) filled into a `RenderTarget` by a
+no-input `ollin_gen_*` fragment pass (a `.generator` `RenderTarget.Origin`),
+resolved ahead of the geometry and filter passes. One nuance: a fine 1px
+pattern averages away when its layer is drawn smaller, which is why the
+`dither` generator takes a `pixelSize`.
+
+### Feedback (previous-frame) layers
+
+`feedback(scale:)` returns a *persistent* `Feedback` layer: made once in
+`setup()` and held, unlike the per-frame `RenderTarget`, because its identity is
+what carries state across frames. `withFeedback(_:) { prev in ... }` redirects
+drawing into it and hands in last frame's result as `prev` (the
+`withTarget(Feedback)` form reads `feedback.previous` by name instead), and
+`feedback.image` composites this frame's result.
+
+Under the hood it is a two-texture ping-pong kept in a persistent map keyed by
+the layer's identity (`MetalRenderer.feedbackSlots`, separate from the per-frame
+texture pools): the renderer draws into the back texture while the block reads
+the front, then flips after the frame. It relies on Metal's automatic GPU-to-GPU
+hazard tracking (feedback is inherently serial, so no extra semaphore), and
+slots are pruned by a weak owner reference on live reload. The
+`RenderTarget.Origin.feedback(Feedback)` case routes the write layer to the
+ping-pong storage.
+
+**Headless warmup gotcha:** `image(of:frame:)` must render *every* warmup frame
+when `drawer.usesFeedback`, exactly like accumulation, not just `stepCompute`,
+or the ping-pong never evolves; the built-up state is what a single-frame export
+and the `effects-feedback` snapshot depend on. `usesFeedback` counts feedback
+layers, sim fields, and SSR ops alike.
+
+### Simulation fields
+
+`simField(_:scale:)` returns a persistent `SimField` (`Effects/SimField.swift`)
+that runs a built-in `Sim` on its state each frame: the stateful sibling of the
+stateless `Filter`. `Sim` is a `Sendable` value catalog like `Filter`:
+`.reactionDiffusion(feed:kill:)` (Gray-Scott), `.gameOfLife` (Conway), and
+`.fluid(...)`. A sketch draws into the field to seed or force it
+(`withField(_:_:)`, scoped like `withTarget`): the renderer renders the drawn
+marks into a transient seed texture, runs `ollin_sim_inject` to composite the
+seeds onto the front state, then steps the sim's `ollin_sim_*` fragment N
+sub-steps per frame (reaction-diffusion 14, Game of Life 1), ping-ponging pooled
+scratch into the back buffer (`runSimulation` in `MetalRenderer`).
+
+Sim fields reuse the feedback path: the `RenderTarget.Origin.simField(SimField)`
+case routes to the same persistent ping-pong storage (`FeedbackSlot`, whose
+owner is `AnyObject`), and `feedbackSlot(for:restState:)` clears a fresh pair to
+the sim's *rest state* (reaction-diffusion rests at A=1, B=0; Game of Life
+dead), not to transparent. The field itself is raw state, not a picture:
+`SimField.image` shows it, and `SimField.filtered(_:)` recolors it through the
+`Filter` catalog (the substrate payoff: reaction-diffusion output fed through
+`gradientMap`).
+
+`.fluid(...)` is the multi-field sim (a real-time incompressible flow carrying
+dye), so it runs a dedicated `runFluid` pipeline (~30 passes/frame) instead of
+the single-state step path: a velocity+dye splat (the mark's color becomes dye;
+`withField`'s `force:` becomes velocity, converted by dividing by `dt`), curl
+plus vorticity confinement, a divergence-free projection via a Jacobi pressure
+solve (default 20 iterations) and gradient subtract, then semi-Lagrangian
+advection of velocity then dye (Stam stable fluids / GPU Gems / the splat
+recipe, written from the technique and credited in `ATTRIBUTION.md`; boundaries
+are the clamp-to-edge sampler, and `dt` is a fixed constant for determinism).
+Its persistent state is *two* ping-pong pairs (velocity and dye) in a separate
+`MetalRenderer.fluidSlots` map keyed by the `SimField`'s identity;
+pressure/divergence/curl are per-frame pooled scratch, and
+`acquireFilterTexture` hands out a distinct texture per call so the ~8 scratch
+passes never alias. Keeping `fluidSlots` beside `FeedbackSlot` keeps the
+single-field path byte-identical (verified: no `effects-simfield` or
+`effects-feedback` re-record). The brush model is one global `force` per field
+per frame; `SimField.image` is the dye, recolorable and bloomable like any
+layer.
+
+### Compose DSL, combine ops, and `aside`
+
+`compose { layer { ... }.post(_:).blend(_:).scale(_:) ... }` is the declarative
+surface over the substrate: it makes a `renderTarget` per `layer`, draws into it
+via `withTarget`, chains the `.post` filters, and composites bottom-to-top in
+declared order under each layer's `.blend`. It is pure sugar (a user can
+hand-write the same `renderTarget`/`withTarget`/`filtered`/`drawImage`);
+`ComposeLayer` is the public value type and `@ComposeBuilder` the result
+builder, so `if`/`for` build layers. One load-bearing detail: `layer(_:)`'s draw
+closure is `@escaping @_implicitSelfCapture` (it runs synchronously inside
+`compose` but is stored in the builder), so bare draw calls inside a `layer { }`
+need no `self.`; without the attribute the p5-style feel breaks. Verified: the
+attribute propagates across module boundaries to example and test targets.
+
+`Combine` (`Effects/Combine.swift`) is the two-input sibling of `Filter`:
+`base.combined(with: aux, op)` reads two layers, covering what one-input filters
+cannot. It is a `Sendable` value descriptor like `Filter`, but it cannot hold
+the reference-type `RenderTarget`, so the aux rides alongside it and the op
+records a `RenderTarget.Origin.combine(base:aux:op:)` case resolved in the same
+`filterOps` list as filters; record order guarantees both inputs fill first (the
+wiring is detailed under *Shared substrate* in the next section). Six ops:
+`.mask` multiplies base by aux luminance/alpha with optional invert
+(premultiplied luma, so coverage is honored); `.displace` offsets the base UV by
+the aux's RG recentered to within `amount`; `.mix` is a premultiplied
+cross-dissolve; `.defocus`, `.ambientOcclusion`, and `.screenSpaceReflections`
+are the screen-space effects detailed in the next section. The two inputs may
+differ in `scale` (each is sampled by normalized uv).
+
+`aside { }` is the combine's `compose` sugar: it builds the same value as
+`layer { }` (its `.blend` unused; an aside never composites), and
+`.masked(by:)` / `.displaced(by:amount:)` / `.mixed(with:amount:)` /
+`.defocused(by:)` feed it to a layer. A layer's processing is an ordered
+`[Step]` (filter or combine) so posts and combines interleave, resolved by one
+recursive `resolveComposeLayer`; that is what lets an aside carry its own
+`.post` chain (a blurred mask edge, for example).
+
+Substrate credits (recorded in `ATTRIBUTION.md`, never in `.swift`):
+AsyncGraphics (architecture and the cross-dissolve/key/displace shape), ofxFX
+and orx-fx/OPENRNDR (the catalog, the compose model, the `aside` idea), and
+Apple MPS (first-party, in use).
 
 ---
 
@@ -313,7 +488,8 @@ technique.
 
 `.defocus` is a single-pass circle-of-confusion bokeh gather with near/far field
 separation (the architecture from the Catlike Coding DoF tutorial; the per-field
-gather is Gustafsson's running-average form, studied via LYGIA's `sample/dof`).
+gather is Gustafsson's running-average form, Tuxedo Labs, studied via LYGIA's
+`sample/dof`, whose Prosperity license is why it was reimplemented, not ported).
 The aux is read perceptually as a depth map (`linearToSrgb(luma)`, matching the
 depth-feed read so the gray a sketch draws is the depth).
 
@@ -351,6 +527,16 @@ hard-edged discrete per-object depths with overlapping objects. `quality` is a
 (`resolveDofTaps`); the tap budget, not the blur radius, is what `quality`
 controls, so `.detail` is creamier and `.performance` is faster, while `maxBlur`
 is the blur amount.
+
+The tap budget was tuned with data from `Scripts/benchmark.sh dof`
+(`DofBenchmarkTests` sweeps tap counts via the internal `dofTapsOverride` hook
+and the effects-aware `benchmarkGPUMilliseconds`): on an M2 at 1080x1080,
+`.default` (128 taps) measures 9.9 ms and holds 60 fps with headroom, and
+`.detail` (256 taps) measures 19 ms (30 fps, for creamier blur). The shader's
+`OLLIN_DOF_TAPS` constant is the fallback default when no budget is passed. The
+`Effects/Defocus` example racks focus through orbs at discrete per-object depths
+(a moderate count, so dense occlusion stays readable), and its snapshot pins the
+overlapping hard-depth case.
 
 ---
 
@@ -559,7 +745,7 @@ its pins at the camera `eye`) keeps working when the interactive rig owns the po
 
 ## Status of this document
 
-The renderer overview and the two effect areas above are the current contents.
+The sections above are the current contents.
 The *Systems map* near the top is the migration checklist: when a system marked
 *pending* there accrues depth that would otherwise swell CLAUDE.md (or that a
 contributor needs and that currently survives only as the memory of past work),
