@@ -889,8 +889,8 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
 
 // MARK: - Ground grid (live host chrome)
 //
-// Per-scale grid-line coverage. Ben Golus's infinite-grid line function, reimplemented from
-// the technique (not ported). The anti-aliasing width is `lineAA`: the screen-space derivative
+// Per-scale grid-line coverage: the anti-aliased infinite-grid line function, reimplemented
+// from the published technique (not ported). The anti-aliasing width is `lineAA`: the screen-space derivative
 // of the *base* world uv divided by this scale, computed ONCE per fragment and passed in. That
 // distinction is load-bearing. Never take `dfdx(P / cell)` of the pre-scaled uv: `cell` jumps
 // by a decade across adjacent pixels at every LOD level boundary, so a derivative taken there
@@ -915,9 +915,10 @@ static inline float ollin_grid_lines(float2 uv, float2 lineAA, float widthPx) {
 // reimplemented, not ported): it samples three decade-spaced scales (A finest, B, C) and
 // cross-fades them by `fract(log10(...))`, so the on-screen division density holds steady
 // as the camera dollies instead of popping between fixed cell sizes. Every 10th line is a
-// brighter "major" line, and the shared middle scale carries complementary weights into the
-// minor and major sets so the hand-off across a decade is seamless. The X (z=0) and Z (x=0)
-// world axes take their own colors, and the whole thing fades out radially from the camera
+// "major" line, distinguished by extra WIDTH in the same single line color (not a brighter
+// color): each scale fades by the one shared rule (its line thinning below a pixel), so the
+// levels converge and fall off together toward the horizon instead of reading as stacked
+// planes. The X (z=0) and Z (x=0) world axes take their own colors, and the whole thing fades radially from the camera
 // so the finite plane reads as infinite. Anti-aliased per pixel, so lines stay crisp at any
 // grazing angle. Unlit, alpha-blended, depth-tested but not depth-writing (the scene occludes
 // it; its transparent gaps occlude nothing). Live host chrome: preview only, never exported.
@@ -929,7 +930,7 @@ fragment float4 ollin_grid_fragment(MeshOut in [[stage_in]],
     const float MINOR_PX = 72.0;                  // target on-screen size of a minor cell, px
 
     // Per-axis L2 screen footprint of the BASE world uv (P), computed once: every scale's AA
-    // width is this divided by that scale, never a derivative of the pre-scaled uv (the Golus
+    // width is this divided by that scale, never a derivative of the pre-scaled uv (the base-uv
     // rule, see ollin_grid_lines). Also drives the LOD's world-units-per-pixel.
     float2 ddxP = dfdx(P);
     float2 ddyP = dfdy(P);
@@ -947,48 +948,39 @@ fragment float4 ollin_grid_fragment(MeshOut in [[stage_in]],
     float cellB = cellA * DIV;
     float cellC = cellB * DIV;
 
-    // The finest level A also *thins* its lines toward zero as it densifies (width × (1−f)),
-    // so the coverage fades it out instead of leaving a crowded hatch; B and C stay full width.
-    // Each scale's AA is the shared base derivative divided by that scale, smooth across the
-    // level boundaries where `cellA` steps a decade.
-    float covA = ollin_grid_lines(P / cellA, uvLength / cellA, g.lineWidthPixels * (1.0 - f));
-    float covB = ollin_grid_lines(P / cellB, uvLength / cellB, g.lineWidthPixels);
-    float covC = ollin_grid_lines(P / cellC, uvLength / cellC, g.lineWidthPixels);
-
-    // The shared middle scale B carries complementary weights: it fades in as the new minor
-    // while it fades out as the old major, so the decade hand-off leaves the major density
-    // steady. The finest level A fades on a *steeper* curve than B fills in, so the densest
-    // subdivision is culled toward the middle of the decade (hidden once it would crowd) rather
-    // than lingering as a faint hatch; it's only shown while its cells are still comfortably open.
-    float fadeA = (1.0 - f) * (1.0 - f);
-    float minorCov = covA * fadeA + covB * f;
-    float majorCov = covB * (1.0 - f) + covC * f;
+    // Canonical infinite-grid LOD: "major" is expressed as line WIDTH only, in a single line
+    // color, so every scale fades by the same rule (a line thinning below a pixel) and
+    // neighbouring scales hand off seamlessly. Giving majors a brighter colour or a separate
+    // per-class fade instead makes the levels vanish at different depths and read as stacked
+    // planes at different heights, so keep it width-only. Three widths span the decade: the
+    // finest (A) thins to nothing as it densifies, the middle (B) hands off from major width
+    // down to minor width, and the coarsest (C) grows in at major width to become the next
+    // major. ollin_grid_lines folds in the sub-pixel ink fade (saturate(widthPx)), so a
+    // thinning width IS the fade: one mechanism, shared by every line.
+    const float MAJOR_WIDTH_MULT = 2.0;                       // majors are this many × thicker
+    float minorW = g.lineWidthPixels;
+    float majorW = g.lineWidthPixels * MAJOR_WIDTH_MULT;
+    float widthA = minorW * (1.0 - f);
+    float widthB = mix(majorW, minorW, f);
+    float widthC = majorW * f;
+    float covA = ollin_grid_lines(P / cellA, uvLength / cellA, widthA);
+    float covB = ollin_grid_lines(P / cellB, uvLength / cellB, widthB);
+    float covC = ollin_grid_lines(P / cellC, uvLength / cellC, widthC);
+    float grid = saturate(covA + max(covB, covC));           // one composited grid, one fade
 
     // Crisp colored world axes (X along x at z=0, Z along z at x=0). A single line each (no
     // fract), so the per-axis base derivative is the right pixel measure and there's no aliasing.
     float xAxisCov = 1.0 - smoothstep(0.5 * g.lineWidthPixels, 0.5 * g.lineWidthPixels + 1.0, abs(P.y) / uvLength.y);
     float zAxisCov = 1.0 - smoothstep(0.5 * g.lineWidthPixels, 0.5 * g.lineWidthPixels + 1.0, abs(P.x) / uvLength.x);
 
-    // Radial distance fade so the finite plane reads as infinite (no hard edge).
+    // Radial distance fade so the finite plane reads as infinite (no hard edge). One uniform
+    // fade over the whole composited grid, so major and minor lines fall off together.
     float dist = length(P - g.cameraPos.xz);
     float t = smoothstep(g.fadeStart, g.fadeEnd, dist);   // 0 near the camera … 1 at the fade edge
 
-    // Major lines are bolder than minor up close (the wanted contrast), but their extra weight
-    // made them out-live the minor lines toward the horizon, so the grid read as two layers
-    // receding at different rates, the minor "below" the major. Fade the major's *distinctiveness*
-    // (its brighter color and higher opacity) back toward the minor as the plane recedes, held
-    // full until the fade is well underway: near the camera the two read as major/minor, toward
-    // the horizon they converge and fall off together.
-    float majorStrength = 1.0 - smoothstep(0.35, 1.0, t);
-    float3 minorRGB = srgbToLinear(g.lineColor.rgb);
-    float3 majorRGB = mix(minorRGB, srgbToLinear(g.majorColor.rgb), majorStrength);
-    float majorA = mix(g.lineColor.a, g.majorColor.a, majorStrength);
-
-    // Compose in linear light: minor (faint) < major (brighter near, converging far) < colored axes.
-    float3 color = minorRGB;
-    float coverage = minorCov * g.lineColor.a;
-    color = mix(color, majorRGB, saturate(majorCov));
-    coverage = max(coverage, majorCov * majorA);
+    // Compose in linear light: one grid colour for every line, colored axes on top.
+    float3 color = srgbToLinear(g.lineColor.rgb);
+    float coverage = grid * g.lineColor.a;
     color = mix(color, srgbToLinear(g.zAxisColor.rgb), zAxisCov);
     color = mix(color, srgbToLinear(g.xAxisColor.rgb), xAxisCov);
     coverage = max(coverage, max(zAxisCov * g.zAxisColor.a, xAxisCov * g.xAxisColor.a));
