@@ -4,10 +4,14 @@ import Foundation
 /// `Sketch.randomSeed`. Lives on the `Sketch` instance rather than as global
 /// mutable state. The default seed is entropy-based, so an unseeded sketch
 /// varies per run; call `randomSeed(_:)` for reproducible output.
-struct SplitMix64: RandomNumberGenerator {
+///
+/// It's public so the seedable geometry generators (like `poissonDisk`) can be
+/// driven reproducibly outside a `Sketch` too — hand one a seeded `SplitMix64`
+/// and the same seed always yields the same result.
+public struct SplitMix64: RandomNumberGenerator {
     private var state: UInt64
-    init(seed: UInt64) { state = seed }
-    mutating func next() -> UInt64 {
+    public init(seed: UInt64) { state = seed }
+    public mutating func next() -> UInt64 {
         state &+= 0x9E37_79B9_7F4A_7C15
         var z = state
         z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9

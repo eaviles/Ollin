@@ -1078,6 +1078,11 @@ let package = Package(
             path: "Examples/Patterns/Voronoi"
         ),
         .executableTarget(
+            name: "Example-Patterns-BlueNoise",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/BlueNoise"
+        ),
+        .executableTarget(
             name: "Example-Shapes-HollowShapes",
             dependencies: ["Ollin"],
             path: "Examples/Shapes/HollowShapes"

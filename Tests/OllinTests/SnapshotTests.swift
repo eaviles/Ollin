@@ -217,6 +217,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("voronoi-cells",
                  note: "A Lloyd-relaxed Voronoi diagram. Pins the Bowyer-Watson triangulation, the bisector cell clipping, and the relaxation. Seeded, no time.",
                  make: { VoronoiCells() }),
+    SnapshotCase("blue-noise",
+                 note: "A blue-noise (Poisson-disk) point set stippled as dots. Pins Bridson's dart-throwing sampler: the seeded scatter with a minimum spacing (no two dots closer than the radius, no clumps or gaps). Seeded, no time, so the layout is deterministic.",
+                 make: { BlueNoiseScene() }),
     SnapshotCase("depth-compositing-2d",
                  note: "A 2D card standing at a world depth between two point-cloud balls. Pins depth-aware compositing: the near ball draws over the card, the far ball is hidden by it. If 2D ignored depth (always over), the card would cover both, so this fails if the depth-participation path breaks. No time.",
                  make: { DepthComposited2D() }),
@@ -843,6 +846,26 @@ private final class VoronoiCells: Sketch {
         for (i, cell) in cells.enumerated() {
             fill(Colormap.viridis.color(at: Double(i) / Double(max(cells.count - 1, 1))))
             drawShape(cell)
+        }
+    }
+}
+
+/// A blue-noise (Poisson-disk) point set stippled as dots — exercises Bridson's
+/// dart-throwing sampler: a seeded scatter with a guaranteed minimum spacing, so
+/// the coverage is even with no clumps or gaps. Seeded and `time`-free, so it's
+/// deterministic.
+private final class BlueNoiseScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x11141C))
+        seed(9)
+        let points = poissonDisk(radius: 12)
+        noStroke()
+        for p in points {
+            let flow = signedNoise(p.x * 0.01, p.y * 0.01)
+            fill(Color.mix(Color(hex: 0xE8ECF4), Color(hex: 0x5AA9E6), t: (flow + 1) * 0.5))
+            drawCircle(center: p, radius: 1.6 + (flow + 1) * 1.4)
         }
     }
 }
