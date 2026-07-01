@@ -1098,6 +1098,11 @@ let package = Package(
             path: "Examples/Patterns/LSystem"
         ),
         .executableTarget(
+            name: "Example-Patterns-DifferentialGrowth",
+            dependencies: ["Ollin"],
+            path: "Examples/Patterns/DifferentialGrowth"
+        ),
+        .executableTarget(
             name: "Example-Shapes-HollowShapes",
             dependencies: ["Ollin"],
             path: "Examples/Shapes/HollowShapes"

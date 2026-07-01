@@ -229,6 +229,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("l-system",
                  note: "Four L-system presets in a 2x2: the dragon curve and Hilbert curve (turtle turning and F/G forward, no branching), the fern-like plant (the branch [ ] stack), and the stochastic plant (random productions drawn from the seed). Pins the string expansion, the turtle interpretation, branching, and fit-to-bounds. Seeded, no time, so it is deterministic.",
                  make: { LSystemScene() }),
+    SnapshotCase("differential-growth", frame: 130,
+                 note: "A seeded ring grown by differential growth to a fixed frame: attraction, alignment, and spatial-hash repulsion per step plus edge-splitting fold it into a brain-coral meander. Pins the stepper (forces, node injection, the spatial hash) at a deterministic frame. Seeded, and the frame is fixed, so the fold is reproducible.",
+                 make: { DifferentialGrowthScene() }),
     SnapshotCase("depth-compositing-2d",
                  note: "A 2D card standing at a world depth between two point-cloud balls. Pins depth-aware compositing: the near ball draws over the card, the far ball is hidden by it. If 2D ignored depth (always over), the card would cover both, so this fails if the depth-participation path breaks. No time.",
                  make: { DepthComposited2D() }),
@@ -956,6 +959,31 @@ private final class LSystemScene: Sketch {
                 drawPolyline(c.points, closed: false)
             }
         }
+    }
+}
+
+/// A seeded ring grown by differential growth to a fixed frame, folded into a
+/// brain-coral meander. Pins the stepper (forces, node injection, the spatial
+/// hash). Seeded and rendered at a fixed frame, so it's deterministic.
+private final class DifferentialGrowthScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let growth = DifferentialGrowth.ring(
+        center: Vector2(128, 128), radius: 26, count: 30, seed: 7,
+        maxSegmentLength: 4, repulsionRadius: 8,
+        attraction: 0.18, repulsion: 0.6, alignment: 0.25,
+        jitter: 0.4, growthRate: 0.8, maxNodes: 1600,
+        bounds: Rectangle(x: 10, y: 10, width: 236, height: 236))
+
+    override func draw() {
+        growth.step(3)
+        background(Color(hex: 0x0F1012))
+        noFill()
+        strokeWeight(1.4)
+        strokeCap(.round)
+        strokeJoin(.round)
+        stroke(Color(hex: 0x7FE0C4))
+        drawPolyline(growth.nodes, closed: true)
     }
 }
 
