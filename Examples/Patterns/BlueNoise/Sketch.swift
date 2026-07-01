@@ -35,12 +35,15 @@ final class BlueNoise: Sketch {
         noStroke()
 
         for p in points {
-            // A slow, bounded flow through the field: nearby dots swell and fade
-            // together, so the stipple pulses like a living texture.
-            let flow = signedNoise(p.x * 0.0016, p.y * 0.0016, time * 0.2)
-            let size = (2.2 + (flow + 1) * 2.6) * scale
+            // A flow field drives each dot's size and ink so neighbors swell and
+            // fade together; a second, faster field nudges each dot a few pixels,
+            // so the whole stipple shimmers while the coverage stays even.
+            let flow = signedNoise(p.x * 0.0018, p.y * 0.0018, time * 0.5)
+            let wobble = Vector2(signedNoise(p.y * 0.004, time * 0.8),
+                                 signedNoise(p.x * 0.004, time * 0.8 + 42)) * (5 * scale)
+            let size = (2.0 + (flow + 1) * 2.8) * scale
             fill(Color.mix(ink, accent, t: (flow + 1) * 0.5))
-            drawCircle(center: p, radius: size)
+            drawCircle(center: p + wobble, radius: size)
         }
     }
 }
