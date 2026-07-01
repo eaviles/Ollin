@@ -6,8 +6,8 @@ This file is the aggregate record; the full license text and the original
 copyright headers are kept alongside each component's source.
 
 This is distinct from the projects Ollin is merely *inspired by* or *studied as a
-reference* — those contribute no code and no license obligations (see the
-README's "Influences & attribution"). The components here are actual source
+reference*: those contribute no code and no license obligations (see
+[`ATTRIBUTION.md`](ATTRIBUTION.md)). The components here are actual source
 redistributed inside this repository.
 
 ---

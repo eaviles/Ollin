@@ -113,7 +113,7 @@ override func keyPressed() {
 onReload()
 ```
 
-Called once after the live-reload host hot-swaps the sketch, right after its `setup()` (never on first launch). See the [iteration workflow](../../README.md#iteration-workflow).
+Called once after the live-reload host hot-swaps the sketch, right after its `setup()` (never on first launch). See [live reload](../../README.md#live-reload).
 
 <a name="temporal-state"></a>
 
@@ -243,4 +243,4 @@ override var windowMode: WindowMode { .fixed(0.5) }   // preview at half size
 
 ### Running a sketch
 
-`OllinApp.run(MySketch())` boots a window. With `@main` on the subclass, the inherited `Sketch.main()` does that for you, so a single file is the whole program. To iterate with live reload, run it through the host instead: `swift run OllinLive path/to/Sketch.swift` (see the [iteration workflow](../../README.md#iteration-workflow)). Any sketch can also render headlessly: a single frame with `--export`, or a deterministic numbered PNG sequence with `--export-sequence <dir> (--frames N | --seconds D) [--fps F] [--skip S]` (a fixed-timestep render that assembles into a video; `--skip` runs the sketch a while first so a stateful sketch settles before capture — see [exporting frames](../../README.md#exporting-frames)).
+`OllinApp.run(MySketch())` boots a window. With `@main` on the subclass, the inherited `Sketch.main()` does that for you, so a single file is the whole program. To iterate with live reload, run it through the host instead: `swift run OllinLive path/to/Sketch.swift` (see [live reload](../../README.md#live-reload)). Any sketch can also render headlessly: a single frame with `--export`, or a deterministic numbered PNG sequence with `--export-sequence <dir> (--frames N | --seconds D) [--fps F] [--skip S]` (a fixed-timestep render that assembles into a video; `--skip` runs the sketch a while first so a stateful sketch settles before capture; see [export](../../README.md#export)).

@@ -4,7 +4,7 @@
 
 ## The shader library
 
-Every [user-supplied shader](./Shaders.md) is compiled with Ollin's shader library spliced in, so these helpers are callable from inside `shade(uv, info)` with no `#include`. They're the same helpers Ollin's own shaders use (one source of truth), each written from the published technique and credited in the [README's Techniques list](../../README.md).
+Every [user-supplied shader](./Shaders.md) is compiled with Ollin's shader library spliced in, so these helpers are callable from inside `shade(uv, info)` with no `#include`. They're the same helpers Ollin's own shaders use (one source of truth), each written from the published technique and credited in the [Techniques list](../../ATTRIBUTION.md#techniques).
 
 This is the *fragment-shader* library. Compute kernels get a separate, compute-tuned prelude (curl noise, disc sampling, 3D value noise) documented under [Compute](./Compute.md#prelude); the two overlap on hashing and value noise but are different sets.
 

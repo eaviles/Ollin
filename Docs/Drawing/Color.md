@@ -116,7 +116,7 @@ let cool = Color(hex: 0x0066FF)
 fill(Color.mix(warm, cool, t: sin(time) * 0.5 + 0.5))
 ```
 
-The `Mixing` example draws the same two colors mixed in all five spaces, band by band. The OKLab family and the gamut mapping are credited under [Influences & attribution](../../README.md#influences--attribution).
+The `Mixing` example draws the same two colors mixed in all five spaces, band by band. The OKLab family and the gamut mapping are credited under [Influences & attribution](../../ATTRIBUTION.md#color).
 
 <a name="ramp"></a>
 
@@ -180,7 +180,7 @@ Palette.triadic(of: base)                               // thirds of the wheel
 Palette.analogous(of: base, count: 3, spread: 1.0 / 12) // neighbours centered on base
 ```
 
-**Built-in sets**: the eight ColorBrewer qualitative palettes ship as data — `.set1`, `.set2`, `.set3`, `.paired`, `.pastel1`, `.pastel2`, `.dark2`, `.accent` (credited under [Influences & attribution](../../README.md#influences--attribution)).
+**Built-in sets**: the eight ColorBrewer qualitative palettes ship as data: `.set1`, `.set2`, `.set3`, `.paired`, `.pastel1`, `.pastel2`, `.dark2`, `.accent` (credited under [Influences & attribution](../../ATTRIBUTION.md#color)).
 
 The `Harmonies` example follows a drifting base color through all four builders; `Swatchbook` lays out the built-in sets.
 
@@ -204,7 +204,7 @@ Seven presets ship built in (Quilez's example palettes), named for how each read
 fill(CosinePalette.sunset.color(at: time * 0.1))   // drift through the ramp over time
 ```
 
-The `Palettes` example sweeps all seven. The formula is credited under [Influences & attribution](../../README.md#influences--attribution).
+The `Palettes` example sweeps all seven. The formula is credited under [Influences & attribution](../../ATTRIBUTION.md#color).
 
 <a name="colormap"></a>
 
@@ -217,4 +217,4 @@ let t = noise(x * 0.01, y * 0.01)            // 0...1
 fill(Colormap.magma.color(at: t))
 ```
 
-Eight cases: `viridis`, `magma`, `inferno`, `plasma`, `cividis`, `turbo`, `rocket`, `mako`. The `Colormaps` example shows all eight. Data origins (matplotlib, Google, seaborn) are credited under [Influences & attribution](../../README.md#influences--attribution).
+Eight cases: `viridis`, `magma`, `inferno`, `plasma`, `cividis`, `turbo`, `rocket`, `mako`. The `Colormaps` example shows all eight. Data origins (matplotlib, Google, seaborn) are credited under [Influences & attribution](../../ATTRIBUTION.md#color).

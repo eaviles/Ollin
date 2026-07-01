@@ -220,7 +220,7 @@ faces (the "dirty faces" bug).
 
 Techniques: hemisphere SSAO (Crytek, john-chapman, LearnOpenGL), normal-from-depth
 (Wicked Engine), the Fibonacci kernel, and the continuous basis (Duff). Credited
-in the README's Techniques list; written from the technique, not ported.
+in `ATTRIBUTION.md`'s Techniques list; written from the technique, not ported.
 
 Remaining work: any residual sub-pixel edge shimmer (8x MSAA is not infinite;
 temporal accumulation is the lever), and routing a raymarched SDF field's
