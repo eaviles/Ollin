@@ -13,6 +13,7 @@ The 3D features are designed to stack: lights over materials, an environment ove
 - [Who casts, receives, and appears in reflections](#matrix)
 - [Effects that read depth](#depth-effects)
 - [Paths that skip parts of 3D](#skips)
+- [The realism recipe](#realism)
 - [Quick recipes](#recipes)
 
 <a id="reflections"></a>
@@ -88,6 +89,42 @@ Ambient occlusion and screen-space reflections read true surface normals where m
 ### Paths that skip parts of 3D
 
 Two output paths draw 3D geometry but skip some of its machinery: the accumulation surface ([`noClear()`](../Drawing/Accumulation.md)) and the texture hand-off used by [Syphon](../Integration/Syphon.md) render 3D **without depth sorting and without shadows**. The live window and the image/video/snapshot exports render everything.
+
+<a id="realism"></a>
+### The realism recipe
+
+If the goal is simply *the most realistic scene Ollin can render*, this is the stack, in the order you'd add each piece:
+
+1. **Build the scene from solid meshes.** They're the only geometry that takes the full pipeline: physically-based materials, environment light, shadows, and ray-traced reflections (the tables above are the reason).
+2. **Light it with an `environment(_:)`.** A real captured surrounding ([`.studio`, `.sunset`, and the other bundled HDRIs](./3D.md#environment), or the procedural `.sky(...)`) is the single biggest realism step: every material picks up believable ambient light and reflections, and the backdrop comes with it.
+3. **Use the physically-based materials.** [`material(.metal(roughness:))`, `.dielectric(roughness:)`, or the built-ins like `.polishedMetal` and `.roughPlastic`](./3D.md#materials), with `fill` as the surface color. These are the finishes that respond correctly to the environment and can mirror the scene.
+4. **Add one key light and shadows.** A `directionalLight` gives the scene a direction, and `castShadows()` grounds every object with soft, contact-hardening shadows (dial the softness with `shadowSoftness(_:)`).
+5. **Turn on `rayTracedReflections()`.** On Apple silicon the metals now mirror the actual scene, contacts included; on other machines the call is a safe no-op and the environment reflection remains.
+6. **Tone-map the result.** `toneMap(.aces)` rolls the environment's bright highlights off filmically instead of clipping them.
+
+```swift
+override func draw() {
+    camera(.orbiting(target: .zero, radius: 8, azimuth: time * 0.1, elevation: 0.35))
+    environment(.studio)
+    directionalLight(.white, direction: Vector3(-0.4, -1, -0.3), intensity: 0.8)
+    castShadows()
+    rayTracedReflections()
+    toneMap(.aces)
+
+    material(.roughPlastic); fill(Color(white: 0.9))
+    withState { translate(0, -1.05, 0); drawBox(width: 20, height: 0.1, depth: 20) }
+
+    material(.polishedMetal); fill(Color(hex: 0xf2f3f7))
+    drawSphere(radius: 1)
+}
+```
+
+Two optional layers sit on top, with one trade to know about:
+
+- **Grounding and lens looks** come from the depth effects: draw the scene into a render target, then `.ambientOcclusion(...)` darkens the contacts and crevices and `.defocus(...)` adds depth of field. The trade: inside a render target the ray-traced reflections take their simpler single-ray form (the anti-aliased, frame-accumulated version covers the canvas itself), so reserve the target pass for when the occlusion or the lens matters more than the mirror edges.
+- **Exports take care of quality by themselves.** The live window trades a little quality for frame rate on the expensive passes; the image, video, and snapshot exporters resolve those dials to their highest tier, so the exported art is always the best version of the frame.
+
+The `3D/RayTracedReflections` and `3D/ImageBasedLighting` examples are this recipe in working form.
 
 <a id="recipes"></a>
 ### Quick recipes
