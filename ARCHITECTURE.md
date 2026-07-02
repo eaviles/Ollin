@@ -422,6 +422,19 @@ widened behind by `thickness`, with back-face rejection (`dot(R, sceneNormal) <
 compare, is what rejects a ray that merely grazes a silhouette beside an object:
 such a ray never crosses that object's depth.
 
+The march **starts half a stride out** rather than on the receiver's own depth:
+an interval anchored exactly on it flips between hit and miss with any depth
+gradient across a pixel (self-hit speckle). Half a stride is the bias that gives
+the first interval the same start-to-width ratio as every later one, so its
+self-hit geometry matches the rest of the march while a hit landing within the
+first stride (a reflection right at the contact between an object and its
+mirror image) still registers. The earlier form skipped the whole first stride
+instead, which detached every reflection about a pixel from its object. The
+step count is also **floored at 4**, because a ray whose whole screen span is a
+pixel or two (one heading nearly along the view axis) would otherwise be
+covered by a single coarse interval and could effectively never hit: a dead
+zone that punched pixel holes in view-aligned reflections.
+
 This pass was the source of a long, costly debugging loop, and the failures form
 a clear lesson. An earlier hand-rolled version stepped a fixed world-space
 distance and forward-projected each step, which samples unevenly under
@@ -457,10 +470,15 @@ the scene camera's `inverseView`, project through the previous frame's
 `viewProjection` to its prior uv), neighbourhood-clamps the sampled history to the
 current reflection's 3x3 AABB to reject ghosting, then EMA-blends at
 `resolveSSRAlpha`. History is an `SSRHistorySlot` ping-pong keyed by the SSR op's
-**ordinal in the frame**, not by an owner identity: a sketch makes its
-`renderTarget()` fresh each frame (unlike a persistent `Feedback`/`SimField`), so
-there is no stable object to key on. `usesFeedback` counts an SSR combine so the
-headless/export warmup converges.
+**call site** (`#fileID:#line`, captured by the `.screenSpaceReflections`
+factory) plus an occurrence index for same-site ops, not by an owner identity: a
+sketch makes its `renderTarget()` fresh each frame (unlike a persistent
+`Feedback`/`SimField`), so there is no stable object to key on. It is not a
+frame-wide ordinal either: an ordinal shifts when an earlier SSR op is recorded
+only conditionally, briefly handing a later op the wrong history. Only same-site
+ops (one call in a loop) can still shift among themselves, the structural-identity
+limit. `usesFeedback` counts an SSR combine so the headless/export warmup
+converges.
 
 **Composite** upsamples. The march, blur, and temporal passes run at
 `resolveSSRScale` (half-res on `.performance`, full-res otherwise and always on

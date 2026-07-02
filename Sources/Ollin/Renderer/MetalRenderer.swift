@@ -584,8 +584,8 @@ final class MetalRenderer {
     /// carrying the reflection across frames (the back is written this frame and becomes the
     /// front next frame), plus the previous frame's scene view·projection used to reproject it,
     /// and a `valid` flag gating the very first frame (no history yet). Keyed by the SSR op's
-    /// ordinal in the frame rather than a layer identity: a sketch makes its render target fresh
-    /// each frame, so there is no stable owner to key on the way feedback and fluid do.
+    /// call site rather than a layer identity: a sketch makes its render target fresh each
+    /// frame, so there is no stable owner to key on the way feedback and fluid do.
     private final class SSRHistorySlot {
         let a: MTLTexture, b: MTLTexture
         let w: Int, h: Int
@@ -596,14 +596,28 @@ final class MetalRenderer {
             self.a = a; self.b = b; self.w = w; self.h = h
         }
     }
-    /// Persistent SSR history, kept across frames like `feedbackSlots`, keyed by SSR-op ordinal.
-    /// Bounded by the (small, contiguous) ordinal count, so it isn't pruned per frame; a skipped
-    /// SSR frame keeps its history (the reprojection clamp reconverges if it went stale).
-    private var ssrHistorySlots: [Int: SSRHistorySlot] = [:]
+    /// An SSR op's history identity: the call site that built the `Combine` plus its
+    /// occurrence index among same-site ops this frame (one call in a loop records
+    /// several). NOT a frame-wide ordinal: a sketch that records an *earlier* SSR
+    /// combine only conditionally would shift every later op's ordinal, handing it
+    /// another op's history until the clamp reconverged (the cross-wire). A call-site
+    /// key holds steady however many other SSR ops come and go; only same-site ops
+    /// can still shift among themselves, the structural-identity limit.
+    private struct SSRSlotKey: Hashable {
+        let source: String
+        let occurrence: Int
+    }
+    /// Persistent SSR history, kept across frames like `feedbackSlots`, keyed by the op's
+    /// call site. Not pruned per frame (a skipped SSR frame keeps its history; the
+    /// reprojection clamp reconverges if it went stale), but bounded in `ssrHistorySlot`
+    /// against orphaned keys (a live-reload edit can move a call site's line).
+    private var ssrHistorySlots: [SSRSlotKey: SSRHistorySlot] = [:]
     /// SSR ops resolved this frame, so only those flip their ping-pong.
-    private var ssrHistoryUsedThisFrame: Set<Int> = []
-    /// The next SSR op's ordinal this frame; reset at the start of `encodeEffectTargets`.
-    private var ssrOrdinalNext = 0
+    private var ssrHistoryUsedThisFrame: Set<SSRSlotKey> = []
+    /// Occurrence counters per SSR call site this frame; reset at the start of
+    /// `encodeEffectTargets`, so both encodes of a repeated frame (the frame-grab
+    /// re-render) resolve identical keys.
+    private var ssrOccurrenceThisFrame: [String: Int] = [:]
 
     /// The deferred ray-traced reflection's temporal history (the live on-screen path):
     /// one slot for the main canvas, reusing the SSR slot shape (ping-pong pair +
@@ -1447,7 +1461,7 @@ final class MetalRenderer {
         targetTexNext = 0
         filterTexNext = 0
         targetDepthNext = 0
-        ssrOrdinalNext = 0
+        ssrOccurrenceThisFrame.removeAll(keepingCapacity: true)
         // A second encode of the same sketch frame (the frame-grab / Syphon off-screen
         // re-render) must not advance persistent state twice; see `lastStatefulEncode`.
         let stamp = (drawer: ObjectIdentifier(drawer), frame: drawer.computeUniforms.frameCount)
@@ -1670,8 +1684,8 @@ final class MetalRenderer {
             fluidSlots = fluidSlots.filter { $0.value.owner != nil }
         }
         // Advance each SSR temporal history drawn this frame (its back becomes next frame's
-        // front). Slots aren't pruned (the ordinal key bounds the map), so a skipped SSR frame
-        // keeps its accumulation.
+        // front). Slots aren't pruned here (`ssrHistorySlot` bounds the map on allocation),
+        // so a skipped SSR frame keeps its accumulation.
         for id in ssrHistoryUsedThisFrame { ssrHistorySlots[id]?.flipped.toggle() }
         ssrHistoryUsedThisFrame.removeAll(keepingCapacity: true)
     }
@@ -1927,10 +1941,12 @@ final class MetalRenderer {
             let sh = max(1, Int((Double(height) * scale).rounded()))
             let texel = SIMD4<Float>(1 / Float(sw), 1 / Float(sh), steps, Float(fresnel))
             let d = depth ?? .neutral
-            let ordinal = ssrOrdinalNext; ssrOrdinalNext += 1
+            let occurrence = ssrOccurrenceThisFrame[op.sourceID, default: 0]
+            ssrOccurrenceThisFrame[op.sourceID] = occurrence + 1
+            let slotKey = SSRSlotKey(source: op.sourceID, occurrence: occurrence)
             guard let reflTex = acquireFilterTexture(width: sw, height: sh, pooled: pooled),
                   let reflBlur = acquireFilterTexture(width: sw, height: sh, pooled: pooled),
-                  let slot = ssrHistorySlot(ordinal: ordinal, width: sw, height: sh, into: cb),
+                  let slot = ssrHistorySlot(key: slotKey, width: sw, height: sh, into: cb),
                   let out = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
             let hasNormals: Float = normals != nil ? 1 : 0
             let front = slot.flipped ? slot.b : slot.a
@@ -1970,7 +1986,7 @@ final class MetalRenderer {
                                  into: cb)
             slot.previousViewProjection = d.viewProjection
             slot.valid = true
-            ssrHistoryUsedThisFrame.insert(ordinal)
+            ssrHistoryUsedThisFrame.insert(slotKey)
             // Pass 4: composite the accumulated reflection (upsampled from `back`) over the base.
             encodeEffectFragment("ollin_fx_ssr_composite", inputs: [base, back], output: out,
                                  params: [SIMD4(0, 0, 0, 0),
@@ -2249,20 +2265,29 @@ final class MetalRenderer {
         return slot
     }
 
-    /// The SSR temporal-history slot for `ordinal`, allocating the ping-pong pair (cleared to
+    /// The SSR temporal-history slot for `key`, allocating the ping-pong pair (cleared to
     /// zero, so the first frame's accumulation starts from a clean, reflection-free history) on
-    /// first use or a size change. The key is the op ordinal, so a size change (live half-res
-    /// versus full-res export) reallocates and reconverges rather than reading a mismatched slot.
-    private func ssrHistorySlot(ordinal: Int, width: Int, height: Int,
+    /// first use or a size change (live half-res versus full-res export reallocates and
+    /// reconverges rather than reading a mismatched slot). Allocating past a small budget
+    /// first drops slots untouched this frame: call-site keys are static per binary, but a
+    /// live-reload edit that moves the call's line orphans the old key, and an orphan should
+    /// cost two textures at most briefly (a dropped-but-live slot only loses its history and
+    /// reconverges).
+    private func ssrHistorySlot(key: SSRSlotKey, width: Int, height: Int,
                                 into cb: MTLCommandBuffer) -> SSRHistorySlot? {
-        if let slot = ssrHistorySlots[ordinal], slot.w == width, slot.h == height { return slot }
+        if let slot = ssrHistorySlots[key], slot.w == width, slot.h == height { return slot }
+        if ssrHistorySlots.count >= 32 {
+            for stale in ssrHistorySlots.keys where !ssrHistoryUsedThisFrame.contains(stale) {
+                ssrHistorySlots.removeValue(forKey: stale)
+            }
+        }
         guard let a = makeFloatResolve(width: width, height: height),
               let b = makeFloatResolve(width: width, height: height) else { return nil }
         let clear = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
         clearFloatTexture(a, color: clear, into: cb)
         clearFloatTexture(b, color: clear, into: cb)
         let slot = SSRHistorySlot(a: a, b: b, w: width, h: height)
-        ssrHistorySlots[ordinal] = slot
+        ssrHistorySlots[key] = slot
         return slot
     }
 

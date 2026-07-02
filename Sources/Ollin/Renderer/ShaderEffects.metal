@@ -547,7 +547,12 @@ fragment float4 ollin_fx_ssr(PresentOut in [[stage_in]],
     // pins the crossing within the last stride. (Coarse-stride + refinement screen-space DDA,
     // written from the published technique; README Techniques.)
     float majorStep = max(abs(dd.x), abs(dd.y));                  // the ray's pixel span (DDA major axis)
-    float nF = clamp(majorStep, 1.0, float(steps));              // coarse step count (<= budget, covers the ray)
+    // Coarse step count: <= the budget, covers the ray. Floored at 4 so a SHORT ray (one
+    // whose whole screen span is a pixel or two, e.g. a reflection heading nearly along
+    // the view axis) is tested by several sub-pixel intervals instead of a single coarse
+    // one: a single full-span interval effectively can't register a crossing, a dead zone
+    // that punches pixel holes in view-aligned reflections.
+    float nF = clamp(majorStep, min(4.0, float(steps)), float(steps));
     // Depth at the ray's ends (positive). Under perspective, depth along the screen
     // segment is hyperbolic in the fraction (the classic 1/z lerp); under
     // orthographic, screen position is linear in the world parameter and so is
@@ -558,7 +563,18 @@ fragment float4 ollin_fx_ssr(PresentOut in [[stage_in]],
     float2 hitUV = float2(-1.0);
     float hitDist = 0.0;                                          // world distance the ray travelled to the hit
     bool hit = false;
-    float prevRayDepth = -P.z, prevFrac = 0.0;                   // ray depth + screen fraction, previous step
+    // The march starts HALF a stride out, not on the surface: an interval starting exactly
+    // ON the receiver's own depth flips between hit and miss with any depth gradient across
+    // a pixel (self-hit speckle). Half a stride is the exact bias that gives the first
+    // interval the same start-to-width ratio (= 1) as every later one, so its self-hit
+    // geometry matches the rest of the march, and a hit landing within the first stride
+    // (a reflection right at the contact between an object and its mirror image) still
+    // registers; skipping that stride entirely would detach every reflection about a
+    // pixel from its object.
+    float halfFrac = 0.5 / nF;
+    float prevRayDepth = persp ? 1.0 / (invD0 + halfFrac * (invD1 - invD0))
+                               : mix(d0z, d1z, halfFrac);        // ray depth + screen fraction, previous step
+    float prevFrac = halfFrac;
     for (int i = 1; i <= int(nF); i++) {
         float frac = float(i) / nF;                              // fraction along the full screen segment
         float2 uv = (d0 + dd * frac) * texel;
@@ -573,8 +589,10 @@ fragment float4 ollin_fx_ssr(PresentOut in [[stage_in]],
         // that span (the ray genuinely *crosses* the surface depth), widened behind by
         // `thickness` (the assumed solid thickness, depth-relative). A crossing test rejects a
         // ray that merely grazes a silhouette beside an object, since it never crosses that depth.
+        // Every stride is testable, including the first: the half-stride start above is the
+        // self-hit guard (an interval anchored on the receiver's own depth would speckle).
         float dmin = min(prevRayDepth, rayDepth), dmax = max(prevRayDepth, rayDepth);
-        if (i > 1 && dmax >= sceneDepth && dmin <= sceneDepth + thickness * sceneDepth) {
+        if (dmax >= sceneDepth && dmin <= sceneDepth + thickness * sceneDepth) {
             // Binary-refine the crossing fraction within (prevFrac, frac] so the hit is precise
             // even when the coarse stride spans several pixels (at high resolution).
             float lo = prevFrac, hi = frac;

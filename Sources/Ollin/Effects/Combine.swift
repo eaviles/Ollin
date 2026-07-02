@@ -73,6 +73,13 @@ public struct Combine: Sendable {
 
     let kind: Kind
 
+    /// The call site that built this combine (`#fileID:#line`, captured by the factory),
+    /// for ops that keep per-op state across frames. Screen-space reflections' temporal
+    /// history is keyed on it: a call site is stable across frames however many *other*
+    /// combines a sketch records conditionally, where a frame-wide ordinal would shift
+    /// and hand a later op the wrong history. Empty for the stateless ops.
+    var sourceID: String = ""
+
     /// A user-supplied `Shader` as a two-input combine: it reads the base with
     /// `sample(info, uv)` and `aux` with `sampleAux(info, uv)`. Use with
     /// `base.combined(with: aux, .shader(myShader))`.
@@ -195,10 +202,12 @@ public struct Combine: Sendable {
     public static func screenSpaceReflections(
         intensity: Double = 0.6, maxDistance: Double = 8, thickness: Double = 0.025,
         roughness: Double = 0, fresnel: Double = 0.5, edgeFade: Double = 0.1,
-        quality: RenderQuality = .default) -> Combine {
+        quality: RenderQuality = .default,
+        file: String = #fileID, line: Int = #line) -> Combine {
         Combine(kind: .screenSpaceReflections(
             intensity: max(0, intensity), maxDistance: max(0.0001, maxDistance),
             thickness: max(0.0001, thickness), roughness: min(max(roughness, 0), 1),
-            fresnel: max(0, fresnel), edgeFade: min(max(edgeFade, 0), 0.5), quality: quality))
+            fresnel: max(0, fresnel), edgeFade: min(max(edgeFade, 0), 0.5), quality: quality),
+                sourceID: "\(file):\(line)")
     }
 }
