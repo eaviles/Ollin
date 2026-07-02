@@ -674,11 +674,12 @@ final class MetalRenderer {
     /// Sources whose off-thread decode is in flight, so a repeat request each frame doesn't
     /// start a second decode.
     private let equirectLoading = OSAllocatedUnfairLock(initialState: Set<Environment.Source>())
-    /// Sources whose decode failed (a corrupt or unreadable file). The request repeats every
-    /// frame while unresolved, so without this memo a broken HDRI would re-attempt the
-    /// multi-second decode and log continuously; the same file won't decode differently, so
-    /// the memo holds for the session.
-    private let equirectFailed = OSAllocatedUnfairLock(initialState: Set<Environment.Source>())
+    /// Sources whose decode failed (a corrupt or unreadable file), with the file's
+    /// (size, mtime) stamp at failure. The request repeats every frame while unresolved, so
+    /// without this memo a broken HDRI would re-attempt the multi-second decode and log
+    /// continuously; the same bytes won't decode differently, so the memo holds until the
+    /// file on disk changes (replacing a broken HDRI retries without a relaunch).
+    private let equirectFailed = OSAllocatedUnfairLock(initialState: [Environment.Source: EquirectStamp]())
     /// The resolve tick each source's pixels were last requested (`equirectBytes`), so
     /// decoded-but-never-baked pixels (the environment moved on before its off-thread
     /// decode landed) are freed instead of held for the session. Main-thread only (the
@@ -5198,7 +5199,12 @@ extension MetalRenderer {
             equirectReady.withLock { $0[env.source] = bytes }
             return bytes
         case .url(let file):
-            if equirectFailed.withLock({ $0.contains(env.source) }) { return nil }
+            if let failedStamp = equirectFailed.withLock({ $0[env.source] }) {
+                // Skip the re-decode only while the bytes it failed on are still there;
+                // a replaced file (different size/mtime) may decode fine, so retry it.
+                guard Self.equirectSourceStamp(file) != failedStamp else { return nil }
+                equirectFailed.withLock { $0[env.source] = nil }
+            }
             if blocking {
                 guard let bytes = Self.loadEquirectBytes(env) else {
                     Self.noteEquirectDecodeFailure(file, memo: equirectFailed, source: env.source)
@@ -5493,19 +5499,21 @@ extension MetalRenderer {
     /// blob is served only for the exact bytes it was decoded from. Keyed by path alone
     /// the blob would keep serving stale pixels after a user replaces their own
     /// `hdri(path:)` EXR at the same path.
-    nonisolated private static func equirectSourceStamp(_ source: URL) -> (size: UInt64, mtime: UInt32) {
+    nonisolated private static func equirectSourceStamp(_ source: URL) -> EquirectStamp {
         let attrs = try? FileManager.default.attributesOfItem(atPath: source.path)
         let size = (attrs?[.size] as? NSNumber)?.uint64Value ?? 0
         let mtime = (attrs?[.modificationDate] as? Date).map { UInt32(clamping: Int($0.timeIntervalSince1970)) } ?? 0
-        return (size, mtime)
+        return EquirectStamp(size: size, mtime: mtime)
     }
 
-    /// Record a source whose decode failed and say so once (the memo keeps both the
-    /// re-decode and the message from repeating every frame).
+    /// Record a source whose decode failed, stamped with the file it failed on, and say
+    /// so once per distinct file (the memo keeps both the re-decode and the message from
+    /// repeating every frame; a *replaced* broken file gets its own one-time message).
     nonisolated private static func noteEquirectDecodeFailure(
-        _ file: URL, memo: OSAllocatedUnfairLock<Set<Environment.Source>>,
+        _ file: URL, memo: OSAllocatedUnfairLock<[Environment.Source: EquirectStamp]>,
         source: Environment.Source) {
-        let fresh = memo.withLock { $0.insert(source).inserted }
+        let stamp = equirectSourceStamp(file)
+        let fresh = memo.withLock { $0.updateValue(stamp, forKey: source) != stamp }
         if fresh {
             print("Ollin: could not decode \(EnvironmentCache.displayName(for: file)); "
                 + "the file is not a readable HDRI (Scripts/clear-caches.sh --environments "
@@ -5598,6 +5606,15 @@ extension MetalRenderer {
         guard size == stamp.size, header[7] == stamp.mtime else { return nil }
         return EquirectBytes(data: data.subdata(in: headerSize..<data.count), width: w, height: h, avg: avg)
     }
+}
+
+/// The (size, mtime-seconds) identity of a source HDRI file, carried in the equirect blob
+/// header (so a blob is served only for the exact bytes it was decoded from) and in the
+/// decode-failure memo (so replacing a broken file retries instead of holding the failure
+/// for the session).
+fileprivate struct EquirectStamp: Equatable, Sendable {
+    let size: UInt64
+    let mtime: UInt32
 }
 
 /// Processed equirect float pixels (`rgba16Float`, `width·height·8` bytes) plus the source's
