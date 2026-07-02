@@ -401,15 +401,20 @@ static inline float meshRTShadow(float3 worldPos, float3 normal,
 // a sharp mirror, so for a rough *primary* surface it blends toward the prefiltered environment by
 // roughness (a single ray can't blur). The hit radiance is left in the same un-exposed units as
 // the prefilter sample, so the caller's outer IBL-intensity scale applies to hit and miss alike.
-static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, float rough,
-                                         primitive_acceleration_structure accel,
-                                         const device OllinMeshVertex *verts,
-                                         const device uint *geoOffsets,
-                                         constant OllinLighting &light,
-                                         texturecube<float> irradianceTex,
-                                         texturecube<float> prefilterTex,
-                                         sampler cubeSamp, float3x3 rot,
-                                         float3 envReflection) {
+// The hit-or-miss half of the reflection: trace one closest-hit ray and shade the hit,
+// returning (radiance, 1) on a hit or (0, 0, 0, 0) on a miss — premultiplied by the hit
+// flag, so an average over jittered rays carries the fractional hit coverage in alpha
+// (the deferred pass's temporal accumulation / export supersample rides exactly that).
+// The inline wrapper below folds the miss back to the environment sample, so the two
+// callers stay in step.
+static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3 R,
+                                               primitive_acceleration_structure accel,
+                                               const device OllinMeshVertex *verts,
+                                               const device uint *geoOffsets,
+                                               constant OllinLighting &light,
+                                               texturecube<float> irradianceTex,
+                                               texturecube<float> prefilterTex,
+                                               sampler cubeSamp, float3x3 rot) {
     float eps = max(light.rtReflectionBias, 1e-4);
     ray r;
     r.origin = worldPos + n * eps;        // lift off the surface (self-hit guard)
@@ -424,7 +429,7 @@ static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, fl
             q.commit_triangle_intersection();
     }
     if (q.get_committed_intersection_type() != intersection_type::triangle)
-        return envReflection;             // the ray left the scene -> the environment
+        return float4(0.0);               // the ray left the scene -> the environment (caller's fallback)
 
     // Fetch the hit triangle from the flat mesh buffer and interpolate its attributes.
     uint base = geoOffsets[q.get_committed_geometry_id()] + q.get_committed_primitive_id() * 3u;
@@ -478,9 +483,26 @@ static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, fl
     }
     diffuse += direct / max(light.iblIntensity, 1e-3);
     col += diffuse * (1.0 - metal);
+    return float4(col, 1.0);
+}
 
-    // Glossy: blend the sharp mirror toward the prefiltered environment by the *primary*
-    // surface's roughness (a single ray can't blur).
+// The inline single-ray form (render targets and the raymarched fields): trace, fall back
+// to the environment on a miss, and blend the sharp mirror toward the prefiltered
+// environment by the *primary* surface's roughness (a single ray can't blur). A miss
+// returns `envReflection` exactly (mixing env toward env is the identity), so this
+// wrapper reproduces the pre-split math bit for bit.
+static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, float rough,
+                                         primitive_acceleration_structure accel,
+                                         const device OllinMeshVertex *verts,
+                                         const device uint *geoOffsets,
+                                         constant OllinLighting &light,
+                                         texturecube<float> irradianceTex,
+                                         texturecube<float> prefilterTex,
+                                         sampler cubeSamp, float3x3 rot,
+                                         float3 envReflection) {
+    float4 hit = ollin_rt_reflection_trace(worldPos, n, R, accel, verts, geoOffsets,
+                                           light, irradianceTex, prefilterTex, cubeSamp, rot);
+    float3 col = mix(envReflection, hit.rgb, hit.a);
     return mix(col, envReflection, smoothstep(0.12, 0.55, rough));
 }
 #endif
@@ -818,11 +840,15 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                            // The reflection trace's inputs (see ollin_rt_reflection):
                                            // the world position + the caster accel + the flat mesh
                                            // buffer + its per-geometry base-vertex offsets. Inert
-                                           // unless `light.rtReflections != 0`.
+                                           // unless `light.rtReflections != 0`. `deferredReflection`
+                                           // is the pre-traced screen-space sample (premultiplied
+                                           // radiance, alpha = hit coverage) the caller read when
+                                           // `light.rtReflectionDeferred` is set; zero otherwise.
                                            , float3 worldPos,
                                            primitive_acceleration_structure reflAccel,
                                            const device OllinMeshVertex *meshVerts,
-                                           const device uint *meshGeoOffsets
+                                           const device uint *meshGeoOffsets,
+                                           float4 deferredReflection
 #endif
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
@@ -842,11 +868,20 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     float3 prefiltered = prefilterTex.sample(cubeSamp, rot * R, level(rough * light.iblMaxMip)).rgb;
 #if OLLIN_RT_SHADOWS
     // Trade the environment reflection for a traced reflection of the actual scene (the
-    // environment remains the miss fallback) when ray-traced reflections are on.
+    // environment remains the miss fallback) when ray-traced reflections are on. The
+    // deferred form composites the pre-traced screen-space sample: premultiplied hit
+    // radiance over the environment by the accumulated hit coverage, so a temporally
+    // converged reflection edge blends smoothly between scene and sky, then the same
+    // primary-roughness glossy blend as the inline path (identical when coverage is 0/1).
     if (light.rtReflections != 0) {
-        prefiltered = ollin_rt_reflection(worldPos, n, R, rough, reflAccel, meshVerts,
-                                          meshGeoOffsets, light, irradianceTex, prefilterTex,
-                                          cubeSamp, rot, prefiltered);
+        if (light.rtReflectionDeferred != 0) {
+            float3 hit = deferredReflection.rgb + prefiltered * (1.0 - deferredReflection.a);
+            prefiltered = mix(hit, prefiltered, smoothstep(0.12, 0.55, rough));
+        } else {
+            prefiltered = ollin_rt_reflection(worldPos, n, R, rough, reflAccel, meshVerts,
+                                              meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                              cubeSamp, rot, prefiltered);
+        }
     }
 #endif
     float2 brdf = brdfTex.sample(lutSamp, float2(NoV, rough)).rg;
@@ -888,6 +923,11 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     // physically-based fragment can fetch a reflection hit's triangle.
                                     , const device OllinMeshVertex *meshVerts [[buffer(6)]]
                                     , const device uint *meshGeoOffsets [[buffer(7)]]
+                                    // The pre-traced reflection (jittered + temporally accumulated
+                                    // live, supersampled on export), sampled by screen position when
+                                    // `light.rtReflectionDeferred` is set; a never-sampled stand-in
+                                    // otherwise.
+                                    , texture2d<float> rtReflectionTex [[texture(7)]]
 #endif
                                     ) {
     // Linearize the surface color so the present pass's sRGB re-encode lands the

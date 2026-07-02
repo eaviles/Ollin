@@ -471,6 +471,15 @@ typedef struct {
                                   // opt-in; 0 = the IBL-prefilter reflection only (byte-identical).
     float rtReflectionBias;       // world-space self-hit normal offset for the reflection ray's
                                   // origin (sized from the scene scale in `makeLighting`).
+    int   rtReflectionDeferred;   // 1 = the lit fragment reads the pre-traced reflection texture
+                                  // (jittered + temporally accumulated live, supersampled on
+                                  // export) by screen position instead of tracing inline; 0 =
+                                  // the inline single-ray trace (render targets and the
+                                  // raymarched fields keep this path).
+    float rtReflectionScale;      // that texture's resolution as a fraction of the drawable when
+                                  // deferred: the fragment's uv is (position.xy · scale) / the
+                                  // texture size (the `fieldShadowScale` rule), so a future
+                                  // half-res reflection tier needs no shader change.
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer
