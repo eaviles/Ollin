@@ -40,17 +40,45 @@ struct OllinExamplesApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Ollin Examples") {
+        // A `Window` (not `WindowGroup`): the gallery is one window by design.
+        // The title-bar accessories assume one window to bind to, and a second
+        // gallery compiling the same sketches buys nothing.
+        Window("Ollin Examples", id: "main") {
             GalleryView(examples: examples)
         }
-        // Sidebar + a fixed square sketch; the window hugs that content (no free
-        // resize), and collapsing the sidebar narrows the window to the square.
-        .defaultSize(width: OllinApp.defaultWindowSize.width + GalleryView.sidebarWidth,
+        // Example list + a fixed square stage + inspector; the window hugs that
+        // content (no free resize), and collapsing either sidebar narrows it.
+        .defaultSize(width: OllinApp.defaultWindowSize.width
+                        + GalleryView.examplesSidebarWidth + OllinInspector.sidebarWidth,
                      height: OllinApp.defaultWindowSize.height)
         .windowResizability(.contentSize)
+        // The tall gradient title bar (see `GalleryView.toolbar`): a unified
+        // toolbar so macOS centers the traffic lights and `.contentSize`
+        // accounts for the height.
+        .windowToolbarStyle(.unified(showsTitle: false))
+        // No `OllinHUDCommands` here: the inspector is the gallery's right
+        // sidebar, so the detached "Show Inspector" panel would just duplicate
+        // it; ⌘/ toggles the sidebar instead, matching the live host.
         .commands {
-            OllinHUDCommands()
+            GalleryCommands()
             OllinCameraCommands()
+        }
+    }
+}
+
+/// View ▸ Show Examples (⌥⌘S) and Show Inspector (⌘/), bound to the same
+/// `@AppStorage` keys as the title-bar toggles, so the menus, the buttons, and
+/// the persisted choices are one state.
+private struct GalleryCommands: Commands {
+    @AppStorage(GalleryView.examplesShownKey) private var examplesShown = true
+    @AppStorage(GalleryView.inspectorShownKey) private var inspectorShown = true
+
+    var body: some Commands {
+        CommandGroup(after: .sidebar) {
+            Toggle("Show Examples", isOn: $examplesShown)
+                .keyboardShortcut("s", modifiers: [.command, .option])
+            Toggle("Show Inspector", isOn: $inspectorShown)
+                .keyboardShortcut("/", modifiers: .command)
         }
     }
 }

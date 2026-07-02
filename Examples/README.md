@@ -8,10 +8,11 @@ Small, runnable sketches that double as a learning path, openFrameworks-style. E
 
 ### Layout
 
-Examples are grouped into **category** folders, and each example gets its own folder inside its category (one example = one executable target, since SwiftPM allows a single `@main` per target). The sketch file is always `Sketch.swift`, at `Examples/<Category>/<Name>/Sketch.swift`, so the folder name is the example's identity and the folder also holds the sketch's own resources (fonts, images, shaders). Each category has its own README listing the sketches inside:
+Examples are grouped into **category** folders, and each example gets its own folder inside its category (one example = one executable target, since SwiftPM allows a single `@main` per target). The sketch file is always `Sketch.swift`, at `Examples/<Category>/<Name>/Sketch.swift`, so the folder name is the example's identity and the folder also holds the sketch's own resources (fonts, images, shaders). A category that has grown large can group its sketches one level deeper, at `Examples/<Category>/<Group>/<Name>/Sketch.swift`: `3D/` is grouped by topic this way, and `Recreations/` by artist, with the group joining the target name (`Example-<Category>-<Group>-<Name>`). Each category has its own README listing the sketches inside:
 
 | Category | What's inside |
 |---|---|
+| [3D](3D/) | the 3D mode: meshes, camera, materials, lighting, environments, raymarched SDFs, depth feeds |
 | [Audio](Audio/) | sound-reactive sketches (`import OllinAudio`) |
 | [Basic](Basic/) | the smallest starting point |
 | [Color](Color/) | palettes, colormaps, and color over time |
@@ -51,7 +52,7 @@ Or browse them all in one window:
 swift run OllinExamples
 ```
 
-A sidebar lists every example; click one and it compiles and renders on the right.
+The example list sits on the left, grouped like the folders, with a filter bar at the bottom; the arrow keys walk it. Click a sketch and it compiles and runs in the middle, with an inspector of live stats and `@Param` knobs docked on the right. Both sidebars collapse from the title bar.
 
 ### Adding an example
 
