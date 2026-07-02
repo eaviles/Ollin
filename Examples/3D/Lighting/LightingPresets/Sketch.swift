@@ -1,6 +1,6 @@
 import Ollin
 
-/// Lighting presets — one call relights the whole scene.
+/// Lighting presets: one call relights the whole scene.
 ///
 /// The same arrangement of solids on a floor, cycled through Ollin's curated
 /// `LightingPreset`s every few seconds: `.standard`, `.threePoint`, `.goldenHour`,
@@ -8,9 +8,10 @@ import Ollin
 /// tuned with color temperatures (`Color(kelvin:)`), so switching mood is a single
 /// `lightingPreset(_:)` instead of hand-placing lights.
 ///
-/// The last entry is built right here in the sketch — a tweaked copy of `.noir`
-/// plus a hot point light — to show the presets are an open value type you can
-/// extend, not a fixed menu. Click or press any key to step through them by hand.
+/// The last entry is built right here in the sketch (a tweaked copy of `.noir`
+/// plus a hot point light) to show the presets are an open value type you can
+/// extend, not a fixed menu. Press any key to step through them by hand; the mouse
+/// stays free for the camera (drag to orbit, scroll to dolly).
 @main
 final class LightingPresets3D: Sketch {
 
@@ -34,7 +35,6 @@ final class LightingPresets3D: Sketch {
     private var lastStep = 0.0
     private let holdSeconds = 3.5
 
-    override func mousePressed() { step() }
     override func keyPressed() { step() }
 
     private func step() {
@@ -55,7 +55,7 @@ final class LightingPresets3D: Sketch {
         lightingPreset(current.preset)
         castShadows()
 
-        // The ground that catches the shadows — matte, neutral.
+        // The ground that catches the shadows: matte, neutral.
         withState {
             translate(0, -1.4, 0)
             fill(Color(white: 0.55))
@@ -82,6 +82,6 @@ final class LightingPresets3D: Sketch {
             drawTorus(radius: 0.75, tube: 0.3)
         }
 
-        drawCaption("Lighting presets — \(current.name)   ·   click or press a key to step")
+        drawCaption("Lighting presets: \(current.name)   ·   press a key to step")
     }
 }

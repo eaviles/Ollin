@@ -22,9 +22,10 @@ import Ollin
 ///
 /// `scene.depth` carries the camera's near/far and field of view, so set them to
 /// bracket the scene and `radius` reads in world units. Here a packed grid of blocks
-/// of varying heights sits on a ground plane; the camera orbits slowly. **Hold the
-/// mouse** to drop the occlusion and compare: the gaps between blocks and the contact
-/// with the ground flatten out without it.
+/// of varying heights sits on a ground plane; the camera orbits slowly, and the mouse
+/// takes it over (drag to orbit, scroll to dolly). **Hold the space bar** to drop the
+/// occlusion and compare: the gaps between blocks and the contact with the ground
+/// flatten out without it.
 @main
 final class AmbientOcclusion: Sketch {
 
@@ -33,9 +34,9 @@ final class AmbientOcclusion: Sketch {
         withTarget(scene) {
             background(Color(hex: 0x121318))
             // near/far bracket the block field so the reconstruction has depth precision.
-            camera(.orbiting(target: Vector3(0, 0.4, 0), radius: 9,
-                             azimuth: time * 0.15, elevation: 0.5,
-                             fieldOfView: .pi / 4, near: 3, far: 18))
+            cameraShowcase(.autoOrbit(period: .tau / 0.15),
+                           target: Vector3(0, 0.4, 0), radius: 9, elevation: 0.5,
+                           fieldOfView: .pi / 4, near: 3, far: 18)
             // Bright ambient so the soft occlusion reads against an evenly lit scene,
             // plus a key light for form.
             ambientLight(Color(white: 0.55))
@@ -66,15 +67,15 @@ final class AmbientOcclusion: Sketch {
             }
         }
 
-        // Hold the mouse to see the raw scene; release for the occluded one.
-        if mouseIsPressed {
+        // Hold the space bar to see the raw scene; release for the occluded one.
+        if isKeyDown(" ") {
             drawImage(scene.image, 0, 0)
-            drawCaption("Ambient occlusion: OFF (release the mouse to compare)")
+            drawCaption("Ambient occlusion: OFF (release space to compare)")
         } else {
             let ao = scene.combined(with: scene.depth,
                                     .ambientOcclusion(radius: 0.5, intensity: 1.0))
             drawImage(ao.image, 0, 0)
-            drawCaption("Ambient occlusion: ON (hold the mouse to compare)")
+            drawCaption("Ambient occlusion: ON (hold space to compare)")
         }
     }
 }

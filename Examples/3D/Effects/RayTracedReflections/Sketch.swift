@@ -19,26 +19,27 @@ import Ollin
 /// ```
 ///
 /// A near-mirror metal floor reflects a ring of metal spheres orbiting a polished monolith;
-/// each sphere also catches its neighbours and the floor. **Hold the mouse** to drop ray-traced
-/// reflections and compare: the metals fall back to reflecting only the studio *environment*, so
-/// the scene's mirror images vanish. Needs an Apple-silicon (ray-tracing) GPU; on other GPUs the
-/// environment reflection is all you get.
+/// each sphere also catches its neighbours and the floor. The camera orbits on its own, and
+/// the mouse takes it over (drag to orbit, scroll to dolly). **Hold the space bar** to drop
+/// ray-traced reflections and compare: the metals fall back to reflecting only the studio
+/// *environment*, so the scene's mirror images vanish. Needs an Apple-silicon (ray-tracing)
+/// GPU; on other GPUs the environment reflection is all you get.
 @main
 final class RayTracedReflections: Sketch {
 
     override func draw() {
         background(Color(hex: 0x14171d))
-        camera(.orbiting(target: Vector3(0, 0.8, 0), radius: 8.5,
-                         azimuth: time * 0.12, elevation: 0.34,
-                         fieldOfView: .pi / 4, near: 1, far: 30))
+        cameraShowcase(.autoOrbit(period: .tau / 0.12),
+                       target: Vector3(0, 0.8, 0), radius: 8.5, elevation: 0.34,
+                       fieldOfView: .pi / 4, near: 1, far: 30)
         // The studio environment lights the metals and is the reflection's miss fallback (a ray
         // that leaves the scene shows the room). Its softly-blurred backdrop fills the frame.
         environment(.studio.intensity(1.1).backgroundBlur(0.5))
         directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.7)
         castShadows()
 
-        // Ray-trace reflections off every metal in the scene (hold the mouse to compare).
-        if !mouseIsPressed { rayTracedReflections() }
+        // Ray-trace reflections off every metal in the scene (hold the space bar to compare).
+        if !isKeyDown(" ") { rayTracedReflections() }
 
         // A near-mirror metal floor, the broad flat reflector RT reflections handle cleanly.
         withState {
@@ -76,8 +77,8 @@ final class RayTracedReflections: Sketch {
             }
         }
 
-        drawCaption(mouseIsPressed
-            ? "Ray-traced reflections: OFF (release the mouse to compare)"
-            : "Ray-traced reflections: ON (hold the mouse to compare)")
+        drawCaption(isKeyDown(" ")
+            ? "Ray-traced reflections: OFF (release space to compare)"
+            : "Ray-traced reflections: ON (hold space to compare)")
     }
 }

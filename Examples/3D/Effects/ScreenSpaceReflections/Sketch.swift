@@ -18,10 +18,11 @@ import Ollin
 ///
 /// A metal needs an environment to reflect (without one it reads dark), so a studio
 /// `environment` lights them; `.lightingOnly()` keeps the background dark so the floor's
-/// reflections stand out. **Hold the mouse** to drop the screen-space reflections and
-/// compare: the metals keep their environment reflections, but their mirror images on
-/// the floor vanish. `fresnel` concentrates the floor reflection at grazing angles;
-/// `roughness` blurs it for a glossy (rather than mirror) floor.
+/// reflections stand out. The camera orbits on its own, and the mouse takes it over
+/// (drag to orbit, scroll to dolly). **Hold the space bar** to drop the screen-space
+/// reflections and compare: the metals keep their environment reflections, but their
+/// mirror images on the floor vanish. `fresnel` concentrates the floor reflection at
+/// grazing angles; `roughness` blurs it for a glossy (rather than mirror) floor.
 @main
 final class ScreenSpaceReflections: Sketch {
 
@@ -29,9 +30,9 @@ final class ScreenSpaceReflections: Sketch {
         let scene = renderTarget()
         withTarget(scene) {
             background(Color(hex: 0x20242c))
-            camera(.orbiting(target: Vector3(0, 0.9, 0), radius: 9,
-                             azimuth: time * 0.12, elevation: 0.5,
-                             fieldOfView: .pi / 4, near: 2, far: 20))
+            cameraShowcase(.autoOrbit(period: .tau / 0.12),
+                           target: Vector3(0, 0.9, 0), radius: 9, elevation: 0.5,
+                           fieldOfView: .pi / 4, near: 2, far: 20)
             // A bright studio environment: it lights and reflects in the metals, and its softly
             // blurred backdrop fills the scene with light (a bright scene reveals the reflections
             // a dark one would hide).
@@ -73,15 +74,15 @@ final class ScreenSpaceReflections: Sketch {
             }
         }
 
-        // Hold the mouse to see the raw scene; release for the reflected one.
-        if mouseIsPressed {
+        // Hold the space bar to see the raw scene; release for the reflected one.
+        if isKeyDown(" ") {
             drawImage(scene.image, 0, 0)
-            drawCaption("Screen-space reflections: OFF (release the mouse to compare)")
+            drawCaption("Screen-space reflections: OFF (release space to compare)")
         } else {
             let ssr = scene.combined(with: scene.depth,
                                      .screenSpaceReflections(intensity: 0.9, roughness: 0.2, fresnel: 0.5))
             drawImage(ssr.image, 0, 0)
-            drawCaption("Screen-space reflections: ON (hold the mouse to compare)")
+            drawCaption("Screen-space reflections: ON (hold space to compare)")
         }
     }
 }
