@@ -104,6 +104,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { SDFCombinatorsStretchScene() }),
     SnapshotCase("sdf-combinators-3d-stretch", note: "Raymarched 3D SDF per-axis stretch.",
                  make: { RaymarchedSDF3DStretchScene() }),
+    SnapshotCase("sdf-combinators-3d-environment",
+                 note: "Raymarched fields lit by an environment beside mesh parity spheres: pins the field IBL ambient (split-sum on a physically-based field, diffuse irradiance on a matte one) and material(_:) reaching the field batch. Fixed camera + bundled HDRI, no time.",
+                 make: { RaymarchedSDF3DEnvironmentScene() }),
     SnapshotCase("curved-paths", note: "Curved Path fills and strokes.",
                  make: { CurvedPaths() }),
     SnapshotCase("stroke-joins-caps", note: "strokeJoin / strokeCap on the fringe stroke path.",
@@ -1533,6 +1536,50 @@ private final class SDFCombinatorsStretchScene: Sketch {
         let ell = SDF.circle(radius: 30).scaled(x: 1.5, y: 0.55).colored(Color(hex: 0xffd166))
             .smoothUnion(SDF.circle(radius: 13).at(x: 44, y: 0).colored(Color(hex: 0x8ac926)), k: 14)
         withState { translate(180, 128); drawSDF(ell) }
+    }
+}
+
+// Raymarched fields lit by an environment: a polished-metal melt (the physically-based
+// split-sum ambient, mirroring the HDRI) and a matte melt (the diffuse-irradiance
+// ambient) beside mesh spheres in the same two materials, so field and mesh parity is
+// pinned in one frame. Also pins `material(_:)` reaching the field batch at all (the
+// per-batch finish). Environment-only lighting, fixed camera + rotation, no time.
+private final class RaymarchedSDF3DEnvironmentScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0B0C12))
+        toneMap(.aces)
+        camera(.orbiting(target: Vector3(0, 0.1, 0), radius: 9.5,
+                         azimuth: 0.4, elevation: 0.16, fieldOfView: .pi / 4.2, near: 2, far: 40))
+        environment(.studio)
+
+        withState {
+            material(.polishedMetal)
+            fill(Color(white: 0.95))
+            let melt = SDF3D.torus(radius: 1.15, tube: 0.42)
+                .smoothUnion(.sphere(radius: 0.62).at(x: 0, y: 0.5, z: 0), k: 0.55)
+            drawSDF3D(melt.rotatedX(0.5 * .pi).at(x: -2.4, y: 0.4, z: 0))
+        }
+        withState {
+            material(.matte)
+            let melt = SDF3D.sphere(radius: 0.95).colored(Color(hex: 0x3ad6c5))
+                .smoothUnion(.octahedron(radius: 1.05).at(x: 0.9, y: 0.85, z: 0)
+                    .colored(Color(hex: 0xffb84d)), k: 0.6)
+            drawSDF3D(melt.at(x: 2.2, y: 0.2, z: 0))
+        }
+        withState {
+            translate(-0.1, -1.4, 1.6)
+            material(.polishedMetal)
+            fill(Color(white: 0.95))
+            drawSphere(radius: 0.55)
+        }
+        withState {
+            translate(1.0, -1.5, 1.9)
+            material(.matte)
+            fill(Color(hex: 0x3ad6c5))
+            drawSphere(radius: 0.45)
+        }
     }
 }
 

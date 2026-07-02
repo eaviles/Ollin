@@ -456,6 +456,11 @@ let package = Package(
             path: "Examples/3D/RaymarchedStretch"
         ),
         .executableTarget(
+            name: "Example-3D-RaymarchedEnvironment",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/RaymarchedEnvironment"
+        ),
+        .executableTarget(
             name: "Example-Effects-Feedback",
             dependencies: ["Ollin"],
             path: "Examples/Effects/Feedback"

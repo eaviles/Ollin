@@ -405,9 +405,22 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  texturecube<float> shadowCube [[texture(2)]],
                                                  sampler shadowCubeSamp [[sampler(2)]],
                                                  texture2d<float> gradients [[texture(0)]],
-                                                 sampler gradientSamp [[sampler(0)]]
+                                                 sampler gradientSamp [[sampler(0)]],
+                                                 // The image-based-lighting maps (see the mesh fragment):
+                                                 // sampled only when `light.iblEnabled == 1`, never-sampled
+                                                 // stand-ins otherwise, so a field under an environment
+                                                 // takes the same ambient a mesh does.
+                                                 texturecube<float> iblIrradiance [[texture(4)]],
+                                                 texturecube<float> iblPrefilter [[texture(5)]],
+                                                 texture2d<float> iblBRDF [[texture(6)]]
 #if OLLIN_RT_SHADOWS
                                                  , primitive_acceleration_structure accel [[buffer(5)]]
+                                                 // The reflection-trace inputs (see ollin_rt_reflection),
+                                                 // read only when `light.rtReflections != 0`: a
+                                                 // physically-based field traces the same caster accel a
+                                                 // mesh does, so its reflection shows the scene too.
+                                                 , const device OllinMeshVertex *meshVerts [[buffer(6)]]
+                                                 , const device uint *meshGeoOffsets [[buffer(7)]]
 #endif
                                                  ) {
     RaymarchFragOut miss;
@@ -557,6 +570,23 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                               , 1.0
 #endif
                               , fieldShadow);
+
+    // Environment (image-based) ambient, exactly as the mesh fragments add it: a
+    // physically-based field gathers the split-sum ambient (+ traced reflections when
+    // active); the other lit materials take the diffuse irradiance as their ambient
+    // (Gooch excepted, keeping its own tone ramp). Gated on `iblEnabled`, so a frame
+    // with no environment is byte-identical.
+    if (mat.shadingModel == 3 && light.iblEnabled != 0) {
+        float3 viewDir = normalize(light.cameraPosition.xyz - pw);
+        lit.rgb += ollin_pbr_ibl_ambient(baseRGB, n, viewDir, mat, light,
+                                         iblIrradiance, iblPrefilter, iblBRDF
+#if OLLIN_RT_SHADOWS
+                                         , pw, accel, meshVerts, meshGeoOffsets
+#endif
+                                         );
+    } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
+        lit.rgb += ollin_ibl_flat_ambient(baseRGB, n, light, iblIrradiance);
+    }
 
     // Depth: the world hit point through the *same* view-projection the meshes use, so
     // marched and rasterized geometry z-test in one space (Metal NDC z is already [0,1]).

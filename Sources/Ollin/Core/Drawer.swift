@@ -561,6 +561,31 @@ final class Drawer {
                                      finish: m.gpuMaterial(), target: currentTarget))
     }
 
+    /// Open a new `.sdfGroup3D` batch when the blend, depth, or surface finish changes;
+    /// consecutive fields under one material merge (drawn as one instanced pass). Like
+    /// the solid meshes, the finish is bound per batch as one `OllinMaterial` uniform,
+    /// so a `material(_:)` change must break the batch for the fragment to see it.
+    private func ensureSDF3DBatch(_ m: Material) {
+        if currentKind == .sdfGroup3D, currentBatchBlend == currentBlend,
+           currentBatchDepth == currentDepth, currentBatchMaterial == m {
+            return
+        }
+        currentKind = .sdfGroup3D
+        currentBatchBlend = currentBlend
+        currentBatchDepth = currentDepth
+        currentBatchMaterial = m
+        batches.append(GeometryBatch(kind: .sdfGroup3D, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
+                                     meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
+                                     blendMode: currentBlend, depth: currentDepth,
+                                     finish: m.gpuMaterial(), target: currentTarget))
+    }
+
     /// Remove the live ground-grid chrome again, once the on-screen render has
     /// consumed it. The runner appends the grid after the sketch's own draw, so a
     /// same-frame re-consumer of this drawer (the frame-grab and Syphon re-renders)
@@ -2481,7 +2506,7 @@ final class Drawer {
         }
 
         sdf3DNodes.append(contentsOf: nodes)
-        ensureBatch(.sdfGroup3D)
+        ensureSDF3DBatch(currentMaterial)
         sdf3DGroups.append(SDF3DGroupInstance(
             inverseModel: inv,
             boundsMin: SIMD4<Float>(lo.x, lo.y, lo.z, 0),

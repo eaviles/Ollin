@@ -327,6 +327,14 @@ the omnidirectional cube or the traced mesh structure for a point light), so a f
 its shadow onto the field just as onto another mesh (see `Examples/3D/RaymarchedReceiveShadow` for a
 directional caster, `Examples/3D/RaymarchedPointReceive` for a point caster).
 
+**Materials and environment light.** A field shades through the same material and lighting
+model as the meshes: the active [`material(_:)`](../3D/3D.md#materials) applies per
+`drawSDF3D` call (a jade melt takes its sheen and subsurface glow, a `.metal(roughness:)`
+field is a true metal), and under an [`environment(_:)`](../3D/3D.md#environment-lighting)
+the field gathers the same image-based ambient a mesh does (a physically-based field
+reflects the HDRI, the other materials take its diffuse irradiance), so a field and a mesh
+sharing a material read identically in one scene (see `Examples/3D/RaymarchedEnvironment`).
+
 The merged surface's **silhouette is anti-aliased** analytically (a sphere-traced fullscreen
 pass gets no MSAA at its hit/miss edge): the march measures how closely a ray that misses the
 surface grazed it, relative to the pixel's own footprint, and the edge fades by that coverage.
@@ -400,5 +408,6 @@ primitive catalog), `Examples/3D/RaymarchedSculpt` (the scoped block form),
 `Examples/3D/RaymarchedReceiveShadow` (a field receiving a mesh's shadow),
 `Examples/3D/RaymarchedPointCast` (a field casting onto a mesh under a point light),
 `Examples/3D/RaymarchedPointReceive` (a field receiving a mesh's shadow under a point light),
-`Examples/3D/RaymarchedStretch` (per-axis stretch and non-uniform scale), and
-`Examples/3D/RaymarchedGradient` (a screen-space gradient painting the merged surface).
+`Examples/3D/RaymarchedStretch` (per-axis stretch and non-uniform scale),
+`Examples/3D/RaymarchedGradient` (a screen-space gradient painting the merged surface), and
+`Examples/3D/RaymarchedEnvironment` (fields lit by an environment beside mesh parity spheres).

@@ -609,10 +609,21 @@ final class MetalRenderer {
     private var statefulEncodeIsRepeat = false
 
     /// Baked image-based-lighting maps, cached by environment source so the bake (a few
-    /// fullscreen passes) runs once, not per frame. `iblBRDFLUT` is environment-independent
-    /// (the split-sum scale/bias integral) so it's baked once globally. `currentIBL` is the
-    /// set resolved for the frame being encoded, bound to the mesh fragment.
-    private var iblCache: [Environment.Source: IBLMaps] = [:]
+    /// fullscreen passes) runs once, not per frame. Bounded: entries carry their GPU
+    /// footprint and last-use tick, and the least-recently-used are evicted past
+    /// `iblCacheBudgetBytes` (an 8K HDRI's maps are ~270 MB, so a sketch cycling
+    /// environments, a gallery or a varying URL, would otherwise grow without bound; an
+    /// evicted source re-bakes from its disk blob in a blink). `iblBRDFLUT` is
+    /// environment-independent (the split-sum scale/bias integral) so it's baked once
+    /// globally. `currentIBL` is the set resolved for the frame being encoded, bound to
+    /// the mesh fragment.
+    private var iblCache: [Environment.Source: IBLCacheEntry] = [:]
+    /// Monotonic resolve counter: bumped once per `resolveIBL`, stamped on cache entries
+    /// (LRU order) and equirect-pixel requests (staleness pruning).
+    private var iblResolveTick: UInt64 = 0
+    /// Test seam: overrides `iblCacheBudgetBytes` so eviction is observable without
+    /// baking gigabytes.
+    var iblCacheBudgetOverride: Int?
     private var iblBRDFLUT: MTLTexture?
     private var currentIBL: IBLMaps?
     /// A 1×1 cube bound at the IBL texture slots when no environment is set, so the mesh
@@ -630,6 +641,11 @@ final class MetalRenderer {
     /// multi-second decode and log continuously; the same file won't decode differently, so
     /// the memo holds for the session.
     private let equirectFailed = OSAllocatedUnfairLock(initialState: Set<Environment.Source>())
+    /// The resolve tick each source's pixels were last requested (`equirectBytes`), so
+    /// decoded-but-never-baked pixels (the environment moved on before its off-thread
+    /// decode landed) are freed instead of held for the session. Main-thread only (the
+    /// background decode never touches it).
+    private var equirectLastRequest: [Environment.Source: UInt64] = [:]
 
     /// Off-screen targets for the GPU-texture frame hook (`texture(of:)`), kept and
     /// reused across frames — rebuilt only when the canvas size changes, so live
@@ -798,12 +814,15 @@ final class MetalRenderer {
         let halfResField = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 in
             let fieldLight = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD,
                                                   shadowCube: renderedShadow.cube,
-                                                  shadowAccelPresent: renderedShadow.accel != nil)
+                                                  shadowAccelPresent: renderedShadow.accel != nil,
+                                                  reflectAccelPresent: renderedShadow.reflectAccel != nil)
             return encodeRaymarchHalfRes(drawer, into: commandBuffer,
                 groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
                 uniforms3D: u3, lighting: fieldLight.lighting,
                 shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
-                shadowAccel: renderedShadow.accel, fullWidth: width, fullHeight: height)
+                traceAccel: renderedShadow.accel ?? renderedShadow.reflectAccel,
+                meshBuffer: buffers.mesh, reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+                fullWidth: width, fullHeight: height)
         }
         // Half-res field-cast shadow pre-pass (the live RenderQuality path): the point/RT field
         // cast onto meshes is per-pixel-marched, so compute it once at reduced resolution and let
@@ -1123,12 +1142,15 @@ final class MetalRenderer {
         let halfResField = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 in
             let fieldLight = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD,
                                                   shadowCube: renderedShadow.cube,
-                                                  shadowAccelPresent: renderedShadow.accel != nil)
+                                                  shadowAccelPresent: renderedShadow.accel != nil,
+                                                  reflectAccelPresent: renderedShadow.reflectAccel != nil)
             return encodeRaymarchHalfRes(drawer, into: commandBuffer,
                 groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
                 uniforms3D: u3, lighting: fieldLight.lighting,
                 shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
-                shadowAccel: renderedShadow.accel, fullWidth: width, fullHeight: height)
+                traceAccel: renderedShadow.accel ?? renderedShadow.reflectAccel,
+                meshBuffer: buffers.mesh, reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+                fullWidth: width, fullHeight: height)
         }
         // Half-res field-cast shadow pre-pass: same tier gating as the raymarch one. `.detail`
         // (the export default) → scale 1 → nil → the mesh marches inline full-res → byte-identical.
@@ -1237,12 +1259,15 @@ final class MetalRenderer {
             let halfResField = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 in
                 let fieldLight = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD,
                                                       shadowCube: renderedShadow.cube,
-                                                      shadowAccelPresent: renderedShadow.accel != nil)
+                                                      shadowAccelPresent: renderedShadow.accel != nil,
+                                                      reflectAccelPresent: renderedShadow.reflectAccel != nil)
                 return encodeRaymarchHalfRes(drawer, into: cb,
                     groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
                     uniforms3D: u3, lighting: fieldLight.lighting,
                     shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
-                    shadowAccel: renderedShadow.accel, fullWidth: width, fullHeight: height)
+                    traceAccel: renderedShadow.accel ?? renderedShadow.reflectAccel,
+                    meshBuffer: buffers.mesh, reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+                    fullWidth: width, fullHeight: height)
             }
             let halfResFieldShadow = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 -> MTLTexture? in
                 var fl = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
@@ -2605,6 +2630,13 @@ final class MetalRenderer {
                 // position); bound at 0, free here since the shadow textures take 1/2.
                 encoder.setFragmentTexture(strip, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                // The image-based-lighting maps (tex 4/5/6), so a field under an environment
+                // takes the same ambient a mesh does; never-sampled stand-ins otherwise
+                // (`lighting.iblEnabled` gates the read), like the mesh path below.
+                if iblPlaceholderCube == nil { iblPlaceholderCube = makeCubeTexture(face: 1, mipped: false) }
+                encoder.setFragmentTexture(currentIBLIrradiance ?? iblPlaceholderCube, index: 4)
+                encoder.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
+                encoder.setFragmentTexture(iblBRDFLUTTexture ?? strip, index: 6)
                 // The mesh acceleration structure at buffer 5 so a marched field receives a mesh's
                 // cast shadow under a ray-traced point caster (it traces toward the light, the
                 // reverse of the cast). A dummy when shadowKind != 2, never traced; the cube path
@@ -2612,6 +2644,17 @@ final class MetalRenderer {
                 if let accel = shadowAccelStructure {
                     encoder.useResource(accel, usage: .read, stages: .fragment)
                     encoder.setFragmentAccelerationStructure(accel, bufferIndex: 5)
+                }
+                // The reflection-trace inputs (buffers 6/7), read only under `lighting.rtReflections`
+                // (which implies meshes exist, so `meshBuffer` is real there); the offsets dummy
+                // stands in for both on a mesh-less RT frame so the bindings are never missing.
+                if rayTracedShadows {
+                    if let verts = meshBuffer ?? geoOffsetsBuffer {
+                        encoder.setFragmentBuffer(verts, offset: 0, index: 6)
+                    }
+                    if let geoOffsetsBuffer {
+                        encoder.setFragmentBuffer(geoOffsetsBuffer, offset: 0, index: 7)
+                    }
                 }
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3, instanceCount: count)
             case .image:
@@ -3402,7 +3445,7 @@ final class MetalRenderer {
     /// raymarch pre-pass so a marched field shades identically at half resolution. `shadowAccel`
     /// is the frame's acceleration structure (RT point shadows), nil otherwise.
     private func resolveFieldLighting(_ drawer: Drawer, shadowMap: MTLTexture?, shadowCube: MTLTexture?,
-                                      shadowAccelPresent: Bool)
+                                      shadowAccelPresent: Bool, reflectAccelPresent: Bool = false)
         -> (lighting: OllinLighting, shadowTexture: MTLTexture?, shadowCubeTexture: MTLTexture?) {
         var lighting = drawer.makeLighting()
         if shadowMap == nil && shadowCube == nil && !shadowAccelPresent && drawer.sdf3DGroups.isEmpty {
@@ -3414,6 +3457,18 @@ final class MetalRenderer {
         } else if lighting.shadowLight >= 0 && lighting.shadowKind == 0 {
             lighting.shadowSamples = resolveShadowTaps2D(drawer.shadowQualitySetting)
         }
+        // Image-based lighting, mirroring the main encode's setup (resolveIBL already ran
+        // this frame), so a field marched at half resolution takes the same environment
+        // ambient, and traces the same reflections, as the full-res inline march.
+        if lighting.enabled != 0, drawer.environment != nil, currentIBL != nil {
+            lighting.iblEnabled = 1
+            lighting.iblIntensity = Float(drawer.environment?.intensity ?? 1) * currentIBLNormalization
+            lighting.iblMaxMip = Float(currentIBLMaxMip)
+            lighting.iblRotation = Float(drawer.environment?.rotation ?? 0)
+        } else {
+            lighting.iblEnabled = 0
+        }
+        if reflectAccelPresent { lighting.rtReflections = 1 }
         return (lighting, shadowMap ?? ensureDummyShadowMap(), shadowCube ?? ensureDummyPointShadowMap())
     }
 
@@ -3428,7 +3483,9 @@ final class MetalRenderer {
                                        groupBuffer: MTLBuffer?, nodeBuffer: MTLBuffer?,
                                        uniforms3D: Uniforms3D, lighting: OllinLighting,
                                        shadowTexture: MTLTexture?, shadowCubeTexture: MTLTexture?,
-                                       shadowAccel: MTLAccelerationStructure? = nil,
+                                       traceAccel: MTLAccelerationStructure? = nil,
+                                       meshBuffer: MTLBuffer? = nil,
+                                       reflectGeoOffsets: MTLBuffer? = nil,
                                        fullWidth: Int, fullHeight: Int)
         -> (color: MTLTexture, depth: MTLTexture)? {
         let scale = resolveRaymarchScale(drawer.raymarchQualitySetting)
@@ -3477,13 +3534,32 @@ final class MetalRenderer {
         enc.setFragmentTexture(shadowCubeTexture, index: 2)
         if let shadowSampler { enc.setFragmentSamplerState(shadowSampler, index: 1) }
         if let shadowCubeSampler { enc.setFragmentSamplerState(shadowCubeSampler, index: 2) }
-        enc.setFragmentTexture(gradientStripTexture(for: drawer.gradientRows), index: 0)
+        let strip = gradientStripTexture(for: drawer.gradientRows)
+        enc.setFragmentTexture(strip, index: 0)
         enc.setFragmentSamplerState(imageSampler, index: 0)
-        // The mesh acceleration structure at buffer 5 (RT point shadows received by the field),
-        // matching the main pass; a dummy when shadowKind != 2, never traced.
-        if let accel = rayTracedShadows ? (shadowAccel ?? ensureDummyShadowAccel()) : nil {
+        // The image-based-lighting maps (tex 4/5/6), matching the main pass, so a half-res
+        // field takes the same environment ambient; stand-ins when no environment baked.
+        if iblPlaceholderCube == nil { iblPlaceholderCube = makeCubeTexture(face: 1, mipped: false) }
+        enc.setFragmentTexture(currentIBLIrradiance ?? iblPlaceholderCube, index: 4)
+        enc.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
+        enc.setFragmentTexture(iblBRDFLUTTexture ?? strip, index: 6)
+        // The mesh acceleration structure at buffer 5, matching the main pass: RT point
+        // shadows received by the field, and the reflection trace when `rtReflections`
+        // is set. A dummy when neither is active, never traced.
+        if let accel = rayTracedShadows ? (traceAccel ?? ensureDummyShadowAccel()) : nil {
             enc.useResource(accel, usage: .read, stages: .fragment)
             enc.setFragmentAccelerationStructure(accel, bufferIndex: 5)
+        }
+        // The reflection-trace inputs (buffers 6/7), read only under `lighting.rtReflections`;
+        // the offsets dummy stands in for both on a mesh-less RT frame (see the main pass).
+        if rayTracedShadows {
+            let offsets = reflectGeoOffsets ?? ensureDummyGeoOffsets()
+            if let verts = meshBuffer ?? offsets {
+                enc.setFragmentBuffer(verts, offset: 0, index: 6)
+            }
+            if let offsets {
+                enc.setFragmentBuffer(offsets, offset: 0, index: 7)
+            }
         }
 
         let group3DStride = MemoryLayout<SDF3DGroupInstance>.stride
@@ -4615,6 +4691,14 @@ extension Color {
     }
 }
 
+/// One `iblCache` slot: the baked maps, their approximate GPU footprint (driving the
+/// byte-budget eviction), and the resolve tick of their last use (the LRU order).
+private struct IBLCacheEntry {
+    let maps: IBLMaps
+    let bytes: Int
+    var lastUse: UInt64
+}
+
 /// The baked image-based-lighting maps for one environment, cached by source. The
 /// `envCube` is the environment itself (for a skybox and mirror reflections), `irradiance`
 /// the cosine-convolved diffuse cube, `prefilter` the GGX-prefiltered specular mip-cube.
@@ -4662,6 +4746,8 @@ extension MetalRenderer {
     /// download so exported art is the full-resolution version. Returns whether IBL is active.
     func resolveIBL(for environment: Environment?, commandBuffer cb: MTLCommandBuffer,
                     blocking: Bool = false) -> Bool {
+        iblResolveTick += 1
+        defer { pruneStaleEquirects() }
         guard let environment else { currentIBL = nil; return false }
         let (primary, placeholder) = resolveEnvironmentSources(environment, blocking: blocking)
         // Bake the requested environment once its pixels are ready; until then (a heavy HDRI
@@ -4684,7 +4770,11 @@ extension MetalRenderer {
         // A static sky (or an HDRI) keys on its exact source, so it bakes once and then reuses
         // the cache every frame. An animated sky is a fresh source each frame, so it re-bakes
         // entirely on the GPU (no CPU read-back), which a smoothly moving sun needs.
-        if let cached = iblCache[env.source] { return cached }
+        if var entry = iblCache[env.source] {
+            entry.lastUse = iblResolveTick
+            iblCache[env.source] = entry
+            return entry.maps
+        }
 
         let loaded: MTLTexture, avg: Float
         let isSky: Bool
@@ -4709,8 +4799,68 @@ extension MetalRenderer {
                 if case .sky = k { iblCache[k] = nil }
             }
         }
-        iblCache[env.source] = maps
+        let bytes = Self.textureFootprint(maps.irradiance) + Self.textureFootprint(maps.prefilter)
+            + Self.textureFootprint(maps.envCube) + Self.textureFootprint(maps.equirect)
+        iblCache[env.source] = IBLCacheEntry(maps: maps, bytes: bytes, lastUse: iblResolveTick)
+        evictIBLOverBudget(keeping: env.source)
         return maps
+    }
+
+    /// The baked-map budget: enough for a handful of high-resolution environments (a 4K
+    /// HDRI's maps are ~85 MB, an 8K's ~270 MB) while keeping a gallery that cycles many
+    /// of them bounded. Past it, the least-recently-used entries go; an evicted source
+    /// re-bakes from its cached disk blob, so the cost of a wrong eviction is small.
+    private static let iblCacheBudgetBytes = 512 << 20
+
+    /// Evict least-recently-used baked maps until the cache fits the budget, never
+    /// touching `current` (the source just baked or reused for this frame).
+    private func evictIBLOverBudget(keeping current: Environment.Source) {
+        let budget = iblCacheBudgetOverride ?? Self.iblCacheBudgetBytes
+        var total = iblCache.values.reduce(0) { $0 + $1.bytes }
+        while total > budget,
+              let victim = iblCache.filter({ $0.key != current })
+                  .min(by: { $0.value.lastUse < $1.value.lastUse }) {
+            total -= victim.value.bytes
+            iblCache[victim.key] = nil
+        }
+    }
+
+    /// Test seam: the cache's entry count and approximate byte total.
+    var iblCacheStats: (count: Int, bytes: Int) {
+        (iblCache.count, iblCache.values.reduce(0) { $0 + $1.bytes })
+    }
+
+    /// Approximate GPU footprint of a texture (faces × mips × bytes per texel), for the
+    /// cache budget. Estimation is fine here: eviction needs proportions, not exact bytes.
+    private static func textureFootprint(_ t: MTLTexture?) -> Int {
+        guard let t else { return 0 }
+        let faces = t.textureType == .typeCube ? 6 : max(t.arrayLength, 1)
+        let bytesPerTexel: Int
+        switch t.pixelFormat {
+        case .rgba32Float: bytesPerTexel = 16
+        case .rgba16Float: bytesPerTexel = 8
+        default: bytesPerTexel = 4
+        }
+        let base = t.width * t.height * faces * bytesPerTexel
+        return t.mipmapLevelCount > 1 ? base * 4 / 3 : base
+    }
+
+    /// Free decoded equirect pixels whose source hasn't been requested for a few resolves
+    /// (the environment moved on before its off-thread decode landed). A consumed entry is
+    /// cleared by the bake itself, so anything lingering here is an orphan holding the
+    /// full-resolution float pixels (tens of MB); a re-requested source just re-reads its
+    /// disk blob. The window is a few ticks so pixels landing between two frames' resolves
+    /// are never dropped before the bake that wants them.
+    private func pruneStaleEquirects() {
+        guard iblResolveTick > 4 else { return }
+        let cutoff = iblResolveTick - 4
+        let requests = equirectLastRequest   // copied: the lock's closure is Sendable
+        equirectReady.withLock { ready in
+            for key in ready.keys where (requests[key] ?? 0) < cutoff {
+                ready[key] = nil
+            }
+        }
+        equirectLastRequest = equirectLastRequest.filter { $0.value >= cutoff }
     }
 
     /// Resolve an environment to (primary, placeholder): the form to bake when its pixels are
@@ -4749,6 +4899,7 @@ extension MetalRenderer {
     /// `blocking` (export). A disk blob of the processed pixels makes a relaunch skip the
     /// expensive PIZ decode.
     private func equirectBytes(for env: Environment, blocking: Bool) -> EquirectBytes? {
+        equirectLastRequest[env.source] = iblResolveTick
         if let ready = equirectReady.withLock({ $0[env.source] }) { return ready }
         switch env.source {
         case .resource:

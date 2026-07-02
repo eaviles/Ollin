@@ -645,6 +645,24 @@ relative to the pixel's own cone, and composites a grazing near-miss by that
 coverage over what is behind it. 3D gradient paint is screen-space: a gradient
 `fill` paints the whole merged surface by each hit's projected screen position.
 
+Materials and environment light reach fields with mesh parity. The material
+rides per batch: `ensureSDF3DBatch` records the active `material(_:)` as the
+batch's `finish` and breaks the batch when it changes, exactly like
+`ensureSolidMeshBatch` (the generic `ensureBatch` records no finish, so fields
+routed through it shaded with the default material no matter what the sketch
+set, which is why the split-out exists). On top of `meshLitColor`, the raymarch
+fragment then adds the same image-based ambient the mesh fragments add: the
+split-sum `ollin_pbr_ibl_ambient` for a physically-based finish (including the
+traced-reflection swap when `rtReflections` is set, for which it binds the same
+caster acceleration structure, flat mesh buffer, and per-geometry offsets the
+mesh path binds), and `ollin_ibl_flat_ambient` (diffuse irradiance) for the
+standard and toon finishes, Gooch excepted. All of it is gated on
+`lighting.iblEnabled`, so a frame with no environment is byte-identical. The
+half-res pre-pass mirrors the whole arrangement: `resolveFieldLighting` carries
+the same IBL setup (and `rtReflections` flag) the main encode builds, and
+`encodeRaymarchHalfRes` binds the same IBL textures and trace inputs, so a field
+lights identically at any resolution tier.
+
 ### Field shadows
 
 Shadows are gated on `castShadows()`, so a field without it is byte-identical.
