@@ -401,12 +401,92 @@ static inline float meshRTShadow(float3 worldPos, float3 normal,
 // a sharp mirror, so for a rough *primary* surface it blends toward the prefiltered environment by
 // roughness (a single ray can't blur). The hit radiance is left in the same un-exposed units as
 // the prefilter sample, so the caller's outer IBL-intensity scale applies to hit and miss alike.
+// One traced surface sample: the interpolated attributes of a committed triangle hit,
+// shared by the first and second reflection bounces so they fetch and shade identically.
+struct OllinRTSurface {
+    float3 P;         // world hit point
+    float3 N;         // interpolated normal, flipped toward the incoming ray
+    float3 albedo;    // linearized vertex color (the baked fill)
+    float  metal;     // baked per-vertex metalness (normal.w)
+    float  rough;     // baked per-vertex roughness (position.w), clamped
+};
+
+static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<triangle_data> &q,
+                                                    const device OllinMeshVertex *verts,
+                                                    const device uint *geoOffsets,
+                                                    float3 origin, float3 dir) {
+    // Fetch the hit triangle from the flat mesh buffer and interpolate its attributes.
+    uint base = geoOffsets[q.get_committed_geometry_id()] + q.get_committed_primitive_id() * 3u;
+    OllinMeshVertex a = verts[base + 0u];
+    OllinMeshVertex b = verts[base + 1u];
+    OllinMeshVertex c = verts[base + 2u];
+    float2 bc = q.get_committed_triangle_barycentric_coord();
+    float3 w = float3(1.0 - bc.x - bc.y, bc.x, bc.y);
+    OllinRTSurface s;
+    s.N = normalize(w.x * a.normal.xyz + w.y * b.normal.xyz + w.z * c.normal.xyz);
+    // An open mesh's back face (or a ray that started inside geometry) hits with
+    // its normal pointing away from the ray; flip it toward the ray so Fresnel and
+    // irradiance shade the visible side instead of blowing out white at NoV 0.
+    if (dot(s.N, dir) > 0.0) s.N = -s.N;
+    // Vertex color is straight sRGB (the baked `fill`), like the rasterized fragment.
+    s.albedo = srgbToLinear(w.x * a.color.rgb + w.y * b.color.rgb + w.z * c.color.rgb);
+    // Metalness + roughness are baked per vertex into the spare w slots (constant across
+    // the triangle), so a hit shades as the surface it is.
+    s.metal = clamp(a.normal.w, 0.0, 1.0);
+    s.rough = clamp(a.position.w, 0.045, 1.0);
+    s.P = origin + dir * q.get_committed_distance();
+    return s;
+}
+
+// The scene's direct lights on a traced surface, as Lambert. They are already in
+// display-linear units, but the caller scales the whole reflection by the IBL intensity
+// (user intensity x per-environment auto-exposure), which converts the *un-exposed
+// environment* terms alone; pre-divide so a lit surface seen in a mirror matches the
+// same surface seen directly (the bundled environments' normalization ranges to ~12x).
+static inline float3 ollin_rt_direct(OllinRTSurface s, constant OllinLighting &light) {
+    float3 direct = float3(0.0);
+    for (int i = 0; i < light.lightCount; i++) {
+        OllinLight L = light.lights[i];
+        float3 toLight = (L.kind == 0) ? L.direction.xyz : normalize(L.position.xyz - s.P);
+        float atten = 1.0;
+        if (L.kind == 2) atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
+        direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten);
+    }
+    return direct / max(light.iblIntensity, 1e-3);
+}
+
+// The environment reflected off a traced surface, sampled at a lobe width that accounts
+// for grazing incidence: a microfacet lobe stretches by ~1/NoV as the view grazes the
+// surface, so the effective filter roughness is rough / max(NoV, rough) (their ratio,
+// saturating at the full-blur mip as NoV falls below the roughness). Without this the
+// reflected image of a grazing-lit surface stays mirror-sharp and over-concentrated;
+// the widened lobe spreads that energy the way the surface's own distribution does,
+// continuously in NoV, so nothing pops and head-on reflections are untouched.
+static inline float3 ollin_rt_env_lobe(texturecube<float> prefilterTex, sampler cubeSamp,
+                                       float3x3 rot, float3 dir, float rough, float NoV,
+                                       float maxMip) {
+    float grazeRough = clamp(rough / max(NoV, rough), 0.0, 1.0);
+    return prefilterTex.sample(cubeSamp, rot * dir, level(grazeRough * maxMip)).rgb;
+}
+
 // The hit-or-miss half of the reflection: trace one closest-hit ray and shade the hit,
 // returning (radiance, 1) on a hit or (0, 0, 0, 0) on a miss — premultiplied by the hit
 // flag, so an average over jittered rays carries the fractional hit coverage in alpha
 // (the deferred pass's temporal accumulation / export supersample rides exactly that).
 // The inline wrapper below folds the miss back to the environment sample, so the two
 // callers stay in step.
+//
+// The shade is **two-bounce, metalness-aware**: the first hit's own specular reflection
+// traces a *second* closest-hit ray rather than sampling the environment blindly. That
+// second trace is load-bearing for corners: where two reflectors meet (the mirror floor
+// at a polished pillar's base), the first hit's mirror direction points into the scene,
+// and an unoccluded environment sample there pipes the HDRI's bright lower hemisphere
+// straight through the floor — which the grazing-compressed reflected silhouette
+// concentrates into a razor-thin bright streak along the base that no anti-aliasing can
+// remove (it is consistently-shaded content, not an edge). Shading the actual second
+// surface instead dims the corner by the product of the two surfaces' own reflectances,
+// exactly as a real mirror corner does. The second bounce terminates at the environment
+// (no third trace); both env samples use the grazing-aware lobe width above.
 static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3 R,
                                                primitive_acceleration_structure accel,
                                                const device OllinMeshVertex *verts,
@@ -431,58 +511,50 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
     if (q.get_committed_intersection_type() != intersection_type::triangle)
         return float4(0.0);               // the ray left the scene -> the environment (caller's fallback)
 
-    // Fetch the hit triangle from the flat mesh buffer and interpolate its attributes.
-    uint base = geoOffsets[q.get_committed_geometry_id()] + q.get_committed_primitive_id() * 3u;
-    OllinMeshVertex a = verts[base + 0u];
-    OllinMeshVertex b = verts[base + 1u];
-    OllinMeshVertex c = verts[base + 2u];
-    float2 bc = q.get_committed_triangle_barycentric_coord();
-    float3 w = float3(1.0 - bc.x - bc.y, bc.x, bc.y);
-    float3 hitN = normalize(w.x * a.normal.xyz + w.y * b.normal.xyz + w.z * c.normal.xyz);
-    // An open mesh's back face (or a ray that started inside geometry) hits with
-    // its normal pointing away from the ray; flip it toward the ray so Fresnel and
-    // irradiance shade the visible side instead of blowing out white at NoV 0.
-    if (dot(hitN, R) > 0.0) hitN = -hitN;
-    // Vertex color is straight sRGB (the baked `fill`), like the rasterized fragment.
-    float3 albedo = srgbToLinear(w.x * a.color.rgb + w.y * b.color.rgb + w.z * c.color.rgb);
-    // Metalness + roughness are baked per vertex into the spare w slots (constant across the
-    // triangle), so the hit shades as the surface it is: a metal mirrors the environment
-    // tinted by its colour, a dielectric shows a diffuse body.
-    float metal = clamp(a.normal.w, 0.0, 1.0);
-    float hitRough = clamp(a.position.w, 0.045, 1.0);
-    float3 hitP = r.origin + R * q.get_committed_distance();
-    float3 hitNr = rot * hitN;
+    OllinRTSurface s1 = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, R);
+    float3 F0 = mix(float3(0.04), s1.albedo, s1.metal);
+    float NoV = max(dot(s1.N, -R), 0.0);
+    float3 F = F0 + (max(float3(1.0 - s1.rough), F0) - F0) * pow(1.0 - NoV, 5.0);
 
-    // One-bounce, metalness-aware shade (no recursion, no secondary shadows). Specular: the
-    // environment reflected at the hit (the prefiltered env at the mirror direction, sampled
-    // at the hit's roughness), F0-tinted, so a metal reads as a colour-tinted mirror rather
-    // than a flat blob, and a near-mirror floor shows a reflection, not its raw albedo. Diffuse
-    // (faded out as metalness rises): the environment's irradiance + the scene's direct lights
-    // as Lambert. Un-exposed radiance; the caller scales the whole reflection by the IBL
-    // intensity, so hit and miss stay consistent. (1 bounce: the reflected metal mirrors the
-    // *environment*, not recursively the rest of the scene.)
-    float3 F0 = mix(float3(0.04), albedo, metal);
-    float NoV = max(dot(hitN, -R), 0.0);
-    float3 F = F0 + (max(float3(1.0 - hitRough), F0) - F0) * pow(1.0 - NoV, 5.0);
-    float3 envAtHit = prefilterTex.sample(cubeSamp, rot * reflect(R, hitN),
-                                          level(hitRough * light.iblMaxMip)).rgb;
-    float3 col = envAtHit * F;
-    float3 diffuse = albedo * irradianceTex.sample(cubeSamp, hitNr).rgb;
-    // The scene's direct lights are already in display-linear units, but the caller
-    // scales the whole reflection by the IBL intensity (user intensity x per-environment
-    // auto-exposure), which converts the *un-exposed environment* terms alone. Pre-divide
-    // the direct term so a lit surface seen in a mirror matches the same surface seen
-    // directly (the bundled environments' normalization ranges to ~12x).
-    float3 direct = float3(0.0);
-    for (int i = 0; i < light.lightCount; i++) {
-        OllinLight L = light.lights[i];
-        float3 toLight = (L.kind == 0) ? L.direction.xyz : normalize(L.position.xyz - hitP);
-        float atten = 1.0;
-        if (L.kind == 2) atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
-        direct += albedo * L.color.rgb * (max(dot(hitN, toLight), 0.0) * atten);
+    // The first hit's specular: trace its mirror direction. A miss sees the environment;
+    // a hit shades the second surface (env-terminated, no third trace).
+    float3 secDir = reflect(R, s1.N);
+    ray r2;
+    r2.origin = s1.P + s1.N * eps;
+    r2.direction = secDir;
+    r2.min_distance = eps;
+    r2.max_distance = 1e9;
+    intersection_query<triangle_data> q2;
+    q2.reset(r2, accel, params);
+    while (q2.next()) {
+        if (q2.get_candidate_intersection_type() == intersection_type::triangle)
+            q2.commit_triangle_intersection();
     }
-    diffuse += direct / max(light.iblIntensity, 1e-3);
-    col += diffuse * (1.0 - metal);
+    float3 envAtHit;
+    if (q2.get_committed_intersection_type() == intersection_type::triangle) {
+        OllinRTSurface s2 = ollin_rt_fetch_surface(q2, verts, geoOffsets, r2.origin, secDir);
+        float3 F0b = mix(float3(0.04), s2.albedo, s2.metal);
+        float NoVb = max(dot(s2.N, -secDir), 0.0);
+        float3 Fb = F0b + (max(float3(1.0 - s2.rough), F0b) - F0b) * pow(1.0 - NoVb, 5.0);
+        float3 env2 = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, reflect(secDir, s2.N),
+                                        s2.rough, NoVb, light.iblMaxMip);
+        float3 diffuse2 = s2.albedo * irradianceTex.sample(cubeSamp, rot * s2.N).rgb
+                        + ollin_rt_direct(s2, light);
+        envAtHit = env2 * Fb + diffuse2 * (1.0 - s2.metal);
+    } else {
+        envAtHit = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, secDir,
+                                     s1.rough, NoV, light.iblMaxMip);
+    }
+
+    // First hit: specular (the traced second bounce, F0-tinted, so a metal reads as a
+    // colour-tinted mirror rather than a flat blob) + diffuse (the environment's
+    // irradiance + the scene's direct lights as Lambert, faded out as metalness rises).
+    // Un-exposed radiance; the caller scales the whole reflection by the IBL intensity,
+    // so hit and miss stay consistent.
+    float3 col = envAtHit * F;
+    float3 diffuse = s1.albedo * irradianceTex.sample(cubeSamp, rot * s1.N).rgb
+                   + ollin_rt_direct(s1, light);
+    col += diffuse * (1.0 - s1.metal);
     return float4(col, 1.0);
 }
 

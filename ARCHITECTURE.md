@@ -771,6 +771,28 @@ a 2× supersampled ground truth, the deferred export lands ~32% closer (contact-
 region RMSE) than the single-ray form, with the remaining delta shared with
 everything else 2× supersampling touches.
 
+The hit shade itself is **two-bounce**: the first hit's specular traces a second
+closest-hit ray and shades that surface (env-terminated at the third order,
+`ollin_rt_fetch_surface` + `ollin_rt_direct` shared by both bounces) rather than
+sampling the environment blindly. The second trace is load-bearing where two
+reflectors meet (the mirror floor at a polished pillar's base): an unoccluded
+environment sample at the first hit pipes the HDRI's bright lower hemisphere
+straight through the floor, and the grazing-compressed reflected silhouette
+concentrates the leak into a razor-thin bright streak along the base that no
+anti-aliasing can remove, because it is consistently-shaded content, not an
+edge (the debug that proved it painted occluded-secondary hits red and lit up
+exactly the streak). Shading the actual second surface dims the corner by the
+product of the two surfaces' own reflectances, as a real mirror corner does.
+Both bounces sample the environment through `ollin_rt_env_lobe`, which widens
+the prefilter mip by grazing incidence (effective roughness
+`rough / max(NoV, rough)`; a microfacet lobe stretches by ~1/NoV), so
+grazing-lit reflected content spreads its energy the way the surface's own
+distribution does. Two dead ends worth recording: an irradiance-probe fallback
+for occluded secondaries reads as flat pastel blobs on curved reflections (the
+irradiance cube integrates the same bright HDRI floor that leaked), and lobe
+widening alone dims the streak but cannot remove it (the leak is radiometric,
+not a filtering problem).
+
 ---
 
 ## Showcase camera (interactive auto-orbit)
