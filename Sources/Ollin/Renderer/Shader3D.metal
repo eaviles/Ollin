@@ -489,8 +489,8 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
 // The inline single-ray form (render targets and the raymarched fields): trace, fall back
 // to the environment on a miss, and blend the sharp mirror toward the prefiltered
 // environment by the *primary* surface's roughness (a single ray can't blur). A miss
-// returns `envReflection` exactly (mixing env toward env is the identity), so this
-// wrapper reproduces the pre-split math bit for bit.
+// returns `envReflection` exactly (mixing env toward env is the identity), so hit
+// and miss both shade the same as a direct single-expression evaluation.
 static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, float rough,
                                          primitive_acceleration_structure accel,
                                          const device OllinMeshVertex *verts,
@@ -950,10 +950,23 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     // the other lit materials take the diffuse irradiance as their ambient (Gooch excepted).
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
+#if OLLIN_RT_SHADOWS
+        // Deferred reflections: read the pre-traced sample at this fragment's screen
+        // position (position.xy · scale / texture size; resolution-fraction aware,
+        // the fieldShadowScale rule), handed to the ambient below.
+        float4 deferredRefl = float4(0.0);
+        if (light.rtReflections != 0 && light.rtReflectionDeferred != 0) {
+            constexpr sampler reflSamp(filter::linear, address::clamp_to_edge);
+            float2 rts = float2(rtReflectionTex.get_width(), rtReflectionTex.get_height());
+            deferredRefl = rtReflectionTex.sample(reflSamp,
+                in.position.xy * light.rtReflectionScale / max(rts, float2(1.0)));
+        }
+#endif
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF
 #if OLLIN_RT_SHADOWS
-                                       , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets
+                                       , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
+                                       deferredRefl
 #endif
                                        );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
@@ -1112,6 +1125,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              , primitive_acceleration_structure shadowAccel [[buffer(3)]]
                                              , const device OllinMeshVertex *meshVerts [[buffer(6)]]
                                              , const device uint *meshGeoOffsets [[buffer(7)]]
+                                             , texture2d<float> rtReflectionTex [[texture(7)]]
 #endif
                                              ) {
     // The base-color texture is sRGB, so the sample comes back already linear and
@@ -1133,10 +1147,21 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
 #endif
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
+#if OLLIN_RT_SHADOWS
+        // Deferred reflections: same screen-position sample as the solid fragment.
+        float4 deferredRefl = float4(0.0);
+        if (light.rtReflections != 0 && light.rtReflectionDeferred != 0) {
+            constexpr sampler reflSamp(filter::linear, address::clamp_to_edge);
+            float2 rts = float2(rtReflectionTex.get_width(), rtReflectionTex.get_height());
+            deferredRefl = rtReflectionTex.sample(reflSamp,
+                in.position.xy * light.rtReflectionScale / max(rts, float2(1.0)));
+        }
+#endif
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF
 #if OLLIN_RT_SHADOWS
-                                       , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets
+                                       , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
+                                       deferredRefl
 #endif
                                        );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
@@ -1225,6 +1250,49 @@ vertex MeshNormalOut ollin_mesh_normal_vertex(uint vid [[vertex_id]],
 
 fragment float4 ollin_mesh_normal_fragment(MeshNormalOut in [[stage_in]]) {
     return float4(normalize(in.viewNormal), 1.0);     // alpha 1 = real surface normal
+}
+
+// MARK: - Reflection G-buffer
+//
+// The deferred ray-traced-reflection pre-pass's surface buffer: re-render the meshes
+// (same dedicated-re-encode pattern as the mesh-normal pass above, single-sample;
+// the reflection layer is jitter-supersampled temporally, so it needs no MSAA) writing
+// the *world-space* normal (the reflection ray reflects in world space, unlike the
+// SSAO's view-space normal) plus the per-vertex metalness / roughness the reflection
+// trace reads (`normal.w` / `position.w`, the same baked slots the hit shade uses).
+// Depth-tested + writing into its own depth, which the trace pass then reconstructs
+// world positions from. Alpha 1 marks "a mesh surface is here"; a cleared pixel
+// (alpha 0) traces nothing.
+
+struct MeshGBufferOut {
+    float4 position [[position]];
+    float3 worldNormal;
+    float metalness;
+    float roughness;
+};
+
+struct MeshGBufferFragOut {
+    float4 normal [[color(0)]];     // world-space normal; alpha 1 = surface present
+    float4 material [[color(1)]];   // x = metalness, y = roughness
+};
+
+vertex MeshGBufferOut ollin_mesh_gbuffer_vertex(uint vid [[vertex_id]],
+                                                const device OllinMeshVertex *verts [[buffer(0)]],
+                                                constant Uniforms3D &u [[buffer(2)]]) {
+    OllinMeshVertex v = verts[vid];
+    MeshGBufferOut out;
+    out.position = u.projection * (u.view * float4(v.position.xyz, 1.0));
+    out.worldNormal = v.normal.xyz;
+    out.metalness = v.normal.w;
+    out.roughness = v.position.w;
+    return out;
+}
+
+fragment MeshGBufferFragOut ollin_mesh_gbuffer_fragment(MeshGBufferOut in [[stage_in]]) {
+    MeshGBufferFragOut out;
+    out.normal = float4(normalize(in.worldNormal), 1.0);
+    out.material = float4(clamp(in.metalness, 0.0, 1.0), clamp(in.roughness, 0.0, 1.0), 0.0, 1.0);
+    return out;
 }
 
 // MARK: - Wireframe 3D mesh

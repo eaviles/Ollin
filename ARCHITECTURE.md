@@ -709,6 +709,70 @@ occlusion, and raymarch resolution) target frame-rate bands.
 
 ---
 
+## Deferred ray-traced reflection AA
+
+The ray-traced reflection is one closest-hit ray per reflective pixel, which makes
+a *reflected* silhouette (a pillar's mirror image meeting a polished floor, the
+"reflection horizon") a 1px-hard edge no spatial filter can soften: the edge lives
+inside the traced image, past where MSAA can reach. The fix is stochastic
+supersampling of the reflection layer, restructured from an inline per-fragment
+trace into a small deferred chain (`encodeReflectionPass`, main canvas only):
+
+1. **Reflection G-buffer.** Re-encode the main canvas's solid mesh batches
+   (the mesh-normal pass's dedicated-re-encode pattern; wireframes and the grid
+   chrome skipped, matching the accel) into a single-sample MRT pair (world
+   normal + coverage, and the per-vertex metalness/roughness the baked
+   `OllinMeshVertex` w slots carry) plus its own `depth32Float`. Single-sample
+   on purpose: the layer is supersampled by jitter, not by MSAA, so it costs a
+   fraction of the SSAO normal pass's readable-MSAA memory.
+2. **Trace** (`ollin_rt_reflect_trace`, RT-gated in ShaderEffects so it can call
+   the Shader3D helpers; segment order): per pixel, reconstruct the surface
+   point through `inverseViewProjection` at a **sub-pixel-jittered** NDC (the
+   pixel's own full-precision depth), reflect the eye ray off it, and trace via
+   `ollin_rt_reflection_trace`, the hit-shading half shared with the inline
+   `ollin_rt_reflection` (a thin wrapper over it), so the two paths cannot
+   drift. Output is premultiplied by hit (miss = 0), so the average's alpha
+   carries fractional scene-vs-environment coverage. The jitter is an R2
+   sequence phase-rotated per pixel (`hash12`), a pure function of
+   (pixel, index), so exports reproduce bit-exactly. **No roughness-cone spread**:
+   glossiness stays with the mesh fragment's roughness blend toward the
+   prefiltered environment (the inline path's rule). A stochastic cone at 1–16
+   rays reads as sparkle on brushed metals; integrating one properly needs a
+   spatial resolve/denoise stage first (a follow-up).
+3. **Temporal resolve, live** (`ollin_rt_reflect_temporal`): the SSR temporal's
+   scheme (reproject through the previous frame's view·projection, clamp the
+   history to the current 3×3 neighborhood, blend as an EMA on
+   `resolveSSRAlpha`-style tiers), but reconstructing the world point from the
+   G-buffer's own full-precision depth rather than the normalized depth layer.
+   The history is one `SSRHistorySlot` (`rtReflectHistory`), guarded by
+   `statefulEncodeIsRepeat` so the live frame-grab can't double-step it,
+   reallocated on a size change. A static camera reprojects to identity and the
+   single jittered ray converges to the supersampled reflection in about a
+   dozen frames; under motion the clamp bounds stale history and it degrades
+   toward the single-ray look (the SSR temporal's accepted behavior; full
+   view-dependent reflection reprojection needs a depth history and was
+   declined as impractical, per the published technique's own author).
+4. **Headless/export supersample.** `image(of:)` runs the same chain with
+   `supersample: true`: N deterministic jittered rays averaged **within the one
+   frame** (perf 4 / default 8 / detail 16; export resolves `.detail`), no
+   history slot touched. A single exported frame is anti-aliased with no warmup,
+   a video export cannot flicker, and the live recording's off-screen re-render
+   (which routes through `image(of:)`) never advances the on-screen
+   accumulation, which is also why reflections need no `usesFeedback` warmup.
+
+The lit mesh fragments sample the finished layer by screen position
+(`position.xy · rtReflectionScale / texSize`, the fieldShadowScale rule, fragment
+texture 7) when `rtReflectionDeferred` is set, compositing `hit.rgb + prefiltered
+· (1 − hit.a)` through the same Fresnel/BRDF weighting, identical math to the
+inline form when coverage is 0 or 1. **Render targets and the raymarched fields
+keep the inline single-ray trace** (their lighting never sets the deferred flag);
+the deferred chain covers the canvas render, live and headless. Measured against
+a 2× supersampled ground truth, the deferred export lands ~32% closer (contact-
+region RMSE) than the single-ray form, with the remaining delta shared with
+everything else 2× supersampling touches.
+
+---
+
 ## Showcase camera (interactive auto-orbit)
 
 `cameraShowcase(_:)` (the default the 3D examples use) is an auto-orbit the viewer can

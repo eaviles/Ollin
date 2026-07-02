@@ -801,6 +801,134 @@ fragment float4 ollin_mesh_normal_resolve(float4 pos [[position]],
     return float4(nsum / float(n), cov / float(n));
 }
 
+// MARK: - Deferred ray-traced reflections (trace + temporal accumulation)
+//
+// The anti-aliased form of the ray-traced reflection: one ray per pixel is a sharp
+// point sample of the reflected scene, so a reflected silhouette (a pillar's base
+// meeting its mirror image on a polished floor, the "reflection horizon") lands as a
+// 1px-hard edge no spatial filter can soften. The fix is stochastic supersampling:
+// jitter each pixel's reflection ray within the pixel footprint (plus a small cone by
+// the surface roughness) and integrate: across frames on the live path (this trace +
+// the temporal resolve below, the same reprojection + neighborhood-clamp + EMA scheme
+// as the screen-space-reflection temporal), or within one frame on the historyless
+// export path (an N-ray average, deterministic, snapshot-stable). Inputs are the
+// dedicated reflection G-buffer (world normal + metal/rough + its own depth); the hit
+// shading is the shared `ollin_rt_reflection_trace`, so inline and deferred reflections
+// can't drift. Output is premultiplied by hit coverage (miss = 0), so the accumulated
+// alpha carries the scene-vs-environment blend the mesh fragment composites with.
+
+#if OLLIN_RT_SHADOWS
+// Per-pixel, per-index 2D jitter in [-0.5, 0.5]²: an R2 low-discrepancy step by the
+// frame/sample index, phase-rotated per pixel (hash12) so neighboring pixels sample
+// different phases, so the temporal clamp's 3×3 box brackets an edge immediately.
+// Pure function of (pixel, index): deterministic, so export reproduces bit-exactly.
+static inline float2 ollin_rt_reflect_jitter(float2 px, float n) {
+    const float2 R2 = float2(0.7548776662, 0.5698402910);
+    float2 seq = fract(n * R2);
+    float2 rot = float2(hash12(px), hash12(px + 17.31));
+    return fract(seq + rot) - 0.5;
+}
+
+// params[0] = (texel.xy, sample count, jitter seed). Textures/buffers mirror the lit
+// mesh fragment's reflection bindings (IBL cubes at 4/5, accel at 3, mesh at 6/7).
+fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
+                                       texture2d<float> normalTex [[texture(0)]],
+                                       texture2d<float> materialTex [[texture(1)]],
+                                       depth2d<float> depthTex [[texture(2)]],
+                                       texturecube<float> irradianceTex [[texture(4)]],
+                                       texturecube<float> prefilterTex [[texture(5)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 *params [[buffer(0)]],
+                                       constant OllinLighting &light [[buffer(1)]],
+                                       constant Uniforms3D &u [[buffer(2)]],
+                                       primitive_acceleration_structure accel [[buffer(3)]],
+                                       const device OllinMeshVertex *verts [[buffer(6)]],
+                                       const device uint *geoOffsets [[buffer(7)]]) {
+    float4 nrm = normalTex.sample(samp, in.uv);
+    if (nrm.a < 0.5) return float4(0.0);          // no mesh surface here
+    constexpr sampler dsamp(filter::nearest);
+    float d = depthTex.sample(dsamp, in.uv);
+    if (d >= 1.0) return float4(0.0);
+    float rough = clamp(materialTex.sample(samp, in.uv).y, 0.045, 1.0);
+    // At roughness ≥ 0.55 the glossy blend in the mesh fragment lands fully on the
+    // prefiltered environment, so the traced value is unused; skip the rays.
+    if (rough >= 0.55) return float4(0.0);
+    float3 n = normalize(nrm.xyz);
+    constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
+    float cs = cos(light.iblRotation), sn = sin(light.iblRotation);
+    float3x3 rot = float3x3(float3(cs, 0.0, -sn), float3(0.0, 1.0, 0.0), float3(sn, 0.0, cs));
+    float2 texel = params[0].xy;
+    int samples = max(1, int(params[0].z));
+    float seed = params[0].w;
+    float3 eye = light.cameraPosition.xyz;
+    float4 acc = float4(0.0);
+    for (int s = 0; s < samples; s++) {
+        // Pixel-footprint jitter: reconstruct the surface point at a sub-pixel offset
+        // (this pixel's depth, the jittered NDC through the inverse view-projection)
+        // and reflect the eye ray off it: exactly a ray through a different sub-pixel
+        // position of this pixel bouncing off the locally-planar surface, so the
+        // *reflected* image is what gets supersampled.
+        float2 j = ollin_rt_reflect_jitter(in.position.xy, seed + float(s));
+        float2 uvj = in.uv + j * texel;
+        float2 ndc = float2(uvj.x * 2.0 - 1.0, 1.0 - uvj.y * 2.0);
+        float4 wp = u.inverseViewProjection * float4(ndc, d, 1.0);
+        float3 P = wp.xyz / wp.w;
+        float3 R = reflect(normalize(P - eye), n);
+        // No roughness-cone spread: glossiness stays with the mesh fragment's env blend
+        // (the inline path's rule: one ray can't blur). A wide stochastic cone at these
+        // sample counts reads as sparkle on brushed metals; integrating it properly
+        // needs a spatial resolve/denoise stage first (a follow-up).
+        acc += ollin_rt_reflection_trace(P, n, R, accel, verts, geoOffsets, light,
+                                         irradianceTex, prefilterTex, cubeSamp, rot);
+    }
+    return acc / float(samples);
+}
+#endif
+
+// Temporal resolve for the deferred reflection: reproject last frame's accumulation by
+// the camera's motion, clamp it to the current frame's 3×3 neighborhood (ghosting
+// rejection), blend as an exponential moving average (the SSR temporal's scheme), but
+// reconstructing the world point from the reflection G-buffer's own full-precision
+// depth through the current inverse view-projection (no normalized-depth camera
+// geometry needed). A static camera reprojects to identity, so the jittered single-ray
+// trace converges to the supersampled reflection; under motion the clamp bounds any
+// stale history to the local neighborhood, degrading toward the single-ray look.
+// params[0] = (texel.xy, alpha, hasHistory); params[4..7] = the current inverse
+// view-projection columns; params[8..11] = the previous view·projection columns.
+fragment float4 ollin_rt_reflect_temporal(PresentOut in [[stage_in]],
+                                          texture2d<float> traced [[texture(0)]],
+                                          depth2d<float> depthTex [[texture(1)]],
+                                          texture2d<float> history [[texture(2)]],
+                                          sampler samp [[sampler(0)]],
+                                          constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float alpha = params[0].z;
+    bool hasHistory = params[0].w > 0.5;
+    float4 current = traced.sample(samp, in.uv);
+    if (!hasHistory || alpha <= 0.0) return current;
+    constexpr sampler dsamp(filter::nearest);
+    float d = depthTex.sample(dsamp, in.uv);
+    if (d >= 1.0) return current;                 // background carries no reflection
+    float2 ndc = float2(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
+    float4x4 invVP = float4x4(params[4], params[5], params[6], params[7]);
+    float4x4 prevVP = float4x4(params[8], params[9], params[10], params[11]);
+    float4 wp = invVP * float4(ndc, d, 1.0);
+    float4 clip = prevVP * float4(wp.xyz / wp.w, 1.0);
+    if (clip.w <= 0.0) return current;            // behind the previous camera
+    float2 pndc = clip.xy / clip.w;
+    float2 prevUV = float2(pndc.x * 0.5 + 0.5, 0.5 - pndc.y * 0.5); // Metal top-down uv
+    if (any(prevUV < 0.0) || any(prevUV > 1.0)) return current;    // disoccluded / off-frame
+    float4 lo = current, hi = current;
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            float4 s = traced.sample(samp, in.uv + float2(float(x), float(y)) * texel);
+            lo = min(lo, s); hi = max(hi, s);
+        }
+    }
+    float4 hist = clamp(history.sample(samp, prevUV), lo, hi);
+    return mix(current, hist, alpha);             // exponential moving average
+}
+
 // MARK: - Color & tone filters
 //
 // Each reads premultiplied-linear input, transforms straight color, and writes

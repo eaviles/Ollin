@@ -85,6 +85,10 @@ final class MetalRenderer {
         /// the key. Run once per environment (cached), not per frame.
         var isIBL = false
         var iblColorFormat: MTLPixelFormat = .rgba16Float
+        /// The reflection G-buffer pass: two color attachments (world normal, metal/rough)
+        /// plus depth, single-sample, blending off: the one MRT pipeline, so it gets its
+        /// own descriptor branch in `makePipeline`.
+        var isGBuffer = false
 
         // an IBL bake pass (equirect→cube / irradiance / prefilter / BRDF LUT)
         static func ibl(_ fragment: String, color: MTLPixelFormat = .rgba16Float) -> PipelineKey {
@@ -204,6 +208,14 @@ final class MetalRenderer {
         static func meshNormal(depth: MTLPixelFormat) -> PipelineKey {
             PipelineKey(vertex: "ollin_mesh_normal_vertex", fragment: "ollin_mesh_normal_fragment",
                         depthFormat: depth)
+        }
+        // reflection G-buffer: re-render the meshes single-sample into two attachments
+        // (world normal + coverage, metalness/roughness) with their own depth, feeding
+        // the deferred ray-traced-reflection trace pass. Only encoded when reflections
+        // are active on a ray-tracing device.
+        static func rtReflectGBuffer(depth: MTLPixelFormat) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_gbuffer_vertex", fragment: "ollin_mesh_gbuffer_fragment",
+                        depthFormat: depth, isGBuffer: true)
         }
         // depth-scene backdrop: a textured quad that also writes per-pixel depth from
         // a depth map (premultiplied color, like the image path; outputs [[depth]]).
@@ -593,6 +605,18 @@ final class MetalRenderer {
     /// The next SSR op's ordinal this frame; reset at the start of `encodeEffectTargets`.
     private var ssrOrdinalNext = 0
 
+    /// The deferred ray-traced reflection's temporal history (the live on-screen path):
+    /// one slot for the main canvas, reusing the SSR slot shape (ping-pong pair +
+    /// previous view·projection + first-frame gate). The headless/export path never
+    /// touches it (it supersamples within the frame instead), so a live recording's
+    /// off-screen re-render can't double-step the accumulation.
+    private var rtReflectHistory: SSRHistorySlot?
+    /// The reflection G-buffer's cached targets (world normal + coverage, metal/rough,
+    /// own depth), reallocated on a size change. GPU-private and fully rewritten by the
+    /// pass each frame, so reuse across in-flight frames is safe (command buffers on
+    /// one queue serialize the writes and reads).
+    private var rtReflectGBuf: (normal: MTLTexture, material: MTLTexture, depth: MTLTexture, w: Int, h: Int)?
+
     /// The (drawer, frame) whose stateful passes (feedback / sim fields / fluid / SSR
     /// temporal) have already advanced, so a same-frame re-encode reuses their results
     /// instead of stepping them again. The live frame-grab and Syphon hooks re-render
@@ -835,6 +859,15 @@ final class MetalRenderer {
                 groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
                 uniforms3D: u3, lighting: fl, fullWidth: width, fullHeight: height)
         }
+        // Deferred ray-traced reflections (live): trace one jittered ray per pixel and
+        // temporally accumulate it, so the reflection edges (a pillar's mirror image on a
+        // polished floor) converge to anti-aliased instead of staying 1px-hard. Nil when
+        // reflections aren't active this frame; the mesh fragments then keep the inline path.
+        let deferredReflection = encodeReflectionPass(
+            drawer, into: commandBuffer, meshBuffer: meshBuf,
+            reflectAccel: renderedShadow.reflectAccel,
+            reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+            width: width, height: height, supersample: false, pooled: true)
 
         guard let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
@@ -854,7 +887,8 @@ final class MetalRenderer {
                reflectAccel: renderedShadow.reflectAccel,
                reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
                halfResField: halfResField,
-               halfResFieldShadow: halfResFieldShadow)
+               halfResFieldShadow: halfResFieldShadow,
+               deferredReflection: deferredReflection)
         geomEncoder.endEncoding()
 
         // Whole-frame postProcess filters run over the resolved frame before present.
@@ -1162,6 +1196,15 @@ final class MetalRenderer {
                 groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
                 uniforms3D: u3, lighting: fl, fullWidth: width, fullHeight: height)
         }
+        // Deferred ray-traced reflections, historyless: N deterministic jittered rays
+        // averaged within this one frame, so a single export is anti-aliased with no
+        // warmup, a video export can't flicker, and the live frame-grab re-render
+        // (which routes through here) never double-steps the on-screen accumulation.
+        let deferredReflection = encodeReflectionPass(
+            drawer, into: commandBuffer, meshBuffer: meshBuf,
+            reflectAccel: renderedShadow.reflectAccel,
+            reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+            width: width, height: height, supersample: true, pooled: false)
 
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
@@ -1177,7 +1220,8 @@ final class MetalRenderer {
                reflectAccel: renderedShadow.reflectAccel,
                reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
                halfResField: halfResField,
-               halfResFieldShadow: halfResFieldShadow)
+               halfResFieldShadow: halfResFieldShadow,
+               deferredReflection: deferredReflection)
         encoder.endEncoding()
 
         // Tone-map the resolved float frame (after whole-frame postProcess filters)
@@ -2337,6 +2381,7 @@ final class MetalRenderer {
                         reflectGeoOffsets: MTLBuffer? = nil,
                         halfResField: (color: MTLTexture, depth: MTLTexture)? = nil,
                         halfResFieldShadow: MTLTexture? = nil,
+                        deferredReflection: MTLTexture? = nil,
                         target passTarget: RenderTarget? = nil) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
@@ -2477,7 +2522,14 @@ final class MetalRenderer {
         // reflection (replacing the IBL prefilter sample). The flag gates it; off → the
         // byte-identical IBL-prefilter path. The renderer owns the hardware check, so this is
         // set only when the shadow pass actually built a reflection accel on a tracing device.
+        // When the pre-pass traced (and, live, accumulated) the reflection off-screen, the
+        // fragments sample that texture by screen position instead of tracing inline (the
+        // anti-aliased path); the scale is 1 while the layer renders at full resolution.
         if reflectAccel != nil { lighting.rtReflections = 1 }
+        if deferredReflection != nil {
+            lighting.rtReflectionDeferred = 1
+            lighting.rtReflectionScale = 1.0
+        }
         // A directional/spot caster has each field render into the 2D map (so meshes receive it
         // from there); a point/ray-traced caster has no map a field can render into, so the lit
         // mesh fragments resolve the cast another way. `fieldCasterCount` > 0 turns that on (only
@@ -2777,6 +2829,12 @@ final class MetalRenderer {
                     encoder.setFragmentTexture(currentIBLIrradiance ?? iblPlaceholderCube, index: 4)
                     encoder.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
                     encoder.setFragmentTexture(iblBRDFLUTTexture ?? strip, index: 6)
+                    // The pre-traced reflection layer (tex 7) when the deferred path is on;
+                    // a never-sampled stand-in otherwise (`rtReflectionDeferred` gates the
+                    // read). Only part of the RT-compiled fragment signature.
+                    if rayTracedShadows {
+                        encoder.setFragmentTexture(deferredReflection ?? strip, index: 7)
+                    }
                 }
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .depthScene:
@@ -3715,6 +3773,188 @@ final class MetalRenderer {
         return device.makeTexture(descriptor: desc)
     }
 
+    /// The deferred ray-traced-reflection pre-pass (main canvas): render the reflection
+    /// G-buffer (world normal + metal/rough + its own depth), trace the jittered
+    /// reflection per pixel into a float layer, and, on the live path, temporally
+    /// accumulate it (reproject through the previous view·projection, 3×3 neighborhood
+    /// clamp, exponential moving average: the SSR temporal's scheme). Returns the
+    /// texture the lit mesh fragments sample by screen position, or nil when the frame
+    /// has no active reflections (the caller then leaves the inline single-ray path on,
+    /// which render targets and the raymarched fields keep regardless).
+    ///
+    /// `supersample` selects the historyless form (headless/export): N deterministic
+    /// jittered rays averaged within the one frame, no history slot touched: a single
+    /// exported frame is anti-aliased with no warmup, a video export can't flicker, and
+    /// the live frame-grab's off-screen re-render (which routes through `image(of:)`)
+    /// can't double-step the on-screen accumulation. The live path instead traces one
+    /// jittered ray and blends it into the persistent `rtReflectHistory`; a same-frame
+    /// repeat (`statefulEncodeIsRepeat`) serves the already-accumulated front rather
+    /// than stepping the average again, like the other stateful passes.
+    private func encodeReflectionPass(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                                      meshBuffer: MTLBuffer?,
+                                      reflectAccel: MTLAccelerationStructure?,
+                                      reflectGeoOffsets: MTLBuffer?,
+                                      width: Int, height: Int,
+                                      supersample: Bool, pooled: Bool) -> MTLTexture? {
+        guard let camera = drawer.camera3D, let meshBuffer,
+              let accel = reflectAccel, let geoOffsets = reflectGeoOffsets,
+              let irradiance = currentIBLIrradiance, let prefilter = currentIBLPrefilter,
+              drawer.batches.contains(where: { $0.kind == .mesh3D && $0.target == nil
+                                               && !$0.meshWireframe && !$0.meshGrid })
+        else { return nil }
+
+        // Same-frame repeat (live): the history already holds this frame's accumulation.
+        if !supersample, statefulEncodeIsRepeat,
+           let slot = rtReflectHistory, slot.valid, slot.w == width, slot.h == height {
+            return slot.flipped ? slot.b : slot.a
+        }
+
+        // Lighting for the trace pass: the same IBL exposure/rotation the main pass
+        // will shade with (mirroring `encode`'s block), so hit and miss stay in the
+        // same units as the prefilter sample the fragment composites against.
+        var lighting = drawer.makeLighting()
+        guard lighting.enabled != 0 else { return nil }
+        lighting.rtReflections = 1
+        lighting.iblEnabled = 1
+        lighting.iblIntensity = Float(drawer.environment?.intensity ?? 1) * currentIBLNormalization
+        lighting.iblMaxMip = Float(currentIBLMaxMip)
+        lighting.iblRotation = Float(drawer.environment?.rotation ?? 0)
+
+        // 1. The G-buffer: re-render the main canvas's solid meshes (the same batch walk
+        // as the mesh-normal pass; wireframes and the grid chrome carry no reflective
+        // surface; the grid is also excluded from the accel, so the two stay in step).
+        if rtReflectGBuf == nil || rtReflectGBuf!.w != width || rtReflectGBuf!.h != height {
+            guard let normal = makeFilterTexture(width: width, height: height),
+                  let material = makeFilterTexture(width: width, height: height),
+                  let depth = makeDepthResolve(width: width, height: height) else { return nil }
+            rtReflectGBuf = (normal, material, depth, width, height)
+        }
+        guard let gbuf = rtReflectGBuf,
+              let gbufPipe = try? pipeline(.rtReflectGBuffer(depth: depthPixelFormat)),
+              let traced = acquireFilterTexture(width: width, height: height, pooled: pooled)
+        else { return nil }
+
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = gbuf.normal
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        pass.colorAttachments[0].storeAction = .store
+        pass.colorAttachments[1].texture = gbuf.material
+        pass.colorAttachments[1].loadAction = .clear
+        pass.colorAttachments[1].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        pass.colorAttachments[1].storeAction = .store
+        pass.depthAttachment.texture = gbuf.depth
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.clearDepth = 1.0
+        pass.depthAttachment.storeAction = .store
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(width),
+                                    height: Double(height), znear: 0, zfar: 1))
+        enc.setRenderPipelineState(gbufPipe)
+        enc.setDepthStencilState(depthTestState)
+        var u3 = makeUniforms3D(drawer, camera: camera, viewport: SIMD2(Float(width), Float(height)))
+        enc.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
+        let meshStride = MemoryLayout<OllinMeshVertex>.stride
+        let meshCount = drawer.meshVertices.count
+        let batches = drawer.batches
+        for i in batches.indices {
+            let batch = batches[i]
+            guard batch.kind == .mesh3D, batch.target == nil,
+                  !batch.meshWireframe, !batch.meshGrid else { continue }
+            let next = i + 1 < batches.count ? batches[i + 1] : nil
+            let end = next?.meshStart ?? meshCount
+            let count = end - batch.meshStart
+            guard count > 0 else { continue }
+            enc.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
+            enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+        }
+        enc.endEncoding()
+
+        // 2. The trace: one fullscreen pass, N jittered rays per pixel (1 on the live path).
+        let samples = supersample ? resolveRTReflectionSamples() : 1
+        let seed = supersample ? 0 : Float(frameComputeUniforms.frameCount % 4096)
+        guard let traceState = try? pipeline(.effect("ollin_rt_reflect_trace")) else { return nil }
+        let tracePass = MTLRenderPassDescriptor()
+        tracePass.colorAttachments[0].texture = traced
+        tracePass.colorAttachments[0].loadAction = .dontCare
+        tracePass.colorAttachments[0].storeAction = .store
+        guard let trace = cb.makeRenderCommandEncoder(descriptor: tracePass) else { return nil }
+        trace.setRenderPipelineState(traceState)
+        trace.setFragmentTexture(gbuf.normal, index: 0)
+        trace.setFragmentTexture(gbuf.material, index: 1)
+        trace.setFragmentTexture(gbuf.depth, index: 2)
+        trace.setFragmentTexture(irradiance, index: 4)
+        trace.setFragmentTexture(prefilter, index: 5)
+        trace.setFragmentSamplerState(imageSampler, index: 0)
+        var traceParams = SIMD4<Float>(1 / Float(width), 1 / Float(height), Float(samples), seed)
+        trace.setFragmentBytes(&traceParams, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+        trace.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
+        trace.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
+        trace.useResource(accel, usage: .read, stages: .fragment)
+        trace.setFragmentAccelerationStructure(accel, bufferIndex: 3)
+        trace.setFragmentBuffer(meshBuffer, offset: 0, index: 6)
+        trace.setFragmentBuffer(geoOffsets, offset: 0, index: 7)
+        trace.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        trace.endEncoding()
+
+        // Headless/export: the in-frame average IS the anti-aliased reflection.
+        if supersample { return traced }
+
+        // 3. The temporal resolve (live): reproject + clamp + EMA into the history's back.
+        let slot: SSRHistorySlot
+        if let existing = rtReflectHistory, existing.w == width, existing.h == height {
+            slot = existing
+        } else {
+            guard let a = makeFloatResolve(width: width, height: height),
+                  let b = makeFloatResolve(width: width, height: height) else { return traced }
+            let clear = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+            clearFloatTexture(a, color: clear, into: cb)
+            clearFloatTexture(b, color: clear, into: cb)
+            slot = SSRHistorySlot(a: a, b: b, w: width, h: height)
+            rtReflectHistory = slot
+        }
+        let front = slot.flipped ? slot.b : slot.a
+        let back = slot.flipped ? slot.a : slot.b
+        let aspect = height > 0 ? Double(width) / Double(height) : 1
+        let viewProjection = camera.projectionMatrix(aspect: aspect) * camera.viewMatrix
+        let invVP = u3.inverseViewProjection
+        let alpha = slot.valid ? Float(resolveRTReflectionAlpha()) : 0
+        var params = [SIMD4<Float>](repeating: .zero, count: 12)
+        params[0] = SIMD4(1 / Float(width), 1 / Float(height), alpha, slot.valid ? 1 : 0)
+        params[4] = invVP.columns.0; params[5] = invVP.columns.1
+        params[6] = invVP.columns.2; params[7] = invVP.columns.3
+        let pv = slot.previousViewProjection
+        params[8] = pv.columns.0; params[9] = pv.columns.1
+        params[10] = pv.columns.2; params[11] = pv.columns.3
+        encodeEffectFragment("ollin_rt_reflect_temporal", inputs: [traced, gbuf.depth, front],
+                             output: back, params: params, into: cb)
+        slot.previousViewProjection = viewProjection
+        slot.valid = true
+        slot.flipped.toggle()   // the just-written back is next frame's (and any repeat's) front
+        return back
+    }
+
+    /// EMA history weight for the deferred reflection's temporal accumulation, resolved
+    /// through the automatic quality (no per-feature knob yet): the SSR temporal's tiers.
+    private func resolveRTReflectionAlpha() -> Double {
+        switch effectiveQuality(.default) {
+        case .detail:      return 0.92
+        case .default:     return 0.88
+        case .performance: return 0.80
+        }
+    }
+
+    /// Rays per pixel for the historyless (headless/export) reflection supersample: the
+    /// within-one-frame equivalent of the temporal accumulation, deterministic (fixed
+    /// jitter sequence, seed 0) so exports and snapshots reproduce bit-exactly.
+    private func resolveRTReflectionSamples() -> Int {
+        switch effectiveQuality(.default) {
+        case .performance: return 4
+        case .default:     return 8
+        case .detail:      return 16
+        }
+    }
+
     private func encodeFieldShadowHalfRes(_ drawer: Drawer, into cb: MTLCommandBuffer,
                                           meshBuffer: MTLBuffer?, groupBuffer: MTLBuffer?, nodeBuffer: MTLBuffer?,
                                           uniforms3D: Uniforms3D, lighting: OllinLighting,
@@ -4091,6 +4331,27 @@ final class MetalRenderer {
             d.fragmentFunction = f
             d.rasterSampleCount = 1
             d.colorAttachments[0].pixelFormat = key.iblColorFormat
+            return try device.makeRenderPipelineState(descriptor: d)
+        }
+        if key.isGBuffer {
+            // The reflection G-buffer: the one MRT pipeline; two float attachments
+            // (world normal + coverage, metalness/roughness), blending off (the
+            // fragment's output replaces over the cleared zero), single-sample (the
+            // reflection layer is jitter-supersampled temporally, not spatially),
+            // depth-tested + writing into its own depth.
+            guard let v = library.makeFunction(name: key.vertex),
+                  let f = library.makeFunction(name: key.fragment) else {
+                throw RendererError.shaderFunctions
+            }
+            let d = MTLRenderPipelineDescriptor()
+            d.vertexFunction = v
+            d.fragmentFunction = f
+            d.rasterSampleCount = 1
+            d.colorAttachments[0].pixelFormat = linearFormat
+            d.colorAttachments[1].pixelFormat = linearFormat
+            if let depthFormat = key.depthFormat {
+                d.depthAttachmentPixelFormat = depthFormat
+            }
             return try device.makeRenderPipelineState(descriptor: d)
         }
         return try makePipeline(vertex: key.vertex, fragment: key.fragment, using: library,

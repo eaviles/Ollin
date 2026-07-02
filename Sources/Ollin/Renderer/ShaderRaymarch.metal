@@ -581,7 +581,9 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
         lit.rgb += ollin_pbr_ibl_ambient(baseRGB, n, viewDir, mat, light,
                                          iblIrradiance, iblPrefilter, iblBRDF
 #if OLLIN_RT_SHADOWS
-                                         , pw, accel, meshVerts, meshGeoOffsets
+                                         // Fields always trace inline (their lighting never sets
+                                         // rtReflectionDeferred), so no deferred sample to pass.
+                                         , pw, accel, meshVerts, meshGeoOffsets, float4(0.0)
 #endif
                                          );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
