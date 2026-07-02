@@ -4,39 +4,131 @@
 
 ## 3D
 
-Sketches that opt into Ollin's 3D mode. 2D stays the default — a sketch becomes
+Sketches that opt into Ollin's 3D mode. 2D stays the default; a sketch becomes
 3D by setting a `camera` (`perspective`/`ortho`/`camera`), which makes the renderer
 add a depth buffer and draw 3D geometry through the camera. World space is
 right-handed and y-up.
 
+The section is large, so the sketches are grouped by topic:
+[Geometry](#geometry) · [Camera](#camera) · [Materials](#materials) ·
+[Lighting](#lighting) · [Environments](#environments) · [Effects](#effects) ·
+[Raymarching](#raymarching) · [Depth](#depth) · [Phone](#phone)
+
+### Geometry
+
+Meshes, point clouds, and the 3D transform stack.
+
 | Sketch | What it shows |
 | --- | --- |
-| [PointCloud](PointCloud/) | A rippling heightfield drawn as an orbiting 3D point cloud — camera, depth, and instanced disc splats. |
-| [StrangeAttractor](StrangeAttractor/) | A Lorenz attractor integrated with Runge-Kutta, splatted as a 150k-point cloud colored by orbit speed and lit additively; grab and orbit it (`StrangeAttractor.lorenz`). |
-| [Transforms](Transforms/) | The 3D transform stack: a sun, planets orbiting it, and a moon orbiting each planet — orbits within orbits via nested `withState`, one point-cloud blob placed many ways by `translate`/`rotateY`/`scale`. |
-| [Solids](Solids/) | The closed-solid catalog — box, sphere, cylinder, torus, the Platonics, and more — as colorful clay shaded by the auto-lit default. |
-| [ShapeFactory](ShapeFactory/) | The parametric/profile mesh set (Möbius, Klein, superellipsoid, supershape, extrude, lathe) morphing on `time`. |
-| [Lighting](Lighting/) | The three light kinds shading solids by hand — a fixed directional key, an orbiting point bulb, a sweeping spot — with a rising-shininess sphere row. |
-| [LightingPresets](LightingPresets/) | One call relights the whole scene: the curated `LightingPreset`s (`.standard`/`.threePoint`/`.goldenHour`/`.noir`/`.studio`/`.moonlight`) cycling over one still life, plus a sketch-built custom rig. Click or press a key to step. |
-| [Materials](Materials/) | The material library — one orbiting sphere grid wearing each built-in `Material` (`.iridescent`/`.soapBubble`/`.velvet`/`.jade`/`.toon`/`.gooch`/…), the view-angle finishes shifting as it turns. |
-| [Shadows](Shadows/) | Directional cast shadows: solids drop shadows onto a floor and onto one another via `castShadows()`. |
-| [LoadedMesh](LoadedMesh/) | A mesh loaded from a file (`.obj`/`.usdz`/`.gltf`/…) — drop one in with `OLLIN_MESH=<path>`, or the bundled crystal — recentered, scaled to fit, and lit. |
-| [TexturedMesh](TexturedMesh/) | A UV-gridded globe textured with an image over a base-color-tinted floor, both lit. |
-| [Wireframe](Wireframe/) | Orbiting solids drawn as their triangle edges (`wireframe()`), faces see-through. |
-| [CameraControl](CameraControl/) | Interactive camera control: `cameraControl()` lets the viewer drag to orbit a still life, scroll to dolly, and right-drag (or shift/option-drag) to pan, damped so it settles and a flick keeps a little spin. |
-| [CameraMoves](CameraMoves/) | Cinematic camera moves over one still life: a `.turntable` spin, a `.sway`, a `.pushIn`/`.pullOut` dolly, a `.tilt`, the `.orbitAndRise` beauty pass, a `.reveal`, and a `.handheld` drift, each one `cameraMove(_:)` call composing over the pose the last one left. Click or press a key to step. |
-| [SceneDefocus](SceneDefocus/) | Depth of field on a 3D scene defocused by its *own* depth buffer: a row of orbs drawn into a render target, then `scene.combined(with: scene.depth, .defocus(...))` racks focus through them. Drag to rack by hand. |
-| [DepthCloud](DepthCloud/) | A live 3D point cloud from one webcam: a neural depth model lifts each pixel into space, colored by the camera image, orbiting. Needs `Scripts/fetch-models.sh`. |
-| [Record3DCloud](Record3DCloud/) | An iPhone RGBD recording orbited as a point cloud: a `.r3d` clip from the Record3D app, unprojected with its true camera intrinsics. Drop a recording in `~/Downloads`. Needs `import OllinRecord3D`. |
-| [Record3DLiveCloud](Record3DLiveCloud/) | A **live** RGBD cloud streamed from a tethered iPhone: open Record3D, turn on USB streaming, and the phone's depth camera becomes a real-time point cloud on the Mac. Needs `import OllinRecord3D`. |
-| [DepthCompositing](DepthCompositing/) | A 2D card standing between two point-cloud orbs — depth-aware compositing: the near orb draws over the card, the far one is hidden behind it, with per-orb billboard pins. |
-| [DepthOcclusion](DepthOcclusion/) | 2D discs hung at a draggable depth plane over a live webcam depth feed (a neural model), occluded by whoever stands nearer. Needs `import OllinVision` + `Scripts/fetch-models.sh`. |
-| [MetricDepthScene](MetricDepthScene/) | 2D markers floating at **true metric depths** (meters) inside a live LiDAR feed: a `Camera3D.fromIntrinsics` makes the feed metric, so a marker at a real distance is blocked when you step closer than it. Needs `import OllinRecord3D`. |
-| [DepthLiftedPose](DepthLiftedPose/) | A 2D body pose lifted into metric 3D through a depth frame: the tethered phone's depth back-projects each tracked joint, and the skeleton is drawn in space over the person's own cloud. Needs `import OllinVision`/`OllinRecord3D`. |
-| [PhoneBodyPose](PhoneBodyPose/) | A live 3D body skeleton streamed from **Ollin Capture** on a tethered iPhone — ARKit body pose over USB, orbited as a stick figure. Needs `import OllinPhone`. |
-| [PhoneFace](PhoneFace/) | Ollin Capture's live face mesh and 52 expression blendshapes, orbited as a point cloud with expression bars (tap **Face** on the phone). Needs `import OllinPhone`. |
-| [PhoneDepthCloud](PhoneDepthCloud/) | A **live** rear-LiDAR RGBD cloud from Ollin Capture (tap **World**): Ollin's own-app world-facing depth feed, unprojected with the stream's true intrinsics and orbited. Needs `import OllinPhone`. |
-| [PhoneWorldScan](PhoneWorldScan/) | Sweep the phone (tap **World**) and each depth frame is placed by its camera pose into one fused `WorldCloud` of the room — **R** to reset. Needs `import OllinPhone`. |
-| [PhoneSegmentation](PhoneSegmentation/) | Ollin Capture's on-device person matte (tap **Segment**): the cutout lifted onto a live gradient backdrop, the tinted matte as a drop shadow. Needs `import OllinPhone`. |
+| [PointCloud](Geometry/PointCloud/) | A rippling heightfield drawn as an orbiting 3D point cloud: camera, depth, and instanced disc splats. |
+| [StrangeAttractor](Geometry/StrangeAttractor/) | A Lorenz attractor integrated with Runge-Kutta, splatted as a 150k-point cloud colored by orbit speed and lit additively; grab and orbit it (`StrangeAttractor.lorenz`). |
+| [Transforms](Geometry/Transforms/) | The 3D transform stack: a sun, planets orbiting it, and a moon orbiting each planet; orbits within orbits via nested `withState`, one point-cloud blob placed many ways by `translate`/`rotateY`/`scale`. |
+| [Solids](Geometry/Solids/) | The closed-solid catalog (box, sphere, cylinder, torus, the Platonics, and more) as colorful clay shaded by the auto-lit default. |
+| [ShapeFactory](Geometry/ShapeFactory/) | The parametric/profile mesh set (Möbius, Klein, superellipsoid, supershape, extrude, lathe) morphing on `time`. |
+| [LoadedMesh](Geometry/LoadedMesh/) | A mesh loaded from a file (`.obj`/`.usdz`/`.gltf`/…); drop one in with `OLLIN_MESH=<path>` (or use the bundled crystal), recentered, scaled to fit, and lit. |
+| [TexturedMesh](Geometry/TexturedMesh/) | A UV-gridded globe textured with an image over a base-color-tinted floor, both lit. |
+| [Wireframe](Geometry/Wireframe/) | Orbiting solids drawn as their triangle edges (`wireframe()`), faces see-through. |
+
+### Camera
+
+Driving the view: interactive control, cinematic moves, and inspection snaps.
+
+| Sketch | What it shows |
+| --- | --- |
+| [CameraControl](Camera/CameraControl/) | Interactive camera control: `cameraControl()` lets the viewer drag to orbit a still life, scroll to dolly, and right-drag (or shift/option-drag) to pan, damped so it settles and a flick keeps a little spin. |
+| [CameraMoves](Camera/CameraMoves/) | Cinematic camera moves over one still life: a `.turntable` spin, a `.sway`, a `.pushIn`/`.pullOut` dolly, a `.tilt`, the `.orbitAndRise` beauty pass, a `.reveal`, and a `.handheld` drift, each one `cameraMove(_:)` call composing over the pose the last one left. Click or press a key to step. |
+| [SceneViews](Camera/SceneViews/) | The host's **Camera** menu snapping an auto-orbiting scene to canonical inspection views (Front/Back/Left/Right/Top/Bottom/Isometric and Reset, ⌘0–⌘7), the way a modeling tool's numpad does. |
+
+### Materials
+
+What surfaces are made of, from stylized finishes to physically-based metal.
+
+| Sketch | What it shows |
+| --- | --- |
+| [Materials](Materials/Materials/) | The material library: one orbiting sphere grid wearing each built-in `Material` (`.iridescent`/`.soapBubble`/`.velvet`/`.jade`/`.toon`/`.gooch`/…), the view-angle finishes shifting as it turns. |
+| [PhysicalMaterials](Materials/PhysicalMaterials/) | The physically-based finish as a metallic × roughness sweep: `Material.physicallyBased` shades one sphere grid from tight mirror highlights to matte, dielectric to metal. |
+| [Matcap](Materials/Matcap/) | Matcaps: a whole surface-and-lighting look baked into one sphere texture, sampled by the view normal (`matcap(_:)`), for chrome, clay, wax, or a cel look with no scene lights at all. |
+
+### Lighting
+
+Light kinds, curated rigs, and cast shadows.
+
+| Sketch | What it shows |
+| --- | --- |
+| [Lighting](Lighting/Lighting/) | The three light kinds shading solids by hand (a fixed directional key, an orbiting point bulb, a sweeping spot), with a rising-shininess sphere row. |
+| [LightingPresets](Lighting/LightingPresets/) | One call relights the whole scene: the curated `LightingPreset`s (`.standard`/`.threePoint`/`.goldenHour`/`.noir`/`.studio`/`.moonlight`) cycling over one still life, plus a sketch-built custom rig. Click or press a key to step. |
+| [Shadows](Lighting/Shadows/) | Directional cast shadows: solids drop shadows onto a floor and onto one another via `castShadows()`. |
+| [SpotShadow](Lighting/SpotShadow/) | A spot light as the shadow caster: a perspective shadow map fit to its cone, so the solids inside the beam drop crisp shadows. |
+| [PointShadow](Lighting/PointShadow/) | An omnidirectional point-light caster: a bulb at the center throws shadows in every direction (ray-traced on an RT GPU, a depth cube elsewhere). |
+
+### Environments
+
+Image-based lighting: HDRIs bundled, downloaded, loaded from a URL, or synthesized.
+
+| Sketch | What it shows |
+| --- | --- |
+| [ImageBasedLighting](Environments/ImageBasedLighting/) | `environment(_:)` lights the scene from an HDRI, so physically-based metals fill in with real reflections instead of reading near-black; the environment also doubles as the skybox backdrop. |
+| [EnvironmentGallery](Environments/EnvironmentGallery/) | The eight bundled CC0 HDRI environments (studio, courtyard, forest, interior, city, sunrise, sunset, night) stepped through over one PBR still life, auto-advancing (or arrow keys to step). |
+| [HighResEnvironment](Environments/HighResEnvironment/) | `highRes(_:)` fetches a sharper 2K/4K/8K backdrop for a bundled environment on first run (the 1K shows meanwhile), lighting unchanged. |
+| [EnvironmentURL](Environments/EnvironmentURL/) | An environment loaded from any equirectangular HDRI URL (`Environment.hdri(downloadURL:)`), downloaded once and cached. |
+| [ProceduralSky](Environments/ProceduralSky/) | A zero-asset daylight dome: `environment(.sky(...))` synthesizes a physically-based sky at runtime and sweeps its sun through a full day. |
+
+### Effects
+
+Scene-wide realism passes over the 3D frame.
+
+| Sketch | What it shows |
+| --- | --- |
+| [SceneDefocus](Effects/SceneDefocus/) | Depth of field on a 3D scene defocused by its *own* depth buffer: a row of orbs drawn into a render target, then `scene.combined(with: scene.depth, .defocus(...))` racks focus through them. Drag to rack by hand. |
+| [AmbientOcclusion](Effects/AmbientOcclusion/) | Screen-space ambient occlusion from the scene's own depth and normals: the soft darkening in crevices and contact gaps that grounds a brightly lit scene. |
+| [ScreenSpaceReflections](Effects/ScreenSpaceReflections/) | Surfaces reflecting the scene around them: SSR traced over the frame, on a ring of reflective spheres in different metal finishes. |
+| [RayTracedReflections](Effects/RayTracedReflections/) | Metals mirroring the *actual* scene (off-screen geometry included, none of SSR's streaks) by tracing reflection rays into the image-based lighting. Needs a ray-tracing GPU and an environment. |
+
+### Raymarching
+
+The 3D SDF combinators: fields that merge, sphere-traced beside the meshes.
+
+| Sketch | What it shows |
+| --- | --- |
+| [RaymarchedSDF](Raymarching/RaymarchedSDF/) | The 3D SDF combinators sphere-traced as one surface: spheres melt by smooth-union (colors blending through the seam), one orbits, and a bite is carved out by subtraction. |
+| [RaymarchedShapes](Raymarching/RaymarchedShapes/) | The raymarched primitive catalog beyond the first four (rounded box, cylinder, cone, octahedron, ellipsoid), each a field traced into the shared depth buffer. |
+| [RaymarchedSculpt](Raymarching/RaymarchedSculpt/) | The scoped block form: inside `smoothUnion(k:) { … }` bare mesh calls (`drawSphere`, `drawCapsule`, `drawCone`, …) are captured as fields and melt into one traced surface. |
+| [RaymarchedDomain](Raymarching/RaymarchedDomain/) | Domain operators: `repeated(spacing:count:)` tiles a unit cell into a finite lattice, `mirrored(x:y:z:)` folds one built lobe symmetric; the whole thing stays one surface. |
+| [RaymarchedRadial](Raymarching/RaymarchedRadial/) | Polar repetition: `repeatedRadially` folds one wedge into an evenly spaced rosette around an axis, with no per-copy draw cost. |
+| [RaymarchedPlane](Raymarching/RaymarchedPlane/) | The infinite plane leaf: an unbounded ground merged into the field, marched to the far plane, catching the shapes' soft shadows. |
+| [RaymarchedStretch](Raymarching/RaymarchedStretch/) | Per-axis sizing: `stretched` (exact elongation, a sphere becomes a capsule) beside `scaled(x:y:z:)` (true non-uniform, conservatively marched). |
+| [RaymarchedGradient](Raymarching/RaymarchedGradient/) | Gradient paint on a merged field: a gradient `fill` paints the whole sphere-traced surface, sampled by each hit's projected screen position. |
+| [RaymarchedEnvironment](Raymarching/RaymarchedEnvironment/) | Raymarched fields lit by an environment: the same image-based lighting (and traced reflections) the meshes get. |
+| [RaymarchedShadow](Raymarching/RaymarchedShadow/) | Field self-shadowing under `castShadows()`: a soft penumbra march toward the light, evaluated as part of the surface shading. |
+| [RaymarchedCastShadow](Raymarching/RaymarchedCastShadow/) | A field casting onto meshes: the field renders into the directional/spot shadow map, so meshes receive its shadow like any other caster's. |
+| [RaymarchedReceiveShadow](Raymarching/RaymarchedReceiveShadow/) | A field *receiving* a mesh's cast shadow: the traced surface samples the shadow map where the mesh's shadow lands. |
+| [RaymarchedPointCast](Raymarching/RaymarchedPointCast/) | Field→mesh shadows under a *point* light: with no 2D map to render into, the lit mesh fragments march the field inline toward the light. |
+| [RaymarchedPointReceive](Raymarching/RaymarchedPointReceive/) | Mesh→field shadows under a *point* light: the field samples the shadow cube (or, on an RT GPU, the acceleration structure) at its hit. |
+
+### Depth
+
+Depth feeds and depth-aware compositing: cameras, recordings, and metric space.
+
+| Sketch | What it shows |
+| --- | --- |
+| [DepthCloud](Depth/DepthCloud/) | A live 3D point cloud from one webcam: a neural depth model lifts each pixel into space, colored by the camera image, orbiting. Needs `Scripts/fetch-models.sh`. |
+| [Record3DCloud](Depth/Record3DCloud/) | An iPhone RGBD recording orbited as a point cloud: a `.r3d` clip from the Record3D app, unprojected with its true camera intrinsics. Drop a recording in `~/Downloads`. Needs `import OllinRecord3D`. |
+| [Record3DLiveCloud](Depth/Record3DLiveCloud/) | A **live** RGBD cloud streamed from a tethered iPhone: open Record3D, turn on USB streaming, and the phone's depth camera becomes a real-time point cloud on the Mac. Needs `import OllinRecord3D`. |
+| [DepthCompositing](Depth/DepthCompositing/) | Depth-aware compositing, a 2D card standing between two point-cloud orbs: the near orb draws over the card, the far one is hidden behind it, with per-orb billboard pins. |
+| [DepthOcclusion](Depth/DepthOcclusion/) | 2D discs hung at a draggable depth plane over a live webcam depth feed (a neural model), occluded by whoever stands nearer. Needs `import OllinVision` + `Scripts/fetch-models.sh`. |
+| [MetricDepthScene](Depth/MetricDepthScene/) | 2D markers floating at **true metric depths** (meters) inside a live LiDAR feed: a `Camera3D.fromIntrinsics` makes the feed metric, so a marker at a real distance is blocked when you step closer than it. Needs `import OllinRecord3D`. |
+| [DepthLiftedPose](Depth/DepthLiftedPose/) | A 2D body pose lifted into metric 3D through a depth frame: the tethered phone's depth back-projects each tracked joint, and the skeleton is drawn in space over the person's own cloud. Needs `import OllinVision`/`OllinRecord3D`. |
+
+### Phone
+
+The **Ollin Capture** iPhone app streaming ARKit perception over USB.
+
+| Sketch | What it shows |
+| --- | --- |
+| [PhoneBodyPose](Phone/PhoneBodyPose/) | A live 3D body skeleton streamed from **Ollin Capture** on a tethered iPhone: ARKit body pose over USB, orbited as a stick figure. Needs `import OllinPhone`. |
+| [PhoneFace](Phone/PhoneFace/) | Ollin Capture's live face mesh and 52 expression blendshapes, orbited as a point cloud with expression bars (tap **Face** on the phone). Needs `import OllinPhone`. |
+| [PhoneDepthCloud](Phone/PhoneDepthCloud/) | A **live** rear-LiDAR RGBD cloud from Ollin Capture (tap **World**): Ollin's own-app world-facing depth feed, unprojected with the stream's true intrinsics and orbited. Needs `import OllinPhone`. |
+| [PhoneWorldScan](Phone/PhoneWorldScan/) | Sweep the phone (tap **World**) and each depth frame is placed by its camera pose into one fused `WorldCloud` of the room; **R** to reset. Needs `import OllinPhone`. |
+| [PhoneSegmentation](Phone/PhoneSegmentation/) | Ollin Capture's on-device person matte (tap **Segment**): the cutout lifted onto a live gradient backdrop, the tinted matte as a drop shadow. Needs `import OllinPhone`. |
 
 See [`Docs/3D/3D.md`](../../Docs/3D/3D.md) for the 3D guide. Record3D recordings have their own guide in [`Docs/3D/Record3D.md`](../../Docs/3D/Record3D.md); the Ollin Capture stream is documented in [`Docs/3D/Phone.md`](../../Docs/3D/Phone.md).

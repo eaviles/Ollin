@@ -52,7 +52,7 @@ The sketch side is just `import OllinPhone` and a `PhoneDevice`, but the phone n
 2. **Connect the cable** and launch the app — its screen reads **READY** until the Mac connects, then **ON AIR**.
 3. **Run the sketch** on the Mac. `PhoneDevice` retries on its own, so launching the app (or plugging in) after the sketch is already running just begins the feed.
 
-The bundled example is `swift run Example-3D-PhoneBodyPose`.
+The bundled example is `swift run Example-3D-Phone-PhoneBodyPose`.
 
 ## Reading the stream
 
@@ -126,7 +126,7 @@ wireframe()
 drawMesh(face.mesh())
 ```
 
-`face.cloud()` draws the vertices as points instead, if you want the splat look. The bundled example is `swift run Example-3D-PhoneFace`.
+`face.cloud()` draws the vertices as points instead, if you want the splat look. The bundled example is `swift run Example-3D-Phone-PhoneFace`.
 
 ## World depth
 
@@ -146,7 +146,7 @@ device.latestPose                    // simd_float4x4? — the camera's 6DoF pos
 
 `PhoneDevice` is also a `FrameSource` and a `VideoFeed` in this mode, so a vision tracker can analyze the color feed and `drawFrame` can letterbox it (the color frame is only present while World mode is streaming).
 
-The bundled example is `swift run Example-3D-PhoneDepthCloud`.
+The bundled example is `swift run Example-3D-Phone-PhoneDepthCloud`.
 
 ## World fusion
 
@@ -172,7 +172,7 @@ override func draw() {
 
 `add(_:transformedBy:)` applies the camera→world pose and merges in one pass; `add(_:)` merges an already-world-space cloud. `latestDepthFrameID` changes only when a new depth frame arrives, so comparing it against the last fused id adds each frame exactly once. `world.cloud` is the fused `PointCloud`, `world.count` its point total, and `world.reset()` starts a fresh scan. The placement primitive underneath, `PointCloud.transformed(by:)`, is public too — apply any 4×4 matrix to a cloud's positions.
 
-The bundled example is `swift run Example-3D-PhoneWorldScan` (sweep the phone, **R** to reset).
+The bundled example is `swift run Example-3D-Phone-PhoneWorldScan` (sweep the phone, **R** to reset).
 
 ## Segmentation
 
@@ -194,7 +194,7 @@ let rect = Rectangle(fitting: Vector2(Double(cutout.width), Double(cutout.height
 drawImage(cutout, in: rect)           // the person over whatever you drew first
 ```
 
-The matte and cutout come back **upright** for how the phone is held — the capture app sends the device orientation and `PhoneDevice` rotates both to match — and they stay aligned with each other. Person segmentation needs an A12 or later iPhone, and uses the **rear** camera (ARKit's segmentation is rear-only; a front/selfie matte is a later addition). The bundled example is `swift run Example-3D-PhoneSegmentation`.
+The matte and cutout come back **upright** for how the phone is held (the capture app sends the device orientation and `PhoneDevice` rotates both to match), and they stay aligned with each other. Person segmentation needs an A12 or later iPhone, and uses the **rear** camera (ARKit's segmentation is rear-only; a front/selfie matte is a later addition). The bundled example is `swift run Example-3D-Phone-PhoneSegmentation`.
 
 ## Device motion
 

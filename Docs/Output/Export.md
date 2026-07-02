@@ -49,8 +49,8 @@ A few features trade visual fidelity for frame rate through the shared `RenderQu
 Override the export default with `--render-quality`:
 
 ```sh
-swift run Example-3D-RaymarchedSDF --export field.png                              # .detail (default, full quality)
-swift run Example-3D-RaymarchedSDF --export field.png --render-quality performance # fast/low: quarter-res raymarch, fewer samples
+swift run Example-3D-Raymarching-RaymarchedSDF --export field.png                              # .detail (default, full quality)
+swift run Example-3D-Raymarching-RaymarchedSDF --export field.png --render-quality performance # fast/low: quarter-res raymarch, fewer samples
 swift run Example-Effects-Defocus      --export-video dof.mp4 --seconds 6 --render-quality default
 ```
 

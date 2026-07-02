@@ -9,10 +9,10 @@ import UniformTypeIdentifiers
 // bundled demo asset for the 3D/LoadedMesh example. Both the geometry and the texture
 // are authored here, so the asset carries no third-party license. Re-run to regenerate:
 //
-//     swift Scripts/make-textured-cube.swift Examples/3D/LoadedMesh/model.gltf
+//     swift Scripts/make-textured-cube.swift Examples/3D/Geometry/LoadedMesh/model.gltf
 
 let outPath = CommandLine.arguments.count > 1
-    ? CommandLine.arguments[1] : "Examples/3D/LoadedMesh/model.gltf"
+    ? CommandLine.arguments[1] : "Examples/3D/Geometry/LoadedMesh/model.gltf"
 
 // MARK: Geometry — a unit cube, 4 verts per face with flat normals and per-face UVs.
 

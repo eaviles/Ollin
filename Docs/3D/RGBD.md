@@ -125,4 +125,4 @@ Here: the core `RGBDFrame`/`CameraIntrinsics`/`DepthConfidence`, `unproject`/`po
 
 ### Example
 
-- `Examples/3D/DepthLiftedPose` — a body skeleton lifted to true 3D from a tethered iPhone, drawn inside its own depth cloud
+- `Examples/3D/Depth/DepthLiftedPose` — a body skeleton lifted to true 3D from a tethered iPhone, drawn inside its own depth cloud

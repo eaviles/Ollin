@@ -436,29 +436,29 @@ let package = Package(
             path: "Examples/Shapes/CombinatorsStretch"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedReceiveShadow",
+            name: "Example-3D-Raymarching-RaymarchedReceiveShadow",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedReceiveShadow"
+            path: "Examples/3D/Raymarching/RaymarchedReceiveShadow"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedPointCast",
+            name: "Example-3D-Raymarching-RaymarchedPointCast",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedPointCast"
+            path: "Examples/3D/Raymarching/RaymarchedPointCast"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedPointReceive",
+            name: "Example-3D-Raymarching-RaymarchedPointReceive",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedPointReceive"
+            path: "Examples/3D/Raymarching/RaymarchedPointReceive"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedStretch",
+            name: "Example-3D-Raymarching-RaymarchedStretch",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedStretch"
+            path: "Examples/3D/Raymarching/RaymarchedStretch"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedEnvironment",
+            name: "Example-3D-Raymarching-RaymarchedEnvironment",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedEnvironment"
+            path: "Examples/3D/Raymarching/RaymarchedEnvironment"
         ),
         .executableTarget(
             name: "Example-Effects-Feedback",
@@ -585,262 +585,262 @@ let package = Package(
             resources: [.copy("Kernels.metal")]
         ),
         .executableTarget(
-            name: "Example-3D-PointCloud",
+            name: "Example-3D-Geometry-PointCloud",
             dependencies: ["Ollin"],
-            path: "Examples/3D/PointCloud"
+            path: "Examples/3D/Geometry/PointCloud"
         ),
         .executableTarget(
-            name: "Example-3D-StrangeAttractor",
+            name: "Example-3D-Geometry-StrangeAttractor",
             dependencies: ["Ollin"],
-            path: "Examples/3D/StrangeAttractor"
+            path: "Examples/3D/Geometry/StrangeAttractor"
         ),
         .executableTarget(
-            name: "Example-3D-Transforms",
+            name: "Example-3D-Geometry-Transforms",
             dependencies: ["Ollin"],
-            path: "Examples/3D/Transforms"
+            path: "Examples/3D/Geometry/Transforms"
         ),
         .executableTarget(
-            name: "Example-3D-Solids",
+            name: "Example-3D-Geometry-Solids",
             dependencies: ["Ollin"],
-            path: "Examples/3D/Solids"
+            path: "Examples/3D/Geometry/Solids"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedSDF",
+            name: "Example-3D-Raymarching-RaymarchedSDF",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedSDF"
+            path: "Examples/3D/Raymarching/RaymarchedSDF"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedShapes",
+            name: "Example-3D-Raymarching-RaymarchedShapes",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedShapes"
+            path: "Examples/3D/Raymarching/RaymarchedShapes"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedSculpt",
+            name: "Example-3D-Raymarching-RaymarchedSculpt",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedSculpt"
+            path: "Examples/3D/Raymarching/RaymarchedSculpt"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedDomain",
+            name: "Example-3D-Raymarching-RaymarchedDomain",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedDomain"
+            path: "Examples/3D/Raymarching/RaymarchedDomain"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedRadial",
+            name: "Example-3D-Raymarching-RaymarchedRadial",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedRadial"
+            path: "Examples/3D/Raymarching/RaymarchedRadial"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedPlane",
+            name: "Example-3D-Raymarching-RaymarchedPlane",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedPlane"
+            path: "Examples/3D/Raymarching/RaymarchedPlane"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedCastShadow",
+            name: "Example-3D-Raymarching-RaymarchedCastShadow",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedCastShadow"
+            path: "Examples/3D/Raymarching/RaymarchedCastShadow"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedGradient",
+            name: "Example-3D-Raymarching-RaymarchedGradient",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedGradient"
+            path: "Examples/3D/Raymarching/RaymarchedGradient"
         ),
         .executableTarget(
-            name: "Example-3D-RaymarchedShadow",
+            name: "Example-3D-Raymarching-RaymarchedShadow",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RaymarchedShadow"
+            path: "Examples/3D/Raymarching/RaymarchedShadow"
         ),
         .executableTarget(
-            name: "Example-3D-SceneDefocus",
+            name: "Example-3D-Effects-SceneDefocus",
             dependencies: ["Ollin"],
-            path: "Examples/3D/SceneDefocus"
+            path: "Examples/3D/Effects/SceneDefocus"
         ),
         .executableTarget(
-            name: "Example-3D-AmbientOcclusion",
+            name: "Example-3D-Effects-AmbientOcclusion",
             dependencies: ["Ollin"],
-            path: "Examples/3D/AmbientOcclusion"
+            path: "Examples/3D/Effects/AmbientOcclusion"
         ),
         .executableTarget(
-            name: "Example-3D-ScreenSpaceReflections",
+            name: "Example-3D-Effects-ScreenSpaceReflections",
             dependencies: ["Ollin"],
-            path: "Examples/3D/ScreenSpaceReflections"
+            path: "Examples/3D/Effects/ScreenSpaceReflections"
         ),
         .executableTarget(
-            name: "Example-3D-RayTracedReflections",
+            name: "Example-3D-Effects-RayTracedReflections",
             dependencies: ["Ollin"],
-            path: "Examples/3D/RayTracedReflections"
+            path: "Examples/3D/Effects/RayTracedReflections"
         ),
         .executableTarget(
-            name: "Example-3D-TexturedMesh",
+            name: "Example-3D-Geometry-TexturedMesh",
             dependencies: ["Ollin"],
-            path: "Examples/3D/TexturedMesh"
+            path: "Examples/3D/Geometry/TexturedMesh"
         ),
         .executableTarget(
-            name: "Example-3D-Wireframe",
+            name: "Example-3D-Geometry-Wireframe",
             dependencies: ["Ollin"],
-            path: "Examples/3D/Wireframe"
+            path: "Examples/3D/Geometry/Wireframe"
         ),
         .executableTarget(
-            name: "Example-3D-LoadedMesh",
+            name: "Example-3D-Geometry-LoadedMesh",
             dependencies: ["Ollin"],
-            path: "Examples/3D/LoadedMesh",
+            path: "Examples/3D/Geometry/LoadedMesh",
             resources: [.copy("model.gltf"), .copy("model.obj")]
         ),
         .executableTarget(
-            name: "Example-3D-ShapeFactory",
+            name: "Example-3D-Geometry-ShapeFactory",
             dependencies: ["Ollin"],
-            path: "Examples/3D/ShapeFactory"
+            path: "Examples/3D/Geometry/ShapeFactory"
         ),
         .executableTarget(
-            name: "Example-3D-CameraControl",
+            name: "Example-3D-Camera-CameraControl",
             dependencies: ["Ollin"],
-            path: "Examples/3D/CameraControl"
+            path: "Examples/3D/Camera/CameraControl"
         ),
         .executableTarget(
-            name: "Example-3D-CameraMoves",
+            name: "Example-3D-Camera-CameraMoves",
             dependencies: ["Ollin"],
-            path: "Examples/3D/CameraMoves"
+            path: "Examples/3D/Camera/CameraMoves"
         ),
         .executableTarget(
-            name: "Example-3D-SceneViews",
+            name: "Example-3D-Camera-SceneViews",
             dependencies: ["Ollin"],
-            path: "Examples/3D/SceneViews"
+            path: "Examples/3D/Camera/SceneViews"
         ),
         .executableTarget(
-            name: "Example-3D-Lighting",
+            name: "Example-3D-Lighting-Lighting",
             dependencies: ["Ollin"],
-            path: "Examples/3D/Lighting"
+            path: "Examples/3D/Lighting/Lighting"
         ),
         .executableTarget(
-            name: "Example-3D-LightingPresets",
+            name: "Example-3D-Lighting-LightingPresets",
             dependencies: ["Ollin"],
-            path: "Examples/3D/LightingPresets"
+            path: "Examples/3D/Lighting/LightingPresets"
         ),
         .executableTarget(
-            name: "Example-3D-Materials",
+            name: "Example-3D-Materials-Materials",
             dependencies: ["Ollin"],
-            path: "Examples/3D/Materials"
+            path: "Examples/3D/Materials/Materials"
         ),
         .executableTarget(
-            name: "Example-3D-PhysicalMaterials",
+            name: "Example-3D-Materials-PhysicalMaterials",
             dependencies: ["Ollin"],
-            path: "Examples/3D/PhysicalMaterials"
+            path: "Examples/3D/Materials/PhysicalMaterials"
         ),
         .executableTarget(
-            name: "Example-3D-ImageBasedLighting",
+            name: "Example-3D-Environments-ImageBasedLighting",
             dependencies: ["Ollin"],
-            path: "Examples/3D/ImageBasedLighting"
+            path: "Examples/3D/Environments/ImageBasedLighting"
         ),
         .executableTarget(
-            name: "Example-3D-EnvironmentGallery",
+            name: "Example-3D-Environments-EnvironmentGallery",
             dependencies: ["Ollin"],
-            path: "Examples/3D/EnvironmentGallery"
+            path: "Examples/3D/Environments/EnvironmentGallery"
         ),
         .executableTarget(
-            name: "Example-3D-ProceduralSky",
+            name: "Example-3D-Environments-ProceduralSky",
             dependencies: ["Ollin"],
-            path: "Examples/3D/ProceduralSky"
+            path: "Examples/3D/Environments/ProceduralSky"
         ),
         .executableTarget(
-            name: "Example-3D-HighResEnvironment",
+            name: "Example-3D-Environments-HighResEnvironment",
             dependencies: ["Ollin"],
-            path: "Examples/3D/HighResEnvironment"
+            path: "Examples/3D/Environments/HighResEnvironment"
         ),
         .executableTarget(
-            name: "Example-3D-EnvironmentURL",
+            name: "Example-3D-Environments-EnvironmentURL",
             dependencies: ["Ollin"],
-            path: "Examples/3D/EnvironmentURL"
+            path: "Examples/3D/Environments/EnvironmentURL"
         ),
         .executableTarget(
-            name: "Example-3D-Matcap",
+            name: "Example-3D-Materials-Matcap",
             dependencies: ["Ollin"],
-            path: "Examples/3D/Matcap"
+            path: "Examples/3D/Materials/Matcap"
         ),
         .executableTarget(
-            name: "Example-3D-Shadows",
+            name: "Example-3D-Lighting-Shadows",
             dependencies: ["Ollin"],
-            path: "Examples/3D/Shadows"
+            path: "Examples/3D/Lighting/Shadows"
         ),
         .executableTarget(
-            name: "Example-3D-SpotShadow",
+            name: "Example-3D-Lighting-SpotShadow",
             dependencies: ["Ollin"],
-            path: "Examples/3D/SpotShadow"
+            path: "Examples/3D/Lighting/SpotShadow"
         ),
         .executableTarget(
-            name: "Example-3D-PointShadow",
+            name: "Example-3D-Lighting-PointShadow",
             dependencies: ["Ollin"],
-            path: "Examples/3D/PointShadow"
+            path: "Examples/3D/Lighting/PointShadow"
         ),
         .executableTarget(
-            name: "Example-3D-DepthCompositing",
+            name: "Example-3D-Depth-DepthCompositing",
             dependencies: ["Ollin"],
-            path: "Examples/3D/DepthCompositing"
+            path: "Examples/3D/Depth/DepthCompositing"
         ),
         .executableTarget(
-            name: "Example-3D-DepthCloud",
+            name: "Example-3D-Depth-DepthCloud",
             dependencies: ["Ollin", "OllinVision"],
-            path: "Examples/3D/DepthCloud"
+            path: "Examples/3D/Depth/DepthCloud"
         ),
         .executableTarget(
-            name: "Example-3D-DepthOcclusion",
+            name: "Example-3D-Depth-DepthOcclusion",
             dependencies: ["Ollin", "OllinVision"],
-            path: "Examples/3D/DepthOcclusion"
+            path: "Examples/3D/Depth/DepthOcclusion"
         ),
         .executableTarget(
-            name: "Example-3D-Record3DCloud",
+            name: "Example-3D-Depth-Record3DCloud",
             dependencies: ["Ollin", "OllinRecord3D"],
-            path: "Examples/3D/Record3DCloud"
+            path: "Examples/3D/Depth/Record3DCloud"
         ),
         .executableTarget(
-            name: "Example-3D-Record3DLiveCloud",
+            name: "Example-3D-Depth-Record3DLiveCloud",
             dependencies: ["Ollin", "OllinRecord3D"],
-            path: "Examples/3D/Record3DLiveCloud"
+            path: "Examples/3D/Depth/Record3DLiveCloud"
         ),
         // 2D markers floating at true metric depths inside a live RGBD feed — the
         // metric (meters) sibling of DepthOcclusion, via a Camera3D.fromIntrinsics.
         .executableTarget(
-            name: "Example-3D-MetricDepthScene",
+            name: "Example-3D-Depth-MetricDepthScene",
             dependencies: ["Ollin", "OllinRecord3D"],
-            path: "Examples/3D/MetricDepthScene"
+            path: "Examples/3D/Depth/MetricDepthScene"
         ),
         .executableTarget(
-            name: "Example-3D-DepthLiftedPose",
+            name: "Example-3D-Depth-DepthLiftedPose",
             dependencies: ["Ollin", "OllinVision", "OllinRecord3D"],
-            path: "Examples/3D/DepthLiftedPose"
+            path: "Examples/3D/Depth/DepthLiftedPose"
         ),
         // The Ollin iPhone capture app's live body pose drawn as an orbiting 3D
         // stick figure — the own-app sibling of Record3DLiveCloud.
         .executableTarget(
-            name: "Example-3D-PhoneBodyPose",
+            name: "Example-3D-Phone-PhoneBodyPose",
             dependencies: ["Ollin", "OllinPhone"],
-            path: "Examples/3D/PhoneBodyPose"
+            path: "Examples/3D/Phone/PhoneBodyPose"
         ),
         // The Ollin capture app's live face mesh + blendshapes, orbited as a point
         // cloud with expression bars — the front-camera sibling of PhoneBodyPose.
         .executableTarget(
-            name: "Example-3D-PhoneFace",
+            name: "Example-3D-Phone-PhoneFace",
             dependencies: ["Ollin", "OllinPhone"],
-            path: "Examples/3D/PhoneFace"
+            path: "Examples/3D/Phone/PhoneFace"
         ),
         // The Ollin capture app's live rear-LiDAR RGBD cloud — the depth sibling of
         // PhoneBodyPose and PhoneFace.
         .executableTarget(
-            name: "Example-3D-PhoneDepthCloud",
+            name: "Example-3D-Phone-PhoneDepthCloud",
             dependencies: ["Ollin", "OllinPhone"],
-            path: "Examples/3D/PhoneDepthCloud"
+            path: "Examples/3D/Phone/PhoneDepthCloud"
         ),
         // Sweep the phone around a room and fuse every depth frame, by its camera
         // pose, into one accumulated world cloud — the fusion sibling of PhoneDepthCloud.
         .executableTarget(
-            name: "Example-3D-PhoneWorldScan",
+            name: "Example-3D-Phone-PhoneWorldScan",
             dependencies: ["Ollin", "OllinPhone"],
-            path: "Examples/3D/PhoneWorldScan"
+            path: "Examples/3D/Phone/PhoneWorldScan"
         ),
         // The phone's on-device person segmentation lifted onto a live backdrop —
         // the rear-camera Segment-mode sibling of the depth/pose/face examples.
         .executableTarget(
-            name: "Example-3D-PhoneSegmentation",
+            name: "Example-3D-Phone-PhoneSegmentation",
             dependencies: ["Ollin", "OllinPhone"],
-            path: "Examples/3D/PhoneSegmentation"
+            path: "Examples/3D/Phone/PhoneSegmentation"
         ),
         .executableTarget(
             name: "Example-Motion-Breathing",

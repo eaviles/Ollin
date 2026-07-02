@@ -91,7 +91,7 @@ The built-in systems, each from its published equations with its classic paramet
 | `.chen(alpha:beta:delta:)` | A tightly wound double scroll. |
 | `.fourWing(a:b:c:)` | Four lobes meeting at the center. |
 
-The orbits live in their own units (Lorenz spans roughly ±25), so center and scale them for the camera, as the [`3D/StrangeAttractor`](../../Examples/3D/StrangeAttractor) example does.
+The orbits live in their own units (Lorenz spans roughly ±25), so center and scale them for the camera, as the [`3D/StrangeAttractor`](../../Examples/3D/Geometry/StrangeAttractor) example does.
 
 <a name="map"></a>
 

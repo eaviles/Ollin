@@ -85,7 +85,7 @@ drawCircle(width / 2, height / 2, 40)   // hidden where the scene is nearer than
 
 This needs no 3D camera — the depth scene allocates the depth buffer on its own. Where a 3D-camera scene uses `depth(at: worldPoint)`, a depth-map scene uses **`depth(_ t:)`** with a normalized `t` (`0` nearest … `1` farthest), since the map's depth is a relative range, not metric world units. `drawDepthScene` fills the whole canvas by default; pass `in: rect` to letterbox a feed into a fitted rectangle, and `whiteIsNear: false` if the map encodes far as white.
 
-The colour image and the depth map usually come from the same source, so they line up: a depth model run over a camera frame, or an `RGBDFrame`'s `color` and a gray image of its `depth`. The [`3D/DepthOcclusion`](../../Examples/3D/DepthOcclusion/) example hangs a field of discs at a draggable depth plane in front of a live webcam, occluded by whoever stands nearer than the plane.
+The colour image and the depth map usually come from the same source, so they line up: a depth model run over a camera frame, or an `RGBDFrame`'s `color` and a gray image of its `depth`. The [`3D/DepthOcclusion`](../../Examples/3D/Depth/DepthOcclusion/) example hangs a field of discs at a draggable depth plane in front of a live webcam, occluded by whoever stands nearer than the plane.
 
 <a id="metric"></a>
 ### A metric depth scene
@@ -112,7 +112,7 @@ withBillboard(at: Vector3(0, 0.2, -1)) {
 
 The key difference from the gray-map scene: depth is placed with **`depth(at: worldPoint)`** in real meters (or `withBillboard`, which projects *and* sets the depth), not the normalized `depth(_ t:)` — the same metric `Camera3D` drives both the feed's depth and the object's. `Camera3D.fromIntrinsics` sits the camera at the origin looking down −z, exactly where `RGBDFrame.pointCloud` and `unproject` put their points, so a metric `drawDepthScene` and a `drawPointCloud` of the same frame land on top of each other. Move the camera's `eye`/`target` afterward to orbit a drawn cloud; leave it at the default to keep it aligned with a depth-scene backdrop.
 
-Two practical notes. The metric overload **needs a camera** (it reads the near/far that map meters onto the depth buffer) — `fromIntrinsics` is the matching one; without a camera it's a no-op. And it **letterboxes the feed into the canvas** by the feed's own aspect, so the picture is never stretched whatever the `canvasSize` or the phone's orientation; the metric camera letterboxes to match, so placed geometry stays glued to the picture (bars appear where the aspects differ). The [`3D/MetricDepthScene`](../../Examples/3D/MetricDepthScene/) example floats a grid of markers at a draggable metric plane in a live LiDAR feed — step within that many meters of the camera and you block them.
+Two practical notes. The metric overload **needs a camera** (it reads the near/far that map meters onto the depth buffer); `fromIntrinsics` is the matching one; without a camera it's a no-op. And it **letterboxes the feed into the canvas** by the feed's own aspect, so the picture is never stretched whatever the `canvasSize` or the phone's orientation; the metric camera letterboxes to match, so placed geometry stays glued to the picture (bars appear where the aspects differ). The [`3D/MetricDepthScene`](../../Examples/3D/Depth/MetricDepthScene/) example floats a grid of markers at a draggable metric plane in a live LiDAR feed; step within that many meters of the camera and you block them.
 
 <a id="how"></a>
 ### How occlusion reads
@@ -130,7 +130,7 @@ Occlusion follows the depth buffer *and* draw order. A 2D mark at depth `d` is h
         └─────────────────────────────┘
 ```
 
-The near orb (drawn before the card) shows *over* the card because the card's depth test fails where the orb wrote a nearer value; the far orb is *hidden* by the card. See the [`3D/DepthCompositing`](../../Examples/3D/DepthCompositing/) example.
+The near orb (drawn before the card) shows *over* the card because the card's depth test fails where the orb wrote a nearer value; the far orb is *hidden* by the card. See the [`3D/DepthCompositing`](../../Examples/3D/Depth/DepthCompositing/) example.
 
 <a id="notes"></a>
 ### Notes
