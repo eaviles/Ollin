@@ -64,6 +64,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { MixedPipelines() }),
     SnapshotCase("user-shader", note: "A user-supplied generator shader.",
                  make: { UserShaderGenerator() }),
+    SnapshotCase("visual-chain", frame: 30,
+                 note: "A fluent Visual chain across all five op families, reading one layer.",
+                 make: { VisualChainScene() }),
     SnapshotCase("eased-dots", frame: 30,
                  note: "Rendered mid-tween (frame 30), so the per-frame auto-advance has run and the three curves have pulled the dots to different positions.",
                  make: { EasedDots() }),
@@ -1295,6 +1298,33 @@ private final class UserShaderGenerator: Sketch {
 
     override func draw() {
         drawImage(generate(shader).image, 0, 0)
+    }
+}
+
+/// A fluent `Visual` chain touching all five op families (source, coordinate
+/// warp, color adjust, combine, modulate) plus a `.layer` read, so it also pins
+/// the single-input routing and the params-as-uniforms codegen at a fixed frame.
+private final class VisualChainScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        let rings = renderTarget()
+        withTarget(rings) {
+            background(.black)
+            noFill()
+            stroke(.white)
+            strokeWeight(6)
+            for r in stride(from: 20.0, through: 110, by: 30) {
+                drawCircle(width / 2, height / 2, r)
+            }
+        }
+        drawVisual(
+            .oscillator(frequency: 18, speed: 1, colorShift: 0.3)
+                .kaleidoscope(5)
+                .displaced(by: .noise(scale: 3, speed: 0.2), amount: 0.08)
+                .blended(with: .layer(rings).tinted(Color(hex: 0xFF8040)), .add, amount: 0.5)
+                .saturation(1.2)
+        )
     }
 }
 

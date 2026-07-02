@@ -557,6 +557,11 @@ let package = Package(
             resources: [.copy("ripple.metal")]
         ),
         .executableTarget(
+            name: "Example-Shaders-VisualSynth",
+            dependencies: ["Ollin"],
+            path: "Examples/Shaders/VisualSynth"
+        ),
+        .executableTarget(
             name: "Example-Rendering-ToneMapping",
             dependencies: ["Ollin"],
             path: "Examples/Rendering/ToneMapping"

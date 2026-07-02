@@ -90,7 +90,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 }
 ```
 
-Up to 32 floats; `info.paramCount` is how many you passed. Drive them from a [`@Param`](../Helpers/Parameters.md) knob to make a shader tunable live.
+Up to 64 floats; `info.paramCount` is how many you passed. Drive them from a [`@Param`](../Helpers/Parameters.md) knob to make a shader tunable live.
 
 ---
 

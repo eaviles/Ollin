@@ -4778,8 +4778,10 @@ final class MetalRenderer {
         if modules == .all { return lib }   // the common case: splice everything
         var mods = modules
         if mods.contains(.noise) { mods.insert(.hash) }
+        if mods.contains(.visual) { mods.insert(.hash); mods.insert(.noise) }
         let nameToModule: [String: Shader.Modules] = [
-            "hash": .hash, "noise": .noise, "color": .color, "sdf": .sdf, "domain": .domain]
+            "hash": .hash, "noise": .noise, "color": .color, "sdf": .sdf, "domain": .domain,
+            "visual": .visual]
         var out: [Substring] = []
         var skipping = false
         for line in lib.split(separator: "\n", omittingEmptySubsequences: false) {

@@ -638,3 +638,277 @@ static inline float pmodPolar(thread float2 &p, float n) {
     return c;
 }
 // OLLIN_LIB_END domain
+
+// OLLIN_LIB_BEGIN visual
+// MARK: - Visual-chain operations
+//
+// The per-pixel sources, coordinate warps, color adjustments, and two-input
+// blends behind the fluent `Visual` chains, callable from any shader. Colors
+// are straight (non-premultiplied) sRGB, matching the user-shader contract.
+// Ops that would distort on a non-square canvas take an `aspect`
+// (width / height) and correct around it, so shapes stay round, rotation stays
+// angle-true, and pattern cells stay square at any canvas size.
+
+// One channel from a float3 seed, in [0, 1).
+static inline float ollin_vis_hash13(float3 p3) {
+    p3 = fract(p3 * 0.1031);
+    p3 += dot(p3, p3.zyx + 31.32);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+// 3D value noise (trilinear hash interpolation), for fields that evolve in time.
+static inline float ollin_vis_vnoise3(float3 p) {
+    float3 i = floor(p), f = fract(p);
+    float3 u = f * f * (3.0 - 2.0 * f);
+    float n000 = ollin_vis_hash13(i);
+    float n100 = ollin_vis_hash13(i + float3(1, 0, 0));
+    float n010 = ollin_vis_hash13(i + float3(0, 1, 0));
+    float n110 = ollin_vis_hash13(i + float3(1, 1, 0));
+    float n001 = ollin_vis_hash13(i + float3(0, 0, 1));
+    float n101 = ollin_vis_hash13(i + float3(1, 0, 1));
+    float n011 = ollin_vis_hash13(i + float3(0, 1, 1));
+    float n111 = ollin_vis_hash13(i + float3(1, 1, 1));
+    float x00 = mix(n000, n100, u.x), x10 = mix(n010, n110, u.x);
+    float x01 = mix(n001, n101, u.x), x11 = mix(n011, n111, u.x);
+    return mix(mix(x00, x10, u.y), mix(x01, x11, u.y), u.z);
+}
+
+// RGB <-> HSV, the standard hexcone conversions (all components 0…1, hue wraps).
+static inline float3 ollin_vis_rgb2hsv(float3 c) {
+    float mx = max(c.r, max(c.g, c.b));
+    float mn = min(c.r, min(c.g, c.b));
+    float d = mx - mn;
+    float h = 0.0;
+    if (d > 1e-6) {
+        if (mx == c.r)      h = (c.g - c.b) / d + (c.g < c.b ? 6.0 : 0.0);
+        else if (mx == c.g) h = (c.b - c.r) / d + 2.0;
+        else                h = (c.r - c.g) / d + 4.0;
+        h *= 1.0 / 6.0;
+    }
+    float s = mx > 1e-6 ? d / mx : 0.0;
+    return float3(h, s, mx);
+}
+static inline float3 ollin_vis_hsv2rgb(float3 c) {
+    float h = fract(c.x) * 6.0;
+    float i = floor(h);
+    float f = h - i;
+    float p = c.z * (1.0 - c.y);
+    float q = c.z * (1.0 - c.y * f);
+    float t = c.z * (1.0 - c.y * (1.0 - f));
+    if (i < 1.0) return float3(c.z, t, p);
+    if (i < 2.0) return float3(q, c.z, p);
+    if (i < 3.0) return float3(p, c.z, t);
+    if (i < 4.0) return float3(p, q, c.z);
+    if (i < 5.0) return float3(t, p, c.z);
+    return float3(c.z, p, q);
+}
+
+// MARK: Visual sources
+
+// Sine-band oscillator: `frequency` waves across the field, drifting with time
+// at `speed` (in wave-phases per second); `colorShift` phase-offsets the green
+// and blue channels for a chromatic fringe.
+static inline float4 ollin_vis_osc(float2 st, float frequency, float speed,
+                                   float colorShift, float time, float aspect) {
+    float phase = st.x * aspect * frequency + time * speed;
+    float r = 0.5 + 0.5 * sin(phase);
+    float g = 0.5 + 0.5 * sin(phase + colorShift * 2.0);
+    float b = 0.5 + 0.5 * sin(phase + colorShift * 4.0);
+    return float4(r, g, b, 1.0);
+}
+
+// Evolving value-noise field, `scale` features across the field, drifting
+// through a third noise axis at `speed`. Signed (-1…1 per channel), so a
+// displacement driven by it wobbles about zero instead of drifting one way.
+static inline float4 ollin_vis_noise(float2 st, float scale, float speed,
+                                     float time, float aspect) {
+    float v = ollin_vis_vnoise3(float3(float2(st.x * aspect, st.y) * scale, time * speed));
+    v = v * 2.0 - 1.0;
+    return float4(v, v, v, 1.0);
+}
+
+// Animated cellular shading: jittered lattice points wander in time; brightness
+// is each cell's hash id, darkened toward the cell border by `blending`.
+static inline float4 ollin_vis_voronoi(float2 st, float scale, float speed,
+                                       float blending, float time, float aspect) {
+    float2 p = float2(st.x * aspect, st.y) * scale;
+    float2 i = floor(p), f = fract(p);
+    float best = 8.0;
+    float id = 0.0;
+    for (int y = -1; y <= 1; ++y) {
+        for (int x = -1; x <= 1; ++x) {
+            float2 g = float2(x, y);
+            float2 o = hash22(i + g);
+            o = 0.5 + 0.4 * sin(time * speed * 6.2831853 + o * 6.2831853);
+            float2 d = g + o - f;
+            float dist = dot(d, d);
+            if (dist < best) { best = dist; id = hash12(i + g); }
+        }
+    }
+    float v = id * max(1.0 - blending * sqrt(best), 0.0);
+    return float4(v, v, v, 1.0);
+}
+
+// A soft-edged regular polygon, centered in the field, one vertex up: the polar
+// distance to an n-gon edge against `radius`, with a `smoothing`-wide edge.
+// White inside, transparent outside (alpha carries the shape).
+static inline float4 ollin_vis_shape(float2 st, float sides, float radius,
+                                     float smoothing, float aspect) {
+    float2 p = st - 0.5;
+    p.x *= aspect;
+    float a = atan2(p.x, -p.y);   // 0 at the up axis, so a vertex points up
+    float seg = 6.2831853 / max(sides, 2.0);
+    float d = cos(floor(0.5 + a / seg) * seg - a) * length(p);
+    float v = 1.0 - smoothstep(radius - smoothing, radius + smoothing, d);
+    return float4(v, v, v, v);
+}
+
+// The unit-coordinate gradient: red = x, green = y, blue breathes with time.
+static inline float4 ollin_vis_gradient(float2 st, float speed, float time) {
+    return float4(st.x, st.y, 0.5 + 0.5 * sin(time * speed), 1.0);
+}
+
+// MARK: Visual coordinate warps (each rewrites the sampling coordinate)
+
+// Rotate the field about `center`, aspect-true (a rotated image doesn't shear).
+static inline float2 ollin_vis_rotate(float2 st, float2 center, float angle, float aspect) {
+    float2 p = st - center;
+    p.x *= aspect;
+    p = ollin_rot2(p, angle);
+    p.x /= aspect;
+    return p + center;
+}
+
+// Zoom the field about `center` by `amount` (bigger = closer in), with per-axis
+// multipliers. A zero axis is nudged off zero rather than dividing by it.
+static inline float2 ollin_vis_scale(float2 st, float2 center, float amount, float2 axis) {
+    float2 s = amount * axis;
+    s = select(s, float2(1e-4), abs(s) < float2(1e-4));
+    return (st - center) / s + center;
+}
+
+// Snap the field to an `x` by `y` grid of cells, sampling cell centers.
+static inline float2 ollin_vis_pixelate(float2 st, float2 cells) {
+    cells = max(cells, 1.0);
+    return (floor(st * cells) + 0.5) / cells;
+}
+
+// Tile the field `reps` times per axis; `offset` shifts alternate rows/columns
+// by that fraction of a tile (a brick stagger).
+static inline float2 ollin_vis_repeat(float2 st, float2 reps, float2 offset) {
+    float2 p = st * max(reps, float2(1e-4));
+    float2 cell = floor(p);
+    p.x += fmod(abs(cell.y), 2.0) * offset.x;
+    p.y += fmod(abs(cell.x), 2.0) * offset.y;
+    return fract(p);
+}
+
+// Fold the field into `sides` mirrored wedges about the center (kaleidoscope),
+// optionally pushing the radius by `radiusShift`.
+static inline float2 ollin_vis_kaleid(float2 st, float2 center, float sides,
+                                      float radiusShift, float aspect) {
+    float2 p = st - center;
+    p.x *= aspect;
+    float r = max(length(p) + radiusShift, 0.0);
+    float seg = 6.2831853 / max(sides, 1.0);
+    float a = atan2(p.y, p.x);
+    a = fmod(a, seg);
+    if (a < 0.0) a += seg;
+    a = abs(a - seg * 0.5);
+    p = float2(cos(a), sin(a)) * r;
+    p.x /= aspect;
+    return p + center;
+}
+
+// Scroll (translate) the field by `offset`, drifting at `speed` per second,
+// wrapping at the edges.
+static inline float2 ollin_vis_scroll(float2 st, float2 offset, float2 speed, float time) {
+    return fract(st + offset + speed * time);
+}
+
+// MARK: Visual color adjustments
+
+static inline float4 ollin_vis_brightness(float4 c, float amount) {
+    return float4(c.rgb + amount, c.a);
+}
+static inline float4 ollin_vis_contrast(float4 c, float amount) {
+    return float4((c.rgb - 0.5) * amount + 0.5, c.a);
+}
+static inline float4 ollin_vis_saturate(float4 c, float amount) {
+    return float4(mix(float3(ollin_luma(c.rgb)), c.rgb, amount), c.a);
+}
+static inline float4 ollin_vis_invert(float4 c, float amount) {
+    return float4(mix(c.rgb, 1.0 - c.rgb, amount), c.a);
+}
+// Quantize into `bins` levels in a gamma-lifted space (gamma < 1 biases the
+// levels toward the darks).
+static inline float4 ollin_vis_posterize(float4 c, float bins, float gamma) {
+    float3 g = pow(max(c.rgb, 0.0), float3(max(gamma, 1e-4)));
+    g = floor(g * max(bins, 1.0)) / max(bins, 1.0);
+    return float4(pow(g, float3(1.0 / max(gamma, 1e-4))), c.a);
+}
+// Grayscale hard split about `threshold`, with a `tolerance`-wide soft edge.
+static inline float4 ollin_vis_threshold(float4 c, float threshold, float tolerance) {
+    float v = smoothstep(threshold - tolerance, threshold + tolerance, ollin_luma(c.rgb));
+    return float4(v, v, v, c.a);
+}
+// Luma key: keep brightness above `threshold` (soft edge `tolerance`), keying
+// rgb *and* alpha so the dark side turns transparent.
+static inline float4 ollin_vis_luma(float4 c, float threshold, float tolerance) {
+    float k = smoothstep(threshold - tolerance, threshold + tolerance, ollin_luma(c.rgb));
+    return float4(c.rgb * k, c.a * k);
+}
+// Rotate the hue by `amount` (a fraction of the wheel, so 0.5 is opposite).
+static inline float4 ollin_vis_hueShift(float4 c, float amount) {
+    float3 hsv = ollin_vis_rgb2hsv(c.rgb);
+    hsv.x = fract(hsv.x + amount);
+    return float4(ollin_vis_hsv2rgb(hsv), c.a);
+}
+// Cycle hue, saturation, and value together by `amount`, wrapping: feed it a
+// growing input (time) for the endless color crawl.
+static inline float4 ollin_vis_colorCycle(float4 c, float amount) {
+    float3 hsv = fract(ollin_vis_rgb2hsv(c.rgb) + amount);
+    return float4(ollin_vis_hsv2rgb(hsv), c.a);
+}
+static inline float4 ollin_vis_tint(float4 c, float4 tint) {
+    return float4(c.rgb * tint.rgb, c.a * tint.a);
+}
+// Broadcast one channel as grayscale: `sel` 0 = r, 1 = g, 2 = b, 3 = a,
+// 4 = luminance. The adapter that turns a color into a modulation signal.
+static inline float4 ollin_vis_channel(float4 c, int sel, float scale, float offset) {
+    float v = sel == 0 ? c.r : sel == 1 ? c.g : sel == 2 ? c.b
+            : sel == 3 ? c.a : ollin_luma(c.rgb);
+    v = v * scale + offset;
+    return float4(v, v, v, 1.0);
+}
+
+// MARK: Visual blends (two inputs, straight sRGB)
+
+// Alpha-over: `b` over `a` by b's alpha.
+static inline float4 ollin_vis_over(float4 a, float4 b) {
+    return float4(mix(a.rgb, b.rgb, b.a), clamp(a.a + b.a * (1.0 - a.a), 0.0, 1.0));
+}
+// Combine by a blend selector (0 over, 1 add, 2 subtract, 3 multiply, 4 screen,
+// 5 lightest, 6 darkest), then mix the result against the base by `amount`.
+static inline float4 ollin_vis_blend(float4 a, float4 b, int mode, float amount) {
+    float4 r = a;
+    switch (mode) {
+        case 0: r = ollin_vis_over(a, b); break;
+        case 1: r = float4(a.rgb + b.rgb, max(a.a, b.a)); break;
+        case 2: r = float4(a.rgb - b.rgb, max(a.a, b.a)); break;
+        case 3: r = float4(a.rgb * b.rgb, a.a * b.a); break;
+        case 4: r = float4(1.0 - (1.0 - a.rgb) * (1.0 - b.rgb), max(a.a, b.a)); break;
+        case 5: r = float4(max(a.rgb, b.rgb), max(a.a, b.a)); break;
+        case 6: r = float4(min(a.rgb, b.rgb), max(a.a, b.a)); break;
+    }
+    return mix(a, r, amount);
+}
+static inline float4 ollin_vis_difference(float4 a, float4 b) {
+    return float4(abs(a.rgb - b.rgb), max(a.a, b.a));
+}
+// Keep the base where `b` reads bright and opaque, fading it out elsewhere.
+static inline float4 ollin_vis_mask(float4 a, float4 b) {
+    float k = ollin_luma(b.rgb) * b.a;
+    return float4(a.rgb * k, a.a * k);
+}
+// OLLIN_LIB_END visual

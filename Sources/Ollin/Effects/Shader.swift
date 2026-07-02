@@ -1,4 +1,5 @@
 import Foundation
+import COllinShaders
 
 /// A fragment shader you write yourself, run through Ollin's effect graph. You
 /// supply a small Metal function and Ollin wraps it into a full GPU pass:
@@ -44,8 +45,11 @@ public struct Shader: Sendable {
         public static let sdf    = Modules(rawValue: 1 << 3)
         /// Domain operators: repeat, mirror, polar fold.
         public static let domain = Modules(rawValue: 1 << 4)
+        /// The per-pixel sources and transforms behind `Visual` chains (oscillator,
+        /// cellular, shape, HSV adjustments, blends), callable from any shader.
+        public static let visual = Modules(rawValue: 1 << 5)
         /// Every section (the default).
-        public static let all: Modules = [.color, .hash, .noise, .sdf, .domain]
+        public static let all: Modules = [.color, .hash, .noise, .sdf, .domain, .visual]
     }
 
     /// The MSL source for an inline shader (the body that defines `shade`); empty for
@@ -85,8 +89,10 @@ public struct Shader: Sendable {
     /// The user `params` packed into the fixed-width `float4` rows the shader buffer
     /// expects, padded with zeros and truncated to the cap.
     var paddedParams: [SIMD4<Float>] {
-        var rows = [SIMD4<Float>](repeating: .zero, count: 8)   // OLLIN_SHADER_PARAM_ROWS
-        for (i, v) in params.prefix(32).enumerated() { rows[i / 4][i % 4] = v }
+        var rows = [SIMD4<Float>](repeating: .zero, count: Int(OLLIN_SHADER_PARAM_ROWS))
+        for (i, v) in params.prefix(Int(OLLIN_SHADER_PARAM_COUNT)).enumerated() {
+            rows[i / 4][i % 4] = v
+        }
         return rows
     }
 }

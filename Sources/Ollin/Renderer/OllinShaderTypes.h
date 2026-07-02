@@ -512,7 +512,7 @@ typedef struct {
 // plain memberwise initializer; the user's free `params` ride a separate `float4`
 // buffer (index 0), read through the `param(info, i)` helper the wrapper defines.
 // Stride 32 (16-aligned).
-#define OLLIN_SHADER_PARAM_ROWS 8
+#define OLLIN_SHADER_PARAM_ROWS 16
 #define OLLIN_SHADER_PARAM_COUNT (OLLIN_SHADER_PARAM_ROWS * 4)
 typedef struct {
     simd_float2 resolution;     // the layer this shader draws into, in pixels

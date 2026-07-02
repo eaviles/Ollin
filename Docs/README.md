@@ -33,6 +33,7 @@ New to Swift, coming from p5.js or JavaScript? Start with the [Swift primer](./S
 Writing GPU code yourself: fragment shaders run through the effect graph, compute kernels over buffers and textures, and the helper library both draw from.
 
 - [`Shaders`](./Shaders/Shaders.md) - write your own fragment shader (`Shader` + a `shade(uv, info)` function) and run it through the effect graph as a generator, filter, or combine, with a built-in shader library and line-accurate compile errors
+- [`Visuals`](./Shaders/Visuals.md) - compose animated imagery by chaining (`Visual`): sources (oscillator, noise, voronoi, shape) through warps, color moves, blends, and modulations, the whole chain compiling into a single GPU pass with every number animatable for free
 - [`Shader library`](./Shaders/ShaderLibrary.md) - reference for the helper functions a fragment shader can call: color/OKLab, hashes, value/gradient noise, the 2D signed-distance catalog (`smin`, `sdEllipse`, `sdHeart`, …), and the repeat/mirror/polar domain operators
 - [`Compute & GPU particles`](./Shaders/Compute.md) - GPU compute over buffers and textures: `Particles` (a million updated and drawn on the GPU each frame, the "sandpainting" engine) and `Simulation` (reaction-diffusion, cellular automata, and other ping-pong texture sims), over the `ComputeKernel`/`ComputeBuffer`/`ComputeTexture` core (with its own compute prelude)
 

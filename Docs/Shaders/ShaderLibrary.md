@@ -31,6 +31,7 @@ let s = Shader(source, using: [.noise, .sdf])   // only these sections splice
 - [Noise](#noise)
 - [Signed-distance functions](#signed-distance-functions)
 - [Domain operators](#domain-operators)
+- [Visual-chain operations](#visual-chain-operations)
 
 ---
 
@@ -146,8 +147,42 @@ float4 shade(float2 uv, ShaderInfo info) {
 
 ---
 
+## Visual-chain operations
+
+`using: .visual` (pulls in `.hash` and `.noise`). The per-pixel sources, coordinate warps, HSV color adjustments, and two-input blends behind [`Visual` chains](./Visuals.md), callable from a hand-written shader too. Colors are straight sRGB. Ops that would distort on a non-square canvas take an `aspect` (width / height) and correct around it.
+
+| Function | Description |
+| --- | --- |
+| `float4 ollin_vis_osc(float2 st, float f, float speed, float shift, float time, float aspect)` | sine bands, `f` waves across, drifting; `shift` fringes the channels. |
+| `float4 ollin_vis_noise(float2 st, float scale, float speed, float time, float aspect)` | evolving value-noise field, signed (`-1…1`). |
+| `float4 ollin_vis_voronoi(float2 st, float scale, float speed, float blending, float time, float aspect)` | animated cells, hash-gray each, darkened toward borders. |
+| `float4 ollin_vis_shape(float2 st, float sides, float radius, float smoothing, float aspect)` | soft-edged regular polygon, centered, vertex up; alpha carries the shape. |
+| `float4 ollin_vis_gradient(float2 st, float speed, float time)` | red = x, green = y, blue breathes with time. |
+| `float2 ollin_vis_rotate(float2 st, float2 center, float angle, float aspect)` | rotate the sampling coordinate, aspect-true. |
+| `float2 ollin_vis_scale(float2 st, float2 center, float amount, float2 axis)` | zoom about `center` (per-axis `axis` multipliers). |
+| `float2 ollin_vis_pixelate(float2 st, float2 cells)` | snap to a cell grid, sampling cell centers. |
+| `float2 ollin_vis_repeat(float2 st, float2 reps, float2 offset)` | tile, with a per-row/column stagger. |
+| `float2 ollin_vis_kaleid(float2 st, float2 center, float sides, float radiusShift, float aspect)` | fold into mirrored wedges; `radiusShift` warps the fold. |
+| `float2 ollin_vis_scroll(float2 st, float2 offset, float2 speed, float time)` | translate, drifting, wrapping. |
+| `float4 ollin_vis_brightness/contrast/saturate/invert(float4 c, float amount)` | the basic adjustments. |
+| `float4 ollin_vis_posterize(float4 c, float bins, float gamma)` | quantized levels in a gamma-lifted space. |
+| `float4 ollin_vis_threshold(float4 c, float t, float tol)` | black/white split about a luminance. |
+| `float4 ollin_vis_luma(float4 c, float t, float tol)` | luminance keying (dark side goes transparent). |
+| `float4 ollin_vis_hueShift(float4 c, float amount)` | rotate the hue (fraction of the wheel). |
+| `float4 ollin_vis_colorCycle(float4 c, float amount)` | wrap-around HSV crawl. |
+| `float4 ollin_vis_tint(float4 c, float4 tint)` | multiply by a color. |
+| `float4 ollin_vis_channel(float4 c, int sel, float scale, float offset)` | broadcast channel `sel` (0 r, 1 g, 2 b, 3 a, 4 luma) as gray. |
+| `float3 ollin_vis_rgb2hsv(float3 c)` / `ollin_vis_hsv2rgb` | the hexcone conversions. |
+| `float4 ollin_vis_over(float4 a, float4 b)` | alpha-over compositing. |
+| `float4 ollin_vis_blend(float4 a, float4 b, int mode, float amount)` | blend by selector (0 over, 1 add, 2 subtract, 3 multiply, 4 screen, 5 lightest, 6 darkest), faded by `amount`. |
+| `float4 ollin_vis_difference(float4 a, float4 b)` | absolute per-channel difference. |
+| `float4 ollin_vis_mask(float4 a, float4 b)` | keep `a` where `b` is bright and opaque. |
+
+---
+
 ### See also
 
 - [Shaders](./Shaders.md): the `Shader` type, the `shade(uv, info)` contract, and running a shader as a generator/filter/combine
+- [Visuals](./Visuals.md): the fluent `Visual` chains these operations render
 - [SDF combinators](../Drawing/Combinators.md): compose signed-distance fields into merged shapes without writing shader code
 - [Color](../Drawing/Color.md): the CPU-side `Color`, `Palette`, and OKLab family
