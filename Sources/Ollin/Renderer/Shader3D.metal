@@ -481,7 +481,7 @@ static inline float3 ollin_rt_env_lobe(texturecube<float> prefilterTex, sampler 
 // second trace is load-bearing for corners: where two reflectors meet (the mirror floor
 // at a polished pillar's base), the first hit's mirror direction points into the scene,
 // and an unoccluded environment sample there pipes the HDRI's bright lower hemisphere
-// straight through the floor — which the grazing-compressed reflected silhouette
+// straight through the floor, which the grazing-compressed reflected silhouette
 // concentrates into a razor-thin bright streak along the base that no anti-aliasing can
 // remove (it is consistently-shaded content, not an edge). Shading the actual second
 // surface instead dims the corner by the product of the two surfaces' own reflectances,
