@@ -1830,6 +1830,13 @@ final class MetalRenderer {
             return pass("ollin_fx_cmyk_halftone", [input], [SIMD4(Float(scale), aspect, 0, 0)])
         case .normalMap(let strength):
             return pass("ollin_fx_normal_map", [input], [SIMD4(texel.x, texel.y, Float(strength), 0)])
+        case let .iridescence(amount, scale, bands, shift):
+            return pass("ollin_fx_iridescence", [input],
+                        [f(amount, scale, bands, shift), SIMD4(aspect, 0, 0, 0)])
+        case let .glitter(density, amount, size, saturation, phase):
+            return pass("ollin_fx_glitter", [input],
+                        [SIMD4(Float(density), Float(amount), Float(phase), aspect),
+                         f(saturation, size, 0, 0)])
 
         // Retro / optical
         case let .scanlines(count, intensity):

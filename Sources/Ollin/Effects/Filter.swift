@@ -139,6 +139,15 @@ public struct Filter: Sendable {
         /// Height-field normal map: encode the luminance gradient as an RGB surface normal
         /// (feeds `displace` or lighting). `strength` exaggerates the slope.
         case normalMap(strength: Double)
+        /// Thin-film rainbow sheen (soap film / oil slick) washed over the content:
+        /// `amount` blends it in, `scale` sets the swirl frequency, `bands` how many
+        /// color cycles the film runs through, `shift` slides the colors (animate it).
+        case iridescence(amount: Double, scale: Double, bands: Double, shift: Double)
+        /// Twinkling sparkle flecks over the content: `density` fleck cells across,
+        /// `amount` brightness, `size` fleck size, `saturation` 0 white … 1 colored,
+        /// `phase` animates the twinkle.
+        case glitter(density: Double, amount: Double, size: Double, saturation: Double,
+                     phase: Double)
         /// Scanlines: darken alternating horizontal lines (`count` across the height) by `intensity`.
         case scanlines(count: Double, intensity: Double)
         /// Glitch: shove random blocks of rows sideways and split their channels; `seed` reshuffles.
@@ -436,6 +445,34 @@ public struct Filter: Sendable {
     /// `strength` exaggerates the slope.
     public static func normalMap(strength: Double = 1) -> Filter {
         Filter(kind: .normalMap(strength: max(0, strength)))
+    }
+
+    /// Iridescence: wash the content with the shifting rainbow sheen of a soap film or
+    /// oil slick. The colors come from thin-film interference (each channel cycling at
+    /// its own wavelength, so the bands run through the film color order), swirled by a
+    /// noise field and following the content's own shading. `amount` (0…1) blends the
+    /// sheen over the original, `scale` sets how fine the swirl is, `bands` how many
+    /// color cycles the film runs through (more = busier rainbow), and `shift` slides
+    /// the colors: feed it your `time` for a sheen that flows.
+    public static func iridescence(amount: Double = 0.7, scale: Double = 2.5,
+                                   bands: Double = 2.5, shift: Double = 0) -> Filter {
+        Filter(kind: .iridescence(amount: min(max(amount, 0), 1), scale: max(0.001, scale),
+                                  bands: max(0, bands), shift: shift))
+    }
+
+    /// Glitter: scatter twinkling sparkle flecks across the content, a dense dust of
+    /// small glints plus occasional bright cross-flare flashes, landing only where
+    /// something is drawn. `density` is the fleck grid resolution (cells across the
+    /// layer), `amount` the sparkle brightness (flashes run past 1.0 in linear light,
+    /// so a following `.bloom` makes them glow), `size` scales the flecks, and
+    /// `saturation` tints them from white (0) toward each fleck's own color (1).
+    /// `phase` drives the twinkle: feed it your `time` so the glitter sparkles.
+    public static func glitter(density: Double = 90, amount: Double = 1,
+                               size: Double = 1, saturation: Double = 0.3,
+                               phase: Double = 0) -> Filter {
+        Filter(kind: .glitter(density: max(4, density), amount: max(0, amount),
+                              size: min(max(size, 0.25), 3), saturation: min(max(saturation, 0), 1),
+                              phase: phase))
     }
 
     // MARK: Retro / optical

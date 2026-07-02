@@ -136,6 +136,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-filters",
                  note: "A sample of the extended catalog (vibrance, oilPaint (Kuwahara), emboss, cmykHalftone, kaleidoscope, scanlines), one per family. Pins the added dispatch and the new fragments: a straight-color tone op, a multi-tap variance gather, a neighbourhood relief, a print screen, a uv warp, and a retro line pass.",
                  make: { EffectsFilters() }),
+    SnapshotCase("effects-glitter",
+                 note: "The iridescence + glitter filters over a fixed heart + star at fixed shift/phase. Pins the thin-film interference color over the domain-warped fbm thickness field, the two hash-cell sparkle layers (dust + cross flares) with their alpha gating, and both dispatches.",
+                 make: { EffectsGlitter() }),
     SnapshotCase("effects-simfield", frame: 60,
                  note: "A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame 60 and recoloured. Pins the stateful sim substrate end to end: the persistent ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and the headless render-every-frame warmup the built-up state depends on.",
                  make: { EffectsSimField() }),
@@ -2281,6 +2284,30 @@ private final class EffectsFilters: Sketch {
             let x = Double(i % 3) * 85, y = Double(i / 3) * 128
             drawImage(scene.filtered(filter).image, in: Rectangle(x: x, y: y, width: 85, height: 128))
         }
+    }
+}
+
+/// The iridescence + glitter filters over a fixed two-shape scene, at fixed
+/// `shift`/`phase` (no time), so the fbm thickness field, the thin-film per-channel
+/// interference color, the hash-cell sparkle layers, and the alpha gating are all
+/// pinned deterministically.
+private final class EffectsGlitter: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        let sheen = renderTarget()
+        withTarget(sheen) {
+            noStroke(); fill(Color(white: 0.8))
+            drawHeart(width * 0.27, height * 0.5, 120)
+        }
+        drawImage(sheen.filtered(.iridescence(amount: 0.85, scale: 2.2, bands: 2.4, shift: 0.4)).image, 0, 0)
+        let sparkle = renderTarget()
+        withTarget(sparkle) {
+            noStroke(); fill(Color(hex: 0xC2185B))
+            drawStar(width * 0.73, height * 0.5, 62, 31, points: 5)
+        }
+        drawImage(sparkle.filtered(.glitter(density: 60, amount: 1.2, saturation: 0.6, phase: 1.3)).image, 0, 0)
     }
 }
 

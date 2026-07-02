@@ -108,7 +108,8 @@ The work runs on the GPU during the frame's render; `filtered` just records it.
 Filters are value descriptors built with static factories. They composite in
 [linear light](../Drawing/HDR.md), so grades and blends are physically correct. Each family
 has a contact-sheet example: `Effects/ColorFilters`, `Effects/BlurFilters`,
-`Effects/StylizeFilters`, `Effects/RetroFilters`, and `Effects/Distortion`. The catalog:
+`Effects/StylizeFilters`, `Effects/RetroFilters`, and `Effects/Distortion`
+(`Effects/Glitter` shows the iridescence + glitter pair on shapes). The catalog:
 
 #### Blur & glow
 
@@ -167,12 +168,16 @@ layer.filtered(.vibrance(amount: 0.6))
 - **`.contour(levels:intensity:)`** dark iso-brightness lines (one every `1/levels` of the range), turning tone into a topographic map.
 - **`.cmykHalftone(scale:)`** separate into cyan/magenta/yellow/black and screen each as rotated dots at the classic print angles: the colour-process look.
 - **`.normalMap(strength:)`** read the image as a height field and output its surface normal as an RGB vector (the bluish bump-map look), ready to feed `.displace` (see [combine](#combined)) or a lighting pass.
+- **`.iridescence(amount:scale:bands:shift:)`** wash the content with the flowing rainbow sheen of a soap film or oil slick. The colors come from thin-film interference (each channel cycling at its own wavelength, so the bands run through the film color order), swirled across the content by a noise field and following its shading. `amount` blends the sheen over the original, `scale` sets how fine the swirl is, `bands` how many color cycles the film runs through, and `shift` slides the colors: feed it your `time` for a sheen that flows.
+- **`.glitter(density:amount:size:saturation:phase:)`** scatter twinkling sparkle flecks across the content: a dense dust of small glints plus occasional bright cross-flare flashes, landing only where something is drawn. `density` is the fleck grid resolution (cells across the layer), `amount` the brightness (flashes run past 1.0 in linear light, so a following `.bloom` makes them glow), `size` scales the flecks, `saturation` tints them from white (0) toward each fleck's own color (1), and `phase` drives the twinkle: feed it your `time` so it sparkles.
 
 ```swift
 layer.filtered(.halftone(scale: 48))
 layer.filtered(.oilPaint(radius: 5))
 layer.filtered(.toon(levels: 5))
 layer.filtered(.lineScreen(scale: 60, angle: .pi / 6))
+layer.filtered(.iridescence(amount: 0.85, shift: time * 0.2))
+layer.filtered(.glitter(phase: time * 2)).filtered(.bloom(threshold: 0.8))
 ```
 
 #### Retro / optical

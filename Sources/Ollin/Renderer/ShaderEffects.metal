@@ -1579,6 +1579,123 @@ fragment float4 ollin_fx_normal_map(PresentOut in [[stage_in]],
     return float4(nrm * 0.5 + 0.5, 1.0);
 }
 
+// iridescence: a thin-film rainbow sheen washed over the content (params[0]: amount,
+// scale, bands, shift; params[1].x: aspect). The color is wavelength-dependent
+// interference (per-channel reflectance 0.5 - 0.5*cos(2π·t·λg/λ) at one
+// representative wavelength per primary), so blue cycles faster than red and the
+// bands run through the soap-film color order rather than a plain hue wheel. The
+// film "thickness" t is an fbm field plus the content's own luminance, so the sheen
+// swirls across flat fills and follows the shading of graded ones; `shift` slides
+// the whole spectrum (animate it for a living sheen).
+fragment float4 ollin_fx_iridescence(PresentOut in [[stage_in]],
+                                     texture2d<float> src [[texture(0)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float amount = params[0].x, scale = params[0].y, bands = params[0].z, shift = params[0].w;
+    float aspect = params[1].x;
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float l = ollin_luma(c);
+    // The thickness field, in interference cycles: a domain-warped fbm (fbm fed
+    // its own noise), so the bands stretch and flow like a draining film instead
+    // of sitting as round blobs; deepened where the content is bright. fbm
+    // clusters around its middle, so the field is contrast-stretched to sweep
+    // the full band range.
+    float2 p = float2(in.uv.x * aspect, in.uv.y) * scale;
+    float2 drift = float2(shift * 0.31, -shift * 0.17);
+    float warp = ollin_fbm(p * 1.7 + drift * 1.3 + 3.7);
+    float field = ollin_fbm(p + 1.4 * float2(warp, warp * 0.6) + drift);
+    field = clamp((field - 0.5) * 1.8 + 0.5, 0.0, 1.0);
+    float t = (0.15 + field * 0.85 + l * 0.35) * bands + shift;
+    float3 rate = 532.0 / float3(650.0, 532.0, 450.0);  // λ green / λ (r, g, b)
+    float3 film = 0.5 - 0.5 * cos(6.2831853 * t * rate);
+    // Push the interference colors apart a little: the blend toward the sheen
+    // (and the AA average underneath) reads pastel without it.
+    film = clamp(mix(float3(ollin_luma(film)), film, 1.3), 0.0, 1.0);
+    // The sheen carries the content's brightness (with a faint floor, so shadowed
+    // regions still shimmer instead of going flat black).
+    float3 sheen = film * (0.15 + 0.85 * l);
+    return ollin_premul(mix(c, sheen, clamp(amount, 0.0, 1.0)), s.a);
+}
+
+// A soft round glint at offset `f` from a fleck, radius `r` in cell units. Fades
+// fully out well inside the cell, so the dust layer needs no neighbor scan.
+static inline float ollin_glint(float2 f, float r) {
+    return smoothstep(r, r * 0.25, length(f));
+}
+
+// glitter: twinkling sparkle flecks over the content (params[0]: cells, amount,
+// phase, aspect; params[1]: saturation, size). Two hash-cell layers: a dense dust
+// of small round glints (one candidate fleck per cell, jittered, most cells dark),
+// and sparse 4-point cross flares on a coarser grid, scanned over the 3×3 neighbor
+// cells so a flare can straddle its cell border. Every fleck twinkles on its own
+// random phase and rate (animate `phase` for the sparkle), flecks tint from white
+// toward per-fleck colors by `saturation`, and the flashes run past 1.0 in linear
+// light so a following .bloom makes them glow. The output re-premultiplies by the
+// content's alpha, so sparkles land only where something is drawn.
+fragment float4 ollin_fx_glitter(PresentOut in [[stage_in]],
+                                 texture2d<float> src [[texture(0)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float cells = max(params[0].x, 4.0), amount = params[0].y;
+    float phase = params[0].z, aspect = params[0].w;
+    float saturation = clamp(params[1].x, 0.0, 1.0);
+    float size = clamp(params[1].y, 0.25, 3.0);
+    float2 uvA = float2(in.uv.x * aspect, in.uv.y);
+    float2 q = uvA * cells;
+    // When a cell falls under ~2 pixels the flecks alias into crawling shimmer:
+    // fade the whole effect out by the on-screen cell size instead. (Derivatives
+    // are taken before any branching.)
+    float cellPx = 1.0 / max(fwidth(q.x), 1e-5);
+    float fade = smoothstep(1.5, 4.0, cellPx);
+
+    float3 sparkle = float3(0.0);
+
+    // Dust: one candidate fleck per cell, kept inside it (no neighbor scan).
+    {
+        float2 id = floor(q), f = fract(q) - 0.5;
+        float2 rnd = hash22(id);
+        float keep = step(0.62, hash12(id + 19.7));           // ~1/3 of cells hold a fleck
+        float rate = 0.7 + 0.6 * hash12(id + 7.3);            // per-fleck twinkle speed
+        float tw = 0.5 + 0.5 * sin(phase * rate + rnd.x * 6.2831853);
+        tw = pow(tw, 6.0);                                    // mostly dim, brief glints
+        float r = (0.10 + 0.14 * hash12(id + 29.3)) * size;   // fleck sizes vary
+        float g = ollin_glint(f - (rnd - 0.5) * 0.5, r) * keep * tw;
+        float3 tint = mix(float3(1.0),
+                          0.5 + 0.5 * cos(6.2831853 * (rnd.y + float3(0.0, 0.3333, 0.6667))),
+                          saturation);
+        sparkle += g * tint;
+    }
+
+    // Flares: sparse bright flashes with hyperbola cross arms on a coarser grid.
+    {
+        float2 q2 = q * 0.25;
+        float2 id2 = floor(q2), f2 = fract(q2) - 0.5;
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                float2 cell = id2 + float2(dx, dy);
+                float2 rnd = hash22(cell);
+                float keep = step(0.75, hash12(cell + 3.1));  // ~1/4 of cells flash
+                float2 off = float2(dx, dy) + (rnd - 0.5) * 0.6 - f2;
+                float rate = 0.5 + 0.5 * hash12(cell + 11.9);
+                float tw = 0.5 + 0.5 * sin(phase * rate + rnd.x * 6.2831853);
+                tw = pow(tw, 12.0);                           // rare, sharp flashes
+                float core = ollin_glint(off, 0.12 * size);
+                float arms = max(0.0, 1.0 - abs(off.x * off.y) * 700.0 / (size * size));
+                arms *= smoothstep(0.65, 0.1, length(off));
+                float3 tint = mix(float3(1.0),
+                                  0.5 + 0.5 * cos(6.2831853 * (rnd.y + float3(0.0, 0.3333, 0.6667))),
+                                  saturation);
+                sparkle += (core + arms * 0.7) * tw * 1.8 * keep * tint;
+            }
+        }
+    }
+
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    return ollin_premul(c + sparkle * amount * fade, s.a);
+}
+
 // MARK: - Retro / optical filters
 
 // scanlines: darken alternating rows (params: count, intensity).

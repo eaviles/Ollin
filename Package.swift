@@ -506,6 +506,11 @@ let package = Package(
             path: "Examples/Effects/RetroFilters"
         ),
         .executableTarget(
+            name: "Example-Effects-Glitter",
+            dependencies: ["Ollin"],
+            path: "Examples/Effects/Glitter"
+        ),
+        .executableTarget(
             name: "Example-Effects-Distortion",
             dependencies: ["Ollin"],
             path: "Examples/Effects/Distortion"
