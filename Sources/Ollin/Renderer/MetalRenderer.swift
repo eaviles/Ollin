@@ -1439,8 +1439,11 @@ final class MetalRenderer {
         // sets it, and the host reads it afterward to drive the error overlay.
         currentUserShaderError = nil
         frameComputeUniforms = drawer.computeUniforms   // for user-shader ShaderInfo
-        guard !drawer.renderTargets.isEmpty || !drawer.filterOps.isEmpty
-            || !drawer.frameFilters.isEmpty else { return }
+        // Frame-scoped state, reset before the no-targets early-out: the deferred
+        // reflection pass acquires from the same pool and reads the same repeat stamp
+        // on frames that use no effect layers, so gating these on effects work would
+        // grow the pool by one texture per frame (and leave the stamp stale) in a
+        // reflections-only sketch.
         targetTexNext = 0
         filterTexNext = 0
         targetDepthNext = 0
@@ -1451,6 +1454,8 @@ final class MetalRenderer {
         statefulEncodeIsRepeat = lastStatefulEncode?.drawer == stamp.drawer
             && lastStatefulEncode?.frame == stamp.frame
         if !statefulEncodeIsRepeat { lastStatefulEncode = stamp }
+        guard !drawer.renderTargets.isEmpty || !drawer.filterOps.isEmpty
+            || !drawer.frameFilters.isEmpty else { return }
         // Generators read no input, so fill them first (a filter may sample one),
         // each a single fullscreen fragment pass into a sampleable filter texture.
         for target in drawer.renderTargets {
