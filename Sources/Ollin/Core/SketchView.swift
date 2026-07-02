@@ -505,6 +505,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
 private final class OllinMTKView: MTKView {
     weak var sketch: Sketch?
 
+    /// Whether the view claims keyboard focus the moment it lands in a window
+    /// (`KeyboardFocus.automatic`). The gallery turns this off so its example
+    /// list keeps arrow-key navigation until the viewer clicks the canvas.
+    var claimsKeyboardOnAttach = true
+    /// Reports first-responder changes up to the SwiftUI layer, which shows the
+    /// click-to-focus keyboard hint while the canvas doesn't hold the keys.
+    var onKeyboardFocusChange: ((Bool) -> Void)?
+
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         trackingAreas.forEach(removeTrackingArea)
@@ -565,8 +573,12 @@ private final class OllinMTKView: MTKView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         // Take keyboard focus once we're in a window, so a sketch reacts to keys
-        // without the user clicking the canvas first.
-        window?.makeFirstResponder(self)
+        // without the user clicking the canvas first. A host whose window has its
+        // own keyboard surface (the gallery's example list) opts out; there a
+        // click claims the keys instead (see `mouseDown`).
+        if claimsKeyboardOnAttach {
+            window?.makeFirstResponder(self)
+        }
     }
 
     /// Hand first-responder status back to the window before we leave it, so a
@@ -593,6 +605,12 @@ private final class OllinMTKView: MTKView {
         dispatchKey(event, pressed: false)
     }
 
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { onKeyboardFocusChange?(true) }
+        return became
+    }
+
     /// Drop held keys and modifiers when focus leaves; without a matching `keyUp` /
     /// `flagsChanged` a key or modifier held across a focus change would otherwise
     /// stay stuck down.
@@ -600,6 +618,7 @@ private final class OllinMTKView: MTKView {
         sketch?.clearHeldKeys()
         sketch?.setModifiers([])
         sketch?.setRightMousePressed(false)
+        onKeyboardFocusChange?(false)
         return super.resignFirstResponder()
     }
 
@@ -714,8 +733,27 @@ func ollinPreferredSampleCount(_ device: MTLDevice) -> Int {
     device.supportsTextureSampleCount(8) ? 8 : 4
 }
 
+/// When a hosted sketch takes keyboard focus.
+public enum KeyboardFocus: Sendable {
+    /// The canvas claims the keyboard as soon as it appears, so a sketch reacts
+    /// to keys without a click first. The default, right for a window that *is*
+    /// the sketch (standalone runs, the live host).
+    case automatic
+    /// The canvas never takes the keyboard on its own; clicking the sketch
+    /// claims it. For hosts whose window has another keyboard surface (the
+    /// gallery's example list keeps its arrow-key navigation this way).
+    case onClick
+}
+
+/// Whether the canvas currently holds keyboard focus: the first-responder
+/// signal the click-to-focus hint reads.
+@Observable @MainActor
+private final class CanvasKeyFocus {
+    var isFocused = false
+}
+
 @MainActor
-private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> MTKView {
+private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> OllinMTKView {
     let view = OllinMTKView(frame: CGRect(origin: .zero, size: size), device: device)
     view.sketch = sketch
     view.colorPixelFormat = ollinColorPixelFormat
@@ -750,7 +788,12 @@ public struct SketchView: View {
     private let sketch: Sketch
     private let injectedStats: FrameStats?
     private let showsInspectorPanel: Bool
+    private let keyboardFocus: KeyboardFocus
+    private let showsKeyboardHint: Bool
     private let onRunner: (@MainActor (SketchRunner) -> Void)?
+
+    /// Whether the canvas holds the keys right now, driving the hint.
+    @State private var keyFocus = CanvasKeyFocus()
 
     /// Owned stats for standalone/gallery hosts that don't inject their own.
     @State private var ownedStats = FrameStats()
@@ -767,17 +810,28 @@ public struct SketchView: View {
     /// `cameraAxis(_:)` flag.
     @AppStorage(OllinHUD.showAxisKey) private var showAxis = false
 
-    /// - Parameter showsInspectorPanel: whether this view honors the "Show FPS"
-    ///   toggle by summoning the detached inspector panel. The live host passes
-    ///   `false` because its sidebar already shows the same content, so the panel
-    ///   would just duplicate it; standalone and gallery (no sidebar) leave it on.
+    /// - Parameters:
+    ///   - showsInspectorPanel: whether this view honors the "Show Inspector"
+    ///     toggle by summoning the detached inspector panel. A host with its own
+    ///     inspector surface (the live host's sidebar, the gallery's) passes
+    ///     `false` so the panel doesn't duplicate it; standalone runs leave it on.
+    ///   - keyboardFocus: when the canvas takes the keyboard. `.automatic`
+    ///     claims it on appear (the default); `.onClick` only when clicked, so
+    ///     the host window's own keyboard surface keeps working.
+    ///   - showsKeyboardHint: under `.onClick`, whether to float the
+    ///     "Click the sketch to use the keyboard" prompt while the canvas is
+    ///     unfocused. Pass `true` only for sketches that actually read keys.
     public init(_ sketch: Sketch,
                 stats: FrameStats? = nil,
                 showsInspectorPanel: Bool = true,
+                keyboardFocus: KeyboardFocus = .automatic,
+                showsKeyboardHint: Bool = false,
                 onRunner: (@MainActor (SketchRunner) -> Void)? = nil) {
         self.sketch = sketch
         self.injectedStats = stats
         self.showsInspectorPanel = showsInspectorPanel
+        self.keyboardFocus = keyboardFocus
+        self.showsKeyboardHint = showsKeyboardHint
         self.onRunner = onRunner
     }
 
@@ -785,7 +839,8 @@ public struct SketchView: View {
 
     public var body: some View {
         ZStack(alignment: .bottom) {
-            MetalCanvas(sketch: sketch, stats: stats, cameraState: cameraState, onRunner: onRunner)
+            MetalCanvas(sketch: sketch, stats: stats, cameraState: cameraState,
+                        keyboardFocus: keyboardFocus, keyFocus: keyFocus, onRunner: onRunner)
             // Mounted only for a 3D frame the sketch or the menu asked to annotate,
             // so a 2D sketch never builds the widget or its animation timeline. The
             // widget is its own size, so it intercepts clicks only over itself.
@@ -794,8 +849,19 @@ public struct SketchView: View {
                     .padding(.bottom, 26)
                     .transition(.opacity)
             }
+            // The click-to-focus prompt: only for keyboard-reading sketches in an
+            // `.onClick` host, only while the canvas doesn't hold the keys. It
+            // never intercepts the click; the canvas claims focus on mouse-down.
+            if showsKeyboardHint && keyboardFocus == .onClick && !keyFocus.isFocused {
+                KeyboardFocusHint()
+                    // Clear the axis widget when both are on screen.
+                    .padding(.bottom, cameraState.is3D && showAxis ? 118 : 18)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
         }
         .animation(.easeOut(duration: 0.2), value: cameraState.is3D)
+        .animation(.easeOut(duration: 0.2), value: keyFocus.isFocused)
         .onAppear { syncPanel() }
         .onChange(of: showStats) { _, _ in syncPanel() }
         .onDisappear { statsPanel.close() }
@@ -817,6 +883,8 @@ private struct MetalCanvas: NSViewRepresentable {
     let sketch: Sketch
     let stats: FrameStats
     let cameraState: CameraOrientationState
+    let keyboardFocus: KeyboardFocus
+    let keyFocus: CanvasKeyFocus
     let onRunner: (@MainActor (SketchRunner) -> Void)?
 
     func makeCoordinator() -> Coordinator {
@@ -829,6 +897,10 @@ private struct MetalCanvas: NSViewRepresentable {
         }
         // Initial size only; SwiftUI resizes the view to its frame on layout.
         let view = makeOllinMTKView(device: device, size: sketch.canvasSize.cgSize, sketch: sketch)
+        view.claimsKeyboardOnAttach = (keyboardFocus == .automatic)
+        view.onKeyboardFocusChange = { [weak keyFocus] focused in
+            keyFocus?.isFocused = focused
+        }
         let runner = SketchRunner(sketch: sketch, view: view, device: device)
         runner.observeStats(into: stats)
         runner.observeOrientation(into: cameraState)
@@ -853,6 +925,30 @@ private struct MetalCanvas: NSViewRepresentable {
 
     final class Coordinator {
         var runner: SketchRunner?
+    }
+}
+
+/// The click-to-focus prompt: a small glass capsule floated over the bottom of
+/// the canvas telling the viewer the sketch wants their keyboard. Transient
+/// chrome in the reload-toast idiom; it clears the moment the canvas takes
+/// focus, and it never intercepts the click itself.
+private struct KeyboardFocusHint: View {
+    @SwiftUI.Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(spacing: 8) {
+            SwiftUI.Image(systemName: "keyboard")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+            Text("Click the sketch to use the keyboard")
+                .font(.system(size: 12, weight: .medium))
+        }
+        .padding(.horizontal, 13)
+        .padding(.vertical, 8)
+        .glassEffect(.regular, in: .capsule)
+        // The reload toast's lift, gentler in light mode where the dark-tuned
+        // radius reads as a smudge.
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.14), radius: 16, y: 7)
     }
 }
 

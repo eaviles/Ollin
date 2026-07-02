@@ -6,8 +6,8 @@ import AppKit
 // the sketch; toggling "Show FPS" (⌘/) summons this panel over it. It replaces
 // the old on-canvas overlay chip: same shared `MonitorCardView` the live host's
 // sidebar uses (so they never drift), plus the sketch's `@Param` knobs, tunable
-// live. Used in the panel-less run modes (standalone `swift run`, gallery); the
-// live host omits it because its inspector already shows the same content.
+// live. Used in the standalone `swift run` mode; the live host and the gallery
+// omit it because their inspector sidebars already show the same content.
 
 /// The detached panel's body: below a "Parameters" title bar, the same monitor
 /// card (clock · stats) and parameter list as the OllinLive sidebar — a 1:1

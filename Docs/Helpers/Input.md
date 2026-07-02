@@ -14,6 +14,7 @@ Pointer and keyboard input live on the sketch as plain properties and overridabl
 - [key / keyCode / keyIsPressed](#key)
 - [keyPressed / keyReleased](#keyPressed)
 - [isKeyDown](#isKeyDown)
+- [Keyboard focus in the hosts](#keyboardFocus)
 
 <a name="mouse"></a>
 
@@ -130,3 +131,15 @@ override func draw() {
 ```
 
 The character form is case-sensitive: `isKeyDown("w")` and `isKeyDown("W")` differ by whether Shift was down at the press.
+
+<a name="keyboardFocus"></a>
+
+### Keyboard focus in the hosts
+
+A window that *is* the sketch (a standalone `swift run`, the live host) hands the sketch the keyboard the moment it opens, so all of the above works with no click first. The examples gallery is different: its example list keeps the keyboard (so the arrow keys navigate examples), and a sketch that reads keys shows a small **"Click the sketch to use the keyboard"** prompt over the canvas. Clicking the sketch gives it the keys; clicking back in the list returns them.
+
+Embedding `SketchView` in your own SwiftUI app, the same policy is the `keyboardFocus:` parameter: `.automatic` (claim the keys on appear, the default) or `.onClick` (leave them to the rest of the window until the canvas is clicked), with `showsKeyboardHint:` floating that same prompt for sketches that want keys:
+
+```swift
+SketchView(sketch, keyboardFocus: .onClick, showsKeyboardHint: true)
+```
