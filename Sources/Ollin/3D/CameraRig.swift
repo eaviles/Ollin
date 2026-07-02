@@ -551,6 +551,19 @@ final class CameraRig {
                 baseTarget = target
                 radiusTimeline = nil
                 elevationTimeline = nil
+            } else if let move = activeMove,
+                      case let .orbitAndRise(period, _, duration) = move.kind,
+                      moveClock >= duration {
+                // The rise (the move's finite intro) already played; re-base only the
+                // endless orbit so each snap doesn't stack another rise onto the
+                // elevation. Back-dating the base azimuth keeps the continuing spin
+                // passing through the snapped pose with no jump.
+                baseAzimuth = azimuth - moveClock * angularSpeed(period)
+                baseElevation = elevation
+                baseRadius = radius
+                baseTarget = target
+                radiusTimeline = nil
+                elevationTimeline = nil
             } else {
                 activeMove = nil          // updateMove re-bases from the snapped pose
             }

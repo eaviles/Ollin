@@ -258,6 +258,24 @@ struct CameraRigTests {
         #expect(rig.target.distance(to: .zero) < 1e-9)
     }
 
+    /// Once an `orbitAndRise` has finished its rise, a view snap hands the pose back
+    /// to the continuing orbit without replaying the rise: the elevation holds at the
+    /// snapped angle (instead of climbing by another rise after every snap) while the
+    /// azimuth keeps turning through the snapped pose.
+    @Test func orbitAndRiseHoldsElevationAfterSnap() {
+        let rig = fresh(elevation: 0.3)
+        rig.driver = .move
+        let move = CameraMove.orbitAndRise(period: 8, rise: 0.4, in: 1)
+        for _ in 0..<120 { rig.updateMove(move, dt: dt) }        // 2s: the 1s rise has played
+        #expect(abs(rig.elevation - 0.7) < 1e-6)
+
+        rig.requestView(.front, animated: false, duration: 0)    // snaps elevation to 0
+        let snapped = rig.azimuth
+        for _ in 0..<60 { rig.updateMove(move, dt: dt) }         // 1s more of the orbit
+        #expect(abs(rig.elevation) < 1e-6)                       // held, not risen again
+        #expect(abs((rig.azimuth - snapped) - Double.tau / 8) < 0.05)   // still turning, no jump
+    }
+
     /// After a snap, interactive control resumes from the snapped pose with no jump
     /// (the hand-back resyncs the controller's goal to it).
     @Test func controlResumesFromSnappedPose() {
