@@ -11,11 +11,20 @@ name: Build
 # job runs on a macOS runner. The Metal shader is compiled at *runtime* from
 # source, so no GPU is needed at build time, only the macOS SDK.
 
+# Docs-only changes skip the whole run: there is nothing to compile, and a
+# macOS runner bills every minute at a 10x multiplier, so idle coverage of
+# Markdown edits is the most expensive no-op available.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "Docs/**"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**.md"
+      - "Docs/**"
 
 # A newer push to the same branch/PR supersedes an in-flight run.
 concurrency:
@@ -29,6 +38,13 @@ jobs:
   build:
     name: Build (macOS)
     runs-on: macos-26
+    # Hard ceiling so a wedged runner can never coast to the 6-hour default.
+    # The runner's paravirtualized GPU once failed at test startup and left
+    # `swift test` hung for 4.5 hours; at the 10x macOS billing multiplier
+    # that single run consumed most of a month's Actions minutes. A cold
+    # (cache-miss) build plus the tests fits comfortably under this cap, and
+    # the test step below carries its own tighter one.
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,10 +75,21 @@ jobs:
 
       # Run the GPU-independent tests (the frame-grab seam's dispatch logic).
       # The image-snapshot tests are skipped here on purpose: their reference
-      # PNGs are GPU-specific — recorded on a developer's machine — and a CI
+      # PNGs are GPU-specific (recorded on a developer's machine) and a CI
       # runner's GPU may anti-alias differently, so they run locally where the
       # reference matches the renderer rather than risk a cross-GPU flake.
       # (They'd also skip on their own via `.enabled(if: hasMetal)` when a
       # runner has no Metal device; `--skip` removes the doubt either way.)
+      #
+      # FlowTrackerTests are skipped too: Vision's optical-flow analysis needs
+      # the real media stack and reliably fails on the virtualized runner with
+      # memFullErr ("failed to analyze motion flow"). An environment limit,
+      # not a code signal, so it runs locally like the snapshots.
+      #
+      # The step timeout is the hang guard. The whole suite finishes in well
+      # under a minute when healthy; the only way past ten minutes is a wedged
+      # runner (see the job-level note), and cutting it here fails fast while
+      # the job cap stays generous enough for a cold build.
       - name: Test (excluding GPU snapshots)
-        run: swift test --skip SnapshotTests
+        timeout-minutes: 10
+        run: swift test --skip 'SnapshotTests|FlowTrackerTests'
