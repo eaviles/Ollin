@@ -205,6 +205,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("mesh-materials",
                  note: "A row of spheres in the stylized materials. Pins the per-batch OllinMaterial uniform and each new shader branch: a Fresnel iridescent sheen, the rim glow (velvet), fake subsurface (jade), toon cel bands, and Gooch warm-cool. No time.",
                  make: { MeshMaterialsScene() }),
+    SnapshotCase("sparkle-materials",
+                 note: "The sparkle (metallic-flake) finish: .glitter, .sequin, and a gold-flake tint under a fixed camera. Pins the OllinMaterial sparkle fields, the hash-cell flake normal + two-lobe flash, the size-aware paillette mask, and the sceneScale cell sizing. No time, so it's deterministic.",
+                 make: { SparkleMaterialsScene() }),
     SnapshotCase("pbr-materials",
                  note: "A metal / mixed / dielectric x roughness sweep in the physically-based shading model (shadingModel 3). Pins the new OllinMaterial metallic/roughness fields and the Cook-Torrance branch (GGX distribution, Smith visibility, Schlick Fresnel, the (1-metallic) diffuse kill). No time, so it's deterministic.",
                  make: { PBRMaterialsScene() }),
@@ -743,6 +746,40 @@ private final class PBRMaterialsScene: Sketch {
                                       metallic: metallic, roughness: roughness))
                     drawSphere(radius: 0.65)
                 }
+            }
+        }
+    }
+}
+
+/// The sparkle (metallic-flake) finish under a fixed camera and custom lights: the
+/// `.glitter` and `.sequin` built-ins plus a gold-flake tint. Pins the new
+/// `OllinMaterial` sparkle fields, the hash-cell flake normal + two-lobe flash, the
+/// paillette mask, and the `sceneScale` framing that sizes the cells. No `time`.
+private final class SparkleMaterialsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: .zero, radius: 8,
+                         azimuth: 0.3, elevation: 0.26, fieldOfView: .pi / 3.4))
+        ambientLight(Color(white: 0.12))
+        directionalLight(Color(kelvin: 5400), direction: Vector3(-0.4, -0.6, -0.5), intensity: 1.0)
+        pointLight(.white, at: Vector3(3, 4, 4), intensity: 1.2)
+
+        var goldFlake = Material.glitter
+        goldFlake.sparkleColor = Color(hue: 0.12, saturation: 0.75, brightness: 1.0)
+        goldFlake.sparkleSize = 2
+        let entries: [(Material, Color)] = [
+            (.glitter, Color(hue: 0.66, saturation: 0.75, brightness: 0.30)),
+            (.sequin, Color(hue: 0.93, saturation: 0.80, brightness: 0.55)),
+            (goldFlake, Color(hue: 0.02, saturation: 0.80, brightness: 0.35)),
+        ]
+        for (i, entry) in entries.enumerated() {
+            withState {
+                translate(-2.4 + Double(i) * 2.4, 0, 0)
+                fill(entry.1)
+                material(entry.0)
+                drawSphere(radius: 1.05)
             }
         }
     }

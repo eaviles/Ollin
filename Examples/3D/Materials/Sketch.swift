@@ -1,6 +1,6 @@
 import Ollin
 
-/// The material library — one surface, sixteen finishes.
+/// The material library: one surface, eighteen finishes.
 ///
 /// A `Material` sets how a mesh responds to light; the surface *color* stays the
 /// current `fill`. The same sphere wears each built-in here, laid out in a grid the
@@ -13,6 +13,8 @@ import Ollin
 /// - **dielectric finishes** — `matte`, `clay`, `rubber`, `plastic` (top row),
 ///   `ceramic`, `glossy`, `polished`, then the stylized models begin.
 /// - **iridescent family** — `iridescent`, `soapBubble`, `oilSlick`, `beetle`.
+/// - **sparkle family** — `glitter` (fine flake dust) and `sequin` (chunky facets),
+///   flashing as the orbit sweeps.
 /// - **rim / subsurface** — `velvet`, `jade`, `wax`.
 /// - **non-photorealistic** — `toon` (cel) and `gooch` (warm→cool).
 ///
@@ -36,6 +38,8 @@ final class Materials3D: Sketch {
         ("soapBubble", .soapBubble, Color(white: 0.80)),
         ("oilSlick",   .oilSlick,   Color(white: 0.08)),
         ("beetle",     .beetle,     Color(hue: 0.40, saturation: 0.65, brightness: 0.25)),
+        ("glitter",    .glitter,    Color(hue: 0.66, saturation: 0.75, brightness: 0.30)),
+        ("sequin",     .sequin,     Color(hue: 0.93, saturation: 0.80, brightness: 0.55)),
         ("velvet",     .velvet,     Color(hue: 0.93, saturation: 0.65, brightness: 0.40)),
         ("jade",       .jade,       Color(hue: 0.42, saturation: 0.55, brightness: 0.55)),
         ("wax",        .wax,        Color(hue: 0.10, saturation: 0.30, brightness: 0.90)),

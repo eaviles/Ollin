@@ -1148,6 +1148,9 @@ final class Drawer {
         if let camera = camera3D {
             let radius = max(Float(simd_distance(camera.eye.simd3, camera.target.simd3)), 1)
             u.rtReflectionBias = radius * 0.0015
+            // The same framing proxy sizes the sparkle finish's flake cells, so the
+            // default flake size reads alike at any scene scale.
+            u.sceneScale = radius
         }
         u.ambient = SIMD4<Float>(Float(Color.srgbToLinear(ambient.red)),
                                  Float(Color.srgbToLinear(ambient.green)),

@@ -842,6 +842,35 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         lit += mat.iridescence * fres * rainbow * (0.15 + 0.85 * irrad);
     }
 
+    // Sparkle (metallic flake): the surface is peppered with tiny mirror flakes, one
+    // per world-space hash cell, each tilted off the surface normal by its cell's
+    // random vector. A flake lights up when its tilted normal happens to face the
+    // viewer (a sharp power of that alignment), so flecks flash in and out as the
+    // view, object, or light moves. Cells are sized from the camera's framing
+    // (`sceneScale`, the eye-to-target distance), so the default flake size reads
+    // alike at any scene scale. A reflected-light effect like the sheen above,
+    // scaled by the light reaching the surface with a faint floor so it still reads
+    // in shadow. Inert when strength is 0.
+    if (mat.sparkleColor.a > 0.0) {
+        float cell = max(light.sceneScale, 1e-4) * 0.0022 * mat.sparkleSize;
+        float3 q = worldPos / cell;
+        float3 rnd = hash33(floor(q));
+        // Round each flake: fade by the distance from its cell's center, so a chip
+        // reads as a paillette instead of a cube-cut square (cells the surface
+        // slices far from center lose their flake, which varies the sizes). The
+        // edge band narrows as flakes grow: a dust-sized flake wants a soft edge
+        // (its whole width is a few pixels), a sequin-sized one a crisp rim.
+        float soft = max(0.05, 0.26 / mat.sparkleSize);
+        float mask = smoothstep(0.5, 0.5 - soft, length(fract(q) - 0.5));
+        float3 flakeN = normalize(n + (rnd * 2.0 - 1.0) * 0.7);
+        float align = clamp(dot(flakeN, viewDir), 0.0, 1.0);
+        // Two lobes: the sharp flash of a flake facing the viewer, plus a faint wide
+        // sheen so the off-flash flakes still read as a field of dim mirrors.
+        float flash = pow(align, mat.sparkleSharpness) + 0.18 * pow(align, mat.sparkleSharpness * 0.12);
+        float irrad = dot(incoming, float3(0.299, 0.587, 0.114));
+        lit += mat.sparkleColor.a * 1.6 * flash * mask * mat.sparkleColor.rgb * (0.15 + 0.85 * irrad);
+    }
+
     // Rim (Fresnel edge) glow: a bright halo at grazing angles in the rim color.
     if (mat.rimColor.a > 0.0) {
         float rim = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), mat.rimPower);

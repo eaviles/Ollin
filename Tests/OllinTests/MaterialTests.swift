@@ -37,6 +37,20 @@ struct MaterialTests {
         #expect(m.subsurface == 0)           // 0...1
     }
 
+    @Test func sparkleClampsAndPacks() {
+        let m = Material(sparkle: 2, sparkleSize: 0, sparkleSharpness: 0,
+                         sparkleColor: Color(white: 0.5))
+        #expect(m.sparkle == 1)              // 0...1
+        #expect(m.sparkleSize == 0.05)       // >= 0.05
+        #expect(m.sparkleSharpness == 1)     // >= 1
+        let g = m.gpuMaterial()
+        #expect(close(g.sparkleColor.w, 1))  // sparkle strength in the alpha slot
+        #expect(g.sparkleColor.x < 0.5 && g.sparkleColor.x > 0)  // linearized tint
+        #expect(close(g.sparkleSize, 0.05) && close(g.sparkleSharpness, 1))
+        // A default material stays inert (no flakes).
+        #expect(close(Material().gpuMaterial().sparkleColor.w, 0))
+    }
+
     @Test func gpuPackingLinearizesColorsAndCarriesStrengths() {
         // Rim/subsurface strengths ride the alpha of their color slots; the model and
         // scalar knobs map across; colors come out linearized (an sRGB 0.5 grey is < 0.5).

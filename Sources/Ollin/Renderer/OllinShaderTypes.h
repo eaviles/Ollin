@@ -351,6 +351,7 @@ typedef struct {
     simd_float4 subsurfaceColor;  // rgb linear subsurface tint; a = subsurface strength (0 = none)
     simd_float4 goochWarm;        // rgb linear Gooch warm tone (lit side); a unused
     simd_float4 goochCool;        // rgb linear Gooch cool tone (shadow side); a unused
+    simd_float4 sparkleColor;     // rgb linear flake tint; a = sparkle strength (0 = none)
     float specular;               // Blinn-Phong specular strength (0 = matte)
     float shininess;              // Blinn-Phong shininess exponent (>= 1)
     float iridescence;            // iridescent sheen strength (0 = none)
@@ -360,6 +361,8 @@ typedef struct {
     int   shadingModel;           // 0 standard (Lambert), 1 toon (cel), 2 Gooch (warm-cool), 3 physically-based
     float metallic;               // PBR (shading model 3): 0 dielectric … 1 metal; ignored otherwise
     float roughness;              // PBR (shading model 3): 0 mirror-smooth … 1 fully rough; ignored otherwise
+    float sparkleSize;            // flake cell size, relative to the scene framing (1 = fine glitter)
+    float sparkleSharpness;       // flake flash exponent (higher = rarer, harder flashes)
 } OllinMaterial;
 
 // Parameters for the live ground-grid overlay (`ollin_grid_fragment`): a shader-drawn
@@ -480,6 +483,10 @@ typedef struct {
                                   // deferred: the fragment's uv is (position.xy · scale) / the
                                   // texture size (the `fieldShadowScale` rule), so a future
                                   // half-res reflection tier needs no shader change.
+    float sceneScale;             // the camera's eye-to-target distance (the scene-scale proxy the
+                                  // shadow framing and rtReflectionBias also derive from): sizes the
+                                  // sparkle finish's flake cells so they read the same at any scene
+                                  // scale. 0 when no camera; only the sparkle path reads it.
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

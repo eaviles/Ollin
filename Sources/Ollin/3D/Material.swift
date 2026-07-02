@@ -24,6 +24,8 @@ import COllinShaders
 /// - **subsurface** — fake light bleeding through thin geometry (jade, wax, skin).
 /// - **iridescence** — a Fresnel-driven rainbow sheen that shifts with view angle
 ///   (soap film, oil slick, beetle shell).
+/// - **sparkle** — tiny mirror flakes that flash as the view, object, or light moves
+///   (glitter, metallic car paint, sequins).
 ///
 /// Each finish is inert at its zero value, so they layer freely — a `.toon` material
 /// can still carry a rim, an iridescent one a touch of subsurface. Like
@@ -95,6 +97,19 @@ public struct Material: Equatable, Sendable {
     /// to grazing (low = a few broad bands, high = many fine ones).
     public var iridescenceScale: Double
 
+    /// Sparkle (metallic-flake) strength, `0…1`: the surface is peppered with tiny
+    /// mirror flakes that flash in and out as the view, object, or light moves
+    /// (glitter, metallic car paint, sequins). `0` is off.
+    public var sparkle: Double
+    /// Sparkle flake size, relative to the scene's framing: `1` is a fine glitter
+    /// dust; larger reads as chunky flakes and, big enough, sequin facets.
+    public var sparkleSize: Double
+    /// Sparkle flash tightness: how exactly a flake must face the viewer to light up.
+    /// Higher makes the flashes rarer and harder-edged.
+    public var sparkleSharpness: Double
+    /// The flake tint (white by default; gold or copper flakes are a tint away).
+    public var sparkleColor: Color
+
     /// Rim (Fresnel edge) strength, `0…1`: how strongly `rimColor` glows at grazing
     /// angles. `0` is off.
     public var rim: Double
@@ -121,6 +136,8 @@ public struct Material: Equatable, Sendable {
                 metallic: Double = 0, roughness: Double = 0.5,
                 specular: Double = 0, shininess: Double = 32,
                 iridescence: Double = 0, iridescenceScale: Double = 1,
+                sparkle: Double = 0, sparkleSize: Double = 1,
+                sparkleSharpness: Double = 48, sparkleColor: Color = .white,
                 rim: Double = 0, rimPower: Double = 2, rimColor: Color = .white,
                 subsurface: Double = 0, subsurfaceColor: Color = .white,
                 goochWarm: Color = Color(red: 0.7, green: 0.5, blue: 0.15),
@@ -133,6 +150,10 @@ public struct Material: Equatable, Sendable {
         self.shininess = max(1, shininess)
         self.iridescence = min(1, max(0, iridescence))
         self.iridescenceScale = max(0, iridescenceScale)
+        self.sparkle = min(1, max(0, sparkle))
+        self.sparkleSize = max(0.05, sparkleSize)
+        self.sparkleSharpness = max(1, sparkleSharpness)
+        self.sparkleColor = sparkleColor
         self.rim = min(1, max(0, rim))
         self.rimPower = max(0.1, rimPower)
         self.rimColor = rimColor
@@ -157,6 +178,7 @@ public struct Material: Equatable, Sendable {
         m.subsurfaceColor = Material.linear(subsurfaceColor, alpha: subsurface)
         m.goochWarm = Material.linear(goochWarm, alpha: 0)
         m.goochCool = Material.linear(goochCool, alpha: 0)
+        m.sparkleColor = Material.linear(sparkleColor, alpha: sparkle)
         m.specular = Float(specular)
         m.shininess = Float(shininess)
         m.iridescence = Float(iridescence)
@@ -166,6 +188,8 @@ public struct Material: Equatable, Sendable {
         m.shadingModel = Int32(shading.rawValue)
         m.metallic = Float(metallic)
         m.roughness = Float(roughness)
+        m.sparkleSize = Float(sparkleSize)
+        m.sparkleSharpness = Float(sparkleSharpness)
         return m
     }
 
@@ -227,6 +251,18 @@ public extension Material {
     /// surface — a deep structural shimmer rather than a busy rainbow.
     static let beetle = Material(specular: 0.7, shininess: 100,
                                  iridescence: 0.75, iridescenceScale: 0.7)
+
+    // Sparkle (metallic-flake) family: mirror flakes that flash as the view moves.
+
+    /// Glitter: a dense dust of tiny mirror flakes over a satin body. Craft glitter,
+    /// or metallic car paint (the body color is the `fill`; tint the flakes gold or
+    /// copper via `sparkleColor`).
+    static let glitter = Material(specular: 0.35, shininess: 60, sparkle: 0.9)
+
+    /// Sequins / disco: chunky mirror paillettes that flash whole as the view sweeps,
+    /// over a glossy body.
+    static let sequin = Material(specular: 0.5, shininess: 90,
+                                 sparkle: 1.0, sparkleSize: 9, sparkleSharpness: 60)
 
     // Rim / Fresnel glow.
 
