@@ -844,12 +844,16 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
                                        primitive_acceleration_structure accel [[buffer(3)]],
                                        const device OllinMeshVertex *verts [[buffer(6)]],
                                        const device uint *geoOffsets [[buffer(7)]]) {
-    float4 nrm = normalTex.sample(samp, in.uv);
-    if (nrm.a < 0.5) return float4(0.0);          // no mesh surface here
+    // The G-buffer holds per-pixel surface data, so every read is nearest-filtered,
+    // like the depth: a bilinear read at a geometry edge blends two surfaces' normals
+    // (and materials) against a depth that picks one of them, and the reconstructed
+    // reflection ray then leaves one surface's point in the other's direction.
     constexpr sampler dsamp(filter::nearest);
+    float4 nrm = normalTex.sample(dsamp, in.uv);
+    if (nrm.a < 0.5) return float4(0.0);          // no mesh surface here
     float d = depthTex.sample(dsamp, in.uv);
     if (d >= 1.0) return float4(0.0);
-    float rough = clamp(materialTex.sample(samp, in.uv).y, 0.045, 1.0);
+    float rough = clamp(materialTex.sample(dsamp, in.uv).y, 0.045, 1.0);
     // At roughness ≥ 0.55 the glossy blend in the mesh fragment lands fully on the
     // prefiltered environment, so the traced value is unused; skip the rays.
     if (rough >= 0.55) return float4(0.0);

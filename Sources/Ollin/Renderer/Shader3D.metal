@@ -499,7 +499,13 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
     ray r;
     r.origin = worldPos + n * eps;        // lift off the surface (self-hit guard)
     r.direction = R;
-    r.min_distance = eps;
+    // The lift along the normal is the self-hit guard (a reflected ray points out of
+    // its own surface's half-space, so it cannot re-hit the plane it left); keep
+    // min_distance well under the lift, or it eats the *neighboring* surface where
+    // two reflectors meet: at a pillar base sitting on a mirror floor, the floor
+    // crossing lands inside a min_distance of eps, the ray tunnels into the slab,
+    // and every contact edge grows a 1-2px black seam no anti-aliasing can remove.
+    r.min_distance = eps * 0.05;
     r.max_distance = 1e9;                 // exact trace; a long ray is no costlier than a short one
     intersection_params params;           // default = closest hit (no accept_any)
     intersection_query<triangle_data> q;
@@ -522,7 +528,7 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
     ray r2;
     r2.origin = s1.P + s1.N * eps;
     r2.direction = secDir;
-    r2.min_distance = eps;
+    r2.min_distance = eps * 0.05;         // same corner rule as the first trace
     r2.max_distance = 1e9;
     intersection_query<triangle_data> q2;
     q2.reset(r2, accel, params);
