@@ -27,11 +27,12 @@ struct ComputeTests {
 
     @Test func composeSplicesPreludeAndTypes() {
         let composed = MetalRenderer.composeComputeSource("kernel void k() { /* MARKER */ }")
-        // The stdlib preamble, the shared particle struct, a prelude helper, and the
+        // The stdlib preamble, the shared particle struct, a library helper, and the
         // user's own source all land in the composed kernel.
-        #expect(composed.hasPrefix("#include <metal_stdlib>"))
+        #expect(composed.contains("#include <metal_stdlib>"))
         #expect(composed.contains("OllinParticle"))      // shared types header
-        #expect(composed.contains("curlNoise"))          // compute prelude
+        #expect(composed.contains("curlNoise"))          // shared shader library
+        #expect(composed.contains("palette"))            // …the whole library, not a subset
         #expect(composed.contains("MARKER"))             // user source, last
         // User source comes after the spliced headers.
         #expect(composed.range(of: "MARKER")!.lowerBound > composed.range(of: "curlNoise")!.lowerBound)
@@ -188,8 +189,8 @@ struct ComputeTests {
 private final class ComputeProbeSketch: Sketch {
     var drawDots = true
     private lazy var dots = Particles(count: 10_000, step: """
-        position = float2(hash21(float2(float(id), 1.0)),
-                          hash21(float2(float(id), 2.0))) * u.resolution;
+        position = float2(hash12(float2(float(id), 1.0)),
+                          hash12(float2(float(id), 2.0))) * u.resolution;
         size = 8.0;
         color = float4(1.0, 1.0, 1.0, 1.0);
         life = 1.0;

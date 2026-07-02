@@ -2,7 +2,7 @@
 // file — so an editor gives them real Metal syntax highlighting and checking — and
 // loaded with `ComputeKernel(entry:resource:in:)`. Ollin compiles this at runtime
 // and splices in the shared CPU↔GPU types (`OllinComputeUniforms`, …) and the
-// compute prelude (`hash22`, `srgbToLinear`, `curlNoise`, …) ahead of it, so these
+// shader library (`hash22`, `srgbToLinear`, `curlNoise`, …) ahead of it, so these
 // kernels use those directly and write no `#include`s. (One file can hold any number
 // of kernels; the sketch loads each by its entry name.)
 
@@ -22,7 +22,7 @@ kernel void rd_seed(texture2d<float, access::write> dst [[texture(0)]],
 }
 
 // Map chemical B to colour — deep indigo void, lifting through cyan to a hot rim.
-// `srgbToLinear` (from the prelude) authors the palette in sRGB so it lands right
+// `srgbToLinear` (from the shader library) authors the palette in sRGB so it lands right
 // under the renderer's linear-light compositing.
 kernel void rd_colorize(texture2d<float, access::read>  src [[texture(0)]],
                         texture2d<float, access::write> dst [[texture(1)]],

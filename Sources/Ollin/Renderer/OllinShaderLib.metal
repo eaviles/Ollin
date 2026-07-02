@@ -82,13 +82,29 @@ static inline float2 rotate2D(float2 p, float a) { return ollin_rot2(p, a); }   
 // OLLIN_LIB_BEGIN hash
 // MARK: - Hashing
 //
-// Texture-free pseudo-random hashes (a few fract/dot rounds). The naming follows
-// the common convention hashNM: N output channels from an M-component seed.
+// Texture-free pseudo-random hashes (a few fract/dot rounds), plus a hash-driven
+// disc sampler. The naming follows the common convention hashNM: N output
+// channels from an M-component seed.
+
+// 1 channel from a float seed, in [0, 1).
+static inline float hash11(float p) {
+    p = fract(p * 0.1031);
+    p *= p + 33.33;
+    p *= p + p;
+    return fract(p);
+}
 
 // 1 channel from a float2 seed, in [0, 1).
 static inline float hash12(float2 p) {
     float3 p3 = fract(float3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+// 1 channel from a float3 seed, in [0, 1).
+static inline float hash13(float3 p3) {
+    p3 = fract(p3 * 0.1031);
+    p3 += dot(p3, p3.zyx + 31.32);
     return fract((p3.x + p3.y) * p3.z);
 }
 
@@ -105,14 +121,25 @@ static inline float3 hash33(float3 p3) {
     p3 += dot(p3, p3.yxz + 33.33);
     return fract((p3.xxy + p3.yxx) * p3.zyx);
 }
+
+// A point in the unit disc, uniform over its *area* (radius via sqrt so samples
+// don't bunch at the centre), the right scatter for energy-conserving bokeh.
+// `seed` is any per-sample value to decorrelate the draws.
+static inline float2 discSample(float2 seed) {
+    float2 h = hash22(seed);
+    float r = sqrt(h.x);
+    float a = h.y * 6.28318530718;
+    return float2(cos(a), sin(a)) * r;
+}
 // OLLIN_LIB_END hash
 
 // OLLIN_LIB_BEGIN noise
 // MARK: - Noise
 //
-// Value noise (smoothed interpolation of per-cell hashes) and gradient noise
-// (interpolated dot products of per-corner gradients), each with a multi-octave
-// FBM. Value noise reads in ~[0, 1]; gradient noise in ~[-1, 1].
+// Value noise (smoothed interpolation of per-cell hashes, in 2D and 3D) and
+// gradient noise (interpolated dot products of per-corner gradients), each with
+// a multi-octave FBM, plus the divergence-free 2D curl of a value-noise
+// potential. Value noise reads in ~[0, 1]; gradient noise in ~[-1, 1].
 
 static inline float ollin_vnoise(float2 p) {
     float2 i = floor(p), f = fract(p);
@@ -129,6 +156,23 @@ static inline float ollin_fbm(float2 p) {
 static inline float valueNoise(float2 p) { return ollin_vnoise(p); }   // public-facing name
 static inline float fbm(float2 p) { return ollin_fbm(p); }             // public-facing name
 
+// 3D value noise: trilinear interpolation of per-corner hashes.
+static inline float valueNoise(float3 p) {
+    float3 i = floor(p), f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float c000 = hash13(i + float3(0.0, 0.0, 0.0));
+    float c100 = hash13(i + float3(1.0, 0.0, 0.0));
+    float c010 = hash13(i + float3(0.0, 1.0, 0.0));
+    float c110 = hash13(i + float3(1.0, 1.0, 0.0));
+    float c001 = hash13(i + float3(0.0, 0.0, 1.0));
+    float c101 = hash13(i + float3(1.0, 0.0, 1.0));
+    float c011 = hash13(i + float3(0.0, 1.0, 1.0));
+    float c111 = hash13(i + float3(1.0, 1.0, 1.0));
+    float x00 = mix(c000, c100, f.x), x10 = mix(c010, c110, f.x);
+    float x01 = mix(c001, c101, f.x), x11 = mix(c011, c111, f.x);
+    return mix(mix(x00, x10, f.y), mix(x01, x11, f.y), f.z);
+}
+
 // 2D gradient noise in ~[-1, 1].
 static inline float gradientNoise(float2 p) {
     float2 i = floor(p), f = fract(p);
@@ -142,6 +186,20 @@ static inline float gradientNoise(float2 p) {
     float vc = dot(gc, f - float2(0, 1));
     float vd = dot(gd, f - float2(1, 1));
     return mix(mix(va, vb, u.x), mix(vc, vd, u.x), u.y);
+}
+
+// Curl noise: the divergence-free 2D flow that is the curl of a value-noise
+// scalar potential ψ, i.e. (∂ψ/∂y, −∂ψ/∂x). Particles advected by it swirl and
+// never converge to sinks, the classic flow-field look.
+static inline float2 curlNoise(float2 p) {
+    const float e = 0.1;
+    float n_yp = ollin_vnoise(p + float2(0.0, e));
+    float n_ym = ollin_vnoise(p - float2(0.0, e));
+    float n_xp = ollin_vnoise(p + float2(e, 0.0));
+    float n_xm = ollin_vnoise(p - float2(e, 0.0));
+    float dpsidy = (n_yp - n_ym) / (2.0 * e);
+    float dpsidx = (n_xp - n_xm) / (2.0 * e);
+    return float2(dpsidy, -dpsidx);
 }
 // OLLIN_LIB_END noise
 

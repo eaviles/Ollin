@@ -41,9 +41,7 @@ constant constexpr float OLLIN_RAYMARCH_EPS        = 0.001;
 // dial-resolved `Uniforms3D.raymarchSteps.y`.
 constant constexpr float OLLIN_SDF3D_SHADOW_K      = 10.0;
 
-// --- 3D distance functions ---
-static float ollin_dot2(float2 v) { return dot(v, v); }
-
+// --- 3D distance functions (dot2 comes from the shared library segment) ---
 static float ollin_sd3_sphere(float3 p, float r) { return length(p) - r; }
 
 static float ollin_sd3_box(float3 p, float3 b) {
@@ -82,9 +80,9 @@ static float ollin_sd3_cone(float3 p, float hh, float r1, float r2) {
     float2 k1 = float2(r2, hh);
     float2 k2 = float2(r2 - r1, 2.0 * hh);
     float2 ca = float2(q.x - min(q.x, (q.y < 0.0) ? r1 : r2), abs(q.y) - hh);
-    float2 cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / ollin_dot2(k2), 0.0, 1.0);
+    float2 cb = q - k1 + k2 * clamp(dot(k1 - q, k2) / dot2(k2), 0.0, 1.0);
     float s = (cb.x < 0.0 && ca.y < 0.0) ? -1.0 : 1.0;
-    return s * sqrt(min(ollin_dot2(ca), ollin_dot2(cb)));
+    return s * sqrt(min(dot2(ca), dot2(cb)));
 }
 
 // An octahedron centered at the origin, vertices `s` along each axis (the exact form).

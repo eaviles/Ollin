@@ -69,8 +69,8 @@ final class DepthOfField_Example: Sketch {
             uint sample = id / 3u;
             uint channel = id % 3u;
             float2 rseed = float2(float(sample), float(u.frameCount));
-            uint r = uint(hash21(rseed) * 9.0) % 9u;
-            float t = hash21(rseed + 1.7);
+            uint r = uint(hash12(rseed) * 9.0) % 9u;
+            float t = hash12(rseed + 1.7);
 
             // A point along the curve, then rotate (x, z) about the vertical axis.
             float3 p3 = 0.95 * sin(freq[r] * t * TAU + phase[r]);

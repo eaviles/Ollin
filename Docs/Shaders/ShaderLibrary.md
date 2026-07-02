@@ -6,7 +6,7 @@
 
 Every [user-supplied shader](./Shaders.md) is compiled with Ollin's shader library spliced in, so these helpers are callable from inside `shade(uv, info)` with no `#include`. They're the same helpers Ollin's own shaders use (one source of truth), each written from the published technique and credited in the [Techniques list](../../ATTRIBUTION.md#techniques).
 
-This is the *fragment-shader* library. Compute kernels get a separate, compute-tuned prelude (curl noise, disc sampling, 3D value noise) documented under [Compute](./Compute.md#prelude); the two overlap on hashing and value noise but are different sets.
+[Compute kernels](./Compute.md) get the same library, whole: a helper learned here works identically in a kernel (`using:` is a fragment-`Shader` option; kernels always see everything).
 
 By default the whole library is available. Restrict it with the `using:` option to trim compile time (unused helpers are dead-code-eliminated, so on the GPU the choice costs nothing either way):
 
@@ -18,8 +18,8 @@ let s = Shader(source, using: [.noise, .sdf])   // only these sections splice
 | --- | --- | --- |
 | (base) | color conversion, luminance, 2D rotation | yes |
 | `.color` | cosine palette, OKLab / OKLCH | no |
-| `.hash` | integer-free pseudo-random hashes | no |
-| `.noise` | value / FBM / gradient noise (depends on `.hash`) | no |
+| `.hash` | integer-free pseudo-random hashes, disc sampling | no |
+| `.noise` | value / FBM / gradient / curl noise (depends on `.hash`) | no |
 | `.sdf` | smooth-min and the 2D signed-distance catalog | no |
 | `.domain` | repeat / mirror / polar-fold space operators | no |
 
@@ -69,9 +69,12 @@ Mixing in OKLab/OKLCH (interpolate, then convert back) gives even lightness and 
 
 | Function | Description |
 | --- | --- |
+| `float hash11(float p)` | one channel from a `float`. |
 | `float hash12(float2 p)` | one channel from a `float2`. |
+| `float hash13(float3 p3)` | one channel from a `float3`. |
 | `float2 hash22(float2 p)` | two channels from a `float2`. |
 | `float3 hash33(float3 p3)` | three channels from a `float3`. |
+| `float2 discSample(float2 seed)` | a point in the unit disc, uniform over its *area* (radius via square root, so samples don't bunch at the centre), the right scatter for energy-conserving bokeh. |
 
 ## Noise
 
@@ -80,8 +83,10 @@ Mixing in OKLab/OKLCH (interpolate, then convert back) gives even lightness and 
 | Function | Description |
 | --- | --- |
 | `float valueNoise(float2 p)` | smoothed interpolation of per-cell hashes. |
+| `float valueNoise(float3 p)` | the 3D form (trilinear); animate by sliding `z`. |
 | `float fbm(float2 p)` | four-octave fractal sum of `valueNoise`. |
 | `float gradientNoise(float2 p)` | Perlin-style gradient noise (smoother, signed). |
+| `float2 curlNoise(float2 p)` | the divergence-free curl of a value-noise potential: a flow field whose streams swirl and never converge into sinks. |
 
 ## Signed-distance functions
 

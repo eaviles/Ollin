@@ -36,7 +36,7 @@ import simd
 /// - `gid` (`uint2`) — this cell's coordinate; `size` (`uint2`) — the field size.
 /// - `u` (`OllinComputeUniforms` — `u.time`/`u.dt`/`u.frameCount`/…) and `custom`
 ///   (`float4`, the live knobs from `updateSimulation(_:custom:)`), both read-only.
-/// - the prelude helpers (`hash21`, `valueNoise`, `srgbToLinear`, …).
+/// - the shader-library helpers (`hash12`, `valueNoise`, `srgbToLinear`, …).
 ///
 /// Fresh textures start zeroed; seed a sim's initial state with a one-shot
 /// `compute(_:writing: sim.current)` on the first frame. For a custom signature or a

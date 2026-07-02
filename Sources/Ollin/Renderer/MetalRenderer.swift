@@ -4715,23 +4715,26 @@ final class MetalRenderer {
         return prefix + source.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
     }
 
-    /// Build the full MSL source for a user compute kernel: the `metal_stdlib`
-    /// preamble, the shared CPU↔GPU types (`OllinParticle`/`OllinComputeUniforms`),
-    /// and the compute prelude (`OllinCompute.h` — hash/noise/curl/disc), then the
-    /// user's source. So a kernel writes no `#include`s and can use those directly.
-    /// Both headers ship beside the shaders as resources (the runtime compiler has
-    /// no include search path, the same reason `composeShaderSource` splices).
+    /// Build the full MSL source for a user compute kernel: the shared shader
+    /// library (`OllinShaderLib`, the same helper set user fragment shaders get:
+    /// hash/noise/curl/disc, palettes and OKLab, the `sd*` catalog, domain
+    /// operators), with the library's own `metal_stdlib` preamble kept and the
+    /// shared CPU↔GPU types spliced in place of its `#include`, then the user's
+    /// source. So a kernel writes no `#include`s, and a helper learned in a
+    /// fragment shader works the same in a kernel. Resources are read as text
+    /// because the runtime compiler has no include search path (same reason
+    /// `composeShaderSource` splices).
     static func composeComputeSource(_ userSource: String) -> String {
-        var source = "#include <metal_stdlib>\nusing namespace metal;\n"
+        var lib = "#include <metal_stdlib>\nusing namespace metal;\n#include \"OllinShaderTypes.h\"\n"
+        if let url = Bundle.module.url(forResource: "OllinShaderLib", withExtension: "metal"),
+           let text = try? String(contentsOf: url, encoding: .utf8) {
+            lib = text
+        }
         if let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
            let header = try? String(contentsOf: url, encoding: .utf8) {
-            source += header + "\n"
+            lib = lib.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
         }
-        if let url = Bundle.module.url(forResource: "OllinCompute", withExtension: "h"),
-           let prelude = try? String(contentsOf: url, encoding: .utf8) {
-            source += prelude + "\n"
-        }
-        return source + userSource
+        return lib + "\n" + userSource
     }
 
     /// FNV-1a hash of a string's UTF-8, for the compute-pipeline cache key.

@@ -7,8 +7,9 @@ import Foundation
 /// no device. The renderer compiles it lazily on first dispatch and caches the
 /// pipeline by the source's hash, so re-creating the same kernel value each frame
 /// is free. Before compiling, the renderer splices in `<metal_stdlib>`, the shared
-/// CPU↔GPU types (`OllinParticle`, `OllinComputeUniforms`), and the compute prelude
-/// (`OllinCompute.h` — `hash21`/`valueNoise`/`curlNoise`/`discSample`/…), so a
+/// CPU↔GPU types (`OllinParticle`, `OllinComputeUniforms`), and the shared shader
+/// library (`OllinShaderLib`: `hash12`/`valueNoise`/`curlNoise`/`discSample`/
+/// `palette`/the `sd*` catalog/…, the same helpers fragment shaders get), so a
 /// kernel can use those directly without writing any includes (see
 /// `MetalRenderer.composeComputeSource`).
 ///
@@ -23,7 +24,7 @@ import Foundation
 /// want full control over the kernel signature or a custom buffer layout.
 public struct ComputeKernel: Sendable {
     /// The kernel's MSL source — one or more `kernel` functions. The shared types
-    /// and the compute prelude are spliced in ahead of this at compile time, so
+    /// and the shader library are spliced in ahead of this at compile time, so
     /// reference `OllinParticle` / `curlNoise` / … freely; write no `#include`s.
     public let source: String
     /// The name of the `kernel` function to dispatch.
@@ -38,7 +39,7 @@ public struct ComputeKernel: Sendable {
     /// Load a kernel's MSL from a bundled **`.metal` resource file**, dispatching the
     /// function named `entry`. Keeping kernels in their own `.metal` files (rather
     /// than inline Swift strings) gives them real Metal syntax highlighting and
-    /// editor checking; the shared types and the compute prelude are still spliced in
+    /// editor checking; the shared types and the shader library are still spliced in
     /// at compile time, so the file references `OllinComputeUniforms` / `hash22` /
     /// `curlNoise` / … freely and writes no `#include`s. One file may hold several
     /// kernels — load each as its own `ComputeKernel` with a different `entry` (they

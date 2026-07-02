@@ -17,7 +17,7 @@ Both write the per-element update as a short snippet of Metal — Ollin generate
 
 - [Particles — a GPU particle system in a few lines](#particles)
 - [The kernel snippet](#snippet) — what's in scope
-- [The prelude](#prelude) — hashing, noise, curl, disc sampling
+- [The prelude](#prelude) — the shared shader library, spliced into every kernel
 - [Custom live parameters](#custom)
 - [Texture kernels & simulations](#textures) — `Simulation`, `ComputeTexture`
 - [Kernels in a `.metal` file](#metalfile)
@@ -86,15 +86,15 @@ Particles start zeroed, so `life` begins at 0 — the `if (life <= 0.0)` spawn p
 <a id="prelude"></a>
 ### The prelude
 
-This is the *compute* prelude. Fragment shaders ([Shaders](./Shaders.md)) get a different, drawing-tuned one (cosine palettes, OKLab, the SDF catalog, domain operators): the [shader library](./ShaderLibrary.md). The two overlap on hashing and value noise but are separate sets.
+Every kernel gets the [shader library](./ShaderLibrary.md) spliced in for free: the *same* helper set a fragment [`Shader`](./Shaders.md) gets, so a helper learned in one works identically in the other. The ones kernels reach for most:
 
-Every kernel gets a set of helpers for free (written from the published techniques — Dave Hoskins' hashing, the Book of Shaders value noise, the standard curl-of-a-potential):
-
-- `hash11`/`hash21`/`hash31` → `float`, `hash22` → `float2`, `hash33` → `float3` — fast hashes for randomness.
+- `hash11`/`hash12`/`hash13` → `float`, `hash22` → `float2`, `hash33` → `float3` — fast hashes for randomness (`hashNM`: `N` output channels from an `M`-component seed).
 - `valueNoise(float2)` / `valueNoise(float3)` → `float`, and `fbm(float2)` — smooth value noise.
 - `curlNoise(float2)` → `float2` — a divergence-free flow field; particles advected by it swirl without clumping.
 - `discSample(float2 seed)` → `float2` — a point in the unit disc, uniform over its *area* (the right scatter for energy-conserving bokeh).
 - `srgbToLinear(float3)` — if you need linear color.
+
+The rest of the library is there too (cosine `palette`, OKLab conversions, the `sd*` distance-function catalog, the domain operators); see the [shader library reference](./ShaderLibrary.md) for the full set.
 
 <a id="custom"></a>
 ### Custom live parameters
@@ -141,7 +141,7 @@ final class RD: Sketch {
     let seed = ComputeKernel(entry: "seed", """
         kernel void seed(texture2d<float, access::write> dst [[texture(0)]],
                          uint2 gid [[thread_position_in_grid]]) {
-            float b = (hash21(float2(gid)) > 0.5 && gid.x > 240 && gid.x < 270) ? 1.0 : 0.0;
+            float b = (hash12(float2(gid)) > 0.5 && gid.x > 240 && gid.x < 270) ? 1.0 : 0.0;
             dst.write(float4(1.0, b, 0.0, 1.0), gid);
         }
     """)
@@ -209,7 +209,7 @@ Inline strings are terse, but an editor can't highlight or check them. For anyth
 let blur = ComputeKernel(entry: "blur", resource: "Kernels", in: .module)!
 ```
 
-The shared types and the [prelude](#prelude) are still spliced in, so the file references `OllinComputeUniforms` / `hash22` / `curlNoise` / … and writes no `#include`s. One file can hold any number of kernels — load each by its `entry` name (they share one compile). Pass `in: .module` explicitly (a default would resolve to *Ollin's* bundle, not yours), and list the file as a `.copy` resource on your target. There's also `ComputeKernel(entry:contentsOf:)` for an arbitrary file URL. See `Examples/Compute/ReactionDiffusion`, which keeps its seed and colorize passes in `Kernels.metal`.
+The shared types and the [shader library](#prelude) are still spliced in, so the file references `OllinComputeUniforms` / `hash22` / `curlNoise` / … and writes no `#include`s. One file can hold any number of kernels; load each by its `entry` name (they share one compile). Pass `in: .module` explicitly (a default would resolve to *Ollin's* bundle, not yours), and list the file as a `.copy` resource on your target. There's also `ComputeKernel(entry:contentsOf:)` for an arbitrary file URL. See `Examples/Compute/ReactionDiffusion`, which keeps its seed and colorize passes in `Kernels.metal`.
 
 <a id="core"></a>
 ### The typed core
@@ -219,7 +219,7 @@ The shared types and the [prelude](#prelude) are still spliced in, so the file r
 <a id="computekernel"></a>
 #### ComputeKernel
 
-A Metal `kernel` function plus its entry name. Write no `#include`s — the shared types and the prelude are spliced in for you:
+A Metal `kernel` function plus its entry name. Write no `#include`s; the shared types and the shader library are spliced in for you:
 
 ```swift
 let sim = ComputeKernel(entry: "step", """
@@ -274,7 +274,7 @@ Draw a `ComputeBuffer<OllinParticle>` directly with `drawParticles(_ buffer:)`; 
 
 - **`OllinParticle`** is the built-in particle struct (`position`, `velocity`, `color`, `size`, `life`, two scratch floats). `drawParticles` reads `position`/`color`/`size` from it. A custom struct that wants the built-in renderer must place those fields at the same offsets, or render itself.
 - **Ping-pong, not in place, for simulation.** When a buffer or texture is both written by the kernel and read by the render path each frame, drive it as a `PingPong` / `PingPongTexture` pair (`Particles` and `Simulation` do this for you). In-place `compute(_:over:)` is for scratch work the render path doesn't also read that frame.
-- **A `ComputeTexture` draws as linear color.** Its texels feed the render pipeline as linear values (the format the renderer composites in). Author display colors in a kernel through `srgbToLinear` (from the [prelude](#prelude)) and keep alpha at 1 for opaque, predictable compositing. Storage is `.shared` (unified memory) with `.shaderRead`+`.shaderWrite` usage.
+- **A `ComputeTexture` draws as linear color.** Its texels feed the render pipeline as linear values (the format the renderer composites in). Author display colors in a kernel through `srgbToLinear` (from the [shader library](#prelude)) and keep alpha at 1 for opaque, predictable compositing. Storage is `.shared` (unified memory) with `.shaderRead`+`.shaderWrite` usage.
 - **Determinism.** GPU floating-point results are deterministic on a given device but can differ across GPUs (reassociation), so compute renders aren't pinned to exact reference images.
 - **It's Metal.** Kernels are MSL, compiled at runtime. A syntax error prints to the console and the dispatch is skipped (the frame still renders), so a broken kernel shows as missing particles rather than a crash.
 

@@ -15,7 +15,7 @@ import Ollin
 /// In the snippet you read and write the particle's fields as plain locals
 /// (`position`, `velocity`, `color`, `size`, `life`, `seedA`/`seedB`), with `id`
 /// (this particle's index), `u` (per-frame constants — `u.time`, `u.dt`,
-/// `u.resolution`, …), and the prelude helpers (`hash21`, `curlNoise`, …) in scope.
+/// `u.resolution`, …), and the shader-library helpers (`hash12`, `curlNoise`, …) in scope.
 @main
 final class CurlField_Example: Sketch {
     lazy var sand = Particles(count: 1_000_000, step: """
@@ -23,7 +23,7 @@ final class CurlField_Example: Sketch {
         // never empties or pulses all at once (seedA decorrelates each respawn).
         if (life <= 0.0) {
             position = hash22(float2(id, seedA + float(u.frameCount))) * u.resolution;
-            life = 0.4 + hash21(float2(seedA, id)) * 1.1;
+            life = 0.4 + hash12(float2(seedA, id)) * 1.1;
             seedA += 1.0;
         }
 

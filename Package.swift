@@ -355,9 +355,6 @@ let package = Package(
                 .copy("Renderer/ShaderEffects.metal"),
                 .copy("Renderer/ShaderIBL.metal"),
                 .copy("Renderer/OllinShaderTypes.h"),
-                // The MSL compute prelude (hash/noise/curl/disc), spliced into
-                // user compute-kernel source at runtime like OllinShaderTypes.h.
-                .copy("Renderer/OllinCompute.h"),
                 // Cozette (MIT) — the bundled default bitmap font, loaded at
                 // runtime by BitmapFont.builtin via the BDF parser. License kept
                 // beside it; see THIRD-PARTY-NOTICES.md.
