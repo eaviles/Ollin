@@ -303,7 +303,7 @@ fragment float4 ollin_gen_spiral(PresentOut in [[stage_in]],
 
     float2 uv = ollin_pat_square(in.uv, aspect) * 21.6 * scale;
     float lRaw = max(length(uv), 1e-6);
-    float l = pow(lRaw, mix(0.4, 1.0, density));   // < 1 compresses outer turns
+    float l = pow(lRaw, density);                  // < 1 compresses outer turns
     float thetaN = (atan2(uv.y, uv.x) - phase) / 6.2831853;
     float nf = 16.0 * noiseScale * noiseScale * noiseScale;
     thetaN += 0.125 * noiseAmt * gradientNoise(nf * uv * 0.25);
@@ -315,9 +315,10 @@ fragment float4 ollin_gen_spiral(PresentOut in [[stage_in]],
 
     float width = 1.0 - clamp(strokeWidth, 0.005 * taper, 1.0);
     // Round the innermost turn into a dot instead of a pinched wedge.
-    float capped = (1.0 - stripe) * (1.0 - step(0.5, stripe));
-    shape = mix(shape, capped, cap * (1.0 - clamp(l, 0.0, 1.0)));
-    width *= 1.0 - taper * clamp(lRaw / (10.8 * scale), 0.0, 1.0);
+    float wCap = mix(width, (1.0 - stripe) * (1.0 - step(0.5, stripe)),
+                     1.0 - clamp(l, 0.0, 1.0));
+    width = mix(width, wCap, cap);
+    width *= 1.0 - clamp(taper, 0.0, 1.0) * l;
 
     float fw = fwidth(offset);
     float fwMult = 4.0 - 3.0 * smoothstep(0.05, 0.4, 2.0 * strokeWidth)

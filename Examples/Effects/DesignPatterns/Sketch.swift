@@ -22,7 +22,7 @@ final class DesignPatterns_Example: Sketch {
             ("smokeRing", generate(.smokeRing(colors: [.white, Color(hex: 0x6FD9FF)],
                                               phase: t))),
             ("colorPanels", generate(.colorPanels(phase: t * 30))),
-            ("spiral", generate(.spiral(distortion: 0.15, phase: t * 0.4))),
+            ("spiral", generate(.spiral(phase: t * 0.4))),
             ("waves", generate(.waves(shape: 1.2, phase: t * 0.5))),
             ("dotOrbit", generate(.dotOrbit(phase: t))),
             ("grainGradient", generate(.grainGradient(shape: .blob, phase: t))),
