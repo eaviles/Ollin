@@ -1868,7 +1868,95 @@ final class MetalRenderer {
         case let .perturb(amount, scale, phase):
             return pass("ollin_fx_perturb", [input],
                         [SIMD4(Float(amount), Float(scale), Float(phase), aspect)])
+
+        // Design filters. The three alpha-shape effects (liquid metal, heatmap,
+        // gem smoke) first extract the layer's alpha as a mask and Gaussian-blur
+        // it into smooth interior/halo fields; the fragment reads those beside
+        // the layer. Blur sigmas scale with the layer so shapes read the same at
+        // any resolution.
+        case let .flutedGlass(flutes, shape, profile, distortion, shift, stretch,
+                              blur, edges, highlights, shadows, angle):
+            return pass("ollin_fx_fluted_glass", [input],
+                        [SIMD4(Float(flutes), aspect, shape.rawIndex, profile.rawIndex),
+                         SIMD4(Float(distortion), Float(shift), Float(stretch), Float(blur)),
+                         SIMD4(Float(edges), Float(highlights), Float(shadows), Float(angle)),
+                         SIMD4<Float>(1, 1, 1, 1), SIMD4<Float>(0, 0, 0, 1)])
+        case let .water(scale, waves, refraction, edges, highlights, highlight, phase):
+            return pass("ollin_fx_water", [input],
+                        [SIMD4(Float(scale), Float(waves), Float(refraction), Float(edges)),
+                         SIMD4(Float(highlights), Float(phase), aspect, 0), highlight])
+        case let .paperTexture(paper, shading, contrast, roughness, fiber, crumples,
+                               folds, drops, seed):
+            return pass("ollin_fx_paper_texture", [input],
+                        [SIMD4(Float(contrast), Float(roughness), Float(fiber), Float(crumples)),
+                         SIMD4(Float(folds), Float(drops), Float(seed), aspect),
+                         paper, shading])
+        case let .liquidMetal(repetition, softness, dispersion, distortion, contour,
+                              angle, tint, phase):
+            guard let (wide, _) = blurredAlphaFields(of: input, width: width, height: height,
+                                                     sigmas: (0.08, nil), into: cb, pooled: pooled),
+                  let output = acquireFilterTexture(width: width, height: height, pooled: pooled)
+            else { return nil }
+            encodeEffectFragment("ollin_fx_liquid_metal", inputs: [input, wide], output: output,
+                                 params: [SIMD4(Float(repetition), Float(softness),
+                                                Float(dispersion), Float(distortion)),
+                                          SIMD4(Float(contour), Float(angle), Float(phase), aspect),
+                                          tint], into: cb)
+            return output
+        case let .heatmap(colors, contour, innerGlow, outerGlow, angle, noise, phase):
+            guard let (wide, tight) = blurredAlphaFields(of: input, width: width, height: height,
+                                                         sigmas: (0.10, 0.02), into: cb, pooled: pooled),
+                  let tightTex = tight,
+                  let output = acquireFilterTexture(width: width, height: height, pooled: pooled)
+            else { return nil }
+            encodeEffectFragment("ollin_fx_heatmap", inputs: [input, tightTex, wide], output: output,
+                                 params: [SIMD4(Float(colors.count), Float(contour),
+                                                Float(innerGlow), Float(outerGlow)),
+                                          SIMD4(Float(angle), Float(noise), Float(phase), aspect)]
+                                         + colors, into: cb)
+            return output
+        case let .gemSmoke(colors, body, innerSwirl, outerSwirl, innerGlow, outerGlow,
+                           offset, scale, angle, phase):
+            guard let (wide, _) = blurredAlphaFields(of: input, width: width, height: height,
+                                                     sigmas: (0.08, nil), into: cb, pooled: pooled),
+                  let output = acquireFilterTexture(width: width, height: height, pooled: pooled)
+            else { return nil }
+            encodeEffectFragment("ollin_fx_gem_smoke", inputs: [input, wide], output: output,
+                                 params: [SIMD4(Float(colors.count), Float(innerSwirl),
+                                                Float(outerSwirl), Float(innerGlow)),
+                                          SIMD4(Float(outerGlow), Float(offset), Float(scale),
+                                                Float(angle)),
+                                          SIMD4(Float(phase), aspect, 0, 0),
+                                          body] + colors, into: cb)
+            return output
         }
+    }
+
+    /// Extract `input`'s alpha as a grayscale mask and Gaussian-blur it into the
+    /// smooth interior/halo field(s) the alpha-shape design filters read. Sigmas
+    /// are fractions of the layer's shorter side; the second is optional.
+    private func blurredAlphaFields(of input: MTLTexture, width: Int, height: Int,
+                                    sigmas: (Double, Double?), into cb: MTLCommandBuffer,
+                                    pooled: Bool) -> (MTLTexture, MTLTexture?)? {
+        guard let mask = acquireFilterTexture(width: width, height: height, pooled: pooled),
+              let wide = acquireFilterTexture(width: width, height: height, pooled: pooled)
+        else { return nil }
+        encodeEffectFragment("ollin_fx_alpha_mask", inputs: [input], output: mask,
+                             params: [], into: cb)
+        let side = Double(min(width, height))
+        let wideBlur = MPSImageGaussianBlur(device: device, sigma: Float(sigmas.0 * side))
+        wideBlur.edgeMode = .clamp
+        wideBlur.encode(commandBuffer: cb, sourceTexture: mask, destinationTexture: wide)
+        var tight: MTLTexture? = nil
+        if let s2 = sigmas.1 {
+            guard let t = acquireFilterTexture(width: width, height: height, pooled: pooled)
+            else { return nil }
+            let tightBlur = MPSImageGaussianBlur(device: device, sigma: Float(s2 * side))
+            tightBlur.edgeMode = .clamp
+            tightBlur.encode(commandBuffer: cb, sourceTexture: mask, destinationTexture: t)
+            tight = t
+        }
+        return (wide, tight)
     }
 
     /// Run one two-input `op` (mask / displace / mix) over `base` modulated by `aux`

@@ -174,6 +174,36 @@ public struct Filter: Sendable {
         case tile(count: Double, mirror: Bool)
         /// Self-displace by internal fbm noise: organic warp of `amount`, noise `scale`, `phase`.
         case perturb(amount: Double, scale: Double, phase: Double)
+
+        // Design filters ------------------------------------------------------
+        /// Ribbed architectural glass: per-flute refraction with boundary
+        /// highlights, per-flute shadow ramps, and an optional frost blur.
+        case flutedGlass(flutes: Double, shape: FluteShape, profile: FluteProfile,
+                         distortion: Double, shift: Double, stretch: Double, blur: Double,
+                         edges: Double, highlights: Double, shadows: Double, angle: Double)
+        /// Shallow rippling water over the image: wave + caustic refraction with
+        /// bright caustic filaments.
+        case water(scale: Double, waves: Double, refraction: Double, edges: Double,
+                   highlights: Double, highlight: SIMD4<Float>, phase: Double)
+        /// A sheet of paper the image is laid onto: tooth, crumples, fold
+        /// creases, and speckles lit as emboss relief.
+        case paperTexture(paper: SIMD4<Float>, shading: SIMD4<Float>, contrast: Double,
+                          roughness: Double, fiber: Double, crumples: Double,
+                          folds: Double, drops: Double, seed: Double)
+        /// Liquid chrome over the layer's alpha shape: flowing reflectance bands
+        /// that wrap the silhouette, with chromatic fringing.
+        case liquidMetal(repetition: Double, softness: Double, dispersion: Double,
+                         distortion: Double, contour: Double, angle: Double,
+                         tint: SIMD4<Float>, phase: Double)
+        /// Thermal-camera rendering of the layer's alpha shape: heat blooming
+        /// inside, a halo radiating outside, mapped through a palette.
+        case heatmap(colors: [SIMD4<Float>], contour: Double, innerGlow: Double,
+                     outerGlow: Double, angle: Double, noise: Double, phase: Double)
+        /// Swirling smoke trapped inside (and leaking out of) the layer's alpha
+        /// shape, over a glassy body fill.
+        case gemSmoke(colors: [SIMD4<Float>], body: SIMD4<Float>, innerSwirl: Double,
+                      outerSwirl: Double, innerGlow: Double, outerGlow: Double,
+                      offset: Double, scale: Double, angle: Double, phase: Double)
     }
 
     let kind: Kind
@@ -558,6 +588,165 @@ public struct Filter: Sendable {
     /// `scale` the noise frequency, `phase` animates it.
     public static func perturb(amount: Double = 0.03, scale: Double = 4, phase: Double = 0) -> Filter {
         Filter(kind: .perturb(amount: max(0, amount), scale: max(0.001, scale), phase: phase))
+    }
+
+    // MARK: Design filters
+
+    /// The flute layout `flutedGlass` slices the image into: straight `lines`,
+    /// unevenly-spaced `irregular` lines, a sinuous `wave`, a `zigzag`, or a 2D
+    /// `eggCrate` cell pattern.
+    public enum FluteShape: Sendable {
+        case lines, irregular, wave, zigzag, eggCrate
+
+        /// The shader's shape index (kept in step with `ollin_fx_fluted_glass`).
+        var rawIndex: Float {
+            switch self {
+            case .lines: return 0
+            case .irregular: return 1
+            case .wave: return 2
+            case .zigzag: return 3
+            case .eggCrate: return 4
+            }
+        }
+    }
+
+    /// The refraction profile within each flute of `flutedGlass`: a `prism`
+    /// wedge, a rounded `lens`, a flat-centered `contour`, a sawtooth `cascade`,
+    /// or a nearly-`flat` pane.
+    public enum FluteProfile: Sendable {
+        case prism, lens, contour, cascade, flat
+
+        /// The shader's profile index (kept in step with `ollin_fx_fluted_glass`).
+        var rawIndex: Float {
+            switch self {
+            case .prism: return 0
+            case .lens: return 1
+            case .contour: return 2
+            case .cascade: return 3
+            case .flat: return 4
+            }
+        }
+    }
+
+    /// Fluted (reeded) glass: the image seen through ribbed architectural glass.
+    /// Each of the `flutes` refracts its slice of the image through `profile`,
+    /// with bright hairlines and shadow ramps at the flute boundaries. `shape`
+    /// bends the flute layout, `distortion` scales the refraction, `shift` slides
+    /// it, `stretch` streaks the image along the flutes near their borders,
+    /// `blur` frosts the glass, `edges` softens samples pushed off the layer,
+    /// and `angle` (radians) rotates the whole assembly.
+    public static func flutedGlass(flutes: Double = 80, shape: FluteShape = .lines,
+                                   profile: FluteProfile = .prism,
+                                   distortion: Double = 0.5, shift: Double = 0,
+                                   stretch: Double = 0, blur: Double = 0,
+                                   edges: Double = 0.25, highlights: Double = 0.1,
+                                   shadows: Double = 0.25, angle: Double = 0) -> Filter {
+        Filter(kind: .flutedGlass(flutes: min(max(flutes, 3), 300), shape: shape,
+                                  profile: profile, distortion: min(max(distortion, 0), 1),
+                                  shift: min(max(shift, -1), 1), stretch: min(max(stretch, 0), 1),
+                                  blur: min(max(blur, 0), 1), edges: min(max(edges, 0), 1),
+                                  highlights: min(max(highlights, 0), 1),
+                                  shadows: min(max(shadows, 0), 1), angle: angle))
+    }
+
+    /// Water: the image seen through shallow rippling water. Broad `waves`
+    /// wobble it, fine caustic `refraction` shimmers it, and bright caustic
+    /// filaments wash over it in `highlight`. `scale` sizes the ripple field,
+    /// `edges` (0…1) lets the distortion reach the layer's borders, and `phase`
+    /// animates the water: feed it your `time`.
+    public static func water(scale: Double = 1, waves: Double = 0.3,
+                             refraction: Double = 0.1, edges: Double = 0.8,
+                             highlights: Double = 0.07, highlight: Color = .white,
+                             phase: Double = 0) -> Filter {
+        Filter(kind: .water(scale: min(max(scale, 0.05), 7), waves: min(max(waves, 0), 1),
+                            refraction: min(max(refraction, 0), 1), edges: min(max(edges, 0), 1),
+                            highlights: min(max(highlights, 0), 1),
+                            highlight: highlight.linearRGBA, phase: phase))
+    }
+
+    /// Paper: lay the image onto a synthesized sheet of paper, embossed by its
+    /// relief. The height field mixes tooth (`roughness`), curly `fiber`
+    /// filaments, `crumples` facets, long fold creases (`folds`), and ink-drop
+    /// speckles (`drops`); `contrast` steepens the lighting, `seed` re-rolls the
+    /// creases and speckles. `paper` is the sheet color where the layer is
+    /// transparent, `shading` the relief tint. Static by design.
+    public static func paperTexture(paper: Color = .white,
+                                    shading: Color = Color(hex: 0x9FADBC),
+                                    contrast: Double = 0.3, roughness: Double = 0.4,
+                                    fiber: Double = 0.3, crumples: Double = 0.3,
+                                    folds: Double = 0.65, drops: Double = 0.2,
+                                    seed: Double = 5.8) -> Filter {
+        Filter(kind: .paperTexture(paper: paper.linearRGBA, shading: shading.linearRGBA,
+                                   contrast: min(max(contrast, 0), 1),
+                                   roughness: min(max(roughness, 0), 1),
+                                   fiber: min(max(fiber, 0), 1),
+                                   crumples: min(max(crumples, 0), 1),
+                                   folds: min(max(folds, 0), 1),
+                                   drops: min(max(drops, 0), 1), seed: seed))
+    }
+
+    /// Liquid metal: render the layer's alpha shape as flowing chrome. Diagonal
+    /// reflectance bands compress and wrap along the silhouette as if the shape
+    /// were inflated, with chromatic fringing on the band edges. `repetition`
+    /// sets the band count, `softness` blurs them, `dispersion` splits the
+    /// channels, `distortion` wobbles the flow, `contour` strengthens the
+    /// silhouette wrap, `angle` (radians) turns the bands, `tint` color-burns
+    /// the chrome, and `phase` flows it: feed it your `time`. Draw a shape into
+    /// a layer, then filter it.
+    public static func liquidMetal(repetition: Double = 2, softness: Double = 0.1,
+                                   dispersion: Double = 0.3, distortion: Double = 0.07,
+                                   contour: Double = 0.4, angle: Double = 1.2217,
+                                   tint: Color = .white, phase: Double = 0) -> Filter {
+        Filter(kind: .liquidMetal(repetition: min(max(repetition, 1), 10),
+                                  softness: min(max(softness, 0), 1),
+                                  dispersion: min(max(dispersion, -1), 1),
+                                  distortion: min(max(distortion, 0), 1),
+                                  contour: min(max(contour, 0), 1), angle: angle,
+                                  tint: tint.linearRGBA, phase: phase))
+    }
+
+    /// Heatmap: render the layer's alpha shape as thermal imaging. Heat blooms
+    /// inside the shape and a halo radiates outside, pulsing in slow traveling
+    /// waves, mapped through `colors` cold-to-hot (the first stop fades to
+    /// transparent). `contour` glows the inner edge, `innerGlow`/`outerGlow`
+    /// scale the two fields, `angle` (radians) steers the traveling waves,
+    /// `noise` adds thermal grain, and `phase` drives the waves: feed it your
+    /// `time`.
+    public static func heatmap(colors: [Color] = [Color(hex: 0x0B1026), Color(hex: 0x1E3A8A),
+                                                  Color(hex: 0x0EA5E9), Color(hex: 0x67E8F9),
+                                                  Color(hex: 0xFDE047), Color(hex: 0xF97316),
+                                                  Color(hex: 0xDC2626)],
+                               contour: Double = 0.5, innerGlow: Double = 0.5,
+                               outerGlow: Double = 0.5, angle: Double = 0,
+                               noise: Double = 0, phase: Double = 0) -> Filter {
+        let capped = colors.isEmpty ? [Color.white] : Array(colors.prefix(8))
+        return Filter(kind: .heatmap(colors: capped.map(\.linearRGBA),
+                                     contour: min(max(contour, 0), 1),
+                                     innerGlow: min(max(innerGlow, 0), 1),
+                                     outerGlow: min(max(outerGlow, 0), 1), angle: angle,
+                                     noise: min(max(noise, 0), 1), phase: phase))
+    }
+
+    /// Gem smoke: coil swirling smoke inside (and leaking out of) the layer's
+    /// alpha shape, over a glassy `body` fill, colored through `colors`. The
+    /// inner and outer plumes warp by `innerSwirl`/`outerSwirl` and scale by
+    /// `innerGlow`/`outerGlow`; `offset` slides the trapped smoke vertically,
+    /// `scale` sizes the plume, `angle` (radians) tilts it, and `phase` coils
+    /// it: feed it your `time`. Draw a shape into a layer, then filter it.
+    public static func gemSmoke(colors: [Color] = [Color(hex: 0x333333), Color(hex: 0xE7E6DF)],
+                                body: Color = Color(hex: 0xFAFAF5),
+                                innerSwirl: Double = 0.8, outerSwirl: Double = 0.6,
+                                innerGlow: Double = 1, outerGlow: Double = 0.55,
+                                offset: Double = 0, scale: Double = 0.8,
+                                angle: Double = 0, phase: Double = 0) -> Filter {
+        let capped = colors.isEmpty ? [Color.white] : Array(colors.prefix(6))
+        return Filter(kind: .gemSmoke(colors: capped.map(\.linearRGBA), body: body.linearRGBA,
+                                      innerSwirl: min(max(innerSwirl, 0), 1),
+                                      outerSwirl: min(max(outerSwirl, 0), 1),
+                                      innerGlow: min(max(innerGlow, 0), 1),
+                                      outerGlow: min(max(outerGlow, 0), 1),
+                                      offset: min(max(offset, -1), 1),
+                                      scale: min(max(scale, 0), 1), angle: angle, phase: phase))
     }
 }
 

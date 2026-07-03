@@ -145,6 +145,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("mesh-gradient",
                  note: "The mesh-gradient generator at a fixed phase. Pins the inverse-distance-weighted blob blend (power 3.5), the two-pass domain warp + vortex swirl, the sRGB-space palette blending, and the grain overlay + boundary jitter.",
                  make: { MeshGradientPattern() }),
+    SnapshotCase("design-filters",
+                 note: "The six design filters at fixed phases (no time, no random): liquidMetal, heatmap, and gemSmoke over a drawn heart (pinning the alpha-mask extract + Gaussian interior/halo field passes), and flutedGlass, water, and paperTexture over a fixed mesh-gradient backdrop. Pins each dispatch arm, the multi-pass field prep, and the sRGB palette walks.",
+                 make: { DesignFiltersSheet() }),
     SnapshotCase("design-patterns",
                  note: "The nine other design-pattern generators tiled 3×3 at fixed phases (no time, no random): filaments, smokeRing, colorPanels, spiral, waves, dotOrbit, grainGradient, pulsingBorder, godRays. Pins each generator dispatch arm and fragment, incl. the polar-seam blends, the pane projection + scheduling, and the dual over/additive bloom accumulations.",
                  make: { DesignPatternsSheet() }),
@@ -2692,6 +2695,38 @@ private final class DesignPatternsSheet: Sketch {
             generate(.godRays(phase: 2)),
         ]
         let g = grid(columns: 3, rows: 3)
+        for (cell, tile) in zip(g.cells, tiles) {
+            drawImage(tile.image, in: cell.frame)
+        }
+    }
+}
+
+/// The six design filters tiled 3×2 at fixed phases (no time, no random): the
+/// three alpha-shape effects over a drawn heart, the three image effects over
+/// a fixed mesh-gradient backdrop.
+private final class DesignFiltersSheet: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        func heartLayer() -> RenderTarget {
+            let layer = renderTarget()
+            withTarget(layer) {
+                noStroke(); fill(.white)
+                drawHeart(width / 2, height / 2, width * 0.5)
+            }
+            return layer
+        }
+        let backdrop = generate(.meshGradient(phase: 2.4))
+        let tiles: [RenderTarget] = [
+            heartLayer().filtered(.liquidMetal(phase: 1)),
+            heartLayer().filtered(.heatmap(phase: 4)),
+            heartLayer().filtered(.gemSmoke(phase: 2)),
+            backdrop.filtered(.flutedGlass(angle: 0.35)),
+            backdrop.filtered(.water(phase: 2)),
+            heartLayer().filtered(.paperTexture()),
+        ]
+        let g = grid(columns: 3, rows: 2)
         for (cell, tile) in zip(g.cells, tiles) {
             drawImage(tile.image, in: cell.frame)
         }

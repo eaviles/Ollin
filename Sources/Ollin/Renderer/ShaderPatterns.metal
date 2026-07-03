@@ -1,6 +1,7 @@
-// Ollin shader library (pattern generators), concatenated after ShaderEffects
-// (whose PresentOut / fullscreen-triangle vertex it reuses) and compiled as one
-// library, not on its own. See MetalRenderer.loadLibrary.
+// Ollin shader library (design patterns: the pattern generators and their
+// image-filter siblings), concatenated after ShaderEffects (whose PresentOut /
+// fullscreen-triangle vertex it reuses) and compiled as one library, not on
+// its own. See MetalRenderer.loadLibrary.
 //
 // Each fragment fills a layer from its parameters alone (no input texture):
 // leading float4 rows carry the scalars (always including the layer aspect so
@@ -662,4 +663,492 @@ fragment float4 ollin_gen_god_rays(PresentOut in [[stage_in]],
     }
     acc.a = min(acc.a, 1.0);
     return ollin_pat_out(ollin_pat_over(acc, ollin_pat_stop(back)));
+}
+
+// MARK: - Design filters (texture -> texture)
+//
+// The image-filter siblings of the pattern generators above. They read and
+// write the premultiplied-linear intermediate like every ollin_fx_* pass; the
+// chrome/heat/smoke palettes convert through the same sRGB working space as
+// the generators so their designer colors read true. The alpha-shape effects
+// (liquid metal, heatmap, gem smoke) receive smooth interior/halo fields as
+// extra textures: the layer's alpha Gaussian-blurred at one or two radii, a
+// crease-free stand-in for a solved interior-inflation field.
+
+// Extract the layer's alpha as a grayscale mask (the blur source).
+fragment float4 ollin_fx_alpha_mask(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float a = src.sample(samp, in.uv).a;
+    return float4(a, a, a, 1.0);
+}
+
+// A soft window that fades samples pushed past the layer's edge, so displaced
+// reads feather out instead of clamp-streaking.
+static inline float ollin_fx_window(float2 uv, float softness) {
+    float s = max(softness, 1e-4);
+    return smoothstep(0.0, s, uv.x) * (1.0 - smoothstep(1.0 - s, 1.0, uv.x))
+         * smoothstep(0.0, s, uv.y) * (1.0 - smoothstep(1.0 - s, 1.0, uv.y));
+}
+
+// flutedGlass: per-flute 1D refraction (params[0]: flutes, aspect, shape,
+// profile; params[1]: distortion, shift, stretch, blur; params[2]: edges,
+// highlights, shadows, angle; params[3]/[4]: highlight/shadow colors). The
+// image is sliced into flutes, each slice's sampling coordinate displaced
+// along the flute normal by a fixed refraction profile; floor and fract parts
+// travel separately so refraction never leaks across a flute boundary.
+fragment float4 ollin_fx_fluted_glass(PresentOut in [[stage_in]],
+                                      texture2d<float> src [[texture(0)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float flutes = params[0].x, aspect = params[0].y;
+    int shape = int(params[0].z), profile = int(params[0].w);
+    float distortion = params[1].x, shift = params[1].y;
+    float stretch = params[1].z, blur = params[1].w;
+    float edges = params[2].x, highlights = params[2].y;
+    float shadows = params[2].z, angle = params[2].w;
+    float4 hlColor = params[3], shColor = params[4];
+
+    float2 c = (in.uv - 0.5) * float2(aspect, 1.0);
+    c = ollin_rot2(c, -angle);
+    float px = c.x * flutes;
+    float py = c.y * flutes;
+
+    float curve = 0.0;
+    if (shape == 1) { curve = 0.5 + 0.5 * sin(0.5 * px) * sin(1.7 * px); }
+    else if (shape == 2) { curve = 4.0 * sin(0.23 * py / max(aspect, 1e-3)); }
+    else if (shape == 3) { curve = 10.0 * abs(fract(0.1 * py) - 0.5); }
+    else if (shape == 4) { curve = 0.5 + 0.5 * sin(0.5 * 3.14159265 * px)
+                                       * cos(0.5 * 3.14159265 * py); }
+    px += curve;
+
+    float cell = floor(px), x = fract(px);
+
+    float off = 0.0;
+    if (profile == 0) { off = -pow(1.5 * x, 3.0) + (0.5 - shift); }
+    else if (profile == 1) { off = 2.0 * x * x - (0.5 + shift); }
+    else if (profile == 2) { off = pow(2.0 * (x - 0.5), 6.0) - 0.25 - shift; }
+    else if (profile == 3) { off = 0.5 * sin((x + 0.25) * 6.2831853) - shift; }
+    else { off = 0.33 * (-pow(abs(x), 0.2) * x + 0.33 - 3.0 * shift); }
+    // Displacement dies toward the flute borders so the seams stay put.
+    float border = smoothstep(0.0, 0.15, x) * (1.0 - smoothstep(0.85, 1.0, x));
+    off *= 3.0 * distortion * border;
+
+    float xNew = clamp(x + off, -1.0, 2.0);
+    float2 warped = float2((cell + xNew) / flutes, c.y);
+    // Streak the image lengthwise along the flute near its borders.
+    float edgeW = (1.0 - border) * (1.0 - border);
+    warped.y = mix(warped.y, warped.y * (1.0 - 0.8 * stretch * edgeW), stretch * edgeW);
+    warped = ollin_rot2(warped, angle);
+    float2 uvNew = warped / float2(aspect, 1.0) + 0.5;
+
+    // Frost: a short blur along the flute's long axis (premultiplied input, so
+    // plain averaging composites correctly).
+    float4 s = float4(0.0);
+    if (blur > 0.001) {
+        float2 dir = ollin_rot2(float2(0.0, 1.0), angle) / float2(aspect, 1.0);
+        float sigma = blur * 0.02;
+        float wsum = 0.0;
+        for (int i = -8; i <= 8; i++) {
+            float o = float(i) / 8.0;
+            float wgt = exp(-o * o * 4.0);
+            s += wgt * src.sample(samp, uvNew + dir * o * sigma * 3.0);
+            wsum += wgt;
+        }
+        s /= wsum;
+    } else {
+        s = src.sample(samp, uvNew);
+    }
+
+    float window = ollin_fx_window(uvNew, edges * 0.06 + 0.002);
+    float4 outc = s * window;
+
+    // Per-flute shadow ramp, then boundary hairlines.
+    float sh = pow(x, profile == 4 ? 2.5 : 1.3) * shadows * shadows;
+    outc.rgb = mix(outc.rgb, shColor.rgb * outc.a, clamp(sh, 0.0, 1.0) * 0.6);
+    float aa = max(fwidth(px), 1e-3);
+    float hl = (1.0 - smoothstep(0.0, 2.0 * aa, min(x, 1.0 - x))) * highlights;
+    outc.rgb += hlColor.rgb * hl;
+    outc.a = min(outc.a + hl, 1.0);
+    return outc;
+}
+
+// water: wave + caustic refraction (params[0]: scale, waves, refraction,
+// edges; params[1]: highlights, phase, aspect; params[2]: highlight color).
+// The caustic field is the iterated domain-rotated sine accumulation: each
+// pass warps the next's phase while the cosine derivatives accumulate, and the
+// squared sum concentrates into the thin bright filaments.
+static inline float ollin_water_caustic(float2 p, float t, float speed) {
+    float2 n = float2(0.0), acc = float2(0.0);
+    float s = 2.0;
+    for (int j = 0; j < 6; j++) {
+        p = ollin_rot2(p, 0.5);
+        n = ollin_rot2(n, 0.5);
+        float drift = (0.5 + 0.5 * float(j)) * (float(j % 2) * 2.0 - 1.0);
+        float2 q = p * s + float(j) + n + drift * t * speed;
+        n += sin(q);
+        acc += cos(q) / s;
+        s *= 1.1;
+    }
+    return acc.x + acc.y + 1.0;
+}
+
+fragment float4 ollin_fx_water(PresentOut in [[stage_in]],
+                               texture2d<float> src [[texture(0)]],
+                               sampler samp [[sampler(0)]],
+                               constant float4 *params [[buffer(0)]]) {
+    float scale = params[0].x, waves = params[0].y;
+    float refraction = params[0].z, edges = params[0].w;
+    float highlights = params[1].x, t = params[1].y, aspect = params[1].z;
+    float4 hl = params[2];
+
+    float2 p = (in.uv - 0.5) * float2(aspect, 1.0) * 5.4 / (0.01 + 0.99 * scale);
+    float w = gradientNoise((0.3 + 0.1 * sin(t)) * 0.3 * p + float2(0.0, 0.4 * t));
+
+    float caustic = ollin_water_caustic(p, t, 2.0)
+                  + 0.5 * ollin_water_caustic(p * 2.0 + 7.0, t, 1.5);
+    caustic = caustic * caustic * 0.25;
+    caustic = max(caustic - 0.6, -0.2);
+
+    // Border protection: displacement eases off near the edges unless `edges`
+    // lets it through.
+    float m = smoothstep(0.0, 0.1, in.uv.x) * smoothstep(0.0, 0.1, 1.0 - in.uv.x)
+            * smoothstep(0.0, 0.1, in.uv.y) * smoothstep(0.0, 0.1, 1.0 - in.uv.y);
+    m = mix(m, 1.0, edges);
+
+    float2 uvNew = in.uv + 0.1 * waves * w * float2(1.0, -1.0) * m
+                 + 0.02 * refraction * caustic * m;
+    float window = ollin_fx_window(uvNew, 0.004);
+    float4 c = src.sample(samp, uvNew) * window;
+
+    float h = highlights * max(caustic, 0.0);
+    c.rgb = mix(c.rgb, hl.rgb * max(c.a, h), clamp(0.5 * h, 0.0, 1.0));
+    c.rgb += hl.rgb * 0.25 * h * (0.5 + 0.5 * w);
+    c.a = min(c.a + 0.25 * h, 1.0);
+    return c;
+}
+
+// paperTexture: emboss lighting of a synthesized paper height field
+// (params[0]: contrast, roughness, fiber, crumples; params[1]: folds, drops,
+// seed, aspect; params[2]/[3]: paper/shading colors). Five signals sum into a
+// pseudo-normal lit by one Lambert dot: pixel-locked tooth, cellular crumple
+// facets, curly fibers (the gradient magnitude of a domain-rotated fbm), long
+// radial fold creases, and speckles. The image is nudged by the relief and
+// re-lit by the same lighting so it sits *on* the paper.
+
+static inline float ollin_paper_rough(float2 p) {
+    float v = 0.0, amp = 0.5;
+    float2 q = p * 0.35;
+    for (int i = 0; i < 3; i++) {
+        v += amp * ollin_vnoise(q);
+        v += amp * 0.2 / exp(2.0 * abs(sin(0.2 * q.x + 0.5 * q.y)));
+        q *= 2.0; amp *= 0.5;
+    }
+    return v;
+}
+
+static inline float ollin_paper_fbmrot(float2 p) {
+    float v = 0.0, amp = 0.5;
+    for (int i = 0; i < 4; i++) {
+        v += amp * ollin_vnoise(p);
+        p = ollin_rot2(p, 0.7) * 2.0;
+        amp *= 0.6;
+    }
+    return v;
+}
+
+// The fiber extractor: gradient magnitude of the rotated fbm; the ridge lines
+// of the gradient field read as curly filaments.
+static inline float ollin_paper_fiber(float2 p) {
+    const float e = 0.02;
+    float dx = ollin_paper_fbmrot(p + float2(e, 0.0)) - ollin_paper_fbmrot(p - float2(e, 0.0));
+    float dy = ollin_paper_fbmrot(p + float2(0.0, e)) - ollin_paper_fbmrot(p - float2(0.0, e));
+    return length(float2(dx, dy)) / (2.0 * e) * 0.35;
+}
+
+static inline float ollin_paper_crumple(float2 p, float pw) {
+    float2 cell = floor(p), f = fract(p);
+    float acc = 0.0, wsum = 1e-5;
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            float2 n = float2(dx, dy);
+            float2 off = hash22(cell + n);
+            float2 q = f - (n + off);
+            float wgt = pow(max(smoothstep(0.0, 1.0, 1.0 - abs(q.x))
+                                * smoothstep(0.0, 1.0, 1.0 - abs(q.y)), 0.0), pw);
+            acc += wgt * hash12(cell + n + 7.7);
+            wsum += wgt;
+        }
+    }
+    return 2.0 * sqrt(acc / wsum);
+}
+
+fragment float4 ollin_fx_paper_texture(PresentOut in [[stage_in]],
+                                       texture2d<float> src [[texture(0)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 *params [[buffer(0)]]) {
+    float contrast = params[0].x, roughness = params[0].y;
+    float fiber = params[0].z, crumples = params[0].w;
+    float folds = params[1].x, drops = params[1].y;
+    float seed = params[1].z, aspect = params[1].w;
+    float4 paper = params[2], shading = params[3];
+
+    float2 p5 = 5.0 * (in.uv - 0.5) * float2(aspect, 1.0);
+    float2 px = in.position.xy;
+
+    float roughSig = ollin_paper_rough(px + float2(1.0, 0.0))
+                   - ollin_paper_rough(px - float2(1.0, 0.0));
+
+    float2 cp = p5 * 3.0 + seed;
+    float crumpleField = ollin_paper_crumple(cp, 16.0) * ollin_paper_crumple(cp * 0.43, 2.0);
+    float2 ce = float2(0.05, 0.0);
+    float crumpleSig = (ollin_paper_crumple(cp + ce, 16.0) * ollin_paper_crumple((cp + ce) * 0.43, 2.0)
+                      - ollin_paper_crumple(cp - ce, 16.0) * ollin_paper_crumple((cp - ce) * 0.43, 2.0));
+
+    float fiberSig = 0.8 * fiber * (ollin_paper_fiber(p5 * 2.0 + seed) - 1.0);
+
+    // Folds: pull toward the nearest of five seeded crease centers, evaluated
+    // twice in slightly rotated frames so each crease catches light on one side.
+    float foldSig = 0.0;
+    {
+        float bestD = 1e9;
+        float2 bestP = float2(0.0);
+        for (int i = 0; i < 5; i++) {
+            float2 rnd = hash22(float2(float(i) * 3.3 + seed, float(i) * 7.1 - seed));
+            float2 fp = (rnd - 0.5) * 4.5;
+            float d = length(p5 - fp);
+            if (d < bestD) { bestD = d; bestP = fp; }
+        }
+        float2 d1 = p5 - bestP;
+        float2 d2 = ollin_rot2(p5, 0.045) - bestP;
+        float att = max(0.0, 1.0 - pow(min(bestD * 0.35, 1.0), 0.25));
+        foldSig = max(0.0, (normalize(d1 + 1e-5).x - normalize(d2 + 1e-5).x)) * att * 8.0;
+    }
+
+    // Ink-drop speckles: tight Worley splotches.
+    float dropSig = 0.0;
+    {
+        float2 dp = p5 * 2.2 + seed * 1.7;
+        float2 cell = floor(dp), f = fract(dp);
+        float dmin = 1e9;
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                float2 n = float2(dx, dy);
+                float2 q = n + hash22(cell + n) - f;
+                dmin = min(dmin, length(q));
+            }
+        }
+        dropSig = 1.0 - smoothstep(0.05, 0.14, dmin * 0.35);
+    }
+
+    float2 nxy = float2(0.0);
+    nxy.x += 1.5 * roughSig * roughness;
+    nxy += crumpleSig * crumples * 2.0;
+    nxy.x += fiberSig;
+    nxy.x += foldSig * folds * min(5.0 * contrast, 1.0);
+    nxy += 3.0 * dropSig * drops * 0.15;
+
+    float z = 9.5 - 9.0 * pow(max(contrast, 1e-3), 0.1);
+    float3 lightDir = normalize(float3(1.0, -2.0, 1.0));
+    float res = dot(normalize(float3(nxy, z)), lightDir);
+
+    // The paper sheet: shading color scaled by the relief over the paper color.
+    float3 sheet = mix(paper.rgb, shading.rgb, clamp(1.0 - res, 0.0, 1.0));
+
+    // Lay the image on: nudge its lookup by the relief, re-light it.
+    float2 imgUV = in.uv + 0.006 * nxy;
+    float4 img = src.sample(samp, imgUV);
+    img.rgb += 0.6 * pow(max(contrast, 1e-3), 0.4) * (res - 0.7) * img.a;
+
+    float3 outRGB = mix(sheet, img.rgb / max(img.a, 1e-4), img.a);
+    outRGB -= 0.02 * dropSig * drops;
+    return float4(max(outRGB, 0.0), 1.0);
+}
+
+// liquidMetal: a 1D chrome reflectance ramp (two hot hairlines + one broad
+// sky-to-ground gradient per cycle) indexed by a warped diagonal coordinate.
+// The blurred-alpha interior field acts as curvature: bands compress over the
+// implied dome and freeze/slide along the silhouette, which is what sells the
+// inflated-liquid read (params[0]: repetition, softness, dispersion,
+// distortion; params[1]: contour, angle, phase, aspect; params[2]: tint).
+
+static inline float ollin_metal_band(float x, float c, float w, float b) {
+    return smoothstep(c - w - b, c - w + b, x) * (1.0 - smoothstep(c + w - b, c + w + b, x));
+}
+
+static inline float ollin_metal_ramp(float x, float bump, float b) {
+    float v = 0.1;
+    v = max(v, 0.98 * ollin_metal_band(x, 0.12, 0.055 * (1.0 - 0.4 * bump), b));
+    v = max(v, 0.95 * ollin_metal_band(x, 0.30 + 0.15 * (1.0 - bump),
+                                       0.035 * (1.0 + 0.4 * bump), b));
+    float g = smoothstep(0.5, 0.72, x) * (1.0 - smoothstep(0.72, 1.05, x));
+    return max(v, 0.12 + 0.86 * g);
+}
+
+fragment float4 ollin_fx_liquid_metal(PresentOut in [[stage_in]],
+                                      texture2d<float> src [[texture(0)]],
+                                      texture2d<float> field [[texture(1)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float repetition = params[0].x, softness = params[0].y;
+    float dispersion = params[0].z, distortion = params[0].w;
+    float contour = params[1].x, angle = params[1].y;
+    float phase = params[1].z, aspect = params[1].w;
+    float4 tint = params[2];
+
+    float opacity = src.sample(samp, in.uv).a;
+    float W = field.sample(samp, in.uv).r;
+    float edge = 1.0 - smoothstep(0.35, 0.9, W);      // 1 at silhouette, 0 deep
+    edge = pow(clamp(edge, 0.0, 1.0), 1.6) * smoothstep(0.0, 0.4, contour);
+
+    float2 cuv = (in.uv - 0.5) * float2(aspect, 1.0);
+    float2 r = ollin_rot2(cuv, -angle + 1.2217);
+    float d1 = r.x - r.y, d2 = r.x + r.y;
+
+    float dome = length(cuv + float2(0.0, 0.2 * d1));
+    float bump = max(1.0 - pow(1.8 * dome, 1.2), 0.0) * pow(1.0 - clamp(in.uv.y, 0.0, 1.0), 0.3);
+    bump = smoothstep(0.2, 0.8, bump);
+
+    float t = 0.3 * (phase + 2.8);
+    float n = gradientNoise(cuv * 3.0 + 4.7 - t);
+    edge = clamp(edge + (1.0 - edge) * distortion * n, 0.0, 1.0);
+
+    float wrapGate = smoothstep(0.5, 1.0, contour);
+    float direction = r.x + d1;
+    direction -= 2.0 * n * d1 * edge * (1.0 - edge);
+    direction = mix(direction, direction * (1.0 - edge) - 1.7 * edge, wrapGate);
+    direction *= (0.1 + (1.1 - edge) * bump);
+    direction *= (0.4 + 0.6 * (1.0 - smoothstep(0.5, 1.0, edge)));
+    direction *= (0.5 + 0.5 * in.uv.y * in.uv.y);
+    direction *= repetition;
+    direction -= t;
+
+    float blur = 0.05 * softness + 0.012
+               + 0.25 * smoothstep(1.0, 10.0, repetition) * smoothstep(0.0, 1.0, edge);
+    float disp = (1.0 - bump) * dispersion * 0.05;
+    float3 col;
+    col.r = ollin_metal_ramp(fract(direction + disp), bump, blur);
+    col.g = ollin_metal_ramp(fract(direction), bump, blur);
+    col.b = ollin_metal_ramp(fract(direction - disp), bump, blur);
+    col.b = max(col.b, 0.1 + 0.08 * smoothstep(0.7, 1.3, d2));   // cool dark lift
+
+    // Tint as a color burn, so mid grays take the tint and highlights stay hot.
+    col = mix(col, 1.0 - min(float3(1.0), (1.0 - col) / max(tint.rgb, 1e-4)), tint.a * 0.999);
+
+    return float4(srgbToLinear(clamp(col, 0.0, 1.0)) * opacity, opacity);
+}
+
+// heatmap: thermal-camera shading of the alpha shape (params[0]: count,
+// contour, innerGlow, outerGlow; params[1]: angle, noise, phase, aspect;
+// trailing rows: the palette cold-to-hot). Heat = an interior field carved by
+// three phase-staggered traveling occluder waves + an exterior halo swept at
+// 3x speed, walked through the palette; the first stop's ramp doubles as the
+// output alpha, so cold fades to transparent.
+fragment float4 ollin_fx_heatmap(PresentOut in [[stage_in]],
+                                 texture2d<float> src [[texture(0)]],
+                                 texture2d<float> tight [[texture(1)]],
+                                 texture2d<float> wide [[texture(2)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    int count = int(params[0].x);
+    float contour = params[0].y, innerGlow = params[0].z, outerGlow = params[0].w;
+    float angle = params[1].x, noiseAmt = params[1].y;
+    float phase = params[1].z, aspect = params[1].w;
+    constant float4 *colors = params + 2;
+
+    float A = src.sample(samp, in.uv).a;
+    float W = wide.sample(samp, in.uv).r;
+    float B = tight.sample(samp, in.uv).r;
+
+    float outerHalo = clamp(W, 0.0, 1.0) * (1.0 - A);
+    float innerEdge = clamp((1.0 - W) * 2.0, 0.0, 1.0) * A;
+    float contourEdge = clamp((1.0 - B) * 2.5, 0.0, 1.0) * A;
+
+    float2 ruv = ollin_rot2((in.uv - 0.5) * float2(aspect, 1.0), -angle) / float2(aspect, 1.0) + 0.5;
+    float t0 = 0.1 * phase - 0.3;
+
+    float inner = 0.8 + 0.8 * innerEdge;
+    for (int k = 0; k < 3; k++) {
+        float tk = fract(t0 + float(k) / 3.0);
+        float posY = mix(-0.8, 1.8, tk);
+        float occ = 1.0 - smoothstep(0.15, 0.75, abs(ruv.y - posY));
+        inner -= 0.4 * occ;
+    }
+    inner = clamp(inner * 2.0 * innerGlow + 2.0 * contour * contourEdge, 0.0, 1.0) * A;
+    inner = pow(inner, 1.2);
+
+    float t3 = fract(3.0 * t0);
+    float yb = fract(ruv.y - t3);
+    float band = 0.5 + smoothstep(0.3, 0.65, yb) * (1.0 - smoothstep(0.65, 1.0, yb));
+    float outer = band * 0.9 * pow(outerHalo, 0.8) * 5.0 * outerGlow * outerGlow;
+
+    float heat = clamp(inner + outer, 0.0, 1.0);
+    heat += (0.005 + 0.35 * noiseAmt) * (hash12(in.position.xy) - 0.5);
+    heat = clamp(heat, 0.0, 1.0);
+
+    float mixer = heat * float(count);
+    float4 g = ollin_pat_stop(colors[0]);
+    float alphaShape = clamp(mixer, 0.0, 1.0);
+    for (int i = 1; i < count; i++) {
+        float m = clamp(mixer - float(i - 1), 0.0, 1.0);
+        g = mix(g, ollin_pat_stop(colors[i]), m);
+    }
+    return ollin_pat_out(g * alphaShape);
+}
+
+// gemSmoke: two warped Gaussian plumes, one trapped inside the alpha shape and
+// one leaking outside it, over a glassy body fill (params[0]: count,
+// innerSwirl, outerSwirl, innerGlow; params[1]: outerGlow, offset, scale,
+// angle; params[2]: phase, aspect; params[3]: body; trailing rows: palette).
+// The swirl is the iterated cross-fed cosine warp with derivative damping:
+// wherever earlier iterations have stretched the domain enough to alias,
+// later swirling backs off, which keeps the smoke silky at high distortion.
+fragment float4 ollin_fx_gem_smoke(PresentOut in [[stage_in]],
+                                   texture2d<float> src [[texture(0)]],
+                                   texture2d<float> field [[texture(1)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    int count = int(params[0].x);
+    float innerSwirl = params[0].y, outerSwirl = params[0].z, innerGlow = params[0].w;
+    float outerGlow = params[1].x, offset = params[1].y;
+    float scale = params[1].z, angle = params[1].w;
+    float t = params[2].x, aspect = params[2].y;
+    float4 body = params[3];
+    constant float4 *colors = params + 4;
+
+    float A = src.sample(samp, in.uv).a;
+    float W = field.sample(samp, in.uv).r;
+    float roundness = smoothstep(0.35, 0.9, W);
+
+    float2 sq = (in.uv - 0.5) * float2(aspect, 1.0) / min(aspect, 1.0);
+    float2 base = ollin_rot2(sq, angle) * mix(4.0, 1.0, scale);
+
+    float blobs[2];
+    for (int side = 0; side < 2; side++) {
+        float2 uv = base;
+        float D = side == 0 ? innerSwirl : outerSwirl;
+        uv.y += D * (1.0 - smoothstep(0.0, 1.0, length(0.4 * uv))) - 0.4 * D;
+        if (side == 0) { uv.y += 0.7 * offset * roundness; }
+        float s = 1.2 * D * (side == 0 ? roundness : 1.0);
+        for (int i = 1; i <= 4; i++) {
+            uv.x += (s / float(i)) * cos(t + 2.9 * float(i) * uv.y);
+            uv.y += (s / float(i)) * cos(t + 1.5 * float(i) * uv.x);
+            s *= 0.75;
+        }
+        blobs[side] = exp(-1.5 * dot(uv, uv));
+    }
+    float inner = blobs[0] * (0.01 + 0.99 * innerGlow) * A;
+    float outer = blobs[1] * outerGlow * outerGlow * (1.0 - A);
+
+    float mixer = (inner + outer) * float(count);
+    float4 g = ollin_pat_stop(colors[0]);
+    float alphaShape = smoothstep(0.0, 1.0, clamp(mixer, 0.0, 1.0));
+    for (int i = 1; i < count; i++) {
+        float m = clamp(mixer - float(i - 1), 0.0, 1.0);
+        g = mix(g, ollin_pat_stop(colors[i]), m);
+    }
+    float4 smoke = g * alphaShape;
+    float4 bodyFill = ollin_pat_stop(body) * A;
+    return ollin_pat_out(ollin_pat_over(smoke, bodyFill));
 }

@@ -519,6 +519,11 @@ let package = Package(
             path: "Examples/Effects/DesignPatterns"
         ),
         .executableTarget(
+            name: "Example-Effects-DesignFilters",
+            dependencies: ["Ollin"],
+            path: "Examples/Effects/DesignFilters"
+        ),
+        .executableTarget(
             name: "Example-Effects-Distortion",
             dependencies: ["Ollin"],
             path: "Examples/Effects/Distortion"

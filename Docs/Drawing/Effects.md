@@ -212,6 +212,43 @@ layer.filtered(.swirl(angle: 3, radius: 0.6))
 postProcess(.ripple(amplitude: 0.02, frequency: 12, phase: time * 3))
 ```
 
+#### Design
+
+The image-filter siblings of the [design-pattern generators](#generate), with the
+same conventions: animation is an explicit `phase` you feed `time`, and palettes
+blend in sRGB so designer colors read true. Three of them read the layer's
+**alpha shape** (draw a shape or logo into a transparent layer, then filter it);
+the other three transform the whole layer. `Effects/DesignFilters` shows all six.
+
+- **`.liquidMetal(repetition:softness:dispersion:distortion:contour:angle:tint:phase:)`**
+  render the alpha shape as flowing chrome: reflectance bands that compress and wrap
+  the silhouette as if the shape were inflated, with chromatic fringing.
+- **`.heatmap(colors:contour:innerGlow:outerGlow:angle:noise:phase:)`** thermal
+  imaging of the alpha shape: heat blooms inside, a halo radiates outside, traveling
+  waves pulse through, all mapped cold-to-hot through `colors` (the first stop fades
+  to transparent).
+- **`.gemSmoke(colors:body:innerSwirl:outerSwirl:innerGlow:outerGlow:offset:scale:angle:phase:)`**
+  smoke coils trapped inside the alpha shape (and leaking around it) over a glassy
+  body fill.
+- **`.flutedGlass(flutes:shape:profile:distortion:shift:stretch:blur:edges:highlights:shadows:angle:)`**
+  ribbed architectural glass: each flute refracts its slice of the image
+  (`FluteProfile`: `.prism` / `.lens` / `.contour` / `.cascade` / `.flat`), the flute
+  layout bent by `FluteShape` (`.lines` / `.irregular` / `.wave` / `.zigzag` /
+  `.eggCrate`), with boundary hairlines, shadow ramps, and a frost `blur`. Static by
+  design; animate its knobs.
+- **`.water(scale:waves:refraction:edges:highlights:highlight:phase:)`** the image
+  under shallow rippling water: broad waves wobble it, caustics shimmer it, bright
+  filaments wash over it.
+- **`.paperTexture(paper:shading:contrast:roughness:fiber:crumples:folds:drops:seed:)`**
+  lay the image onto a synthesized sheet of paper (tooth, fibers, crumple facets,
+  fold creases, speckles), embossed by the same relief lighting. Static by design.
+
+```swift
+let logo = renderTarget()
+withTarget(logo) { noStroke(); fill(.white); drawHeart(width / 2, height / 2, 400) }
+drawImage(logo.filtered(.liquidMetal(phase: time)).image, 0, 0)
+```
+
 Filters chain, so an effect reads as one expression:
 
 ```swift
