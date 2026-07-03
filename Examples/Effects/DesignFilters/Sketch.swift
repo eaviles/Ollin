@@ -25,8 +25,12 @@ final class DesignFilters_Example: Sketch {
             }
             return layer
         }
-        // The colorful backdrop the bottom-row filters transform.
-        let backdrop = generate(.meshGradient(phase: 2.4))
+        // The bottom-row filters need detail to refract: orbiting dots on a
+        // pale sky read like blossoms behind the glass.
+        let backdrop = generate(.dotOrbit(
+            colors: [Color(hex: 0xF2A93C), Color(hex: 0xE8D26E), Color(hex: 0x5C7A3A),
+                     Color(hex: 0xD9822B)],
+            background: Color(hex: 0xDCE9F2), size: 0.8, phase: t * 0.3))
 
         let tiles: [(String, RenderTarget)] = [
             ("liquidMetal", heartLayer().filtered(.liquidMetal(phase: t))),

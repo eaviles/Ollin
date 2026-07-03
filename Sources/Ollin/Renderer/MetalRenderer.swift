@@ -1884,7 +1884,8 @@ final class MetalRenderer {
                                Float(margins.right / Double(width)),
                                Float(margins.top / Double(max(1, height))),
                                Float(margins.bottom / Double(max(1, height)))),
-                         SIMD4<Float>(1, 1, 1, 1), SIMD4<Float>(0, 0, 0, 1)])
+                         SIMD4<Float>(1, 1, 1, 1), SIMD4<Float>(0, 0, 0, 1),
+                         SIMD4(Float(max(1, height)), 0, 0, 0)])
         case let .water(scale, waves, refraction, edges, highlights, highlight, phase):
             return pass("ollin_fx_water", [input],
                         [SIMD4(Float(scale), Float(waves), Float(refraction), Float(edges)),
@@ -1905,7 +1906,8 @@ final class MetalRenderer {
                                  params: [SIMD4(Float(repetition), Float(softness),
                                                 Float(dispersion), Float(distortion)),
                                           SIMD4(Float(contour), Float(angle), Float(phase), aspect),
-                                          tint], into: cb)
+                                          tint,
+                                          SIMD4(Float(max(1, height)), 0, 0, 0)], into: cb)
             return output
         case let .heatmap(colors, contour, innerGlow, outerGlow, angle, noise, phase):
             guard let (wide, tight) = blurredAlphaFields(of: input, width: width, height: height,
