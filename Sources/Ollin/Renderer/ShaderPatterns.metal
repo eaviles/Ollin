@@ -75,7 +75,12 @@ fragment float4 ollin_gen_mesh_gradient(PresentOut in [[stage_in]],
         uv.y += distortion * (center / i)
               * cos(t + 2.0 * i * smoothstep(0.0, 1.0, uv.x));
     }
-    uv = ollin_rot2(uv - 0.5, -3.0 * swirl * radius) + 0.5;
+    // The vortex angle is measured on the *warped* radius (one deliberate
+    // deviation from the studied reference, which measures it pre-warp): the
+    // angle field and the coordinates it rotates then agree, so the twist
+    // winds evenly through the composition instead of concentrating wherever
+    // the warp happens to cross the mid-radius band.
+    uv = ollin_rot2(uv - 0.5, -3.0 * swirl * smoothstep(0.0, 1.0, length(uv - 0.5))) + 0.5;
 
     float4 acc = float4(0.0);
     float wsum = 0.0;
