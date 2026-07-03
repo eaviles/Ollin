@@ -237,7 +237,7 @@ the other three transform the whole layer. `Effects/DesignFilters` shows all six
   `.eggCrate`), with boundary hairlines, shadow ramps, a frost `blur`, and `margins`
   (layer pixels) leaving a plain frame around the glass. Static by design; animate its
   knobs.
-- **`.water(scale:waves:refraction:edges:highlights:highlight:phase:)`** the image
+- **`.water(scale:waves:refraction:layering:edges:highlights:highlight:phase:)`** the image
   under shallow rippling water: broad waves wobble it, caustics shimmer it, bright
   filaments wash over it.
 - **`.paperTexture(paper:shading:contrast:roughness:fiber:crumples:folds:drops:seed:)`**

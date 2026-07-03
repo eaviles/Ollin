@@ -184,8 +184,8 @@ public struct Filter: Sendable {
                          margins: Insets, angle: Double)
         /// Shallow rippling water over the image: wave + caustic refraction with
         /// bright caustic filaments.
-        case water(scale: Double, waves: Double, refraction: Double, edges: Double,
-                   highlights: Double, highlight: SIMD4<Float>, phase: Double)
+        case water(scale: Double, waves: Double, refraction: Double, layering: Double,
+                   edges: Double, highlights: Double, highlight: SIMD4<Float>, phase: Double)
         /// A sheet of paper the image is laid onto: tooth, crumples, fold
         /// creases, and speckles lit as emboss relief.
         case paperTexture(paper: SIMD4<Float>, shading: SIMD4<Float>, contrast: Double,
@@ -654,16 +654,19 @@ public struct Filter: Sendable {
     }
 
     /// Water: the image seen through shallow rippling water. Broad `waves`
-    /// wobble it, fine caustic `refraction` shimmers it, and bright caustic
+    /// wobble it, fine caustic `refraction` shimmers it (`layering` adds a
+    /// second finer caustic octave), and bright caustic
     /// filaments wash over it in `highlight`. `scale` sizes the ripple field,
     /// `edges` (0…1) lets the distortion reach the layer's borders, and `phase`
     /// animates the water: feed it your `time`.
     public static func water(scale: Double = 1, waves: Double = 0.3,
-                             refraction: Double = 0.1, edges: Double = 0.8,
+                             refraction: Double = 0.1, layering: Double = 0.5,
+                             edges: Double = 0.8,
                              highlights: Double = 0.07, highlight: Color = .white,
                              phase: Double = 0) -> Filter {
         Filter(kind: .water(scale: min(max(scale, 0.05), 7), waves: min(max(waves, 0), 1),
-                            refraction: min(max(refraction, 0), 1), edges: min(max(edges, 0), 1),
+                            refraction: min(max(refraction, 0), 1),
+                            layering: min(max(layering, 0), 1), edges: min(max(edges, 0), 1),
                             highlights: min(max(highlights, 0), 1),
                             highlight: highlight.linearRGBA, phase: phase))
     }

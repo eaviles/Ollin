@@ -1886,10 +1886,10 @@ final class MetalRenderer {
                                Float(margins.bottom / Double(max(1, height)))),
                          SIMD4<Float>(1, 1, 1, 1), SIMD4<Float>(0, 0, 0, 1),
                          SIMD4(Float(max(1, height)), 0, 0, 0)])
-        case let .water(scale, waves, refraction, edges, highlights, highlight, phase):
+        case let .water(scale, waves, refraction, layering, edges, highlights, highlight, phase):
             return pass("ollin_fx_water", [input],
                         [SIMD4(Float(scale), Float(waves), Float(refraction), Float(edges)),
-                         SIMD4(Float(highlights), Float(phase), aspect, 0), highlight])
+                         SIMD4(Float(highlights), Float(phase), aspect, Float(layering)), highlight])
         case let .paperTexture(paper, shading, contrast, roughness, fiber, crumples,
                                folds, drops, seed):
             return pass("ollin_fx_paper_texture", [input],

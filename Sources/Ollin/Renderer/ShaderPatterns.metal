@@ -156,8 +156,7 @@ fragment float4 ollin_gen_filaments(PresentOut in [[stage_in]],
 // period) blended across the atan2 branch cut, and the radial scroll crossfades
 // two phase-shifted copies so the fract wrap never pops.
 
-static inline float2 ollin_ring_fbm2(float2 p, float wrapPeriod, int octaves) {
-    float2 p2 = float2(fmod(p.x + wrapPeriod * 8.0, wrapPeriod), p.y);
+static inline float2 ollin_ring_fbm2(float2 p, float2 p2, int octaves) {
     float2 v = float2(0.0);
     float amp = 0.4;
     for (int i = 0; i < octaves; i++) {
@@ -189,10 +188,14 @@ fragment float4 ollin_gen_smoke_ring(PresentOut in [[stage_in]],
     float blendT = 0.5 + 0.5 * sin(0.1 * phase * 3.14159265 / 3.0 - 1.5707963);
     float drift = 0.03 * phase;
 
-    float2 pA = float2(theta, T1 - radialOffset) * nScale + drift;
-    float2 pB = float2(theta, T2 - radialOffset) * nScale + drift;
-    float2 nA = ollin_ring_fbm2(pA, wrapPeriod, octaves);
-    float2 nB = ollin_ring_fbm2(pB, wrapPeriod, octaves);
+    // Wrap the angular coordinate *before* the time drift, so the wrapped
+    // lane's seam stays pinned at the front where the raw lane masks it.
+    float xRaw = theta * nScale;
+    float xWrap = fmod(xRaw + wrapPeriod * 8.0, wrapPeriod);
+    float yA = (T1 - radialOffset) * nScale;
+    float yB = (T2 - radialOffset) * nScale;
+    float2 nA = ollin_ring_fbm2(float2(xRaw, yA) + drift, float2(xWrap, yA) + drift, octaves);
+    float2 nB = ollin_ring_fbm2(float2(xRaw, yB) + drift, float2(xWrap, yB) + drift, octaves);
     float seam = smoothstep(-0.25, 0.25, uv.x);   // raw lane where its seam is far
     float noise = mix(mix(nA.y, nA.x, seam), mix(nB.y, nB.x, seam), blendT);
 
@@ -222,23 +225,28 @@ fragment float4 ollin_gen_smoke_ring(PresentOut in [[stage_in]],
 
 struct OllinPanel { float mask; float map; };
 
-static OllinPanel ollin_panel(float2 uv, float A, float len, float skew,
+static OllinPanel ollin_panel(float2 uv, float A, float invLength, float skew,
                               float blur, float aa) {
     OllinPanel p; p.mask = 0.0; p.map = 0.0;
-    float denom = sin(A) - uv.y * cos(A);
+    float sinA = sin(A), cosA = cos(A);
+    float denom = sinA - uv.y * cosA;
     if (abs(denom) < 0.01) return p;              // grazing: no stable hit
     float z = uv.y / denom;
     if (z <= 0.0 || z > 0.5) return p;            // behind the eye / past the fan
     float zRatio = 2.0 * z;
     p.map = 1.0 - zRatio;                          // 0 at the axis end, 1 near
-    float x = uv.x * (cos(A) * z + 1.0) * (1.5 / len);
-    float left = -0.5 + (zRatio - 0.5) * skew;
-    float right = 0.5 - (zRatio - 0.5) * skew;
+    float x = uv.x * (cosA * z + 1.0) * invLength;
+    float zOffset = zRatio - 0.5;
+    float left = -0.5 + zOffset * skew;
+    float right = 0.5 - zOffset * skew;
     float blurX = aa + 2.0 * p.map * blur;
-    float m = smoothstep(left - blurX, left + blurX, x)
-            * (1.0 - smoothstep(right - blurX, right + blurX, x));
-    m *= smoothstep(0.0, 0.05, p.map);            // soften the depth cutoff
-    m *= clamp(abs(sin(A)) * 15.0, 0.0, 1.0);     // fade near edge-on
+    // Sharp-inner / soft-outer bevels, then squared coverage: the pane edges
+    // thin toward the axis instead of haloing.
+    float m = smoothstep(left - blurX, left + 0.25 * blurX, x)
+            * (1.0 - smoothstep(right - 0.25 * blurX, right + blurX, x));
+    m *= mix(0.0, m, smoothstep(0.0, 0.01, p.map));
+    float midScreen = abs(sinA);
+    if (midScreen < 0.07) { m *= midScreen * 15.0; }   // fade near edge-on
     p.mask = m;
     return p;
 }
@@ -256,30 +264,58 @@ fragment float4 ollin_gen_color_panels(PresentOut in [[stage_in]],
 
     float2 uv = ollin_pat_square(in.uv, aspect) * 1.5625;
     float t = fract(0.01 * phase);
-    float aa = 0.008;
+    // Two half-phase pane sets; only one runs per half-period, and the 0.5
+    // stagger swaps families at the wrap, which is what loops it seamlessly.
+    int activeSet = (t < 0.5) ? 1 : 0;
+    float aa = 0.005;
+    float invLength = 1.5 / max(len, 0.001);
+    float panelGrad = 1.0 - gradient;
 
     float4 acc = float4(0.0);
-    // Receding side first (painted behind), advancing side in front.
-    for (int side = 0; side < 2; side++) {
-        float sgn = side == 0 ? -1.0 : 1.0;
-        for (int i = 0; i < panels; i++) {
-            float offset = float(i) / float(panels);
-            float df = nrm * fract(sgn * t + offset);
-            float angleNorm = sgn * df / density;
-            if (df >= 0.5 || abs(angleNorm) >= 0.3) continue;
-            float smoothD = 1.0 - smoothstep(0.4, 0.5, df);
-            float smoothA = 1.0 - smoothstep(0.25, 0.3, abs(angleNorm));
-            float A = angleNorm * 6.2831853 + 3.14159265;
-            OllinPanel pan = ollin_panel(uv, A, len, skew, blur, aa);
-            if (pan.mask <= 0.0) continue;
-            float fade = (1.0 - smoothstep(0.97 - 0.97 * fadeIn, 1.0, pan.map))
-                       * smoothstep(-0.2 * (1.0 - fadeOut), fadeOut, pan.map);
-            int ci = i % count;
-            float gmix = max(0.0, smoothstep(0.0, 0.45, pan.map) - (1.0 - gradient));
-            float4 col = mix(ollin_pat_srgb(colors[ci]), ollin_pat_srgb(colors[(ci + 1) % count]), gmix);
-            float4 src = ollin_pat_premul(col) * (pan.mask * fade * smoothD * smoothA);
-            acc = ollin_pat_over(src, acc);
-        }
+    // Advancing (+t) family first, painted behind; low pane indices frontmost.
+    for (int i = 0; i < panels; i++) {
+        int idx = panels - 1 - i;
+        float offset = float(idx) / float(panels) + (activeSet == 1 ? 0.5 : 0.0);
+        float df = nrm * fract(t + offset);
+        float angleNorm = df / density;
+        if (df >= 0.5 || angleNorm >= 0.3) continue;
+        float smoothD = clamp((0.5 - df) / 0.1, 0.0, 1.0) * clamp(df / 0.01, 0.0, 1.0);
+        float smoothA = clamp((0.3 - angleNorm) / 0.05, 0.0, 1.0);
+        if (smoothD * smoothA < 0.001) continue;
+        angleNorm = min(angleNorm, 0.5);
+        OllinPanel pan = ollin_panel(uv, angleNorm * 6.2831853 + 3.14159265,
+                                     invLength, skew, blur, aa);
+        if (pan.mask <= 0.001) continue;
+        float mask = pan.mask * smoothD * smoothA;
+        float fade = (1.0 - smoothstep(0.97 - 0.97 * fadeIn, 1.0, pan.map))
+                   * smoothstep(-0.2 * (1.0 - fadeOut), fadeOut, pan.map);
+        int ci = idx % count;
+        float gmix = max(0.0, smoothstep(0.0, 0.45, pan.map) - panelGrad);
+        float4 col = mix(ollin_pat_stop(colors[ci]),
+                         ollin_pat_stop(colors[(ci + 1) % count]), gmix);
+        acc = ollin_pat_over(col * (fade * mask), acc);
+    }
+    // Receding (−t) family over it, palette mirrored across the axis.
+    for (int i = 0; i < panels; i++) {
+        int idx = panels - 1 - i;
+        float offset = float(idx) / float(panels) + (activeSet == 0 ? 0.5 : 0.0);
+        float df = nrm * fract(-t + offset);
+        float angleNorm = -df / density;
+        if (df >= 0.5 || angleNorm < -0.3) continue;
+        float smoothD = clamp((0.5 - df) / 0.1, 0.0, 1.0) * clamp(df / 0.01, 0.0, 1.0);
+        float smoothA = clamp((angleNorm + 0.3) / 0.05, 0.0, 1.0);
+        if (smoothD * smoothA < 0.001) continue;
+        OllinPanel pan = ollin_panel(uv, angleNorm * 6.2831853 + 3.14159265,
+                                     invLength, skew, blur, aa);
+        float mask = pan.mask * smoothD * smoothA;
+        if (mask <= 0.001) continue;
+        float fade = (1.0 - smoothstep(0.97 - 0.97 * fadeIn, 1.0, pan.map))
+                   * smoothstep(-0.2 * (1.0 - fadeOut), fadeOut, pan.map);
+        int ci = (count - (idx % count)) % count;
+        float gmix = max(0.0, smoothstep(0.0, 0.45, pan.map) - panelGrad);
+        float4 col = mix(ollin_pat_stop(colors[ci]),
+                         ollin_pat_stop(colors[(ci + 1) % count]), gmix);
+        acc = ollin_pat_over(col * (fade * mask), acc);
     }
     return ollin_pat_out(ollin_pat_over(acc, ollin_pat_stop(back)));
 }
@@ -402,7 +438,7 @@ fragment float4 ollin_gen_dot_orbit(PresentOut in [[stage_in]],
         }
     }
 
-    float radius = max(0.25 * size - 0.5 * sizeVariation * 0.25 * bestRand.y, 0.0);
+    float radius = max(0.25 * size - 0.5 * sizeVariation * bestRand.y, 0.0);
     float w = fwidth(best) + 1e-4;
     float dots = 1.0 - smoothstep(radius - w, radius + w, best);
 
@@ -446,8 +482,10 @@ fragment float4 ollin_gen_grain_gradient(PresentOut in [[stage_in]],
     } else if (shape == 1) {                   // dots: columns scroll at random speeds
         float2 uv = sq * 5.4;
         float col = floor(uv.x / 3.14159265);
-        float r = hash11(col + 3.0) * 2.0 - 1.0;
-        float speed = sign(r) * pow(abs(4.0 * r), 0.3);
+        // Sign and magnitude share one hash, so one drift direction is
+        // systematically faster: the per-column emphasis.
+        float r = hash11(col * 100.0);
+        float speed = sign(r - 0.5) * pow(4.0 * r, 0.3);
         s = pow(abs(sin(uv.x) * cos(uv.y - 5.0 * speed * t)), 4.0);
     } else if (shape == 2) {                   // truchet: flipped quarter-arc bands
         float2 uv = sq * 5.4;
@@ -461,13 +499,19 @@ fragment float4 ollin_gen_grain_gradient(PresentOut in [[stage_in]],
         float band1 = smoothstep(0.2, 0.55, d1 + n) * (1.0 - smoothstep(0.45, 0.8, d1 - n));
         float band2 = smoothstep(0.2, 0.55, d2 + n) * (1.0 - smoothstep(0.45, 0.8, d2 - n));
         s = clamp(pow(band1 + band2, 1.5), 0.0, 1.0);
-    } else if (shape == 3) {                   // corners: a diagonal two-corner sweep
-        float2 uv = sq * 2.0;
-        float bl = smoothstep(-1.0, 1.0, -uv.x + 0.1 * sin(3.0 * t))
-                 * smoothstep(-1.0, 1.0, uv.y + 0.1 * cos(5.25 * t));
-        float tr = smoothstep(-1.0, 1.0, uv.x + 0.1 * sin(5.25 * t))
-                 * smoothstep(-1.0, 1.0, -uv.y + 0.1 * cos(3.0 * t));
-        s = 1.0 - smoothstep(0.0, 1.0, 0.5 + 0.5 * (bl - tr));
+    } else if (shape == 3) {                   // corners: two point-symmetric box masks
+        float2 u2 = float2(sq.x, -sq.y) * 0.6;
+        float2 outer = float2(0.5);
+        float2 bl = smoothstep(float2(0.0), outer,
+                               u2 + float2(0.1 + 0.1 * sin(3.0 * t), 0.2 - 0.1 * sin(5.25 * t)));
+        float2 tr = smoothstep(float2(0.0), outer, 1.0 - u2);
+        s = 1.0 - bl.x * bl.y * tr.x * tr.y;
+        u2 = -u2;
+        bl = smoothstep(float2(0.0), outer,
+                        u2 + float2(0.1 + 0.1 * sin(3.0 * t), 0.2 - 0.1 * cos(5.25 * t)));
+        tr = smoothstep(float2(0.0), outer, 1.0 - u2);
+        s -= bl.x * bl.y * tr.x * tr.y;
+        s = 1.0 - smoothstep(0.0, 1.0, s);
     } else if (shape == 4) {                   // ripple: concentric chirped rings
         float2 uv = sq * 4.0;
         float d = length(0.8 * uv);
@@ -526,21 +570,46 @@ fragment float4 ollin_gen_grain_gradient(PresentOut in [[stage_in]],
 
 // MARK: - pulsingBorder
 //
-// A rounded-box SDF band hugging the layer edge (softness widens the band
-// *inward*, keeping the glow inside the canvas), with per-color light spots
+// A rounded-box SDF band hugging the layer edge, with per-color light spots
 // racing the perimeter as angular sector masks, a |sin|^10 double-thump
-// heartbeat, smoke wisps from counter-scrolling noise, and a dual over/additive
-// accumulation whose crossfade is the bloom: glow without a blur pass.
+// heartbeat, smoke wisps that widen the band (so the racing spots illuminate
+// them), and dual over/additive accumulation whose crossfade is the bloom.
+// The bloom factor runs to 4x on purpose: past pure addition it extrapolates
+// into an over-bright glow. Softness widens the band toward 3x thickness and
+// feathers it inward, with per-corner fade circles evening out the rounded
+// corners.
+
+struct OllinBorderBand { float band; float circles; };
+
+static OllinBorderBand ollin_border_box(float2 uv, float2 halfSize, float dist,
+                                        float cornerDistance, float thickness,
+                                        float softness) {
+    float borderDist = abs(dist);
+    float aa = 2.0 * fwidth(dist);
+    float e0 = mix(thickness, -thickness, softness), e1 = thickness + aa;
+    float border = 1.0 - smoothstep(min(e0, e1), max(e0, e1), borderDist);
+    float circles = 0.0;
+    circles = mix(1.0, circles, smoothstep(0.0, 1.0, length((uv + halfSize) / thickness)));
+    circles = mix(1.0, circles, smoothstep(0.0, 1.0, length((uv - float2(-halfSize.x, halfSize.y)) / thickness)));
+    circles = mix(1.0, circles, smoothstep(0.0, 1.0, length((uv - float2(halfSize.x, -halfSize.y)) / thickness)));
+    circles = mix(1.0, circles, smoothstep(0.0, 1.0, length((uv - halfSize) / thickness)));
+    float aac = fwidth(cornerDistance);
+    float cornerFade = smoothstep(0.0, mix(aac, thickness, softness), cornerDistance) * circles;
+    OllinBorderBand out;
+    out.band = border + cornerFade;
+    out.circles = circles;
+    return out;
+}
 
 fragment float4 ollin_gen_pulsing_border(PresentOut in [[stage_in]],
                                          constant float4 *params [[buffer(0)]]) {
     int count = int(params[0].x);
     float aspect = params[0].y, roundness = params[0].z, thickness = params[0].w;
     float softness = params[1].x, intensity = params[1].y;
-    float bloom = params[1].z;
+    float bloomK = params[1].z;
     int spots = int(params[1].w);
-    float spotSize = params[2].x, pulse = params[2].y;
-    float smoke = params[2].z, smokeScale = params[2].w;
+    float spotSize = params[2].x, pulseK = params[2].y;
+    float smokeK = params[2].z, smokeScale = params[2].w;
     float phase = params[3].x;
     float mL = params[3].y, mR = params[3].z, mT = params[3].w, mB = params[4].x;
     float4 back = params[5];
@@ -548,67 +617,76 @@ fragment float4 ollin_gen_pulsing_border(PresentOut in [[stage_in]],
 
     float2 sq = (in.uv - 0.5) * float2(aspect, 1.0) / min(aspect, 1.0);
     float2 halfSize = 0.5 * float2(aspect, 1.0) / min(aspect, 1.0);
-    // Margins (already in square units) shrink the box and shift its center.
     sq -= float2((mL - mR) * 0.5, (mT - mB) * 0.5);
     halfSize -= float2((mL + mR) * 0.5, (mT + mB) * 0.5);
     float t = 1.2 * (phase + 109.0);
 
     float th = 0.5 * thickness * min(halfSize.x, halfSize.y);
     halfSize -= mix(th, 0.0, softness);
-    float r = roundness * min(halfSize.x, halfSize.y);
-    float2 d2 = abs(sq) - halfSize + r;
-    float dist = length(max(d2, 0.0)) - r + min(max(d2.x, d2.y), 0.0);
-    float aa = 2.0 * fwidth(dist);
-
-    float edge0 = mix(th, -th, softness);
-    float band = 1.0 - smoothstep(edge0, th + aa, abs(dist));
-    band = pow(band, 1.0 + softness);
+    float radius = mix(0.0, min(halfSize.x, halfSize.y), roundness);
+    float2 d2 = abs(sq) - halfSize + radius;
+    float outside = length(max(d2, 0.0001)) - radius;
+    float inside = min(max(d2.x, d2.y), 0.0001);
+    float cornerDistance = abs(min(max(d2.x, d2.y) - 0.45 * radius, 0.0));
+    float dist = outside + inside;
 
     // The heartbeat: lub, then a softer dub 0.15 later.
     float bx = 0.18 * phase;
     float beat = clamp(pow(abs(sin(6.2831853 * bx)), 10.0)
                        + 0.6 * pow(abs(sin(6.2831853 * (bx - 0.15))), 10.0), 0.0, 1.0);
+    float pulse = pulseK * beat;
 
-    // A wide, fully-feathered band masks the smoke.
-    float thWide = clamp(thickness, 0.1, 0.4) * 0.5 * 0.5;
-    float bandWide = 1.0 - smoothstep(-thWide, thWide + aa, abs(dist));
-    float sm = abs(ollin_vnoise(2.7 * 3.0 * smokeScale * sq + 0.5 * t * 0.1)
-                 - ollin_vnoise(3.4 * 3.0 * smokeScale * sq - 0.5 * t * 0.1));
-    float smokeVal = 0.5 * smoke * smoke * clamp(30.0 * sm * sm, 0.0, 1.0) * bandWide
-                   * (0.6 + 0.4 * beat);
+    float bt = mix(th, 3.0 * th, softness);
+    float border = ollin_border_box(sq, halfSize, dist, cornerDistance, bt, softness).band;
+    border = pow(clamp(border, 0.0, 1.0), 1.0 + softness);
 
-    float phi = atan2(sq.y, sq.x) / 6.2831853;    // −0.5…0.5 around the border
+    // Smoke widens the band, so the racing spots light it up.
+    float2 smokeUV = 0.3 * smokeScale * sq * 10.8;
+    float smoke = clamp(3.0 * ollin_vnoise(2.7 * smokeUV + 0.5 * t), 0.0, 1.0);
+    smoke -= ollin_vnoise(3.4 * smokeUV - 0.5 * t);
+    float smokeTh = clamp(th + 0.2, 0.1, 0.4);
+    smoke *= ollin_border_box(sq, halfSize, dist, cornerDistance, smokeTh, 1.0).band;
+    smoke = 30.0 * smoke * smoke;
+    smoke *= 0.5 * smokeK * smokeK;
+    smoke *= mix(1.0, pulse, pulseK);
+    border = clamp(border + clamp(smoke, 0.0, 1.0), 0.0, 1.0);
+
+    float angle = atan2(sq.y, sq.x) / 6.2831853;
+    float bloom = 4.0 * bloomK;                       // unclamped: extrapolates
     float intensityScale = 1.0 + (1.0 + 4.0 * softness) * intensity;
 
-    float4 overAcc = float4(0.0);
-    float3 addAcc = float3(0.0);
+    float3 blendC = float3(0.0), addC = float3(0.0);
+    float blendA = 0.0, addA = 0.0;
     for (int c = 0; c < count; c++) {
+        float fc = float(c);
         float4 colP = ollin_pat_stop(colors[c]);
-        // Smoke haze in this color's share.
-        float4 haze = colP * (smokeVal / float(count));
-        overAcc = ollin_pat_over(haze, overAcc);
-        addAcc += haze.rgb;
         for (int sp = 0; sp < spots; sp++) {
-            float2 seed = float2(float(c) * 7.3 + 1.1, float(sp) * 3.7 + 2.3);
-            float rnd1 = hash12(seed);
-            float rnd2 = hash12(seed + 19.7);
-            float speed = 0.1 + 0.15 * abs(sin(float(sp + 1) * 1.7) * cos(float(c + 1) * 2.3));
-            float dir = rnd1 < 0.5 ? -1.0 : 1.0;
-            float x = fract(phi + dir * speed * t * 0.1 + rnd2);
-            float vis = 0.5 + 0.5 * sin(t * 0.5 + 6.2831853 * (rnd1 + 0.37 * float(sp) + 0.61 * float(c)));
-            float p = clamp(2.0 * pulse - rnd1, 0.0, 1.0);
-            vis = mix(vis, beat, p);
-            float sz = 0.05 + 0.6 * spotSize * spotSize + 0.05 * rnd2;
-            sz = mix(sz, 0.1, p * 0.5);
-            float sector = smoothstep(0.5 - sz, 0.5, x) * (1.0 - smoothstep(0.5, 0.5 + sz, x));
-            float4 src = colP * (sector * vis * band * intensityScale);
-            overAcc = ollin_pat_over(src, overAcc);
-            addAcc += src.rgb;
+            float fs = float(sp);
+            float2 randVal = hash22(float2(fs * 10.0 + 2.0, 40.0 + fc));
+            float speed = (0.1 + 0.15 * abs(sin(fs * (2.0 + fc)) * cos(fs * (2.0 + 2.5 * fc)))) * t
+                        + randVal.x * 3.0;
+            speed *= mix(1.0, -1.0, step(0.5, randVal.y));
+            float mask = 0.5 + 0.5 * mix(sin(t + fs * (5.0 - 1.5 * fc)),
+                                         cos(t + fs * (3.0 + 1.3 * fc)),
+                                         step(fmod(fc, 2.0), 0.5));
+            float p = clamp(2.0 * pulseK - randVal.x, 0.0, 1.0);
+            mask = mix(mask, pulse, p);
+            float atg = fract(angle + speed);
+            float sz = 0.05 + 0.6 * spotSize * spotSize + 0.05 * randVal.x;
+            sz = mix(sz, 0.1, p);
+            float sector = smoothstep(0.5 - sz, 0.5, atg) * (1.0 - smoothstep(0.5, 0.5 + sz, atg));
+            sector = clamp(sector * mask * border * intensityScale, 0.0, 1.0);
+            float3 srcC = colP.rgb * sector;
+            float srcA = colP.a * sector;
+            blendC += (1.0 - blendA) * srcC;          // new spots behind the stack
+            blendA += (1.0 - blendA) * srcA;
+            addC += srcC;
+            addA += srcA;
         }
     }
-    float4 result = float4(mix(overAcc.rgb, addAcc, clamp(4.0 * bloom, 0.0, 1.0)),
-                           min(overAcc.a + smokeVal, 1.0));
-    return ollin_pat_out(ollin_pat_over(result, ollin_pat_stop(back)));
+    float3 accumC = mix(blendC, addC, bloom);
+    float accumA = clamp(mix(blendA, addA, bloom), 0.0, 1.0);
+    return ollin_pat_out(ollin_pat_over(float4(accumC, accumA), ollin_pat_stop(back)));
 }
 
 // MARK: - godRays
@@ -629,7 +707,7 @@ fragment float4 ollin_gen_god_rays(PresentOut in [[stage_in]],
     float density = params[1].x, breakup = params[1].y;
     float coreSize = params[1].z, coreIntensity = params[1].w;
     float intensity = params[2].x, bloom = params[2].y;
-    float t = 0.15 * params[2].z;
+    float t = 0.2 * params[2].z;
     float4 bloomTint = params[3];
     float4 back = params[4];
     constant float4 *colors = params + 5;
@@ -648,7 +726,7 @@ fragment float4 ollin_gen_god_rays(PresentOut in [[stage_in]],
         float2 p = ollin_rot2(rel, fi + 1.0);
         float a1 = atan2(p.y, p.x);                       // −π…π, seam at ±π
         float a2 = fract(a1 / 6.2831853) * 6.2831853;      // 0…2π, seam at 0
-        float f = mix(1.0, 3.0 + 0.5 * fi, hash11(fi + 1.0)) * dens;
+        float f = mix(1.0, 3.0 + 0.5 * fi, hash11(fi * 15.0)) * dens;
         float r1 = radius * (1.0 + 0.4 * fi) - 3.0 * t;
         float r2 = 0.5 * radius * (1.0 + 6.5 * breakup) - 2.0 * t;
         // The radial noise cell spans ~the whole canvas radius: that stretch is
@@ -662,11 +740,13 @@ fragment float4 ollin_gen_god_rays(PresentOut in [[stage_in]],
 
         float m = 10.0 * coreSize;
         float mid = pow(pow(coreIntensity, 0.3)
-                        * (1.0 - smoothstep(0.02 * m, m, 3.0 * radius)), 5.0);
-        ray = clamp(ray + (1.0 + 4.0 * ray) * mid, 0.0, 2.0);
+                        * (1.0 - smoothstep(0.02 * m, max(m, 1e-6), 3.0 * radius)), 5.0);
+        ray = clamp(ray + (1.0 + 4.0 * ray) * mid, 0.0, 1.0);
 
+        // Earlier colors stay frontmost: the accumulator composites OVER each
+        // new layer, and bloom crossfades that stack toward pure addition.
         float4 src = ollin_pat_stop(colors[i]) * ray;
-        acc = mix(ollin_pat_over(src, acc), acc + src, bloom);
+        acc = mix(ollin_pat_over(acc, src), acc + src, bloom);
     }
     // An extra glow wash over the lit areas, scaled by the bloom knob.
     acc.rgb += ollin_pat_stop(bloomTint).rgb * acc.a * bloom;
@@ -892,14 +972,15 @@ fragment float4 ollin_fx_fluted_glass(PresentOut in [[stage_in]],
 // The caustic field is the iterated domain-rotated sine accumulation: each
 // pass warps the next's phase while the cosine derivatives accumulate, and the
 // squared sum concentrates into the thin bright filaments.
-static inline float ollin_water_caustic(float2 p, float t, float speed) {
-    float2 n = float2(0.0), acc = float2(0.0);
-    float s = 2.0;
+static inline float ollin_water_caustic(float2 p, float t, float s0) {
+    float2 n = float2(0.1), acc = float2(0.1);
+    float s = s0;
     for (int j = 0; j < 6; j++) {
         p = ollin_rot2(p, 0.5);
         n = ollin_rot2(n, 0.5);
-        float drift = (0.5 + 0.5 * float(j)) * (float(j % 2) * 2.0 - 1.0);
-        float2 q = p * s + float(j) + n + drift * t * speed;
+        // Only even iterations carry the time drift, all one direction.
+        float drift = (0.5 + 0.5 * float(j)) * (float(j % 2) - 1.0);
+        float2 q = p * s + float(j) + n + drift * t;
         n += sin(q);
         acc += cos(q) / s;
         s *= 1.1;
@@ -916,29 +997,32 @@ fragment float4 ollin_fx_water(PresentOut in [[stage_in]],
     float highlights = params[1].x, t = params[1].y, aspect = params[1].z;
     float4 hl = params[2];
 
+    float layering = params[1].w;
     float2 p = (in.uv - 0.5) * float2(aspect, 1.0) * 5.4 / (0.01 + 0.99 * scale);
-    float w = gradientNoise((0.3 + 0.1 * sin(t)) * 0.3 * p + float2(0.0, 0.4 * t));
+    float w = gradientNoise((0.3 + 0.1 * sin(t)) * 0.1 * p + float2(0.0, 0.4 * t));
 
-    float caustic = ollin_water_caustic(p, t, 2.0)
-                  + 0.5 * ollin_water_caustic(p * 2.0 + 7.0, t, 1.5);
-    caustic = caustic * caustic * 0.25;
-    caustic = max(caustic - 0.6, -0.2);
+    // Two registered caustic layers on the wave-displaced domain.
+    float2 wd = waves * float2(1.0, -1.0) * w;
+    float caustic = ollin_water_caustic(p + wd, 2.0 * t, 1.5)
+                  + layering * ollin_water_caustic(p + 2.0 * wd, 1.5 * t, 2.0);
+    caustic = caustic * caustic;
 
-    // Border protection: displacement eases off near the edges unless `edges`
-    // lets it through.
+    // Border protection: the caustic displacement eases off near the edges
+    // unless `edges` lets it through; the broad wave wobble stays unmasked.
     float m = smoothstep(0.0, 0.1, in.uv.x) * smoothstep(0.0, 0.1, 1.0 - in.uv.x)
             * smoothstep(0.0, 0.1, in.uv.y) * smoothstep(0.0, 0.1, 1.0 - in.uv.y);
     m = mix(m, 1.0, edges);
 
-    float2 uvNew = in.uv + 0.1 * waves * w * float2(1.0, -1.0) * m
+    float2 uvNew = in.uv + 0.1 * waves * w * float2(1.0, -1.0)
                  + 0.02 * refraction * caustic * m;
     float window = ollin_fx_window(uvNew, 0.004);
     float4 c = src.sample(samp, uvNew) * window;
 
-    float h = highlights * max(caustic, 0.0);
-    c.rgb = mix(c.rgb, hl.rgb * max(c.a, h), clamp(0.5 * h, 0.0, 1.0));
-    c.rgb += hl.rgb * 0.25 * h * (0.5 + 0.5 * w);
-    c.a = min(c.a + 0.25 * h, 1.0);
+    float mixF = clamp(0.05 * highlights * caustic, 0.0, 1.0);
+    c.rgb = mix(c.rgb, hl.rgb * max(c.a, mixF), mixF);
+    float spark = 0.025 * highlights * caustic * hl.a * (0.5 + 0.5 * w);
+    c.rgb += hl.rgb * spark;
+    c.a = min(c.a + spark, 1.0);
     return c;
 }
 
@@ -1014,10 +1098,10 @@ fragment float4 ollin_fx_paper_texture(PresentOut in [[stage_in]],
                    - ollin_paper_rough(px - float2(1.0, 0.0));
 
     float2 cp = p5 * 3.0 + seed;
-    float crumpleField = ollin_paper_crumple(cp, 16.0) * ollin_paper_crumple(cp * 0.43, 2.0);
+    // Sharp facets live at the coarse scale, soft ones at the finer one.
     float2 ce = float2(0.05, 0.0);
-    float crumpleSig = (ollin_paper_crumple(cp + ce, 16.0) * ollin_paper_crumple((cp + ce) * 0.43, 2.0)
-                      - ollin_paper_crumple(cp - ce, 16.0) * ollin_paper_crumple((cp - ce) * 0.43, 2.0));
+    float crumpleSig = (ollin_paper_crumple((cp + ce) * 0.5, 16.0) * ollin_paper_crumple(cp + ce, 2.0)
+                      - ollin_paper_crumple((cp - ce) * 0.5, 16.0) * ollin_paper_crumple(cp - ce, 2.0));
 
     float fiberSig = 0.8 * fiber * (ollin_paper_fiber(p5 * 2.0 + seed) - 1.0);
 
@@ -1057,7 +1141,7 @@ fragment float4 ollin_fx_paper_texture(PresentOut in [[stage_in]],
 
     float2 nxy = float2(0.0);
     nxy.x += 1.5 * roughSig * roughness;
-    nxy += crumpleSig * crumples * 2.0;
+    nxy += crumpleSig * crumples;
     nxy.x += fiberSig;
     nxy.x += foldSig * folds * min(5.0 * contrast, 1.0);
     nxy += 3.0 * dropSig * drops * 0.15;
@@ -1257,8 +1341,10 @@ fragment float4 ollin_fx_heatmap(PresentOut in [[stage_in]],
     float mixer = heat * float(count);
     float4 g = ollin_pat_stop(colors[0]);
     float alphaShape = clamp(mixer, 0.0, 1.0);
+    // colors[i] takes over on mixer in [i, i+1]: the cold stop holds while the
+    // alpha ramps, and the hottest stop saturates exactly at heat = 1.
     for (int i = 1; i < count; i++) {
-        float m = clamp(mixer - float(i - 1), 0.0, 1.0);
+        float m = clamp(mixer - float(i), 0.0, 1.0);
         g = mix(g, ollin_pat_stop(colors[i]), m);
     }
     return ollin_pat_out(g * alphaShape);
@@ -1312,7 +1398,7 @@ fragment float4 ollin_fx_gem_smoke(PresentOut in [[stage_in]],
     float4 g = ollin_pat_stop(colors[0]);
     float alphaShape = smoothstep(0.0, 1.0, clamp(mixer, 0.0, 1.0));
     for (int i = 1; i < count; i++) {
-        float m = clamp(mixer - float(i - 1), 0.0, 1.0);
+        float m = smoothstep(0.0, 1.0, clamp(mixer - float(i), 0.0, 1.0));
         g = mix(g, ollin_pat_stop(colors[i]), m);
     }
     float4 smoke = g * alphaShape;
