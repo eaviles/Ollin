@@ -269,7 +269,8 @@ A `Generator` is a procedural pattern filled from math alone, no input layer. Wh
 `Filter` transforms a layer you drew, a `Generator` **is** a layer: a source you composite,
 filter, or feed into another effect. `generate(_:)` realizes one into a `RenderTarget`,
 itself drawable and filterable, so a pattern flows straight into the rest of the chain.
-The `Effects/Patterns` example shows all four and a composed mix.
+The `Effects/Patterns` example shows the four basic patterns and a composed mix;
+`Effects/MeshGradient` and `Effects/DesignPatterns` show the design-pattern set.
 
 ```swift
 let stripes = generate(.bars(scale: 24, foreground: .black, background: .white))
@@ -282,12 +283,49 @@ blendMode(.multiply)
 drawImage(generate(.gridLines(scale: 20, weight: 0.08)).image, 0, 0)
 ```
 
-The patterns (cells stay square whatever the layer's aspect ratio):
+The basic patterns (cells stay square whatever the layer's aspect ratio):
 
 - **`.checkers(scale:foreground:background:)`** a two-color board, `scale` cells across.
 - **`.gridLines(scale:weight:foreground:background:)`** a line grid, each line `weight` (0…1) of a cell wide.
 - **`.bars(scale:vertical:foreground:background:)`** parallel stripes, `scale` across, on either axis.
 - **`.noise(scale:sharpness:foreground:background:)`** fractal value noise, from a soft cloud (`sharpness` 0) to a hard two-tone split (1).
+
+**Design patterns**: richer animated sources in the same mold. Every one takes a
+`phase` you feed `time` for motion (or hold fixed for a still), most take a palette
+of `colors` plus a `background`, and centered compositions stay centered and round
+at any canvas aspect. Their palettes blend in sRGB (the space design gradients are
+authored in), so the mixes match what a design tool would show:
+
+```swift
+// An animated wallpaper in one call.
+drawImage(generate(.meshGradient(phase: time)).image, 0, 0)
+```
+
+- **`.meshGradient(colors:distortion:swirl:grain:phase:)`** soft blobs of up to 8 colors
+  drifting on orbits, blended into the classic mesh-gradient wash; `distortion` smears it
+  organically, `swirl` winds a vortex, `grain` dithers the boundaries and films the result.
+- **`.filaments(color:highlight:background:scale:brightness:contrast:phase:)`** a glowing
+  web of thin writhing filaments, the neural-lace look.
+- **`.smokeRing(colors:background:radius:thickness:fill:scale:detail:phase:)`** a billowing
+  ring of smoke, radially banded through the palette; `fill` softens it from crisp annulus
+  toward a smoky disk.
+- **`.colorPanels(colors:background:density:length:skew:blur:fadeIn:fadeOut:gradient:phase:)`**
+  translucent color panes fanning around a central axis in fake perspective.
+- **`.spiral(foreground:background:density:distortion:strokeWidth:taper:cap:noise:noiseScale:softness:scale:phase:)`**
+  a two-color spiral, from crisp line-art through whirlpool to wobbly hand-drawn rings.
+- **`.waves(foreground:background:shape:frequency:amplitude:spacing:proportion:softness:scale:phase:)`**
+  wavy-line stripes; `shape` (0…3) morphs zigzag → sine → irregular mixes.
+- **`.dotOrbit(colors:background:scale:size:sizeVariation:spread:steps:phase:)`** a grid of
+  dots, each orbiting its own cell on its own phase, colors quantized to flat print-like shades.
+- **`.grainGradient(colors:background:shape:softness:intensity:noise:phase:)`** poster-style
+  banded gradients over an animated field (`GrainShape`: `.wave` / `.dots` / `.truchet` /
+  `.corners` / `.ripple` / `.blob` / `.sphere`), the band edges chewed by film grain.
+- **`.pulsingBorder(colors:background:roundness:thickness:softness:intensity:bloom:spots:spotSize:pulse:smoke:smokeScale:phase:)`**
+  a glowing rounded border hugging the layer edge, light spots racing the perimeter, with a
+  heartbeat `pulse` and smoke wisps.
+- **`.godRays(colors:background:x:y:density:breakup:coreSize:coreIntensity:intensity:bloom:phase:)`**
+  crepuscular rays streaming from a point, one drifting streak layer per color; `bloom`
+  morphs the stack from alpha layering to additive light.
 
 <a id="postprocess"></a>
 ### postProcess(_:)

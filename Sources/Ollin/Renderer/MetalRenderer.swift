@@ -2104,6 +2104,76 @@ final class MetalRenderer {
         case let .noise(scale, sharpness, fg, bg):
             encodeEffectFragment("ollin_gen_noise", inputs: [], output: output,
                                  params: [SIMD4(Float(scale), Float(sharpness), aspect, 0), fg, bg], into: cb)
+
+        // Design patterns. Each packs its scalars into leading rows and appends
+        // the palette as trailing color rows the fragment indexes past them.
+        case let .meshGradient(colors, distortion, swirl, grain, phase):
+            encodeEffectFragment("ollin_gen_mesh_gradient", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, Float(distortion), Float(swirl)),
+                                          SIMD4(Float(grain), Float(phase), 0, 0)] + colors, into: cb)
+        case let .filaments(color, highlight, background, scale, brightness, contrast, phase):
+            encodeEffectFragment("ollin_gen_filaments", inputs: [], output: output,
+                                 params: [SIMD4(Float(scale), aspect, Float(brightness), Float(contrast)),
+                                          SIMD4(Float(phase), 0, 0, 0),
+                                          color, highlight, background], into: cb)
+        case let .smokeRing(colors, background, radius, thickness, fill, scale, detail, phase):
+            encodeEffectFragment("ollin_gen_smoke_ring", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, Float(radius), Float(thickness)),
+                                          SIMD4(Float(fill), Float(scale), Float(detail), Float(phase)),
+                                          background] + colors, into: cb)
+        case let .colorPanels(colors, background, density, length, skew, blur,
+                              fadeIn, fadeOut, gradient, phase):
+            // Panels tile the palette an even number of times (≥ 12 panes) so the
+            // two mirrored half-phase sets stay color-aligned across the wrap.
+            var panels = 12
+            while panels % colors.count != 0 || (panels / colors.count) % 2 != 0 { panels += 1 }
+            encodeEffectFragment("ollin_gen_color_panels", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, Float(density), Float(length)),
+                                          SIMD4(Float(skew), Float(blur), Float(gradient), Float(phase)),
+                                          SIMD4(Float(fadeIn), Float(fadeOut), Float(panels),
+                                                Float(panels) / 12),
+                                          background] + colors, into: cb)
+        case let .spiral(foreground, background, density, distortion, strokeWidth,
+                         taper, cap, noise, noiseScale, softness, scale, phase):
+            encodeEffectFragment("ollin_gen_spiral", inputs: [], output: output,
+                                 params: [SIMD4(aspect, Float(density), Float(distortion), Float(strokeWidth)),
+                                          SIMD4(Float(taper), Float(cap), Float(noise), Float(noiseScale)),
+                                          SIMD4(Float(softness), Float(scale), Float(phase), 0),
+                                          foreground, background], into: cb)
+        case let .waves(foreground, background, shape, frequency, amplitude,
+                        spacing, proportion, softness, scale, phase):
+            encodeEffectFragment("ollin_gen_waves", inputs: [], output: output,
+                                 params: [SIMD4(aspect, Float(shape), Float(frequency), Float(amplitude)),
+                                          SIMD4(Float(spacing), Float(proportion), Float(softness), Float(scale)),
+                                          SIMD4(Float(phase), 0, 0, 0),
+                                          foreground, background], into: cb)
+        case let .dotOrbit(colors, background, scale, size, sizeVariation, spread, steps, phase):
+            encodeEffectFragment("ollin_gen_dot_orbit", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, Float(scale), Float(size)),
+                                          SIMD4(Float(sizeVariation), Float(spread), Float(steps), Float(phase)),
+                                          background] + colors, into: cb)
+        case let .grainGradient(colors, background, shape, softness, intensity, noise, phase):
+            encodeEffectFragment("ollin_gen_grain_gradient", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, shape.rawIndex, Float(softness)),
+                                          SIMD4(Float(intensity), Float(noise), Float(phase),
+                                                Float(max(1, height))),
+                                          background] + colors, into: cb)
+        case let .pulsingBorder(colors, background, roundness, thickness, softness, intensity,
+                                bloom, spots, spotSize, pulse, smoke, smokeScale, phase):
+            encodeEffectFragment("ollin_gen_pulsing_border", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, Float(roundness), Float(thickness)),
+                                          SIMD4(Float(softness), Float(intensity), Float(bloom), Float(spots)),
+                                          SIMD4(Float(spotSize), Float(pulse), Float(smoke), Float(smokeScale)),
+                                          SIMD4(Float(phase), 0, 0, 0),
+                                          background] + colors, into: cb)
+        case let .godRays(colors, background, x, y, density, breakup, coreSize,
+                          coreIntensity, intensity, bloom, phase):
+            encodeEffectFragment("ollin_gen_god_rays", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, Float(x), Float(y)),
+                                          SIMD4(Float(density), Float(breakup), Float(coreSize),
+                                                Float(coreIntensity)),
+                                          SIMD4(Float(intensity), Float(bloom), Float(phase), 0),
+                                          background] + colors, into: cb)
         }
     }
 
@@ -4930,7 +5000,7 @@ final class MetalRenderer {
     /// so it goes first (Metal needs a declaration before its use); `ShaderCore`
     /// follows with the 2D core pipelines. The single `Shaders.metal` split into
     /// these once it crossed ~2,000 lines; the renderer never assumes one file.
-    static let shaderSourceNames = ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderEffects", "ShaderIBL"]
+    static let shaderSourceNames = ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderEffects", "ShaderPatterns", "ShaderIBL"]
 
     /// Read and concatenate the shader segments from a filesystem `directory`, in
     /// `shaderSourceNames` order. This is the source live shader reload feeds back

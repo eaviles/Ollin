@@ -142,6 +142,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-glitter",
                  note: "The iridescence + glitter filters over a fixed heart + star at fixed shift/phase. Pins the thin-film interference color over the domain-warped fbm thickness field, the two hash-cell sparkle layers (dust + cross flares) with their alpha gating, and both dispatches.",
                  make: { EffectsGlitter() }),
+    SnapshotCase("mesh-gradient",
+                 note: "The mesh-gradient generator at a fixed phase. Pins the inverse-distance-weighted blob blend (power 3.5), the two-pass domain warp + vortex swirl, the sRGB-space palette blending, and the grain overlay + boundary jitter.",
+                 make: { MeshGradientPattern() }),
+    SnapshotCase("design-patterns",
+                 note: "The nine other design-pattern generators tiled 3×3 at fixed phases (no time, no random): filaments, smokeRing, colorPanels, spiral, waves, dotOrbit, grainGradient, pulsingBorder, godRays. Pins each generator dispatch arm and fragment, incl. the polar-seam blends, the pane projection + scheduling, and the dual over/additive bloom accumulations.",
+                 make: { DesignPatternsSheet() }),
     SnapshotCase("effects-simfield", frame: 60,
                  note: "A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame 60 and recoloured. Pins the stateful sim substrate end to end: the persistent ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and the headless render-every-frame warmup the built-up state depends on.",
                  make: { EffectsSimField() }),
@@ -2650,5 +2656,44 @@ private final class CliffordAttractorScene: Sketch {
         fill(Color(red: 0.42, green: 0.74, blue: 1.0, alpha: 0.06))
         pointSize(1.0)
         drawPoints(points)
+    }
+}
+
+/// The mesh-gradient generator at a fixed phase (no time, no random): the
+/// inverse-distance-weighted blob blend, the two-pass domain warp + swirl, the
+/// sRGB-space palette blending, and the grain overlay are all deterministic
+/// functions of the phase, so one frame pins them.
+private final class MeshGradientPattern: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        let gradient = generate(.meshGradient(distortion: 0.8, swirl: 0.3,
+                                              grain: 0.4, phase: 6))
+        drawImage(gradient.image, 0, 0)
+    }
+}
+
+/// The nine other design-pattern generators tiled 3×3 at fixed phases (no time,
+/// no random), one tile per new dispatch arm + fragment.
+private final class DesignPatternsSheet: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        let tiles: [RenderTarget] = [
+            generate(.filaments(phase: 2)),
+            generate(.smokeRing(colors: [.white, Color(hex: 0x6FD9FF)], phase: 2)),
+            generate(.colorPanels(phase: 40)),
+            generate(.spiral(distortion: 0.15, phase: 1)),
+            generate(.waves(shape: 1.2, phase: 0.5)),
+            generate(.dotOrbit(phase: 2)),
+            generate(.grainGradient(shape: .ripple, phase: 2)),
+            generate(.pulsingBorder(phase: 2)),
+            generate(.godRays(phase: 2)),
+        ]
+        let g = grid(columns: 3, rows: 3)
+        for (cell, tile) in zip(g.cells, tiles) {
+            drawImage(tile.image, in: cell.frame)
+        }
     }
 }

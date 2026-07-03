@@ -353,6 +353,7 @@ let package = Package(
                 .copy("Renderer/Shader3D.metal"),
                 .copy("Renderer/ShaderRaymarch.metal"),
                 .copy("Renderer/ShaderEffects.metal"),
+                .copy("Renderer/ShaderPatterns.metal"),
                 .copy("Renderer/ShaderIBL.metal"),
                 .copy("Renderer/OllinShaderTypes.h"),
                 // Cozette (MIT) — the bundled default bitmap font, loaded at
@@ -506,6 +507,16 @@ let package = Package(
             name: "Example-Effects-Glitter",
             dependencies: ["Ollin"],
             path: "Examples/Effects/Glitter"
+        ),
+        .executableTarget(
+            name: "Example-Effects-MeshGradient",
+            dependencies: ["Ollin"],
+            path: "Examples/Effects/MeshGradient"
+        ),
+        .executableTarget(
+            name: "Example-Effects-DesignPatterns",
+            dependencies: ["Ollin"],
+            path: "Examples/Effects/DesignPatterns"
         ),
         .executableTarget(
             name: "Example-Effects-Distortion",
