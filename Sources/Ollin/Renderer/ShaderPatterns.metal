@@ -58,6 +58,7 @@ fragment float4 ollin_gen_mesh_gradient(PresentOut in [[stage_in]],
     int count = int(params[0].x);
     float aspect = params[0].y, distortion = params[0].z, swirl = params[0].w;
     float grain = params[1].x, phase = params[1].y;
+    float power = params[1].z;                // the mixing knob, mapped CPU-side
     constant float4 *colors = params + 2;
 
     float2 uv = ollin_pat_square(in.uv, aspect) + 0.5;
@@ -85,7 +86,7 @@ fragment float4 ollin_gen_mesh_gradient(PresentOut in [[stage_in]],
         float c = 0.8 + fract((fi + 1.0) / 4.0);
         float2 pos = 0.5 + 0.5 * float2(sin(b * t + a), cos(c * t + 1.5 * a)) + mixerGrain;
         float d = length(uv - pos);
-        float w = 1.0 / (pow(d, 3.5) + 1e-3);    // the +1e-3 caps each spot's core
+        float w = 1.0 / (pow(d, power) + 1e-3);  // the +1e-3 caps each spot's core
         acc += w * ollin_pat_stop(colors[i]);
         wsum += w;
     }
@@ -540,11 +541,15 @@ fragment float4 ollin_gen_pulsing_border(PresentOut in [[stage_in]],
     float spotSize = params[2].x, pulse = params[2].y;
     float smoke = params[2].z, smokeScale = params[2].w;
     float phase = params[3].x;
-    float4 back = params[4];
-    constant float4 *colors = params + 5;
+    float mL = params[3].y, mR = params[3].z, mT = params[3].w, mB = params[4].x;
+    float4 back = params[5];
+    constant float4 *colors = params + 6;
 
     float2 sq = (in.uv - 0.5) * float2(aspect, 1.0) / min(aspect, 1.0);
     float2 halfSize = 0.5 * float2(aspect, 1.0) / min(aspect, 1.0);
+    // Margins (already in square units) shrink the box and shift its center.
+    sq -= float2((mL - mR) * 0.5, (mT - mB) * 0.5);
+    halfSize -= float2((mL + mR) * 0.5, (mT + mB) * 0.5);
     float t = 1.2 * (phase + 109.0);
 
     float th = 0.5 * thickness * min(halfSize.x, halfSize.y);
@@ -624,8 +629,9 @@ fragment float4 ollin_gen_god_rays(PresentOut in [[stage_in]],
     float coreSize = params[1].z, coreIntensity = params[1].w;
     float intensity = params[2].x, bloom = params[2].y;
     float t = 0.15 * params[2].z;
-    float4 back = params[3];
-    constant float4 *colors = params + 4;
+    float4 bloomTint = params[3];
+    float4 back = params[4];
+    constant float4 *colors = params + 5;
 
     float2 sq = ollin_pat_square(in.uv, aspect);
     float2 rel = sq - srcPos;
@@ -661,6 +667,8 @@ fragment float4 ollin_gen_god_rays(PresentOut in [[stage_in]],
         float4 src = ollin_pat_stop(colors[i]) * ray;
         acc = mix(ollin_pat_over(src, acc), acc + src, bloom);
     }
+    // An extra glow wash over the lit areas, scaled by the bloom knob.
+    acc.rgb += ollin_pat_stop(bloomTint).rgb * acc.a * bloom;
     acc.a = min(acc.a, 1.0);
     return ollin_pat_out(ollin_pat_over(acc, ollin_pat_stop(back)));
 }
@@ -708,7 +716,8 @@ fragment float4 ollin_fx_fluted_glass(PresentOut in [[stage_in]],
     float stretch = params[1].z, blur = params[1].w;
     float edges = params[2].x, highlights = params[2].y;
     float shadows = params[2].z, angle = params[2].w;
-    float4 hlColor = params[3], shColor = params[4];
+    float4 mg = params[3];
+    float4 hlColor = params[4], shColor = params[5];
 
     float2 c = (in.uv - 0.5) * float2(aspect, 1.0);
     c = ollin_rot2(c, -angle);
@@ -761,14 +770,26 @@ fragment float4 ollin_fx_fluted_glass(PresentOut in [[stage_in]],
         s = src.sample(samp, uvNew);
     }
 
+    // Margins: a plain undistorted frame; zero margins bypass exactly.
+    float marginMask = 1.0;
+    if (mg.x + mg.y + mg.z + mg.w > 1e-6) {
+        float ms = 0.005;
+        marginMask = smoothstep(mg.x - ms, mg.x + ms, in.uv.x)
+                   * (1.0 - smoothstep(1.0 - mg.y - ms, 1.0 - mg.y + ms, in.uv.x))
+                   * smoothstep(mg.z - ms, mg.z + ms, in.uv.y)
+                   * (1.0 - smoothstep(1.0 - mg.w - ms, 1.0 - mg.w + ms, in.uv.y));
+        uvNew = mix(in.uv, uvNew, marginMask);
+        s = mix(src.sample(samp, uvNew), s, marginMask);
+    }
+
     float window = ollin_fx_window(uvNew, edges * 0.06 + 0.002);
     float4 outc = s * window;
 
     // Per-flute shadow ramp, then boundary hairlines.
-    float sh = pow(x, profile == 4 ? 2.5 : 1.3) * shadows * shadows;
+    float sh = pow(x, profile == 4 ? 2.5 : 1.3) * shadows * shadows * marginMask;
     outc.rgb = mix(outc.rgb, shColor.rgb * outc.a, clamp(sh, 0.0, 1.0) * 0.6);
     float aa = max(fwidth(px), 1e-3);
-    float hl = (1.0 - smoothstep(0.0, 2.0 * aa, min(x, 1.0 - x))) * highlights;
+    float hl = (1.0 - smoothstep(0.0, 2.0 * aa, min(x, 1.0 - x))) * highlights * marginMask;
     outc.rgb += hlColor.rgb * hl;
     outc.a = min(outc.a + hl, 1.0);
     return outc;
@@ -998,9 +1019,9 @@ fragment float4 ollin_fx_liquid_metal(PresentOut in [[stage_in]],
     float4 tint = params[2];
 
     float opacity = src.sample(samp, in.uv).a;
-    float W = field.sample(samp, in.uv).r;
-    float edge = 1.0 - smoothstep(0.35, 0.9, W);      // 1 at silhouette, 0 deep
-    edge = pow(clamp(edge, 0.0, 1.0), 1.6) * smoothstep(0.0, 0.4, contour);
+    // The solved inflation ramp: 1 at the silhouette, 0 at the deepest interior.
+    float edge = clamp(field.sample(samp, in.uv).r, 0.0, 1.0);
+    edge = pow(edge, 1.6) * smoothstep(0.0, 0.4, contour);
 
     float2 cuv = (in.uv - 0.5) * float2(aspect, 1.0);
     float2 r = ollin_rot2(cuv, -angle + 1.2217);
@@ -1118,8 +1139,8 @@ fragment float4 ollin_fx_gem_smoke(PresentOut in [[stage_in]],
     constant float4 *colors = params + 4;
 
     float A = src.sample(samp, in.uv).a;
-    float W = field.sample(samp, in.uv).r;
-    float roundness = smoothstep(0.35, 0.9, W);
+    // Interior depth from the solved inflation ramp (0 at the edge, 1 deep).
+    float roundness = 1.0 - clamp(field.sample(samp, in.uv).r, 0.0, 1.0);
 
     float2 sq = (in.uv - 0.5) * float2(aspect, 1.0) / min(aspect, 1.0);
     float2 base = ollin_rot2(sq, angle) * mix(4.0, 1.0, scale);
@@ -1151,4 +1172,67 @@ fragment float4 ollin_fx_gem_smoke(PresentOut in [[stage_in]],
     float4 smoke = g * alphaShape;
     float4 bodyFill = ollin_pat_stop(body) * A;
     return ollin_pat_out(ollin_pat_over(smoke, bodyFill));
+}
+
+// MARK: - Interior-inflation field (the alpha-shape filters' curvature proxy)
+//
+// Solves the pillow-inflation problem over the shape's interior: u satisfying
+// a constant-source Poisson equation with u = 0 at the silhouette. Unlike a
+// blur of the alpha (leaks across concavities) or a distance transform
+// (creases at the medial axis, which fold the chrome bands), the solution is
+// smooth everywhere inside and hugs the boundary exactly. Run as coarse-to-
+// fine Jacobi relaxation: coarse levels converge the pillow's bulk, finer
+// levels refine the silhouette.
+
+// One Jacobi step: u' = (neighbors + C)/4 inside the mask, 0 outside. The
+// mask is the full-res alpha, bilinear-sampled and thresholded, so every
+// solve resolution reads the same shape. params[0] = (texelX, texelY, C,
+// seedZero); seedZero treats the previous field as all-zero (the very first
+// pass, where no coarser solution exists yet).
+fragment float4 ollin_fx_poisson_jacobi(PresentOut in [[stage_in]],
+                                        texture2d<float> mask [[texture(0)]],
+                                        texture2d<float> uPrev [[texture(1)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float C = params[0].z;
+    float seedZero = params[0].w;
+    if (mask.sample(samp, in.uv).r < 0.5) { return float4(0.0, 0.0, 0.0, 1.0); }
+    float sum = uPrev.sample(samp, in.uv - float2(texel.x, 0.0)).r
+              + uPrev.sample(samp, in.uv + float2(texel.x, 0.0)).r
+              + uPrev.sample(samp, in.uv - float2(0.0, texel.y)).r
+              + uPrev.sample(samp, in.uv + float2(0.0, texel.y)).r;
+    float u = (1.0 - seedZero) * sum * 0.25 + C * 0.25;
+    return float4(u, 0.0, 0.0, 1.0);
+}
+
+// 4x4 max-reduce: each output texel holds the max of its source block; chained
+// down to 1x1 it yields the field's peak, the normalizer.
+fragment float4 ollin_fx_max_reduce(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float m = 0.0;
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            m = max(m, src.sample(samp, in.uv + (float2(x, y) - 1.5) * texel).r);
+        }
+    }
+    return float4(m, 0.0, 0.0, 1.0);
+}
+
+// Normalize the solved field into the silhouette ramp the consumers read:
+// R = 1 - u/u_max inside (1 at the silhouette, falling to 0 at the deepest
+// interior), 1 outside the shape.
+fragment float4 ollin_fx_poisson_normalize(PresentOut in [[stage_in]],
+                                           texture2d<float> u [[texture(0)]],
+                                           texture2d<float> umax [[texture(1)]],
+                                           texture2d<float> mask [[texture(2)]],
+                                           sampler samp [[sampler(0)]],
+                                           constant float4 *params [[buffer(0)]]) {
+    float peak = max(umax.sample(samp, float2(0.5, 0.5)).r, 1e-5);
+    float inside = step(0.5, mask.sample(samp, in.uv).r);
+    float R = 1.0 - clamp(u.sample(samp, in.uv).r / peak, 0.0, 1.0);
+    return float4(mix(1.0, R, inside), 0.0, 0.0, 1.0);
 }

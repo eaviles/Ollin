@@ -37,7 +37,7 @@ public struct Generator: Sendable {
         /// Soft color blobs drifting on orbits, blended by inverse-distance
         /// weighting over a domain-warped, optionally swirled field.
         case meshGradient(colors: [SIMD4<Float>], distortion: Double, swirl: Double,
-                          grain: Double, phase: Double)
+                          mixing: Double, grain: Double, phase: Double)
         /// A glowing web of thin filaments (a cross-octave sine-feedback fractal).
         case filaments(color: SIMD4<Float>, highlight: SIMD4<Float>, background: SIMD4<Float>,
                        scale: Double, brightness: Double, contrast: Double, phase: Double)
@@ -72,11 +72,12 @@ public struct Generator: Sendable {
         case pulsingBorder(colors: [SIMD4<Float>], background: SIMD4<Float>, roundness: Double,
                            thickness: Double, softness: Double, intensity: Double,
                            bloom: Double, spots: Double, spotSize: Double, pulse: Double,
-                           smoke: Double, smokeScale: Double, phase: Double)
+                           smoke: Double, smokeScale: Double, margins: Insets, phase: Double)
         /// Crepuscular rays streaming from a point, layered per color.
         case godRays(colors: [SIMD4<Float>], background: SIMD4<Float>, x: Double, y: Double,
                      density: Double, breakup: Double, coreSize: Double,
-                     coreIntensity: Double, intensity: Double, bloom: Double, phase: Double)
+                     coreIntensity: Double, intensity: Double, bloom: Double,
+                     bloomTint: SIMD4<Float>, phase: Double)
     }
 
     let kind: Kind
@@ -148,17 +149,21 @@ public struct Generator: Sendable {
     /// A mesh gradient: soft blobs of the given `colors` (2…8) drifting on
     /// independent orbits, blended by inverse-distance weighting so regions stay
     /// blobby-but-distinct, over a domain-warped field. `distortion` (0…1) is the
-    /// organic smear, `swirl` (0…1) winds a vortex around the center, `grain`
+    /// organic smear, `swirl` (0…1) winds a vortex around the center, `mixing`
+    /// (0…1) runs the blend from hard poster-like cells (0) through the classic
+    /// mesh look (0.5) to a buttery wash (1), `grain`
     /// (0…1) dithers the color boundaries and adds a film-grain overlay, and
     /// `phase` drives the drift: feed it your `time`, or hold it fixed for a
     /// still composition.
     public static func meshGradient(colors: [Color] = [Color(hex: 0xE0EAFF), Color(hex: 0x241D9A),
                                                        Color(hex: 0xF75092), Color(hex: 0x9F50D3)],
                                     distortion: Double = 0.8, swirl: Double = 0.1,
-                                    grain: Double = 0, phase: Double = 0) -> Generator {
+                                    mixing: Double = 0.5, grain: Double = 0,
+                                    phase: Double = 0) -> Generator {
         Generator(kind: .meshGradient(colors: colorRows(colors, max: 8),
                                       distortion: min(max(distortion, 0), 1),
                                       swirl: min(max(swirl, 0), 1),
+                                      mixing: min(max(mixing, 0), 1),
                                       grain: min(max(grain, 0), 1), phase: phase))
     }
 
@@ -298,7 +303,8 @@ public struct Generator: Sendable {
                                        noise: min(max(noise, 0), 1), phase: phase))
     }
 
-    /// A glowing rounded border hugging the layer's edges, with up to four light
+    /// A glowing rounded border hugging the layer's edges (inset by `margins`,
+    /// in layer pixels), with up to eight light
     /// spots per color racing the perimeter, an optional heartbeat `pulse`,
     /// additive `bloom`, and smoke wisps bleeding inward. `roundness` and
     /// `thickness` shape the border, `softness` feathers it, `intensity` scales
@@ -311,6 +317,7 @@ public struct Generator: Sendable {
                                      bloom: Double = 0.25, spots: Double = 4,
                                      spotSize: Double = 0.5, pulse: Double = 0.25,
                                      smoke: Double = 0.3, smokeScale: Double = 0.6,
+                                     margins: Insets = .zero,
                                      phase: Double = 0) -> Generator {
         Generator(kind: .pulsingBorder(colors: colorRows(colors, max: 5),
                                        background: background.linearRGBA,
@@ -319,18 +326,20 @@ public struct Generator: Sendable {
                                        softness: min(max(softness, 0), 1),
                                        intensity: min(max(intensity, 0), 1),
                                        bloom: min(max(bloom, 0), 1),
-                                       spots: min(max(spots, 1), 4),
+                                       spots: min(max(spots, 1), 8),
                                        spotSize: min(max(spotSize, 0), 1),
                                        pulse: min(max(pulse, 0), 1),
                                        smoke: min(max(smoke, 0), 1),
-                                       smokeScale: min(max(smokeScale, 0.05), 1), phase: phase))
+                                       smokeScale: min(max(smokeScale, 0.05), 1),
+                                       margins: margins, phase: phase))
     }
 
     /// Crepuscular rays streaming from a point, one drifting streak layer per
     /// color. `x`/`y` place the source (fractions of the layer), `density` sets
     /// the ray count, `breakup` chops streaks into dashes, `coreSize`/
     /// `coreIntensity` shape the central glow, `bloom` morphs the layers from
-    /// alpha stacking toward additive light, and `phase` streams them outward
+    /// alpha stacking toward additive light (`bloomTint` washes an extra glow
+    /// color over the lit areas), and `phase` streams them outward
     /// (feed it your `time`).
     public static func godRays(colors: [Color] = [Color(hex: 0xA600FF, alpha: 0.43),
                                                   Color(hex: 0x6200FF, alpha: 0.94),
@@ -340,6 +349,7 @@ public struct Generator: Sendable {
                                density: Double = 0.3, breakup: Double = 0.3,
                                coreSize: Double = 0.2, coreIntensity: Double = 0.4,
                                intensity: Double = 0.8, bloom: Double = 0.4,
+                               bloomTint: Color = .clear,
                                phase: Double = 0) -> Generator {
         Generator(kind: .godRays(colors: colorRows(colors, max: 5),
                                  background: background.linearRGBA, x: x, y: y,
@@ -347,7 +357,8 @@ public struct Generator: Sendable {
                                  coreSize: min(max(coreSize, 0), 1),
                                  coreIntensity: min(max(coreIntensity, 0), 1),
                                  intensity: min(max(intensity, 0), 1),
-                                 bloom: min(max(bloom, 0), 1), phase: phase))
+                                 bloom: min(max(bloom, 0), 1),
+                                 bloomTint: bloomTint.linearRGBA, phase: phase))
     }
 }
 

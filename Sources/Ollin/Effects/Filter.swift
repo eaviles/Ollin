@@ -180,7 +180,8 @@ public struct Filter: Sendable {
         /// highlights, per-flute shadow ramps, and an optional frost blur.
         case flutedGlass(flutes: Double, shape: FluteShape, profile: FluteProfile,
                          distortion: Double, shift: Double, stretch: Double, blur: Double,
-                         edges: Double, highlights: Double, shadows: Double, angle: Double)
+                         edges: Double, highlights: Double, shadows: Double,
+                         margins: Insets, angle: Double)
         /// Shallow rippling water over the image: wave + caustic refraction with
         /// bright caustic filaments.
         case water(scale: Double, waves: Double, refraction: Double, edges: Double,
@@ -634,19 +635,22 @@ public struct Filter: Sendable {
     /// bends the flute layout, `distortion` scales the refraction, `shift` slides
     /// it, `stretch` streaks the image along the flutes near their borders,
     /// `blur` frosts the glass, `edges` softens samples pushed off the layer,
-    /// and `angle` (radians) rotates the whole assembly.
+    /// `margins` (layer pixels) leaves a plain undistorted frame around the
+    /// glass, and `angle` (radians) rotates the whole assembly.
     public static func flutedGlass(flutes: Double = 80, shape: FluteShape = .lines,
                                    profile: FluteProfile = .prism,
                                    distortion: Double = 0.5, shift: Double = 0,
                                    stretch: Double = 0, blur: Double = 0,
                                    edges: Double = 0.25, highlights: Double = 0.1,
-                                   shadows: Double = 0.25, angle: Double = 0) -> Filter {
+                                   shadows: Double = 0.25, margins: Insets = .zero,
+                                   angle: Double = 0) -> Filter {
         Filter(kind: .flutedGlass(flutes: min(max(flutes, 3), 300), shape: shape,
                                   profile: profile, distortion: min(max(distortion, 0), 1),
                                   shift: min(max(shift, -1), 1), stretch: min(max(stretch, 0), 1),
                                   blur: min(max(blur, 0), 1), edges: min(max(edges, 0), 1),
                                   highlights: min(max(highlights, 0), 1),
-                                  shadows: min(max(shadows, 0), 1), angle: angle))
+                                  shadows: min(max(shadows, 0), 1), margins: margins,
+                                  angle: angle))
     }
 
     /// Water: the image seen through shallow rippling water. Broad `waves`

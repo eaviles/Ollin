@@ -1875,11 +1875,15 @@ final class MetalRenderer {
         // the layer. Blur sigmas scale with the layer so shapes read the same at
         // any resolution.
         case let .flutedGlass(flutes, shape, profile, distortion, shift, stretch,
-                              blur, edges, highlights, shadows, angle):
+                              blur, edges, highlights, shadows, margins, angle):
             return pass("ollin_fx_fluted_glass", [input],
                         [SIMD4(Float(flutes), aspect, shape.rawIndex, profile.rawIndex),
                          SIMD4(Float(distortion), Float(shift), Float(stretch), Float(blur)),
                          SIMD4(Float(edges), Float(highlights), Float(shadows), Float(angle)),
+                         SIMD4(Float(margins.left / Double(width)),
+                               Float(margins.right / Double(width)),
+                               Float(margins.top / Double(max(1, height))),
+                               Float(margins.bottom / Double(max(1, height)))),
                          SIMD4<Float>(1, 1, 1, 1), SIMD4<Float>(0, 0, 0, 1)])
         case let .water(scale, waves, refraction, edges, highlights, highlight, phase):
             return pass("ollin_fx_water", [input],
@@ -1893,11 +1897,11 @@ final class MetalRenderer {
                          paper, shading])
         case let .liquidMetal(repetition, softness, dispersion, distortion, contour,
                               angle, tint, phase):
-            guard let (wide, _) = blurredAlphaFields(of: input, width: width, height: height,
-                                                     sigmas: (0.08, nil), into: cb, pooled: pooled),
+            guard let field = poissonInteriorField(of: input, width: width, height: height,
+                                                   into: cb, pooled: pooled),
                   let output = acquireFilterTexture(width: width, height: height, pooled: pooled)
             else { return nil }
-            encodeEffectFragment("ollin_fx_liquid_metal", inputs: [input, wide], output: output,
+            encodeEffectFragment("ollin_fx_liquid_metal", inputs: [input, field], output: output,
                                  params: [SIMD4(Float(repetition), Float(softness),
                                                 Float(dispersion), Float(distortion)),
                                           SIMD4(Float(contour), Float(angle), Float(phase), aspect),
@@ -1917,11 +1921,11 @@ final class MetalRenderer {
             return output
         case let .gemSmoke(colors, body, innerSwirl, outerSwirl, innerGlow, outerGlow,
                            offset, scale, angle, phase):
-            guard let (wide, _) = blurredAlphaFields(of: input, width: width, height: height,
-                                                     sigmas: (0.08, nil), into: cb, pooled: pooled),
+            guard let field = poissonInteriorField(of: input, width: width, height: height,
+                                                   into: cb, pooled: pooled),
                   let output = acquireFilterTexture(width: width, height: height, pooled: pooled)
             else { return nil }
-            encodeEffectFragment("ollin_fx_gem_smoke", inputs: [input, wide], output: output,
+            encodeEffectFragment("ollin_fx_gem_smoke", inputs: [input, field], output: output,
                                  params: [SIMD4(Float(colors.count), Float(innerSwirl),
                                                 Float(outerSwirl), Float(innerGlow)),
                                           SIMD4(Float(outerGlow), Float(offset), Float(scale),
@@ -1930,6 +1934,67 @@ final class MetalRenderer {
                                           body] + colors, into: cb)
             return output
         }
+    }
+
+    /// Solve the interior-inflation field of `input`'s alpha shape (a constant-
+    /// source Poisson problem, zero at the silhouette) as coarse-to-fine Jacobi
+    /// relaxation passes, and hand back the normalized silhouette ramp
+    /// R = 1 − u/u_max (1 at the edge, 0 at the deepest interior; 1 outside).
+    /// Coarse levels converge the pillow's bulk cheaply; each finer level seeds
+    /// from the previous solution (the pass reads its predecessor by uv, so the
+    /// upsample is a free bilinear sample) and refines the boundary.
+    private func poissonInteriorField(of input: MTLTexture, width: Int, height: Int,
+                                      into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        guard let mask = acquireFilterTexture(width: width, height: height, pooled: pooled)
+        else { return nil }
+        encodeEffectFragment("ollin_fx_alpha_mask", inputs: [input], output: mask,
+                             params: [], into: cb)
+
+        let aspect = Double(width) / Double(max(1, height))
+        func dims(_ minSide: Int) -> (Int, Int) {
+            width >= height
+                ? (max(1, Int((Double(minSide) * aspect).rounded())), minSide)
+                : (minSide, max(1, Int((Double(minSide) / aspect).rounded())))
+        }
+
+        var solved: MTLTexture? = nil
+        var solveDims = (0, 0)
+        for (minSide, iterations) in [(32, 24), (64, 16), (128, 10), (256, 8)] {
+            let (lw, lh) = dims(minSide)
+            guard let texA = acquireFilterTexture(width: lw, height: lh, pooled: pooled),
+                  let texB = acquireFilterTexture(width: lw, height: lh, pooled: pooled)
+            else { return nil }
+            var read = solved ?? mask
+            for i in 0..<iterations {
+                let out = i % 2 == 0 ? texA : texB
+                let seedZero: Float = (solved == nil && i == 0) ? 1 : 0
+                encodeEffectFragment("ollin_fx_poisson_jacobi", inputs: [mask, read], output: out,
+                                     params: [SIMD4(1 / Float(lw), 1 / Float(lh), 0.05, seedZero)],
+                                     into: cb)
+                read = out
+            }
+            solved = read
+            solveDims = (lw, lh)
+        }
+        guard let u = solved else { return nil }
+
+        // Reduce to the field's peak (the normalizer), then bake the ramp.
+        var peak = u
+        var (mw, mh) = solveDims
+        while mw > 1 || mh > 1 {
+            let nw = max(1, mw / 4), nh = max(1, mh / 4)
+            guard let out = acquireFilterTexture(width: nw, height: nh, pooled: pooled)
+            else { return nil }
+            encodeEffectFragment("ollin_fx_max_reduce", inputs: [peak], output: out,
+                                 params: [SIMD4(1 / Float(mw), 1 / Float(mh), 0, 0)], into: cb)
+            peak = out
+            (mw, mh) = (nw, nh)
+        }
+        guard let field = acquireFilterTexture(width: solveDims.0, height: solveDims.1,
+                                               pooled: pooled) else { return nil }
+        encodeEffectFragment("ollin_fx_poisson_normalize", inputs: [u, peak, mask], output: field,
+                             params: [], into: cb)
+        return field
     }
 
     /// Extract `input`'s alpha as a grayscale mask and Gaussian-blur it into the
@@ -2195,10 +2260,15 @@ final class MetalRenderer {
 
         // Design patterns. Each packs its scalars into leading rows and appends
         // the palette as trailing color rows the fragment indexes past them.
-        case let .meshGradient(colors, distortion, swirl, grain, phase):
+        case let .meshGradient(colors, distortion, swirl, mixing, grain, phase):
+            // The blend knob maps to the inverse-distance power piecewise so the
+            // 0.5 default is *exactly* the classic 3.5 (snapshot-pinned): 0 is a
+            // hard near-Voronoi 16, 1 a buttery 1.
+            let power = mixing <= 0.5 ? 16.0 - (16.0 - 3.5) * (mixing * 2)
+                                      : 3.5 - 2.5 * ((mixing - 0.5) * 2)
             encodeEffectFragment("ollin_gen_mesh_gradient", inputs: [], output: output,
                                  params: [SIMD4(Float(colors.count), aspect, Float(distortion), Float(swirl)),
-                                          SIMD4(Float(grain), Float(phase), 0, 0)] + colors, into: cb)
+                                          SIMD4(Float(grain), Float(phase), Float(power), 0)] + colors, into: cb)
         case let .filaments(color, highlight, background, scale, brightness, contrast, phase):
             encodeEffectFragment("ollin_gen_filaments", inputs: [], output: output,
                                  params: [SIMD4(Float(scale), aspect, Float(brightness), Float(contrast)),
@@ -2247,21 +2317,29 @@ final class MetalRenderer {
                                                 Float(max(1, height))),
                                           background] + colors, into: cb)
         case let .pulsingBorder(colors, background, roundness, thickness, softness, intensity,
-                                bloom, spots, spotSize, pulse, smoke, smokeScale, phase):
+                                bloom, spots, spotSize, pulse, smoke, smokeScale, margins, phase):
+            // Margins arrive in layer pixels; the border lives in centered
+            // square units, so convert per side.
+            let unit = Double(min(aspect, 1))
+            let mL = margins.left / Double(width) * Double(aspect) / unit
+            let mR = margins.right / Double(width) * Double(aspect) / unit
+            let mT = margins.top / Double(max(1, height)) / unit
+            let mB = margins.bottom / Double(max(1, height)) / unit
             encodeEffectFragment("ollin_gen_pulsing_border", inputs: [], output: output,
                                  params: [SIMD4(Float(colors.count), aspect, Float(roundness), Float(thickness)),
                                           SIMD4(Float(softness), Float(intensity), Float(bloom), Float(spots)),
                                           SIMD4(Float(spotSize), Float(pulse), Float(smoke), Float(smokeScale)),
-                                          SIMD4(Float(phase), 0, 0, 0),
+                                          SIMD4(Float(phase), Float(mL), Float(mR), Float(mT)),
+                                          SIMD4(Float(mB), 0, 0, 0),
                                           background] + colors, into: cb)
         case let .godRays(colors, background, x, y, density, breakup, coreSize,
-                          coreIntensity, intensity, bloom, phase):
+                          coreIntensity, intensity, bloom, bloomTint, phase):
             encodeEffectFragment("ollin_gen_god_rays", inputs: [], output: output,
                                  params: [SIMD4(Float(colors.count), aspect, Float(x), Float(y)),
                                           SIMD4(Float(density), Float(breakup), Float(coreSize),
                                                 Float(coreIntensity)),
                                           SIMD4(Float(intensity), Float(bloom), Float(phase), 0),
-                                          background] + colors, into: cb)
+                                          bloomTint, background] + colors, into: cb)
         }
     }
 

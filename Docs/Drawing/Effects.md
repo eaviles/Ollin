@@ -230,12 +230,13 @@ the other three transform the whole layer. `Effects/DesignFilters` shows all six
 - **`.gemSmoke(colors:body:innerSwirl:outerSwirl:innerGlow:outerGlow:offset:scale:angle:phase:)`**
   smoke coils trapped inside the alpha shape (and leaking around it) over a glassy
   body fill.
-- **`.flutedGlass(flutes:shape:profile:distortion:shift:stretch:blur:edges:highlights:shadows:angle:)`**
+- **`.flutedGlass(flutes:shape:profile:distortion:shift:stretch:blur:edges:highlights:shadows:margins:angle:)`**
   ribbed architectural glass: each flute refracts its slice of the image
   (`FluteProfile`: `.prism` / `.lens` / `.contour` / `.cascade` / `.flat`), the flute
   layout bent by `FluteShape` (`.lines` / `.irregular` / `.wave` / `.zigzag` /
-  `.eggCrate`), with boundary hairlines, shadow ramps, and a frost `blur`. Static by
-  design; animate its knobs.
+  `.eggCrate`), with boundary hairlines, shadow ramps, a frost `blur`, and `margins`
+  (layer pixels) leaving a plain frame around the glass. Static by design; animate its
+  knobs.
 - **`.water(scale:waves:refraction:edges:highlights:highlight:phase:)`** the image
   under shallow rippling water: broad waves wobble it, caustics shimmer it, bright
   filaments wash over it.
@@ -338,9 +339,11 @@ authored in), so the mixes match what a design tool would show:
 drawImage(generate(.meshGradient(phase: time)).image, 0, 0)
 ```
 
-- **`.meshGradient(colors:distortion:swirl:grain:phase:)`** soft blobs of up to 8 colors
+- **`.meshGradient(colors:distortion:swirl:mixing:grain:phase:)`** soft blobs of up to 8 colors
   drifting on orbits, blended into the classic mesh-gradient wash; `distortion` smears it
-  organically, `swirl` winds a vortex, `grain` dithers the boundaries and films the result.
+  organically, `swirl` winds a vortex, `mixing` runs the blend from hard poster cells (0)
+  through the classic look (0.5) to a buttery wash (1), `grain` dithers the boundaries and
+  films the result.
 - **`.filaments(color:highlight:background:scale:brightness:contrast:phase:)`** a glowing
   web of thin writhing filaments, the neural-lace look.
 - **`.smokeRing(colors:background:radius:thickness:fill:scale:detail:phase:)`** a billowing
@@ -357,12 +360,14 @@ drawImage(generate(.meshGradient(phase: time)).image, 0, 0)
 - **`.grainGradient(colors:background:shape:softness:intensity:noise:phase:)`** poster-style
   banded gradients over an animated field (`GrainShape`: `.wave` / `.dots` / `.truchet` /
   `.corners` / `.ripple` / `.blob` / `.sphere`), the band edges chewed by film grain.
-- **`.pulsingBorder(colors:background:roundness:thickness:softness:intensity:bloom:spots:spotSize:pulse:smoke:smokeScale:phase:)`**
-  a glowing rounded border hugging the layer edge, light spots racing the perimeter, with a
-  heartbeat `pulse` and smoke wisps.
-- **`.godRays(colors:background:x:y:density:breakup:coreSize:coreIntensity:intensity:bloom:phase:)`**
+- **`.pulsingBorder(colors:background:roundness:thickness:softness:intensity:bloom:spots:spotSize:pulse:smoke:smokeScale:margins:phase:)`**
+  a glowing rounded border hugging the layer edge (inset by `margins`, in layer pixels),
+  up to eight light spots per color racing the perimeter, with a heartbeat `pulse` and
+  smoke wisps.
+- **`.godRays(colors:background:x:y:density:breakup:coreSize:coreIntensity:intensity:bloom:bloomTint:phase:)`**
   crepuscular rays streaming from a point, one drifting streak layer per color; `bloom`
-  morphs the stack from alpha layering to additive light.
+  morphs the stack from alpha layering to additive light, and `bloomTint` washes an extra
+  glow color over the lit areas.
 
 <a id="postprocess"></a>
 ### postProcess(_:)
