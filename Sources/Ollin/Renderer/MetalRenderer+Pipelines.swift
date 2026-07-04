@@ -1,0 +1,715 @@
+// MetalRenderer, the pipeline and shader-library half: the enum-keyed pipeline
+// cache and factory, the vertex-buffer ring accessor, and the shader-segment
+// concatenation + runtime compile (loadLibrary, composeShaderSource, the
+// user-shader wrapper compile, and diagnostic cleanup).
+
+import Foundation
+import Metal
+import MetalKit
+import simd
+import CoreGraphics
+import COllinShaders
+
+extension MetalRenderer {
+    // MARK: Pipelines
+
+    /// Return the cached pipeline for `kind`, building and caching it on first
+    /// use.
+    func pipeline(_ key: PipelineKey) throws -> MTLRenderPipelineState {
+        if let existing = pipelines[key] { return existing }
+        let built = try makePipeline(key)
+        pipelines[key] = built
+        return built
+    }
+
+    /// The compiled compute pipeline for `kernel`, built and cached on first use.
+    /// Keyed by a hash of the *composed* source (prelude + shared types + user
+    /// source) plus the entry name, so re-creating the same kernel value each frame
+    /// is free, and the composed library is cached per source so several entries in
+    /// one source share one compile.
+    func computePipeline(for kernel: ComputeKernel) throws -> MTLComputePipelineState {
+        let composed = MetalRenderer.composeComputeSource(kernel.source)
+        let hash = MetalRenderer.fnv1a(composed)
+        let key = ComputeKey(sourceHash: hash, entry: kernel.entry)
+        if let existing = computePipelines[key] { return existing }
+        let lib: MTLLibrary
+        if let cached = computeLibraries[hash] {
+            lib = cached
+        } else {
+            lib = try device.makeLibrary(source: composed, options: nil)
+            computeLibraries[hash] = lib
+        }
+        guard let function = lib.makeFunction(name: kernel.entry) else {
+            throw RendererError.shaderFunctions
+        }
+        let state = try device.makeComputePipelineState(function: function)
+        computePipelines[key] = state
+        return state
+    }
+
+    /// Recompile the shader library from `source` and rebuild the cached
+    /// pipelines against it — the renderer side of live shader reload. Builds the
+    /// replacements *before* committing, so a compile/link error leaves the
+    /// current library and pipelines untouched (it throws, and the caller reports
+    /// it); a bad shader edit never blanks or crashes the running sketch.
+    func reloadLibrary(source: String) throws {
+        let newLibrary = try device.makeLibrary(
+            source: MetalRenderer.composeShaderSource(source, rayTracing: rayTracedShadows), options: nil)
+        let kinds = pipelines.isEmpty ? [PipelineKey.solid(.normal)] : Array(pipelines.keys)
+        var rebuilt: [PipelineKey: MTLRenderPipelineState] = [:]
+        for kind in kinds {
+            rebuilt[kind] = try makePipeline(kind, using: newLibrary)
+        }
+        library = newLibrary           // commit atomically once all rebuilt
+        pipelines = rebuilt
+        // User compute kernels compile from their own source, but drop their caches
+        // too so they rebuild against any edited shared types/prelude on next use.
+        computePipelines.removeAll()
+        computeLibraries.removeAll()
+        invalidateUserShaderCaches()
+    }
+
+    /// The single place pipeline descriptors are constructed. Add a `case` here
+    /// when you add a `Pipeline` — e.g. instanced/SDF circles get their own
+    /// vertex/fragment functions and (for instancing) a per-instance buffer.
+    private func makePipeline(_ key: PipelineKey) throws -> MTLRenderPipelineState {
+        try makePipeline(key, using: library)
+    }
+
+    private func makePipeline(_ key: PipelineKey, using library: MTLLibrary) throws -> MTLRenderPipelineState {
+        // The present pass is the one pipeline that targets the display format at
+        // single-sample with blending off; every other key is a geometry pipeline
+        // into the float intermediate, fully described by its shader pair + blend +
+        // alpha convention + depth format.
+        if key.isPresent {
+            return try makePresentPipeline(using: library)
+        }
+        if key.isEffect {
+            return try makeEffectPipeline(key, using: library)
+        }
+        if key.isShadow {
+            return try makeShadowPipeline(key, using: library)
+        }
+        if key.isIBL {
+            guard let v = library.makeFunction(name: key.vertex),
+                  let f = library.makeFunction(name: key.fragment) else {
+                throw RendererError.shaderFunctions
+            }
+            let d = MTLRenderPipelineDescriptor()
+            d.vertexFunction = v
+            d.fragmentFunction = f
+            d.rasterSampleCount = 1
+            d.colorAttachments[0].pixelFormat = key.iblColorFormat
+            return try device.makeRenderPipelineState(descriptor: d)
+        }
+        if key.isGBuffer {
+            // The reflection G-buffer: the one MRT pipeline; two float attachments
+            // (world normal + coverage, metalness/roughness), blending off (the
+            // fragment's output replaces over the cleared zero), single-sample (the
+            // reflection layer is jitter-supersampled temporally, not spatially),
+            // depth-tested + writing into its own depth.
+            guard let v = library.makeFunction(name: key.vertex),
+                  let f = library.makeFunction(name: key.fragment) else {
+                throw RendererError.shaderFunctions
+            }
+            let d = MTLRenderPipelineDescriptor()
+            d.vertexFunction = v
+            d.fragmentFunction = f
+            d.rasterSampleCount = 1
+            d.colorAttachments[0].pixelFormat = linearFormat
+            d.colorAttachments[1].pixelFormat = linearFormat
+            if let depthFormat = key.depthFormat {
+                d.depthAttachmentPixelFormat = depthFormat
+            }
+            return try device.makeRenderPipelineState(descriptor: d)
+        }
+        return try makePipeline(vertex: key.vertex, fragment: key.fragment, using: library,
+                                premultiplied: key.premultiplied, blend: key.blend,
+                                depthFormat: key.depthFormat, singleSample: key.singleSample)
+    }
+
+    /// A shadow pass pipeline. Two shapes share this factory: the **2D map**
+    /// (directional/spot, `ollin_mesh_shadow_vertex`) is depth-only — no fragment, no
+    /// color attachment, the stored value is the rasterized depth. The **point cube**
+    /// (`ollin_mesh_point_shadow_vertex`) is layered (all six faces via
+    /// `render_target_array_index`, so it needs the triangle input topology) and writes
+    /// the distance to the light into an `rg32Float` color cube for mid-point shadow
+    /// mapping: `pointShadowOp` 1 MIN-blends into R (nearest), 2 MAX-blends into G
+    /// (farthest), each writing only its channel. Single-sample either way.
+    private func makeShadowPipeline(_ key: PipelineKey, using library: MTLLibrary) throws -> MTLRenderPipelineState {
+        guard let vertexFunction = library.makeFunction(name: key.vertex) else {
+            throw RendererError.shaderFunctions
+        }
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = vertexFunction
+        descriptor.fragmentFunction = key.fragment.isEmpty ? nil : library.makeFunction(name: key.fragment)
+        descriptor.rasterSampleCount = 1
+        if key.pointShadowOp != 0 {
+            // Point cube: a color attachment (rg32Float), no depth. One channel per
+            // pass, MIN/MAX-blended, so the two draws build nearest (R) + farthest (G).
+            let color = descriptor.colorAttachments[0]!
+            color.pixelFormat = MetalRenderer.pointShadowColorFormat
+            color.isBlendingEnabled = true
+            color.rgbBlendOperation = key.pointShadowOp == 1 ? .min : .max
+            color.alphaBlendOperation = key.pointShadowOp == 1 ? .min : .max
+            color.sourceRGBBlendFactor = .one
+            color.destinationRGBBlendFactor = .one
+            color.sourceAlphaBlendFactor = .one
+            color.destinationAlphaBlendFactor = .one
+            color.writeMask = key.pointShadowOp == 1 ? .red : .green
+        } else {
+            descriptor.depthAttachmentPixelFormat = depthPixelFormat
+        }
+        // The cube pass routes each instance to a cube face from the vertex stage, so
+        // the pipeline must declare a layered (triangle) input topology.
+        if key.vertex == "ollin_mesh_point_shadow_vertex" {
+            descriptor.inputPrimitiveTopology = .triangle
+        }
+        return try device.makeRenderPipelineState(descriptor: descriptor)
+    }
+
+    /// The final tone-map pass: a fullscreen triangle sampling the resolved
+    /// linear-float frame and writing the sRGB drawable. Single-sample (it runs
+    /// after the MSAA resolve), blending disabled (it overwrites the drawable),
+    /// and it targets the display format rather than the float intermediate.
+    private func makePresentPipeline(using library: MTLLibrary) throws -> MTLRenderPipelineState {
+        guard let vertexFunction = library.makeFunction(name: "ollin_present_vertex"),
+              let fragmentFunction = library.makeFunction(name: "ollin_present_fragment") else {
+            throw RendererError.shaderFunctions
+        }
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = vertexFunction
+        descriptor.fragmentFunction = fragmentFunction
+        descriptor.rasterSampleCount = 1
+        descriptor.colorAttachments[0].pixelFormat = pixelFormat
+        return try device.makeRenderPipelineState(descriptor: descriptor)
+    }
+
+    /// An effects filter pass: a fullscreen-triangle fragment writing the
+    /// linear-float intermediate, single-sample (it runs between resolves, not in an
+    /// MSAA pass) with blending off, since the filter shader produces the final texel.
+    private func makeEffectPipeline(_ key: PipelineKey, using library: MTLLibrary) throws -> MTLRenderPipelineState {
+        guard let vertexFunction = library.makeFunction(name: key.vertex),
+              let fragmentFunction = library.makeFunction(name: key.fragment) else {
+            throw RendererError.shaderFunctions
+        }
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = vertexFunction
+        descriptor.fragmentFunction = fragmentFunction
+        descriptor.rasterSampleCount = 1
+        descriptor.colorAttachments[0].pixelFormat = linearFormat
+        return try device.makeRenderPipelineState(descriptor: descriptor)
+    }
+
+    /// Build a render pipeline from the named vertex/fragment functions with the
+    /// shared config: the view's MSAA sample count, the target pixel format, and
+    /// the `blend` mode's factors (resolved against the fragment's alpha
+    /// convention). `premultiplied` is true for premultiplied color (the image
+    /// path), false for straight-alpha color (solid + SDF + glyph). The default
+    /// `blend` (`.normal`) reproduces ordinary source-over compositing.
+    private func makePipeline(vertex: String, fragment: String,
+                              using library: MTLLibrary,
+                              premultiplied: Bool = false,
+                              blend: BlendMode = .normal,
+                              depthFormat: MTLPixelFormat? = nil,
+                              singleSample: Bool = false) throws -> MTLRenderPipelineState {
+        guard let vertexFunction = library.makeFunction(name: vertex),
+              let fragmentFunction = library.makeFunction(name: fragment) else {
+            throw RendererError.shaderFunctions
+        }
+
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = vertexFunction
+        descriptor.fragmentFunction = fragmentFunction
+        // Must match the pass's sample count or pipeline creation fails: the view's MSAA count
+        // for the geometry pass, or 1 for the single-sample half-res raymarch pass.
+        descriptor.rasterSampleCount = singleSample ? 1 : sampleCount
+        // A depth-tested pass (an active 3D camera) needs the pipeline to declare
+        // its depth format; 2D leaves it unset (.invalid), so 2D pipelines stay
+        // byte-identical to before this descriptor migration.
+        if let depthFormat {
+            descriptor.depthAttachmentPixelFormat = depthFormat
+        }
+
+        let state = blend.blendState(premultiplied: premultiplied)
+        let attachment = descriptor.colorAttachments[0]!
+        // Geometry composites into the linear-float intermediate, not the drawable.
+        attachment.pixelFormat = linearFormat
+        attachment.isBlendingEnabled = true
+        attachment.rgbBlendOperation = state.colorOperation
+        attachment.alphaBlendOperation = state.alphaOperation
+        attachment.sourceRGBBlendFactor = state.sourceColor
+        attachment.sourceAlphaBlendFactor = state.sourceAlpha
+        attachment.destinationRGBBlendFactor = state.destinationColor
+        attachment.destinationAlphaBlendFactor = state.destinationAlpha
+
+        return try device.makeRenderPipelineState(descriptor: descriptor)
+    }
+
+    // MARK: Helpers
+
+    /// Return the ring's vertex buffer at `index`, large enough for `count`
+    /// vertices, growing it (and rounding up) only when a frame needs more room.
+    func vertexBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinVertex>.stride
+        if let buffer = vertexBuffers[index], buffer.length >= needed {
+            return buffer
+        }
+        // Over-allocate a little so steady-state frames stop reallocating.
+        let capacity = needed + needed / 2
+        vertexBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
+        return vertexBuffers[index]
+    }
+
+    /// The off-screen export buffer, grown on demand. Kept distinct from the
+    /// on-screen ring so a headless render can't stomp a buffer an in-flight
+    /// frame is still reading.
+    func exportVertexBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinVertex>.stride
+        if let buffer = exportBuffer, buffer.length >= needed { return buffer }
+        exportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return exportBuffer
+    }
+
+    /// Return the SDF instance ring buffer at `index`, large enough for `count`
+    /// instances, grown on demand. Mirrors `vertexBuffer(at:for:)`.
+    func sdfBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFInstance>.stride
+        if let buffer = sdfBuffers[index], buffer.length >= needed {
+            return buffer
+        }
+        let capacity = needed + needed / 2
+        sdfBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
+        return sdfBuffers[index]
+    }
+
+    /// The off-screen export buffer for SDF instances, grown on demand.
+    func exportSDFBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFInstance>.stride
+        if let buffer = sdfExportBuffer, buffer.length >= needed { return buffer }
+        sdfExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdfExportBuffer
+    }
+
+    /// Ring + export buffers for the SDF-combinator group instances and node
+    /// programs, grown on demand. Mirror `sdfBuffer(at:for:)`/`exportSDFBuffer(for:)`.
+    func sdfGroupBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFGroupInstance>.stride
+        if let buffer = sdfGroupBuffers[index], buffer.length >= needed { return buffer }
+        sdfGroupBuffers[index] = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdfGroupBuffers[index]
+    }
+    func exportSDFGroupBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFGroupInstance>.stride
+        if let buffer = sdfGroupExportBuffer, buffer.length >= needed { return buffer }
+        sdfGroupExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdfGroupExportBuffer
+    }
+    func sdfNodeBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFNode>.stride
+        if let buffer = sdfNodeBuffers[index], buffer.length >= needed { return buffer }
+        sdfNodeBuffers[index] = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdfNodeBuffers[index]
+    }
+    func exportSDFNodeBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFNode>.stride
+        if let buffer = sdfNodeExportBuffer, buffer.length >= needed { return buffer }
+        sdfNodeExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdfNodeExportBuffer
+    }
+
+    /// Ring + export buffers for the *3D* SDF-combinator field instances and node
+    /// programs (the raymarch path). Mirror the 2D `sdfGroupBuffer`/`sdfNodeBuffer` pair.
+    func sdf3DGroupBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDF3DGroupInstance>.stride
+        if let buffer = sdf3DGroupBuffers[index], buffer.length >= needed { return buffer }
+        sdf3DGroupBuffers[index] = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdf3DGroupBuffers[index]
+    }
+    func exportSDF3DGroupBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDF3DGroupInstance>.stride
+        if let buffer = sdf3DGroupExportBuffer, buffer.length >= needed { return buffer }
+        sdf3DGroupExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdf3DGroupExportBuffer
+    }
+    func sdf3DNodeBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFNode3D>.stride
+        if let buffer = sdf3DNodeBuffers[index], buffer.length >= needed { return buffer }
+        sdf3DNodeBuffers[index] = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdf3DNodeBuffers[index]
+    }
+    func exportSDF3DNodeBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<SDFNode3D>.stride
+        if let buffer = sdf3DNodeExportBuffer, buffer.length >= needed { return buffer }
+        sdf3DNodeExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return sdf3DNodeExportBuffer
+    }
+
+    /// Return the image-vertex ring buffer at `index`, grown on demand. Mirrors
+    /// `vertexBuffer(at:for:)`.
+    func imageBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinImageVertex>.stride
+        if let buffer = imageBuffers[index], buffer.length >= needed {
+            return buffer
+        }
+        let capacity = needed + needed / 2
+        imageBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
+        return imageBuffers[index]
+    }
+
+    /// The off-screen export buffer for image vertices, grown on demand.
+    func exportImageBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinImageVertex>.stride
+        if let buffer = imageExportBuffer, buffer.length >= needed { return buffer }
+        imageExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return imageExportBuffer
+    }
+
+    /// Return the glyph-vertex ring buffer at `index`, grown on demand. Mirrors
+    /// `imageBuffer(at:for:)` (glyph quads reuse `OllinImageVertex`).
+    func glyphBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinImageVertex>.stride
+        if let buffer = glyphBuffers[index], buffer.length >= needed {
+            return buffer
+        }
+        let capacity = needed + needed / 2
+        glyphBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
+        return glyphBuffers[index]
+    }
+
+    /// The off-screen export buffer for glyph vertices, grown on demand.
+    func exportGlyphBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinImageVertex>.stride
+        if let buffer = glyphExportBuffer, buffer.length >= needed { return buffer }
+        glyphExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return glyphExportBuffer
+    }
+
+    /// Return the point-cloud ring buffer at `index`, grown on demand. Mirrors
+    /// `vertexBuffer(at:for:)`.
+    func pointBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinPoint>.stride
+        if let buffer = pointBuffers[index], buffer.length >= needed {
+            return buffer
+        }
+        let capacity = needed + needed / 2
+        pointBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
+        return pointBuffers[index]
+    }
+
+    /// The off-screen export buffer for point-cloud splats, grown on demand.
+    func exportPointBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinPoint>.stride
+        if let buffer = pointExportBuffer, buffer.length >= needed { return buffer }
+        pointExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return pointExportBuffer
+    }
+
+    /// Return the solid-mesh ring buffer at `index`, grown on demand. Mirrors
+    /// `pointBuffer(at:for:)`.
+    func meshBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinMeshVertex>.stride
+        if let buffer = meshBuffers[index], buffer.length >= needed {
+            return buffer
+        }
+        let capacity = needed + needed / 2
+        meshBuffers[index] = device.makeBuffer(length: capacity, options: .storageModeShared)
+        return meshBuffers[index]
+    }
+
+    /// The off-screen export buffer for solid-mesh vertices, grown on demand.
+    func exportMeshBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinMeshVertex>.stride
+        if let buffer = meshExportBuffer, buffer.length >= needed { return buffer }
+        meshExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return meshExportBuffer
+    }
+
+    /// Splice the shared CPU/GPU type header into shader source for runtime
+    /// compilation. `makeLibrary(source:)` has no include search path, so the
+    /// `#include "OllinShaderTypes.h"` directive in `ShaderCore.metal` (the first
+    /// concatenated segment) can't be resolved the normal way; we replace it with
+    /// the header's text (the header ships beside the segments as a resource). A
+    /// precompiled metallib resolves the include at build time and skips this path.
+    ///
+    /// If the header resource is missing we leave the source untouched and let
+    /// the compiler report the undefined types — louder than a silent fallback.
+    static func composeShaderSource(_ source: String, rayTracing: Bool = false) -> String {
+        // Gate the inline-RT mesh-shadow path on device capability (the symbol the
+        // `#if OLLIN_RT_SHADOWS` blocks in Shader3D.metal read). A device without
+        // render-stage ray tracing compiles it out entirely, so the cube path stays.
+        let prefix = "#define OLLIN_RT_SHADOWS \(rayTracing ? 1 : 0)\n"
+        guard let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
+              let header = try? String(contentsOf: url, encoding: .utf8) else {
+            return prefix + source
+        }
+        return prefix + source.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
+    }
+
+    /// Build the full MSL source for a user compute kernel: the shared shader
+    /// library (`OllinShaderLib`, the same helper set user fragment shaders get:
+    /// hash/noise/curl/disc, palettes and OKLab, the `sd*` catalog, domain
+    /// operators), with the library's own `metal_stdlib` preamble kept and the
+    /// shared CPU↔GPU types spliced in place of its `#include`, then the user's
+    /// source. So a kernel writes no `#include`s, and a helper learned in a
+    /// fragment shader works the same in a kernel. Resources are read as text
+    /// because the runtime compiler has no include search path (same reason
+    /// `composeShaderSource` splices).
+    static func composeComputeSource(_ userSource: String) -> String {
+        var lib = "#include <metal_stdlib>\nusing namespace metal;\n#include \"OllinShaderTypes.h\"\n"
+        if let url = Bundle.module.url(forResource: "OllinShaderLib", withExtension: "metal"),
+           let text = try? String(contentsOf: url, encoding: .utf8) {
+            lib = text
+        }
+        if let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
+           let header = try? String(contentsOf: url, encoding: .utf8) {
+            lib = lib.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
+        }
+        return lib + "\n" + userSource
+    }
+
+    /// FNV-1a hash of a string's UTF-8, for the compute-pipeline cache key.
+    /// (`Hasher` is per-process-seeded, so it can't key a stable cache; FNV is
+    /// stable — the same lesson the model-tracker cache learned.)
+    static func fnv1a(_ string: String) -> UInt64 {
+        var hash: UInt64 = 0xcbf29ce484222325
+        for byte in string.utf8 { hash = (hash ^ UInt64(byte)) &* 0x100000001b3 }
+        return hash
+    }
+
+    /// Build the full MSL source for a user-supplied `Shader`: the OllinShaderLib
+    /// segment (preamble + shared types + helpers, with the header spliced in place of
+    /// its `#include` since the runtime compiler has no include path), then the wrapper
+    /// (the fullscreen vertex, the `ShaderInfo` struct, the `param`/`sample` helpers),
+    /// then the user's source tagged `#line 1 "Shader"` so the compiler reports errors
+    /// at the user's own line numbers, then the generated `ollin_user_fragment` that
+    /// calls their `shade(uv, info)`. Returns the source and the number of lines that
+    /// precede the user's source (the fallback rebase offset for a toolchain that
+    /// ignores `#line`).
+    static func composeUserShaderSource(userSource: String, modules: Shader.Modules,
+                                        variant: UserShaderVariant) -> (source: String, userLineOffset: Int) {
+        var lib = ""
+        if let url = Bundle.module.url(forResource: "OllinShaderLib", withExtension: "metal"),
+           let text = try? String(contentsOf: url, encoding: .utf8) {
+            lib = filterLibModules(text, modules)
+        }
+        if let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
+           let header = try? String(contentsOf: url, encoding: .utf8) {
+            lib = lib.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
+        }
+        let head = lib + "\n" + userShaderWrapperHead(variant) + "\n#line 1 \"Shader\"\n"
+        let offset = head.reduce(0) { $0 + ($1 == "\n" ? 1 : 0) }
+        let tail = "\n#line 1 \"ollin-wrapper\"\n" + userShaderWrapperTail(variant)
+        return (head + userSource + tail, offset)
+    }
+
+    /// Keep only the requested sections of the shader library, by the
+    /// `// OLLIN_LIB_BEGIN <module>` / `// OLLIN_LIB_END <module>` markers. Unmarked
+    /// lines (the preamble and the always-on `base` section) are always kept; a
+    /// section whose module isn't requested is dropped, trimming compile time. The
+    /// dependency `noise → hash` is resolved so a noise-only request still compiles.
+    private static func filterLibModules(_ lib: String, _ modules: Shader.Modules) -> String {
+        if modules == .all { return lib }   // the common case: splice everything
+        var mods = modules
+        if mods.contains(.noise) { mods.insert(.hash) }
+        if mods.contains(.visual) { mods.insert(.hash); mods.insert(.noise) }
+        let nameToModule: [String: Shader.Modules] = [
+            "hash": .hash, "noise": .noise, "color": .color, "sdf": .sdf, "domain": .domain,
+            "visual": .visual]
+        var out: [Substring] = []
+        var skipping = false
+        for line in lib.split(separator: "\n", omittingEmptySubsequences: false) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("// OLLIN_LIB_BEGIN ") {
+                let name = String(trimmed.dropFirst("// OLLIN_LIB_BEGIN ".count))
+                skipping = nameToModule[name].map { !mods.contains($0) } ?? false
+                continue
+            }
+            if trimmed.hasPrefix("// OLLIN_LIB_END ") { skipping = false; continue }
+            if !skipping { out.append(line) }
+        }
+        return out.joined(separator: "\n")
+    }
+
+    /// The wrapper preamble: the fullscreen vertex, the user-facing `ShaderInfo`
+    /// struct, and the `param`/`sample` accessors. The struct carries the input
+    /// layer(s) for the filter (one) and combine (two) variants, so the user reads
+    /// them with `sample(info, uv)` / `sampleAux(info, uv)`.
+    private static func userShaderWrapperHead(_ variant: UserShaderVariant) -> String {
+        let layerFields: String
+        let sampleMacros: String
+        switch variant {
+        case .generator:
+            layerFields = ""
+            sampleMacros = ""
+        case .filter:
+            layerFields = "    texture2d<float> in0; sampler in0samp;\n"
+            sampleMacros = "#define sample(info, p) ollin_layer_sample((info).in0, (info).in0samp, (p))\n"
+        case .combine:
+            layerFields = "    texture2d<float> in0; sampler in0samp;\n    texture2d<float> in1; sampler in1samp;\n"
+            sampleMacros = """
+            #define sample(info, p) ollin_layer_sample((info).in0, (info).in0samp, (p))
+            #define sampleAux(info, p) ollin_layer_sample((info).in1, (info).in1samp, (p))
+
+            """
+        }
+        return """
+        struct OllinUserVertexOut { float4 position [[position]]; float2 uv; };
+        vertex OllinUserVertexOut ollin_user_vertex(uint vid [[vertex_id]]) {
+            float2 p = float2((vid << 1) & 2, vid & 2);
+            OllinUserVertexOut o;
+            o.position = float4(p * 2.0 - 1.0, 0.0, 1.0);
+            o.uv = float2(p.x, 1.0 - p.y);
+            return o;
+        }
+        // Read an input layer as straight sRGB (it's stored premultiplied linear), so
+        // a shader works in the same color space it returns.
+        inline float4 ollin_layer_sample(texture2d<float> t, sampler s, float2 uv) {
+            float4 c = t.sample(s, clamp(uv, 0.0, 1.0));
+            return float4(linearToSrgb(ollin_unpremul(c)), c.a);
+        }
+        struct ShaderInfo {
+            float2 resolution;
+            float2 mouse;
+            float time;
+            float deltaTime;
+            uint frame;
+            uint paramCount;
+            float4 params[OLLIN_SHADER_PARAM_ROWS];
+        \(layerFields)};
+        #define param(info, i) ((info).params[(i) >> 2][(i) & 3])
+        \(sampleMacros)
+        """
+    }
+
+    /// The generated fragment: bind the input layer(s) for the variant, assemble
+    /// `ShaderInfo` from the uniforms, call the user's `shade`, and convert its
+    /// straight sRGB result to the premultiplied linear an Ollin layer composites in.
+    private static func userShaderWrapperTail(_ variant: UserShaderVariant) -> String {
+        let textureParams: String
+        let layerAssign: String
+        switch variant {
+        case .generator:
+            textureParams = ""
+            layerAssign = ""
+        case .filter:
+            textureParams = "                                    texture2d<float> ollin_src0 [[texture(0)]],\n"
+                + "                                    sampler ollin_samp [[sampler(0)]],\n"
+            layerAssign = "    info.in0 = ollin_src0; info.in0samp = ollin_samp;\n"
+        case .combine:
+            textureParams = "                                    texture2d<float> ollin_src0 [[texture(0)]],\n"
+                + "                                    texture2d<float> ollin_src1 [[texture(1)]],\n"
+                + "                                    sampler ollin_samp [[sampler(0)]],\n"
+            layerAssign = "    info.in0 = ollin_src0; info.in0samp = ollin_samp;\n"
+                + "    info.in1 = ollin_src1; info.in1samp = ollin_samp;\n"
+        }
+        return """
+        fragment float4 ollin_user_fragment(OllinUserVertexOut in [[stage_in]],
+        \(textureParams)                                    constant float4 *ollin_params [[buffer(0)]],
+                                            constant OllinShaderUniforms &ollin_u [[buffer(1)]]) {
+            ShaderInfo info;
+            info.resolution = ollin_u.resolution;
+            info.mouse = ollin_u.mouse;
+            info.time = ollin_u.time;
+            info.deltaTime = ollin_u.deltaTime;
+            info.frame = ollin_u.frame;
+            info.paramCount = ollin_u.paramCount;
+            for (uint i = 0u; i < OLLIN_SHADER_PARAM_ROWS; ++i) info.params[i] = ollin_params[i];
+        \(layerAssign)    float4 c = shade(in.uv, info);
+            return float4(srgbToLinear(c.rgb) * c.a, c.a);
+        }
+        """
+    }
+
+    /// Tidy a Metal compiler diagnostic for a user shader: relabel and rebase the
+    /// composed-source line numbers (`program_source:N`) to the user's own source
+    /// (`shader:N-offset`), so a reported line matches what they wrote, and drop the
+    /// boilerplate header. When the compiler honors `#line` it already reports
+    /// `Shader:N`, which passes through unchanged.
+    static func cleanShaderDiagnostics(_ raw: String, userLineOffset: Int) -> String {
+        let text = raw
+            .replacingOccurrences(of: "Compilation failed: \n", with: "")
+            .replacingOccurrences(of: "Compilation failed:\n", with: "")
+        guard let rx = try? NSRegularExpression(pattern: #"program_source:(\d+):(\d+):"#) else {
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let ns = text as NSString
+        var out = ""
+        var last = 0
+        rx.enumerateMatches(in: text, range: NSRange(location: 0, length: ns.length)) { m, _, _ in
+            guard let m = m else { return }
+            out += ns.substring(with: NSRange(location: last, length: m.range.location - last))
+            let lineNo = Int(ns.substring(with: m.range(at: 1))) ?? 0
+            let col = ns.substring(with: m.range(at: 2))
+            out += "shader:\(max(1, lineNo - userLineOffset)):\(col):"
+            last = m.range.location + m.range.length
+        }
+        out += ns.substring(from: last)
+        // Drop compiler-internal notes that point at system framework headers (e.g. a
+        // "did you mean" suggestion from the Metal standard library): they reference
+        // absolute paths a sketch author can't act on and only clutter the message.
+        let kept = out.split(separator: "\n", omittingEmptySubsequences: false).filter { line in
+            !(line.contains("/System/") || line.contains("GPUCompiler.framework")
+              || line.contains("/Applications/") || line.contains("/usr/"))
+        }
+        return kept.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// The shader source segments, in concatenation order. They're compiled as one
+    /// library, so order matters: `OllinShaderLib` carries the preamble, the shared
+    /// CPU/GPU structs, and the general color/hash/noise helpers the rest depend on,
+    /// so it goes first (Metal needs a declaration before its use); `ShaderCore`
+    /// follows with the 2D core pipelines. The single `Shaders.metal` split into
+    /// these once it crossed ~2,000 lines; the renderer never assumes one file.
+    static let shaderSourceNames = ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderEffects", "ShaderCombine", "ShaderSim", "ShaderPatterns", "ShaderIBL"]
+
+    /// Read and concatenate the shader segments from a filesystem `directory`, in
+    /// `shaderSourceNames` order. This is the source live shader reload feeds back
+    /// in (the `Bundle.module` copy is built, not the file being edited). `nil` if
+    /// any segment is unreadable.
+    static func concatenatedShaderSource(fromDirectory directory: String) -> String? {
+        var parts: [String] = []
+        for name in shaderSourceNames {
+            let path = (directory as NSString).appendingPathComponent("\(name).metal")
+            guard let part = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+            parts.append(part)
+        }
+        return parts.joined(separator: "\n")
+    }
+
+    /// Load the built-in shader library.
+    ///
+    /// SwiftPM's resource rule copies the `Shader*.metal` segments into
+    /// `Bundle.module` as *source*; it does not produce a precompiled
+    /// `default.metallib`. So the reliable path is to read those segments, splice
+    /// the shared header, and compile at runtime. We still try a precompiled
+    /// `default.metallib` first in case a future build step produces one.
+    static func loadLibrary(device: MTLDevice) throws -> MTLLibrary {
+        let rt = device.supportsRaytracing && device.supportsRaytracingFromRender
+        // A precompiled `default.metallib` is built without the device-conditional
+        // `OLLIN_RT_SHADOWS` define (it can hold only one variant — the *non*-RT
+        // mesh-shadow path). Use it only on a device without render-stage ray tracing;
+        // an RT device compiles from source with the define set, which is Ollin's
+        // standard runtime-compile path (and what live shader reload already uses).
+        if !rt, let library = try? device.makeDefaultLibrary(bundle: Bundle.module) {
+            return library
+        }
+        // Read every segment from the bundle and concatenate in order; the combined
+        // source is one compile unit (ShaderCore's `#include` is spliced by
+        // composeShaderSource). Require all of them, so a missing segment fails
+        // loudly rather than compiling an incomplete library.
+        let parts = shaderSourceNames.map { name in
+            Bundle.module.url(forResource: name, withExtension: "metal")
+                .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+        }
+        if parts.allSatisfy({ $0 != nil }) {
+            let combined = parts.compactMap { $0 }.joined(separator: "\n")
+            // Let compile errors propagate: a bad shader should fail loudly here.
+            return try device.makeLibrary(source: composeShaderSource(combined, rayTracing: rt), options: nil)
+        }
+        if !rt, let library = device.makeDefaultLibrary() {
+            return library
+        }
+        throw RendererError.shaderLibrary
+    }
+}

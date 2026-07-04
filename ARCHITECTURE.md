@@ -743,7 +743,7 @@ trace into a small deferred chain (`encodeReflectionPass`, main canvas only):
    `OllinMeshVertex` w slots carry) plus its own `depth32Float`. Single-sample
    on purpose: the layer is supersampled by jitter, not by MSAA, so it costs a
    fraction of the SSAO normal pass's readable-MSAA memory.
-2. **Trace** (`ollin_rt_reflect_trace`, RT-gated in ShaderEffects so it can call
+2. **Trace** (`ollin_rt_reflect_trace`, RT-gated in ShaderCombine so it can call
    the Shader3D helpers; segment order): per pixel, reconstruct the surface
    point through `inverseViewProjection` at a **sub-pixel-jittered** NDC (the
    pixel's own full-precision depth), reflect the eye ray off it, and trace via

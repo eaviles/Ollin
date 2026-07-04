@@ -353,6 +353,8 @@ let package = Package(
                 .copy("Renderer/Shader3D.metal"),
                 .copy("Renderer/ShaderRaymarch.metal"),
                 .copy("Renderer/ShaderEffects.metal"),
+                .copy("Renderer/ShaderCombine.metal"),
+                .copy("Renderer/ShaderSim.metal"),
                 .copy("Renderer/ShaderPatterns.metal"),
                 .copy("Renderer/ShaderIBL.metal"),
                 .copy("Renderer/OllinShaderTypes.h"),
