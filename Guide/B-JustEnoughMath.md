@@ -29,4 +29,9 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - Uniform vs Gaussian distributions: flat spread vs bell pile; mean = center, deviation = spread, ~2/3 within one deviation (Ch 4) - reuse Images/04-Randomness/UniformVsGaussian.jpg
 - Chance is lumpy: independent rolls clump and drought, they don't space evenly (Ch 4)
 - The random walk: accumulate nudges instead of re-rolling, and a path appears (Ch 4) - reuse Images/04-Randomness/WalkVsJumps.jpg
+- Coherence: noise is a lookup into a fixed smooth landscape, so nearby inputs give nearby outputs (Ch 5) - reuse Images/05-Noise/RandomVsNoise.jpg
+- The input multiplier as a zoom knob: how far apart the questions land (Ch 5) - reuse Images/05-Noise/NoiseZoom.jpg
+- A field: an answer at every point of a plane; a third input as drifting time (Ch 5) - reuse Images/05-Noise/NoiseTerrain.jpg
+- Decorrelation by offset: far-apart rows of one field are independent signals (Ch 5)
+- Layering scales: weighted sum of a big shape and a small detail, weights summing to 1 (Ch 5) - reuse Images/05-Noise/NoiseLayers.jpg
 -->

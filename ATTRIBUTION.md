@@ -109,6 +109,7 @@ Ollin's helpers reimplement well-known published techniques, written from the pa
 
 ### Math, motion & input
 
+- `noise` / `signedNoise` implement Ken Perlin's improved Perlin noise ([*Improving Noise*](https://mrl.cs.nyu.edu/~perlin/paper445.pdf), SIGGRAPH 2002, and his published reference implementation), written from the algorithm, with a contrast calibration so the output fills `0...1`.
 - The seedable `random` generator is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, [*Fast Splittable Pseudorandom Number Generators*](https://doi.org/10.1145/2660193.2660195), OOPSLA 2014), written from the published algorithm.
 - `randomGaussian` uses the Marsaglia polar method for normal-distributed samples.
 - The named `Easing` curves are Robert Penner's easing equations, written from the formulas catalogued at [easings.net](https://easings.net) (Andrey Sitnik and Ivan Solovev).
