@@ -41,7 +41,7 @@ The guide is being written chapter by chapter; titles below without links are st
 
 ### Part I: Seeing something move
 
-1. **Hello, Ollin.** Your first sketch, the draw loop, coordinates, shapes, and motion by default. Plus the workflow the rest of the book uses: live reload and tunable knobs.
+1. **[Hello, Ollin](01-HelloOllin.md).** Your first sketch, the draw loop, coordinates, shapes, and motion by default. Plus the workflow the rest of the book uses: live reload and tunable knobs.
 2. **Color that works.** Fill and stroke, HSB, palettes and ramps, perceptual color, gradients.
 3. **Motion and time.** Time, shaping functions as curves you can see (map, lerp, smoothstep, easing), sine and cosine without fear, timelines.
 4. **Randomness.** Random values, seeds, choices, distributions, and why reproducibility matters.

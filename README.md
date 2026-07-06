@@ -115,6 +115,8 @@ Sequence, video, and GIF exports advance the clock at a fixed timestep rather th
 
 ## Documentation
 
+New to creative coding, or to Ollin? [The Guide](Guide/README.md) is a practical, book-length introduction taught through Ollin, written for programmers with no math or graphics background and filled in chapter by chapter. Start at [Chapter 1: Hello, Ollin](Guide/01-HelloOllin.md).
+
 The full API reference lives in [`Docs/`](Docs/), one page per topic; [`Docs/README.md`](Docs/README.md) is the annotated index. Most of it ships with the core `import Ollin`; ten satellite libraries live in the same package behind their own `import` (shown on each page), so a sketch links only what it uses.
 
 - **Core** - [Sketch](Docs/Core/Sketch.md), [Canvas](Docs/Core/Canvas.md), [Input](Docs/Helpers/Input.md), [Parameters](Docs/Helpers/Parameters.md), [Math](Docs/Helpers/Math.md), [Animation](Docs/Helpers/Animation.md)
