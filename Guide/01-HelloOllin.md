@@ -210,4 +210,4 @@ The `setup()`/`draw()` sketch model comes from [Processing](https://processing.o
 
 ---
 
-[Contents](README.md#contents) · Next: Chapter 2, Color that works
+[Contents](README.md#contents) · Next: [Chapter 2, Color that works](02-Color.md)

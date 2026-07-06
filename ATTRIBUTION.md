@@ -109,6 +109,7 @@ Ollin's helpers reimplement well-known published techniques, written from the pa
 
 ### Math, motion & input
 
+- The seedable `random` generator is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, [*Fast Splittable Pseudorandom Number Generators*](https://doi.org/10.1145/2660193.2660195), OOPSLA 2014), written from the published algorithm.
 - `randomGaussian` uses the Marsaglia polar method for normal-distributed samples.
 - The named `Easing` curves are Robert Penner's easing equations, written from the formulas catalogued at [easings.net](https://easings.net) (Andrey Sitnik and Ivan Solovev).
 - `@Smoothed` and `OneEuroFilter` implement the [1€ filter](https://gery.casiez.net/1euro/) for adaptive input smoothing (Géry Casiez, Nicolas Roussel, and Daniel Vogel, *1€ Filter: A Simple Speed-based Low-pass Filter for Noisy Input in Interactive Systems*, CHI 2012), written from the paper.

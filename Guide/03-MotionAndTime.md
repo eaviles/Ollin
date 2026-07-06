@@ -214,7 +214,7 @@ That's the entire theory of the piece. Make `MySketches/RingPulse.swift`:
 import Ollin
 
 final class RingPulse: Sketch {
-    @Param("Waves", 1...6) var waves = 3.0
+    @Param("Waves", 1...6) var waves = 3
     @Param("Pulse width", 0.1...0.9) var pulseWidth = 0.35
 
     let loopTime = 4.0
@@ -235,7 +235,7 @@ final class RingPulse: Sketch {
             if ring % 2 == 1 { direction = -1 }
             for i in 0..<count {
                 let angle = Double(i) / Double(count) * .tau
-                let wave = sin(angle * waves.rounded() - beat * 2 * direction)
+                let wave = sin(angle * Double(waves) - beat * 2 * direction)
                 let lit = Easing.smoothStep(map(wave, 1 - pulseWidth * 2, 1, 0, 1, clamp: true))
                 fill(Color.mix(base, Color(hex: 0xFFF6E8), t: lit * 0.4))
                 let x = width / 2 + cos(angle) * (radius + lit * 18)
@@ -250,7 +250,7 @@ final class RingPulse: Sketch {
 Run it with `swift run OllinLive MySketches/RingPulse.swift` and take the interesting lines apart:
 
 - `beat` is the loop's heartbeat: it grows by exactly one full turn every `loopTime` seconds. The only other time term in the sketch is `beat * 2`, a whole multiple, so frame 0 and frame `loopTime` are identical. That's the loop rule, enforced by construction.
-- `wave` is the phase trick from earlier, bent into a circle: each dot's head start is its angle times the wave count, so the crests *travel* around the ring. `waves.rounded()` keeps the count whole, so the wave meets itself instead of leaving a seam where the ring closes. (`.rounded()` nudges the knob's value to the nearest whole number.)
+- `wave` is the phase trick from earlier, bent into a circle: each dot's head start is its angle times the wave count, so the crests *travel* around the ring. The count has to stay whole or the wave won't meet itself where the ring closes, so `waves` starts at `3` (not `3.0`): a whole-number property makes a whole-number knob, stepping 1, 2, 3 instead of sliding through fractions. `Double(waves)` converts it for the math, the same move as Chapter 1's `Double(i)`.
 - `lit` is the chapter's shaping section in one line, and worth stealing: a **soft spotlight**. The clamped `map` cuts a window out of the wave, everything below the threshold pinned to 0 and the crest to 1, and `smoothstep` rounds the window's shoulders so dots swell and fade instead of switching. Widen `Pulse width` and the window opens; the whole ring breathes.
 - Everything `lit` touches is a `lerp` in spirit: the color leans toward warm white by `lit * 0.4` (Chapter 2's `Color.mix`), the dot lifts outward by `lit * 18`, and swells from 6 up to 26. One shaped value, three payoffs.
 - `direction` flips alternate rings, which is most of why the piece feels alive rather than mechanical.
@@ -284,4 +284,4 @@ The named easing curves are Robert Penner's easing equations, published with his
 
 ---
 
-[Contents](README.md#contents) · Next: Chapter 4, Randomness
+[Contents](README.md#contents) · Previous: [Chapter 2, Color that works](02-Color.md) · Next: [Chapter 4, Randomness](04-Randomness.md)

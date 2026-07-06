@@ -44,7 +44,7 @@ The guide is being written chapter by chapter; titles below without links are st
 1. **[Hello, Ollin](01-HelloOllin.md).** Your first sketch, the draw loop, coordinates, shapes, and motion by default. Plus the workflow the rest of the book uses: live reload and tunable knobs.
 2. **[Color that works](02-Color.md).** Naming colors, thinking in hue, mixing that trusts your eye, palettes and ramps, gradients as paint.
 3. **[Motion and time](03-MotionAndTime.md).** Time, shaping functions as curves you can see (map, lerp, smoothstep, easing), sine and cosine without fear, timelines.
-4. **Randomness.** Random values, seeds, choices, distributions, and why reproducibility matters.
+4. **[Randomness](04-Randomness.md).** Random values, seeds, choices, distributions, and why reproducibility matters.
 5. **Noise.** What Perlin noise is, what it's for, and how to drive motion and form with it.
 6. **Grids and repetition.** The grid helper, transforms, symmetry, Truchet tiles.
 7. **Words and pictures.** Text as geometry, images as material, reading pixels.

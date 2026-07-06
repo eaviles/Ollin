@@ -11,7 +11,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 1. Hello, Ollin | `01-HelloOllin.md` | done |
 | 2. Color that works | `02-Color.md` | done |
 | 3. Motion and time | `03-MotionAndTime.md` | done |
-| 4. Randomness | `04-Randomness.md` | not started |
+| 4. Randomness | `04-Randomness.md` | done |
 | 5. Noise | `05-Noise.md` | not started |
 | 6. Grids and repetition | `06-GridsAndRepetition.md` | not started |
 | 7. Words and pictures | `07-WordsAndPictures.md` | not started |
@@ -236,7 +236,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Helpers/Math.md` (map, lerp, dist) | Ch 3, Appendix B | taught |
 | `Helpers/Animation.md` (easing, @Eased, @Smoothed, Timeline) | Ch 3 | taught |
 | `Helpers/Input.md` (mouse, keyboard) | Ch 1 | taught |
-| `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 20 | taught (Ch 1 predates the typed family: Int/Bool/enum/Color/Vector2 controls, groups, icons, scrubbing; fold in on the Ch 1 revisit, and Ch 3's Waves knob can drop its `.rounded()` for an Int param) |
+| `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 20 | taught (Ch 1 predates the typed family: Int/Bool/enum/Color/Vector2 controls, groups, icons, scrubbing; fold in on the Ch 1 revisit. Chs 2-4 already use whole-number Int knobs.) |
 | `Generators/Random.md` | Ch 4 | taught |
 | `Generators/Noise.md` (noise, signedNoise, curlNoise) | Ch 5; curl in Ch 12/16 | taught |
 | `Drawing/Geometry.md`: `Grid`, `Insets` | Ch 6 | taught |

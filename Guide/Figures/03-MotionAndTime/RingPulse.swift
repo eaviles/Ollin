@@ -6,7 +6,7 @@
 import Ollin
 
 final class RingPulse: Sketch {
-    @Param("Waves", 1...6) var waves = 3.0
+    @Param("Waves", 1...6) var waves = 3
     @Param("Pulse width", 0.1...0.9) var pulseWidth = 0.35
 
     let loopTime = 4.0
@@ -27,7 +27,7 @@ final class RingPulse: Sketch {
             if ring % 2 == 1 { direction = -1 }
             for i in 0..<count {
                 let angle = Double(i) / Double(count) * .tau
-                let wave = sin(angle * waves.rounded() - beat * 2 * direction)
+                let wave = sin(angle * Double(waves) - beat * 2 * direction)
                 let lit = Easing.smoothStep(map(wave, 1 - pulseWidth * 2, 1, 0, 1, clamp: true))
                 fill(Color.mix(base, Color(hex: 0xFFF6E8), t: lit * 0.4))
                 let x = width / 2 + cos(angle) * (radius + lit * 18)

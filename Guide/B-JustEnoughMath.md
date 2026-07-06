@@ -24,4 +24,9 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - step as an if; smoothstep as the gentle S (t * t * (3 - 2 * t)) (Ch 3)
 - Frame-rate independence: derive from time, or scale steps by deltaTime (Ch 3) - reuse Images/03-MotionAndTime/DeltaTime.jpg
 - The perfect loop: every time term completes whole cycles in the loop length (Ch 3)
+- Pseudo-randomness: a deterministic scramble; the seed picks where the sequence starts (Ch 4)
+- Probability as a threshold on a uniform 0...1 roll (random() < p passes p of the time); stacked thresholds = weighted choice (Ch 4) - reuse Images/04-Randomness/Choices.jpg
+- Uniform vs Gaussian distributions: flat spread vs bell pile; mean = center, deviation = spread, ~2/3 within one deviation (Ch 4) - reuse Images/04-Randomness/UniformVsGaussian.jpg
+- Chance is lumpy: independent rolls clump and drought, they don't space evenly (Ch 4)
+- The random walk: accumulate nudges instead of re-rolling, and a path appears (Ch 4) - reuse Images/04-Randomness/WalkVsJumps.jpg
 -->
