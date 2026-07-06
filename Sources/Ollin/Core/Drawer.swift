@@ -254,6 +254,7 @@ final class Drawer {
     var combineGroupModel: matrix_float4x4?
     var warnedNonCombinable = false
     var warnedMeshInCombine = false
+    var warnedSculptVerbOutside = false
 
     /// Textured-quad vertices recorded this frame (see `drawImage`). Each image
     /// draw appends 6 vertices (two triangles) and opens its own `.image` batch,

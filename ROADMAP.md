@@ -36,10 +36,6 @@ Near-term, fairly self-contained pieces, each small and well-scoped.
 - **Small filter-catalog additions.** A relight filter that reads any layer as a height map (screen-space gradient to a surface normal) and lights it with a curated material finish (glass, metal, sand, liquid), so a noise field or a simulation reads as embossed physical matter, the cheap 2D cousin of the 3D materials; an optional `center:` on the radial warps (`.swirl`, `.bulge`, `.ripple`) so a cursor-driven lens or vortex is a one-liner; and a two-tone `.dither` variant (the ordered pattern mapped onto two chosen colors with a threshold bias) beside the channel-quantizing one.
 - **Shape morphing.** Tween one `Shape` into another: contour correspondence plus interpolation, extending `Tweenable` beyond scalars and vectors so a `Timeline` can animate geometry. Plotter-friendly, since every in-between frame is a real vector shape.
 
-## SDF sculpting
-
-**Broadening the 3D SDF combinators**: the sphere-traced field merging (`drawSDF3D`) growing toward the full ShaderPark "sculpting" experience: richer combine and blend ergonomics, more leaf primitives and domain operators. A natural fit for the live-coding performance host, where a merged form can be sculpted on stage. See the [design notes](DESIGN-NOTES.md#sdf-sculpting-not-started).
-
 ## Generative geometry
 
 A tier of classic generative-art building blocks that emit vector geometry (points, `Contour`s, `Shape`s) feeding the existing draw, shape-boolean, hatching, and SVG paths rather than the renderer. They share the plotter-friendly, geometry-first shape the shape booleans set, all driven by the existing seedable `random`/`noise` so a run is reproducible, each ships with an example, and several are the natural implementation behind a [recreation](DESIGN-NOTES.md#examples-folder-maintained-ongoing) of the artist who pioneered them. The refinements still ahead (parametric L-systems, Wave Function Collapse from an example image) are in the [design notes](DESIGN-NOTES.md#generative-geometry-partly-shipped); the broader algorithm catalog is the [technique and algorithm helpers](#technique-and-algorithm-helpers) tier.

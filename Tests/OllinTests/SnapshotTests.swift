@@ -103,6 +103,10 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { SDFCombinatorsJoineryScene() }),
     SnapshotCase("sdf-combinators-detailing", note: "2D columns/pipe/engrave/groove/tongue ops.",
                  make: { SDFCombinatorsDetailingScene() }),
+    SnapshotCase("sdf-combinators-sculpt", note: "The 2D sculpt block (per-child mode/melt).",
+                 make: { SDFCombinatorsSculptScene() }),
+    SnapshotCase("sdf-combinators-3d-sculpt", note: "The raymarched sculpt block.",
+                 make: { RaymarchedSDF3DSculptScene() }),
     SnapshotCase("sdf-combinators-3d-detailing", note: "Raymarched columns + detailing ops.",
                  make: { RaymarchedSDF3DDetailingScene() }),
     SnapshotCase("sdf-combinators-3d-joinery", note: "Raymarched joint ops + hardware leaves.",
@@ -1718,6 +1722,68 @@ private final class SDFCombinatorsJoineryScene: Sketch {
             drawSDF(SDF.rect(width: 90, height: 44).colored(Color(hex: 0x9adcf0))
                 .chamferUnion(.rect(width: 44, height: 90).colored(Color(hex: 0xff6f61)),
                               radius: 14))
+        }
+    }
+}
+
+/// The 2D sculpt block: per-child mode/melt state (add/carve/blend switching mid-block),
+/// including a nested domain block landing under the state at its close. Pins the
+/// sculpt fold (each child combining under its captured state, the first as the base).
+private final class SDFCombinatorsSculptScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x14161a))
+        noStroke()
+        translate(128, 128)
+        sculpt {
+            blend(22)
+            fill(Color(hex: 0x46c2ff))
+            drawCircle(0, 0, 62)
+            withState { translate(52, -30); drawCircle(0, 0, 34) }   // melts on
+            carve()
+            withState { translate(-20, -34); drawCircle(0, 0, 26) }  // a soft dent
+            blend(0)
+            withState { translate(30, 34); drawRect(0, 0, 44, 44) }  // a hard notch
+            add()
+            fill(Color(hex: 0xffb454))
+            mirrored(x: true) {                                       // lands as one piece
+                withState { translate(74, 30); drawCircle(0, 0, 16) }
+            }
+        }
+    }
+}
+
+/// The raymarched sculpt block: the same per-child mode/melt fold in 3D over captured
+/// mesh primitives. Static at frame 0.
+private final class RaymarchedSDF3DSculptScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x131018))
+        camera(.orbiting(target: Vector3(0, 0.1, 0), radius: 5.6, azimuth: 0.5, elevation: 0.3,
+                         fieldOfView: .pi / 4, near: 2, far: 12))
+        directionalLight(.white, direction: Vector3(-0.5, 0.8, 0.4),
+                         intensity: 1.15, softness: 0.3)
+        ambientLight(Color(white: 0.18))
+        material(.clay)
+        sculpt {
+            blend(0.3)
+            fill(Color(hex: 0xd96f4e))
+            drawSphere(radius: 1.0)
+            withState { translate(0, -1.0, 0); drawCylinder(radius: 0.55, height: 0.5) }
+            fill(Color(hex: 0xe8a06a))
+            withState { translate(0, 0.95, 0); drawTorus(radius: 0.5, tube: 0.16) }
+            carve()
+            withState { translate(0, 1.1, 0); drawSphere(radius: 0.52) }
+            blend(0.06)
+            withState { translate(0.62, 1.05, 0); rotateZ(-0.5)
+                        drawBox(width: 0.5, height: 0.3, depth: 0.34) }
+            add()
+            blend(0.05)
+            fill(Color(hex: 0x8a5a44))
+            withState { translate(0, 0.35, 1.05); rotateX(.pi / 2)
+                        drawTorus(radius: 0.34, tube: 0.09) }
         }
     }
 }

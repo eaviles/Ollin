@@ -1157,6 +1157,30 @@ open class Sketch {
         drawer.beginCombine(op: .columnsIntersect, k: radius, extra: Double(max(count, 1)))
         body(); drawer.endCombine()
     }
+
+    // MARK: The sculpt block (combine mode and melt as mutable state)
+    //
+    // Where the blocks above fix one operator for everything inside, `sculpt { }` reads
+    // like working clay: shapes `add()` on (the default) or `carve()` away, melting over
+    // the current `blend(_:)` radius, and the verbs switch that state mid-block. Built
+    // for the live-coding loop, where a form grows a line at a time and one flipped verb
+    // turns a bump into a dent. Same capture as the other blocks (2D region shapes, or
+    // the SDF-able mesh primitives under a camera; the transform stack works inside).
+
+    /// Sculpt one merged form from the shapes drawn inside. The first shape is the base;
+    /// each later one folds under the mode and melt state active when it was drawn:
+    /// `add()` (the default) unions on, `carve()` subtracts, and `blend(_:)` sets how far
+    /// the seams melt (0 = hard, the opening state). Nested blocks land as one piece
+    /// under the state at their close.
+    public func sculpt(_ body: () -> Void) {
+        drawer.beginSculpt(); body(); drawer.endCombine()
+    }
+    /// Inside `sculpt { }`: switch to adding, so subsequent shapes union onto the form.
+    public func add() { drawer.sculptAdd() }
+    /// Inside `sculpt { }`: switch to carving, so subsequent shapes cut away from the form.
+    public func carve() { drawer.sculptCarve() }
+    /// Inside `sculpt { }`: set the melt radius for subsequent shapes (0 = a hard seam).
+    public func blend(_ k: Double) { drawer.sculptBlend(k) }
     /// Mirror the field drawn inside across the x and/or y (and, in 3D, z) plane of the
     /// current frame. The `z` flag only applies to a 3D field.
     public func mirrored(x: Bool = true, y: Bool = false, z: Bool = false, _ body: () -> Void) {

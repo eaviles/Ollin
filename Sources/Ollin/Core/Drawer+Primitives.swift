@@ -860,12 +860,34 @@ extension Drawer {
         // Union the children, then apply this domain op. Carried for both dimensions (the
         // 2D `SDF.Transform` for captured 2D shapes, the 3D `SDF3D.Transform` for 3D ones).
         case domain(SDF.Transform, SDF3D.Transform)
+        // Fold each child under the mode/melt state it was captured with (the `sculpt { }`
+        // block, whose `add()`/`carve()`/`blend(_:)` verbs mutate that state mid-block).
+        case sculpt
     }
     final class CombineFrame {
         let kind: CombineFrameKind
         var children: [SDF] = []        // 2D region leaves captured in this block
         var children3D: [SDF3D] = []    // 3D mesh-primitive leaves captured in this block
+        // The sculpt block's mutable state, snapshotted per child as it's captured
+        // (read only when kind == .sculpt; the arrays parallel children/children3D).
+        var sculptCarve = false
+        var sculptBlend: Float = 0
+        var childModes: [(carve: Bool, k: Float)] = []
+        var childModes3D: [(carve: Bool, k: Float)] = []
         init(_ kind: CombineFrameKind) { self.kind = kind }
+        func append(_ field: SDF) {
+            children.append(field)
+            childModes.append((sculptCarve, sculptBlend))
+        }
+        func append3D(_ field: SDF3D) {
+            children3D.append(field)
+            childModes3D.append((sculptCarve, sculptBlend))
+        }
+        /// The combine op a sculpt child folds under, from its captured mode/melt.
+        static func sculptOp(carve: Bool, k: Float) -> SDF.Combine {
+            carve ? (k > 0 ? .smoothSubtract : .subtract)
+                  : (k > 0 ? .smoothUnion : .union)
+        }
     }
 
     /// Open a scoped combine block (`smoothUnion(k:) { … }` etc.). Both 2D SDF region
@@ -883,6 +905,34 @@ extension Drawer {
         if combineStack.isEmpty { combineGroupTransform = transform; combineGroupModel = modelMatrix }
         combineStack.append(CombineFrame(.domain(op2D, op3D)))
     }
+    /// Open a sculpt block: children fold in draw order, each under the mode/melt state
+    /// (`add()`/`carve()`, `blend(_:)`) active when it was drawn. Opens adding, hard.
+    func beginSculpt() {
+        if combineStack.isEmpty { combineGroupTransform = transform; combineGroupModel = modelMatrix }
+        combineStack.append(CombineFrame(.sculpt))
+    }
+    /// The innermost enclosing sculpt frame (the one the mode verbs address), so a verb
+    /// inside a nested domain/combine block steers how that block's result lands on the
+    /// sculpt. `nil` outside any sculpt block.
+    private var sculptFrame: CombineFrame? {
+        combineStack.last(where: { if case .sculpt = $0.kind { return true }; return false })
+    }
+    private func withSculptFrame(_ verb: String, _ body: (CombineFrame) -> Void) {
+        guard let frame = sculptFrame else {
+            if !warnedSculptVerbOutside {
+                print("Ollin: \(verb) only applies inside a sculpt { } block; ignored.")
+                warnedSculptVerbOutside = true
+            }
+            return
+        }
+        body(frame)
+    }
+    /// Switch the active sculpt block to adding: subsequent shapes union on.
+    func sculptAdd() { withSculptFrame("add()") { $0.sculptCarve = false } }
+    /// Switch the active sculpt block to carving: subsequent shapes subtract.
+    func sculptCarve() { withSculptFrame("carve()") { $0.sculptCarve = true } }
+    /// Set the active sculpt block's melt radius for subsequent combines (0 = hard).
+    func sculptBlend(_ k: Double) { withSculptFrame("blend(_:)") { $0.sculptBlend = Float(max(k, 0)) } }
     /// Close the innermost combine block: fold its children into one field (per dimension),
     /// then attach to the enclosing block, or (if this was the outermost) draw it.
     func endCombine() {
@@ -890,8 +940,8 @@ extension Drawer {
         let field = buildCombineField(frame)
         let field3D = buildCombine3DField(frame)
         if let parent = combineStack.last {
-            if let field { parent.children.append(field) }
-            if let field3D { parent.children3D.append(field3D) }
+            if let field { parent.append(field) }
+            if let field3D { parent.append3D(field3D) }
             return
         }
         // Outermost: draw under the group's transforms (captured when it opened), restored
@@ -902,6 +952,7 @@ extension Drawer {
         combineGroupModel = nil
         warnedNonCombinable = false
         warnedMeshInCombine = false
+        warnedSculptVerbOutside = false
         if let field {
             let saved = transform
             if let groupT { transform = groupT }
@@ -925,6 +976,15 @@ extension Drawer {
         case let .domain(t, _):
             for child in rest { result = SDF(.combine(.union, result, child, 0, 0)) }
             return SDF(.transformed(t, result))
+        case .sculpt:
+            // Each child folds under the mode/melt it was drawn with (the first child is
+            // the base either way: carving from nothing leaves nothing worth drawing).
+            for i in frame.children.indices.dropFirst() {
+                let (carve, k) = frame.childModes[i]
+                result = SDF(.combine(CombineFrame.sculptOp(carve: carve, k: k),
+                                      result, frame.children[i], k, 0))
+            }
+            return result
         }
     }
     private func buildCombine3DField(_ frame: CombineFrame) -> SDF3D? {
@@ -938,6 +998,14 @@ extension Drawer {
         case let .domain(_, t):
             for child in rest { result = SDF3D(.combine(.union, result, child, 0, 0)) }
             return SDF3D(.transformed(t, result))
+        case .sculpt:
+            for i in frame.children3D.indices.dropFirst() {
+                let (carve, k) = frame.childModes3D[i]
+                let op2 = CombineFrame.sculptOp(carve: carve, k: k)
+                let op3 = SDF3D.Combine(rawValue: op2.rawValue) ?? .union
+                result = SDF3D(.combine(op3, result, frame.children3D[i], k, 0))
+            }
+            return result
         }
     }
     /// Capture one region shape (already decoded by its draw method) as an `SDF` leaf,
@@ -967,7 +1035,7 @@ extension Drawer {
         if abs(scale - 1) > 1e-4 { leaf = leaf.scaled(Double(scale)) }
         if abs(angle) > 1e-4 { leaf = leaf.rotated(Double(angle)) }
         leaf = leaf.at(Vector2(Double(cc.x), Double(cc.y)))
-        frame.children.append(leaf)
+        frame.append(leaf)
     }
 
     /// The chokepoint for the SDF-able mesh primitives (`drawSphere`/`drawBox`/…). Inside a
@@ -1012,7 +1080,7 @@ extension Drawer {
             }
         }
         leaf = leaf.at(x: Double(t.x), y: Double(t.y), z: Double(t.z))
-        frame.children3D.append(leaf)
+        frame.append3D(leaf)
     }
 
     /// An elliptical arc centered at `(x, y)` with radii `rx`/`ry`, sweeping from

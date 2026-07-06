@@ -275,6 +275,35 @@ exactly as with `.colored`. Set up position with the [transform stack](../Drawin
 (`translate`/`rotate`) around the block; non-region draws inside a block (lines, text,
 images) are ignored.
 
+**The sculpt block.** Where the blocks above fix one operator for everything inside,
+`sculpt { }` makes the operator and melt amount *mutable state*, so a form reads top to
+bottom like working clay: shapes `add()` on (the opening mode) or `carve()` away, melting
+over the current `blend(_:)` radius (0, the opening value, is a hard seam). The first
+shape is the base; each later one folds under the state active when it was drawn, and a
+nested block (a `mirrored { }` pair, a sub-assembly) lands as one piece under the state
+at its close. Flipping one verb turns a bump into a dent, which is what makes this the
+natural block for [live coding](../Tools/LiveCoding.md):
+
+```swift
+sculpt {
+    blend(0.3)                 // melt amount for what follows
+    fill(.init(hex: 0xd96f4e))
+    drawSphere(radius: 1.0)                                        // the body
+    withState { translate(0, 0.95, 0)
+                drawTorus(radius: 0.5, tube: 0.16) }               // a lip melts on
+    carve()                    // now shapes cut away
+    withState { translate(0, 1.1, 0); drawSphere(radius: 0.52) }   // the hollow
+    add(); blend(0.05)         // back to adding, nearly hard
+    withState { translate(0, 0.35, 1.05); rotateX(.pi / 2)
+                drawTorus(radius: 0.34, tube: 0.09) }              // a crisp handle
+}
+```
+
+The verbs only apply inside a `sculpt { }` block (elsewhere they log once and do
+nothing), and each block keeps its own state, so nested sculpts don't leak into each
+other. `Examples/3D/Raymarching/RaymarchedClay` throws a small vessel this way; the
+same block sculpts 2D region shapes.
+
 <a name="fields-3d"></a>
 
 ### 3D fields
