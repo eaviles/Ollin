@@ -31,21 +31,18 @@ final class Choices: Sketch {
                 probability: 0.75, slots: slots, left: left, pitch: pitch)
 
         // A uniform pick: every color equally likely.
-        rowLabel("palette[Int(random(4))] · every color equally likely", y: 320)
+        rowLabel("randomChoice(palette) · every color equally likely", y: 320)
         for i in 0..<slots {
-            fill(palette[Int(random(4))])
+            fill(randomChoice(palette))
             noStroke()
             drawRect(left + Double(i) * pitch - 8, 344, 16, 26)
         }
 
-        // A weighted pick: stack the thresholds.
-        rowLabel("roll < 0.6 → indigo · roll < 0.9 → coral · else → gold", y: 430)
+        // A weighted pick: indigo dominant, coral support, gold the rare spice.
+        let trio = [palette[0], palette[3], palette[2]]
+        rowLabel("randomChoice(trio, weights: [6, 3, 1]) · a dominant, a support, a spice", y: 430)
         for i in 0..<slots {
-            let roll = random()
-            var pick = palette[0]
-            if roll >= 0.6 { pick = palette[3] }
-            if roll >= 0.9 { pick = palette[2] }
-            fill(pick)
+            fill(randomChoice(trio, weights: [6, 3, 1]))
             noStroke()
             drawRect(left + Double(i) * pitch - 8, 454, 16, 26)
         }

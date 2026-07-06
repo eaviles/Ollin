@@ -71,16 +71,21 @@ if random() < 0.25 {   // about a quarter of the time
 
 Read the top strip in the figure and count: about a quarter of the slots made it through, but in clumps and droughts, not neatly spaced. That lumpiness is what real chance looks like (dice have no memory of the last roll), and it's half of why generative pieces read as alive rather than patterned.
 
-The **pick** chooses from a list. Roll a position into the array:
+The **pick** chooses from a list, and it's one call:
 
 ```swift
 let palette: [Color] = [.indigo, .teal, .gold, .coral]   // any four you like
-fill(palette[Int(random(4))])
+fill(randomChoice(palette))
 ```
 
-> **Swift note.** Wrapping a number in `Int(...)` drops its fraction, so `Int(random(4))` is 0, 1, 2, or 3, never 4, which is exactly what a four-item list wants. Roll `random(Double(palette.count))` instead of a literal `4` and the line survives palette edits.
+And when equal odds are too equal, hand the pick **weights**, one per choice, in any scale you like:
 
-And when equal odds are too equal, **weight** the pick by stacking gates on one roll, the way the figure's last strip leans indigo: `let roll = random()`, then indigo below 0.6, coral below 0.9, gold for the rare rest. Sixty-thirty-ten. Most compositions want a dominant, a support, and a spice, and three thresholds buy you that.
+```swift
+let trio = [Color.indigo, .coral, .gold]
+fill(randomChoice(trio, weights: [6, 3, 1]))   // the figure's last strip
+```
+
+Six-three-one: the first color wins six times as often as the last, and a weight of zero would never win at all. Under the hood this is the gate again, one roll checked against thresholds stacked in proportion to the weights. Most compositions want a dominant, a support, and a spice, and three weights buy you that. (The same seeded dice also deal a whole deck: `shuffled(palette)` is the full list in a random order.)
 
 ## The two shapes of chance
 
@@ -132,7 +137,9 @@ final class WalkGrows: Sketch {
 
 <img src="Images/04-Randomness/WalkGrows.jpg" alt="A teal random walk on a dark canvas, dense tangled clusters joined by corridors, with a white dot marking the walker's current position" width="560">
 
-Run it and the walk *grows* in front of you, ten seconds from first step to rest. The trick is a compact reprise of the whole chapter: the walk is seeded, so every frame redraws the *identical* path from the start; the only thing time controls is how many steps of it you get to see (`Int(time * 240)`, capped by `min` at 2,400 so it eventually rests). Chance decides the shape once; the clock just pulls back the curtain. Notice the anatomy of the path, tight tangles connected by sudden corridors: statisticians call it the drunkard's walk, and the tangles are the lamp posts.
+Run it and the walk *grows* in front of you, ten seconds from first step to rest. The trick is a compact reprise of the whole chapter: the walk is seeded, so every frame redraws the *identical* path from the start; the only thing time controls is how many steps of it you get to see. Chance decides the shape once; the clock just pulls back the curtain. Notice the anatomy of the path, tight tangles connected by sudden corridors: statisticians call it the drunkard's walk, and the tangles are the lamp posts.
+
+> **Swift note.** Wrapping a number in `Int(...)` drops its fraction, so `Int(time * 240)` counts up in whole steps, 240 of them a second. `min(a, b)` hands back the smaller of its two values, which is what stops the count at 2,400.
 
 The walk's little `x = nx` heartbeat, a value carried forward and nudged, is where Part II begins: velocity, springs, and flocks all carry a value forward and nudge it. And the walk's one aesthetic flaw, that jittery stagger, is precisely the itch Chapter 5 scratches: noise is a random walk that learned to glide.
 
@@ -179,7 +186,7 @@ final class DisorderGrid: Sketch {
                     let y4 = top + cell - inset + random(-1, 1) * d
                     stroke(ink)
                     if random() < 0.08 {
-                        stroke(accents[Int(random(3))])
+                        stroke(randomChoice(accents))
                     }
                     drawLine(x1, y1, x2, y2)
                     drawLine(x2, y2, x3, y3)
@@ -201,7 +208,7 @@ Run it with `swift run OllinLive MySketches/DisorderGrid.swift` and take it apar
 - `randomSeed(gridSeed)` opens the frame, so the whole drawing is one seed's story, held perfectly still. The `Seed` knob picks which story: click the canvas to step to the next variation, or click the knob's value box and type a favorite. `Seed` starts at a whole number (`7`, not `7.0`), so it's a whole-number knob, the same move as Chapter 3's `Waves`.
 - `unrest` is the composition. Row 0 computes it as zero (no nudge allowed, perfect nesting), the bottom row gets the full `Disorder` knob, and every row between gets its share. One line decides the piece's entire top-to-bottom narrative.
 - Each quadrilateral is four corners sitting on the posts of a perfect square, `inset` deep into its cell, and every corner coordinate rolls its own `random(-1, 1)` nudge, scaled by the row's reach `d`: eight rolls per shape, so squares don't just shift, they *deform*. Four `drawLine` calls close the loop.
-- The accent is a gate and a pick working together, straight from this chapter: eight percent of quads trade ink for one of three colors, `accents[Int(random(3))]`.
+- The accent is a gate and a pick working together, straight from this chapter: eight percent of quads trade ink for `randomChoice(accents)`.
 - Turn `Disorder` to zero and the grid snaps to perfect order: the piece contains its own before picture. Because the *pattern* of rolls never changes with the knob (only their reach), the same tangles grow back in the same places as you turn it up again.
 
 When a seed earns it, export the still:
@@ -223,7 +230,7 @@ The grammar of this chapter is the founding grammar of computer art. Vera Molná
 
 ## Go deeper
 
-- [Random](../Docs/Generators/Random.md): the full reference, including `randomVector` (a roll inside a rectangle) and `ring` (a roll inside a ring, great for halos).
+- [Random](../Docs/Generators/Random.md): the full reference, including `randomVector` (a roll inside a rectangle), `ring` (a roll inside a ring, great for halos), and the seeded `shuffled`.
 - [Noise](../Docs/Generators/Noise.md): the next chapter's subject, if you can't wait to make chance glide.
 - Worked examples, all in [`Examples/Randomness/`](../Examples/Randomness/): `Gaussian` (the bell curve as boiling scatter), `RandomBand` (uniform, for contrast), and `Ring` (the annulus roll).
 - The Molnár homages in [`Examples/Recreations/VeraMolnar/`](../Examples/Recreations/VeraMolnar/): `DesOrdres` (seeded disorder scrubbed by the mouse) and `Interruptions` (a field of tilted ticks, its gaps carved by the noise you'll meet in Chapter 5).

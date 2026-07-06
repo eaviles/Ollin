@@ -12,6 +12,8 @@
 - [randomGaussian](#randomGaussian)
 - [randomVector](#randomVector)
 - [ring](#ring)
+- [randomChoice](#randomChoice)
+- [shuffled](#shuffled)
 - [randomSeed](#randomSeed)
 - [seed](#seed)
 
@@ -33,6 +35,8 @@ A uniform random `Double`: in `0..<1`, in `0..<max`, or between `min` and `max` 
 let y = 400 + random(-100, 100)        // jitter around 400
 if random() < 0.2 { /* runs about a fifth of the time */ }
 ```
+
+One gotcha for seeded sketches: a zero-width range short-circuits, so `random(a, a)` returns `a` *without consuming a roll*. If a knob or an animated value scales a jitter amount that can reach exactly zero, write the jitter as a scaled unit roll, `random(-1, 1) * amount`, not `random(-amount, amount)`: the first always draws, so the seeded sequence (and the piece's whole pattern of later rolls) stays stable as `amount` crosses zero.
 
 <a name="randomGaussian"></a>
 
@@ -111,6 +115,40 @@ A random point in the annulus between the two radii, centered on the origin. Add
 let center = Vector2(width / 2, height / 2)
 let p = center + ring(innerRadius: 50, outerRadius: 100)
 drawCircle(center: p, radius: 3)
+```
+
+### Choices
+
+<a name="randomChoice"></a>
+
+#### randomChoice
+
+```swift
+randomChoice<T>(_ choices: [T]) -> T
+randomChoice<T>(_ choices: [T], weights: [Double]) -> T
+```
+
+A random element of `choices`: each equally likely, or biased by `weights`. The everyday palette pick, without indexing arithmetic. Weights are one per choice, non-negative, in any scale (they need not sum to 1); a choice weighted 0 is never picked. `choices` must not be empty. Seeded like everything `random`, so `randomSeed` makes the picks reproducible.
+
+```swift
+fill(randomChoice(palette))                            // any of them
+fill(randomChoice(palette, weights: [6, 3, 1]))        // a dominant, a support, a spice
+let move = randomChoice(["up", "down", "hold"], weights: [1, 1, 4])
+```
+
+<a name="shuffled"></a>
+
+#### shuffled
+
+```swift
+shuffled<T>(_ array: [T]) -> [T]
+```
+
+The elements of `array` in a random order, drawn from the sketch's seeded generator, so a seeded shuffle reproduces run to run. (An array's own `shuffled()` rolls the system's dice instead and differs every run.)
+
+```swift
+randomSeed(9)
+let order = shuffled(palette)   // the same reordering every run
 ```
 
 ### Seeding

@@ -21,7 +21,7 @@ public struct SplitMix64: RandomNumberGenerator {
 }
 
 public extension Sketch {
-    /// Seed the generator behind `random()` for reproducible runs — the same
+    /// Seed the generator behind `random()` for reproducible runs: the same
     /// seed yields the same sequence. (Ollin's `random`/`noise` are their own
     /// implementations, so a seed reproduces Ollin's output.)
     func randomSeed(_ seed: Int) {
@@ -76,7 +76,7 @@ public extension Sketch {
         mean + randomGaussian() * deviation
     }
 
-    /// A random point inside `rect` — each coordinate uniform within the bounds.
+    /// A random point inside `rect`, each coordinate uniform within the bounds.
     /// Handy for scattering: `randomVector(in: Rectangle(x: 0, y: 0, width: width, height: height))`.
     func randomVector(in rect: Rectangle) -> Vector2 {
         Vector2(random(rect.x, rect.x + rect.width),
@@ -90,5 +90,43 @@ public extension Sketch {
         let radius = random(innerRadius, outerRadius)
         let angle = random(.tau)
         return Vector2(cos(angle) * radius, sin(angle) * radius)
+    }
+
+    /// A random element of `choices`, each equally likely. The everyday
+    /// palette pick: `fill(randomChoice(palette))`. Seeded like everything
+    /// `random`, so `randomSeed` makes the picks reproducible. `choices` must
+    /// not be empty.
+    func randomChoice<T>(_ choices: [T]) -> T {
+        precondition(!choices.isEmpty, "randomChoice needs at least one choice")
+        return choices[Int.random(in: 0 ..< choices.count, using: &rng)]
+    }
+
+    /// A random element of `choices`, biased by `weights`: one non-negative
+    /// weight per choice, in any scale (they need not sum to 1), and a choice
+    /// weighted 0 is never picked. `randomChoice(palette, weights: [6, 3, 1])`
+    /// picks the first color six times as often as the last.
+    func randomChoice<T>(_ choices: [T], weights: [Double]) -> T {
+        precondition(!choices.isEmpty, "randomChoice needs at least one choice")
+        precondition(choices.count == weights.count,
+                     "randomChoice needs one weight per choice")
+        let total = weights.reduce(0, +)
+        precondition(weights.allSatisfy { $0 >= 0 } && total > 0,
+                     "randomChoice weights must be non-negative, with at least one above zero")
+        let roll = random(total)
+        var cumulative = 0.0
+        for (choice, weight) in zip(choices, weights) {
+            cumulative += weight
+            if roll < cumulative { return choice }
+        }
+        // Floating-point summation can leave the roll a hair past the last
+        // threshold; land it on the final pickable choice.
+        return choices[weights.lastIndex(where: { $0 > 0 })!]
+    }
+
+    /// The elements of `array` in a random order, drawn from the sketch's
+    /// seeded generator, so a seeded shuffle reproduces. (An array's own
+    /// `shuffled()` rolls the system's dice instead and differs every run.)
+    func shuffled<T>(_ array: [T]) -> [T] {
+        array.shuffled(using: &rng)
     }
 }

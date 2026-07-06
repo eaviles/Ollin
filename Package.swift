@@ -587,6 +587,7 @@ let package = Package(
         example("Motion/ArcModes"),
         example("Randomness/Gaussian"),
         example("Randomness/Ring"),
+        example("Randomness/Walk"),
         example("Patterns/CliffordAttractor"),
         example("Patterns/DotGrid"),
         example("Patterns/Grid"),

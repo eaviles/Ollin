@@ -42,7 +42,7 @@ final class DisorderGrid: Sketch {
                     let y4 = top + cell - inset + random(-1, 1) * d
                     stroke(ink)
                     if random() < 0.08 {
-                        stroke(accents[Int(random(3))])
+                        stroke(randomChoice(accents))
                     }
                     drawLine(x1, y1, x2, y2)
                     drawLine(x2, y2, x3, y3)
