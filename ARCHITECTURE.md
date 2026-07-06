@@ -708,8 +708,32 @@ A field is a fullscreen sphere-tracer whose cost is **bound to pixel count, not
 step count** (a benchmark sweep is roughly flat across 32 to 256 steps). So the
 `raymarchQuality(_:)` / `raymarchResolution(_:)` dial scales the field's internal
 *resolution* (full on `.detail`, half on `.default`, quarter on `.performance`,
-or a custom fraction), via a half-res pre-pass that the main pass composites
+or a custom fraction), via a reduced-res pre-pass that the main pass composites
 (bilinear color, point-sampled depth so the silhouette stays crisp).
+
+The resolved fraction is a **marched-pixel budget at full coverage, not a fixed
+downscale**. Because the AABB clip bails missed rays in O(1), the tracer's real
+cost tracks the pixels the fields *cover*, and a fixed fraction had it exactly
+backwards: a dollied-out field (small on screen, cheap to march) got the fewest
+real pixels and dissolved into upsampled blur (the zoom-out-blur bug). So
+`encodeRaymarchHalfRes` estimates the fields' projected screen coverage
+(`fieldScreenCoverage`: each world AABB's eight corners through the camera, the
+clipped NDC areas summed; a plane or a corner at/behind the camera counts as
+full coverage) and traces at `min(1, fraction / √coverage)`: the marched-pixel
+count never exceeds `fraction² × canvas`, the cost the fraction already implies
+at full coverage, while a small field gets traced dense. At or above scale 1 the
+pre-pass is skipped entirely (the inline march is crisper *and* cheaper).
+Deterministic (pure function of camera + AABBs, no temporal state), so it holds
+on export too. Two supporting pieces: the pre-pass targets are **grow-only** and
+the pass renders into a **viewport subrect** (a continuous dolly drifts the scale
+every frame; reallocating per frame would thrash), with the upsample mapping UVs
+into the subrect and clamping half a texel inside it so bilinear never reads the
+cleared texels past it; and the pre-pass's analytic silhouette AA sizes its pixel
+cone by the **internal** resolution (`Uniforms3D.raymarchScale`), where sizing it
+to the full-res pixel under-blurred the low-res image and the upsample magnified
+the aliasing into a staircase. The inline path binds scale 1, which is
+bit-identical to the pre-fix expression, so full-res renders and snapshots are
+unchanged.
 
 Field shadows are the expensive case, because the point-light cast is
 per-receiver-pixel: a screen-filling floor under a field can take roughly half a
@@ -718,9 +742,11 @@ march (inflated by the soft-shadow penumbra reach, so a grazing near-miss still
 marches and the result is byte-identical), and a half-res field-shadow pass
 (`encodeFieldShadowHalfRes`) wired to the same `resolveRaymarchScale` dial.
 
-**Resolution scaling is live-preview only.** Export (scale 1.0) marches and
-shadows full-res, so default-tier snapshots stay byte-identical and exported art
-is never downscaled. The dial rides the shared `RenderQuality` model, where
+**The automatic tier scales the live preview only.** With no explicit setting,
+export resolves to `.detail` (scale 1.0) and marches and shadows full-res, so
+default-tier snapshots stay byte-identical and exported art is never downscaled;
+an explicit `raymarchResolution` fraction (or explicit tier) is honored on export
+too, coverage-adaptively. The dial rides the shared `RenderQuality` model, where
 `.default` doubles as automatic: live `.default`, export `.detail`, overridable
 by the `--render-quality` flag. All four quality knobs (shadows, defocus, ambient
 occlusion, and raymarch resolution) target frame-rate bands.

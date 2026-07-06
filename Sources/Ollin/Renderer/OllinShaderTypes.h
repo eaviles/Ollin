@@ -74,6 +74,14 @@ typedef struct {
                                // fragment: .x = camera-march step budget, .y = self-shadow
                                // march budget. Default (128, 48) reproduces the pre-dial
                                // constants exactly, so default-quality snapshots are unchanged.
+    simd_float2 raymarchScale; // .x = the raymarch pass's internal render scale (1 = full
+                               // resolution): the reduced-res pre-pass traces at
+                               // `viewport * scale`, and its pixel-cone AA must match the
+                               // texel it actually shades, not the full-res pixel (a cone
+                               // sized to the full-res pixel under-blurs the low-res image
+                               // and the upsample magnifies the aliasing into a staircase).
+                               // Always 1 for the full-res inline march (byte-identical:
+                               // `viewport.y * 1` is exact). .y unused.
 } Uniforms3D;
 
 // One vertex of a textured quad (the image pipeline). Position is already in

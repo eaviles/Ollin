@@ -613,12 +613,16 @@ open class Sketch {
     public func shadowSoftness(_ amount: Double = 0.5) { drawer.shadowSoftness(amount) }
 
     /// Set the raymarched-SDF (`drawSDF3D`) quality: the dial to trade fidelity for frame rate
-    /// on the fullscreen sphere-tracer, whose cost is bound to pixel count. It scales the
-    /// **live preview's** internal resolution (a depth-aware upsample composites it back to the
-    /// window): `.detail` traces at full resolution, `.default` at half (¼ the pixels, the
-    /// out-of-the-box choice that keeps a busy field smooth), `.performance` at quarter (1/16 the
-    /// pixels, for the heaviest fields). **Only the live preview scales:** `--export` and
-    /// headless renders always trace at full resolution, so exported art is never downscaled. A
+    /// on the fullscreen sphere-tracer, whose cost is bound to the pixels the field covers. It
+    /// sets the internal resolution the field is traced at (a depth-preserving upsample
+    /// composites it back to the window): `.detail` traces at full resolution, `.default` at a
+    /// half-resolution **budget** (¼ the pixels, the out-of-the-box choice that keeps a busy
+    /// field smooth), `.performance` at a quarter-resolution budget (1/16 the pixels, for the
+    /// heaviest fields). The budget is **coverage-adaptive**: it applies in full when the field
+    /// fills the screen, and a field covering less of it (a dollied-out camera) is traced
+    /// denser, up to full resolution, for the same marched-pixel cost, so zooming out never
+    /// dissolves the surface into upsampled blur. With the automatic `.default`, `--export` and
+    /// headless renders trace at full resolution, so exported art is never downscaled. A
     /// persistent setting, set once in `setup()` or `draw()`. Only `drawSDF3D` reads it;
     /// rasterized meshes and the 2D path are unaffected.
     public func raymarchQuality(_ quality: RenderQuality = .default) { drawer.raymarchQuality(quality) }
@@ -629,11 +633,14 @@ open class Sketch {
     /// the `raymarchQuality` *tiers*). Persistent.
     public func raymarchSteps(_ count: Int) { drawer.raymarchSteps(count) }
 
-    /// Set the raymarched-SDF live-preview resolution to an **exact fraction** (0.1…1.0): the
+    /// Set the raymarched-SDF resolution budget to an **exact fraction** (0.1…1.0): the
     /// custom-percentage alternative to the `raymarchQuality` tiers (which are 1.0 / 0.5 / 0.25),
-    /// e.g. `raymarchResolution(0.75)` traces the field at 75% and upsamples. As with the tiers,
-    /// the scaling is **live-preview only** (a depth-aware upsample composites it back, and
-    /// meshes still occlude it); `--export` always traces at full resolution. Persistent.
+    /// e.g. `raymarchResolution(0.75)` traces the field at 75% resolution when it fills the
+    /// screen. Like the tiers it is **coverage-adaptive**: a field covering less of the screen
+    /// is traced denser, up to full resolution, at the same marched-pixel cost, so a
+    /// dollied-out field stays crisp. A depth-preserving upsample composites the trace back
+    /// (meshes still occlude it). Unlike the automatic tier default, an explicit fraction is
+    /// honored on `--export` too. Persistent.
     public func raymarchResolution(_ fraction: Double) { drawer.raymarchResolution(fraction) }
 
     // MARK: 3D — solid primitives & meshes

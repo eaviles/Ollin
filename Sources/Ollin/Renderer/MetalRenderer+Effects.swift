@@ -1247,7 +1247,7 @@ extension MetalRenderer {
                         shadowAccel: MTLAccelerationStructure? = nil,
                         reflectAccel: MTLAccelerationStructure? = nil,
                         reflectGeoOffsets: MTLBuffer? = nil,
-                        halfResField: (color: MTLTexture, depth: MTLTexture)? = nil,
+                        halfResField: (color: MTLTexture, depth: MTLTexture, region: SIMD4<Float>)? = nil,
                         halfResFieldShadow: MTLTexture? = nil,
                         deferredReflection: MTLTexture? = nil,
                         target passTarget: RenderTarget? = nil) {
@@ -1520,6 +1520,8 @@ extension MetalRenderer {
                     compositedHalfResFields = true
                     guard let upState = try? pipeline(.raymarchUpsample(depth: depthFormat ?? depthPixelFormat)) else { continue }
                     encoder.setRenderPipelineState(upState)
+                    var region = hf.region
+                    encoder.setFragmentBytes(&region, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
                     encoder.setFragmentTexture(hf.color, index: 0)
                     encoder.setFragmentTexture(hf.depth, index: 1)
                     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)

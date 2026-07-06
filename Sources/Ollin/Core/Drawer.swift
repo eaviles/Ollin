@@ -1105,8 +1105,9 @@ final class Drawer {
     /// (full resolution). Persistent.
     func raymarchSteps(_ count: Int) { raymarchQualitySetting = .absolute(max(16, min(count, 512))) }
 
-    /// Set the raymarched-SDF live-preview resolution to an exact fraction (0.1…1.0), the
-    /// custom alternative to the `raymarchQuality` tiers' 1.0/0.5/0.25. Persistent.
+    /// Set the raymarched-SDF resolution budget to an exact fraction (0.1…1.0), the custom
+    /// alternative to the `raymarchQuality` tiers' 1.0/0.5/0.25 (coverage-adaptive like them:
+    /// the fraction applies at full screen coverage, a smaller field traces denser). Persistent.
     func raymarchResolution(_ fraction: Double) { raymarchQualitySetting = .resolution(min(1.0, max(0.1, fraction))) }
 
     /// Pack this frame's effective lighting into the GPU uniform. The mode decides

@@ -360,16 +360,20 @@ raymarchQuality(.default)       // half-resolution (the default, keeps a busy fi
 raymarchQuality(.detail)        // full resolution
 ```
 
-`.default` (half resolution) is already in effect with no code, so most fields stay smooth out
-of the box; reach for `.performance` only on the heaviest scenes (an infinite plane, dense
-self-shadows). A depth-aware upsample composites the field back to full size, and meshes still
-occlude it correctly, so the lower resolution mainly softens the field's silhouette a little.
-**Only the live window scales:** `--export` and headless renders always sphere-trace at full
+`.default` (a half-resolution budget) is already in effect with no code, so most fields stay
+smooth out of the box; reach for `.performance` only on the heaviest scenes (an infinite plane,
+dense self-shadows). The budget is **coverage-adaptive**: it applies in full when the field
+fills the window, and a field covering less of the screen (a dollied-out camera, a small form
+in a big scene) is traced denser, up to full resolution, for the same marched-pixel cost. So
+zooming out keeps the surface crisp instead of dissolving it into upsampled blur, and the dial
+only ever softens a field while it's large on screen (where the softness is hardest to see). A
+depth-preserving upsample composites the field back to full size, and meshes still occlude it
+correctly. With the automatic `.default`, `--export` and headless renders sphere-trace at full
 resolution (see [Export ▸ Render quality](../Output/Export.md#render-quality)), so exported art is never
-downscaled. For an exact resolution instead of the tiers, `raymarchResolution(_:)` takes a
-custom fraction: `raymarchResolution(0.75)` traces at 75% (the tiers are 1.0 / 0.5 / 0.25). For
-an exact, machine-independent *march budget* use `raymarchSteps(_:)` (always full resolution).
-`Scripts/benchmark.sh raymarch` measures the per-GPU cost.
+downscaled. For an exact budget instead of the tiers, `raymarchResolution(_:)` takes a
+custom fraction: `raymarchResolution(0.75)` traces at 75% at full coverage (the tiers are
+1.0 / 0.5 / 0.25). For an exact, machine-independent *march budget* use `raymarchSteps(_:)`
+(always full resolution). `Scripts/benchmark.sh raymarch` measures the per-GPU cost.
 
 <a name="notes"></a>
 

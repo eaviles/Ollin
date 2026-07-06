@@ -516,6 +516,47 @@ extension MetalRenderer {
         }
     }
 
+    /// The fraction of the screen the frame's 3D fields cover, estimated from each field's
+    /// world AABB projected through the camera (the sum of the projected boxes' clipped NDC
+    /// areas, capped at 1). Conservative where the estimate can't be trusted: an unbounded
+    /// field (a plane) or an AABB corner at/behind the camera counts as full coverage.
+    ///
+    /// This drives the *coverage-adaptive* raymarch scale: the resolved quality fraction is a
+    /// marched-pixel *budget at full coverage*, not a fixed downscale. The pre-pass traces at
+    /// `min(1, scale / sqrt(coverage))`, so a field that covers less of the screen is traced
+    /// denser (up to full resolution, where the pre-pass is skipped entirely) for the same
+    /// marched-pixel count the fraction allows when the field fills the screen. A dollied-out
+    /// field therefore stays crisp instead of dissolving into an upsampled blur, and the cost
+    /// never exceeds what the chosen fraction already costs at full coverage.
+    func fieldScreenCoverage(_ groups: [SDF3DGroupInstance], viewProjection: simd_float4x4) -> Double {
+        var total = 0.0
+        for g in groups {
+            if g.unbounded != 0 { return 1.0 }   // a plane spans the screen
+            var lo = SIMD2<Float>(.greatestFiniteMagnitude, .greatestFiniteMagnitude)
+            var hi = -lo
+            var conservative = false
+            for i in 0..<8 {
+                let corner = SIMD4<Float>((i & 1) == 0 ? g.boundsMin.x : g.boundsMax.x,
+                                          (i & 2) == 0 ? g.boundsMin.y : g.boundsMax.y,
+                                          (i & 4) == 0 ? g.boundsMin.z : g.boundsMax.z, 1)
+                let clip = viewProjection * corner
+                // A corner at or behind the camera plane: the projected-corner bound no longer
+                // contains the box's silhouette (the camera is inside or beside the field), so
+                // assume screen-filling rather than under-estimate.
+                if clip.w <= 1e-4 { conservative = true; break }
+                let ndc = SIMD2<Float>(clip.x, clip.y) / clip.w
+                lo = simd_min(lo, ndc)
+                hi = simd_max(hi, ndc)
+            }
+            if conservative { return 1.0 }
+            let dx = Double(min(hi.x, 1) - max(lo.x, -1))
+            let dy = Double(min(hi.y, 1) - max(lo.y, -1))
+            if dx <= 0 || dy <= 0 { continue }   // fully off-screen: contributes nothing
+            total += (dx * dy) / 4.0             // NDC spans 2×2
+        }
+        return min(total, 1.0)
+    }
+
     /// Build the per-frame 3D camera constants (used by the points/mesh/raymarch pipelines),
     /// including the dial-resolved march-step budget. `nil` when no 3D camera is active. Shared
     /// by the main `encode` and the half-res raymarch pre-pass so they can't drift.
@@ -527,7 +568,8 @@ extension MetalRenderer {
         return Uniforms3D(view: camera.viewMatrix, projection: proj,
                           inverseViewProjection: simd_inverse(proj * camera.viewMatrix),
                           viewport: viewport,
-                          raymarchSteps: SIMD2<Float>(Float(steps.march), Float(steps.shadow)))
+                          raymarchSteps: SIMD2<Float>(Float(steps.march), Float(steps.shadow)),
+                          raymarchScale: SIMD2<Float>(1, 0))
     }
 
     /// Resolve this frame's lighting + shadow bindings (caster index, RT vs map kind, and the
@@ -562,13 +604,23 @@ extension MetalRenderer {
         return (lighting, shadowMap ?? ensureDummyShadowMap(), shadowCube ?? ensureDummyPointShadowMap())
     }
 
-    /// Sphere-trace every `.normal`-blend field batch into the cached half-resolution color +
-    /// depth targets (the `.performance` raymarch tier). Returns the targets for the main pass
-    /// to upsample + composite, or `nil` when half-res doesn't apply (full-res tier, no fields,
-    /// or any field uses a non-`.normal` blend, which would not composite premultiplied-over,
-    /// so the whole frame falls back to the full-res inline march). The field batches share one
-    /// depth-tested target, so they occlude one another exactly as in the full-res pass; each is
-    /// drawn with its own material, the same fragment + bindings as the inline path.
+    /// Sphere-trace every `.normal`-blend field batch into the cached reduced-resolution color +
+    /// depth targets (the reduced raymarch tiers / `raymarchResolution`). Returns the targets
+    /// plus the subrect they render (as the upsample's UV mapping) for the main pass to
+    /// upsample + composite, or `nil` when the reduced-res pass doesn't apply (full-res tier,
+    /// no fields, the fields small enough on screen that the coverage-adaptive scale reaches
+    /// full resolution, or any field uses a non-`.normal` blend, which would not composite
+    /// premultiplied-over, so the whole frame falls back to the full-res inline march).
+    ///
+    /// The resolved scale is a *budget at full coverage* (see `fieldScreenCoverage`): the
+    /// internal resolution rises as the fields' projected screen area shrinks, so a dollied-out
+    /// field is traced dense and crisp for the same marched-pixel cost. The targets are
+    /// grow-only and the pass renders into a `w × h` viewport subrect, so a continuous dolly
+    /// (the scale drifting every frame) never reallocates textures per frame.
+    ///
+    /// The field batches share one depth-tested target, so they occlude one another exactly as
+    /// in the full-res pass; each is drawn with its own material, the same fragment + bindings
+    /// as the inline path.
     func encodeRaymarchHalfRes(_ drawer: Drawer, into cb: MTLCommandBuffer,
                                        groupBuffer: MTLBuffer?, nodeBuffer: MTLBuffer?,
                                        uniforms3D: Uniforms3D, lighting: OllinLighting,
@@ -577,18 +629,28 @@ extension MetalRenderer {
                                        meshBuffer: MTLBuffer? = nil,
                                        reflectGeoOffsets: MTLBuffer? = nil,
                                        fullWidth: Int, fullHeight: Int)
-        -> (color: MTLTexture, depth: MTLTexture)? {
-        let scale = resolveRaymarchScale(drawer.raymarchQualitySetting)
+        -> (color: MTLTexture, depth: MTLTexture, region: SIMD4<Float>)? {
+        let baseScale = resolveRaymarchScale(drawer.raymarchQualitySetting)
         let groups3D = drawer.sdf3DGroups
-        guard scale < 1.0, !groups3D.isEmpty, let groupBuffer, let nodeBuffer else { return nil }
+        guard baseScale < 1.0, !groups3D.isEmpty, let groupBuffer, let nodeBuffer else { return nil }
         for b in drawer.batches where b.kind == .sdfGroup3D && b.blendMode != .normal { return nil }
+
+        // Coverage-adaptive scale: trace denser as the fields cover less of the screen, at the
+        // same marched-pixel budget. At/above full resolution skip the pre-pass entirely: the
+        // inline march is both crisper (no upsample) and cheaper (no second pass).
+        let coverage = fieldScreenCoverage(groups3D,
+                                           viewProjection: uniforms3D.projection * uniforms3D.view)
+        let scale = min(1.0, baseScale / max(coverage.squareRoot(), 1e-3))
+        guard scale < 1.0 else { return nil }
 
         let w = max(1, Int((Double(fullWidth) * scale).rounded()))
         let h = max(1, Int((Double(fullHeight) * scale).rounded()))
-        if halfResSize != (w, h) || halfResColor == nil || halfResDepth == nil {
-            guard let c = makeHalfResColor(width: w, height: h),
-                  let d = makeHalfResDepth(width: w, height: h) else { return nil }
-            halfResColor = c; halfResDepth = d; halfResSize = (w, h)
+        if halfResColor == nil || halfResDepth == nil
+            || halfResSize.width < w || halfResSize.height < h {
+            let tw = max(halfResSize.width, w), th = max(halfResSize.height, h)
+            guard let c = makeHalfResColor(width: tw, height: th),
+                  let d = makeHalfResDepth(width: tw, height: th) else { return nil }
+            halfResColor = c; halfResDepth = d; halfResSize = (tw, th)
         }
         guard let color = halfResColor, let depth = halfResDepth,
               let pipe = try? pipeline(.raymarchHalfRes(depth: depthPixelFormat)) else { return nil }
@@ -616,6 +678,10 @@ extension MetalRenderer {
         enc.setRenderPipelineState(pipe)
         enc.setDepthStencilState(depthTestState)
         var u3 = uniforms3D
+        // The internal render scale, so the fragment's pixel-cone AA matches the texel this
+        // subrect actually shades (a full-res cone under-blurs the low-res image and the
+        // upsample magnifies the aliasing into a staircase).
+        u3.raymarchScale = SIMD2<Float>(Float(scale), 0)
         var lit = lighting
         enc.setFragmentBuffer(nodeBuffer, offset: 0, index: 1)
         enc.setFragmentBytes(&lit, length: MemoryLayout<OllinLighting>.stride, index: 2)
@@ -667,7 +733,14 @@ extension MetalRenderer {
             enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3, instanceCount: count)
         }
         enc.endEncoding()
-        return (color, depth)
+        // The subrect the pass rendered, as the upsample's UV mapping: .xy scales full-frame UV
+        // into the subrect, .zw clamps half a texel inside it so bilinear filtering never reads
+        // the (cleared) texels past the marched region of the grow-only texture.
+        let region = SIMD4<Float>(Float(w) / Float(halfResSize.width),
+                                  Float(h) / Float(halfResSize.height),
+                                  (Float(w) - 0.5) / Float(halfResSize.width),
+                                  (Float(h) - 0.5) / Float(halfResSize.height))
+        return (color, depth, region)
     }
 
     /// The number of raymarched SDF fields casting onto meshes under a point/ray-traced caster
@@ -696,7 +769,8 @@ extension MetalRenderer {
         return Uniforms3D(view: camera.viewMatrix, projection: proj,
                           inverseViewProjection: simd_inverse(proj * camera.viewMatrix),
                           viewport: viewport,
-                          raymarchSteps: SIMD2<Float>(Float(steps.march), Float(steps.shadow)))
+                          raymarchSteps: SIMD2<Float>(Float(steps.march), Float(steps.shadow)),
+                          raymarchScale: SIMD2<Float>(1, 0))
     }
 
     /// The mesh-normal G-buffer pass: re-render a target's meshes MSAA + depth-tested,

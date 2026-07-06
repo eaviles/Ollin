@@ -457,8 +457,12 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // keeps it >= 1 (a clean miss); a grazing near-miss lands in between, and `1 - ratio`
     // is the analytic edge coverage that anti-aliases the silhouette without supersampling
     // (the fullscreen pass gets no MSAA there). `kPixel·t` is the cone's half-width at t:
-    // tan(fovY/2)/height, with tan(fovY/2) = 1/projection[1][1].
-    float kPixel = 1.0 / (max(u.projection[1][1], 1e-4) * max(u.viewport.y, 1.0));
+    // tan(fovY/2)/height, with tan(fovY/2) = 1/projection[1][1]. The height is the pass's
+    // *internal* pixel count (`viewport.y · raymarchScale`, the reduced-res pre-pass's
+    // subrect), so the AA band spans the texel actually shaded; scale 1 is bit-identical
+    // to the plain full-res form.
+    float kPixel = 1.0 / (max(u.projection[1][1], 1e-4)
+                          * max(u.viewport.y * max(u.raymarchScale.x, 1e-3), 1.0));
     float t = t0;
     float4 col = float4(0.0);
     bool hit = false;
@@ -600,15 +604,18 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     return out;
 }
 
-// Upsample a half-resolution raymarched field to full resolution and composite it. On the
-// `.performance` raymarch tier the expensive sphere-tracing ran once at half resolution into
-// `halfColor` (premultiplied: the field's straight-alpha colour composited over a transparent
-// clear) + `halfDepth` (each hit's clip-space z). This fullscreen pass reads them back:
-// colour bilinear (a soft ~half-res silhouette, the cost of the tier) but depth POINT-sampled
-// (so the field's depth never bleeds across its own edge), then re-emits the depth as the
-// fragment's own, so the hardware depth test lets a rasterised mesh occlude or interpenetrate
-// the field exactly as the full-resolution march does. A premultiplied `.normal` blend
-// composites the result over the scene. Quartering the marched pixels is the tier's big lever.
+// Upsample a reduced-resolution raymarched field to full resolution and composite it. On the
+// reduced raymarch tiers the expensive sphere-tracing ran once at a coverage-adaptive scale
+// into a viewport subrect of `halfColor` (premultiplied: the field's straight-alpha colour
+// composited over a transparent clear) + `halfDepth` (each hit's clip-space z); `region`
+// carries that subrect (.xy = the UV scale into it, .zw = a half-texel-inside clamp so
+// bilinear filtering never reads the cleared texels past it; the textures are grow-only, so
+// the subrect moves with the scale). This fullscreen pass reads them back: colour bilinear
+// (a soft silhouette, the cost of the tier) but depth POINT-sampled (so the field's depth
+// never bleeds across its own edge), then re-emits the depth as the fragment's own, so the
+// hardware depth test lets a rasterised mesh occlude or interpenetrate the field exactly as
+// the full-resolution march does. A premultiplied `.normal` blend composites the result over
+// the scene. Reducing the marched pixels is the tier's big lever.
 struct RaymarchUpsampleOut {
     float4 color [[color(0)]];
     float  depth [[depth(any)]];
@@ -616,11 +623,13 @@ struct RaymarchUpsampleOut {
 
 fragment RaymarchUpsampleOut ollin_raymarch_upsample_fragment(
         RaymarchOut in [[stage_in]],
+        constant float4 &region [[buffer(0)]],
         texture2d<float> halfColor [[texture(0)]],
         depth2d<float>   halfDepth [[texture(1)]]) {
     constexpr sampler linSamp(filter::linear, address::clamp_to_edge);
     constexpr sampler ptSamp(filter::nearest, address::clamp_to_edge);
     float2 uv = float2(in.clipXY.x * 0.5 + 0.5, 0.5 - in.clipXY.y * 0.5);
+    uv = min(uv * region.xy, region.zw);   // map into the marched subrect, clamped inside it
     float4 c = halfColor.sample(linSamp, uv);
     if (c.a < 0.004) discard_fragment();   // background: leave the scene (and its depth) alone
     RaymarchUpsampleOut out;
