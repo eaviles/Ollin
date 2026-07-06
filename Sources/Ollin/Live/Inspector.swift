@@ -831,7 +831,8 @@ private struct ControlRow<Control: View>: View {
     var body: some View {
         HStack {
             ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
-            Spacer()
+            // A floor on the gap so a wide control never crowds the label.
+            Spacer(minLength: 16)
             control()
         }
         .padding(.horizontal, 12)
@@ -1176,10 +1177,12 @@ private struct Vector3ParamRow: View {
     }
 
     var body: some View {
+        // The first field pair shares the label's line (no orphaned label with
+        // dead space beside it); the remainder sits right-aligned below.
         VStack(alignment: .leading, spacing: 6) {
-            ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
             HStack(spacing: 6) {
-                Spacer(minLength: 0)
+                ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                Spacer(minLength: 16)
                 ScrubbableField(
                     value: $x, fractionDigits: paramFieldDigits(for: control.xRange),
                     perPoint: (control.xRange.upperBound - control.xRange.lowerBound) / 250,
@@ -1190,6 +1193,9 @@ private struct Vector3ParamRow: View {
                     perPoint: (control.yRange.upperBound - control.yRange.lowerBound) / 250,
                     snap: nil, snapOrigin: 0, range: control.yRange,
                     isInteracting: $isEditingY, palette: palette, prefix: "y")
+            }
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
                 ScrubbableField(
                     value: $z, fractionDigits: paramFieldDigits(for: control.zRange),
                     perPoint: (control.zRange.upperBound - control.zRange.lowerBound) / 250,
@@ -1265,10 +1271,12 @@ private struct RectangleParamRow: View {
     }
 
     var body: some View {
+        // x/y ride the label's line, w/h sit right-aligned below (no orphaned
+        // label line with dead space beside it).
         VStack(alignment: .leading, spacing: 6) {
-            ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
             HStack(spacing: 6) {
-                Spacer(minLength: 0)
+                ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                Spacer(minLength: 16)
                 field($x, range: control.xRange, editing: 0, prefix: "x")
                 field($y, range: control.yRange, editing: 1, prefix: "y")
             }
@@ -1358,10 +1366,12 @@ private struct InsetsParamRow: View {
     }
 
     var body: some View {
+        // t/r ride the label's line, b/l sit right-aligned below (no orphaned
+        // label line with dead space beside it).
         VStack(alignment: .leading, spacing: 6) {
-            ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
             HStack(spacing: 6) {
-                Spacer(minLength: 0)
+                ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                Spacer(minLength: 16)
                 field($top, editing: 0, prefix: "t")
                 field($right, editing: 1, prefix: "r")
             }
@@ -1522,7 +1532,7 @@ private struct TextParamRow: View {
                 .multilineTextAlignment(.trailing)
                 .font(.system(size: 12))
                 .lineLimit(1)
-                .frame(maxWidth: 150, alignment: .trailing)
+                .frame(maxWidth: 130, alignment: .trailing)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(palette.fieldFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
