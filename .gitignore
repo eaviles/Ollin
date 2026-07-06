@@ -21,3 +21,6 @@ DerivedData/
 
 # Downloaded Core ML model weights (fetched by Scripts/fetch-models.sh, never committed)
 /Models/
+
+# Local agent tooling state (session worktrees, local settings)
+.claude/
