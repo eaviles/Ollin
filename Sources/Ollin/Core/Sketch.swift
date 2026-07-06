@@ -1112,6 +1112,35 @@ open class Sketch {
     public func smoothIntersect(k: Double, _ body: () -> Void) {
         drawer.beginCombine(op: .smoothIntersect, k: k); body(); drawer.endCombine()
     }
+    /// Merge the shapes drawn inside with a 45° chamfer of the given size along each seam
+    /// (a machined joint; colors stay a crisp pick per side, not a melt).
+    public func chamferUnion(radius: Double, _ body: () -> Void) {
+        drawer.beginCombine(op: .chamferUnion, k: radius); body(); drawer.endCombine()
+    }
+    /// Carve the later shapes out of the first, each cut's rim beveled at 45°.
+    public func chamferSubtract(radius: Double, _ body: () -> Void) {
+        drawer.beginCombine(op: .chamferSubtract, k: radius); body(); drawer.endCombine()
+    }
+    /// Keep only where every shape drawn inside overlaps, the edge beveled at 45°.
+    public func chamferIntersect(radius: Double, _ body: () -> Void) {
+        drawer.beginCombine(op: .chamferIntersect, k: radius); body(); drawer.endCombine()
+    }
+    /// Merge the shapes drawn inside through a staircase of `steps` steps over `radius`
+    /// along each seam.
+    public func stairsUnion(radius: Double, steps: Int, _ body: () -> Void) {
+        drawer.beginCombine(op: .stairsUnion, k: radius, extra: Double(max(steps, 1)))
+        body(); drawer.endCombine()
+    }
+    /// Carve the later shapes out of the first, each cut's rim stepped.
+    public func stairsSubtract(radius: Double, steps: Int, _ body: () -> Void) {
+        drawer.beginCombine(op: .stairsSubtract, k: radius, extra: Double(max(steps, 1)))
+        body(); drawer.endCombine()
+    }
+    /// Keep only where every shape drawn inside overlaps, the edge stepped.
+    public func stairsIntersect(radius: Double, steps: Int, _ body: () -> Void) {
+        drawer.beginCombine(op: .stairsIntersect, k: radius, extra: Double(max(steps, 1)))
+        body(); drawer.endCombine()
+    }
     /// Mirror the field drawn inside across the x and/or y (and, in 3D, z) plane of the
     /// current frame. The `z` flag only applies to a 3D field.
     public func mirrored(x: Bool = true, y: Bool = false, z: Bool = false, _ body: () -> Void) {

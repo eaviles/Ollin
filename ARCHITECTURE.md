@@ -646,9 +646,39 @@ moves when a field is added.
 The infinite plane (`SDF3D.plane(normal:offset:)`) is the one unbounded leaf: it
 has no finite AABB, so the flattener marks the whole field `unbounded` (propagated
 through combine), and the fragment marches the near..far span instead of an AABB
-slab. It is value-type-only (it has no mesh primitive). The ten leaves are iq's
+slab. It is value-type-only (it has no mesh primitive). The leaves are iq's
 3D distance functions, and `ollin_sdf3d_eval`'s switch must stay in sync with
-`SDF3DShape`.
+`SDF3DShape`. The sculpting tier added five more (`line` between two free points,
+`hexPrism`, `pyramid`, `cappedTorus`, `link`, tags 10 through 14); `line` is the
+one leaf not centered at the origin, so the flattener bounds it from its two
+endpoints plus the radius rather than a symmetric half-extent, and `pyramid`
+wraps iq's fixed-half-unit-base form in a uniform scale (exact) with a re-center.
+
+Two sculpting op families ride the same node kinds. The **joint ops** (chamfer
+and stairs union/subtract/intersect, from hg_sdf under its MIT option) are new
+OP selectors (7 through 12) in both `ollin_sdf_combine` and `ollin_sdf3d_combine`
+(the 2D and 3D switches share the encoding; the stairs step count rides the OP
+node's spare `extra`, and the staircase helper uses a GLSL-style floored modulo,
+`ollin_emod`, because Metal's `fmod` truncates and would break the pattern for
+negative operands). Their color is a crisp nearer-operand pick rather than a
+melt, which is what makes a joint read as fitted parts. They assume the two
+surfaces cross frankly (near right angles): near-parallel faces within the joint
+radius echo the pattern past the seam, the technique's documented envelope, so
+the docs steer usage there rather than the code trying to guard it (a band guard
+was tried and traded the echo for a visible field discontinuity).
+
+The **distortions** are twist and bend (XFORM selectors 8/9, iq's `opTwist` /
+`opCheapBend` as point-space scopes) and sine/noise surface displacement (MOD
+selectors 2/3, iq's `opDisplace`; the MOD case reads the live query point, and
+the noise flavor reuses the shader library's 3D `valueNoise`). All four produce
+distance *bounds*, not exact fields, so the flattener attaches a conservative
+Lipschitz rescale that keeps the sphere trace from overshooting: twist/bend
+compute `1/(1 + rate·reach)` from the child's just-flattened bounds and ride it
+on the scope's RESTORE_P distance scale (the same slot a non-uniform scale
+uses), while displacement bakes `1/(1 + amplitude·frequency·C)` into the MOD
+node's `geo0.x` (C is the displacement's own slope bound: √3 for the sine
+product, ~2 for value noise). Strong settings therefore march slower instead of
+holing the surface.
 
 The same scoped block form reaches 3D: inside a block with a camera, the
 SDF-able mesh builders (`drawSphere`, `drawBox`, and so on) route through

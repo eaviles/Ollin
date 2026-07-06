@@ -28,6 +28,8 @@ public struct SDF {
     enum Combine: UInt32 {
         case union = 0, smoothUnion = 1, subtract = 2, smoothSubtract = 3
         case intersect = 4, smoothIntersect = 5, morph = 6
+        case chamferUnion = 7, chamferSubtract = 8, chamferIntersect = 9
+        case stairsUnion = 10, stairsSubtract = 11, stairsIntersect = 12
     }
     /// Unary distance modifiers. Raw values are the `sel` the shader's MOD node reads.
     enum Modifier: UInt32 { case round = 0, onion = 1 }
@@ -46,7 +48,7 @@ public struct SDF {
     indirect enum Node {
         case leaf(shape: SDFShape, size: SIMD2<Float>, p0: SIMD2<Float>,
                   p1: SIMD2<Float>, p2: SIMD2<Float>, extra: Float, color: Color?)
-        case combine(Combine, SDF, SDF, Float)   // op, lhs, rhs, k (smoothing / morph)
+        case combine(Combine, SDF, SDF, Float, Float)   // op, lhs, rhs, k (smoothing / morph / joint size), extra (stairs steps)
         case modify(Modifier, SDF, Float)        // round/onion, child, amount
         case transformed(Transform, SDF)         // a point-space scope around a child
     }
@@ -166,8 +168,8 @@ public extension SDF {
         case let .leaf(shape, size, p0, p1, p2, extra, existing):
             return .init(.leaf(shape: shape, size: size, p0: p0, p1: p1, p2: p2,
                                extra: extra, color: existing ?? color))
-        case let .combine(op, a, b, k):
-            return .init(.combine(op, a.painting(color), b.painting(color), k))
+        case let .combine(op, a, b, k, n):
+            return .init(.combine(op, a.painting(color), b.painting(color), k, n))
         case let .modify(m, c, amt):
             return .init(.modify(m, c.painting(color), amt))
         case let .transformed(t, c):
@@ -180,21 +182,47 @@ public extension SDF {
 
 public extension SDF {
     /// Hard union: the area covered by either field.
-    func union(_ other: SDF) -> SDF { .init(.combine(.union, self, other, 0)) }
+    func union(_ other: SDF) -> SDF { .init(.combine(.union, self, other, 0, 0)) }
     /// Smooth union: the two fields melt together over a blend of radius `k`.
-    func smoothUnion(_ other: SDF, k: Double) -> SDF { .init(.combine(.smoothUnion, self, other, Float(k))) }
+    func smoothUnion(_ other: SDF, k: Double) -> SDF { .init(.combine(.smoothUnion, self, other, Float(k), 0)) }
     /// Hard subtraction: `other` carved out of `self`.
-    func subtract(_ other: SDF) -> SDF { .init(.combine(.subtract, self, other, 0)) }
+    func subtract(_ other: SDF) -> SDF { .init(.combine(.subtract, self, other, 0, 0)) }
     /// Smooth subtraction: `other` carved out with a blend of radius `k`.
-    func smoothSubtract(_ other: SDF, k: Double) -> SDF { .init(.combine(.smoothSubtract, self, other, Float(k))) }
+    func smoothSubtract(_ other: SDF, k: Double) -> SDF { .init(.combine(.smoothSubtract, self, other, Float(k), 0)) }
     /// Hard intersection: only where both fields overlap.
-    func intersect(_ other: SDF) -> SDF { .init(.combine(.intersect, self, other, 0)) }
+    func intersect(_ other: SDF) -> SDF { .init(.combine(.intersect, self, other, 0, 0)) }
     /// Smooth intersection: the overlap, with a blend of radius `k`.
-    func smoothIntersect(_ other: SDF, k: Double) -> SDF { .init(.combine(.smoothIntersect, self, other, Float(k))) }
+    func smoothIntersect(_ other: SDF, k: Double) -> SDF { .init(.combine(.smoothIntersect, self, other, Float(k), 0)) }
     /// Morph between two fields: `amount` 0 is `self`, 1 is `other` (a field blend,
     /// not a crossfade; the shape itself interpolates).
     func morph(_ other: SDF, amount: Double) -> SDF {
-        .init(.combine(.morph, self, other, Float(min(max(amount, 0), 1))))
+        .init(.combine(.morph, self, other, Float(min(max(amount, 0), 1)), 0))
+    }
+    /// Chamfer union: the fields join with a 45° bevel of the given size along the seam
+    /// (a machined joint; colors stay a crisp pick of the nearer field, not a melt).
+    func chamferUnion(_ other: SDF, radius: Double) -> SDF {
+        .init(.combine(.chamferUnion, self, other, Float(max(radius, 0)), 0))
+    }
+    /// Chamfer subtraction: `other` carved out of `self`, the cut's rim beveled at 45°.
+    func chamferSubtract(_ other: SDF, radius: Double) -> SDF {
+        .init(.combine(.chamferSubtract, self, other, Float(max(radius, 0)), 0))
+    }
+    /// Chamfer intersection: the overlap, its edge beveled at 45°.
+    func chamferIntersect(_ other: SDF, radius: Double) -> SDF {
+        .init(.combine(.chamferIntersect, self, other, Float(max(radius, 0)), 0))
+    }
+    /// Stairs union: the fields join through a staircase of `steps` steps over `radius`
+    /// along the seam (colors stay a crisp pick of the nearer field).
+    func stairsUnion(_ other: SDF, radius: Double, steps: Int) -> SDF {
+        .init(.combine(.stairsUnion, self, other, Float(max(radius, 0)), Float(max(steps, 1))))
+    }
+    /// Stairs subtraction: `other` carved out of `self`, the cut's rim stepped.
+    func stairsSubtract(_ other: SDF, radius: Double, steps: Int) -> SDF {
+        .init(.combine(.stairsSubtract, self, other, Float(max(radius, 0)), Float(max(steps, 1))))
+    }
+    /// Stairs intersection: the overlap, its edge stepped.
+    func stairsIntersect(_ other: SDF, radius: Double, steps: Int) -> SDF {
+        .init(.combine(.stairsIntersect, self, other, Float(max(radius, 0)), Float(max(steps, 1))))
     }
     /// Grow the field outward by `radius` with rounded corners (`opRound`).
     func rounded(_ radius: Double) -> SDF { .init(.modify(.round, self, Float(radius))) }
@@ -248,18 +276,18 @@ extension SDF {
                                  geo1: SIMD4(p1.x, p1.y, p2.x, p2.y)))
             return FlattenResult(lo: -size, hi: size, valueDepth: 1, pointDepth: 0)
 
-        case let .combine(op, a, b, k):
+        case let .combine(op, a, b, k, n):
             let ra = a.flatten(defaultFill: defaultFill, into: &nodes)
             let rb = b.flatten(defaultFill: defaultFill, into: &nodes)
-            nodes.append(SDFNode(kind: 1, sel: op.rawValue, k: k, extra: 0,
+            nodes.append(SDFNode(kind: 1, sel: op.rawValue, k: k, extra: n,
                                  color: .zero, geo0: .zero, geo1: .zero))
             var lo: SIMD2<Float>, hi: SIMD2<Float>
             switch op {
-            case .union, .smoothUnion, .morph:
+            case .union, .smoothUnion, .morph, .chamferUnion, .stairsUnion:
                 lo = simd_min(ra.lo, rb.lo); hi = simd_max(ra.hi, rb.hi)
-            case .subtract, .smoothSubtract:
+            case .subtract, .smoothSubtract, .chamferSubtract, .stairsSubtract:
                 lo = ra.lo; hi = ra.hi                     // result ⊆ lhs
-            case .intersect, .smoothIntersect:
+            case .intersect, .smoothIntersect, .chamferIntersect, .stairsIntersect:
                 lo = simd_max(ra.lo, rb.lo); hi = simd_min(ra.hi, rb.hi)
             }
             if k > 0 { lo -= SIMD2(repeating: k); hi += SIMD2(repeating: k) }

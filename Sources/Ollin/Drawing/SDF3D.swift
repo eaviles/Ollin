@@ -27,9 +27,11 @@ public struct SDF3D {
     enum Combine: UInt32 {
         case union = 0, smoothUnion = 1, subtract = 2, smoothSubtract = 3
         case intersect = 4, smoothIntersect = 5, morph = 6
+        case chamferUnion = 7, chamferSubtract = 8, chamferIntersect = 9
+        case stairsUnion = 10, stairsSubtract = 11, stairsIntersect = 12
     }
     /// Unary distance modifiers. Raw values are the `sel` the shader's MOD node reads.
-    enum Modifier: UInt32 { case round = 0, onion = 1 }
+    enum Modifier: UInt32 { case round = 0, onion = 1, displaceSine = 2, displaceNoise = 3 }
     /// Point-space transforms (a scope wrapping a subtree).
     enum Transform {
         case translate(SIMD3<Float>)
@@ -40,12 +42,14 @@ public struct SDF3D {
         case mirror(x: Bool, y: Bool, z: Bool)          // reflect across the field planes
         case repeatTiles(spacing: SIMD3<Float>, count: SIMD3<Float>)  // limited tiling
         case polar(axis: SIMD3<Float>, count: Float)    // radial repeat around an axis
+        case twist(Float)                               // radians per unit of height, around y
+        case bend(Float)                                // radians per unit along x, about z
     }
 
     indirect enum Node {
         case leaf(shape: SDF3DShape, geo0: SIMD4<Float>, geo1: SIMD4<Float>, color: Color?)
-        case combine(Combine, SDF3D, SDF3D, Float)   // op, lhs, rhs, k (smoothing / morph)
-        case modify(Modifier, SDF3D, Float)          // round/onion, child, amount
+        case combine(Combine, SDF3D, SDF3D, Float, Float)   // op, lhs, rhs, k (smoothing / morph / joint size), extra (stairs steps)
+        case modify(Modifier, SDF3D, Float, Float)   // round/onion/displace, child, amount, frequency (displace only)
         case transformed(Transform, SDF3D)           // a point-space scope around a child
     }
 
@@ -65,6 +69,7 @@ enum SDF3DShape: UInt32 {
     case sphere = 0, box = 1, torus = 2, capsule = 3
     case roundBox = 4, cylinder = 5, cone = 6, octahedron = 7, ellipsoid = 8
     case plane = 9
+    case line = 10, hexPrism = 11, pyramid = 12, cappedTorus = 13, link = 14
 }
 
 // MARK: Leaf shapes (the common centered solids)
@@ -149,6 +154,42 @@ public extension SDF3D {
         return .init(.leaf(shape: .plane, geo0: SIMD4(unit.x, unit.y, unit.z, Float(offset)),
                            geo1: .zero, color: nil))
     }
+    /// A capsule stroke between two arbitrary points (the free-form sibling of the centered
+    /// `capsule`): the armature primitive; chain a few to sketch limbs, branches, scaffolds.
+    static func line(from a: Vector3, to b: Vector3, radius: Double) -> SDF3D {
+        .init(.leaf(shape: .line,
+                    geo0: SIMD4(Float(a.x), Float(a.y), Float(a.z), Float(max(radius, 0))),
+                    geo1: SIMD4(Float(b.x), Float(b.y), Float(b.z), 0), color: nil))
+    }
+    /// A hexagonal prism along the y-axis, centered at the origin: `radius` is measured to
+    /// the flat sides (the inradius), `height` the full length along y.
+    static func hexPrism(radius: Double, height: Double) -> SDF3D {
+        .init(.leaf(shape: .hexPrism, geo0: SIMD4(Float(radius), Float(height / 2), 0, 0),
+                    geo1: .zero, color: nil))
+    }
+    /// A square pyramid centered at the origin: `base` on a side, rising `height` from its
+    /// base plane to the apex.
+    static func pyramid(base: Double, height: Double) -> SDF3D {
+        .init(.leaf(shape: .pyramid, geo0: SIMD4(Float(max(base, 1e-4)), Float(max(height, 1e-4)), 0, 0),
+                    geo1: .zero, color: nil))
+    }
+    /// An open arc of a torus in the xz-plane (a horseshoe / croissant): the ring spans
+    /// `angle` radians to each side of +z, `radius` from the center to the tube's center,
+    /// `tube` the tube's own radius. A full turn (`angle: .pi`) closes back into `torus`.
+    static func cappedTorus(radius: Double, tube: Double, angle: Double) -> SDF3D {
+        let half = min(max(angle, 0.01), .pi)
+        return .init(.leaf(shape: .cappedTorus,
+                           geo0: SIMD4(Float(sin(half)), Float(cos(half)), Float(radius), Float(tube)),
+                           geo1: .zero, color: nil))
+    }
+    /// A chain link along the y-axis, centered at the origin: a torus stretched straight for
+    /// `height` in the middle, `radius` from the axis to the tube's center, `tube` the tube's
+    /// own radius. Stack a few with alternating `rotatedY(.pi / 2)` for a chain.
+    static func link(height: Double, radius: Double, tube: Double) -> SDF3D {
+        .init(.leaf(shape: .link,
+                    geo0: SIMD4(Float(max(height, 0) / 2), Float(radius), Float(tube), 0),
+                    geo1: .zero, color: nil))
+    }
 }
 
 // MARK: Transforms (point-space scopes)
@@ -196,6 +237,18 @@ public extension SDF3D {
     func mirrored(x: Bool = true, y: Bool = false, z: Bool = false) -> SDF3D {
         .init(.transformed(.mirror(x: x, y: y, z: z), self))
     }
+    /// Twist the field around the y-axis: the cross-section rotates by `radiansPerUnit`
+    /// for every unit of height (a screw of the whole form). Rotate the field first to
+    /// twist around another axis. The march compensates for the distorted field, so a
+    /// strong twist trades some speed for a surface that never breaks up.
+    func twisted(_ radiansPerUnit: Double) -> SDF3D {
+        .init(.transformed(.twist(Float(radiansPerUnit)), self))
+    }
+    /// Bend the field about the z-axis: the form curls by `radiansPerUnit` for every unit
+    /// it runs along x (a bar arcs, a slab curls). Same march compensation as `twisted`.
+    func bent(_ radiansPerUnit: Double) -> SDF3D {
+        .init(.transformed(.bend(Float(radiansPerUnit)), self))
+    }
     /// Tile the field on a grid of `spacing`, `count` copies to each side along each axis
     /// (a zero spacing component leaves that axis untiled). Finite, so the field stays bounded.
     func repeated(spacing: Vector3, count: Int) -> SDF3D {
@@ -223,10 +276,10 @@ public extension SDF3D {
         switch node {
         case let .leaf(shape, geo0, geo1, existing):
             return .init(.leaf(shape: shape, geo0: geo0, geo1: geo1, color: existing ?? color))
-        case let .combine(op, a, b, k):
-            return .init(.combine(op, a.painting(color), b.painting(color), k))
-        case let .modify(m, c, amt):
-            return .init(.modify(m, c.painting(color), amt))
+        case let .combine(op, a, b, k, n):
+            return .init(.combine(op, a.painting(color), b.painting(color), k, n))
+        case let .modify(m, c, amt, freq):
+            return .init(.modify(m, c.painting(color), amt, freq))
         case let .transformed(t, c):
             return .init(.transformed(t, c.painting(color)))
         }
@@ -237,26 +290,65 @@ public extension SDF3D {
 
 public extension SDF3D {
     /// Hard union: the volume covered by either field.
-    func union(_ other: SDF3D) -> SDF3D { .init(.combine(.union, self, other, 0)) }
+    func union(_ other: SDF3D) -> SDF3D { .init(.combine(.union, self, other, 0, 0)) }
     /// Smooth union: the two solids melt together over a blend of radius `k`.
-    func smoothUnion(_ other: SDF3D, k: Double) -> SDF3D { .init(.combine(.smoothUnion, self, other, Float(k))) }
+    func smoothUnion(_ other: SDF3D, k: Double) -> SDF3D { .init(.combine(.smoothUnion, self, other, Float(k), 0)) }
     /// Hard subtraction: `other` carved out of `self`.
-    func subtract(_ other: SDF3D) -> SDF3D { .init(.combine(.subtract, self, other, 0)) }
+    func subtract(_ other: SDF3D) -> SDF3D { .init(.combine(.subtract, self, other, 0, 0)) }
     /// Smooth subtraction: `other` carved out with a blend of radius `k`.
-    func smoothSubtract(_ other: SDF3D, k: Double) -> SDF3D { .init(.combine(.smoothSubtract, self, other, Float(k))) }
+    func smoothSubtract(_ other: SDF3D, k: Double) -> SDF3D { .init(.combine(.smoothSubtract, self, other, Float(k), 0)) }
     /// Hard intersection: only where both fields overlap.
-    func intersect(_ other: SDF3D) -> SDF3D { .init(.combine(.intersect, self, other, 0)) }
+    func intersect(_ other: SDF3D) -> SDF3D { .init(.combine(.intersect, self, other, 0, 0)) }
     /// Smooth intersection: the overlap, with a blend of radius `k`.
-    func smoothIntersect(_ other: SDF3D, k: Double) -> SDF3D { .init(.combine(.smoothIntersect, self, other, Float(k))) }
+    func smoothIntersect(_ other: SDF3D, k: Double) -> SDF3D { .init(.combine(.smoothIntersect, self, other, Float(k), 0)) }
     /// Morph between two fields: `amount` 0 is `self`, 1 is `other` (the shape itself
     /// interpolates, not a crossfade).
     func morph(_ other: SDF3D, amount: Double) -> SDF3D {
-        .init(.combine(.morph, self, other, Float(min(max(amount, 0), 1))))
+        .init(.combine(.morph, self, other, Float(min(max(amount, 0), 1)), 0))
     }
     /// Grow the field outward by `radius` with rounded corners (`opRound`).
-    func rounded(_ radius: Double) -> SDF3D { .init(.modify(.round, self, Float(radius))) }
+    func rounded(_ radius: Double) -> SDF3D { .init(.modify(.round, self, Float(radius), 0)) }
     /// Hollow the field into a shell of the given `thickness` straddling its surface (`opOnion`).
-    func onion(_ thickness: Double) -> SDF3D { .init(.modify(.onion, self, Float(thickness))) }
+    func onion(_ thickness: Double) -> SDF3D { .init(.modify(.onion, self, Float(thickness), 0)) }
+    /// Chamfer union: the solids join with a 45° bevel of the given size along the seam
+    /// (a machined joint; colors stay a crisp pick of the nearer solid, not a melt).
+    func chamferUnion(_ other: SDF3D, radius: Double) -> SDF3D {
+        .init(.combine(.chamferUnion, self, other, Float(max(radius, 0)), 0))
+    }
+    /// Chamfer subtraction: `other` carved out of `self`, the cut's rim beveled at 45°.
+    func chamferSubtract(_ other: SDF3D, radius: Double) -> SDF3D {
+        .init(.combine(.chamferSubtract, self, other, Float(max(radius, 0)), 0))
+    }
+    /// Chamfer intersection: the overlap, its edge beveled at 45°.
+    func chamferIntersect(_ other: SDF3D, radius: Double) -> SDF3D {
+        .init(.combine(.chamferIntersect, self, other, Float(max(radius, 0)), 0))
+    }
+    /// Stairs union: the solids join through a staircase of `steps` steps over `radius`
+    /// along the seam (colors stay a crisp pick of the nearer solid).
+    func stairsUnion(_ other: SDF3D, radius: Double, steps: Int) -> SDF3D {
+        .init(.combine(.stairsUnion, self, other, Float(max(radius, 0)), Float(max(steps, 1))))
+    }
+    /// Stairs subtraction: `other` carved out of `self`, the cut's rim stepped.
+    func stairsSubtract(_ other: SDF3D, radius: Double, steps: Int) -> SDF3D {
+        .init(.combine(.stairsSubtract, self, other, Float(max(radius, 0)), Float(max(steps, 1))))
+    }
+    /// Stairs intersection: the overlap, its edge stepped.
+    func stairsIntersect(_ other: SDF3D, radius: Double, steps: Int) -> SDF3D {
+        .init(.combine(.stairsIntersect, self, other, Float(max(radius, 0)), Float(max(steps, 1))))
+    }
+    /// Ripple the surface with a sine-product displacement: `amplitude` is how far the
+    /// surface swells and dents (in field units), `frequency` how tightly the ripples
+    /// pack. The march compensates for the displaced field's steeper gradient, so strong
+    /// settings trade some speed for a surface that never breaks up.
+    func displaced(amplitude: Double, frequency: Double) -> SDF3D {
+        .init(.modify(.displaceSine, self, Float(max(amplitude, 0)), Float(max(frequency, 0))))
+    }
+    /// Roughen the surface with signed 3D value noise: an organic, rock-like relief of
+    /// the given `amplitude` (field units) and `frequency`. Same march compensation as
+    /// `displaced(amplitude:frequency:)`.
+    func roughened(amplitude: Double, frequency: Double) -> SDF3D {
+        .init(.modify(.displaceNoise, self, Float(max(amplitude, 0)), Float(max(frequency, 0))))
+    }
 }
 
 // MARK: Flattening (tree -> SDFNode3D program + bounds)
@@ -280,25 +372,32 @@ extension SDF3D {
             let rgba = (color ?? defaultFill).simd4
             nodes.append(SDFNode3D(kind: 0, sel: shape.rawValue, k: 0, extra: 0,
                                    color: rgba, geo0: geo0, geo1: geo1))
+            if shape == .line {
+                // The one leaf not centered at the origin: bound the two endpoints + radius.
+                let a = SIMD3(geo0.x, geo0.y, geo0.z), b = SIMD3(geo1.x, geo1.y, geo1.z)
+                let pad = SIMD3<Float>(repeating: geo0.w)
+                return FlattenResult(lo: simd_min(a, b) - pad, hi: simd_max(a, b) + pad,
+                                     valueDepth: 1, pointDepth: 0)
+            }
             let half = SDF3D.leafHalfExtent(shape, geo0)
             return FlattenResult(lo: -half, hi: half, valueDepth: 1, pointDepth: 0,
                                  unbounded: shape == .plane)
 
-        case let .combine(op, a, b, k):
+        case let .combine(op, a, b, k, n):
             let ra = a.flatten(defaultFill: defaultFill, into: &nodes)
             let rb = b.flatten(defaultFill: defaultFill, into: &nodes)
-            nodes.append(SDFNode3D(kind: 1, sel: op.rawValue, k: k, extra: 0,
+            nodes.append(SDFNode3D(kind: 1, sel: op.rawValue, k: k, extra: n,
                                    color: .zero, geo0: .zero, geo1: .zero))
             var lo: SIMD3<Float>, hi: SIMD3<Float>
             var unbounded: Bool
             switch op {
-            case .union, .smoothUnion, .morph:
+            case .union, .smoothUnion, .morph, .chamferUnion, .stairsUnion:
                 lo = simd_min(ra.lo, rb.lo); hi = simd_max(ra.hi, rb.hi)
                 unbounded = ra.unbounded || rb.unbounded
-            case .subtract, .smoothSubtract:
+            case .subtract, .smoothSubtract, .chamferSubtract, .stairsSubtract:
                 lo = ra.lo; hi = ra.hi                     // result ⊆ lhs
                 unbounded = ra.unbounded
-            case .intersect, .smoothIntersect:
+            case .intersect, .smoothIntersect, .chamferIntersect, .stairsIntersect:
                 lo = simd_max(ra.lo, rb.lo); hi = simd_min(ra.hi, rb.hi)
                 unbounded = ra.unbounded && rb.unbounded    // bounded once either operand is
             }
@@ -309,11 +408,22 @@ extension SDF3D {
                                  pointDepth: max(ra.pointDepth, rb.pointDepth),
                                  unbounded: unbounded)
 
-        case let .modify(m, c, amount):
+        case let .modify(m, c, amount, frequency):
             let rc = c.flatten(defaultFill: defaultFill, into: &nodes)
-            nodes.append(SDFNode3D(kind: 2, sel: m.rawValue, k: amount, extra: 0,
-                                   color: .zero, geo0: .zero, geo1: .zero))
-            let grow = max(amount, 0)
+            // A displaced field's gradient steepens to 1 + amplitude·frequency·C (C the
+            // displacement's own slope bound: √3 for the sine product, ~2 for value noise),
+            // so the shader multiplies the result by this factor to keep sphere tracing
+            // from overshooting the rippled surface. 1 for round/onion (exact ops).
+            let lipschitz: Float = {
+                switch m {
+                case .round, .onion: return 1
+                case .displaceSine:  return 1 / (1 + amount * frequency * 1.7320508)
+                case .displaceNoise: return 1 / (1 + amount * frequency * 2)
+                }
+            }()
+            nodes.append(SDFNode3D(kind: 2, sel: m.rawValue, k: amount, extra: frequency,
+                                   color: .zero, geo0: SIMD4(lipschitz, 0, 0, 0), geo1: .zero))
+            let grow = max(amount, 0)   // round and displacement both reach `amount` outward
             return FlattenResult(lo: rc.lo - SIMD3(repeating: grow),
                                  hi: rc.hi + SIMD3(repeating: grow),
                                  valueDepth: rc.valueDepth, pointDepth: rc.pointDepth,
@@ -324,12 +434,26 @@ extension SDF3D {
             let rc = c.flatten(defaultFill: defaultFill, into: &nodes)
             // RESTORE_P rescales the child distance back to world units: a uniform scale by `s`,
             // a non-uniform scale by its *min* component (the conservative Lipschitz bound that
-            // keeps the march safe), everything else (translate/rotate/stretch/mirror/repeat) is
+            // keeps the march safe), a twist/bend by 1/(1 + rate·reach): the distortion shears
+            // space by up to the rate times the child's radial reach, so the rescaled distance
+            // stays a safe bound. Everything else (translate/rotate/stretch/mirror/repeat) is
             // distance-preserving (scale 1).
             let distanceScale: Float = {
                 switch t {
                 case .scale(let s): return s
                 case .scaleXYZ(let v): return min(v.x, min(v.y, v.z))
+                case .twist(let rate):
+                    var r: Float = 0
+                    for cx in [rc.lo.x, rc.hi.x] {
+                        for cz in [rc.lo.z, rc.hi.z] { r = max(r, simd_length(SIMD2(cx, cz))) }
+                    }
+                    return 1 / (1 + abs(rate) * r)
+                case .bend(let rate):
+                    var r: Float = 0
+                    for cx in [rc.lo.x, rc.hi.x] {
+                        for cy in [rc.lo.y, rc.hi.y] { r = max(r, simd_length(SIMD2(cx, cy))) }
+                    }
+                    return 1 / (1 + abs(rate) * r)
                 default: return 1
                 }
             }()
@@ -354,6 +478,11 @@ extension SDF3D {
         case .cone:       let r = max(g.y, g.z); return SIMD3(r, g.x, r)  // max radius, half-height
         case .octahedron: return SIMD3(repeating: g.x)
         case .ellipsoid:  return SIMD3(g.x, g.y, g.z)
+        case .line:       return .zero   // bounds come from both endpoints (see flatten's leaf case)
+        case .hexPrism:   let c = g.x * 1.1547005; return SIMD3(c, g.y, c)  // circumradius, half-height
+        case .pyramid:    return SIMD3(g.x / 2, g.y / 2, g.x / 2)           // base half-width, half-height
+        case .cappedTorus: let r = g.z + g.w; return SIMD3(r, g.w, r)       // ring + tube in xz, tube in y
+        case .link:       return SIMD3(g.y + g.z, g.x + g.y + g.z, g.z)     // ring + tube, stretched along y
         case .plane:      return SIMD3(repeating: 64)   // no finite bound; sized only to seed
                                                         // the self-shadow march budget (the
                                                         // field is flagged unbounded for the camera)
@@ -390,6 +519,12 @@ extension SDF3D {
             return SDFNode3D(kind: 3, sel: 5, k: 0, extra: 0, color: .zero,
                              geo0: SIMD4(axis.x, axis.y, axis.z, 0),
                              geo1: SIMD4(count, 0, 0, 0))
+        case let .twist(rate):
+            return SDFNode3D(kind: 3, sel: 8, k: 0, extra: 0, color: .zero,
+                             geo0: .zero, geo1: SIMD4(rate, 0, 0, 0))
+        case let .bend(rate):
+            return SDFNode3D(kind: 3, sel: 9, k: 0, extra: 0, color: .zero,
+                             geo0: .zero, geo1: SIMD4(rate, 0, 0, 0))
         }
     }
 
@@ -431,6 +566,24 @@ extension SDF3D {
         case .polar:
             // A ring of copies rotated around an axis through the origin; rotation preserves
             // distance-from-origin, so the union fits the child's bounding sphere (axis-free).
+            var rad: Float = 0
+            for cx in [lo.x, hi.x] {
+                for cy in [lo.y, hi.y] {
+                    for cz in [lo.z, hi.z] { rad = max(rad, simd_length(SIMD3(cx, cy, cz))) }
+                }
+            }
+            return (SIMD3(repeating: -rad), SIMD3(repeating: rad))
+        case .twist:
+            // Rotation around y at any height: the xz footprint becomes the swept disc of
+            // the widest corner; the y range is untouched.
+            var r: Float = 0
+            for cx in [lo.x, hi.x] {
+                for cz in [lo.z, hi.z] { r = max(r, simd_length(SIMD2(cx, cz))) }
+            }
+            return (SIMD3(-r, lo.y, -r), SIMD3(r, hi.y, r))
+        case .bend:
+            // The curl can carry any part of the form anywhere around the bend circle;
+            // bound conservatively by the child's bounding sphere.
             var rad: Float = 0
             for cx in [lo.x, hi.x] {
                 for cy in [lo.y, hi.y] {

@@ -449,6 +449,11 @@ let package = Package(
             path: "Examples/Shapes/CombinatorsStretch"
         ),
         .executableTarget(
+            name: "Example-Shapes-CombinatorsJoinery",
+            dependencies: ["Ollin"],
+            path: "Examples/Shapes/CombinatorsJoinery"
+        ),
+        .executableTarget(
             name: "Example-3D-Raymarching-RaymarchedReceiveShadow",
             dependencies: ["Ollin"],
             path: "Examples/3D/Raymarching/RaymarchedReceiveShadow"
@@ -646,6 +651,16 @@ let package = Package(
             name: "Example-3D-Raymarching-RaymarchedSculpt",
             dependencies: ["Ollin"],
             path: "Examples/3D/Raymarching/RaymarchedSculpt"
+        ),
+        .executableTarget(
+            name: "Example-3D-Raymarching-RaymarchedJoinery",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/Raymarching/RaymarchedJoinery"
+        ),
+        .executableTarget(
+            name: "Example-3D-Raymarching-RaymarchedDistort",
+            dependencies: ["Ollin"],
+            path: "Examples/3D/Raymarching/RaymarchedDistort"
         ),
         .executableTarget(
             name: "Example-3D-Raymarching-RaymarchedDomain",

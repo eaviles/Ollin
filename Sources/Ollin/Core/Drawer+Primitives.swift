@@ -854,7 +854,9 @@ extension Drawer {
     // MARK: SDF-combinator scoped blocks (sugar over the `SDF` value type)
 
     enum CombineFrameKind {
-        case combine(SDF.Combine, Float)   // fold children under this op (k = smoothing, 0 = hard)
+        case combine(SDF.Combine, Float, Float)   // fold children under this op
+                                                  // (k = smoothing / joint size, 0 = hard;
+                                                  //  the second value = stairs step count)
         // Union the children, then apply this domain op. Carried for both dimensions (the
         // 2D `SDF.Transform` for captured 2D shapes, the 3D `SDF3D.Transform` for 3D ones).
         case domain(SDF.Transform, SDF3D.Transform)
@@ -870,9 +872,9 @@ extension Drawer {
     /// draws and 3D mesh-primitive draws (`drawSphere`/`drawBox`/…) inside are captured
     /// and folded under `op` when the block closes; one block serves both dimensions, and
     /// a sketch is in one or the other (the captured-but-empty dimension just draws nothing).
-    func beginCombine(op: SDF.Combine, k: Double) {
+    func beginCombine(op: SDF.Combine, k: Double, extra: Double = 0) {
         if combineStack.isEmpty { combineGroupTransform = transform; combineGroupModel = modelMatrix }
-        combineStack.append(CombineFrame(.combine(op, Float(k))))
+        combineStack.append(CombineFrame(.combine(op, Float(k), Float(extra))))
     }
     /// Open a scoped domain block (`mirrored { … }` / `repeated(…) { … }`): the contents
     /// are unioned, then the matching domain op is applied to the whole field (the 2D op to
@@ -917,11 +919,11 @@ extension Drawer {
         guard var result = frame.children.first else { return nil }
         let rest = frame.children.dropFirst()
         switch frame.kind {
-        case let .combine(op, k):
-            for child in rest { result = SDF(.combine(op, result, child, k)) }
+        case let .combine(op, k, n):
+            for child in rest { result = SDF(.combine(op, result, child, k, n)) }
             return result
         case let .domain(t, _):
-            for child in rest { result = SDF(.combine(.union, result, child, 0)) }
+            for child in rest { result = SDF(.combine(.union, result, child, 0, 0)) }
             return SDF(.transformed(t, result))
         }
     }
@@ -929,12 +931,12 @@ extension Drawer {
         guard var result = frame.children3D.first else { return nil }
         let rest = frame.children3D.dropFirst()
         switch frame.kind {
-        case let .combine(op, k):
+        case let .combine(op, k, n):
             let op3 = SDF3D.Combine(rawValue: op.rawValue) ?? .union
-            for child in rest { result = SDF3D(.combine(op3, result, child, k)) }
+            for child in rest { result = SDF3D(.combine(op3, result, child, k, n)) }
             return result
         case let .domain(_, t):
-            for child in rest { result = SDF3D(.combine(.union, result, child, 0)) }
+            for child in rest { result = SDF3D(.combine(.union, result, child, 0, 0)) }
             return SDF3D(.transformed(t, result))
         }
     }

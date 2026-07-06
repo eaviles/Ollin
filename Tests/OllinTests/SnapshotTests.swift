@@ -99,6 +99,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { RaymarchedSDF3DGradientScene() }),
     SnapshotCase("sdf-combinators-gradient", note: "2D SDF combinator gradient paint.",
                  make: { SDFCombinatorsGradientScene() }),
+    SnapshotCase("sdf-combinators-joinery", note: "2D chamfer and stairs joint ops.",
+                 make: { SDFCombinatorsJoineryScene() }),
+    SnapshotCase("sdf-combinators-3d-joinery", note: "Raymarched joint ops + hardware leaves.",
+                 make: { RaymarchedSDF3DJoineryScene() }),
+    SnapshotCase("sdf-combinators-3d-distort", note: "Raymarched twist/bend/displacement.",
+                 make: { RaymarchedSDF3DDistortScene() }),
     SnapshotCase("sdf-combinators-3d-receive", note: "A raymarched 3D field receiving a mesh shadow.",
                  make: { RaymarchedSDF3DReceiveShadowScene() }),
     SnapshotCase("sdf-combinators-3d-pointcast", note: "A raymarched 3D field casting under a point light.",
@@ -1686,6 +1692,94 @@ private final class RaymarchedSDF3DStretchScene: Sketch {
 /// spheres melting together (the smooth-union color blend) with a sphere carved off
 /// the top, skewered by a rasterized box that pins the depth compositing (the bar and
 /// the marched field occlude each other). Static, so it's deterministic at frame 0.
+/// The 2D joint ops: a plus of two rects stairs-unioned, a chamfer-subtracted bite, and a
+/// chamfer-intersected chip beside it. Pins the chamfer/stairs combine encodings (sel 7-12),
+/// the crisp nearer-side color pick, and the stairs step count riding the OP node's extra.
+private final class SDFCombinatorsJoineryScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x14161a))
+        stroke(Color(white: 0.85))
+        strokeWeight(1.5)
+        let a = SDF.rect(width: 150, height: 64).colored(Color(hex: 0x46c2ff))
+        let b = SDF.rect(width: 64, height: 150).at(x: 6, y: 0).colored(Color(hex: 0xffb454))
+        let bite = SDF.circle(radius: 34).at(x: -70, y: -48)
+        withState {
+            translate(96, 92)
+            drawSDF(a.stairsUnion(b, radius: 18, steps: 4).chamferSubtract(bite, radius: 8))
+        }
+        withState {
+            translate(190, 196)
+            drawSDF(SDF.rect(width: 90, height: 44).colored(Color(hex: 0x9adcf0))
+                .chamferUnion(.rect(width: 44, height: 90).colored(Color(hex: 0xff6f61)),
+                              radius: 14))
+        }
+    }
+}
+
+/// The raymarched joint ops and hardware leaves in one field: a hex-prism head
+/// chamfer-unioned to a shaft on a stairs-union base, plus a link, a capped-torus arc, a
+/// free-point line stroke, and a pyramid. Pins the 3D sel 7-12 ops and leaf tags 10-14.
+private final class RaymarchedSDF3DJoineryScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101418))
+        camera(.orbiting(target: Vector3(0, 0.2, 0), radius: 7.0, azimuth: 0.55, elevation: 0.35,
+                         fieldOfView: .pi / 4, near: 2, far: 16))
+        directionalLight(.white, direction: Vector3(-0.5, 0.8, 0.4),
+                         intensity: 1.2, softness: 0.3)
+        ambientLight(Color(white: 0.18))
+        material(.glossy)
+
+        let piece = SDF3D.hexPrism(radius: 0.5, height: 0.45).at(x: 0, y: 1.3, z: 0)
+            .colored(Color(hex: 0xffb454))
+            .chamferUnion(SDF3D.cylinder(radius: 0.26, height: 1.7).at(x: 0, y: 0.5, z: 0)
+                .colored(Color(hex: 0x9adcf0)), radius: 0.12)
+            .stairsUnion(SDF3D.box(width: 2.0, height: 0.6, depth: 2.0).at(x: 0, y: -0.7, z: 0)
+                .colored(Color(hex: 0x5f6f86)), radius: 0.3, steps: 4)
+            .chamferSubtract(SDF3D.sphere(radius: 0.5).at(x: 0.8, y: -0.3, z: 0.8), radius: 0.1)
+        drawSDF3D(piece)
+
+        let hardware = SDF3D.link(height: 0.3, radius: 0.28, tube: 0.085)
+            .at(x: -2.0, y: 0.9, z: 0).colored(Color(hex: 0xd8dee6))
+            .union(.cappedTorus(radius: 0.4, tube: 0.1, angle: 2.1)
+                .at(x: -2.0, y: -0.35, z: 0).colored(Color(hex: 0xff6f61)))
+            .union(.line(from: Vector3(1.7, -1.0, 0.6), to: Vector3(2.3, 0.6, -0.2), radius: 0.09)
+                .colored(Color(hex: 0x8fa3bd)))
+            .union(.pyramid(base: 0.7, height: 0.65).at(x: 2.35, y: 1.15, z: -0.35)
+                .colored(Color(hex: 0xb6ff5a)))
+        drawSDF3D(hardware)
+    }
+}
+
+/// The raymarched sculpting distortions: a twisted box column, a bent bar, a sine-displaced
+/// sphere, and a noise-roughened sphere. Pins the twist/bend XFORMs (sel 8/9) with their
+/// Lipschitz rescale, and the displacement MODs (sel 2/3) with theirs.
+private final class RaymarchedSDF3DDistortScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x12141a))
+        camera(.orbiting(target: Vector3(0, 0.1, 0), radius: 8.5, azimuth: 0.35, elevation: 0.3,
+                         fieldOfView: .pi / 4, near: 2, far: 18))
+        directionalLight(.white, direction: Vector3(-0.5, 0.8, 0.4),
+                         intensity: 1.15, softness: 0.3)
+        ambientLight(Color(white: 0.17))
+        material(.jade)
+
+        drawSDF3D(SDF3D.box(width: 0.8, height: 2.4, depth: 0.8).twisted(1.2)
+            .at(x: -2.9, y: 0.2, z: 0).colored(Color(hex: 0x46c2ff)))
+        drawSDF3D(SDF3D.box(width: 2.4, height: 0.45, depth: 0.65).bent(0.55)
+            .at(x: -0.9, y: 0.2, z: 0).colored(Color(hex: 0xffb454)))
+        drawSDF3D(SDF3D.sphere(radius: 0.9).displaced(amplitude: 0.1, frequency: 6.5)
+            .at(x: 1.1, y: 0.1, z: 0).colored(Color(hex: 0xff6f61)))
+        drawSDF3D(SDF3D.sphere(radius: 0.9).roughened(amplitude: 0.15, frequency: 3.2)
+            .at(x: 3.0, y: 0.1, z: 0).colored(Color(hex: 0x9aa7b8)))
+    }
+}
+
 private final class RaymarchedSDF3DScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

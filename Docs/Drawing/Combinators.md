@@ -106,6 +106,27 @@ a.morph(b, amount: 0.5) // blend the shape itself between a and b (0 = a, 1 = b)
 `morph` is a *field* blend, not a crossfade: at `amount: 0.5` the boundary is genuinely
 halfway between the two shapes.
 
+Beside the smooth (melted) family sits the **joint** family, which shapes the seam like
+machined work instead of melting it: `chamfer*` cuts a crisp 45° bevel of the given size
+along the seam, `stairs*` carves it into a staircase of `steps` steps. Each comes in the
+same three flavors, and colors stay a crisp pick of the nearer side (no blend), which is
+what makes the joint read as two parts fitted together.
+
+```swift
+a.chamferUnion(b, radius: 20)             // joined with a 45° bevel along the seam
+a.chamferSubtract(b, radius: 20)          // b carved out, the cut's rim beveled
+a.chamferIntersect(b, radius: 20)         // the overlap, its edge beveled
+a.stairsUnion(b, radius: 24, steps: 4)    // joined through a 4-step staircase
+a.stairsSubtract(b, radius: 24, steps: 4) // the cut's rim stepped
+a.stairsIntersect(b, radius: 24, steps: 4)
+```
+
+One working note: the joint ops shape the seam exactly where the two surfaces cross
+frankly (near a right angle). Where surfaces graze or run near-parallel within the joint
+radius, the pattern can echo faintly past the seam; keep the radius smaller than the gap
+between any parallel faces. (`Examples/Shapes/CombinatorsJoinery` is a contact sheet of
+all six.)
+
 <a name="modifiers"></a>
 
 ### Modifiers: round and onion
@@ -208,7 +229,10 @@ smoothUnion(k: 18) {
 ```
 
 The blocks mirror the combinators and domain operators: `union { }`, `smoothUnion(k:) { }`,
-`subtract { }`, `smoothSubtract(k:) { }`, `intersect { }`, `smoothIntersect(k:) { }`,
+`subtract { }`, `smoothSubtract(k:) { }`, `intersect { }`, `smoothIntersect(k:) { }`, the
+joint family (`chamferUnion(radius:) { }`, `chamferSubtract(radius:) { }`,
+`chamferIntersect(radius:) { }`, `stairsUnion(radius:steps:) { }`,
+`stairsSubtract(radius:steps:) { }`, `stairsIntersect(radius:steps:) { }`),
 `mirrored(x:y:) { }`, `repeated(spacing:count:) { }`, `repeatedRadially(count:) { }`. They
 nest, so a domain block can wrap a combine block:
 
@@ -266,7 +290,17 @@ The leaf constructors are the common centered solids:
 | `SDF3D.cone(radius:height:)` / `SDF3D.cone(bottomRadius:topRadius:height:)` | a cone / frustum along the y-axis |
 | `SDF3D.octahedron(radius:)` | an octahedron |
 | `SDF3D.ellipsoid(rx:ry:rz:)` | an ellipsoid |
+| `SDF3D.line(from:to:radius:)` | a capsule stroke between two free points (the armature primitive) |
+| `SDF3D.hexPrism(radius:height:)` | a hexagonal prism along the y-axis (`radius` to the flat sides) |
+| `SDF3D.pyramid(base:height:)` | a square pyramid |
+| `SDF3D.cappedTorus(radius:tube:angle:)` | an open torus arc in the xz-plane (a horseshoe; `angle` to each side of +z) |
+| `SDF3D.link(height:radius:tube:)` | a chain link along the y-axis (a torus stretched straight in the middle) |
 | `SDF3D.plane(normal:offset:)` | an infinite plane (default a horizontal floor; `offset` is its height) |
+
+`line` is the sculptor's stroke: unlike the centered solids it takes two arbitrary endpoints,
+so a few chained lines sketch limbs, branches, or scaffolding for the smooth unions to flesh
+out. `link` stacks into chains with alternating `rotatedY(.pi / 2)`
+(see `Examples/3D/Raymarching/RaymarchedJoinery`).
 
 `plane` is the one **unbounded** leaf: it has no finite extent, so its field marches to the
 camera's far plane rather than a bounding box (a ray that sees only open sky steps quickly out
@@ -276,10 +310,13 @@ and the shapes drop soft self-shadows onto it: a true infinite floor (see
 `Examples/3D/Raymarching/RaymarchedPlane`).
 
 The combinators (`.union` / `.smoothUnion(_:k:)` / `.subtract` / `.smoothSubtract(_:k:)` /
-`.intersect` / `.smoothIntersect(_:k:)` / `.morph(_:amount:)`), the modifiers (`.rounded` /
-`.onion`), the domain operators (`.mirrored(x:y:z:)`, `.repeated(spacing:count:)`, and
-`.repeatedRadially(count:around:)`), and `.colored` all behave exactly as in 2D, the smooth
-ops blending the leaf colors across the seam. Positioning is in three dimensions:
+`.intersect` / `.smoothIntersect(_:k:)` / `.morph(_:amount:)`, plus the [joint
+family](#combining): `.chamferUnion` / `.chamferSubtract` / `.chamferIntersect(_:radius:)`
+and `.stairsUnion` / `.stairsSubtract` / `.stairsIntersect(_:radius:steps:)`), the modifiers
+(`.rounded` / `.onion`), the domain operators (`.mirrored(x:y:z:)`,
+`.repeated(spacing:count:)`, and `.repeatedRadially(count:around:)`), and `.colored` all
+behave exactly as in 2D, the smooth ops blending the leaf colors across the seam and the
+joint ops keeping a crisp machined pick per side. Positioning is in three dimensions:
 `.at(x:y:z:)` / `.at(_ p: Vector3)`, `.rotated(_:axis:)` (plus `.rotatedX` / `.rotatedY` /
 `.rotatedZ`), and `.scaled(_:)` (uniform). The domain operators rewrite the query point as
 point-space scopes, so the whole mirrored / tiled / radially repeated field is still one
@@ -288,6 +325,26 @@ sphere-traced surface (no per-copy draw cost), and method-chain order stays exac
 `repeated` is finite (`count` copies to each side), so the field stays bounded;
 `repeatedRadially` folds a wedge into a ring of `count` copies around `axis` (default the
 y-axis), so offset the wedge off the axis first (`.at(x: r, …)`) for the copies to fan out.
+
+Three dimensions also add the **sculpting distortions**, each a point-space scope like the
+domain operators (the whole distorted form stays one traced surface):
+
+```swift
+SDF3D.box(width: 0.8, height: 2.4, depth: 0.8)
+    .twisted(1.2)      // the cross-section screws around y: radians per unit of height
+SDF3D.box(width: 2.4, height: 0.5, depth: 0.7)
+    .bent(0.6)         // the form curls about z: radians per unit along x
+SDF3D.sphere(radius: 1)
+    .displaced(amplitude: 0.1, frequency: 6)   // sine-product surface ripples
+SDF3D.sphere(radius: 1)
+    .roughened(amplitude: 0.15, frequency: 3)  // signed value-noise relief (the rock look)
+```
+
+Twist runs around the y-axis and bend about z (rotate the field first for another axis).
+All four are distance *bounds* rather than exact fields, and the march automatically
+compensates (a rescale sized to the distortion's strength), so strong settings trade some
+tracing speed for a surface that never breaks up. `Examples/3D/Raymarching/RaymarchedDistort`
+shows all four.
 
 The **scoped block form** works in 3D too, and it's the same `smoothUnion(k:) { }` (and the
 other combine blocks) as 2D. Inside a block with a camera set, the bare mesh primitives

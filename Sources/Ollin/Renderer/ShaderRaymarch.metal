@@ -113,9 +113,66 @@ static float ollin_sd3_plane(float3 p, float3 n, float h) {
     return dot(p, n) - h;
 }
 
+// A capsule between two arbitrary endpoints `a` and `b` (the free-form sibling of the
+// centered y-axis capsule): the sculpting armature stroke.
+static float ollin_sd3_line(float3 p, float3 a, float3 b, float r) {
+    float3 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-8), 0.0, 1.0);
+    return length(pa - ba * h) - r;
+}
+
+// A hexagonal prism along the y-axis, centered at the origin: `r` is the inradius
+// (center to a flat side), `hh` the half-length along y. The canonical form's cross
+// section lies in xy with the prism along z, so the point is swizzled to our y-up axis.
+static float ollin_sd3_hex_prism(float3 p0, float r, float hh) {
+    float3 p = abs(float3(p0.x, p0.z, p0.y));
+    const float3 k = float3(-0.8660254, 0.5, 0.57735);
+    p.xy -= 2.0 * min(dot(k.xy, p.xy), 0.0) * k.xy;
+    float2 d = float2(length(p.xy - float2(clamp(p.x, -k.z * r, k.z * r), r)) * sign(p.y - r),
+                      p.z - hh);
+    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+
+// A square pyramid centered at the origin: base `b` on a side, apex `h` above the base
+// plane. The canonical form has a fixed half-unit base with the base plane at y = 0, so
+// the query re-centers, then evaluates uniformly scaled by the base (exact).
+static float ollin_sd3_pyramid(float3 p0, float b, float h) {
+    float s = max(b, 1e-5);
+    float3 p = float3(p0.x, p0.y + h * 0.5, p0.z) / s;
+    float hn = h / s;
+    float m2 = hn * hn + 0.25;
+    p.xz = abs(p.xz);
+    p.xz = (p.z > p.x) ? p.zx : p.xz;
+    p.xz -= 0.5;
+    float3 q = float3(p.z, hn * p.y - 0.5 * p.x, hn * p.x + 0.5 * p.y);
+    float ss = max(-q.x, 0.0);
+    float t = clamp((q.y - 0.5 * p.z) / (m2 + 0.25), 0.0, 1.0);
+    float a = m2 * (q.x + ss) * (q.x + ss) + q.y * q.y;
+    float bb = m2 * (q.x + 0.5 * t) * (q.x + 0.5 * t) + (q.y - m2 * t) * (q.y - m2 * t);
+    float d2 = min(q.y, -q.x * m2 - q.y * 0.5) > 0.0 ? 0.0 : min(a, bb);
+    return sqrt((d2 + q.z * q.z) / m2) * sign(max(q.z, -p.y)) * s;
+}
+
+// An arc of a torus (the open ring): the ring lies in the xz-plane like `torus`, spanning
+// `angle` to each side of +z, `ra` the ring radius, `rb` the tube radius. `sc` is
+// (sin, cos) of the half-angle, cooked CPU-side. The canonical form's ring lies in xy
+// opening about +y, so the point is swizzled to our y-up frame.
+static float ollin_sd3_capped_torus(float3 p0, float2 sc, float ra, float rb) {
+    float3 p = float3(abs(p0.x), p0.z, p0.y);
+    float k = (sc.y * p.x > sc.x * p.y) ? dot(p.xy, sc) : length(p.xy);
+    return sqrt(dot(p, p) + ra * ra - 2.0 * ra * k) - rb;
+}
+
+// A chain link along the y-axis, centered at the origin: a torus stretched straight by
+// `le` on each side, `r1` the ring radius, `r2` the tube radius.
+static float ollin_sd3_link(float3 p, float le, float r1, float r2) {
+    float3 q = float3(p.x, max(abs(p.y) - le, 0.0), p.z);
+    return length(float2(length(q.xy) - r1, q.z)) - r2;
+}
+
 // Evaluate one leaf's 3D SDF. `sel` is the SDF3DShape tag; this switch must stay in
 // sync with SDF3DShape in SDF3D.swift (the EVAL param packing lives there).
-static float ollin_sdf3d_eval(uint shape, float3 p, float4 geo0) {
+static float ollin_sdf3d_eval(uint shape, float3 p, float4 geo0, float4 geo1) {
     switch (shape) {
     case 0u: return ollin_sd3_sphere(p, geo0.x);                       // sphere: radius
     case 1u: return ollin_sd3_box(p, geo0.xyz);                       // box: half-extents
@@ -126,15 +183,22 @@ static float ollin_sdf3d_eval(uint shape, float3 p, float4 geo0) {
     case 6u: return ollin_sd3_cone(p, geo0.x, geo0.y, geo0.z);        // cone: half-height, r1, r2
     case 7u: return ollin_sd3_octahedron(p, geo0.x);                  // octahedron: radius
     case 8u: return ollin_sd3_ellipsoid(p, geo0.xyz);                 // ellipsoid: radii
-    default: return ollin_sd3_plane(p, geo0.xyz, geo0.w);             // plane: unit normal, signed offset
+    case 10u: return ollin_sd3_line(p, geo0.xyz, geo1.xyz, geo0.w);   // line: a, b, radius
+    case 11u: return ollin_sd3_hex_prism(p, geo0.x, geo0.y);          // hex prism: inradius, half-height
+    case 12u: return ollin_sd3_pyramid(p, geo0.x, geo0.y);            // pyramid: base, height
+    case 13u: return ollin_sd3_capped_torus(p, geo0.xy, geo0.z, geo0.w); // capped torus: (sin,cos), ring, tube
+    case 14u: return ollin_sd3_link(p, geo0.x, geo0.y, geo0.z);       // link: half-stretch, ring, tube
+    default: return ollin_sd3_plane(p, geo0.xyz, geo0.w);             // plane (9): unit normal, signed offset
     }
 }
 
 // Combine two value-stack entries (the 2D `ollin_sdf_combine` ops exactly: the smooth
 // ones use a polynomial smooth-minimum whose factor `h` also lerps the color, so two
-// solids melt their colors at the seam).
+// solids melt their colors at the seam; the chamfer/stairs joint ops shape the seam's
+// edge and keep a crisp nearer-operand color; `ollin_op_stairs`/`ollin_emod` come from
+// the ShaderCombinator segment, which precedes this one). `n` is the OP node's `extra`.
 static void ollin_sdf3d_combine(uint op, float da, float4 ca, float db, float4 cb,
-                                float k, thread float &outD, thread float4 &outC) {
+                                float k, float n, thread float &outD, thread float4 &outC) {
     float kk = max(k, 1e-5);
     switch (op) {
     case 0u:                                          // union (min)
@@ -164,6 +228,30 @@ static void ollin_sdf3d_combine(uint op, float da, float4 ca, float db, float4 c
         outC = mix(cb, ca, h);
         break;
     }
+    case 7u:                                          // chamfer union (45° bevel of size k)
+        outD = min(min(da, db), (da + db - k) * 0.70710678);
+        outC = (da <= db) ? ca : cb;
+        break;
+    case 8u:                                          // chamfer subtract: a minus b, beveled rim
+        outD = max(max(da, -db), (da + k - db) * 0.70710678);
+        outC = ca;
+        break;
+    case 9u:                                          // chamfer intersect
+        outD = max(max(da, db), (da + k + db) * 0.70710678);
+        outC = (da >= db) ? ca : cb;
+        break;
+    case 10u:                                         // stairs union (n steps of size k)
+        outD = ollin_op_stairs(da, db, k, n);
+        outC = (da <= db) ? ca : cb;
+        break;
+    case 11u:                                         // stairs subtract: a minus b, stepped rim
+        outD = -ollin_op_stairs(-da, db, k, n);
+        outC = ca;
+        break;
+    case 12u:                                         // stairs intersect
+        outD = -ollin_op_stairs(-da, -db, k, n);
+        outC = (da >= db) ? ca : cb;
+        break;
     default:                                          // morph (field blend)
         outD = mix(da, db, k);
         outC = mix(ca, cb, k);
@@ -224,9 +312,23 @@ static float3 ollin_sdf3d_xform(float3 p, SDFNode3D nd) {
     case 6u:                                          // non-uniform scale (p /= per-axis factors;
         return p / max(nd.geo0.xyz, float3(1e-4));    // the distance is rescaled by the min factor
                                                       // at RESTORE_P, a conservative bound)
-    default:                                          // stretch / elongate (sel 7): insert straight
+    case 7u:                                          // stretch / elongate: insert straight
         return p - clamp(p, -nd.geo0.xyz, nd.geo0.xyz);  // space along each axis (splits the shape),
                                                       // an exact SDF (distance preserved, scale 1)
+    case 8u: {                                        // twist around y (geo1.x = radians per unit
+        float c = cos(nd.geo1.x * p.y);               // of height): the point counter-rotates in
+        float s = sin(nd.geo1.x * p.y);               // xz as it rises. A distance bound, not
+        return float3(c * p.x - s * p.z, p.y,         // exact; RESTORE_P rescales by the
+                      s * p.x + c * p.z);             // twist-rate Lipschitz factor.
+    }
+    case 9u: {                                        // bend about z (geo1.x = radians per unit
+        float c = cos(nd.geo1.x * p.x);               // along x): the xy plane curls as it runs.
+        float s = sin(nd.geo1.x * p.x);               // Same bound + RESTORE_P rescale as twist.
+        return float3(c * p.x - s * p.y,
+                      s * p.x + c * p.y, p.z);
+    }
+    default:
+        return p;
     }
 }
 
@@ -245,7 +347,7 @@ static float ollin_sdf3d_field(float3 p0, const device SDFNode3D *nodes,
         SDFNode3D nd = nodes[start + i];
         switch (nd.kind) {
         case 0u: {   // EVAL leaf -> push (distance, color)
-            float d = ollin_sdf3d_eval(nd.sel, p, nd.geo0);
+            float d = ollin_sdf3d_eval(nd.sel, p, nd.geo0, nd.geo1);
             if (sp < OLLIN_SDF3D_VALUE_STACK) { distStack[sp] = d; colStack[sp] = nd.color; sp++; }
             break;
         }
@@ -253,15 +355,32 @@ static float ollin_sdf3d_field(float3 p0, const device SDFNode3D *nodes,
             if (sp >= 2) {
                 float d; float4 c;
                 ollin_sdf3d_combine(nd.sel, distStack[sp-2], colStack[sp-2],
-                                    distStack[sp-1], colStack[sp-1], nd.k, d, c);
+                                    distStack[sp-1], colStack[sp-1], nd.k, nd.extra, d, c);
                 sp -= 1;
                 distStack[sp-1] = d; colStack[sp-1] = c;
             }
             break;
-        case 2u:     // MOD unary -> round (d - r) / onion (|d| - t)
+        case 2u:     // MOD unary -> round (d - r) / onion (|d| - t) / surface displacement
             if (sp >= 1) {
-                distStack[sp-1] = (nd.sel == 0u) ? (distStack[sp-1] - nd.k)
-                                                 : (abs(distStack[sp-1]) - nd.k);
+                switch (nd.sel) {
+                case 0u: distStack[sp-1] -= nd.k; break;                  // round
+                case 1u: distStack[sp-1] = abs(distStack[sp-1]) - nd.k;   // onion
+                    break;
+                case 2u: {   // sine displacement: k = amplitude, extra = frequency,
+                             // geo0.x = the Lipschitz rescale that keeps the march safe
+                             // (the displaced field's gradient can reach 1 + amp·freq·√3).
+                    float f = nd.extra;
+                    float disp = nd.k * sin(f * p.x) * sin(f * p.y) * sin(f * p.z);
+                    distStack[sp-1] = (distStack[sp-1] + disp) * nd.geo0.x;
+                    break;
+                }
+                default: {   // noise displacement (sel 3): signed 3D value noise at
+                             // frequency `extra`, same amplitude/rescale packing.
+                    float nse = valueNoise(p * nd.extra) * 2.0 - 1.0;
+                    distStack[sp-1] = (distStack[sp-1] + nd.k * nse) * nd.geo0.x;
+                    break;
+                }
+                }
             }
             break;
         case 3u:     // XFORM -> push point, transform it for the scope

@@ -65,12 +65,33 @@ vertex SDFGroupOut ollin_sdfgroup_vertex(uint vid [[vertex_id]],
     return out;
 }
 
+// Euclidean (floored) modulo: always in [0, y) for y > 0. Metal's fmod truncates
+// toward zero (negative for negative x), which would break the periodic joint ops below
+// wherever an operand distance goes negative.
+static inline float ollin_emod(float x, float y) { return x - y * floor(x / y); }
+
+// The stairs union: n steps of size r carved along the 45° seam between two fields
+// (treating the two distances as a local 2D frame at the seam). The subtract and
+// intersect flavours negate through it. Like every joint op it assumes the two
+// surfaces meet near a right angle; where they graze (near-parallel gradients) the
+// periodic staircase can echo faint steps past the seam, the technique's documented
+// envelope, so pair it with surfaces that cross frankly. Shared by the 2D and 3D
+// combine switches (this segment precedes ShaderRaymarch in the concatenation).
+static inline float ollin_op_stairs(float a, float b, float r, float n) {
+    float s = max(r, 1e-5) / max(n, 1.0);
+    float u = b - r;
+    return min(min(a, b), 0.5 * (u + a + abs(ollin_emod(u - a + s, 2.0 * s) - s)));
+}
+
 // Combine two value-stack entries (a below b in chain order) into one. The smooth ops
 // use a polynomial smooth-minimum whose interpolation factor `h` also lerps the color,
 // so two shapes melt their colors at the seam (the smin-with-material technique,
-// credited in the README's Techniques list).
+// credited in the README's Techniques list). The chamfer and stairs joint ops treat the
+// two distances as a local 2D frame at the seam and shape its edge (a 45° bevel, a
+// staircase of `n` steps); their color stays a crisp pick of the nearer operand (a
+// machined joint, not a melt). `n` rides the OP node's `extra` (the stairs step count).
 static void ollin_sdf_combine(uint op, float da, float4 ca, float db, float4 cb,
-                              float k, thread float &outD, thread float4 &outC) {
+                              float k, float n, thread float &outD, thread float4 &outC) {
     float kk = max(k, 1e-5);
     switch (op) {
     case 0u:                                          // union (min)
@@ -100,6 +121,30 @@ static void ollin_sdf_combine(uint op, float da, float4 ca, float db, float4 cb,
         outC = mix(cb, ca, h);
         break;
     }
+    case 7u:                                          // chamfer union (45° bevel of size k)
+        outD = min(min(da, db), (da + db - k) * 0.70710678);
+        outC = (da <= db) ? ca : cb;
+        break;
+    case 8u:                                          // chamfer subtract: a minus b, beveled rim
+        outD = max(max(da, -db), (da + k - db) * 0.70710678);
+        outC = ca;
+        break;
+    case 9u:                                          // chamfer intersect
+        outD = max(max(da, db), (da + k + db) * 0.70710678);
+        outC = (da >= db) ? ca : cb;
+        break;
+    case 10u:                                         // stairs union (n steps of size k)
+        outD = ollin_op_stairs(da, db, k, n);
+        outC = (da <= db) ? ca : cb;
+        break;
+    case 11u:                                         // stairs subtract: a minus b, stepped rim
+        outD = -ollin_op_stairs(-da, db, k, n);
+        outC = ca;
+        break;
+    case 12u:                                         // stairs intersect
+        outD = -ollin_op_stairs(-da, -db, k, n);
+        outC = (da >= db) ? ca : cb;
+        break;
     default:                                          // morph (field blend)
         outD = mix(da, db, k);
         outC = mix(ca, cb, k);
@@ -173,7 +218,7 @@ fragment float4 ollin_sdfgroup_fragment(SDFGroupOut in [[stage_in]],
             if (sp >= 2) {
                 float d; float4 c;
                 ollin_sdf_combine(nd.sel, distStack[sp-2], colStack[sp-2],
-                                  distStack[sp-1], colStack[sp-1], nd.k, d, c);
+                                  distStack[sp-1], colStack[sp-1], nd.k, nd.extra, d, c);
                 sp -= 1;
                 distStack[sp-1] = d; colStack[sp-1] = c;
             }
