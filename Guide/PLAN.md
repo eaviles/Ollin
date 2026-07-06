@@ -237,7 +237,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Helpers/Math.md` (map, lerp, dist; the shaping scalars clamp/fract/step/smoothstep) | Ch 3, Appendix B | taught |
 | `Helpers/Animation.md` (easing, @Eased, @Smoothed, Timeline; loopProgress/pingPong) | Ch 3 | taught |
 | `Helpers/Input.md` (mouse, keyboard) | Ch 1 | taught |
-| `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 20 | taught (Ch 1 predates the typed family: Int/Bool/enum/Color/Vector2 controls, groups, icons, scrubbing; fold in on the Ch 1 revisit. Chs 2-4 already use whole-number Int knobs.) |
+| `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 20 | taught (typed family: sliders/stepper/color well taught in Ch 1's payoff, the rest named + pointed; groups/icons pointed) |
 | `Generators/Random.md` | Ch 4 | taught |
 | `Generators/Noise.md` (noise, signedNoise, loop:, fbm, curlNoise) | Ch 5; curl in Ch 12/16 | taught |
 | `Drawing/Geometry.md`: `Grid`, `Insets` | Ch 6 | taught |

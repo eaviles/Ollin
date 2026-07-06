@@ -6,7 +6,7 @@
 
 <img src="Images/01-HelloOllin/HelloMotion.jpg" alt="A ring of circles in warm and cool colors, drifting and breathing on a dark ground" width="560">
 
-By the end of this chapter, this piece is yours: twenty-eight circles drifting around a ring, each breathing slightly out of step with its neighbors, with two sliders to play it like an instrument. Every dot is placed and moved by code you'll understand line by line. Getting there takes a working toolchain, one new file, three shapes, and a single idea that carries the whole book: in Ollin, things move by default.
+By the end of this chapter, this piece is yours: twenty-eight circles drifting around a ring, each breathing slightly out of step with its neighbors, with a small panel of knobs to play it like an instrument. Every dot is placed and moved by code you'll understand line by line. Getting there takes a working toolchain, one new file, three shapes, and a single idea that carries the whole book: in Ollin, things move by default.
 
 ## What you need
 
@@ -154,6 +154,8 @@ import Ollin
 final class HelloMotion: Sketch {
     @Param("Speed", 0...2) var speed = 0.3
     @Param("Size", 8...80) var size = 38.0
+    @Param("Circles", 4...120) var count = 28
+    @Param("Ground") var ground = Color(hex: 0x11151C)
 
     let colors: [Color] = [
         Color(hex: 0xFFB703, alpha: 0.85), Color(hex: 0xFB8500, alpha: 0.85),
@@ -161,10 +163,10 @@ final class HelloMotion: Sketch {
     ]
 
     override func draw() {
-        background(Color(hex: 0x11151C))
+        background(ground)
         noStroke()
-        for i in 0..<28 {
-            let angle = Double(i) / 28 * .tau + time * speed
+        for i in 0..<count {
+            let angle = Double(i) / Double(count) * .tau + time * speed
             let breathe = sin(time * 1.4 + Double(i) * 0.5)
             let ring = 310 + breathe * 80
             let x = width / 2 + cos(angle) * ring
@@ -178,20 +180,23 @@ final class HelloMotion: Sketch {
 
 Run it with `swift run OllinLive MySketches/HelloMotion.swift` and walk through what each line contributes:
 
-- `Double(i) / 28 * .tau` divides the full turn into 28 slots, one angle per circle. Adding `time * speed` grows every angle together, so the whole ring rotates.
+- `Double(i) / Double(count) * .tau` divides the full turn into one slot per circle. Adding `time * speed` grows every angle together, so the whole ring rotates.
 - `breathe` is the pendulum again, but notice the `+ Double(i) * 0.5`: each circle runs the same swing slightly out of step with its neighbor. That small offset is what makes the ring ripple organically instead of pulsing in lockstep. Try deleting it and watch the difference.
 - `breathe` gets used twice, swinging both the ring's radius (`310 + breathe * 80`) and each circle's size (`size + breathe * 16`), so position and scale breathe together.
 - `colors[i % colors.count]` cycles through the palette: circle 0 gets the first color, circle 4 wraps back around.
 
-> **Swift note.** `for i in 0..<28` counts 0 through 27. `i` is an `Int` (a whole number) while positions want `Double` (numbers with fractions), so `Double(i)` converts. `[Color]` is a list of colors, `colors.count` its length, and `%` is the remainder after division, which is what makes the palette repeat. These four keep coming back; there's more Swift in the [Swift primer](../Docs/Swift.md) whenever you want it.
+> **Swift note.** `for i in 0..<count` counts from 0 up to, but not including, `count`. `i` is an `Int` (a whole number) while positions want `Double` (numbers with fractions), so `Double(i)` converts. `[Color]` is a list of colors, `colors.count` its length, and `%` is the remainder after division, which is what makes the palette repeat. These four keep coming back; there's more Swift in the [Swift primer](../Docs/Swift.md) whenever you want it.
 
-And the two `@Param` lines? Look at the sidebar of the `OllinLive` window: they became sliders. `@Param("Speed", 0...2) var speed = 0.3` declares a knob with a label, a range, and a starting value, and the sketch reads it like any other property. Drag the sliders while the piece runs. Tuned values even survive a save: edit the code, save, and your slider positions carry over into the reloaded sketch instead of snapping back. When a value feels right, copy it back into the code as the new default. This tune-while-it-runs habit is worth building early; almost every piece in this book gets better when its magic numbers become knobs.
+And the four `@Param` lines? Look at the sidebar of the `OllinLive` window: they became a little control panel. `@Param("Speed", 0...2) var speed = 0.3` declares a knob with a label, a range, and a starting value, and the sketch reads it like any other property. Notice that each knob got the control its type asks for: the two `Double`s became sliders, the whole-number `count` became a stepper, and `ground`, a `Color`, became a color well you can click to open a picker. (There are more: a `Bool` becomes a toggle, a point can even become a draggable pad. You'll meet them as the book goes.) The number next to any knob is live too: drag it sideways to scrub the value, or click it to type one in.
+
+Play the panel while the piece runs. Tuned values even survive a save: edit the code, save, and your knob positions carry over into the reloaded sketch instead of snapping back. When a value feels right, copy it back into the code as the new default. This tune-while-it-runs habit is worth building early; almost every piece in this book gets better when its magic numbers become knobs.
 
 Before moving on, make the piece yours. Some directions worth a try:
 
-- Change `28` and see what the ring wants to be at 6 circles, or 200.
+- Run `Circles` from 4 to 120 with `Size` low and see what the ring wants to be: a clock face, a chain, a halo.
 - Swap the palette. Pick four hex colors you like and paste them in.
 - Add a second ring: another loop with a different base radius and its own speed.
+- Make the breathing depth (the `80`) a fifth knob and play it.
 - Replace `drawCircle` with `drawRect(x, y, size, size)` and see how the character changes.
 
 ## Where this comes from
@@ -204,7 +209,7 @@ The `setup()`/`draw()` sketch model comes from [Processing](https://processing.o
 - [Canvas](../Docs/Core/Canvas.md): canvas sizes and presets, the preview window, and writing sketches that hold up at any resolution.
 - [Drawing](../Docs/Drawing/Drawing.md): every shape and the complete ink state.
 - [Input](../Docs/Helpers/Input.md): the keyboard, click hooks, and the rest of the mouse.
-- [Parameters](../Docs/Helpers/Parameters.md): knob smoothing, and driving knobs from MIDI or OSC hardware.
+- [Parameters](../Docs/Helpers/Parameters.md): the full knob family (toggles, menus, pads, and friends), grouping knobs into cards, icons, smoothing, and driving knobs from MIDI or OSC hardware.
 - [The Swift primer](../Docs/Swift.md): just enough of the language, for whenever a construct here felt mysterious.
 - Worked examples: [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift) and the knobs demo [`Examples/Live/Parameters`](../Examples/Live/Parameters/Sketch.swift).
 
