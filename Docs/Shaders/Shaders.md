@@ -130,13 +130,15 @@ let s = Shader(resource: "warp", in: .module)   // reads warp.metal from the ske
 
 ## Errors
 
-A shader that doesn't compile is reported with **line numbers relative to your own source** (not the wrapper Ollin adds around it), with the offending line and a caret. The frame keeps running with the broken pass skipped, so a typo never crashes the sketch.
+A shader that doesn't compile is reported at **the file and line you wrote it in** (the sketch's own `.swift` for an inline string, the `.metal` file for a resource), with the offending line and a caret, so the location is real and an IDE can jump straight to it. The frame keeps running with the broken pass skipped, so a typo never crashes the sketch.
 
 ```
-Shader:8:5: error: use of undeclared identifier 'vec4'; did you mean 'vec'?
+/Users/you/Sketches/Plasma.swift:23:5: error: use of undeclared identifier 'vec4'; did you mean 'vec'?
     vec4 v = 0.5 + 0.5 * sin(...);
     ^~~~
 ```
+
+(For an inline string, the line assumes the canonical form with the opening `"""` on the `Shader(` call line; a one-line shader may read one line off, which still lands within sight of it.)
 
 In a plain `swift run`, the message goes to the terminal. In [OllinLive](../../README.md), it appears in the on-screen error overlay and clears when you fix it.
 

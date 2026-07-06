@@ -25,7 +25,9 @@ import COllinShaders
 /// The body can be an inline Swift string (it hot-reloads with the sketch in
 /// OllinLive) or a `.metal` resource file. Ollin's shader library (palettes,
 /// noise, hashes, OKLab, `smin`, domain operators) is available inside it; a
-/// compile error is reported with line numbers relative to *your* source.
+/// compile error is reported at the file and line you wrote the shader in (the
+/// sketch's own `.swift` for an inline string, the `.metal` file for a resource),
+/// so the reported `file:line` is clickable in an IDE.
 public struct Shader: Sendable {
 
     /// Which sections of Ollin's shader library to splice into the shader before
@@ -62,14 +64,21 @@ public struct Shader: Sendable {
     let resourcePath: String
     let params: [Float]
     let modules: Modules
+    /// Where the shader was constructed in Swift source (captured from the call
+    /// site), so a compile error can point at the file the user is editing.
+    let sourceFile: String
+    let sourceLine: Int
 
     /// A shader from inline Metal source: a string defining `float4 shade(float2 uv,
     /// ShaderInfo info)`. `params` are floats your shader reads with `param(info, i)`.
-    public init(_ source: String, params: [Float] = [], using modules: Modules = .all) {
+    public init(_ source: String, params: [Float] = [], using modules: Modules = .all,
+                file: String = #filePath, line: Int = #line) {
         self.source = source
         self.resourcePath = ""
         self.params = params
         self.modules = modules
+        self.sourceFile = file
+        self.sourceLine = line
     }
 
     /// A shader from a `.metal` resource file. `in:` is required (it can't default to
@@ -77,13 +86,35 @@ public struct Shader: Sendable {
     /// reads and caches the file's contents on first use and re-reads when the file
     /// changes, so editing the `.metal` hot-reloads under OllinLive.
     public init(resource name: String, in bundle: Bundle,
-                params: [Float] = [], using modules: Modules = .all) {
+                params: [Float] = [], using modules: Modules = .all,
+                file: String = #filePath, line: Int = #line) {
         let url = bundle.url(forResource: name, withExtension: "metal")
             ?? bundle.url(forResource: name, withExtension: nil)
         self.source = ""
         self.resourcePath = url?.path ?? ""
         self.params = params
         self.modules = modules
+        self.sourceFile = file
+        self.sourceLine = line
+    }
+
+    /// The file a compile diagnostic should name: the `.metal` file itself for a
+    /// resource shader, else the Swift file the inline string lives in. Both are
+    /// absolute paths, so a reported `file:line` is IDE-clickable.
+    var diagnosticSourceName: String {
+        resourcePath.isEmpty ? sourceFile : resourcePath
+    }
+
+    /// The file line the shader's first source line sits on. A `.metal` resource is
+    /// its own file (line 1). An inline multiline literal's content starts the line
+    /// after the opening `"""` on the `Shader(` call line, so it's `line + 1`; a
+    /// string with no newline is taken to sit on the call line itself. (Two shapes
+    /// are ambiguous and read one line off: a multiline literal holding a single
+    /// content line, and an opening `"""` on the line after `Shader(`. Both leave
+    /// the error within a line of a shader small enough to scan.)
+    var diagnosticStartLine: Int {
+        if !resourcePath.isEmpty { return 1 }
+        return source.contains("\n") ? sourceLine + 1 : sourceLine
     }
 
     /// The user `params` packed into the fixed-width `float4` rows the shader buffer
@@ -98,8 +129,8 @@ public struct Shader: Sendable {
 }
 
 /// A user shader that failed to compile. `message` is the cleaned, friendly
-/// diagnostic with line numbers relative to the source you wrote; `raw` is the
-/// compiler's full output, kept for when you need it.
+/// diagnostic pointing at the file and line you wrote the shader in; `raw` is
+/// the compiler's full output, kept for when you need it.
 public struct ShaderCompileError: Error, Sendable, CustomStringConvertible {
     public let message: String
     public let raw: String

@@ -12,7 +12,7 @@ import Ollin
 /// shader-library helpers. `info.time` drifts it, so it moves on its own.
 ///
 /// Edit the shader string under OllinLive and it hot-reloads with the sketch; a
-/// typo is reported with line numbers relative to the source below.
+/// typo is reported at this file's own line numbers, clickable in an IDE.
 @main
 final class HelloShader_Example: Sketch {
     private let plasma = Shader("""

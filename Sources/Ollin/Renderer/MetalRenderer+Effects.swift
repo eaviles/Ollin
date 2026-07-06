@@ -1006,8 +1006,11 @@ extension MetalRenderer {
     private func userShaderState(for shader: Shader,
                                  variant: UserShaderVariant) -> (MTLRenderPipelineState?, UInt64) {
         let userSource = resolveUserShaderSource(shader)
+        let sourceName = shader.diagnosticSourceName
+        let startLine = shader.diagnosticStartLine
         let (composed, offset) = MetalRenderer.composeUserShaderSource(
-            userSource: userSource, modules: shader.modules, variant: variant)
+            userSource: userSource, modules: shader.modules, variant: variant,
+            sourceName: sourceName, sourceStartLine: startLine)
         let hash = MetalRenderer.fnv1a(composed)
         if let p = userShaderPipelines[hash] { return (p, hash) }
         if userShaderErrors[hash] != nil { return (nil, hash) }   // cached failure
@@ -1018,7 +1021,8 @@ extension MetalRenderer {
             guard let vfn = lib.makeFunction(name: "ollin_user_vertex"),
                   let ffn = lib.makeFunction(name: "ollin_user_fragment") else {
                 userShaderErrors[hash] = ShaderCompileError(
-                    message: "The shader has no shade(float2 uv, ShaderInfo info) function.", raw: "")
+                    message: "\(sourceName):\(startLine): the shader has no "
+                        + "shade(float2 uv, ShaderInfo info) function.", raw: "")
                 return (nil, hash)
             }
             let desc = MTLRenderPipelineDescriptor()
@@ -1031,7 +1035,8 @@ extension MetalRenderer {
             return (state, hash)
         } catch {
             let cleaned = MetalRenderer.cleanShaderDiagnostics(
-                (error as NSError).localizedDescription, userLineOffset: offset)
+                (error as NSError).localizedDescription, userLineOffset: offset,
+                sourceName: sourceName, sourceStartLine: startLine)
             userShaderErrors[hash] = ShaderCompileError(
                 message: cleaned, raw: (error as NSError).localizedDescription)
             return (nil, hash)

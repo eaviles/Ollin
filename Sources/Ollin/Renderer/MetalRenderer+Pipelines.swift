@@ -481,13 +481,17 @@ extension MetalRenderer {
     /// segment (preamble + shared types + helpers, with the header spliced in place of
     /// its `#include` since the runtime compiler has no include path), then the wrapper
     /// (the fullscreen vertex, the `ShaderInfo` struct, the `param`/`sample` helpers),
-    /// then the user's source tagged `#line 1 "Shader"` so the compiler reports errors
-    /// at the user's own line numbers, then the generated `ollin_user_fragment` that
-    /// calls their `shade(uv, info)`. Returns the source and the number of lines that
+    /// then the user's source tagged with a `#line` directive naming the file it came
+    /// from (`sourceName`, the sketch's own `.swift` or the `.metal` resource) at the
+    /// line it starts on (`sourceStartLine`), so the compiler reports errors at a real,
+    /// IDE-clickable `file:line`, then the generated `ollin_user_fragment` that calls
+    /// their `shade(uv, info)`. Returns the source and the number of lines that
     /// precede the user's source (the fallback rebase offset for a toolchain that
     /// ignores `#line`).
     static func composeUserShaderSource(userSource: String, modules: Shader.Modules,
-                                        variant: UserShaderVariant) -> (source: String, userLineOffset: Int) {
+                                        variant: UserShaderVariant,
+                                        sourceName: String = "Shader",
+                                        sourceStartLine: Int = 1) -> (source: String, userLineOffset: Int) {
         var lib = ""
         if let url = Bundle.module.url(forResource: "OllinShaderLib", withExtension: "metal"),
            let text = try? String(contentsOf: url, encoding: .utf8) {
@@ -497,7 +501,12 @@ extension MetalRenderer {
            let header = try? String(contentsOf: url, encoding: .utf8) {
             lib = lib.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
         }
-        let head = lib + "\n" + userShaderWrapperHead(variant) + "\n#line 1 \"Shader\"\n"
+        let name = sourceName.isEmpty ? "Shader" : sourceName
+        let escaped = name
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        let directive = "\n#line \(max(1, sourceStartLine)) \"\(escaped)\"\n"
+        let head = lib + "\n" + userShaderWrapperHead(variant) + directive
         let offset = head.reduce(0) { $0 + ($1 == "\n" ? 1 : 0) }
         let tail = "\n#line 1 \"ollin-wrapper\"\n" + userShaderWrapperTail(variant)
         return (head + userSource + tail, offset)
@@ -623,10 +632,12 @@ extension MetalRenderer {
 
     /// Tidy a Metal compiler diagnostic for a user shader: relabel and rebase the
     /// composed-source line numbers (`program_source:N`) to the user's own source
-    /// (`shader:N-offset`), so a reported line matches what they wrote, and drop the
-    /// boilerplate header. When the compiler honors `#line` it already reports
-    /// `Shader:N`, which passes through unchanged.
-    static func cleanShaderDiagnostics(_ raw: String, userLineOffset: Int) -> String {
+    /// (`sourceName:N-offset+start-1`), so a reported line matches what they wrote,
+    /// and drop the boilerplate header. When the compiler honors `#line` it already
+    /// reports `sourceName:N`, which passes through unchanged.
+    static func cleanShaderDiagnostics(_ raw: String, userLineOffset: Int,
+                                       sourceName: String = "Shader",
+                                       sourceStartLine: Int = 1) -> String {
         let text = raw
             .replacingOccurrences(of: "Compilation failed: \n", with: "")
             .replacingOccurrences(of: "Compilation failed:\n", with: "")
@@ -641,16 +652,31 @@ extension MetalRenderer {
             out += ns.substring(with: NSRange(location: last, length: m.range.location - last))
             let lineNo = Int(ns.substring(with: m.range(at: 1))) ?? 0
             let col = ns.substring(with: m.range(at: 2))
-            out += "shader:\(max(1, lineNo - userLineOffset)):\(col):"
+            out += "\(sourceName):\(max(1, lineNo - userLineOffset + sourceStartLine - 1)):\(col):"
             last = m.range.location + m.range.length
         }
         out += ns.substring(from: last)
         // Drop compiler-internal notes that point at system framework headers (e.g. a
         // "did you mean" suggestion from the Metal standard library): they reference
         // absolute paths a sketch author can't act on and only clutter the message.
-        let kept = out.split(separator: "\n", omittingEmptySubsequences: false).filter { line in
-            !(line.contains("/System/") || line.contains("GPUCompiler.framework")
-              || line.contains("/Applications/") || line.contains("/usr/"))
+        // A dropped diagnostic takes its continuation lines (the code excerpt and
+        // caret under it) along, so no orphaned snippet leaks through; a line naming
+        // the user's own file is always kept, wherever that file lives.
+        let headerRx = try? NSRegularExpression(pattern: #"^\S.*:\d+:\d+:"#)
+        func pointsAtSystem(_ line: Substring) -> Bool {
+            !line.contains(sourceName)
+                && (line.contains("/System/") || line.contains("GPUCompiler.framework")
+                    || line.contains("/Applications/") || line.contains("/usr/"))
+        }
+        var kept: [Substring] = []
+        var dropping = false
+        for line in out.split(separator: "\n", omittingEmptySubsequences: false) {
+            let s = String(line)
+            let isHeader = headerRx.map {
+                $0.firstMatch(in: s, range: NSRange(location: 0, length: (s as NSString).length)) != nil
+            } ?? false
+            if isHeader { dropping = pointsAtSystem(line) }
+            if !dropping && !pointsAtSystem(line) { kept.append(line) }
         }
         return kept.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
