@@ -4,16 +4,18 @@ import Ollin
 import OllinRuntime
 
 /// Host-owned state for the live session: it owns the watcher, reacts to file
-/// changes, and drives hot-swaps.
+/// changes, and drives hot-swaps through the shared `SketchSession` engine
+/// (which carries the compile scheduling, param persistence, and error-channel
+/// invariants for every live host).
 ///
-/// The initial content is intentionally lightweight — the detail pane shows a
+/// The initial content is intentionally lightweight: the detail pane shows a
 /// "Compiling…" placeholder, *not* a Metal view, until the first sketch
 /// compiles. Mounting an `MTKView` at launch kept the window from coming to the
 /// front (a plain SwiftUI launch, like the examples gallery, foregrounds fine).
 /// The first compile (kicked off here, off the main actor) sets `sketch`, which
 /// mounts the `SketchView`; later edits swap inside the existing runner via
 /// `reload`. A compile error is surfaced (in the inspector, and the detail pane
-/// before the first success) and the running sketch is left untouched — a typo
+/// before the first success) and the running sketch is left untouched; a typo
 /// never closes the window.
 @MainActor
 @Observable
@@ -33,39 +35,44 @@ final class LiveSession {
         }
     }
 
-    /// The path argument as the user typed it — shown in the inspector.
+    /// The path argument as the user typed it, shown in the inspector.
     let displayName: String
 
-    /// The sketch to host. `nil` until the first compile lands; set once (the
-    /// detail view then builds the runner with it). Later reloads swap inside the
-    /// runner, not through this.
-    private(set) var sketch: Sketch?
+    /// The shared hot-swap engine: compile scheduling, param carry across
+    /// reloads, and the two error channels. This session adds the file-watch
+    /// trigger and the OllinLive presentation on top.
+    @ObservationIgnored let core: SketchSession
+
     private(set) var title = "OllinLive"
-    private(set) var status: Status = .compiling
-    private(set) var reloadCount = 0
+
+    /// The sketch to host, from the engine. `nil` until the first compile
+    /// lands; later reloads swap inside the runner, not through this.
+    var sketch: Sketch? { core.sketch }
+    var status: Status {
+        switch core.phase {
+        case .compiling: return .compiling
+        case .idle: return .watching
+        case .failed(let message): return .error(message)
+        }
+    }
+    var reloadCount: Int { core.reloadCount }
     /// Wall-clock seconds of the last successful hot reload (compile + load),
     /// shown in the "Reloaded" toast. `nil` until the first reload.
-    private(set) var lastBuildSeconds: Double?
+    var lastBuildSeconds: Double? { core.lastBuildSeconds }
     /// Live performance numbers of the running sketch, refreshed a few times a
     /// second by the runner. Shared with the on-canvas overlay (one source of
-    /// truth), so the inspector and overlay never disagree. The reference is
-    /// constant; its `@Observable` fields drive the inspector's updates.
-    @ObservationIgnored let stats = FrameStats()
+    /// truth), so the inspector and overlay never disagree.
+    var stats: FrameStats { core.stats }
     /// The running sketch's `@Param` knobs, surfaced as sliders in the inspector.
-    private(set) var params: [ParamHandle] = []
-
-    /// A user shader's compile error, reported by the runner after a frame (`nil`
-    /// when every shader compiles). Distinct from `status`, which tracks the Swift
-    /// hot-reload, so a shader error and a sketch-compile error don't clear each
-    /// other; the overlay shows whichever is present.
-    private(set) var shaderError: String?
+    var params: [ParamHandle] { core.params }
+    /// A user shader's compile error (`nil` when every shader compiles).
+    /// Distinct from `status`, which tracks the Swift hot-reload, so a shader
+    /// error and a sketch-compile error don't clear each other.
+    var shaderError: String? { core.shaderError }
 
     /// The error shown in the overlay: the Swift compile error first (the sketch
     /// isn't even running), otherwise a user-shader compile error.
-    var errorMessage: String? {
-        if case .error(let message) = status { return message }
-        return shaderError
-    }
+    var errorMessage: String? { core.errorMessage }
 
     /// The watcher state mapped onto the shared inspector chip. A user-shader error
     /// turns the chip red too, even while the Swift side is happily watching.
@@ -87,21 +94,12 @@ final class LiveSession {
 
     @ObservationIgnored private let loader: SketchLoader
     @ObservationIgnored private let sketchPath: String
-    @ObservationIgnored private let keepClock: Bool
     /// The framework's shader source directory, watched for live shader reload,
     /// set only when running from the Ollin repo (where `Sources/Ollin/Renderer`
     /// exists). Its `Shader*.metal` segments are concatenated on each reload.
     @ObservationIgnored private let shaderDir: String?
-    @ObservationIgnored private var runner: SketchRunner?
     @ObservationIgnored private var watcher: FileWatcher?
     @ObservationIgnored private var didStart = false
-    /// The in-flight hot-reload compile, kept so a newer save can cancel it: an
-    /// older, slower compile must not land last and swap in stale code.
-    @ObservationIgnored private var compileTask: Task<Void, Never>?
-    /// User-tuned parameter values, keyed by name, re-applied to each freshly
-    /// reloaded sketch so a knob doesn't snap back. Only values the user actually
-    /// changed are stored — so editing a default in code still takes effect.
-    @ObservationIgnored private var paramValues: [String: Double] = [:]
 
     /// Asset extensions whose change re-runs `setup()` (where assets load).
     private static let assetExtensions = ["png", "jpg", "jpeg", "gif", "heic", "bmp", "tiff"]
@@ -110,7 +108,7 @@ final class LiveSession {
         self.loader = loader
         self.sketchPath = sketchPath
         self.displayName = displayName
-        self.keepClock = keepClock
+        self.core = SketchSession(keepClock: keepClock)
 
         let dir = (FileManager.default.currentDirectoryPath as NSString)
             .appendingPathComponent("Sources/Ollin/Renderer")
@@ -119,7 +117,7 @@ final class LiveSession {
         self.shaderDir = exists ? dir : nil
     }
 
-    /// Called once from the root view's `.task`, after the window has appeared —
+    /// Called once from the root view's `.task`, after the window has appeared;
     /// starting the watcher and kicking off the initial compile here (rather than
     /// in `init`) keeps launch minimal so the window comes to the front cleanly.
     func start() {
@@ -132,14 +130,15 @@ final class LiveSession {
 
     /// Called by the detail view once the renderer's `SketchRunner` exists (after
     /// the first successful compile makes `sketch` non-nil and the view mounts).
+    /// `stats` is wired into the runner by the `SketchView` (it's passed in as
+    /// the shared instance); the engine wires the user-shader error channel.
     func attach(_ runner: SketchRunner) {
-        self.runner = runner
-        // `stats` is wired into the runner by the `SketchView` (it's passed in as
-        // the shared instance). Wire the user-shader error channel here, so a shader
-        // that fails to compile surfaces in the error overlay (and clears when fixed).
-        runner.onUserShaderError = { [weak self] error in
-            self?.shaderError = error?.message
-        }
+        core.attach(runner)
+    }
+
+    /// Record a knob the user dragged, so it survives the next reload.
+    func recordParam(_ name: String, _ value: Double) {
+        core.recordParam(name, value)
     }
 
     private func startWatching() {
@@ -152,7 +151,7 @@ final class LiveSession {
             Task { @MainActor in self?.handle(changed) }
         }
         watcher?.start()
-        print("OllinLive: watching \(displayName) — edit and save to hot-reload.")
+        print("OllinLive: watching \(displayName); edit and save to hot-reload.")
         if shaderDir != nil { print("OllinLive: also live-reloading the framework shaders.") }
     }
 
@@ -179,102 +178,52 @@ final class LiveSession {
             return
         }
         if paths.contains(where: { Self.assetExtensions.contains(($0 as NSString).pathExtension.lowercased()) }) {
-            runner?.rerunSetup()
-            print("OllinLive: asset changed — re-running setup() ✓")
+            core.runner?.rerunSetup()
+            print("OllinLive: asset changed, re-running setup() ✓")
         }
     }
 
     /// A user's own `.metal` shader file changed: drop the compiled-shader cache so the
     /// renderer re-reads and recompiles it on the next frame, and clear any stale error.
     private func reloadUserShaders() {
-        runner?.invalidateUserShaders()
-        shaderError = nil
+        core.runner?.invalidateUserShaders()
+        core.reportShaderError(nil)
         print("OllinLive: reloaded user shader ✓")
     }
 
-    /// Compile (slow `swiftc`) off the main actor; apply on the main actor. The
-    /// first success sets `sketch` (mounting the view, which builds the runner);
-    /// later successes swap into the existing runner.
+    /// Evaluate the watched file through the shared engine; the OllinLive
+    /// presentation (prints, the window title) rides the callbacks.
     private func compileAndApply() {
-        status = .compiling
-        let loader = self.loader
-        let keepClock = self.keepClock
-        // Supersede any in-flight compile so a newer save always wins: two saves
-        // within one swiftc run otherwise race, and a slower older compile could
-        // land last and swap in stale code. (The detached swiftc still runs to
-        // completion; we just refuse to apply a superseded result.)
-        compileTask?.cancel()
-        compileTask = Task {
-            let started = Date()
-            let compiled = await Task.detached(priority: .userInitiated) {
-                loader.compile()
-            }.value
-            if Task.isCancelled { return }   // a newer save superseded this one
-            switch compiled {
-            case .success(let dylibPath):
-                switch loader.instantiate(dylibPath: dylibPath) {
-                case .success(let newSketch):
-                    self.syncParams(newSketch)   // re-apply tuned knobs before it draws
-                    if let runner = self.runner {
-                        self.lastBuildSeconds = Date().timeIntervalSince(started)
-                        runner.reload(to: newSketch, keepClock: keepClock)
-                        self.reloadCount += 1
-                        print("OllinLive: reloaded \(type(of: newSketch)) ✓")
-                    } else {
-                        self.sketch = newSketch   // first success: the view mounts the runner
-                        print("OllinLive: running \(type(of: newSketch)).")
-                    }
-                    // The live host names its window "OllinLive - <Sketch>" (the
-                    // sketch's own `title` is "Ollin - <Sketch>", which the
-                    // standalone/gallery windows keep).
-                    let sketchTitle = newSketch.title
-                    self.title = sketchTitle.hasPrefix("Ollin")
-                        ? "OllinLive" + sketchTitle.dropFirst("Ollin".count)
-                        : sketchTitle
-                    self.status = .watching
-                case .failure(let error):
-                    self.fail(error)
-                }
-            case .failure(let error):
-                self.fail(error)
+        core.evaluate(loader) { [weak self] newSketch in
+            guard let self else { return }
+            if self.core.reloadCount > 0 {
+                print("OllinLive: reloaded \(type(of: newSketch)) ✓")
+            } else {
+                print("OllinLive: running \(type(of: newSketch)).")
             }
+            // The live host names its window "OllinLive - <Sketch>" (the
+            // sketch's own `title` is "Ollin - <Sketch>", which the
+            // standalone/gallery windows keep).
+            let sketchTitle = newSketch.title
+            self.title = sketchTitle.hasPrefix("Ollin")
+                ? "OllinLive" + sketchTitle.dropFirst("Ollin".count)
+                : sketchTitle
+        } onFailure: { error in
+            FileHandle.standardError.write(
+                Data("OllinLive: reload skipped (kept running): \(error)\n".utf8))
         }
-    }
-
-    /// Apply previously-tuned values to a freshly loaded sketch's params, and
-    /// publish the handles for the inspector. Only re-applies values the user
-    /// changed; untouched params keep the sketch's (possibly edited) defaults.
-    private func syncParams(_ sketch: Sketch) {
-        let handles = sketch.parameters()
-        for handle in handles where paramValues[handle.name] != nil {
-            // Restore instantly (a smoothed knob shouldn't glide in from its
-            // default on every reload — it's resuming where it was, not retargeting).
-            handle.param.set(paramValues[handle.name]!)
-        }
-        params = handles
-    }
-
-    /// Record a knob the user dragged, so it survives the next reload.
-    func recordParam(_ name: String, _ value: Double) {
-        paramValues[name] = value
-    }
-
-    private func fail(_ error: SketchLoader.LoadError) {
-        status = .error("\(error)")
-        FileHandle.standardError.write(
-            Data("OllinLive: reload skipped (kept running) — \(error)\n".utf8))
     }
 
     private func reloadShaders() {
         guard let shaderDir else { return }
         do {
-            try runner?.reloadShaderLibrary(fromDirectory: shaderDir)
-            shaderError = nil
+            try core.runner?.reloadShaderLibrary(fromDirectory: shaderDir)
+            core.reportShaderError(nil)
             print("OllinLive: reloaded framework shaders ✓")
         } catch {
             // Surface the Metal compiler's diagnostics in the same overlay user
             // shaders use, instead of only the terminal.
-            shaderError = "\(error)"
+            core.reportShaderError("\(error)")
             FileHandle.standardError.write(
                 Data("OllinLive: shader reload skipped (kept running)\n\(error)\n".utf8))
         }

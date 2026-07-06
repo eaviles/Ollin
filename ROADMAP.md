@@ -36,9 +36,9 @@ Near-term, fairly self-contained pieces, each small and well-scoped.
 - **Small filter-catalog additions.** A relight filter that reads any layer as a height map (screen-space gradient to a surface normal) and lights it with a curated material finish (glass, metal, sand, liquid), so a noise field or a simulation reads as embossed physical matter, the cheap 2D cousin of the 3D materials; an optional `center:` on the radial warps (`.swirl`, `.bulge`, `.ripple`) so a cursor-driven lens or vortex is a one-liner; and a two-tone `.dither` variant (the ordered pattern mapped onto two chosen colors with a threshold bias) beside the channel-quantizing one.
 - **Shape morphing.** Tween one `Shape` into another: contour correspondence plus interpolation, extending `Tweenable` beyond scalars and vectors so a `Timeline` can animate geometry. Plotter-friendly, since every in-between frame is a real vector shape.
 
-## Live-coding and SDF sculpting
+## SDF sculpting
 
-Two linked directions. First, a **live-coding performance app** (working title `OllinLiveCoding`) built on top of the framework, a host app in the same tier as `OllinLive` and `OllinExamples`: you write and evaluate sketch code live with the code shown to the audience (the Hydra model, where the writing is the show). Its target is live-coding **the Ollin sketch in Swift**, the full drawing API (the fluent `Visual` chains included), not a constrained DSL, built on the shipped dylib hot-reload engine. Distinct from `OllinLive`, which is file-watch dev hot-reload, not a performance tool. Second, **broadening the 3D SDF combinators**: the sphere-traced field merging (`drawSDF3D`) growing toward the full ShaderPark "sculpting" experience. See the [design notes](DESIGN-NOTES.md#live-coding-and-sdf-sculpting-not-started).
+**Broadening the 3D SDF combinators**: the sphere-traced field merging (`drawSDF3D`) growing toward the full ShaderPark "sculpting" experience: richer combine and blend ergonomics, more leaf primitives and domain operators. A natural fit for the live-coding performance host, where a merged form can be sculpted on stage. See the [design notes](DESIGN-NOTES.md#sdf-sculpting-not-started).
 
 ## Generative geometry
 
@@ -143,7 +143,7 @@ Ways a sketch leaves the window:
 - **Spatial export.** Export a 3D sketch as a USDZ (for AR Quick Look, sharing, and visionOS) or as spatial video, so the artifact stays three-dimensional instead of flattening to a frame.
 - **Fabrication export.** Write a `Mesh` to STL / 3MF / OBJ so generative sculpture can be 3D-printed, the fabrication counterpart of the plotter path. Distinct from the viewing-oriented USDZ above: printing brings its own requirements (watertight geometry, real-world units and scale).
 - **Print separations.** Split a sketch into spot-color layers for risograph and screen printing: map its colors onto a chosen ink set, halftone or dither each layer, and export per-layer files with registration marks. Sits beside the dithering family planned in the [technique catalog](#technique-and-algorithm-helpers), and serves the same physical-output audience as the plotter path.
-- **Performance capture.** Real-time recording of a live session with audio, since the offline exporters re-render on a fixed clock and can't capture an improvised run. The live-coding performance direction is the obvious customer.
+- **Performance capture.** Real-time recording of a live session with audio, since the offline exporters re-render on a fixed clock and can't capture an improvised run. The OllinLiveCoding performance host and VJ sets are the obvious customers.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces-not-started).
 
@@ -162,6 +162,7 @@ See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier-not-started)
 **Later.** Editing experiences the live-reload core makes possible, and where Ollin draws its line on AI. The public stance already holds (the README's "It's a tool for making art ... Ollin is not a generative-art model"), and it extends to any AI *feature*: **AI is a tool for operating the framework, never an author of sketches.** Helping wire a generator, suggest a filter, or move knobs toward a look is in scope; generating a whole sketch or its imagery from a prompt is deliberately out. Within that line:
 
 - **A visual node editor** over the effect, SDF-combinator, and shader graphs, living in the live host and round-tripping to Swift source.
+- **Deeper live-coding evaluation.** Per-block evaluation and sub-second turnaround on small edits for the OllinLiveCoding performance host, refining its evaluate-on-command loop, plus MIDI/OSC mapping of the host's own performance surface.
 - **Direct manipulation.** Drag a shape in the running window and have the edit written back into the source, the way a SwiftUI preview manipulates a layout.
 - **Record and replay.** Capture a run's input and parameter timeline and scrub it backward, a rewind for generative work.
 - **AI at the controls.** Drive the knobs, wire and parameterize generators, and tune toward a described look, all as operations on the typed `@Param` and effect graph, with the artist composing the sketch.

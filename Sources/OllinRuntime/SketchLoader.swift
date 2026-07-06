@@ -7,8 +7,9 @@ import Ollin
 /// is the mechanism behind live reload, and the way the examples gallery embeds
 /// a selected sketch.
 ///
-/// It works because the host process (OllinLive or OllinExamples) and the
-/// compiled dylib resolve to the *same* `Sketch`: the host links Ollin and
+/// It works because the host process (OllinLive, OllinExamples, or
+/// OllinLiveCoding) and the compiled dylib resolve to the *same* `Sketch`: the
+/// host links Ollin and
 /// exports its symbols (`-export_dynamic`), and the dylib is compiled with
 /// `-undefined dynamic_lookup` so its Ollin symbols bind to the host at load.
 /// The cast across the `dlopen` boundary therefore succeeds.
@@ -17,6 +18,18 @@ public struct SketchLoader: Sendable {
 
     public init(sketchPath: String) {
         self.sketchPath = sketchPath
+    }
+
+    /// What to compile: the file at `sketchPath`, or an in-memory buffer standing
+    /// in for that file's content (the live-coding host's evaluate-on-command,
+    /// where the editor buffer runs without being saved). A `.source` compile
+    /// writes the text into the per-compile work directory under the sketch's own
+    /// file name, so diagnostics carry the same file name and exact line numbers
+    /// while the real file on disk stays untouched; the generated `Bundle.module`
+    /// still points at `sketchPath`'s directory, so co-located assets resolve.
+    public enum Input: Sendable {
+        case file
+        case source(String)
     }
 
     public enum LoadError: Error, CustomStringConvertible, Sendable {
@@ -57,13 +70,26 @@ public struct SketchLoader: Sendable {
         }
     }
 
-    /// Compile the sketch into a fresh `.dylib` and return its path — the slow
+    /// Compile the sketch into a fresh `.dylib` and return its path, the slow
     /// step (it shells out to `swiftc`). Safe to run **off the main thread**: it
     /// touches no main-actor state, so the host window keeps drawing the old
     /// sketch while this runs. Pair with `instantiate(dylibPath:)`.
     public func compile() -> Result<String, LoadError> {
-        guard let source = try? String(contentsOfFile: sketchPath, encoding: .utf8) else {
-            return .failure(.unreadable(sketchPath))
+        compile(.file)
+    }
+
+    /// `compile()`, but with the source selected by `input`: the file on disk, or
+    /// an in-memory buffer compiled *as* that file (see `Input`).
+    public func compile(_ input: Input) -> Result<String, LoadError> {
+        let source: String
+        switch input {
+        case .file:
+            guard let text = try? String(contentsOfFile: sketchPath, encoding: .utf8) else {
+                return .failure(.unreadable(sketchPath))
+            }
+            source = text
+        case .source(let text):
+            source = text
         }
         guard let className = Self.sketchClassName(in: source) else {
             return .failure(.noSketchClass(sketchPath))
@@ -114,6 +140,25 @@ public struct SketchLoader: Sendable {
             return .failure(.loadFailed("couldn't write factory shim: \(error)"))
         }
 
+        // A `.file` compile hands swiftc the real file, so diagnostics name the
+        // path the user knows. A `.source` compile writes the buffer into the
+        // work dir under the same file name: line numbers match the buffer
+        // exactly (identical content), and the file *name* in a diagnostic still
+        // matches the sketch, which is what an editor keys on to map errors.
+        let sourceFile: String
+        switch input {
+        case .file:
+            sourceFile = sketchPath
+        case .source:
+            sourceFile = (work as NSString)
+                .appendingPathComponent((sketchPath as NSString).lastPathComponent)
+            do {
+                try source.write(toFile: sourceFile, atomically: true, encoding: .utf8)
+            } catch {
+                return .failure(.loadFailed("couldn't write source buffer: \(error)"))
+            }
+        }
+
         let dylibPath = (work as NSString).appendingPathComponent("sketch.dylib")
         // `-undefined dynamic_lookup` (and *no* `-lOllin`) leaves Ollin symbols
         // unresolved at link time so they bind to the host process at `dlopen`,
@@ -121,7 +166,7 @@ public struct SketchLoader: Sendable {
         var args = [
             "swiftc", "-emit-library", "-o", dylibPath,
             "-module-name", "OllinRuntimeSketch_\(token)",
-            sketchPath, factoryPath,
+            sourceFile, factoryPath,
             "-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup",
         ]
         // `-I` the dirs holding `Ollin.swiftmodule` (so `import Ollin` type-checks)

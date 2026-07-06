@@ -120,6 +120,19 @@ let package = Package(
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
             ]
         ),
+        // The live-coding performance host: one window where the running sketch
+        // fills the stage and the code rides over it; ⌘↩ recompiles the editor
+        // buffer and hot-swaps the sketch mid-motion. Reuses OllinRuntime's
+        // loader + session engine. Needs -export_dynamic and the satellite
+        // links for the same reasons OllinLive does.
+        .executableTarget(
+            name: "OllinLiveCoding",
+            dependencies: ["Ollin", "OllinRuntime", "OllinAudio", "OllinOSC", "OllinMIDI", "OllinPhysics", "OllinVision", "OllinVideo", "OllinSyphon", "OllinCamera", "OllinRecord3D", "OllinPhone"],
+            path: "Sources/OllinLiveCoding",
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-export_dynamic"])
+            ]
+        ),
         // Vendored libtess2 (GLU-tessellator lineage), the polygon triangulator
         // behind concave/holed `Shape` fills. Bundled third-party C source under
         // its own SGI-B license — see Sources/CLibtess2/README.md and the

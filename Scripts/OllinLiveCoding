@@ -1,0 +1,25 @@
+#!/bin/zsh
+#
+# Scripts/OllinLiveCoding: run the live-coding performance host, release by
+# default.
+#
+#   Scripts/OllinLiveCoding                                   # untitled buffer
+#   Scripts/OllinLiveCoding Examples/Basic/HelloCircle/Sketch.swift
+#   Scripts/OllinLiveCoding --debug path/to/Sketch.swift
+#
+# One window: the sketch fills the stage and the code rides over it; ⌘↩
+# recompiles the buffer and hot-swaps the sketch mid-motion. Defaults to a
+# release build so the framework runs at performance speed during a set;
+# evaluations stay fast because only the sketch recompiles, not the host.
+# Pass --debug for a debug host (faster first build, slower runtime).
+#
+# Run from the repo root so sketch paths resolve and swift run finds the
+# package.
+
+config="release"
+if [[ "$1" == "--debug" ]]; then
+    config="debug"
+    shift
+fi
+
+exec swift run -c "$config" OllinLiveCoding "$@"

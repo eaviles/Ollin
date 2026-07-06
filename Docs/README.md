@@ -91,4 +91,8 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 
 - [`Export`](./Output/Export.md) - save frames as raster (PNG, sequences), motion (video, animated GIF), or vector (SVG, for pen plotters)
 
+### Tools
+
+- [`Live coding`](./Tools/LiveCoding.md) - the OllinLiveCoding performance host: write and evaluate sketch code live, with the code shown over the visuals
+
 Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR.

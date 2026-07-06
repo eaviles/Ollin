@@ -15,6 +15,7 @@
 
 - **Motion by default.** `draw()` runs at the display's refresh rate from the first line, so `120 + sin(time) * 40` is already an animation, and `time`, `frameCount`, and `deltaTime` are ready in every sketch.
 - **Live reload.** `swift run OllinLive Sketch.swift` watches the file and hot-swaps each save into the running window; a typo never closes it. `@Param` properties become inspector sliders that keep their values across reloads.
+- **Live coding on stage.** `swift run OllinLiveCoding` is a performance instrument: the sketch fills the window, the code rides over it as translucent text, and ⌘↩ recompiles the buffer mid-motion, with the clock and tuned knobs carrying across the swap. A typo shows as a strip at the bottom while the last good sketch keeps playing.
 - **A Metal core.** Most shapes render as analytic signed-distance fields (one instanced quad each, so thousands of moving shapes stay cheap), strokes carry their own anti-aliasing fringe, and every frame composites in linear light with HDR tone-mapping, dithered output, and up to 8× MSAA.
 - **A deep 2D catalog.** Some thirty shapes from circles to stars to hearts, curved paths, concave and holed fills, shape booleans and offsets, gradient paint on everything, blend modes, and `noClear()` accumulation for long-exposure looks.
 - **Shapes that merge.** SDF combinators: smooth union, subtract, morph, and domain mirror/tile/radial via `drawSDF` or a scoped `smoothUnion { }` block, in 2D and in raymarched 3D with shadows.
@@ -94,6 +95,8 @@ swift run OllinLive Examples/Basic/HelloCircle/Sketch.swift
 
 The window never closes: if an edit doesn't compile, the error prints and the old sketch keeps running. Each reload starts the sketch fresh by default; pass `--keep-clock` to carry `time` and `frameCount` across so an animation doesn't jump back to the start (there's also an `onReload()` hook). For a heavy sketch, `Scripts/OllinLive` runs the host in release while saves stay fast, since only the sketch file recompiles.
 
+The same engine also powers a performance instrument, [OllinLiveCoding](Docs/Tools/LiveCoding.md): one fullscreen-able window where the code shows over the visuals for the audience and ⌘↩ evaluates the buffer in place, with the clock and tuned `@Param` knobs carrying across each swap. Where OllinLive is the development loop (your editor, a file watcher), OllinLiveCoding is the on-stage one (the editor in the window, evaluate on command).
+
 Other ways to iterate: tweak and re-run an example (`swift run Example-Motion-Breathing`; incremental builds keep it snappy), or open the package in Xcode (`open Package.swift`) for ⌘R, breakpoints, and the debugger. Single-file scripts, so one `.swift` file doubles as a runnable sketch, are on the [roadmap](ROADMAP.md).
 
 ## Export
@@ -123,6 +126,7 @@ The full API reference lives in [`Docs/`](Docs/), one page per topic; [`Docs/REA
 - **Vision & video** - [Vision](Docs/Vision/Vision.md), [Video](Docs/Video/Video.md)
 - **Integration** - [OSC](Docs/Integration/OSC.md), [MIDI](Docs/Integration/MIDI.md), [Syphon](Docs/Integration/Syphon.md), [Virtual camera](Docs/Integration/VirtualCamera.md)
 - **Output** - [Export](Docs/Output/Export.md)
+- **Tools** - [Live coding](Docs/Tools/LiveCoding.md)
 
 New to Swift, coming from p5.js or JavaScript? The [Swift primer](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`.
 
@@ -150,7 +154,7 @@ p5.js, OPENRNDR, and openFrameworks run everywhere; Ollin only runs on Apple har
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: a live-coding mode, more of the iPhone sensor array and the 3D mode (scene import, a photorealism tier), generative geometry and a growing catalog of creative-coding technique helpers (fractals, agent simulations), a richer audio and synthesis layer, new input and output surfaces (screen capture, haptics, screen-saver and wallpaper export), GPU-driven rendering and wider-gamut color, editor tooling, a project generator, learning materials and a third-party extension ecosystem, and eventually iOS, visionOS, and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: more of the iPhone sensor array and the 3D mode (scene import, a photorealism tier), generative geometry and a growing catalog of creative-coding technique helpers (fractals, agent simulations), a richer audio and synthesis layer, new input and output surfaces (screen capture, haptics, screen-saver and wallpaper export), GPU-driven rendering and wider-gamut color, editor tooling, a project generator, learning materials and a third-party extension ecosystem, and eventually iOS, visionOS, and AR.
 
 ## Built with AI
 

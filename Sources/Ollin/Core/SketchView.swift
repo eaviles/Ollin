@@ -147,7 +147,18 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     ///   zero — so an animation's phase doesn't visibly jump on reload. Instance
     ///   state still resets (it's a fresh instance either way).
     public func reload(to newSketch: Sketch, keepClock: Bool = false) {
-        newSketch.setCanvasSize(width: sketch.width, height: sketch.height)
+        // Size the fresh instance the way `updateCanvasSize` will keep asserting
+        // it: a `.resizable` sketch's canvas follows the live view, so carry the
+        // current size across the swap; otherwise honor the *new* sketch's
+        // declared `canvasSize`, so an edited resolution takes effect on the
+        // swap itself rather than waiting for the next drawable resize (which a
+        // fixed-size window never delivers).
+        if case .resizable = newSketch.windowMode {
+            newSketch.setCanvasSize(width: sketch.width, height: sketch.height)
+        } else {
+            newSketch.setCanvasSize(width: Double(newSketch.canvasSize.width),
+                                    height: Double(newSketch.canvasSize.height))
+        }
         if keepClock {
             newSketch.frameCount = sketch.frameCount
             clockCarry = sketch.time      // continue `time` from here (see draw)
