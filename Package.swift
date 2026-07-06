@@ -167,6 +167,20 @@ let package = Package(
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
             ]
         ),
+        // The Guide's figure runner: `swift run OllinGuideFigures` compiles every
+        // Guide/Figures sketch through OllinRuntime's loader and renders its
+        // committed image into Guide/Images (see Guide/AUTHORING.md). Exits
+        // nonzero when any figure fails, so a stale Guide listing breaks here
+        // instead of in front of a reader. Needs -export_dynamic + the satellite
+        // links for the same reasons OllinLive does (figures load as dylibs).
+        .executableTarget(
+            name: "OllinGuideFigures",
+            dependencies: ["Ollin", "OllinRuntime"] + Satellite.allCases.map(\.dependency),
+            path: "Sources/OllinGuideFigures",
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-export_dynamic"])
+            ]
+        ),
         // Vendored libtess2 (GLU-tessellator lineage), the polygon triangulator
         // behind concave/holed `Shape` fills. Bundled third-party C source under
         // its own SGI-B license — see Sources/CLibtess2/README.md and the

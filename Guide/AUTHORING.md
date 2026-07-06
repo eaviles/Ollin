@@ -1,0 +1,83 @@
+# Guide authoring charter
+
+How the [Ollin Guide](README.md) gets written. Every writing session follows this file so that 20+ chapters written months apart read as one book. The chapter queue and briefs live in [PLAN.md](PLAN.md); this file is the how.
+
+## The four principles
+
+The Guide exists because good books on this subject keep failing in the same four ways. Each failure has a rule here, and the rules are checkable, not aspirational.
+
+**1. Nothing arrives unexplained.**
+The founding story: @eaviles got stuck at chapter 5 of the Book of Shaders because `smoothstep` was used before it was ever really explained, and that was the end of the book. One unexplained concept can cost the whole reader.
+The rule: before a chapter uses any concept (in prose, in a listing, or inside a figure), it must appear in an earlier chapter, earlier in the same chapter, or in Appendix B. While writing, keep a running list of every concept the chapter leans on and check each one. When math appears, it gets three things together: a picture, a plain-words intuition, and only then the code. Notation alone is never enough.
+The check ("the smoothstep test"): reread each page asking, could someone with no math background follow this page using only what the book has shown so far? If not, teach the missing piece or cut the dependency.
+
+**2. The Guide can't rot.**
+Books about living software go stale; readers hit examples that no longer compile and conclude they're the problem.
+The rule: every listing lives as a compilable figure sketch under `Figures/`, and `Scripts/guide-figures.sh` compiles and renders all of them. Run it before every commit that touches the Guide. A failing figure blocks the commit. (CI wiring is deliberately deferred for now; the script is the gate. See PLAN.md.)
+
+**3. Everything runs, every image is honest.**
+The rule: every image under `Images/` is produced by the figure runner from a committed sketch, never hand-made, never edited after render. Prose listings are a figure file verbatim, or a clearly labeled delta of one ("add this line to `Swarm.swift`"). If a listing can't be a runnable file, rewrite it until it can.
+
+**4. Practice first, tiny steps.**
+The rule: something appears on the reader's canvas within the first page of every chapter. Concepts arrive in steps small enough that each one produces a visible change. Theory that doesn't change what's on the canvas within a page or two gets cut or moved to an appendix. Every chapter ends with a payoff piece that composes what it taught.
+
+## Voice and style
+
+- Plain, warm, and humble. Second person for the reader ("you draw a circle"), first person plural sparingly for shared moves ("let's slow this down"). Never lecture.
+- Short sentences where possible. One idea per paragraph. Read it aloud; if it sounds like documentation, loosen it, and if it sounds like marketing, flatten it.
+- No em dashes anywhere in the Guide (repo-wide rule, enforced by tooling). Use commas, colons, parentheses, or a new sentence.
+- Sentence case for headings and chapter titles.
+- It's fine to say something is hard, and to say when a technique's result is only "usually good". Honesty beats polish.
+- Influences are named openly and generously in prose (Nature of Code, the Book of Shaders, Processing, p5.js, OPENRNDR are part of the story and get credit). Inside `.swift` figure files the repo rule applies: no external framework or product names in comments.
+- Run the humanizer pass over every chapter before it ships.
+- Jokes are allowed. One per chapter is probably plenty.
+
+## Chapter anatomy
+
+A chapter is one markdown file, `NN-PascalCase.md`, and reads like this:
+
+1. **The hook.** An image of the payoff piece and two or three sentences on where the chapter is going. No throat-clearing.
+2. **Steps.** Small numbered or titled sections, each introducing one idea, each with visible output. Code appears as a full small sketch first, then deltas. Swift-language notes appear as short callout blocks (`> **Swift note.** ...`) at the exact moment the reader first needs them, and only for what the step needs.
+3. **The payoff.** The finished piece, built from the chapter's steps, with its full listing (it lives in `Figures/` like everything else) and a rendered image. End by inviting two or three specific variations to try.
+4. **Where this comes from.** A short paragraph crediting the technique's originators and canonical sources, consistent with `ATTRIBUTION.md`. This is a feature of the book: readers learn the field's history and where to read more.
+5. **Go deeper.** Links into `Docs/` pages (this is also how the coverage audit works) and related `Examples/`.
+
+Keep chapters honest about hardware: anything needing a device beyond the Mac (a MIDI controller, an iPhone) leads with the path every reader can follow and treats the hardware as the bonus.
+
+## Figures
+
+Figure sketches live in `Figures/<NN-ChapterName>/<FigureName>.swift`, rendered to `Images/<NN-ChapterName>/<FigureName>.png` (or `.gif`) by the runner. Conventions:
+
+- A figure file is an ordinary Ollin sketch (a `class ... : Sketch`), self-contained, with no dependencies beyond the framework.
+- The first line may carry a directive comment configuring the render:
+  - `// figure: frame=120` renders that frame as a PNG (default: `frame=0`).
+  - `// figure: gif duration=3 fps=30` renders an animated GIF loop.
+- Diagrams are figures too, drawn with Ollin (that's the point: the diagrams are reproducible and are themselves example code). Use a small canvas for diagrams (`override var canvasSize: CanvasSize { .size(880, 550) }` is a good default), the system outline font for labels, and keep them monochrome-plus-one-accent so they read as diagrams, not artwork.
+- Payoff pieces render at the default square canvas unless the piece wants otherwise.
+- GIFs are used sparingly (motion the prose genuinely can't convey), short (2 to 4 seconds), and small; they weigh on the repository forever.
+- Every image referenced from a chapter must exist in `Images/` and come from the runner; the reverse also holds, no orphaned figures.
+
+Rendering:
+
+```sh
+Scripts/guide-figures.sh                  # render every figure, fail on any error
+Scripts/guide-figures.sh --only Swarm     # just figures whose path contains "Swarm"
+```
+
+The runner (`swift run OllinGuideFigures`) compiles each figure with the same loader the live host uses, renders it headlessly, and writes the image beside the chapter's others. A compile error in any figure exits nonzero and names the file and line.
+
+## The session workflow
+
+One chapter per session, in this order:
+
+1. Read the chapter's brief in [PLAN.md](PLAN.md), and skim the chapters it builds on (at least their step headings) so terminology stays consistent.
+2. Check the brief's parked roadmap items: anything shipped in the framework since the brief was written gets folded in.
+3. Build the figures first. Write each figure sketch, render it, and look at it (open the image, verify it shows what the prose will claim). The payoff piece usually comes first; it tells you what the steps must teach.
+4. Write the prose around the verified figures and listings. Track the concept list against principle 1 as you go.
+5. Add the chapter's math ideas to Appendix B's running list, and its "Go deeper" targets to the coverage matrix in PLAN.md (flip rows to their promised depth).
+6. Run `Scripts/guide-figures.sh` (all figures, not just the new ones).
+7. Humanizer pass over the chapter.
+8. Update PLAN.md status, link the chapter in `Guide/README.md`'s contents.
+9. Run the docs audit, then commit (Guide chapters are milestones; commit and push per the repo convention).
+
+If the chapter's scope doesn't fit the session, cut whole steps and write the cut back into the PLAN.md brief. Never ship a half-explained concept to save time; that's the one unforgivable failure (principle 1).

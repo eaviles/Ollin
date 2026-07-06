@@ -241,15 +241,9 @@ The needs of a piece running unattended for days in a gallery, which none of the
 
 The output side of the same audience is **projection mapping and multi-display**: a corner-pin / homography warp applied to the presented frame (a small matrix or mesh warp in the present pass, where tone-mapping already runs, so exports stay unwarped), edge blending with gamma-aware feathering for multi-projector spans, and fullscreen output across several displays (one canvas spanning them, or one sketch driving per-display regions). Warp calibration is host chrome in the OllinLive spirit (drag the corners live, persist per setup), not sketch code; Syphon already covers the case where a dedicated mapping app owns the wall.
 
-## Learning: a user guide and tutorials (not started)
+## Learning: the Guide (chapters ahead)
 
-The reference docs in `Docs/` are per-function lookup (signature, one example); the missing layer is narrative learning, the split OPENRNDR draws between its API reference and its Guide, and openFrameworks between its documentation and the ofBook plus tutorials. Three artifacts, distinct from the reference and from the examples:
-
-- **A user guide** read start to finish: the mental model (the sketch lifecycle, motion by default, the typed-core-under-bare-API split, the drawing-state stack), the workflows (drawing, color, geometry, 3D, effects, export), and the conventions, so a newcomer learns *how to think in Ollin* rather than looking up one call. Lives beside the reference (a `Guide/` tree or a guide site), cross-linking into `Docs/` for detail.
-- **A "coming from p5.js" migration guide.** The audience is p5 and Processing users, so a concrete mapping earns its keep: the noun-to-verb renames (`circle()` to `drawCircle()`), `createCanvas(w,h)` to the `canvasSize` enum, `push()`/`pop()` to `withState { }`, `"CENTER"` strings to enums, global functions to `Sketch` methods, and the genuinely different parts (value types, motion by default, Swift's type system). What's the same, what's spelled differently, and what's idiomatically better.
-- **A tutorial series** that builds a finished piece end to end, not isolated feature demos (that is what `Examples/` already is). The shipped examples and the *Nature of Code* mapping of the technique catalog are the spine.
-
-Constraint: a guide drifts from the API faster than reference docs (it narrates, so a rename can silently invalidate a passage). Keep its code snippets compile-checked the way examples are, or it rots. The docs-hygiene discipline that governs the reference applies here too.
+The narrative-learning tier's design home is the [`Guide/`](Guide/) tree itself: the writing rules and pedagogy live in [`Guide/AUTHORING.md`](Guide/AUTHORING.md), and the chapter queue, per-chapter briefs, feature-coverage matrix, and roadmap parking lot in [`Guide/PLAN.md`](Guide/PLAN.md). What's ahead is the writing: the chapters (Part I first) and the appendices, including the "coming from p5.js" migration mapping (Appendix C there). Design decisions about the Guide go in those two files, not here.
 
 ## A third-party extension ecosystem (not started)
 

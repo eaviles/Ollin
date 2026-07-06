@@ -1,0 +1,88 @@
+#### <sup>[Ollin](../README.md) → Guide</sup>
+
+---
+
+# The Ollin Guide
+
+*A practical introduction to creative coding.*
+
+This guide teaches creative coding from zero, using [Ollin](../README.md). You write small programs called sketches that draw, move, and react, and along the way you pick up the techniques the field is built on: randomness, noise, forces, agents, shaders, simulation, 3D. Each chapter teaches a few ideas through short runnable steps and ends with a finished piece you made yourself.
+
+![A ring of drifting, breathing circles: the Chapter 1 piece](Images/01-HelloOllin/HelloMotion.png)
+
+**Who it's for.** Anyone who can program a little, in any language. You don't need to know Swift (the guide teaches what you need as it comes up, and [Appendix A](#appendices) is a primer), and you don't need a background in math, graphics, or shaders. If you can write a loop and a function, you can start.
+
+**What you need.** A Mac running macOS 26 or newer, and this repository. That's it.
+
+**Where this sits.** The guide is the narrative layer: read it start to finish and it teaches you to think in sketches. The [API reference](../Docs/README.md) answers "what does this call do", and [`Examples/`](../Examples/) is working code to browse. Chapters link into both as you go.
+
+## Four promises
+
+Guides like this tend to fail in known ways: a concept appears out of nowhere and you're stuck, the examples no longer compile, or the theory runs three chapters ahead of anything you can see. This guide is built around four promises:
+
+1. **Nothing arrives unexplained.** Every concept is introduced before it's used, with a picture. When math shows up, it comes with a visual and a plain-words intuition, never notation alone. If a page loses you anyway, Appendix B re-explains every math idea in the book, visually.
+2. **Every listing runs.** Each code listing is a real file under [`Figures/`](Figures/), compiled and rendered by a tool in this repository. If the framework changes underneath it, the build breaks before the guide can lie to you.
+3. **Every image is made by the code next to it.** Figures and diagrams are rendered by Ollin itself from committed source. You can open any of them, run it, and mess with it.
+4. **Practice first.** You see something on your canvas within the first page of every chapter, and everything a chapter teaches ends up in one finished piece.
+
+Both kinds of image are already at work on this page: the piece above is [`Figures/01-HelloOllin/HelloMotion.swift`](Figures/01-HelloOllin/HelloMotion.swift) rendered at a fixed frame, and this Chapter 1 diagram is a sketch too ([`CoordinateSystem.swift`](Figures/01-HelloOllin/CoordinateSystem.swift)):
+
+![The canvas coordinate system, drawn by Ollin](Images/01-HelloOllin/CoordinateSystem.png)
+
+## How to read it
+
+Read the chapters in order the first time; each builds only on the ones before it. Work along in the live-reload host (`swift run OllinLive path/to/YourSketch.swift`), which recompiles on save so the window never closes while you experiment. Chapter 1 sets this up.
+
+If you're coming from p5.js or Processing, Appendix C maps what you already know onto Ollin. If you're new to Swift, Appendix A and the [Swift primer](../Docs/Swift.md) cover just enough of the language to be productive.
+
+## Contents
+
+The guide is being written chapter by chapter; titles below without links are still to come.
+
+### Part I: Seeing something move
+
+1. **Hello, Ollin.** Your first sketch, the draw loop, coordinates, shapes, and motion by default. Plus the workflow the rest of the book uses: live reload and tunable knobs.
+2. **Color that works.** Fill and stroke, HSB, palettes and ramps, perceptual color, gradients.
+3. **Motion and time.** Time, shaping functions as curves you can see (map, lerp, smoothstep, easing), sine and cosine without fear, timelines.
+4. **Randomness.** Random values, seeds, choices, distributions, and why reproducibility matters.
+5. **Noise.** What Perlin noise is, what it's for, and how to drive motion and form with it.
+6. **Grids and repetition.** The grid helper, transforms, symmetry, Truchet tiles.
+7. **Words and pictures.** Text as geometry, images as material, reading pixels.
+
+### Part II: Systems that come alive
+
+8. **Vectors, gently.** Vectors as arrows; position, velocity, acceleration.
+9. **Forces and physics.** Springs and particles, gravity and drag, rigid bodies and joints.
+10. **Agents.** Flocking, emergence, and lines that grow by themselves.
+11. **Growing things.** L-systems, recursion, and constraint-solved tilings.
+12. **Fields and flow.** Flow fields, streamlines, advection, strange attractors.
+13. **Shapes as material.** Paths, booleans, Voronoi, packing, hatching, and work made for pen plotters.
+
+### Part III: Pixels and light
+
+14. **Layers and effects.** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR.
+15. **Your first shader.** Per-pixel thinking, uv space, writing a `shade` function, chaining visuals.
+16. **Simulations.** Game of Life, reaction-diffusion, fluid, and a million particles on the GPU.
+
+### Part IV: The third dimension
+
+17. **3D, gently.** A camera, solid shapes, lights and materials, and moving through a scene.
+18. **Sculpting with fields.** Distance fields that merge and blend, in 2D and raymarched 3D.
+19. **Depth and the iPhone as a sensor.** Point clouds, recorded and live RGBD, and scanning the room you're in.
+
+### Part V: Out into the world
+
+20. **Sound and control.** Audio-reactive visuals, MIDI knobs, OSC messages.
+21. **Seeing.** The webcam, vision trackers, and video as material.
+22. **Sharing and performing.** Stills, video, SVG for plotters, feeding other apps, and live coding on stage.
+
+### Appendices
+
+- **A. Just enough Swift.** The language, for people arriving from other languages.
+- **B. Just enough math, visually.** Every math idea in the book, each with a picture.
+- **C. Coming from p5.js and Processing.** A side-by-side translation.
+- **D. The complete toolbox.** Everything Ollin can do, one line each, with where it's taught and where it's documented.
+
+---
+
+Found something confusing, or got stuck anywhere? That's a bug in the guide, not in you. Please [open an issue](https://github.com/eaviles/Ollin/issues).
