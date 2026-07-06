@@ -21,8 +21,9 @@ enum RingStyle: String, CaseIterable, ParamOption { case rings, dots, beads }
 final class Parameters: Sketch {
     @Param(10...375, icon: "circle.dashed", group: "Rings") var radius = 175.0
     @Param(1...12, icon: "circle.grid.2x2", group: "Rings") var rings = 5
-    @Param(icon: "sparkles", group: "Rings") var style: RingStyle = .rings
-    @Param(x: 0...1080, y: 0...1080, icon: "arrow.up.and.down.and.arrow.left.and.right",
+    @Param(style: .segmented, icon: "sparkles", group: "Rings") var style: RingStyle = .rings
+    @Param(x: 0...1080, y: 0...1080, style: .pad,
+           icon: "arrow.up.and.down.and.arrow.left.and.right",
            group: "Rings") var anchor = Vector2(540, 540)
 
     @Param(0...4, icon: "speedometer", group: "Motion") var speed = 1.0

@@ -136,6 +136,23 @@ struct ParamTests {
         #expect(p.wrappedValue == .rings)
     }
 
+    @Test func richStylesRideTheControls() {
+        let pad = Param(wrappedValue: Vector2(0, 0), x: 0...1, y: 0...1, style: .pad)
+        guard case .vector(let vector) = pad.control else { return }
+        #expect(vector.style == .pad)
+
+        let pair = Param(wrappedValue: 1.0...2.0, in: 0...10, style: .field)
+        guard case .range(let fieldPair) = pair.control else { return }
+        #expect(fieldPair.style == .field)
+        let sliderPair = Param(wrappedValue: 1.0...2.0, in: 0...10)
+        guard case .range(let defaulted) = sliderPair.control else { return }
+        #expect(defaulted.style == .slider)   // the two-thumb track is the default
+
+        let segmented = Param(wrappedValue: Style.dots, style: .segmented)
+        guard case .menu(let menu) = segmented.control else { return }
+        #expect(menu.style == .segmented)
+    }
+
     @Test func vectorClampsPerAxisAndRoundTrips() {
         let p = Param(wrappedValue: Vector2(540, 540), x: 0...1080, y: 0...400)
         p.wrappedValue = Vector2(2000, -50)

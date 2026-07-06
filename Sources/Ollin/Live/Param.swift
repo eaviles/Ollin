@@ -120,15 +120,17 @@ public enum ParamControl {
         }
     }
 
-    /// An enum knob: a pop-up menu over `options`, addressed by index.
+    /// An enum knob: a pop-up menu (or segmented control) over `options`,
+    /// addressed by index.
     public struct Menu: Sendable {
         public let options: [String]
+        public let style: ParamMenuStyle
         public let get: @Sendable () -> Int
         public let set: @Sendable (Int) -> Void
-        public init(options: [String],
+        public init(options: [String], style: ParamMenuStyle = .menu,
                     get: @escaping @Sendable () -> Int,
                     set: @escaping @Sendable (Int) -> Void) {
-            self.options = options; self.get = get; self.set = set
+            self.options = options; self.style = style; self.get = get; self.set = set
         }
     }
 
@@ -142,16 +144,20 @@ public enum ParamControl {
         }
     }
 
-    /// A `Vector2` knob: paired x/y value fields, each over its own range.
+    /// A `Vector2` knob: paired x/y value fields, each over its own range,
+    /// optionally with an XY pad below (`style: .pad`).
     public struct Vector: Sendable {
         public let xRange: ClosedRange<Double>
         public let yRange: ClosedRange<Double>
+        public let style: ParamVectorStyle
         public let get: @Sendable () -> Vector2
         public let set: @Sendable (Vector2) -> Void
         public init(xRange: ClosedRange<Double>, yRange: ClosedRange<Double>,
+                    style: ParamVectorStyle = .fields,
                     get: @escaping @Sendable () -> Vector2,
                     set: @escaping @Sendable (Vector2) -> Void) {
-            self.xRange = xRange; self.yRange = yRange; self.get = get; self.set = set
+            self.xRange = xRange; self.yRange = yRange; self.style = style
+            self.get = get; self.set = set
         }
     }
 
@@ -201,15 +207,18 @@ public enum ParamControl {
         }
     }
 
-    /// A `ClosedRange<Double>` knob: min/max value fields within `outer`.
+    /// A `ClosedRange<Double>` knob: min/max value fields within `outer`, over
+    /// a two-thumb slider by default (`style: .field` drops the track).
     public struct RangeFields: Sendable {
         public let outer: ClosedRange<Double>
+        public let style: ParamNumericStyle
         public let get: @Sendable () -> ClosedRange<Double>
         public let set: @Sendable (ClosedRange<Double>) -> Void
         public init(outer: ClosedRange<Double>,
+                    style: ParamNumericStyle = .slider,
                     get: @escaping @Sendable () -> ClosedRange<Double>,
                     set: @escaping @Sendable (ClosedRange<Double>) -> Void) {
-            self.outer = outer; self.get = get; self.set = set
+            self.outer = outer; self.style = style; self.get = get; self.set = set
         }
     }
 
@@ -228,11 +237,31 @@ public enum ParamControl {
 
 /// How a numeric parameter presents in the inspector.
 public enum ParamNumericStyle: Sendable {
-    /// A slider with the value field beside it (the default).
+    /// A slider with the value field beside it (the default). For a
+    /// `ClosedRange` parameter this is a two-thumb slider.
     case slider
     /// The value field alone: scrub or type, no track. The fit for a precise
     /// quantity or a range so wide a slider's resolution would be useless.
     case field
+}
+
+/// How a `Vector2` parameter presents in the inspector.
+public enum ParamVectorStyle: Sendable {
+    /// Paired x/y value fields (the default).
+    case fields
+    /// The x/y fields plus an XY pad: drag a dot in a square mapped to the
+    /// two ranges. The fit for a position or direction tuned by feel.
+    case pad
+}
+
+/// How an option (enum or named-choices) parameter presents in the inspector.
+public enum ParamMenuStyle: Sendable {
+    /// A pop-up menu (the default). Scales to any number of options.
+    case menu
+    /// A segmented control: every option visible at once. The fit for two to
+    /// four short names; more than fits the row falls back to reading poorly,
+    /// so prefer the menu for long case lists.
+    case segmented
 }
 
 /// The numeric constraint payload of a `Double` or `Int` parameter: the allowed
@@ -346,9 +375,12 @@ extension Color: ParamValue {
 public struct ParamVectorConstraints: Sendable {
     public var x: ClosedRange<Double>
     public var y: ClosedRange<Double>
-    public init(x: ClosedRange<Double>, y: ClosedRange<Double>) {
+    public var style: ParamVectorStyle
+    public init(x: ClosedRange<Double>, y: ClosedRange<Double>,
+                style: ParamVectorStyle = .fields) {
         self.x = x
         self.y = y
+        self.style = style
     }
 }
 
@@ -406,6 +438,7 @@ extension Vector2: ParamValue {
 
     public static func control(for param: Param<Vector2>) -> ParamControl {
         .vector(.init(xRange: param.constraints.x, yRange: param.constraints.y,
+                      style: param.constraints.style,
                       get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
     }
 }
@@ -479,12 +512,24 @@ extension Insets: ParamValue {
     }
 }
 
+/// The constraint payload of a `ClosedRange<Double>` parameter: the outer
+/// bounds both ends stay inside, and the presentation style.
+public struct ParamRangeConstraints: Sendable {
+    public var outer: ClosedRange<Double>
+    public var style: ParamNumericStyle
+    public init(outer: ClosedRange<Double>, style: ParamNumericStyle = .slider) {
+        self.outer = outer
+        self.style = style
+    }
+}
+
 extension ClosedRange: ParamValue where Bound == Double {
-    public typealias Constraints = ClosedRange<Double>
+    public typealias Constraints = ParamRangeConstraints
 
     /// Both ends clamp into the outer bounds, and the pair stays ordered: a
     /// minimum pushed past the maximum drags the maximum along with it.
-    public static func clamped(_ value: ClosedRange<Double>, by outer: Constraints) -> ClosedRange<Double> {
+    public static func clamped(_ value: ClosedRange<Double>, by constraints: Constraints) -> ClosedRange<Double> {
+        let outer = constraints.outer
         let lower = Swift.min(Swift.max(value.lowerBound, outer.lowerBound), outer.upperBound)
         let upper = Swift.min(Swift.max(value.upperBound, lower), outer.upperBound)
         return lower...upper
@@ -500,7 +545,7 @@ extension ClosedRange: ParamValue where Bound == Double {
     }
 
     public static func control(for param: Param<ClosedRange<Double>>) -> ParamControl {
-        .range(.init(outer: param.constraints,
+        .range(.init(outer: param.constraints.outer, style: param.constraints.style,
                      get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
     }
 }
@@ -530,7 +575,7 @@ extension String: ParamValue {
 /// humanized case name (`linearBurn` reads "Linear Burn"); override it for
 /// custom wording. Persistence keys on the case *name*, so renaming a case
 /// forgets a tuned selection (reordering is safe).
-public protocol ParamOption: ParamValue, CaseIterable where Constraints == Void {
+public protocol ParamOption: ParamValue, CaseIterable where Constraints == ParamMenuStyle {
     /// The name the inspector menu shows for this case.
     var optionLabel: String { get }
 }
@@ -538,7 +583,7 @@ public protocol ParamOption: ParamValue, CaseIterable where Constraints == Void 
 public extension ParamOption {
     var optionLabel: String { ParamHandle.humanize(String(describing: self)) }
 
-    static func clamped(_ value: Self, by _: Void) -> Self { value }
+    static func clamped(_ value: Self, by _: ParamMenuStyle) -> Self { value }
 
     static func stored(_ value: Self) -> ParamStored { .option(String(describing: value)) }
 
@@ -549,7 +594,7 @@ public extension ParamOption {
 
     static func control(for param: Param<Self>) -> ParamControl {
         let cases = Array(allCases)
-        return .menu(.init(options: cases.map { $0.optionLabel },
+        return .menu(.init(options: cases.map { $0.optionLabel }, style: param.constraints,
                            get: { cases.firstIndex(of: param.wrappedValue) ?? 0 },
                            set: { index in
                                guard cases.indices.contains(index) else { return }
@@ -567,14 +612,14 @@ public extension ParamOption {
 /// ```swift
 /// @Param var mood: LightingPreset = .standard   // a built-in conformer
 /// ```
-public protocol ParamChoices: ParamValue where Constraints == Void {
+public protocol ParamChoices: ParamValue where Constraints == ParamMenuStyle {
     /// The menu's roster, in display order. Names are humanized for display
     /// ("goldenHour" reads "Golden Hour") and used as-is for persistence.
     static var paramChoices: [(name: String, value: Self)] { get }
 }
 
 public extension ParamChoices {
-    static func clamped(_ value: Self, by _: Void) -> Self { value }
+    static func clamped(_ value: Self, by _: ParamMenuStyle) -> Self { value }
 
     static func stored(_ value: Self) -> ParamStored {
         .option(paramChoices.first { $0.value == value }?.name ?? paramChoices.first?.name ?? "")
@@ -588,6 +633,7 @@ public extension ParamChoices {
     static func control(for param: Param<Self>) -> ParamControl {
         let choices = paramChoices
         return .menu(.init(options: choices.map { ParamHandle.humanize($0.name) },
+                           style: param.constraints,
                            get: {
                                let current = param.wrappedValue
                                return choices.firstIndex { $0.value == current } ?? 0
@@ -835,16 +881,19 @@ public extension Param where Value == Color {
 
 public extension Param where Value == Vector2 {
     /// A `Vector2` point: paired x/y fields, each clamped to its own range.
+    /// `style: .pad` adds a draggable XY pad under the fields.
     convenience init(wrappedValue: Vector2, x: ClosedRange<Double>, y: ClosedRange<Double>,
+                     style: ParamVectorStyle = .fields,
                      icon: String? = nil, group: String? = nil) {
-        self.init(wrappedValue, label: nil, constraints: .init(x: x, y: y),
+        self.init(wrappedValue, label: nil, constraints: .init(x: x, y: y, style: style),
                   smoothing: nil, icon: icon, group: group)
     }
 
     convenience init(wrappedValue: Vector2, _ label: String,
                      x: ClosedRange<Double>, y: ClosedRange<Double>,
+                     style: ParamVectorStyle = .fields,
                      icon: String? = nil, group: String? = nil) {
-        self.init(wrappedValue, label: label, constraints: .init(x: x, y: y),
+        self.init(wrappedValue, label: label, constraints: .init(x: x, y: y, style: style),
                   smoothing: nil, icon: icon, group: group)
     }
 }
@@ -866,24 +915,30 @@ public extension Param where Value == Vector3 {
 }
 
 public extension Param where Value: ParamOption {
-    /// An enum menu over the type's cases.
-    convenience init(wrappedValue: Value, icon: String? = nil, group: String? = nil) {
-        self.init(wrappedValue, label: nil, constraints: (), smoothing: nil, icon: icon, group: group)
+    /// An enum menu over the type's cases; `style: .segmented` shows every
+    /// case at once (best for two to four short names).
+    convenience init(wrappedValue: Value, style: ParamMenuStyle = .menu,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: style, smoothing: nil, icon: icon, group: group)
     }
 
-    convenience init(wrappedValue: Value, _ label: String, icon: String? = nil, group: String? = nil) {
-        self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
+    convenience init(wrappedValue: Value, _ label: String, style: ParamMenuStyle = .menu,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: style, smoothing: nil, icon: icon, group: group)
     }
 }
 
 public extension Param where Value: ParamChoices {
-    /// A menu over the type's named choices.
-    convenience init(wrappedValue: Value, icon: String? = nil, group: String? = nil) {
-        self.init(wrappedValue, label: nil, constraints: (), smoothing: nil, icon: icon, group: group)
+    /// A menu over the type's named choices; `style: .segmented` shows every
+    /// choice at once (best for two to four short names).
+    convenience init(wrappedValue: Value, style: ParamMenuStyle = .menu,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: style, smoothing: nil, icon: icon, group: group)
     }
 
-    convenience init(wrappedValue: Value, _ label: String, icon: String? = nil, group: String? = nil) {
-        self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
+    convenience init(wrappedValue: Value, _ label: String, style: ParamMenuStyle = .menu,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: style, smoothing: nil, icon: icon, group: group)
     }
 }
 
@@ -923,16 +978,19 @@ public extension Param where Value == Insets {
 }
 
 public extension Param where Value == ClosedRange<Double> {
-    /// A min/max pair, both ends kept ordered and inside `outer`.
+    /// A min/max pair, both ends kept ordered and inside `outer`, edited on a
+    /// two-thumb slider (`style: .field` keeps just the paired fields).
     convenience init(wrappedValue: ClosedRange<Double>, in outer: ClosedRange<Double>,
+                     style: ParamNumericStyle = .slider,
                      icon: String? = nil, group: String? = nil) {
-        self.init(wrappedValue, label: nil, constraints: outer,
+        self.init(wrappedValue, label: nil, constraints: .init(outer: outer, style: style),
                   smoothing: nil, icon: icon, group: group)
     }
 
     convenience init(wrappedValue: ClosedRange<Double>, _ label: String,
-                     in outer: ClosedRange<Double>, icon: String? = nil, group: String? = nil) {
-        self.init(wrappedValue, label: label, constraints: outer,
+                     in outer: ClosedRange<Double>, style: ParamNumericStyle = .slider,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: .init(outer: outer, style: style),
                   smoothing: nil, icon: icon, group: group)
     }
 }

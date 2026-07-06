@@ -47,17 +47,16 @@ Each supported type declares itself the same way and gets the matching inspector
 | `Vector3` | x/y/z fields | `@Param(x: -1...1, y: -1...1, z: 0...10) var eye = Vector3(0, 0, 5)` |
 | `Rectangle` | x/y and w/h fields | `@Param(x: 0...1080, y: 0...1080, width: 10...1080, height: 10...1080) var region = …` |
 | `Insets` | t/r/b/l fields | `@Param(0...200) var margins = Insets.all(40)` |
-| `ClosedRange<Double>` | min/max fields | `@Param(in: 1...60) var sizes = 6.0...24.0` |
+| `ClosedRange<Double>` | two-thumb slider + min/max fields | `@Param(in: 1...60) var sizes = 6.0...24.0` |
 | `String` | text field | `@Param var caption = "hello"` |
 | `ParamChoices` type | pop-up menu | `@Param var mood: LightingPreset = .standard` |
 
 A numeric value is always clamped to its range; the property's default is the starting value. The label is derived from the property name (`noiseScale` becomes "Noise Scale"), or pass one explicitly as the first argument when the name reads poorly.
 
-A `Double` can also take a `step:`, which snaps every write to that increment (so the sketch reads exactly the values the slider offers), and a `style:` when the slider itself is the wrong presentation, say for a precise quantity or a range too wide for a track to resolve:
+A `Double` can also take a `step:`, which snaps every write to that increment (so the sketch reads exactly the values the slider offers):
 
 ```swift
 @Param(0...1, step: 0.25) var mix = 0.5
-@Param(1...100_000, style: .field) var iterations = 2000.0   // just the scrub/type field
 ```
 
 An enum becomes a menu by conforming to `ParamOption` (declare it `CaseIterable`):
@@ -72,6 +71,19 @@ The menu shows humanized case names ("Mesh Lines"); override `optionLabel` for c
 A type that isn't an enum but has a fixed roster of named built-ins joins the menu tier through `ParamChoices` instead: provide `paramChoices`, a list of `(name, value)` pairs, and the inspector shows the humanized names. `LightingPreset` conforms out of the box. The type's `Equatable` is what lets the menu find the current selection, which is also why `Easing` (a closure wrapper, no equality) and the parameterized `Material` finishes don't take this route.
 
 The color well opens the system color panel, eyedropper included, so a sketch's palette is tunable live. The vector, rectangle, and insets forms take a range per field and clamp each independently; the min/max pair stays ordered inside its `in:` bounds, with a minimum dragged past the maximum pushing the maximum along.
+
+#### Control styles
+
+A few kinds take a `style:` when the default control isn't the right feel:
+
+```swift
+@Param(1...100_000, style: .field) var iterations = 2000.0    // no track, just the value box
+@Param(x: 0...1080, y: 0...1080, style: .pad) var anchor = …  // adds a draggable XY pad
+@Param(in: 1...60, style: .field) var sizes = 6.0...24.0      // fields only, no two-thumb track
+@Param(style: .segmented) var mode: Style = .dots             // every case visible at once
+```
+
+`.field` drops a numeric control's track, the fit for a precise quantity or a range too wide for a slider to resolve. The XY pad maps its square to the two ranges with the top-left corner at both lower bounds, matching the canvas origin, so dragging the dot feels like dragging on the canvas. A segmented control suits two to four short names; when the segments don't fit beside the label the row wraps them to a full-width control underneath, and longer case lists should stay on the default menu.
 
 #### Your own types
 

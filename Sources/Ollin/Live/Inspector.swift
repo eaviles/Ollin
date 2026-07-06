@@ -710,6 +710,164 @@ private struct ScrubbableField: View {
     }
 }
 
+/// The XY pad: a square area mapped to a `Vector2` param's two ranges, with
+/// the top-left corner at both lower bounds (matching the canvas's top-left
+/// origin). Drag anywhere and the dot jumps to the pointer; a crosshair tracks
+/// the dot so its alignment reads against the pad edges.
+private struct ParamXYPad: View {
+    @Binding var x: Double
+    @Binding var y: Double
+    let xRange: ClosedRange<Double>
+    let yRange: ClosedRange<Double>
+    @Binding var isInteracting: Bool
+    let palette: OllinInspector.Palette
+
+    private static let dotRadius: CGFloat = 6
+    /// The dot's travel keeps this far off every edge, so it never clips.
+    private static let inset: CGFloat = 10
+
+    var body: some View {
+        GeometryReader { geo in
+            let dot = dotPosition(in: geo.size)
+            ZStack {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(palette.fieldFill)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(palette.fieldStroke, lineWidth: 0.5)
+                // The crosshair through the dot, clipped to the pad.
+                SwiftUI.Path { path in
+                    path.move(to: CGPoint(x: dot.x, y: 0))
+                    path.addLine(to: CGPoint(x: dot.x, y: geo.size.height))
+                    path.move(to: CGPoint(x: 0, y: dot.y))
+                    path.addLine(to: CGPoint(x: geo.size.width, y: dot.y))
+                }
+                .stroke(palette.separator, lineWidth: 1)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                SwiftUI.Circle()
+                    .fill(OllinInspector.accent)
+                    .overlay(SwiftUI.Circle().strokeBorder(SwiftUI.Color.white.opacity(0.85), lineWidth: 1))
+                    .frame(width: Self.dotRadius * 2, height: Self.dotRadius * 2)
+                    .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
+                    .position(dot)
+            }
+            .contentShape(SwiftUI.Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { drag in
+                        isInteracting = true
+                        setValue(for: drag.location, in: geo.size)
+                    }
+                    .onEnded { _ in isInteracting = false }
+            )
+        }
+        .frame(height: 116)
+    }
+
+    private func travel(_ size: CGSize) -> CGSize {
+        CGSize(width: max(size.width - Self.inset * 2, 1),
+               height: max(size.height - Self.inset * 2, 1))
+    }
+
+    private func dotPosition(in size: CGSize) -> CGPoint {
+        let area = travel(size)
+        let tx = (x - xRange.lowerBound) / max(xRange.upperBound - xRange.lowerBound, .ulpOfOne)
+        let ty = (y - yRange.lowerBound) / max(yRange.upperBound - yRange.lowerBound, .ulpOfOne)
+        return CGPoint(x: Self.inset + CGFloat(tx) * area.width,
+                       y: Self.inset + CGFloat(ty) * area.height)
+    }
+
+    private func setValue(for location: CGPoint, in size: CGSize) {
+        let area = travel(size)
+        let tx = Double((location.x - Self.inset) / area.width)
+        let ty = Double((location.y - Self.inset) / area.height)
+        let clampedX = Swift.min(Swift.max(tx, 0), 1)
+        let clampedY = Swift.min(Swift.max(ty, 0), 1)
+        x = xRange.lowerBound + clampedX * (xRange.upperBound - xRange.lowerBound)
+        y = yRange.lowerBound + clampedY * (yRange.upperBound - yRange.lowerBound)
+    }
+}
+
+/// The two-thumb slider: a track over the outer bounds with a tinted span
+/// between the min and max thumbs. A drag grabs the nearest thumb and keeps it
+/// for the whole gesture, stopping at the other thumb rather than crossing it.
+private struct ParamRangeSlider: View {
+    @Binding var lower: Double
+    @Binding var upper: Double
+    let outer: ClosedRange<Double>
+    @Binding var isInteracting: Bool
+    let palette: OllinInspector.Palette
+
+    private enum Thumb { case lower, upper }
+    /// The thumb grabbed at the start of the current drag, held so a fast drag
+    /// past the other thumb never swaps hands mid-gesture.
+    @State private var activeThumb: Thumb?
+
+    private static let thumbRadius: CGFloat = 6.5
+    private static let trackHeight: CGFloat = 3
+
+    var body: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            let lowerX = position(of: lower, width: width)
+            let upperX = position(of: upper, width: width)
+            let midY = geo.size.height / 2
+            ZStack {
+                Capsule()
+                    .fill(palette.fieldFill)
+                    .overlay(Capsule().strokeBorder(palette.fieldStroke, lineWidth: 0.5))
+                    .frame(height: Self.trackHeight)
+                Capsule()
+                    .fill(OllinInspector.accent)
+                    .frame(width: max(upperX - lowerX, Self.trackHeight), height: Self.trackHeight)
+                    .position(x: (lowerX + upperX) / 2, y: midY)
+                thumb.position(x: lowerX, y: midY)
+                thumb.position(x: upperX, y: midY)
+            }
+            .contentShape(SwiftUI.Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { drag in
+                        isInteracting = true
+                        if activeThumb == nil {
+                            activeThumb = abs(drag.startLocation.x - lowerX) <=
+                                abs(drag.startLocation.x - upperX) ? .lower : .upper
+                        }
+                        let value = self.value(at: drag.location.x, width: width)
+                        switch activeThumb {
+                        case .lower: lower = Swift.min(value, upper)
+                        case .upper: upper = Swift.max(value, lower)
+                        case nil: break
+                        }
+                    }
+                    .onEnded { _ in
+                        activeThumb = nil
+                        isInteracting = false
+                    }
+            )
+        }
+        .frame(height: 20)
+    }
+
+    private var thumb: some View {
+        SwiftUI.Circle()
+            .fill(SwiftUI.Color.white)
+            .frame(width: Self.thumbRadius * 2, height: Self.thumbRadius * 2)
+            .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.5)
+    }
+
+    private func position(of value: Double, width: CGFloat) -> CGFloat {
+        let span = max(outer.upperBound - outer.lowerBound, .ulpOfOne)
+        let travel = width - Self.thumbRadius * 2
+        return Self.thumbRadius + CGFloat((value - outer.lowerBound) / span) * travel
+    }
+
+    private func value(at x: CGFloat, width: CGFloat) -> Double {
+        let travel = max(width - Self.thumbRadius * 2, 1)
+        let t = Double((x - Self.thumbRadius) / travel)
+        return outer.lowerBound + Swift.min(Swift.max(t, 0), 1) * (outer.upperBound - outer.lowerBound)
+    }
+}
+
 /// A labelled slider: icon + label and the scrubbable value pill on top, a thin
 /// tinted slider below. Local state drives smooth dragging and the readout; a
 /// user edit is written into the live `Param` and reported to `onChange`.
@@ -984,17 +1142,7 @@ private struct MenuParamRow: View {
     }
 
     var body: some View {
-        ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
-            Picker("", selection: $selection) {
-                ForEach(Array(control.options.enumerated()), id: \.offset) { index, name in
-                    Text(name).tag(index)
-                }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .controlSize(.small)
-            .fixedSize()
-        }
+        layout
         .onChange(of: selection) { _, newValue in
             guard newValue != control.get() else { return }
             control.set(newValue)
@@ -1008,6 +1156,47 @@ private struct MenuParamRow: View {
                 if live != selection { selection = live }
             }
         }
+    }
+
+    /// `.menu` is a single-line row with a pop-up. `.segmented` stays on one
+    /// line while the segments fit beside the label (the label pinned so it
+    /// can't silently truncate), else wraps to a full-width control below it.
+    @ViewBuilder private var layout: some View {
+        if control.style == .segmented {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) {
+                    ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                        .fixedSize()
+                    Spacer(minLength: 16)
+                    basePicker.pickerStyle(.segmented).fixedSize()
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                    basePicker.pickerStyle(.segmented)
+                        .frame(maxWidth: .infinity)
+                }
+                // Pinned leading: ViewThatFits centers a child narrower than
+                // the row, which would strand the label off the label column.
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(minHeight: 38)
+        } else {
+            ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
+                basePicker.pickerStyle(.menu).fixedSize()
+            }
+        }
+    }
+
+    private var basePicker: some View {
+        Picker("", selection: $selection) {
+            ForEach(Array(control.options.enumerated()), id: \.offset) { index, name in
+                Text(name).tag(index)
+            }
+        }
+        .labelsHidden()
+        .controlSize(.small)
     }
 }
 
@@ -1100,27 +1289,17 @@ private struct VectorParamRow: View {
         _lastKnown = State(initialValue: current)
     }
 
+    /// True while the XY pad is being dragged; parks the sync pull.
+    @State private var isPadding = false
+
     var body: some View {
-        ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
-            HStack(spacing: 6) {
-                ScrubbableField(
-                    value: $x, fractionDigits: paramFieldDigits(for: control.xRange),
-                    perPoint: (control.xRange.upperBound - control.xRange.lowerBound) / 250,
-                    snap: nil, snapOrigin: 0, range: control.xRange,
-                    isInteracting: $isEditingX, palette: palette, prefix: "x")
-                ScrubbableField(
-                    value: $y, fractionDigits: paramFieldDigits(for: control.yRange),
-                    perPoint: (control.yRange.upperBound - control.yRange.lowerBound) / 250,
-                    snap: nil, snapOrigin: 0, range: control.yRange,
-                    isInteracting: $isEditingY, palette: palette, prefix: "y")
-            }
-        }
+        layout
         .onChange(of: x) { _, _ in push() }
         .onChange(of: y) { _, _ in push() }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
-                guard !isEditingX, !isEditingY else { continue }
+                guard !isEditingX, !isEditingY, !isPadding else { continue }
                 let live = control.get()
                 if live != lastKnown {
                     lastKnown = live
@@ -1128,6 +1307,43 @@ private struct VectorParamRow: View {
                     y = live.y
                 }
             }
+        }
+    }
+
+    /// `.fields` is the single-line pair; `.pad` stacks the drag pad under it.
+    @ViewBuilder private var layout: some View {
+        if control.style == .pad {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                    Spacer(minLength: 16)
+                    fields
+                }
+                ParamXYPad(x: $x, y: $y, xRange: control.xRange, yRange: control.yRange,
+                           isInteracting: $isPadding, palette: palette)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 11)
+            .padding(.bottom, 11)
+        } else {
+            ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
+                fields
+            }
+        }
+    }
+
+    private var fields: some View {
+        HStack(spacing: 6) {
+            ScrubbableField(
+                value: $x, fractionDigits: paramFieldDigits(for: control.xRange),
+                perPoint: (control.xRange.upperBound - control.xRange.lowerBound) / 250,
+                snap: nil, snapOrigin: 0, range: control.xRange,
+                isInteracting: $isEditingX, palette: palette, prefix: "x")
+            ScrubbableField(
+                value: $y, fractionDigits: paramFieldDigits(for: control.yRange),
+                perPoint: (control.yRange.upperBound - control.yRange.lowerBound) / 250,
+                snap: nil, snapOrigin: 0, range: control.yRange,
+                isInteracting: $isEditingY, palette: palette, prefix: "y")
         }
     }
 
@@ -1458,27 +1674,17 @@ private struct RangeParamRow: View {
         _lastKnown = State(initialValue: current)
     }
 
+    /// True while a slider thumb is held; parks the sync pull.
+    @State private var isSliding = false
+
     var body: some View {
-        ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
-            HStack(spacing: 6) {
-                ScrubbableField(
-                    value: $lower, fractionDigits: paramFieldDigits(for: control.outer),
-                    perPoint: (control.outer.upperBound - control.outer.lowerBound) / 250,
-                    snap: nil, snapOrigin: 0, range: control.outer,
-                    isInteracting: $isEditingLower, palette: palette, prefix: "min")
-                ScrubbableField(
-                    value: $upper, fractionDigits: paramFieldDigits(for: control.outer),
-                    perPoint: (control.outer.upperBound - control.outer.lowerBound) / 250,
-                    snap: nil, snapOrigin: 0, range: control.outer,
-                    isInteracting: $isEditingUpper, palette: palette, prefix: "max")
-            }
-        }
+        layout
         .onChange(of: lower) { _, _ in push() }
         .onChange(of: upper) { _, _ in push() }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
-                guard !isEditingLower, !isEditingUpper else { continue }
+                guard !isEditingLower, !isEditingUpper, !isSliding else { continue }
                 let live = control.get()
                 if live != lastKnown {
                     lastKnown = live
@@ -1486,6 +1692,44 @@ private struct RangeParamRow: View {
                     upper = live.upperBound
                 }
             }
+        }
+    }
+
+    /// `.slider` (the default) is the two-line row: fields over the two-thumb
+    /// track; `.field` keeps just the single-line pair.
+    @ViewBuilder private var layout: some View {
+        if control.style == .field {
+            ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
+                fields
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                    Spacer(minLength: 16)
+                    fields
+                }
+                ParamRangeSlider(lower: $lower, upper: $upper, outer: control.outer,
+                                 isInteracting: $isSliding, palette: palette)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 11)
+            .padding(.bottom, 11)
+        }
+    }
+
+    private var fields: some View {
+        HStack(spacing: 6) {
+            ScrubbableField(
+                value: $lower, fractionDigits: paramFieldDigits(for: control.outer),
+                perPoint: (control.outer.upperBound - control.outer.lowerBound) / 250,
+                snap: nil, snapOrigin: 0, range: control.outer,
+                isInteracting: $isEditingLower, palette: palette, prefix: "min")
+            ScrubbableField(
+                value: $upper, fractionDigits: paramFieldDigits(for: control.outer),
+                perPoint: (control.outer.upperBound - control.outer.lowerBound) / 250,
+                snap: nil, snapOrigin: 0, range: control.outer,
+                isInteracting: $isEditingUpper, palette: palette, prefix: "max")
         }
     }
 
