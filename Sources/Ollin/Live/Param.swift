@@ -51,6 +51,14 @@ public enum ParamStored: Equatable, Sendable, Codable {
     case vector(x: Double, y: Double)
     /// A `Vector3` parameter's value.
     case vector3(x: Double, y: Double, z: Double)
+    /// A `Rectangle` parameter's value.
+    case rect(x: Double, y: Double, width: Double, height: Double)
+    /// An `Insets` parameter's value.
+    case insets(top: Double, right: Double, bottom: Double, left: Double)
+    /// A `ClosedRange<Double>` parameter's value.
+    case range(lower: Double, upper: Double)
+    /// A `String` parameter's value.
+    case text(String)
 }
 
 // MARK: - Controls
@@ -68,6 +76,10 @@ public enum ParamControl {
     case colorWell(ColorWell)
     case vector(Vector)
     case vector3(VectorXYZ)
+    case rectangle(RectangleFields)
+    case insets(InsetsFields)
+    case range(RangeFields)
+    case text(TextBox)
 
     /// A `Double` knob: a slider over `range`, optionally snapped to `step`.
     /// `style: .field` drops the track and leaves the scrubbable value field.
@@ -155,6 +167,58 @@ public enum ParamControl {
                     get: @escaping @Sendable () -> Vector3,
                     set: @escaping @Sendable (Vector3) -> Void) {
             self.xRange = xRange; self.yRange = yRange; self.zRange = zRange
+            self.get = get; self.set = set
+        }
+    }
+
+    /// A `Rectangle` knob: x/y/w/h value fields, each over its own range.
+    public struct RectangleFields: Sendable {
+        public let xRange: ClosedRange<Double>
+        public let yRange: ClosedRange<Double>
+        public let widthRange: ClosedRange<Double>
+        public let heightRange: ClosedRange<Double>
+        public let get: @Sendable () -> Rectangle
+        public let set: @Sendable (Rectangle) -> Void
+        public init(xRange: ClosedRange<Double>, yRange: ClosedRange<Double>,
+                    widthRange: ClosedRange<Double>, heightRange: ClosedRange<Double>,
+                    get: @escaping @Sendable () -> Rectangle,
+                    set: @escaping @Sendable (Rectangle) -> Void) {
+            self.xRange = xRange; self.yRange = yRange
+            self.widthRange = widthRange; self.heightRange = heightRange
+            self.get = get; self.set = set
+        }
+    }
+
+    /// An `Insets` knob: t/r/b/l value fields sharing one per-edge range.
+    public struct InsetsFields: Sendable {
+        public let edgeRange: ClosedRange<Double>
+        public let get: @Sendable () -> Insets
+        public let set: @Sendable (Insets) -> Void
+        public init(edgeRange: ClosedRange<Double>,
+                    get: @escaping @Sendable () -> Insets,
+                    set: @escaping @Sendable (Insets) -> Void) {
+            self.edgeRange = edgeRange; self.get = get; self.set = set
+        }
+    }
+
+    /// A `ClosedRange<Double>` knob: min/max value fields within `outer`.
+    public struct RangeFields: Sendable {
+        public let outer: ClosedRange<Double>
+        public let get: @Sendable () -> ClosedRange<Double>
+        public let set: @Sendable (ClosedRange<Double>) -> Void
+        public init(outer: ClosedRange<Double>,
+                    get: @escaping @Sendable () -> ClosedRange<Double>,
+                    set: @escaping @Sendable (ClosedRange<Double>) -> Void) {
+            self.outer = outer; self.get = get; self.set = set
+        }
+    }
+
+    /// A `String` knob: a free text field.
+    public struct TextBox: Sendable {
+        public let get: @Sendable () -> String
+        public let set: @Sendable (String) -> Void
+        public init(get: @escaping @Sendable () -> String,
+                    set: @escaping @Sendable (String) -> Void) {
             self.get = get; self.set = set
         }
     }
@@ -346,6 +410,114 @@ extension Vector2: ParamValue {
     }
 }
 
+/// The per-field constraint payload of a `Rectangle` parameter.
+public struct ParamRectConstraints: Sendable {
+    public var x: ClosedRange<Double>
+    public var y: ClosedRange<Double>
+    public var width: ClosedRange<Double>
+    public var height: ClosedRange<Double>
+    public init(x: ClosedRange<Double>, y: ClosedRange<Double>,
+                width: ClosedRange<Double>, height: ClosedRange<Double>) {
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+    }
+}
+
+extension Rectangle: ParamValue {
+    public typealias Constraints = ParamRectConstraints
+
+    public static func clamped(_ value: Rectangle, by constraints: Constraints) -> Rectangle {
+        func clamp(_ v: Double, _ range: ClosedRange<Double>) -> Double {
+            Swift.min(Swift.max(v, range.lowerBound), range.upperBound)
+        }
+        return Rectangle(x: clamp(value.x, constraints.x), y: clamp(value.y, constraints.y),
+                         width: clamp(value.width, constraints.width),
+                         height: clamp(value.height, constraints.height))
+    }
+
+    public static func stored(_ value: Rectangle) -> ParamStored {
+        .rect(x: value.x, y: value.y, width: value.width, height: value.height)
+    }
+
+    public static func restored(_ stored: ParamStored) -> Rectangle? {
+        guard case .rect(let x, let y, let w, let h) = stored else { return nil }
+        return Rectangle(x: x, y: y, width: w, height: h)
+    }
+
+    public static func control(for param: Param<Rectangle>) -> ParamControl {
+        .rectangle(.init(xRange: param.constraints.x, yRange: param.constraints.y,
+                         widthRange: param.constraints.width, heightRange: param.constraints.height,
+                         get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+    }
+}
+
+extension Insets: ParamValue {
+    public typealias Constraints = ClosedRange<Double>
+
+    public static func clamped(_ value: Insets, by range: Constraints) -> Insets {
+        func clamp(_ v: Double) -> Double {
+            Swift.min(Swift.max(v, range.lowerBound), range.upperBound)
+        }
+        return Insets(top: clamp(value.top), right: clamp(value.right),
+                      bottom: clamp(value.bottom), left: clamp(value.left))
+    }
+
+    public static func stored(_ value: Insets) -> ParamStored {
+        .insets(top: value.top, right: value.right, bottom: value.bottom, left: value.left)
+    }
+
+    public static func restored(_ stored: ParamStored) -> Insets? {
+        guard case .insets(let t, let r, let b, let l) = stored else { return nil }
+        return Insets(top: t, right: r, bottom: b, left: l)
+    }
+
+    public static func control(for param: Param<Insets>) -> ParamControl {
+        .insets(.init(edgeRange: param.constraints,
+                      get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+    }
+}
+
+extension ClosedRange: ParamValue where Bound == Double {
+    public typealias Constraints = ClosedRange<Double>
+
+    /// Both ends clamp into the outer bounds, and the pair stays ordered: a
+    /// minimum pushed past the maximum drags the maximum along with it.
+    public static func clamped(_ value: ClosedRange<Double>, by outer: Constraints) -> ClosedRange<Double> {
+        let lower = Swift.min(Swift.max(value.lowerBound, outer.lowerBound), outer.upperBound)
+        let upper = Swift.min(Swift.max(value.upperBound, lower), outer.upperBound)
+        return lower...upper
+    }
+
+    public static func stored(_ value: ClosedRange<Double>) -> ParamStored {
+        .range(lower: value.lowerBound, upper: value.upperBound)
+    }
+
+    public static func restored(_ stored: ParamStored) -> ClosedRange<Double>? {
+        guard case .range(let lower, let upper) = stored, lower <= upper else { return nil }
+        return lower...upper
+    }
+
+    public static func control(for param: Param<ClosedRange<Double>>) -> ParamControl {
+        .range(.init(outer: param.constraints,
+                     get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+    }
+}
+
+extension String: ParamValue {
+    public typealias Constraints = Void
+    public static func clamped(_ value: String, by _: Void) -> String { value }
+    public static func stored(_ value: String) -> ParamStored { .text(value) }
+    public static func restored(_ stored: ParamStored) -> String? {
+        guard case .text(let value) = stored else { return nil }
+        return value
+    }
+    public static func control(for param: Param<String>) -> ParamControl {
+        .text(.init(get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+    }
+}
+
 /// An enum a `@Param` can hold: the inspector shows its cases as a pop-up menu.
 /// Declare the enum `CaseIterable` and conform:
 ///
@@ -386,6 +558,47 @@ public extension ParamOption {
     }
 }
 
+/// A catalog type a `@Param` can hold: not an enum, but a set of *named
+/// choices* the inspector shows as a pop-up menu. The fit for a struct with a
+/// fixed roster of built-ins. The type's `Equatable` lets the menu find the
+/// current choice; a value that matches no choice reads as the first entry,
+/// and persistence keys on the choice name.
+///
+/// ```swift
+/// @Param var mood: LightingPreset = .standard   // a built-in conformer
+/// ```
+public protocol ParamChoices: ParamValue where Constraints == Void {
+    /// The menu's roster, in display order. Names are humanized for display
+    /// ("goldenHour" reads "Golden Hour") and used as-is for persistence.
+    static var paramChoices: [(name: String, value: Self)] { get }
+}
+
+public extension ParamChoices {
+    static func clamped(_ value: Self, by _: Void) -> Self { value }
+
+    static func stored(_ value: Self) -> ParamStored {
+        .option(paramChoices.first { $0.value == value }?.name ?? paramChoices.first?.name ?? "")
+    }
+
+    static func restored(_ stored: ParamStored) -> Self? {
+        guard case .option(let name) = stored else { return nil }
+        return paramChoices.first { $0.name == name }?.value
+    }
+
+    static func control(for param: Param<Self>) -> ParamControl {
+        let choices = paramChoices
+        return .menu(.init(options: choices.map { ParamHandle.humanize($0.name) },
+                           get: {
+                               let current = param.wrappedValue
+                               return choices.firstIndex { $0.value == current } ?? 0
+                           },
+                           set: { index in
+                               guard choices.indices.contains(index) else { return }
+                               param.wrappedValue = choices[index].value
+                           }))
+    }
+}
+
 // MARK: Built-in options
 
 // Ollin's own CaseIterable mode enums make natural knobs, so they conform out
@@ -394,6 +607,14 @@ extension BlendMode: ParamOption {}
 extension StrokeCap: ParamOption {}
 extension StrokeJoin: ParamOption {}
 extension Colormap: ParamOption {}
+
+// The curated-preset structs join through the named-choices tier.
+extension LightingPreset: ParamChoices {
+    public static var paramChoices: [(name: String, value: LightingPreset)] {
+        [("standard", .standard), ("threePoint", .threePoint), ("goldenHour", .goldenHour),
+         ("noir", .noir), ("studio", .studio), ("moonlight", .moonlight)]
+    }
+}
 
 // MARK: - The wrapper
 
@@ -651,6 +872,78 @@ public extension Param where Value: ParamOption {
     }
 
     convenience init(wrappedValue: Value, _ label: String, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value: ParamChoices {
+    /// A menu over the type's named choices.
+    convenience init(wrappedValue: Value, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: (), smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Value, _ label: String, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value == Rectangle {
+    /// A `Rectangle` region: x/y/w/h fields, each clamped to its own range.
+    convenience init(wrappedValue: Rectangle, x: ClosedRange<Double>, y: ClosedRange<Double>,
+                     width: ClosedRange<Double>, height: ClosedRange<Double>,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil,
+                  constraints: .init(x: x, y: y, width: width, height: height),
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Rectangle, _ label: String,
+                     x: ClosedRange<Double>, y: ClosedRange<Double>,
+                     width: ClosedRange<Double>, height: ClosedRange<Double>,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label,
+                  constraints: .init(x: x, y: y, width: width, height: height),
+                  smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value == Insets {
+    /// Per-edge insets: t/r/b/l fields, each clamped to the one shared range.
+    convenience init(wrappedValue: Insets, _ range: ClosedRange<Double>,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: range,
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Insets, _ label: String, _ range: ClosedRange<Double>,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: range,
+                  smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value == ClosedRange<Double> {
+    /// A min/max pair, both ends kept ordered and inside `outer`.
+    convenience init(wrappedValue: ClosedRange<Double>, in outer: ClosedRange<Double>,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: outer,
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: ClosedRange<Double>, _ label: String,
+                     in outer: ClosedRange<Double>, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: outer,
+                  smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value == String {
+    /// A free text field.
+    convenience init(wrappedValue: String, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: (), smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: String, _ label: String, icon: String? = nil, group: String? = nil) {
         self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
     }
 }

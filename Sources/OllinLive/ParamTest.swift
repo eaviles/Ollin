@@ -21,6 +21,12 @@ enum ParamTest {
         @Param(x: 0...1080, y: 0...400) var anchor = Vector2(540, 200)
         @Param(x: -1...1, y: -1...1, z: 0...10) var eye = Vector3(0, 0, 5)
         @Param(0...100_000, style: .field) var iterations = 2000.0
+        @Param(x: 0...1080, y: 0...1080, width: 10...500, height: 10...500)
+        var region = Rectangle(x: 100, y: 100, width: 200, height: 200)
+        @Param(0...100) var margins = Insets.all(20)
+        @Param(in: 0...50) var sizes = 5.0...20.0
+        @Param var caption = "hello"
+        @Param var mood: LightingPreset = .standard
     }
 
     @MainActor
@@ -28,14 +34,16 @@ enum ParamTest {
         let subject = Subject()
         let params = subject.parameters()
 
-        check(params.count == 11, "expected 11 params, got \(params.count)")
+        check(params.count == 16, "expected 16 params, got \(params.count)")
         check(params.map(\.name) == ["radius", "noiseScale", "speed", "quantized",
                                      "rings", "visible", "tint", "style", "anchor",
-                                     "eye", "iterations"],
+                                     "eye", "iterations", "region", "margins",
+                                     "sizes", "caption", "mood"],
               "names/order wrong: \(params.map(\.name))")
         check(params.map(\.label) == ["Radius", "Noise Scale", "Tempo", "Quantized",
                                       "Rings", "Visible", "Tint", "Style", "Anchor",
-                                      "Eye", "Iterations"],
+                                      "Eye", "Iterations", "Region", "Margins",
+                                      "Sizes", "Caption", "Mood"],
               "labels wrong: \(params.map(\.label))")
         check(params[4].icon == "circle.grid.2x2", "icon metadata lost")
         check(params[4].group == "Layout" && params[5].group == "Layout" && params[0].group == nil,
@@ -83,6 +91,29 @@ enum ParamTest {
         guard case .slider(let field) = params[10].control else { fatal("iterations isn't a slider kind") }
         check(field.style == .field, "field style lost")
 
+        guard case .rectangle(let rect) = params[11].control else { fatal("region isn't a rectangle") }
+        rect.set(Rectangle(x: -5, y: 0, width: 900, height: 50))
+        check(subject.region == Rectangle(x: 0, y: 0, width: 500, height: 50),
+              "rectangle per-field clamp failed: \(subject.region)")
+
+        guard case .insets = params[12].control else { fatal("margins aren't insets") }
+        subject.margins = Insets(top: -1, right: 300, bottom: 10, left: 10)
+        check(subject.margins == Insets(top: 0, right: 100, bottom: 10, left: 10),
+              "insets per-edge clamp failed")
+
+        guard case .range(let sizes) = params[13].control else { fatal("sizes isn't a range") }
+        sizes.set(40...400)
+        check(subject.sizes == 40...50, "range clamp failed: \(subject.sizes)")
+
+        guard case .text(let caption) = params[14].control else { fatal("caption isn't a text box") }
+        caption.set("ollin")
+        check(subject.caption == "ollin", "text write not reflected")
+
+        guard case .menu(let mood) = params[15].control else { fatal("mood isn't a choices menu") }
+        check(mood.options.contains("Golden Hour"), "choice names not humanized: \(mood.options)")
+        mood.set(mood.options.firstIndex(of: "Noir") ?? 0)
+        check(subject.mood == .noir, "choices write not reflected")
+
         guard case .menu(let menu) = params[7].control else { fatal("style isn't a menu") }
         check(menu.options == ["Dots", "Rings", "Mesh Lines"], "menu labels wrong: \(menu.options)")
         menu.set(2)
@@ -97,7 +128,9 @@ enum ParamTest {
         }
         check(fresh.speed == 2.5 && fresh.rings == 12 && fresh.visible == false
                 && fresh.tint == .orange && fresh.style == .meshLines
-                && fresh.anchor == Vector2(1080, 0),
+                && fresh.anchor == Vector2(1080, 0)
+                && fresh.region == Rectangle(x: 0, y: 0, width: 500, height: 50)
+                && fresh.sizes == 40...50 && fresh.caption == "ollin" && fresh.mood == .noir,
               "stored round-trip lost a value")
         // A payload of the wrong kind is ignored, keeping the current value
         // (the clamp checks above left radius at 0, carried by the round-trip).

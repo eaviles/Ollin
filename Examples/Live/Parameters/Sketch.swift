@@ -30,6 +30,7 @@ final class Parameters: Sketch {
 
     @Param(icon: "paintpalette", group: "Look") var ink: Color = .black
     @Param(0.5...12, step: 0.5, icon: "lineweight", group: "Look") var weight = 2.5
+    @Param(icon: "character.cursor.ibeam", group: "Look") var caption = "rings"
 
     override func draw() {
         background(.white)
@@ -59,5 +60,7 @@ final class Parameters: Sketch {
                 stroke(ink)
             }
         }
+
+        if !caption.isEmpty { drawCaption(caption) }
     }
 }

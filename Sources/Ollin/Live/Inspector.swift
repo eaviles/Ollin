@@ -575,6 +575,18 @@ private struct ParamRow: View {
         case .vector3(let control):
             Vector3ParamRow(handle: handle, control: control, palette: palette,
                             iconGutter: iconGutter, onChange: onChange)
+        case .rectangle(let control):
+            RectangleParamRow(handle: handle, control: control, palette: palette,
+                              iconGutter: iconGutter, onChange: onChange)
+        case .insets(let control):
+            InsetsParamRow(handle: handle, control: control, palette: palette,
+                           iconGutter: iconGutter, onChange: onChange)
+        case .range(let control):
+            RangeParamRow(handle: handle, control: control, palette: palette,
+                          iconGutter: iconGutter, onChange: onChange)
+        case .text(let control):
+            TextParamRow(handle: handle, control: control, palette: palette,
+                         iconGutter: iconGutter, onChange: onChange)
         }
     }
 }
@@ -1218,5 +1230,317 @@ private struct Vector3ParamRow: View {
         if actual.z != z { z = actual.z }
         lastKnown = actual
         onChange(.vector3(x: actual.x, y: actual.y, z: actual.z))
+    }
+}
+
+/// A `Rectangle` row: x/y and w/h scrubbable field pairs on their own lines
+/// under the label.
+private struct RectangleParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.RectangleFields
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var x: Double
+    @State private var y: Double
+    @State private var w: Double
+    @State private var h: Double
+    @State private var lastKnown: Rectangle
+    @State private var editing = [false, false, false, false]
+
+    init(handle: ParamHandle, control: ParamControl.RectangleFields, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        let current = control.get()
+        _x = State(initialValue: current.x)
+        _y = State(initialValue: current.y)
+        _w = State(initialValue: current.width)
+        _h = State(initialValue: current.height)
+        _lastKnown = State(initialValue: current)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
+                field($x, range: control.xRange, editing: 0, prefix: "x")
+                field($y, range: control.yRange, editing: 1, prefix: "y")
+            }
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
+                field($w, range: control.widthRange, editing: 2, prefix: "w")
+                field($h, range: control.heightRange, editing: 3, prefix: "h")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 11)
+        .padding(.bottom, 11)
+        .onChange(of: x) { _, _ in push() }
+        .onChange(of: y) { _, _ in push() }
+        .onChange(of: w) { _, _ in push() }
+        .onChange(of: h) { _, _ in push() }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !editing.contains(true) else { continue }
+                let live = control.get()
+                if live != lastKnown {
+                    lastKnown = live
+                    x = live.x
+                    y = live.y
+                    w = live.width
+                    h = live.height
+                }
+            }
+        }
+    }
+
+    private func field(_ value: Binding<Double>, range: ClosedRange<Double>,
+                       editing index: Int, prefix: String) -> some View {
+        ScrubbableField(
+            value: value, fractionDigits: paramFieldDigits(for: range),
+            perPoint: (range.upperBound - range.lowerBound) / 250,
+            snap: nil, snapOrigin: 0, range: range,
+            isInteracting: $editing[index], palette: palette, prefix: prefix)
+    }
+
+    /// Write the edited region through the param, read back what it actually
+    /// holds (clamped per field), and reflect + report that.
+    private func push() {
+        let candidate = Rectangle(x: x, y: y, width: w, height: h)
+        guard candidate != lastKnown else { return }   // the sync pull's own echo
+        control.set(candidate)
+        let actual = control.get()
+        if actual.x != x { x = actual.x }
+        if actual.y != y { y = actual.y }
+        if actual.width != w { w = actual.width }
+        if actual.height != h { h = actual.height }
+        lastKnown = actual
+        onChange(.rect(x: actual.x, y: actual.y, width: actual.width, height: actual.height))
+    }
+}
+
+/// An `Insets` row: t/r and b/l scrubbable field pairs on their own lines
+/// under the label, all sharing the one per-edge range.
+private struct InsetsParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.InsetsFields
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var top: Double
+    @State private var right: Double
+    @State private var bottom: Double
+    @State private var left: Double
+    @State private var lastKnown: Insets
+    @State private var editing = [false, false, false, false]
+
+    init(handle: ParamHandle, control: ParamControl.InsetsFields, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        let current = control.get()
+        _top = State(initialValue: current.top)
+        _right = State(initialValue: current.right)
+        _bottom = State(initialValue: current.bottom)
+        _left = State(initialValue: current.left)
+        _lastKnown = State(initialValue: current)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
+                field($top, editing: 0, prefix: "t")
+                field($right, editing: 1, prefix: "r")
+            }
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
+                field($bottom, editing: 2, prefix: "b")
+                field($left, editing: 3, prefix: "l")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 11)
+        .padding(.bottom, 11)
+        .onChange(of: top) { _, _ in push() }
+        .onChange(of: right) { _, _ in push() }
+        .onChange(of: bottom) { _, _ in push() }
+        .onChange(of: left) { _, _ in push() }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !editing.contains(true) else { continue }
+                let live = control.get()
+                if live != lastKnown {
+                    lastKnown = live
+                    top = live.top
+                    right = live.right
+                    bottom = live.bottom
+                    left = live.left
+                }
+            }
+        }
+    }
+
+    private func field(_ value: Binding<Double>, editing index: Int, prefix: String) -> some View {
+        ScrubbableField(
+            value: value, fractionDigits: paramFieldDigits(for: control.edgeRange),
+            perPoint: (control.edgeRange.upperBound - control.edgeRange.lowerBound) / 250,
+            snap: nil, snapOrigin: 0, range: control.edgeRange,
+            isInteracting: $editing[index], palette: palette, prefix: prefix)
+    }
+
+    /// Write the edited insets through the param, read back what it actually
+    /// holds (clamped per edge), and reflect + report that.
+    private func push() {
+        let candidate = Insets(top: top, right: right, bottom: bottom, left: left)
+        guard candidate != lastKnown else { return }   // the sync pull's own echo
+        control.set(candidate)
+        let actual = control.get()
+        if actual.top != top { top = actual.top }
+        if actual.right != right { right = actual.right }
+        if actual.bottom != bottom { bottom = actual.bottom }
+        if actual.left != left { left = actual.left }
+        lastKnown = actual
+        onChange(.insets(top: actual.top, right: actual.right,
+                         bottom: actual.bottom, left: actual.left))
+    }
+}
+
+/// A `ClosedRange<Double>` row: paired min/max scrubbable fields. The param
+/// keeps the pair ordered, so dragging the minimum past the maximum pushes
+/// the maximum along.
+private struct RangeParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.RangeFields
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var lower: Double
+    @State private var upper: Double
+    @State private var lastKnown: ClosedRange<Double>
+    @State private var isEditingLower = false
+    @State private var isEditingUpper = false
+
+    init(handle: ParamHandle, control: ParamControl.RangeFields, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        let current = control.get()
+        _lower = State(initialValue: current.lowerBound)
+        _upper = State(initialValue: current.upperBound)
+        _lastKnown = State(initialValue: current)
+    }
+
+    var body: some View {
+        ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
+            HStack(spacing: 6) {
+                ScrubbableField(
+                    value: $lower, fractionDigits: paramFieldDigits(for: control.outer),
+                    perPoint: (control.outer.upperBound - control.outer.lowerBound) / 250,
+                    snap: nil, snapOrigin: 0, range: control.outer,
+                    isInteracting: $isEditingLower, palette: palette, prefix: "min")
+                ScrubbableField(
+                    value: $upper, fractionDigits: paramFieldDigits(for: control.outer),
+                    perPoint: (control.outer.upperBound - control.outer.lowerBound) / 250,
+                    snap: nil, snapOrigin: 0, range: control.outer,
+                    isInteracting: $isEditingUpper, palette: palette, prefix: "max")
+            }
+        }
+        .onChange(of: lower) { _, _ in push() }
+        .onChange(of: upper) { _, _ in push() }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !isEditingLower, !isEditingUpper else { continue }
+                let live = control.get()
+                if live != lastKnown {
+                    lastKnown = live
+                    lower = live.lowerBound
+                    upper = live.upperBound
+                }
+            }
+        }
+    }
+
+    /// Write the edited pair through the param, read back the ordered, clamped
+    /// pair it actually holds, and reflect + report that.
+    private func push() {
+        guard lower != lastKnown.lowerBound || upper != lastKnown.upperBound else { return }
+        control.set(Swift.min(lower, upper)...Swift.max(lower, upper))
+        let actual = control.get()
+        if actual.lowerBound != lower { lower = actual.lowerBound }
+        if actual.upperBound != upper { upper = actual.upperBound }
+        lastKnown = actual
+        onChange(.range(lower: actual.lowerBound, upper: actual.upperBound))
+    }
+}
+
+/// A `String` row: a free text field in the pill chrome. No scrubbing here;
+/// the field commits on return or focus loss.
+private struct TextParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.TextBox
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var text: String
+    @FocusState private var isTyping: Bool
+
+    init(handle: ParamHandle, control: ParamControl.TextBox, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        _text = State(initialValue: control.get())
+    }
+
+    var body: some View {
+        ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
+            TextField("", text: $text)
+                .textFieldStyle(.plain)
+                .focused($isTyping)
+                .multilineTextAlignment(.trailing)
+                .font(.system(size: 12))
+                .lineLimit(1)
+                .frame(maxWidth: 150, alignment: .trailing)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(palette.fieldFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
+        }
+        .onChange(of: text) { _, newValue in
+            guard newValue != control.get() else { return }
+            control.set(newValue)
+            onChange(.text(newValue))
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !isTyping else { continue }
+                let live = control.get()
+                if live != text { text = live }
+            }
+        }
     }
 }

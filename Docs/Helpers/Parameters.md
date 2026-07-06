@@ -45,6 +45,11 @@ Each supported type declares itself the same way and gets the matching inspector
 | `Color` | color well | `@Param var ink: Color = .black` |
 | `Vector2` | paired x/y fields | `@Param(x: 0...1080, y: 0...1080) var anchor = Vector2(540, 540)` |
 | `Vector3` | x/y/z fields | `@Param(x: -1...1, y: -1...1, z: 0...10) var eye = Vector3(0, 0, 5)` |
+| `Rectangle` | x/y and w/h fields | `@Param(x: 0...1080, y: 0...1080, width: 10...1080, height: 10...1080) var region = …` |
+| `Insets` | t/r/b/l fields | `@Param(0...200) var margins = Insets.all(40)` |
+| `ClosedRange<Double>` | min/max fields | `@Param(in: 1...60) var sizes = 6.0...24.0` |
+| `String` | text field | `@Param var caption = "hello"` |
+| `ParamChoices` type | pop-up menu | `@Param var mood: LightingPreset = .standard` |
 
 A numeric value is always clamped to its range; the property's default is the starting value. The label is derived from the property name (`noiseScale` becomes "Noise Scale"), or pass one explicitly as the first argument when the name reads poorly.
 
@@ -64,11 +69,13 @@ enum Style: String, CaseIterable, ParamOption { case dots, rings, meshLines }
 
 The menu shows humanized case names ("Mesh Lines"); override `optionLabel` for custom wording. The persisted selection keys on the case *name*, so renaming a case forgets a tuned choice while reordering is safe. Ollin's own mode enums (`BlendMode`, `StrokeCap`, `StrokeJoin`, `Colormap`) already conform, so `@Param var blend: BlendMode = .normal` gets its menu with no declaration at all.
 
-The color well opens the system color panel, eyedropper included, so a sketch's palette is tunable live. The vector forms take a range per axis and clamp each independently.
+A type that isn't an enum but has a fixed roster of named built-ins joins the menu tier through `ParamChoices` instead: provide `paramChoices`, a list of `(name, value)` pairs, and the inspector shows the humanized names. `LightingPreset` conforms out of the box. The type's `Equatable` is what lets the menu find the current selection, which is also why `Easing` (a closure wrapper, no equality) and the parameterized `Material` finishes don't take this route.
+
+The color well opens the system color panel, eyedropper included, so a sketch's palette is tunable live. The vector, rectangle, and insets forms take a range per field and clamp each independently; the min/max pair stays ordered inside its `in:` bounds, with a minimum dragged past the maximum pushing the maximum along.
 
 #### Your own types
 
-`ParamValue` is public: conform a type by providing the clamp, the `ParamStored` round-trip, and the `ParamControl` it edits with. The control must be one of the existing kinds (a custom type presents as a slider, menu, and so on; the inspector doesn't take custom rows), so the conformance is really a mapping from your type onto the closest built-in control. `ParamOption` covers the common case (any `CaseIterable` enum) with no work; reach for a full `ParamValue` conformance only when a wrapped scalar or a small catalog type genuinely wants to be a knob.
+`ParamValue` is public: conform a type by providing the clamp, the `ParamStored` round-trip, and the `ParamControl` it edits with. The control must be one of the existing kinds (a custom type presents as a slider, menu, fields, and so on; the inspector doesn't take custom rows), so the conformance is really a mapping from your type onto the closest built-in control. `ParamOption` covers the common case (any `CaseIterable` enum) and `ParamChoices` the named-catalog one, both with almost no work; reach for a full `ParamValue` conformance only when a wrapped scalar or compound type genuinely wants to be a knob.
 
 <a name="groups"></a>
 
@@ -143,4 +150,4 @@ Assignment retargets (and glides, when smoothed); `set(_:)` lands immediately. T
 
 For building your own control surface, `parameters()` returns the sketch's knobs as `[ParamHandle]`: a stable `name` key, a display `label`, the `icon` and `group` metadata, and the type-erased `param`. Its `control` describes the matching UI (kind, ranges, options, and live get/set closures), and `stored` / `restore(_:)` round-trip the value through the small `ParamStored` payload the hosts persist. The live host builds its inspector from exactly this; most sketches never call it.
 
-The [Parameters example](../../Examples/Live/Parameters/Sketch.swift) is the worked demo: the full typed family in three groups driving a ring pattern, made for `swift run OllinLive Examples/Live/Parameters/Sketch.swift`.
+The [Parameters example](../../Examples/Live/Parameters/Sketch.swift) is the worked demo: a spread of the typed family in three groups driving a ring pattern, made for `swift run OllinLive Examples/Live/Parameters/Sketch.swift`.

@@ -64,7 +64,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 
 - [`Math`](./Helpers/Math.md) - `map`, `dist`, `lerp`, and `Double.tau`
 - [`Animation`](./Helpers/Animation.md) - the `Easing` curves, `@Eased` (ease toward a target), and `@Smoothed` (smooth a noisy signal)
-- [`Parameters`](./Helpers/Parameters.md) - `@Param` tunable knobs: typed inspector controls (slider, stepper, toggle, menu, color well, vector fields) in grouped cards, value scrubbing, optional smoothing, and binding from OSC or MIDI
+- [`Parameters`](./Helpers/Parameters.md) - `@Param` tunable knobs: typed inspector controls (from sliders and toggles to menus, color wells, text, and geometry fields) in grouped cards, value scrubbing, optional smoothing, and binding from OSC or MIDI
 - [`Input`](./Helpers/Input.md) - mouse and keyboard
 - [`Audio`](./Helpers/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`/`spectrum`/band values you read in `draw()`
 
