@@ -19,9 +19,9 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - Period (one full turn = one cycle; time * tau / period) and amplitude (the swing = the radius) (Ch 3)
 - Phase as a head start inside sin; phase from position makes a wave in space (Ch 3) - reuse Images/03-MotionAndTime/Phase.jpg
 - map carries a value between ranges by keeping its fraction along; lerp walks a to b by t (Ch 3) - reuse Images/03-MotionAndTime/MapAndLerp.jpg
-- Wrapping time into looping 0...1 progress (truncatingRemainder), and the out-and-back fold (Ch 3)
+- Wrapping time into looping 0...1 progress (loopProgress; fract underneath), and the out-and-back fold (pingPong) (Ch 3)
 - Reading a shaping curve: input along the bottom, reshaped output up; spacing = speed (Ch 3) - reuse Images/03-MotionAndTime/ShapingCurves.jpg
-- step as an if; smoothstep as the gentle S (t * t * (3 - 2 * t)) (Ch 3)
+- step as an if; smoothstep as the gentle S between two edges (t * t * (3 - 2 * t)), edges as a soft window (Ch 3)
 - Frame-rate independence: derive from time, or scale steps by deltaTime (Ch 3) - reuse Images/03-MotionAndTime/DeltaTime.jpg
 - The perfect loop: every time term completes whole cycles in the loop length (Ch 3)
 - Pseudo-randomness: a deterministic scramble; the seed picks where the sequence starts (Ch 4)

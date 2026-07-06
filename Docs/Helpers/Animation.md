@@ -8,11 +8,42 @@ Motion is the default in Ollin, so most movement falls out of a `time`-driven te
 
 ### Contents
 
+- [Looping progress](#loop): `loopProgress`, `pingPong`
 - [Easing curves](#easing)
 - [The curve catalog](#catalog)
 - [`@Eased`](#eased)
 - [`@Smoothed`](#smoothed)
 - [`Timeline`](#timeline)
+
+<a name="loop"></a>
+
+### Looping progress
+
+```swift
+loopProgress(over duration: Double, phase: Double = 0) -> Double
+pingPong(over duration: Double, phase: Double = 0) -> Double
+```
+
+Most repeating motion starts from a `0...1` progress that laps on a fixed period. `loopProgress(over:)` reads the sketch clock and hands you exactly that: `0...1` over `duration` seconds, wrapping back to `0` as each lap completes. `pingPong(over:)` is its out-and-back fold, `0` up to `1` and back to `0` over the same `duration`, so the motion it drives retraces its path instead of snapping home:
+
+```swift
+let t = loopProgress(over: 3)                       // 0...1, every 3 seconds
+let x = lerp(140, width - 140, t)                   // cross, snap back, cross again
+
+let back = pingPong(over: 3)                        // 0 -> 1 -> 0, every 3 seconds
+let y = lerp(200, height - 200, back)               // sweep out and back forever
+```
+
+Under the hood a lap is just the clock wrapped by its period, `fract(time / duration)`; the helper spells it so a sketch doesn't have to. `phase` shifts the loop forward by a fraction of its length (`0.5` starts halfway through), which is the staggered-neighbors trick in one argument:
+
+```swift
+for (i, cell) in grid(columns: 12, rows: 1).cells.enumerated() {
+    let t = pingPong(over: 3, phase: Double(i) / 12)   // each column a little ahead
+    drawCircle(center: cell.center, radius: 12 + t * 28)
+}
+```
+
+Progress from these helpers feeds everything below: reshape it with an easing curve, or hand it straight to `lerp`, a [`Ramp`](../Drawing/Color.md), or a rotation.
 
 <a name="easing"></a>
 
@@ -21,7 +52,7 @@ Motion is the default in Ollin, so most movement falls out of a `time`-driven te
 An `Easing` maps normalized progress (`0...1`) onto a shaped `0...1`. Call it like a function, and pair it with [`lerp`](../Helpers/Math.md#lerp) to interpolate between two values along the curve:
 
 ```swift
-let t = (time / 2).truncatingRemainder(dividingBy: 1)        // 0...1, looping
+let t = loopProgress(over: 2)                                // 0...1, looping
 let x = lerp(120, width - 120, Easing.easeInOutCubic(t))     // eased across the canvas
 drawCircle(x, height / 2, 40 * scale)
 ```
@@ -71,7 +102,7 @@ let gentle = Easing { t in t * t * (3 - 2 * t) }   // a hand-rolled smoothstep
 
 The back, elastic, and bounce families overshoot: back dips past the start and overshoots the target, elastic springs around it, and bounce settles in steps. The other seven stay within `0...1`.
 
-Three friendly aliases cover the common case: `.easeIn`, `.easeOut`, and `.easeInOut` map to the cubic forms. `.smoothStep` is a Hermite smoothstep, a gentler S than `easeInOut`.
+Three friendly aliases cover the common case: `.easeIn`, `.easeOut`, and `.easeInOut` map to the cubic forms. `.smoothstep` is a Hermite smoothstep, a gentler S than `easeInOut` and the same curve as the bare [`smoothstep(0, 1, t)`](../Helpers/Math.md#shaping).
 
 The [EasingGallery example](../../Examples/Motion/EasingGallery/Sketch.swift) plots all thirty so you can see the shapes side by side.
 
@@ -165,4 +196,6 @@ x = move.value
 The clock advances in seconds, so a timeline runs the same at any frame rate. `loops` wraps it; `progress` is `0...1` over the whole sequence; `isFinished` reports when a non-looping run reaches the end; `restart()` and `seek(to:)` move the clock. It works on any `Tweenable` value (`Double`, `Vector2`, `Vector3`), so a `Timeline<Vector3>` sequences a position through space.
 
 Like `@Eased`, a `Timeline` is advanced for you once per frame, but only when it is a **stored property on the sketch that exists before the first frame** (declared as a property, or assigned in `setup()`), the same rule `@Eased` follows. One created later inside `draw()`, or held in a local or a collection, is not picked up; advance it by hand with `tl.advance(by: deltaTime)` each frame. The cinematic [camera moves](../3D/Camera.md#catalog) drive their own timelines internally, so this rule never bites there.
+
+The [Timeline example](../../Examples/Motion/Timeline/Sketch.swift) walks a dot around a square on one `Timeline<Vector2>`, a different easing per side with a hold at every corner, while a second timeline breathes its size; the bar underneath tracks `progress` with a tick per keyframe.
 

@@ -80,27 +80,26 @@ let radius = map(sin(time * .tau / 4), -1, 1, 40, 220)
 drawCircle(width / 2, height / 2, radius)
 ```
 
-Read it as a sentence: "take this value, which lives in -1...1, and speak it in 40...220." A breathing circle, and every number in sight says what it means. (By default `map` extrapolates past the ends; add `clamp: true` to pin the result inside the target range. That option earns its keep in the payoff.)
+Read it as a sentence: "take this value, which lives in -1...1, and speak it in 40...220." A breathing circle, and every number in sight says what it means. (By default `map` extrapolates past the ends; add `clamp: true` to pin the result inside the target range.)
 
 Its little sibling `lerp(a, b, t)` skips the first range: `t` is already a 0...1 "how far along", the same `t` you fed to `Color.mix` and ramps in Chapter 2, and `lerp` returns the point that far from `a` to `b`. `lerp(140, 940, 0.5)` is halfway, 540.
 
-Which raises a question: where does a moving `t` come from? From the clock, by wrapping it. Divide `time` by how long one pass should take, and keep only the fractional part:
+Which raises a question: where does a moving `t` come from? From the clock, by wrapping it. Divide `time` by how long one lap should take, and keep only the fraction of the current lap you're through. That move is so common it has a name; every sketch can just ask:
 
 ```swift
-let t = (time / 3).truncatingRemainder(dividingBy: 1)   // 0...1, every 3 seconds
+let t = loopProgress(over: 3)          // 0...1, every 3 seconds
 let x = lerp(140, width - 140, t)
 drawCircle(x, height / 2, 50)
 ```
 
-The dot crosses the canvas in three seconds, snaps back, and crosses again. If the snap offends you (it should, a little), fold the trip in half so it goes out and comes back:
+The dot crosses the canvas in three seconds, snaps back, and crosses again. There's no magic inside: `loopProgress(over: 3)` is `fract(time / 3)`, where `fract` keeps a number's fractional part, so 7.5 seconds in is `fract(2.5)`, halfway through the third lap. (`fract` is yours too, whenever you want a wrap by hand.)
+
+If the snap offends you (it should, a little), ask for the fold instead: `pingPong(over:)` runs 0 up to 1 and back to 0 over the same period, so the trip retraces itself instead of teleporting home:
 
 ```swift
-var trip = t * 2
-if trip > 1 { trip = 2 - trip }        // 0 to 1, then back to 0
-let x = lerp(140, width - 140, trip)
+let back = pingPong(over: 3)           // 0 to 1 to 0, every 3 seconds
+let x = lerp(140, width - 140, back)
 ```
-
-> **Swift note.** `truncatingRemainder(dividingBy:)` is the `%` you met in Chapter 1, spelled the way Swift requires for numbers with fractional parts. `(time / 3).truncatingRemainder(dividingBy: 1)` divides time into 3-second laps and reports how far through the current lap you are, as a fraction.
 
 ## Shaping time
 
@@ -114,15 +113,17 @@ Because they're functions, you can draw them, and drawn is the only way they mak
 - **step** is an `if` wearing a function costume: 0 until the halfway point, then 1. No in-between at all, which is exactly what you want for a blink, a flip, a light switching on.
 - **smoothstep** is the S between them, and it's the one to internalize. Follow the curve: it leaves the floor gently, hurries through the middle, and settles onto the ceiling gently. In the dot strip, that's tight spacing, wide spacing, tight spacing: ease out, travel, ease in. No corners, no jolt, just a motion that feels finished.
 
-In Ollin, smoothstep ships as `Easing.smoothStep`, and you call it like any function:
+In Ollin both ship as bare functions, `step(edge, x)` and `smoothstep(edge0, edge1, x)`. The extra numbers are *edges*: where the ramp begins and where it ends. With the edges at 0 and 1, smoothstep is exactly the S in the figure:
 
 ```swift
-let t = (time / 3).truncatingRemainder(dividingBy: 1)
-let x = lerp(140, width - 140, Easing.smoothStep(t))
+let t = loopProgress(over: 3)
+let x = lerp(140, width - 140, smoothstep(0, 1, t))
 drawCircle(x, height / 2, 50)
 ```
 
-Same dot, same three seconds, but now it *departs* and *arrives*. (Under the hood it's one line of algebra, `t * t * (3 - 2 * t)`; you'll never need to know that, but it's pleasant that the whole S fits in a pocket.) This little S-curve is one of the great workhorses of computer graphics; when you reach shaders in Chapter 15, it'll be there waiting, doing per-pixel what it does per-frame here.
+Same dot, same three seconds, but now it *departs* and *arrives*. (Under the hood the S is one line of algebra, `t * t * (3 - 2 * t)`; you'll never need to know that, but it's pleasant that the whole curve fits in a pocket.)
+
+And because the edges are yours to place, smoothstep is more than a reshape: it's a **window cutter**. `smoothstep(0.3, 1.0, wave)` reads "0 until the wave climbs past 0.3, 1 once it reaches the top, and a soft shoulder in between", which turns any signal into a smooth spotlight. Hold that thought; the payoff piece runs on it. This little S-curve is one of the great workhorses of computer graphics; when you reach shaders in Chapter 15, it'll be there waiting, spelled exactly the same, doing per-pixel what it does per-frame here.
 
 ## A catalog of curves
 
@@ -132,9 +133,9 @@ Once you can read curve-and-strip, you can read any easing function at a glance,
 
 The top row is polite: quadratics and cubics that stay inside 0...1 and differ in how hard they lean. The bottom row has personality on purpose. `easeOutBack` overshoots the target and comes back, like reaching past a shelf. `easeOutElastic` arrives like a plucked rubber band. `easeOutBounce` drops the value onto its target in shrinking hops. Watch four of them run the same trip:
 
-<img src="Images/03-MotionAndTime/CurvesRace.gif" alt="Four dots running the same out-and-back trip on linear, easeInQuad, easeOutQuad, and smoothStep curves, their spacing differing in flight" width="600">
+<img src="Images/03-MotionAndTime/CurvesRace.gif" alt="Four dots running the same out-and-back trip on linear, easeInQuad, easeOutQuad, and smoothstep curves, their spacing differing in flight" width="600">
 
-Same start, same finish, same four seconds. The only difference is *when* each dot spends its time. That's the whole craft of easing in one sentence: an animation's character lives in the spacing, not the path. Swap `Easing.smoothStep` for `Easing.easeOutBounce` in the dot listing above and nothing about the trip changes except everything about how it feels.
+Same start, same finish, same four seconds. The only difference is *when* each dot spends its time. That's the whole craft of easing in one sentence: an animation's character lives in the spacing, not the path. Hand the dot listing `Easing.easeOutBounce(t)` in place of `smoothstep(0, 1, t)` and nothing about the trip changes except everything about how it feels. (The S itself lives in the catalog too, as `Easing.smoothstep`, for anywhere that wants a curve by name.)
 
 The full table of thirty names is in the [Animation](../Docs/Helpers/Animation.md#catalog) reference, and the [EasingGallery example](../Examples/Motion/EasingGallery/Sketch.swift) plots them all side by side.
 
@@ -206,7 +207,7 @@ The plot above *is* this timeline, sampled and drawn by an Ollin sketch like eve
 
 ## The payoff: a loop that never ends
 
-Now the piece from the top of the chapter, and the one new idea it needs: the **perfect loop**. A GIF plays its frames in a ring, so if the last frame flows into the first, the motion reads as endless. The recipe is exactly the circle-to-sine picture: `sin` repeats every full turn, so *pick a loop length, and make every time-driven term complete a whole number of turns in it*. In code: choose `loopTime`, and only put `time` into expressions as `time * .tau / loopTime` times a whole number. Phase offsets are free, they just shift the start of each swing. Space has the same rule bent into a circle: a wave wrapped around a ring must fit a whole number of times, or it won't meet itself.
+Now the piece from the top of the chapter, and the one new idea it needs: the **perfect loop**. A GIF plays its frames in a ring, so if the last frame flows into the first, the motion reads as endless. The recipe is exactly the circle-to-sine picture: `sin` repeats every full turn, so *pick a loop length, and make every time-driven term complete a whole number of turns in it*. In code: choose a `loopTime`, make one beat from it, `loopProgress(over: loopTime) * .tau`, exactly one full turn per lap, and let that beat (times a whole number) be the only time in the sketch. Phase offsets are free, they just shift the start of each swing. Space has the same rule bent into a circle: a wave wrapped around a ring must fit a whole number of times, or it won't meet itself.
 
 That's the entire theory of the piece. Make `MySketches/RingPulse.swift`:
 
@@ -226,7 +227,7 @@ final class RingPulse: Sketch {
     override func draw() {
         background(Color(hex: 0x0E1116))
         noStroke()
-        let beat = time * .tau / loopTime          // one full cycle per loop
+        let beat = loopProgress(over: loopTime) * .tau   // one full turn per loop
         for ring in 0..<5 {
             let radius = 110.0 + Double(ring) * 82
             let count = 14 + ring * 6
@@ -236,7 +237,7 @@ final class RingPulse: Sketch {
             for i in 0..<count {
                 let angle = Double(i) / Double(count) * .tau
                 let wave = sin(angle * Double(waves) - beat * 2 * direction)
-                let lit = Easing.smoothStep(map(wave, 1 - pulseWidth * 2, 1, 0, 1, clamp: true))
+                let lit = smoothstep(1 - pulseWidth * 2, 1, wave)
                 fill(Color.mix(base, Color(hex: 0xFFF6E8), t: lit * 0.4))
                 let x = width / 2 + cos(angle) * (radius + lit * 18)
                 let y = height / 2 + sin(angle) * (radius + lit * 18)
@@ -249,9 +250,9 @@ final class RingPulse: Sketch {
 
 Run it with `swift run OllinLive MySketches/RingPulse.swift` and take the interesting lines apart:
 
-- `beat` is the loop's heartbeat: it grows by exactly one full turn every `loopTime` seconds. The only other time term in the sketch is `beat * 2`, a whole multiple, so frame 0 and frame `loopTime` are identical. That's the loop rule, enforced by construction.
+- `beat` is the loop's heartbeat: `loopProgress` laps 0...1 once every `loopTime` seconds, so times `.tau` it turns exactly one full circle per lap. The only other time term in the sketch is `beat * 2`, a whole multiple, so frame 0 and frame `loopTime` are identical. That's the loop rule, enforced by construction.
 - `wave` is the phase trick from earlier, bent into a circle: each dot's head start is its angle times the wave count, so the crests *travel* around the ring. The count has to stay whole or the wave won't meet itself where the ring closes, so `waves` starts at `3` (not `3.0`): a whole-number property makes a whole-number knob, stepping 1, 2, 3 instead of sliding through fractions. `Double(waves)` converts it for the math, the same move as Chapter 1's `Double(i)`.
-- `lit` is the chapter's shaping section in one line, and worth stealing: a **soft spotlight**. The clamped `map` cuts a window out of the wave, everything below the threshold pinned to 0 and the crest to 1, and `smoothstep` rounds the window's shoulders so dots swell and fade instead of switching. Widen `Pulse width` and the window opens; the whole ring breathes.
+- `lit` is the window cutter from the shaping section earning its keep: a **soft spotlight**. The wave lives in -1...1, and smoothstep's edges carve out its crest, everything below the threshold 0, the peak 1, soft shoulders between, so dots swell and fade instead of switching. Widen `Pulse width` and the lower edge drops; the window opens and the whole ring breathes.
 - Everything `lit` touches is a `lerp` in spirit: the color leans toward warm white by `lit * 0.4` (Chapter 2's `Color.mix`), the dot lifts outward by `lit * 18`, and swells from 6 up to 26. One shaped value, three payoffs.
 - `direction` flips alternate rings, which is most of why the piece feels alive rather than mechanical.
 
@@ -267,7 +268,7 @@ Then make it yours:
 
 - Set `Waves` to 1 for a slow radar sweep, or 6 for a glitter of small pulses.
 - Add a breath: make each `radius` line `radius + sin(beat + Double(ring)) * 10`. One whole multiple of the beat, so the loop survives. Check it by re-exporting.
-- Replace `Easing.smoothStep` in `lit` with `Easing.easeOutBounce` and watch the pulses land instead of glide.
+- Replace the `smoothstep` in `lit` with `step(1 - pulseWidth * 2, wave)` and the glow becomes a hard blink: same window, no shoulders. Put the smoothstep back and appreciate the shoulders.
 - Make all rings run the same `direction`, or give the ramp four colors of your own.
 
 ## Where this comes from
@@ -276,11 +277,11 @@ The named easing curves are Robert Penner's easing equations, published with his
 
 ## Go deeper
 
-- [Math helpers](../Docs/Helpers/Math.md): `map`, `lerp`, `dist`, and the constants.
+- [Math helpers](../Docs/Helpers/Math.md): `map`, `lerp`, `dist`, the shaping scalars, and the constants.
 - [Animation](../Docs/Helpers/Animation.md): the full easing catalog, `@Eased`, `@Smoothed`, and `Timeline`.
 - [Sketch](../Docs/Core/Sketch.md#temporal-state): the clock properties in one table.
 - [Export](../Docs/Output/Export.md): stills, sequences, video, GIF sizing, and render quality.
-- Worked examples, all in [`Examples/Motion/`](../Examples/Motion/): `Breathing` (map on a pulse), `Easing` (four dots racing to a click), `EasingGallery` (all thirty curves), `Smoothing` (the filter chasing a shaky target), `SineSweep`, and `Orbits`.
+- Worked examples, all in [`Examples/Motion/`](../Examples/Motion/): `Breathing` (map on a pulse), `Easing` (four dots racing to a click), `EasingGallery` (all thirty curves), `Timeline` (a scripted tour of a square, one easing per side), `Smoothing` (the filter chasing a shaky target), `SineSweep`, and `Orbits`.
 
 ---
 

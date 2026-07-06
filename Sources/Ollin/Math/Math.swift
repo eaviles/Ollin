@@ -51,3 +51,97 @@ public func dist(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) -> Doub
     let dy = y2 - y1
     return (dx * dx + dy * dy).squareRoot()
 }
+
+// MARK: Shaping scalars
+//
+// The bare shaping vocabulary, spelled with the same names and argument order
+// as the shader side, so an expression written in `draw()` carries verbatim
+// into per-pixel code. The `Easing` catalog stays the curve library; these are
+// its primitives.
+
+/// Hold `x` within `minValue...maxValue`.
+///
+/// ```swift
+/// let r = clamp(radius, 10, 200)
+/// ```
+public func clamp(_ x: Double, _ minValue: Double, _ maxValue: Double) -> Double {
+    Swift.min(Swift.max(x, minValue), maxValue)
+}
+
+/// The fractional part of `x`: `fract(2.75)` is `0.75`.
+///
+/// Floor-based, so it stays continuous through negative values
+/// (`fract(-0.25)` is `0.75`) and wrapping a growing value never jumps:
+///
+/// ```swift
+/// let t = fract(time / 3)   // 0...1 progress, every 3 seconds
+/// ```
+public func fract(_ x: Double) -> Double {
+    x - x.rounded(.down)
+}
+
+/// `0` below `edge`, `1` at and above it: an `if` as a function.
+///
+/// ```swift
+/// let on = step(0.5, t)   // switches on halfway through
+/// ```
+///
+/// The hard switch of the shaping family; `smoothstep` is its soft sibling.
+public func step(_ edge: Double, _ x: Double) -> Double {
+    x < edge ? 0 : 1
+}
+
+/// The smooth S-ramp between two edges: `0` at or below `edge0`, `1` at or
+/// above `edge1`, easing through the Hermite curve `t * t * (3 - 2 * t)` in
+/// between.
+///
+/// ```swift
+/// let lit = smoothstep(0.3, 1.0, wave)   // a soft window on a -1...1 wave
+/// let s = smoothstep(0, 1, t)            // plain 0...1 reshape (Easing.smoothstep)
+/// ```
+///
+/// The two edges cut a window: everything below `edge0` is off, everything
+/// above `edge1` is fully on, and the transition has no corners. Edges also
+/// run high-to-low (`smoothstep(1, 0, x)` fades the other way).
+public func smoothstep(_ edge0: Double, _ edge1: Double, _ x: Double) -> Double {
+    let t = clamp((x - edge0) / (edge1 - edge0), 0, 1)
+    return t * t * (3 - 2 * t)
+}
+
+// MARK: Looping progress
+
+public extension Sketch {
+    /// How far through a repeating loop the clock is: `0...1` over `duration`
+    /// seconds, wrapping back to `0` as each lap completes.
+    ///
+    /// ```swift
+    /// let t = loopProgress(over: 3)         // 0...1, every 3 seconds
+    /// let x = lerp(140, width - 140, t)     // cross the canvas, snap back
+    /// ```
+    ///
+    /// `phase` shifts the loop forward by a fraction of its length (`0.5`
+    /// starts halfway through). Give neighbors different phases and one loop
+    /// animates them in staggered waves:
+    ///
+    /// ```swift
+    /// let t = loopProgress(over: 3, phase: Double(i) / 12)
+    /// ```
+    func loopProgress(over duration: Double, phase: Double = 0) -> Double {
+        guard duration > 0 else { return 0 }
+        return fract(time / duration + phase)
+    }
+
+    /// Out-and-back progress: `0` up to `1` and back to `0` over `duration`
+    /// seconds, repeating. The ping-pong fold of `loopProgress(over:phase:)`:
+    /// where that snaps back to `0` at each lap, this retraces its path, so
+    /// the motion it drives never jumps.
+    ///
+    /// ```swift
+    /// let t = pingPong(over: 3)             // 0 -> 1 -> 0, every 3 seconds
+    /// let x = lerp(140, width - 140, Easing.easeInOut(t))
+    /// ```
+    func pingPong(over duration: Double, phase: Double = 0) -> Double {
+        let t = loopProgress(over: duration, phase: phase) * 2
+        return t > 1 ? 2 - t : t
+    }
+}

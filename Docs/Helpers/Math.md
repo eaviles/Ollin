@@ -11,6 +11,7 @@ A small, growing set of the familiar creative-coding math functions, callable ba
 - [map](#map)
 - [dist](#dist)
 - [lerp](#lerp)
+- [Shaping scalars](#shaping): `clamp`, `fract`, `step`, `smoothstep`
 - [Constants](#constants)
 
 <a name="map"></a>
@@ -70,6 +71,43 @@ The point `t` of the way from `a` to `b`. `t` is not clamped, so values outside 
 ```swift
 let x = lerp(120, width - 120, Easing.easeInOut(progress))
 ```
+
+A looping `t` driven by the sketch clock comes from [`loopProgress(over:)` and `pingPong(over:)`](../Helpers/Animation.md#loop).
+
+<a name="shaping"></a>
+
+### Shaping scalars
+
+```swift
+clamp(_ x: Double, _ minValue: Double, _ maxValue: Double) -> Double
+fract(_ x: Double) -> Double
+step(_ edge: Double, _ x: Double) -> Double
+smoothstep(_ edge0: Double, _ edge1: Double, _ x: Double) -> Double
+```
+
+The bare shaping vocabulary, spelled with the same names and argument order as
+the [shader library](../Shaders/ShaderLibrary.md), so an expression you write in
+`draw()` carries verbatim into per-pixel shader code. The
+[`Easing`](../Helpers/Animation.md) catalog stays the curve library; these are
+its primitives.
+
+- `clamp(x, lo, hi)` holds `x` within the range.
+- `fract(x)` keeps the fractional part: `fract(2.75)` is `0.75`. Floor-based, so
+  it stays continuous through negative values and wrapping a growing value never
+  jumps.
+- `step(edge, x)` is `0` below `edge` and `1` from it on: an `if` as a function,
+  the hard switch for blinks and flips.
+- `smoothstep(edge0, edge1, x)` is the smooth S-ramp between two edges: `0` at
+  or below `edge0`, `1` at or above `edge1`, no corners in between. The edges
+  cut a soft window out of any signal (reverse them to fade the other way):
+
+```swift
+let lit = smoothstep(0.3, 1.0, sin(angle * 3 - time))  // a soft traveling window
+fill(Color.mix(.navy, .white, t: lit))
+```
+
+`smoothstep(0, 1, t)` is the plain `0...1` reshape, the same curve as
+[`Easing.smoothstep`](../Helpers/Animation.md#catalog).
 
 <a name="constants"></a>
 

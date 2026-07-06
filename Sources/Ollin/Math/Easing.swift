@@ -153,8 +153,10 @@ public struct Easing: Sendable {
     public static let easeOut = easeOutCubic
     /// Friendly default for "ease in and out" — cubic, the classic smooth feel.
     public static let easeInOut = easeInOutCubic
-    /// Hermite smoothstep — a gentler S than `easeInOut`.
-    public static let smoothStep = Easing { t in t * t * (3 - 2 * t) }
+    /// Hermite smoothstep, a gentler S than `easeInOut`. The same curve as the
+    /// bare `smoothstep(0, 1, t)`, packaged as an `Easing` for the APIs that
+    /// take one.
+    public static let smoothstep = Easing { t in t * t * (3 - 2 * t) }
 }
 
 /// A property-wrapper value the sketch advances once per frame — the `@Eased`

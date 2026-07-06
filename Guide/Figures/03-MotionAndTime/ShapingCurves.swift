@@ -19,11 +19,10 @@ final class ShapingCurves: Sketch {
 
         drawPanel(x: 70, title: "linear", note: "steady all the way") { t in t }
         drawPanel(x: 340, title: "step", note: "nothing, then everything") { t in
-            if t < 0.5 { return 0 }
-            return 1
+            step(0.5, t)
         }
         drawPanel(x: 610, title: "smoothstep", note: "gentle, quick, gentle") { t in
-            Easing.smoothStep(t)
+            smoothstep(0, 1, t)
         }
 
         noStroke()

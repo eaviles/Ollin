@@ -17,14 +17,12 @@ final class CurvesRace: Sketch {
         textSize(21)
 
         // Out and back once per 4-second loop.
-        let progress = (time / 4).truncatingRemainder(dividingBy: 1)
-        var trip = progress * 2
-        if trip > 1 { trip = 2 - trip }
+        let trip = pingPong(over: 4)
 
         drawLane(y: 120, label: "linear", t: trip)
         drawLane(y: 230, label: "easeInQuad", t: Easing.easeInQuad(trip))
         drawLane(y: 340, label: "easeOutQuad", t: Easing.easeOutQuad(trip))
-        drawLane(y: 450, label: "smoothStep", t: Easing.smoothStep(trip), hero: true)
+        drawLane(y: 450, label: "smoothstep", t: smoothstep(0, 1, trip), hero: true)
     }
 
     func drawLane(y: Double, label: String, t: Double, hero: Bool = false) {

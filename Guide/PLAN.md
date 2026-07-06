@@ -233,8 +233,8 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Drawing/Drawing.md` (shapes, state, transforms) | Ch 1, Ch 6 | taught |
 | `Drawing/Color.md` (Color, OKLab, palettes, colormaps) | Ch 2 | taught |
 | Gradient paint (`Drawing/Color.md`) | Ch 2 | taught |
-| `Helpers/Math.md` (map, lerp, dist) | Ch 3, Appendix B | taught |
-| `Helpers/Animation.md` (easing, @Eased, @Smoothed, Timeline) | Ch 3 | taught |
+| `Helpers/Math.md` (map, lerp, dist; the shaping scalars clamp/fract/step/smoothstep) | Ch 3, Appendix B | taught |
+| `Helpers/Animation.md` (easing, @Eased, @Smoothed, Timeline; loopProgress/pingPong) | Ch 3 | taught |
 | `Helpers/Input.md` (mouse, keyboard) | Ch 1 | taught |
 | `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 20 | taught (Ch 1 predates the typed family: Int/Bool/enum/Color/Vector2 controls, groups, icons, scrubbing; fold in on the Ch 1 revisit. Chs 2-4 already use whole-number Int knobs.) |
 | `Generators/Random.md` | Ch 4 | taught |
@@ -312,9 +312,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | More model examples (ModelTracker) | Ch 21 |
 | SVG import | Ch 13 |
 | Clipping as drawing state | Ch 6 or 14 |
-| Perfect-loop helpers | Ch 3 (the payoff piece would adopt them) |
-| Bare shaping functions (smoothstep, step, fract, clamp) | Ch 3 + Ch 15 (one vocabulary in both) |
-| `Timeline` worked example | Ch 3 (a "Go deeper" link) |
+| Perfect-loop rendering (looping noise, `--export-loop`) | Ch 3 + Ch 5 |
 | Reproducibility metadata in exports | Ch 4 + Ch 22 |
 | Kaleidoscope symmetry | Ch 6 |
 | Small filter-catalog additions | Ch 14 |

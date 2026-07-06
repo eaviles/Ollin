@@ -20,7 +20,7 @@ struct EasingTests {
         ("easeInBack", .easeInBack), ("easeOutBack", .easeOutBack), ("easeInOutBack", .easeInOutBack),
         ("easeInElastic", .easeInElastic), ("easeOutElastic", .easeOutElastic), ("easeInOutElastic", .easeInOutElastic),
         ("easeInBounce", .easeInBounce), ("easeOutBounce", .easeOutBounce), ("easeInOutBounce", .easeInOutBounce),
-        ("smoothStep", .smoothStep),
+        ("smoothstep", .smoothstep),
     ]
 
     @Test(arguments: EasingTests.all)
@@ -36,7 +36,7 @@ struct EasingTests {
         ("easeOutQuad", .easeOutQuad, 0.5, 0.75),
         ("easeInOutQuad", .easeInOutQuad, 0.5, 0.5),
         ("easeInCubic", .easeInCubic, 0.5, 0.125),
-        ("smoothStep", .smoothStep, 0.5, 0.5),
+        ("smoothstep", .smoothstep, 0.5, 0.5),
     ]
 
     @Test(arguments: EasingTests.midpoints)

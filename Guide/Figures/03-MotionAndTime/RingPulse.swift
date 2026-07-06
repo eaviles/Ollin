@@ -18,7 +18,7 @@ final class RingPulse: Sketch {
     override func draw() {
         background(Color(hex: 0x0E1116))
         noStroke()
-        let beat = time * .tau / loopTime          // one full cycle per loop
+        let beat = loopProgress(over: loopTime) * .tau   // one full turn per loop
         for ring in 0..<5 {
             let radius = 110.0 + Double(ring) * 82
             let count = 14 + ring * 6
@@ -28,7 +28,7 @@ final class RingPulse: Sketch {
             for i in 0..<count {
                 let angle = Double(i) / Double(count) * .tau
                 let wave = sin(angle * Double(waves) - beat * 2 * direction)
-                let lit = Easing.smoothStep(map(wave, 1 - pulseWidth * 2, 1, 0, 1, clamp: true))
+                let lit = smoothstep(1 - pulseWidth * 2, 1, wave)
                 fill(Color.mix(base, Color(hex: 0xFFF6E8), t: lit * 0.4))
                 let x = width / 2 + cos(angle) * (radius + lit * 18)
                 let y = height / 2 + sin(angle) * (radius + lit * 18)

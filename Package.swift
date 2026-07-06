@@ -562,6 +562,7 @@ let package = Package(
         example("Motion/Easing"),
         example("Motion/EasingGallery"),
         example("Motion/Smoothing"),
+        example("Motion/Timeline"),
         example("Motion/Orbits"),
         example("Motion/Linkage"),
         example("Motion/Petals"),

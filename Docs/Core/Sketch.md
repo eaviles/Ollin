@@ -133,6 +133,8 @@ let r = 120 + sin(time) * 40            // animate against the clock
 drawCircle(width / 2, height / 2, r)
 ```
 
+For repeating motion on a fixed period, [`loopProgress(over:)` and `pingPong(over:)`](../Helpers/Animation.md#loop) wrap the clock into looping `0...1` progress.
+
 <a name="canvas"></a>
 
 ### Canvas
