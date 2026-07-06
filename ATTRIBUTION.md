@@ -110,6 +110,7 @@ Ollin's helpers reimplement well-known published techniques, written from the pa
 ### Math, motion & input
 
 - `noise` / `signedNoise` implement Ken Perlin's improved Perlin noise ([*Improving Noise*](https://mrl.cs.nyu.edu/~perlin/paper445.pdf), SIGGRAPH 2002, and his published reference implementation), written from the algorithm, with a contrast calibration so the output fills `0...1`.
+- The looping `noise(loop:)` / `fbm(loop:)` forms use the standard seamless-loop construction: the sample tours a closed circle through a noise field of higher dimension than the output, the technique popularized by Étienne Jacob's [necessary-disorder tutorials](https://necessarydisorder.wordpress.com/) ("Drawing from noise, and then making animated loopy GIFs from there"). The 4D lattice behind the two-coordinate form is the classic 32-gradient extension of Perlin noise (after Stefan Gustavson's [classic-noise reference](https://github.com/stegu/perlin-noise)). Written from the techniques.
 - The seedable `random` generator is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, [*Fast Splittable Pseudorandom Number Generators*](https://doi.org/10.1145/2660193.2660195), OOPSLA 2014), written from the published algorithm.
 - `randomGaussian` uses the Marsaglia polar method for normal-distributed samples.
 - The named `Easing` curves are Robert Penner's easing equations, written from the formulas catalogued at [easings.net](https://easings.net) (Andrey Sitnik and Ivan Solovev).

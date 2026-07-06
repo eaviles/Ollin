@@ -6,7 +6,7 @@
 
 *A practical introduction to creative coding.*
 
-This guide teaches creative coding from zero, using [Ollin](../README.md). You write small programs called sketches that draw, move, and react, and along the way you pick up the techniques the field is built on: randomness, noise, forces, agents, shaders, simulation, 3D. Each chapter teaches a few ideas through short runnable steps and ends with a finished piece you made yourself.
+This guide teaches creative coding from zero, using [Ollin](../README.md). You write small programs called sketches that draw, move, and react, and along the way you pick up the techniques the field is built on: randomness, noise, forces, flocks, shaders, simulation, 3D. Each chapter teaches a few ideas through short runnable steps and ends with a finished piece you made yourself.
 
 <img src="Images/01-HelloOllin/HelloMotion.jpg" alt="A ring of drifting, breathing circles: the Chapter 1 piece" width="560">
 
@@ -53,7 +53,7 @@ The guide is being written chapter by chapter; titles below without links are st
 
 8. **Vectors, gently.** Vectors as arrows; position, velocity, acceleration.
 9. **Forces and physics.** Springs and particles, gravity and drag, rigid bodies and joints.
-10. **Agents.** Flocking, emergence, and lines that grow by themselves.
+10. **Flocks and swarms.** Flocking, emergence, and lines that grow by themselves: the autonomous agents of classic generative art (the rule-following kind, no AI involved).
 11. **Growing things.** L-systems, recursion, and constraint-solved tilings.
 12. **Fields and flow.** Flow fields, streamlines, advection, strange attractors.
 13. **Shapes as material.** Paths, booleans, Voronoi, packing, hatching, and work made for pen plotters.

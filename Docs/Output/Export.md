@@ -98,6 +98,8 @@ swift run Example-Motion-Breathing --export-gif breathing.gif --seconds 4 --gif-
 
 In code it's `OllinApp.exportGIF(_:to:frames:fps:width:skipSeconds:)`. GIF is palette-limited (256 colors a frame) and heavy per second next to video, so the format wants **short loops at modest sizes** — `--gif-width` downscales the output (height follows the canvas aspect), which is usually the difference between a few hundred kilobytes and many megabytes. For anything long or subtle, `--export-video` is the better tool.
 
+Watch out for **full-frame churn**: a piece where every pixel moves every frame (a drifting field, a full-canvas texture) defeats GIF's frame-to-frame compression entirely, so even a modest width can land in the tens of megabytes. Lowering `--fps` cuts such a file roughly in proportion, and sparse motion over a stable background compresses far better.
+
 One timing quirk is inherent to the format: GIF stores each frame's delay in whole centiseconds, so the achievable rates are 50, 33.3, 25, 20, … fps. The requested `--fps` (default 25, which is exact) is quantized to the closest achievable rate, and the sketch's clock runs at *that* rate, so motion always plays back at true speed and the clip keeps its requested duration.
 
 ### Vector: SVG

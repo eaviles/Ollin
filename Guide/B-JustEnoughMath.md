@@ -34,4 +34,5 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - A field: an answer at every point of a plane; a third input as drifting time (Ch 5) - reuse Images/05-Noise/NoiseTerrain.jpg
 - Decorrelation by offset: far-apart rows of one field are independent signals (Ch 5)
 - Layering scales: weighted sum of a big shape and a small detail, weights summing to 1 (Ch 5) - reuse Images/05-Noise/NoiseLayers.jpg
+- Looping a drift: tour a closed circle through the field instead of a straight line, and the lap ends where it began (the loop: parameter) (Ch 5)
 -->

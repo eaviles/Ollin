@@ -17,7 +17,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 7. Words and pictures | `07-WordsAndPictures.md` | not started |
 | 8. Vectors, gently | `08-Vectors.md` | not started |
 | 9. Forces and physics | `09-ForcesAndPhysics.md` | not started |
-| 10. Agents | `10-Agents.md` | not started |
+| 10. Flocks and swarms | `10-FlocksAndSwarms.md` | not started |
 | 11. Growing things | `11-GrowingThings.md` | not started |
 | 12. Fields and flow | `12-FieldsAndFlow.md` | not started |
 | 13. Shapes as material | `13-ShapesAsMaterial.md` | not started |
@@ -114,7 +114,8 @@ Payoff: an interactive physics toy (a hanging chain or tumbling stack the mouse 
 Figures: force-accumulation diagram; spring-rest-length diagram; soft-vs-rigid contact sheet; the toy.
 Draws from: `Docs/Simulation/Physics.md`; `Examples/Physics/`.
 
-**10. Agents.**
+**10. Flocks and swarms.**
+(Retitled from "Agents", 2026-07-06: the field's classic word for these rule-following creatures now reads as AI assistants, and this book will outlive the collision. The chapter still teaches the term: open with a one-sentence disambiguation, crediting Craig Reynolds' 1986 *autonomous agents*, coined decades before "agent" meant software wielding a chatbot, then speak in flock/boid/creature language. Never use "agent" bare in headings or the TOC.)
 Teaches: local rules → global behavior; the three boid rules, each visualized alone before combining; perception radius; `Boids`; differential growth as "a line that wants space"; stateful systems you step (holding a class across frames).
 Assumes: Ch 8 (Ch 9 helps).
 Payoff: a living flock piece, colored by heading.
@@ -238,7 +239,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Helpers/Input.md` (mouse, keyboard) | Ch 1 | taught |
 | `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 20 | taught (Ch 1 predates the typed family: Int/Bool/enum/Color/Vector2 controls, groups, icons, scrubbing; fold in on the Ch 1 revisit. Chs 2-4 already use whole-number Int knobs.) |
 | `Generators/Random.md` | Ch 4 | taught |
-| `Generators/Noise.md` (noise, signedNoise, curlNoise) | Ch 5; curl in Ch 12/16 | taught |
+| `Generators/Noise.md` (noise, signedNoise, loop:, fbm, curlNoise) | Ch 5; curl in Ch 12/16 | taught |
 | `Drawing/Geometry.md`: `Grid`, `Insets` | Ch 6 | taught |
 | `Drawing/Truchet.md` | Ch 6 | taught |
 | `Drawing/Text.md` (three font kinds, textToShapes, atlas) | Ch 7 | taught |
@@ -312,7 +313,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | More model examples (ModelTracker) | Ch 21 |
 | SVG import | Ch 13 |
 | Clipping as drawing state | Ch 6 or 14 |
-| Perfect-loop rendering (looping noise, `--export-loop`) | Ch 3 + Ch 5 |
+| Perfect-loop export (`--export-loop`) | Ch 3 |
 | Reproducibility metadata in exports | Ch 4 + Ch 22 |
 | Kaleidoscope symmetry | Ch 6 |
 | Small filter-catalog additions | Ch 14 |

@@ -1,9 +1,9 @@
 // figure: frame=90
 //
 // Guide payoff (Chapter 5): a meadow of blades bending in a noise-driven
-// wind. Every blade grows by gliding through one 3D noise field; the third
-// dimension drifts out and back (pingPong), so an exported GIF of one
-// 6-second pass loops seamlessly.
+// wind. Every blade grows by gliding through one noise field, toured on a
+// closed loop (the loop: parameter), so an exported GIF of one 6-second
+// pass loops seamlessly.
 import Ollin
 
 final class Meadow: Sketch {
@@ -25,19 +25,19 @@ final class Meadow: Sketch {
         noFill()
         randomSeed(3)                          // the same planting every frame
         let up = -Double.tau / 4
-        let z = pingPong(over: 6) * 1.4        // the field drifts out, then back
+        let breeze = loopProgress(over: 6)     // one lap of wind per six seconds
 
         for row in 0..<38 {
             for col in 0..<40 {
                 let x = 45.0 + Double(col) * 26 + random(-1, 1) * 8
                 let y = 95.0 + Double(row) * 26 + random(-1, 1) * 8
-                let weather = noise(x * 0.0011, y * 0.0011, z)
+                let weather = noise(x * 0.0011, y * 0.0011, loop: breeze, radius: 0.5)
                 let blade = ramp.color(at: weather)
                 strokeWeight(1.5 + weather * 2.3)
 
                 var px = x, py = y
                 for segment in 0..<6 {
-                    let angle = up + signedNoise(px * 0.0016, py * 0.0016, z) * 1.15 * sway
+                    let angle = up + signedNoise(px * 0.0016, py * 0.0016, loop: breeze, radius: 0.5) * 1.15 * sway
                     let nx = px + cos(angle) * 8
                     let ny = py + sin(angle) * 8
                     stroke(Color.mix(blade, Color(hex: 0xFFF2CC), t: Double(segment) / 5 * glow))
