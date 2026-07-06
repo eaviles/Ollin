@@ -10,7 +10,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 |---|---|---|
 | 1. Hello, Ollin | `01-HelloOllin.md` | done |
 | 2. Color that works | `02-Color.md` | done |
-| 3. Motion and time | `03-MotionAndTime.md` | not started |
+| 3. Motion and time | `03-MotionAndTime.md` | done |
 | 4. Randomness | `04-Randomness.md` | not started |
 | 5. Noise | `05-Noise.md` | not started |
 | 6. Grids and repetition | `06-GridsAndRepetition.md` | not started |

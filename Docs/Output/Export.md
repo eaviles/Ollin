@@ -6,7 +6,12 @@
 
 Save what a sketch draws — as raster (PNG frames and image sequences), as **motion** (a video file or an animated GIF, encoded directly), or as **vector** (SVG, for pen plotters and any vector pipeline). Export runs the sketch *headlessly*: it calls `setup()`, advances the clock to the frame you ask for, runs `draw()`, and writes the result. No window opens, so the same call works from a script or a render farm.
 
-Most exports are reached by a command-line flag on any example's executable; the same work is available as functions on `OllinApp` if you're driving it yourself.
+Most exports are reached by a command-line flag on any example's executable; the same work is available as functions on `OllinApp` if you're driving it yourself. A loose sketch file (one you run through the live host, no target of its own) gets the identical flag surface through `OllinLive`, which compiles the file and runs the export headlessly instead of opening a window:
+
+```sh
+swift run OllinLive MySketches/Loop.swift --export-gif loop.gif --seconds 4 --gif-width 540
+swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
+```
 
 ### Contents
 

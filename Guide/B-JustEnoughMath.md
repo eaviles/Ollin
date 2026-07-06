@@ -15,4 +15,13 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - t in 0...1 as "how far along" (Ch 2, mixing and ramps; becomes lerp in Ch 3)
 - The squeeze: sin(x) * 0.5 + 0.5 maps -1...1 into 0...1 (Ch 2; becomes map in Ch 3)
 - Perceptual vs numeric color distance, why RGB midpoints go muddy (Ch 2) - reuse Images/02-Color/MixingSpaces.jpg
+- Sine as the height of a point walking a circle; cosine as its across (Ch 3) - reuse Images/03-MotionAndTime/CircleToSine.jpg
+- Period (one full turn = one cycle; time * tau / period) and amplitude (the swing = the radius) (Ch 3)
+- Phase as a head start inside sin; phase from position makes a wave in space (Ch 3) - reuse Images/03-MotionAndTime/Phase.jpg
+- map carries a value between ranges by keeping its fraction along; lerp walks a to b by t (Ch 3) - reuse Images/03-MotionAndTime/MapAndLerp.jpg
+- Wrapping time into looping 0...1 progress (truncatingRemainder), and the out-and-back fold (Ch 3)
+- Reading a shaping curve: input along the bottom, reshaped output up; spacing = speed (Ch 3) - reuse Images/03-MotionAndTime/ShapingCurves.jpg
+- step as an if; smoothstep as the gentle S (t * t * (3 - 2 * t)) (Ch 3)
+- Frame-rate independence: derive from time, or scale steps by deltaTime (Ch 3) - reuse Images/03-MotionAndTime/DeltaTime.jpg
+- The perfect loop: every time term completes whole cycles in the loop length (Ch 3)
 -->

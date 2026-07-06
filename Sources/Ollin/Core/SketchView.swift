@@ -1334,7 +1334,29 @@ public extension Sketch {
     static func main() {
         // `swift run Example-X --export <path> [--frame N]` writes a PNG and
         // exits (no window); otherwise the sketch runs in a window as usual.
-        let args = CommandLine.arguments
+        if OllinApp.handleCommandLine(makeSketch: { Self() }) { return }
+        OllinApp.run(Self())
+    }
+}
+
+public extension OllinApp {
+    /// Handle the shared headless command-line surface (the export flags
+    /// `--export`, `--export-sequence`, `--export-video`, `--export-gif`,
+    /// `--export-svg` with their options, plus `--bench`) against a sketch
+    /// supplied on demand.
+    ///
+    /// Returns `true` when a headless flag was recognized (the work ran, or a
+    /// usage message was printed), meaning the caller should exit rather than
+    /// open a window; `false` when the arguments ask for no headless work.
+    /// `makeSketch` is called only when a flag matches, so a host may pass an
+    /// expensive factory at no cost to the windowed path: OllinLive hands in a
+    /// closure that compiles a loose sketch file, which is how any watched
+    /// sketch gains the same export surface as a standalone `@main` sketch.
+    /// `Sketch.main()` routes every `@main` sketch through here.
+    @MainActor
+    @discardableResult
+    static func handleCommandLine(_ args: [String] = CommandLine.arguments,
+                                  makeSketch: () -> Sketch) -> Bool {
         // `--render-quality <performance|default|detail>` sets the render-quality fallback for
         // the export paths, applied to any feature the sketch left at `.default` (an explicit
         // sketch dial still wins). Defaults to `.detail`: exported art is full quality unless
@@ -1362,11 +1384,11 @@ public extension Sketch {
             guard frames > 0 else {
                 FileHandle.standardError.write(Data(
                     "usage: --export-sequence <dir> (--frames N | --seconds S) [--fps F] [--skip S] [--start N]\n".utf8))
-                return
+                return true
             }
-            OllinApp.exportSequence(Self(), to: dir, frames: frames, fps: fps,
+            OllinApp.exportSequence(makeSketch(), to: dir, frames: frames, fps: fps,
                                     startFrame: start, skipSeconds: skip, quality: renderQuality)
-            return
+            return true
         }
         // `--export-video <path> (--frames N | --seconds S) [--fps F] [--skip S]
         // [--codec h264|hevc|prores422|prores4444] [--bitrate MBPS] [--quality 0..1]`
@@ -1386,8 +1408,8 @@ public extension Sketch {
             if let name = value("--codec") {
                 guard let parsed = VideoCodec(rawValue: name) else {
                     FileHandle.standardError.write(Data(
-                        "unknown codec '\(name)' — one of: \(VideoCodec.allCases.map(\.rawValue).joined(separator: ", "))\n".utf8))
-                    return
+                        "unknown codec '\(name)': expected one of \(VideoCodec.allCases.map(\.rawValue).joined(separator: ", "))\n".utf8))
+                    return true
                 }
                 codec = parsed
             }
@@ -1396,12 +1418,12 @@ public extension Sketch {
             guard frames > 0 else {
                 FileHandle.standardError.write(Data(
                     "usage: --export-video <path> (--frames N | --seconds S) [--fps F] [--skip S] [--codec C] [--bitrate MBPS] [--quality 0..1]\n".utf8))
-                return
+                return true
             }
-            OllinApp.exportVideo(Self(), to: args[i + 1], frames: frames, fps: fps,
+            OllinApp.exportVideo(makeSketch(), to: args[i + 1], frames: frames, fps: fps,
                                  codec: codec, bitsPerSecond: bitrate, quality: quality,
                                  renderQuality: renderQuality, skipSeconds: skip)
-            return
+            return true
         }
         // `--export-gif <path> (--frames N | --seconds S) [--fps F] [--skip S]
         // [--gif-width PX]` writes a looping animated GIF and exits.
@@ -1420,19 +1442,19 @@ public extension Sketch {
             guard frames > 0 else {
                 FileHandle.standardError.write(Data(
                     "usage: --export-gif <path> (--frames N | --seconds S) [--fps F] [--skip S] [--gif-width PX]\n".utf8))
-                return
+                return true
             }
-            OllinApp.exportGIF(Self(), to: args[i + 1], frames: frames, fps: fps,
+            OllinApp.exportGIF(makeSketch(), to: args[i + 1], frames: frames, fps: fps,
                                width: width, skipSeconds: skip, renderQuality: renderQuality)
-            return
+            return true
         }
         if let i = args.firstIndex(of: "--export"), i + 1 < args.count {
             var frame = 0
             if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {
                 frame = Int(args[f + 1]) ?? 0
             }
-            OllinApp.export(Self(), to: args[i + 1], frame: frame, quality: renderQuality)
-            return
+            OllinApp.export(makeSketch(), to: args[i + 1], frame: frame, quality: renderQuality)
+            return true
         }
         // `swift run Example-X --export-svg <path> [--frame N]` writes a vector SVG
         // of one frame and exits (no window, no GPU). Add `--hatch` (or
@@ -1453,16 +1475,16 @@ public extension Sketch {
                 if args.contains("--cross-hatch") { h.crossHatch = true }
                 hatching = h
             }
-            OllinApp.exportSVG(Self(), to: args[i + 1], frame: frame, hatching: hatching)
-            return
+            OllinApp.exportSVG(makeSketch(), to: args[i + 1], frame: frame, hatching: hatching)
+            return true
         }
         if let i = args.firstIndex(of: "--bench") {
             var frames = 600
             if i + 1 < args.count, let f = Int(args[i + 1]) { frames = f }
-            OllinApp.benchmark(Self(), frames: frames, gpu: args.contains("--gpu"))
-            return
+            OllinApp.benchmark(makeSketch(), frames: frames, gpu: args.contains("--gpu"))
+            return true
         }
-        OllinApp.run(Self())
+        return false
     }
 }
 

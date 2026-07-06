@@ -109,6 +109,7 @@ swift run Example-Motion-Breathing --export-sequence frames/ --seconds 20 --fps 
 swift run Example-Motion-Breathing --export-video breathing.mp4 --seconds 6
 swift run Example-Motion-Breathing --export-gif breathing.gif --seconds 4
 swift run Example-Basic-HelloCircle --export-svg still.svg   # vector, for pen plotters
+swift run OllinLive MySketches/Loop.swift --export-gif loop.gif --seconds 4   # a loose file, same flags
 ```
 
 Sequence, video, and GIF exports advance the clock at a fixed timestep rather than wall-clock, so a slow render still plays back smoothly. In code they're `OllinApp.export`, `exportSequence`, `exportVideo`, and `exportGIF`. Codec and quality dials, the `--skip` warmup, GIF sizing, and the plotter-oriented `--hatch` fills are all in [`Docs/Output/Export.md`](Docs/Output/Export.md).

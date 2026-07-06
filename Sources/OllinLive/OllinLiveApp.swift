@@ -44,6 +44,21 @@ struct OllinLiveApp: App {
             exit(2)
         }
 
+        // `swift run OllinLive Sketch.swift --export-gif loop.gif --seconds 4`
+        // runs the same headless export surface a standalone `@main` sketch
+        // gets, on a loose watched file: the shared handler recognizes the
+        // flag and only then pays for the compile. Exits without a window.
+        let handled = OllinApp.handleCommandLine(arguments, makeSketch: {
+            switch SketchLoader(sketchPath: sketchPath).load() {
+            case .success(let sketch):
+                return sketch
+            case .failure(let error):
+                FileHandle.standardError.write(Data("OllinLive: \(error)\n".utf8))
+                exit(1)
+            }
+        })
+        if handled { exit(0) }
+
         // Keep `init()` fast so the window appears (and activates) immediately;
         // the initial compile runs async inside `LiveSession`. A blocking compile
         // here left the window behind the terminal until a Dock click.
