@@ -4,7 +4,7 @@
 
 # 1. Hello, Ollin
 
-![A ring of circles in warm and cool colors, drifting and breathing on a dark ground](Images/01-HelloOllin/HelloMotion.png)
+<img src="Images/01-HelloOllin/HelloMotion.jpg" alt="A ring of circles in warm and cool colors, drifting and breathing on a dark ground" width="560">
 
 By the end of this chapter, this piece is yours: twenty-eight circles drifting around a ring, each breathing slightly out of step with its neighbors, with two sliders to play it like an instrument. Every dot is placed and moved by code you'll understand line by line. Getting there takes a working toolchain, one new file, three shapes, and a single idea that carries the whole book: in Ollin, things move by default.
 
@@ -56,7 +56,7 @@ Then, from the repository folder:
 swift run OllinLive MySketches/FirstCircle.swift
 ```
 
-![A dark circle centered on a white canvas](Images/01-HelloOllin/FirstCircle.png)
+<img src="Images/01-HelloOllin/FirstCircle.jpg" alt="A dark circle centered on a white canvas" width="560">
 
 A window opens with your circle in it. Three calls made it: `background(.white)` painted the ground, `fill` chose the ink, and `drawCircle` put a circle at a position with a radius.
 
@@ -68,7 +68,7 @@ Here is the part that changes how you work. Keep the window open, go back to you
 
 Every position in a sketch is measured from the canvas's top-left corner: x grows to the right, y grows *downward*. That surprises people who remember math class, where y goes up, but it's how screens have worked for decades, and it's the same convention p5.js and Processing use.
 
-![The canvas coordinate system: origin at the top left, x right, y down, with the point (380, 240) marked](Images/01-HelloOllin/CoordinateSystem.png)
+<img src="Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system: origin at the top left, x right, y down, with the point (380, 240) marked" width="680">
 
 Your canvas is 1080 by 1080 by default (the window is just a scaled preview of it; the [Canvas](../Docs/Core/Canvas.md) page covers choosing other sizes). Inside `draw()`, `width` and `height` always hold the canvas size, which is why `drawCircle(width / 2, height / 2, 200)` lands dead center. Try replacing the coordinates with plain numbers, like `drawCircle(380, 240, 60)`, and check the result against the diagram. Getting a feel for "where is (380, 240)" pays off in every chapter after this one.
 
@@ -76,7 +76,7 @@ Your canvas is 1080 by 1080 by default (the window is just a scaled preview of i
 
 You've met `drawCircle`. Its siblings work the same way: a position, then dimensions.
 
-![Six panels: a filled circle, rectangle, and line on top; an outlined circle, a filled-and-stroked rectangle, and a thick line below](Images/01-HelloOllin/FirstShapes.png)
+<img src="Images/01-HelloOllin/FirstShapes.jpg" alt="Six panels: a filled circle, rectangle, and line on top; an outlined circle, a filled-and-stroked rectangle, and a thick line below" width="680">
 
 The styling calls around them set what everything after wears. Think of it as picking up a pen: once you set `fill` or `stroke`, every shape you draw from then on uses it, until you change it.
 
@@ -111,7 +111,7 @@ let x = width / 2 + sin(time * .tau / 3) * 300
 drawCircle(x, height / 2, 70)
 ```
 
-![A yellow circle swinging smoothly from side to side](Images/01-HelloOllin/FirstMotion.gif)
+<img src="Images/01-HelloOllin/FirstMotion.gif" alt="A yellow circle swinging smoothly from side to side" width="480">
 
 The `* 300` is how far it swings; `.tau` is the angle of one full turn (about 6.28), and dividing by 3 makes each complete back-and-forth take three seconds. Chapter 3 unpacks why; today it's a recipe.
 
@@ -119,7 +119,7 @@ The `* 300` is how far it swings; `.tau` is the angle of one full turn (about 6.
 
 The recipe has a second half, and it's the key to this chapter's finale. `sin` has a twin, `cos`, and together they turn an angle into a point on a circle:
 
-![A circle with an angle marked at its center, and cos and sin placing a point on its rim](Images/01-HelloOllin/AroundACircle.png)
+<img src="Images/01-HelloOllin/AroundACircle.jpg" alt="A circle with an angle marked at its center, and cos and sin placing a point on its rim" width="680">
 
 Feed the pair an angle and a radius, and they hand you the x and y of the point that far around the circle. Grow the angle, and the point walks the rim. That's the entire mystery of `cos` and `sin` as this book uses them: they're how you place things *around* something. Chapter 3 shows why it works; Appendix B keeps this picture for whenever you want it back.
 

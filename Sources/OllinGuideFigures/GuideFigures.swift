@@ -1,12 +1,19 @@
+import AppKit
 import Foundation
 import Ollin
 import OllinRuntime
 
 /// `swift run OllinGuideFigures [--only <substring>]` renders every Guide
 /// figure sketch (`Guide/Figures/**/*.swift`) to its committed image
-/// (`Guide/Images/<chapter>/<name>.png` or `.gif`), and exits nonzero if any
-/// figure fails to compile or render. This is the Guide's verification gate:
-/// a listing that no longer builds fails here before it can mislead a reader.
+/// (`Guide/Images/<chapter>/<name>.jpg`, `.png`, or `.gif`), and exits nonzero
+/// if any figure fails to compile or render. This is the Guide's verification
+/// gate: a listing that no longer builds fails here before it can mislead a
+/// reader.
+///
+/// Stills default to JPEG (quality 0.85): the renderer's anti-banding dither
+/// is per-pixel noise, so a PNG of even a flat diagram weighs hundreds of
+/// kilobytes while the JPEG is a fraction of it and looks identical at the
+/// Guide's display widths. `format=png` opts a figure back into lossless.
 ///
 /// Each figure is an ordinary sketch file, compiled through `SketchLoader`
 /// (the live host's loader) and rendered through the same off-screen path as
@@ -17,12 +24,13 @@ import OllinRuntime
 enum GuideFigures {
 
     /// Render configuration parsed from a figure's `// figure:` comment,
-    /// scanned in the file's first lines. `frame=N` picks the PNG frame;
-    /// `gif` (plus optional `duration=`, `fps=`, `width=`) renders an
-    /// animated loop instead.
+    /// scanned in the file's first lines. `frame=N` picks the still's frame
+    /// and `format=png` makes it lossless; `gif` (plus optional `duration=`,
+    /// `fps=`, `width=`) renders an animated loop instead.
     struct Directive {
         var frame = 0
         var gif = false
+        var png = false
         var duration = 3.0
         var fps = 25.0
         var width: Int?
@@ -39,6 +47,8 @@ enum GuideFigures {
                 let value = pair.count > 1 ? String(pair[1]) : nil
                 switch (key, value) {
                 case ("gif", _): gif = true
+                case ("format", "png"): png = true
+                case ("format", "jpg"), ("format", "jpeg"): png = false
                 case ("frame", let v?): frame = Int(v) ?? frame
                 case ("duration", let v?): duration = Double(v) ?? duration
                 case ("fps", let v?): fps = Double(v) ?? fps
@@ -48,6 +58,8 @@ enum GuideFigures {
                 }
             }
         }
+
+        var stillExtension: String { png ? ".png" : ".jpg" }
     }
 
     @MainActor
@@ -101,7 +113,8 @@ enum GuideFigures {
             }
             let directive = Directive(source: source)
             let stem = (relative as NSString).deletingPathExtension
-            let outPath = imagesDir + "/" + stem + (directive.gif ? ".gif" : ".png")
+            let outPath = imagesDir + "/" + stem
+                + (directive.gif ? ".gif" : directive.stillExtension)
             try? FileManager.default.createDirectory(
                 atPath: (outPath as NSString).deletingLastPathComponent,
                 withIntermediateDirectories: true)
@@ -113,8 +126,10 @@ enum GuideFigures {
                     let frames = max(1, Int((directive.duration * directive.fps).rounded()))
                     OllinApp.exportGIF(sketch, to: outPath, frames: frames,
                                        fps: directive.fps, width: directive.width)
-                } else {
+                } else if directive.png {
                     OllinApp.export(sketch, to: outPath, frame: directive.frame)
+                } else {
+                    exportJPEG(sketch, to: outPath, frame: directive.frame)
                 }
                 if !FileManager.default.fileExists(atPath: outPath) {
                     warn("FAILED \(relative): no output written")
@@ -132,6 +147,28 @@ enum GuideFigures {
         }
         warn("\(failures.count) of \(figures.count) figures failed: \(failures.joined(separator: ", "))")
         exit(1)
+    }
+
+    /// The still-figure writer: the same headless render `--export` uses,
+    /// encoded as JPEG at quality 0.85 (see the type comment for why).
+    @MainActor
+    private static func exportJPEG(_ sketch: Sketch, to path: String, frame: Int) {
+        guard let cgImage = OllinApp.image(of: sketch, frame: frame) else {
+            warn("render produced no image (no Metal device?)")
+            return
+        }
+        let rep = NSBitmapImageRep(cgImage: cgImage)
+        guard let data = rep.representation(using: .jpeg,
+                                            properties: [.compressionFactor: 0.85]) else {
+            warn("JPEG encode failed for \(path)")
+            return
+        }
+        do {
+            try data.write(to: URL(fileURLWithPath: path))
+            print("Ollin: exported frame \(frame) → \(path) (\(cgImage.width)×\(cgImage.height))")
+        } catch {
+            warn("failed to write \(path): \(error)")
+        }
     }
 
     private static func warn(_ message: String) {

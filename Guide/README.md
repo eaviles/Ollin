@@ -8,7 +8,7 @@
 
 This guide teaches creative coding from zero, using [Ollin](../README.md). You write small programs called sketches that draw, move, and react, and along the way you pick up the techniques the field is built on: randomness, noise, forces, agents, shaders, simulation, 3D. Each chapter teaches a few ideas through short runnable steps and ends with a finished piece you made yourself.
 
-![A ring of drifting, breathing circles: the Chapter 1 piece](Images/01-HelloOllin/HelloMotion.png)
+<img src="Images/01-HelloOllin/HelloMotion.jpg" alt="A ring of drifting, breathing circles: the Chapter 1 piece" width="560">
 
 **Who it's for.** Anyone who can program a little, in any language. You don't need to know Swift (the guide teaches what you need as it comes up, and [Appendix A](#appendices) is a primer), and you don't need a background in math, graphics, or shaders. If you can write a loop and a function, you can start.
 
@@ -27,7 +27,7 @@ Guides like this tend to fail in known ways: a concept appears out of nowhere an
 
 Both kinds of image are already at work on this page: the piece above is [`Figures/01-HelloOllin/HelloMotion.swift`](Figures/01-HelloOllin/HelloMotion.swift) rendered at a fixed frame, and this Chapter 1 diagram is a sketch too ([`CoordinateSystem.swift`](Figures/01-HelloOllin/CoordinateSystem.swift)):
 
-![The canvas coordinate system, drawn by Ollin](Images/01-HelloOllin/CoordinateSystem.png)
+<img src="Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system, drawn by Ollin" width="680">
 
 ## How to read it
 
@@ -42,7 +42,7 @@ The guide is being written chapter by chapter; titles below without links are st
 ### Part I: Seeing something move
 
 1. **[Hello, Ollin](01-HelloOllin.md).** Your first sketch, the draw loop, coordinates, shapes, and motion by default. Plus the workflow the rest of the book uses: live reload and tunable knobs.
-2. **Color that works.** Fill and stroke, HSB, palettes and ramps, perceptual color, gradients.
+2. **[Color that works](02-Color.md).** Naming colors, thinking in hue, mixing that trusts your eye, palettes and ramps, gradients as paint.
 3. **Motion and time.** Time, shaping functions as curves you can see (map, lerp, smoothstep, easing), sine and cosine without fear, timelines.
 4. **Randomness.** Random values, seeds, choices, distributions, and why reproducibility matters.
 5. **Noise.** What Perlin noise is, what it's for, and how to drive motion and form with it.

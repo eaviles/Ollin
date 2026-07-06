@@ -9,7 +9,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | Chapter | File | Status |
 |---|---|---|
 | 1. Hello, Ollin | `01-HelloOllin.md` | done |
-| 2. Color that works | `02-Color.md` | not started |
+| 2. Color that works | `02-Color.md` | done |
 | 3. Motion and time | `03-MotionAndTime.md` | not started |
 | 4. Randomness | `04-Randomness.md` | not started |
 | 5. Noise | `05-Noise.md` | not started |
@@ -40,7 +40,7 @@ Statuses: `not started` → `figures` (figure sketches built and rendered) → `
 Also tracked here so they aren't forgotten:
 
 - CI wiring for the figure runner is deliberately deferred (CI minutes are scarce); `Scripts/guide-figures.sh` run locally per session is the gate for now. Revisit when several chapters exist.
-- A website (Guide + Docs + gallery) is a later project; keep all markdown portable (plain relative links, standard tables, no HTML tricks).
+- A website (Guide + Docs + gallery) is a later project; keep all markdown portable (plain relative links, standard tables, no HTML beyond the sanctioned `<img width>` figure embed in AUTHORING.md).
 - Translations are out of scope for now.
 
 ## Chapter briefs

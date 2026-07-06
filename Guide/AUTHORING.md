@@ -46,16 +46,18 @@ Keep chapters honest about hardware: anything needing a device beyond the Mac (a
 
 ## Figures
 
-Figure sketches live in `Figures/<NN-ChapterName>/<FigureName>.swift`, rendered to `Images/<NN-ChapterName>/<FigureName>.png` (or `.gif`) by the runner. Conventions:
+Figure sketches live in `Figures/<NN-ChapterName>/<FigureName>.swift`, rendered to `Images/<NN-ChapterName>/<FigureName>.jpg` (or `.png`/`.gif`) by the runner. Conventions:
 
 - A figure file is an ordinary Ollin sketch (a `class ... : Sketch`), self-contained, with no dependencies beyond the framework.
 - The first line may carry a directive comment configuring the render:
-  - `// figure: frame=120` renders that frame as a PNG (default: `frame=0`).
+  - `// figure: frame=120` renders that frame as a still (default: `frame=0`).
   - `// figure: gif duration=3 fps=30` renders an animated GIF loop.
+  - Stills are JPEG (quality 0.85) by default: the renderer's anti-banding dither is per-pixel noise, so PNGs of even flat diagrams weigh hundreds of kilobytes for no visible gain at the Guide's display widths. `format=png` opts one figure back into lossless, for the rare image that needs it.
 - Diagrams are figures too, drawn with Ollin (that's the point: the diagrams are reproducible and are themselves example code). Use a small canvas for diagrams (`override var canvasSize: CanvasSize { .size(880, 550) }` is a good default), the system outline font for labels, and keep them monochrome-plus-one-accent so they read as diagrams, not artwork.
 - Payoff pieces render at the default square canvas unless the piece wants otherwise.
 - GIFs are used sparingly (motion the prose genuinely can't convey), short (2 to 4 seconds), and small; they weigh on the repository forever.
 - Every image referenced from a chapter must exist in `Images/` and come from the runner; the reverse also holds, no orphaned figures.
+- Embed images with an `<img>` tag carrying a display `width`, never a bare markdown image; a full-bleed 1080-pixel image dominates the page and hurts reading. House widths: `680` for the wide 880×550 diagrams, `560` for square art and payoff pieces, `480` for GIFs. Always keep the `alt` text. (This is the one sanctioned bit of HTML in the Guide; everything else stays plain markdown.)
 
 Rendering:
 
