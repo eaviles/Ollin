@@ -136,8 +136,8 @@ final class LiveSession {
         core.attach(runner)
     }
 
-    /// Record a knob the user dragged, so it survives the next reload.
-    func recordParam(_ name: String, _ value: Double) {
+    /// Record a knob the user changed, so it survives the next reload.
+    func recordParam(_ name: String, _ value: ParamStored) {
         core.recordParam(name, value)
     }
 

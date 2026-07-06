@@ -4,15 +4,17 @@
 
 ## Parameters
 
-A `@Param` is a tunable knob. Declare one on a sketch and read it like a normal property; the live host discovers it and shows a slider for it, so a value you would otherwise hand-edit and recompile becomes something you adjust while the sketch runs. The same knob can also be driven from hardware: an OSC address or a MIDI controller binds straight onto it.
+A `@Param` is a tunable knob. Declare one on a sketch and read it like a normal property; the live host discovers it and shows a control for it, so a value you would otherwise hand-edit and recompile becomes something you adjust while the sketch runs. The control follows the property's type: a `Double` gets a slider, a `Bool` a toggle, a `Color` a color well. The same knob can also be driven from hardware: an OSC address or a MIDI controller binds straight onto it.
 
 ```swift
 final class Pulse: Sketch {
     @Param(0...200) var radius = 120.0        // slider "Radius", from the name
     @Param("Speed", 0.1...4) var rate = 1.0   // explicit label
+    @Param var filled = true                  // toggle
 
     override func draw() {
         background(.white)
+        if filled { fill(.black) } else { noFill() }
         drawCircle(width / 2, height / 2, radius + sin(time * rate) * 40)
     }
 }
@@ -20,42 +22,83 @@ final class Pulse: Sketch {
 
 ### Contents
 
-- [Declaring a parameter](#declaring)
-- [Where the sliders appear](#sliders)
+- [The typed family](#family)
+- [Groups and icons](#groups)
+- [Where the controls appear](#controls)
+- [Scrubbing values](#scrubbing)
 - [Smoothing](#smoothing)
 - [Driving a knob from outside](#binding)
 - [The parameter object](#param-object)
 
-<a name="declaring"></a>
+<a name="family"></a>
 
-### Declaring a parameter
+### The typed family
+
+Each supported type declares itself the same way and gets the matching inspector control:
+
+| Property type | Control | Declaration |
+| --- | --- | --- |
+| `Double` | slider + value field | `@Param(0...200) var radius = 120.0` |
+| `Int` | stepper (− value +) | `@Param(1...12) var rings = 5` |
+| `Bool` | toggle | `@Param var filled = true` |
+| enum (`ParamOption`) | pop-up menu | `@Param var style: Style = .dots` |
+| `Color` | color well | `@Param var ink: Color = .black` |
+| `Vector2` | paired x/y fields | `@Param(x: 0...1080, y: 0...1080) var anchor = Vector2(540, 540)` |
+| `Vector3` | x/y/z fields | `@Param(x: -1...1, y: -1...1, z: 0...10) var eye = Vector3(0, 0, 5)` |
+
+A numeric value is always clamped to its range; the property's default is the starting value. The label is derived from the property name (`noiseScale` becomes "Noise Scale"), or pass one explicitly as the first argument when the name reads poorly.
+
+A `Double` can also take a `step:`, which snaps every write to that increment (so the sketch reads exactly the values the slider offers), and a `style:` when the slider itself is the wrong presentation, say for a precise quantity or a range too wide for a track to resolve:
 
 ```swift
-@Param(_ range: ClosedRange<Double>, smoothing: ParamSmoothing? = nil)
-@Param(_ label: String, _ range: ClosedRange<Double>, smoothing: ParamSmoothing? = nil)
+@Param(0...1, step: 0.25) var mix = 0.5
+@Param(1...100_000, style: .field) var iterations = 2000.0   // just the scrub/type field
 ```
 
-A parameter holds a `Double`, always clamped to its range; the property's default is the starting value. The slider label is derived from the property name (`noiseScale` becomes "Noise Scale"), or pass one explicitly when the name reads poorly as a label.
-
-For a count, keep the parameter a `Double` and round where you use it:
+An enum becomes a menu by conforming to `ParamOption` (declare it `CaseIterable`):
 
 ```swift
-@Param(1...12) var rings = 5.0
-
-override func draw() {
-    for i in 0..<Int(rings) { … }
-}
+enum Style: String, CaseIterable, ParamOption { case dots, rings, meshLines }
+@Param var style: Style = .dots
 ```
 
-<a name="sliders"></a>
+The menu shows humanized case names ("Mesh Lines"); override `optionLabel` for custom wording. The persisted selection keys on the case *name*, so renaming a case forgets a tuned choice while reordering is safe. Ollin's own mode enums (`BlendMode`, `StrokeCap`, `StrokeJoin`, `Colormap`) already conform, so `@Param var blend: BlendMode = .normal` gets its menu with no declaration at all.
 
-### Where the sliders appear
+The color well opens the system color panel, eyedropper included, so a sketch's palette is tunable live. The vector forms take a range per axis and clamp each independently.
 
-Under the live-reload host (`swift run OllinLive path/to/Sketch.swift`), every `@Param` is a slider in the inspector sidebar. Tuned values survive a reload: when you save the file and the sketch hot-swaps, the host re-applies what you dialed in, so a knob doesn't snap back to its default mid-session.
+#### Your own types
 
-A standalone run (`swift run Example-…`) gets the same sliders in the inspector panel, under View ▸ Show Inspector (⌘/).
+`ParamValue` is public: conform a type by providing the clamp, the `ParamStored` round-trip, and the `ParamControl` it edits with. The control must be one of the existing kinds (a custom type presents as a slider, menu, and so on; the inspector doesn't take custom rows), so the conformance is really a mapping from your type onto the closest built-in control. `ParamOption` covers the common case (any `CaseIterable` enum) with no work; reach for a full `ParamValue` conformance only when a wrapped scalar or a small catalog type genuinely wants to be a knob.
+
+<a name="groups"></a>
+
+### Groups and icons
+
+Every form takes an optional `icon:` and `group:`:
+
+```swift
+@Param(10...375, icon: "circle.dashed", group: "Rings") var radius = 175.0
+@Param(1...12, icon: "circle.grid.2x2", group: "Rings") var rings = 5
+@Param(0...4, icon: "speedometer", group: "Motion") var speed = 1.0
+```
+
+`group:` names an inspector section: each group renders as its own titled card, in the order groups first appear in the sketch. Knobs without a group lead the list under the default "Parameters" header. `icon:` is an SF Symbol name shown leading the row; rows without one stay aligned when the card mixes both.
+
+<a name="controls"></a>
+
+### Where the controls appear
+
+Under the live-reload host (`swift run OllinLive path/to/Sketch.swift`), every `@Param` is a control in the inspector sidebar. Tuned values survive a reload: when you save the file and the sketch hot-swaps, the host re-applies what you dialed in, so a knob doesn't snap back to its default mid-session. If an edit changes a property's *type*, the stale tuned value is dropped and the freshly written default wins.
+
+A standalone run (`swift run Example-…`) gets the same controls in the inspector panel, under View ▸ Show Inspector (⌘/), and the examples gallery shows them in its right sidebar.
 
 Headless export never opens an inspector, so a render uses the defaults written in code. Once a tuned value feels right, copy it back into the declaration.
+
+<a name="scrubbing"></a>
+
+### Scrubbing values
+
+Every numeric value box scrubs: drag horizontally across it to change the value, the way pro inspectors do. Hold **Option** while dragging for a fine adjust (a tenth of the speed), **Shift** for a coarse one (ten times). A plain click starts typing instead, and a typed value is clamped to the range on commit. The slider, the box, and the scrub all drive the same knob.
 
 <a name="smoothing"></a>
 
@@ -68,7 +111,7 @@ Headless export never opens an inspector, so a render uses the defaults written 
 
 Pass a `smoothing:` and the knob glides into each new value instead of snapping. `.eased(duration, curve:)` glides over a fixed time along an [`Easing`](../Helpers/Animation.md#easing) curve, crisp and predictable. `.smoothed(minCutoff:beta:)` runs the value through the [1€ filter](../Helpers/Animation.md#smoothed), which stays steady while the knob rests and opens up as it moves; that tends to feel better under a hand on live hardware.
 
-The softening lives on the parameter, so every source gets it: a MIDI fader, an OSC message, and a drag of the inspector slider all glide the same way. The sketch advances the glide each frame on its own, like `@Eased` and `@Smoothed`.
+The softening lives on the parameter, so every source gets it: a MIDI fader, an OSC message, and a drag of the inspector slider all glide the same way. The sketch advances the glide each frame on its own, like `@Eased` and `@Smoothed`. Smoothing is a `Double` affair; the other kinds switch instantly.
 
 <a name="binding"></a>
 
@@ -81,7 +124,7 @@ osc.bind("/radius", to: $radius)            // an OSC address (OllinOSC)
 midi.bind(controlChange: 7, to: $radius)    // a MIDI CC knob (OllinMIDI)
 ```
 
-Each incoming value is mapped into the parameter's range and assigned, and a bound knob updates on its own as messages arrive. The inspector slider, the binding, and plain assignment in code all drive the same value; whichever moved most recently wins. The `from:` input ranges and the rest of the details are on the [OSC](../Integration/OSC.md#binding-to-a-param) and [MIDI](../Integration/MIDI.md#binding-to-a-param) pages.
+Each incoming value is mapped into the parameter's range and assigned, and a bound knob updates on its own as messages arrive. The inspector control, the binding, and plain assignment in code all drive the same value; whichever moved most recently wins. Bindings target `Double` parameters. The `from:` input ranges and the rest of the details are on the [OSC](../Integration/OSC.md#binding-to-a-param) and [MIDI](../Integration/MIDI.md#binding-to-a-param) pages.
 
 A parameter is safe to read and write from any thread: the inspector drives it from the main thread while an OSC or MIDI callback writes from its own queue.
 
@@ -93,11 +136,11 @@ Two more things live on `$radius`:
 
 ```swift
 $radius.set(200)    // jump straight there, skipping any smoothing glide
-$radius.range       // the declared bounds
+$radius.range       // the declared bounds (Double and Int parameters)
 ```
 
 Assignment retargets (and glides, when smoothed); `set(_:)` lands immediately. The live host uses `set` to restore your tuned values across a reload, where gliding in from the default would look wrong.
 
-For building your own control surface, `parameters()` returns the sketch's knobs as `[ParamHandle]`: a stable `name` key, a display `label`, and the `param` itself. The live host builds its sliders from exactly this; most sketches never call it.
+For building your own control surface, `parameters()` returns the sketch's knobs as `[ParamHandle]`: a stable `name` key, a display `label`, the `icon` and `group` metadata, and the type-erased `param`. Its `control` describes the matching UI (kind, ranges, options, and live get/set closures), and `stored` / `restore(_:)` round-trip the value through the small `ParamStored` payload the hosts persist. The live host builds its inspector from exactly this; most sketches never call it.
 
-The [Parameters example](../../Examples/Live/Parameters/Sketch.swift) is the worked demo: three knobs driving a ring pattern, made for `swift run OllinLive Examples/Live/Parameters/Sketch.swift`.
+The [Parameters example](../../Examples/Live/Parameters/Sketch.swift) is the worked demo: the full typed family in three groups driving a ring pattern, made for `swift run OllinLive Examples/Live/Parameters/Sketch.swift`.

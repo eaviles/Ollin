@@ -444,27 +444,58 @@ private struct MonitorStatStrip: View {
 
 // MARK: - Parameters
 
-/// The `PARAMETERS` group: a header over a card of slider rows (label · editable
-/// value pill · thin tinted slider), or an empty state when the sketch declares
-/// no `@Param` knobs. `onChange` reports edits so a host can persist them; the
-/// row writes the value into the live `Param` regardless, so a standalone panel
+/// The parameter groups: for each group a header over a card of control rows,
+/// or an empty state when the sketch declares no `@Param` knobs. The control in
+/// each row follows the parameter's type (slider, stepper, toggle, menu, color
+/// well); `@Param(group:)` names a section, and knobs without one lead under
+/// the default "Parameters" header. `onChange` reports edits (as the param's
+/// persistable `ParamStored`) so a host can carry them across reloads; the row
+/// writes the value into the live `Param` regardless, so a standalone panel
 /// can leave it a no-op and still tune live.
 public struct ParametersListView: View {
     let params: [ParamHandle]
-    let onChange: (String, Double) -> Void
+    let onChange: (String, ParamStored) -> Void
 
     @SwiftUI.Environment(\.colorScheme) private var scheme
 
-    public init(params: [ParamHandle], onChange: @escaping (String, Double) -> Void = { _, _ in }) {
+    public init(params: [ParamHandle], onChange: @escaping (String, ParamStored) -> Void = { _, _ in }) {
         self.params = params
         self.onChange = onChange
     }
 
     private var palette: OllinInspector.Palette { .resolve(scheme) }
 
+    /// The handles split into sections: the ungrouped knobs first (under the
+    /// default header), then each named group in order of first declaration.
+    private var sections: [(title: String, handles: [ParamHandle])] {
+        var order: [String?] = []
+        var byGroup: [String?: [ParamHandle]] = [:]
+        for handle in params {
+            if byGroup[handle.group] == nil { order.append(handle.group) }
+            byGroup[handle.group, default: []].append(handle)
+        }
+        if let i = order.firstIndex(of: nil), i != 0 {
+            order.remove(at: i)
+            order.insert(nil, at: 0)
+        }
+        return order.map { ($0 ?? "Parameters", byGroup[$0]!) }
+    }
+
     public var body: some View {
+        if params.isEmpty {
+            section(title: "Parameters") { emptyState }
+        } else {
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(sections, id: \.title) { group in
+                    section(title: group.title) { card(for: group.handles) }
+                }
+            }
+        }
+    }
+
+    private func section(title: String, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Parameters")
+            Text(title)
                 .font(.system(size: 11, weight: .semibold))
                 .tracking(0.4)
                 .textCase(.uppercase)
@@ -472,22 +503,23 @@ public struct ParametersListView: View {
                 .padding(.horizontal, 4)
                 .padding(.bottom, 7)
 
-            Group {
-                if params.isEmpty {
-                    emptyState
-                } else {
-                    VStack(spacing: 0) {
-                        ForEach(Array(params.enumerated()), id: \.element.id) { index, handle in
-                            if index > 0 { Hairline(palette: palette) }
-                            ParamSliderRow(handle: handle, palette: palette,
-                                           onChange: { onChange(handle.name, $0) })
-                                .id(ObjectIdentifier(handle.param))   // reset state on reload
-                        }
-                    }
-                }
+            content()
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+    }
+
+    private func card(for handles: [ParamHandle]) -> some View {
+        // If any row in the card carries an icon, every row reserves the icon
+        // gutter so the labels stay aligned down the card.
+        let gutter = handles.contains { $0.icon != nil }
+        return VStack(spacing: 0) {
+            ForEach(Array(handles.enumerated()), id: \.element.id) { index, handle in
+                if index > 0 { Hairline(palette: palette) }
+                ParamRow(handle: handle, palette: palette, iconGutter: gutter,
+                         onChange: { onChange(handle.name, $0) })
+                    .id(ObjectIdentifier(handle.param))   // reset state on reload
             }
-            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
     }
 
@@ -513,95 +545,678 @@ public struct ParametersListView: View {
     }
 }
 
-/// One labelled slider: a label and an editable mono value pill on top, a thin
-/// tinted slider below. Local state drives smooth dragging and the readout;
-/// a user edit is written into the live `Param` and reported to `onChange`.
-///
-/// The row is not the param's only writer — a MIDI/OSC binding, a smoothing
-/// glide, or the sketch itself may drive the same knob — so it also *follows*:
-/// a ~10 Hz pull (the stats cadence) reflects the live value back into the
-/// thumb and pill, paused while the user is dragging or typing.
-private struct ParamSliderRow: View {
+/// One parameter row, dispatched on the control kind the value type implies.
+private struct ParamRow: View {
     let handle: ParamHandle
     let palette: OllinInspector.Palette
-    let onChange: (Double) -> Void
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    var body: some View {
+        switch handle.control {
+        case .slider(let control):
+            SliderParamRow(handle: handle, control: control, palette: palette,
+                           iconGutter: iconGutter, onChange: onChange)
+        case .stepper(let control):
+            StepperParamRow(handle: handle, control: control, palette: palette,
+                            iconGutter: iconGutter, onChange: onChange)
+        case .toggle(let control):
+            ToggleParamRow(handle: handle, control: control, palette: palette,
+                           iconGutter: iconGutter, onChange: onChange)
+        case .menu(let control):
+            MenuParamRow(handle: handle, control: control, palette: palette,
+                         iconGutter: iconGutter, onChange: onChange)
+        case .colorWell(let control):
+            ColorParamRow(handle: handle, control: control, palette: palette,
+                          iconGutter: iconGutter, onChange: onChange)
+        case .vector(let control):
+            VectorParamRow(handle: handle, control: control, palette: palette,
+                           iconGutter: iconGutter, onChange: onChange)
+        case .vector3(let control):
+            Vector3ParamRow(handle: handle, control: control, palette: palette,
+                            iconGutter: iconGutter, onChange: onChange)
+        }
+    }
+}
+
+/// Whole numbers over a wide (pixel-sized) range, decimals over a narrow one.
+private func paramFieldDigits(for range: ClosedRange<Double>) -> Int {
+    range.upperBound - range.lowerBound > 20 ? 0 : 2
+}
+
+/// The leading label of a row: the optional SF Symbol icon (or its reserved
+/// gutter, so labels align down a card that mixes both) and the display name.
+private struct ParamRowLabel: View {
+    let handle: ParamHandle
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+
+    var body: some View {
+        HStack(spacing: 7) {
+            if let icon = handle.icon {
+                SwiftUI.Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .foregroundStyle(palette.textTertiary)
+                    .frame(width: 18)
+            } else if iconGutter {
+                SwiftUI.Color.clear.frame(width: 18, height: 1)
+            }
+            Text(handle.label)
+                .font(.system(size: 13, weight: .medium))
+                .lineLimit(1)
+        }
+    }
+}
+
+/// An editable mono value pill that also *scrubs*: drag horizontally across it
+/// to change the value (hold Option for a fine adjust, Shift for a coarse one),
+/// or click once to type. The pill shows the resize cursor so the drag invites
+/// itself; a value committed by typing is clamped by the row.
+///
+/// While the field is being scrubbed or has keyboard focus it flips
+/// `isInteracting` so the owning row parks its sync pull.
+private struct ScrubbableField: View {
+    @Binding var value: Double
+    let fractionDigits: Int
+    /// Value change per dragged point at normal speed.
+    let perPoint: Double
+    /// Snap scrubbed values to multiples of this (from `snapOrigin`), if given.
+    let snap: Double?
+    let snapOrigin: Double
+    let range: ClosedRange<Double>
+    @Binding var isInteracting: Bool
+    let palette: OllinInspector.Palette
+    /// A tiny leading tag inside the pill (the "x"/"y" of a vector field).
+    var prefix: String? = nil
+
+    /// The value under the pointer when the scrub began; nil while not scrubbing.
+    @State private var scrubBase: Double?
+    @FocusState private var isTyping: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let prefix {
+                Text(prefix)
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(palette.textTertiary)
+                    // Pinned, or the paired-pill row's tight HStack compresses
+                    // this (the only flexible child) to zero width and the tag
+                    // silently vanishes; the fields hold their floor either way.
+                    .fixedSize()
+            }
+            TextField("", value: $value, format: .number.precision(.fractionLength(fractionDigits)))
+                .textFieldStyle(.plain)
+                .focused($isTyping)
+                .multilineTextAlignment(.trailing)
+                .font(.system(size: 12, design: .monospaced))
+                // Hug the number (don't stretch across the row) so the pill is
+                // compact and content-sized, matching the design's value field.
+                .fixedSize(horizontal: true, vertical: false)
+                // A floor so short values stay ~uniform; the prefixed (paired)
+                // pills take a smaller one since the tag shares their row.
+                .frame(minWidth: prefix == nil ? 42 : 34, alignment: .trailing)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(palette.fieldFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
+            .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
+        .overlay { if !isTyping { scrubSurface } }
+        .onChange(of: isTyping) { _, typing in isInteracting = typing || scrubBase != nil }
+    }
+
+    /// The transparent layer that owns the drag. It sits over the text field
+    /// until the field has focus, so a plain click falls through to typing (the
+    /// tap gesture hands focus over) while any horizontal drag scrubs.
+    private var scrubSurface: some View {
+        SwiftUI.Color.clear
+            .contentShape(SwiftUI.Rectangle())
+            .pointerStyle(.columnResize)
+            .onTapGesture { isTyping = true }
+            .gesture(
+                DragGesture(minimumDistance: 2)
+                    .onChanged { drag in
+                        if scrubBase == nil {
+                            scrubBase = value
+                            isInteracting = true
+                        }
+                        guard let base = scrubBase else { return }
+                        // Option refines the drag, Shift accelerates it.
+                        let flags = NSEvent.modifierFlags
+                        let gain = flags.contains(.option) ? 0.1 : flags.contains(.shift) ? 10.0 : 1.0
+                        var v = base + drag.translation.width * perPoint * gain
+                        if let snap, snap > 0 {
+                            v = snapOrigin + ((v - snapOrigin) / snap).rounded() * snap
+                        }
+                        value = Swift.min(Swift.max(v, range.lowerBound), range.upperBound)
+                    }
+                    .onEnded { _ in
+                        scrubBase = nil
+                        isInteracting = isTyping
+                    }
+            )
+    }
+}
+
+/// A labelled slider: icon + label and the scrubbable value pill on top, a thin
+/// tinted slider below. Local state drives smooth dragging and the readout; a
+/// user edit is written into the live `Param` and reported to `onChange`.
+///
+/// The row is not the param's only writer (a MIDI/OSC binding, a smoothing
+/// glide, or the sketch itself may drive the same knob) so it also *follows*:
+/// a ~10 Hz pull (the stats cadence) reflects the live value back into the
+/// thumb and pill, paused while the user is dragging, scrubbing, or typing.
+private struct SliderParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.Slider
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
 
     @State private var value: Double
-    /// The last value this row knows the param to hold — seeded at init, updated
+    /// The last value this row knows the param to hold: seeded at init, updated
     /// by every sync pull and user edit. `onChange(of: value)` compares against
     /// it to tell a sync echo (skip) from a real user edit (write + record).
     @State private var lastKnown: Double
     /// True while the slider thumb is held; parks the sync pull.
     @State private var isDragging = false
-    /// True while the value pill has keyboard focus; parks the sync pull.
-    @FocusState private var isTyping: Bool
+    /// True while the value pill is scrubbed or typed in; parks the sync pull.
+    @State private var isEditingField = false
 
-    init(handle: ParamHandle, palette: OllinInspector.Palette, onChange: @escaping (Double) -> Void) {
+    init(handle: ParamHandle, control: ParamControl.Slider, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
         self.handle = handle
+        self.control = control
         self.palette = palette
+        self.iconGutter = iconGutter
         self.onChange = onChange
-        let current = handle.param.wrappedValue
+        let current = control.get()
         _value = State(initialValue: current)
         _lastKnown = State(initialValue: current)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(handle.label)
-                    .font(.system(size: 13, weight: .medium))
-                Spacer()
-                TextField("", value: $value, format: .number.precision(.fractionLength(2)))
-                    .textFieldStyle(.plain)
-                    .focused($isTyping)
-                    .multilineTextAlignment(.trailing)
-                    .font(.system(size: 12, design: .monospaced))
-                    // Hug the number (don't stretch across the row) so the pill is
-                    // compact and content-sized, matching the design's value field.
-                    .fixedSize(horizontal: true, vertical: false)
-                    .frame(minWidth: 42, alignment: .trailing)   // floor so short values stay ~uniform, like the design
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(palette.fieldFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
-            }
-            Slider(value: $value, in: handle.param.range) { isDragging = $0 }
-                .controlSize(.small)
-                .tint(OllinInspector.accent)
-                // The native slider carries internal vertical inset; trim it so the
-                // track-to-separator gap matches the pill's top gap (balanced row).
-                // The -3 is tied to AppKit's private metrics — re-verify the row
-                // spacing on each macOS major.
-                .padding(.vertical, -3)
-        }
-        .padding(.horizontal, 12)
-        .padding(.top, 11)
-        .padding(.bottom, 11)
+        layout
         .onChange(of: value) { _, newValue in
             guard newValue != lastKnown else { return }   // the sync pull's own echo
-            // A typed value can land outside the range (the slider can't).
-            // Clamp here so the pill, the param, and the host's persisted
-            // record all agree — the param clamps internally anyway, but a raw
-            // out-of-range value displayed or recorded would lie about what
-            // the sketch actually runs with.
-            let range = handle.param.range
-            let clamped = Swift.min(Swift.max(newValue, range.lowerBound), range.upperBound)
-            if clamped != newValue { value = clamped }   // snap the pill back into range
-            lastKnown = clamped
-            handle.param.wrappedValue = clamped
-            onChange(clamped)
+            // A typed value can land outside the range (the slider and scrub
+            // can't); the param also snaps to any step. Write, then read back
+            // the value the param actually holds, so the pill, the param, and
+            // the host's persisted record all agree.
+            control.set(newValue)
+            let actual = control.get()
+            if actual != newValue { value = actual }
+            lastKnown = actual
+            onChange(.number(actual))
         }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
-                guard !isDragging, !isTyping else { continue }
-                let live = handle.param.wrappedValue
+                guard !isDragging, !isEditingField else { continue }
+                let live = control.get()
                 if live != value {
                     lastKnown = live
                     value = live
                 }
             }
         }
+    }
+
+    /// `.slider` is the two-line row (label + pill over the track); `.field`
+    /// drops the track and reads as a single-line control row.
+    @ViewBuilder private var layout: some View {
+        if control.style == .field {
+            ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
+                valueField
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                    Spacer()
+                    valueField
+                }
+                slider
+                    .controlSize(.small)
+                    .tint(OllinInspector.accent)
+                    // The native slider carries internal vertical inset; trim it so the
+                    // track-to-separator gap matches the pill's top gap (balanced row).
+                    // The -3 is tied to AppKit's private metrics; re-verify the row
+                    // spacing on each macOS major.
+                    .padding(.vertical, -3)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 11)
+            .padding(.bottom, 11)
+        }
+    }
+
+    private var valueField: some View {
+        ScrubbableField(
+            value: $value, fractionDigits: 2,
+            perPoint: (control.range.upperBound - control.range.lowerBound) / 250,
+            snap: control.step, snapOrigin: control.range.lowerBound,
+            range: control.range, isInteracting: $isEditingField, palette: palette)
+    }
+
+    @ViewBuilder private var slider: some View {
+        if let step = control.step, step > 0 {
+            Slider(value: $value, in: control.range, step: step) { isDragging = $0 }
+        } else {
+            Slider(value: $value, in: control.range) { isDragging = $0 }
+        }
+    }
+}
+
+/// Shared chrome for the single-line rows (stepper, toggle, menu, color): the
+/// leading label, a spacer, and the trailing control.
+private struct ControlRow<Control: View>: View {
+    let handle: ParamHandle
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    @ViewBuilder let control: () -> Control
+
+    var body: some View {
+        HStack {
+            ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+            Spacer()
+            control()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(minHeight: 38)
+    }
+}
+
+/// An `Int` row: a scrubbable value cell between minus/plus buttons.
+private struct StepperParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.Stepper
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var value: Double
+    @State private var lastKnown: Double
+    @State private var isEditingField = false
+
+    init(handle: ParamHandle, control: ParamControl.Stepper, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        let current = Double(control.get())
+        _value = State(initialValue: current)
+        _lastKnown = State(initialValue: current)
+    }
+
+    private var doubleRange: ClosedRange<Double> {
+        Double(control.range.lowerBound)...Double(control.range.upperBound)
+    }
+
+    var body: some View {
+        ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
+            HStack(spacing: 2) {
+                stepButton("minus", by: -control.step, disabled: Int(value) <= control.range.lowerBound)
+                ScrubbableField(
+                    value: $value, fractionDigits: 0,
+                    perPoint: Double(control.step) / 8,   // ~8 points of drag per step
+                    snap: Double(control.step), snapOrigin: Double(control.range.lowerBound),
+                    range: doubleRange, isInteracting: $isEditingField, palette: palette)
+                stepButton("plus", by: control.step, disabled: Int(value) >= control.range.upperBound)
+            }
+        }
+        .onChange(of: value) { _, newValue in
+            guard newValue != lastKnown else { return }
+            control.set(Int(newValue.rounded()))
+            let actual = Double(control.get())
+            if actual != newValue { value = actual }
+            lastKnown = actual
+            onChange(.number(actual))
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !isEditingField else { continue }
+                let live = Double(control.get())
+                if live != value {
+                    lastKnown = live
+                    value = live
+                }
+            }
+        }
+    }
+
+    private func stepButton(_ symbol: String, by delta: Int, disabled: Bool) -> some View {
+        Button {
+            value = Swift.min(Swift.max(value + Double(delta), doubleRange.lowerBound),
+                              doubleRange.upperBound)
+        } label: {
+            SwiftUI.Image(systemName: symbol)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(disabled ? palette.textTertiary : .secondary)
+                .frame(width: 20, height: 20)
+                .background(palette.fieldFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+    }
+}
+
+/// A `Bool` row: an on/off switch.
+private struct ToggleParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.Toggle
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var isOn: Bool
+
+    init(handle: ParamHandle, control: ParamControl.Toggle, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        _isOn = State(initialValue: control.get())
+    }
+
+    var body: some View {
+        ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .tint(OllinInspector.accent)
+        }
+        .onChange(of: isOn) { _, newValue in
+            guard newValue != control.get() else { return }
+            control.set(newValue)
+            onChange(.boolean(newValue))
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                let live = control.get()
+                if live != isOn { isOn = live }
+            }
+        }
+    }
+}
+
+/// An enum row: a pop-up menu over the type's cases.
+private struct MenuParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.Menu
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var selection: Int
+
+    init(handle: ParamHandle, control: ParamControl.Menu, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        _selection = State(initialValue: control.get())
+    }
+
+    var body: some View {
+        ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
+            Picker("", selection: $selection) {
+                ForEach(Array(control.options.enumerated()), id: \.offset) { index, name in
+                    Text(name).tag(index)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .controlSize(.small)
+            .fixedSize()
+        }
+        .onChange(of: selection) { _, newValue in
+            guard newValue != control.get() else { return }
+            control.set(newValue)
+            // Report what the param now holds (the case name, not the index).
+            onChange(handle.param.stored)
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                let live = control.get()
+                if live != selection { selection = live }
+            }
+        }
+    }
+}
+
+/// A `Color` row: the native color well (its panel includes the eyedropper).
+private struct ColorParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.ColorWell
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var color: SwiftUI.Color
+    /// What the param held when this row last wrote or pulled, so the sync pull
+    /// can tell an external change from round-trip drift in the bridge.
+    @State private var lastKnown: Color
+
+    init(handle: ParamHandle, control: ParamControl.ColorWell, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        let current = control.get()
+        _color = State(initialValue: ColorParamRow.swiftUIColor(current))
+        _lastKnown = State(initialValue: current)
+    }
+
+    var body: some View {
+        ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
+            ColorPicker("", selection: $color, supportsOpacity: true)
+                .labelsHidden()
+                .controlSize(.small)
+        }
+        .onChange(of: color) { _, newValue in
+            guard let value = ColorParamRow.ollinColor(newValue) else { return }
+            guard value != lastKnown else { return }
+            control.set(value)
+            lastKnown = value
+            onChange(handle.param.stored)
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                let live = control.get()
+                if live != lastKnown {
+                    lastKnown = live
+                    color = ColorParamRow.swiftUIColor(live)
+                }
+            }
+        }
+    }
+
+    private static func swiftUIColor(_ color: Color) -> SwiftUI.Color {
+        SwiftUI.Color(.sRGB, red: color.red, green: color.green, blue: color.blue,
+                      opacity: color.alpha)
+    }
+
+    private static func ollinColor(_ color: SwiftUI.Color) -> Color? {
+        guard let converted = NSColor(color).usingColorSpace(.sRGB) else { return nil }
+        return Color(red: converted.redComponent, green: converted.greenComponent,
+                     blue: converted.blueComponent, alpha: converted.alphaComponent)
+    }
+}
+
+/// A `Vector2` row: paired x/y scrubbable fields, each over its own range.
+private struct VectorParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.Vector
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var x: Double
+    @State private var y: Double
+    @State private var lastKnown: Vector2
+    @State private var isEditingX = false
+    @State private var isEditingY = false
+
+    init(handle: ParamHandle, control: ParamControl.Vector, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        let current = control.get()
+        _x = State(initialValue: current.x)
+        _y = State(initialValue: current.y)
+        _lastKnown = State(initialValue: current)
+    }
+
+    var body: some View {
+        ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
+            HStack(spacing: 6) {
+                ScrubbableField(
+                    value: $x, fractionDigits: paramFieldDigits(for: control.xRange),
+                    perPoint: (control.xRange.upperBound - control.xRange.lowerBound) / 250,
+                    snap: nil, snapOrigin: 0, range: control.xRange,
+                    isInteracting: $isEditingX, palette: palette, prefix: "x")
+                ScrubbableField(
+                    value: $y, fractionDigits: paramFieldDigits(for: control.yRange),
+                    perPoint: (control.yRange.upperBound - control.yRange.lowerBound) / 250,
+                    snap: nil, snapOrigin: 0, range: control.yRange,
+                    isInteracting: $isEditingY, palette: palette, prefix: "y")
+            }
+        }
+        .onChange(of: x) { _, _ in push() }
+        .onChange(of: y) { _, _ in push() }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !isEditingX, !isEditingY else { continue }
+                let live = control.get()
+                if live != lastKnown {
+                    lastKnown = live
+                    x = live.x
+                    y = live.y
+                }
+            }
+        }
+    }
+
+    /// Write the edited pair through the param, read back what it actually
+    /// holds (clamped per axis), and reflect + report that.
+    private func push() {
+        let candidate = Vector2(x, y)
+        guard candidate != lastKnown else { return }   // the sync pull's own echo
+        control.set(candidate)
+        let actual = control.get()
+        if actual.x != x { x = actual.x }
+        if actual.y != y { y = actual.y }
+        lastKnown = actual
+        onChange(.vector(x: actual.x, y: actual.y))
+    }
+}
+
+/// A `Vector3` row: x/y/z scrubbable fields on their own line under the label
+/// (three pills don't fit beside it at the sidebar width).
+private struct Vector3ParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.VectorXYZ
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var x: Double
+    @State private var y: Double
+    @State private var z: Double
+    @State private var lastKnown: Vector3
+    @State private var isEditingX = false
+    @State private var isEditingY = false
+    @State private var isEditingZ = false
+
+    init(handle: ParamHandle, control: ParamControl.VectorXYZ, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        let current = control.get()
+        _x = State(initialValue: current.x)
+        _y = State(initialValue: current.y)
+        _z = State(initialValue: current.z)
+        _lastKnown = State(initialValue: current)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
+                ScrubbableField(
+                    value: $x, fractionDigits: paramFieldDigits(for: control.xRange),
+                    perPoint: (control.xRange.upperBound - control.xRange.lowerBound) / 250,
+                    snap: nil, snapOrigin: 0, range: control.xRange,
+                    isInteracting: $isEditingX, palette: palette, prefix: "x")
+                ScrubbableField(
+                    value: $y, fractionDigits: paramFieldDigits(for: control.yRange),
+                    perPoint: (control.yRange.upperBound - control.yRange.lowerBound) / 250,
+                    snap: nil, snapOrigin: 0, range: control.yRange,
+                    isInteracting: $isEditingY, palette: palette, prefix: "y")
+                ScrubbableField(
+                    value: $z, fractionDigits: paramFieldDigits(for: control.zRange),
+                    perPoint: (control.zRange.upperBound - control.zRange.lowerBound) / 250,
+                    snap: nil, snapOrigin: 0, range: control.zRange,
+                    isInteracting: $isEditingZ, palette: palette, prefix: "z")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 11)
+        .padding(.bottom, 11)
+        .onChange(of: x) { _, _ in push() }
+        .onChange(of: y) { _, _ in push() }
+        .onChange(of: z) { _, _ in push() }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !isEditingX, !isEditingY, !isEditingZ else { continue }
+                let live = control.get()
+                if live != lastKnown {
+                    lastKnown = live
+                    x = live.x
+                    y = live.y
+                    z = live.z
+                }
+            }
+        }
+    }
+
+    /// Write the edited triple through the param, read back what it actually
+    /// holds (clamped per axis), and reflect + report that.
+    private func push() {
+        let candidate = Vector3(x, y, z)
+        guard candidate != lastKnown else { return }   // the sync pull's own echo
+        control.set(candidate)
+        let actual = control.get()
+        if actual.x != x { x = actual.x }
+        if actual.y != y { y = actual.y }
+        if actual.z != z { z = actual.z }
+        lastKnown = actual
+        onChange(.vector3(x: actual.x, y: actual.y, z: actual.z))
     }
 }

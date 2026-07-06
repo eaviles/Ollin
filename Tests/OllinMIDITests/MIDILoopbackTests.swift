@@ -77,7 +77,7 @@ struct MIDILoopbackTests {
         guard let (output, input) = await makePair() else { return }   // soft-skip
         defer { output.close(); input.stop() }
 
-        let knob = Param(wrappedValue: 0, 0...100)   // no smoothing → instant
+        let knob = Param(wrappedValue: 0.0, 0...100)   // no smoothing → instant
         input.bind(controlChange: 20, to: knob.projectedValue)   // 0…127 → 0…100
 
         output.controlChange(20, value: 127)

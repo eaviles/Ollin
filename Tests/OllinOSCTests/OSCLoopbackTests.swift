@@ -80,7 +80,7 @@ struct OSCLoopbackTests {
         let (sender, receiver) = try await makePair()
         defer { receiver.stop(); sender.close() }
 
-        let knob = Param(wrappedValue: 0, 0...100)
+        let knob = Param(wrappedValue: 0.0, 0...100)
         receiver.bind("/knob", to: knob)   // incoming 0…1 → 0…100
 
         let value = try await waitFor(timeout: 3.0) { () -> Double? in

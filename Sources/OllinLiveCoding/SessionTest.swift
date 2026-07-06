@@ -59,7 +59,7 @@ enum SessionTest {
         }
 
         print("OllinLiveCoding sessiontest: param carry across an evaluation …")
-        session.recordParam("radius", 42)   // the user dragged this knob
+        session.recordParam("radius", .number(42))   // the user dragged this knob
         session.evaluate(loader, input: .source(source(radiusDefault: 300, speedDefault: 2)))
         await settle(session)
         guard value(of: "radius", session) == 42 else {
@@ -95,7 +95,9 @@ enum SessionTest {
 
     @MainActor
     private static func value(of name: String, _ session: SketchSession) -> Double? {
-        session.params.first(where: { $0.name == name })?.param.wrappedValue
+        guard let handle = session.params.first(where: { $0.name == name }),
+              case .number(let v) = handle.param.stored else { return nil }
+        return v
     }
 
     private static func fail(_ message: String) -> Never {

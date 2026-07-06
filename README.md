@@ -14,7 +14,7 @@
 ## Features
 
 - **Motion by default.** `draw()` runs at the display's refresh rate from the first line, so `120 + sin(time) * 40` is already an animation, and `time`, `frameCount`, and `deltaTime` are ready in every sketch.
-- **Live reload.** `swift run OllinLive Sketch.swift` watches the file and hot-swaps each save into the running window; a typo never closes it. `@Param` properties become inspector sliders that keep their values across reloads.
+- **Live reload.** `swift run OllinLive Sketch.swift` watches the file and hot-swaps each save into the running window; a typo never closes it. `@Param` properties become typed inspector controls (sliders, steppers, toggles, menus, color wells) in grouped cards, and they keep their values across reloads.
 - **Live coding on stage.** `swift run OllinLiveCoding` is a performance instrument: the sketch fills the window, the code rides over it as translucent text, and ⌘↩ recompiles the buffer mid-motion, with the clock and tuned knobs carrying across the swap. A typo shows as a strip at the bottom while the last good sketch keeps playing.
 - **A Metal core.** Most shapes render as analytic signed-distance fields (one instanced quad each, so thousands of moving shapes stay cheap), strokes carry their own anti-aliasing fringe, and every frame composites in linear light with HDR tone-mapping, dithered output, and up to 8× MSAA.
 - **A deep 2D catalog.** Some thirty shapes from circles to stars to hearts, curved paths, concave and holed fills, shape booleans and offsets, gradient paint on everything, blend modes, and `noClear()` accumulation for long-exposure looks.

@@ -53,7 +53,7 @@ public final class OSCReceiver: @unchecked Sendable {
     private let resolvedPort = OSAllocatedUnfairLock<UInt16?>(initialState: nil)
 
     private struct ParamBinding: Sendable {
-        let param: Param
+        let param: Param<Double>
         let input: ClosedRange<Double>
     }
 
@@ -172,7 +172,7 @@ public final class OSCReceiver: @unchecked Sendable {
     /// osc.bind("/radius", to: $radius)            // 0…1 → the param's range
     /// osc.bind("/freq", to: $freq, from: 0...127) // a MIDI-style 0…127 fader
     /// ```
-    public func bind(_ address: String, to param: Param, from input: ClosedRange<Double> = 0...1) {
+    public func bind(_ address: String, to param: Param<Double>, from input: ClosedRange<Double> = 0...1) {
         state.withLock { $0.bindings[address] = ParamBinding(param: param, input: input) }
     }
 

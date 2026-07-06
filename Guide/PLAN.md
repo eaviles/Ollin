@@ -236,7 +236,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Helpers/Math.md` (map, lerp, dist) | Ch 3, Appendix B | taught |
 | `Helpers/Animation.md` (easing, @Eased, @Smoothed, Timeline) | Ch 3 | taught |
 | `Helpers/Input.md` (mouse, keyboard) | Ch 1 | taught |
-| `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 20 | taught |
+| `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 20 | taught (Ch 1 predates the typed family: Int/Bool/enum/Color/Vector2 controls, groups, icons, scrubbing; fold in on the Ch 1 revisit, and Ch 3's Waves knob can drop its `.rounded()` for an Int param) |
 | `Generators/Random.md` | Ch 4 | taught |
 | `Generators/Noise.md` (noise, signedNoise, curlNoise) | Ch 5; curl in Ch 12/16 | taught |
 | `Drawing/Geometry.md`: `Grid`, `Insets` | Ch 6 | taught |
@@ -314,7 +314,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Clipping as drawing state | Ch 6 or 14 |
 | Perfect-loop helpers | Ch 3 (the payoff piece would adopt them) |
 | Bare shaping functions (smoothstep, step, fract, clamp) | Ch 3 + Ch 15 (one vocabulary in both) |
-| Richer `@Param` controls (stepped/integer, toggles) | Ch 1 (knobs) + Ch 20 (bindings); Ch 3's Waves knob would drop its `.rounded()` |
 | `Timeline` worked example | Ch 3 (a "Go deeper" link) |
 | Reproducibility metadata in exports | Ch 4 + Ch 22 |
 | Kaleidoscope symmetry | Ch 6 |

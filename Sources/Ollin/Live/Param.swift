@@ -2,19 +2,20 @@ import Foundation
 import os
 
 /// How a `@Param` eases into a new value instead of snapping to it. Pass one to a
-/// parameter to soften *every* source that drives the knob — a MIDI fader, an OSC
+/// parameter to soften *every* source that drives the knob: a MIDI fader, an OSC
 /// address, or a drag of the inspector slider all glide rather than jump.
 ///
 /// ```swift
-/// @Param(20...400, smoothing: .eased(0.3)) var radius = 120   // 0.3s glide
-/// @Param(0...1, smoothing: .smoothed) var mix = 0.5           // adaptive 1€ filter
-/// @Param(0...127) var snappy = 64                             // immediate (default)
+/// @Param(20...400, smoothing: .eased(0.3)) var radius = 120.0   // 0.3s glide
+/// @Param(0...1, smoothing: .smoothed) var mix = 0.5             // adaptive 1€ filter
+/// @Param(0...127) var snappy = 64.0                             // immediate (default)
 /// ```
 ///
-/// `.eased` glides to the target over a fixed time along an `Easing` curve —
+/// `.eased` glides to the target over a fixed time along an `Easing` curve:
 /// crisp and predictable. `.smoothed` runs the value through a `OneEuroFilter`,
-/// which stays steady while the knob is still and opens up as it moves — the
-/// better feel for a hand on live hardware.
+/// which stays steady while the knob is still and opens up as it moves, the
+/// better feel for a hand on live hardware. Smoothing applies to `Double`
+/// parameters; the other kinds switch instantly.
 public enum ParamSmoothing: Sendable {
     /// Glide to each new value over `duration` seconds, shaped by `curve`.
     case eased(duration: Double, curve: Easing)
@@ -23,91 +24,479 @@ public enum ParamSmoothing: Sendable {
     /// moves.
     case smoothed(minCutoff: Double, beta: Double)
 
-    /// `.eased(0.3)` — a glide of `duration` seconds with a gentle ease-out.
+    /// `.eased(0.3)`: a glide of `duration` seconds with a gentle ease-out.
     public static func eased(_ duration: Double, curve: Easing = .easeOut) -> ParamSmoothing {
         .eased(duration: duration, curve: curve)
     }
 
-    /// The 1€ filter at its gentle defaults — a good start for a live knob.
+    /// The 1€ filter at its gentle defaults, a good start for a live knob.
     public static var smoothed: ParamSmoothing { .smoothed(minCutoff: 1, beta: 0.007) }
 }
 
-/// A tunable parameter the live host surfaces as a slider. Declare it on a
-/// sketch and read it like a normal property; the live host discovers it, shows
-/// a slider, and persists its value across reloads.
+// MARK: - Stored values
+
+/// A parameter value in its host-persistable form. The live hosts record one per
+/// tuned knob (keyed by property name) and re-apply it across reloads, so the
+/// payload is a small, codable value rather than the parameter's Swift type.
+public enum ParamStored: Equatable, Sendable, Codable {
+    /// A `Double` or `Int` parameter's value.
+    case number(Double)
+    /// A `Bool` parameter's value.
+    case boolean(Bool)
+    /// An enum parameter's selected case, by its case name.
+    case option(String)
+    /// A `Color` parameter's value, as sRGB components in `0...1`.
+    case color(red: Double, green: Double, blue: Double, alpha: Double)
+    /// A `Vector2` parameter's value.
+    case vector(x: Double, y: Double)
+    /// A `Vector3` parameter's value.
+    case vector3(x: Double, y: Double, z: Double)
+}
+
+// MARK: - Controls
+
+/// A type-erased description of the inspector control that edits a parameter:
+/// which control kind to show, its metadata, and closures that read and write
+/// the live value. The inspector switches on this to build the right row; the
+/// closures are safe to call from the main thread while anything else drives
+/// the same knob.
+public enum ParamControl {
+    case slider(Slider)
+    case stepper(Stepper)
+    case toggle(Toggle)
+    case menu(Menu)
+    case colorWell(ColorWell)
+    case vector(Vector)
+    case vector3(VectorXYZ)
+
+    /// A `Double` knob: a slider over `range`, optionally snapped to `step`.
+    /// `style: .field` drops the track and leaves the scrubbable value field.
+    public struct Slider: Sendable {
+        public let range: ClosedRange<Double>
+        public let step: Double?
+        public let style: ParamNumericStyle
+        public let get: @Sendable () -> Double
+        public let set: @Sendable (Double) -> Void
+        public init(range: ClosedRange<Double>, step: Double?,
+                    style: ParamNumericStyle = .slider,
+                    get: @escaping @Sendable () -> Double,
+                    set: @escaping @Sendable (Double) -> Void) {
+            self.range = range; self.step = step; self.style = style; self.get = get; self.set = set
+        }
+    }
+
+    /// An `Int` knob: a value field with increment/decrement, stepping by `step`.
+    public struct Stepper: Sendable {
+        public let range: ClosedRange<Int>
+        public let step: Int
+        public let get: @Sendable () -> Int
+        public let set: @Sendable (Int) -> Void
+        public init(range: ClosedRange<Int>, step: Int,
+                    get: @escaping @Sendable () -> Int,
+                    set: @escaping @Sendable (Int) -> Void) {
+            self.range = range; self.step = step; self.get = get; self.set = set
+        }
+    }
+
+    /// A `Bool` knob: an on/off switch.
+    public struct Toggle: Sendable {
+        public let get: @Sendable () -> Bool
+        public let set: @Sendable (Bool) -> Void
+        public init(get: @escaping @Sendable () -> Bool,
+                    set: @escaping @Sendable (Bool) -> Void) {
+            self.get = get; self.set = set
+        }
+    }
+
+    /// An enum knob: a pop-up menu over `options`, addressed by index.
+    public struct Menu: Sendable {
+        public let options: [String]
+        public let get: @Sendable () -> Int
+        public let set: @Sendable (Int) -> Void
+        public init(options: [String],
+                    get: @escaping @Sendable () -> Int,
+                    set: @escaping @Sendable (Int) -> Void) {
+            self.options = options; self.get = get; self.set = set
+        }
+    }
+
+    /// A `Color` knob: a color well.
+    public struct ColorWell: Sendable {
+        public let get: @Sendable () -> Color
+        public let set: @Sendable (Color) -> Void
+        public init(get: @escaping @Sendable () -> Color,
+                    set: @escaping @Sendable (Color) -> Void) {
+            self.get = get; self.set = set
+        }
+    }
+
+    /// A `Vector2` knob: paired x/y value fields, each over its own range.
+    public struct Vector: Sendable {
+        public let xRange: ClosedRange<Double>
+        public let yRange: ClosedRange<Double>
+        public let get: @Sendable () -> Vector2
+        public let set: @Sendable (Vector2) -> Void
+        public init(xRange: ClosedRange<Double>, yRange: ClosedRange<Double>,
+                    get: @escaping @Sendable () -> Vector2,
+                    set: @escaping @Sendable (Vector2) -> Void) {
+            self.xRange = xRange; self.yRange = yRange; self.get = get; self.set = set
+        }
+    }
+
+    /// A `Vector3` knob: x/y/z value fields, each over its own range.
+    public struct VectorXYZ: Sendable {
+        public let xRange: ClosedRange<Double>
+        public let yRange: ClosedRange<Double>
+        public let zRange: ClosedRange<Double>
+        public let get: @Sendable () -> Vector3
+        public let set: @Sendable (Vector3) -> Void
+        public init(xRange: ClosedRange<Double>, yRange: ClosedRange<Double>,
+                    zRange: ClosedRange<Double>,
+                    get: @escaping @Sendable () -> Vector3,
+                    set: @escaping @Sendable (Vector3) -> Void) {
+            self.xRange = xRange; self.yRange = yRange; self.zRange = zRange
+            self.get = get; self.set = set
+        }
+    }
+}
+
+// MARK: - Value kinds
+
+/// How a numeric parameter presents in the inspector.
+public enum ParamNumericStyle: Sendable {
+    /// A slider with the value field beside it (the default).
+    case slider
+    /// The value field alone: scrub or type, no track. The fit for a precise
+    /// quantity or a range so wide a slider's resolution would be useless.
+    case field
+}
+
+/// The numeric constraint payload of a `Double` or `Int` parameter: the allowed
+/// range, an optional step the value snaps to, and the presentation style.
+public struct ParamNumericConstraints<Number: Comparable & Sendable>: Sendable {
+    public var range: ClosedRange<Number>
+    public var step: Number?
+    public var style: ParamNumericStyle
+    public init(range: ClosedRange<Number>, step: Number? = nil, style: ParamNumericStyle = .slider) {
+        self.range = range
+        self.step = step
+        self.style = style
+    }
+}
+
+/// A value a `@Param` can hold. Each kind carries its own constraint payload
+/// (a numeric range, or nothing), knows how to clamp to it, round-trips through
+/// `ParamStored` for host persistence, and describes the inspector control that
+/// edits it. The built-in kinds are `Double`, `Int`, `Bool`, `Color`, and any
+/// enum conforming to `ParamOption`.
+public protocol ParamValue: Equatable, Sendable {
+    associatedtype Constraints: Sendable
+    static func clamped(_ value: Self, by constraints: Constraints) -> Self
+    static func stored(_ value: Self) -> ParamStored
+    static func restored(_ stored: ParamStored) -> Self?
+    static func control(for param: Param<Self>) -> ParamControl
+}
+
+extension Double: ParamValue {
+    public typealias Constraints = ParamNumericConstraints<Double>
+
+    public static func clamped(_ value: Double, by constraints: Constraints) -> Double {
+        var v = Swift.min(Swift.max(value, constraints.range.lowerBound), constraints.range.upperBound)
+        if let step = constraints.step, step > 0 {
+            let lower = constraints.range.lowerBound
+            v = lower + ((v - lower) / step).rounded() * step
+            v = Swift.min(v, constraints.range.upperBound)
+        }
+        return v
+    }
+
+    public static func stored(_ value: Double) -> ParamStored { .number(value) }
+
+    public static func restored(_ stored: ParamStored) -> Double? {
+        guard case .number(let v) = stored else { return nil }
+        return v
+    }
+
+    public static func control(for param: Param<Double>) -> ParamControl {
+        .slider(.init(range: param.constraints.range, step: param.constraints.step,
+                      style: param.constraints.style,
+                      get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+    }
+}
+
+extension Int: ParamValue {
+    public typealias Constraints = ParamNumericConstraints<Int>
+
+    public static func clamped(_ value: Int, by constraints: Constraints) -> Int {
+        var v = Swift.min(Swift.max(value, constraints.range.lowerBound), constraints.range.upperBound)
+        if let step = constraints.step, step > 1 {
+            let lower = constraints.range.lowerBound
+            v = lower + (v - lower + step / 2) / step * step
+            v = Swift.min(v, constraints.range.upperBound)
+        }
+        return v
+    }
+
+    public static func stored(_ value: Int) -> ParamStored { .number(Double(value)) }
+
+    public static func restored(_ stored: ParamStored) -> Int? {
+        guard case .number(let v) = stored else { return nil }
+        return Int(v.rounded())
+    }
+
+    public static func control(for param: Param<Int>) -> ParamControl {
+        .stepper(.init(range: param.constraints.range, step: param.constraints.step ?? 1,
+                       get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+    }
+}
+
+extension Bool: ParamValue {
+    public typealias Constraints = Void
+    public static func clamped(_ value: Bool, by _: Void) -> Bool { value }
+    public static func stored(_ value: Bool) -> ParamStored { .boolean(value) }
+    public static func restored(_ stored: ParamStored) -> Bool? {
+        guard case .boolean(let v) = stored else { return nil }
+        return v
+    }
+    public static func control(for param: Param<Bool>) -> ParamControl {
+        .toggle(.init(get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+    }
+}
+
+extension Color: ParamValue {
+    public typealias Constraints = Void
+    public static func clamped(_ value: Color, by _: Void) -> Color { value }
+    public static func stored(_ value: Color) -> ParamStored {
+        .color(red: value.red, green: value.green, blue: value.blue, alpha: value.alpha)
+    }
+    public static func restored(_ stored: ParamStored) -> Color? {
+        guard case .color(let r, let g, let b, let a) = stored else { return nil }
+        return Color(red: r, green: g, blue: b, alpha: a)
+    }
+    public static func control(for param: Param<Color>) -> ParamControl {
+        .colorWell(.init(get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+    }
+}
+
+/// The per-axis constraint payload of a `Vector2` parameter.
+public struct ParamVectorConstraints: Sendable {
+    public var x: ClosedRange<Double>
+    public var y: ClosedRange<Double>
+    public init(x: ClosedRange<Double>, y: ClosedRange<Double>) {
+        self.x = x
+        self.y = y
+    }
+}
+
+/// The per-axis constraint payload of a `Vector3` parameter.
+public struct ParamVector3Constraints: Sendable {
+    public var x: ClosedRange<Double>
+    public var y: ClosedRange<Double>
+    public var z: ClosedRange<Double>
+    public init(x: ClosedRange<Double>, y: ClosedRange<Double>, z: ClosedRange<Double>) {
+        self.x = x
+        self.y = y
+        self.z = z
+    }
+}
+
+extension Vector3: ParamValue {
+    public typealias Constraints = ParamVector3Constraints
+
+    public static func clamped(_ value: Vector3, by constraints: Constraints) -> Vector3 {
+        Vector3(Swift.min(Swift.max(value.x, constraints.x.lowerBound), constraints.x.upperBound),
+                Swift.min(Swift.max(value.y, constraints.y.lowerBound), constraints.y.upperBound),
+                Swift.min(Swift.max(value.z, constraints.z.lowerBound), constraints.z.upperBound))
+    }
+
+    public static func stored(_ value: Vector3) -> ParamStored {
+        .vector3(x: value.x, y: value.y, z: value.z)
+    }
+
+    public static func restored(_ stored: ParamStored) -> Vector3? {
+        guard case .vector3(let x, let y, let z) = stored else { return nil }
+        return Vector3(x, y, z)
+    }
+
+    public static func control(for param: Param<Vector3>) -> ParamControl {
+        .vector3(.init(xRange: param.constraints.x, yRange: param.constraints.y,
+                       zRange: param.constraints.z,
+                       get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+    }
+}
+
+extension Vector2: ParamValue {
+    public typealias Constraints = ParamVectorConstraints
+
+    public static func clamped(_ value: Vector2, by constraints: Constraints) -> Vector2 {
+        Vector2(Swift.min(Swift.max(value.x, constraints.x.lowerBound), constraints.x.upperBound),
+                Swift.min(Swift.max(value.y, constraints.y.lowerBound), constraints.y.upperBound))
+    }
+
+    public static func stored(_ value: Vector2) -> ParamStored { .vector(x: value.x, y: value.y) }
+
+    public static func restored(_ stored: ParamStored) -> Vector2? {
+        guard case .vector(let x, let y) = stored else { return nil }
+        return Vector2(x, y)
+    }
+
+    public static func control(for param: Param<Vector2>) -> ParamControl {
+        .vector(.init(xRange: param.constraints.x, yRange: param.constraints.y,
+                      get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+    }
+}
+
+/// An enum a `@Param` can hold: the inspector shows its cases as a pop-up menu.
+/// Declare the enum `CaseIterable` and conform:
+///
+/// ```swift
+/// enum Style: String, CaseIterable, ParamOption { case dots, rings, mesh }
+/// @Param var style: Style = .dots
+/// ```
+///
+/// The menu shows each case under `optionLabel`, which defaults to the
+/// humanized case name (`linearBurn` reads "Linear Burn"); override it for
+/// custom wording. Persistence keys on the case *name*, so renaming a case
+/// forgets a tuned selection (reordering is safe).
+public protocol ParamOption: ParamValue, CaseIterable where Constraints == Void {
+    /// The name the inspector menu shows for this case.
+    var optionLabel: String { get }
+}
+
+public extension ParamOption {
+    var optionLabel: String { ParamHandle.humanize(String(describing: self)) }
+
+    static func clamped(_ value: Self, by _: Void) -> Self { value }
+
+    static func stored(_ value: Self) -> ParamStored { .option(String(describing: value)) }
+
+    static func restored(_ stored: ParamStored) -> Self? {
+        guard case .option(let name) = stored else { return nil }
+        return allCases.first { String(describing: $0) == name }
+    }
+
+    static func control(for param: Param<Self>) -> ParamControl {
+        let cases = Array(allCases)
+        return .menu(.init(options: cases.map { $0.optionLabel },
+                           get: { cases.firstIndex(of: param.wrappedValue) ?? 0 },
+                           set: { index in
+                               guard cases.indices.contains(index) else { return }
+                               param.wrappedValue = cases[index]
+                           }))
+    }
+}
+
+// MARK: Built-in options
+
+// Ollin's own CaseIterable mode enums make natural knobs, so they conform out
+// of the box: `@Param var blend: BlendMode = .normal` gets a menu for free.
+extension BlendMode: ParamOption {}
+extension StrokeCap: ParamOption {}
+extension StrokeJoin: ParamOption {}
+extension Colormap: ParamOption {}
+
+// MARK: - The wrapper
+
+/// A tunable parameter the live host surfaces as an inspector control. Declare
+/// it on a sketch and read it like a normal property; the live host discovers
+/// it, shows the control that matches its type, and persists its value across
+/// reloads.
 ///
 /// ```swift
 /// final class Pulse: Sketch {
-///     @Param(0...200) var radius = 120.0          // label "Radius", from the name
-///     @Param("Speed", 0.1...4) var rate = 1.0     // explicit label
-///     override func draw() {
-///         drawCircle(width / 2, height / 2, radius + sin(time * rate) * 40)
-///     }
+///     @Param(0...200) var radius = 120.0                // slider, label "Radius"
+///     @Param("Speed", 0.1...4) var rate = 1.0           // slider, explicit label
+///     @Param(1...12) var rings = 5                      // Int: stepper
+///     @Param var filled = true                          // Bool: toggle
+///     @Param var tint: Color = .purple                  // Color: color well
+///     @Param var style: Style = .dots                   // ParamOption enum: menu
+///     @Param(x: 0...1080, y: 0...1080)
+///     var center = Vector2(540, 540)                    // Vector2: x/y fields
 /// }
 /// ```
 ///
-/// The value is always clamped to its range. Pass a label to override the one
-/// derived from the property name.
+/// Every form takes an optional `icon:` (an SF Symbol name shown leading the
+/// row) and `group:` (a section name; the inspector renders each group as its
+/// own titled card, in declaration order):
+///
+/// ```swift
+/// @Param(0...1, icon: "circle.dashed", group: "Shape") var wobble = 0.4
+/// ```
+///
+/// A numeric value is always clamped to its range (and snapped to `step:` when
+/// given). Pass a label to override the one derived from the property name.
 ///
 /// The value is safe to read and write from any thread: the live inspector
 /// drives it from the main thread, and an external control source (a hardware
 /// fader, a networked message) may drive the same knob from its own thread, so
 /// the storage is guarded by a lock and the type is `Sendable`.
 @propertyWrapper
-public final class Param: @unchecked Sendable, FrameAdvancing {
-    /// The value plus its glide state, kept together behind one lock.
+public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing {
+    /// The value plus its glide state, kept together behind one lock. The glide
+    /// fields only move for a smoothed `Double` parameter.
     private struct Storage: Sendable {
-        var current: Double                  // the (possibly gliding) value reads return
-        var target: Double                   // what `current` is easing toward
+        var current: Value                   // the (possibly gliding) value reads return
+        var target: Value                    // what `current` is easing toward
         var easeStart: Double                // `current` when the target was last set (`.eased`)
         var easeElapsed: Double              // seconds into the current `.eased` glide
         var filter: OneEuroFilter<Double>?   // `.smoothed` state, nil otherwise
     }
     private let storage: OSAllocatedUnfairLock<Storage>
 
-    /// The allowed range; the value is clamped to it.
-    public let range: ClosedRange<Double>
+    /// The value kind's constraint payload: the range and optional step for a
+    /// numeric parameter, `Void` for the kinds that need none.
+    public let constraints: Value.Constraints
     /// An explicit display label, or `nil` to derive one from the property name.
     public let label: String?
+    /// An SF Symbol name the inspector shows leading the row, or `nil` for none.
+    public let icon: String?
+    /// The inspector section this knob belongs to, or `nil` for the default group.
+    public let group: String?
     /// How the value eases into changes, or `nil` for an immediate snap.
+    /// Only the `Double` initializers offer smoothing.
     public let smoothing: ParamSmoothing?
 
     /// The current value (the gliding one when smoothed); assigning sets a new
     /// target the value eases toward (or snaps to, with no smoothing).
-    public var wrappedValue: Double {
-        get { storage.withLock { clamp($0.current) } }
+    public var wrappedValue: Value {
+        get { storage.withLock { Value.clamped($0.current, by: constraints) } }
         set { retarget(newValue) }
     }
 
-    /// The parameter itself, via `$radius` — handy for passing it around.
-    public var projectedValue: Param { self }
+    /// The parameter itself, via `$radius`, handy for passing it around.
+    public var projectedValue: Param<Value> { self }
 
-    public init(wrappedValue: Double, _ range: ClosedRange<Double>, smoothing: ParamSmoothing? = nil) {
-        self.range = range
-        self.label = nil
-        self.smoothing = smoothing
-        self.storage = OSAllocatedUnfairLock(initialState: Param.makeStorage(wrappedValue, range, smoothing))
-    }
-
-    public init(wrappedValue: Double, _ label: String, _ range: ClosedRange<Double>, smoothing: ParamSmoothing? = nil) {
-        self.range = range
+    init(_ value: Value, label: String?, constraints: Value.Constraints,
+         smoothing: ParamSmoothing?, icon: String?, group: String?) {
+        self.constraints = constraints
         self.label = label
+        self.icon = icon
+        self.group = group
         self.smoothing = smoothing
-        self.storage = OSAllocatedUnfairLock(initialState: Param.makeStorage(wrappedValue, range, smoothing))
+        let v = Value.clamped(value, by: constraints)
+        var filter: OneEuroFilter<Double>?
+        if case .smoothed(let minCutoff, let beta) = smoothing {
+            var f = OneEuroFilter<Double>(minCutoff: minCutoff, beta: beta)
+            f.reset(to: (v as? Double) ?? 0)
+            filter = f
+        }
+        self.storage = OSAllocatedUnfairLock(initialState: Storage(
+            current: v, target: v, easeStart: (v as? Double) ?? 0,
+            easeElapsed: .greatestFiniteMagnitude, filter: filter))
     }
 
     /// Jump straight to `value` with no glide (both the value and the target), and
-    /// reseat any filter so it continues from there. Used for direct restores —
-    /// the live host re-applying a tuned value across a reload — where animating
-    /// in from the default would be wrong.
-    public func set(_ value: Double) {
-        let v = clamp(value)
+    /// reseat any filter so it continues from there. Used for direct restores,
+    /// like the live host re-applying a tuned value across a reload, where
+    /// animating in from the default would be wrong.
+    public func set(_ value: Value) {
+        let v = Value.clamped(value, by: constraints)
         storage.withLock { state in
             state.current = v
             state.target = v
-            state.easeStart = v
+            state.easeStart = (v as? Double) ?? 0
             state.easeElapsed = .greatestFiniteMagnitude   // at rest
-            state.filter?.reset(to: v)
+            state.filter?.reset(to: (v as? Double) ?? 0)
         }
     }
 
@@ -115,15 +504,15 @@ public final class Param: @unchecked Sendable, FrameAdvancing {
     /// gliding from wherever it is now. Assigning the value it's already heading
     /// for is a no-op, so it's safe to drive every frame (a knob repeating its
     /// last position won't restart the glide).
-    private func retarget(_ value: Double) {
-        let v = clamp(value)
+    private func retarget(_ value: Value) {
+        let v = Value.clamped(value, by: constraints)
         storage.withLock { state in
             guard v != state.target else { return }
             state.target = v
             if smoothing == nil {
                 state.current = v
             } else {
-                state.easeStart = state.current
+                state.easeStart = (state.current as? Double) ?? 0
                 state.easeElapsed = 0
             }
         }
@@ -131,9 +520,12 @@ public final class Param: @unchecked Sendable, FrameAdvancing {
 
     /// Step the glide one frame. A no-op for un-smoothed params. Called by the
     /// sketch each frame, the same pass that advances `@Eased` / `@Smoothed`.
+    /// Smoothing is only offered by the `Double` initializers, so a smoothed
+    /// parameter always holds a `Double` and the casts below can't fail.
     func advance(by dt: Double) {
         guard let smoothing else { return }
         storage.withLock { state in
+            guard let target = state.target as? Double else { return }
             switch smoothing {
             case .eased(let duration, let curve):
                 guard duration > 0, state.easeElapsed < duration else {
@@ -142,43 +534,169 @@ public final class Param: @unchecked Sendable, FrameAdvancing {
                 }
                 state.easeElapsed += dt
                 let t = Swift.min(state.easeElapsed / duration, 1)
-                state.current = state.easeStart + (state.target - state.easeStart) * curve(t)
+                let value = state.easeStart + (target - state.easeStart) * curve(t)
+                if let v = value as? Value { state.current = v }
             case .smoothed:
                 if var filter = state.filter {
-                    state.current = filter.filter(state.target, dt: dt)
+                    let value = filter.filter(target, dt: dt)
                     state.filter = filter
+                    if let v = value as? Value { state.current = v }
                 }
             }
         }
     }
+}
 
-    private func clamp(_ value: Double) -> Double {
-        Swift.min(Swift.max(value, range.lowerBound), range.upperBound)
+// MARK: Per-kind initializers
+
+public extension Param where Value == Double {
+    /// A `Double` knob over `range`, optionally snapped to `step`. The default
+    /// presentation is a slider; `style: .field` keeps just the value field.
+    convenience init(wrappedValue: Double, _ range: ClosedRange<Double>, step: Double? = nil,
+                     style: ParamNumericStyle = .slider, smoothing: ParamSmoothing? = nil,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: .init(range: range, step: step, style: style),
+                  smoothing: smoothing, icon: icon, group: group)
     }
 
-    private static func makeStorage(_ wrappedValue: Double, _ range: ClosedRange<Double>,
-                                    _ smoothing: ParamSmoothing?) -> Storage {
-        let v = Swift.min(Swift.max(wrappedValue, range.lowerBound), range.upperBound)
-        var filter: OneEuroFilter<Double>?
-        if case .smoothed(let minCutoff, let beta) = smoothing {
-            var f = OneEuroFilter<Double>(minCutoff: minCutoff, beta: beta)
-            f.reset(to: v)
-            filter = f
-        }
-        return Storage(current: v, target: v, easeStart: v,
-                       easeElapsed: .greatestFiniteMagnitude, filter: filter)
+    convenience init(wrappedValue: Double, _ label: String, _ range: ClosedRange<Double>,
+                     step: Double? = nil, style: ParamNumericStyle = .slider,
+                     smoothing: ParamSmoothing? = nil,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: .init(range: range, step: step, style: style),
+                  smoothing: smoothing, icon: icon, group: group)
+    }
+
+    /// The allowed range; the value is clamped to it. (The mapping target for
+    /// OSC and MIDI bindings.)
+    var range: ClosedRange<Double> { constraints.range }
+}
+
+public extension Param where Value == Int {
+    /// An `Int` stepper over `range`, stepping by `step` (default 1).
+    convenience init(wrappedValue: Int, _ range: ClosedRange<Int>, step: Int? = nil,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: .init(range: range, step: step),
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Int, _ label: String, _ range: ClosedRange<Int>,
+                     step: Int? = nil, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: .init(range: range, step: step),
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    /// The allowed range; the value is clamped to it.
+    var range: ClosedRange<Int> { constraints.range }
+}
+
+public extension Param where Value == Bool {
+    /// A `Bool` toggle.
+    convenience init(wrappedValue: Bool, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: (), smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Bool, _ label: String, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value == Color {
+    /// A `Color` well.
+    convenience init(wrappedValue: Color, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: (), smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Color, _ label: String, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value == Vector2 {
+    /// A `Vector2` point: paired x/y fields, each clamped to its own range.
+    convenience init(wrappedValue: Vector2, x: ClosedRange<Double>, y: ClosedRange<Double>,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: .init(x: x, y: y),
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Vector2, _ label: String,
+                     x: ClosedRange<Double>, y: ClosedRange<Double>,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: .init(x: x, y: y),
+                  smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value == Vector3 {
+    /// A `Vector3` point: x/y/z fields, each clamped to its own range.
+    convenience init(wrappedValue: Vector3, x: ClosedRange<Double>, y: ClosedRange<Double>,
+                     z: ClosedRange<Double>, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: .init(x: x, y: y, z: z),
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Vector3, _ label: String,
+                     x: ClosedRange<Double>, y: ClosedRange<Double>, z: ClosedRange<Double>,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: .init(x: x, y: y, z: z),
+                  smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value: ParamOption {
+    /// An enum menu over the type's cases.
+    convenience init(wrappedValue: Value, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: (), smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Value, _ label: String, icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
+    }
+}
+
+// MARK: - Discovery
+
+/// The type-erased face of a `Param`, whatever its value kind: the display
+/// metadata, the inspector control, and the persistence round-trip. The live
+/// hosts drive parameters entirely through this.
+public protocol AnyParam: AnyObject, Sendable {
+    /// An explicit display label, or `nil` to derive one from the property name.
+    var label: String? { get }
+    /// An SF Symbol name shown leading the inspector row, or `nil` for none.
+    var icon: String? { get }
+    /// The inspector section this knob belongs to, or `nil` for the default group.
+    var group: String? { get }
+    /// The inspector control that edits this parameter (metadata + live get/set).
+    var control: ParamControl { get }
+    /// The current value in its host-persistable form.
+    var stored: ParamStored { get }
+    /// Jump straight to a persisted value with no glide; a payload of the wrong
+    /// kind is ignored. Used by the hosts to re-apply tuned values on reload.
+    func restore(_ stored: ParamStored)
+}
+
+extension Param: AnyParam {
+    public var control: ParamControl { Value.control(for: self) }
+    public var stored: ParamStored { Value.stored(wrappedValue) }
+    public func restore(_ stored: ParamStored) {
+        guard let value = Value.restored(stored) else { return }
+        set(value)
     }
 }
 
 /// A discovered `@Param` on a sketch: its persistence key (the property name),
-/// the parameter itself (read/write the value, read the range), and a display
-/// label. The live host builds one slider per handle.
+/// the parameter itself (type-erased), and its display metadata. The live host
+/// builds one inspector row per handle.
 public struct ParamHandle: Identifiable {
-    /// The property name — a stable key for persisting the value across reloads.
+    /// The property name, a stable key for persisting the value across reloads.
     public let name: String
-    public let param: Param
+    public let param: any AnyParam
     public var id: String { name }
     public var label: String { param.label ?? ParamHandle.humanize(name) }
+    public var icon: String? { param.icon }
+    public var group: String? { param.group }
+    public var control: ParamControl { param.control }
 
     /// "radius" -> "Radius", "noiseScale" -> "Noise Scale".
     static func humanize(_ name: String) -> String {
@@ -198,14 +716,14 @@ public struct ParamHandle: Identifiable {
 
 public extension Sketch {
     /// The `@Param` parameters declared on this sketch, discovered via reflection
-    /// (walking the class hierarchy). The live host uses this to build sliders;
-    /// most sketches never call it directly.
+    /// (walking the class hierarchy). The live host uses this to build the
+    /// inspector; most sketches never call it directly.
     func parameters() -> [ParamHandle] {
         var handles: [ParamHandle] = []
         var mirror: Mirror? = Mirror(reflecting: self)
         while let current = mirror {
             for child in current.children {
-                guard let param = child.value as? Param, let storageName = child.label else { continue }
+                guard let param = child.value as? any AnyParam, let storageName = child.label else { continue }
                 // Property-wrapper storage is named `_radius`; strip the underscore.
                 let name = storageName.hasPrefix("_") ? String(storageName.dropFirst()) : storageName
                 handles.append(ParamHandle(name: name, param: param))

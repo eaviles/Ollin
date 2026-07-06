@@ -56,7 +56,7 @@ public final class MIDIInput: @unchecked Sendable {
     private struct ControlKey: Hashable, Sendable { let channel: Int; let controller: Int }
     private struct NoteKey: Hashable, Sendable { let channel: Int; let note: Int }
     private struct ParamBinding: Sendable {
-        let param: Param
+        let param: Param<Double>
         let input: ClosedRange<Double>
     }
 
@@ -208,7 +208,7 @@ public final class MIDIInput: @unchecked Sendable {
     /// midi.bind(controlChange: 7, to: $radius)                    // 0…127 → the param's range
     /// midi.bind(controlChange: 1, to: $mix, from: 0...127)        // explicit input range
     /// ```
-    public func bind(controlChange controller: Int, to param: Param,
+    public func bind(controlChange controller: Int, to param: Param<Double>,
                      channel: Int? = nil, from input: ClosedRange<Double> = 0...127) {
         let key = ControlKey(channel: channel ?? 0, controller: controller)
         state.withLock { $0.bindings[key] = ParamBinding(param: param, input: input) }

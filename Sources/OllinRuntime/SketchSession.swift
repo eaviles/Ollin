@@ -59,7 +59,7 @@ public final class SketchSession {
     /// User-tuned parameter values, keyed by name, re-applied to each freshly
     /// loaded sketch so a knob doesn't snap back. Only values the user actually
     /// changed are stored, so editing a default in code still takes effect.
-    @ObservationIgnored private var paramValues: [String: Double] = [:]
+    @ObservationIgnored private var paramValues: [String: ParamStored] = [:]
 
     public init(keepClock: Bool = false) {
         self.keepClock = keepClock
@@ -81,8 +81,8 @@ public final class SketchSession {
         }
     }
 
-    /// Record a knob the user dragged, so it survives the next evaluation.
-    public func recordParam(_ name: String, _ value: Double) {
+    /// Record a knob the user changed, so it survives the next evaluation.
+    public func recordParam(_ name: String, _ value: ParamStored) {
         paramValues[name] = value
     }
 
@@ -145,11 +145,14 @@ public final class SketchSession {
     /// defaults.
     private func syncParams(_ sketch: Sketch) {
         let handles = sketch.parameters()
-        for handle in handles where paramValues[handle.name] != nil {
+        for handle in handles {
+            guard let stored = paramValues[handle.name] else { continue }
             // Restore instantly (a smoothed knob shouldn't glide in from its
             // default on every reload; it's resuming where it was, not
-            // retargeting).
-            handle.param.set(paramValues[handle.name]!)
+            // retargeting). A payload whose kind no longer matches the param
+            // (the property changed type in the edit) is ignored, so the
+            // freshly written default wins.
+            handle.param.restore(stored)
         }
         params = handles
     }
