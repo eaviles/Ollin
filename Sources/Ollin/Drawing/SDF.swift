@@ -30,6 +30,8 @@ public struct SDF {
         case intersect = 4, smoothIntersect = 5, morph = 6
         case chamferUnion = 7, chamferSubtract = 8, chamferIntersect = 9
         case stairsUnion = 10, stairsSubtract = 11, stairsIntersect = 12
+        case columnsUnion = 13, columnsSubtract = 14, columnsIntersect = 15
+        case pipe = 16, engrave = 17, groove = 18, tongue = 19
     }
     /// Unary distance modifiers. Raw values are the `sel` the shader's MOD node reads.
     enum Modifier: UInt32 { case round = 0, onion = 1 }
@@ -224,6 +226,40 @@ public extension SDF {
     func stairsIntersect(_ other: SDF, radius: Double, steps: Int) -> SDF {
         .init(.combine(.stairsIntersect, self, other, Float(max(radius, 0)), Float(max(steps, 1))))
     }
+    /// Columns union: the fields join through a row of `count` circular ribs of overall
+    /// size `radius` along the seam (a fluted, reeded joint).
+    func columnsUnion(_ other: SDF, radius: Double, count: Int) -> SDF {
+        .init(.combine(.columnsUnion, self, other, Float(max(radius, 0)), Float(max(count, 1))))
+    }
+    /// Columns subtraction: `other` carved out of `self`, the cut's rim fluted with ribs.
+    func columnsSubtract(_ other: SDF, radius: Double, count: Int) -> SDF {
+        .init(.combine(.columnsSubtract, self, other, Float(max(radius, 0)), Float(max(count, 1))))
+    }
+    /// Columns intersection: the overlap, its edge fluted with ribs.
+    func columnsIntersect(_ other: SDF, radius: Double, count: Int) -> SDF {
+        .init(.combine(.columnsIntersect, self, other, Float(max(radius, 0)), Float(max(count, 1))))
+    }
+    /// Pipe: only a round bead of the given `radius` running along the two outlines'
+    /// crossing remains (not a boolean; both bodies vanish).
+    func pipe(_ other: SDF, radius: Double) -> SDF {
+        .init(.combine(.pipe, self, other, Float(max(radius, 0)), 0))
+    }
+    /// Engrave: a v-shaped notch of the given `depth` cut into this field along the
+    /// other's outline.
+    func engrave(_ other: SDF, depth: Double) -> SDF {
+        .init(.combine(.engrave, self, other, Float(max(depth, 0)), 0))
+    }
+    /// Groove: a flat-bottomed channel cut into this field along the other's outline,
+    /// `depth` deep and reaching `width` to each side of that outline.
+    func groove(_ other: SDF, depth: Double, width: Double) -> SDF {
+        .init(.combine(.groove, self, other, Float(max(depth, 0)), Float(max(width, 0))))
+    }
+    /// Tongue: a flat-topped ridge raised on this field along the other's outline,
+    /// `height` tall and reaching `width` to each side of that outline (the mate of
+    /// `groove(_:depth:width:)`).
+    func tongue(_ other: SDF, height: Double, width: Double) -> SDF {
+        .init(.combine(.tongue, self, other, Float(max(height, 0)), Float(max(width, 0))))
+    }
     /// Grow the field outward by `radius` with rounded corners (`opRound`).
     func rounded(_ radius: Double) -> SDF { .init(.modify(.round, self, Float(radius))) }
     /// Hollow the field into a shell of the given `thickness` straddling its outline (`opOnion`).
@@ -283,11 +319,13 @@ extension SDF {
                                  color: .zero, geo0: .zero, geo1: .zero))
             var lo: SIMD2<Float>, hi: SIMD2<Float>
             switch op {
-            case .union, .smoothUnion, .morph, .chamferUnion, .stairsUnion:
+            case .union, .smoothUnion, .morph, .chamferUnion, .stairsUnion, .columnsUnion:
                 lo = simd_min(ra.lo, rb.lo); hi = simd_max(ra.hi, rb.hi)
-            case .subtract, .smoothSubtract, .chamferSubtract, .stairsSubtract:
-                lo = ra.lo; hi = ra.hi                     // result ⊆ lhs
-            case .intersect, .smoothIntersect, .chamferIntersect, .stairsIntersect:
+            case .subtract, .smoothSubtract, .chamferSubtract, .stairsSubtract,
+                 .columnsSubtract, .engrave, .groove, .tongue:
+                lo = ra.lo; hi = ra.hi   // result ⊆ lhs (a tongue's ridge is the k-grow below)
+            case .intersect, .smoothIntersect, .chamferIntersect, .stairsIntersect,
+                 .columnsIntersect, .pipe:
                 lo = simd_max(ra.lo, rb.lo); hi = simd_min(ra.hi, rb.hi)
             }
             if k > 0 { lo -= SIMD2(repeating: k); hi += SIMD2(repeating: k) }

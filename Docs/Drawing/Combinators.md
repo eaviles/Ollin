@@ -121,11 +121,30 @@ a.stairsSubtract(b, radius: 24, steps: 4) // the cut's rim stepped
 a.stairsIntersect(b, radius: 24, steps: 4)
 ```
 
+The joint family keeps going, with the same three flavors where a boolean makes sense:
+`columns*` joins, cuts, or intersects through a row of `count` circular ribs (a fluted,
+reeded seam), and four **detailing** ops shape one body along another's outline rather
+than combining them: `engrave` scores a v-notch of the given `depth`, `groove` cuts a
+flat-bottomed channel (`depth` deep, reaching `width` to each side of the other's
+outline), `tongue` raises the mating ridge (the carpentry joint), and `pipe` keeps only
+a round bead running along the two outlines' crossing (not a boolean; both bodies
+vanish).
+
+```swift
+a.columnsUnion(b, radius: 30, count: 4)     // joined through a row of 4 ribs
+a.columnsSubtract(b, radius: 30, count: 4)  // the cut's rim fluted
+a.columnsIntersect(b, radius: 30, count: 4)
+a.engrave(b, depth: 10)                     // a v-notch scored along b's outline
+a.groove(b, depth: 12, width: 10)           // a flat channel cut along it
+a.tongue(b, height: 12, width: 10)          // the ridge that mates into that groove
+a.pipe(b, radius: 16)                       // only the bead along the crossing remains
+```
+
 One working note: the joint ops shape the seam exactly where the two surfaces cross
 frankly (near a right angle). Where surfaces graze or run near-parallel within the joint
 radius, the pattern can echo faintly past the seam; keep the radius smaller than the gap
-between any parallel faces. (`Examples/Shapes/CombinatorsJoinery` is a contact sheet of
-all six.)
+between any parallel faces. (`Examples/Shapes/CombinatorsJoinery` and
+`Examples/Shapes/CombinatorsDetailing` are contact sheets of the whole family.)
 
 <a name="modifiers"></a>
 
@@ -232,9 +251,14 @@ The blocks mirror the combinators and domain operators: `union { }`, `smoothUnio
 `subtract { }`, `smoothSubtract(k:) { }`, `intersect { }`, `smoothIntersect(k:) { }`, the
 joint family (`chamferUnion(radius:) { }`, `chamferSubtract(radius:) { }`,
 `chamferIntersect(radius:) { }`, `stairsUnion(radius:steps:) { }`,
-`stairsSubtract(radius:steps:) { }`, `stairsIntersect(radius:steps:) { }`),
-`mirrored(x:y:) { }`, `repeated(spacing:count:) { }`, `repeatedRadially(count:) { }`. They
-nest, so a domain block can wrap a combine block:
+`stairsSubtract(radius:steps:) { }`, `stairsIntersect(radius:steps:) { }`,
+`columnsUnion(radius:count:) { }`, `columnsSubtract(radius:count:) { }`,
+`columnsIntersect(radius:count:) { }`),
+`mirrored(x:y:) { }`, `repeated(spacing:count:) { }`, `repeatedRadially(count:) { }`. Like
+`morph`, the detailing ops (`engrave` / `groove` / `tongue` / `pipe`) are value-type-only:
+they read as "detail this body along that surface", so the two operands aren't
+interchangeable the way a block's captured children are. The blocks nest, so a domain
+block can wrap a combine block:
 
 ```swift
 fill(.indigo)
@@ -311,8 +335,8 @@ and the shapes drop soft self-shadows onto it: a true infinite floor (see
 
 The combinators (`.union` / `.smoothUnion(_:k:)` / `.subtract` / `.smoothSubtract(_:k:)` /
 `.intersect` / `.smoothIntersect(_:k:)` / `.morph(_:amount:)`, plus the [joint
-family](#combining): `.chamferUnion` / `.chamferSubtract` / `.chamferIntersect(_:radius:)`
-and `.stairsUnion` / `.stairsSubtract` / `.stairsIntersect(_:radius:steps:)`), the modifiers
+family](#combining): the chamfer, stairs, and columns trios plus the
+`engrave` / `groove` / `tongue` / `pipe` detailing ops), the modifiers
 (`.rounded` / `.onion`), the domain operators (`.mirrored(x:y:z:)`,
 `.repeated(spacing:count:)`, and `.repeatedRadially(count:around:)`), and `.colored` all
 behave exactly as in 2D, the smooth ops blending the leaf colors across the seam and the

@@ -83,13 +83,63 @@ static inline float ollin_op_stairs(float a, float b, float r, float n) {
     return min(min(a, b), 0.5 * (u + a + abs(ollin_emod(u - a + s, 2.0 * s) - s)));
 }
 
+// The columns union: `n` circular ribs of equal radius laid along the 45° seam between
+// two fields (rotate the (a, b) seam frame by 45°, tile it, place a circle per tile).
+// The reference's own band guard (`a < r && b < r`) restricts the rib math to the seam
+// region; outside it the plain union is returned (the reference notes the guard can
+// leave a field discontinuity at the band edge, away from the surface). The difference
+// flavour evaluates the same construction on (-a, b) and negates; intersect negates b
+// through difference. Shared by the 2D and 3D combine switches.
+static float ollin_op_columns_union(float a, float b, float r, float n) {
+    if (a < r && b < r) {
+        float2 p = float2(a, b);
+        float columnradius = r * 1.41421356 / ((n - 1.0) * 2.0 + 1.41421356);
+        p = (p + float2(p.y, -p.x)) * 0.70710678;          // rotate the seam frame 45°
+        p.x -= 0.70710678 * r;
+        p.x += columnradius * 1.41421356;
+        if (ollin_emod(n, 2.0) >= 1.0) { p.y += columnradius; }
+        float size = columnradius * 2.0;                    // tile along the seam
+        p.y = ollin_emod(p.y + size * 0.5, size) - size * 0.5;
+        float result = length(p) - columnradius;
+        result = min(result, p.x);
+        result = min(result, a);
+        return min(result, b);
+    }
+    return min(a, b);
+}
+
+static float ollin_op_columns_difference(float a0, float b, float r, float n) {
+    float a = -a0;
+    float m = min(a, b);
+    if (a < r && b < r) {
+        float2 p = float2(a, b);
+        float columnradius = r * 1.41421356 / ((n - 1.0) * 2.0 + 1.41421356);
+        p = (p + float2(p.y, -p.x)) * 0.70710678;
+        p.y += columnradius;
+        p.x -= 0.70710678 * r;
+        p.x += -columnradius * 0.70710678;
+        if (ollin_emod(n, 2.0) >= 1.0) { p.y += columnradius; }
+        float size = columnradius * 2.0;
+        p.y = ollin_emod(p.y + size * 0.5, size) - size * 0.5;
+        float result = -length(p) + columnradius;
+        result = max(result, p.x);
+        result = min(result, a);
+        return -min(result, b);
+    }
+    return -m;
+}
+
 // Combine two value-stack entries (a below b in chain order) into one. The smooth ops
 // use a polynomial smooth-minimum whose interpolation factor `h` also lerps the color,
 // so two shapes melt their colors at the seam (the smin-with-material technique,
-// credited in the README's Techniques list). The chamfer and stairs joint ops treat the
-// two distances as a local 2D frame at the seam and shape its edge (a 45° bevel, a
-// staircase of `n` steps); their color stays a crisp pick of the nearer operand (a
-// machined joint, not a melt). `n` rides the OP node's `extra` (the stairs step count).
+// credited in the README's Techniques list). The chamfer, stairs, and columns joint ops
+// treat the two distances as a local 2D frame at the seam and shape its edge (a 45°
+// bevel, a staircase, a row of circular ribs); the detailing ops cut or raise a profile
+// on the FIRST field along the second's surface (engrave a v-notch, groove a channel,
+// tongue a ridge), and pipe keeps only a round bead along the two surfaces' crossing.
+// Joint/detailing color stays a crisp pick (nearer operand, or the detailed body), a
+// machined look, not a melt. `n` rides the OP node's `extra` (the stairs step count,
+// the columns count, or the groove/tongue width).
 static void ollin_sdf_combine(uint op, float da, float4 ca, float db, float4 cb,
                               float k, float n, thread float &outD, thread float4 &outC) {
     float kk = max(k, 1e-5);
@@ -144,6 +194,34 @@ static void ollin_sdf_combine(uint op, float da, float4 ca, float db, float4 cb,
     case 12u:                                         // stairs intersect
         outD = -ollin_op_stairs(-da, -db, k, n);
         outC = (da >= db) ? ca : cb;
+        break;
+    case 13u:                                         // columns union (n ribs of size k)
+        outD = ollin_op_columns_union(da, db, k, n);
+        outC = (da <= db) ? ca : cb;
+        break;
+    case 14u:                                         // columns subtract: a minus b, ribbed rim
+        outD = ollin_op_columns_difference(da, db, k, n);
+        outC = ca;
+        break;
+    case 15u:                                         // columns intersect
+        outD = ollin_op_columns_difference(da, -db, k, n);
+        outC = (da >= db) ? ca : cb;
+        break;
+    case 16u:                                         // pipe: a bead along the crossing only
+        outD = length(float2(da, db)) - k;
+        outC = (da <= db) ? ca : cb;
+        break;
+    case 17u:                                         // engrave: a v-notch cut into a along b's surface
+        outD = max(da, (da + k - abs(db)) * 0.70710678);
+        outC = ca;
+        break;
+    case 18u:                                         // groove: a k-deep, n-wide channel cut into a
+        outD = max(da, min(da + k, n - abs(db)));
+        outC = ca;
+        break;
+    case 19u:                                         // tongue: a k-tall, n-wide ridge raised on a
+        outD = min(da, max(da - k, abs(db) - n));
+        outC = ca;
         break;
     default:                                          // morph (field blend)
         outD = mix(da, db, k);

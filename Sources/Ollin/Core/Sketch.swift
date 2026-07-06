@@ -1141,6 +1141,22 @@ open class Sketch {
         drawer.beginCombine(op: .stairsIntersect, k: radius, extra: Double(max(steps, 1)))
         body(); drawer.endCombine()
     }
+    /// Merge the shapes drawn inside through a row of `count` circular ribs of overall
+    /// size `radius` along each seam (a fluted joint).
+    public func columnsUnion(radius: Double, count: Int, _ body: () -> Void) {
+        drawer.beginCombine(op: .columnsUnion, k: radius, extra: Double(max(count, 1)))
+        body(); drawer.endCombine()
+    }
+    /// Carve the later shapes out of the first, each cut's rim fluted with ribs.
+    public func columnsSubtract(radius: Double, count: Int, _ body: () -> Void) {
+        drawer.beginCombine(op: .columnsSubtract, k: radius, extra: Double(max(count, 1)))
+        body(); drawer.endCombine()
+    }
+    /// Keep only where every shape drawn inside overlaps, the edge fluted with ribs.
+    public func columnsIntersect(radius: Double, count: Int, _ body: () -> Void) {
+        drawer.beginCombine(op: .columnsIntersect, k: radius, extra: Double(max(count, 1)))
+        body(); drawer.endCombine()
+    }
     /// Mirror the field drawn inside across the x and/or y (and, in 3D, z) plane of the
     /// current frame. The `z` flag only applies to a 3D field.
     public func mirrored(x: Bool = true, y: Bool = false, z: Bool = false, _ body: () -> Void) {

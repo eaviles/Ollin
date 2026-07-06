@@ -29,6 +29,8 @@ public struct SDF3D {
         case intersect = 4, smoothIntersect = 5, morph = 6
         case chamferUnion = 7, chamferSubtract = 8, chamferIntersect = 9
         case stairsUnion = 10, stairsSubtract = 11, stairsIntersect = 12
+        case columnsUnion = 13, columnsSubtract = 14, columnsIntersect = 15
+        case pipe = 16, engrave = 17, groove = 18, tongue = 19
     }
     /// Unary distance modifiers. Raw values are the `sel` the shader's MOD node reads.
     enum Modifier: UInt32 { case round = 0, onion = 1, displaceSine = 2, displaceNoise = 3 }
@@ -336,6 +338,41 @@ public extension SDF3D {
     func stairsIntersect(_ other: SDF3D, radius: Double, steps: Int) -> SDF3D {
         .init(.combine(.stairsIntersect, self, other, Float(max(radius, 0)), Float(max(steps, 1))))
     }
+    /// Columns union: the solids join through a row of `count` circular ribs of overall
+    /// size `radius` along the seam (a fluted, reeded joint).
+    func columnsUnion(_ other: SDF3D, radius: Double, count: Int) -> SDF3D {
+        .init(.combine(.columnsUnion, self, other, Float(max(radius, 0)), Float(max(count, 1))))
+    }
+    /// Columns subtraction: `other` carved out of `self`, the cut's rim fluted with ribs.
+    func columnsSubtract(_ other: SDF3D, radius: Double, count: Int) -> SDF3D {
+        .init(.combine(.columnsSubtract, self, other, Float(max(radius, 0)), Float(max(count, 1))))
+    }
+    /// Columns intersection: the overlap, its edge fluted with ribs.
+    func columnsIntersect(_ other: SDF3D, radius: Double, count: Int) -> SDF3D {
+        .init(.combine(.columnsIntersect, self, other, Float(max(radius, 0)), Float(max(count, 1))))
+    }
+    /// Pipe: only a round bead of the given `radius` running along the two surfaces'
+    /// intersection curve remains (not a boolean; both bodies vanish). A sphere piped
+    /// with a plane leaves a ring; a box piped with a sphere leaves the crossing loops.
+    func pipe(_ other: SDF3D, radius: Double) -> SDF3D {
+        .init(.combine(.pipe, self, other, Float(max(radius, 0)), 0))
+    }
+    /// Engrave: a v-shaped notch of the given `depth` cut into this solid along the
+    /// other's surface (score lines, inscriptions, panel joints).
+    func engrave(_ other: SDF3D, depth: Double) -> SDF3D {
+        .init(.combine(.engrave, self, other, Float(max(depth, 0)), 0))
+    }
+    /// Groove: a flat-bottomed channel cut into this solid along the other's surface,
+    /// `depth` deep and reaching `width` to each side of that surface.
+    func groove(_ other: SDF3D, depth: Double, width: Double) -> SDF3D {
+        .init(.combine(.groove, self, other, Float(max(depth, 0)), Float(max(width, 0))))
+    }
+    /// Tongue: a flat-topped ridge raised on this solid along the other's surface,
+    /// `height` tall and reaching `width` to each side of that surface (the mate of
+    /// `groove(_:depth:width:)`, the carpentry joint).
+    func tongue(_ other: SDF3D, height: Double, width: Double) -> SDF3D {
+        .init(.combine(.tongue, self, other, Float(max(height, 0)), Float(max(width, 0))))
+    }
     /// Ripple the surface with a sine-product displacement: `amplitude` is how far the
     /// surface swells and dents (in field units), `frequency` how tightly the ripples
     /// pack. The march compensates for the displaced field's steeper gradient, so strong
@@ -391,13 +428,15 @@ extension SDF3D {
             var lo: SIMD3<Float>, hi: SIMD3<Float>
             var unbounded: Bool
             switch op {
-            case .union, .smoothUnion, .morph, .chamferUnion, .stairsUnion:
+            case .union, .smoothUnion, .morph, .chamferUnion, .stairsUnion, .columnsUnion:
                 lo = simd_min(ra.lo, rb.lo); hi = simd_max(ra.hi, rb.hi)
                 unbounded = ra.unbounded || rb.unbounded
-            case .subtract, .smoothSubtract, .chamferSubtract, .stairsSubtract:
-                lo = ra.lo; hi = ra.hi                     // result ⊆ lhs
+            case .subtract, .smoothSubtract, .chamferSubtract, .stairsSubtract,
+                 .columnsSubtract, .engrave, .groove, .tongue:
+                lo = ra.lo; hi = ra.hi   // result ⊆ lhs (a tongue's ridge is the k-grow below)
                 unbounded = ra.unbounded
-            case .intersect, .smoothIntersect, .chamferIntersect, .stairsIntersect:
+            case .intersect, .smoothIntersect, .chamferIntersect, .stairsIntersect,
+                 .columnsIntersect, .pipe:
                 lo = simd_max(ra.lo, rb.lo); hi = simd_min(ra.hi, rb.hi)
                 unbounded = ra.unbounded && rb.unbounded    // bounded once either operand is
             }

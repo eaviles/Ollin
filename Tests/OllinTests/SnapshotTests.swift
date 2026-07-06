@@ -101,6 +101,10 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { SDFCombinatorsGradientScene() }),
     SnapshotCase("sdf-combinators-joinery", note: "2D chamfer and stairs joint ops.",
                  make: { SDFCombinatorsJoineryScene() }),
+    SnapshotCase("sdf-combinators-detailing", note: "2D columns/pipe/engrave/groove/tongue ops.",
+                 make: { SDFCombinatorsDetailingScene() }),
+    SnapshotCase("sdf-combinators-3d-detailing", note: "Raymarched columns + detailing ops.",
+                 make: { RaymarchedSDF3DDetailingScene() }),
     SnapshotCase("sdf-combinators-3d-joinery", note: "Raymarched joint ops + hardware leaves.",
                  make: { RaymarchedSDF3DJoineryScene() }),
     SnapshotCase("sdf-combinators-3d-distort", note: "Raymarched twist/bend/displacement.",
@@ -1715,6 +1719,79 @@ private final class SDFCombinatorsJoineryScene: Sketch {
                 .chamferUnion(.rect(width: 44, height: 90).colored(Color(hex: 0xff6f61)),
                               radius: 14))
         }
+    }
+}
+
+/// The 2D detailing ops: a columns-union plus, a pipe bead pair, and an engraved,
+/// grooved, tongued bar. Pins the columns/pipe/engrave/groove/tongue encodings
+/// (sels 13-19), the crisp color picks, and the second scalar riding the OP node's extra.
+private final class SDFCombinatorsDetailingScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x14161a))
+        stroke(Color(white: 0.85))
+        strokeWeight(1.5)
+        let a = SDF.rect(width: 120, height: 56).colored(Color(hex: 0x46c2ff))
+        let b = SDF.rect(width: 56, height: 120).at(x: 4, y: 0).colored(Color(hex: 0xffb454))
+        withState {
+            translate(66, 62)
+            drawSDF(a.columnsUnion(b, radius: 18, count: 4))
+        }
+        withState {
+            translate(190, 58)
+            drawSDF(a.pipe(b, radius: 9).scaled(0.62).at(x: 0, y: -28)
+                .union(a.columnsIntersect(b, radius: 16, count: 3).scaled(0.62).at(x: 0, y: 34)))
+        }
+        withState {
+            translate(64, 186)
+            drawSDF(a.engrave(.circle(radius: 42).at(x: 4, y: 0), depth: 7)
+                .tongue(.circle(radius: 58).at(x: 4, y: 0), height: 8, width: 6))
+        }
+        withState {
+            translate(190, 186)
+            drawSDF(a.columnsSubtract(b, radius: 16, count: 3)
+                .groove(.circle(radius: 46).at(x: 4, y: 0), depth: 8, width: 6))
+        }
+    }
+}
+
+/// The raymarched detailing ops in one scene: a fluted columns-union joint, an
+/// engraved + grooved sphere, a tongue-beaded box, and a pipe ring along a
+/// sphere/plane crossing. Pins the 3D sels 13-19 and the unbounded-operand bounds
+/// (a plane as the detailing surface keeps the field bounded).
+private final class RaymarchedSDF3DDetailingScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x11141a))
+        camera(.orbiting(target: Vector3(0.2, 0.1, 0), radius: 8.0, azimuth: 0.45, elevation: 0.3,
+                         fieldOfView: .pi / 4, near: 2, far: 18))
+        directionalLight(.white, direction: Vector3(-0.5, 0.8, 0.4),
+                         intensity: 1.2, softness: 0.3)
+        ambientLight(Color(white: 0.18))
+        material(.glossy)
+
+        let post = SDF3D.cylinder(radius: 0.4, height: 2.4).at(x: -2.6, y: 0.1, z: 0)
+            .colored(Color(hex: 0x9adcf0))
+        let bar = SDF3D.box(width: 2.0, height: 0.5, depth: 0.5).at(x: -1.9, y: 0.6, z: 0)
+            .colored(Color(hex: 0xffb454))
+        drawSDF3D(post.columnsUnion(bar, radius: 0.26, count: 4))
+
+        let globe = SDF3D.sphere(radius: 0.9).colored(Color(hex: 0xff6f61))
+            .engrave(.plane(normal: Vector3(0, 1, 0), offset: 0.1), depth: 0.05)
+            .groove(.plane(normal: Vector3(0, 1, 0), offset: 0.6), depth: 0.06, width: 0.06)
+        drawSDF3D(globe.at(x: -0.2, y: 0.1, z: 0))
+
+        let beaded = SDF3D.box(width: 1.1, height: 1.1, depth: 1.1)
+            .tongue(.sphere(radius: 0.78), height: 0.07, width: 0.055)
+            .colored(Color(hex: 0x46c2ff))
+        drawSDF3D(beaded.at(x: 1.8, y: 0.1, z: 0))
+
+        let ring = SDF3D.sphere(radius: 0.7)
+            .pipe(.plane(normal: Vector3(0, 1, 0), offset: 0), radius: 0.08)
+            .colored(Color(hex: 0xb6ff5a))
+        drawSDF3D(ring.rotatedZ(0.5).at(x: 3.3, y: 0.4, z: 0))
     }
 }
 

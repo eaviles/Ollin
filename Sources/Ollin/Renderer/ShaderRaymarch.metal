@@ -252,6 +252,34 @@ static void ollin_sdf3d_combine(uint op, float da, float4 ca, float db, float4 c
         outD = -ollin_op_stairs(-da, -db, k, n);
         outC = (da >= db) ? ca : cb;
         break;
+    case 13u:                                         // columns union (n ribs of size k)
+        outD = ollin_op_columns_union(da, db, k, n);
+        outC = (da <= db) ? ca : cb;
+        break;
+    case 14u:                                         // columns subtract: a minus b, ribbed rim
+        outD = ollin_op_columns_difference(da, db, k, n);
+        outC = ca;
+        break;
+    case 15u:                                         // columns intersect
+        outD = ollin_op_columns_difference(da, -db, k, n);
+        outC = (da >= db) ? ca : cb;
+        break;
+    case 16u:                                         // pipe: a bead along the crossing only
+        outD = length(float2(da, db)) - k;
+        outC = (da <= db) ? ca : cb;
+        break;
+    case 17u:                                         // engrave: a v-notch cut into a along b's surface
+        outD = max(da, (da + k - abs(db)) * 0.70710678);
+        outC = ca;
+        break;
+    case 18u:                                         // groove: a k-deep, n-wide channel cut into a
+        outD = max(da, min(da + k, n - abs(db)));
+        outC = ca;
+        break;
+    case 19u:                                         // tongue: a k-tall, n-wide ridge raised on a
+        outD = min(da, max(da - k, abs(db) - n));
+        outC = ca;
+        break;
     default:                                          // morph (field blend)
         outD = mix(da, db, k);
         outC = mix(ca, cb, k);
