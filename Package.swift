@@ -482,6 +482,7 @@ let package = Package(
         example("Simulation/GrayScott"),
         example("Simulation/GameOfLife"),
         example("Simulation/Fluid"),
+        example("Effects/Fractals"),
         example("Effects/Patterns"),
         example("Shaders/HelloShader"),
         example("Shaders/ShaderFilter"),

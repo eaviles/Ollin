@@ -96,6 +96,11 @@ public struct Generator: Sendable {
         /// Per-cell brightness pulses over a hexagonal lattice.
         case hexPulse(colors: [SIMD4<Float>], background: SIMD4<Float>, scale: Double,
                       gap: Double, phase: Double)
+        /// An escape-time fractal (Mandelbrot or Julia), colored by smooth
+        /// iteration count through the palette. `mode` 0 = Mandelbrot, 1 = Julia.
+        case escapeTime(colors: [SIMD4<Float>], interior: SIMD4<Float>, mode: Double,
+                        c: Vector2, center: Vector2, zoom: Double, iterations: Double,
+                        cycles: Double, phase: Double)
     }
 
     let kind: Kind
@@ -464,6 +469,50 @@ public struct Generator: Sendable {
                                   background: background.linearRGBA,
                                   scale: min(max(scale, 1), 64),
                                   gap: min(max(gap, 0), 0.9), phase: phase))
+    }
+
+    // MARK: Escape-time fractals
+
+    /// The **Mandelbrot set**: iterate z = z² + c from zero at every pixel's c
+    /// and color by how fast the orbit escapes, banded through `colors` (the
+    /// smooth-iteration coloring, so the bands are stepless). Points that never
+    /// escape are the set itself, painted `interior`. `center` and `zoom` frame
+    /// the complex plane (zoom 1 shows the whole set; useful detail holds to a
+    /// few thousand times in), `iterations` caps the orbit (raise it as you zoom),
+    /// `cycles` is how many palette laps the bands make, and `phase` cycles the
+    /// colors along the bands (feed it your `time`).
+    public static func mandelbrot(colors: [Color] = [Color(hex: 0x0B1026), Color(hex: 0x2B6C8C),
+                                                     Color(hex: 0xE8B44A), Color(hex: 0xF2E8DC)],
+                                  interior: Color = .black,
+                                  center: Vector2 = Vector2(-0.6, 0), zoom: Double = 1,
+                                  iterations: Double = 150, cycles: Double = 3,
+                                  phase: Double = 0) -> Generator {
+        Generator(kind: .escapeTime(colors: colorRows(colors, max: 8),
+                                    interior: interior.linearRGBA, mode: 0,
+                                    c: .zero, center: center,
+                                    zoom: min(max(zoom, 0.1), 100_000),
+                                    iterations: min(max(iterations, 8), 400),
+                                    cycles: min(max(cycles, 0.25), 24), phase: phase))
+    }
+
+    /// A **Julia set**: the same z = z² + c iteration as the Mandelbrot set, but
+    /// `c` is fixed and every pixel starts the orbit at its own point, so each
+    /// `c` yields a different filigree (points from just inside the Mandelbrot
+    /// set's edge give the richest ones). Animate `c` a little and the whole
+    /// form morphs. Framing, coloring, and `phase` work as in `mandelbrot`.
+    public static func julia(c: Vector2 = Vector2(-0.79, 0.15),
+                             colors: [Color] = [Color(hex: 0x0B1026), Color(hex: 0x2B6C8C),
+                                                Color(hex: 0xE8B44A), Color(hex: 0xF2E8DC)],
+                             interior: Color = .black,
+                             center: Vector2 = .zero, zoom: Double = 1.2,
+                             iterations: Double = 150, cycles: Double = 3,
+                             phase: Double = 0) -> Generator {
+        Generator(kind: .escapeTime(colors: colorRows(colors, max: 8),
+                                    interior: interior.linearRGBA, mode: 1,
+                                    c: c, center: center,
+                                    zoom: min(max(zoom, 0.1), 100_000),
+                                    iterations: min(max(iterations, 8), 400),
+                                    cycles: min(max(cycles, 0.25), 24), phase: phase))
     }
 }
 

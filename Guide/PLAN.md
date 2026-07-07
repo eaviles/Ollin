@@ -269,6 +269,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Design patterns + design filters (`Drawing/Effects.md`) | Ch 14 | shown |
 | Relight, two-tone dither, warp centers (`Drawing/Effects.md`) | Ch 14 | pointed |
 | Pattern fields (`Drawing/Effects.md`) | Ch 15 | shown |
+| Escape-time fractals (`Drawing/Effects.md`) | Ch 16 | shown |
 | Depth-of-field `.defocus`, SSAO, SSR (`Drawing/Effects.md`) | Ch 17 | pointed |
 | `Shaders/Shaders.md` (user shaders) | Ch 15 | taught |
 | `Shaders/Visuals.md` (Visual chains) | Ch 15 | taught |

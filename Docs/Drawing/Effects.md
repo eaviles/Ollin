@@ -395,6 +395,22 @@ feed `time`, sRGB palette blending, square cells at any aspect):
 
 See `Examples/Effects/PatternFields` for all five (plus a field chained into `.relight`).
 
+**Escape-time fractals**: the classic sets as generators, colored by the smooth
+(stepless) iteration count through the palette, `phase` cycling the bands:
+
+- **`.mandelbrot(colors:interior:center:zoom:iterations:cycles:phase:)`** the Mandelbrot
+  set: iterate z = z² + c from zero at every pixel's c and color by how fast the orbit
+  escapes; points that never escape are the set, painted `interior`. `center`/`zoom`
+  frame the complex plane (zoom 1 shows the whole set; float precision holds useful
+  detail to a few thousand times in), and `iterations` caps the orbit (raise it as you
+  zoom).
+- **`.julia(c:colors:interior:center:zoom:iterations:cycles:phase:)`** a Julia set: the
+  same iteration with `c` fixed and the orbit started at each pixel, so every `c` yields
+  a different filigree (points near the Mandelbrot set's edge give the richest). Animate
+  `c` a little and the whole form morphs.
+
+See `Examples/Effects/Fractals` for both, with the Julia's `c` on a slow orbit.
+
 A pattern composes for the layer it fills. The default `generate(_:)` makes a
 full-canvas layer; `generate(_:width:height:)` fills one of an explicit size, so a
 tile or panel gets its own undistorted pattern instead of a squashed full-canvas one.

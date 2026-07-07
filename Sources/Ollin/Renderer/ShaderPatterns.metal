@@ -1641,3 +1641,48 @@ fragment float4 ollin_gen_hexpulse(PresentOut in [[stage_in]],
     float4 cell = ollin_pat_stop(colors[pick]) * (0.3 + 0.7 * pulse);
     return ollin_pat_out(ollin_pat_over(cell * cov, ollin_pat_stop(params[2])));
 }
+
+// MARK: - Escape-time fractals
+//
+// The Mandelbrot iteration z = z^2 + c, escape-time colored: pixels whose orbit
+// flies off are shaded by *when* it escaped (the smooth, stepless iteration
+// count), banded through the palette by a cosine fold so `phase` cycles the
+// colors seamlessly; pixels that never escape are the set, painted the interior
+// color. Mode 0 is the Mandelbrot set (c = the pixel, z starts at 0); mode 1 a
+// Julia set (z starts at the pixel, c fixed). Float precision holds the zoom to
+// a few thousand times before the plane quantizes (params[0]: colorCount,
+// aspect, mode, iterations; params[1]: center.xy, zoom, cycles; params[2]:
+// c.xy, phase; params[3]: interior; then colors).
+fragment float4 ollin_gen_escape(PresentOut in [[stage_in]],
+                                 constant float4 *params [[buffer(0)]]) {
+    int count = int(params[0].x);
+    float aspect = params[0].y;
+    int mode = int(params[0].z);
+    int maxIter = int(params[0].w);
+    float2 center = params[1].xy;
+    float zoom = max(params[1].z, 1e-3);
+    float cycles = params[1].w;
+    float2 cFixed = params[2].xy;
+    float phase = params[2].z;
+    constant float4 *colors = params + 4;
+
+    float2 p = ollin_pat_square(in.uv, aspect) * (3.0 / zoom) + center;
+    float2 z = (mode == 0) ? float2(0.0) : p;
+    float2 c = (mode == 0) ? p : cFixed;
+
+    float sn = -1.0;
+    for (int i = 0; i < 400; i++) {
+        if (i >= maxIter) { break; }
+        z = float2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+        float m = dot(z, z);
+        if (m > 256.0) {
+            sn = float(i) + 1.0 - log2(0.5 * log2(m));   // smooth iteration count
+            break;
+        }
+    }
+    if (sn < 0.0) { return ollin_pat_out(ollin_pat_stop(params[3])); }
+
+    float t = sqrt(clamp(sn / float(maxIter), 0.0, 1.0));   // spread the rim detail
+    float tt = 0.5 + 0.5 * cos(6.2831853 * (t * cycles + phase));
+    return ollin_pat_out(ollin_pat_ramp(colors, count, tt));
+}

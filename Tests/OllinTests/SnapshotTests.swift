@@ -171,6 +171,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("pattern-fields",
                  note: "The five pattern-field generators (quasicrystal, moire, gyroid, phyllotaxis, hexPulse) tiled at fixed phases (no time, no random), each generated at its tile's own size. Pins each dispatch arm and fragment (the plane-wave sum, ring interference, gyroid slice, Vogel nearest-floret scan, hex lattice + hashed pulses), the shared palette ramp, and the explicit-size generate(_:width:height:).",
                  make: { PatternFieldsScene() }),
+    SnapshotCase("escape-time",
+                 note: "The Mandelbrot set and a Julia set at fixed framing and phase (no time, no random). Pins the escape-time generator: the z = z^2 + c iteration, the smooth iteration count, the cosine palette fold, and the interior fill, in both modes.",
+                 make: { EscapeTimeScene() }),
     SnapshotCase("effects-simfield", frame: 60,
                  note: "A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame 60 and recoloured. Pins the stateful sim substrate end to end: the persistent ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and the headless render-every-frame warmup the built-up state depends on.",
                  make: { EffectsSimField() }),
@@ -2829,6 +2832,22 @@ private final class EffectsGlitter: Sketch {
             drawStar(width * 0.73, height * 0.5, 62, 31, points: 5)
         }
         drawImage(sparkle.filtered(.glitter(density: 60, amount: 1.2, saturation: 0.6, phase: 1.3)).image, 0, 0)
+    }
+}
+
+/// The Mandelbrot set beside a Julia set at fixed framing and phase (no time, no
+/// random): pins the escape-time generator's iteration, smooth coloring, cosine
+/// palette fold, and interior fill in both modes.
+private final class EscapeTimeScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let w = 126, h = 252
+        drawImage(generate(.mandelbrot(iterations: 120, phase: 0.2), width: w, height: h).image,
+                  in: Rectangle(x: 1, y: 2, width: Double(w), height: Double(h)))
+        drawImage(generate(.julia(iterations: 120, phase: 0.6), width: w, height: h).image,
+                  in: Rectangle(x: 129, y: 2, width: Double(w), height: Double(h)))
     }
 }
 

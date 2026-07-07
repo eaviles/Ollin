@@ -969,6 +969,12 @@ extension MetalRenderer {
                                  params: [SIMD4(Float(colors.count), aspect, Float(scale), Float(gap)),
                                           SIMD4(Float(phase), 0, 0, 0),
                                           background] + colors, into: cb)
+        case let .escapeTime(colors, interior, mode, c, center, zoom, iterations, cycles, phase):
+            encodeEffectFragment("ollin_gen_escape", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, Float(mode), Float(iterations)),
+                                          SIMD4(Float(center.x), Float(center.y), Float(zoom), Float(cycles)),
+                                          SIMD4(Float(c.x), Float(c.y), Float(phase), 0),
+                                          interior] + colors, into: cb)
         }
     }
 

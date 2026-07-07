@@ -18,6 +18,7 @@ Layered effects: draw into off-screen layers, filter them on the GPU, and compos
 | [Distortion](Distortion/Sketch.swift) | uv-warp filters that re-sample the image: kaleidoscope, swirl, bulge, wave, ripple, polar, … |
 | [Patterns](Patterns/Sketch.swift) | procedural pattern `Generator`s (`generate(_:)`) and a composed mix |
 | [PatternFields](PatternFields/Sketch.swift) | the pattern fields: quasicrystal, moiré, gyroid slice, phyllotaxis, hex pulses |
+| [Fractals](Fractals/Sketch.swift) | escape-time fractals: the Mandelbrot set and a morphing Julia set (`.mandelbrot` / `.julia`) |
 | [Feedback](Feedback/Sketch.swift) | a layer that remembers itself across frames: a spiralling feedback tunnel (`withFeedback`) |
 | [Compose](Compose/Sketch.swift) | the `compose { }` DSL: a blurred backdrop, a bloomed ring, a screened lattice |
 | [Aside](Aside/Sketch.swift) | multi-input effects: a displacement map and a spotlight mask fed into layers (`aside { }`) |
