@@ -30,12 +30,13 @@ final class Pulse: Sketch {
 
 ### Contents
 
-- [AudioInput](#audioinput) — analyze the live microphone
-- [AudioPlayer](#audioplayer) — play and analyze an audio file
-- [Tone](#tone) — generate (and analyze) an oscillator
-- [Reading audio](#reading-audio) — `amplitude`, `spectrum`, `waveform`, and band queries
-- [bands & beats](#bands-and-beats) — the ready-to-draw spectrum, and onset detection
-- [AudioAnalyzer](#audioanalyzer) — the typed DSP core every source feeds
+- [AudioInput](#audioinput): analyze the live microphone
+- [AudioPlayer](#audioplayer): play and analyze an audio file
+- [Tone](#tone): generate (and analyze) an oscillator
+- [Soundtrack](#soundtrack): analyze the sound of a tappable source (a playing video)
+- [Reading audio](#reading-audio): `amplitude`, `spectrum`, `waveform`, and band queries
+- [bands & beats](#bands-and-beats): the ready-to-draw spectrum, and onset detection
+- [AudioAnalyzer](#audioanalyzer): the typed DSP core every source feeds
 
 <a name="audioinput"></a>
 
@@ -111,6 +112,29 @@ override func draw() {
     tone.frequency = 110 + 440 * (mouseX / width)   // pitch follows the cursor
 }
 ```
+
+<a name="soundtrack"></a>
+
+### Soundtrack
+
+```swift
+Soundtrack(of: any AudioTapSource, fftSize: Int = 1024, smoothing: Float = 0.8)
+func detach()
+```
+
+Analyzes the sound of any *tappable* source. Today that means a playing video: `VideoPlayer` (from [`OllinVideo`](../Video/Video.md)) conforms to the core `AudioTapSource` seam, so a sketch can react to the soundtrack of the footage it's drawing:
+
+```swift
+let player = try VideoPlayer(path: "/path/to/clip.mp4")
+lazy var sound = Soundtrack(of: player)
+override func setup() { player.play() }
+override func draw() {
+    drawFrame(player)
+    for (i, level) in sound.bands(32).enumerated() { … }   // bars over the footage
+}
+```
+
+The analysis hears the source's sound itself, before volume shaping, so `volume = 0` keeps it reacting in silence. Two caveats: a hard `isMuted = true` stops the source's audio processing altogether (prefer `volume = 0`), and a headless export reads as silence (nothing audibly plays there). One consumer per source: creating a second `Soundtrack` of the same player replaces the first; `detach()` releases the slot.
 
 <a name="reading-audio"></a>
 

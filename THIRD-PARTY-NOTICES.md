@@ -184,8 +184,8 @@ redistributed inside this repository.
 
 ## El Fandanguito (example audio)
 
-- **Used for:** the `FilePlayer` example sketch only — a sample audio clip, to demonstrate `AudioPlayer` reacting to a file. Not part of the Ollin framework; Ollin (and `OllinAudio`) bundle no audio themselves.
-- **Location in this repo:** [`Examples/Audio/FilePlayer/fandanguito.m4a`](Examples/Audio/FilePlayer/fandanguito.m4a)
+- **Used for:** the `FilePlayer` and `SoundReactive` example sketches only: a sample audio clip, to demonstrate `AudioPlayer` reacting to a file and `Soundtrack` analyzing a video's audio. Not part of the Ollin framework; Ollin (and `OllinAudio`) bundle no audio themselves.
+- **Location in this repo:** [`Examples/Audio/FilePlayer/fandanguito.m4a`](Examples/Audio/FilePlayer/fandanguito.m4a); it is also the audio track of [`Examples/Video/SoundReactive/voladores-fandanguito.mp4`](Examples/Video/SoundReactive/voladores-fandanguito.mp4) (see the *Voladores de Papantla* entry)
 - **Work:** *El Fandanguito*, a traditional Mexican *son huasteco* (the composition is traditional / public domain). Performed on violin by Cynthia Molina; recorded and edited by Wikimedia Commons users Emropa and ClawisJM (students of Tec de Monterrey).
 - **Upstream:** https://commons.wikimedia.org/wiki/File:Viol%C3%ADn_SonHuasteco_ELFandanguito.ogg
 - **License:** CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0
@@ -201,8 +201,8 @@ redistributed inside this repository.
 
 ## Voladores de Papantla (example video)
 
-- **Used for:** the `VideoPlayback` and `VideoTrace` example sketches only — a sample video clip, to demonstrate `VideoPlayer` drawing a file as a live image and a vision tracker analyzing it as it plays. Not part of the Ollin framework; Ollin (and `OllinVideo`) bundle no video themselves.
-- **Location in this repo:** [`Examples/Video/VideoPlayback/voladores.mp4`](Examples/Video/VideoPlayback/voladores.mp4) and an identical copy at [`Examples/Vision/VideoTrace/voladores.mp4`](Examples/Vision/VideoTrace/voladores.mp4) (each example bundles its own assets)
+- **Used for:** the `VideoPlayback`, `VideoTrace`, and `SoundReactive` example sketches only: a sample video clip, to demonstrate `VideoPlayer` drawing a file as a live image, a vision tracker analyzing it as it plays, and a soundtrack analyzer reacting to it. Not part of the Ollin framework; Ollin (and `OllinVideo`) bundle no video themselves.
+- **Location in this repo:** [`Examples/Video/VideoPlayback/voladores.mp4`](Examples/Video/VideoPlayback/voladores.mp4) and an identical copy at [`Examples/Vision/VideoTrace/voladores.mp4`](Examples/Vision/VideoTrace/voladores.mp4) (each example bundles its own assets); [`Examples/Video/SoundReactive/voladores-fandanguito.mp4`](Examples/Video/SoundReactive/voladores-fandanguito.mp4) is a further-trimmed excerpt paired with the *El Fandanguito* recording below as its soundtrack (the source video's own audio track is silent)
 - **Work:** *Voladores de Papantla México* — a recording of the *Danza de los Voladores*, the Totonac pole-flying ritual dance from Papantla, Veracruz (performed at an exhibition in Mexico City, 2018). Filmed by José Millán (Wikimedia Commons user Jmillan325).
 - **Upstream:** https://commons.wikimedia.org/wiki/File:Voladores_de_Papantla_M%C3%A9xico.webm
 - **License:** CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0
@@ -210,11 +210,13 @@ redistributed inside this repository.
 > Licensed CC BY-SA 4.0 (Attribution-ShareAlike). Attribution is given above as
 > required. **Changes:** a ~28-second excerpt was trimmed from the original
 > 3-minute VP9/WebM file and re-encoded to H.264 MP4 at 960×540 (mono AAC audio)
-> for AVFoundation playback and a small repository footprint; no other edits. As
-> a ShareAlike work this clip remains under CC BY-SA 4.0 — that obligation rides
-> on the video file and its adaptations, not on Ollin's source, which stays MIT
-> (the clip is merely bundled alongside it). The root [`LICENSE`](LICENSE) is
-> unaffected.
+> for AVFoundation playback and a small repository footprint; no other edits.
+> The `SoundReactive` variant is a further 16-second excerpt of that trim,
+> muxed with the *El Fandanguito* recording (see its own entry) as the audio
+> track. As a ShareAlike work this clip remains under CC BY-SA 4.0: that
+> obligation rides on the video file and its adaptations, not on Ollin's
+> source, which stays MIT (the clip is merely bundled alongside it). The root
+> [`LICENSE`](LICENSE) is unaffected.
 
 ---
 

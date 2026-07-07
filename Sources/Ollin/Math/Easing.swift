@@ -159,10 +159,14 @@ public struct Easing: Sendable {
     public static let smoothstep = Easing { t in t * t * (3 - 2 * t) }
 }
 
-/// A property-wrapper value the sketch advances once per frame — the `@Eased`
-/// tween and the `@Smoothed` filter. The sketch collects these via reflection
-/// (like `@Param`) and steps each one with the frame's `deltaTime`.
-protocol FrameAdvancing: AnyObject {
+/// A value the sketch advances once per frame with the frame's `deltaTime`:
+/// the `@Eased` tween, the `@Smoothed` filter, a `Timeline`, or a satellite's
+/// clock-following object (a video player tracking the export clock). The
+/// sketch collects conformers from its stored properties via reflection (like
+/// `@Param`) once, at the first frame, so a conformer must already be stored
+/// (directly or optionally) on the sketch by the end of `setup()`; one created
+/// lazily mid-run is never advanced.
+package protocol FrameAdvancing: AnyObject {
     func advance(by dt: Double)
 }
 
@@ -255,7 +259,7 @@ public final class Eased: FrameAdvancing {
     }
 
     /// Advance the tween by `dt` seconds. Called by the sketch each frame.
-    func advance(by dt: Double) {
+    package func advance(by dt: Double) {
         guard elapsed < duration, duration > 0 else {
             current = targetValue
             return

@@ -28,11 +28,11 @@ final class Player: Sketch {
 
 ### Contents
 
-- [Loading](#loading) — from a path, URL, or bundled resource
-- [Playback](#playback) — play, pause, loop, seek, rate, volume
-- [Drawing frames](#drawing-frames) — `drawFrame`, `frame`, `fittedRect`, `size`
-- [Pixels and analysis](#pixels-and-analysis) — live trackers, and `snapshot()` for CPU access
-- [Notes](#notes) — formats, audio, and the Metal device
+- [Loading](#loading): from a path, URL, or bundled resource
+- [Playback](#playback): play, pause, loop, seek, rate, volume
+- [Drawing frames](#drawing-frames): `drawFrame`, `frame`, `fittedRect`, `size`
+- [Pixels and analysis](#pixels-and-analysis): live trackers, the soundtrack analyzed, and `snapshot()` for CPU access
+- [Notes](#notes): formats, audio, exporting, and the Metal device
 
 <a name="loading"></a>
 
@@ -127,13 +127,26 @@ if let still = player.snapshot() {
 }
 ```
 
+For **the soundtrack**, the player is an audio-tap source the same way it's a frame source: hand it to [`Soundtrack`](../Helpers/Audio.md#soundtrack) (from `OllinAudio`) and the clip's own audio drives the full analyzer surface (`amplitude`, `spectrum`, `bands`, beats) as it plays:
+
+```swift
+let player = try VideoPlayer(path: "/path/to/clip.mp4")
+lazy var sound = Soundtrack(of: player)   // needs `import OllinAudio`
+override func draw() {
+    drawFrame(player)
+    drawCircle(center: center, radius: 200 + Double(sound.beat) * 80)   // kicks on the beat
+}
+```
+
+The analysis hears the soundtrack itself, before volume shaping, so `volume = 0` keeps the visuals reacting in silence (`isMuted = true` is the exception: a hard mute stops audio processing, and the analysis with it).
+
 <a name="notes"></a>
 
 ### Notes
 
 - **Formats.** Whatever AVFoundation reads: H.264 and HEVC in `.mp4`/`.m4v`, and ProRes in `.mov`.
-- **Audio.** The file's audio track plays automatically through the system output; `volume` and `isMuted` control it. Routing it into `OllinAudio`'s analyzer is a possible later tie-in.
+- **Audio.** The file's audio track plays automatically through the system output; `volume` and `isMuted` control it. To *react* to it, analyze it with [`Soundtrack`](#pixels-and-analysis).
 - **Metal device.** Frame textures are created on the system's default Metal device, which is the device the sketch renders on for any single-GPU Mac.
-- **Headless export.** Playback follows the player's own clock, which advances with the runloop of a live window. The offline exporters (`--export`, `--export-sequence`, `--export-video`) drive the sketch clock headlessly without one, so a sketch that draws a video currently exports it as blank; a deterministic frame-pull for export is a planned follow-up.
+- **Headless export.** The offline exporters (`--export`, `--export-sequence`, `--export-video`, `--export-gif`) drive the sketch clock at a fixed timestep with no live window, so the player switches to a deterministic decode that follows that clock: frame `k` of an export always shows the clip at `k / fps` seconds after `play()` (scaled by `rate`, wrapped by `loops`), and re-exporting reproduces it exactly. Create the player by the end of `setup()` (a stored property; the usual place), not lazily mid-run, or the export clock never reaches it. Two things stay live-only by nature: a `Soundtrack` reads silence during an export (nothing audibly plays), and a vision tracker attached to the player analyzes nothing (its frames pump on the live clock).
 
-The runnable examples are [`Examples/Video/VideoPlayback`](../../Examples/Video/VideoPlayback/Sketch.swift), which loops a bundled clip of the *Voladores de Papantla* (the Totonac pole-flying ritual, *Danza de los Voladores*) and draws playback progress over it, and [`Examples/Vision/VideoTrace`](../../Examples/Vision/VideoTrace/Sketch.swift), which runs a contour tracker over the same clip as it plays.
+The runnable examples are [`Examples/Video/VideoPlayback`](../../Examples/Video/VideoPlayback/Sketch.swift), which loops a bundled clip of the *Voladores de Papantla* (the Totonac pole-flying ritual, *Danza de los Voladores*) and draws playback progress over it, [`Examples/Vision/VideoTrace`](../../Examples/Vision/VideoTrace/Sketch.swift), which runs a contour tracker over the same clip as it plays, and [`Examples/Video/SoundReactive`](../../Examples/Video/SoundReactive/Sketch.swift), which draws spectrum bars and a beat ring driven by its clip's own soundtrack.

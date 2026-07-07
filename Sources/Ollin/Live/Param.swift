@@ -789,7 +789,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
     /// sketch each frame, the same pass that advances `@Eased` / `@Smoothed`.
     /// Smoothing is only offered by the `Double` initializers, so a smoothed
     /// parameter always holds a `Double` and the casts below can't fail.
-    func advance(by dt: Double) {
+    package func advance(by dt: Double) {
         guard let smoothing else { return }
         storage.withLock { state in
             guard let target = state.target as? Double else { return }

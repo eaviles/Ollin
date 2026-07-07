@@ -51,7 +51,10 @@ public final class VideoPlayer: FrameSource, VideoFeed {
     }
 
     /// Whether the video is currently playing.
-    public var isPlaying: Bool { player.timeControlStatus != .paused }
+    public var isPlaying: Bool {
+        if OllinApp.isRenderingHeadless { return virtualPlaying }
+        return player.timeControlStatus != .paused
+    }
 
     /// The video's duration in seconds, or `nil` until the file's metadata has
     /// loaded (it loads asynchronously, shortly after init).
@@ -67,16 +70,37 @@ public final class VideoPlayer: FrameSource, VideoFeed {
 
     /// The current playback position in seconds.
     public var currentTime: Double {
+        if OllinApp.isRenderingHeadless { return virtualTime }
         let t = player.currentTime()
         return t.isValid ? t.seconds : 0
     }
 
+    private let url: URL
     private let player: AVPlayer
     private let output: AVPlayerItemVideoOutput
     // Written once in init, read again only in deinit (which is nonisolated in
     // Swift 6, hence the unsafe opt-out); NotificationCenter tokens are safe to
     // remove from any thread.
     private nonisolated(unsafe) var endObserver: (any NSObjectProtocol)?
+
+    // Headless (export) playback: the offline drivers run a fixed-timestep
+    // loop with no runloop servicing, so the AVPlayer above never advances.
+    // Under `OllinApp.isRenderingHeadless` the player instead keeps a virtual
+    // playhead, advanced by the sketch's per-frame pass (`advance(by:)`), and
+    // `frame` decodes by timestamp through a `HeadlessVideoReader`, making
+    // exported video deterministic against the sketch clock.
+    private var headlessReader: HeadlessVideoReader?
+    private var headlessReaderFailed = false
+    private var virtualTime: Double = 0
+    private var virtualPlaying = false
+    // `play()` arms the playhead instead of moving it: the first advance after
+    // it covers time that passed *before* playback began, so it isn't counted.
+    private var virtualArmed = false
+
+    // The audio tap's shared state; created with the tap on first install and
+    // owned by the tap from then on (see `VideoAudioTapStorage`).
+    private var audioTapStorage: VideoAudioTapStorage?
+    private var audioTapInstallStarted = false
 
     private var textureCache: CVMetalTextureCache?
     // The wrapped CVMetalTextures keep their pixel buffers alive; the renderer
@@ -109,6 +133,49 @@ public final class VideoPlayer: FrameSource, VideoFeed {
     private var tapPump: VideoFrameTapPump?
     private var tapOutput: AVPlayerItemVideoOutput?
 
+    /// The soundtrack tap (`AudioTapSource`). Installing one attaches a
+    /// processing tap to the player item's audio mix and delivers mono PCM
+    /// from the audio thread as the video plays; the usual consumer is
+    /// OllinAudio's `Soundtrack`, which runs the full analyzer surface
+    /// (`amplitude` / `spectrum` / `beat`, …) over it. The tap reads the
+    /// soundtrack before volume shaping, so a sketch can react to a video it
+    /// keeps *quiet*: turn `volume` all the way down and the consumer still
+    /// hears the full signal. `isMuted = true` is the one exception; a hard
+    /// mute stops audio processing altogether and the tap goes silent with
+    /// it, so prefer `volume = 0` when the visuals should keep reacting.
+    public var audioTap: AudioTap? {
+        didSet {
+            if let audioTapStorage {
+                audioTapStorage.handler.withLock { [audioTap] in $0 = audioTap }
+            } else if audioTap != nil {
+                installAudioTap()
+            }
+        }
+    }
+
+    /// Builds the processing tap and hangs it on the item's audio mix. Done
+    /// once; afterwards installing/replacing/removing a consumer is just the
+    /// handler swap in `audioTap`'s observer. The track load is asynchronous,
+    /// so the first samples arrive shortly after; a clip with no audio track
+    /// simply never delivers.
+    private func installAudioTap() {
+        guard !audioTapInstallStarted else { return }
+        audioTapInstallStarted = true
+        let storage = VideoAudioTapStorage()
+        storage.handler.withLock { [audioTap] in $0 = audioTap }
+        audioTapStorage = storage
+        guard let item = player.currentItem else { return }
+        Task {
+            guard let track = try? await item.asset.loadTracks(withMediaType: .audio).first,
+                  let tap = makeVideoAudioTap(storage: storage) else { return }
+            let parameters = AVMutableAudioMixInputParameters(track: track)
+            parameters.audioTapProcessor = tap
+            let mix = AVMutableAudioMix()
+            mix.inputParameters = [parameters]
+            item.audioMix = mix
+        }
+    }
+
     /// Opens the video at a filesystem `path`. Throws if no file exists there.
     public convenience init(path: String) throws {
         guard FileManager.default.fileExists(atPath: path) else {
@@ -129,6 +196,7 @@ public final class VideoPlayer: FrameSource, VideoFeed {
     /// Opens the video at `url`. The file's metadata (`duration`, `size`) loads
     /// asynchronously; a file that can't be read simply never produces frames.
     public init(url: URL) {
+        self.url = url
         let asset = AVURLAsset(url: url)
         let item = AVPlayerItem(asset: asset)
         let output = Self.makeOutput()
@@ -164,6 +232,14 @@ public final class VideoPlayer: FrameSource, VideoFeed {
 
     /// Starts (or resumes) playback at `rate`.
     public func play() {
+        if OllinApp.isRenderingHeadless {
+            if let duration = headlessDuration, duration > 0, virtualTime >= duration {
+                virtualTime = 0
+            }
+            if !virtualPlaying { virtualArmed = true }
+            virtualPlaying = true
+            return
+        }
         if let duration, duration > 0, currentTime >= duration {
             player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
         }
@@ -171,16 +247,34 @@ public final class VideoPlayer: FrameSource, VideoFeed {
     }
 
     /// Pauses playback, keeping the position.
-    public func pause() { player.pause() }
+    public func pause() {
+        if OllinApp.isRenderingHeadless {
+            virtualPlaying = false
+            return
+        }
+        player.pause()
+    }
 
     /// Stops playback and rewinds to the beginning.
     public func stop() {
+        if OllinApp.isRenderingHeadless {
+            virtualPlaying = false
+            virtualTime = 0
+            return
+        }
         player.pause()
         player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
     /// Jumps to `seconds` from the start (clamped to the video by the player).
     public func seek(to seconds: Double) {
+        if OllinApp.isRenderingHeadless {
+            virtualTime = max(0, seconds)
+            if let duration = headlessDuration, duration > 0 {
+                virtualTime = min(virtualTime, duration)
+            }
+            return
+        }
         let time = CMTime(seconds: max(0, seconds), preferredTimescale: 600)
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
     }
@@ -191,6 +285,7 @@ public final class VideoPlayer: FrameSource, VideoFeed {
     /// frame rate) the previous frame is returned, so it always draws something
     /// once playback has begun.
     public var frame: Image? {
+        if OllinApp.isRenderingHeadless { return headlessFrame() }
         let itemTime = output.itemTime(forHostTime: CACurrentMediaTime())
         guard itemTime.isValid,
               output.hasNewPixelBuffer(forItemTime: itemTime),
@@ -204,6 +299,41 @@ public final class VideoPlayer: FrameSource, VideoFeed {
             size = Vector2(Double(CVPixelBufferGetWidth(buffer)), Double(CVPixelBufferGetHeight(buffer)))
         }
         return image
+    }
+
+    /// `frame` under a headless driver: decode by the virtual playhead. The
+    /// same texture wrap as the live path, so what an export composites is
+    /// pixel-identical to what a live window would have shown at that moment.
+    private func headlessFrame() -> Image? {
+        guard let reader = ensureHeadlessReader(),
+              let buffer = reader.pixelBuffer(at: virtualTime)
+        else { return cachedFrame }
+        if buffer === lastPixelBuffer, let cachedFrame { return cachedFrame }
+        guard let texture = makeTexture(from: buffer) else { return cachedFrame }
+        lastPixelBuffer = buffer
+        let image = Image(texture: texture)
+        cachedFrame = image
+        return image
+    }
+
+    /// The clip duration as the headless reader knows it (its synchronous
+    /// load fills `duration` in even when the async metadata task never got a
+    /// turn on the busy export loop).
+    private var headlessDuration: Double? { headlessReader?.duration ?? duration }
+
+    private func ensureHeadlessReader() -> HeadlessVideoReader? {
+        if let headlessReader { return headlessReader }
+        guard !headlessReaderFailed else { return nil }
+        guard let reader = HeadlessVideoReader(url: url) else {
+            headlessReaderFailed = true
+            return nil
+        }
+        headlessReader = reader
+        if duration == nil { reader.duration.map { duration = $0 } }
+        if size == nil, let natural = reader.naturalSize, natural.width > 0 {
+            size = Vector2(natural.width, natural.height)
+        }
+        return reader
     }
 
     /// A CPU-backed copy of the current frame, or `nil` before one decodes.
@@ -263,6 +393,41 @@ public final class VideoPlayer: FrameSource, VideoFeed {
         inFlightTextures.append(cvTexture)
         if inFlightTextures.count > 4 { inFlightTextures.removeFirst() }
         return texture
+    }
+}
+
+/// The tap side of the soundtrack seam lives on the class (`audioTap` and its
+/// installer); the marker keeps the conformance greppable beside its sibling
+/// `FrameSource`.
+extension VideoPlayer: AudioTapSource {}
+
+// MARK: Export clock
+
+/// The per-frame advance pass (the one that steps `@Eased` and `Timeline`)
+/// also steps the virtual playhead while a headless driver runs, so an
+/// exported video follows the sketch clock exactly: frame `k` of an export
+/// always shows the clip at `k / fps` seconds after `play()` (times `rate`,
+/// wrapped by `loops`). The conformance is main-actor isolated, matching the
+/// pass that calls it.
+extension VideoPlayer: @MainActor FrameAdvancing {
+    package func advance(by dt: Double) {
+        guard OllinApp.isRenderingHeadless, virtualPlaying else { return }
+        if virtualArmed {
+            // The dt that elapsed before `play()` isn't playback time.
+            virtualArmed = false
+        } else {
+            virtualTime += dt * rate
+        }
+        // Created here as well as on the first `frame` read, so `duration` and
+        // `size` are filled in before the sketch first draws.
+        _ = ensureHeadlessReader()
+        guard let duration = headlessDuration, duration > 0, virtualTime >= duration else { return }
+        if loops {
+            virtualTime.formTruncatingRemainder(dividingBy: duration)
+        } else {
+            virtualTime = duration
+            virtualPlaying = false
+        }
     }
 }
 

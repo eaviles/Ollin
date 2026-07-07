@@ -503,6 +503,8 @@ public extension OllinApp {
     /// a pen plotter can shade it (see `Hatching`).
     static func svg(of sketch: Sketch, frame: Int = 0, fps: Double = 60,
                     hatching: Hatching? = nil) -> String {
+        isRenderingHeadless = true
+        defer { isRenderingHeadless = false }
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.setup()

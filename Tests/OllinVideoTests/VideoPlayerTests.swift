@@ -15,9 +15,12 @@ import os
 @MainActor
 @Suite struct VideoPlayerTests {
 
-    /// Writes a 64×64, 1-second (12 frames at 12 fps) H.264 clip of a solid
-    /// orange field. Returns `nil` where no encoder is available.
-    private func writeTestClip() async -> URL? {
+    /// Writes a 64×64, 1-second (12 frames at 12 fps) H.264 clip. Each frame
+    /// is the solid color `color` returns for its index (a saturated orange by
+    /// default). Returns `nil` where no encoder is available.
+    private func writeTestClip(
+        color: (Int) -> (blue: UInt8, green: UInt8, red: UInt8) = { _ in (20, 128, 240) }
+    ) async -> URL? {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-video-test-\(UUID().uuidString).mp4")
         guard let writer = try? AVAssetWriter(outputURL: url, fileType: .mp4) else { return nil }
@@ -50,14 +53,14 @@ import os
             CVPixelBufferLockBaseAddress(buffer, [])
             if let base = CVPixelBufferGetBaseAddress(buffer) {
                 let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
+                let fill = color(frame)
                 for y in 0..<64 {
                     let row = base.advanced(by: y * bytesPerRow)
                         .assumingMemoryBound(to: UInt8.self)
                     for x in 0..<64 {
-                        // BGRA: a solid, saturated orange.
-                        row[x * 4 + 0] = 20
-                        row[x * 4 + 1] = 128
-                        row[x * 4 + 2] = 240
+                        row[x * 4 + 0] = fill.blue
+                        row[x * 4 + 1] = fill.green
+                        row[x * 4 + 2] = fill.red
                         row[x * 4 + 3] = 255
                     }
                 }
@@ -159,6 +162,113 @@ import os
         }
     }
 
+    /// A headless export must show the video frame the sketch clock asks for,
+    /// deterministically: frame `k` at `fps` shows the clip at `k / fps`
+    /// seconds, and `loops` wraps. Each clip frame is a distinct blue level,
+    /// so the rendered pixel identifies exactly which frame was pulled.
+    @Test func headlessExportPullsDeterministicFrames() async throws {
+        guard MTLCreateSystemDefaultDevice() != nil else { return }   // soft-skip: no Metal
+        // Clip frame k (12 fps) is blue = 10 + k*20 over black.
+        guard let url = await writeTestClip(color: { (blue: UInt8(10 + $0 * 20), green: 0, red: 0) })
+        else { return }                                               // soft-skip: no encoder
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        func exportedBlue(atFrame frame: Int) -> Double? {
+            let sketch = VideoExportProbeSketch()
+            sketch.player = VideoPlayer(url: url)
+            guard let cgImage = OllinApp.image(of: sketch, frame: frame, fps: 60) else { return nil }
+            return Image(cgImage: cgImage)[32, 32].blue
+        }
+
+        // Sketch frame 33 → 0.55 s → clip frame 6 → blue 130.
+        guard let mid = exportedBlue(atFrame: 33) else { return }     // soft-skip: render failed
+        #expect(abs(mid - 130.0 / 255.0) < 0.03)
+        // Sketch frame 3 → 0.05 s → clip frame 0 → blue 10.
+        guard let early = exportedBlue(atFrame: 3) else { return }
+        #expect(abs(early - 10.0 / 255.0) < 0.03)
+        // Sketch frame 93 → 1.55 s → wrapped past the 1 s clip → frame 6 again.
+        guard let wrapped = exportedBlue(atFrame: 93) else { return }
+        #expect(abs(wrapped - mid) < 0.01)
+    }
+
+    /// End-to-end soundtrack tap: play the repository's bundled musical clip
+    /// and expect mono PCM with real signal energy to arrive through
+    /// `audioTap`. Runs off the example's own asset via a repo-relative path;
+    /// soft-skips where the clip is missing or the environment won't play.
+    @Test func audioTapDeliversSoundtrack() async throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // VideoPlayerTests.swift
+            .deletingLastPathComponent()   // OllinVideoTests
+            .deletingLastPathComponent()   // Tests
+        let clip = repoRoot.appendingPathComponent(
+            "Examples/Video/SoundReactive/voladores-fandanguito.mp4")
+        guard FileManager.default.fileExists(atPath: clip.path) else { return }   // soft-skip
+
+        let player = VideoPlayer(url: clip)
+        // Near-silent output keeps the test quiet; the tap hears the pre-volume
+        // signal regardless. (`isMuted = true` would stop audio processing
+        // entirely and starve the tap, which is why it isn't used here.)
+        player.volume = 0.01
+        let delivered = OSAllocatedUnfairLock(initialState: (blocks: 0, samples: 0, rate: 0.0, peak: Float(0)))
+        player.audioTap = { samples, rate in
+            let count = samples.count
+            var peak: Float = 0
+            for sample in samples { peak = max(peak, abs(sample)) }
+            let blockPeak = peak
+            delivered.withLock {
+                $0 = ($0.blocks + 1, $0.samples + count, rate, max($0.peak, blockPeak))
+            }
+        }
+        player.play()
+        guard await waitFor(seconds: 5, { delivered.withLock { $0.blocks > 3 ? $0 : nil } }) != nil
+        else { return }   // soft-skip: no audio delivery headless
+        // The clip is music (behind a short fade-in), not silence; the tap
+        // should come to hear it even while the player is muted.
+        guard await waitFor(seconds: 5, { delivered.withLock { $0.peak > 0.05 ? $0 : nil } }) != nil
+        else {
+            Issue.record("audio delivered but stayed silent (peak \(delivered.withLock { $0.peak }))")
+            return
+        }
+        let final = delivered.withLock { $0 }
+        #expect(final.rate > 8000)
+        #expect(final.samples > 1024)
+
+        // Removing the consumer stops delivery.
+        player.audioTap = nil
+        let atRemoval = delivered.withLock { $0.blocks }
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(delivered.withLock { $0.blocks } == atRemoval)
+    }
+
+    @Test func headlessPlaybackStateIsVirtual() async throws {
+        guard let url = await writeTestClip() else { return }   // soft-skip: no encoder
+        defer { try? FileManager.default.removeItem(at: url) }
+        OllinApp.isRenderingHeadless = true
+        defer { OllinApp.isRenderingHeadless = false }
+
+        let player = VideoPlayer(url: url)
+        #expect(!player.isPlaying)
+        player.play()
+        #expect(player.isPlaying)
+        #expect(player.currentTime == 0)
+
+        // The first advance after play() arms rather than moves the playhead;
+        // the following ones accumulate the fixed timestep.
+        player.advance(by: 1.0 / 60)
+        #expect(player.currentTime == 0)
+        for _ in 0..<6 { player.advance(by: 1.0 / 60) }
+        #expect(abs(player.currentTime - 0.1) < 1e-9)
+
+        player.seek(to: 0.5)
+        #expect(abs(player.currentTime - 0.5) < 1e-9)
+        player.pause()
+        #expect(!player.isPlaying)
+        player.advance(by: 1.0 / 60)                    // paused: no motion
+        #expect(abs(player.currentTime - 0.5) < 1e-9)
+        player.stop()
+        #expect(player.currentTime == 0)
+    }
+
     @Test func fittedRectLetterboxes() async throws {
         guard let url = await writeTestClip() else { return }
         defer { try? FileManager.default.removeItem(at: url) }
@@ -167,5 +277,24 @@ import os
         // A square video in a wide container: full height, centered horizontally.
         let rect = player.fittedRect(in: Rectangle(x: 0, y: 0, width: 200, height: 100))
         #expect(rect == Rectangle(x: 50, y: 0, width: 100, height: 100))
+    }
+}
+
+/// Draws a video frame edge to edge on a tiny canvas; the export test reads a
+/// pixel back to identify which clip frame the headless pull chose.
+private final class VideoExportProbeSketch: Sketch {
+    var player: VideoPlayer!
+    override var canvasSize: CanvasSize { .size(64, 64) }
+
+    override func setup() {
+        player.loops = true
+        player.play()
+    }
+
+    override func draw() {
+        background(.black)
+        if let frame = player.frame {
+            drawImage(frame, in: bounds)
+        }
     }
 }

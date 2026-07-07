@@ -979,6 +979,13 @@ public enum OllinApp {
     /// out-of-band rather than through an initializer.)
     fileprivate static var standaloneSketch: Sketch?
 
+    /// True while a headless driver (the frame grab, the sequence/video/GIF/SVG
+    /// exporters, the benchmark loop) is driving the sketch clock: fixed
+    /// timestep, no window, no runloop servicing between frames. Sources that
+    /// normally follow a real clock (a playing video) read this to switch to a
+    /// deterministic pull that follows the sketch clock instead.
+    package static var isRenderingHeadless = false
+
     /// Boot a window running `sketch` and start the app; does not return. Hosts
     /// the sketch in a `SketchView` inside a SwiftUI `App` (`OllinSketchApp`) —
     /// the same lifecycle the live host and gallery use. This is the
@@ -1048,6 +1055,8 @@ public enum OllinApp {
                                                 sampleCount: ollinPreferredSampleCount(device)) else {
             return nil
         }
+        isRenderingHeadless = true
+        defer { isRenderingHeadless = false }
         renderer.automaticQuality = quality
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
@@ -1181,6 +1190,8 @@ public enum OllinApp {
             fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
         }
         renderer.automaticQuality = quality   // the fallback for features the sketch left at .default
+        isRenderingHeadless = true
+        defer { isRenderingHeadless = false }
 
         let size = sketch.canvasSize
         let width = size.width, height = size.height
@@ -1239,6 +1250,8 @@ public enum OllinApp {
     /// ms/frame, vertices/frame, and the implied CPU-bound FPS ceiling, so a
     /// rendering-performance change can be measured deterministically.
     static func benchmark(_ sketch: Sketch, frames: Int = 600, fps: Double = 60, gpu: Bool = false) {
+        isRenderingHeadless = true
+        defer { isRenderingHeadless = false }
         let n = max(1, frames)
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))

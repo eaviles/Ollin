@@ -183,7 +183,7 @@ public final class Smoothed<Value: Smoothable>: FrameAdvancing {
 
     /// Run the filter one step against the latest assigned value. Called by the
     /// sketch each frame.
-    func advance(by dt: Double) {
+    package func advance(by dt: Double) {
         output = filter.filter(input, dt: dt)
     }
 }

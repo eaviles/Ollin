@@ -679,6 +679,12 @@ let package = Package(
         // image. The clip is the example's own asset (CC BY-SA, provenance in
         // THIRD-PARTY-NOTICES.md), per the per-example asset convention.
         example("Video/VideoPlayback", [.video], resources: [.copy("voladores.mp4")]),
+        // The video's soundtrack analyzed live: a Soundtrack taps the playing
+        // clip's audio (the core AudioTapSource seam) and the sketch draws its
+        // bands and beats over the footage. Its clip pairs the voladores
+        // footage with the fandanguito violin recording as the soundtrack
+        // (both CC BY-SA; provenance in THIRD-PARTY-NOTICES.md).
+        example("Video/SoundReactive", [.video, .audio], resources: [.copy("voladores-fandanguito.mp4")]),
         // Vision — the Mac's camera plus Apple Vision perception. WebcamFeed draws
         // the live feed; FaceTracking overlays detected faces and landmarks. Both
         // need a camera and grant camera permission on first run.
@@ -769,7 +775,7 @@ let package = Package(
         // in CI alongside the rest of the GPU-free tests.
         .testTarget(
             name: "OllinAudioTests",
-            dependencies: ["OllinAudio"]
+            dependencies: ["Ollin", "OllinAudio"]
         ),
         // OSC correctness: wire-format encode/decode round-trips (every arg type,
         // padding edges, malformed input rejected without trapping) plus an
