@@ -268,6 +268,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Drawing/HDR.md` (toneMap) | Ch 14 | taught |
 | Design patterns + design filters (`Drawing/Effects.md`) | Ch 14 | shown |
 | Relight, two-tone dither, warp centers (`Drawing/Effects.md`) | Ch 14 | pointed |
+| Pattern fields (`Drawing/Effects.md`) | Ch 15 | shown |
 | Depth-of-field `.defocus`, SSAO, SSR (`Drawing/Effects.md`) | Ch 17 | pointed |
 | `Shaders/Shaders.md` (user shaders) | Ch 15 | taught |
 | `Shaders/Visuals.md` (Visual chains) | Ch 15 | taught |
@@ -334,7 +335,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Technique catalog: image-as-input family | Ch 7 |
 | Technique catalog: painterly marks | Ch 13 |
 | Technique catalog: noise toolkit | Ch 5 |
-| Technique catalog: pattern fields | Ch 15 |
 | Expressive brushes and strokes | Ch 13 |
 | Project generator | Ch 1 |
 | Variation galleries / seed exploration | Ch 4 + Ch 22 |

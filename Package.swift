@@ -476,6 +476,7 @@ let package = Package(
         example("Effects/Glitter"),
         example("Effects/MeshGradient"),
         example("Effects/DesignPatterns"),
+        example("Effects/PatternFields"),
         example("Effects/DesignFilters"),
         example("Effects/Distortion"),
         example("Simulation/GrayScott"),

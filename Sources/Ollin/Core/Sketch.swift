@@ -1513,6 +1513,15 @@ open class Sketch {
                         height: Int(height.rounded()), scale: scale)
     }
 
+    /// Fill a layer of an explicit size (rather than the canvas size) with a
+    /// procedural pattern. The pattern composes for that size (cells stay
+    /// square at the layer's own aspect), so a tile or panel gets its own
+    /// undistorted pattern instead of a squashed full-canvas one.
+    public func generate(_ generator: Generator, width: Int, height: Int,
+                         scale: Double = 1) -> RenderTarget {
+        drawer.generate(generator, width: width, height: height, scale: scale)
+    }
+
     /// Run a user-supplied `Shader` as a source layer, returning the `RenderTarget`
     /// it filled. Sugar for `generate(.shader(shader))`; draw it with `.image`,
     /// filter it, or feed it into another effect.

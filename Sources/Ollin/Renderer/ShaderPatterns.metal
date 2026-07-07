@@ -36,6 +36,15 @@ static inline float4 ollin_pat_srgb(float4 c) {
 }
 // Straight linear stop -> premultiplied sRGB working color.
 static inline float4 ollin_pat_stop(float4 c) { return ollin_pat_premul(ollin_pat_srgb(c)); }
+
+// Walk a palette of `count` stops evenly across t in [0, 1], blending adjacent
+// stops in the same premultiplied-sRGB working space as the other walks.
+static inline float4 ollin_pat_ramp(constant float4 *colors, int count, float t) {
+    if (count <= 1) { return ollin_pat_stop(colors[0]); }
+    float x = clamp(t, 0.0, 1.0) * float(count - 1);
+    int i = min(int(x), count - 2);
+    return mix(ollin_pat_stop(colors[i]), ollin_pat_stop(colors[i + 1]), x - float(i));
+}
 // Premultiplied sRGB working color -> the premultiplied linear a layer holds.
 static inline float4 ollin_pat_out(float4 c) {
     float3 straight = c.a > 1e-4 ? c.rgb / c.a : c.rgb;
@@ -1467,4 +1476,168 @@ fragment float4 ollin_fx_poisson_normalize(PresentOut in [[stage_in]],
     float inside = step(0.5, mask.sample(samp, in.uv).r);
     float R = 1.0 - clamp(u.sample(samp, in.uv).r / peak, 0.0, 1.0);
     return float4(mix(1.0, R, inside), 0.0, 0.0, 1.0);
+}
+
+// MARK: - Pattern fields
+//
+// Closed-form animated fields, each a few lines of math with a strong
+// signature look: quasicrystal wave sums, moire ring interference, a gyroid
+// slice, the Vogel phyllotaxis spiral, and per-cell pulses on a hex lattice.
+// Same conventions as the design patterns above: scalars in leading rows
+// (aspect included), palette as trailing rows, sRGB working blends, explicit
+// phase for animation.
+
+// quasicrystal: sum `symmetry` plane waves at evenly spaced angles. Each wave
+// alone is stripes; the sum is quasiperiodic, ordered but never repeating,
+// with crisp N-fold symmetry around its bright centers. The normalized sum
+// walks the palette (params[0]: colorCount, aspect, symmetry, scale;
+// params[1]: contrast, phase; params[2]: background; then colors).
+fragment float4 ollin_gen_quasicrystal(PresentOut in [[stage_in]],
+                                       constant float4 *params [[buffer(0)]]) {
+    int count = int(params[0].x);
+    float aspect = params[0].y;
+    int symmetry = int(params[0].z);
+    float scale = params[0].w;
+    float contrast = params[1].x, phase = params[1].y;
+    constant float4 *colors = params + 3;
+
+    float2 p = ollin_pat_square(in.uv, aspect) * 42.0 * scale;
+    float sum = 0.0;
+    for (int i = 0; i < symmetry; i++) {
+        float a = float(i) * 3.14159265 / float(symmetry);
+        sum += cos(p.x * cos(a) + p.y * sin(a) + phase);
+    }
+    float v = 0.5 + 0.5 * (sum / float(symmetry));
+    v = clamp((v - 0.5) * (1.0 + 4.0 * contrast) + 0.5, 0.0, 1.0);
+    float4 c = ollin_pat_ramp(colors, count, v);
+    return ollin_pat_out(ollin_pat_over(c, ollin_pat_stop(params[2])));
+}
+
+// moire: a few concentric ring gratings on slowly orbiting centers. Each
+// grating alone is even rings; where two overlap, their beat sweeps out the
+// large slow fringes the eye actually sees (params[0]: aspect, sources,
+// frequency, scale; params[1]: phase; params[2]: foreground, params[3]:
+// background).
+fragment float4 ollin_gen_moire(PresentOut in [[stage_in]],
+                                constant float4 *params [[buffer(0)]]) {
+    float aspect = params[0].x;
+    int sources = int(params[0].y);
+    float freq = params[0].z, scale = params[0].w;
+    float phase = params[1].x;
+
+    float2 p = ollin_pat_square(in.uv, aspect) / max(scale, 1e-3);
+    float sum = 0.0;
+    for (int i = 0; i < sources; i++) {
+        float fi = float(i);
+        float2 c = 0.17 * float2(sin(phase * (0.20 + 0.05 * fi) + fi * 2.4),
+                                 cos(phase * (0.16 + 0.06 * fi) + fi * 1.7));
+        sum += cos(length(p - c) * freq * 6.2831853);
+    }
+    float v = sum / float(sources);
+    float aa = fwidth(v) + 0.02;
+    float ink = smoothstep(aa, -aa, v);
+    float4 c = mix(ollin_pat_stop(params[3]), ollin_pat_stop(params[2]), ink);
+    return ollin_pat_out(c);
+}
+
+// gyroid: a planar slice of the gyroid, the triply-periodic minimal surface,
+// drawn as its zero-set band. Sweeping the slice depth with `phase` makes the
+// bands crawl and reconnect like living tissue; a dimmed echo band one layer
+// deeper gives the weave depth (params[0]: aspect, scale, thickness, phase;
+// params[1]: foreground, params[2]: background).
+fragment float4 ollin_gen_gyroid(PresentOut in [[stage_in]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float aspect = params[0].x, scale = params[0].y;
+    float thickness = params[0].z, phase = params[0].w;
+
+    float2 q = ollin_pat_square(in.uv, aspect) * 6.2831853 * scale;
+    float z = phase;
+    float g = sin(q.x) * cos(q.y) + sin(q.y) * cos(z) + sin(z) * cos(q.x);
+    float aa = fwidth(g) + 1e-3;
+    float band = 1.0 - smoothstep(thickness - aa, thickness + aa, abs(g));
+    float echo = 1.0 - smoothstep(2.0 * thickness - aa, 2.0 * thickness + aa,
+                                  abs(g) - 2.0 * thickness);
+    float4 fg = ollin_pat_stop(params[1]);
+    float4 bg = ollin_pat_stop(params[2]);
+    float4 c = mix(bg, mix(fg, bg, 0.72), echo * 0.85);
+    c = mix(c, fg, band);
+    return ollin_pat_out(c);
+}
+
+// phyllotaxis: the Vogel spiral as a continuous field. Every pixel derives its
+// approximate spiral index from its radius (r = c * sqrt(n)), scans the nearby
+// indices for the closest floret, and shades that floret's dot, colored by its
+// age along the palette. The scan window spans the Fibonacci neighbor offsets
+// (up to 34) that dominate a spiral of this size (params[0]: colorCount,
+// aspect, count, dotSize; params[1]: phase; params[2]: background; colors).
+fragment float4 ollin_gen_phyllotaxis(PresentOut in [[stage_in]],
+                                      constant float4 *params [[buffer(0)]]) {
+    int colorCount = int(params[0].x);
+    float aspect = params[0].y;
+    float countN = params[0].z, dotSize = params[0].w;
+    float phase = params[1].x;
+    constant float4 *colors = params + 3;
+
+    float2 p = ollin_pat_square(in.uv, aspect);
+    const float GA = 2.39996322973;               // the golden angle
+    float c = 0.66 / sqrt(countN);                // outermost floret near the frame
+    float r = length(p);
+    float n0 = (r / c) * (r / c);
+
+    float best = 1e9;
+    float bestN = 0.0;
+    for (int j = -34; j <= 34; j++) {
+        float m = floor(n0) + float(j);
+        if (m < 0.0 || m >= countN) { continue; }
+        float a = m * GA + phase;
+        float2 dpos = c * sqrt(m) * float2(cos(a), sin(a));
+        float d = length(p - dpos);
+        if (d < best) { best = d; bestN = m; }
+    }
+
+    float radius = c * 0.95 * dotSize;
+    float aa = fwidth(p.x) * 1.2 + 1e-5;
+    float cov = 1.0 - smoothstep(radius - aa, radius + aa, best);
+    float4 dotColor = ollin_pat_ramp(colors, colorCount, bestN / max(countN - 1.0, 1.0));
+    return ollin_pat_out(ollin_pat_over(dotColor * cov, ollin_pat_stop(params[2])));
+}
+
+// hexPulse: per-cell pulses over a hexagonal lattice. The two-lattice modulo
+// trick picks each pixel's nearest hex center; every cell then breathes on its
+// own hashed phase and rate, its brightness (and a little of its size) riding
+// the pulse, its color a hashed palette pick (params[0]: colorCount, aspect,
+// scale, gap; params[1]: phase; params[2]: background; then colors).
+fragment float4 ollin_gen_hexpulse(PresentOut in [[stage_in]],
+                                   constant float4 *params [[buffer(0)]]) {
+    int colorCount = int(params[0].x);
+    float aspect = params[0].y;
+    float scale = params[0].z, gap = params[0].w;
+    float phase = params[1].x;
+    constant float4 *colors = params + 3;
+
+    float2 p = ollin_pat_square(in.uv, aspect) * scale;
+    const float2 s = float2(1.0, 1.7320508);
+    float2 m1 = p - s * floor(p / s) - s * 0.5;
+    float2 shifted = p - s * 0.5;
+    float2 m2 = shifted - s * floor(shifted / s) - s * 0.5;
+    float2 h = dot(m1, m1) < dot(m2, m2) ? m1 : m2;
+    float2 id = p - h;                            // unique per cell
+
+    // Hex distance: the nearest of the six neighbor bisectors (side neighbors
+    // at (±1, 0), diagonal ones at (±0.5, ±√3/2)), so the cell edge sits at 0.5.
+    float2 ha = abs(h);
+    float hd = max(dot(ha, float2(0.5, 0.8660254)), ha.x);
+
+    float2 rnd = hash22(floor(id * 4.0 + 100.0) / 4.0 + 31.7);
+    float rate = 0.7 + 0.7 * rnd.y;
+    float pulse = 0.5 + 0.5 * sin(phase * rate + rnd.x * 6.2831853);
+    pulse = pulse * pulse;
+
+    float limit = 0.5 * (1.0 - gap) * (0.86 + 0.14 * pulse);
+    float aa = fwidth(hd) + 1e-4;
+    float cov = 1.0 - smoothstep(limit - aa, limit + aa, hd);
+
+    int pick = min(int(rnd.x * float(colorCount)), colorCount - 1);
+    float4 cell = ollin_pat_stop(colors[pick]) * (0.3 + 0.7 * pulse);
+    return ollin_pat_out(ollin_pat_over(cell * cov, ollin_pat_stop(params[2])));
 }

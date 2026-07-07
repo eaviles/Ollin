@@ -78,6 +78,24 @@ public struct Generator: Sendable {
                      density: Double, breakup: Double, coreSize: Double,
                      coreIntensity: Double, intensity: Double, bloom: Double,
                      bloomTint: SIMD4<Float>, phase: Double)
+
+        // Pattern fields -------------------------------------------------------
+        /// A quasicrystal interference field: plane waves at evenly spaced
+        /// angles, their sum walked through the palette.
+        case quasicrystal(colors: [SIMD4<Float>], background: SIMD4<Float>, symmetry: Double,
+                          scale: Double, contrast: Double, phase: Double)
+        /// Moiré fringes from a few ring gratings on slowly orbiting centers.
+        case moire(foreground: SIMD4<Float>, background: SIMD4<Float>, sources: Double,
+                   frequency: Double, scale: Double, phase: Double)
+        /// A slice of the gyroid surface, drawn as interwoven bands.
+        case gyroid(foreground: SIMD4<Float>, background: SIMD4<Float>, scale: Double,
+                    thickness: Double, phase: Double)
+        /// The Vogel phyllotaxis spiral as a continuous dot field, colored by age.
+        case phyllotaxis(colors: [SIMD4<Float>], background: SIMD4<Float>, count: Double,
+                         dotSize: Double, phase: Double)
+        /// Per-cell brightness pulses over a hexagonal lattice.
+        case hexPulse(colors: [SIMD4<Float>], background: SIMD4<Float>, scale: Double,
+                      gap: Double, phase: Double)
     }
 
     let kind: Kind
@@ -359,6 +377,93 @@ public struct Generator: Sendable {
                                  intensity: min(max(intensity, 0), 1),
                                  bloom: min(max(bloom, 0), 1),
                                  bloomTint: bloomTint.linearRGBA, phase: phase))
+    }
+    // MARK: Pattern fields
+
+    /// A quasicrystal: `symmetry` plane waves at evenly spaced angles, summed.
+    /// One wave is stripes; the sum is a pattern that is ordered but never
+    /// repeats, with crisp `symmetry`-fold stars around its bright centers.
+    /// The summed field walks `colors` (first stop = the wave troughs), `scale`
+    /// sets the wave frequency, `contrast` sharpens the walk from soft wash (0)
+    /// toward hard rings (1), and `phase` makes the whole crystal shimmer
+    /// (feed it your `time`).
+    public static func quasicrystal(colors: [Color] = [Color(hex: 0x0B1026), Color(hex: 0x24457C),
+                                                       Color(hex: 0x4FB6E8), Color(hex: 0xF2E8DC)],
+                                    background: Color = .black,
+                                    symmetry: Double = 7, scale: Double = 1,
+                                    contrast: Double = 0.5, phase: Double = 0) -> Generator {
+        Generator(kind: .quasicrystal(colors: colorRows(colors, max: 8),
+                                      background: background.linearRGBA,
+                                      symmetry: min(max(symmetry.rounded(), 3), 12),
+                                      scale: min(max(scale, 0.05), 8),
+                                      contrast: min(max(contrast, 0), 1), phase: phase))
+    }
+
+    /// Moiré interference: `sources` concentric ring gratings on slowly
+    /// orbiting centers. Each grating alone is even rings; where they overlap,
+    /// their beat sweeps out the large slow fringes the eye actually sees.
+    /// `frequency` is the ring count (finer rings give finer fringes), and
+    /// `phase` drifts the centers (feed it your `time`; the fringes move much
+    /// faster than the centers do, which is the effect's magic).
+    public static func moire(foreground: Color = Color(hex: 0x14181F),
+                             background: Color = Color(hex: 0xF2EEE4),
+                             sources: Double = 3, frequency: Double = 24,
+                             scale: Double = 1, phase: Double = 0) -> Generator {
+        Generator(kind: .moire(foreground: foreground.linearRGBA,
+                               background: background.linearRGBA,
+                               sources: min(max(sources.rounded(), 2), 5),
+                               frequency: min(max(frequency, 2), 120),
+                               scale: min(max(scale, 0.05), 8), phase: phase))
+    }
+
+    /// A gyroid slice: the zero-set of the gyroid (a surface that divides space
+    /// into two interlocking labyrinths) cut by a plane, drawn as interwoven
+    /// organic bands with a dimmed echo for depth. `scale` is the cell count
+    /// across, `thickness` the band weight, and `phase` sweeps the slicing
+    /// plane through the surface so the bands crawl and reconnect (feed it
+    /// your `time`).
+    public static func gyroid(foreground: Color = Color(hex: 0xE8DCC8),
+                              background: Color = Color(hex: 0x101820),
+                              scale: Double = 3, thickness: Double = 0.35,
+                              phase: Double = 0) -> Generator {
+        Generator(kind: .gyroid(foreground: foreground.linearRGBA,
+                                background: background.linearRGBA,
+                                scale: min(max(scale, 0.25), 16),
+                                thickness: min(max(thickness, 0.02), 1), phase: phase))
+    }
+
+    /// A phyllotaxis field: the sunflower's seed arrangement (each floret at
+    /// the golden angle past the one before, radius growing by the square
+    /// root), evaluated per pixel as a field of dots. `count` is how many
+    /// florets fill the layer, `dotSize` their size relative to the local
+    /// spacing (past ~1 they fuse into a cellular texture), colors walk from
+    /// the center's oldest florets to the rim's newest, and `phase` spins the
+    /// whole head (feed it a slow multiple of `time`).
+    public static func phyllotaxis(colors: [Color] = [Color(hex: 0xF2B36A), Color(hex: 0xE4572E),
+                                                      Color(hex: 0x7C3B5E)],
+                                   background: Color = Color(hex: 0x140F14),
+                                   count: Double = 700, dotSize: Double = 0.55,
+                                   phase: Double = 0) -> Generator {
+        Generator(kind: .phyllotaxis(colors: colorRows(colors, max: 8),
+                                     background: background.linearRGBA,
+                                     count: min(max(count, 20), 4000),
+                                     dotSize: min(max(dotSize, 0.05), 2), phase: phase))
+    }
+
+    /// Per-cell pulses over a hexagonal lattice: every hex breathes on its own
+    /// hashed rhythm, brightness (and a little size) riding the pulse, its
+    /// color a hashed pick from `colors`. `scale` is the cell count across,
+    /// `gap` the grout between cells, and `phase` drives the pulsing (feed it
+    /// your `time`).
+    public static func hexPulse(colors: [Color] = [Color(hex: 0x1F7A6B), Color(hex: 0x2B6C8C),
+                                                   Color(hex: 0xE8B44A), Color(hex: 0xB8442C)],
+                                background: Color = Color(hex: 0x0C1014),
+                                scale: Double = 8, gap: Double = 0.1,
+                                phase: Double = 0) -> Generator {
+        Generator(kind: .hexPulse(colors: colorRows(colors, max: 8),
+                                  background: background.linearRGBA,
+                                  scale: min(max(scale, 1), 64),
+                                  gap: min(max(gap, 0), 0.9), phase: phase))
     }
 }
 

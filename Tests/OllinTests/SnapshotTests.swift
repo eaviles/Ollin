@@ -168,6 +168,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("design-patterns",
                  note: "The nine other design-pattern generators tiled 3×3 at fixed phases (no time, no random): filaments, smokeRing, colorPanels, spiral, waves, dotOrbit, grainGradient, pulsingBorder, godRays. Pins each generator dispatch arm and fragment, incl. the polar-seam blends, the pane projection + scheduling, and the dual over/additive bloom accumulations.",
                  make: { DesignPatternsSheet() }),
+    SnapshotCase("pattern-fields",
+                 note: "The five pattern-field generators (quasicrystal, moire, gyroid, phyllotaxis, hexPulse) tiled at fixed phases (no time, no random), each generated at its tile's own size. Pins each dispatch arm and fragment (the plane-wave sum, ring interference, gyroid slice, Vogel nearest-floret scan, hex lattice + hashed pulses), the shared palette ramp, and the explicit-size generate(_:width:height:).",
+                 make: { PatternFieldsScene() }),
     SnapshotCase("effects-simfield", frame: 60,
                  note: "A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame 60 and recoloured. Pins the stateful sim substrate end to end: the persistent ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and the headless render-every-frame warmup the built-up state depends on.",
                  make: { EffectsSimField() }),
@@ -2826,6 +2829,31 @@ private final class EffectsGlitter: Sketch {
             drawStar(width * 0.73, height * 0.5, 62, 31, points: 5)
         }
         drawImage(sparkle.filtered(.glitter(density: 60, amount: 1.2, saturation: 0.6, phase: 1.3)).image, 0, 0)
+    }
+}
+
+/// The five pattern-field generators at fixed phases (no time/random), each filled
+/// at its own tile size so the compositions are undistorted. Pins the five new
+/// fragments and dispatches, the shared `ollin_pat_ramp` palette walk, and the
+/// explicit-size `generate(_:width:height:)` form.
+private final class PatternFieldsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let w = 84, h = 126
+        let tiles: [RenderTarget] = [
+            generate(.quasicrystal(phase: 2.0), width: w, height: h),
+            generate(.moire(phase: 3.0), width: w, height: h),
+            generate(.gyroid(phase: 1.2), width: w, height: h),
+            generate(.phyllotaxis(count: 300, phase: 0.4), width: w, height: h),
+            generate(.hexPulse(scale: 5, phase: 2.5), width: w, height: h),
+            generate(.quasicrystal(symmetry: 5, contrast: 1, phase: 0), width: w, height: h),
+        ]
+        for (i, tile) in tiles.enumerated() {
+            let x = Double(i % 3) * 85.5, y = Double(i / 3) * 128
+            drawImage(tile.image, in: Rectangle(x: x, y: y, width: Double(w), height: Double(h)))
+        }
     }
 }
 

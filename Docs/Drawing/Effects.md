@@ -373,6 +373,32 @@ drawImage(generate(.meshGradient(phase: time)).image, 0, 0)
   morphs the stack from alpha layering to additive light, and `bloomTint` washes an extra
   glow color over the lit areas.
 
+**Pattern fields**: closed-form animated fields, each a few lines of per-pixel math
+with a strong signature look. Same conventions as the design patterns (a `phase` to
+feed `time`, sRGB palette blending, square cells at any aspect):
+
+- **`.quasicrystal(colors:background:symmetry:scale:contrast:phase:)`** plane waves at
+  `symmetry` evenly spaced angles, summed: a pattern that is ordered but never repeats,
+  with crisp N-fold stars around its bright centers. The field walks the palette;
+  `contrast` sharpens the walk, `phase` shimmers the whole crystal.
+- **`.moire(foreground:background:sources:frequency:scale:phase:)`** a few concentric
+  ring gratings on slowly orbiting centers; where they overlap, their beat sweeps out
+  large fringes that move much faster than the centers do.
+- **`.gyroid(foreground:background:scale:thickness:phase:)`** a planar slice of the
+  gyroid surface, drawn as interwoven organic bands with a dimmed echo for depth;
+  `phase` sweeps the slicing plane so the bands crawl and reconnect.
+- **`.phyllotaxis(colors:background:count:dotSize:phase:)`** the sunflower's seed
+  arrangement (golden-angle spiral) as a continuous dot field, colored center-to-rim
+  by age; past `dotSize` ≈ 1 the dots fuse into a cellular texture; `phase` spins the head.
+- **`.hexPulse(colors:background:scale:gap:phase:)`** a hexagonal lattice whose every
+  cell breathes on its own hashed rhythm, brightness and a little size riding the pulse.
+
+See `Examples/Effects/PatternFields` for all five (plus a field chained into `.relight`).
+
+A pattern composes for the layer it fills. The default `generate(_:)` makes a
+full-canvas layer; `generate(_:width:height:)` fills one of an explicit size, so a
+tile or panel gets its own undistorted pattern instead of a squashed full-canvas one.
+
 <a id="postprocess"></a>
 ### postProcess(_:)
 

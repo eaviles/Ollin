@@ -942,6 +942,33 @@ extension MetalRenderer {
                                                 Float(coreIntensity)),
                                           SIMD4(Float(intensity), Float(bloom), Float(phase), 0),
                                           bloomTint, background] + colors, into: cb)
+
+        // Pattern fields: scalars in the leading rows, background at params[2],
+        // the palette (where one applies) as trailing rows.
+        case let .quasicrystal(colors, background, symmetry, scale, contrast, phase):
+            encodeEffectFragment("ollin_gen_quasicrystal", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, Float(symmetry), Float(scale)),
+                                          SIMD4(Float(contrast), Float(phase), 0, 0),
+                                          background] + colors, into: cb)
+        case let .moire(foreground, background, sources, frequency, scale, phase):
+            encodeEffectFragment("ollin_gen_moire", inputs: [], output: output,
+                                 params: [SIMD4(aspect, Float(sources), Float(frequency), Float(scale)),
+                                          SIMD4(Float(phase), 0, 0, 0),
+                                          foreground, background], into: cb)
+        case let .gyroid(foreground, background, scale, thickness, phase):
+            encodeEffectFragment("ollin_gen_gyroid", inputs: [], output: output,
+                                 params: [SIMD4(aspect, Float(scale), Float(thickness), Float(phase)),
+                                          foreground, background], into: cb)
+        case let .phyllotaxis(colors, background, count, dotSize, phase):
+            encodeEffectFragment("ollin_gen_phyllotaxis", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, Float(count), Float(dotSize)),
+                                          SIMD4(Float(phase), 0, 0, 0),
+                                          background] + colors, into: cb)
+        case let .hexPulse(colors, background, scale, gap, phase):
+            encodeEffectFragment("ollin_gen_hexpulse", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, Float(scale), Float(gap)),
+                                          SIMD4(Float(phase), 0, 0, 0),
+                                          background] + colors, into: cb)
         }
     }
 
