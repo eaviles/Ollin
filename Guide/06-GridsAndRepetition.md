@@ -249,4 +249,4 @@ Truchet tiles are named for Sébastien Truchet, a French Carmelite priest who pu
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 5, Noise](05-Noise.md) · Next: Chapter 7, Words and pictures
+[Contents](README.md#contents) · Previous: [Chapter 5, Noise](05-Noise.md) · Next: [Chapter 7, Words and pictures](07-WordsAndPictures.md)

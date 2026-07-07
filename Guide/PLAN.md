@@ -14,7 +14,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 4. Randomness | `04-Randomness.md` | done |
 | 5. Noise | `05-Noise.md` | done |
 | 6. Grids and repetition | `06-GridsAndRepetition.md` | done |
-| 7. Words and pictures | `07-WordsAndPictures.md` | not started |
+| 7. Words and pictures | `07-WordsAndPictures.md` | done |
 | 8. Vectors, gently | `08-Vectors.md` | not started |
 | 9. Forces and physics | `09-ForcesAndPhysics.md` | not started |
 | 10. Flocks and swarms | `10-FlocksAndSwarms.md` | not started |
@@ -242,8 +242,8 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/Noise.md` (noise, signedNoise, loop:, fbm, curlNoise) | Ch 5; curl in Ch 12/16 | taught |
 | `Drawing/Geometry.md`: `Grid`, `Insets` | Ch 6 | taught |
 | `Drawing/Truchet.md` | Ch 6 | taught |
-| `Drawing/Text.md` (three font kinds, textToShapes, atlas) | Ch 7 | taught |
-| `Drawing/Images.md` (Image, pixels, tint) | Ch 7 | taught |
+| `Drawing/Text.md` (three font kinds, textToShapes, atlas) | Ch 7 | taught (drawText/textSize/textAlign, the three kinds, perGlyph, textToShapes warp, atlas mode; on-path/box/metrics/variable axes named + pointed) |
+| `Drawing/Images.md` (Image, pixels, tint) | Ch 7 | taught (loadImage/drawImage/tint, blank-image authoring, the pixel subscript both ways; resource loading named) |
 | `Drawing/Geometry.md`: `Vector2`/`Vector3`, `Rectangle`, `Circle` | Ch 8, Ch 17 | taught |
 | `Simulation/Physics.md` (Verlet + rigid World) | Ch 9 | taught |
 | `Generators/Boids.md` | Ch 10 | taught |

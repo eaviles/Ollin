@@ -47,7 +47,7 @@ The guide is being written chapter by chapter; titles below without links are st
 4. **[Randomness](04-Randomness.md).** Random values, seeds, choices, distributions, and why reproducibility matters.
 5. **[Noise](05-Noise.md).** What Perlin noise is, what it's for, and how to drive motion and form with it.
 6. **[Grids and repetition](06-GridsAndRepetition.md).** The grid helper, moving the paper with transforms, symmetry by repetition, and Truchet tiles.
-7. **Words and pictures.** Text as geometry, images as material, reading pixels.
+7. **[Words and pictures](07-WordsAndPictures.md).** Drawing text, the three font kinds, text as geometry, images as material, reading pixels.
 
 ### Part II: Systems that come alive
 

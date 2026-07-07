@@ -39,4 +39,7 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - Drawing around the origin: coordinates straddling (0, 0) so a translated, rotated mark pivots about its own center (Ch 6)
 - Rotational symmetry as repetition: n copies at tau/n apart close the circle exactly (Ch 6) - reuse Images/06-GridsAndRepetition/Rosette.jpg
 - Local rules, global order: parts that only agree at their edges still compose global figures (Ch 6) - reuse Images/06-GridsAndRepetition/TruchetJoins.jpg
+- Perceived brightness: the eye weighs the channels unequally (r 0.2126, g 0.7152, b 0.0722); averaging reads wrong (Ch 7) - reuse Images/07-WordsAndPictures/PixelSampling.jpg
+- Fraction mapping: a cell's u,v fraction across one grid picks the matching index in another (sampling an image at any resolution) (Ch 7)
+- Contrast shaping: squaring a 0...1 value pushes the middle down, keeps the ends (Ch 7)
 -->
