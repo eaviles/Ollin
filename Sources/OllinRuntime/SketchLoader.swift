@@ -225,6 +225,14 @@ public struct SketchLoader: Sendable {
     /// targets, with `Ollin.swiftmodule` possibly sitting in the root itself). We
     /// collect from `<bin>` and from each `index-build/<triple>/debug`, taking
     /// whichever exist; a classic build (no index-build) just uses `<bin>`.
+    ///
+    /// One more source sits outside the build tree entirely: a vendored C target
+    /// with a *checked-in* module map (`External/<Target>/include/module.modulemap`)
+    /// is compiled straight from the source tree, so no generated map ever lands
+    /// under a `*.build` dir. A sketch importing a satellite whose swiftmodule
+    /// depends on one (the physics library's rigid side, say) needs that map on
+    /// the search path, so those `include/` dirs are collected from the package
+    /// root, the `.build` directory's parent.
     private func moduleSearchPaths() -> [String] {
         let fm = FileManager.default
         var dirs: [String] = []
@@ -241,6 +249,15 @@ public struct SketchLoader: Sendable {
             for triple in (try? fm.contentsOfDirectory(atPath: indexBuild)) ?? [] {
                 roots.append(((indexBuild as NSString).appendingPathComponent(triple) as NSString)
                     .appendingPathComponent("debug"))
+            }
+            let external = ((buildRoot as NSString).deletingLastPathComponent as NSString)
+                .appendingPathComponent("External")
+            for name in (try? fm.contentsOfDirectory(atPath: external)) ?? [] {
+                let include = ((external as NSString).appendingPathComponent(name) as NSString)
+                    .appendingPathComponent("include")
+                if fm.fileExists(atPath: (include as NSString).appendingPathComponent("module.modulemap")) {
+                    add(include)
+                }
             }
         }
 

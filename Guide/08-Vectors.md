@@ -216,4 +216,4 @@ Vectors are the physics notation the 1880s settled on, mostly at the hands of Jo
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 7, Words and pictures](07-WordsAndPictures.md) · Next: Chapter 9, Forces and physics
+[Contents](README.md#contents) · Previous: [Chapter 7, Words and pictures](07-WordsAndPictures.md) · Next: [Chapter 9, Forces and physics](09-ForcesAndPhysics.md)

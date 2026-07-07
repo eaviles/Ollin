@@ -1,6 +1,6 @@
 import Foundation
 import Ollin
-import CBox2D
+internal import CBox2D
 
 /// The simulation: a bag of `Particle`s and the `Spring`s between them, plus the
 /// global rules they live under — gravity, drag, an optional container, and

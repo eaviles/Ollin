@@ -52,7 +52,7 @@ The guide is being written chapter by chapter; titles below without links are st
 ### Part II: Systems that come alive
 
 8. **[Vectors, gently](08-Vectors.md).** Vectors as arrows; position, velocity, acceleration; steering toward a target.
-9. **Forces and physics.** Springs and particles, gravity and drag, rigid bodies and joints.
+9. **[Forces and physics](09-ForcesAndPhysics.md).** Forces by hand, then a physics world: springs and particles, rigid bodies and joints, grabbing with the mouse.
 10. **Flocks and swarms.** Flocking, emergence, and lines that grow by themselves: the autonomous agents of classic generative art (the rule-following kind, no AI involved).
 11. **Growing things.** L-systems, recursion, and constraint-solved tilings.
 12. **Fields and flow.** Flow fields, streamlines, advection, strange attractors.

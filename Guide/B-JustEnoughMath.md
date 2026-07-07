@@ -48,4 +48,8 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - The trio: acceleration changes velocity, velocity changes position, never the other way (Ch 8) - reuse Images/08-Vectors/MotionTrio.jpg
 - Steering as correction: desired velocity minus actual velocity, capped (Ch 8)
 - Edges: wrap (leave one side, enter the other) vs bounce (flip one velocity component, keep less than all of it) (Ch 8)
+- A force is a push with a direction; forces on one body add tip to tail; acceleration = force / mass (Ch 9) - reuse Images/09-ForcesAndPhysics/ForceAccumulation.jpg
+- Gravity's pull scales with mass, so after the division everything falls alike; drag doesn't, so light things feel it more (why a feather drifts) (Ch 9)
+- A spring's rule: too long pulls in, too short pushes out, at rest length nothing; stiffness is how sharply it corrects (Ch 9) - reuse Images/09-ForcesAndPhysics/SpringRestLength.jpg
+- Verlet integration: remember the previous position instead of a velocity; the gap between then and now is the velocity (Ch 9)
 -->

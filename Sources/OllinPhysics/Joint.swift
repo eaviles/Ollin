@@ -1,6 +1,6 @@
 import Foundation
 import Ollin
-import CBox2D
+internal import CBox2D
 
 /// A constraint linking two rigid `Body`s — a hinge, a rod, a weld, a slider — or
 /// a body to a moving target (a cursor grab). Create the structural kinds with

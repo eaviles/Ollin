@@ -1,6 +1,6 @@
 import Foundation
 import Ollin
-import CBox2D
+internal import CBox2D
 
 /// A rigid body in a `World`: a shape with mass that the solver moves, rotates,
 /// stacks, and joins. Where a `Particle` is a soft Verlet point (no orientation,
