@@ -123,11 +123,11 @@ Figures: steering-move diagram; wander/arrive diagrams; one diagram per boid rul
 Draws from: `Docs/Generators/Steering.md`, `Docs/Generators/Boids.md`, `Docs/Generators/DifferentialGrowth.md`; `Examples/Motion/Steering`, `Examples/Patterns/Flocking`, `Examples/Patterns/DifferentialGrowth`.
 
 **11. Growing things.**
-Teaches: rewriting rules (L-systems) and the turtle, grown iteration by iteration; branching with the stack; stochastic rules; recursion by drawing (a fractal tree written by hand first); Wave Function Collapse as "every neighbor must agree", watched as it solves.
-Assumes: Ch 4 (seeds), Ch 6 (grids, for WFC).
+Teaches: recursion by drawing (a fractal tree written by hand first); rewriting rules (L-systems) and the turtle, grown iteration by iteration; branching with the stack; stochastic rules; space colonization (growth that claims space: veins and trees from attraction points, the pipe model for weight); diffusion-limited aggregation (growth by chance: frost from frozen walkers); Wave Function Collapse as "every neighbor must agree", watched as it solves.
+Assumes: Ch 4 (seeds), Ch 6 (grids, for WFC), Ch 10 (stateful steppers).
 Payoff: a procedural garden.
-Figures: L-system expansion table + drawing per iteration; branch-stack diagram; WFC solve sequence; the garden.
-Draws from: `Docs/Generators/LSystem.md`, `Docs/Generators/WaveFunctionCollapse.md`; `Examples/Patterns/LSystem`, `Examples/Patterns/WaveFunctionCollapse`.
+Figures: branch-stack diagram; L-system expansion table + drawing per iteration; a space-colonization growth sequence; a DLA cluster; WFC solve sequence; the garden.
+Draws from: `Docs/Generators/LSystem.md`, `Docs/Generators/SpaceColonization.md`, `Docs/Generators/DiffusionLimitedAggregation.md`, `Docs/Generators/WaveFunctionCollapse.md`; `Examples/Patterns/LSystem`, `Examples/Patterns/Venation`, `Examples/Patterns/Dendrite`, `Examples/Patterns/WaveFunctionCollapse`.
 
 **12. Fields and flow.**
 Teaches: a field as "an answer at every point" (the mental model that later pays off in shaders and SDFs); visualizing a field with arrows; `FlowField` from noise; tracing streamlines; evenly-spaced streamlines; advecting particles; strange attractors as found motion.
@@ -249,6 +249,8 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/Boids.md` | Ch 10 | taught |
 | `Generators/Steering.md` | Ch 10 | taught |
 | `Generators/DifferentialGrowth.md` | Ch 10 | taught |
+| `Generators/SpaceColonization.md` | Ch 11 | taught |
+| `Generators/DiffusionLimitedAggregation.md` | Ch 11 | taught |
 | `Generators/LSystem.md` | Ch 11 | taught |
 | `Generators/WaveFunctionCollapse.md` | Ch 11 | taught |
 | `Generators/FlowField.md` (streamlines, advection) | Ch 12 | taught |
@@ -323,7 +325,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Generative-geometry refinements | Ch 11 |
 | Technique catalog: fractals | Ch 11 (may grow into its own chapter) |
 | Technique catalog: GPU-scale agents, ALife, Lenia | Ch 16 |
-| Technique catalog: growth/morphogenesis | Ch 10/11 |
+| Technique catalog: growth/morphogenesis (Turing patterns, sandpile, growth on meshes) | Ch 16/17 |
 | Technique catalog: waves, terrain | Ch 16/17 |
 | Technique catalog: IK, pendulums, n-body | Ch 9 |
 | Technique catalog: classic curves, space-filling | Ch 3/6/13 |

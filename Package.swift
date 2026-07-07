@@ -619,6 +619,8 @@ let package = Package(
         example("Patterns/ShapePacking"),
         example("Patterns/Streamlines"),
         example("Patterns/Flocking"),
+        example("Patterns/Venation"),
+        example("Patterns/Dendrite"),
         example("Shapes/HollowShapes"),
         example("Shapes/StrokeAlignment"),
         example("Shapes/StrokeJoinsAndCaps"),

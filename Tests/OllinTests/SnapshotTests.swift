@@ -282,6 +282,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("steering", frame: 150,
                  note: "Steering vehicles stepped to a fixed frame: followers on a closed path (with separation), a seeded wanderer's trail, and a pursuer leading its target. Pins Reynolds' individual steering behaviors (seek/arrive ramp, wander determinism, path projection + seam wrap, pursuit prediction). Seeded, fixed frame, so it's deterministic.",
                  make: { SteeringScene() }),
+    SnapshotCase("space-colonization", frame: 140,
+                 note: "Space colonization grown to a fixed frame: veins from a bottom root toward a seeded blue-noise attractor set, stroked with pipe-model thickness. Pins the closest-node pull association, average-direction growth, attractor consumption, and the thickness pass (all deterministic given the input). Seeded, fixed frame.",
+                 make: { SpaceColonizationScene() }),
+    SnapshotCase("dla", frame: 110,
+                 note: "A diffusion-limited aggregation cluster grown to a fixed frame from a center seed, tinted by arrival order. Pins the seeded walker (spawn/kill radii, far-jump stride, exact touch-distance landing) and the spatial-hash touch test. Seeded, fixed frame, so it's deterministic.",
+                 make: { DLAScene() }),
     SnapshotCase("depth-compositing-2d",
                  note: "A 2D card standing at a world depth between two point-cloud balls. Pins depth-aware compositing: the near ball draws over the card, the far ball is hidden by it. If 2D ignored depth (always over), the card would cover both, so this fails if the depth-participation path breaks. No time.",
                  make: { DepthComposited2D() }),
@@ -1237,6 +1243,59 @@ private final class SteeringScene: Sketch {
         drawVehicle(wanderer, size: 5)
         fill(Color(hex: 0xE8586B))
         drawVehicle(pursuer, size: 6)
+    }
+}
+
+/// Space colonization grown to a fixed frame: a seeded blue-noise attractor
+/// set, one bottom root, pipe-model stroke widths. Deterministic (the
+/// algorithm has no rng; the attractors come from a seeded generator).
+private final class SpaceColonizationScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let growth: SpaceColonization = {
+        var rng = SplitMix64(seed: 3)
+        let attractors = Ollin.poissonDisk(in: Rectangle(x: 20, y: 20, width: 216, height: 200),
+                                           radius: 13, using: &rng)
+        return SpaceColonization(attractors: attractors, roots: [Vector2(128, 244)],
+                                 influenceRadius: 60, killRadius: 9, stepLength: 4.5)
+    }()
+
+    override func draw() {
+        growth.step()
+        background(Color(hex: 0x101410))
+        strokeCap(.round)
+        noStroke()
+        fill(Color(hex: 0x3A4A3A))
+        drawCircles(growth.attractors, radius: 1.5)
+        let widths = growth.thicknesses(leafWidth: 0.8, exponent: 2.2)
+        stroke(Color(hex: 0xBFE8C2))
+        for (i, node) in growth.nodes.enumerated() {
+            guard let parent = node.parent else { continue }
+            strokeWeight(widths[i])
+            drawLine(growth.nodes[parent].position, node.position)
+        }
+    }
+}
+
+/// A DLA cluster grown to a fixed frame from a center seed, tinted by
+/// arrival order. Seeded walker, so it's deterministic.
+private final class DLAScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let cluster = DiffusionLimitedAggregation(
+        seeds: [Vector2(128, 128)], particleRadius: 2.2,
+        bounds: Rectangle(x: 0, y: 0, width: 256, height: 256),
+        maxParticles: 2400, seed: 5)
+
+    override func draw() {
+        cluster.step(10)
+        background(Color(hex: 0x0E1016))
+        noStroke()
+        let count = Double(cluster.count)
+        for (i, particle) in cluster.particles.enumerated() {
+            fill(Color.mix(Color(hex: 0xF2EFE8), Color(hex: 0x5B8FB9), t: Double(i) / count))
+            drawCircle(center: particle.position, radius: 2.2)
+        }
     }
 }
 
