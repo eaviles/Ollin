@@ -26,7 +26,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 16. Simulations | `16-Simulations.md` | done |
 | 17. 3D, gently | `17-3DGently.md` | done |
 | 18. Sculpting with fields | `18-SculptingWithFields.md` | done |
-| 19. Depth and the iPhone as a sensor | `19-DepthAndThePhone.md` | not started |
+| 19. Depth and the iPhone as a sensor | `19-DepthAndThePhone.md` | done |
 | 20. Sound and control | `20-SoundAndControl.md` | not started |
 | 21. Seeing | `21-Seeing.md` | not started |
 | 22. Sharing and performing | `22-SharingAndPerforming.md` | not started |

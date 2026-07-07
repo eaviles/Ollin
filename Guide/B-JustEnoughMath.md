@@ -62,6 +62,9 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - min of two fields is their union, max the intersection; the smooth minimum as a soft min that melts (Ch 18) - reuse Images/18-SculptingWithFields/MeltStrip.jpg
 - Sphere tracing: a distance is a safe step, so rays hop by the field's answer (Ch 18) - reuse Images/18-SculptingWithFields/MarchRay.jpg
 - Folding space: mirroring or wrapping the query point makes copies for free (Ch 18) - reuse Images/18-SculptingWithFields/DomainFold.jpg
+- The pinhole model: unprojection slides a pixel off the image center and scales by depth over focal length (Ch 19) - reuse Images/19-DepthAndThePhone/Unproject.jpg
+- A pose is a transform: camera-space points placed into the world by where the camera stood (Ch 19) - reuse Images/19-DepthAndThePhone/SweepFuse.jpg
+- Occlusion voids: a depth image knows only what its rays touched; the gaps are the shape of not-knowing (Ch 19) - reuse Images/19-DepthAndThePhone/CloudLift.jpg
 - Coherence: noise is a lookup into a fixed smooth landscape, so nearby inputs give nearby outputs (Ch 5) - reuse Images/05-Noise/RandomVsNoise.jpg
 - The input multiplier as a zoom knob: how far apart the questions land (Ch 5) - reuse Images/05-Noise/NoiseZoom.jpg
 - A field: an answer at every point of a plane; a third input as drifting time (Ch 5) - reuse Images/05-Noise/NoiseTerrain.jpg
