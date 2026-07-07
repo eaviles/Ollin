@@ -335,4 +335,4 @@ The camera-on-an-orbit model is the shared convention of 3D tools everywhere, fr
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 16, Simulations](16-Simulations.md) · Next: Chapter 18, Sculpting with fields
+[Contents](README.md#contents) · Previous: [Chapter 16, Simulations](16-Simulations.md) · Next: [Chapter 18, Sculpting with fields](18-SculptingWithFields.md)

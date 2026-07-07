@@ -25,7 +25,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 15. Your first shader | `15-YourFirstShader.md` | done |
 | 16. Simulations | `16-Simulations.md` | done |
 | 17. 3D, gently | `17-3DGently.md` | done |
-| 18. Sculpting with fields | `18-SculptingWithFields.md` | not started |
+| 18. Sculpting with fields | `18-SculptingWithFields.md` | done |
 | 19. Depth and the iPhone as a sensor | `19-DepthAndThePhone.md` | not started |
 | 20. Sound and control | `20-SoundAndControl.md` | not started |
 | 21. Seeing | `21-Seeing.md` | not started |
@@ -315,7 +315,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Single-file sketches | Ch 1 (would simplify the setup story; revisit Ch 1 when it ships) |
 | Retained geometry buffers | internal; Appendix D note at most |
 | More SDF shapes | Ch 18 / Appendix D |
-| SDF sculpting (richer combinators) | Ch 18 |
 | More model examples (ModelTracker) | Ch 21 |
 | SVG import | Ch 13 |
 | Clipping as drawing state | Ch 6 or 14 |

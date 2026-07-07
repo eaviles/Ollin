@@ -58,6 +58,10 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - Perspective: apparent size falls with distance; field of view as the lens angle, tele vs wide (Ch 17) - reuse Images/17-3DGently/DepthRow.jpg
 - The depth test: per pixel, the nearest surface wins; drawing order stops mattering (Ch 17)
 - Compounding transforms: a repeated move-and-turn is a helix; scoping decides what accumulates (Ch 17) - reuse Images/17-3DGently/Stairs.jpg
+- Signed distance: one number per point, magnitude is how far, sign is which side (Ch 18) - reuse Images/18-SculptingWithFields/FieldMap.jpg
+- min of two fields is their union, max the intersection; the smooth minimum as a soft min that melts (Ch 18) - reuse Images/18-SculptingWithFields/MeltStrip.jpg
+- Sphere tracing: a distance is a safe step, so rays hop by the field's answer (Ch 18) - reuse Images/18-SculptingWithFields/MarchRay.jpg
+- Folding space: mirroring or wrapping the query point makes copies for free (Ch 18) - reuse Images/18-SculptingWithFields/DomainFold.jpg
 - Coherence: noise is a lookup into a fixed smooth landscape, so nearby inputs give nearby outputs (Ch 5) - reuse Images/05-Noise/RandomVsNoise.jpg
 - The input multiplier as a zoom knob: how far apart the questions land (Ch 5) - reuse Images/05-Noise/NoiseZoom.jpg
 - A field: an answer at every point of a plane; a third input as drifting time (Ch 5) - reuse Images/05-Noise/NoiseTerrain.jpg
