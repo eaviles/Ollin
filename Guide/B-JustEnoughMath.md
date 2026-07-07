@@ -42,4 +42,10 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - Perceived brightness: the eye weighs the channels unequally (r 0.2126, g 0.7152, b 0.0722); averaging reads wrong (Ch 7) - reuse Images/07-WordsAndPictures/PixelSampling.jpg
 - Fraction mapping: a cell's u,v fraction across one grid picks the matching index in another (sampling an image at any resolution) (Ch 7)
 - Contrast shaping: squaring a 0...1 value pushes the middle down, keeps the ends (Ch 7)
+- A vector's two readings: a point (a place) and an arrow (a way to move) (Ch 8)
+- Arrow arithmetic: add head-to-tail; target - pos is the arrow from here to there; a scalar stretches or flips (Ch 8) - reuse Images/08-Vectors/VectorArithmetic.jpg
+- Length (Pythagoras) and normalize (heading kept, length 1); limited caps length (Ch 8)
+- The trio: acceleration changes velocity, velocity changes position, never the other way (Ch 8) - reuse Images/08-Vectors/MotionTrio.jpg
+- Steering as correction: desired velocity minus actual velocity, capped (Ch 8)
+- Edges: wrap (leave one side, enter the other) vs bounce (flip one velocity component, keep less than all of it) (Ch 8)
 -->

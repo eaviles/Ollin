@@ -278,4 +278,4 @@ Making pictures out of characters is older than computing: typewriter artists we
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 6, Grids and repetition](06-GridsAndRepetition.md) · Next: Chapter 8, Vectors, gently
+[Contents](README.md#contents) · Previous: [Chapter 6, Grids and repetition](06-GridsAndRepetition.md) · Next: [Chapter 8, Vectors, gently](08-Vectors.md)

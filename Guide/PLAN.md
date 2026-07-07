@@ -15,7 +15,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 5. Noise | `05-Noise.md` | done |
 | 6. Grids and repetition | `06-GridsAndRepetition.md` | done |
 | 7. Words and pictures | `07-WordsAndPictures.md` | done |
-| 8. Vectors, gently | `08-Vectors.md` | not started |
+| 8. Vectors, gently | `08-Vectors.md` | done |
 | 9. Forces and physics | `09-ForcesAndPhysics.md` | not started |
 | 10. Flocks and swarms | `10-FlocksAndSwarms.md` | not started |
 | 11. Growing things | `11-GrowingThings.md` | not started |
@@ -244,7 +244,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Drawing/Truchet.md` | Ch 6 | taught |
 | `Drawing/Text.md` (three font kinds, textToShapes, atlas) | Ch 7 | taught (drawText/textSize/textAlign, the three kinds, perGlyph, textToShapes warp, atlas mode; on-path/box/metrics/variable axes named + pointed) |
 | `Drawing/Images.md` (Image, pixels, tint) | Ch 7 | taught (loadImage/drawImage/tint, blank-image authoring, the pixel subscript both ways; resource loading named) |
-| `Drawing/Geometry.md`: `Vector2`/`Vector3`, `Rectangle`, `Circle` | Ch 8, Ch 17 | taught |
+| `Drawing/Geometry.md`: `Vector2`/`Vector3`, `Rectangle`, `Circle` | Ch 8, Ch 17 | taught (Vector2 arrows, +/−/scale, length/normalized/limited/distance/angle, with(x:y:) taught in Ch 8; dot/cross/lerp/rotated/projected pointed; Vector3 waits for Ch 17) |
 | `Simulation/Physics.md` (Verlet + rigid World) | Ch 9 | taught |
 | `Generators/Boids.md` | Ch 10 | taught |
 | `Generators/DifferentialGrowth.md` | Ch 10 | taught |
