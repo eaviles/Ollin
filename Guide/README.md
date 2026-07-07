@@ -54,7 +54,7 @@ The guide is being written chapter by chapter; titles below without links are st
 8. **[Vectors, gently](08-Vectors.md).** Vectors as arrows; position, velocity, acceleration; steering toward a target.
 9. **[Forces and physics](09-ForcesAndPhysics.md).** Forces by hand, then a physics world: springs and particles, rigid bodies and joints, grabbing with the mouse.
 10. **[Flocks and swarms](10-FlocksAndSwarms.md).** One creature that steers (seek, arrive, wander), then flocking from three local rules, then a line that grows into coral.
-11. **Growing things.** L-systems, recursion, and constraint-solved tilings.
+11. **[Growing things](11-GrowingThings.md).** A recursive tree, L-system grammars, growth that claims space, frost from frozen walkers, and tiles that must agree.
 12. **Fields and flow.** Flow fields, streamlines, advection, strange attractors.
 13. **Shapes as material.** Paths, booleans, Voronoi, packing, hatching, and work made for pen plotters.
 

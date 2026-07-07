@@ -31,6 +31,9 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - The steering correction: the desired velocity minus the current one, capped; the gap between wish and state as a force (Ch 10) - reuse Images/10-FlocksAndSwarms/SteeringMove.jpg
 - Neighborhoods: a perception radius decides who counts as nearby; local rules over neighborhoods make global pattern (Ch 10)
 - Fixed-step simulation vs deltaTime scaling: stepping trades frame-rate independence for exact repeatability (Ch 10)
+- Recursion: a rule applied to its own output; a depth counter as the floor it stops on; 2^n growth of branches (Ch 11)
+- Rewriting growth: strings that grow exponentially under substitution rules; the drawing gets richer because the sentence gets longer (Ch 11) - reuse Images/11-GrowingThings/LSystemExpansion.jpg
+- Constraint propagation: one local law (edges must match) forcing global structure; settling the most-constrained cell first (Ch 11)
 - The random walk: accumulate nudges instead of re-rolling, and a path appears (Ch 4) - reuse Images/04-Randomness/WalkVsJumps.jpg
 - Coherence: noise is a lookup into a fixed smooth landscape, so nearby inputs give nearby outputs (Ch 5) - reuse Images/05-Noise/RandomVsNoise.jpg
 - The input multiplier as a zoom knob: how far apart the questions land (Ch 5) - reuse Images/05-Noise/NoiseZoom.jpg

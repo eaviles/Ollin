@@ -309,4 +309,4 @@ Boids are Craig Reynolds' invention: the 1987 SIGGRAPH paper "Flocks, Herds, and
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 9, Forces and physics](09-ForcesAndPhysics.md) · Next: Chapter 11, Growing things
+[Contents](README.md#contents) · Previous: [Chapter 9, Forces and physics](09-ForcesAndPhysics.md) · Next: [Chapter 11, Growing things](11-GrowingThings.md)
