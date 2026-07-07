@@ -153,6 +153,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-filters",
                  note: "A sample of the extended catalog (vibrance, oilPaint (Kuwahara), emboss, cmykHalftone, kaleidoscope, scanlines), one per family. Pins the added dispatch and the new fragments: a straight-color tone op, a multi-tap variance gather, a neighbourhood relief, a print screen, a uv warp, and a retro line pass.",
                  make: { EffectsFilters() }),
+    SnapshotCase("effects-relight",
+                 note: "The relight height-map material pass (metal), the two-tone ordered dither, and the off-center swirl and ripple warps at fixed parameters. Pins the new fragments and dispatches, and the center plumbing on the radial warps.",
+                 make: { EffectsRelight() }),
     SnapshotCase("effects-glitter",
                  note: "The iridescence + glitter filters over a fixed heart + star at fixed shift/phase. Pins the thin-film interference color over the domain-warped fbm thickness field, the two hash-cell sparkle layers (dust + cross flares) with their alpha gating, and both dispatches.",
                  make: { EffectsGlitter() }),
@@ -2765,6 +2768,39 @@ private final class EffectsFilters: Sketch {
         for (i, filter) in filters.enumerated() {
             let x = Double(i % 3) * 85, y = Double(i / 3) * 128
             drawImage(scene.filtered(filter).image, in: Rectangle(x: x, y: y, width: 85, height: 128))
+        }
+    }
+}
+
+/// The relight height-map material pass (metal over a drawn hill scene), the
+/// two-tone ordered dither, and the off-center swirl and ripple warps, all at
+/// fixed parameters (no time/random). Pins the new fragments and dispatches, and
+/// the `center` parameter plumbing on the radial warps.
+private final class EffectsRelight: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let scene = renderTarget()
+        withTarget(scene) {
+            background(Color(hex: 0x101826))
+            noStroke()
+            fill(.radial(center: Vector2(width * 0.35, height * 0.4), radius: width * 0.5,
+                         Ramp([Color(white: 0.9), Color(white: 0.15)])))
+            drawRect(0, 0, width, height)
+            fill(Color(hex: 0xFF8A3C)); drawCircle(width * 0.68, height * 0.62, width * 0.16)
+            fill(Color(hex: 0x54C2FF)); drawRect(width * 0.15, height * 0.15, width * 0.3, height * 0.22)
+        }
+        let tiles: [RenderTarget] = [
+            scene.filtered(.relight(.metal, color: Color(hex: 0xD8A93F))),
+            scene.filtered(.dither(dark: Color(hex: 0x1B1040), light: Color(hex: 0xFFE08A),
+                                   pixelSize: 2)),
+            scene.filtered(.swirl(angle: 2.4, radius: 0.5, center: Vector2(0.3, 0.35))),
+            scene.filtered(.ripple(amplitude: 0.04, frequency: 9, center: Vector2(0.7, 0.6))),
+        ]
+        for (i, tile) in tiles.enumerated() {
+            let x = Double(i % 2) * 128, y = Double(i / 2) * 128
+            drawImage(tile.image, in: Rectangle(x: x, y: y, width: 128, height: 128))
         }
     }
 }

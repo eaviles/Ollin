@@ -267,6 +267,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Drawing/Accumulation.md` (noClear) | Ch 14; used in Ch 16 | taught |
 | `Drawing/HDR.md` (toneMap) | Ch 14 | taught |
 | Design patterns + design filters (`Drawing/Effects.md`) | Ch 14 | shown |
+| Relight, two-tone dither, warp centers (`Drawing/Effects.md`) | Ch 14 | shown |
 | Depth-of-field `.defocus`, SSAO, SSR (`Drawing/Effects.md`) | Ch 17 | pointed |
 | `Shaders/Shaders.md` (user shaders) | Ch 15 | taught |
 | `Shaders/Visuals.md` (Visual chains) | Ch 15 | taught |
@@ -318,7 +319,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Perfect-loop export (`--export-loop`) | Ch 3 |
 | Reproducibility metadata in exports | Ch 4 + Ch 22 |
 | Kaleidoscope symmetry | Ch 6 |
-| Small filter-catalog additions | Ch 14 |
 | Shape morphing | Ch 3 or 13 |
 | SDF sculpting (richer combinators) | Ch 18 |
 | Generative-geometry refinements | Ch 11 |

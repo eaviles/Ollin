@@ -472,6 +472,7 @@ let package = Package(
         example("Effects/BlurFilters"),
         example("Effects/StylizeFilters"),
         example("Effects/RetroFilters"),
+        example("Effects/Relight"),
         example("Effects/Glitter"),
         example("Effects/MeshGradient"),
         example("Effects/DesignPatterns"),

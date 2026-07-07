@@ -364,6 +364,8 @@ extension MetalRenderer {
             return pass("ollin_fx_halftone", [input], [SIMD4(Float(scale), Float(angle), aspect, 0)])
         case let .dither(levels, pixelSize):
             return pass("ollin_fx_dither", [input], [f(levels, pixelSize, 0, 0)])
+        case let .ditherDuo(dark, light, bias, pixelSize):
+            return pass("ollin_fx_dither_duo", [input], [f(bias, pixelSize, 0, 0), dark, light])
         case let .grain(amount, seed):
             return pass("ollin_fx_grain", [input], [f(amount, seed, 0, 0)])
         case let .pixelate(size, channel, tint):
@@ -417,6 +419,12 @@ extension MetalRenderer {
             return pass("ollin_fx_cmyk_halftone", [input], [SIMD4(Float(scale), aspect, 0, 0)])
         case .normalMap(let strength):
             return pass("ollin_fx_normal_map", [input], [SIMD4(texel.x, texel.y, Float(strength), 0)])
+        case let .relight(finish, angle, elevation, height, intensity, color):
+            return pass("ollin_fx_relight", [input],
+                        [SIMD4(texel.x, texel.y, Float(height), finish.rawIndex),
+                         SIMD4(Float(angle), Float(elevation), Float(intensity),
+                               color == nil ? 0 : 1),
+                         color ?? SIMD4<Float>(repeating: 0)])
         case let .iridescence(amount, scale, bands, shift):
             return pass("ollin_fx_iridescence", [input],
                         [f(amount, scale, bands, shift), SIMD4(aspect, 0, 0, 0)])
@@ -436,16 +444,21 @@ extension MetalRenderer {
         // Distortion
         case let .kaleidoscope(segments, angle):
             return pass("ollin_fx_kaleidoscope", [input], [SIMD4(Float(segments), Float(angle), aspect, 0)])
-        case let .swirl(angle, radius):
-            return pass("ollin_fx_swirl", [input], [SIMD4(Float(angle), Float(radius), aspect, 0)])
-        case let .bulge(amount, radius):
-            return pass("ollin_fx_bulge", [input], [SIMD4(Float(amount), Float(radius), aspect, 0)])
+        case let .swirl(angle, radius, center):
+            return pass("ollin_fx_swirl", [input],
+                        [SIMD4(Float(angle), Float(radius), aspect, 0),
+                         SIMD4(Float(center.x), Float(center.y), 0, 0)])
+        case let .bulge(amount, radius, center):
+            return pass("ollin_fx_bulge", [input],
+                        [SIMD4(Float(amount), Float(radius), aspect, 0),
+                         SIMD4(Float(center.x), Float(center.y), 0, 0)])
         case let .wave(amplitude, frequency, phase, vertical):
             return pass("ollin_fx_wave", [input],
                         [SIMD4(Float(amplitude), Float(frequency), Float(phase), vertical ? 1 : 0)])
-        case let .ripple(amplitude, frequency, phase):
+        case let .ripple(amplitude, frequency, phase, center):
             return pass("ollin_fx_ripple", [input],
-                        [SIMD4(Float(amplitude), Float(frequency), Float(phase), aspect)])
+                        [SIMD4(Float(amplitude), Float(frequency), Float(phase), aspect),
+                         SIMD4(Float(center.x), Float(center.y), 0, 0)])
         case let .mirror(vertical, flip):
             return pass("ollin_fx_mirror", [input], [SIMD4(vertical ? 1 : 0, flip ? 1 : 0, 0, 0)])
         case .polar(let amount):

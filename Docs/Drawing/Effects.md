@@ -157,6 +157,7 @@ layer.filtered(.vibrance(amount: 0.6))
 - **`.chromaticAberration(amount:)`** split the red and blue channels radially, like cheap-lens fringing.
 - **`.halftone(scale:angle:)`** a rotated dot screen, dot size tracking brightness.
 - **`.dither(levels:)`** ordered (Bayer 4×4) dithering, the retro look that fakes more shades than it has.
+- **`.dither(dark:light:bias:pixelSize:)`** the two-tone variant: the same ordered pattern mapped onto exactly two chosen colors, cut by tone, the 1-bit / newsprint look in any palette. `bias` shifts the cut (positive lightens), and either color may be transparent so the shadows drop out.
 - **`.grain(amount:seed:)`** film grain; feed `seed` your `time` or `frameCount` for grain that moves.
 - **`.pixelate(size:channel:tint:)`** mosaic into blocks `size` canvas-pixels across; `channel` can read one channel out as gray and `tint` recolor it.
 - **`.lineScreen(scale:softness:angle:foreground:background:)`** a brightness-driven line screen: each cell paints a centered bar whose width tracks its brightness, painted `foreground` over `background`.
@@ -168,6 +169,7 @@ layer.filtered(.vibrance(amount: 0.6))
 - **`.contour(levels:intensity:)`** dark iso-brightness lines (one every `1/levels` of the range), turning tone into a topographic map.
 - **`.cmykHalftone(scale:)`** separate into cyan/magenta/yellow/black and screen each as rotated dots at the classic print angles: the color-process look.
 - **`.normalMap(strength:)`** read the image as a height field and output its surface normal as an RGB vector (the bluish bump-map look), ready to feed `.displace` (see [combine](#combined)) or a lighting pass.
+- **`.relight(_:angle:elevation:height:intensity:color:)`** read the layer as a height map (bright = raised) and light it as embossed physical matter with a curated finish: `.matte` clay, `.metal`, wet `.glass`, grainy `.sand`, or `.liquid` (the last two refract the image beneath). `angle` sets where the light comes from, `elevation` how low it rakes (grazing light deepens relief), `height` exaggerates the slopes, and `color` overrides the material color (by default the layer keeps its own). The cheap 2D cousin of the 3D materials: a noise field or a simulation instantly reads as terrain, hammered gold, or wet skin. See `Examples/Effects/Relight`.
 - **`.iridescence(amount:scale:bands:shift:)`** wash the content with the flowing rainbow sheen of a soap film or oil slick. The colors come from thin-film interference (each channel cycling at its own wavelength, so the bands run through the film color order), swirled across the content by a noise field and following its shading. `amount` blends the sheen over the original, `scale` sets how fine the swirl is, `bands` how many color cycles the film runs through, and `shift` slides the colors: feed it your `time` for a sheen that flows.
 - **`.glitter(density:amount:size:saturation:phase:)`** scatter twinkling sparkle flecks across the content: a dense dust of small glints plus occasional bright cross-flare flashes, landing only where something is drawn. `density` is the fleck grid resolution (cells across the layer), `amount` the brightness (flashes run past 1.0 in linear light, so a following `.bloom` makes them glow), `size` scales the flecks, `saturation` tints them from white (0) toward each fleck's own color (1), and `phase` drives the twinkle: feed it your `time` so it sparkles.
 
@@ -197,10 +199,12 @@ postProcess(.glitch(amount: 0.3, seed: time * 8))
 These warp the image's *coordinates*: they re-sample the source at a remapped position, so color passes through untouched. Center-relative warps stay round on a non-square layer.
 
 - **`.kaleidoscope(segments:angle:)`** fold into mirrored wedges around the center, rotated by `angle`.
-- **`.swirl(angle:radius:)`** twirl into a vortex: rotation strongest at the center, fading to none at `radius`.
-- **`.bulge(amount:radius:)`** a radial lens: `amount` > 0 bulges (fisheye), < 0 pinches; it eases back to the image at `radius`.
+- **`.swirl(angle:radius:center:)`** twirl into a vortex: rotation strongest at `center`, fading to none at `radius`.
+- **`.bulge(amount:radius:center:)`** a radial lens: `amount` > 0 bulges (fisheye), < 0 pinches; it eases back to the image at `radius`.
+- **`.ripple(amplitude:frequency:phase:center:)`** concentric waves spreading from `center`, like a drop in water.
 - **`.wave(amplitude:frequency:phase:vertical:)`** ripple rows side to side (or columns up and down); animate `phase` for motion.
-- **`.ripple(amplitude:frequency:phase:)`** concentric waves from the center, like a drop in water.
+
+The three radial warps take an optional `center` in fractions of the layer (top-left origin; the middle by default), so a cursor-driven lens or vortex is one line: `.bulge(amount: 1, center: Vector2(mouseX / width, mouseY / height))`.
 - **`.mirror(vertical:flip:)`** reflect one half of the image onto the other.
 - **`.polar(amount:)`** bend around the center by remapping between Cartesian and polar coordinates: a tunnel / fold.
 - **`.tile(count:mirror:)`** repeat the image in a `count`×`count` grid; `mirror` flips alternate cells for a seamless tiling.

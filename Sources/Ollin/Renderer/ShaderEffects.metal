@@ -299,6 +299,29 @@ fragment float4 ollin_fx_dither(PresentOut in [[stage_in]],
     return ollin_premul(clamp(c, 0.0, 1.0), s.a);
 }
 
+// dither duo: the ordered Bayer pattern mapped onto exactly two colors, cut by the
+// image's tone (params[0]: bias, pixelSize; params[1] dark, params[2] light). Tone is
+// gamma-encoded luma, so the on/off coverage tracks perceived brightness (a mid-gray
+// reads as roughly half-covered, which linear luma would render far darker); `bias`
+// shifts the cut point. Either color may carry alpha, so a transparent "dark" drops
+// the shadows out entirely.
+fragment float4 ollin_fx_dither_duo(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    const float bayer[16] = { 0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0,
+                              3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0 };
+    float bias = params[0].x, pixelSize = max(1.0, params[0].y);
+    int2 ip = int2(floor(in.position.xy / pixelSize));
+    float threshold = (bayer[(ip.y & 3) * 4 + (ip.x & 3)] + 0.5) / 16.0;   // (0, 1)
+    float4 s = src.sample(samp, in.uv);
+    float tone = ollin_luma(linearToSrgb(clamp(ollin_unpremul(s), 0.0, 1.0)));
+    float m = step(threshold, tone + bias);
+    float4 dark = params[1], light = params[2];
+    float4 c = mix(dark, light, m);
+    return ollin_premul(c.rgb, c.a * s.a);
+}
+
 // grain: add per-pixel hashed noise (params: amount, seed). Feed seed `time` to move it.
 fragment float4 ollin_fx_grain(PresentOut in [[stage_in]],
                                texture2d<float> src [[texture(0)]],
@@ -728,6 +751,87 @@ fragment float4 ollin_fx_normal_map(PresentOut in [[stage_in]],
     return float4(nrm * 0.5 + 0.5, 1.0);
 }
 
+// relight: read the layer as a height map (luma, Sobel gradient -> screen-space
+// normal) and light it with a curated material finish, so a flat field reads as
+// embossed physical matter (params[0]: texel.xy, height, finish; params[1]: angle,
+// elevation, intensity, hasColor; params[2]: material color). Blinn-Phong over the
+// height normal with the viewer straight above the layer; each finish is a tuned
+// diffuse/specular/rim recipe (0 matte, 1 metal, 2 glass, 3 sand, 4 liquid). Sand
+// roughens the normal with per-pixel grain before lighting (the glints fall out of
+// the specular naturally); glass and liquid refract the sample by the surface slope.
+fragment float4 ollin_fx_relight(PresentOut in [[stage_in]],
+                                 texture2d<float> src [[texture(0)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float height = params[0].z;
+    int finish = int(params[0].w);
+    float angle = params[1].x, elevation = params[1].y, intensity = params[1].z;
+    bool hasColor = params[1].w > 0.5;
+
+    float l00 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2(-1, -1))));
+    float l10 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 0, -1))));
+    float l20 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 1, -1))));
+    float l01 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2(-1,  0))));
+    float l21 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 1,  0))));
+    float l02 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2(-1,  1))));
+    float l12 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 0,  1))));
+    float l22 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 1,  1))));
+    float gx = (l20 + 2.0 * l21 + l22) - (l00 + 2.0 * l01 + l02);
+    float gy = (l02 + 2.0 * l12 + l22) - (l00 + 2.0 * l10 + l20);
+    // Normalize the Sobel gradient to uv space (per-texel differences shrink with
+    // resolution, which would flatten a smooth field's relief at high res), then
+    // tune so the default height reads as gentle hills on a soft noise cloud.
+    float2 slope = float2(gx, gy) * (0.03 / max(t.x, 1e-6)) * height;
+    float3 n = normalize(float3(-slope, 1.0));
+
+    if (finish == 3) {                                        // sand: grain the surface
+        float2 g = (hash22(in.position.xy) - 0.5) * 0.8;
+        n = normalize(n + float3(g, 0.0));
+    }
+
+    // Light from `angle` (canvas convention, y down) raked at `elevation`; the
+    // viewer looks straight down the layer's z.
+    float ce = cos(elevation);
+    float3 L = normalize(float3(cos(angle) * ce, sin(angle) * ce, sin(elevation)));
+    float3 V = float3(0.0, 0.0, 1.0);
+    float3 H = normalize(L + V);
+    float diff = max(dot(n, L), 0.0);
+    float sh = max(dot(n, H), 0.0);
+    float rim = pow(clamp(1.0 - n.z, 0.0, 1.0), 2.0);         // slope-facing fresnel
+
+    float4 s = src.sample(samp, in.uv);
+    float3 own = ollin_unpremul(s);
+    float3 base = hasColor ? params[2].rgb : own;
+
+    float3 lit;
+    if (finish == 1) {                                        // metal: tinted reflection
+        lit = base * (0.10 + 0.30 * diff)
+            + base * pow(sh, 22.0) * 1.1
+            + float3(1.0) * pow(sh, 90.0) * 0.55;
+    } else if (finish == 2) {                                 // glass: glint + bright rim
+        float3 refr = hasColor ? base
+                               : ollin_unpremul(src.sample(samp, in.uv - n.xy * 0.012));
+        lit = refr * (0.45 + 0.40 * diff)
+            + float3(1.0) * (rim * 0.45 + pow(sh, 130.0) * 0.9);
+    } else if (finish == 3) {                                 // sand: rough, tiny glints
+        lit = base * (0.28 + 0.72 * diff)
+            + float3(1.0) * pow(sh, 42.0) * 0.5;
+    } else if (finish == 4) {                                 // liquid: wet sheen + refraction
+        float3 refr = hasColor ? base
+                               : ollin_unpremul(src.sample(samp, in.uv - n.xy * 0.02));
+        lit = refr * (0.35 + 0.65 * diff)
+            + float3(1.0) * (pow(sh, 140.0) * 1.2 + rim * 0.12);
+    } else {                                                  // matte clay
+        lit = base * (0.22 + 0.78 * diff)
+            + float3(1.0) * pow(sh, 8.0) * 0.06;
+    }
+    // `intensity` scales how far the lighting departs from the flat base color
+    // (0 flat, 1 the full recipe, above 1 pushes the departure further).
+    lit = base + (lit - base) * intensity;
+    return ollin_premul(max(lit, 0.0), s.a);
+}
+
 // iridescence: a thin-film rainbow sheen washed over the content (params[0]: amount,
 // scale, bands, shift; params[1].x: aspect). The color is wavelength-dependent
 // interference (per-channel reflectance 0.5 - 0.5*cos(2π·t·λg/λ) at one
@@ -922,34 +1026,37 @@ fragment float4 ollin_fx_kaleidoscope(PresentOut in [[stage_in]],
     return src.sample(samp, uv);
 }
 
-// swirl (twirl): rotate around center, strongest at the middle, fading to `radius`
-// (params: angle, radius, aspect).
+// swirl (twirl): rotate around `center`, strongest at the middle, fading to `radius`
+// (params[0]: angle, radius, aspect; params[1].xy: center in layer fractions).
 fragment float4 ollin_fx_swirl(PresentOut in [[stage_in]],
                                texture2d<float> src [[texture(0)]],
                                sampler samp [[sampler(0)]],
                                constant float4 *params [[buffer(0)]]) {
     float angle = params[0].x, radius = max(1e-3, params[0].y), aspect = params[0].z;
-    float2 p = (in.uv - 0.5) * float2(aspect, 1.0);
+    float2 ctr = params[1].xy;
+    float2 p = (in.uv - ctr) * float2(aspect, 1.0);
     float t = clamp(1.0 - length(p) / radius, 0.0, 1.0);
-    float2 q = ollin_rot2(p, angle * t * t) / float2(aspect, 1.0) + 0.5;
+    float2 q = ollin_rot2(p, angle * t * t) / float2(aspect, 1.0) + ctr;
     return src.sample(samp, clamp(q, 0.0, 1.0));
 }
 
 // bulge / pinch: radial magnification within `radius`, easing to identity at the rim
-// (params: amount, radius, aspect). amount>0 bulges, <0 pinches.
+// (params[0]: amount, radius, aspect; params[1].xy: center in layer fractions).
+// amount>0 bulges, <0 pinches.
 fragment float4 ollin_fx_bulge(PresentOut in [[stage_in]],
                                texture2d<float> src [[texture(0)]],
                                sampler samp [[sampler(0)]],
                                constant float4 *params [[buffer(0)]]) {
     float amount = params[0].x, radius = max(1e-3, params[0].y), aspect = params[0].z;
-    float2 d = (in.uv - 0.5) * float2(aspect, 1.0);
+    float2 ctr = params[1].xy;
+    float2 d = (in.uv - ctr) * float2(aspect, 1.0);
     float r = length(d);
     float rn = r / radius;
     if (rn < 1.0 && r > 1e-5) {
         float rp = pow(rn, 1.0 + amount);
         d *= (rp * radius) / r;
     }
-    return src.sample(samp, clamp(d / float2(aspect, 1.0) + 0.5, 0.0, 1.0));
+    return src.sample(samp, clamp(d / float2(aspect, 1.0) + ctr, 0.0, 1.0));
 }
 
 // wave: sinusoidal row/column displacement (params: amplitude, frequency, phase, vertical).
@@ -965,18 +1072,19 @@ fragment float4 ollin_fx_wave(PresentOut in [[stage_in]],
     return src.sample(samp, clamp(uv, 0.0, 1.0));
 }
 
-// ripple: concentric radial sine displacement from center (params: amplitude, frequency,
-// phase, aspect).
+// ripple: concentric radial sine displacement from `center` (params[0]: amplitude,
+// frequency, phase, aspect; params[1].xy: center in layer fractions).
 fragment float4 ollin_fx_ripple(PresentOut in [[stage_in]],
                                 texture2d<float> src [[texture(0)]],
                                 sampler samp [[sampler(0)]],
                                 constant float4 *params [[buffer(0)]]) {
     float amp = params[0].x, freq = params[0].y, phase = params[0].z, aspect = params[0].w;
-    float2 d = (in.uv - 0.5) * float2(aspect, 1.0);
+    float2 ctr = params[1].xy;
+    float2 d = (in.uv - ctr) * float2(aspect, 1.0);
     float r = length(d);
     float2 dir = r > 1e-5 ? d / r : float2(0.0);
     float offset = sin(r * freq * 6.28318530718 - phase) * amp;
-    float2 uv = (d + dir * offset) / float2(aspect, 1.0) + 0.5;
+    float2 uv = (d + dir * offset) / float2(aspect, 1.0) + ctr;
     return src.sample(samp, clamp(uv, 0.0, 1.0));
 }
 

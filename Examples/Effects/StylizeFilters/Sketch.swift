@@ -28,6 +28,9 @@ final class StylizeFilters_Example: Sketch {
             ("halftone", .halftone(scale: 44)),
             ("cmykHalftone", .cmykHalftone(scale: 56)),
             ("dither", .dither(levels: 4, pixelSize: 6)),
+            ("dither duo", .dither(dark: Color(hex: 0x1B1040), light: Color(hex: 0xFFE08A),
+                                   pixelSize: 6)),
+            ("relight", .relight(.metal, color: Color(hex: 0xD8A93F))),
             ("pixelate", .pixelate(size: 24)),
             ("lineScreen", .lineScreen(scale: 56, angle: .pi / 6)),
         ]

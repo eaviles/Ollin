@@ -108,6 +108,13 @@ public struct Filter: Sendable {
         /// Ordered (Bayer) dithering down to `levels` steps per channel, the cells
         /// `pixelSize` pixels across.
         case dither(levels: Double, pixelSize: Double)
+        /// Two-tone ordered dithering: the Bayer pattern mapped onto two chosen
+        /// colors, cut by tone with a `bias` shift.
+        case ditherDuo(dark: SIMD4<Float>, light: SIMD4<Float>, bias: Double, pixelSize: Double)
+        /// Read the layer as a height map and light it with a curated material
+        /// finish (the cheap 2D cousin of the 3D materials).
+        case relight(finish: RelightFinish, angle: Double, elevation: Double,
+                     height: Double, intensity: Double, color: SIMD4<Float>?)
         /// Add film grain at `amount`; `seed` shifts the noise (animate it per frame).
         case grain(amount: Double, seed: Double)
         /// Mosaic into blocks `size` canvas-pixels across; `channel` and `tint`
@@ -158,14 +165,14 @@ public struct Filter: Sendable {
         // Distortion (uv warps) ----------------------------------------------
         /// Mirror the image into `segments` reflected wedges around the center, rotated by `angle`.
         case kaleidoscope(segments: Double, angle: Double)
-        /// Twirl: rotate around the center by `angle`, strongest at the center, fading by `radius`.
-        case swirl(angle: Double, radius: Double)
-        /// Bulge (>0, fisheye) / pinch (<0) within `radius`, magnitude `amount`.
-        case bulge(amount: Double, radius: Double)
+        /// Twirl: rotate around `center` by `angle`, strongest at the center, fading by `radius`.
+        case swirl(angle: Double, radius: Double, center: Vector2)
+        /// Bulge (>0, fisheye) / pinch (<0) within `radius` of `center`, magnitude `amount`.
+        case bulge(amount: Double, radius: Double, center: Vector2)
         /// Sinusoidal displacement: `amplitude` (fraction), `frequency` cycles, `phase`, `vertical` axis.
         case wave(amplitude: Double, frequency: Double, phase: Double, vertical: Bool)
-        /// Concentric ripples from the center: `amplitude`, `frequency` rings, `phase`.
-        case ripple(amplitude: Double, frequency: Double, phase: Double)
+        /// Concentric ripples from `center`: `amplitude`, `frequency` rings, `phase`.
+        case ripple(amplitude: Double, frequency: Double, phase: Double, center: Vector2)
         /// Reflect one half of the image onto the other; `vertical` axis, `flip` chooses the source half.
         case mirror(vertical: Bool, flip: Bool)
         /// Cartesian↔polar warp, blended by `amount` (a tunnel / fold of the image around the center).
@@ -334,6 +341,17 @@ public struct Filter: Sendable {
         Filter(kind: .dither(levels: max(2, levels), pixelSize: max(1, pixelSize)))
     }
 
+    /// Two-tone ordered dither: screen the image's tone into the Bayer pattern in
+    /// exactly two colors, `light` where it's bright and `dark` where it isn't, the
+    /// 1-bit / newsprint look in any palette. `bias` shifts the cut (positive
+    /// lightens, negative darkens), and `pixelSize` sizes the pattern cells in
+    /// pixels. Either color may be transparent, so the dark half can drop out.
+    public static func dither(dark: Color, light: Color, bias: Double = 0,
+                              pixelSize: Double = 1) -> Filter {
+        Filter(kind: .ditherDuo(dark: dark.linearRGBA, light: light.linearRGBA,
+                                bias: min(max(bias, -1), 1), pixelSize: max(1, pixelSize)))
+    }
+
     /// Film grain: add per-pixel noise at `amount`. `seed` shifts the pattern; feed
     /// it `time` or `frameCount` for grain that moves.
     public static func grain(amount: Double = 0.08, seed: Double = 0) -> Filter {
@@ -478,6 +496,44 @@ public struct Filter: Sendable {
         Filter(kind: .normalMap(strength: max(0, strength)))
     }
 
+    /// The curated material a `relight` shades the height field with: `matte`
+    /// clay, `metal` (reflections tinted by the surface color), wet `glass`
+    /// (a sharp glint plus a bright edge rim), grainy `sand` (a roughened
+    /// surface with tiny glints), or `liquid` (a smooth wet sheen that also
+    /// refracts the image beneath).
+    public enum RelightFinish: Sendable {
+        case matte, metal, glass, sand, liquid
+
+        /// The shader's finish index (kept in step with `ollin_fx_relight`).
+        var rawIndex: Float {
+            switch self {
+            case .matte:  return 0
+            case .metal:  return 1
+            case .glass:  return 2
+            case .sand:   return 3
+            case .liquid: return 4
+            }
+        }
+    }
+
+    /// Relight: read the layer as a height map (bright = raised), turn its
+    /// slopes into a surface, and light that surface with a curated material
+    /// `finish`, so a noise field or a simulation reads as embossed physical
+    /// matter. `angle` (radians) sets where the light comes from, `elevation`
+    /// (0 grazing … π/2 overhead) how low it rakes, `height` exaggerates the
+    /// relief, `intensity` scales the light, and `color` overrides the material
+    /// color (by default the layer keeps its own). The cheap 2D cousin of the
+    /// 3D materials.
+    public static func relight(_ finish: RelightFinish = .matte,
+                               angle: Double = -.pi * 0.75, elevation: Double = 0.9,
+                               height: Double = 2, intensity: Double = 1,
+                               color: Color? = nil) -> Filter {
+        Filter(kind: .relight(finish: finish, angle: angle,
+                              elevation: min(max(elevation, 0.05), .pi / 2),
+                              height: max(0, height), intensity: max(0, intensity),
+                              color: color?.linearRGBA))
+    }
+
     /// Iridescence: wash the content with the shifting rainbow sheen of a soap film or
     /// oil slick. The colors come from thin-film interference (each channel cycling at
     /// its own wavelength, so the bands run through the film color order), swirled by a
@@ -537,16 +593,23 @@ public struct Filter: Sendable {
         Filter(kind: .kaleidoscope(segments: max(1, segments), angle: angle))
     }
 
-    /// Swirl (twirl): wind the image into a vortex — rotate by `angle` (radians) strongest at
-    /// the center, easing to none at `radius` (in fractions of the layer).
-    public static func swirl(angle: Double = 3, radius: Double = 0.5) -> Filter {
-        Filter(kind: .swirl(angle: angle, radius: max(0.001, radius)))
+    /// Swirl (twirl): wind the image into a vortex, rotating by `angle` (radians) strongest at
+    /// `center`, easing to none at `radius` (in fractions of the layer). `center` is also in
+    /// fractions of the layer (top-left origin, the middle by default), so a cursor-driven
+    /// vortex is `center: Vector2(mouseX / width, mouseY / height)`.
+    public static func swirl(angle: Double = 3, radius: Double = 0.5,
+                             center: Vector2 = Vector2(0.5, 0.5)) -> Filter {
+        Filter(kind: .swirl(angle: angle, radius: max(0.001, radius), center: center))
     }
 
-    /// Bulge / pinch: a radial lens within `radius`. `amount` > 0 bulges (fisheye magnifying
-    /// the center), < 0 pinches (sucks toward it); the warp eases back to the image at `radius`.
-    public static func bulge(amount: Double = 0.5, radius: Double = 0.5) -> Filter {
-        Filter(kind: .bulge(amount: max(-0.95, min(amount, 4)), radius: max(0.001, radius)))
+    /// Bulge / pinch: a radial lens within `radius` of `center`. `amount` > 0 bulges (fisheye
+    /// magnifying the center), < 0 pinches (sucks toward it); the warp eases back to the image
+    /// at `radius`. `center` is in fractions of the layer (top-left origin, the middle by
+    /// default), so a cursor-driven lens is `center: Vector2(mouseX / width, mouseY / height)`.
+    public static func bulge(amount: Double = 0.5, radius: Double = 0.5,
+                             center: Vector2 = Vector2(0.5, 0.5)) -> Filter {
+        Filter(kind: .bulge(amount: max(-0.95, min(amount, 4)), radius: max(0.001, radius),
+                            center: center))
     }
 
     /// Wave: ripple the image sinusoidally. `vertical` false ripples rows side to side, true
@@ -558,12 +621,15 @@ public struct Filter: Sendable {
                            phase: phase, vertical: vertical))
     }
 
-    /// Ripple: concentric waves spreading from the center, like a drop in water.
+    /// Ripple: concentric waves spreading from `center`, like a drop in water.
     /// `amplitude` is the shift (fraction of the layer), `frequency` the number of rings,
-    /// `phase` moves them outward (animate it).
+    /// `phase` moves them outward (animate it). `center` is in fractions of the layer
+    /// (top-left origin, the middle by default), so the drop can land where the cursor is.
     public static func ripple(amplitude: Double = 0.02, frequency: Double = 12,
-                              phase: Double = 0) -> Filter {
-        Filter(kind: .ripple(amplitude: max(0, amplitude), frequency: frequency, phase: phase))
+                              phase: Double = 0,
+                              center: Vector2 = Vector2(0.5, 0.5)) -> Filter {
+        Filter(kind: .ripple(amplitude: max(0, amplitude), frequency: frequency, phase: phase,
+                             center: center))
     }
 
     /// Mirror: reflect one half of the image onto the other. `vertical` false mirrors left↔
