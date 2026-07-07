@@ -226,16 +226,21 @@ public final class World {
             grid[cell, default: []].append(i)
         }
 
-        // Each disk against its own and the eight neighbouring buckets. The
-        // `j > i` guard resolves every pair exactly once.
-        for (cell, bucket) in grid {
+        // Each disk against its own and the eight neighbouring buckets, walked
+        // in particle-index order with a fixed cell scan. Resolution shifts
+        // positions as it goes, so the pair order changes the outcome; a
+        // Dictionary walk here would reorder per process and a seeded pile
+        // would settle differently on every run. The `j > i` guard resolves
+        // every pair exactly once.
+        for i in particles.indices where particles[i].radius > 0 {
+            let p = particles[i].position
+            let cx = Int((p.x / cellSize).rounded(.down))
+            let cy = Int((p.y / cellSize).rounded(.down))
             for dx in -1 ... 1 {
                 for dy in -1 ... 1 {
-                    guard let neighbours = grid[Cell(x: cell.x + dx, y: cell.y + dy)] else { continue }
-                    for i in bucket {
-                        for j in neighbours where j > i {
-                            resolveCollision(particles[i], particles[j])
-                        }
+                    guard let neighbours = grid[Cell(x: cx + dx, y: cy + dy)] else { continue }
+                    for j in neighbours where j > i {
+                        resolveCollision(particles[i], particles[j])
                     }
                 }
             }
