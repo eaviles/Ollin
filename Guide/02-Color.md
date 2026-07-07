@@ -6,7 +6,7 @@
 
 <img src="Images/02-Color/ColorField.jpg" alt="A quilt of colored cells running diagonally from deep indigo through coral to warm cream, on a dark ground" width="560">
 
-Color is where a sketch gets its voice, and it's also where beginners lose the most time: mixes that turn to mud, palettes that fight each other, brightness that lies. This chapter is the toolbox that avoids all of that. You'll learn the ways to name a color, how to think in hue, mixing that trusts your eye instead of the machine's arithmetic, palettes and ramps as kits you carry, and gradients as paint. It ends in the poster above, which redraws itself as a fresh variation on every click.
+Color is where a sketch gets its voice, and it's also where beginners lose the most time: mixes that turn to mud, palettes that fight each other, colors that read brighter or darker than their numbers say. This chapter is the toolbox that avoids all of that. You'll learn the ways to name a color, how to think in hue, mixing that trusts your eye instead of the machine's arithmetic, palettes and ramps as kits you carry, and gradients as paint. It ends in the poster above, which redraws itself as a fresh variation on every click.
 
 Everything here builds on [Chapter 1](01-HelloOllin.md); keep working the same way, one file under `OllinLive`, saving as you go.
 
@@ -30,7 +30,7 @@ Colors can also arrive as *strings*, `Color(hex: "#ff0066")`, which matters once
 
 ## Thinking in hue
 
-RGB is how the machine stores color: three amounts of light. It's the right form for *storing*, but a clumsy one for *choosing*; nobody thinks "a little less green" when they want a warmer orange. The painter's version is HSB: pick the hue on a wheel, then decide how vivid (saturation) and how bright (brightness):
+RGB is how the machine stores color: three amounts of light. It's good for storing, but hard to choose with: nobody thinks "a little less green" when they want a warmer orange. The painter's version is HSB: pick the hue on a wheel, then decide how vivid (saturation) and how bright (brightness):
 
 <img src="Images/02-Color/HueWheels.jpg" alt="Left: RGB as three component bars adding up to an orange. Right: the HSB hue wheel with saturation and brightness sweeps" width="680">
 
@@ -79,7 +79,7 @@ for i in 0..<12 {
 }
 ```
 
-Twelve different hues, and none of them shouts over the others, because they truly share a lightness. Do the same with `Color(hue:...)` and the yellow will glow while the blue sulks.
+Twelve different hues, and none of them shouts over the others, because they truly share a lightness. Do the same with `Color(hue:...)` and the yellow will glow while the blue turns heavy and dark.
 
 ## Kits you carry: Palette and Ramp
 
@@ -105,7 +105,7 @@ let dusk = Ramp([Color(hex: 0x14213D), Color(hex: 0x5E60CE),
 fill(dusk.color(at: t))
 ```
 
-And two ramps come pre-made: **`Colormap`** (eight scientific maps like `.viridis` and `.magma`, built to keep perceived brightness marching evenly, the standard way to turn a number into legible color) and **`CosinePalette`** (seven cyclic palettes like `.sunset` and `.neon` from a lovely little formula; they loop, so they're great fed with `time`). Both answer to the same `color(at:)`.
+And two ramps come pre-made: **`Colormap`** (eight scientific maps like `.viridis` and `.magma`, built to keep perceived brightness marching evenly, the standard way to turn a number into legible color) and **`CosinePalette`** (seven cyclic palettes like `.sunset` and `.neon` from one small formula; they loop, so they're great fed with `time`). Both answer to the same `color(at:)`.
 
 ## Gradients as paint
 
@@ -119,11 +119,11 @@ fill(.radial(center: spot, radius: 260, glow))                     // out from a
 stroke(.alongPath(wheel))                                          // along the stroke itself
 ```
 
-Each takes a `Ramp` or a plain color list. Alpha rides along, so a radial ramp that ends in a transparent color is an instant soft glow (the middle panel above). Coordinates live in drawing space, so gradients move with the shapes they paint. `.alongPath` is the playful one: on a line it runs start to end, and on a closed shape it sweeps once around, which is how the ring above became a color wheel.
+Each takes a `Ramp` or a plain color list. Alpha rides along, so a radial ramp that ends in a transparent color is an instant soft glow (the middle panel above). Coordinates live in drawing space, so gradients move with the shapes they paint. `.alongPath` runs start to end on a line; on a closed shape it sweeps once around, which is how the ring above became a color wheel.
 
-## A recipe on credit: random
+## A recipe borrowed early: random
 
-Chapter 1 borrowed `sin` from Chapter 3; this chapter's payoff borrows `random` from Chapter 4, and it needs only three lines of understanding. `random(-1, 1)` hands you a fresh unpredictable number in that range each call. On its own that's a problem for a piece that redraws sixty times a second, because every frame would roll new numbers and the canvas would boil. The fix is the third line: `randomSeed(n)` restarts the randomness from a fixed point, so the *same* seed always produces the *same* sequence of "random" numbers. Seed at the top of `draw()` and every frame makes identical choices; change the seed and you get a brand-new, equally coherent variation. Chapter 4 is the whole story; this is enough to use it honestly.
+Chapter 1 borrowed `sin` from Chapter 3; this chapter's payoff borrows `random` from Chapter 4, and it needs only three lines of understanding. `random(-1, 1)` hands you a fresh unpredictable number in that range each call. On its own that's a problem for a piece that redraws sixty times a second, because every frame would roll new numbers and the canvas would boil. The fix is the third line: `randomSeed(n)` restarts the randomness from a fixed point, so the *same* seed always produces the *same* sequence of "random" numbers. Seed at the top of `draw()` and every frame makes identical choices; change the seed and you get a brand-new, equally coherent variation. Chapter 4 is the whole story; this is enough for now.
 
 ## The payoff: a color field poster
 
@@ -171,10 +171,10 @@ final class ColorField: Sketch {
 
 Run it and walk the interesting lines:
 
-- `randomSeed(fieldSeed)` opens every frame, so all the `random(-0.5, 0.5)` calls that follow roll the same numbers each time and the quilt holds still. Click the canvas: `mousePressed()` bumps the seed, and the next frame rolls an entirely new set of jitters. Same poster, new variation, as many as you can click.
+- `randomSeed(fieldSeed)` runs at the top of every frame, so all the `random(-0.5, 0.5)` calls that follow roll the same numbers each time and the quilt holds still. Click the canvas: `mousePressed()` bumps the seed, and the next frame rolls an entirely new set of jitters. Same poster, new variation, as many as you can click.
 - Two loops, one inside the other, visit every column and row; `diagonal` turns the cell's position into the ramp's 0...1.
 - The `t` line is the whole aesthetic: position, plus seeded jitter (scaled by the knob), plus a slow shimmer. Comment out one term at a time and watch what each contributes; with jitter at zero it's a clean mechanical gradient, which is also a look worth keeping.
-- The knobs earn their keep here. `Columns` changes the piece's whole character (chunky at 5, woven at 28), and `Jitter` runs it from formal to painterly.
+- The knobs do a lot here. `Columns` changes the piece's whole character (chunky at 5, woven at 28), and `Jitter` runs it from formal to painterly.
 
 > **Swift note.** `var fieldSeed = 7` is a *property*, declared on the class rather than inside `draw()`, and that's what lets it survive between frames; a `let` or `var` inside `draw()` is born and dies with each frame. `mousePressed()` is another function Ollin calls for you, once per click. And a loop inside a loop is just that: for every column, visit every row.
 

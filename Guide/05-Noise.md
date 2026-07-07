@@ -6,7 +6,7 @@
 
 <img src="Images/05-Noise/Meadow.jpg" alt="A dark canvas covered in thousands of short curved strokes, combed into flowing currents like grass in wind, deep teal on one side warming to a broad golden current on the other" width="560">
 
-Chapter 4 ended with a complaint: the random walk wanders beautifully, but it staggers. Every organic thing you might want to draw (grass, smoke, coastlines, a hand-drawn line) varies smoothly, and `random` only knows how to jump. This chapter is about `noise`, the tool that fixes it, and it ends in the piece above: a meadow of fifteen hundred blades combed by wind you'll never see, drifting and glowing, all of it grown from one function.
+Chapter 4 ended with a complaint: the random walk goes interesting places, but its path is all jitter. Every organic thing you might want to draw (grass, smoke, coastlines, a hand-drawn line) varies smoothly, and `random` only knows how to jump. This chapter is about `noise`, the function that fixes that. It ends in the piece above: a meadow of fifteen hundred blades, combed by a wind you never see, all of it grown from one function.
 
 ## Random that remembers
 
@@ -32,7 +32,7 @@ final class Glide: Sketch {
 }
 ```
 
-The dot floats up and down like something breathing underwater: no destination, no jumps, no rhythm you can predict, yet never a jolt. The input is `time * 0.4`, so the dot is *strolling along the landscape* at 0.4 units a second and reporting the terrain as it goes. Now swap `noise` for `random()` (drop the argument) and run it again: the dot teleports sixty times a second. Same range, same canvas, opposite soul. Put `noise` back.
+The dot floats up and down like something breathing underwater. There's no rhythm you can predict, but there's also never a jolt. The input is `time * 0.4`, so the dot is *strolling along the landscape* at 0.4 units a second and reporting the terrain as it goes. Now swap `noise` for `random()` (drop the argument) and run it again: the dot teleports sixty times a second. Same range, same canvas, completely different feel. Put `noise` back.
 
 One habit to keep from Chapter 4: the landscape itself is rolled from entropy at launch, so every run strolls different hills. `noiseSeed(6)` pins the landscape (and `seed(6)`, which you met in Chapter 4, pins `noise` and `random` together). Same seed, same hills, same piece.
 
@@ -79,11 +79,11 @@ final class Clouds: Sketch {
 }
 ```
 
-Clouds, in about twenty lines. Each cell asks the field at its own position (times the zoom knob) and wears the answer as a gray: `Color(white:)` runs from 0, black, to 1, white. Neighboring cells ask neighboring places, so the shades drift instead of flickering, and cloudy continents appear. The right panel of the figure is the same field wearing its answers as dot *sizes* instead; the pointillist look is one changed line. This move, compute a value per position and let it drive any visual property you like, is most of what noise is *for*.
+Clouds, in about twenty lines. Each cell asks the field at its own position (times the zoom knob) and paints the answer as a gray: `Color(white:)` runs from 0, black, to 1, white. Neighboring cells ask neighboring places, so the shades drift instead of flickering, and cloudy continents appear. The right panel of the figure is the same field with its answers drawn as dot *sizes* instead; the pointillist look is one changed line. This move, compute a value per position and let it drive any visual property you like, is most of what noise is *for*.
 
 ## The third dimension is time
 
-The field is frozen. The fix is delightfully literal: ask for one more dimension. `noise(x, y, z)` is a smooth *volume* of answers, and if you slide `z` gently while keeping `x` and `y` put, every point of your 2D field changes, smoothly, each at its own pace:
+The field is frozen. The fix is literal: ask for one more dimension. `noise(x, y, z)` is a smooth *volume* of answers, and if you slide `z` gently while keeping `x` and `y` put, every point of your 2D field changes, smoothly, each at its own pace:
 
 <img src="Images/05-Noise/NoiseDrift.gif" alt="The cloudy noise field slowly churning, bright and dark regions growing, drifting, and dissolving into each other" width="480">
 
@@ -95,7 +95,7 @@ let n = noise(x * 0.006, y * 0.006, time * 0.15)
 
 The clouds become weather. Nothing scrolls (slide `x` instead of `z` for that); the field boils in place, the way clouds actually do. The `0.15` is the zoom knob again, pointed at time: smaller drifts slower.
 
-One honest caveat, because Chapter 3 taught you to care: a `z` that grows with `time` never returns to where it started, so this drift can't close a perfect GIF loop on its own. You could fold time with Chapter 3's `pingPong`, and out-and-back does loop, but then the weather spends half of every lap running in reverse. Noise has a better answer built in: walk a *circle* through the field instead of a straight line, and you end exactly where you began, facing the way you started, no reversal and no seam. That's the `loop:` parameter:
+One caveat, because Chapter 3 taught you to care: a `z` that grows with `time` never returns to where it started, so this drift can't close a perfect GIF loop on its own. You could fold time with Chapter 3's `pingPong`, and out-and-back does loop, but then the weather spends half of every lap running in reverse. Noise has a better answer built in: walk a *circle* through the field instead of a straight line, and you end exactly where you began, facing the way you started, no reversal and no seam. That's the `loop:` parameter:
 
 ```swift
 let n = noise(x * 0.006, y * 0.006, loop: loopProgress(over: 4), radius: 0.6)
@@ -113,7 +113,7 @@ let y = height / 2 + signedNoise(time * 0.3, 99) * 300
 drawCircle(x, y, 44)
 ```
 
-A dot wandering *around the center*, drifting up to 300 pixels any direction and always ambling back. And there's a small trick in those second arguments worth keeping: both coordinates stroll the field at the same speed, but along different rows of it, `10` and `99`. Far-apart rows are unrelated terrain, so `x` and `y` drift independently from one shared field. Any time you need several unrelated glides, don't reach for several noises; ask one noise in several far-apart places.
+A dot wandering *around the center*, drifting up to 300 pixels any direction and always coming back. And there's a small trick in those second arguments worth keeping: both coordinates stroll the field at the same speed, but along different rows of it, `10` and `99`. Far-apart rows are unrelated terrain, so `x` and `y` drift independently from one shared field. Any time you need several unrelated glides, don't reach for several noises; ask one noise in several far-apart places.
 
 ## Layering: shape plus detail
 
@@ -131,7 +131,7 @@ Because you'll reach for it constantly, Ollin also packages the stack as one cal
 
 ## The payoff: a meadow in the wind
 
-Everything at once. The piece at the top of this chapter is a field of about 1,500 blades. Each blade *grows* the way Chapter 4's walker walked, one step at a time, except its steps don't jump at random: at every step it asks a `signedNoise` field which way to lean. Nearby blades ask nearby places, so they lean together, and currents appear. A second, bigger-scale ask decides each blade's color and thickness, the layering idea working as composition. And the whole field rides `loop:`, one lap of wind every six seconds, so it sways forever without a seam. Make `MySketches/Meadow.swift`:
+The piece at the top of this chapter uses everything at once: a field of about 1,500 blades. Each blade *grows* the way Chapter 4's walker walked, one step at a time, except its steps don't jump at random: at every step it asks a `signedNoise` field which way to lean. Nearby blades ask nearby places, so they lean together, and currents appear. A second, bigger-scale ask decides each blade's color and thickness, the layering idea working as composition. And the whole field rides `loop:`, one lap of wind every six seconds, so it sways forever without a seam. Make `MySketches/Meadow.swift`:
 
 ```swift
 import Ollin
@@ -183,14 +183,14 @@ final class Meadow: Sketch {
 
 Run it with `swift run OllinLive MySketches/Meadow.swift` and take it apart:
 
-- The anchors are Chapter 4 and Chapter 5 sharing the work, and it's worth seeing who does what. The grid plants a blade every 26 pixels; seeded `random` jitter (the `random(-1, 1) * 8` pair, under `randomSeed(3)` so the planting holds still) breaks the rows so it reads as sown, not tiled. Random scatters; noise flows.
-- Each blade is the random walk that learned to glide, literally. The inner loop is Chapter 4's walker: keep a position, step, repeat. But the step direction now comes from `signedNoise` *at the blade's current position*, so the walk is steered by a smooth field instead of staggering. Six steps of 8 pixels, each leaning up to almost a fifth of a turn off vertical at full `Sway` (`up` is minus a quarter of `.tau`, the angle that points straight up on this canvas), and because the field is smooth, the blade *curves*.
-- `weather` is the layering idea promoted to art direction: a much bigger-scale ask (`0.0011`, about one feature per canvas) that colors whole regions warm or cool through the `Ramp` and thickens their strokes. Two zoom levels of one field: one composes, one textures.
+- Chapters 4 and 5 share the work here, and it's worth seeing who does what. The grid plants a blade every 26 pixels; seeded `random` jitter (the `random(-1, 1) * 8` pair, under `randomSeed(3)` so the planting holds still) breaks the rows so it reads as sown, not tiled. Random scatters; noise flows.
+- Each blade really is Chapter 4's walker, minus the jitter. The inner loop is the same: keep a position, step, repeat. But the step direction now comes from `signedNoise` *at the blade's current position*, so the walk is steered by a smooth field instead of jumping at random. Six steps of 8 pixels, each leaning up to almost a fifth of a turn off vertical at full `Sway` (`up` is minus a quarter of `.tau`, the angle that points straight up on this canvas), and because the field is smooth, the blade *curves*.
+- `weather` is the layering idea doing the composing: a much bigger-scale ask (`0.0011`, about one feature per canvas) that colors whole regions warm or cool through the `Ramp` and thickens their strokes. Two zoom levels of one field: one composes, one textures.
 - The tip-light is Chapter 2 at work: each segment mixes the blade color toward warm white by `Glow`, brightening toward the tip.
 - `strokeCap(.round)` puts round tips on line segments so the six of them join into one continuous blade instead of a dashed one.
 - `breeze` is `loopProgress(over: 6)` feeding both asks' `loop:`, so the whole field tours one closed circle through the noise every six seconds. The wind never reverses and never jumps, and any six-second export loops exactly. (Both asks share the same lap but different spatial scales, which is why color-weather and lean-weather move together without being copies.)
 
-When it feels right, export it. A video is the fidelity pick; a GIF trades size for loops-anywhere (trim its width and frame rate, meadows are heavy):
+When it feels right, export it. Video keeps the most quality; a GIF loops anywhere you paste it (trim its width and frame rate, meadows make heavy files):
 
 ```sh
 swift run OllinLive MySketches/Meadow.swift --export-video meadow.mp4 --seconds 6

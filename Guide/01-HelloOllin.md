@@ -62,7 +62,7 @@ A window opens with your circle in it. Three calls made it: `background(.white)`
 
 > **Swift note.** `import Ollin` brings the framework in. `final class FirstCircle: Sketch` declares your sketch: a new thing named `FirstCircle`, built on Ollin's `Sketch`, which is what gives you the canvas, the drawing calls, and the loop. `override func draw()` fills in the one function Ollin calls to render a frame. You never call `draw()` yourself; Ollin calls *you*.
 
-Here is the part that changes how you work. Keep the window open, go back to your editor, change `200` to `320`, and save. The circle grows in place. `OllinLive` watches the file and swaps in every save while the window keeps running. Try breaking it: delete a parenthesis and save. An error prints in the terminal, and your last working sketch keeps drawing, unbothered. Fix it, save, and you're back. This edit-save-watch loop is how you'll work through the whole book, so keep the window and the editor side by side.
+Here is the part that changes how you work. Keep the window open, go back to your editor, change `200` to `320`, and save. The circle grows in place. `OllinLive` watches the file and swaps in every save while the window keeps running. Try breaking it: delete a parenthesis and save. An error prints in the terminal, and your last working sketch keeps drawing. Fix it, save, and you're back. This edit-save-watch loop is how you'll work through the whole book, so keep the window and the editor side by side.
 
 ## Where things go
 

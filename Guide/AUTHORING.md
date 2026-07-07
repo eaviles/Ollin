@@ -24,7 +24,10 @@ The rule: something appears on the reader's canvas within the first page of ever
 ## Voice and style
 
 - Plain, warm, and humble. Second person for the reader ("you draw a circle"), first person plural sparingly for shared moves ("let's slow this down"). Never lecture.
-- Short sentences where possible. One idea per paragraph. Read it aloud; if it sounds like documentation, loosen it, and if it sounds like marketing, flatten it.
+- Short sentences where possible. One idea per paragraph. Read it aloud; if it sounds like documentation, loosen it, if it sounds like marketing, flatten it, and if it sounds pleased with itself, say it straight.
+- Plain words (the Apple Style Guide rule: choose words that are easily understood, and if you can use fewer, do). Prefer the common word over the vivid rare one: jitter, not stagger; awkward, not clumsy; gaps, not droughts. Many readers won't have English as a first language; a word they'd need a dictionary for costs more than it adds.
+- Metaphors must teach. One that carries a concept (the noise landscape, the zoom knob, the tile doorways) earns its place; a decorative one ("pays the debt in full", a function with moods or a soul) gets cut. One metaphor per idea, never stacked, never stretched across chapters, and no personified code unless the personification is the explanation.
+- Natural flow over clever flow. No fragment-as-transition ("Everything at once."), no inverted openers ("Six-three-one: ..."), no chains of matched clauses where a plain sentence would do. Write the sentence a good teacher would say out loud.
 - No em dashes anywhere in the Guide (repo-wide rule, enforced by tooling). Use commas, colons, parentheses, or a new sentence.
 - Sentence case for headings and chapter titles.
 - It's fine to say something is hard, and to say when a technique's result is only "usually good". Honesty beats polish.
@@ -78,7 +81,7 @@ One chapter per session, in this order:
 4. Write the prose around the verified figures and listings. Track the concept list against principle 1 as you go.
 5. Add the chapter's math ideas to Appendix B's running list, and its "Go deeper" targets to the coverage matrix in PLAN.md (flip rows to their promised depth).
 6. Run `Scripts/guide-figures.sh` (all figures, not just the new ones).
-7. Humanizer pass over the chapter.
+7. Humanizer pass over the chapter, plus the plain-words check from *Voice and style* (rare words, decorative metaphor, clever flow).
 8. Update PLAN.md status, link the chapter in `Guide/README.md`'s contents.
 9. Run the docs audit, then commit (Guide chapters are milestones; commit and push per the repo convention).
 

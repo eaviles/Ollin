@@ -99,7 +99,7 @@ final class Pinwheels: Sketch {
 
 <img src="Images/06-GridsAndRepetition/Pinwheels.jpg" alt="A ten-by-ten field of black right triangles at random quarter turns, a few in red; pinwheels, hourglasses, and arrows emerge from the repetition" width="560">
 
-One right triangle (half a cell, drawn by handing `drawPolygon` its three corners), four possible spins, and the neighbors do the rest: hourglasses, pinwheels, and arrows assemble themselves wherever the spins happen to agree. Nobody placed those figures. That's the quiet magic this chapter keeps returning to, and it only works because every triangle is *exactly* the same size in *exactly* the same place in its cell, so any two spins fit together. Hold that thought for Truchet.
+One right triangle (half a cell, drawn by handing `drawPolygon` its three corners), four possible spins, and the neighbors do the rest: hourglasses, pinwheels, and arrows assemble themselves wherever the spins happen to agree. Nobody placed those figures. That's the effect this chapter keeps returning to, and it only works because every triangle is *exactly* the same size in *exactly* the same place in its cell, so any two spins fit together. Hold that thought for Truchet.
 
 > **Swift note.** `random() < 0.12 ? accent : ink` is the compact if: condition, then the value when true, then the value when false. And notice `withState { ... }` takes a block of code in braces, like `draw()` itself; running the block with the paper moved, then restoring, is the whole trick.
 
@@ -161,7 +161,7 @@ drawTruchet(columns: 8, rows: 8, tile: .arcs)
 
 <img src="Images/06-GridsAndRepetition/TruchetTiles.jpg" alt="Two panels of white line work on dark squares: quarter-circle arcs joining into meandering loops, and corner-to-corner diagonals forming a maze" width="680">
 
-`.arcs` is two quarter circles per cell; `.diagonals` is a single corner-to-corner stroke, and if you've ever seen the famous one-line maze program from 1982 home computers, that's exactly this tile. Both come out looking impossibly deliberate for what the code does (flip a coin per cell), and the diagram below is the reason:
+`.arcs` is two quarter circles per cell; `.diagonals` is a single corner-to-corner stroke, and if you've ever seen the famous one-line maze program from 1982 home computers, that's exactly this tile. Both look far more planned than a coin flip per cell should allow, and the diagram below is the reason:
 
 <img src="Images/06-GridsAndRepetition/TruchetJoins.jpg" alt="The arc tile's two spins, with dots marking where arcs end at edge midpoints; beside them, six randomly spun tiles whose arcs meet exactly at every shared edge midpoint" width="680">
 
@@ -171,7 +171,7 @@ The tiling is drawn from the seeded `random`, so it's reproducible like everythi
 
 ## The payoff: a meandering tangle
 
-Time to earn the image at the top. The plan: lay Truchet arcs over a grid, then stroke every strand twice, a wide pass in a dark rim tone and a narrower colored pass on top, so the strands read as piping with a little depth. For the color, reach back to Chapter 5: sample `noise` at each strand's midpoint, so neighbors wear neighboring colors and the palette drifts across the tangle like weather, slowly changing with `time`. Make a new file, `MySketches/Meander.swift`:
+Time to build the image at the top. The plan: lay Truchet arcs over a grid, then stroke every strand twice, a wide pass in a dark rim tone and a narrower colored pass on top, so the strands read as piping with a little depth. For the color, reach back to Chapter 5: sample `noise` at each strand's midpoint, so neighbors wear neighboring colors and the palette drifts across the tangle like weather, slowly changing with `time`. Make a new file, `MySketches/Meander.swift`:
 
 ```swift
 import Ollin
@@ -226,7 +226,7 @@ Run it, watch the colors migrate, and click for a fresh tangle. What each piece 
 - `truchet(...)` returns the strands as values instead of drawing them. Each is a contour, a list of points in `.points`, and `drawPolyline` strokes one list.
 - The two passes are an old illustrator's trick. The rim pass is a touch wider than the color pass, so wherever two strands run close, a dark seam keeps them apart; drawing *all* rims before *any* color is what keeps each strand's own segments merging smoothly into one pipe.
 - `strand.midpoint` is the point halfway along a strand, and `noise` at that spot (scaled way down, Chapter 5's zoom knob) picks its color from the ramp. Nearby strands ask nearby questions, so color arrives in weather-like patches instead of confetti.
-- The knobs earn their keep: `Columns` runs the piece from chunky plumbing at 6 to fine knitting at 26 (the stroke widths ride the cell size, so everything stays in proportion), and the `Diagonals` toggle swaps the whole mood from tangle to circuit board.
+- The knobs cover a lot of ground: `Columns` runs the piece from chunky plumbing at 6 to fine knitting at 26 (the stroke widths ride the cell size, so everything stays in proportion), and the `Diagonals` toggle swaps the whole mood from tangle to circuit board.
 
 Before moving on, make it yours:
 
@@ -237,7 +237,7 @@ Before moving on, make it yours:
 
 ## Where this comes from
 
-Truchet tiles are named for Sébastien Truchet, a French Carmelite priest who published a memoir in 1704 on the patterns a single diagonally-split tile can make, after watching ceramic tiles being laid for a château. The quarter-circle arc tile this chapter leans on is a later refinement by the metallurgist and historian Cyril Stanley Smith, from a lovely 1987 paper revisiting Truchet's work and connecting it to how structure builds hierarchy in materials; generative artists adopted it so thoroughly that "Truchet tiles" now usually *means* Smith's arcs. The diagonal tile has its own pop-culture monument: the Commodore 64 one-liner `10 PRINT CHR$(205.5+RND(1)); : GOTO 10`, a maze in thirty-eight characters, whose history got an entire (excellent) book, *10 PRINT*, by Nick Montfort and nine co-authors in 2012. The paper-moving transform model goes back to the earliest days of computer graphics and reached creative coding through Processing's `pushMatrix`/`popMatrix`; the pinwheel quilt is older than all of it, pieced by quilters long before anyone had a coordinate system to rotate. If the tangle left you wanting more, Christopher Carlson's multi-scale Truchet tiles (arcs at mixed cell sizes that still agree at the edges) are a beautiful rabbit hole. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Truchet tiles are named for Sébastien Truchet, a French Carmelite priest who published a memoir in 1704 on the patterns a single diagonally-split tile can make, after watching ceramic tiles being laid for a château. The quarter-circle arc tile this chapter leans on is a later refinement by the metallurgist and historian Cyril Stanley Smith, from a 1987 paper revisiting Truchet's work and connecting it to how structure builds hierarchy in materials; generative artists adopted it so thoroughly that "Truchet tiles" now usually *means* Smith's arcs. The diagonal tile has its own pop-culture monument: the Commodore 64 one-liner `10 PRINT CHR$(205.5+RND(1)); : GOTO 10`, a maze in thirty-eight characters, whose history got an entire (excellent) book, *10 PRINT*, by Nick Montfort and nine co-authors in 2012. The paper-moving transform model goes back to the earliest days of computer graphics and reached creative coding through Processing's `pushMatrix`/`popMatrix`; the pinwheel quilt is older than all of it, pieced by quilters long before anyone had a coordinate system to rotate. If the tangle left you wanting more, Christopher Carlson's multi-scale Truchet tiles (arcs at mixed cell sizes that still agree at the edges) are worth a look. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

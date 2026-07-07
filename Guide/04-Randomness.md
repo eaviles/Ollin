@@ -6,11 +6,11 @@
 
 <img src="Images/04-Randomness/DisorderGrid.jpg" alt="A nine-by-nine grid of nested square outlines on warm paper, perfectly ordered at the top and dissolving into tangled quadrilaterals toward the bottom, with a few red, blue, and ochre accents" width="560">
 
-Randomness is the "generative" in generative art: you stop placing every mark yourself and start writing the rules that place them. Adding chance takes one call; the craft is in *controlling* it, deciding what may vary and by how much, and getting the exact same "accident" back tomorrow. Chapter 2 borrowed all of this on credit for its poster. This chapter pays the debt in full, and it ends in the piece above: a grid that begins in perfect order and comes apart, one row at a time.
+Randomness is the "generative" in generative art: you stop placing every mark yourself and start writing the rules that place them. Adding chance takes one call; the craft is in *controlling* it, deciding what may vary and by how much, and getting the exact same "accident" back tomorrow. Chapter 2 used all of this in its poster and promised the full story later; this chapter is that story, and it ends in the piece above: a grid that begins in perfect order and comes apart, one row at a time.
 
 ## Rolling dice
 
-`random` is the dice, and it comes in three grips:
+`random` is the dice, and it comes in three forms:
 
 ```swift
 random()          // 0 up to 1
@@ -35,7 +35,7 @@ final class Scatter: Sketch {
 }
 ```
 
-Run it and you'll notice immediately that the canvas *boils*. Nothing is wrong. `draw()` runs sixty times a second, every frame rolls eighty fresh positions, and you're watching all of them. Sometimes that shimmer is exactly the texture a piece wants (the repository's [`Gaussian` example](../Examples/Randomness/Gaussian/Sketch.swift) leans into it). But most of the time you want chance to make its choices *once* and then hold the pose. For that, you need to know a small secret about where these numbers come from.
+Run it and you'll notice immediately that the canvas *boils*. Nothing is wrong. `draw()` runs sixty times a second, every frame rolls eighty fresh positions, and you're watching all of them. Sometimes that shimmer is exactly the texture a piece wants (the repository's [`Gaussian` example](../Examples/Randomness/Gaussian/Sketch.swift) leans into it). But most of the time you want chance to make its choices *once* and keep them. For that, you need to know a small secret about where these numbers come from.
 
 > **Swift note.** `for _ in 0..<80` is Chapter 1's counting loop with the counter thrown away: the underscore says "I don't need `i`, just do this eighty times."
 
@@ -47,11 +47,11 @@ The secret: there are no dice. A computer's `random` is a *pseudo-random* genera
 randomSeed(5)   // the same rolls, in the same order, every time
 ```
 
-Add that line at the top of `Scatter`'s `draw()` and the boiling stops dead. Every frame now reseeds, rolls the *same* eighty positions and sizes, and draws the same constellation. Change the 5 to a 6 and you get a different constellation, equally frozen. Each seed is a complete, repeatable world:
+Add that line at the top of `Scatter`'s `draw()` and the boiling stops. Every frame now reseeds, rolls the *same* eighty positions and sizes, and draws the same constellation. Change the 5 to a 6 and you get a different constellation, equally frozen. Each seed is a complete, repeatable world:
 
 <img src="Images/04-Randomness/SeedSheet.jpg" alt="Nine tiles, each a small constellation of orange dots joined by faint lines, labeled seed 1 through seed 9, every tile a distinctly different arrangement" width="560">
 
-This is the working rhythm of generative art, so it's worth spelling out. The code is the piece's grammar; a seed picks one of the things it can say. You write the rules, then audition seeds like contact prints (the sheet above is literally that), and you keep the ones with good bones. Reproducibility is what makes the whole thing art direction instead of a slot machine: a keeper is never lost, because code plus seed *is* the piece. Render it twice and the files match pixel for pixel.
+This is the working rhythm of generative art, so it's worth spelling out. The code decides everything the piece *could* be; a seed picks one. You write the rules, then flip through seeds the way a photographer reads a contact sheet (the image above is exactly that), and keep the ones you like. Reproducibility is what makes the whole thing art direction instead of a slot machine: a keeper is never lost, because code plus seed *is* the piece. Render it twice and the files match pixel for pixel.
 
 One relative to know: `seed(5)` (without the `random` prefix) seeds `random` *and* its smooth cousin `noise` in one go. Noise is Chapter 5's whole subject; until then the two calls do the same job.
 
@@ -69,7 +69,7 @@ if random() < 0.25 {   // about a quarter of the time
 }
 ```
 
-Read the top strip in the figure and count: about a quarter of the slots made it through, but in clumps and droughts, not neatly spaced. That lumpiness is what real chance looks like (dice have no memory of the last roll), and it's half of why generative pieces read as alive rather than patterned.
+Read the top strip in the figure and count: about a quarter of the slots made it through, but in clumps and gaps, not neatly spaced. That lumpiness is what real chance looks like (dice have no memory of the last roll), and it's half of why generative pieces read as alive rather than patterned.
 
 The **pick** chooses from a list, and it's one call:
 
@@ -85,7 +85,7 @@ let trio = [Color.indigo, .coral, .gold]
 fill(randomChoice(trio, weights: [6, 3, 1]))   // the figure's last strip
 ```
 
-Six-three-one: the first color wins six times as often as the last, and a weight of zero would never win at all. Under the hood this is the gate again, one roll checked against thresholds stacked in proportion to the weights. Most compositions want a dominant, a support, and a spice, and three weights buy you that. (The same seeded dice also deal a whole deck: `shuffled(palette)` is the full list in a random order.)
+With weights of six, three, and one, the first color wins six times as often as the last, and a weight of zero would never win at all. Under the hood this is the gate again, one roll checked against thresholds stacked in proportion to the weights. Most compositions want a dominant, a support, and a spice, and three weights buy you that. (Related: `shuffled(palette)` hands back the whole list in a seeded random order.)
 
 ## The two shapes of chance
 
@@ -101,11 +101,11 @@ let x = randomGaussian(mean: width / 2, deviation: 120)
 
 ## A walk with no destination
 
-One more idea completes the starter kit, and it's the one that points at the rest of this book. Every roll so far has been an amnesiac: each value stands alone, no roll remembers the last. Watch what happens when you give chance a memory, by letting each roll *nudge* a value instead of replacing it:
+One more idea completes the starter kit, and it's the one that points at the rest of this book. So far, every roll has stood alone: no roll remembers the one before. Watch what happens when you give chance a memory, by letting each roll *nudge* a value instead of replacing it:
 
 <img src="Images/04-Randomness/WalkVsJumps.jpg" alt="Two strips: fresh rolls per step produce a jagged hash of a line, while accumulated nudges produce a wandering path" width="680">
 
-The top strip re-rolls `y` from scratch at every step: hash, no history. The bottom strip keeps `y` and adds a small `random(-9, 9)` to it each step, and suddenly there's a *path*: it wanders, it has moods, it goes somewhere (nowhere in particular). This is the **random walk**, the humble ancestor of most organic motion in generative art. Give the same treatment to a point in two dimensions and it traces a journey. Make `MySketches/WalkGrows.swift`:
+The top strip re-rolls `y` from scratch at every step, so it stays a jagged hash. The bottom strip keeps `y` and adds a small `random(-9, 9)` to it each step, and suddenly there's a *path*: it wanders, drifts, doubles back. This is the **random walk**, the humble ancestor of most organic motion in generative art. Give the same treatment to a point in two dimensions and it traces a journey. Make `MySketches/WalkGrows.swift`:
 
 ```swift
 import Ollin
@@ -137,15 +137,15 @@ final class WalkGrows: Sketch {
 
 <img src="Images/04-Randomness/WalkGrows.jpg" alt="A teal random walk on a dark canvas, dense tangled clusters joined by corridors, with a white dot marking the walker's current position" width="560">
 
-Run it and the walk *grows* in front of you, ten seconds from first step to rest. The trick is a compact reprise of the whole chapter: the walk is seeded, so every frame redraws the *identical* path from the start; the only thing time controls is how many steps of it you get to see. Chance decides the shape once; the clock just pulls back the curtain. Notice the anatomy of the path, tight tangles connected by sudden corridors: statisticians call it the drunkard's walk, and the tangles are the lamp posts.
+Run it and the walk *grows* in front of you, ten seconds from first step to rest. The trick pulls the whole chapter together: the walk is seeded, so every frame redraws the *identical* path from the start; the only thing time controls is how many steps of it you get to see. Chance decides the shape once; time just reveals more of it. Notice the anatomy of the path, tight tangles connected by sudden corridors: statisticians call it the drunkard's walk, and the tangles are the lamp posts.
 
 > **Swift note.** Wrapping a number in `Int(...)` drops its fraction, so `Int(time * 240)` counts up in whole steps, 240 of them a second. `min(a, b)` hands back the smaller of its two values, which is what stops the count at 2,400.
 
-The walk's little `x = nx` heartbeat, a value carried forward and nudged, is where Part II begins: velocity, springs, and flocks all carry a value forward and nudge it. And the walk's one aesthetic flaw, that jittery stagger, is precisely the itch Chapter 5 scratches: noise is a random walk that learned to glide.
+The walk's core move, a value carried forward and nudged (`x = nx`), is where Part II begins: velocity, springs, and flocks all carry a value forward and nudge it. And the walk has one visual flaw, the constant jitter, which is exactly what Chapter 5 fixes: noise wanders the same way, minus the jitter.
 
 ## The payoff: order, with a pinch of disorder
 
-Time for the piece at the top of the chapter, and this one holds still on purpose: its motion lives *between* variations, one click apart. The idea is stolen honestly from the founding generation of computer artists, Vera Molnár above all, who worked in exactly this register: take an unimpeachably ordered structure, a grid of nested squares, and administer disorder in controlled doses. Here, each square's corners get a random nudge, and the permitted nudge grows from nothing in the top row to full strength at the bottom, so a single image walks from architecture to scribble. Make `MySketches/DisorderGrid.swift`:
+Time for the piece at the top of the chapter, and this one holds still on purpose: its motion lives *between* variations, one click apart. The idea is borrowed openly from the founding generation of computer artists, Vera Molnár above all, who worked exactly this way: take a perfectly ordered structure, a grid of nested squares, and add disorder in small, controlled amounts. Here, each square's corners get a random nudge, and the permitted nudge grows from nothing in the top row to full strength at the bottom, so a single image walks from architecture to scribble. Make `MySketches/DisorderGrid.swift`:
 
 ```swift
 import Ollin
@@ -205,8 +205,8 @@ final class DisorderGrid: Sketch {
 
 Run it with `swift run OllinLive MySketches/DisorderGrid.swift` and take it apart:
 
-- `randomSeed(gridSeed)` opens the frame, so the whole drawing is one seed's story, held perfectly still. The `Seed` knob picks which story: click the canvas to step to the next variation, or click the knob's value box and type a favorite. `Seed` starts at a whole number (`7`, not `7.0`), so it's a whole-number knob, the same move as Chapter 3's `Waves`.
-- `unrest` is the composition. Row 0 computes it as zero (no nudge allowed, perfect nesting), the bottom row gets the full `Disorder` knob, and every row between gets its share. One line decides the piece's entire top-to-bottom narrative.
+- `randomSeed(gridSeed)` runs first, so the whole drawing is one seed's variation, held perfectly still. The `Seed` knob picks which one: click the canvas to step to the next variation, or click the knob's value box and type a favorite. `Seed` starts at a whole number (`7`, not `7.0`), so it's a whole-number knob, the same move as Chapter 3's `Waves`.
+- `unrest` is the composition. Row 0 computes it as zero (no nudge allowed, perfect nesting), the bottom row gets the full `Disorder` knob, and every row between gets its share. One line decides the piece's entire top-to-bottom structure.
 - Each quadrilateral is four corners sitting on the posts of a perfect square, `inset` deep into its cell, and every corner coordinate rolls its own `random(-1, 1)` nudge, scaled by the row's reach `d`: eight rolls per shape, so squares don't just shift, they *deform*. Four `drawLine` calls close the loop.
 - The accent is a gate and a pick working together, straight from this chapter: eight percent of quads trade ink for `randomChoice(accents)`.
 - Turn `Disorder` to zero and the grid snaps to perfect order: the piece contains its own before picture. Because the *pattern* of rolls never changes with the knob (only their reach), the same tangles grow back in the same places as you turn it up again.
@@ -222,7 +222,7 @@ Then push it somewhere new:
 - Let the disorder grow left to right instead: build `unrest` from `c` and `columns`.
 - Give the inner squares more license than the outer ones: scale `d` by `Double(k + 1) / 4`.
 - Re-animate it: `let d = unrest * cell * 0.35 * (sin(time * .tau / 8) * 0.5 + 0.5)` breathes the piece between order and chaos every eight seconds, and Chapter 3's loop rule means a `--export-gif` of it loops seamlessly.
-- Retune the dose: accents at `0.02` read as errors, at `0.3` as confetti. Both are moods.
+- Retune the accents: at `0.02` they read as stray errors, at `0.3` as confetti. Both are worth trying.
 
 ## Where this comes from
 

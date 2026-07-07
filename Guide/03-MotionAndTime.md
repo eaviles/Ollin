@@ -6,7 +6,7 @@
 
 <img src="Images/03-MotionAndTime/RingPulse.gif" alt="Waves of light chasing around five concentric rings of colored dots, looping seamlessly" width="480">
 
-Chapter 1 handed you `sin` as a recipe and promised the why later. This is later. By the end of this chapter you'll know where that wave actually comes from, how to make motion run at the same speed on every display, and how to bend plain, constant-rate movement into motion with character: motion that eases, snaps, springs, and bounces. It all funnels into the piece above, a loop that ends exactly where it begins, which you'll export as the book's first shareable file.
+Chapter 1 handed you `sin` as a recipe and promised the why later. This is later. By the end of this chapter you'll know where that wave actually comes from, how to make motion run at the same speed on every display, and how to bend plain, constant-rate movement into motion with character: motion that eases, snaps, springs, and bounces. It all comes together in the piece above, a loop that ends exactly where it begins, which you'll export as the book's first shareable file.
 
 ## The clock
 
@@ -20,7 +20,7 @@ Why care about `deltaTime`? Because your sketch's frame rate is not a constant o
 
 <img src="Images/03-MotionAndTime/DeltaTime.jpg" alt="Three dotted strips comparing one second of motion: a fixed per-frame step at 60 fps, the same step at 120 fps reaching twice as far, and a deltaTime-scaled step landing back in line" width="680">
 
-There are two honest ways to move, and this book uses both:
+There are two reliable ways to move, and this book uses both:
 
 - **Derive positions from `time`.** `width / 2 + time * 120` is at the same place after one second on any display, because it says where to *be*, not how far to *step*. Most of what you've written so far works this way, and it's the default habit to build.
 - **Scale steps by `deltaTime`.** When a value has to accumulate (a particle that remembers where it was, which is most of Part II), write the speed per second and multiply: `x += 120 * deltaTime`. Now a fast display takes more, smaller steps and lands in the same place.
@@ -29,7 +29,7 @@ What you want to avoid is the third way, a bare per-frame step, which silently b
 
 ## The circle behind sin
 
-Time to cash Chapter 1's promise. Here is where the wave comes from:
+Time to keep Chapter 1's promise. Here is where the wave comes from:
 
 <img src="Images/03-MotionAndTime/CircleToSine.jpg" alt="A point on a circle at some angle, with a dashed line carrying its height onto a sine wave traced over time, the period and swing labeled" width="680">
 
@@ -53,11 +53,11 @@ An orbit, from nothing but the clock and the pair. Slow it down, speed it up, sh
 
 ## Phase: the head start
 
-One more gift falls out of the circle picture. What happens if a second point starts its walk a little further along? Same circle, same speed, same wave, just shifted in time. That shift is called **phase**, and you make it by adding a constant inside `sin`:
+One more idea falls out of the circle picture. What happens if a second point starts its walk a little further along? Same circle, same speed, same wave, just shifted in time. That shift is called **phase**, and you make it by adding a constant inside `sin`:
 
 <img src="Images/03-MotionAndTime/Phase.jpg" alt="Two identical sine waves, one shifted right by a bracketed phase; below, a row of dots each with a growing head start forming a wave in space" width="680">
 
-The magic starts when *neighbors get different head starts*. Give each dot in a row a phase proportional to its position, look at any single instant, and a wave appears across space, no dot ever doing anything but its own private swing:
+Things get interesting when *neighbors get different head starts*. Give each dot in a row a phase proportional to its position, look at any single instant, and a wave appears across space, no dot ever doing anything but its own private swing:
 
 ```swift
 for i in 0..<24 {
@@ -80,7 +80,7 @@ let radius = map(sin(time * .tau / 4), -1, 1, 40, 220)
 drawCircle(width / 2, height / 2, radius)
 ```
 
-Read it as a sentence: "take this value, which lives in -1...1, and speak it in 40...220." A breathing circle, and every number in sight says what it means. (By default `map` extrapolates past the ends; add `clamp: true` to pin the result inside the target range.)
+Read it as a sentence: "take this value, which lives in -1...1, and restate it in 40...220." A breathing circle, and every number in sight says what it means. (By default `map` extrapolates past the ends; add `clamp: true` to pin the result inside the target range.)
 
 Its little sibling `lerp(a, b, t)` skips the first range: `t` is already a 0...1 "how far along", the same `t` you fed to `Color.mix` and ramps in Chapter 2, and `lerp` returns the point that far from `a` to `b`. `lerp(140, 940, 0.5)` is halfway, 540.
 
@@ -110,7 +110,7 @@ Because they're functions, you can draw them, and drawn is the only way they mak
 <img src="Images/03-MotionAndTime/ShapingCurves.jpg" alt="Three panels showing linear, step, and smoothstep as curves over a faint identity diagonal, each with a strip of thirteen dots spaced by the curve" width="680">
 
 - **linear** is the diagonal itself: out equals in, steady all the way. It's what you've been using.
-- **step** is an `if` wearing a function costume: 0 until the halfway point, then 1. No in-between at all, which is exactly what you want for a blink, a flip, a light switching on.
+- **step** is an `if` written as a function: 0 until the halfway point, then 1. No in-between at all, which is exactly what you want for a blink, a flip, a light switching on.
 - **smoothstep** is the S between them, and it's the one to internalize. Follow the curve: it leaves the floor gently, hurries through the middle, and settles onto the ceiling gently. In the dot strip, that's tight spacing, wide spacing, tight spacing: ease out, travel, ease in. No corners, no jolt, just a motion that feels finished.
 
 In Ollin both ship as bare functions, `step(edge, x)` and `smoothstep(edge0, edge1, x)`. The extra numbers are *edges*: where the ramp begins and where it ends. With the edges at 0 and 1, smoothstep is exactly the S in the figure:
@@ -121,7 +121,7 @@ let x = lerp(140, width - 140, smoothstep(0, 1, t))
 drawCircle(x, height / 2, 50)
 ```
 
-Same dot, same three seconds, but now it *departs* and *arrives*. (Under the hood the S is one line of algebra, `t * t * (3 - 2 * t)`; you'll never need to know that, but it's pleasant that the whole curve fits in a pocket.)
+Same dot, same three seconds, but now it *departs* and *arrives*. (Under the hood the S is one line of algebra, `t * t * (3 - 2 * t)`; you'll never need it, but it's nice to know the whole curve is that small.)
 
 And because the edges are yours to place, smoothstep is more than a reshape: it's a **window cutter**. `smoothstep(0.3, 1.0, wave)` reads "0 until the wave climbs past 0.3, 1 once it reaches the top, and a soft shoulder in between", which turns any signal into a smooth spotlight. Hold that thought; the payoff piece runs on it. This little S-curve is one of the great workhorses of computer graphics; when you reach shaders in Chapter 15, it'll be there waiting, spelled exactly the same, doing per-pixel what it does per-frame here.
 
@@ -131,7 +131,7 @@ Once you can read curve-and-strip, you can read any easing function at a glance,
 
 <img src="Images/03-MotionAndTime/EasingFamilies.jpg" alt="Six easing curves with spacing strips: easeInQuad, easeOutQuad, easeInOutCubic, then easeOutBack, easeOutElastic, and easeOutBounce which overshoot and settle" width="680">
 
-The top row is polite: quadratics and cubics that stay inside 0...1 and differ in how hard they lean. The bottom row has personality on purpose. `easeOutBack` overshoots the target and comes back, like reaching past a shelf. `easeOutElastic` arrives like a plucked rubber band. `easeOutBounce` drops the value onto its target in shrinking hops. Watch four of them run the same trip:
+The top row stays inside 0...1: quadratics and cubics that differ in how hard they lean. The bottom row overshoots on purpose. `easeOutBack` overshoots the target and comes back, like reaching past a shelf. `easeOutElastic` arrives like a plucked rubber band. `easeOutBounce` drops the value onto its target in shrinking hops. Watch four of them run the same trip:
 
 <img src="Images/03-MotionAndTime/CurvesRace.gif" alt="Four dots running the same out-and-back trip on linear, easeInQuad, easeOutQuad, and smoothstep curves, their spacing differing in flight" width="600">
 
@@ -252,7 +252,7 @@ Run it with `swift run OllinLive MySketches/RingPulse.swift` and take the intere
 
 - `beat` is the loop's heartbeat: `loopProgress` laps 0...1 once every `loopTime` seconds, so times `.tau` it turns exactly one full circle per lap. The only other time term in the sketch is `beat * 2`, a whole multiple, so frame 0 and frame `loopTime` are identical. That's the loop rule, enforced by construction.
 - `wave` is the phase trick from earlier, bent into a circle: each dot's head start is its angle times the wave count, so the crests *travel* around the ring. The count has to stay whole or the wave won't meet itself where the ring closes, so `waves` starts at `3` (not `3.0`): a whole-number property makes a whole-number knob, stepping 1, 2, 3 instead of sliding through fractions. `Double(waves)` converts it for the math, the same move as Chapter 1's `Double(i)`.
-- `lit` is the window cutter from the shaping section earning its keep: a **soft spotlight**. The wave lives in -1...1, and smoothstep's edges carve out its crest, everything below the threshold 0, the peak 1, soft shoulders between, so dots swell and fade instead of switching. Widen `Pulse width` and the lower edge drops; the window opens and the whole ring breathes.
+- `lit` is the window cutter from the shaping section, used as a **soft spotlight**. The wave lives in -1...1, and smoothstep's edges carve out its crest, everything below the threshold 0, the peak 1, soft shoulders between, so dots swell and fade instead of switching. Widen `Pulse width` and the lower edge drops; the window opens and the whole ring breathes.
 - Everything `lit` touches is a `lerp` in spirit: the color leans toward warm white by `lit * 0.4` (Chapter 2's `Color.mix`), the dot lifts outward by `lit * 18`, and swells from 6 up to 26. One shaped value, three payoffs.
 - `direction` flips alternate rings, which is most of why the piece feels alive rather than mechanical.
 
