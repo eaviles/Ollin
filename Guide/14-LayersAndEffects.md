@@ -298,4 +298,4 @@ Off-screen layers are as old as computer graphics has had memory to spare; the s
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 13, Shapes as material](13-ShapesAsMaterial.md) · Next: Chapter 15, Your first shader
+[Contents](README.md#contents) · Previous: [Chapter 13, Shapes as material](13-ShapesAsMaterial.md) · Next: [Chapter 15, Your first shader](15-YourFirstShader.md)

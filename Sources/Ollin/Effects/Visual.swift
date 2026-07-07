@@ -553,6 +553,21 @@ public extension Sketch {
         }
     }
 
+    /// Realize a `Visual` chain as a layer of an explicit size (rather than the
+    /// canvas size): the chain aspect-corrects for that size, so a tile or panel
+    /// isn't a squashed full-canvas render. A chain that reads layers still runs
+    /// at its first layer's size.
+    func generate(_ visual: Visual, width: Int, height: Int, scale: Double = 1) -> RenderTarget {
+        let program = visual.compile()
+        warnOnce(about: program)
+        let shader = Shader(program.source, params: program.params)
+        switch program.layers.count {
+        case 0:  return generate(.shader(shader), width: width, height: height, scale: scale)
+        case 1:  return program.layers[0].filtered(.shader(shader))
+        default: return program.layers[0].combined(with: program.layers[1], .shader(shader))
+        }
+    }
+
     /// Draw a `Visual` chain over the whole canvas: the one-line way to put a
     /// chain on screen. Sugar for `generate(_:)` + `drawImage`; it honors the
     /// current transform, `tint`, and blend mode like any image draw.

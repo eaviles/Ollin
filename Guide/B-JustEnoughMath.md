@@ -45,6 +45,9 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - Exponential decay: keeping 93% each frame melts marks away smoothly, never quite to zero (Ch 14, the feedback fade)
 - Light adds past 1: values beyond full brightness, and a curve (clamp vs roll-off) to bring them back to the screen (Ch 14) - reuse Images/14-LayersAndEffects/ToneClamp.jpg + ToneAces.jpg
 - Iteration: feeding a picture's transform back into itself; small per-frame transforms compound into spirals and tunnels (Ch 14) - reuse Images/14-LayersAndEffects/FeedbackSteps.jpg
+- A function from position to color: the same question at every pixel, answers fusing into an image (Ch 15) - reuse Images/15-YourFirstShader/PixelGrid.jpg
+- Level sets: a shape as "all the points within distance r"; the edge is where the distance crosses the level (Ch 15) - reuse Images/15-YourFirstShader/EdgeStep.jpg
+- Normalized coordinates: uv in 0...1 regardless of pixel size; centering with uv - 0.5 (Ch 15) - reuse Images/15-YourFirstShader/UVSpace.jpg
 - The random walk: accumulate nudges instead of re-rolling, and a path appears (Ch 4) - reuse Images/04-Randomness/WalkVsJumps.jpg
 - Coherence: noise is a lookup into a fixed smooth landscape, so nearby inputs give nearby outputs (Ch 5) - reuse Images/05-Noise/RandomVsNoise.jpg
 - The input multiplier as a zoom knob: how far apart the questions land (Ch 5) - reuse Images/05-Noise/NoiseZoom.jpg

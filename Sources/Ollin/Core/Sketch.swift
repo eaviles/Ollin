@@ -1529,6 +1529,14 @@ open class Sketch {
         generate(.shader(shader), scale: scale)
     }
 
+    /// Run a user-supplied `Shader` as a source layer of an explicit size (rather
+    /// than the canvas size): the shader's `info.resolution` is that size, so a
+    /// tile or panel gets its own undistorted render.
+    public func generate(_ shader: Shader, width: Int, height: Int,
+                         scale: Double = 1) -> RenderTarget {
+        generate(.shader(shader), width: width, height: height, scale: scale)
+    }
+
     /// Make a full-canvas feedback layer: a layer that remembers itself across
     /// frames, for trails, tunnels, and video-feedback looks (see `Feedback`).
     /// Unlike `renderTarget()`, it's **persistent**: create it once in `setup()`

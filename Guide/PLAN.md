@@ -22,7 +22,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 12. Fields and flow | `12-FieldsAndFlow.md` | done |
 | 13. Shapes as material | `13-ShapesAsMaterial.md` | done |
 | 14. Layers and effects | `14-LayersAndEffects.md` | done |
-| 15. Your first shader | `15-YourFirstShader.md` | not started |
+| 15. Your first shader | `15-YourFirstShader.md` | done |
 | 16. Simulations | `16-Simulations.md` | not started |
 | 17. 3D, gently | `17-3DGently.md` | not started |
 | 18. Sculpting with fields | `18-SculptingWithFields.md` | not started |

@@ -61,7 +61,7 @@ The guide is being written chapter by chapter; titles below without links are st
 ### Part III: Pixels and light
 
 14. **[Layers and effects](14-LayersAndEffects.md).** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR.
-15. **Your first shader.** Per-pixel thinking, uv space, writing a `shade` function, chaining visuals.
+15. **[Your first shader](15-YourFirstShader.md).** Per-pixel thinking, uv space, writing a `shade` function, chaining visuals.
 16. **Simulations.** Game of Life, reaction-diffusion, fluid, and a million particles on the GPU.
 
 ### Part IV: The third dimension
