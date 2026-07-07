@@ -1,6 +1,6 @@
 # Guide authoring charter
 
-How the [Ollin Guide](README.md) gets written. Every writing session follows this file so that 20+ chapters written months apart read as one book. The chapter queue and briefs live in [PLAN.md](PLAN.md); this file is the how.
+How the [Ollin Guide](README.md) gets written. Every writing session follows this file so that 20+ chapters written months apart read as one coherent guide. The chapter queue and briefs live in [PLAN.md](PLAN.md); this file is the how.
 
 ## The four principles
 
@@ -9,7 +9,7 @@ The Guide exists because good books on this subject keep failing in the same fou
 **1. Nothing arrives unexplained.**
 The founding story: @eaviles got stuck at chapter 5 of the Book of Shaders because `smoothstep` was used before it was ever really explained, and that was the end of the book. One unexplained concept can cost the whole reader.
 The rule: before a chapter uses any concept (in prose, in a listing, or inside a figure), it must appear in an earlier chapter, earlier in the same chapter, or in Appendix B. While writing, keep a running list of every concept the chapter leans on and check each one. When math appears, it gets three things together: a picture, a plain-words intuition, and only then the code. Notation alone is never enough.
-The check ("the smoothstep test"): reread each page asking, could someone with no math background follow this page using only what the book has shown so far? If not, teach the missing piece or cut the dependency.
+The check ("the smoothstep test"): reread each page asking, could someone with no math background follow this page using only what the guide has shown so far? If not, teach the missing piece or cut the dependency.
 
 **2. The Guide can't rot.**
 Books about living software go stale; readers hit examples that no longer compile and conclude they're the problem.
@@ -30,6 +30,7 @@ The rule: something appears on the reader's canvas within the first page of ever
 - Natural flow over clever flow. No fragment-as-transition ("Everything at once."), no inverted openers ("Six-three-one: ..."), no chains of matched clauses where a plain sentence would do. Write the sentence a good teacher would say out loud.
 - No em dashes anywhere in the Guide (repo-wide rule, enforced by tooling). Use commas, colons, parentheses, or a new sentence.
 - Sentence case for headings and chapter titles.
+- The Guide calls itself "the guide" (or "this guide"), never "the book". Real books keep their titles.
 - It's fine to say something is hard, and to say when a technique's result is only "usually good". Honesty beats polish.
 - Influences are named openly and generously in prose (Nature of Code, the Book of Shaders, Processing, p5.js, OPENRNDR are part of the story and get credit). Inside `.swift` figure files the repo rule applies: no external framework or product names in comments.
 - Run the humanizer pass over every chapter before it ships.
@@ -42,7 +43,7 @@ A chapter is one markdown file, `NN-PascalCase.md`, and reads like this:
 1. **The hook.** An image of the payoff piece and two or three sentences on where the chapter is going. No throat-clearing.
 2. **Steps.** Small numbered or titled sections, each introducing one idea, each with visible output. Code appears as a full small sketch first, then deltas. Swift-language notes appear as short callout blocks (`> **Swift note.** ...`) at the exact moment the reader first needs them, and only for what the step needs.
 3. **The payoff.** The finished piece, built from the chapter's steps, with its full listing (it lives in `Figures/` like everything else) and a rendered image. End by inviting two or three specific variations to try.
-4. **Where this comes from.** A short paragraph crediting the technique's originators and canonical sources, consistent with `ATTRIBUTION.md`. This is a feature of the book: readers learn the field's history and where to read more.
+4. **Where this comes from.** A short paragraph crediting the technique's originators and canonical sources, consistent with `ATTRIBUTION.md`. This is a feature of the guide: readers learn the field's history and where to read more.
 5. **Go deeper.** Links into `Docs/` pages (this is also how the coverage audit works) and related `Examples/`.
 
 Keep chapters honest about hardware: anything needing a device beyond the Mac (a MIDI controller, an iPhone) leads with the path every reader can follow and treats the hardware as the bonus.

@@ -50,7 +50,7 @@ Each brief lists what the chapter teaches, what it assumes, the piece it builds 
 ### Part I: Seeing something move
 
 **1. Hello, Ollin.**
-Teaches: what a sketch is; `setup`/`draw`; the canvas and its top-left coordinate system; `background`, `fill`, `stroke`; `drawCircle`/`drawRect`/`drawLine`; motion by default (`time` in an expression moves); the working loop for the whole book: `swift run OllinLive`, edit, save, watch; `@Param` knobs in the inspector; running any repo example.
+Teaches: what a sketch is; `setup`/`draw`; the canvas and its top-left coordinate system; `background`, `fill`, `stroke`; `drawCircle`/`drawRect`/`drawLine`; motion by default (`time` in an expression moves); the working loop for the whole guide: `swift run OllinLive`, edit, save, watch; `@Param` knobs in the inspector; running any repo example.
 Assumes: can program a little, in any language. First Swift callouts: a `class ... : Sketch` is a recipe; `var`/`let`; calling functions with labels.
 Payoff: a small animated composition (drifting circles over a colored ground) the reader tunes live with knobs.
 Figures: the coordinate-system diagram; a first-shapes contact sheet; the payoff at a fixed frame.
@@ -115,7 +115,7 @@ Figures: force-accumulation diagram; spring-rest-length diagram; soft-vs-rigid c
 Draws from: `Docs/Simulation/Physics.md`; `Examples/Physics/`.
 
 **10. Flocks and swarms.**
-(Retitled from "Agents", 2026-07-06: the field's classic word for these rule-following creatures now reads as AI assistants, and this book will outlive the collision. The chapter still teaches the term: open with a one-sentence disambiguation, crediting Craig Reynolds' 1986 *autonomous agents*, coined decades before "agent" meant software wielding a chatbot, then speak in flock/boid/creature language. Never use "agent" bare in headings or the TOC.)
+(Retitled from "Agents", 2026-07-06: the field's classic word for these rule-following creatures now reads as AI assistants, and this guide will outlive the collision. The chapter still teaches the term: open with a one-sentence disambiguation, crediting Craig Reynolds' 1986 *autonomous agents*, coined decades before "agent" meant software wielding a chatbot, then speak in flock/boid/creature language. Never use "agent" bare in headings or the TOC.)
 Teaches: local rules → global behavior; the three boid rules, each visualized alone before combining; perception radius; `Boids`; differential growth as "a line that wants space"; stateful systems you step (holding a class across frames).
 Assumes: Ch 8 (Ch 9 helps).
 Payoff: a living flock piece, colored by heading.
@@ -214,13 +214,13 @@ Draws from: `Docs/Output/Export.md`, `Docs/Integration/Syphon.md`, `Docs/Integra
 
 ### Appendices
 
-**A. Just enough Swift.** The book's Swift, gathered: values and types, functions and labels, classes vs structs, closures, optionals as encountered, property wrappers as used by `@Param`/`@Eased`. Builds on `Docs/Swift.md` rather than duplicating it: the appendix is the pedagogical pass, the primer stays the quick reference. Written after several chapters exist so it matches what the book actually uses.
+**A. Just enough Swift.** The guide's Swift, gathered: values and types, functions and labels, classes vs structs, closures, optionals as encountered, property wrappers as used by `@Param`/`@Eased`. Builds on `Docs/Swift.md` rather than duplicating it: the appendix is the pedagogical pass, the primer stays the quick reference. Written after several chapters exist so it matches what the guide actually uses.
 
 **B. Just enough math, visually.** One page per idea, each with an Ollin-rendered picture: coordinates, angles and radians, sine/cosine as a circle, vectors, interpolation and the shaping functions, distance, randomness distributions, fields, matrices as "move/turn/scale" (no algebra). Every chapter that introduces a math idea adds its entry here in the same session (the running list lives at the top of the appendix file as comments until assembled).
 
 **C. Coming from p5.js and Processing.** The translation table (`circle()` → `drawCircle`, `createCanvas` → `canvasSize`, `push`/`pop` → `withState { }`, `random` seeds, `noise`, classes, the loop), what's the same, what's idiomatically different, and the habits worth dropping. This is also the roadmap's migration-guide item; writing this appendix completes it.
 
-**D. The complete toolbox.** The 100%-coverage surface, generated from the matrix below: every capability, one plain-words line, where the Guide teaches it (if it does), and its Docs page. Doubles as the book's index of the framework.
+**D. The complete toolbox.** The 100%-coverage surface, generated from the matrix below: every capability, one plain-words line, where the Guide teaches it (if it does), and its Docs page. Doubles as the guide's index of the framework.
 
 ## Feature-coverage matrix
 

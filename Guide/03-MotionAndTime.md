@@ -6,7 +6,7 @@
 
 <img src="Images/03-MotionAndTime/RingPulse.gif" alt="Waves of light chasing around five concentric rings of colored dots, looping seamlessly" width="480">
 
-Chapter 1 handed you `sin` as a recipe and promised the why later. This is later. By the end of this chapter you'll know where that wave actually comes from, how to make motion run at the same speed on every display, and how to bend plain, constant-rate movement into motion with character: motion that eases, snaps, springs, and bounces. It all comes together in the piece above, a loop that ends exactly where it begins, which you'll export as the book's first shareable file.
+Chapter 1 handed you `sin` as a recipe and promised the why later. This is later. By the end of this chapter you'll know where that wave actually comes from, how to make motion run at the same speed on every display, and how to bend plain, constant-rate movement into motion with character: motion that eases, snaps, springs, and bounces. It all comes together in the piece above, a loop that ends exactly where it begins, which you'll export as the guide's first shareable file.
 
 ## The clock
 
@@ -20,7 +20,7 @@ Why care about `deltaTime`? Because your sketch's frame rate is not a constant o
 
 <img src="Images/03-MotionAndTime/DeltaTime.jpg" alt="Three dotted strips comparing one second of motion: a fixed per-frame step at 60 fps, the same step at 120 fps reaching twice as far, and a deltaTime-scaled step landing back in line" width="680">
 
-There are two reliable ways to move, and this book uses both:
+There are two reliable ways to move, and this guide uses both:
 
 - **Derive positions from `time`.** `width / 2 + time * 120` is at the same place after one second on any display, because it says where to *be*, not how far to *step*. Most of what you've written so far works this way, and it's the default habit to build.
 - **Scale steps by `deltaTime`.** When a value has to accumulate (a particle that remembers where it was, which is most of Part II), write the speed per second and multiply: `x += 120 * deltaTime`. Now a fast display takes more, smaller steps and lands in the same place.
@@ -94,7 +94,7 @@ drawCircle(x, height / 2, 50)
 
 The dot crosses the canvas in three seconds, snaps back, and crosses again. There's no magic inside: `loopProgress(over: 3)` is `fract(time / 3)`, where `fract` keeps a number's fractional part, so 7.5 seconds in is `fract(2.5)`, halfway through the third lap. (`fract` is yours too, whenever you want a wrap by hand.)
 
-If the snap offends you (it should, a little), ask for the fold instead: `pingPong(over:)` runs 0 up to 1 and back to 0 over the same period, so the trip retraces itself instead of teleporting home:
+If the snap bothers you (it should, a little), ask for the fold instead: `pingPong(over:)` runs 0 up to 1 and back to 0 over the same period, so the trip retraces itself instead of teleporting home:
 
 ```swift
 let back = pingPong(over: 3)           // 0 to 1 to 0, every 3 seconds
@@ -165,7 +165,7 @@ final class Springy: Sketch {
 
 Click around: the dot springs to each click, and there's no progress variable for you to manage. Like everything in this chapter, the tween is timed in seconds, so it feels identical at 60 and 120 fps.
 
-**`@Smoothed`** is for the opposite situation: the value arrives *from outside*, continuously, and shakes. A jittery mouse, and later in this book MIDI knobs, camera trackers, and phone sensors. There's no target to ease toward, only a noisy stream to clean as it comes:
+**`@Smoothed`** is for the opposite situation: the value arrives *from outside*, continuously, and shakes. A jittery mouse, and later in this guide MIDI knobs, camera trackers, and phone sensors. There's no target to ease toward, only a noisy stream to clean as it comes:
 
 <img src="Images/03-MotionAndTime/SmoothedSignal.jpg" alt="A jittery gray signal path with the smoothed version drawn through it in orange" width="680">
 
@@ -203,7 +203,7 @@ final class Rise: Sketch {
 }
 ```
 
-The plot above *is* this timeline, sampled and drawn by an Ollin sketch like every figure in this book. Timelines advance themselves once per frame as long as they're stored properties on the sketch, like `move` here; one you create on the fly inside `draw()` needs stepping by hand (`move.advance(by: deltaTime)`). They loop, report `progress` and `isFinished`, can be restarted and scrubbed, and sequence 2D and 3D positions as happily as numbers. The details live in [Animation](../Docs/Helpers/Animation.md#timeline).
+The plot above *is* this timeline, sampled and drawn by an Ollin sketch like every figure in this guide. Timelines advance themselves once per frame as long as they're stored properties on the sketch, like `move` here; one you create on the fly inside `draw()` needs stepping by hand (`move.advance(by: deltaTime)`). They loop, report `progress` and `isFinished`, can be restarted and scrubbed, and sequence 2D and 3D positions as happily as numbers. The details live in [Animation](../Docs/Helpers/Animation.md#timeline).
 
 ## The payoff: a loop that never ends
 

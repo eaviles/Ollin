@@ -101,7 +101,7 @@ let x = randomGaussian(mean: width / 2, deviation: 120)
 
 ## A walk with no destination
 
-One more idea completes the starter kit, and it's the one that points at the rest of this book. So far, every roll has stood alone: no roll remembers the one before. Watch what happens when you give chance a memory, by letting each roll *nudge* a value instead of replacing it:
+One more idea completes the starter kit, and it's the one that points at the rest of this guide. So far, every roll has stood alone: no roll remembers the one before. Watch what happens when you give chance a memory, by letting each roll *nudge* a value instead of replacing it:
 
 <img src="Images/04-Randomness/WalkVsJumps.jpg" alt="Two strips: fresh rolls per step produce a jagged hash of a line, while accumulated nudges produce a wandering path" width="680">
 
@@ -226,13 +226,13 @@ Then push it somewhere new:
 
 ## Where this comes from
 
-The grammar of this chapter is the founding grammar of computer art. Vera Molnár, who began making combinatorial drawings by hand in 1959 with what she called her *machine imaginaire* (dice standing in for the computer she didn't yet have), spent six decades administering precise doses of chance to grids of squares; her phrase "1% of disorder" is the payoff piece's entire recipe, and this book's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's payoff borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators; Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The grammar of this chapter is the founding grammar of computer art. Vera Molnár, who began making combinatorial drawings by hand in 1959 with what she called her *machine imaginaire* (dice standing in for the computer she didn't yet have), spent six decades applying precise doses of chance to grids of squares; her phrase "1% of disorder" is the payoff piece's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's payoff borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators; Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Random](../Docs/Generators/Random.md): the full reference, including `randomVector` (a roll inside a rectangle), `ring` (a roll inside a ring, great for halos), and the seeded `shuffled`.
 - [Noise](../Docs/Generators/Noise.md): the next chapter's subject, if you can't wait to make chance glide.
-- Worked examples, all in [`Examples/Randomness/`](../Examples/Randomness/): `Gaussian` (the bell curve as boiling scatter), `RandomBand` (uniform, for contrast), and `Ring` (the annulus roll).
+- Worked examples, all in [`Examples/Randomness/`](../Examples/Randomness/): `Gaussian` (the bell curve as boiling scatter), `RandomBand` (uniform, for contrast), and `Ring` (the ring roll).
 - The Molnár homages in [`Examples/Recreations/VeraMolnar/`](../Examples/Recreations/VeraMolnar/): `DesOrdres` (seeded disorder scrubbed by the mouse) and `Interruptions` (a field of tilted ticks, its gaps carved by the noise you'll meet in Chapter 5).
 
 ---

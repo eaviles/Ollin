@@ -60,7 +60,7 @@ Color.mix(blue, yellow, t: 0.5, in: .rgb)    // the muddy one, when you want it
 Color.mix(blue, yellow, t: 0.5, in: .hsb)    // walks the hue wheel between them
 ```
 
-`t` is "how far along": 0 is the first color, 1 the second, 0.5 halfway. The default space, **OKLab**, is a way of arranging color's numbers so that equal moves *look* equal; a step in it changes the appearance by about the same amount wherever you are. Blue and yellow are opposites, so their midpoint is still a neutral, but it's an even, steady neutral with no lurch in brightness and no accidental detours through other hues. That's the whole idea. You don't need the math (there isn't any in this book): just mix in OKLab unless you have a reason not to.
+`t` is "how far along": 0 is the first color, 1 the second, 0.5 halfway. The default space, **OKLab**, is a way of arranging color's numbers so that equal moves *look* equal; a step in it changes the appearance by about the same amount wherever you are. Blue and yellow are opposites, so their midpoint is still a neutral, but it's an even, steady neutral with no lurch in brightness and no accidental detours through other hues. That's the whole idea. You don't need the math (there isn't any in this guide): just mix in OKLab unless you have a reason not to.
 
 Try it live on the swinging circle:
 
@@ -187,7 +187,7 @@ Directions worth a try before Chapter 3:
 
 ## Where this comes from
 
-The OKLab family (OKLab, OKLCH, OKHSL) is the work of Björn Ottosson, published openly in 2020 and now part of the CSS color standard; it's why "mix in OKLab" is advice you'll meet across modern tools. The built-in qualitative palettes are Cynthia Brewer's ColorBrewer sets, designed for map readability and beloved far beyond maps. The colormaps come from the scientific-visualization world: viridis and friends from matplotlib (Stéfan van der Walt and Nathaniel Smith), turbo from Google. The cosine palette formula is Inigo Quilez's, a name that will keep coming up in this book. Full credits live in the project's [attribution notes](../ATTRIBUTION.md#color).
+The OKLab family (OKLab, OKLCH, OKHSL) is the work of Björn Ottosson, published openly in 2020 and now part of the CSS color standard; it's why "mix in OKLab" is advice you'll meet across modern tools. The built-in qualitative palettes are Cynthia Brewer's ColorBrewer sets, designed for map readability and beloved far beyond maps. The colormaps come from the scientific-visualization world: viridis and friends from matplotlib (Stéfan van der Walt and Nathaniel Smith), turbo from Google. The cosine palette formula is Inigo Quilez's, a name that will keep coming up in this guide. Full credits live in the project's [attribution notes](../ATTRIBUTION.md#color).
 
 ## Go deeper
 

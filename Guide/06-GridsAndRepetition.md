@@ -69,7 +69,7 @@ withState {
 }                               // paper snaps back as if nothing happened
 ```
 
-Everything inside the braces draws on the moved paper; at the closing brace the paper (and any `fill` or `stroke` you changed inside) is restored. This is the cell-drawing recipe you'll use for the rest of the book: translate to the cell's center, turn or stretch as the piece demands, then draw *around the origin*, using coordinates like `(-40, -40)` that straddle (0, 0). Put the recipe in a grid, add a seeded coin flip from Chapter 4, and identical parts start composing figures nobody drew:
+Everything inside the braces draws on the moved paper; at the closing brace the paper (and any `fill` or `stroke` you changed inside) is restored. This is the cell-drawing recipe you'll use for the rest of the guide: translate to the cell's center, turn or stretch as the piece demands, then draw *around the origin*, using coordinates like `(-40, -40)` that straddle (0, 0). Put the recipe in a grid, add a seeded coin flip from Chapter 4, and identical parts start composing figures nobody drew:
 
 ```swift
 import Ollin

@@ -6,7 +6,7 @@
 
 <img src="Images/01-HelloOllin/HelloMotion.jpg" alt="A ring of circles in warm and cool colors, drifting and breathing on a dark ground" width="560">
 
-By the end of this chapter, this piece is yours: twenty-eight circles drifting around a ring, each breathing slightly out of step with its neighbors, with a small panel of knobs to play it like an instrument. Every dot is placed and moved by code you'll understand line by line. Getting there takes a working toolchain, one new file, three shapes, and a single idea that carries the whole book: in Ollin, things move by default.
+By the end of this chapter, this piece is yours: twenty-eight circles drifting around a ring, each breathing slightly out of step with its neighbors, with a small panel of knobs to play it like an instrument. Every dot is placed and moved by code you'll understand line by line. Getting there takes a working toolchain, one new file, three shapes, and a single idea that carries the whole guide: in Ollin, things move by default.
 
 ## What you need
 
@@ -62,7 +62,7 @@ A window opens with your circle in it. Three calls made it: `background(.white)`
 
 > **Swift note.** `import Ollin` brings the framework in. `final class FirstCircle: Sketch` declares your sketch: a new thing named `FirstCircle`, built on Ollin's `Sketch`, which is what gives you the canvas, the drawing calls, and the loop. `override func draw()` fills in the one function Ollin calls to render a frame. You never call `draw()` yourself; Ollin calls *you*.
 
-Here is the part that changes how you work. Keep the window open, go back to your editor, change `200` to `320`, and save. The circle grows in place. `OllinLive` watches the file and swaps in every save while the window keeps running. Try breaking it: delete a parenthesis and save. An error prints in the terminal, and your last working sketch keeps drawing. Fix it, save, and you're back. This edit-save-watch loop is how you'll work through the whole book, so keep the window and the editor side by side.
+Here is the part that changes how you work. Keep the window open, go back to your editor, change `200` to `320`, and save. The circle grows in place. `OllinLive` watches the file and swaps in every save while the window keeps running. Try breaking it: delete a parenthesis and save. An error prints in the terminal, and your last working sketch keeps drawing. Fix it, save, and you're back. This edit-save-watch loop is how you'll work through the whole guide, so keep the window and the editor side by side.
 
 ## Where things go
 
@@ -100,7 +100,7 @@ Now the idea this framework is named for. Change your `drawCircle` line to:
 drawCircle(width / 2 + time * 120, height / 2, 200)
 ```
 
-Save, and the circle drifts to the right until it leaves the canvas. You didn't set up an animation, and there was no play button to press: `draw()` was already running over and over, at your display's refresh rate (usually 60 or 120 times a second), and `time` simply holds the seconds since the sketch started. Since `time` grows, an x that includes it grows too, and a slightly different picture 60 times a second *is* motion. Everything animated in this book, from breathing dots to flocking birds, is this one trick: put time into an expression.
+Save, and the circle drifts to the right until it leaves the canvas. You didn't set up an animation, and there was no play button to press: `draw()` was already running over and over, at your display's refresh rate (usually 60 or 120 times a second), and `time` simply holds the seconds since the sketch started. Since `time` grows, an x that includes it grows too, and a slightly different picture 60 times a second *is* motion. Everything animated in this guide, from breathing dots to flocking birds, is this one trick: put time into an expression.
 
 (`time` has siblings: `frameCount`, `deltaTime`, `frameRate`. The [Sketch](../Docs/Core/Sketch.md#temporal-state) page lists them; you'll meet them properly in Chapter 3.)
 
@@ -121,7 +121,7 @@ The recipe has a second half, and it's the key to this chapter's finale. `sin` h
 
 <img src="Images/01-HelloOllin/AroundACircle.jpg" alt="A circle with an angle marked at its center, and cos and sin placing a point on its rim" width="680">
 
-Feed the pair an angle and a radius, and they hand you the x and y of the point that far around the circle. Grow the angle, and the point walks the rim. That's the entire mystery of `cos` and `sin` as this book uses them: they're how you place things *around* something. Chapter 3 shows why it works; Appendix B keeps this picture for whenever you want it back.
+Feed the pair an angle and a radius, and they hand you the x and y of the point that far around the circle. Grow the angle, and the point walks the rim. That's all this guide asks of `cos` and `sin`: they're how you place things *around* something. Chapter 3 shows why it works; Appendix B keeps this picture for whenever you want it back.
 
 ## The mouse joins in
 
@@ -187,9 +187,9 @@ Run it with `swift run OllinLive MySketches/HelloMotion.swift` and walk through 
 
 > **Swift note.** `for i in 0..<count` counts from 0 up to, but not including, `count`. `i` is an `Int` (a whole number) while positions want `Double` (numbers with fractions), so `Double(i)` converts. `[Color]` is a list of colors, `colors.count` its length, and `%` is the remainder after division, which is what makes the palette repeat. These four keep coming back; there's more Swift in the [Swift primer](../Docs/Swift.md) whenever you want it.
 
-And the four `@Param` lines? Look at the sidebar of the `OllinLive` window: they became a little control panel. `@Param("Speed", 0...2) var speed = 0.3` declares a knob with a label, a range, and a starting value, and the sketch reads it like any other property. Notice that each knob got the control its type asks for: the two `Double`s became sliders, the whole-number `count` became a stepper, and `ground`, a `Color`, became a color well you can click to open a picker. (There are more: a `Bool` becomes a toggle, a point can even become a draggable pad. You'll meet them as the book goes.) The number next to any knob is live too: drag it sideways to scrub the value, or click it to type one in.
+And the four `@Param` lines? Look at the sidebar of the `OllinLive` window: they became a little control panel. `@Param("Speed", 0...2) var speed = 0.3` declares a knob with a label, a range, and a starting value, and the sketch reads it like any other property. Notice that each knob got the control its type asks for: the two `Double`s became sliders, the whole-number `count` became a stepper, and `ground`, a `Color`, became a color well you can click to open a picker. (There are more: a `Bool` becomes a toggle, a point can even become a draggable pad. You'll meet them as the guide goes on.) The number next to any knob is live too: drag it sideways to scrub the value, or click it to type one in.
 
-Play the panel while the piece runs. Tuned values even survive a save: edit the code, save, and your knob positions carry over into the reloaded sketch instead of snapping back. When a value feels right, copy it back into the code as the new default. This tune-while-it-runs habit is worth building early; almost every piece in this book gets better when its magic numbers become knobs.
+Play the panel while the piece runs. Tuned values even survive a save: edit the code, save, and your knob positions carry over into the reloaded sketch instead of snapping back. When a value feels right, copy it back into the code as the new default. This tune-while-it-runs habit is worth building early; almost every piece in this guide gets better when its magic numbers become knobs.
 
 Before moving on, make the piece yours. Some directions worth a try:
 

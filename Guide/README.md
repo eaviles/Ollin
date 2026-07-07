@@ -20,7 +20,7 @@ This guide teaches creative coding from zero, using [Ollin](../README.md). You w
 
 Guides like this tend to fail in known ways: a concept appears out of nowhere and you're stuck, the examples no longer compile, or the theory runs three chapters ahead of anything you can see. This guide is built around four promises:
 
-1. **Nothing arrives unexplained.** Every concept is introduced before it's used, with a picture. When math shows up, it comes with a visual and a plain-words intuition, never notation alone. If a page loses you anyway, Appendix B re-explains every math idea in the book, visually.
+1. **Nothing arrives unexplained.** Every concept is introduced before it's used, with a picture. When math shows up, it comes with a visual and a plain-words intuition, never notation alone. If a page loses you anyway, Appendix B re-explains every math idea in the guide, visually.
 2. **Every listing runs.** Each code listing is a real file under [`Figures/`](Figures/), compiled and rendered by a tool in this repository. If the framework changes underneath it, the build breaks before the guide can lie to you.
 3. **Every image is made by the code next to it.** Figures and diagrams are rendered by Ollin itself from committed source. You can open any of them, run it, and mess with it.
 4. **Practice first.** You see something on your canvas within the first page of every chapter, and everything a chapter teaches ends up in one finished piece.
@@ -41,7 +41,7 @@ The guide is being written chapter by chapter; titles below without links are st
 
 ### Part I: Seeing something move
 
-1. **[Hello, Ollin](01-HelloOllin.md).** Your first sketch, the draw loop, coordinates, shapes, and motion by default. Plus the workflow the rest of the book uses: live reload and tunable knobs.
+1. **[Hello, Ollin](01-HelloOllin.md).** Your first sketch, the draw loop, coordinates, shapes, and motion by default. Plus the workflow the rest of the guide uses: live reload and tunable knobs.
 2. **[Color that works](02-Color.md).** Naming colors, thinking in hue, mixing that trusts your eye, palettes and ramps, gradients as paint.
 3. **[Motion and time](03-MotionAndTime.md).** Time, shaping functions as curves you can see (map, lerp, smoothstep, easing), sine and cosine without fear, timelines.
 4. **[Randomness](04-Randomness.md).** Random values, seeds, choices, distributions, and why reproducibility matters.
@@ -79,7 +79,7 @@ The guide is being written chapter by chapter; titles below without links are st
 ### Appendices
 
 - **A. Just enough Swift.** The language, for people arriving from other languages.
-- **B. Just enough math, visually.** Every math idea in the book, each with a picture.
+- **B. Just enough math, visually.** Every math idea in the guide, each with a picture.
 - **C. Coming from p5.js and Processing.** A side-by-side translation.
 - **D. The complete toolbox.** Everything Ollin can do, one line each, with where it's taught and where it's documented.
 
