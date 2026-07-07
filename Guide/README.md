@@ -56,7 +56,7 @@ The guide is being written chapter by chapter; titles below without links are st
 10. **[Flocks and swarms](10-FlocksAndSwarms.md).** One creature that steers (seek, arrive, wander), then flocking from three local rules, then a line that grows into coral.
 11. **[Growing things](11-GrowingThings.md).** A recursive tree, L-system grammars, growth that claims space, frost from frozen walkers, and tiles that must agree.
 12. **[Fields and flow](12-FieldsAndFlow.md).** A direction at every point: streamlines, evenly-spaced flow, riding particles, and attractors found in formulas.
-13. **Shapes as material.** Paths, booleans, Voronoi, packing, hatching, and work made for pen plotters.
+13. **[Shapes as material](13-ShapesAsMaterial.md).** Geometry you hold and edit: booleans, offsets, strokes as regions, Voronoi mosaics, packing, and hatching for pen plotters.
 
 ### Part III: Pixels and light
 

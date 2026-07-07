@@ -157,4 +157,4 @@ Vector fields are old mathematics (fluid dynamics and electromagnetism run on th
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 11, Growing things](11-GrowingThings.md) · Next: Chapter 13, Shapes as material
+[Contents](README.md#contents) · Previous: [Chapter 11, Growing things](11-GrowingThings.md) · Next: [Chapter 13, Shapes as material](13-ShapesAsMaterial.md)

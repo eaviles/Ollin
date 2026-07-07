@@ -20,7 +20,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 10. Flocks and swarms | `10-FlocksAndSwarms.md` | done |
 | 11. Growing things | `11-GrowingThings.md` | done |
 | 12. Fields and flow | `12-FieldsAndFlow.md` | done |
-| 13. Shapes as material | `13-ShapesAsMaterial.md` | not started |
+| 13. Shapes as material | `13-ShapesAsMaterial.md` | done |
 | 14. Layers and effects | `14-LayersAndEffects.md` | not started |
 | 15. Your first shader | `15-YourFirstShader.md` | not started |
 | 16. Simulations | `16-Simulations.md` | not started |
