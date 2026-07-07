@@ -62,6 +62,33 @@ public extension Contour {
     /// for styling per contour, like coloring each strand of a tiling by a
     /// field sampled at its middle.
     var midpoint: Vector2 { point(at: 0.5) }
+
+    /// A copy whose points march an even `spacing` apart along the walked
+    /// path (arc length), keeping `isClosed`. Points that arrive unevenly
+    /// spaced, like a glyph outline from `textToShapes` (dense on curves,
+    /// sparse on straights), come back at a steady interval, ready for dot,
+    /// dash, and jitter effects. A degenerate contour (fewer than two points,
+    /// or a non-positive `spacing`) returns unchanged.
+    func resampled(spacing: Double) -> Contour {
+        guard points.count >= 2, spacing > 0 else { return self }
+        var poly = points
+        if isClosed { poly.append(points[0]) }
+        var result = [poly[0]]
+        var sinceLast = 0.0              // arc length accrued since the last emit
+        for i in 1..<poly.count {
+            let a = poly[i - 1], b = poly[i]
+            let segment = (b - a).length
+            guard segment > 1e-9 else { continue }
+            var t = 0.0                  // position along this segment, 0…segment
+            while sinceLast + (segment - t) >= spacing {
+                t += spacing - sinceLast
+                result.append(a + (b - a) * (t / segment))
+                sinceLast = 0
+            }
+            sinceLast += segment - t     // carry the unconsumed tail forward
+        }
+        return Contour(result, closed: isClosed)
+    }
 }
 
 /// The rule that decides which regions of a self-overlapping or multi-contour
@@ -116,6 +143,13 @@ public struct Shape: Equatable, Sendable {
     /// shape (a glyph from `textToShapes`, say) without dropping its winding.
     public func mapPoints(_ transform: (Vector2) -> Vector2) -> Shape {
         Shape(contours: contours.map { Contour($0.points.map(transform), closed: $0.isClosed) },
+              winding: winding)
+    }
+
+    /// A copy with every contour respaced to an even point `spacing` (see
+    /// `Contour.resampled(spacing:)`), keeping the `winding` rule.
+    public func resampled(spacing: Double) -> Shape {
+        Shape(contours: contours.map { $0.resampled(spacing: spacing) },
               winding: winding)
     }
 }

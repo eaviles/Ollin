@@ -25,6 +25,28 @@ public struct Color: Equatable, Hashable, Sendable {
     }
 }
 
+public extension Color {
+    /// The same color with a different `alpha` (`0...1`), the original left
+    /// untouched. The everyday fade: `fill(ink.withAlpha(0.3))` draws with a
+    /// translucent version of a color you already hold.
+    func withAlpha(_ alpha: Double) -> Color {
+        Color(red: red, green: green, blue: blue, alpha: alpha)
+    }
+
+    /// The color's perceived brightness in `0...1`: the Rec. 709 weighted sum
+    /// of the linearized components, so green counts most and blue least, the
+    /// way the eye weighs them. White is 1, black is 0, and a pure blue reads
+    /// far darker than a pure green of the same numeric size.
+    ///
+    /// The handle for image-driven work: sample a pixel, then size, choose, or
+    /// gate marks by `pixel.luminance`.
+    var luminance: Double {
+        0.2126 * Color.srgbToLinear(red)
+            + 0.7152 * Color.srgbToLinear(green)
+            + 0.0722 * Color.srgbToLinear(blue)
+    }
+}
+
 // A few familiar named constants so `.white` / `.black` Just Work.
 //
 // `red`/`green`/`blue` here are the **additive primaries**: `green` is pure

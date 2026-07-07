@@ -456,9 +456,12 @@ Contour(curveThrough points: [Vector2], closed: Bool = true)   // smooth curve t
 var length: Double              // distance along the segments (closed: plus the return leg)
 func point(at t: Double) -> Vector2   // the point a fraction t (0...1) along, by walked length
 var midpoint: Vector2           // point(at: 0.5)
+func resampled(spacing: Double) -> Contour   // points respaced evenly along the walk
 ```
 
 The walk helpers measure *along* the contour, so they land mid-stroke even when the points are spaced unevenly (a `textToShapes` glyph, a two-point diagonal). `midpoint` is the handy anchor for styling per contour: color each strand of a [Truchet tiling](./Truchet.md) by a noise field sampled at its middle, or hang a label off a path's center.
+
+`resampled(spacing:)` rebuilds the contour with its points an even arc-length `spacing` apart, keeping `isClosed`. It's the step before dot, dash, and jitter effects: contours that arrive with uneven vertices (a glyph outline is dense on curves and sparse on straights) come back marching at a steady interval, so marks placed one-per-point spread evenly. `Shape.resampled(spacing:)` applies it to every contour, keeping the shape's `winding`. See the `PointShimmer`, `JitterType`, and `GlyphContours` examples.
 
 <a name="shape"></a>
 

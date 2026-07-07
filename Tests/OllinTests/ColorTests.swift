@@ -162,4 +162,21 @@ struct ColorTests {
         #expect(Color.green == Color(red: 0, green: 1, blue: 0))
         #expect(Color.green != Color(hex: 0x008000))
     }
+
+    /// `withAlpha` swaps only the alpha, leaving the color itself untouched.
+    @Test func withAlphaKeepsTheColor() {
+        let faded = Color(hex: 0xE4572E).withAlpha(0.3)
+        #expect(faded.alpha == 0.3)
+        #expect(faded.withAlpha(1) == Color(hex: 0xE4572E))
+    }
+
+    /// Luminance is 0...1, anchored at black and white, and weighs the
+    /// channels the way the eye does: green over red over blue.
+    @Test func luminanceWeighsChannelsPerceptually() {
+        #expect(Color.black.luminance == 0)
+        #expect(abs(Color.white.luminance - 1) < 1e-9)
+        #expect(Color.green.luminance > Color.red.luminance)
+        #expect(Color.red.luminance > Color.blue.luminance)
+        #expect(abs(Color.green.luminance - 0.7152) < 1e-9)
+    }
 }

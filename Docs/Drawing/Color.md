@@ -70,6 +70,13 @@ directionalLight(Color(kelvin: 5600), direction: Vector3(-0.5, -0.8, -0.4))  // 
 fill(Color(kelvin: 3200))                                                    // warm tungsten
 ```
 
+**Two component helpers** round out the type. `withAlpha(_:)` is the everyday fade: the same color at a different opacity, the original untouched. `luminance` is the color's perceived brightness in `0...1`, the Rec. 709 weighted sum of the linearized components, so green counts most and blue least, the way the eye weighs them; it's the handle for image-driven work (sample a pixel with [`Image`](Images.md#pixels)'s subscript, then size or choose marks by `pixel.luminance`).
+
+```swift
+fill(ink.withAlpha(0.3))                  // a translucent version of a held color
+let size = cell * image[x, y].luminance   // marks scaled by perceived brightness
+```
+
 <a name="oklab"></a>
 
 ### OKLab, OKLCH, OKHSL

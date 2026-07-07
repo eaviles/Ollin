@@ -29,7 +29,7 @@ final class PointShimmer: Sketch {
         // sampling.
         dots = textToShapes("hello", 0, 0)
             .flatMap(\.contours)
-            .flatMap { resampled($0.points, spacing: 7 * scale, closed: $0.isClosed) }
+            .flatMap { $0.resampled(spacing: 7 * scale).points }
     }
 
     override func draw() {
@@ -47,29 +47,5 @@ final class PointShimmer: Sketch {
             }
             drawPoints(shimmered, size: 6 * scale)
         }
-    }
-
-    /// Resample a polyline at an even arc-length `spacing` — clean, regularly
-    /// spaced points instead of Core Text's raw outline vertices (dense on curves,
-    /// sparse on straights).
-    private func resampled(_ points: [Vector2], spacing: Double, closed: Bool) -> [Vector2] {
-        guard points.count >= 2, spacing > 0 else { return points }
-        var poly = points
-        if closed { poly.append(points[0]) }
-        var result = [poly[0]]
-        var distSinceLast = 0.0          // arc length accrued since the last emit
-        for i in 1..<poly.count {
-            let a = poly[i - 1], b = poly[i]
-            let segLen = (b - a).length
-            guard segLen > 1e-9 else { continue }
-            var t = 0.0                  // position along this segment, 0…segLen
-            while distSinceLast + (segLen - t) >= spacing {
-                t += spacing - distSinceLast
-                result.append(a + (b - a) * (t / segLen))
-                distSinceLast = 0
-            }
-            distSinceLast += segLen - t  // carry the unconsumed tail forward
-        }
-        return result
     }
 }

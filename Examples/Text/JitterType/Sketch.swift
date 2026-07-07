@@ -29,10 +29,7 @@ final class JitterType: Sketch {
         // spacing is wider than the jitter below, so neighbours rarely cross — the
         // outline wobbles and rounds over instead of shattering into shards.
         glyphs = textToShapes("hello", width / 2, height / 2).map { shape in
-            let dense = shape.contours.map {
-                Contour(resampled($0.points, spacing: 12 * scale, closed: $0.isClosed),
-                        closed: $0.isClosed)
-            }
+            let dense = shape.contours.map { $0.resampled(spacing: 12 * scale) }
             return Shape(contours: dense, winding: .nonZero)
         }
     }
@@ -52,29 +49,5 @@ final class JitterType: Sketch {
                 p + Vector2(random(-amount, amount), random(-amount, amount))
             })
         }
-    }
-
-    /// Resample a polyline at an even arc-length `spacing` — clean, regularly
-    /// spaced points instead of Core Text's raw outline vertices (dense on curves,
-    /// sparse on straights).
-    private func resampled(_ points: [Vector2], spacing: Double, closed: Bool) -> [Vector2] {
-        guard points.count >= 2, spacing > 0 else { return points }
-        var poly = points
-        if closed { poly.append(points[0]) }
-        var result = [poly[0]]
-        var distSinceLast = 0.0          // arc length accrued since the last emit
-        for i in 1..<poly.count {
-            let a = poly[i - 1], b = poly[i]
-            let segLen = (b - a).length
-            guard segLen > 1e-9 else { continue }
-            var t = 0.0                  // position along this segment, 0…segLen
-            while distSinceLast + (segLen - t) >= spacing {
-                t += spacing - distSinceLast
-                result.append(a + (b - a) * (t / segLen))
-                distSinceLast = 0
-            }
-            distSinceLast += segLen - t  // carry the unconsumed tail forward
-        }
-        return result
     }
 }

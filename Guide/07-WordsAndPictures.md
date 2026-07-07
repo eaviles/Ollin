@@ -110,6 +110,8 @@ Each glyph comes back as a `Shape`: a set of closed outlines (a letter with a ho
 
 One warning from experience: keep warps bounded and smooth. `signedNoise` never leaves `-1...1`, so scaling it gives you a hard ceiling on how far any point moves. An unbounded push can fold an outline over itself, which the fill renders as a spike.
 
+A related fact, for when you want marks *along* the letters rather than a warp: the outline points come back unevenly spaced (dense on curves, sparse on straights), so dots placed one-per-point clump. Respace a glyph first, `shape.resampled(spacing: 8)`, and every point lands a steady 8 apart along the outline, ready for beads, dashes, or particles. The [`PointShimmer` example](../Examples/Text/PointShimmer/Sketch.swift) builds shimmering dotted type from exactly those two calls.
+
 > **Swift note.** `.map { }` builds a new list by transforming every element of an old one: `c.points.map { p in ... }` reads "a new list of points, each computed from `p`". It's the loop from Chapter 1 wearing a shorter coat, and you'll see it wherever a whole list changes at once.
 
 ## Pictures
@@ -159,7 +161,7 @@ The right panel asks the image one question per grid cell and draws the answer a
 let brightness = c.red * 0.2126 + c.green * 0.7152 + c.blue * 0.0722
 ```
 
-and that single number is the handle generative artists pull most: size by it, choose by it, gate by it. (Appendix B will keep this one; average the channels instead and yellows read too dark, blues too bright.)
+and that single number is the handle generative artists pull most: size by it, choose by it, gate by it. (Appendix B will keep this one; average the channels instead and yellows read too dark, blues too bright.) Ollin also carries the ask as a property, `c.luminance`, measured a touch more faithfully on the linearized components; the handwritten weights are the idea, the property is the everyday spelling.
 
 You can also write pixels. `Image(width:height:)` makes a blank image, `image[x, y] = color` paints one pixel, and that's how this chapter's figures work: the repository ships no photograph, so the sunset on the left is *authored*, about twenty lines of Chapter 2 ramps, one `smoothstep` sun, and Chapter 5 noise for the water, written pixel by pixel in `setup()`. The payoff listing below contains the whole recipe, and everything in this section works identically on a photo you load with `loadImage`.
 

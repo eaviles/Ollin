@@ -86,6 +86,45 @@ import Ollin
         let spin = Bool.random(using: &spinRng)
         #expect(placed == Truchet.contours(in: frame, tile: .arcs, flipped: spin))
     }
+
+    @Test func resampledSpacesPointsEvenly() {
+        // A 30-long open L, unevenly authored: even spacing lands every 5.
+        let l = Contour([Vector2(0, 0), Vector2(20, 0), Vector2(20, 10)], closed: false)
+        let even = l.resampled(spacing: 5)
+        #expect(even.points.count == 7)
+        #expect(!even.isClosed)
+        for pair in zip(even.points, even.points.dropFirst()) {
+            #expect(abs((pair.1 - pair.0).length - 5) < 1e-9)
+        }
+    }
+
+    @Test func resampledClosedWalksTheClosingEdge() {
+        // A 40-long closed square: 8 emits at spacing 5 cover the closing edge
+        // too (the final emit lands back on the start).
+        let square = Contour([Vector2(0, 0), Vector2(10, 0), Vector2(10, 10), Vector2(0, 10)])
+        let even = square.resampled(spacing: 5)
+        #expect(even.isClosed)
+        #expect(even.points.count == 9)
+        #expect((even.points[8] - even.points[0]).length < 1e-9)
+        for pair in zip(even.points, even.points.dropFirst()) {
+            #expect(abs((pair.1 - pair.0).length - 5) < 1e-9)
+        }
+    }
+
+    @Test func resampledLeavesDegeneratesUntouched() {
+        let dot = Contour([Vector2(3, 4)], closed: false)
+        #expect(dot.resampled(spacing: 5) == dot)
+        let line = Contour([Vector2(0, 0), Vector2(10, 0)], closed: false)
+        #expect(line.resampled(spacing: 0) == line)
+    }
+
+    @Test func shapeResampledKeepsWinding() {
+        let glyphish = Shape(contours: [Contour([Vector2(0, 0), Vector2(30, 0), Vector2(30, 30), Vector2(0, 30)])],
+                             winding: .nonZero)
+        let even = glyphish.resampled(spacing: 6)
+        #expect(even.winding == .nonZero)
+        #expect(even.contours[0].points.count == 21)   // 120/6 emits + the start
+    }
 }
 
 /// The vertical-center alias: `.center` is `.middle`.
