@@ -6,6 +6,8 @@
 import Ollin
 
 final class Molten: Sketch {
+    override func setup() { seed(9) }
+
     override func draw() {
         background(Color(hex: 0x0D1017))
         cameraShowcase(target: Vector3(0, 1.0, 0), radius: 6.4,

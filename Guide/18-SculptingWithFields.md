@@ -166,6 +166,8 @@ Make `MySketches/Molten.swift`:
 import Ollin
 
 final class Molten: Sketch {
+    override func setup() { seed(9) }
+
     override func draw() {
         background(Color(hex: 0x0D1017))
         cameraShowcase(target: Vector3(0, 1.0, 0), radius: 6.4,
@@ -222,4 +224,4 @@ Distance fields as a drawing medium are the craft of the demoscene and Shadertoy
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 17, 3D, gently](17-3DGently.md) · Next: Chapter 19, Depth and the iPhone as a sensor
+[Contents](README.md#contents) · Previous: [Chapter 17, 3D, gently](17-3DGently.md) · Next: [Chapter 19, Depth and the iPhone as a sensor](19-DepthAndThePhone.md)
