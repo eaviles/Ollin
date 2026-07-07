@@ -35,4 +35,8 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - Decorrelation by offset: far-apart rows of one field are independent signals (Ch 5)
 - Layering scales: weighted sum of a big shape and a small detail, weights summing to 1 (Ch 5) - reuse Images/05-Noise/NoiseLayers.jpg
 - Looping a drift: tour a closed circle through the field instead of a straight line, and the lap ends where it began (the loop: parameter) (Ch 5)
+- Transforms move the paper, not the shape: translate slides the origin, rotate turns around it, scale stretches; later calls ride earlier ones (Ch 6) - reuse Images/06-GridsAndRepetition/TransformSteps.jpg
+- Drawing around the origin: coordinates straddling (0, 0) so a translated, rotated mark pivots about its own center (Ch 6)
+- Rotational symmetry as repetition: n copies at tau/n apart close the circle exactly (Ch 6) - reuse Images/06-GridsAndRepetition/Rosette.jpg
+- Local rules, global order: parts that only agree at their edges still compose global figures (Ch 6) - reuse Images/06-GridsAndRepetition/TruchetJoins.jpg
 -->

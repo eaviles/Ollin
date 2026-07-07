@@ -13,7 +13,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 3. Motion and time | `03-MotionAndTime.md` | done |
 | 4. Randomness | `04-Randomness.md` | done |
 | 5. Noise | `05-Noise.md` | done |
-| 6. Grids and repetition | `06-GridsAndRepetition.md` | not started |
+| 6. Grids and repetition | `06-GridsAndRepetition.md` | done |
 | 7. Words and pictures | `07-WordsAndPictures.md` | not started |
 | 8. Vectors, gently | `08-Vectors.md` | not started |
 | 9. Forces and physics | `09-ForcesAndPhysics.md` | not started |

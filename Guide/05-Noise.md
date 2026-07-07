@@ -218,4 +218,4 @@ Noise has a birthplace: Ken Perlin built it in 1983, fresh from working on the c
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 4, Randomness](04-Randomness.md) · Next: Chapter 6, Grids and repetition
+[Contents](README.md#contents) · Previous: [Chapter 4, Randomness](04-Randomness.md) · Next: [Chapter 6, Grids and repetition](06-GridsAndRepetition.md)
