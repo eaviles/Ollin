@@ -28,6 +28,9 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - Probability as a threshold on a uniform 0...1 roll (random() < p passes p of the time); stacked thresholds = weighted choice (Ch 4) - reuse Images/04-Randomness/Choices.jpg
 - Uniform vs Gaussian distributions: flat spread vs bell pile; mean = center, deviation = spread, ~2/3 within one deviation (Ch 4) - reuse Images/04-Randomness/UniformVsGaussian.jpg
 - Chance is lumpy: independent rolls clump and drought, they don't space evenly (Ch 4)
+- The steering correction: the desired velocity minus the current one, capped; the gap between wish and state as a force (Ch 10) - reuse Images/10-FlocksAndSwarms/SteeringMove.jpg
+- Neighborhoods: a perception radius decides who counts as nearby; local rules over neighborhoods make global pattern (Ch 10)
+- Fixed-step simulation vs deltaTime scaling: stepping trades frame-rate independence for exact repeatability (Ch 10)
 - The random walk: accumulate nudges instead of re-rolling, and a path appears (Ch 4) - reuse Images/04-Randomness/WalkVsJumps.jpg
 - Coherence: noise is a lookup into a fixed smooth landscape, so nearby inputs give nearby outputs (Ch 5) - reuse Images/05-Noise/RandomVsNoise.jpg
 - The input multiplier as a zoom knob: how far apart the questions land (Ch 5) - reuse Images/05-Noise/NoiseZoom.jpg

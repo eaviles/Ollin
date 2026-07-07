@@ -434,4 +434,4 @@ The force half of this chapter walks the path Daniel Shiffman's *The Nature of C
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 8, Vectors, gently](08-Vectors.md) · Next: Chapter 10, Flocks and swarms
+[Contents](README.md#contents) · Previous: [Chapter 8, Vectors, gently](08-Vectors.md) · Next: [Chapter 10, Flocks and swarms](10-FlocksAndSwarms.md)

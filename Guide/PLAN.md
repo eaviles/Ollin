@@ -17,7 +17,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 7. Words and pictures | `07-WordsAndPictures.md` | done |
 | 8. Vectors, gently | `08-Vectors.md` | done |
 | 9. Forces and physics | `09-ForcesAndPhysics.md` | done |
-| 10. Flocks and swarms | `10-FlocksAndSwarms.md` | not started |
+| 10. Flocks and swarms | `10-FlocksAndSwarms.md` | done |
 | 11. Growing things | `11-GrowingThings.md` | not started |
 | 12. Fields and flow | `12-FieldsAndFlow.md` | not started |
 | 13. Shapes as material | `13-ShapesAsMaterial.md` | not started |

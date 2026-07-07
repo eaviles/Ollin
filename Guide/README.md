@@ -53,7 +53,7 @@ The guide is being written chapter by chapter; titles below without links are st
 
 8. **[Vectors, gently](08-Vectors.md).** Vectors as arrows; position, velocity, acceleration; steering toward a target.
 9. **[Forces and physics](09-ForcesAndPhysics.md).** Forces by hand, then a physics world: springs and particles, rigid bodies and joints, grabbing with the mouse.
-10. **Flocks and swarms.** Flocking, emergence, and lines that grow by themselves: the autonomous agents of classic generative art (the rule-following kind, no AI involved).
+10. **[Flocks and swarms](10-FlocksAndSwarms.md).** One creature that steers (seek, arrive, wander), then flocking from three local rules, then a line that grows into coral.
 11. **Growing things.** L-systems, recursion, and constraint-solved tilings.
 12. **Fields and flow.** Flow fields, streamlines, advection, strange attractors.
 13. **Shapes as material.** Paths, booleans, Voronoi, packing, hatching, and work made for pen plotters.
