@@ -13,9 +13,11 @@ The shape-drawing vocabulary: every primitive, the stroke and hollow modes, and 
 | [CombinatorsGradient](CombinatorsGradient/Sketch.swift) | a linear/radial gradient `fill` or `stroke` painting a whole merged SDF field as one continuous surface, sampled in field space (`drawSDF`, `Gradient`) |
 | [CombinatorsStretch](CombinatorsStretch/Sketch.swift) | per-axis sizing of a merged SDF field: an exact `stretched` elongation beside a non-uniform `scaled(x:y:)` bound (`drawSDF`) |
 | [HollowShapes](HollowShapes/Sketch.swift) | a grid of shapes breathing from solid into framed hollow rings (`hollow`/`solid`, SDF) |
+| [InkRibbon](InkRibbon/Sketch.swift) | stroke as shape: a drifting brush line stroked into a real region (`stroked`), then inset again and again so contour bands ring inside the ribbon (`offset`) |
 | [Markers](Markers/Sketch.swift) | the five `drawPoint` markers, one per row, swept across sizes (`pointMarker`, SDF) |
 | [NamedPolygons](NamedPolygons/Sketch.swift) | the named regular polygons turning in a labeled row (`drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`, SDF) |
 | [Primitives](Primitives/Sketch.swift) | every `draw*` primitive, one per cell, turning slowly: a reference sheet for the whole drawing vocabulary |
+| [RubberBand](RubberBand/Sketch.swift) | convex hull: the rubber band around a drifting herd of points, recomputed each frame, corners lit, the band itself a stroked region (`convexHull`, `stroked`) |
 | [ShapeMenagerie](ShapeMenagerie/Sketch.swift) | rhombus, vesica, moon, cross, and ring, one per row, with corner radius breathing (`drawRhombus`/`drawVesica`/`drawMoon`/`drawCross`/`drawRing`, SDF) |
 | [StrokeAlignment](StrokeAlignment/Sketch.swift) | the same shapes stroked inside, centered, and outside their outline, weight pulsing (`strokeAlign`, SDF) |
 | [StrokeJoinsAndCaps](StrokeJoinsAndCaps/Sketch.swift) | a zigzag turned with each join and a segment ended with each cap, weight pulsing (`strokeJoin`/`strokeCap`) |

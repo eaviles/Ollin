@@ -24,6 +24,8 @@
 - [Shape](#shape)
   - [Set operations](#shape-booleans)
   - [Offsetting](#shape-offset)
+  - [Stroke as shape](#shape-stroked)
+- [Convex hull](#convex-hull)
 - [Path](#path)
 
 <a name="vector2"></a>
@@ -547,6 +549,36 @@ while !ring.contours.isEmpty {        // inset until the region pinches out
 `join` decides the corners with the same vocabulary as [`strokeJoin(_:)`](../Drawing/Drawing.md#strokeJoin): `.miter` keeps them sharp (falling back to a flat bevel past the same spike limit the stroked path uses), `.bevel` always cuts them flat, `.round` arcs around them. Open contours sit out here too — `offset` moves a region's edge, not a stroked line.
 
 The `Examples/Patterns/Topography` sketch is the inset loop above, drawn live.
+
+<a name="shape-stroked"></a>
+
+**Stroke as shape.** Turn a stroked line into a closed region, so a thick stroke stops being a rendering effect and becomes geometry:
+
+```swift
+// On Contour and on Shape (all contours, merged):
+func stroked(width: Double, join: StrokeJoin = .round, cap: StrokeCap = .butt) -> Shape
+```
+
+The path is thickened by half the width on each side. An open contour takes `cap` ends with the same vocabulary as [`strokeCap(_:)`](../Drawing/Drawing.md#strokeCap) (`.butt`, `.round`, `.square`); a closed contour's stroke runs all the way around it and comes back as a band, an outer boundary plus a hole. A path that crosses itself merges into one clean region. The result feeds everything a `Shape` can do: fill it with a gradient, `offset` it, cut it with the booleans, hatch it for a plotter, export it as a true SVG region instead of a stroke attribute.
+
+```swift
+let ribbon = Contour(line, closed: false).stroked(width: 90, join: .round, cap: .round)
+drawShape(ribbon.subtracting(stencil))
+```
+
+The `Examples/Shapes/InkRibbon` sketch strokes a drifting brush line and insets contour bands inside it.
+
+<a name="convex-hull"></a>
+
+### Convex hull
+
+The smallest convex polygon containing a point set, like a rubber band snapped around it:
+
+```swift
+func convexHull(of points: [Vector2]) -> [Vector2]
+```
+
+Returns the hull's corners in order around the boundary (collinear points along an edge are dropped; fewer than three distinct points return what there is). The result is an ordinary point list: `drawPolygon` it, wrap it in a `Contour` to stroke or offset it, or use it as a coarse "footprint" for a scatter of marks. The `Examples/Shapes/RubberBand` sketch recomputes the hull of a drifting herd every frame.
 
 <a name="path"></a>
 

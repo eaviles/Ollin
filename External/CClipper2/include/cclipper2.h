@@ -31,6 +31,13 @@ typedef enum CC2JoinType {
     CC2JoinTypeRound = 2
 } CC2JoinType;
 
+typedef enum CC2EndType {
+    CC2EndTypeButt = 0,
+    CC2EndTypeSquare = 1,
+    CC2EndTypeRound = 2,
+    CC2EndTypeJoined = 3
+} CC2EndType;
+
 /// An opaque solution: the resulting set of closed paths. Outer boundaries
 /// and holes are oppositely wound (non-zero fill reads them correctly).
 typedef struct CC2Solution CC2Solution;
@@ -59,6 +66,20 @@ CC2Solution *_Nullable cc2_offset(const double *_Nullable xy,
                                   CC2FillRule fill,
                                   double delta,
                                   CC2JoinType join,
+                                  double miterLimit);
+
+/// Stroke paths into a filled region: each path is thickened by `halfWidth`
+/// on both sides. Open paths take `end` caps; pass CC2EndTypeJoined for a
+/// closed path so the stroke runs all the way around it (a band). Unlike
+/// cc2_offset the input is not normalized first (an open path must survive
+/// as a path), and self-overlaps in the thickened result are unioned clean.
+/// Returns NULL on failure.
+CC2Solution *_Nullable cc2_stroke(const double *_Nullable xy,
+                                  const int32_t *_Nullable counts,
+                                  int32_t pathCount,
+                                  double halfWidth,
+                                  CC2JoinType join,
+                                  CC2EndType end,
                                   double miterLimit);
 
 int32_t cc2_solution_path_count(const CC2Solution *_Nonnull solution);

@@ -608,6 +608,8 @@ let package = Package(
         example("Shapes/ShapeMenagerie"),
         example("Shapes/Primitives"),
         example("Shapes/Booleans"),
+        example("Shapes/InkRibbon"),
+        example("Shapes/RubberBand"),
         example("Patterns/Topography"),
         example("Patterns/Voronoi"),
         example("Patterns/BlueNoise"),

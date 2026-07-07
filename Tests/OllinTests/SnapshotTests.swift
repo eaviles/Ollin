@@ -285,6 +285,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("space-colonization", frame: 140,
                  note: "Space colonization grown to a fixed frame: veins from a bottom root toward a seeded blue-noise attractor set, stroked with pipe-model thickness. Pins the closest-node pull association, average-direction growth, attractor consumption, and the thickness pass (all deterministic given the input). Seeded, fixed frame.",
                  make: { SpaceColonizationScene() }),
+    SnapshotCase("stroke-shape",
+                 note: "Stroke-as-shape geometry: an open S-curve stroked round into a region with inset bands inside it, a closed square stroked into a band, and a convex-hull outline stroked thin. Pins cc2_stroke (open caps, the closed Joined band, self-overlap union), offset cascades over a stroke region, and convexHull. No time, deterministic.",
+                 make: { StrokeShapeScene() }),
     SnapshotCase("dla", frame: 110,
                  note: "A diffusion-limited aggregation cluster grown to a fixed frame from a center seed, tinted by arrival order. Pins the seeded walker (spawn/kill radii, far-jump stride, exact touch-distance landing) and the spatial-hash touch test. Seeded, fixed frame, so it's deterministic.",
                  make: { DLAScene() }),
@@ -1296,6 +1299,52 @@ private final class DLAScene: Sketch {
             fill(Color.mix(Color(hex: 0xF2EFE8), Color(hex: 0x5B8FB9), t: Double(i) / count))
             drawCircle(center: particle.position, radius: 2.2)
         }
+    }
+}
+
+/// Stroke-as-shape geometry: an open curve stroked into a region with inset
+/// bands, a closed square stroked into a band, and a convex hull stroked
+/// thin. Pure CPU geometry rendered through the fill path; deterministic.
+private final class StrokeShapeScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0xF2EDE3))
+
+        // An open S-curve stroked round, with two inset bands inside.
+        let wave = Contour((0 ... 24).map { i -> Vector2 in
+            let t = Double(i) / 24
+            return Vector2(24 + t * 208, 70 + sin(t * .pi * 2) * 26)
+        }, closed: false)
+        let ribbon = wave.stroked(width: 34, join: .round, cap: .round)
+        noStroke()
+        fill(Color(hex: 0x2E4057))
+        drawShape(ribbon)
+        noFill()
+        stroke(Color(hex: 0xF2EDE3))
+        strokeWeight(1.4)
+        for inset in [-6.0, -12.0] {
+            for contour in ribbon.offset(by: inset, join: .round).contours {
+                drawPolygon(contour.points)
+            }
+        }
+
+        // A closed square stroked into a band.
+        let square = Contour([Vector2(30, 150), Vector2(110, 150),
+                              Vector2(110, 226), Vector2(30, 226)], closed: true)
+        noStroke()
+        fill(Color(hex: 0xC8553D))
+        drawShape(square.stroked(width: 12, join: .miter))
+
+        // A convex hull around fixed points, stroked thin.
+        let scatter = [Vector2(150, 160), Vector2(232, 172), Vector2(214, 232),
+                       Vector2(166, 226), Vector2(140, 196), Vector2(188, 188),
+                       Vector2(200, 150)]
+        let hull = convexHull(of: scatter)
+        fill(Color(hex: 0xE3B448))
+        drawShape(Contour(hull, closed: true).stroked(width: 5, join: .round))
+        fill(Color(hex: 0x33312E))
+        drawCircles(scatter, radius: 3)
     }
 }
 

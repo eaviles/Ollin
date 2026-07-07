@@ -93,6 +93,43 @@ extension Shape {
     }
 }
 
+extension Contour {
+    /// The closed region a stroke of `width` would cover along this contour:
+    /// the path thickened by half the width on each side, with `join`
+    /// corners and, on an open contour, `cap` ends (a closed contour's
+    /// stroke runs all the way around it, a band with an outer boundary and
+    /// a hole). The stroke becomes a real `Shape`, so a thick line can be
+    /// filled with a gradient, offset, combined with the booleans, hatched,
+    /// or exported as a region.
+    public func stroked(width: Double, join: StrokeJoin = .round, cap: StrokeCap = .butt) -> Shape {
+        Shape(contours: [self], winding: .nonZero).stroked(width: width, join: join, cap: cap)
+    }
+}
+
+extension Shape {
+    /// The region covered by stroking every contour of this shape with
+    /// `width` (see `Contour.stroked(width:join:cap:)`): open contours take
+    /// `cap` ends, closed contours become bands around their outline, and
+    /// overlapping strokes merge into one region.
+    public func stroked(width: Double, join: StrokeJoin = .round, cap: StrokeCap = .butt) -> Shape {
+        guard width > 0 else { return Shape(contours: [], winding: .nonZero) }
+        let open = contours.filter { !$0.isClosed && $0.points.count >= 2 }
+        let closed = contours.filter { $0.isClosed && $0.points.count >= 2 }
+
+        var result: Shape?
+        for (group, end) in [(open, cap.clipperEnd), (closed, CC2EndTypeJoined)] where !group.isEmpty {
+            let flat = FlatPaths(raw: group)
+            let solution = flat.withUnsafePointers { xy, counts, pathCount in
+                cc2_stroke(xy, counts, pathCount, width / 2,
+                           join.clipperJoin, end, strokeMiterLimit)
+            }
+            let stroke = Shape(solution: solution)
+            result = result.map { $0.union(stroke) } ?? stroke
+        }
+        return result ?? Shape(contours: [], winding: .nonZero)
+    }
+}
+
 /// The corner-spike cap shared with the tessellated stroke path (see
 /// `Drawer.appendStrokedPath`), so a mitered offset and a mitered stroke
 /// bevel at the same sharpness.
@@ -106,6 +143,18 @@ private struct FlatPaths {
 
     init(_ shape: Shape) {
         for contour in shape.contours where contour.isClosed && contour.points.count >= 3 {
+            counts.append(Int32(contour.points.count))
+            for point in contour.points {
+                xy.append(point.x)
+                xy.append(point.y)
+            }
+        }
+    }
+
+    /// Every given contour as-is (open ones included), for the stroke path
+    /// where an open contour is the whole point.
+    init(raw contours: [Contour]) {
+        for contour in contours where contour.points.count >= 2 {
             counts.append(Int32(contour.points.count))
             for point in contour.points {
                 xy.append(point.x)
@@ -137,6 +186,16 @@ private extension StrokeJoin {
         case .miter: CC2JoinTypeMiter
         case .bevel: CC2JoinTypeBevel
         case .round: CC2JoinTypeRound
+        }
+    }
+}
+
+private extension StrokeCap {
+    var clipperEnd: CC2EndType {
+        switch self {
+        case .butt: CC2EndTypeButt
+        case .square: CC2EndTypeSquare
+        case .round: CC2EndTypeRound
         }
     }
 }

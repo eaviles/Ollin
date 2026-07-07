@@ -309,7 +309,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Normalized u,v coordinates | Ch 1 |
 | PDF export | Ch 22 |
 | Palette file import | Ch 2 |
-| Stroke as shape | Ch 13 |
 | Single-file sketches | Ch 1 (would simplify the setup story; revisit Ch 1 when it ships) |
 | Retained geometry buffers | internal; Appendix D note at most |
 | More SDF shapes | Ch 18 / Appendix D |

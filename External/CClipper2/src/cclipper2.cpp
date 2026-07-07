@@ -115,6 +115,35 @@ CC2Solution *cc2_offset(const double *xy, const int32_t *counts, int32_t pathCou
     }
 }
 
+CC2Solution *cc2_stroke(const double *xy, const int32_t *counts, int32_t pathCount,
+                        double halfWidth, CC2JoinType join, CC2EndType end, double miterLimit)
+{
+    try {
+        const PathsD paths = makePaths(xy, counts, pathCount);
+        JoinType joinType;
+        switch (join) {
+        case CC2JoinTypeBevel: joinType = JoinType::Bevel; break;
+        case CC2JoinTypeRound: joinType = JoinType::Round; break;
+        default: joinType = JoinType::Miter; break;
+        }
+        EndType endType;
+        switch (end) {
+        case CC2EndTypeSquare: endType = EndType::Square; break;
+        case CC2EndTypeRound: endType = EndType::Round; break;
+        case CC2EndTypeJoined: endType = EndType::Joined; break;
+        default: endType = EndType::Butt; break;
+        }
+        const PathsD inflated = InflatePaths(paths, halfWidth, joinType, endType,
+                                             miterLimit, kPrecision, kArcTolerance);
+        // A path that crosses itself thickens into an overlapping region;
+        // union it under non-zero so the result is one clean boundary set.
+        const PathsD unioned = Union(inflated, FillRule::NonZero, kPrecision);
+        return solutionFrom(SimplifyPaths(unioned, kSimplifyTolerance, true));
+    } catch (...) {
+        return nullptr;
+    }
+}
+
 int32_t cc2_solution_path_count(const CC2Solution *solution)
 {
     return static_cast<int32_t>(solution->paths.size());
