@@ -48,6 +48,10 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - A function from position to color: the same question at every pixel, answers fusing into an image (Ch 15) - reuse Images/15-YourFirstShader/PixelGrid.jpg
 - Level sets: a shape as "all the points within distance r"; the edge is where the distance crosses the level (Ch 15) - reuse Images/15-YourFirstShader/EdgeStep.jpg
 - Normalized coordinates: uv in 0...1 regardless of pixel size; centering with uv - 0.5 (Ch 15) - reuse Images/15-YourFirstShader/UVSpace.jpg
+- Local rules, global structure: every cell asks only its neighbors, and pattern emerges anyway (Ch 16) - reuse Images/16-Simulations/LifeRules.jpg
+- A parameter space as a map: two knobs span a plane, and behavior lives in regions of it (Ch 16) - reuse Images/16-Simulations/FeedKillMap.jpg
+- Escape time: how many iterations until a value flies off; the count becomes the color (Ch 16)
+- Density as tone: many faint identical marks read as a material; the count is the brush (Ch 16) - reuse Images/16-Simulations/MillionGrains.jpg
 - The random walk: accumulate nudges instead of re-rolling, and a path appears (Ch 4) - reuse Images/04-Randomness/WalkVsJumps.jpg
 - Coherence: noise is a lookup into a fixed smooth landscape, so nearby inputs give nearby outputs (Ch 5) - reuse Images/05-Noise/RandomVsNoise.jpg
 - The input multiplier as a zoom knob: how far apart the questions land (Ch 5) - reuse Images/05-Noise/NoiseZoom.jpg
