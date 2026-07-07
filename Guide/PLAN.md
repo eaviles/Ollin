@@ -24,7 +24,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 14. Layers and effects | `14-LayersAndEffects.md` | done |
 | 15. Your first shader | `15-YourFirstShader.md` | done |
 | 16. Simulations | `16-Simulations.md` | done |
-| 17. 3D, gently | `17-3DGently.md` | not started |
+| 17. 3D, gently | `17-3DGently.md` | done |
 | 18. Sculpting with fields | `18-SculptingWithFields.md` | not started |
 | 19. Depth and the iPhone as a sensor | `19-DepthAndThePhone.md` | not started |
 | 20. Sound and control | `20-SoundAndControl.md` | not started |
@@ -283,7 +283,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | PBR materials + IBL environments + procedural sky (`3D/3D.md`) | Ch 18 | shown |
 | Shadows: 2D map, PCSS, ray-traced point (`3D/3D.md`) | Ch 17 | shown |
 | Ray-traced reflections (`3D/3D.md`) | Ch 18 | pointed |
-| Wireframe, textured meshes, mesh loading (`3D/3D.md`) | Ch 17 | shown |
+| Wireframe, textured meshes, mesh loading (`3D/3D.md`) | Ch 17 | shown (wireframe in the payoff, loading taught; textured pointed) |
 | Point clouds (`3D/3D.md`) | Ch 19 | taught |
 | `Drawing/Combinators.md` (SDF 2D + SDF3D raymarching) | Ch 18 | taught |
 | `3D/DepthCompositing.md` | Ch 19 | shown |
@@ -315,6 +315,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Single-file sketches | Ch 1 (would simplify the setup story; revisit Ch 1 when it ships) |
 | Retained geometry buffers | internal; Appendix D note at most |
 | More SDF shapes | Ch 18 / Appendix D |
+| SDF sculpting (richer combinators) | Ch 18 |
 | More model examples (ModelTracker) | Ch 21 |
 | SVG import | Ch 13 |
 | Clipping as drawing state | Ch 6 or 14 |
@@ -322,7 +323,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Reproducibility metadata in exports | Ch 4 + Ch 22 |
 | Kaleidoscope symmetry | Ch 6 |
 | Shape morphing | Ch 3 or 13 |
-| SDF sculpting (richer combinators) | Ch 18 |
 | Generative-geometry refinements | Ch 11 |
 | Technique catalog: fractals | Ch 11 (may grow into its own chapter) |
 | Technique catalog: GPU-scale agents, ALife, Lenia | Ch 16 |

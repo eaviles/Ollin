@@ -66,7 +66,7 @@ The guide is being written chapter by chapter; titles below without links are st
 
 ### Part IV: The third dimension
 
-17. **3D, gently.** A camera, solid shapes, lights and materials, and moving through a scene.
+17. **[3D, gently](17-3DGently.md).** A camera, solid shapes, lights and materials, and moving through a scene.
 18. **Sculpting with fields.** Distance fields that merge and blend, in 2D and raymarched 3D.
 19. **Depth and the iPhone as a sensor.** Point clouds, recorded and live RGBD, and scanning the room you're in.
 

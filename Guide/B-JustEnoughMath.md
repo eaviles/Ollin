@@ -53,6 +53,11 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - Escape time: how many iterations until a value flies off; the count becomes the color (Ch 16)
 - Density as tone: many faint identical marks read as a material; the count is the brush (Ch 16) - reuse Images/16-Simulations/MillionGrains.jpg
 - The random walk: accumulate nudges instead of re-rolling, and a path appears (Ch 4) - reuse Images/04-Randomness/WalkVsJumps.jpg
+- The 3D world frame: x right, y up, z toward you; world units, not pixels; the canvas's y-down is the odd one out (Ch 17)
+- Spherical placement: azimuth, elevation, radius as the three numbers that put an eye on a sphere around a target (Ch 17) - reuse Images/17-3DGently/Orbit.jpg
+- Perspective: apparent size falls with distance; field of view as the lens angle, tele vs wide (Ch 17) - reuse Images/17-3DGently/DepthRow.jpg
+- The depth test: per pixel, the nearest surface wins; drawing order stops mattering (Ch 17)
+- Compounding transforms: a repeated move-and-turn is a helix; scoping decides what accumulates (Ch 17) - reuse Images/17-3DGently/Stairs.jpg
 - Coherence: noise is a lookup into a fixed smooth landscape, so nearby inputs give nearby outputs (Ch 5) - reuse Images/05-Noise/RandomVsNoise.jpg
 - The input multiplier as a zoom knob: how far apart the questions land (Ch 5) - reuse Images/05-Noise/NoiseZoom.jpg
 - A field: an answer at every point of a plane; a third input as drifting time (Ch 5) - reuse Images/05-Noise/NoiseTerrain.jpg

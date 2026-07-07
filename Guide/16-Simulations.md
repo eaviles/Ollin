@@ -204,4 +204,4 @@ The Game of Life is John Horton Conway's, from 1970, and reached the world throu
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 15, Your first shader](15-YourFirstShader.md) · Next: Chapter 17, 3D, gently
+[Contents](README.md#contents) · Previous: [Chapter 15, Your first shader](15-YourFirstShader.md) · Next: [Chapter 17, 3D, gently](17-3DGently.md)
