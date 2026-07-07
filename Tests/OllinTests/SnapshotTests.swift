@@ -279,6 +279,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("flocking", frame: 120,
                  note: "A seeded flock of boids stepped to a fixed frame, drawn as heading-colored triangles. Pins Reynolds' separation/alignment/cohesion steering and the spatial-hash neighbor search (the force sums are order-stable, so a seeded flock reproduces). Seeded, fixed frame, so it's deterministic.",
                  make: { FlockingScene() }),
+    SnapshotCase("steering", frame: 150,
+                 note: "Steering vehicles stepped to a fixed frame: followers on a closed path (with separation), a seeded wanderer's trail, and a pursuer leading its target. Pins Reynolds' individual steering behaviors (seek/arrive ramp, wander determinism, path projection + seam wrap, pursuit prediction). Seeded, fixed frame, so it's deterministic.",
+                 make: { SteeringScene() }),
     SnapshotCase("depth-compositing-2d",
                  note: "A 2D card standing at a world depth between two point-cloud balls. Pins depth-aware compositing: the near ball draws over the card, the far ball is hidden by it. If 2D ignored depth (always over), the card would cover both, so this fails if the depth-participation path breaks. No time.",
                  make: { DepthComposited2D() }),
@@ -1176,6 +1179,64 @@ private final class FlockingScene: Sketch {
                          Vector2(p.x + cos(a + 2.5) * size * 0.7, p.y + sin(a + 2.5) * size * 0.7),
                          Vector2(p.x + cos(a - 2.5) * size * 0.7, p.y + sin(a - 2.5) * size * 0.7))
         }
+    }
+}
+
+/// Steering vehicles stepped to a fixed frame: followers riding a closed
+/// wavy loop with separation, one seeded wanderer leaving a trail, and a
+/// pursuer chasing the lead follower. Pins the individual steering behaviors.
+/// Seeded and stepped to a fixed frame, no time, so it's deterministic.
+private final class SteeringScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    // A fixed wavy loop (no noise, so the snapshot pins steering alone).
+    private let path: [Vector2] = (0 ..< 96).map { i in
+        let t = Double(i) / 96 * 2 * .pi
+        let radius = 90 + 16 * sin(t * 3)
+        return Vector2(128 + cos(t) * radius, 128 + sin(t) * radius)
+    }
+    private var followers: [Vehicle] = []
+    private var wanderer = Vehicle(at: Vector2(128, 128), velocity: Vector2(1, 0),
+                                   maxSpeed: 1.4, maxForce: 0.06, seed: 5)
+    private var pursuer = Vehicle(at: Vector2(128, 90), maxSpeed: 1.5, maxForce: 0.05, seed: 9)
+    private var trail: [Vector2] = []
+
+    override func setup() {
+        followers = (0 ..< 4).map { i in
+            Vehicle(at: path[i * 24], velocity: Vector2(angle: Double(i), length: 1),
+                    maxSpeed: 1.6, maxForce: 0.08, seed: UInt64(i))
+        }
+    }
+
+    override func draw() {
+        background(Color(hex: 0x0E1016))
+        noFill(); stroke(Color(hex: 0x2A3040)); strokeWeight(8)
+        drawPolygon(path)
+
+        for creature in followers {
+            creature.applyForce(creature.follow(path: path, radius: 5, lookAhead: 18, closed: true))
+            creature.applyForce(creature.separate(from: followers, radius: 12))
+            creature.step()
+        }
+        wanderer.applyForce(wanderer.wander(radius: 8, distance: 24))
+        wanderer.applyForce(wanderer.contain(in: Rectangle(x: 64, y: 64, width: 128, height: 128), margin: 12) * 1.5)
+        wanderer.step()
+        trail.append(wanderer.position)
+        if trail.count > 60 { trail.removeFirst() }
+        pursuer.applyForce(pursuer.pursue(followers[0]))
+        pursuer.step()
+
+        if trail.count > 1 {
+            stroke(Color(hex: 0x58B8D8).withAlpha(0.5)); strokeWeight(1.5)
+            drawPolyline(trail)
+        }
+        noStroke()
+        fill(Color(hex: 0xE8B44A))
+        for creature in followers { drawVehicle(creature, size: 5) }
+        fill(Color(hex: 0x58B8D8))
+        drawVehicle(wanderer, size: 5)
+        fill(Color(hex: 0xE8586B))
+        drawVehicle(pursuer, size: 6)
     }
 }
 

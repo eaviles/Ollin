@@ -568,6 +568,7 @@ let package = Package(
         example("Motion/Petals"),
         example("Live/Parameters"),
         example("Motion/Trail"),
+        example("Motion/Steering"),
         example("Color/ColorWaves"),
         example("Color/HSBWheel"),
         example("Color/Mixing"),

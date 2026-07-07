@@ -116,11 +116,11 @@ Draws from: `Docs/Simulation/Physics.md`; `Examples/Physics/`.
 
 **10. Flocks and swarms.**
 (Retitled from "Agents", 2026-07-06: the field's classic word for these rule-following creatures now reads as AI assistants, and this guide will outlive the collision. The chapter still teaches the term: open with a one-sentence disambiguation, crediting Craig Reynolds' 1986 *autonomous agents*, coined decades before "agent" meant software wielding a chatbot, then speak in flock/boid/creature language. Never use "agent" bare in headings or the TOC.)
-Teaches: local rules → global behavior; the three boid rules, each visualized alone before combining; perception radius; `Boids`; differential growth as "a line that wants space"; stateful systems you step (holding a class across frames).
+Teaches: one creature that steers (the steering move: desired velocity minus velocity, capped; seek, arrive, wander, pursue via `Vehicle`); local rules → global behavior; the three boid rules, each visualized alone before combining; perception radius; `Boids`; differential growth as "a line that wants space"; stateful systems you step (holding a class across frames).
 Assumes: Ch 8 (Ch 9 helps).
 Payoff: a living flock piece, colored by heading.
-Figures: one diagram per boid rule; rule-combination sequence; a growth time-lapse strip; the payoff.
-Draws from: `Docs/Generators/Boids.md`, `Docs/Generators/DifferentialGrowth.md`; `Examples/Patterns/Flocking`, `Examples/Patterns/DifferentialGrowth`.
+Figures: steering-move diagram; wander/arrive diagrams; one diagram per boid rule; rule-combination sequence; a growth time-lapse strip; the payoff.
+Draws from: `Docs/Generators/Steering.md`, `Docs/Generators/Boids.md`, `Docs/Generators/DifferentialGrowth.md`; `Examples/Motion/Steering`, `Examples/Patterns/Flocking`, `Examples/Patterns/DifferentialGrowth`.
 
 **11. Growing things.**
 Teaches: rewriting rules (L-systems) and the turtle, grown iteration by iteration; branching with the stack; stochastic rules; recursion by drawing (a fractal tree written by hand first); Wave Function Collapse as "every neighbor must agree", watched as it solves.
@@ -247,6 +247,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Drawing/Geometry.md`: `Vector2`/`Vector3`, `Rectangle`, `Circle` | Ch 8, Ch 17 | taught (Vector2 arrows, +/−/scale, length/normalized/limited/distance/angle, with(x:y:) taught in Ch 8; dot/cross/lerp/rotated/projected pointed; Vector3 waits for Ch 17) |
 | `Simulation/Physics.md` (Verlet + rigid World) | Ch 9 | taught (forces by hand + accumulate/divide-by-mass; World/step, particle collisions, bounds/bounce/drag, springs/rest length/stiffness, pin/place, Body/colliders/friction/density/restitution, .static, the revolute joint, grab; push/strain/soft blobs/other joints named + pointed) |
 | `Generators/Boids.md` | Ch 10 | taught |
+| `Generators/Steering.md` | Ch 10 | taught |
 | `Generators/DifferentialGrowth.md` | Ch 10 | taught |
 | `Generators/LSystem.md` | Ch 11 | taught |
 | `Generators/WaveFunctionCollapse.md` | Ch 11 | taught |
@@ -321,7 +322,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | SDF sculpting (richer combinators) | Ch 18 |
 | Generative-geometry refinements | Ch 11 |
 | Technique catalog: fractals | Ch 11 (may grow into its own chapter) |
-| Technique catalog: agents/steering, ALife, Lenia | Ch 10, Ch 16 |
+| Technique catalog: GPU-scale agents, ALife, Lenia | Ch 16 |
 | Technique catalog: growth/morphogenesis | Ch 10/11 |
 | Technique catalog: waves, terrain | Ch 16/17 |
 | Technique catalog: IK, pendulums, n-body | Ch 9 |
