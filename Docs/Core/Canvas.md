@@ -72,7 +72,7 @@ strokeWeight(2 * scale)
 | `.uhd4K` | 3840 × 2160 | 16:9 | 4K / UHD, the usual "4K video" deliverable |
 | `.dci4K` | 4096 × 2160 | ~17:9 | cinema 4K (DCI), for film delivery |
 | `.vertical1080` | 1080 × 1920 | 9:16 | full-screen vertical: stories, reels, TikTok, Shorts |
-| `.portrait1080` | 1080 × 1350 | 4:5 | the portrait feed crop (e.g. Instagram) |
+| `.portrait1080` | 1080 × 1350 | 4:5 | the portrait feed crop (for example Instagram) |
 
 Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine; `--export-sequence <dir> --frames N` renders a deterministic numbered PNG sequence (fixed timestep, so it's reproducible and assembles into a smooth video — see [Sketch ▸ Running a sketch](../Core/Sketch.md#running-a-sketch)).
 

@@ -72,7 +72,7 @@ It's sugar over `project` + `translate` + `depth(at:)`, scoped by `withState` �
 <a id="scene"></a>
 ### A depth-map scene
 
-The other scene to composite against isn't 3D geometry you drew — it's a **depth feed**: a colour image paired with a depth map (a webcam depth model, an `RGBDFrame` from a depth camera). `drawDepthScene(color:depth:)` draws the colour as the backdrop *and* writes the depth map into the depth buffer, so 2D drawn afterward is occluded by the scene — a mark behind a nearer subject is hidden by it.
+The other scene to composite against isn't 3D geometry you drew — it's a **depth feed**: a color image paired with a depth map (a webcam depth model, an `RGBDFrame` from a depth camera). `drawDepthScene(color:depth:)` draws the color as the backdrop *and* writes the depth map into the depth buffer, so 2D drawn afterward is occluded by the scene — a mark behind a nearer subject is hidden by it.
 
 ```swift
 // `depth` is a gray map — white is nearest by default.
@@ -85,7 +85,7 @@ drawCircle(width / 2, height / 2, 40)   // hidden where the scene is nearer than
 
 This needs no 3D camera — the depth scene allocates the depth buffer on its own. Where a 3D-camera scene uses `depth(at: worldPoint)`, a depth-map scene uses **`depth(_ t:)`** with a normalized `t` (`0` nearest … `1` farthest), since the map's depth is a relative range, not metric world units. `drawDepthScene` fills the whole canvas by default; pass `in: rect` to letterbox a feed into a fitted rectangle, and `whiteIsNear: false` if the map encodes far as white.
 
-The colour image and the depth map usually come from the same source, so they line up: a depth model run over a camera frame, or an `RGBDFrame`'s `color` and a gray image of its `depth`. The [`3D/DepthOcclusion`](../../Examples/3D/Depth/DepthOcclusion/) example hangs a field of discs at a draggable depth plane in front of a live webcam, occluded by whoever stands nearer than the plane.
+The color image and the depth map usually come from the same source, so they line up: a depth model run over a camera frame, or an `RGBDFrame`'s `color` and a gray image of its `depth`. The [`3D/DepthOcclusion`](../../Examples/3D/Depth/DepthOcclusion/) example hangs a field of discs at a draggable depth plane in front of a live webcam, occluded by whoever stands nearer than the plane.
 
 <a id="metric"></a>
 ### A metric depth scene
@@ -99,7 +99,7 @@ guard let frame = device.latestFrame else { return }       // an RGBDFrame (mete
 // placed object now live in one space measured in meters.
 camera(.fromIntrinsics(frame.intrinsics))
 
-// The colour picture as the backdrop AND the frame's metric depth written into
+// The color picture as the backdrop AND the frame's metric depth written into
 // the depth buffer (this overload takes the RGBDFrame, not a gray Image).
 drawDepthScene(frame)
 

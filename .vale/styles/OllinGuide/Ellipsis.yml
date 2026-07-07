@@ -1,0 +1,6 @@
+extends: existence
+message: "Use the one-character ellipsis (…) in prose; a Swift range spelled in prose goes in backticks as code."
+level: error
+nonword: true
+tokens:
+  - '\.\.\.'

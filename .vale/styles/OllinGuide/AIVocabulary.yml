@@ -1,0 +1,23 @@
+# The machine-writing tell words (from the humanizer's Wikipedia-derived
+# list), trimmed to the ones with no legitimate Guide use.
+extends: existence
+message: "'%s' is a tell of machine writing: use a plainer word."
+level: warning
+ignorecase: true
+tokens:
+  - 'delv(e|es|ed|ing)'
+  - 'tapestry'
+  - 'testament'
+  - 'pivotal'
+  - 'crucial(ly)?'
+  # not listed: "showcase" (the cameraShowcase API's own term) and
+  # "underscore" (nearly always the literal `_` character here)
+  - 'foster(s|ed|ing)?'
+  - 'leverag(e|es|ed|ing)'
+  - 'boasts?'
+  - 'vibrant'
+  - 'additionally'
+  - 'moreover'
+  - 'furthermore'
+  - 'it is (important|worth) to note'
+  - "it's (important|worth) noting"

@@ -47,7 +47,7 @@ randomGaussian() -> Double
 randomGaussian(mean: Double, deviation: Double) -> Double
 ```
 
-A normally-distributed random `Double` (Marsaglia polar method): standard normal, or with the given mean and standard deviation. Reads as more natural scatter than the flat spread of `random`. See the `Gaussian` example.
+A normally distributed random `Double` (Marsaglia polar method): standard normal, or with the given mean and standard deviation. Reads as more natural scatter than the flat spread of `random`. See the `Gaussian` example.
 
 ```
   Bell-curve scatter: samples cluster near the mean, thin out farther away.
@@ -87,11 +87,11 @@ drawCircle(center: p, radius: 3)
 ring(innerRadius: Double, outerRadius: Double) -> Vector2
 ```
 
-A random point in the annulus between the two radii, centered on the origin. Add a center to place it. See the `Ring` example.
+A random point in the ring between the two radii, centered on the origin. Add a center to place it. See the `Ring` example.
 
 ```
   ring(innerRadius: r, outerRadius: R) — a uniform random point whose
-  distance from the origin O lands between r and R (a ring / annulus).
+  distance from the origin O lands between r and R (a ring).
 
   By distance from O (a ray pointing outward):
 

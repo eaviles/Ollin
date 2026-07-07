@@ -217,7 +217,7 @@ Override on your subclass to customize the window and size.
 title: String
 ```
 
-Window title. Defaults to `"Ollin - <SketchType>"` (e.g. "Ollin - HelloCircle").
+Window title. Defaults to `"Ollin - <SketchType>"` (for example "Ollin - HelloCircle").
 
 ```swift
 override var title: String { "Flow field" }

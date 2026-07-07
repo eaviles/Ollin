@@ -1,0 +1,6 @@
+extends: existence
+message: "En dash found: spell ranges with 'to' or '...', and asides with commas or parentheses."
+level: warning
+nonword: true
+tokens:
+  - '–'

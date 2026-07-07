@@ -71,7 +71,7 @@ Run that and you've built the bottom half of the diagram, live. And you've seen 
 
 ## map and lerp: moving between ranges
 
-`sin` hands you -1...1, but you rarely want -1...1. You want 40...220 pixels of radius, or 0...1 for a color ramp. Chapter 2 patched this with the squeeze, `sin(...) * 0.5 + 0.5`. The grown-up tool is `map`, which carries a value from one range to another by keeping its *fraction along*:
+`sin` hands you `-1...1`, but you rarely want `-1...1`. You want `40...220` pixels of radius, or `0...1` for a color ramp. Chapter 2 patched this with the squeeze, `sin(...) * 0.5 + 0.5`. The grown-up tool is `map`, which carries a value from one range to another by keeping its *fraction along*:
 
 <img src="Images/03-MotionAndTime/MapAndLerp.jpg" alt="Top: a value carried between two number lines by its fraction along, map. Bottom: dots walking a segment from a to b as t runs 0 to 1, lerp" width="680">
 
@@ -80,9 +80,9 @@ let radius = map(sin(time * .tau / 4), -1, 1, 40, 220)
 drawCircle(width / 2, height / 2, radius)
 ```
 
-Read it as a sentence: "take this value, which lives in -1...1, and restate it in 40...220." A breathing circle, and every number in sight says what it means. (By default `map` extrapolates past the ends; add `clamp: true` to pin the result inside the target range.)
+Read it as a sentence: "take this value, which lives in `-1...1`, and restate it in `40...220`." A breathing circle, and every number in sight says what it means. (By default `map` extrapolates past the ends; add `clamp: true` to pin the result inside the target range.)
 
-Its little sibling `lerp(a, b, t)` skips the first range: `t` is already a 0...1 "how far along", the same `t` you fed to `Color.mix` and ramps in Chapter 2, and `lerp` returns the point that far from `a` to `b`. `lerp(140, 940, 0.5)` is halfway, 540.
+Its little sibling `lerp(a, b, t)` skips the first range: `t` is already a `0...1` "how far along", the same `t` you fed to `Color.mix` and ramps in Chapter 2, and `lerp` returns the point that far from `a` to `b`. `lerp(140, 940, 0.5)` is halfway, 540.
 
 Which raises a question: where does a moving `t` come from? From the clock, by wrapping it. Divide `time` by how long one lap should take, and keep only the fraction of the current lap you're through. That move is so common it has a name; every sketch can just ask:
 
@@ -103,7 +103,7 @@ let x = lerp(140, width - 140, back)
 
 ## Shaping time
 
-Now the heart of the chapter. Everything so far moves at a constant rate, and constant-rate motion has no character: real things lean into a start and brake into an arrival. The fix is a small family of functions with one job: **take a plain 0...1 progress in, hand a reshaped 0...1 progress out**. Feed the reshaped progress to `lerp` and the same trip happens with a different personality.
+Now the heart of the chapter. Everything so far moves at a constant rate, and constant-rate motion has no character: real things lean into a start and brake into an arrival. The fix is a small family of functions with one job: **take a plain `0...1` progress in, hand a reshaped `0...1` progress out**. Feed the reshaped progress to `lerp` and the same trip happens with a different personality.
 
 Because they're functions, you can draw them, and drawn is the only way they make sense. Every plot below reads the same way: the input progress runs along the bottom, the reshaped output is the height, and the thin diagonal is "unchanged" for reference. Under each plot is the same experiment: thirteen evenly spaced *moments*, placed where the curve sends them. Where dots bunch up, motion is slow; where they spread, it's fast.
 
@@ -131,7 +131,7 @@ Once you can read curve-and-strip, you can read any easing function at a glance,
 
 <img src="Images/03-MotionAndTime/EasingFamilies.jpg" alt="Six easing curves with spacing strips: easeInQuad, easeOutQuad, easeInOutCubic, then easeOutBack, easeOutElastic, and easeOutBounce which overshoot and settle" width="680">
 
-The top row stays inside 0...1: quadratics and cubics that differ in how hard they lean. The bottom row overshoots on purpose. `easeOutBack` overshoots the target and comes back, like reaching past a shelf. `easeOutElastic` arrives like a plucked rubber band. `easeOutBounce` drops the value onto its target in shrinking hops. Watch four of them run the same trip:
+The top row stays inside `0...1`: quadratics and cubics that differ in how hard they lean. The bottom row overshoots on purpose. `easeOutBack` overshoots the target and comes back, like reaching past a shelf. `easeOutElastic` arrives like a plucked rubber band. `easeOutBounce` drops the value onto its target in shrinking hops. Watch four of them run the same trip:
 
 <img src="Images/03-MotionAndTime/CurvesRace.gif" alt="Four dots running the same out-and-back trip on linear, easeInQuad, easeOutQuad, and smoothstep curves, their spacing differing in flight" width="600">
 
@@ -250,9 +250,9 @@ final class RingPulse: Sketch {
 
 Run it with `swift run OllinLive MySketches/RingPulse.swift` and take the interesting lines apart:
 
-- `beat` is the loop's heartbeat: `loopProgress` laps 0...1 once every `loopTime` seconds, so times `.tau` it turns exactly one full circle per lap. The only other time term in the sketch is `beat * 2`, a whole multiple, so frame 0 and frame `loopTime` are identical. That's the loop rule, enforced by construction.
+- `beat` is the loop's heartbeat: `loopProgress` laps `0...1` once every `loopTime` seconds, so times `.tau` it turns exactly one full circle per lap. The only other time term in the sketch is `beat * 2`, a whole multiple, so frame 0 and frame `loopTime` are identical. That's the loop rule, enforced by construction.
 - `wave` is the phase trick from earlier, bent into a circle: each dot's head start is its angle times the wave count, so the crests *travel* around the ring. The count has to stay whole or the wave won't meet itself where the ring closes, so `waves` starts at `3` (not `3.0`): a whole-number property makes a whole-number knob, stepping 1, 2, 3 instead of sliding through fractions. `Double(waves)` converts it for the math, the same move as Chapter 1's `Double(i)`.
-- `lit` is the window cutter from the shaping section, used as a **soft spotlight**. The wave lives in -1...1, and smoothstep's edges carve out its crest, everything below the threshold 0, the peak 1, soft shoulders between, so dots swell and fade instead of switching. Widen `Pulse width` and the lower edge drops; the window opens and the whole ring breathes.
+- `lit` is the window cutter from the shaping section, used as a **soft spotlight**. The wave lives in `-1...1`, and smoothstep's edges carve out its crest, everything below the threshold 0, the peak 1, soft shoulders between, so dots swell and fade instead of switching. Widen `Pulse width` and the lower edge drops; the window opens and the whole ring breathes.
 - Everything `lit` touches is a `lerp` in spirit: the color leans toward warm white by `lit * 0.4` (Chapter 2's `Color.mix`), the dot lifts outward by `lit * 18`, and swells from 6 up to 26. One shaped value, three payoffs.
 - `direction` flips alternate rings, which is most of why the piece feels alive rather than mechanical.
 

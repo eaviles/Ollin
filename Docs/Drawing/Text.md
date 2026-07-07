@@ -270,7 +270,7 @@ let serif = StrokeFont(resource: "rowmans.jhf", in: .module) ?? .builtin
 textFont(serif)
 ```
 
-`StrokeFont(resource:in:)` loads one bundled beside your sketch (pass `.module` for a `swift run` sketch's resources); `StrokeFont(jhfContentsOf:)` takes any file URL, and `StrokeFont(jhf:)` parses `.jhf` text you already have. The Hershey faces live in many public-domain mirrors (e.g. [kamalmostafa/hershey-fonts](https://github.com/kamalmostafa/hershey-fonts)); for the wider world of single-line type, [Golan Levin's single-line-font resources](https://github.com/golanlevin/p5-single-line-font-resources) is a good map (mind the per-font licenses there). Ollin ships only the parser and the one Hershey default.
+`StrokeFont(resource:in:)` loads one bundled beside your sketch (pass `.module` for a `swift run` sketch's resources); `StrokeFont(jhfContentsOf:)` takes any file URL, and `StrokeFont(jhf:)` parses `.jhf` text you already have. The Hershey faces live in many public-domain mirrors (for example [kamalmostafa/hershey-fonts](https://github.com/kamalmostafa/hershey-fonts)); for the wider world of single-line type, [Golan Levin's single-line-font resources](https://github.com/golanlevin/p5-single-line-font-resources) is a good map (mind the per-font licenses there). Ollin ships only the parser and the one Hershey default.
 
 <a name="perglyph"></a>
 
@@ -379,7 +379,7 @@ for shape in textToShapes("ollin", width / 2, height / 2) {
 ```
 
 > [!WARNING]
-> Displacing outline points by a *large or uneven* amount can fold a contour over itself, which the fill renders as a spike. Keep warps **bounded and smooth** (e.g. `signedNoise`, which stays in `-1...1`) rather than raw `curlNoise`, whose magnitude is unbounded — see the `OutlineText` example.
+> Displacing outline points by a *large or uneven* amount can fold a contour over itself, which the fill renders as a spike. Keep warps **bounded and smooth** (for example `signedNoise`, which stays in `-1...1`) rather than raw `curlNoise`, whose magnitude is unbounded — see the `OutlineText` example.
 
 <a name="metrics"></a>
 

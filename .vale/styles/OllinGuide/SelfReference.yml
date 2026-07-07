@@ -1,0 +1,10 @@
+# Case-sensitive on purpose: "the Book of Shaders" and other real titles
+# capitalize Book, so lowercase "the book" is always a self-reference.
+extends: existence
+message: "The Guide calls itself 'the guide', never 'the book' (Guide/AUTHORING.md)."
+level: error
+tokens:
+  - 'this book'
+  - 'the book'
+  - 'the whole book'
+  - 'the rest of the book'

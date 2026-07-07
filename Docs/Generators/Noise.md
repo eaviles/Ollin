@@ -105,7 +105,7 @@ curlNoise(_ x: Double, _ y: Double) -> Vector2
 curlNoise(_ p: Vector2) -> Vector2
 ```
 
-A divergence-free 2D flow vector (the curl of the Perlin field), the usual basis for flow fields. Take `.normalized` for just the direction; sample on scaled-down coordinates (e.g. `x * 0.003`) for broad swirls. See the `FlowField` example.
+A divergence-free 2D flow vector (the curl of the Perlin field), the usual basis for flow fields. Take `.normalized` for just the direction; sample on scaled-down coordinates (for example `x * 0.003`) for broad swirls. See the `FlowField` example.
 
 ```swift
 var p = Vector2(width / 2, height / 2)
@@ -124,7 +124,7 @@ The multiplier on noise's input is a zoom knob: it decides how far apart your sa
 
 - When feeding **pixel coordinates**, multiply by something small, usually `0.001...0.02`. A 1080-pixel canvas times `0.006` spans about six of the field's features: big enough to read as shapes, small enough to stay interesting.
 - If the output **looks like static**, the multiplier is too big: successive samples are landing on unrelated parts of the field. Shrink it until the result glides.
-- When feeding **time**, the same rule holds: `noise(time * 0.2)` ambles, `noise(time * 3)` twitches.
+- When feeding **time**, the same rule holds: `noise(time * 0.2)` drifts, `noise(time * 3)` twitches.
 - For **several independent glides from one field**, don't reach for several noises: sample far-apart rows. Both drifts below stroll at the same speed through unrelated terrain:
 
 ```swift

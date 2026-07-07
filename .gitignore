@@ -24,3 +24,8 @@ DerivedData/
 
 # Local agent tooling state (session worktrees, local settings)
 .claude/
+
+# Vale style packages fetched by `vale sync` (Scripts/prose-lint.sh); only the
+# OllinGuide style is ours and committed
+.vale/styles/*
+!.vale/styles/OllinGuide

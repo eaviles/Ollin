@@ -48,7 +48,7 @@ The sequence is the raw-material path: it keeps every frame as a lossless PNG fo
 
 A few features trade visual fidelity for frame rate through the shared `RenderQuality` dial: soft shadows, depth of field, ambient occlusion, and the raymarched-3D-SDF render resolution (`drawSDF3D`). The tiers are `.performance`, `.default`, and `.detail`. **Export and the live window pick a different default**, because they have different constraints:
 
-- **Live window** defaults to `.default`, the frame-rate-safe tier (e.g. the raymarcher runs at half resolution so a busy field stays smooth).
+- **Live window** defaults to `.default`, the frame-rate-safe tier (for example the raymarcher runs at half resolution so a busy field stays smooth).
 - **Export / headless** (`--export`, `--export-sequence`, `--export-video`, `--export-gif`, `OllinApp.image(of:)`) defaults to **`.detail`**, the best quality. There's no frame-rate pressure when writing a file, and you never want exported art downscaled, so an export is full resolution with the richest samples by default.
 
 Override the export default with `--render-quality`:
@@ -84,13 +84,13 @@ The flags:
 
 **Picking a codec.** `h264` plays everywhere and is the safe default for posting. `hevc` is clearly better quality per byte (and encodes 10-bit, which keeps smooth gradients smoother) — a good first switch when a file needs to be smaller — at a small compatibility cost on older players. The two ProRes profiles are mastering codecs: visually lossless, an order of magnitude larger, meant for an edit timeline or a later re-encode rather than for sharing, and they need a `.mov` path.
 
-**Size and quality.** Without `--bitrate` the encoder picks its own (generous) rate. With it, the file size is predictable: a clip's size is roughly `bitrate × seconds`. As a starting point, a 1080×1080 clip at 60 fps looks clean around 10–15 Mbit/s in `h264` and 6–9 in `hevc`; halve those for slow, flat-color motion, raise them for full-frame noise or grain. On Apple silicon, `--quality` (0…1) targets a constant quality and lets the rate float instead — closer to how `crf` works in `ffmpeg`. The encoders are the hardware ones (fast, power-efficient); if you want a specific software encoder or two-pass tuning, `--export-sequence` still hands you lossless frames and prints the `ffmpeg` line.
+**Size and quality.** Without `--bitrate` the encoder picks its own (generous) rate. With it, the file size is predictable: a clip's size is roughly `bitrate × seconds`. As a starting point, a 1080×1080 clip at 60 fps looks clean around 10 to 15 Mbit/s in `h264` and 6 to 9 in `hevc`; halve those for slow, flat-color motion, raise them for full-frame noise or grain. On Apple silicon, `--quality` (0…1) targets a constant quality and lets the rate float instead — closer to how `crf` works in `ffmpeg`. The encoders are the hardware ones (fast, power-efficient); if you want a specific software encoder or two-pass tuning, `--export-sequence` still hands you lossless frames and prints the `ffmpeg` line.
 
 Exported tracks are tagged Rec. 709, so what players show matches what the canvas rendered.
 
 ### Animated GIF
 
-Write a short, infinitely-looping GIF:
+Write a short, infinitely looping GIF:
 
 ```sh
 swift run Example-Motion-Breathing --export-gif breathing.gif --seconds 4 --gif-width 540

@@ -74,7 +74,7 @@ origin (move it with [`.at`](#placing)).
 | `SDF.ngon(radius:sides:)` | a regular polygon, one vertex up |
 | `SDF.star(outerRadius:innerRadius:points:)` | a star |
 | `SDF.rhombus(width:height:cornerRadius:)` | a diamond |
-| `SDF.ring(innerRadius:outerRadius:)` | a filled annulus |
+| `SDF.ring(innerRadius:outerRadius:)` | a filled ring |
 | `SDF.triangle(radius:)` | an equilateral triangle, point up |
 
 The [scoped block form](#scoped-blocks) reaches *every* fillable shape Ollin can draw
@@ -207,7 +207,7 @@ field.scaled(x: 1.5, y: 0.6)   // non-uniform scale (circle -> ellipse)
 stadium and a sphere a capsule) **stays an exact distance field**, so smooth blends, rounding, and
 onion shells keep their even width. `scaled(x:y:)` is a true non-uniform scale, but a non-uniform
 scale isn't a valid distance field, so it's a conservative *bound*: the outline is right, yet the
-smoothing distorts under strong anisotropy (fine up to ~2–3×). **Prefer `stretched` for per-axis
+smoothing distorts under strong anisotropy (fine up to ~2-3×). **Prefer `stretched` for per-axis
 sizing**; reach for `scaled(x:y:)` only when you actually want the squashed-ellipse look. Both have
 3D forms (`stretched(x:y:z:)`, `scaled(x:y:z:)`).
 
@@ -441,7 +441,7 @@ directional caster, `Examples/3D/Raymarching/RaymarchedPointReceive` for a point
 model as the meshes: the active [`material(_:)`](../3D/3D.md#materials) applies per
 `drawSDF3D` call (a jade melt takes its sheen and subsurface glow, a `.metal(roughness:)`
 field is a true metal), and under an [`environment(_:)`](../3D/3D.md#environment-lighting)
-the field gathers the same image-based ambient a mesh does (a physically-based field
+the field gathers the same image-based ambient a mesh does (a physically based field
 reflects the HDRI, the other materials take its diffuse irradiance), so a field and a mesh
 sharing a material read identically in one scene (see `Examples/3D/Raymarching/RaymarchedEnvironment`).
 

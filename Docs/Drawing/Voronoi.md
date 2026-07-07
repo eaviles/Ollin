@@ -116,7 +116,7 @@ let cells = mesh.voronoi(bounds: canvasRectangle).cells   // the dual diagram
 
 `drawDelaunay(points)` draws the mesh in the current `fill`/`stroke` (`noFill()` for a wireframe).
 
-Computed with the Bowyer–Watson incremental algorithm. Exactly-coincident points are skipped during insertion (they don't corrupt the mesh); fully collinear inputs simply produce no triangles. It's tuned for creative-coding scale — hundreds to a few thousand points, recomputed every frame.
+Computed with the Bowyer-Watson incremental algorithm. Exactly coincident points are skipped during insertion (they don't corrupt the mesh); fully collinear inputs simply produce no triangles. It's tuned for creative-coding scale — hundreds to a few thousand points, recomputed every frame.
 
 <a name="triangle"></a>
 

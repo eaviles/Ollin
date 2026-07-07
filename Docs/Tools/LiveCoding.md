@@ -59,7 +59,7 @@ A sketch's co-located assets (an image or `.metal` file beside the `.swift`) res
 - **Fullscreen (⌃⌘F)** is the projection mode: fullscreen the window on the projector, or mirror your display. The canvas letterboxes to its true aspect on the black stage at any window shape.
 - **Bigger/Smaller Code (⌘+ / ⌘−)** sizes the type for the room; **View ▸ Code Backdrop** sets how dark the strip behind the text reads over bright visuals.
 - **The inspector (⌘/)** docks on the right with the live monitor card (FPS, frame time, geometry counts) and a control per `@Param` (slider, stepper, toggle, menu, color well), a rehearsal and soundcheck surface, hidden by default.
-- The **Camera menu** (⌘0–⌘8) works on any 3D sketch, same as in the other hosts.
+- The **Camera menu** (⌘0-⌘8) works on any 3D sketch, same as in the other hosts.
 
 ### Keyboard reference
 
@@ -73,4 +73,4 @@ A sketch's co-located assets (an image or `.metal` file beside the `.swift`) res
 | ⌃⌘F | Enter or leave fullscreen |
 | ⌘+ / ⌘− | Bigger / smaller code |
 | ⌘/ | Show or hide the inspector |
-| ⌘0–⌘8 | Camera views (3D sketches) |
+| ⌘0-⌘8 | Camera views (3D sketches) |

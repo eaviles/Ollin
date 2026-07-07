@@ -1,0 +1,16 @@
+# Prose that performs instead of teaches (Guide/AUTHORING.md, natural flow
+# over clever flow). Warnings: a chapter keeps one on purpose, not five.
+extends: existence
+message: "Reads as performing ('%s'): say it straight (Guide/AUTHORING.md)."
+level: warning
+ignorecase: true
+tokens:
+  - 'delightfully'
+  - 'lovely'
+  - 'breathtaking'
+  - 'stunning(ly)?'
+  - 'effortlessly'
+  - 'magically'
+  - 'exquisite(ly)?'
+  - 'earn(s|ed|ing)? (its|their) keep'
+  - 'pays? the debt'

@@ -4,7 +4,7 @@
 
 ## Wave Function Collapse
 
-Fill a grid from a small set of tiles so that **every pair of neighbors is legal**. Each cell starts holding *all* tiles at once (a superposition); the solver repeatedly collapses the most-constrained cell to a single tile (a weighted random pick) and propagates that choice to its neighbors, eliminating options that no longer fit, until every cell is decided. It's the constraint-solving, texture-synthesis technique behind procedurally-generated tile maps.
+Fill a grid from a small set of tiles so that **every pair of neighbors is legal**. Each cell starts holding *all* tiles at once (a superposition); the solver repeatedly collapses the most-constrained cell to a single tile (a weighted random pick) and propagates that choice to its neighbors, eliminating options that no longer fit, until every cell is decided. It's the constraint-solving, texture-synthesis technique behind procedurally generated tile maps.
 
 The result is a grid of tile indices, which you draw however you like: each tile is a `Shape` or a small draw block, so it feeds the existing geometry path. A solve is a pure function of the [`seed`](./Random.md#seed), so the same seed always produces the same layout.
 

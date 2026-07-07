@@ -23,12 +23,12 @@ Ollin has two reflection systems. They exist because each one can do something t
 
 **Screen-space reflections** ([`.screenSpaceReflections`](../Drawing/Effects.md#combined)) are an *image effect*: they take the finished picture plus its depth layer and paint reflections into it. Think of it as making a mirror out of a photograph. Because it only needs the picture, it runs on any Mac, reflects any surface regardless of material, and even works on a hand-made depth layer that never came from a 3D scene. But a photograph doesn't contain the back of anything: whatever the camera can't see, the mirror can't show. That's why an object resting on a reflective floor shows a soft, imperfect zone right where it touches: the underside of the object isn't in the picture, so its reflection can't be computed, only approximated.
 
-**Ray-traced reflections** ([`rayTracedReflections()`](./3D.md#ray-traced-reflections)) are part of the 3D renderer itself: each reflective pixel fires a real ray at the actual scene geometry and shades whatever it hits, including surfaces the camera can't see, so contacts, undersides, and off-screen objects reflect correctly. The price is a narrower set of requirements: a ray-tracing GPU (Apple silicon), an [`environment(_:)`](./3D.md#environment) to light the scene and catch rays that fly off into the sky, and the reflecting surface must wear a [physically-based material](./3D.md#materials) (a metal is what mirrors).
+**Ray-traced reflections** ([`rayTracedReflections()`](./3D.md#ray-traced-reflections)) are part of the 3D renderer itself: each reflective pixel fires a real ray at the actual scene geometry and shades whatever it hits, including surfaces the camera can't see, so contacts, undersides, and off-screen objects reflect correctly. The price is a narrower set of requirements: a ray-tracing GPU (Apple silicon), an [`environment(_:)`](./3D.md#environment) to light the scene and catch rays that fly off into the sky, and the reflecting surface must wear a [physically based material](./3D.md#materials) (a metal is what mirrors).
 
 | | Screen-space (`.screenSpaceReflections`) | Ray-traced (`rayTracedReflections()`) |
 | --- | --- | --- |
 | Runs on | any Mac | ray-tracing GPUs (Apple silicon) |
-| What reflects | every surface in the layer | physically-based metals |
+| What reflects | every surface in the layer | physically based metals |
 | What appears in the mirror | only what's already on screen | the real geometry, hidden and off-screen parts included |
 | Needs | a render target and its `depth` | an `environment(_:)`, a PBR material |
 | Where it shines | glossy floors and stylized looks, any hardware, hand-made depth | mirror finishes, object-floor contacts, realism |
@@ -51,7 +51,7 @@ Five kinds of things can be on screen in a 3D frame, and they don't all take the
 
 Notes worth knowing:
 
-- **Meshes** are the full-featured citizens: Blinn-Phong by default, the stylized `material(_:)` library, the physically-based metals, textures, all of it lit by lights and the environment together.
+- **Meshes** are the full-featured citizens: Blinn-Phong by default, the stylized `material(_:)` library, the physically based metals, textures, all of it lit by lights and the environment together.
 - **A matcap replaces lighting** for the meshes it wraps: the whole look is painted into its sphere image, so lights, materials, shadows, and the environment don't apply to a matcap'd mesh.
 - **Point clouds are unlit on purpose**: each point carries its own color (usually sampled from a camera or an image), so lighting them would fight the data they carry.
 - **Raymarched fields** shade through the same material and lighting model as meshes, environment light included; the one finish they don't take is a matcap.
@@ -95,9 +95,9 @@ Two output paths draw 3D geometry but skip some of its machinery: the accumulati
 
 If the goal is simply *the most realistic scene Ollin can render*, this is the stack, in the order you'd add each piece:
 
-1. **Build the scene from solid meshes.** They're the only geometry that takes the full pipeline: physically-based materials, environment light, shadows, and ray-traced reflections (the tables above are the reason).
+1. **Build the scene from solid meshes.** They're the only geometry that takes the full pipeline: physically based materials, environment light, shadows, and ray-traced reflections (the tables above are the reason).
 2. **Light it with an `environment(_:)`.** A real captured surrounding ([`.studio`, `.sunset`, and the other bundled HDRIs](./3D.md#environment), or the procedural `.sky(...)`) is the single biggest realism step: every material picks up believable ambient light and reflections, and the backdrop comes with it.
-3. **Use the physically-based materials.** [`material(.metal(roughness:))`, `.dielectric(roughness:)`, or the built-ins like `.polishedMetal` and `.roughPlastic`](./3D.md#materials), with `fill` as the surface color. These are the finishes that respond correctly to the environment and can mirror the scene. [Textures](./3D.md#textures) still apply: a textured mesh keeps its image as the surface color under any material, so a `.dielectric` shows it as a lit, correctly-specular surface and a `.metal` tints its reflections by it. The one thing a texture can't drive yet is the *finish itself*: metallic and roughness are set per mesh by `material(_:)`, not per pixel by an image, so a surface can't be painted rusty in one spot and polished in another.
+3. **Use the physically based materials.** [`material(.metal(roughness:))`, `.dielectric(roughness:)`, or the built-ins like `.polishedMetal` and `.roughPlastic`](./3D.md#materials), with `fill` as the surface color. These are the finishes that respond correctly to the environment and can mirror the scene. [Textures](./3D.md#textures) still apply: a textured mesh keeps its image as the surface color under any material, so a `.dielectric` shows it as a lit, correctly specular surface and a `.metal` tints its reflections by it. The one thing a texture can't drive yet is the *finish itself*: metallic and roughness are set per mesh by `material(_:)`, not per pixel by an image, so a surface can't be painted rusty in one spot and polished in another.
 4. **Add one key light and shadows.** A `directionalLight` gives the scene a direction, and `castShadows()` grounds every object with soft, contact-hardening shadows (dial the softness with `shadowSoftness(_:)`).
 5. **Turn on `rayTracedReflections()`.** On Apple silicon the metals now mirror the actual scene, contacts included; on other machines the call is a safe no-op and the environment reflection remains.
 6. **Tone-map the result.** `toneMap(.aces)` rolls the environment's bright highlights off filmically instead of clipping them.
@@ -129,7 +129,7 @@ The `3D/RayTracedReflections` and `3D/ImageBasedLighting` examples are this reci
 <a id="recipes"></a>
 ### Quick recipes
 
-- **A mirror floor under objects, done right**: physically-based materials + `environment(_:)` + `rayTracedReflections()` (Apple silicon).
+- **A mirror floor under objects, done right**: physically based materials + `environment(_:)` + `rayTracedReflections()` (Apple silicon).
 - **A glossy floor that runs anywhere**: draw the scene into a target and apply `.screenSpaceReflections(roughness: 0.3)` (anywhere around 0.2 to 0.4 works); the roughness turns the technique's limits into gloss.
 - **A striking finish with zero lighting setup**: `matcap(_:)`, one call, one image, no lights.
 - **Merging, blobby shapes that still take materials and shadows**: [`drawSDF3D`](../Drawing/Combinators.md), with `material(_:)` and `castShadows()`.

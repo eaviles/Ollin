@@ -22,7 +22,7 @@ fill(Color(white: 0.15))                       // a quick gray
 fill(Color(red: 0.95, green: 0.45, blue: 0.25))
 ```
 
-The named constants cover the essentials (`.white`, `.black`, `.red`, ...) plus the standard CSS list, so `.coral`, `.teal`, `.crimson`, and `.lavender` all read like what they are. The integer hex form is the everyday workhorse: any color picker gives you those six digits. Go back to `FirstCircle.swift` and try a few of these in its `fill` line; this chapter is best read with a sketch open.
+The named constants cover the essentials (`.white`, `.black`, `.red`, …) plus the standard CSS list, so `.coral`, `.teal`, `.crimson`, and `.lavender` all read like what they are. The integer hex form is the everyday workhorse: any color picker gives you those six digits. Go back to `FirstCircle.swift` and try a few of these in its `fill` line; this chapter is best read with a sketch open.
 
 Colors can also arrive as *strings*, `Color(hex: "#ff0066")`, which matters once a color comes from somewhere else (a file, a website's palette). Strings can be malformed, so this form can fail, and Swift makes that visible:
 
@@ -48,7 +48,7 @@ The circle now cycles the whole rainbow every ten seconds while it swings. One v
 
 ## Mixing you can trust
 
-Here's the trap every beginner falls into. Take a blue and a yellow, average their RGB numbers to get the halfway color, and you get... mud. Averaging the machine's storage format says nothing about what the *eye* considers halfway:
+Here's the trap every beginner falls into. Take a blue and a yellow, average their RGB numbers to get the halfway color, and you get… mud. Averaging the machine's storage format says nothing about what the *eye* considers halfway:
 
 <img src="Images/02-Color/MixingSpaces.jpg" alt="Three rows mixing the same blue and yellow: the RGB row passes through muddy olive, the HSB row detours through bright green, the OKLab row stays even" width="680">
 
@@ -68,7 +68,7 @@ Try it live on the swinging circle:
 fill(Color.mix(Color(hex: 0x2050C8), Color(hex: 0xFFC800), t: sin(time) * 0.5 + 0.5))
 ```
 
-The `sin(time) * 0.5 + 0.5` squeezes the pendulum's −1...1 swing into `t`'s 0...1, so the circle breathes between the two colors. (That squeeze move is worth remembering; Chapter 3 turns it into a proper tool.)
+The `sin(time) * 0.5 + 0.5` squeezes the pendulum's `-1...1` swing into `t`'s `0...1`, so the circle breathes between the two colors. (That squeeze move is worth remembering; Chapter 3 turns it into a proper tool.)
 
 The same perceptual model comes in two more shapes worth knowing about. **OKLCH** turns OKLab into dials (lightness, chroma, hue), so nudging a hue leaves lightness alone; `.oklch` mixing holds a color's identity while it arcs between hues. And **OKHSL** guarantees everything you ask for is displayable, which makes it the space for *generated* color. This chapter's favorite trick with it: hues that genuinely match in weight.
 
@@ -87,7 +87,7 @@ Individual colors get you started; finished pieces usually run on a *kit* chosen
 
 <img src="Images/02-Color/PaletteShelf.jpg" alt="Five rows: the set2 palette swatches, a triadic harmony, a smooth five-color ramp, the viridis colormap, and the sunset cosine palette" width="680">
 
-A **`Palette`** is a discrete set. Indexing wraps in both directions, so any counter cycles it forever, and `color(at:)` slices 0...1 into equal bands:
+A **`Palette`** is a discrete set. Indexing wraps in both directions, so any counter cycles it forever, and `color(at:)` slices `0...1` into equal bands:
 
 ```swift
 let p = Palette.set2                  // eight ColorBrewer colors, ready to go
@@ -172,7 +172,7 @@ final class ColorField: Sketch {
 Run it and walk the interesting lines:
 
 - `randomSeed(fieldSeed)` runs at the top of every frame, so all the `random(-0.5, 0.5)` calls that follow roll the same numbers each time and the quilt holds still. Click the canvas: `mousePressed()` bumps the seed, and the next frame rolls an entirely new set of jitters. Same poster, new variation, as many as you can click.
-- Two loops, one inside the other, visit every column and row; `diagonal` turns the cell's position into the ramp's 0...1.
+- Two loops, one inside the other, visit every column and row; `diagonal` turns the cell's position into the ramp's `0...1`.
 - The `t` line is the whole aesthetic: position, plus seeded jitter (scaled by the knob), plus a slow shimmer. Comment out one term at a time and watch what each contributes; with jitter at zero it's a clean mechanical gradient, which is also a look worth keeping.
 - The knobs do a lot here. `Columns` changes the piece's whole character (chunky at 5, woven at 28), and `Jitter` runs it from formal to painterly.
 

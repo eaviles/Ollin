@@ -210,7 +210,7 @@ The `Palettes` example sweeps all seven. The formula is credited under [Influenc
 
 ### `Colormap`
 
-Perceptual colormaps: smooth, perceptually-even ramps that map a value in `0...1` to color, the standard choice for turning a number (a height, a density, a field value) into legible color. `color(at:)` linearly interpolates the 256-entry table and clamps `t`.
+Perceptual colormaps: smooth, perceptually even ramps that map a value in `0...1` to color, the standard choice for turning a number (a height, a density, a field value) into legible color. `color(at:)` linearly interpolates the 256-entry table and clamps `t`.
 
 ```swift
 let t = noise(x * 0.01, y * 0.01)            // 0...1

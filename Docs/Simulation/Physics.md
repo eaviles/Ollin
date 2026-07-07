@@ -135,7 +135,7 @@ p.place(at: Vector2(100, 100))   // set it down, still
 p.push(Vector2(8, 0))            // now flick it to the right
 ```
 
-`pin()` anchors a particle: gravity and springs no longer move it, but it still acts on whatever it's connected to. It's how you hang a cloth from its top edge or fix a pivot. `userData` lets you attach a colour, an index, or any per-body state without a parallel array.
+`pin()` anchors a particle: gravity and springs no longer move it, but it still acts on whatever it's connected to. It's how you hang a cloth from its top edge or fix a pivot. `userData` lets you attach a color, an index, or any per-body state without a parallel array.
 
 <a name="spring"></a>
 
@@ -195,7 +195,7 @@ final class Tower: Sketch {
 }
 ```
 
-The pattern is the same as particles: build in `setup()`, `step` and draw from `world.bodies` in `draw()`. Each body's look is yours to hang off `userData` (its colour, its drawn size), then drawn from its `position` and `angle`.
+The pattern is the same as particles: build in `setup()`, `step` and draw from `world.bodies` in `draw()`. Each body's look is yours to hang off `userData` (its color, its drawn size), then drawn from its `position` and `angle`.
 
 **Adding bodies**
 
@@ -222,12 +222,12 @@ enum Collider {
 }
 ```
 
-Geometry is given in body-local points (centred on the body's origin); the body's `position` and `angle` place it. A `.polygon` is made convex for you (its convex hull is taken), so concave input is rounded out rather than rejected.
+Geometry is given in body-local points (centerd on the body's origin); the body's `position` and `angle` place it. A `.polygon` is made convex for you (its convex hull is taken), so concave input is rounded out rather than rejected.
 
 **The Body**
 
 ```swift
-var position: Vector2          // centre, in points
+var position: Vector2          // center, in points
 var angle: Double              // orientation, radians (clockwise, y-down)
 var velocity: Vector2          // points per second (a real velocity)
 var angularVelocity: Double    // radians per second
@@ -248,7 +248,7 @@ The rigid side reads the same `gravity`, `bounds` (as walls), `bounce` (wall and
 var pixelsPerMeter: Double = 100
 ```
 
-Box2D works in meters and behaves best for objects roughly 0.1–10 m. `pixelsPerMeter` bridges that to sketch points — the default of 100 puts a 100-point shape at 1 m, its sweet spot — so you keep thinking in points. (The Verlet particle side works in points directly and ignores this.)
+Box2D works in meters and behaves best for objects roughly 0.1 to 10 m. `pixelsPerMeter` bridges that to sketch points — the default of 100 puts a 100-point shape at 1 m, its sweet spot — so you keep thinking in points. (The Verlet particle side works in points directly and ignores this.)
 
 **Joints**
 

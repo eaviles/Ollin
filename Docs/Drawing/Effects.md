@@ -74,7 +74,7 @@ withTarget(layer) {
 // back to drawing on the canvas
 ```
 
-Call [`background(_:)`](../Drawing/Drawing.md#background) inside the block to clear the layer. Inside a `withTarget` it clears *that layer* (its fill color and its geometry so far), leaving the canvas untouched. A layer starts transparent, so an unwritten or partly-written layer composites as nothing where you didn't draw.
+Call [`background(_:)`](../Drawing/Drawing.md#background) inside the block to clear the layer. Inside a `withTarget` it clears *that layer* (its fill color and its geometry so far), leaving the canvas untouched. A layer starts transparent, so an unwritten or partly written layer composites as nothing where you didn't draw.
 
 <a id="image"></a>
 ### RenderTarget.image
@@ -166,7 +166,7 @@ layer.filtered(.vibrance(amount: 0.6))
 - **`.toon(levels:edges:)`** cel shading: flatten into `levels` brightness bands and ink the Sobel edges over them.
 - **`.median()`** a 3×3 median, knocking out speckle and stray pixels while keeping edges sharp.
 - **`.contour(levels:intensity:)`** dark iso-brightness lines (one every `1/levels` of the range), turning tone into a topographic map.
-- **`.cmykHalftone(scale:)`** separate into cyan/magenta/yellow/black and screen each as rotated dots at the classic print angles: the colour-process look.
+- **`.cmykHalftone(scale:)`** separate into cyan/magenta/yellow/black and screen each as rotated dots at the classic print angles: the color-process look.
 - **`.normalMap(strength:)`** read the image as a height field and output its surface normal as an RGB vector (the bluish bump-map look), ready to feed `.displace` (see [combine](#combined)) or a lighting pass.
 - **`.iridescence(amount:scale:bands:shift:)`** wash the content with the flowing rainbow sheen of a soap film or oil slick. The colors come from thin-film interference (each channel cycling at its own wavelength, so the bands run through the film color order), swirled across the content by a noise field and following its shading. `amount` blends the sheen over the original, `scale` sets how fine the swirl is, `bands` how many color cycles the film runs through, and `shift` slides the colors: feed it your `time` for a sheen that flows.
 - **`.glitter(density:amount:size:saturation:phase:)`** scatter twinkling sparkle flecks across the content: a dense dust of small glints plus occasional bright cross-flare flashes, landing only where something is drawn. `density` is the fleck grid resolution (cells across the layer), `amount` the brightness (flashes run past 1.0 in linear light, so a following `.bloom` makes them glow), `size` scales the flecks, `saturation` tints them from white (0) toward each fleck's own color (1), and `phase` drives the twinkle: feed it your `time` so it sparkles.
@@ -268,7 +268,7 @@ A `Combine` is a value descriptor like `Filter`, but the aux layer rides alongsi
 - **`.mix(amount:)`** cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux); the transition workhorse.
 - **`.defocus(focus:range:maxBlur:quality:)`** depth of field: blur the base by the aux read as a **depth map** (its luminance is the depth, 0 near … 1 far). The band `focus ± range` stays sharp; the blur grows with distance from it up to `maxBlur` pixels. It's a circle-of-confusion bokeh gather with near/far separation. The depth map can be a smooth gradient (a tilt-shift plane), a real depth feed, or hard-edged discrete per-object depths: overlapping defocused regions blend like real bokeh, a defocused foreground spreads over and covers an in-focus subject behind it, and a sharp subject occludes the blur behind it with a crisp edge. `quality` is a `RenderQuality` tier (`.default`/`.performance`/`.detail`, hardware-relative) setting the bokeh sample count. More taps trade frame rate for creamier, structure-free blur (`maxBlur` is the blur *amount*; `quality` is the blur *smoothness*).
 - **`.ambientOcclusion(radius:intensity:bias:quality:)`** ambient occlusion: darken the base in crevices, gaps, and where surfaces meet, reading the aux as a **depth map**. View-space position and surface normal are reconstructed from the depth (no separate normal buffer), then occlusion is estimated with a hemisphere of samples oriented to the normal (a dense low-discrepancy kernel, so it stays stable without per-pixel jitter, smoothed with a depth-aware blur) and multiplied into the base. Feed it a 3D scene's own [`depth`](#depth): that layer carries the camera's near/far and field of view, so `radius` reads in **world units**. `intensity` scales the darkening, `bias` rejects self-occlusion (raise it if flat faces speckle, lower it if contacts look weak), and `quality` is the sample-count tier. As a post-process it darkens the final image, not just the ambient term: the standard screen-space trade, dialed with `intensity`.
-- **`.screenSpaceReflections(intensity:maxDistance:thickness:roughness:fresnel:edgeFade:quality:)`** screen-space reflections: make the scene reflect off its own surfaces (a glossy floor, wet asphalt, a polished tabletop), reading the aux as a **depth map**. Each pixel's reflection ray is built from the view-space position and surface normal, marched through the depth buffer until it meets the scene, and the colour there is composited back over the surface. Feed it a 3D scene's own [`depth`](#depth): the layer carries the camera scale, so `maxDistance` reads in **world units**. `intensity` is the reflection strength, `thickness` is how close a ray must pass a surface to hit it (a fraction of the surface's distance, so it scales with the scene; too large smears a reflection into a "cylinder"), `roughness` blurs it for a glossy (rather than mirror) finish, `fresnel` strengthens it at grazing angles, `edgeFade` fades a reflection as its ray nears the frame border, and `quality` is the ray-march step tier. It reflects only what's already on screen: off-screen and hidden geometry can't appear (rays fade out as they reach the frame edge). Like all screen-space reflection, it's at its best on broad surfaces with well-separated reflected objects; very dense or near-grazing scenes can show faint artifacts where reflected surfaces graze the ray. A touch of `roughness` softens those, and the `Examples/3D/Effects/ScreenSpaceReflections` sketch shows a clean composition. Reflections are accumulated across frames so they hold steady as the camera moves, and the march runs at a resolution the `quality` tier sets (full on export). One limit is worth understanding plainly: this effect makes a mirror out of the *finished picture*, and a picture doesn't contain the back of anything. Wherever the true reflection is of a surface the camera can't see (the underside of a ball resting on the floor, the hidden face of a box), the effect can only approximate, which shows as a soft, imperfect zone at object-floor contacts. For exact mirrors of real geometry, including hidden and off-screen surfaces, use [`rayTracedReflections()`](../3D/3D.md#ray-traced-reflections) on a ray-tracing GPU; [Combining 3D features](../3D/Combining.md) compares the two side by side.
+- **`.screenSpaceReflections(intensity:maxDistance:thickness:roughness:fresnel:edgeFade:quality:)`** screen-space reflections: make the scene reflect off its own surfaces (a glossy floor, wet asphalt, a polished tabletop), reading the aux as a **depth map**. Each pixel's reflection ray is built from the view-space position and surface normal, marched through the depth buffer until it meets the scene, and the color there is composited back over the surface. Feed it a 3D scene's own [`depth`](#depth): the layer carries the camera scale, so `maxDistance` reads in **world units**. `intensity` is the reflection strength, `thickness` is how close a ray must pass a surface to hit it (a fraction of the surface's distance, so it scales with the scene; too large smears a reflection into a "cylinder"), `roughness` blurs it for a glossy (rather than mirror) finish, `fresnel` strengthens it at grazing angles, `edgeFade` fades a reflection as its ray nears the frame border, and `quality` is the ray-march step tier. It reflects only what's already on screen: off-screen and hidden geometry can't appear (rays fade out as they reach the frame edge). Like all screen-space reflection, it's at its best on broad surfaces with well-separated reflected objects; very dense or near-grazing scenes can show faint artifacts where reflected surfaces graze the ray. A touch of `roughness` softens those, and the `Examples/3D/Effects/ScreenSpaceReflections` sketch shows a clean composition. Reflections are accumulated across frames so they hold steady as the camera moves, and the march runs at a resolution the `quality` tier sets (full on export). One limit is worth understanding plainly: this effect makes a mirror out of the *finished picture*, and a picture doesn't contain the back of anything. Wherever the true reflection is of a surface the camera can't see (the underside of a ball resting on the floor, the hidden face of a box), the effect can only approximate, which shows as a soft, imperfect zone at object-floor contacts. For exact mirrors of real geometry, including hidden and off-screen surfaces, use [`rayTracedReflections()`](../3D/3D.md#ray-traced-reflections) on a ray-tracing GPU; [Combining 3D features](../3D/Combining.md) compares the two side by side.
 
 ```swift
 let scene = renderTarget()
@@ -347,7 +347,7 @@ drawImage(generate(.meshGradient(phase: time)).image, 0, 0)
 - **`.filaments(color:highlight:background:scale:brightness:contrast:phase:)`** a glowing
   web of thin writhing filaments, the neural-lace look.
 - **`.smokeRing(colors:background:radius:thickness:fill:scale:detail:phase:)`** a billowing
-  ring of smoke, radially banded through the palette; `fill` softens it from crisp annulus
+  ring of smoke, radially banded through the palette; `fill` softens it from crisp ring
   toward a smoky disk.
 - **`.colorPanels(colors:background:density:length:skew:blur:fadeIn:fadeOut:gradient:phase:)`**
   translucent color panes fanning around a central axis in fake perspective.
@@ -402,7 +402,7 @@ override func draw() {
     background(.black)                            // clears the canvas (resets the frame)
     withFeedback(trail) { prev in                 // prev = last frame's content
         translate(width / 2, height / 2)          // spin + shrink the old frame
-        rotate(0.06); scale(0.98)                 //   about the canvas centre
+        rotate(0.06); scale(0.98)                 //   about the canvas center
         translate(-width / 2, -height / 2)
         tint(Color(white: 1, alpha: 0.94))        // gentle decay so trails fade
         drawImage(prev, 0, 0)
@@ -421,7 +421,7 @@ override func draw() {
 <a id="simfield"></a>
 ### simField(_:) and Sim
 
-Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful simulation** on a persistent layer that evolves every frame by reading its own neighbourhood: reaction-diffusion patterns spreading, cellular-automaton cells living and dying, a fluid carrying colour. You don't write the kernel: pick a `Sim` from the catalog, make a `SimField` with it, and **draw into the field to seed or force it**.
+Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful simulation** on a persistent layer that evolves every frame by reading its own neighbourhood: reaction-diffusion patterns spreading, cellular-automaton cells living and dying, a fluid carrying color. You don't write the kernel: pick a `Sim` from the catalog, make a `SimField` with it, and **draw into the field to seed or force it**.
 
 A `SimField` is **persistent** like `Feedback` (make it once in `setup()` and hold it). Each frame the marks you draw in `withField` land on the field's current state, the renderer steps the simulation, and the result is the field's `image`. The raw state is *data*, so recolor it through the same `Filter` catalog as everything else.
 
@@ -443,7 +443,7 @@ The catalog:
 
 - **`.reactionDiffusion(feed:kill:)`** Gray-Scott reaction-diffusion: two chemicals diffuse and react into coral, spots, stripes, and dividing cells. Draw light marks to inject chemical B (it spreads from there); `feed`/`kill` pick the regime. State is A in red, B in green. Recolor with `.gradientMap`/`.threshold`.
 - **`.gameOfLife()`** Conway's Game of Life (B3/S23). Draw white to make cells alive, black to kill them. Use a low field `scale` so each texel is a visible cell. The `image` is crisp black-and-white.
-- **`.fluid(curl:velocityDissipation:densityDissipation:pressureIterations:buoyancy:)`** a real-time fluid: an incompressible flow that carries colour. The mark's *colour* injects dye; `withField`'s `force:` pushes the flow where the mark lands, so dragging (or an animated force) swirls the colour. `curl` is the swirliness, the dissipations how fast flow and dye fade, and `buoyancy` an optional upward lift on bright dye (smoke that rises on its own). The `image` is the dye; composite or `.filtered(.bloom)` it directly.
+- **`.fluid(curl:velocityDissipation:densityDissipation:pressureIterations:buoyancy:)`** a real-time fluid: an incompressible flow that carries color. The mark's *color* injects dye; `withField`'s `force:` pushes the flow where the mark lands, so dragging (or an animated force) swirls the color. `curl` is the swirliness, the dissipations how fast flow and dye fade, and `buoyancy` an optional upward lift on bright dye (smoke that rises on its own). The `image` is the dye; composite or `.filtered(.bloom)` it directly.
 
 ```swift
 var fluid: SimField!
@@ -451,7 +451,7 @@ override func setup() { fluid = simField(.fluid(curl: 30), scale: 0.5) }
 
 override func draw() {
     let push = Vector2(cos(time), sin(time)) * 4         // an animated push (or a mouse delta)
-    withField(fluid, force: push) {                      // colour -> dye, motion -> velocity
+    withField(fluid, force: push) {                      // color -> dye, motion -> velocity
         noStroke(); fill(Color(hue: time * 0.08, saturation: 0.9, brightness: 1))
         drawCircle(width / 2, height / 2, 16)
     }

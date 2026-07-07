@@ -1,0 +1,8 @@
+# \x{2014} is the em dash; spelled as an escape so this file honors the
+# same no-em-dash rule it enforces.
+extends: existence
+message: "No em dashes: use a comma, colon, parentheses, or a new sentence (repo-wide rule)."
+level: error
+nonword: true
+tokens:
+  - '\x{2014}'

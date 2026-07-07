@@ -6,7 +6,7 @@
 
 Wire a controller into a sketch. MIDI is the protocol every knob box, keyboard, pad grid, and sequencer speaks, so a hardware fader can drive a parameter, a key can trigger an event, and a sketch can send notes and control changes back out. It lives in a separate library so the drawing core stays free of Core MIDI. Add `import OllinMIDI` alongside `import Ollin` to reach it.
 
-You read incoming MIDI with a [`MIDIInput`](#midiinput) and send it with a [`MIDIOutput`](#midioutput), both over Apple's Core MIDI. A message is a *kind* (a note, a control change, a clock tick) on a *channel* (1–16); the MIDI 1.0 format is parsed and encoded from the spec, so nothing is vendored.
+You read incoming MIDI with a [`MIDIInput`](#midiinput) and send it with a [`MIDIOutput`](#midioutput), both over Apple's Core MIDI. A message is a *kind* (a note, a control change, a clock tick) on a *channel* (1 to 16); the MIDI 1.0 format is parsed and encoded from the spec, so nothing is vendored.
 
 ```text
    ch 1   controlChange   controller 7   value 64
@@ -44,7 +44,7 @@ final class Knob: Sketch {
 
 ### MIDIMessage & kinds
 
-A `MIDIMessage` is a `kind` and the `channel` (1–16) it arrived on. The `kind` carries its own data:
+A `MIDIMessage` is a `kind` and the `channel` (1 to 16) it arrived on. The `kind` carries its own data:
 
 ```swift
 switch message.kind {

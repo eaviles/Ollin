@@ -57,7 +57,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 #### Length & direction
 
-**`length` / `lengthSquared`** — how far the point is from the origin, i.e. how long the arrow is. It's the Pythagorean theorem: the hypotenuse of the right triangle with sides `x` and `y`.
+**`length` / `lengthSquared`** — how far the point is from the origin, that is, how long the arrow is. It's the Pythagorean theorem: the hypotenuse of the right triangle with sides `x` and `y`.
 
 ```
   v = (3, 4)
@@ -99,7 +99,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** point a shape the way it's heading — `rotate(velocity.angle)` before you draw, so an arrow or a fish faces where it's going.
 
-**`perpendicular`** — a quarter turn, swapping and negating the components: `(x, y) → (−y, x)`. Useful for offsetting to the side of a line (e.g. giving a stroke its width).
+**`perpendicular`** — a quarter turn, swapping and negating the components: `(x, y) → (−y, x)`. Useful for offsetting to the side of a line (for example giving a stroke its width).
 
 ```
   v.perpendicular = (−y, x)
@@ -232,7 +232,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** lay things out in a ring, orbit a moon around a planet, or swing a clock hand with `rotated(by:around:)` about its pivot.
 
-**`limited(to:)`** — clamp the length to a maximum, keeping the direction. Shorter vectors pass through untouched (e.g. a velocity cap).
+**`limited(to:)`** — clamp the length to a maximum, keeping the direction. Shorter vectors pass through untouched (for example a velocity cap).
 
 ```
   v.limited(to: m)
@@ -500,7 +500,7 @@ func subtracting(_ other: Shape) -> Shape          // this one, with `other` cut
 func symmetricDifference(_ other: Shape) -> Shape  // covered by exactly one
 ```
 
-Take `a`, the square `(0, 0)`–`(100, 100)`, and `b`, the square `(50, 50)`–`(150, 150)`; they share the 50×50 patch in the middle:
+Take `a`, the square from `(0, 0)` to `(100, 100)`, and `b`, the square from `(50, 50)` to `(150, 150)`; they share the 50×50 patch in the middle:
 
 ```
 (0,0)

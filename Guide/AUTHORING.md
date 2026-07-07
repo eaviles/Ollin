@@ -29,12 +29,14 @@ The rule: something appears on the reader's canvas within the first page of ever
 - Metaphors must teach. One that carries a concept (the noise landscape, the zoom knob, the tile doorways) earns its place; a decorative one ("pays the debt in full", a function with moods or a soul) gets cut. One metaphor per idea, never stacked, never stretched across chapters, and no personified code unless the personification is the explanation.
 - Natural flow over clever flow. No fragment-as-transition ("Everything at once."), no inverted openers ("Six-three-one: ..."), no chains of matched clauses where a plain sentence would do. Write the sentence a good teacher would say out loud.
 - No em dashes anywhere in the Guide (repo-wide rule, enforced by tooling). Use commas, colons, parentheses, or a new sentence.
+- An ellipsis is the single character "…", never three dots. A Swift range spelled in prose goes in backticks as code (`0...1`); there the three dots are the operator.
 - Sentence case for headings and chapter titles.
 - The Guide calls itself "the guide" (or "this guide"), never "the book". Real books keep their titles.
 - It's fine to say something is hard, and to say when a technique's result is only "usually good". Honesty beats polish.
 - Influences are named openly and generously in prose (Nature of Code, the Book of Shaders, Processing, p5.js, OPENRNDR are part of the story and get credit). Inside `.swift` figure files the repo rule applies: no external framework or product names in comments.
 - Run the humanizer pass over every chapter before it ships.
 - Jokes are allowed. One per chapter is probably plenty.
+- The checkable subset of these rules runs as a lint: `Scripts/prose-lint.sh` (Vale; config in `.vale.ini` plus the custom rules in `.vale/styles/OllinGuide`; first run needs `brew install vale`). Errors block a commit; warnings are judgment prompts, fix them or keep them on purpose. The same lint covers `Docs/`, which shares the plain-words bar in its own reference tone.
 
 ## Chapter anatomy
 
@@ -82,7 +84,7 @@ One chapter per session, in this order:
 4. Write the prose around the verified figures and listings. Track the concept list against principle 1 as you go.
 5. Add the chapter's math ideas to Appendix B's running list, and its "Go deeper" targets to the coverage matrix in PLAN.md (flip rows to their promised depth).
 6. Run `Scripts/guide-figures.sh` (all figures, not just the new ones).
-7. Humanizer pass over the chapter, plus the plain-words check from *Voice and style* (rare words, decorative metaphor, clever flow).
+7. Humanizer pass over the chapter, plus the plain-words check from *Voice and style* (rare words, decorative metaphor, clever flow). Then run `Scripts/prose-lint.sh` and clear its errors.
 8. Update PLAN.md status, link the chapter in `Guide/README.md`'s contents.
 9. Run the docs audit, then commit (Guide chapters are milestones; commit and push per the repo convention).
 

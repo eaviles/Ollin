@@ -1,0 +1,20 @@
+# The plain-words rule from Guide/AUTHORING.md: prefer the common word over
+# the vivid rare one. Warnings, not errors, because context can win.
+extends: substitution
+message: "Prefer the plain word: '%s' over '%s' (Guide/AUTHORING.md)."
+level: warning
+ignorecase: true
+action:
+  name: replace
+swap:
+  # only the gait senses: "staggered starts" / "a per-row stagger" (offset) are fine
+  staggers|staggering: jitters
+  droughts?: gaps
+  amnesiac: forgetful
+  unimpeachabl[ye]: perfect
+  annulus: ring
+  administer(s|ing|ed)?: apply
+  ambl(es?|ed|ing): walk
+  clums(y|ily): awkward
+  utiliz(es?|ed|ing): use
+  in order to: to

@@ -221,7 +221,7 @@ withState {
 
 ### Optionals at a glance
 
-Swift makes "might be missing" part of the type. An optional `T?` either holds a `T` or is `nil`. You won't define many in a sketch, but you'll see them — e.g. a lookup that can fail. Unwrap with `if let`:
+Swift makes "might be missing" part of the type. An optional `T?` either holds a `T` or is `nil`. You won't define many in a sketch, but you'll see them — for example, a lookup that can fail. Unwrap with `if let`:
 
 ```swift
 if let first = particles.first {     // .first is Vector2?, nil if empty
