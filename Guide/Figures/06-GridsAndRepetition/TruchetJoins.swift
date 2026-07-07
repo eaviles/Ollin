@@ -55,8 +55,8 @@ final class TruchetJoins: Sketch {
         drawText("agree at the edges, and any arrangement connects", width / 2, 440)
     }
 
-    /// One arc tile: two quarter-circles hugging opposite corners, picked by
-    /// `flipped`, ending on the cell's four edge midpoints.
+    /// One arc tile at the chosen spin, its arcs ending on the cell's four
+    /// edge midpoints.
     func drawTile(_ rect: Rectangle, flipped: Bool, doorways: Bool = true) {
         if doorways {
             noFill()
@@ -65,18 +65,12 @@ final class TruchetJoins: Sketch {
             drawRect(rect)
         }
 
-        let r = rect.width / 2
-        let quarter = Double.tau / 4
         noFill()
         stroke(ink)
         strokeWeight(5)
         strokeCap(.round)
-        if flipped {
-            drawArc(rect.x + rect.width, rect.y, r, r, start: quarter, stop: quarter * 2)
-            drawArc(rect.x, rect.y + rect.height, r, r, start: quarter * 3, stop: .tau)
-        } else {
-            drawArc(rect.x, rect.y, r, r, start: 0, stop: quarter)
-            drawArc(rect.x + rect.width, rect.y + rect.height, r, r, start: quarter * 2, stop: quarter * 3)
+        for arc in Truchet.contours(in: rect, tile: .arcs, flipped: flipped) {
+            drawPolyline(arc.points)
         }
 
         if doorways {

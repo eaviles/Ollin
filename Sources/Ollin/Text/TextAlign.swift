@@ -18,6 +18,11 @@ public enum TextAlignV: Sendable {
     case middle
     case baseline
     case bottom
+
+    /// `.middle`, under the name the horizontal axis uses, so
+    /// `textAlign(.center, .center)` also compiles. Vertical centering is
+    /// typographically "middle"; the canonical case stays `.middle`.
+    public static var center: TextAlignV { .middle }
 }
 
 /// How outline (`.ttf`/`.otf`) text is rendered (see `textMode`). `.outline`

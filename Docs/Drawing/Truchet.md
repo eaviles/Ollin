@@ -27,6 +27,7 @@ The output is a set of open `Contour`s (the line-work), so it strokes, hatches, 
 - [truchet](#truchet)
 - [drawTruchet](#drawTruchet)
 - [Tile styles](#tiles)
+- [Single tiles](#single-tiles)
 
 <a name="truchet"></a>
 
@@ -46,7 +47,7 @@ Iterate the contours to color each one (a flow of hue travels along the connecte
 seed(3)
 noFill(); strokeCap(.round); strokeWeight(11)
 for arc in truchet(columns: 12, rows: 12, tile: .arcs) {
-    let mid = arc.points[arc.points.count / 2]
+    let mid = arc.midpoint
     stroke(Color.mix(.teal, .orange, t: (signedNoise(mid.x * 0.003, mid.y * 0.003, time) + 1) * 0.5))
     drawPolyline(arc.points)
 }
@@ -80,6 +81,27 @@ drawTruchet(columns: 20, rows: 20, tile: .diagonals)   // a maze
 
 - **`.arcs`** joins each cell's edge midpoints with two quarter-circles, so the arcs meet across borders into smooth meandering loops and rings (the classic Truchet look, after Cyril Stanley Smith).
 - **`.diagonals`** draws one corner-to-corner diagonal per cell (`╲` or `╱`), so the cells read as a maze of connected corridors.
+
+<a name="single-tiles"></a>
+
+#### Single tiles
+
+```swift
+Truchet.contours(in rect: Rectangle,
+                 tile: Truchet.Tile = .arcs,
+                 flipped: Bool = false) -> [Contour]
+```
+
+One tile's line-work in `rect`, at a spin *you* choose instead of a random one: `flipped: false` is the `╲`-leaning orientation, `true` the `╱`. This is the building block the grid form places per cell; reach for it to hand-author a layout (weighted spins, symmetric arrangements, a specific pattern) or to draw the tile itself:
+
+```swift
+// A tiling whose spins follow a checkerboard instead of a coin flip.
+for cell in grid(columns: 12, rows: 12).cells {
+    for arc in Truchet.contours(in: cell.frame, flipped: (cell.column + cell.row) % 2 == 0) {
+        drawPolyline(arc.points)
+    }
+}
+```
 
 ---
 

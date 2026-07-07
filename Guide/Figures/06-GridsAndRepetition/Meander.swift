@@ -37,7 +37,7 @@ final class Meander: Sketch {
 
         strokeWeight(cell * 0.26)
         for strand in strands {
-            let mid = strand.points[strand.points.count / 2]
+            let mid = strand.midpoint
             let weather = noise(mid.x * 0.0016, mid.y * 0.0016, time * 0.06)
             stroke(ramp.color(at: weather))
             drawPolyline(strand.points)

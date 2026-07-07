@@ -19,6 +19,51 @@ public struct Contour: Equatable, Sendable {
     }
 }
 
+public extension Contour {
+    /// The distance walked along the contour's segments, end to end (plus the
+    /// closing segment back to the start when the contour is closed).
+    var length: Double {
+        guard points.count > 1 else { return 0 }
+        var total = 0.0
+        for i in 1..<points.count {
+            total += (points[i] - points[i - 1]).length
+        }
+        if isClosed {
+            total += (points[0] - points[points.count - 1]).length
+        }
+        return total
+    }
+
+    /// The point a fraction `t` (`0...1`, clamped) of the way along the
+    /// contour *by walked length*, so it lands mid-stroke even when the points
+    /// are spaced unevenly. A closed contour's walk includes the closing
+    /// segment, so `t` near 1 sits just before the start again.
+    func point(at t: Double) -> Vector2 {
+        guard let first = points.first else { return .zero }
+        let total = length
+        guard total > 0 else { return first }
+        var remaining = min(max(t, 0), 1) * total
+        var walk = Array(points.dropFirst())
+        if isClosed { walk.append(first) }
+        var previous = first
+        for point in walk {
+            let segment = (point - previous).length
+            if remaining <= segment {
+                guard segment > 0 else { continue }
+                return previous + (point - previous) * (remaining / segment)
+            }
+            remaining -= segment
+            previous = point
+        }
+        return walk[walk.count - 1]
+    }
+
+    /// The point halfway along the contour (`point(at: 0.5)`): a handy anchor
+    /// for styling per contour, like coloring each strand of a tiling by a
+    /// field sampled at its middle.
+    var midpoint: Vector2 { point(at: 0.5) }
+}
+
 /// The rule that decides which regions of a self-overlapping or multi-contour
 /// outline are inside the fill.
 ///

@@ -106,7 +106,7 @@ textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline)
 Set how text is anchored to the `drawText` position.
 
 - Horizontal (`TextAlignH`): `.left` (default) starts the text at the x, `.center` centers it, `.right` ends it at the x.
-- Vertical (`TextAlignV`): `.baseline` (default, like p5) sits the first line's baseline on the y; `.top` / `.bottom` align the block's top / bottom edge; `.middle` centers the whole block.
+- Vertical (`TextAlignV`): `.baseline` (default, like p5) sits the first line's baseline on the y; `.top` / `.bottom` align the block's top / bottom edge; `.middle` centers the whole block (`.center` is accepted as an alias, so `textAlign(.center, .center)` compiles).
 
 ```
   textAlign(h, v): how text anchors to the (x, y) you pass (● = that point).

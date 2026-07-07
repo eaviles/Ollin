@@ -207,7 +207,7 @@ final class Meander: Sketch {
 
         strokeWeight(cell * 0.26)
         for strand in strands {
-            let mid = strand.points[strand.points.count / 2]
+            let mid = strand.midpoint
             let weather = noise(mid.x * 0.0016, mid.y * 0.0016, time * 0.06)
             stroke(ramp.color(at: weather))
             drawPolyline(strand.points)
@@ -225,7 +225,7 @@ Run it, watch the colors migrate, and click for a fresh tangle. What each piece 
 - `seed(quiltSeed)` locks both `random` and `noise` at the top of every frame, so the layout holds still while `time` drifts the colors, and the Seed knob (or a click) is a whole new piece.
 - `truchet(...)` returns the strands as values instead of drawing them. Each is a contour, a list of points in `.points`, and `drawPolyline` strokes one list.
 - The two passes are an old illustrator's trick. The rim pass is a touch wider than the color pass, so wherever two strands run close, a dark seam keeps them apart; drawing *all* rims before *any* color is what keeps each strand's own segments merging smoothly into one pipe.
-- `strand.points[strand.points.count / 2]` grabs a strand's middle point, and `noise` at that spot (scaled way down, Chapter 5's zoom knob) picks its color from the ramp. Nearby strands ask nearby questions, so color arrives in weather-like patches instead of confetti.
+- `strand.midpoint` is the point halfway along a strand, and `noise` at that spot (scaled way down, Chapter 5's zoom knob) picks its color from the ramp. Nearby strands ask nearby questions, so color arrives in weather-like patches instead of confetti.
 - The knobs earn their keep: `Columns` runs the piece from chunky plumbing at 6 to fine knitting at 26 (the stroke widths ride the cell size, so everything stays in proportion), and the `Diagonals` toggle swaps the whole mood from tangle to circuit board.
 
 Before moving on, make it yours:
