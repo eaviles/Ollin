@@ -34,6 +34,9 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - Recursion: a rule applied to its own output; a depth counter as the floor it stops on; 2^n growth of branches (Ch 11)
 - Rewriting growth: strings that grow exponentially under substitution rules; the drawing gets richer because the sentence gets longer (Ch 11) - reuse Images/11-GrowingThings/LSystemExpansion.jpg
 - Constraint propagation: one local law (edges must match) forcing global structure; settling the most-constrained cell first (Ch 11)
+- A field: a question answered at every point (number fields = noise, direction fields = flow); sampling vs the field itself (Ch 12) - reuse Images/12-FieldsAndFlow/Compass.jpg
+- Integrating a field: ask, step, ask again (Euler steps); step size vs corner-cutting (Ch 12) - reuse Images/12-FieldsAndFlow/TraceSteps.jpg
+- Iterated maps: feeding a formula its own output; orbits and attractors as where the visits pile up (Ch 12)
 - The random walk: accumulate nudges instead of re-rolling, and a path appears (Ch 4) - reuse Images/04-Randomness/WalkVsJumps.jpg
 - Coherence: noise is a lookup into a fixed smooth landscape, so nearby inputs give nearby outputs (Ch 5) - reuse Images/05-Noise/RandomVsNoise.jpg
 - The input multiplier as a zoom knob: how far apart the questions land (Ch 5) - reuse Images/05-Noise/NoiseZoom.jpg
