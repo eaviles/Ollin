@@ -41,6 +41,10 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - Offsets: growing and shrinking a region uniformly; insets pinching apart at the waist (Ch 13)
 - Duality: Voronoi territories and Delaunay neighbors as two readings of one point set (Ch 13) - reuse Images/13-ShapesAsMaterial/Duals.jpg
 - Convexity: the hull as the tightest rubber band; consistent turn direction along a convex boundary (Ch 13)
+- Blend modes as per-channel arithmetic: cover, add, subtract, multiply, min, max (Ch 14) - reuse Images/14-LayersAndEffects/BlendModes.jpg
+- Exponential decay: keeping 93% each frame melts marks away smoothly, never quite to zero (Ch 14, the feedback fade)
+- Light adds past 1: values beyond full brightness, and a curve (clamp vs roll-off) to bring them back to the screen (Ch 14) - reuse Images/14-LayersAndEffects/ToneClamp.jpg + ToneAces.jpg
+- Iteration: feeding a picture's transform back into itself; small per-frame transforms compound into spirals and tunnels (Ch 14) - reuse Images/14-LayersAndEffects/FeedbackSteps.jpg
 - The random walk: accumulate nudges instead of re-rolling, and a path appears (Ch 4) - reuse Images/04-Randomness/WalkVsJumps.jpg
 - Coherence: noise is a lookup into a fixed smooth landscape, so nearby inputs give nearby outputs (Ch 5) - reuse Images/05-Noise/RandomVsNoise.jpg
 - The input multiplier as a zoom knob: how far apart the questions land (Ch 5) - reuse Images/05-Noise/NoiseZoom.jpg

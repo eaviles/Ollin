@@ -85,4 +85,10 @@ public final class Feedback {
     /// This frame's written content, as an `Image`, to composite onto the canvas
     /// with `drawImage`. Resolves the renderer's back texture lazily at draw time.
     public var image: Image { writeLayer.image }
+
+    /// This frame's written content through a `Filter`, returning a new layer to
+    /// composite: bloom the trails, recolor them through a gradient map, the same
+    /// effects substrate every layer uses. The filter reads the written result; the
+    /// persistent state the loop carries forward stays untouched.
+    public func filtered(_ filter: Filter) -> RenderTarget { writeLayer.filtered(filter) }
 }

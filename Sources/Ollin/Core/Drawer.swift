@@ -649,12 +649,17 @@ final class Drawer {
     /// Redirect drawing in `body` into `target` instead of the main canvas: every
     /// primitive drawn inside the closure is tagged for the target, which the
     /// renderer fills in its own pass before the main one. Nestable; a fresh batch
-    /// is forced at each boundary so target and main geometry never merge.
+    /// is forced at each boundary so target and main geometry never merge. Scoped
+    /// like `withState`: the drawing state carries in, and any change the block
+    /// makes (a blend mode, a fill, a transform) is restored on exit, so a layer's
+    /// styling never leaks onto the canvas.
     func withTarget(_ target: RenderTarget, _ body: () -> Void) {
         if !renderTargets.contains(where: { $0 === target }) { renderTargets.append(target) }
         targetStack.append(TargetFrame(target: target, snapshot: snapshot()))
         currentKind = nil    // force the first draw inside the target into a fresh batch
+        pushState()
         body()
+        popState()
         targetStack.removeLast()
         currentKind = nil    // and force the next main draw into a fresh, untagged batch
     }

@@ -419,6 +419,7 @@ override func draw() {
 
 - `withFeedback(_:_:)` hands the previous frame in as the closure parameter. The `withTarget(feedback) { … }` form works too: read last frame by name with `feedback.previous` inside.
 - `feedback.previous` is last frame's content; `feedback.image` is this frame's, for compositing.
+- `feedback.filtered(_:)` runs this frame's result through a `Filter` (bloom the trails, recolor them through a gradient map) like any layer; the state the loop carries forward stays untouched.
 - Call `background(_:)` **before** the block. On the canvas it resets the whole frame, so calling it after would wipe the layer's geometry (like any other `withTarget` layer). Inside the block, `background(_:)` clears just the feedback layer.
 - See the `Effects/Feedback` example for a spiralling tunnel.
 

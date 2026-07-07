@@ -21,7 +21,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 11. Growing things | `11-GrowingThings.md` | done |
 | 12. Fields and flow | `12-FieldsAndFlow.md` | done |
 | 13. Shapes as material | `13-ShapesAsMaterial.md` | done |
-| 14. Layers and effects | `14-LayersAndEffects.md` | not started |
+| 14. Layers and effects | `14-LayersAndEffects.md` | done |
 | 15. Your first shader | `15-YourFirstShader.md` | not started |
 | 16. Simulations | `16-Simulations.md` | not started |
 | 17. 3D, gently | `17-3DGently.md` | not started |
@@ -261,13 +261,13 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/Packing.md` (circles) | Ch 13 | taught |
 | `Generators/ShapePacking.md` | Ch 13 | shown |
 | Hatching (`Output/Export.md`) | Ch 13 | taught |
-| `Drawing/Effects.md` (targets, filters, compose, combine) | Ch 14 | taught |
+| `Drawing/Effects.md` (targets, filters, compose, combine) | Ch 14 | taught (targets/filters/generators/compose/feedback taught; combine + aside pointed) |
 | Blend modes (`Drawing/Drawing.md`) | Ch 14 | taught |
 | Feedback (`Drawing/Effects.md`) | Ch 14 | taught |
 | `Drawing/Accumulation.md` (noClear) | Ch 14; used in Ch 16 | taught |
 | `Drawing/HDR.md` (toneMap) | Ch 14 | taught |
 | Design patterns + design filters (`Drawing/Effects.md`) | Ch 14 | shown |
-| Relight, two-tone dither, warp centers (`Drawing/Effects.md`) | Ch 14 | shown |
+| Relight, two-tone dither, warp centers (`Drawing/Effects.md`) | Ch 14 | pointed |
 | Depth-of-field `.defocus`, SSAO, SSR (`Drawing/Effects.md`) | Ch 17 | pointed |
 | `Shaders/Shaders.md` (user shaders) | Ch 15 | taught |
 | `Shaders/Visuals.md` (Visual chains) | Ch 15 | taught |

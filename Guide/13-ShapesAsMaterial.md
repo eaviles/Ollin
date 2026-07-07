@@ -218,4 +218,4 @@ The territories are named for Georgy Voronoy and the triangulation for Boris Del
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 12, Fields and flow](12-FieldsAndFlow.md) · Next: Chapter 14, Layers and effects
+[Contents](README.md#contents) · Previous: [Chapter 12, Fields and flow](12-FieldsAndFlow.md) · Next: [Chapter 14, Layers and effects](14-LayersAndEffects.md)
