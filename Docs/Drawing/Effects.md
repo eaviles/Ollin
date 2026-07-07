@@ -586,6 +586,7 @@ They interleave with `.post(_:)` in call order, and an aside can itself carry fi
 - **It's GPU-resident, by design.** Layers are Metal render targets and filter inputs are texture samples, so a layer is never copied back to the CPU. That's the difference between this and combining `createGraphics`-style buffers on the CPU, which forces a full-frame upload every frame.
 - **Linear light, premultiplied.** Layers composite in the same [linear-float](../Drawing/HDR.md) space as the canvas, so blur and bloom are physically correct (blurring in linear light, not gamma). Tone-mapping and dithering still happen once, at present, so a layer holds raw linear color.
 - **2D layers.** A `withTarget` block is a 2D drawing surface; 3D geometry (meshes, point clouds, depth scenes) and GPU particles inside one aren't composited in Phase 1.
+- **Filtered layers composite on the canvas, not inside another target.** Geometry layers are filled before the frame's filters run, so a `withTarget` block that draws a *filtered* layer's `image` samples it before it exists (an empty texture). Composite filtered results on the canvas, or chain further `filtered(_:)`/`combined(_:)` calls, which resolve in order.
 - **Pair bloom with `.add`.** Bloom output is self-contained (sharp image + glow). Compositing it with [`blendMode(.add)`](../Drawing/Drawing.md#blendmode) over a scene reads as added light rather than a covering layer.
 - See the `Effects/Bloom` example for a blurred backdrop behind a bloomed foreground.
 
