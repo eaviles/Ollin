@@ -66,6 +66,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Paths, shapes, and contours | Curved outlines you build, hold, edit, and respace with `resampled` | [Ch 13](13-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | Shape booleans and offsets | Union, intersect, subtract, xor; grow and shrink regions | [Ch 13](13-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | Stroke as shape | Turn any stroked line into a filled region for booleans and plotting | [Ch 13](13-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
+| SVG import | Vector artwork read into shapes: draw it as authored, or mine it as geometry | [Ch 13](13-ShapesAsMaterial.md) | [SVG](../Docs/Drawing/SVG.md) |
 | Convex hull | The rubber band around a point set | [Ch 13](13-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | Voronoi and Delaunay | Territories and neighbor networks from points, with Lloyd relaxation | [Ch 13](13-ShapesAsMaterial.md) | [Voronoi](../Docs/Drawing/Voronoi.md) |
 

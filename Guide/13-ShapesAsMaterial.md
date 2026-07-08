@@ -130,6 +130,32 @@ for line in hatch.lines(filling: shape) {
 
 Spacing is the pen's whole idea of tone, and holes and concavities are respected because the lines are clipped by the shape's own inside rule. For getting work *out*, every sketch already knows how: run it with `--export-svg plate.svg` and the recorded geometry writes as true vector paths; add `--hatch` and the exporter converts every fill to hatch line work by itself, spacing scaled by each fill's tone. Either way the file opens in any vector tool and feeds any plotter.
 
+## Shapes from a file
+
+One more source of material before the payoff: shapes you didn't draw at all. SVG is the plain-text vector format every design tool exports, and `loadSVG` reads a file into the same types this chapter has been editing, each element a `Shape` carrying the fill and stroke it was authored with:
+
+```swift
+if let art = loadSVG("boat.svg") {
+    drawSVG(art, in: bounds.inset(by: .all(140)))
+}
+```
+
+`drawSVG` draws the file the way its author saw it, fills, strokes, and stacking order intact. But the reason it lives in this chapter is what happens when you ignore the authored look. `art.shapes` and `art.contours` hand over the bare geometry, and everything above applies to it: subtract the artwork from a mosaic, shrink it into nested outlines, respace its contours into even dots (the Chapter 7 trick), or hatch it for the pen.
+
+<img src="Images/13-ShapesAsMaterial/ImportMined.jpg" alt="Three panels of the same imported sailboat SVG: drawn as authored with its own fills, respaced into even dots along every outline, and hatched into pen line work at a different angle per part" width="680">
+
+```swift
+let fitted = art.fitted(in: frame)      // a scaled copy, in canvas coordinates
+for (i, shape) in fitted.shapes.enumerated() {
+    let hatch = Hatching(spacing: 4.5, angle: 0.5 + Double(i) * 0.7)
+    for line in hatch.lines(filling: shape) {
+        drawPolyline(line)
+    }
+}
+```
+
+A logo, a scanned drawing auto-traced to paths, a file another sketch exported: they all arrive the same way, and they can leave again through `--export-svg`, so a sketch can import a file, rework it, and hand the result to a plotter. Two things to know before you lean on it: text doesn't import (convert it to outlines in the design tool first), and a gradient fill falls back to flat gray so the form stays visible. The [SVG import reference](../Docs/Drawing/SVG.md) lists exactly what the importer reads and skips.
+
 ## The payoff: the plate
 
 The plate brings the whole chapter to one piece of paper: a blue-noise scatter, relaxed once; its Voronoi mosaic, inset cell by cell; a stroked ribbon subtracted from every cell with a halo of breathing room; and two pens' worth of hatching. Make `MySketches/Plate.swift`:
@@ -211,10 +237,12 @@ The territories are named for Georgy Voronoy and the triangulation for Boris Del
 ## Go deeper
 
 - [Geometry](../Docs/Drawing/Geometry.md): `Contour`, `Shape`, `Path`, the booleans, offsetting, stroke-as-shape, and the convex hull, with every signature.
+- [SVG import](../Docs/Drawing/SVG.md): loading, drawing, the element list, and what the importer reads and skips.
+- [Fourier epicycles](../Docs/Drawing/Epicycles.md): rebuild an imported outline as a chain of spinning circles; the [`Examples/Motion/Epicycles`](../Examples/Motion/Epicycles/Sketch.swift) example traces a whale with them.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.
 - [Blue noise](../Docs/Generators/BlueNoise.md) and [circle packing](../Docs/Generators/Packing.md) / [shape packing](../Docs/Generators/ShapePacking.md).
 - [Export](../Docs/Output/Export.md): the whole `--export-svg` and `--hatch` surface, plus stills, sequences, video, and GIF.
-- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Shapes/RubberBand`](../Examples/Shapes/RubberBand/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), and [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift).
+- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Shapes/RubberBand`](../Examples/Shapes/RubberBand/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), and [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift).
 
 ---
 

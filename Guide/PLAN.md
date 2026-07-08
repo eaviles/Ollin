@@ -261,7 +261,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/Packing.md` (circles) | Ch 13 | taught |
 | `Generators/ShapePacking.md` | Ch 13 | shown |
 | Hatching (`Output/Export.md`) | Ch 13 | taught |
-| `Drawing/SVG.md` (SVG import: `loadSVG`, `drawSVG`) | Ch 13 | to fold in (shipped after the chapter; imported artwork as a boolean/hatching/resampling source) |
+| `Drawing/SVG.md` (SVG import: `loadSVG`, `drawSVG`) | Ch 13 | taught |
 | `Drawing/Effects.md` (targets, filters, compose, combine) | Ch 14 | taught (targets/filters/generators/compose/feedback taught; combine + aside pointed) |
 | Blend modes (`Drawing/Drawing.md`) | Ch 14 | taught |
 | Feedback (`Drawing/Effects.md`) | Ch 14 | taught |
