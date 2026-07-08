@@ -19,6 +19,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Render quality](#render-quality) — `--render-quality`, the live vs. export default
 - [Video](#video) — `--export-video`, `OllinApp.exportVideo`
 - [Animated GIF](#animated-gif) — `--export-gif`, `OllinApp.exportGIF`
+- [Perfect loops](#perfect-loops): `--export-loop`, `Sketch.loopDuration`
 - [Vector: SVG](#vector-svg) — `--export-svg`, `OllinApp.svg` / `exportSVG`
 - [What SVG export records](#what-svg-export-records) — the shape mapping and the limits
 - [Hatching: solid fills for a pen plotter](#hatching-solid-fills-for-a-pen-plotter) — `--hatch`, `Hatching`
@@ -101,6 +102,27 @@ In code it's `OllinApp.exportGIF(_:to:frames:fps:width:skipSeconds:)`. GIF is pa
 Watch out for **full-frame churn**: a piece where every pixel moves every frame (a drifting field, a full-canvas texture) defeats GIF's frame-to-frame compression entirely, so even a modest width can land in the tens of megabytes. Lowering `--fps` cuts such a file roughly in proportion, and sparse motion over a stable background compresses far better.
 
 One timing quirk is inherent to the format: GIF stores each frame's delay in whole centiseconds, so the achievable rates are 50, 33.3, 25, 20, … fps. The requested `--fps` (default 25, which is exact) is quantized to the closest achievable rate, and the sketch's clock runs at *that* rate, so motion always plays back at true speed and the clip keeps its requested duration.
+
+### Perfect loops
+
+A sketch whose motion repeats exactly can say so, and then the export machinery can render exactly one period: no more hand-matching `--seconds` to the loop length and trimming the seam by eye. Declare the period once:
+
+```swift
+override var loopDuration: Double? { 6 }   // this sketch repeats every 6 seconds
+```
+
+and export one seamless lap:
+
+```sh
+swift run Example-Motion-PerfectLoop --export-loop loop.gif
+swift run Example-Motion-PerfectLoop --export-loop loop.mp4 --fps 30
+```
+
+The frame count is derived (`loopDuration × fps`), and the output format follows the file extension: `.gif` takes the GIF options (`--gif-width`), anything else encodes video (`--codec`, `--bitrate`, `--quality`). `--fps` (default 25 for GIF, 60 for video), `--skip`, and `--render-quality` work as everywhere else. For a GIF, the lap is computed against the centisecond-quantized rate the format can actually play (see the timing note above), so the loop stays exact at that rate. If `loopDuration × fps` isn't a whole number of frames, the export warns and rounds; pick a rate that divides the loop.
+
+What makes a sketch loop-clean: drive every moving part from a phase that repeats over the period, meaning `loopProgress(over:)` / `pingPong(over:)`, [looping noise](../Generators/Noise.md) (`noise(loop:)` / `signedNoise(loop:)`), or an angle built as `phase * .tau`. One term of plain `time`, or a `sin(time * k)` whose period doesn't divide the loop, breaks the seam. The [`Motion/PerfectLoop`](../../Examples/Motion/PerfectLoop/Sketch.swift) example is the worked reference: it declares `loopDuration`, and its frame one period later renders pixel-identical to frame zero.
+
+There's no separate code entry point: in Swift, derive the count yourself and call the encoder (`OllinApp.exportGIF(sketch, to: path, frames: Int(duration * fps), fps: fps)`).
 
 ### Vector: SVG
 

@@ -27,7 +27,7 @@ final class HelloCircle: Sketch {
 - [Canvas](#canvas) - `width`, `height`
 - [Loop control](#loop-control) - `noLoop`, `loop`, `isLooping`
 - [Extensions](#extensions) - `extend`, and writing a `SketchExtension`
-- [Configuration](#configuration) - `title`, `canvasSize`, `windowMode`
+- [Configuration](#configuration) - `title`, `canvasSize`, `windowMode`, `loopDuration`
 - [Running a sketch](#running-a-sketch)
 
 Canvas sizing, `scale`, export resolution, and the preview window have their own page: [Canvas](../Core/Canvas.md).
@@ -241,8 +241,22 @@ override var canvasSize: CanvasSize { .square(1000) } // a custom square
 override var windowMode: WindowMode { .fixed(0.5) }   // preview at half size
 ```
 
+<a name="loopDuration"></a>
+
+#### loopDuration
+
+```swift
+loopDuration: Double?
+```
+
+The length of the sketch's loop in seconds, `nil` (the default) when it doesn't declare one. A sketch whose motion repeats exactly declares its period here, and `--export-loop` renders exactly one lap for a seamless GIF or video; see [perfect loops](../Output/Export.md#perfect-loops).
+
+```swift
+override var loopDuration: Double? { 6 }   // repeats every 6 seconds
+```
+
 <a name="running-a-sketch"></a>
 
 ### Running a sketch
 
-`OllinApp.run(MySketch())` boots a window. With `@main` on the subclass, the inherited `Sketch.main()` does that for you, so a single file is the whole program. To iterate with live reload, run it through the host instead: `swift run OllinLive path/to/Sketch.swift` (see [live reload](../../README.md#live-reload)). Any sketch can also render headlessly: a single frame with `--export`, or a deterministic numbered PNG sequence with `--export-sequence <dir> (--frames N | --seconds D) [--fps F] [--skip S]` (a fixed-timestep render that assembles into a video; `--skip` runs the sketch a while first so a stateful sketch settles before capture; see [export](../../README.md#export)). The same flags work on a loose watched file through the live host, `swift run OllinLive path/to/Sketch.swift --export-gif loop.gif --seconds 4`, which compiles the file and exports instead of opening a window; the full flag set (video, GIF, SVG, render quality) is in [Export](../Output/Export.md).
+`OllinApp.run(MySketch())` boots a window. With `@main` on the subclass, the inherited `Sketch.main()` does that for you, so a single file is the whole program. To iterate with live reload, run it through the host instead: `swift run OllinLive path/to/Sketch.swift` (see [live reload](../../README.md#live-reload)). Any sketch can also render headlessly: a single frame with `--export`, or a deterministic numbered PNG sequence with `--export-sequence <dir> (--frames N | --seconds D) [--fps F] [--skip S]` (a fixed-timestep render that assembles into a video; `--skip` runs the sketch a while first so a stateful sketch settles before capture; see [export](../../README.md#export)). The same flags work on a loose watched file through the live host, `swift run OllinLive path/to/Sketch.swift --export-gif loop.gif --seconds 4`, which compiles the file and exports instead of opening a window; the full flag set (video, GIF, perfect loops, SVG, render quality) is in [Export](../Output/Export.md).

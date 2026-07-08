@@ -1355,8 +1355,8 @@ public extension Sketch {
 public extension OllinApp {
     /// Handle the shared headless command-line surface (the export flags
     /// `--export`, `--export-sequence`, `--export-video`, `--export-gif`,
-    /// `--export-svg` with their options, plus `--bench`) against a sketch
-    /// supplied on demand.
+    /// `--export-loop`, `--export-svg` with their options, plus `--bench`)
+    /// against a sketch supplied on demand.
     ///
     /// Returns `true` when a headless flag was recognized (the work ran, or a
     /// usage message was printed), meaning the caller should exit rather than
@@ -1401,6 +1401,61 @@ public extension OllinApp {
             }
             OllinApp.exportSequence(makeSketch(), to: dir, frames: frames, fps: fps,
                                     startFrame: start, skipSeconds: skip, quality: renderQuality)
+            return true
+        }
+        // `--export-loop <path> [--fps F] [--skip S] [--gif-width PX] [--codec C]
+        // [--bitrate MBPS] [--quality 0..1]` renders exactly one period of a
+        // sketch that declares `loopDuration`, as a seamlessly looping GIF or
+        // video (picked by the file extension), and exits.
+        if let i = args.firstIndex(of: "--export-loop"), i + 1 < args.count {
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
+            }
+            let path = args[i + 1]
+            let isGIF = path.lowercased().hasSuffix(".gif")
+            let fps = value("--fps").flatMap(Double.init) ?? (isGIF ? 25 : 60)
+            let skip = value("--skip").flatMap(Double.init) ?? 0
+            let sketch = makeSketch()
+            guard let duration = sketch.loopDuration, duration > 0 else {
+                FileHandle.standardError.write(Data("""
+                    --export-loop renders one period of a sketch that declares its loop:
+                        override var loopDuration: Double? { 6 }   // seconds per lap
+                    usage: --export-loop <path.gif|.mp4|.mov> [--fps F] [--skip S] [--gif-width PX] [--codec C] [--bitrate MBPS] [--quality 0..1]
+
+                    """.utf8))
+                return true
+            }
+            // GIF stores whole-centisecond frame delays, so exportGIF quantizes
+            // the rate; compute the lap against the rate that will actually
+            // play, or the frame count drifts off one period.
+            let loopFPS = isGIF ? 100 / Double(max(2, Int((100 / fps).rounded()))) : fps
+            let exact = duration * loopFPS
+            let frames = max(1, Int(exact.rounded()))
+            if abs(exact - exact.rounded()) > 1e-6 {
+                FileHandle.standardError.write(Data(
+                    "note: a \(duration)s loop at \(loopFPS) fps is not a whole number of frames; the loop won't close exactly (pick an fps that divides the loop).\n".utf8))
+            }
+            if isGIF {
+                let width = value("--gif-width").flatMap(Int.init)
+                OllinApp.exportGIF(sketch, to: path, frames: frames, fps: loopFPS,
+                                   width: width, skipSeconds: skip, renderQuality: renderQuality)
+            } else {
+                var codec = VideoCodec.h264
+                if let name = value("--codec") {
+                    guard let parsed = VideoCodec(rawValue: name) else {
+                        FileHandle.standardError.write(Data(
+                            "unknown codec '\(name)': expected one of \(VideoCodec.allCases.map(\.rawValue).joined(separator: ", "))\n".utf8))
+                        return true
+                    }
+                    codec = parsed
+                }
+                let bitrate = value("--bitrate").flatMap(Double.init).map { Int($0 * 1_000_000) }
+                let quality = value("--quality").flatMap(Double.init)
+                OllinApp.exportVideo(sketch, to: path, frames: frames, fps: fps,
+                                     codec: codec, bitsPerSecond: bitrate, quality: quality,
+                                     renderQuality: renderQuality, skipSeconds: skip)
+            }
             return true
         }
         // `--export-video <path> (--frames N | --seconds S) [--fps F] [--skip S]

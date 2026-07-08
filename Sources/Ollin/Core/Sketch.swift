@@ -159,6 +159,19 @@ open class Sketch {
     /// itself lives in the host, so this stays pure data with no screen dependency.
     open var windowMode: WindowMode { .auto }
 
+    /// The length of the sketch's loop in seconds, when it has one. A sketch
+    /// whose motion repeats exactly (driven by `loopProgress`/`pingPong`,
+    /// looping noise, or any phase built from `time`) declares its period here,
+    /// and `--export-loop` renders exactly one lap, so the exported GIF or
+    /// video cycles seamlessly without hand-matching `--seconds`:
+    ///
+    /// ```swift
+    /// override var loopDuration: Double? { 6 }   // repeats every 6 seconds
+    /// ```
+    ///
+    /// `nil` (the default) declares no loop. See `Docs/Output/Export.md`.
+    open var loopDuration: Double? { nil }
+
     // MARK: Lifecycle (override in subclasses)
 
     /// Called once, after the canvas size is known, before the first `draw()`.

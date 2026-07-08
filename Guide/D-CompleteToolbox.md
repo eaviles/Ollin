@@ -198,6 +198,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 |---|---|---|---|
 | Stills and sequences | `--export` a frame, `--export-sequence` a folder of them | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Video and GIF | `--export-video` (H.264, HEVC, ProRes) and `--export-gif`, deterministic | [Ch 3](03-MotionAndTime.md), [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Perfect loops | Declare `loopDuration` and `--export-loop` renders exactly one seamless lap | [Ch 3](03-MotionAndTime.md) | [Export](../Docs/Output/Export.md) |
 | SVG for plotters | `--export-svg` true vectors, with `--hatch` turning fills into line work | [Ch 13](13-ShapesAsMaterial.md), [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Headless capture | Render any sketch to an image in code, no window | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Syphon | Publish frames to (and read frames from) other Mac apps, GPU to GPU | [Ch 22](22-SharingAndPerforming.md) | [Syphon](../Docs/Integration/Syphon.md) |

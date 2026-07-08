@@ -45,6 +45,8 @@ for (i, cell) in grid(columns: 12, rows: 1).cells.enumerated() {
 
 Progress from these helpers feeds everything below: reshape it with an easing curve, or hand it straight to `lerp`, a [`Ramp`](../Drawing/Color.md), or a rotation.
 
+A sketch built this way repeats exactly, and it can say so: declare the period as [`loopDuration`](../Core/Sketch.md#loopDuration) and `--export-loop` renders exactly one lap as a seamless GIF or video (see [perfect loops](../Output/Export.md#perfect-loops)).
+
 <a name="easing"></a>
 
 ### Easing curves

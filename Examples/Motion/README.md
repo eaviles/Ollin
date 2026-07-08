@@ -20,6 +20,7 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | [Mandala](Mandala/Sketch.swift) | nested, counter-rotating `hollow` shapes — each a framed band in one call — sliding into a moiré (`hollow`, SDF) |
 | [Myriad](Myriad/Sketch.swift) | 8,100 noise-driven circles on the SDF path — thousands of shapes at full speed |
 | [Orbits](Orbits/Sketch.swift) | ten circles orbiting the center at rising speeds |
+| [PerfectLoop](PerfectLoop/Sketch.swift) | a sketch that repeats exactly: `loopDuration` declares the period, looping noise closes the motion, and `--export-loop` renders one seamless lap |
 | [Petals](Petals/Sketch.swift) | `drawOrientedVesica` lenses spanning two counter-rotating rings — petals whose tips drift and waists breathe (SDF) |
 | [Polygons](Polygons/Sketch.swift) | regular `drawNgon` (3–8 sides) and a five-point `drawStar` relaxing from spiky to round as its inner radius grows, both turning (SDF) |
 | [RectField](RectField/Sketch.swift) | Myriad's cousin: thousands of rounded rects, corner radius sweeping square→pill, each rotated on the SDF box path |

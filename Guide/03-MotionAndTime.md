@@ -219,6 +219,7 @@ final class RingPulse: Sketch {
     @Param("Pulse width", 0.1...0.9) var pulseWidth = 0.35
 
     let loopTime = 4.0
+    override var loopDuration: Double? { loopTime }
     let ramp = Ramp([
         Color(hex: 0x5E60CE), Color(hex: 0x64DFDF),
         Color(hex: 0xFFB703), Color(hex: 0xE56B6F),
@@ -259,10 +260,10 @@ Run it with `swift run OllinLive MySketches/RingPulse.swift` and take the intere
 When it feels right in the live window, export it. Anything Ollin can run it can also render headlessly to a file, and the live host takes the same export flags the example targets do:
 
 ```sh
-swift run OllinLive MySketches/RingPulse.swift --export-gif ring.gif --seconds 4 --gif-width 540
+swift run OllinLive MySketches/RingPulse.swift --export-loop ring.gif --gif-width 540
 ```
 
-Four seconds at the default 25 fps, scaled to 540 pixels: a small file that loops forever, because `--seconds 4` matches `loopTime` exactly. Your first export, and it's the piece at the top of this chapter, rendered by this same command. (`--export-video ring.mp4` writes a real video instead, and `--export frame.png` grabs a still; the whole menu is in [Export](../Docs/Output/Export.md).)
+One lap at the default 25 fps, scaled to 540 pixels: a small file that loops forever. Notice there's no duration on the command. The sketch declares its own (`loopDuration`, the one-line override in the listing), and `--export-loop` renders exactly one period, so the file and the loop can't drift apart. Your first export, and it's the piece at the top of this chapter, rendered by this same command. (`--export-gif ring.gif --seconds 4` is the general form for a sketch that doesn't declare a loop, `--export-video ring.mp4` writes a real video instead, and `--export frame.png` grabs a still; the whole menu is in [Export](../Docs/Output/Export.md).)
 
 Then make it yours:
 

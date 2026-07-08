@@ -10,6 +10,7 @@ final class RingPulse: Sketch {
     @Param("Pulse width", 0.1...0.9) var pulseWidth = 0.35
 
     let loopTime = 4.0
+    override var loopDuration: Double? { loopTime }
     let ramp = Ramp([
         Color(hex: 0x5E60CE), Color(hex: 0x64DFDF),
         Color(hex: 0xFFB703), Color(hex: 0xE56B6F),
