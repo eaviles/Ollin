@@ -38,10 +38,11 @@ complete capability index regardless.
 | Screen-space combine effects (SSAO, SSR, depth of field) | **This doc** |
 | SDF combinators (2D VM + raymarched 3D) | **This doc** |
 | Layered-effects substrate (render targets, filters, generators, compose, combine, feedback, sim fields / fluid) | **This doc**, *Layered-effects substrate* (the combine wiring under *Screen-space combine effects*) |
-| 3D lighting (PBR / Cook-Torrance, IBL split-sum bake, procedural sky, PCSS + RT shadows, RT reflections) | Pending here; CLAUDE.md *Current state* + `Docs/3D/` |
+| 3D lighting (PBR / Cook-Torrance, IBL split-sum bake, procedural sky, PCSS + RT shadows, RT reflections) | **This doc**, *3D lighting and environments* (the reflection anti-aliasing chain under *Deferred ray-traced reflection AA*) |
 | Text & glyphs (libtess2 fill, winding / overlap-clean gotchas, fringe stroke, SDF atlas) | Pending here; CLAUDE.md + `Docs/Drawing/Text.md` |
 | Compute & GPU particles | Pending here; CLAUDE.md + `Docs/Shaders/Compute.md` |
-| User-supplied shaders | CLAUDE.md + `Docs/Shaders/Shaders.md` |
+| User-supplied shaders | **This doc**, *User-supplied shaders* |
+| Camera rig (showcase orbit, view snaps, scene chrome) | **This doc**, *Camera rig: showcase orbit, view snaps, and scene chrome* |
 | Satellites (audio, OSC, MIDI, Syphon, virtual camera, video, physics, vision, Record3D, phone) | `Docs/` per satellite + the cross-cutting satellite gotchas in CLAUDE.md |
 | Live reload (OllinLive) | CLAUDE.md *Live reload* |
 
@@ -140,6 +141,13 @@ so blur and bloom composite physically and tone-map plus dither still happen
 exactly once, at present. A layer's `scale` renders it at fraction resolution
 for fill-rate-bound effects, and layer textures are pooled per frame-ring slot.
 
+**The layer blocks scope the drawing state.** `withTarget`, `withFeedback`, and
+`withField` push and pop the drawing state around their block (the documented
+`withState`-like scoping), so a `blendMode` or style set inside a layer block
+never leaks to the canvas. Leaking was a real bug; the fix changed no
+snapshots, and `Feedback.filtered(_:)` mirrors `SimField.filtered(_:)` (both
+forward to their write layer).
+
 **Every `GeometryBatch` begin must snapshot all the `*Start` offsets.** A
 batch's vertex count for each kind is `next.<kind>Start - this.<kind>Start`, so
 a batch creator that omits one offset silently zeroes the count of a *preceding*
@@ -150,16 +158,29 @@ every offset.
 
 ### Filters and generators
 
-`Filter` is a ~44-entry catalog in five families (blur/glow, color/tone,
-stylize/optical, retro, and uv-warp distortion; the full per-filter list lives
-in `Docs/Drawing/Effects.md`). Every filter is a fullscreen-triangle fragment
-pass on the `.effect` pipeline, reusing `ollin_present_vertex` plus an
-`ollin_fx_*` fragment, reading and writing premultiplied linear. Most are
-single-sample; a handful (`bilateral`, `motionBlur`, `radialBlur`, `oilPaint`,
-`median`, the halftones) gather several taps; only `.gaussianBlur` and bloom's
-internal blur use MPS (`MPSImageGaussianBlur`). `.bloom` is bright-pass, blur,
-add-back. `.gradientMap` binds a baked 256-step LUT (`rgba32Float`) as a second
-texture.
+`Filter` is a ~55-entry catalog in six families (blur/glow, color/tone,
+stylize/optical, retro, uv-warp distortion, and the design filters; the full
+per-filter list lives in `Docs/Drawing/Effects.md`). Every filter is a
+fullscreen-triangle fragment pass on the `.effect` pipeline, reusing
+`ollin_present_vertex` plus an `ollin_fx_*` fragment, reading and writing
+premultiplied linear. Most are single-sample; a handful (`bilateral`,
+`motionBlur`, `radialBlur`, `oilPaint`, `median`, the halftones) gather several
+taps; only `.gaussianBlur` and bloom's internal blur use MPS
+(`MPSImageGaussianBlur`). `.bloom` is bright-pass, blur, add-back.
+`.gradientMap` binds a baked 256-step LUT (`rgba32Float`) as a second texture.
+
+A few filter internals are worth pinning. `.relight` (the height-map material
+pass, with matte/metal/glass/sand/liquid finishes) derives its normal from a
+Sobel gradient that must be uv-normalized, or high-resolution relief flattens.
+The radial warps take a `center:` in layer fractions and are byte-identical at
+the 0.5 default. Among the design filters, `.flutedGlass`/`.water`/
+`.paperTexture` transform the layer while `.liquidMetal`/`.heatmap`/`.gemSmoke`
+read its alpha shape (draw a shape, filter it): liquid metal and gem smoke
+consume a true interior-inflation field solved per frame as coarse-to-fine
+Jacobi fragment passes (`poissonInteriorField`), chosen because it is both
+smooth and boundary-exact where a blur leaks across concavities and a distance
+transform creases at the medial axis; heatmap preps a Gaussian halo
+(`blurredAlphaFields`, matching its blur-based reference).
 
 Two conventions keep the color math honest: the distortion warps only move
 texels (premultiplied values pass through untouched), while the color/stylize
@@ -170,11 +191,29 @@ colors. New filter built-ins are written from the published technique and
 credited in `ATTRIBUTION.md`'s Techniques list, never in `.swift` comments.
 
 `Generator` (`generate(_:)`) is the input-less sibling: a procedural pattern
-(`.checkers`/`.gridLines`/`.bars`/`.noise`) filled into a `RenderTarget` by a
-no-input `ollin_gen_*` fragment pass (a `.generator` `RenderTarget.Origin`),
-resolved ahead of the geometry and filter passes. One nuance: a fine 1px
-pattern averages away when its layer is drawn smaller, which is why the
-`dither` generator takes a `pixelSize`.
+filled into a `RenderTarget` by a no-input fragment pass (a `.generator`
+`RenderTarget.Origin`), resolved ahead of the geometry and filter passes. The
+catalog is the four basics (`.checkers`/`.gridLines`/`.bars`/`.noise`,
+`ollin_gen_*`), the design-pattern set (`.meshGradient`/`.filaments`/
+`.smokeRing`/`.colorPanels`/`.spiral`/`.waves`/`.dotOrbit`/`.grainGradient`/
+`.pulsingBorder`/`.godRays`, in `ShaderPatterns.metal`), the pattern fields
+(`.quasicrystal`/`.moire`/`.gyroid`/`.phyllotaxis`/`.hexPulse`, closed-form
+animated fields sharing `ollin_pat_ramp`), and the escape-time fractals
+(`.mandelbrot`/`.julia`, smooth iteration count through a cosine palette fold).
+`generate(_:width:height:)` fills an explicit-size layer, so patterns compose
+per-layer instead of being squashed into full-canvas fills (the Shader and
+Visual `generate` forms have the same explicit-size overloads). One nuance: a
+fine 1px pattern averages away when its layer is drawn smaller, which is why
+the `dither` generator takes a `pixelSize`.
+
+Three design-pattern invariants hold across that set. Animation is an explicit
+`phase` parameter (feed `time`), so exports and snapshots are deterministic
+with no hidden clock. Palettes ride as trailing float4 rows after the scalar
+rows of the packed params buffer. And the fragments blend palettes and
+composite internally in sRGB (`ollin_pat_stop`/`ollin_pat_out`), converting to
+premultiplied linear only on output: designer palettes mixed in linear read as
+washed-out pastel (a real bug), and the mesh gradient's inverse-distance
+weighting especially depends on this.
 
 ### Feedback (previous-frame) layers
 
@@ -310,7 +349,9 @@ Two opt-in attachments make 3D-aware effects possible without taxing 2D sketches
   camera's near/far. It is sRGB-encoded so the perceptual decode the effects use
   reads it back exactly. The attachment is gated by `RenderTarget.needsDepth`
   (set from `drawMesh`/`drawPointCloud`/`drawDepthScene`), so a pure-2D target
-  carries no depth and is byte-identical to before.
+  carries no depth and is byte-identical to before. The opt-in is two-tier: the
+  attachment only when 3D is recorded, the resolve-and-normalize pass only when
+  `.depth` is actually read; particles in a target still skip it.
 - **Normals.** A dedicated single-purpose mesh pass (`encodeMeshNormals` plus
   `ollin_mesh_normal_vertex`/`_fragment`) writes raw view-space normals into a
   mesh-normal G-buffer. It is a separate pass rather than a second attachment on
@@ -610,6 +651,13 @@ block reaches every fillable region shape. The buffers thread through all nine
 `encode` call sites (live, accumulation, export, effect-targets), so combinators
 work on every path.
 
+The stateful `sculpt { }` block (built for the live-coding loop) layers a
+mutable combine state over that capture: its `add()` / `carve()` / `blend(_:)`
+verbs change the per-child mode and melt mid-block. The CombineFrame snapshots
+the state per captured child, a nested block lands under the state at its
+close, the verbs address the innermost *sculpt* frame through nested blocks,
+and each sculpt frame keeps its own state.
+
 2D anti-aliasing reuses the single-shape coverage tail; the covering quad is the
 whole-tree conservative AABB the flattener computes. 2D gradient paint is
 supported (a solid color or a linear/radial gradient on `fill`/`stroke`, sampled
@@ -654,18 +702,24 @@ one leaf not centered at the origin, so the flattener bounds it from its two
 endpoints plus the radius rather than a symmetric half-extent, and `pyramid`
 wraps iq's fixed-half-unit-base form in a uniform scale (exact) with a re-center.
 
-Two sculpting op families ride the same node kinds. The **joint ops** (chamfer
-and stairs union/subtract/intersect, from hg_sdf under its MIT option) are new
-OP selectors (7 through 12) in both `ollin_sdf_combine` and `ollin_sdf3d_combine`
-(the 2D and 3D switches share the encoding; the stairs step count rides the OP
-node's spare `extra`, and the staircase helper uses a GLSL-style floored modulo,
-`ollin_emod`, because Metal's `fmod` truncates and would break the pattern for
-negative operands). Their color is a crisp nearer-operand pick rather than a
-melt, which is what makes a joint read as fitted parts. They assume the two
-surfaces cross frankly (near right angles): near-parallel faces within the joint
-radius echo the pattern past the seam, the technique's documented envelope, so
-the docs steer usage there rather than the code trying to guard it (a band guard
-was tried and traded the echo for a visible field discontinuity).
+Two sculpting op families ride the same node kinds. The **joint and detailing
+ops** (the chamfer/stairs/columns union/subtract/intersect trios, OP selectors
+7 through 15, plus `engrave`/`groove`/`tongue`/`pipe`, selectors 16 through 19,
+from hg_sdf under its MIT option) live in both `ollin_sdf_combine` and
+`ollin_sdf3d_combine` (the 2D and 3D switches share the encoding; the op's
+second scalar, the stairs step count, column count, or groove/tongue width,
+rides the OP node's spare `extra`, and the staircase helper uses a GLSL-style
+floored modulo, `ollin_emod`, because Metal's `fmod` truncates and would break
+the pattern for negative operands). Their color is a crisp pick rather than a
+melt (the nearer operand for the joint trios and `pipe`, the body for
+`engrave`/`groove`/`tongue`), which is what makes a joint read as fitted parts. Columns keeps the reference's own
+band guard; the detailing ops are value-type-only (the morph precedent), while
+columns gets block forms too. They all assume the two surfaces cross frankly
+(near right angles): near-parallel faces within the joint radius echo the
+pattern past the seam, the technique's documented envelope, so the docs steer
+usage there rather than the code trying to guard it (an extra band guard on the
+chamfer/stairs trios was tried and traded the echo for a visible field
+discontinuity).
 
 The **distortions** are twist and bend (XFORM selectors 8/9, iq's `opTwist` /
 `opCheapBend` as point-space scopes) and sine/noise surface displacement (MOD
@@ -783,6 +837,211 @@ occlusion, and raymarch resolution) target frame-rate bands.
 
 ---
 
+## 3D lighting and environments
+
+The user-facing surface is in `Docs/3D/3D.md`; this section is the machinery
+behind the physically-based finish, the image-based lighting (IBL) bake and its
+caches, the procedural sky, and the shadow paths. The ray-traced reflection's
+anti-aliasing chain has its own section (*Deferred ray-traced reflection AA*).
+
+### The physically-based finish
+
+`Material.physicallyBased` (and the `.metal(roughness:)` / `.dielectric(roughness:)`
+sugar plus the brushed/polished/plastic built-ins) is an energy-conserving
+Cook-Torrance microfacet BRDF: GGX distribution, height-correlated Smith
+visibility, Schlick Fresnel (the glTF 2.0 / Filament forms, reimplemented from
+the math), evaluated over the same analytic lights as every other material. The
+surface color stays `fill` (a metal tints its reflection by that color and has
+no diffuse). Structurally it is `shadingModel 3`: one new `case` in
+`meshLitColor`'s switch plus two `OllinMaterial` fields (`metallic`/`roughness`)
+that every other model ignores, so all non-PBR materials render byte-identical.
+
+### The IBL bake
+
+`environment(_:)` lights the PBR materials from a surrounding HDRI via the
+split-sum approximation (Karis). The renderer bakes once per resolved source
+(cached; `MetalRenderer+IBL`, the `ShaderIBL.metal` segment): equirect to cube,
+a diffuse irradiance cube, a GGX-prefiltered specular mip-cube, and a one-time
+BRDF LUT, all fullscreen passes into cube faces that run before the geometry
+pass at the render/image/benchmark sites. The prefilter is a 1024-sample GGX
+importance bake; 256 samples left swirl/mottle artifacts on rough metals around
+concentrated bright lights.
+
+**Load-bearing gotcha: mip the equirect *before* the equirect-to-cube pass.** A
+high-resolution equirect into a 256-square cube face is a large minification,
+so the cube sample needs valid mips; without them it reads empty and the IBL
+goes black (a real bug, fixed).
+
+The EXR decode runs through ImageIO, which does not decode dwab compression, so
+the bundled set is PIZ half-float. Inf/NaN sun texels are clamped on load, and
+a sin-weighted average luminance is computed then for **per-environment
+auto-exposure**: the bundled set ranges roughly 800x in raw brightness, so each
+environment is scaled to a common target and any HDRI "just works".
+
+At shade time the mesh fragment adds the split-sum ambient
+(`ollin_pbr_ibl_ambient`, fragment textures 4/5/6) on top of `meshLitColor`'s
+direct lighting when `OllinLighting.iblEnabled`; the non-PBR materials take the
+diffuse irradiance as their ambient (`ollin_ibl_flat_ambient`; Gooch keeps its
+own tone ramp), so one environment lights every material. All of it is gated,
+so a frame with no environment is byte-identical. The raymarched fields add the
+same two branches (see *SDF combinators*).
+
+The environment also draws as a **skybox** backdrop by default
+(`ollin_ibl_skybox_*`, a view-ray equirect sample before the geometry with
+depth disabled, matching the reflections); `.lightingOnly()` opts out. The
+backdrop is bicubic-reconstructed (a 4-tap Catmull-Rom, so the magnified
+low-resolution slice is not a blocky bilinear grid) with a resolution-aware
+`backgroundBlur` (`nil` = automatic: a gentle soft-focus at 1K easing to sharp
+at 4K; overridable 0...1).
+
+### Environments, downloads, and caches
+
+An `Environment` built-in is one of 8 CC0 HDRIs bundled at 1K (instant,
+offline, CI-safe) or one of 12 download-on-demand sources fetched from Poly
+Haven on first use; a user source is `.hdri(path:)`, `.hdri(downloadURL:)`, or
+the procedural `.sky`. `highRes(.twoK/.fourK/.eightK)` upgrades a built-in's
+*backdrop* to a sharper version; the lighting never needs more than 1K.
+
+The download cache is `EnvironmentCache`
+(`~/Library/Caches/Ollin/Environments/`, overridable via
+`OLLIN_ENVIRONMENT_CACHE`, with an injectable `fetch` so the unit test mocks
+it; no network in CI). A `.remote(url:fallbackResource:)` source resolves in
+the renderer: cached goes straight to bake; export **blocks** on the download
+so exported art is always full-resolution; live kicks it off and shows the
+bundled-1K placeholder (or the neutral sky) until it lands. The fetch prints
+throttled byte/percent progress and then a decoding note to the terminal, via a
+classic `URLSessionDownloadTask` on a delegate session, because the async
+`download(from:delegate:)` convenience does not deliver the `didWriteData`
+progress callback; the decode note strips the `<hash>-` cache prefix via
+`EnvironmentCache.displayName`. `Scripts/clear-caches.sh` wipes the environment
+and compiled-model caches by default, with targeted flags (`--environments` /
+`--compiled-models` / `--models` / `--build`, `--all`, `--dry-run`).
+
+**The processed equirect is cached as a blob.** A 4K PIZ decode is the
+multi-second cost (the bake itself is cheap GPU passes), so the decoded float
+pixels are written beside the download as a raw-float16 blob
+(`EnvironmentCache.equirectBlobFile`, `<hash>.equirectf16`); a relaunch skips
+the decode entirely (a 4K blob is ~64MB, smaller than the 92MB float32 source,
+loaded by memcpy, round-tripping pixel-identical). The bundled 1K set stays on
+its compact EXR, which decodes in a blink and needs no blob.
+
+**The decode/blob-read runs off the render thread**: `equirectBytes` in a
+`Task.detached`, handed back through an `OSAllocatedUnfairLock` into
+`equirectReady` (`loadEquirectBytes`/`processEquirect` are `nonisolated`, since
+`MetalRenderer` is `@MainActor`), with the bundled placeholder shown until it
+lands, so the live window never blocks. The export path loads synchronously
+(`blocking`) so exported art is full-resolution and the snapshot stays
+byte-identical.
+
+The in-memory bake cache is LRU-bounded (~512 MB of baked maps; the frame's own
+entry never evicts; an evicted source re-bakes from its blob in a blink), and
+orphaned decoded pixels (`equirectReady` entries whose environment moved on
+before they baked) are pruned after a few resolves, so a gallery cycling many
+HDRIs stays bounded (`IBLCacheTests`).
+
+### The procedural sky
+
+`.sky(turbidity:sunElevation:groundAlbedo:)` is a zero-asset Hosek-Wilkie
+daylight dome. The RGB coefficient dataset and config code are vendored at
+`External/CHosekWilkie` (3-clause BSD, trimmed to the RGB path);
+`ollin_hosek_rgb_configs` cooks the per-channel config CPU-side,
+`ollin_ibl_sky_gen` evaluates the per-texel radiance into the equirect, and the
+same cube/irradiance/prefilter/skybox bake runs on it. A neutral `.sky()` is
+also the default placeholder while a non-bundled HDRI downloads, so the scene
+is lit by a sky instead of unlit (unless an explicit bundled `placeholder:` was
+given).
+
+Two performance decisions are load-bearing. The sky equirect is generated on
+the frame's own command buffer with **no CPU read-back**: auto-exposure's
+average luminance is integrated analytically from the coefficients
+(`skyAverageLuminance`) instead of read back from the texture (the read-back
+path was the 3-fps bug). And an animated sky re-bakes every frame at a
+**reduced sample budget** (the `params.z` budget in
+`ollin_ibl_irradiance`/`_prefilter`: a coarser hemisphere step plus 32 GGX
+samples for `fastSky`; 0 selects the default fine bake, so the HDRI path stays
+byte-identical), which keeps a moving sun smooth with no quantization stepping.
+`rotated(_:)` spins the sun for free: it is a shade-time uniform, never a
+re-bake.
+
+### Shadows
+
+`castShadows()` routes by light type: directional/spot render a 2D shadow map;
+a point light is ray-traced on an RT GPU (inline `intersection_query` behind
+the `OLLIN_RT_SHADOWS` compile gate) with a mid-point cube fallback elsewhere;
+`shadowQuality(_:)` maps hardware-relative ray counts through `RenderQuality`.
+
+**PCSS (soft shadows).** `shadowSoftness(_:)` (0 hard, 0.5 default
+contact-hardening, 1 very soft) runs the directional/spot 2D map through
+Percentage-Closer Soft Shadows: blocker search, penumbra estimate, then a
+variable-kernel Vogel-disk PCF (`shadowFactorPCSS`; the Fernando/NVIDIA
+technique, studied from openFrameworks' shadow shader), sharp at contact and
+blurring with distance. It is gated on `shadowDepthA > 0`, so `shadowSoftness(0)`
+routes to the legacy hard 3x3 tap and is byte-identical.
+
+**The penumbra ratio must be formed in light-linear depth.** A directional
+ortho map uses the plain separation `(n_r - n_b)`; a spot perspective map
+linearizes via `(n_r - n_b)/(n_r + A)` where `A` is the projection's `[2][2]`
+term (carried as `shadowDepthB`; the `[3][2]` term cancels), and the negative
+`A` also flags the spot path. `OllinLighting` did not grow for any of this: the
+spare kind-0 fields `shadowDepthA`/`shadowDepthB`/`shadowSamples` carry the
+light size (in texels), the linearization term, and the tap budget, and the
+blocker search reuses the already-bound nearest `shadowCubeSamp` for raw depth
+reads (no new sampler or pipeline).
+
+One knob unifies every caster: the same softness drives the RT point caster's
+area radius (`dist * 0.06 * softness`; the 0.5 default reproduces the old
+`dist * 0.03`, so the `point-shadows` snapshot is byte-identical). The 2D tap
+budget rides `RenderQuality` via `resolveShadowTaps2D` (performance 24 /
+default 40 / detail 72, GPU-independent fixed counts since these are cheap
+texture taps, not RT rays; export resolves `.detail`). Shadows are
+soft-by-default, and the penumbra change measured sub-tolerance (~0.2 mean
+against the 2.0 snapshot threshold, a localized shadow-edge change), so
+`mesh-shadows`/`spot-shadows`/`rt-reflections-3d` stayed within tolerance and
+were not re-recorded (the SSAO silhouette-AA precedent).
+
+### Ray-traced reflections: integration and plumbing
+
+The trace itself, the two-bounce hit shading, and the anti-aliasing chain are
+in *Deferred ray-traced reflection AA* below. The integration facts live here:
+
+- **It integrates into the IBL specular, not a post-process.**
+  `ollin_rt_reflection` (in Shader3D, inside `#if OLLIN_RT_SHADOWS` beside
+  `traceShadowRay`) traces one closest-hit ray (`R = reflect(-V, n)`, origin
+  `worldPos + n * rtReflectionBias`) against the mesh acceleration structure
+  and replaces `ollin_pbr_ibl_ambient`'s `prefiltered` environment sample with
+  the hit's radiance (a miss returns the environment sample, so a ray that
+  leaves the scene shows the sky), compositing through the same Fresnel/BRDF
+  weighting. The primary surface's roughness then blends the sharp mirror
+  toward the prefiltered environment (one ray cannot blur).
+- **Per-hit material data is baked per vertex.** Metalness and roughness ride
+  the spare `OllinMeshVertex` w slots (`normal.w` metallic, `position.w`
+  roughness for a PBR lit mesh), inert for the primary render since the lit
+  vertex shaders read only xyz.
+- **It reuses the shadow-caster accel.** `buildShadowAccel` also returns a
+  per-geometry base-vertex offsets buffer (`meshGeoOffsetBuffer`, the coalesced
+  `runStart`s) so a hit's `(geometryId, primitiveId)` plus barycentric
+  coordinates fetch its triangle from the flat non-indexed `OllinMeshVertex`
+  list (accel + offsets + flat mesh buffer bind to the mesh fragment at buffers
+  3/7/6, RT-gated). `encodeShadowPass` was decoupled so the accel builds when
+  shadows *or* reflections are active (a directional/spot caster builds the 2D
+  map and the reflect accel; a no-caster reflections-only scene builds just the
+  accel); `ShadowMaps.reflectAccel`/`reflectGeoOffsets` carry it, and
+  `OllinLighting.rtReflections` (set by the renderer when present) gates the
+  shader, so everything is byte-identical when off.
+- Every solid mesh is reflectable (the accel covers all of them;
+  `castShadows()` is not required). Reflections need an environment (the
+  integration point and miss fallback) and an RT GPU (`rayTracedShadows`), are
+  off-by-default, and no-op on a non-RT GPU (the environment reflection
+  remains). The `rtReflectionBias` self-hit epsilon is sized from the scene
+  scale in `makeLighting`.
+- **v1 limits:** two bounces (the third order terminates at the environment);
+  full resolution (a half-res `RenderQuality` tier, deeper bounces, a dedicated
+  all-mesh accel, and the glossy-cone denoise are the follow-ups). The
+  per-hit-material gap is closed for the PBR finish via the baked vertex slots;
+  the non-PBR stylized finishes still shade as plain diffuse in a reflection.
+
+---
+
 ## Deferred ray-traced reflection AA
 
 The ray-traced reflection is one closest-hit ray per reflective pixel, which makes
@@ -869,7 +1128,94 @@ not a filtering problem).
 
 ---
 
-## Showcase camera (interactive auto-orbit)
+## User-supplied shaders
+
+A sketch writes its own fragment shader and runs it through the effect graph.
+The contract is Ollin-native, not raw Metal: the user defines
+`float4 shade(float2 uv, ShaderInfo info)` (uv 0...1 top-left, returning
+straight sRGB), and Ollin generates the surrounding fragment plus a fullscreen
+`ollin_user_vertex`. The public surface is `Docs/Shaders/Shaders.md` and the
+per-function `Docs/Shaders/ShaderLibrary.md`; this section is the wiring.
+
+**Routing reuses the effect-graph enums.** `Shader` is a `.shader(Shader)` case
+on `Generator`, `Filter`, and `Combine.Kind`, so input count *is* the variant:
+`generate(.shader(s))` (0 inputs), `layer.filtered(.shader(s))` (1 input, read
+via `sample(info, uv)`), `a.combined(with: b, .shader(s))` (2 inputs, adding
+`sampleAux(info, uv)`). All three resolve through the existing
+`encodeGenerator`/`applyFilter`/`applyCombine` with no new render-graph
+plumbing. The input layer(s) ride *inside* the wrapper's `ShaderInfo` as
+`texture2d<float>` plus `sampler` members (valid MSL, passed by value to
+`shade`), read back as straight sRGB (`ollin_layer_sample` un-premultiplies and
+applies `linearToSrgb`) so the user works in one color space.
+
+**Compile model.** Each shader composes its own source (the `OllinShaderLib`
+segment, the variant wrapper, the user source) and compiles as its own
+`device.makeLibrary(source:)`, cached by `fnv1a(composed)` through `MTLLibrary`
+to `MTLRenderPipelineState` (the `userShader*` caches), so it compiles once,
+not per frame. A *failed* compile is cached too (`userShaderErrors`) so a
+broken shader does not retry every frame; all three caches clear on a
+framework-shader reload. `ShaderInfo` is built per frame from
+`frameComputeUniforms` (snapshotted from `drawer.computeUniforms` at the top of
+`encodeEffectTargets`, so the filter/combine call sites need no `drawer`). The
+bound uniform struct `OllinShaderUniforms` is scalars-only (no array) so Swift
+fills it with the plain memberwise init; user params (up to 32 floats, read via
+the `param(info, i)` macro) ride a separate `float4` buffer at index 0.
+
+**Friendly errors are the headline.** `Shader.init` captures its call site
+(`#filePath`/`#line` default args) and the wrapper emits
+`#line <startLine> "<file>"` before the user source, so Metal reports
+diagnostics at the real, IDE-clickable location: the sketch's own `.swift` for
+an inline string (a multiline literal's content starts at `line + 1`; a
+no-newline string sits on the call line, so a one-content-line literal reads
+one off, an accepted quirk that `ShaderErrorTests` pins), or the `.metal` file
+itself for a resource (line 1). `cleanShaderDiagnostics` strips the
+`Compilation failed:` header, rebases `program_source:` lines to the same
+`file:line` as a fallback, and drops compiler-internal `note:` lines pointing
+at `/System/` framework headers (a line naming the user's file is always
+kept). The call-site location rides the composed-source hash, so identical
+shaders at two call sites cache separately (fine; same-site rebuilds like
+`Visual`'s still hit). The error surfaces two ways: stderr (once per source
+hash, for a plain `swift run`) and a pull-model channel to the host: the
+renderer holds `currentUserShaderError` (reset each frame, set on failure),
+`SketchRunner` reads it after `render()` on the main thread and forwards via
+`onUserShaderError` (deduped), and `LiveSession` maps it to its `shaderError`
+feeding the existing `CompileErrorState` overlay. The channel is deliberately
+separate from the Swift compile-error channel so a shader error and a Swift
+error never clear each other (`reloadShaders`' framework-shader gap is closed
+the same way).
+
+**`OllinShaderLib` is one source of truth, used three ways.** The helper
+segment (color/hash/noise/sdf/domain plus `palette`/OKLab, including the
+once-compute-only `curlNoise`/`discSample`/3D `valueNoise`/one-out hashes,
+folded into its hash/noise sections) is built on by the framework's own
+segments, spliced into every user shader, and spliced whole into every compute
+kernel by `composeComputeSource` (the separate compute prelude is gone: one
+helper set, `hashNM` names, everywhere). `using: [.noise, .sdf]` keeps only the
+marked sections (`// OLLIN_LIB_BEGIN/END <module>`, with the noise-needs-hash
+dependency resolved); it is a compile-time lever only (the GPU dead-code
+eliminates unused helpers anyway), default `.all`. The 2D `sd*` distance
+catalog (`sdEllipse`/`sdRoundBox`/`sdSegment`/`sdStar`/`sdHeart`/`sdBezier`/...
+plus the `dot2`/`ndot` helpers) lives in the lib's `sdf` section, moved
+verbatim out of `ShaderShapes` (the block was self-contained, so the framework
+library still resolves it and all snapshots stayed byte-identical);
+`ollin_sdf_distance` and the fragment switch in `ShaderShapes` still call
+them, so framework shapes and user shaders share one copy.
+
+**Hot-reload covers both forms in OllinLive.** An inline-string shader reloads
+with the sketch (a `.swift` edit). A `.metal` *resource* shader reloads on its
+own: `Shader(resource:in:)` reads lazily (it stores the bundle-resolved path,
+not the content; `Bundle.module` resolves to the sketch dir under OllinLive
+too), the renderer reads and caches the file, and a watched-`.metal` change
+routes through `LiveSession.handle` to `SketchRunner.invalidateUserShaders()`
+(clears the source/library/pipeline caches; forces one frame if `noLoop`), so
+the next frame re-reads and recompiles with no swiftc pass (verified
+end-to-end: edit reloads, a break shows the line-accurate overlay error, a fix
+recovers). A framework-segment `.metal` (under the repo's `Renderer` dir) still
+routes to the full library reload; the dispatch tells them apart by path.
+
+---
+
+## Camera rig: showcase orbit, view snaps, and scene chrome
 
 `cameraShowcase(_:)` (the default the 3D examples use) is an auto-orbit the viewer can
 take over, easing back to the opening shot when left alone. It adds no new camera
@@ -918,6 +1264,71 @@ drive synthetic input events.
 `activeCamera` (on `Sketch`) returns the resolved `Camera3D` for the frame, so a
 sketch that places geometry relative to the camera (e.g. `DepthCompositing` seats
 its pins at the camera `eye`) keeps working when the interactive rig owns the pose.
+
+### The controller model and input surface
+
+`cameraControl()` is the canonical orbit-control model, reimplemented from the
+references (studied, not ported): spherical azimuth/elevation with a
+`2 * pi * delta / height` rotate, a multiplicative `pow(0.97)` dolly, a
+`2 * radius * tan(fov/2) / height` pan, all `deltaTime`-corrected for
+frame-rate independence, with exponential damping toward an input-driven goal
+plus a capped release-momentum flick. Both halves seed the framing on the first
+call only and compose over the current pose (`CameraRig.lastMode` re-syncs the
+controller's goal after a move), so "frame by hand, then drift" is one call
+after another, and the rig clamps elevation off the poles.
+
+The rig is a plain `let` on `Sketch` advanced explicitly, *not*
+`FrameAdvancing`: the Mirror-collection cache behind `FrameAdvancing` only sees
+stored properties that exist before the first frame, which the rig sidesteps.
+The input surface feeding it is platform-neutral and plumbed once through
+`OllinMTKView` (so it reaches standalone, gallery, and OllinLive):
+`scrollDeltaY` is the per-frame scroll total, **double-buffered** in
+`advance()` so a wheel event landing between frames is never lost; `modifiers`
+is a `ModifierKeys` option set mapped from `NSEvent.ModifierFlags` behind the
+AppKit seam (like `KeyCode`); plus `rightMouseIsPressed` and the `mouseWheel()`
+hook.
+
+### Scene inspection views (`cameraView` / `resetCamera`)
+
+`cameraView(_:)` snaps the rig to canonical angles: `.reset` restores the
+opening framing (target, radius, and angle); the six axis views swing only the
+orbit angle, keeping the current target and radius; `.isometric` (`.corner` is
+the deprecated alias) is true isometric, `asin(1/sqrt(3))` up at 45 degrees
+around. Snaps glide by default (`animated: false` cuts), and on completion hand
+the pose back to the active driver via `CameraRig.driver` (control resyncs its
+goal, a move re-bases, showcase holds then idle-returns), so motion resumes
+from the snapped pose with no jump. `applyViewSnap` early-returns when no snap
+is active and the `.driver` set is inert, so the path is byte-identical when
+unused (`camera-move` was not re-recorded). The viewer-facing surface is the
+host Camera menu (`OllinCameraCommands`, cmd-0 through cmd-7) in all three
+hosts, reaching the running sketch through the `OllinActiveSketch` weak holder
+to `SketchRunner.requestCameraView` (applied next frame) to `cameraView`; a 2D
+or hand-set-`camera()` sketch ignores it. Snap math and hand-back are pinned by
+`CameraRigTests`.
+
+### Scene chrome: the axis widget and the ground grid
+
+`cameraAxis()` and `groundGrid()` are live-only host chrome, like the FPS
+overlay: never exported, a no-op in 2D, read live each frame or toggled from
+the Camera menu. The axis widget (`AxisWidget`) is a SwiftUI sibling reading
+the per-frame `CameraOrientationState` the runner publishes: click an axis to
+snap via `requestCameraView`, plus reset, isometric, and an
+ortho/perspective toggle driving `CameraRig.isOrthographic`. The ground grid is
+a `.grid` `PipelineKey` pass drawn straight from `SketchView.draw`,
+depth-tested but not depth-writing, *outside* the deferred render graph.
+
+**The grid LOD invariant (load-bearing).** The infinite-grid LOD (the Golus
+technique, reimplemented) divides the once-computed base world-uv derivative by
+each decade-spaced scale; never take `dfdx()` of a pre-scaled uv. The pre-scaled
+uv (`cellA`) jumps a decade across adjacent pixels at a LOD boundary, and the
+derivative spike shatters the lines into a crawling dotted band (a real fixed
+bug). "Major" (every-10th) lines are distinguished *by width in the one line
+color*, not by a brighter color and not by a separate per-class fade, so every
+scale fades by the same rule (its line thinning below a pixel,
+`covA + max(covB, covC)`) and the levels converge and fall off together toward
+the horizon under a single uniform radial fade. The old form (a brighter,
+separately-faded major) made the levels vanish at staggered depths and read as
+stacked planes at different heights; do not reintroduce it.
 
 ---
 
