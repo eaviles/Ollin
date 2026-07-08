@@ -195,4 +195,4 @@ Depth capture entered art practice when the Microsoft Kinect shipped in 2010 and
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 18, Sculpting with fields](18-SculptingWithFields.md) · Next: Chapter 20, Sound and control
+[Contents](README.md#contents) · Previous: [Chapter 18, Sculpting with fields](18-SculptingWithFields.md) · Next: [Chapter 20, Sound and control](20-SoundAndControl.md)

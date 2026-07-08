@@ -65,6 +65,11 @@ This appendix isn't assembled yet; it gets written once several chapters exist, 
 - The pinhole model: unprojection slides a pixel off the image center and scales by depth over focal length (Ch 19) - reuse Images/19-DepthAndThePhone/Unproject.jpg
 - A pose is a transform: camera-space points placed into the world by where the camera stood (Ch 19) - reuse Images/19-DepthAndThePhone/SweepFuse.jpg
 - Occlusion voids: a depth image knows only what its rays touched; the gaps are the shape of not-knowing (Ch 19) - reuse Images/19-DepthAndThePhone/CloudLift.jpg
+- The spectrum: any sound splits into pure vibrations, energy per frequency (Ch 20) - reuse Images/20-SoundAndControl/Anatomy.jpg
+- Hearing is logarithmic: each doubling of frequency (an octave) reads as one equal step, why band bars are log-spaced (Ch 20)
+- Detecting events, not levels: compare this instant with the last one, and a sudden rise is an arrival (Ch 20) - reuse Images/20-SoundAndControl/BeatTimeline.jpg
+- Normalized coordinates: a resolution-free 0…1 address inside a picture; placing one = flip + scale into a rectangle (Ch 21) - reuse Images/21-Seeing/TrackerFlow.jpg
+- Optical flow: motion as a measured field, where each point answers "which way did the picture move here" (Ch 21) - reuse Images/21-Seeing/FlowArrows.jpg
 - Coherence: noise is a lookup into a fixed smooth landscape, so nearby inputs give nearby outputs (Ch 5) - reuse Images/05-Noise/RandomVsNoise.jpg
 - The input multiplier as a zoom knob: how far apart the questions land (Ch 5) - reuse Images/05-Noise/NoiseZoom.jpg
 - A field: an answer at every point of a plane; a third input as drifting time (Ch 5) - reuse Images/05-Noise/NoiseTerrain.jpg

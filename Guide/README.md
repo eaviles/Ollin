@@ -72,9 +72,9 @@ The guide is being written chapter by chapter; titles below without links are st
 
 ### Part V: Out into the world
 
-20. **Sound and control.** Audio-reactive visuals, MIDI knobs, OSC messages.
-21. **Seeing.** The webcam, vision trackers, and video as material.
-22. **Sharing and performing.** Stills, video, SVG for plotters, feeding other apps, and live coding on stage.
+20. **[Sound and control](20-SoundAndControl.md).** Hearing loudness, spectrum, and beats; MIDI knobs and OSC faders; one parameter played from anywhere.
+21. **[Seeing](21-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.
+22. **[Sharing and performing](22-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, feeding other apps, and live coding on stage.
 
 ### Appendices
 
