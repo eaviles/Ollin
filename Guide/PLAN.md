@@ -263,6 +263,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Hatching (`Output/Export.md`) | Ch 13 | taught |
 | Perfect-loop export (`--export-loop`, `loopDuration`; `Output/Export.md`) | Ch 3 | taught |
 | `Drawing/Epicycles.md` (Fourier epicycles) | Ch 13 | pointed |
+| `Drawing/Morphing.md` (shape morphing: `ShapeMorph`, `Tweenable` geometry) | Ch 13 | pointed |
 | `Drawing/SVG.md` (SVG import: `loadSVG`, `drawSVG`) | Ch 13 | taught |
 | `Drawing/Effects.md` (targets, filters, compose, combine) | Ch 14 | taught (targets/filters/generators/compose/feedback taught; combine + aside pointed) |
 | Blend modes (`Drawing/Drawing.md`) | Ch 14 | taught |
@@ -322,7 +323,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Clipping as drawing state | Ch 6 or 14 |
 | Reproducibility metadata in exports | Ch 4 + Ch 22 |
 | Kaleidoscope symmetry | Ch 6 |
-| Shape morphing | Ch 3 or 13 |
 | Generative-geometry refinements | Ch 11 |
 | Technique catalog: fractals | Ch 11 (may grow into its own chapter) |
 | Technique catalog: GPU-scale agents, ALife, Lenia | Ch 16 |

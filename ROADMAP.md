@@ -30,7 +30,6 @@ Near-term, fairly self-contained pieces, each small and well-scoped.
 - **Clipping as drawing state.** `withClip(shape) { }` confines drawing to a region mid-frame, scoped like `withState { }`. Layer-level masking exists (`.masked(by:)`), but a stencil-based geometric clip is the cheaper, more direct tool for "keep this pattern inside that region", and it's a standard part of the drawing-state model elsewhere.
 - **Reproducibility metadata in exports.** Embed the seed, the `@Param` values, and the sketch's git hash in every export (PNG text chunks, SVG comments, video metadata), so an artifact carries the recipe to regenerate itself. Pairs with [variation galleries](#variation-galleries-and-seed-exploration): a contact sheet where every tile knows its seed.
 - **Kaleidoscope symmetry.** N-fold rotational and mirror replication of ordinary draw calls (`symmetry(8)`, scoped like the rest of the drawing state), the mandala mode. The SDF combinators already fold their fields radially; this covers the rest of the drawing surface.
-- **Shape morphing.** Tween one `Shape` into another: contour correspondence plus interpolation, extending `Tweenable` beyond scalars and vectors so a `Timeline` can animate geometry. Plotter-friendly, since every in-between frame is a real vector shape.
 
 ## Generative geometry
 

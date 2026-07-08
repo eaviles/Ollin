@@ -574,6 +574,7 @@ let package = Package(
         example("Motion/Steering"),
         example("Motion/PerfectLoop"),
         example("Motion/Epicycles", resources: [.copy("whale.svg")]),
+        example("Motion/Morphing"),
         example("Color/ColorWaves"),
         example("Color/HSBWheel"),
         example("Color/Mixing"),

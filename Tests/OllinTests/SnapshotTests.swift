@@ -304,6 +304,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("epicycles",
                  note: "A Fourier epicycle chain over a two-frequency rosette: the full-term path reproduces the outline, an 8-term prefix smooths it, and drawEpicycles renders the circles and spokes at a fixed lap phase. Pins the DFT (term order, phases), point/joints/path agreement, and the drawing sugar. Pure CPU build, no time, deterministic.",
                  make: { EpicyclesScene() }),
+    SnapshotCase("shape-morph",
+                 note: "Shape morphing mid-blend: a star-to-donut ShapeMorph at a fixed t (pins contour pairing, the rotation correspondence, and the hole growing out of the center), a strip of triangle-to-circle one-offs at five fractions (pins exact endpoints and the blend between), and an open zigzag-to-arc lerp (pins direction alignment for open runs). Pure CPU build, no time, deterministic.",
+                 make: { ShapeMorphScene() }),
     SnapshotCase("dla", frame: 110,
                  note: "A diffusion-limited aggregation cluster grown to a fixed frame from a center seed, tinted by arrival order. Pins the seeded walker (spawn/kill radii, far-jump stride, exact touch-distance landing) and the spatial-hash touch test. Seeded, fixed frame, so it's deterministic.",
                  make: { DLAScene() }),
@@ -1392,6 +1395,49 @@ private final class EpicyclesScene: Sketch {
         strokeWeight(0.8)
         stroke(Color(hex: 0x6B7DA6))
         drawEpicycles(epicycles, at: 0.3, terms: 12)
+    }
+}
+
+private final class ShapeMorphScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x10131A))
+
+        // A prepared morph mid-blend: pairing, rotation, and the hole
+        // growing out of the center.
+        let c = Vector2(128, 104)
+        let star = Shape((0 ..< 10).map { i in
+            let a = Double(i) / 10 * .tau - .tau / 4
+            return c + Vector2(angle: a, length: i.isMultiple(of: 2) ? 74 : 32)
+        })
+        let donut = Shape(outer: (0 ..< 48).map { c + Vector2(angle: Double($0) / 48 * .tau, length: 66) },
+                          holes: [(0 ..< 32).map { c + Vector2(angle: Double($0) / 32 * .tau, length: 30) }])
+        let morph = ShapeMorph(from: star, to: donut)
+        fill(Color(hex: 0xE5B15C))
+        stroke(Color(hex: 0xF4EAD6))
+        strokeWeight(1.6)
+        drawShape(morph.shape(at: 0.45))
+
+        // One-off in-betweens: exact at the ends, blended between.
+        let triangle = Shape([Vector2(-14, 10), Vector2(14, 10), Vector2(0, -14)])
+        noFill()
+        stroke(Color(hex: 0x9FD6E8))
+        strokeWeight(1.2)
+        for (i, t) in [0.0, 0.25, 0.5, 0.75, 1.0].enumerated() {
+            let at = Vector2(34 + Double(i) * 47, 218)
+            let circle = Shape((0 ..< 24).map { at + Vector2(angle: Double($0) / 24 * .tau, length: 15) })
+            drawShape(triangle.mapPoints { $0 + at }.morphed(toward: circle, t))
+        }
+
+        // Open line-work morphs too (direction-aligned, stays open).
+        let zigzag = Contour([Vector2(18, 22), Vector2(40, 44), Vector2(62, 22), Vector2(84, 44)],
+                             closed: false)
+        let wave = Contour((0 ..< 16).map { i in
+            Vector2(18 + Double(i) / 15 * 66, 33 + 14 * sin(Double(i) / 15 * .pi))
+        }, closed: false)
+        stroke(Color(hex: 0x6BD69B))
+        drawPolyline(Contour.lerp(zigzag, wave, 0.5).points)
     }
 }
 
