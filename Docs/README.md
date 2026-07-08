@@ -23,6 +23,7 @@ New to Swift? Start with the [Swift quick reference](./Swift.md): just enough of
 - [`Images`](./Drawing/Images.md) - `loadImage`, `drawImage`, `tint`, and pixel access: load or author a raster image, draw it scaled or transformed, recolor it
 - [`Color`](./Drawing/Color.md) - the `Color` type, the OKLab family and mixing, `Ramp`s and `Palette`s, and perceptual `Colormap`s
 - [`Geometry`](./Drawing/Geometry.md) - the `Vector2`, `Rectangle`, `Grid`, `Shape`/`Contour`, and `Path` value types (including the `Grid` layout helper, curved outlines, shape booleans, and offsetting)
+- [`SVG import`](./Drawing/SVG.md) - `loadSVG`/`drawSVG` to read vector artwork into `Shape`s and `Contour`s (paths with curves and arcs, the basic shapes, groups and transforms, fills and strokes), ready for booleans, offsets, hatching, and re-export
 - [`Voronoi & Delaunay`](./Drawing/Voronoi.md) - tessellate points into vector geometry: Voronoi cells (the "crystallization" look) and the dual Delaunay triangle mesh, with Lloyd relaxation
 - [`Truchet tiling`](./Drawing/Truchet.md) - one tile per grid cell spun to a random orientation, so identical parts line up into flowing loops (`.arcs`) or a maze (`.diagonals`)
 - [`Strange attractors`](./Drawing/Attractors.md) - chaotic systems as points: continuous 3D orbits (Lorenz, Rössler, Aizawa, …) integrated with Runge-Kutta and orbited through the camera, and 2D iterated maps (Clifford, de Jong, Hénon) accumulated into density fields
@@ -43,7 +44,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Combining 3D features`](./3D/Combining.md) - the practical map of what stacks with what: which geometry takes lights, materials, matcaps, and environment light; who casts, receives, and appears in shadows and reflections; when to reach for screen-space versus ray-traced reflections; and a step-by-step recipe for the most realistic scene
 - [`Camera control`](./3D/Camera.md) - move the camera by hand (`cameraControl()`: drag to orbit, scroll to dolly, right or modifier-drag to pan, damped) or play a ready-made cinematic move (`cameraMove(_:)`: turntable, push-in, tilt, orbit-and-rise, reveal, handheld), both opt-in over the orbit pose
 - [`Depth compositing`](./3D/DepthCompositing.md) - place 2D drawing *inside* a 3D scene so it occludes and is occluded by the geometry: `depth(at:)`, `project`, and `withBillboard` (a 2D label hidden when it swings behind the cloud)
-- [`Record3D`](./3D/Record3D.md) - `import OllinRecord3D` to turn an iPhone's color-plus-depth into a 3D point cloud — from a recorded `.r3d` file or a tethered phone's live USB stream
+- [`Record3D`](./3D/Record3D.md) - `import OllinRecord3D` to turn an iPhone's color-plus-depth into a 3D point cloud, from a recorded `.r3d` file or a tethered phone's live USB stream
 - [`RGBD`](./3D/RGBD.md) - the source-agnostic `RGBDFrame` (color + depth + intrinsics) any depth source produces: unproject a point cloud, lift a single image point to metric 3D, or lift a 2D body pose into space (`Body.lifted(through:)`)
 - [`Phone`](./3D/Phone.md) - `import OllinPhone` to read a tethered iPhone's live on-device ARKit sensor stream from Ollin's own capture app: a 3D body skeleton, a face mesh with expression blendshapes, world-facing rear-LiDAR depth (a metric point cloud with the camera's 6DoF pose), and device motion, over the USB cable
 
@@ -84,7 +85,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 
 ### Vision
 
-- [`Vision`](./Vision/Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results you read in `draw()`: sixteen trackers spanning detection (rectangles, barcodes/QR, text/OCR, contours into vector `Shape`s), tracking (a patch you point at, parabolic trajectories, dense optical flow), segmentation (person and subject mattes and cutouts), pose (face landmarks, hand and body skeletons, the 3D body in meters), classification, and saliency — plus any custom Core ML model
+- [`Vision`](./Vision/Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results you read in `draw()`: sixteen trackers spanning detection (rectangles, barcodes/QR, text/OCR, contours into vector `Shape`s), tracking (a patch you point at, parabolic trajectories, dense optical flow), segmentation (person and subject mattes and cutouts), pose (face landmarks, hand and body skeletons, the 3D body in meters), classification, and saliency, plus any custom Core ML model
 
 ### Video
 

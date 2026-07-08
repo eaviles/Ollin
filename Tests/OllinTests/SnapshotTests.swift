@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 import Ollin
 import Testing
 
@@ -297,6 +298,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("stroke-shape",
                  note: "Stroke-as-shape geometry: an open S-curve stroked round into a region with inset bands inside it, a closed square stroked into a band, and a convex-hull outline stroked thin. Pins cc2_stroke (open caps, the closed Joined band, self-overlap union), offset cascades over a stroke region, and convexHull. No time, deterministic.",
                  make: { StrokeShapeScene() }),
+    SnapshotCase("svg-import",
+                 note: "An inline SVG drawn as authored (left) and as bare outlined contours (right). Pins the importer end to end: the path grammar with arcs, the even-odd ring, nested group transforms incl. a mirror, the quadratic path, the open stroked arc with its cap, paint parsing (hex, rgb(), named), and fitted(in:). Pure CPU parse, no time, deterministic.",
+                 make: { SVGImportScene() }),
     SnapshotCase("dla", frame: 110,
                  note: "A diffusion-limited aggregation cluster grown to a fixed frame from a center seed, tinted by arrival order. Pins the seeded walker (spawn/kill radii, far-jump stride, exact touch-distance landing) and the spatial-hash touch test. Seeded, fixed frame, so it's deterministic.",
                  make: { DLAScene() }),
@@ -1354,6 +1358,53 @@ private final class StrokeShapeScene: Sketch {
         drawShape(Contour(hull, closed: true).stroked(width: 5, join: .round))
         fill(Color(hex: 0x33312E))
         drawCircles(scatter, radius: 3)
+    }
+}
+
+/// An inline SVG document imported and drawn as authored beside its bare
+/// geometry: a rounded rect, an even-odd ring built from arcs, a mirrored
+/// polygon pair, a quadratic path, and an open stroked arc, plus the same
+/// contours redrawn as outlines. Pure CPU parse; deterministic.
+private final class SVGImportScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let source = """
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+      <rect x="6" y="6" width="108" height="108" rx="10" fill="#22283E"/>
+      <path fill-rule="evenodd" fill="rgb(127, 209, 224)"
+            d="M92 40 A24 24 0 1 1 44 40 A24 24 0 1 1 92 40 Z
+               M80 40 A12 12 0 1 0 56 40 A12 12 0 1 0 80 40 Z"/>
+      <g transform="translate(0 6)">
+        <polygon points="30,86 56,66 56,86" fill="goldenrod"/>
+        <g transform="translate(120 0) scale(-1 1)">
+          <polygon points="30,86 56,66 56,86" fill="goldenrod"/>
+        </g>
+      </g>
+      <path d="M36 100 Q60 82 84 100 Q60 92 36 100 Z" fill="#D8434E"/>
+      <path d="M20 60 A48 48 0 0 1 60 16" fill="none" stroke="#F2EDE3"
+            stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    """
+
+    override func draw() {
+        background(Color(hex: 0x14161F))
+        guard let art = SVG(data: Data(source.utf8)) else { return }
+
+        // Left: the document as authored (fills, strokes, document order).
+        drawSVG(art, in: Rectangle(x: 10, y: 66, width: 116, height: 124))
+
+        // Right: the same file as bare contours, outlined.
+        let fitted = art.fitted(in: Rectangle(x: 130, y: 66, width: 116, height: 124))
+        noFill()
+        stroke(Color(hex: 0xBFD3FF))
+        strokeWeight(1.2)
+        for contour in fitted.contours {
+            if contour.isClosed {
+                drawPolygon(contour.points)
+            } else {
+                drawPolyline(contour.points)
+            }
+        }
     }
 }
 

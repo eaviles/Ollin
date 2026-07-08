@@ -613,6 +613,7 @@ let package = Package(
         example("Shapes/Booleans"),
         example("Shapes/InkRibbon"),
         example("Shapes/RubberBand"),
+        example("Shapes/SVGImport", resources: [.copy("rocket.svg")]),
         example("Patterns/Topography"),
         example("Patterns/Voronoi"),
         example("Patterns/BlueNoise"),

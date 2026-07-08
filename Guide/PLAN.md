@@ -261,6 +261,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/Packing.md` (circles) | Ch 13 | taught |
 | `Generators/ShapePacking.md` | Ch 13 | shown |
 | Hatching (`Output/Export.md`) | Ch 13 | taught |
+| `Drawing/SVG.md` (SVG import: `loadSVG`, `drawSVG`) | Ch 13 | to fold in (shipped after the chapter; imported artwork as a boolean/hatching/resampling source) |
 | `Drawing/Effects.md` (targets, filters, compose, combine) | Ch 14 | taught (targets/filters/generators/compose/feedback taught; combine + aside pointed) |
 | Blend modes (`Drawing/Drawing.md`) | Ch 14 | taught |
 | Feedback (`Drawing/Effects.md`) | Ch 14 | taught |
@@ -316,7 +317,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Retained geometry buffers | internal; Appendix D note at most |
 | More SDF shapes | Ch 18 / Appendix D |
 | More model examples (ModelTracker) | Ch 21 |
-| SVG import | Ch 13 |
 | Clipping as drawing state | Ch 6 or 14 |
 | Perfect-loop export (`--export-loop`) | Ch 3 |
 | Reproducibility metadata in exports | Ch 4 + Ch 22 |

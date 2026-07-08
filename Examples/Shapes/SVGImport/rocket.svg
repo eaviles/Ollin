@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280">
+  <!-- A little rocket badge, drawn for this example. -->
+  <rect x="10" y="10" width="180" height="260" rx="12" fill="#10142A"/>
+  <circle cx="156" cy="52" r="22" fill="#F5F1E6"/>
+  <circle cx="148" cy="46" r="5" fill="gainsboro"/>
+  <circle cx="163" cy="60" r="4" fill="gainsboro"/>
+  <polygon points="40,40 43,47 50,50 43,53 40,60 37,53 30,50 37,47" fill="#FFE9A8"/>
+  <g transform="translate(58 96) scale(0.6)">
+    <polygon points="0,-10 3,-3 10,0 3,3 0,10 -3,3 -10,0 -3,-3" fill="#fff"/>
+  </g>
+  <circle cx="34" cy="150" r="2" fill="#fff"/>
+  <circle cx="168" cy="120" r="2" fill="#fff"/>
+  <path d="M30 250 A85 85 0 0 1 170 238" fill="none" stroke="#8891B8"
+        stroke-width="2" stroke-linecap="round"/>
+  <g transform="rotate(16 100 150)">
+    <path d="M91 202 Q100 218 100 232 Q100 218 109 202 Q100 208 91 202 Z"
+          fill="rgb(255, 160, 40)"/>
+    <polygon points="118,162 140,198 118,198" fill="#D8434E"/>
+    <g transform="translate(200 0) scale(-1 1)">
+      <polygon points="118,162 140,198 118,198" fill="#D8434E"/>
+    </g>
+    <path d="M100 70 C114 92 120 120 120 150 C120 178 114 196 100 202
+             C86 196 80 178 80 150 C80 120 86 92 100 70 Z"
+          fill="#E8E4D8" stroke="#2B2B33" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M100 72 C107 83 111 93 113 104 L87 104 C89 93 93 83 100 72 Z"
+          fill="#D8434E"/>
+    <path id="window" fill-rule="evenodd" fill="#7FD1E0"
+          d="M116 130 A16 16 0 1 1 84 130 A16 16 0 1 1 116 130 Z
+             M108 130 A8 8 0 1 0 92 130 A8 8 0 1 0 108 130 Z"/>
+  </g>
+</svg>
