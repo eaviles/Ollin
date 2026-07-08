@@ -27,10 +27,10 @@ final class Anatomy: Sketch {
         background(Color(hex: 0xF7F5F1))
         textSize(19)
 
-        // 1. The waveform: the samples themselves (one frame's feed, ~17 ms).
+        // 1. The waveform: the rolling analysis window, the last ~46 ms.
         panelFrame(top: 56, height: 100,
-                   title: "waveform", note: "the raw samples, one frame's worth (17 ms)")
-        let wave = Array(audio.waveform.prefix(735))
+                   title: "waveform", note: "the raw samples, the last 46 ms")
+        let wave = audio.waveform
         var points: [Vector2] = []
         for (i, sample) in wave.enumerated() {
             let x = left + Double(i) / Double(wave.count - 1) * plotWidth

@@ -127,6 +127,149 @@ struct AudioAnalyzerTests {
         #expect(analyzer.beatCount == 0)
     }
 
+    // MARK: Beat clock, threshold, and waveform semantics
+
+    /// A tiny synthesized band, the deterministic stand-in for a microphone:
+    /// optionally a kick drum every half second (a 55 Hz thump plus a 2.8 kHz
+    /// click, both with sharp decays) over a held bass note, a steady mid tone,
+    /// and a whisper of hiss.
+    static func band(seconds: Double, gain: Double = 1, kick: Bool = true) -> [Float] {
+        let count = Int(sampleRate * seconds)
+        var out = [Float](repeating: 0, count: count)
+        for i in 0..<count {
+            let t = Double(i) / sampleRate
+            var s = 0.0
+            if kick {
+                let sinceKick = t.truncatingRemainder(dividingBy: 0.5)
+                s += sin(t * 55 * 2 * .pi) * 0.6 * exp(-sinceKick * 9)
+                s += sin(t * 2800 * 2 * .pi) * 0.3 * exp(-sinceKick * 70)
+            }
+            s += sin(t * 110 * 2 * .pi) * 0.2
+            s += sin(t * 330 * 2 * .pi) * 0.16
+            s += white(i) * 0.02
+            out[i] = Float(s * gain)
+        }
+        return out
+    }
+
+    /// Deterministic white noise, hashed from the sample index.
+    static func white(_ i: Int) -> Double {
+        var x = UInt64(truncatingIfNeeded: i) &* 0x9E3779B97F4A7C15
+        x ^= x >> 29
+        x &*= 0xBF58476D1CE4E5B9
+        x ^= x >> 32
+        return Double(x >> 40) / Double(1 << 23) - 1
+    }
+
+    /// Feeds a signal in 60 fps-sized chunks (the way a live tap delivers it)
+    /// and returns the sample position of each detected beat.
+    static func beatPositions(of signal: [Float], analyzer: AudioAnalyzer) -> [Int] {
+        let chunk = Int(sampleRate / 60)
+        var positions: [Int] = []
+        var last = 0
+        var offset = 0
+        while offset < signal.count {
+            let take = min(chunk, signal.count - offset)
+            signal.withUnsafeBufferPointer {
+                analyzer.process(samples: $0.baseAddress! + offset, count: take)
+            }
+            offset += take
+            if analyzer.beatCount > last {
+                last = analyzer.beatCount
+                positions.append(offset)
+            }
+        }
+        return positions
+    }
+
+    /// Every half-second kick lands as a beat at default sensitivity, each
+    /// detection within a chunk or two of the kick itself, and nothing fires
+    /// between kicks. This is the scenario that used to false-fire: steady
+    /// tones between the kicks let the old relative-only threshold collapse.
+    @Test func kicksOverSteadyTonesDetectCleanly() {
+        let analyzer = AudioAnalyzer(fftSize: 2048, sampleRate: Self.sampleRate, smoothing: 0)
+        let beats = Self.beatPositions(of: Self.band(seconds: 6), analyzer: analyzer)
+
+        #expect(beats.count == 12)
+        for position in beats {
+            let sinceKick = (Double(position) / Self.sampleRate)
+                .truncatingRemainder(dividingBy: 0.5)
+            #expect(sinceKick < 0.06)
+        }
+    }
+
+    /// Steady material (held tones, no transients) must not accumulate beats.
+    /// The one allowed detection is the very start, where the tones switching
+    /// on is a genuine onset.
+    @Test func steadyMaterialDoesNotFalseFire() {
+        let analyzer = AudioAnalyzer(fftSize: 2048, sampleRate: Self.sampleRate, smoothing: 0)
+        let beats = Self.beatPositions(of: Self.band(seconds: 6, kick: false), analyzer: analyzer)
+
+        #expect(beats.count <= 1)
+        if let first = beats.first {
+            #expect(Double(first) / Self.sampleRate < 0.1)
+        }
+    }
+
+    /// The same band ten times quieter yields the same beats at the same
+    /// positions: the log-compressed flux makes the threshold gain-invariant.
+    @Test func beatsAreVolumeInvariant() {
+        let loud = AudioAnalyzer(fftSize: 2048, sampleRate: Self.sampleRate, smoothing: 0)
+        let quiet = AudioAnalyzer(fftSize: 2048, sampleRate: Self.sampleRate, smoothing: 0)
+        let loudBeats = Self.beatPositions(of: Self.band(seconds: 6), analyzer: loud)
+        let quietBeats = Self.beatPositions(of: Self.band(seconds: 6, gain: 0.1), analyzer: quiet)
+
+        #expect(loudBeats == quietBeats)
+    }
+
+    /// `timeSinceBeat` runs on the sample clock: after a beat, feeding k more
+    /// buffers reads exactly k · fftSize / sampleRate seconds, no wall clock
+    /// involved.
+    @Test func beatClockIsSampleAccurate() {
+        let analyzer = AudioAnalyzer(fftSize: Self.fftSize, sampleRate: Self.sampleRate, smoothing: 0)
+        let loud = Self.sine(frequency: 1000, amplitude: 0.8, count: Self.fftSize)
+        let quiet = [Float](repeating: 0, count: Self.fftSize)
+
+        #expect(analyzer.timeSinceBeat == .greatestFiniteMagnitude)
+        #expect(analyzer.beat == 0)
+
+        for _ in 0..<5 {
+            quiet.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        }
+        loud.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        #expect(analyzer.beatCount == 1)
+        #expect(analyzer.timeSinceBeat == 0)
+        #expect(analyzer.beat == 1)
+
+        let k = 8
+        for _ in 0..<k {
+            quiet.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        }
+        #expect(analyzer.timeSinceBeat == Double(k * Self.fftSize) / Self.sampleRate)
+    }
+
+    /// `waveform` is a rolling window of the last `fftSize` samples, oldest
+    /// first, sliding across chunk boundaries.
+    @Test func waveformIsARollingWindow() {
+        let analyzer = AudioAnalyzer(fftSize: Self.fftSize, sampleRate: Self.sampleRate, smoothing: 0)
+        let half = Self.fftSize / 2
+        let a = [Float](repeating: 0.25, count: half)
+        let b = [Float](repeating: 0.5, count: half)
+        let c = [Float](repeating: 0.75, count: half)
+
+        a.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        b.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        var wave = analyzer.waveform
+        #expect(wave.count == Self.fftSize)
+        #expect(wave[0..<half].allSatisfy { $0 == 0.25 })
+        #expect(wave[half...].allSatisfy { $0 == 0.5 })
+
+        c.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: $0.count) }
+        wave = analyzer.waveform
+        #expect(wave[0..<half].allSatisfy { $0 == 0.5 })
+        #expect(wave[half...].allSatisfy { $0 == 0.75 })
+    }
+
     /// Smoothing damps the response: one frame of loud input lands only partway
     /// toward the true level.
     @Test func smoothingDampsResponse() {

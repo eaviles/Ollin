@@ -145,7 +145,7 @@ Every source exposes the same read surface (it forwards to its [`AudioAnalyzer`]
 ```swift
 var amplitude: Float                       // smoothed overall loudness, ~0...1
 var spectrum: [Float]                       // per-bin magnitudes, low frequency first
-var waveform: [Float]                       // recent raw samples, -1...1 (oscilloscope)
+var waveform: [Float]                       // the last fftSize samples, oldest first, -1...1
 var bass: Float                             // energy in 20–250 Hz
 var mid: Float                              // energy in 250–2000 Hz
 var treble: Float                           // energy in 2000–8000 Hz
@@ -153,7 +153,7 @@ func magnitude(in range: ClosedRange<Double>) -> Float   // average over a Hz ra
 var smoothing: Float                        // response damping, 0...1
 ```
 
-`spectrum` has `fftSize / 2` bins, each spanning `sampleRate / fftSize` Hz, from 0 up toward the Nyquist frequency. The magnitudes are smoothed but unnormalized, so scale them to taste for drawing — or reach for [`bands`](#bands-and-beats) below, which does that shaping for you. `smoothing` (0 = raw and twitchy, near 1 = heavily damped) trades responsiveness for steadiness and can be changed live.
+`spectrum` has `fftSize / 2` bins, each spanning `sampleRate / fftSize` Hz, from 0 up toward the Nyquist frequency. The magnitudes are smoothed but unnormalized, so scale them to taste for drawing, or reach for [`bands`](#bands-and-beats) below, which does that shaping for you. `waveform` is a rolling window of the most recent `fftSize` samples, oldest first, so a scope trace drawn from it stays continuous no matter how the audio arrives in chunks. `smoothing` (0 = raw and twitchy, near 1 = heavily damped) trades responsiveness for steadiness and can be changed live.
 
 <a name="bands-and-beats"></a>
 
@@ -164,7 +164,7 @@ Two higher-level reads sit on top of the raw spectrum — the ones you usually w
 ```swift
 func bands(_ count: Int) -> [Float]   // normalized, log-spaced frequency bars (each ~0...1)
 var beatCount: Int                     // beats detected so far
-var timeSinceBeat: Double              // seconds since the last beat
+var timeSinceBeat: Double              // seconds of audio since the last beat
 var beat: Float                        // a 0...1 pulse that hits 1 on a beat and decays
 var beatSensitivity: Float             // onset threshold; higher = fewer beats (default 1.5)
 ```
@@ -190,7 +190,9 @@ drawCircle(width / 2, height / 2, (40 + Double(source.beat) * 200) * scale)   //
 if source.beatCount > lastBeat { lastBeat = source.beatCount; spawnRipple() }
 ```
 
-Raise `beatSensitivity` if it triggers too eagerly, lower it if it misses beats. Beats are gated by a short refractory period, so a single hit won't double-fire.
+Raise `beatSensitivity` if it triggers too eagerly, lower it if it misses beats. The threshold is an absolute margin over the flux's own recent average, on a loudness-invariant scale, so quiet and loud material behave alike and steady material (a held chord, a drone) doesn't drift into false triggers. Beats are gated by a short refractory period, so a single hit won't double-fire.
+
+The whole beat surface runs on the *sample clock*: positions are counted in samples of audio, so the same recording always beats at the same places, `timeSinceBeat` holds still while no audio arrives, and detection is testable without hardware.
 
 ```swift
 let lows = tone.bass

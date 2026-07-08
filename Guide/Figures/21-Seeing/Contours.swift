@@ -85,20 +85,7 @@ final class Contours: Sketch {
     /// Run the one-shot contour detection and wait for it, mapping the result
     /// into the panel where the figure draws it.
     static func trace(_ image: Image, into panel: Rectangle) -> [Shape] {
-        final class Job: @unchecked Sendable {
-            let image: Image
-            let panel: Rectangle
-            var shapes: [Shape] = []
-            let done = DispatchSemaphore(value: 0)
-            init(_ image: Image, _ panel: Rectangle) { self.image = image; self.panel = panel }
-        }
-        let job = Job(image, panel)
-        Task.detached {
-            let result = try? await ContourDetector.detect(in: job.image)
-            job.shapes = result?.shapes(in: job.panel) ?? []
-            job.done.signal()
-        }
-        job.done.wait()
-        return job.shapes
+        let result = try? waitFor(image) { try await ContourDetector.detect(in: $0) }
+        return result?.shapes(in: panel) ?? []
     }
 }

@@ -3,9 +3,9 @@
 // Guide diagram (Chapter 20): six seconds of listening, as a timeline. Top:
 // the loudness curve (amplitude). Middle: the beat pulse, snapping to 1 on
 // each detected onset and fading. Bottom: the detections themselves, one tick
-// per beatCount increment. The pulse strip is rebuilt from beatCount so the
-// figure renders deterministically; live, the `beat` property is the same
-// shape, ready-made.
+// per beatCount increment. The pulse strip records the ready-made `beat`
+// property frame by frame; the sample-clocked detector makes the whole
+// timeline deterministic.
 import Ollin
 import OllinAudio
 
@@ -14,6 +14,7 @@ final class BeatTimeline: Sketch {
 
     let mic = StageMic()
     var loudness: [Double] = []
+    var pulses: [Double] = []
     var beatFrames: [Int] = []
     var lastCount = 0
 
@@ -25,15 +26,12 @@ final class BeatTimeline: Sketch {
     let left = 70.0, plotWidth = 740.0
     let window = 360                      // six seconds at 60 fps
 
-    override func setup() {
-        mic.analyzer.beatSensitivity = 3  // fire on the kick, not every ripple
-    }
-
     override func draw() {
         // Listen, and take notes.
         mic.listen()
         let audio = mic.analyzer
         loudness.append(Double(audio.amplitude))
+        pulses.append(Double(audio.beat))
         if audio.beatCount > lastCount {
             lastCount = audio.beatCount
             beatFrames.append(frameCount)
@@ -59,10 +57,7 @@ final class BeatTimeline: Sketch {
         title("beat", note: "the ready-made pulse: snaps to 1, fades", top: 268)
         var pulse: [Vector2] = []
         for i in 0 ..< window {
-            let frame = start + i + 1
-            let sinceBeat = beatFrames.last(where: { $0 <= frame }).map { frame - $0 }
-            let level = sinceBeat.map { max(0, 1 - Double($0) / 15) } ?? 0
-            pulse.append(Vector2(x(of: i), 400 - level * 88))
+            pulse.append(Vector2(x(of: i), 400 - pulses[start + i] * 88))
         }
         baseline(y: 400)
         stroke(accent)
@@ -82,7 +77,7 @@ final class BeatTimeline: Sketch {
         noStroke()
         fill(soft)
         textAlign(.center, .top)
-        drawText("every kick lands as a beat; a loud off-beat hat sneaks in now and then",
+        drawText("every arrival lands: the loud kicks and the quiet off-beat hats alike",
                  width / 2, 522)
     }
 

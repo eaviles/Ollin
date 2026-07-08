@@ -3,7 +3,7 @@ import AVFoundation
 import os
 
 /// The DSP behind every audio source: it turns a stream of audio samples into a
-/// few values a sketch reads in `draw()` — an overall `amplitude`, a frequency
+/// few values a sketch reads in `draw()`: an overall `amplitude`, a frequency
 /// `spectrum`, the raw `waveform`, and band queries (`bass`/`mid`/`treble`,
 /// `magnitude(in:)`). It is the typed core; `AudioInput`, `AudioPlayer`, and
 /// `Tone` are thin sources that feed it.
@@ -14,11 +14,16 @@ import os
 /// owns the FFT scratch buffers exclusively; the results it publishes cross to
 /// the reader through `stateLock`. That serial-producer / locked-handoff
 /// invariant is what makes the `@unchecked Sendable` sound.
+///
+/// Every clock in here is the *sample* clock: positions counted in samples
+/// since the analyzer started, divided by `sampleRate` when seconds are wanted.
+/// Feeding the same samples always yields the same beats at the same times,
+/// which is what makes detection testable and headless renders reproducible.
 public final class AudioAnalyzer: @unchecked Sendable {
 
     // MARK: Configuration
 
-    /// Number of frequency bins reported by `spectrum` — half the FFT size, since
+    /// Number of frequency bins reported by `spectrum`: half the FFT size, since
     /// a real-signal FFT is symmetric. Bins span `0 ..< nyquist`, each
     /// `sampleRate / fftSize` Hz wide.
     public let binCount: Int
@@ -39,14 +44,45 @@ public final class AudioAnalyzer: @unchecked Sendable {
     private var imagp: [Float]
     private var magnitudes: [Float]
 
-    // Onset/beat-detection scratch (audio thread, serial). Spectral flux is the
-    // sum of positive bin-to-bin magnitude increases; an onset is a flux spike
-    // above a running average, gated by a minimum gap (a refractory period
-    // counted in *samples*, so detection is deterministic and clock-free).
-    private var prevMagnitudes: [Float]
-    private var fluxAverage: Float = 0
+    // The analysis window is a *rolling* ring of the last `fftSize` samples:
+    // each incoming chunk slides it forward and the FFT re-runs over the full
+    // window. That keeps the frequency resolution of the whole window even when
+    // chunks are short (at 60 fps a chunk is ~735 samples), and it makes
+    // `waveform` exactly what it claims to be: the most recent window of raw
+    // samples. `fftSize` is a power of two, so wraparound is a mask.
+    private var sampleRing: [Float]
+    private var sampleRingHead: Int = 0     // next write position == oldest sample
+    private var waveScratch: [Float]
+
+    // Onset/beat-detection scratch (audio thread, serial). The detection
+    // function is spectral flux (the per-window sum of positive bin-to-bin
+    // magnitude increases) computed over *log-compressed* magnitudes,
+    // `log(1 + λ·m)`: a gain change then shifts both windows' log magnitudes by
+    // the same amount and cancels in the difference, so the flux scale (and the
+    // additive threshold below) holds across quiet and loud material.
+    private var logMagnitudes: [Float]
+    private var prevLogMagnitudes: [Float]
+    private let logCompression: Float = 200
+
+    // Online peak-picking over the flux, past-only so it runs in real time.
+    // A window is an onset when all three hold:
+    //   1. its flux is the maximum of the last `localMaxEntries` windows;
+    //   2. its flux exceeds the mean of the last `meanEntries` windows by an
+    //      absolute margin (`onsetFloor × beatSensitivity`, additive rather
+    //      than multiplicative, so near-steady material whose flux ripples
+    //      around a small baseline can't self-trigger);
+    //   3. a refractory gap (in samples) has passed since the last onset.
+    // Missing history counts as zero flux, so an onset in the first window is
+    // still detectable. The flux history is a small ring, newest at head-1.
+    private var fluxRing: [Float]
+    private var fluxRingHead: Int = 0
+    private var fluxRingCount: Int = 0
+    private let fluxRingCapacity = 16       // power of two ≥ meanEntries
+    private let localMaxEntries = 3
+    private let meanEntries = 10
+    private let onsetFloor: Float = 3.0
     private var samplesSeen: Int = 0
-    private var lastBeatSample: Int = -1_000_000
+    private var lastBeatSample: Int = -1_000_000    // far past: no refractory at start
     private let minBeatSamples: Int
 
     // MARK: Published state (read on main, written on the audio thread)
@@ -56,11 +92,12 @@ public final class AudioAnalyzer: @unchecked Sendable {
         var spectrum: [Float]
         var waveform: [Float]
         var smoothing: Float
-        // Beat detection.
+        // Beat detection: all positions on the sample clock.
         var beatCount: Int = 0
-        var lastBeatTime: Double = 0          // systemUptime seconds; 0 = none yet
+        var samplesSeen: Int = 0
+        var lastBeatSample: Int = -1          // -1 = none yet
         var beatSensitivity: Float = 1.5
-        // bands(_:) ergonomics — normalized, log-spaced, attack/release envelope.
+        // bands(_:) ergonomics: normalized, log-spaced, attack/release envelope.
         var bandEnvelope: [Float] = []
         var bandPeak: Float = 1e-4
         var bandCount: Int = 0
@@ -91,7 +128,11 @@ public final class AudioAnalyzer: @unchecked Sendable {
         self.realp = [Float](repeating: 0, count: size / 2)
         self.imagp = [Float](repeating: 0, count: size / 2)
         self.magnitudes = [Float](repeating: 0, count: size / 2)
-        self.prevMagnitudes = [Float](repeating: 0, count: size / 2)
+        self.sampleRing = [Float](repeating: 0, count: size)
+        self.waveScratch = [Float](repeating: 0, count: size)
+        self.logMagnitudes = [Float](repeating: 0, count: size / 2)
+        self.prevLogMagnitudes = [Float](repeating: 0, count: size / 2)
+        self.fluxRing = [Float](repeating: 0, count: fluxRingCapacity)
         // ~120 ms minimum between beats, so a single hit can't double-trigger.
         self.minBeatSamples = Int(0.12 * sampleRate)
 
@@ -116,8 +157,9 @@ public final class AudioAnalyzer: @unchecked Sendable {
     /// covers `sampleRate / fftSize` Hz. Magnitudes are smoothed but unnormalized.
     public var spectrum: [Float] { stateLock.withLock { $0.spectrum } }
 
-    /// The most recent window of raw samples (`-1...1`), oldest first — handy for
-    /// drawing an oscilloscope trace.
+    /// The most recent `fftSize` samples (`-1...1`), oldest first: a true
+    /// rolling window, so an oscilloscope trace drawn from it is continuous
+    /// across frames no matter how audio chunks arrive.
     public var waveform: [Float] { stateLock.withLock { $0.waveform } }
 
     /// Damping applied to `amplitude` and `spectrum`, `0...1`. Settable live.
@@ -145,7 +187,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
     /// Energy in the high band (2000–8000 Hz).
     public var treble: Float { magnitude(in: 2000...8000) }
 
-    // MARK: Bands (normalized, log-spaced — the ready-to-draw spectrum)
+    // MARK: Bands (normalized, log-spaced: the ready-to-draw spectrum)
 
     /// `count` frequency bands spread *logarithmically* (octave-like) from ~40 Hz
     /// up toward the Nyquist, each value normalized to roughly `0...1` by an
@@ -202,15 +244,18 @@ public final class AudioAnalyzer: @unchecked Sendable {
     /// `if source.beatCount > last { last = source.beatCount; … }`.
     public var beatCount: Int { stateLock.withLock { $0.beatCount } }
 
-    /// Seconds since the last detected beat (very large if none yet) — drive a
-    /// decaying flash from it, or read `beat` for a ready-made 0…1 pulse.
+    /// Seconds of *audio* since the last detected beat (very large if none yet);
+    /// drive a decaying flash from it, or read `beat` for a ready-made 0…1 pulse.
+    /// Measured on the sample clock, so it advances as samples arrive: it tracks
+    /// wall time while audio streams, holds still if the stream pauses, and is
+    /// reproducible when the same samples are fed again.
     public var timeSinceBeat: Double {
-        let last = stateLock.withLock { $0.lastBeatTime }
-        guard last > 0 else { return .greatestFiniteMagnitude }
-        return ProcessInfo.processInfo.systemUptime - last
+        let (seen, last) = stateLock.withLock { ($0.samplesSeen, $0.lastBeatSample) }
+        guard last >= 0 else { return .greatestFiniteMagnitude }
+        return Double(seen - last) / sampleRate
     }
 
-    /// A 0…1 pulse that snaps to 1 on each beat and decays over ~0.25 s — the
+    /// A 0…1 pulse that snaps to 1 on each beat and decays over ~0.25 s: the
     /// ready-to-use "make it throb on the beat" value.
     public var beat: Float {
         let t = timeSinceBeat
@@ -218,11 +263,13 @@ public final class AudioAnalyzer: @unchecked Sendable {
         return Float(max(0, 1 - t / 0.25))
     }
 
-    /// Beat-detection threshold: flux must exceed its running average times this
-    /// to count as an onset. Higher = fewer, stronger beats. Default 1.5.
+    /// Beat-detection threshold: how far the flux must rise above its own recent
+    /// average to count as an onset. Higher = fewer, stronger beats; lower = more
+    /// eager. Default 1.5. The margin is absolute (the flux scale is loudness-
+    /// invariant), so steady material can't drift into false triggers.
     public var beatSensitivity: Float {
         get { stateLock.withLock { $0.beatSensitivity } }
-        set { let v = max(1, newValue); stateLock.withLock { $0.beatSensitivity = v } }
+        set { let v = max(0.1, newValue); stateLock.withLock { $0.beatSensitivity = v } }
     }
 
     // MARK: Processing (audio thread, serial)
@@ -233,19 +280,41 @@ public final class AudioAnalyzer: @unchecked Sendable {
     /// note on why that single writer is the safe contract.
     public func process(samples: UnsafePointer<Float>, count: Int) {
         guard count > 0 else { return }
+        // A chunk longer than the window contributes its most recent windowful;
+        // the sample clock still advances by everything that arrived.
+        let take = min(count, fftSize)
+        analyze(samples: samples + (count - take), take: take, advance: count)
+    }
+
+    private func analyze(samples: UnsafePointer<Float>, take: Int, advance: Int) {
         let n = fftSize
-        let take = min(count, n)
+        let mask = n - 1
 
         // RMS over what arrived, before any windowing.
         var rms: Float = 0
         vDSP_rmsqv(samples, 1, &rms, vDSP_Length(take))
 
-        // Copy (zero-padded) into the window scratch and apply a Hann window so
-        // the FFT doesn't smear energy across bins.
-        windowed.withUnsafeMutableBufferPointer { dst in
-            if take < n { vDSP_vclr(dst.baseAddress!, 1, vDSP_Length(n)) }
-            vDSP_vmul(samples, 1, hann, 1, dst.baseAddress!, 1, vDSP_Length(take))
+        // Slide the rolling window: write the new samples into the ring, then
+        // unroll it oldest-first (head points at the oldest sample).
+        var idx = sampleRingHead
+        sampleRing.withUnsafeMutableBufferPointer { ring in
+            for i in 0..<take {
+                ring[idx] = samples[i]
+                idx = (idx + 1) & mask
+            }
         }
+        sampleRingHead = idx
+        let head = sampleRingHead
+        waveScratch.withUnsafeMutableBufferPointer { dst in
+            sampleRing.withUnsafeBufferPointer { src in
+                dst.baseAddress!.update(from: src.baseAddress! + head, count: n - head)
+                (dst.baseAddress! + (n - head)).update(from: src.baseAddress!, count: head)
+            }
+        }
+
+        // Hann window over the full rolling window, so the FFT doesn't smear
+        // energy across bins.
+        vDSP_vmul(waveScratch, 1, hann, 1, &windowed, 1, vDSP_Length(n))
 
         // Real FFT via split-complex packing of the windowed signal.
         realp.withUnsafeMutableBufferPointer { rp in
@@ -266,18 +335,37 @@ public final class AudioAnalyzer: @unchecked Sendable {
             }
         }
 
-        // Spectral flux: the sum of positive bin-to-bin increases since the last
-        // buffer. A sudden broadband rise (a drum hit, a plucked note) spikes it.
+        // Spectral flux over log-compressed magnitudes: the sum of positive
+        // bin-to-bin increases since the previous window. A sudden broadband
+        // rise (a drum hit, a plucked note) spikes it; a gain change cancels.
         let n2 = n / 2
+        var one: Float = 1
+        var lambda = logCompression
+        vDSP_vsmsa(magnitudes, 1, &lambda, &one, &logMagnitudes, 1, vDSP_Length(n2))
+        var count32 = Int32(n2)
+        vvlogf(&logMagnitudes, logMagnitudes, &count32)
         var flux: Float = 0
         for i in 0..<n2 {
-            let d = magnitudes[i] - prevMagnitudes[i]
+            let d = logMagnitudes[i] - prevLogMagnitudes[i]
             if d > 0 { flux += d }
-            prevMagnitudes[i] = magnitudes[i]
+            prevLogMagnitudes[i] = logMagnitudes[i]
         }
-        samplesSeen += take
-        let fluxValue = flux
-        let fluxAverageLocal = fluxAverage
+        samplesSeen += advance
+
+        // Push the flux into its history ring and evaluate the three onset
+        // conditions over the trailing windows (missing history reads as 0).
+        fluxRing[fluxRingHead] = flux
+        fluxRingHead = (fluxRingHead + 1) & (fluxRingCapacity - 1)
+        fluxRingCount = min(fluxRingCount + 1, fluxRingCapacity)
+        var maxFlux: Float = 0
+        var meanSum: Float = 0
+        for k in 0..<min(meanEntries, fluxRingCount) {
+            let f = fluxRing[(fluxRingHead - 1 - k + fluxRingCapacity) & (fluxRingCapacity - 1)]
+            if k < localMaxEntries, f > maxFlux { maxFlux = f }
+            meanSum += f
+        }
+        let fluxMean = meanSum / Float(meanEntries)
+        let isLocalMax = flux >= maxFlux
         let canBeat = (samplesSeen - lastBeatSample) >= minBeatSamples
         let loudEnough = rms > 0.01
 
@@ -285,13 +373,13 @@ public final class AudioAnalyzer: @unchecked Sendable {
         // `@Sendable`, so it can't reach a raw pointer or a mutated local var.
         let rmsValue = rms
         let mags = magnitudes
-        var wave = [Float](repeating: 0, count: n)
-        for i in 0..<take { wave[i] = samples[i] }
-        let waveSnapshot = wave
+        let waveSnapshot = waveScratch
+        let fluxValue = flux
+        let samplesSeenValue = samplesSeen
 
         // Publish, smoothing toward the new values, and register a beat if the
-        // flux spiked past the running average × sensitivity. The closure is
-        // `@Sendable`, so it returns the onset rather than mutating an outer var.
+        // flux cleared its threshold. The closure is `@Sendable`, so it returns
+        // the onset rather than mutating an outer var.
         let onset = stateLock.withLock { state -> Bool in
             let a = state.smoothing
             state.amplitude = a * state.amplitude + (1 - a) * rmsValue
@@ -299,17 +387,17 @@ public final class AudioAnalyzer: @unchecked Sendable {
                 state.spectrum[i] = a * state.spectrum[i] + (1 - a) * mags[i]
             }
             state.waveform = waveSnapshot
+            state.samplesSeen = samplesSeenValue
 
-            if canBeat && loudEnough && fluxValue > fluxAverageLocal * state.beatSensitivity {
+            if canBeat && loudEnough && isLocalMax
+                && fluxValue >= fluxMean + self.onsetFloor * state.beatSensitivity {
                 state.beatCount += 1
-                state.lastBeatTime = ProcessInfo.processInfo.systemUptime
+                state.lastBeatSample = samplesSeenValue
                 return true
             }
             return false
         }
         if onset { lastBeatSample = samplesSeen }
-        // Track the flux average last, so a beat is judged against its history.
-        fluxAverage = fluxAverage * 0.95 + flux * 0.05
     }
 
     /// Convenience over an `AVAudioPCMBuffer`: averages channels to mono and
@@ -324,15 +412,17 @@ public final class AudioAnalyzer: @unchecked Sendable {
             process(samples: channels[0], count: frames)
             return
         }
-        // Down-mix to mono into the windowed scratch's leading frames.
+        // Down-mix the most recent windowful to mono; the sample clock still
+        // advances by the full buffer.
         let take = min(frames, fftSize)
+        let skip = frames - take
         var mono = [Float](repeating: 0, count: take)
         let inv = Float(1) / Float(channelCount)
         for c in 0..<channelCount {
-            let src = channels[c]
+            let src = channels[c] + skip
             for i in 0..<take { mono[i] += src[i] * inv }
         }
-        mono.withUnsafeBufferPointer { process(samples: $0.baseAddress!, count: take) }
+        mono.withUnsafeBufferPointer { analyze(samples: $0.baseAddress!, take: take, advance: frames) }
     }
 
     private static func roundedUpToPowerOfTwo(_ n: Int) -> Int {

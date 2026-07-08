@@ -73,10 +73,10 @@ The detector behind this compares each instant's spectrum with the one just befo
 ```swift
 source.beat            // a 0...1 pulse: snaps to 1 on each beat, fades over ~0.25 s
 source.beatCount       // how many beats so far
-source.timeSinceBeat   // seconds since the last one
+source.timeSinceBeat   // seconds of audio since the last one
 ```
 
-`beat` is the ready-made value: multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the payoff spawns sparks. And when the detector is too eager or too deaf for your material, `beatSensitivity` is the knob: higher fires on fewer, stronger arrivals. The timeline above runs at sensitivity 3, and it's honest about what detection is: every kick lands, and a loud off-beat hat sneaks in now and then. Onset detection hears *arrivals*, not "the beat" a drummer would tap; for most visuals that's exactly what you want, and for the rest, tune the sensitivity until the piece feels right.
+`beat` is the ready-made value: multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the payoff spawns sparks. Look at the timeline: every kick lands, and so does the quiet off-beat hat, with the same confidence. That's what detection is: onset detection hears *arrivals*, sudden changes in the sound, not loudness and not "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. For most visuals that's exactly what you want; when it isn't, `beatSensitivity` is the knob (higher asks for stronger arrivals before firing), and the detector is deliberately steady the rest of the time: held chords and drones don't drift into false triggers, and the same recording always beats in the same places.
 
 ## Four places sound comes from
 
@@ -174,7 +174,6 @@ final class Resonator: Sketch {
 
     override func setup() {
         seed(20)                              // the sparks re-fly the same way
-        mic.analyzer.beatSensitivity = 3      // fire on the kick, not every ripple
     }
 
     override func draw() {
@@ -266,7 +265,7 @@ Then make it yours:
 
 ## Where this comes from
 
-The idea that any sound splits into pure vibrations is Joseph Fourier's (1822); the fast algorithm that made it real-time, the FFT, is Cooley and Tukey's (1965), and Ollin runs Apple's implementation. Detecting arrivals by spectral flux is a standard technique from music information retrieval, surveyed well in Bello and colleagues' onset-detection tutorial (2005). MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other, a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. And the audio-reactive visual itself has a long lineage, from Oskar Fischinger's hand-drawn sound films through the oscilloscope and music-visualizer traditions to today's VJ and live-coding scenes. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The idea that any sound splits into pure vibrations is Joseph Fourier's (1822); the fast algorithm that made it real-time, the FFT, is Cooley and Tukey's (1965), and Ollin runs Apple's implementation. Detecting arrivals by spectral flux is a standard technique from music information retrieval, surveyed well in Bello and colleagues' onset-detection tutorial (2005); the real-time recipe Ollin follows is Böck, Krebs, and Schedl's online method (2012). MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other, a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. And the audio-reactive visual itself has a long lineage, from Oskar Fischinger's hand-drawn sound films through the oscilloscope and music-visualizer traditions to today's VJ and live-coding scenes. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

@@ -30,7 +30,6 @@ final class Resonator: Sketch {
 
     override func setup() {
         seed(20)                              // the sparks re-fly the same way
-        mic.analyzer.beatSensitivity = 3      // fire on the kick, not every ripple
     }
 
     override func draw() {

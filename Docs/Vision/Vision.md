@@ -56,7 +56,7 @@ final class Faces: Sketch {
 - [TrajectoryTracker](#trajectorytracker) — find things flying along parabolic arcs
 - [DetectedTrajectory](#detectedtrajectory) — one arc: its points, fit, and identity
 - [FlowTracker](#flowtracker) — measure optical flow, the whole picture's motion
-- [FlowField](#flowfield) — the motion field, sampled anywhere on the canvas
+- [MotionField](#motionfield): the motion field, sampled anywhere on the canvas
 - [ImageClassifier](#imageclassifier) — name what's in the picture
 - [Classification](#classification) — one label and how strongly it applies
 - [SaliencyTracker](#saliencytracker) — map what draws the eye
@@ -610,22 +610,22 @@ An arc keeps its `id` as more of it comes into view, so accumulate results by `i
 
 ```swift
 FlowTracker(_ source: any FrameSource, accuracy: Accuracy = .medium)
-var field: FlowField? { get }
+var field: MotionField? { get }
 func reset()
 static func flow(from previous: Image, to current: Image,
-                 accuracy: Accuracy = .high) async throws -> FlowField?
-static func flow(across: [Image], accuracy: Accuracy = .medium) async throws -> [FlowField?]
+                 accuracy: Accuracy = .high) async throws -> MotionField?
+static func flow(across: [Image], accuracy: Accuracy = .medium) async throws -> [MotionField?]
 ```
 
 Where `ObjectTracker` follows one patch and `TrajectoryTracker` finds arcs, this one measures **all** the motion: optical flow, a dense field of vectors describing how every part of the picture moved since the previous analyzed frame. Wave a hand and the pixels under it get vectors; pan the camera and the whole field drifts together. It's classical (no neural model), so it runs on any Mac.
 
-Read `field` each frame — it's `nil` until the second analyzed frame, since flow needs a pair — and sample it wherever you like (see [`FlowField`](#flowfield)). `accuracy` trades speed for a finer field (`.low` / `.medium` / `.high` / `.veryHigh`); `.medium` keeps up with a live camera. Call `reset()` after the scene jumps (a video loop, a seek) so the discontinuity isn't read as one huge motion.
+Read `field` each frame (it's `nil` until the second analyzed frame, since flow needs a pair) and sample it wherever you like (see [`MotionField`](#motionfield)). `accuracy` trades speed for a finer field (`.low` / `.medium` / `.high` / `.veryHigh`); `.medium` keeps up with a live camera. Call `reset()` after the scene jumps (a video loop, a seek) so the discontinuity isn't read as one huge motion.
 
 Two camera-free forms: `flow(from:to:)` measures a single pair of stills, and `flow(across:)` runs an ordered array of frames through the same frame-over-frame path the live tracker uses (its first entry is `nil` — flow needs a frame before it).
 
-<a name="flowfield"></a>
+<a name="motionfield"></a>
 
-### FlowField
+### MotionField
 
 ```swift
 func vector(at point: Vector2, in rect: Rectangle, mirrored: Bool = false) -> Vector2
@@ -655,7 +655,7 @@ override func draw() {
 }
 ```
 
-Because every query is a read out of the underlying flow map, the field works as the input to anything: push particles by the vector under each one, drive a [physics](../Simulation/Physics.md) world's forces from the motion in front of the camera, or steer a brush by `averageFlow`. Two practical notes: magnitudes are conservative estimates (treat them as a signal you scale by a gain of your own, not a calibrated speed — the analysis interval also breathes with load), and motion is only defined where the picture has texture (a blank wall reports little even when it's moving).
+Because every query is a read out of the underlying flow map, the field works as the input to anything: push particles by the vector under each one, drive a [physics](../Simulation/Physics.md) world's forces from the motion in front of the camera, or steer a brush by `averageFlow`. Two practical notes. Magnitudes are conservative estimates: treat them as a signal you scale by a gain of your own, not a calibrated speed (the analysis interval also breathes with load). And motion is only *measurable* where the picture has texture: a flat, featureless area (a blank wall, a solid backdrop) doesn't read as zero motion, it reads as **noise**, since there's nothing to match frame to frame. So don't take stillness from a featureless region at face value; if the scene is mostly flat, give it texture (even a faint static speckle behind the action) before trusting the field there.
 
 `flowNormalized(at:)` and `averageFlowNormalized` are the raw surface for working in normalized coordinates yourself (`0…1`, lower-left origin, +y up — see [coordinate mapping](#coordinate-mapping)); `size` is the flow map's resolution and `confidence` the tracker's confidence in the field as a whole.
 
@@ -909,7 +909,17 @@ let found = try await FaceTracker.detect(in: image)
 print("\(found.count) faces")
 ```
 
-The trackers that work *across* frames are the exception — one frame isn't enough — so their camera-free forms take more than one: `ObjectTracker.track(seed, across: frames)` and `TrajectoryTracker.detect(across: frames)` take an ordered sequence, and `FlowTracker.flow(from:to:)` takes the pair of stills to measure between (with `flow(across:)` for a sequence).
+The trackers that work *across* frames are the exception (one frame isn't enough), so their camera-free forms take more than one: `ObjectTracker.track(seed, across: frames)` and `TrajectoryTracker.detect(across: frames)` take an ordered sequence, and `FlowTracker.flow(from:to:)` takes the pair of stills to measure between (with `flow(across:)` for a sequence).
+
+Every one of these calls is `async`, which is fine in a `Task`, but `setup()` isn't one, and a deterministic render (a figure, an export) can't wait a few frames for a result to land. `waitFor` runs the call inline and blocks until it's done:
+
+```swift
+let shapes = try waitFor(image) { try await ContourDetector.detect(in: $0) }
+let field  = try waitFor(before, after) { try await FlowTracker.flow(from: $0, to: $1) }
+let arcs   = try waitFor(frames) { try await TrajectoryTracker.detect(across: $0) }
+```
+
+Pass the image (or pair, or sequence) as the argument rather than capturing it; the argument is what carries it into the analysis task safely. Because `waitFor` parks the calling thread, never call it from an async context (just `await` there), and a live sketch usually wants neither: start a `Task`, stash its result in a property, and keep drawing until detection lands.
 
 <a name="availability"></a>
 

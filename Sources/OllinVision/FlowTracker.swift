@@ -14,7 +14,7 @@ import os
 /// answers in canvas space ("which way is the picture moving under this point"),
 /// `samples(in:)` lays a whole grid of them for drawing, and `averageFlowNormalized`
 /// is the global drift (a camera pan reads as one shared direction).
-public struct FlowField: @unchecked Sendable {
+public struct MotionField: @unchecked Sendable {
 
     /// One grid sample from `samples(in:)`: where it was taken, and the local
     /// motion there — both in canvas space.
@@ -52,7 +52,7 @@ public struct FlowField: @unchecked Sendable {
         var sum = Vector2.zero
         for j in 0..<grid {
             for i in 0..<grid {
-                sum += FlowField.flowNormalized(observation,
+                sum += MotionField.flowNormalized(observation,
                                                 at: Vector2((Double(i) + 0.5) / Double(grid),
                                                             (Double(j) + 0.5) / Double(grid)))
             }
@@ -66,7 +66,7 @@ public struct FlowField: @unchecked Sendable {
     /// `vector(at:in:)`, which queries and answers in canvas space. Out-of-range
     /// points clamp to the frame edge.
     public func flowNormalized(at point: Vector2) -> Vector2 {
-        FlowField.flowNormalized(observation, at: point)
+        MotionField.flowNormalized(observation, at: point)
     }
 
     private static func flowNormalized(_ observation: OpticalFlowObservation,
@@ -195,7 +195,7 @@ public final class FlowTracker: VisionTracking, @unchecked Sendable {
         /// frames so each perform measures against the frame before it. A reset
         /// clears it so the next frame starts fresh.
         var request: TrackOpticalFlowRequest?
-        var result: FlowField?
+        var result: MotionField?
     }
     private let lock = OSAllocatedUnfairLock(initialState: State())
     private let status = VisionStatus("optical flow")
@@ -204,7 +204,7 @@ public final class FlowTracker: VisionTracking, @unchecked Sendable {
     /// The flow field between the two most recent analyzed frames, or `nil`
     /// before the first pair (flow needs two frames, so the first analyzed frame
     /// produces nothing).
-    public var field: FlowField? { lock.withLock { $0.result } }
+    public var field: MotionField? { lock.withLock { $0.result } }
 
     /// Whether optical flow can run here (it's classical, so effectively always
     /// `true`); `unavailableReason` would explain a `false`.
@@ -235,13 +235,13 @@ public final class FlowTracker: VisionTracking, @unchecked Sendable {
     /// `previous` to `current`. The camera-free path, at still-image accuracy by
     /// default. Returns `nil` if the pair produced no field.
     public static func flow(from previous: Image, to current: Image,
-                            accuracy: Accuracy = .high) async throws -> FlowField? {
+                            accuracy: Accuracy = .high) async throws -> MotionField? {
         let request = TrackOpticalFlowRequest()
         request.computationAccuracy = accuracy.visionAccuracy
         let handler = TargetedImageRequestHandler(source: previous.currentCGImage(),
                                                   target: current.currentCGImage())
         guard let observation = try await handler.perform(request) else { return nil }
-        return FlowField(observation)
+        return MotionField(observation)
     }
 
     /// Measure flow across an explicit ordered sequence of frames, returning one
@@ -249,13 +249,13 @@ public final class FlowTracker: VisionTracking, @unchecked Sendable {
     /// camera-free sequence path — run a recorded clip's frames through the same
     /// stateful request the live path uses, and how that path is tested.
     public static func flow(across images: [Image],
-                            accuracy: Accuracy = .medium) async throws -> [FlowField?] {
+                            accuracy: Accuracy = .medium) async throws -> [MotionField?] {
         let request = TrackOpticalFlowRequest()
         request.computationAccuracy = accuracy.visionAccuracy
-        var results: [FlowField?] = []
+        var results: [MotionField?] = []
         for image in images {
             let observation = try await request.perform(on: image.currentCGImage())
-            results.append(observation.map(FlowField.init))
+            results.append(observation.map(MotionField.init))
         }
         return results
     }
@@ -280,7 +280,7 @@ public final class FlowTracker: VisionTracking, @unchecked Sendable {
             lock.withLock { state in
                 // A reset mid-flight replaced the request; drop this stale result.
                 guard state.request === request else { return }
-                if let observation { state.result = FlowField(observation) }
+                if let observation { state.result = MotionField(observation) }
             }
         } catch {
             status.recordFailure(error)

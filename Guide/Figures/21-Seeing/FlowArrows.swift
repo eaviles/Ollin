@@ -12,7 +12,7 @@ final class FlowArrows: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     let performer = StagePerformer()
-    var field: OllinVision.FlowField?
+    var field: MotionField?
     var picture: Image?
 
     let ink = Color(hex: 0x2B2B2B)
@@ -69,7 +69,7 @@ final class FlowArrows: Sketch {
 /// A pretend performer for a guide that can't film you: two speckled "hands"
 /// wave along looping paths in a small dark frame, and each new frame is
 /// measured against the previous one with the real Vision optical-flow
-/// request. `step()` returns the same `FlowField` a live `FlowTracker`
+/// request. `step()` returns the same `MotionField` a live `FlowTracker`
 /// publishes; only the camera has been replaced.
 final class StagePerformer {
     private let size = 240
@@ -80,9 +80,7 @@ final class StagePerformer {
     private(set) var lastFrame: Image?
 
     /// Advance the dance one frame and measure how the picture moved.
-    /// (Qualified: the vision FlowField shares its name with the generative
-    /// flow field from the core library.)
-    func step() -> OllinVision.FlowField? {
+    func step() -> MotionField? {
         let t = Double(frame) / 60
         frame += 1
         let current = render(t: t)
@@ -130,21 +128,9 @@ final class StagePerformer {
         return Double((h ^ (h >> 16)) % 1000) / 999
     }
 
-    /// Run the async one-shot flow measurement and wait for it, so a figure
-    /// renders deterministically frame by frame.
-    private static func measureFlow(from a: Image, to b: Image) -> OllinVision.FlowField? {
-        final class Job: @unchecked Sendable {
-            let a: Image, b: Image
-            var field: OllinVision.FlowField?
-            let done = DispatchSemaphore(value: 0)
-            init(_ a: Image, _ b: Image) { self.a = a; self.b = b }
-        }
-        let job = Job(a, b)
-        Task.detached {
-            job.field = try? await FlowTracker.flow(from: job.a, to: job.b, accuracy: .high)
-            job.done.signal()
-        }
-        job.done.wait()
-        return job.field
+    /// Run the one-shot flow measurement and wait for it, so a figure renders
+    /// deterministically frame by frame.
+    private static func measureFlow(from a: Image, to b: Image) -> MotionField? {
+        try? waitFor(a, b) { try await FlowTracker.flow(from: $0, to: $1, accuracy: .high) }
     }
 }
