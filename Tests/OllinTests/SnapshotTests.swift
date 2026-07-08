@@ -301,6 +301,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("svg-import",
                  note: "An inline SVG drawn as authored (left) and as bare outlined contours (right). Pins the importer end to end: the path grammar with arcs, the even-odd ring, nested group transforms incl. a mirror, the quadratic path, the open stroked arc with its cap, paint parsing (hex, rgb(), named), and fitted(in:). Pure CPU parse, no time, deterministic.",
                  make: { SVGImportScene() }),
+    SnapshotCase("epicycles",
+                 note: "A Fourier epicycle chain over a two-frequency rosette: the full-term path reproduces the outline, an 8-term prefix smooths it, and drawEpicycles renders the circles and spokes at a fixed lap phase. Pins the DFT (term order, phases), point/joints/path agreement, and the drawing sugar. Pure CPU build, no time, deterministic.",
+                 make: { EpicyclesScene() }),
     SnapshotCase("dla", frame: 110,
                  note: "A diffusion-limited aggregation cluster grown to a fixed frame from a center seed, tinted by arrival order. Pins the seeded walker (spawn/kill radii, far-jump stride, exact touch-distance landing) and the spatial-hash touch test. Seeded, fixed frame, so it's deterministic.",
                  make: { DLAScene() }),
@@ -1365,6 +1368,33 @@ private final class StrokeShapeScene: Sketch {
 /// geometry: a rounded rect, an even-odd ring built from arcs, a mirrored
 /// polygon pair, a quadratic path, and an open stroked arc, plus the same
 /// contours redrawn as outlines. Pure CPU parse; deterministic.
+/// A Fourier epicycle chain over a deterministic two-frequency rosette: the
+/// full-term reconstruction, a truncated 8-term prefix, and the chain drawn at
+/// a fixed lap phase. No time, no randomness.
+private final class EpicyclesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x10131A))
+        let outline = Contour((0 ..< 96).map { i -> Vector2 in
+            let a = Double(i) / 96 * .tau
+            let r = 82 + 26 * cos(a * 5)
+            return Vector2(width / 2 + cos(a) * r, height / 2 + sin(a) * r * 0.8)
+        }, closed: true)
+        let epicycles = Epicycles(outline, samples: 128)
+
+        noFill()
+        strokeWeight(1.6)
+        stroke(Color(hex: 0x9FD6E8))
+        drawPolygon(epicycles.path(samples: 256).points)
+        stroke(Color(hex: 0xE5B15C))
+        drawPolygon(epicycles.path(samples: 256, terms: 8).points)
+        strokeWeight(0.8)
+        stroke(Color(hex: 0x6B7DA6))
+        drawEpicycles(epicycles, at: 0.3, terms: 12)
+    }
+}
+
 private final class SVGImportScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
