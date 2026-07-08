@@ -161,7 +161,7 @@ The right panel asks the image one question per grid cell and draws the answer a
 let brightness = c.red * 0.2126 + c.green * 0.7152 + c.blue * 0.0722
 ```
 
-and that single number is the handle generative artists pull most: size by it, choose by it, gate by it. (Appendix B will keep this one; average the channels instead and yellows read too dark, blues too bright.) Ollin also carries the ask as a property, `c.luminance`, measured a touch more faithfully on the linearized components; the handwritten weights are the idea, the property is the everyday spelling.
+and that single number is the handle generative artists pull most: size by it, choose by it, gate by it. ([Appendix B](B-JustEnoughMath.md#perceived-brightness) keeps this one; average the channels instead and yellows read too dark, blues too bright.) Ollin also carries the ask as a property, `c.luminance`, measured a touch more faithfully on the linearized components; the handwritten weights are the idea, the property is the everyday spelling.
 
 You can also write pixels. `Image(width:height:)` makes a blank image, `image[x, y] = color` paints one pixel, and that's how this chapter's figures work: the repository ships no photograph, so the sunset on the left is *authored*, about twenty lines of Chapter 2 ramps, one `smoothstep` sun, and Chapter 5 noise for the water, written pixel by pixel in `setup()`. The payoff listing below contains the whole recipe, and everything in this section works identically on a photo you load with `loadImage`.
 

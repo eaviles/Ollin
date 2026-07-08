@@ -84,7 +84,7 @@ One chapter per session, in this order:
 2. Check the brief's parked roadmap items: anything shipped in the framework since the brief was written gets folded in.
 3. Build the figures first. Write each figure sketch, render it, and look at it (open the image, verify it shows what the prose will claim). The payoff piece usually comes first; it tells you what the steps must teach.
 4. Write the prose around the verified figures and listings. Track the concept list against principle 1 as you go.
-5. Add the chapter's math ideas to Appendix B's running list, and its "Go deeper" targets to the coverage matrix in PLAN.md (flip rows to their promised depth).
+5. Add the chapter's math ideas to Appendix B (an entry with a picture, in the matching theme group), give its new capabilities rows in Appendix D, and update its "Go deeper" targets in the coverage matrix in PLAN.md (flip rows to their promised depth).
 6. Run `Scripts/guide-figures.sh` (all figures, not just the new ones).
 7. Humanizer pass over the chapter, plus the plain-words check from *Voice and style* (rare words, decorative metaphor, clever flow). Then run `Scripts/prose-lint.sh` and clear its errors.
 8. Update PLAN.md status, link the chapter in `Guide/README.md`'s contents.

@@ -10,7 +10,7 @@ This guide teaches creative coding from zero, using [Ollin](../README.md). You w
 
 <img src="Images/01-HelloOllin/HelloMotion.jpg" alt="A ring of drifting, breathing circles: the Chapter 1 piece" width="560">
 
-**Who it's for.** Anyone who can program a little, in any language. You don't need to know Swift (the guide teaches what you need as it comes up, and [Appendix A](#appendices) is a primer), and you don't need a background in math, graphics, or shaders. If you can write a loop and a function, you can start.
+**Who it's for.** Anyone who can program a little, in any language. You don't need to know Swift (the guide teaches what you need as it comes up, and [Appendix A](A-JustEnoughSwift.md) is a primer), and you don't need a background in math, graphics, or shaders. If you can write a loop and a function, you can start.
 
 **What you need.** A Mac running macOS 26 or newer, and this repository. That's it.
 
@@ -20,7 +20,7 @@ This guide teaches creative coding from zero, using [Ollin](../README.md). You w
 
 Guides like this tend to fail in known ways: a concept appears out of nowhere and you're stuck, the examples no longer compile, or the theory runs three chapters ahead of anything you can see. This guide is built around four promises:
 
-1. **Nothing arrives unexplained.** Every concept is introduced before it's used, with a picture. When math shows up, it comes with a visual and a plain-words intuition, never notation alone. If a page loses you anyway, Appendix B re-explains every math idea in the guide, visually.
+1. **Nothing arrives unexplained.** Every concept is introduced before it's used, with a picture. When math shows up, it comes with a visual and a plain-words intuition, never notation alone. If a page loses you anyway, [Appendix B](B-JustEnoughMath.md) re-explains every math idea in the guide, visually.
 2. **Every listing runs.** Each code listing is a real file under [`Figures/`](Figures/), compiled and rendered by a tool in this repository. If the framework changes underneath it, the build breaks before the guide can lie to you.
 3. **Every image is made by the code next to it.** Figures and diagrams are rendered by Ollin itself from committed source. You can open any of them, run it, and mess with it.
 4. **Practice first.** You see something on your canvas within the first page of every chapter, and everything a chapter teaches ends up in one finished piece.
@@ -33,11 +33,9 @@ Both kinds of image are already at work on this page: the piece above is [`Figur
 
 Read the chapters in order the first time; each builds only on the ones before it. Work along in the live-reload host (`swift run OllinLive path/to/YourSketch.swift`), which recompiles on save so the window never closes while you experiment. Chapter 1 sets this up.
 
-If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps what you already know onto Ollin. If you're new to Swift, Appendix A and the [Swift quick reference](../Docs/Swift.md) cover just enough of the language to be productive.
+If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps what you already know onto Ollin. If you're new to Swift, [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md) cover just enough of the language to be productive.
 
 ## Contents
-
-The guide is being written chapter by chapter; titles below without links are still to come.
 
 ### Part I: Seeing something move
 
@@ -78,10 +76,10 @@ The guide is being written chapter by chapter; titles below without links are st
 
 ### Appendices
 
-- **A. Just enough Swift.** The language, for people arriving from other languages.
-- **B. Just enough math, visually.** Every math idea in the guide, each with a picture.
+- **[A. Just enough Swift](A-JustEnoughSwift.md).** The language, for people arriving from other languages.
+- **[B. Just enough math, visually](B-JustEnoughMath.md).** Every math idea in the guide, each with a picture.
 - **[C. Coming from p5.js and Processing](C-ComingFromP5.md).** A side-by-side translation.
-- **D. The complete toolbox.** Everything Ollin can do, one line each, with where it's taught and where it's documented.
+- **[D. The complete toolbox](D-CompleteToolbox.md).** Everything Ollin can do, one line each, with where it's taught and where it's documented.
 
 ---
 

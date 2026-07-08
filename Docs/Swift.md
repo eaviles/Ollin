@@ -6,7 +6,7 @@
 
 New to Swift? This page is the language at sketch speed: the handful of constructs you'll actually type in `draw()`, each with an example that lands on something you'd write in Ollin. It's a primer, not a manual.
 
-Coming from p5.js or Processing? [Appendix C of the Guide](../Guide/C-ComingFromP5.md) maps the API you already know onto Ollin; this page covers the language underneath. For a slower, narrative pass through the same Swift, the Guide's Appendix A is the place.
+Coming from p5.js or Processing? [Appendix C of the Guide](../Guide/C-ComingFromP5.md) maps the API you already know onto Ollin; this page covers the language underneath. For a slower, narrative pass through the same Swift, the Guide's [Appendix A](../Guide/A-JustEnoughSwift.md) is the place.
 
 ### Contents
 

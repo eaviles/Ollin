@@ -131,7 +131,7 @@ The full API reference lives in [`Docs/`](Docs/), one page per topic; [`Docs/REA
 - **Output** - [Export](Docs/Output/Export.md)
 - **Tools** - [Live coding](Docs/Tools/LiveCoding.md)
 
-New to Swift? The [Swift quick reference](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`. Coming from p5.js or Processing? [Appendix C of the Guide](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin.
+New to Swift? The [Swift quick reference](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`, and the Guide's [Appendix A](Guide/A-JustEnoughSwift.md) is its slower, narrative companion. Coming from p5.js or Processing? [Appendix C of the Guide](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin.
 
 Coordinates use a top-left origin with y increasing downward, the same as p5, Processing, and OPENRNDR.
 

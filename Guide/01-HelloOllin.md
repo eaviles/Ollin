@@ -121,7 +121,7 @@ The recipe has a second half, and it's the key to this chapter's finale. `sin` h
 
 <img src="Images/01-HelloOllin/AroundACircle.jpg" alt="A circle with an angle marked at its center, and cos and sin placing a point on its rim" width="680">
 
-Feed the pair an angle and a radius, and they hand you the x and y of the point that far around the circle. Grow the angle, and the point walks the rim. That's all this guide asks of `cos` and `sin`: they're how you place things *around* something. Chapter 3 shows why it works; Appendix B keeps this picture for whenever you want it back.
+Feed the pair an angle and a radius, and they hand you the x and y of the point that far around the circle. Grow the angle, and the point walks the rim. That's all this guide asks of `cos` and `sin`: they're how you place things *around* something. Chapter 3 shows why it works; [Appendix B](B-JustEnoughMath.md#an-angle-and-a-radius-make-a-point) keeps this picture for whenever you want it back.
 
 ## The mouse joins in
 

@@ -238,7 +238,7 @@ The output side of the same audience is **projection mapping and multi-display**
 
 ## Learning: the Guide
 
-The narrative-learning tier's design home is the [`Guide/`](Guide/) tree itself: the writing rules and pedagogy live in [`Guide/AUTHORING.md`](Guide/AUTHORING.md), and the chapter queue, per-chapter briefs, feature-coverage matrix, and roadmap parking lot in [`Guide/PLAN.md`](Guide/PLAN.md). What's ahead is the writing: the chapters (Part I first) and the appendices, including the "coming from p5.js" migration mapping (Appendix C there). Design decisions about the Guide go in those two files, not here.
+The narrative-learning tier's design home is the [`Guide/`](Guide/) tree itself: the writing rules and pedagogy live in [`Guide/AUTHORING.md`](Guide/AUTHORING.md), and the chapter queue, per-chapter briefs, feature-coverage matrix, and roadmap parking lot in [`Guide/PLAN.md`](Guide/PLAN.md). Design decisions about the Guide go in those two files, not here.
 
 ## A third-party extension ecosystem
 

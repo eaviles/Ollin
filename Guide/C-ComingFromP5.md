@@ -6,7 +6,7 @@
 
 If you've sketched in p5.js or Processing, you already know how to think here. The model carries over whole: `setup()` runs once, `draw()` runs every frame, shapes paint in the order you call them, the origin is the top-left corner with y growing downward, angles are radians, and `fill` and `stroke` set the ink for everything drawn after them. Plenty of names survive unchanged too, from `width` and `mouseX` through `translate`, `strokeWeight`, `noise`, and `map`. Your instincts are right; mostly the spelling changes.
 
-This appendix is the dictionary for the rest. It's a lookup page, not a lesson: the tables map the calls you know onto their Ollin spellings, and the sections after them cover what's different on purpose and the habits worth dropping at the border. Everything here is taught properly somewhere in the guide, so entries point at chapters as they go. The Swift language itself (types, `let` and `var`, optionals) has its own pages: the [Swift quick reference](../Docs/Swift.md) for a fast pass, Appendix A for the gentle one.
+This appendix is the dictionary for the rest. It's a lookup page, not a lesson: the tables map the calls you know onto their Ollin spellings, and the sections after them cover what's different on purpose and the habits worth dropping at the border. Everything here is taught properly somewhere in the guide, so entries point at chapters as they go. The Swift language itself (types, `let` and `var`, optionals) has its own pages: the [Swift quick reference](../Docs/Swift.md) for a fast pass, [Appendix A](A-JustEnoughSwift.md) for the gentle one.
 
 Tables show p5.js names. Processing's are the same, except where a row says otherwise.
 
@@ -240,9 +240,9 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 ## Go deeper
 
 - [Chapter 1, Hello, Ollin](01-HelloOllin.md): the toolchain, the live-reload loop, and the first sketch, from zero.
-- [The Swift quick reference](../Docs/Swift.md): the language delta (types, optionals, closures) at speed; Appendix A is its narrative sibling.
+- [The Swift quick reference](../Docs/Swift.md): the language delta (types, optionals, closures) at speed; [Appendix A](A-JustEnoughSwift.md) is its narrative sibling.
 - [Drawing](../Docs/Drawing/Drawing.md): the full shape catalog and ink state.
-- Appendix D: everything Ollin ships, one line each, including all the territory p5 doesn't cover.
+- [Appendix D](D-CompleteToolbox.md): everything Ollin ships, one line each, including all the territory p5 doesn't cover.
 - [`Examples/`](../Examples/README.md): working sketches to read and tweak, including a [Recreations](../Examples/Recreations/README.md) section that will feel like home.
 
 ---

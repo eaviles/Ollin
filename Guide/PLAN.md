@@ -30,12 +30,12 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 20. Sound and control | `20-SoundAndControl.md` | done |
 | 21. Seeing | `21-Seeing.md` | done |
 | 22. Sharing and performing | `22-SharingAndPerforming.md` | done |
-| A. Just enough Swift | `A-JustEnoughSwift.md` | not started |
-| B. Just enough math, visually | `B-JustEnoughMath.md` | not started |
+| A. Just enough Swift | `A-JustEnoughSwift.md` | done |
+| B. Just enough math, visually | `B-JustEnoughMath.md` | done |
 | C. Coming from p5.js and Processing | `C-ComingFromP5.md` | done |
-| D. The complete toolbox | `D-TheCompleteToolbox.md` | not started |
+| D. The complete toolbox | `D-CompleteToolbox.md` | done |
 
-Statuses: `not started` → `figures` (figure sketches built and rendered) → `drafted` (prose written) → `done` (humanized, audited, committed). Appendices B and D grow with the chapters (each chapter session adds its math ideas to B's list and flips its features in the coverage matrix), so they stay `not started` until a dedicated session assembles them near the end.
+Statuses: `not started` → `figures` (figure sketches built and rendered) → `drafted` (prose written) → `done` (humanized, audited, committed). Appendices B and D keep growing with the chapters: a session that adds a chapter also adds its math ideas to B (an entry with a picture) and gives its new capabilities rows in D and in the coverage matrix.
 
 Also tracked here so they aren't forgotten:
 
@@ -216,7 +216,7 @@ Draws from: `Docs/Output/Export.md`, `Docs/Integration/Syphon.md`, `Docs/Integra
 
 **A. Just enough Swift.** The guide's Swift, gathered: values and types, functions and labels, classes vs structs, closures, optionals as encountered, property wrappers as used by `@Param`/`@Eased`. Builds on `Docs/Swift.md` rather than duplicating it: the appendix is the pedagogical pass, the primer stays the quick reference. Written after several chapters exist so it matches what the guide actually uses. Decided 2026-07-08, the three Swift docs get one reader each: A is the narrative pass for the Guide's audience (an engineer from any language, no p5 assumed), `Docs/Swift.md` becomes the pure language quick-reference, and Appendix C owns the p5/Processing angle (see C's brief for the `Docs/Swift.md` refocus that goes with it).
 
-**B. Just enough math, visually.** One page per idea, each with an Ollin-rendered picture: coordinates, angles and radians, sine/cosine as a circle, vectors, interpolation and the shaping functions, distance, randomness distributions, fields, matrices as "move/turn/scale" (no algebra). Every chapter that introduces a math idea adds its entry here in the same session (the running list lives at the top of the appendix file as comments until assembled).
+**B. Just enough math, visually.** One page per idea, each with an Ollin-rendered picture: coordinates, angles and radians, sine/cosine as a circle, vectors, interpolation and the shaping functions, distance, randomness distributions, fields, matrices as "move/turn/scale" (no algebra). Every chapter that introduces a math idea adds its entry here in the same session, as a picture-plus-plain-words page in the matching theme group.
 
 **C. Coming from p5.js and Processing.** The translation table (`circle()` → `drawCircle`, `createCanvas` → `canvasSize`, `push`/`pop` → `withState { }`, `random` seeds, `noise`, classes, the loop), what's the same, what's idiomatically different, and the habits worth dropping. This is also the roadmap's migration-guide item; writing this appendix completes it. Decided 2026-07-08: C owns the p5/Processing framing outright, and the session that writes it also refocuses `Docs/Swift.md` into the pure language quick-reference (today it's titled "Swift for p5.js newcomers", which is C's job): move the p5 comparisons here, keep the language mechanics there, cross-link both ways.
 
