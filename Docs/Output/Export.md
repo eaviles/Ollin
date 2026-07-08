@@ -40,7 +40,7 @@ Write a deterministic, fixed-timestep PNG sequence (ready for `ffmpeg`):
 swift run Example-Motion-Breathing --export-sequence /tmp/out --seconds 5 --fps 60
 ```
 
-Both render through Metal off-screen (MSAA, then resolve), so the pixels match the live window. The same capability is available as `OllinApp.image(of:frame:)` (returns a `CGImage`), `OllinApp.export(_:to:frame:)`, and `OllinApp.exportSequence(...)`. For a *reproducible* sequence, seed the sketch (`seed(…)` in `setup()`).
+Both render through Metal off-screen (MSAA, then resolve), so the pixels match the live window. The same capability is available as `OllinApp.image(of:frame:)` (returns a `CGImage`), `OllinApp.export(_:to:frame:)`, and `OllinApp.exportSequence(...)`. For a *reproducible* sequence, seed the sketch (`seed(…)` in `setup()`). Sources that follow the export clock stay reproducible too: a [`VideoPlayer`](../Video/Video.md) decodes by the sketch clock (frame `k` shows the clip at `k / fps`), and an [`AudioPlayer`](../Helpers/Audio.md#audioplayer) feeds its analyzer the same slice of its file each frame, so an audio-reactive piece exports with its beats in the same places every run.
 
 The sequence is the raw-material path: it keeps every frame as a lossless PNG for an external encoder or an edit. When the goal is just a file to share, the next two sections encode directly and skip the stitching step.
 

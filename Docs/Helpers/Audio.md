@@ -88,6 +88,8 @@ override func draw() {
 
 A bundled audio file follows the same provenance rules as any asset: use one whose license permits redistribution, and credit it. Loading from a resource can't default the bundle to `.module` (that would resolve to Ollin's bundle, not yours), so pass your bundle explicitly.
 
+Under a headless export ([Export](../Output/Export.md)) nothing audibly plays, so the player follows the export clock instead of the live engine: each exported frame advances a sample playhead through the decoded file and feeds that slice to the analyzer. Exported frame `k` reads the file's analysis at `k / fps` seconds after `play()` (wrapped by `loops`), identically on every run, so an audio-reactive sketch exports the same video twice. Create the player by the end of `setup()` (a stored property, the usual place), or the per-frame advance never finds it.
+
 <a name="tone"></a>
 
 ### Tone
@@ -134,7 +136,7 @@ override func draw() {
 }
 ```
 
-The analysis hears the source's sound itself, before volume shaping, so `volume = 0` keeps it reacting in silence. Two caveats: a hard `isMuted = true` stops the source's audio processing altogether (prefer `volume = 0`), and a headless export reads as silence (nothing audibly plays there). One consumer per source: creating a second `Soundtrack` of the same player replaces the first; `detach()` releases the slot.
+The analysis hears the source's sound itself, before volume shaping, so `volume = 0` keeps it reacting in silence. Two caveats: a hard `isMuted = true` stops the source's audio processing altogether (prefer `volume = 0`), and a headless export reads as silence, since nothing audibly plays there ([`AudioPlayer`](#audioplayer), which decodes its own file, is the source that stays deterministic under export). One consumer per source: creating a second `Soundtrack` of the same player replaces the first; `detach()` releases the slot.
 
 <a name="reading-audio"></a>
 

@@ -1,4 +1,5 @@
 import AVFoundation
+import Ollin
 
 /// Plays an audio file and analyzes it as it sounds, so a sketch can react to
 /// recorded music or field recordings the same way it reacts to the microphone.
@@ -13,6 +14,13 @@ import AVFoundation
 ///
 /// Decodes the usual Apple-supported formats (`.m4a`/AAC, `.mp3`, `.wav`,
 /// `.aiff`, `.caf`, …) through AVFoundation.
+///
+/// Under a headless export nothing audibly plays, so instead of the live
+/// engine the player follows the export clock: each exported frame advances a
+/// sample playhead through the decoded file and feeds that slice to the
+/// analyzer, so frame `k` reads the analysis of the file at `k / fps` seconds
+/// after `play()`, identically on every run. Create the player by the end of
+/// `setup()` (stored on the sketch) or the per-frame advance never finds it.
 @MainActor
 public final class AudioPlayer: AudioSource {
 
@@ -24,12 +32,18 @@ public final class AudioPlayer: AudioSource {
     private let tapBufferSize: UInt32
     private var tapInstalled = false
 
+    // The export-clock playhead (see the type note): positions in file samples,
+    // fractional so any fps divides cleanly.
+    private var headlessPlaying = false
+    private var headlessArmed = false
+    private var headlessPosition = 0.0
+
     /// Whether playback should restart from the top when it reaches the end.
     /// Take effect on the next `play()`.
     public var loops = false
 
     /// Whether the file is currently playing.
-    public var isPlaying: Bool { player.isPlaying }
+    public var isPlaying: Bool { headlessPlaying || player.isPlaying }
 
     /// Loads a file from a filesystem path.
     public convenience init(path: String, fftSize: Int = 1024, smoothing: Float = 0.8) throws {
@@ -60,10 +74,16 @@ public final class AudioPlayer: AudioSource {
         try file.read(into: buffer)
         self.buffer = buffer
 
-        let sampleRate = engine.mainMixerNode.outputFormat(forBus: 0).sampleRate
+        // Live analysis taps the mixer, so the analyzer runs at the mixer's
+        // rate; headless feeds the decoded file directly, so it runs at the
+        // file's own rate (hardware-independent, which keeps exports
+        // deterministic across machines).
+        let mixerRate = engine.mainMixerNode.outputFormat(forBus: 0).sampleRate
+        let analysisRate = OllinApp.isRenderingHeadless || mixerRate <= 0
+            ? format.sampleRate : mixerRate
         self.analyzer = AudioAnalyzer(
             fftSize: fftSize,
-            sampleRate: sampleRate > 0 ? sampleRate : format.sampleRate,
+            sampleRate: analysisRate,
             smoothing: smoothing
         )
         self.tapBufferSize = UInt32(max(256, fftSize))
@@ -74,6 +94,12 @@ public final class AudioPlayer: AudioSource {
 
     /// Starts (or restarts) playback from the beginning, analyzing as it plays.
     public func play() {
+        if OllinApp.isRenderingHeadless {
+            headlessPosition = 0
+            headlessPlaying = true
+            headlessArmed = true
+            return
+        }
         installTapIfNeeded()
         if !engine.isRunning {
             engine.prepare()
@@ -85,10 +111,15 @@ public final class AudioPlayer: AudioSource {
     }
 
     /// Pauses playback, keeping the position.
-    public func pause() { player.pause() }
+    public func pause() {
+        headlessPlaying = false
+        player.pause()
+    }
 
     /// Stops playback and tears down the tap.
     public func stop() {
+        headlessPlaying = false
+        headlessPosition = 0
         player.stop()
         if tapInstalled {
             engine.mainMixerNode.removeTap(onBus: 0)
@@ -106,6 +137,65 @@ public final class AudioPlayer: AudioSource {
         guard !tapInstalled else { return }
         installAnalyzerTap(on: engine.mainMixerNode, bufferSize: tapBufferSize, analyzer: analyzer)
         tapInstalled = true
+    }
+}
+
+// MARK: Export clock
+
+/// The per-frame advance pass (the one that steps `@Eased` and `Timeline`)
+/// also steps the sample playhead while a headless driver runs, feeding each
+/// frame's slice of the decoded file to the analyzer, so an exported frame
+/// always reads the analysis of the file at the sketch clock's position. The
+/// conformance is main-actor isolated, matching the pass that calls it.
+extension AudioPlayer: @MainActor FrameAdvancing {
+    package func advance(by dt: Double) {
+        guard OllinApp.isRenderingHeadless, headlessPlaying else { return }
+        if headlessArmed {
+            // The dt that elapsed before `play()` isn't playback time.
+            headlessArmed = false
+            return
+        }
+        let rate = buffer.format.sampleRate
+        let total = Int(buffer.frameLength)
+        guard rate > 0, total > 0 else { return }
+
+        // Fractional positions, so a frame rate that doesn't divide the sample
+        // rate never drifts; each frame feeds the integer samples it crossed.
+        let nextPosition = headlessPosition + dt * rate
+        var start = Int(headlessPosition)
+        var remaining = Int(nextPosition) - start
+        headlessPosition = nextPosition
+
+        while remaining > 0 {
+            let index = loops ? start % total : start
+            if index >= total {
+                headlessPlaying = false
+                break
+            }
+            let count = min(remaining, total - index)
+            feed(from: index, count: count)
+            start += count
+            remaining -= count
+        }
+        if !loops && Int(headlessPosition) >= total { headlessPlaying = false }
+    }
+
+    /// Down-mixes `count` file samples starting at `start` to mono and hands
+    /// them to the analyzer, exactly what the live tap would have delivered.
+    private func feed(from start: Int, count: Int) {
+        guard let channels = buffer.floatChannelData, count > 0 else { return }
+        let channelCount = Int(buffer.format.channelCount)
+        if channelCount == 1 {
+            analyzer.process(samples: channels[0] + start, count: count)
+            return
+        }
+        var mono = [Float](repeating: 0, count: count)
+        let inv = Float(1) / Float(channelCount)
+        for c in 0..<channelCount {
+            let src = channels[c] + start
+            for i in 0..<count { mono[i] += src[i] * inv }
+        }
+        mono.withUnsafeBufferPointer { analyzer.process(samples: $0.baseAddress!, count: count) }
     }
 }
 

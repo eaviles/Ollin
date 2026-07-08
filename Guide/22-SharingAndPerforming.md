@@ -12,7 +12,7 @@ Twenty-one chapters of pieces have lived on your screen. This last chapter is ab
 
 <img src="Images/22-SharingAndPerforming/ExportMap.jpg" alt="A diagram with a box labeled your sketch in the middle, arrows fanning left to five file outputs (still, sequence, video, GIF, SVG) and right to three live feeds (the window, Syphon, virtual camera)" width="680">
 
-Every file export runs the sketch *headlessly*: no window opens, `setup()` runs, the clock advances to the frame you asked for, `draw()` runs, and the result is written. Because the offline clock is a fixed timestep, an export is deterministic: the same sketch, seed, and frame make the same file every time, however long the render takes. The flags live on any example's executable, and a loose sketch file gets the identical surface through the live host:
+Every file export runs the sketch *headlessly*: no window opens, `setup()` runs, the clock advances to the frame you asked for, `draw()` runs, and the result is written. Because the offline clock is a fixed timestep, an export is deterministic: the same sketch, seed, and frame make the same file every time, however long the render takes. Sources follow the same clock: a video decodes by frame position, and an `AudioPlayer` feeds its analyzer the matching slice of its file each frame, so even an audio-reactive piece exports with its beats in the same places. The flags live on any example's executable, and a loose sketch file gets the identical surface through the live host:
 
 ```sh
 swift run OllinLive MySketches/Finale.swift --export poster.png --frame 200
