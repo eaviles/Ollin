@@ -34,7 +34,9 @@ complete capability index regardless.
 
 | System | Where its internals are documented |
 | --- | --- |
-| Renderer core (frame lifecycle, pipeline families, vertex-buffer ring, coverage models, linear-light present) | This doc, *The renderer at a glance*; the rules live in CLAUDE.md *Shaders & the Metal back end* / *Rendering performance* |
+| Renderer core (frame lifecycle, pipeline families, vertex-buffer ring) | This doc, *The renderer at a glance*; the rules live in CLAUDE.md *Shaders & the Metal back end* / *Rendering performance* |
+| The 2D drawing paths (SDF primitives + coverage models, fringe strokes, libtess2 fills, linear-light present) | **This doc**, *The 2D drawing paths* |
+| Live reload, `@Param`, stats, and the live-coding hosts | **This doc**, *Live reload and the live-coding hosts*; the rules stay in CLAUDE.md *Live reload* |
 | Screen-space combine effects (SSAO, SSR, depth of field) | **This doc** |
 | SDF combinators (2D VM + raymarched 3D) | **This doc** |
 | Layered-effects substrate (render targets, filters, generators, compose, combine, feedback, sim fields / fluid) | **This doc**, *Layered-effects substrate* (the combine wiring under *Screen-space combine effects*) |
@@ -44,7 +46,6 @@ complete capability index regardless.
 | User-supplied shaders | **This doc**, *User-supplied shaders* |
 | Camera rig (showcase orbit, view snaps, scene chrome) | **This doc**, *Camera rig: showcase orbit, view snaps, and scene chrome* |
 | Satellites (audio, OSC, MIDI, Syphon, virtual camera, video, physics, vision, Record3D, phone) | `Docs/` per satellite + the cross-cutting satellite gotchas in CLAUDE.md |
-| Live reload (OllinLive) | CLAUDE.md *Live reload* |
 
 A *pending* row means the system's deep internals are not yet written up here:
 its load-bearing invariants are in CLAUDE.md and its public API is in `Docs/`,
@@ -107,6 +108,250 @@ shared-header discipline, the shader-segment concatenation order, the
 precompiled-metallib path) live in CLAUDE.md under *Shaders & the Metal back end*
 and *Rendering performance*. This section orients you; those sections hold the
 invariants you must not break.
+
+---
+
+## The 2D drawing paths
+
+How a 2D mark becomes pixels: the instanced analytic-SDF path for the closed
+primitives, the fringe-expander path for strokes, libtess2 plus MSAA for
+arbitrary fills, all composited in linear light. The regression-preventing
+rules are in CLAUDE.md *Rendering performance*; this section is the mechanism
+and the history behind them.
+
+### The instanced SDF path
+
+Each analytic primitive (point markers, circle, ellipse, rect, oriented box,
+circular arc, triangle, general 3-point triangle, regular polygon, star,
+rhombus, vesica, oriented vesica, moon, cross, ring, trapezoid, parallelogram,
+egg, heart, cut disk, uneven capsule, horseshoe, parabola, rounded X, blobby
+cross, tunnel, stairs, cool S) is one instanced quad: an `SDFInstance` on the
+`.sdf` pipeline, evaluated by `ollin_sdf_fragment`, which switches on the
+shape tag and runs a shared fill + stroke + anti-aliasing tail. Per-shape CPU
+cost is a single struct write (the `Myriad` example draws 8,100 circles at
+roughly an 1,100 fps CPU ceiling). `SDFInstance` is a *tagged union*: a
+`shape` tag plus generic `size`/`param0`/`param1`/`param2`/`extra` slots, and
+each instance carries its own CTM (`float3x3`) so the fragment evaluates the
+SDF in local space and the anti-aliasing stays ~1px under any transform
+(`fwidth`); the covering quad spans `size` plus half the stroke plus a small
+margin. The per-shape encodings (which param slot carries what, and which
+`sd*` function each calls: the point's round/square/diamond/cross/x markers,
+`drawNgon`/`drawStar` sharing one `sdStar`, the egg/heart/tunnel/stairs
+Y-flips, the three-point triangle and quadratic Bezier reading their free
+points from `param0`/`param1`/`param2`) live in `SDFShape` plus
+`ShaderShapes.metal`; the distance functions are iq's 2D catalog, written from
+the technique. (The circle approach was studied from a peer framework's MIT
+shader and written independently; credited in `ATTRIBUTION.md`.)
+
+`drawLine` and `drawBezier` originally rendered here as SDF capsule/Bezier
+instances and have since moved to the fringe stroke path below; their shader
+cases are retained but unemitted. Arbitrary `drawPolygon`/`drawPolyline` and
+elliptical or full-turn arcs stay on the triangle path by nature (`drawArc`
+runtime-branches: `rx == ry` and sweep less than a full turn goes SDF, else it
+tessellates).
+
+One rule is not safely discoverable from the code, so it is recorded: the four
+roundable shapes (rhombus/vesica/moon/cross) take a footprint-preserving
+`cornerRadius`, and vesica/moon must `opRound` off a *full-footprint* SDF.
+Insetting the vesica's waist toward zero sends its derived circle radius and
+offset to ~1e7, and the shader's `sqrt(r^2 - d^2)` loses all precision (a real
+glitch, fixed by the full-footprint form).
+
+**Hollow/band mode** generalizes the ring's `opOnion` to every region shape:
+`hollow(_:)`/`solid()` set a per-instance `bandWidth`, and `regionFill` onions
+the shape's SDF (`abs(d) - bandWidth/2`) before coverage, so the fill paints a
+constant-width band hugging the outline and an active stroke borders *both*
+edges (the framed-ring look a stroke alone cannot make). The band straddles
+the edge, so the covering quad grows by `bandWidth/2`. The `bandWidth` field
+fit the struct's then-tail-padding, so it forced no widening. Region shapes
+opt in via `SDFShape.honorsHollow`; points, lines, and the ring (already a
+band) opt out, and the round-dot point opts out by hand since it shares the
+`.ellipse` tag (a solid disk's area-conserving coverage is bypassed for
+`regionFill` only when banding).
+
+**Stroke alignment** (`strokeAlign(_:)`: `.center`/`.inside`/`.outside`) rides
+the same coverage tail: the coverage functions take a `strokeBias`
+(`0` / `-hw` / `+hw`) that shifts the stroke band off the edge
+(`abs(d - strokeBias) < hw`) while the fill still stops at `d = 0`, so the
+inset/outset is an exact SDF offset and `.center` (bias 0) is byte-identical
+to before. The 3-state align rides in **bits 8-9 of the `shape` tag** (the tag
+is < 256, so the vertex shader masks `shape & 0xFF` before the switch), which
+costs the instance no room; `.outside` grows the covering quad by another half
+stroke. Hollow forces the bias to 0 (a band already has two edges);
+lines/points/open-arc never compute a stroke band, so they stay centered.
+
+### Coverage models
+
+Coverage is split by whether a shape tiles, and the split is load-bearing:
+
+- **Inside-biased** (`regionCoverage`): `box`, `pie`, `chord`, `triangle`,
+  star/n-gon, and the non-round point markers get full coverage to the
+  geometric edge with the AA halo only outside, so abutting fills (tiled
+  grids, gradient bands, the rotated wedges tiling a cell in `LifeQuilt`)
+  leave no seam. Moving them onto a centered ramp brings the seams back.
+- **Area-conserving** (`diskCoverage` and the capsule case): the disk
+  (ellipse/circle/round point) and capsule/line use a centered AA ramp, but
+  any mark smaller than ~half a pixel keeps a ~1px footprint while its alpha
+  scales by the true/clamped **area** (disk) or **width** (line). Sizes run
+  0...n: tiny dots, small circles, and thin lines fade by area instead of
+  popping in, snapping to a 1px floor, or flickering as they move. Safe
+  because disks and lines never tile edge-to-edge, so they need no inside
+  bias.
+- **Ink-conserving stroke bands** (`strokeBandCoverage`, shared by the region
+  and disk outline paths): a band thinner than ~1px holds a ~1px footprint
+  with alpha scaled by the width ratio (the capsule's trick), so an outline
+  thinner than a pixel fades to nothing instead of plateauing at a fixed
+  hairline. The old smoothstep band floored at ~half coverage as `hw -> 0`, so
+  a 0.4px and a 0.05px outline read alike. A band at or above ~1px reduces to
+  the plain smoothstep edge it always was (byte-identical, snapshot-safe).
+
+These area-conserving paths and every stroke band then run their coverage
+through `perceptualCoverage` (see *Linear-light compositing* below).
+
+### Adding an SDF shape
+
+The tagged union has a fixed *scalar budget*: `size` (2) + `param0` (2) +
+`param1` (2) + `param2` (2) + `extra` (1) on top of the per-instance
+CTM/center/colors/stroke. Any shape that is a canonical form parameterized by
+a size plus a ratio or two drops in as four touch-points (an `SDFShape` case,
+a `Drawer.draw*` builder, an `sd*` function, a fragment `case`) with **no
+renderer or pipeline change**; position/rotation/scale come free from the
+CTM. One constraint: `size` is *not* a free slot. The vertex shader uses it as
+the covering quad's AABB half-extent, so it carries the bounding extent and
+cannot double as a geometry point. The two shapes that need three free points
+beside size-as-AABB (the general 3-point triangle and the quadratic Bezier
+stroke) forced the one widening so far: `param2` took the stride from 128 to
+144, and the 8 bytes of tail padding that left have since been claimed by the
+gradient-paint row fields. **The struct is full at 144: the next field is a
+real widening.** Two things stay off this path by nature: arbitrary
+polygon/polyline (variable vertex count; they stay on the triangle path), and
+SDF *operators* (smooth-min, union/subtract, domain repetition), which combine
+fields and live on the SDF-combinator path. The distance functions come from
+iq's 2D catalog (implemented from the technique, credited in
+`ATTRIBUTION.md`); hg_sdf is the source for the operator track.
+
+### The fringe stroke path
+
+Every stroked path (`drawLine`, `drawBezier`, `drawPolyline`, the
+`drawPolygon` outline, `drawShape` contours) renders through the
+AGG/NanoVG-style fringe expander (`appendFringeStroke`, written from the
+technique; no SDF, no MSAA/SSAA). The path is edge-expanded CPU-side into
+per-segment butt quads plus a ~1px screen-space anti-aliasing fringe
+(`fw = 1/ctmScale`; coverage ramps 1 to 0 across it, GPU-interpolated so the
+edge stays smooth at *any* angle at native resolution, fixing the staircase
+the SDF capsule's single-sample `fwidth` left on shallow diagonals). It rides
+its own `.fringe` `GeometryKind`/pipeline (`ollin_fringe_vertex`/`_fragment`)
+but **reuses the triangle vertex buffer**: the coverage rides in an `aa` field
+tucked into `OllinVertex`'s existing float2-to-float4 alignment padding
+(stride stays 32, the triangle path byte-identical), with the stroke's rgb
+plus paint alpha in `color`. The fragment remaps **only the coverage** through
+`perceptualCoverage` and keeps the **paint alpha linear** (translucent strokes
+composite at their true opacity; keeping the two channels separate is *why*
+the `aa` field was needed). Solid, translucent, and gradient paint all take
+this path; gradient samples per path vertex like the tessellated path
+(`vertexPaint`: along-path reads arc length, long segments split first so the
+baked LUT tracks).
+
+The fringe **straddles** the true edge, so perceived width equals
+`strokeWidth`; geometry stayed within snapshot tolerance of the old
+SDF/tessellated output, so no snapshot re-record was needed. Joins and caps
+are honored via per-join outer-gap fillers (`strokeJoin` `.miter`, beveling
+past the limit, `.bevel`, `.round`; `strokeCap` `.butt`/`.round`/`.square` on
+open ends), so `drawLine` (single segment, cap-only; now default **butt**, not
+the old always-round capsule) and `drawBezier` (flattened, then cap plus
+joins) honor them too. `appendStrokedPath` (the old tessellated join-filler
+path) is retained for text glyph stroking only.
+
+**Fills stay on libtess2 plus 8x MSAA, byte-identical.** The empirical call
+(native-resolution A/B): MSAA fill edges are already smooth, and a fill fringe
+would reintroduce abutting-fill seams (Voronoi, LifeQuilt) or fatten shapes,
+so the fringe is strokes-only.
+
+### Fills and the triangulator
+
+The vector `Shape`/`Contour` type (concave polygons, holes) fills via vendored
+libtess2 (the GLU tessellator lineage), wrapped in `Shape.triangulatedFill()`
+(`ShapeTriangulator.swift`, `import CLibtess2`) and drawn by `drawShape` on
+the triangle path. The fill rule is a per-`Shape` `winding: FillWinding`
+(`.evenOdd` default, where nested contours become holes and direction does not
+matter, or `.nonZero`), mapped to `TESS_WINDING_ODD`/`TESS_WINDING_NONZERO`.
+Convex shapes (circle, rect, ellipse, convex `drawPolygon`) keep the direct
+fan/strip math; routing them through the triangulator is a pure loss.
+
+Font glyphs are this path's hardest customer, and their two gotchas are
+detailed in CLAUDE.md's *Text* bullet (glyph shapes must be `.nonZero`;
+San Francisco's overlapping sub-contours need a Clipper2 union clean at a
+reference scale of 1024 followed by Ramer-Douglas-Peucker simplification,
+cached per glyph and size). The mechanism notes worth keeping here: the union
+only merges cleanly when curves are finely flattened, and flatten density
+tracks the render size (`CurveSampling`), which is why the clean must run at
+the large reference scale and then rescale; and the reference-scale flatten
+leaves contours ~40x denser than the render needs, which per-frame stroke
+tessellation then pays for (a real 12-fps regression), hence the simplify
+step. `Shape.mapPoints(_:)` preserves `winding`; rebuilding a glyph via
+`Shape(contours:)` silently resets it to even-odd (that re-breaks the `e`).
+The niche `glyphRun` text-on-path/per-glyph path still flattens raw, a known
+follow-up.
+
+Curved outlines (quadratic/cubic Bezier plus Catmull-Rom `curve`) sample to
+points via the public `Path` builder (`Path.swift`:
+`move`/`line`/`curve`/`quadCurve`/`cubicCurve`/`close`, plus `Contour` and
+`Shape(curveThrough:)`), surfaced as the closure sugar `drawShape { p in ... }`
+and the top-level `drawCurve(_:closed:)`. They feed the same triangulated fill
+and stroked path, so a curve never touches the SDF/renderer side; the
+`Contour`/`Shape` data stays polygonal and the `Path` just flattens curves
+into it.
+
+### Linear-light compositing and perceptual coverage
+
+Geometry composites into a linear `rgba16Float` intermediate (`linearFormat`;
+the sRGB `.bgra8Unorm_srgb` `ollinColorPixelFormat` is the drawable/present
+format, not the geometry target), so the hardware blends and resolves MSAA in
+linear space: anti-aliased edges and translucent stacks composite physically,
+without the too-dark fringes of a gamma-space blend, and the float precision
+keeps many overlapping translucent layers from banding as an 8-bit
+intermediate would.
+
+Three pieces keep tones from shifting, each a real bug when missed:
+
+1. Shaders **linearize** their sRGB `Color` inputs before compositing and
+   output linear into the float target; the *present pass* re-encodes to sRGB.
+2. The **background/clear color is also linearized** (`Color.srgbToLinear` in
+   `mtlClearColor`) so the clear value lands in the float target as linear,
+   matching shaded geometry. Miss this and the background washes out lighter,
+   because the clear bypasses the shader.
+3. Image textures load `.SRGB: true` so each sample decodes to linear,
+   matching the linearized solid colors beside them.
+
+A triangular-PDF **dither** (a pure function of pixel position, so renders
+stay reproducible) is applied in `finalizeColor`, which runs **in the present
+pass** (the single 8-bit quantization point, after tone-mapping the resolved
+float frame), breaking the banding smooth gradients otherwise show. The image
+fragment skips the dither: its source pixels are premultiplied, and it outputs
+premultiplied linear straight into the float target.
+
+**The one deliberate carve-out from pure linear light: stroke and disk/dot AA
+*coverage* is remapped to perceptual alpha** (`perceptualCoverage`,
+`1 - srgbToLinear(1 - c)`) before compositing. Linear blending makes a
+partially-covered dark mark read lighter than its coverage (a 50%-covered
+black pixel lands at sRGB ~0.74), so a thin diagonal line's
+correctly-conserved ink splits across the pixel staircase and reads faint and
+"beaded" (the bug that made the Molnar *Interruptions* field look chopped
+after the linear-light switch). The remap lands each covered pixel at the
+gamma-space darkness its coverage implies, so a 1px stroke is evenly dark at
+any angle and a sub-pixel mark still fades 0...n. It touches **only partial
+coverage** (`perceptualCoverage(1) = 1`, `(0) = 0`) and never a shape's own
+fill/stroke *alpha*, so solid interiors and translucent/overlap blending stay
+linear-light. It applies to the capsule/`drawBezier` strokes, `diskCoverage`
+(fill and outline), and `regionCoverage`'s stroke band, but **not** the region
+*fill* ramp, which stays plain linear so abutting fills tile seamlessly.
+
+Paired with this, the capsule/Bezier AA footprint uses the **L2 gradient
+length**, not `fwidth`: a unit-gradient distance field's L1 norm overshoots by
+sqrt(2) at 45 degrees, which had been fading diagonal 1px lines as if
+sub-pixel. Verified near-optimal for the raster path: 4x SSAA barely beats it;
+a 1px diagonal's residual softness is fundamental to native-resolution
+rasterization (see `DESIGN-NOTES.md` on the supersampled render scale).
 
 ---
 
@@ -1212,6 +1457,148 @@ the next frame re-reads and recompiles with no swiftc pass (verified
 end-to-end: edit reloads, a break shows the line-accurate overlay error, a fix
 recovers). A framework-segment `.metal` (under the repo's `Renderer` dir) still
 routes to the full library reload; the dispatch tells them apart by path.
+
+---
+
+## Live reload and the live-coding hosts
+
+`swift run OllinLive <path/to/Sketch.swift>` opens a window, watches the file,
+and on save recompiles just that sketch into a `.dylib` and hot-swaps it into
+the running loop; the window never closes. The rules live in CLAUDE.md's
+*Live reload* section; this is the machinery.
+
+### The host and the swappable dylib
+
+OllinLive is a SwiftUI `App`: its `WindowGroup` hosts a `SketchView`, which
+hands back the `SketchRunner` through its `onRunner` callback; the file
+watcher then drives `SketchRunner.reload(to:)`. `SketchRunner.sketch` is a
+`var`, and the loop already calls `sketch.performDraw()` through the instance,
+so swapping the var means the next frame runs new code. The reusable loader
+(`SketchLoader`) lives in the `OllinRuntime` library target, shared with the
+gallery and kept out of the shipping `Ollin` framework.
+
+The sketch dylib compiles with `-I` pointing at the dirs that hold
+`Ollin.swiftmodule` and the C targets' module maps (to type-check
+`import Ollin`) and `-undefined dynamic_lookup` with *no* `-lOllin`; the host
+links `-Xlinker -export_dynamic`, so the dylib's Ollin symbols resolve against
+the host at `dlopen`. Those `-I` dirs are **discovered, not assumed**
+(`SketchLoader.moduleSearchPaths`): the classic SwiftPM build puts them next
+to the executable (`<bin>/Modules`, `<bin>/<C>.build`), but the Xcode/Swift
+build system puts `Ollin.swiftmodule` directly in `<bin>` and the C maps under
+`.build/index-build/<triple>/debug`, so a `<bin>/Modules`-only assumption
+fails with "no such module 'Ollin'" (it did; the `--selftest` harness
+exercises exactly this). A third source sits outside the build tree: a
+vendored C target with a checked-in module map
+(`External/<T>/include/module.modulemap`, e.g. CBox2D, CSyphon) never lands
+under a `*.build` dir, so the loader also collects those `include/` dirs from
+the package root; without them a loose sketch cannot `import OllinPhysics`
+(its swiftmodule needs the clang module even though the import is
+`internal import`).
+
+There is one copy of `Sketch`, so the loaded object casts as `Ollin.Sketch`.
+**A `.dynamic` Ollin product does not fix this**: SwiftPM still links the
+target statically into the executable, giving two copies and a failed cast
+(verified the hard way). Each load uses a unique `-module-name` so repeated
+reloads of the same class do not collide in the objc runtime. The loader
+regexes the `class ...: Sketch` name and compiles a sibling
+`@_cdecl("ollin_make_sketch")` factory file alongside the user's source, so
+the user file is untouched and its `@main` is harmless under `-emit-library`.
+
+### Watching, threading, and reload state
+
+Editors save atomically (temp file plus rename), which breaks fd-based
+watches, so `FileWatcher` watches *directories* with
+`kFSEventStreamCreateFlagUseCFTypes | ...FileEvents` (the UseCFTypes flag is
+required or the path-array cast crashes), debounced ~150ms, dispatching by
+extension: `.swift` recompiles and swaps; `.metal` routes to the shader
+reload (a user-resource `.metal` invalidates just the user-shader caches, a
+framework segment rebuilds the whole library; the dispatch tells them apart by
+path); image assets re-run `setup()`.
+
+Recompiles run off the main thread (the window keeps drawing the old sketch);
+the swap is marshaled to the main queue. A compile error is printed and the
+running sketch is left alone, so a typo never closes the window; likewise
+`MetalRenderer.reloadLibrary` builds the new pipelines before committing, so a
+bad shader edit cannot blank the renderer. `reload(to:keepClock:)`
+re-instantiates and re-runs `setup()`; by default it resets
+`time`/`frameCount`, and `--keep-clock` carries them forward (offsets
+`startTime` so `time` continues, copies `frameCount`) so an animation's phase
+does not jump. `Sketch.onReload()` fires once after the post-reload setup,
+never on first launch. `SketchRunner.reload(to:)` honors the *new* sketch's
+declared `canvasSize` for non-`.resizable` modes, so an edited resolution
+takes effect on the swap.
+
+### `@Param` knobs and the inspector
+
+The generic `@Param` wrapper/registry in the core (`Param.swift`) drives the
+shared inspector (`Inspector.swift`) in all three hosts through the
+type-erased `AnyParam`/`ParamControl` surface (typed get/set closures per
+control kind), so hosts never touch `Param<Value>` directly. The control
+follows the property's type: `Double` slider (optional `step:` snaps every
+write; `style: .field` drops the track), `Int` stepper, `Bool` toggle, a
+`ParamOption` enum menu (keyed on case *names* for persistence; the
+CaseIterable mode enums conform out of the box), `Color` well, `Vector2`
+paired x/y fields (`style: .pad` adds a drag pad mapped top-left = both lower
+bounds, the canvas origin), `Vector3` and `Rectangle` and `Insets` field
+lines, `ClosedRange<Double>` a two-thumb slider (a min dragged past the max
+pushes it along; the grabbed thumb is held for the whole gesture), `String` a
+text field, `style: .segmented` on the option kinds, and the `ParamChoices`
+named-catalog menu (which needs `Equatable` to find the current selection;
+that is why `Easing`, a closure wrapper, and the parameterized `Material`
+finishes stay out, while `LightingPreset` conforms). `ParamValue` is public,
+so a user type can conform by mapping onto an existing control kind. `icon:` /
+`group:` put an SF Symbol on the row and split the list into titled group
+cards (declaration order; ungrouped first).
+
+Numeric value boxes scrub (drag to change, Option fine, Shift coarse, click to
+type). Two SwiftUI gotchas were real bugs: any Text sharing a scrub pill's
+HStack must be `.fixedSize()`, or the paired-pill (Vector2) row compresses it
+to zero width and it silently vanishes; and `.segmented`'s ViewThatFits needs
+the label `.fixedSize()`-pinned (an un-pinned truncatable label never wraps)
+plus `maxWidth` with `alignment: .leading` on the wrapped block (ViewThatFits
+centers a narrower child). Knob values persist across reloads as `ParamStored`
+payloads (`SketchSession.recordParam`/`syncParams`; a property that changed
+*type* in the edit drops its stale value so the new default wins). Headless
+gates: `OllinLive --paramtest` plus `ParamTests`.
+
+### Frame stats and the host chrome
+
+The runner fills one shared `FrameStats` (`@Observable`: fps, CPU frame time,
+vertex/SDF draw counts, clock, canvas size) a few times a second via the
+built-in `StatsExtension` on the extend seam. Three surfaces read it: the
+OllinLive sidebar inspector, the gallery's right-sidebar inspector, and (for a
+standalone `swift run`) a detached frosted `NSPanel` (`StatsPanel.swift`;
+View > Show Inspector, cmd-/ via `OllinHUDCommands`, bound to
+`@AppStorage(OllinHUD.showStatsKey)`). A host with its own inspector sidebar
+opts the panel off (`SketchView(showsInspectorPanel: false)`) and omits
+`OllinHUDCommands`, so its cmd-/ toggles the sidebar instead. Stats are debug
+chrome, SwiftUI siblings of the Metal view, so they never land in exports.
+
+Two gotchas the build proved: the CPU-ms must time `performDraw()` *alone*
+(timing across `renderer.render()` includes the triple-buffer semaphore wait,
+pinning the number to ~1/fps and telling you nothing); and an on-canvas
+element's corner inset must be `.padding` *before* the canvas-filling
+`.frame`, or the padded box overflows and clips. `SketchView` is a SwiftUI
+`View` that `ZStack`s host chrome (the axis widget, the keyboard-focus hint)
+over a private `MetalCanvas`, the `NSViewRepresentable` MTKView that remains
+the AppKit/UIKit portability seam.
+
+### The shared session engine (`SketchSession`)
+
+`OllinRuntime.SketchSession` holds the compile/reload orchestration both
+OllinLive and OllinLiveCoding wrap (supersede-cancel compile scheduling,
+`syncParams` re-applied *before* the swap so knobs never snap, and the
+two-channel Swift-versus-shader error model where neither clears the other);
+`LiveSession` and `PerformanceSession` are thin wrappers. Orchestration
+changes go in `SketchSession`, never re-forked per host. Buffer compiles
+(`SketchLoader.Input.source`) write the editor text into the per-compile work
+dir *under the sketch's own file name*, so diagnostics carry exact buffer
+lines and the same file name (`CompileDiagnostic.parse` matches by `fileName`,
+never by path, which is the temp copy), while the factory shim's
+`Bundle.module` keeps pointing at the sketch's real folder so co-located
+assets resolve. The rest of the live-coding host's invariants (stage overlays,
+editor rules, recovery scoping, the headless gates) are enumerated in
+CLAUDE.md's *Live coding* block.
 
 ---
 
