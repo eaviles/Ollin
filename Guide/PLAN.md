@@ -32,7 +32,7 @@ How to use it: pick the next chapter from the status table, read its brief below
 | 22. Sharing and performing | `22-SharingAndPerforming.md` | done |
 | A. Just enough Swift | `A-JustEnoughSwift.md` | not started |
 | B. Just enough math, visually | `B-JustEnoughMath.md` | not started |
-| C. Coming from p5.js and Processing | `C-ComingFromP5.md` | not started |
+| C. Coming from p5.js and Processing | `C-ComingFromP5.md` | done |
 | D. The complete toolbox | `D-TheCompleteToolbox.md` | not started |
 
 Statuses: `not started` → `figures` (figure sketches built and rendered) → `drafted` (prose written) → `done` (humanized, audited, committed). Appendices B and D grow with the chapters (each chapter session adds its math ideas to B's list and flips its features in the coverage matrix), so they stay `not started` until a dedicated session assembles them near the end.

@@ -185,7 +185,7 @@ Run it with `swift run OllinLive MySketches/HelloMotion.swift` and walk through 
 - `breathe` gets used twice, swinging both the ring's radius (`310 + breathe * 80`) and each circle's size (`size + breathe * 16`), so position and scale breathe together.
 - `colors[i % colors.count]` cycles through the palette: circle 0 gets the first color, circle 4 wraps back around.
 
-> **Swift note.** `for i in 0..<count` counts from 0 up to, but not including, `count`. `i` is an `Int` (a whole number) while positions want `Double` (numbers with fractions), so `Double(i)` converts. `[Color]` is a list of colors, `colors.count` its length, and `%` is the remainder after division, which is what makes the palette repeat. These four keep coming back; there's more Swift in the [Swift primer](../Docs/Swift.md) whenever you want it.
+> **Swift note.** `for i in 0..<count` counts from 0 up to, but not including, `count`. `i` is an `Int` (a whole number) while positions want `Double` (numbers with fractions), so `Double(i)` converts. `[Color]` is a list of colors, `colors.count` its length, and `%` is the remainder after division, which is what makes the palette repeat. These four keep coming back; there's more Swift in the [Swift quick reference](../Docs/Swift.md) whenever you want it.
 
 And the four `@Param` lines? Look at the sidebar of the `OllinLive` window: they became a little control panel. `@Param("Speed", 0...2) var speed = 0.3` declares a knob with a label, a range, and a starting value, and the sketch reads it like any other property. Notice that each knob got the control its type asks for: the two `Double`s became sliders, the whole-number `count` became a stepper, and `ground`, a `Color`, became a color well you can click to open a picker. (There are more: a `Bool` becomes a toggle, a point can even become a draggable pad. You'll meet them as the guide goes on.) The number next to any knob is live too: drag it sideways to scrub the value, or click it to type one in.
 
@@ -210,7 +210,7 @@ The `setup()`/`draw()` sketch model comes from [Processing](https://processing.o
 - [Drawing](../Docs/Drawing/Drawing.md): every shape and the complete ink state.
 - [Input](../Docs/Helpers/Input.md): the keyboard, click hooks, and the rest of the mouse.
 - [Parameters](../Docs/Helpers/Parameters.md): the full knob family (toggles, menus, pads, and friends), grouping knobs into cards, icons, smoothing, and driving knobs from MIDI or OSC hardware.
-- [The Swift primer](../Docs/Swift.md): just enough of the language, for whenever a construct here felt mysterious.
+- [The Swift quick reference](../Docs/Swift.md): just enough of the language, for whenever a construct here felt mysterious.
 - Worked examples: [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift) and the knobs demo [`Examples/Live/Parameters`](../Examples/Live/Parameters/Sketch.swift).
 
 ---

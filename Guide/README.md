@@ -33,7 +33,7 @@ Both kinds of image are already at work on this page: the piece above is [`Figur
 
 Read the chapters in order the first time; each builds only on the ones before it. Work along in the live-reload host (`swift run OllinLive path/to/YourSketch.swift`), which recompiles on save so the window never closes while you experiment. Chapter 1 sets this up.
 
-If you're coming from p5.js or Processing, Appendix C maps what you already know onto Ollin. If you're new to Swift, Appendix A and the [Swift primer](../Docs/Swift.md) cover just enough of the language to be productive.
+If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps what you already know onto Ollin. If you're new to Swift, Appendix A and the [Swift quick reference](../Docs/Swift.md) cover just enough of the language to be productive.
 
 ## Contents
 
@@ -80,7 +80,7 @@ The guide is being written chapter by chapter; titles below without links are st
 
 - **A. Just enough Swift.** The language, for people arriving from other languages.
 - **B. Just enough math, visually.** Every math idea in the guide, each with a picture.
-- **C. Coming from p5.js and Processing.** A side-by-side translation.
+- **[C. Coming from p5.js and Processing](C-ComingFromP5.md).** A side-by-side translation.
 - **D. The complete toolbox.** Everything Ollin can do, one line each, with where it's taught and where it's documented.
 
 ---

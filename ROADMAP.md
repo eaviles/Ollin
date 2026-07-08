@@ -14,7 +14,7 @@ A few things worth knowing before you pick something up:
 - The items under [Up next](#up-next) are the most self-contained, so they tend to make the best first contributions.
 - A rough priority sits under sections where it helps: **Near-term** marks well-scoped, good next pickups; **Later** marks bigger items that lean on earlier work. Untagged sections are substantial and wanted, just not the very next thing. Genuinely speculative ideas live under [Further out / exploratory](#further-out--exploratory); the platform-gated legs under [On the horizon](#on-the-horizon).
 
-If you're coming from p5.js or JavaScript, [`Docs/Swift.md`](Docs/Swift.md) covers just enough Swift to get productive.
+If you're coming from p5.js or Processing, [the Guide's Appendix C](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin, and [`Docs/Swift.md`](Docs/Swift.md) covers just enough Swift to get productive.
 
 ## Up next
 
@@ -173,7 +173,7 @@ The concerns of a piece that runs unattended for days in a gallery rather than f
 
 ## Learning: the Guide
 
-**Near-term.** The reference docs ([`Docs/`](Docs/)) answer "what does this function do"; the [Guide](Guide/README.md) is the narrative layer that answers "how do I think in sketches": a practical, book-length introduction to creative coding taught through Ollin, written for an engineer with no math, graphics, or Swift background. It gets written chapter by chapter; the chapter queue, per-chapter briefs, and the feature-coverage plan live in [`Guide/PLAN.md`](Guide/PLAN.md), and the writing rules (every concept explained before use, every listing a compiled figure, every image rendered from committed source) in [`Guide/AUTHORING.md`](Guide/AUTHORING.md). Ahead: the chapters themselves, Part I first, plus the "coming from p5.js" migration appendix. A chapter is a well-scoped, self-contained pickup; the existing examples and the *Nature of Code* framing of the [technique catalog](#technique-and-algorithm-helpers) are the raw material.
+**Near-term.** The reference docs ([`Docs/`](Docs/)) answer "what does this function do"; the [Guide](Guide/README.md) is the narrative layer that answers "how do I think in sketches": a practical, book-length introduction to creative coding taught through Ollin, written for an engineer with no math, graphics, or Swift background. The queue, the briefs, and the feature-coverage plan live in [`Guide/PLAN.md`](Guide/PLAN.md), and the writing rules (every concept explained before use, every listing a compiled figure, every image rendered from committed source) in [`Guide/AUTHORING.md`](Guide/AUTHORING.md). Ahead: the appendices, each a well-scoped, self-contained pickup. Appendix A is the narrative Swift primer for the Guide's audience, Appendix B re-explains every math idea in the guide visually, and Appendix D is the complete-toolbox index generated from the feature-coverage matrix.
 
 ## A third-party extension ecosystem
 

@@ -2,19 +2,19 @@
 
 ---
 
-## Swift for p5.js newcomers
+## Swift quick reference
 
-Coming from p5.js or plain JavaScript? The drawing API is meant to feel familiar — `setup()`/`draw()`, bare calls like `background(.white)` and `drawCircle(x, y, r)`, motion by default. The one barrier is the language. This page teaches *just enough* Swift to be productive in `draw()` — the handful of differences that actually bite — and points you at the full Swift book for the rest.
+New to Swift? This page is the language at sketch speed: the handful of constructs you'll actually type in `draw()`, each with an example that lands on something you'd write in Ollin. It's a primer, not a manual.
 
-Every point lands on something you'll type in an Ollin sketch. It's a primer, not a manual.
+Coming from p5.js or Processing? [Appendix C of the Guide](../Guide/C-ComingFromP5.md) maps the API you already know onto Ollin; this page covers the language underneath. For a slower, narrative pass through the same Swift, the Guide's Appendix A is the place.
 
 ### Contents
 
-- [The whole sketch, side by side](#side-by-side)
+- [The shape of a sketch](#shape)
 - [`let` and `var`](#let-var)
 - [Types are explicit, but inferred](#types)
 - [`Double` vs `Int` (and why `1/2 == 0`)](#double-int)
-- [Functions and `override`](#functions)
+- [Functions and argument labels](#functions)
 - [Classes and `override`](#classes)
 - [Loops and arrays](#loops)
 - [Trailing closures](#closures)
@@ -22,29 +22,15 @@ Every point lands on something you'll type in an Ollin sketch. It's a primer, no
 - [String interpolation](#strings)
 - [Where to go next](#next)
 
-<a name="side-by-side"></a>
+<a name="shape"></a>
 
-### The whole sketch, side by side
+### The shape of a sketch
 
-In p5.js you write two global functions:
-
-```js
-function setup() {
-  createCanvas(800, 800);
-}
-
-function draw() {
-  background(255);
-  circle(width / 2, height / 2, 120 + sin(frameCount * 0.05) * 40);
-}
-```
-
-In Ollin the same sketch is a class that overrides those two methods:
+Every sketch is a class built on `Sketch`, with the lifecycle methods filled in:
 
 ```swift
 import Ollin
 
-@main
 final class Pulse: Sketch {
     override func draw() {
         background(.white)
@@ -53,13 +39,13 @@ final class Pulse: Sketch {
 }
 ```
 
-The shape is the same — bare calls, terse positional arguments, a loop that runs `draw()` every frame. The rest of this page is the Swift-specific glue: `final class`, `override func`, `@main`, and `import`.
+Run it as a loose file with `swift run OllinLive Pulse.swift` (add `@main` above the class if you make it a standalone program; see [Sketch](./Core/Sketch.md)). Every piece of syntax in it is covered below: `import` brings the framework in, `final class ... : Sketch` declares the sketch, and `override func` replaces a method the base class already defines.
 
 <a name="let-var"></a>
 
 ### `let` and `var`
 
-JavaScript's `const` and `let` become Swift's `let` (a constant — can't be reassigned) and `var` (a variable — can). Prefer `let`; reach for `var` only when you reassign.
+`let` declares a constant (it can't be reassigned) and `var` a variable (it can). Prefer `let`; reach for `var` only when you reassign.
 
 ```swift
 let radius = 120.0          // constant
@@ -67,13 +53,13 @@ var angle = 0.0             // will change
 angle += 0.05
 ```
 
-p5's `let x = 5` maps to Swift `var x = 5` if you reassign `x`, or `let x = 5` if you don't.
+Most values in `draw()` are computed fresh each frame, so `let` is the everyday choice; `var` earns its place on state that persists and changes across frames.
 
 <a name="types"></a>
 
 ### Types are explicit, but inferred
 
-Swift is statically typed — every value has a fixed type — but you rarely write the type, because the compiler infers it from the value:
+Swift is statically typed: every value has a fixed type. You rarely write the type, because the compiler infers it from the value:
 
 ```swift
 let r = 120.0               // inferred Double
@@ -93,21 +79,21 @@ The payoff for the strictness: typos and wrong-type mistakes are caught before t
 
 ### `Double` vs `Int` (and why `1/2 == 0`)
 
-This is the one that surprises JavaScript people most. JS has a single `number`; Swift separates whole numbers (`Int`) from decimals (`Double`), and **integer division throws away the remainder**:
+This is the one that surprises people most. Swift separates whole numbers (`Int`) from decimals (`Double`), and **integer division throws away the remainder**:
 
 ```swift
-1 / 2        // 0   — Int division
-1.0 / 2.0    // 0.5 — Double division
+1 / 2        // 0,   Int division
+1.0 / 2.0    // 0.5, Double division
 ```
 
 Ollin's drawing API speaks `Double` (coordinates, radii, time), so write your literals as decimals to stay in `Double`:
 
 ```swift
-let half = width / 2          // fine — width is already Double
+let half = width / 2          // fine: width is already Double
 let third = 100.0 / 3.0       // 33.33…, not 33
 ```
 
-Swift also won't quietly mix the two — `Int(...)` / `Double(...)` convert explicitly when you need to cross over:
+Swift also won't quietly mix the two. `Int(...)` and `Double(...)` convert explicitly when you need to cross over:
 
 ```swift
 let n = 50                    // Int (a count)
@@ -116,38 +102,23 @@ let spacing = width / Double(n)   // convert before dividing into a Double
 
 <a name="functions"></a>
 
-### Functions and `override`
+### Functions and argument labels
 
-A function is `func`. The lifecycle methods you fill in (`setup`, `draw`, `mousePressed`) already exist on the `Sketch` base class, so you mark yours with `override` to replace them:
-
-```swift
-override func setup() {
-    noLoop()        // run a single still frame
-}
-
-override func draw() {
-    background(.white)
-    drawCircle(width / 2, height / 2, 100)
-}
-```
-
-`override` is required and checked: misspell `draw` and the compiler tells you there's nothing to override, instead of silently never running.
-
-Your own helper functions need no `override`:
+A function is `func`. Arguments carry labels by default, and an underscore in the declaration removes one, which is how the API offers both bare and labeled forms:
 
 ```swift
-func dot(_ p: Vector2) {
+func dot(_ p: Vector2) {      // called as dot(p): the _ removes the label
     drawCircle(p.x, p.y, 4)
 }
 ```
 
-(Argument labels and the `_` that suppresses them are a Swift feature you'll meet in the API — `drawCircle(_:_:_:)` takes bare positional arguments, `drawCircle(center:radius:)` labels them. You don't need to define your own to write sketches.)
+You'll meet both styles constantly as a caller: `drawCircle(x, y, r)` takes bare positional arguments, while `drawCircle(center: p, radius: r)` names them. The labels are part of the function's name, so a call spells exactly the labels the declaration asks for.
 
 <a name="classes"></a>
 
 ### Classes and `override`
 
-Your sketch *is* a class — a subclass of `Sketch`:
+Your sketch *is* a class, a subclass of `Sketch`:
 
 ```swift
 final class Flow: Sketch {
@@ -167,9 +138,10 @@ final class Flow: Sketch {
 }
 ```
 
-- **Properties** (declared with `let`/`var` at the top of the class) are how a sketch remembers state between frames — the equivalent of a global `let particles = []` in a p5 sketch, but scoped to the instance.
+- **Properties** (declared with `let`/`var` at the top of the class) are how a sketch remembers state between frames, scoped to the instance rather than floating as globals.
+- **`override`** marks a method that replaces one the base class defines (`setup`, `draw`, `mousePressed`, and friends). It's required and checked: misspell `draw` and the compiler tells you there's nothing to override, instead of silently never running. Your own helper methods take no `override`.
 - **`final`** means "no further subclassing." Use it on your sketches; it's a small performance and clarity win. (`Sketch` itself is *not* final, which is what lets you subclass it.)
-- **`self`** refers to the current instance, like JS `this` — but Swift's `self` is not the moving target JS's `this` is, so you rarely need it; write `particles`, not `self.particles`, unless a local name shadows it.
+- **`self`** refers to the current instance. Swift rarely needs it spelled out: write `particles`, not `self.particles`, unless a local name shadows it.
 
 <a name="loops"></a>
 
@@ -193,19 +165,19 @@ Arrays are `[Element]`. The everyday operations:
 
 ```swift
 var pts: [Vector2] = []
-pts.append(Vector2(10, 10))    // push
+pts.append(Vector2(10, 10))    // add to the end
 pts.count                      // length
 pts[0]                         // index
 for p in pts { drawCircle(p.x, p.y, 4) }   // iterate the values directly
 
-let xs = pts.map { $0.x }      // like JS Array.map
+let xs = pts.map { $0.x }      // transform every element
 ```
 
 <a name="closures"></a>
 
 ### Trailing closures
 
-A closure is an inline function — the same idea as a JS arrow function or callback. When a closure is the last argument, Swift lets you drop the parentheses and write it as a trailing `{ }` block. Ollin uses this for scoped state, which is `push()`/`pop()` in p5:
+A closure is an inline function you pass as a value. When a closure is the last argument, Swift lets you drop the parentheses and write it as a trailing `{ }` block. Ollin uses this for scoped state:
 
 ```swift
 withState {
@@ -221,7 +193,7 @@ withState {
 
 ### Optionals at a glance
 
-Swift makes "might be missing" part of the type. An optional `T?` either holds a `T` or is `nil`. You won't define many in a sketch, but you'll see them — for example, a lookup that can fail. Unwrap with `if let`:
+Swift makes "might be missing" part of the type. An optional `T?` either holds a `T` or is `nil`. You won't define many in a sketch, but you'll meet them wherever something can fail, like loading a file or looking up a first element. Unwrap with `if let`:
 
 ```swift
 if let first = particles.first {     // .first is Vector2?, nil if empty
@@ -229,13 +201,13 @@ if let first = particles.first {     // .first is Vector2?, nil if empty
 }
 ```
 
-The point: `nil` can't sneak into a non-optional value, so the "undefined is not a function" class of bug doesn't happen.
+The point: `nil` can't sneak into a non-optional value, so a whole class of "crashed on a missing value" bugs doesn't happen.
 
 <a name="strings"></a>
 
 ### String interpolation
 
-Backtick templates (`` `r is ${r}` ``) become `\(...)` inside a normal `"..."` string:
+`\(...)` embeds any value inside a `"..."` string:
 
 ```swift
 let r = 120.0
@@ -247,8 +219,8 @@ override var title: String { "Pulse \(frameCount)" }
 
 ### Where to go next
 
-That's the delta that bites — enough to read and write Ollin sketches. For the rest of the language (structs and enums, protocols, generics, error handling), Apple's free book is the canonical reference:
+That's the delta that bites: enough to read and write Ollin sketches. For the rest of the language (structs and enums, protocols, generics, error handling), Apple's free book is the canonical reference:
 
-- [*The Swift Programming Language*](https://docs.swift.org/swift-book/) — the official guide.
+- [*The Swift Programming Language*](https://docs.swift.org/swift-book/), the official guide.
 
-And the best way to learn the *Ollin* side is to read and tweak the [`Examples/`](../Examples/README.md): each is one small, self-contained sketch you can run with `swift run` and edit live. Start with `Basic`, then follow your curiosity.
+Coming from p5.js or Processing, the Guide's [Appendix C](../Guide/C-ComingFromP5.md) is the API translation table to keep beside this page. And the best way to learn the *Ollin* side is to read and tweak the [`Examples/`](../Examples/README.md): each is one small, self-contained sketch you can run with `swift run` and edit live. Start with `Basic`, then follow your curiosity.
