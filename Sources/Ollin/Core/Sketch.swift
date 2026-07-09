@@ -68,6 +68,16 @@ open class Sketch {
     /// `World`'s bounds, clamping, or hit-testing.
     public var bounds: Rectangle { Rectangle(x: 0, y: 0, width: width, height: height) }
 
+    /// The canvas point at normalized coordinates: `uv(0, 0)` is the top-left
+    /// corner, `uv(1, 1)` the bottom-right, `uv(0.5, 0.5)` the center. State a
+    /// layout as proportions and it never reads `width`/`height` (the same
+    /// 0…1, top-left space per-pixel shader code sees). Values outside 0…1
+    /// land off-canvas proportionally. Sugar over `bounds.point(u:v:)`, whose
+    /// `uv(of:)` inverse normalizes a point back (e.g. the mouse).
+    public func uv(_ u: Double, _ v: Double) -> Vector2 {
+        Vector2(u * width, v * height)
+    }
+
     // MARK: Temporal state (motion is first-class)
 
     /// Number of frames drawn so far (1 during the first `draw()`).

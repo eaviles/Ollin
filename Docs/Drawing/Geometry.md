@@ -325,6 +325,7 @@ Rectangle(fitting size: Vector2, in container: Rectangle)
 - **Corners:** `topLeft`, `topRight`, `bottomRight`, `bottomLeft`.
 - **Test:** `contains(_ point: Vector2)` (the boundary counts as inside).
 - **Inset:** `inset(by: Insets)`, the rectangle shrunk inward by a per-edge margin (see [`Grid`](#grid)).
+- **Normalized coordinates:** `point(u:v:)`, the point at 0…1 fractions of the rectangle (`point(u: 0.5, v: 0.5)` is `center`; values outside 0…1 land proportionally outside), and its inverse `uv(of:)`. The canvas-wide sugar is [`uv(u, v)`](../Core/Canvas.md#uv).
 
 `Rectangle(fitting:in:)` is the letterbox fit: the largest rectangle of `size`'s aspect ratio centered inside `container` — the box to draw an image or video frame into without stretching it (the fit behind `drawFrame` and `fittedRect(in:)`).
 

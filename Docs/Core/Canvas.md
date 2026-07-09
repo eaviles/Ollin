@@ -25,7 +25,7 @@ override func draw() {
 - [The preview window](#windowMode)
 - [The performance panel](#stats-overlay)
 - [Retina and pixel density](#retina)
-- [Planned: normalized u, v](#planned-uv)
+- [Normalized coordinates: uv](#uv)
 
 <a name="resolution-independence"></a>
 
@@ -36,7 +36,7 @@ Coordinates are in **logical points**, with a top-left origin and y increasing d
 To keep a piece looking the same at every size, write it relative to the canvas instead of in fixed pixels. Two tools cover that:
 
 - **`scale`** grows and shrinks with the canvas, so multiplying a feature size by it holds that size's proportion at any canvas size. Pick the size you'd want on a roughly 1000-point canvas and multiply: a `12 * scale` dot, a `375 * scale` radius.
-- **`width` / `height` fractions** suit layout: `width * 0.8` for a centered block, `height / 8` for a wave's amplitude, `min(width, height) * 0.125` for an inset.
+- **`width` / `height` fractions** suit layout: `width * 0.8` for a centered block, `height / 8` for a wave's amplitude, `min(width, height) * 0.125` for an inset. For *positions*, [`uv(u, v)`](#uv) states the same fractions as one point: `uv(0.5, 0.75)` instead of `Vector2(width * 0.5, height * 0.75)`.
 
 A bare `drawCircle(400, 400, 150)` ties the sketch to one canvas size, and the same call lands somewhere else once the canvas changes. Reach for `scale` and fractions instead.
 
@@ -131,8 +131,19 @@ The live host (`OllinLive`) shows the same readout in its own inspector sidebar,
 
 The preview is crisp on Retina displays with nothing to switch on: it renders at the screen's native pixel density. Export renders directly at `canvasSize`, so a 1080² export is exactly 1080×1080 pixels.
 
-<a name="planned-uv"></a>
+<a name="uv"></a>
 
-### Planned: normalized `u, v` coordinates
+### Normalized coordinates: uv
 
-A later addition may offer normalized `u, v` positions (0…1 across the canvas) alongside points, so a sketch can place things without referring to `width`/`height`. Until then, `scale` and `width`/`height` fractions are the way to stay resolution-independent.
+```swift
+func uv(_ u: Double, _ v: Double) -> Vector2
+```
+
+The canvas point at normalized coordinates: `uv(0, 0)` is the top-left corner, `uv(1, 1)` the bottom-right, `uv(0.5, 0.5)` the center. A layout stated as proportions never reads `width`/`height`, and it's the same 0…1, top-left space per-pixel shader code sees. Values outside 0…1 land off-canvas proportionally (nothing clamps).
+
+```swift
+drawCircle(center: uv(0.5, 0.25), radius: 40 * scale)      // top-center
+drawPolygon([uv(0, 0.66), uv(1, 0.66), uv(1, 1), uv(0, 1)]) // the lower third
+```
+
+The same mapping exists on any [`Rectangle`](../Drawing/Geometry.md) as `point(u:v:)`, with `uv(of:)` as its inverse: `bounds.uv(of: Vector2(mouseX, mouseY))` reads the mouse as canvas fractions. The [`Basic/NormalizedCoordinates`](../../Examples/Basic/NormalizedCoordinates/Sketch.swift) example composes a whole scene this way.

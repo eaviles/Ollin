@@ -447,6 +447,7 @@ let package = Package(
         // `example(...)` call (the helper above the package declaration):
         // adding an example is the folder plus one line here.
         example("Basic/HelloCircle"),
+        example("Basic/NormalizedCoordinates"),
         example("Basic/Guides"),
         example("Export/Capture"),
         example("Export/VectorExport"),

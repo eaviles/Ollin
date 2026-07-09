@@ -59,4 +59,20 @@ public struct Rectangle: Equatable, Hashable, Sendable {
         point.x >= corner.x && point.x <= corner.x + width &&
         point.y >= corner.y && point.y <= corner.y + height
     }
+
+    /// The point at normalized coordinates inside the rectangle: `u` runs 0…1
+    /// left to right, `v` 0…1 top to bottom, so `point(u: 0.5, v: 0.5)` is the
+    /// center. Values outside 0…1 land proportionally outside (not clamped).
+    /// The canvas-wide form is `Sketch.uv(_:_:)`.
+    public func point(u: Double, v: Double) -> Vector2 {
+        Vector2(corner.x + u * width, corner.y + v * height)
+    }
+
+    /// The inverse of `point(u:v:)`: where `point` sits in the rectangle's
+    /// normalized 0…1 space (`(0, 0)` at the top-left corner, `(1, 1)` at the
+    /// bottom-right). A degenerate axis (zero width or height) reads 0.
+    public func uv(of point: Vector2) -> Vector2 {
+        Vector2(width > 0 ? (point.x - corner.x) / width : 0,
+                height > 0 ? (point.y - corner.y) / height : 0)
+    }
 }

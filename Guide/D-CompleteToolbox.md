@@ -17,6 +17,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | The sketch lifecycle | `setup()` once, `draw()` every frame, at the display's rate | [Ch 1](01-HelloOllin.md) | [Sketch](../Docs/Core/Sketch.md) |
 | The clock | `time`, `deltaTime`, `frameCount`, `frameRate`; `noLoop()` for stills | [Ch 1](01-HelloOllin.md), [Ch 3](03-MotionAndTime.md) | [Sketch](../Docs/Core/Sketch.md) |
 | Canvas and window | `canvasSize` presets, `windowMode` (auto, fixed, resizable) | [Ch 1](01-HelloOllin.md) | [Canvas](../Docs/Core/Canvas.md) |
+| Normalized coordinates | `uv(u, v)`: the canvas point at 0…1 fractions, layout without `width`/`height` | [Ch 1](01-HelloOllin.md) | [Canvas](../Docs/Core/Canvas.md#uv) |
 | Mouse | `mouseX`/`mouseY`, pressed state, press and release hooks | [Ch 1](01-HelloOllin.md) | [Input](../Docs/Helpers/Input.md) |
 | Keyboard | `key`, typed `KeyCode`, `isKeyDown(_:)`, press and release hooks | [Ch 1](01-HelloOllin.md) | [Input](../Docs/Helpers/Input.md) |
 | `@Param` knobs | Properties as live inspector controls, typed per value (slider, color well, pad, …) | [Ch 1](01-HelloOllin.md), [Ch 20](20-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
