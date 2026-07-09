@@ -187,8 +187,7 @@ A few things the vector format can't express exactly, and how they're handled:
 - **Images** are skipped — raster pixels have no place in a vector file (the omission is noted as a comment in the output).
 - **`strokeAlign(.inside` / `.outside)`** falls back to a centered stroke (SVG strokes are always centered on the path).
 - **`hollow(_:)`** band fills are approximated by a centered stroke of the band width.
-- Curves and the analytic SDF-only shapes are emitted as fine polyline/path **approximations** of their outline (visually identical at print scale).
-- A traced shape whose boundary has **more than one loop** keeps only its outer loop: the Cool S exports without its interior lines (the raster render has them).
+- Curves and the analytic SDF-only shapes are emitted as fine polyline/path **approximations** of their outline (visually identical at print scale). A traced boundary with more than one loop (a moon whose cut disk sits fully inside, say) exports as a single even-odd path, holes intact; the Cool S's interior lines ride along as stroke line work.
 
 ### Hatching: solid fills for a pen plotter
 

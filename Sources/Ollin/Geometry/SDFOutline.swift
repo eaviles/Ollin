@@ -8,7 +8,9 @@ import Foundation
 //
 // All builders return points in the shape's *local* space, centered on the same
 // point the draw call anchors at; the `Drawer` offsets them into user space and
-// the CTM rides as the SVG element transform.
+// the CTM rides as the SVG element transform. Polygonal builders return one
+// point list; traced builders return every boundary loop the zero contour has
+// (usually one; the Drawer records multi-loop traces as an even-odd path).
 
 enum SDFOutline {
 
@@ -117,20 +119,20 @@ enum SDFOutline {
 
     // MARK: Curved shapes (marching squares over the ported SDF)
 
-    static func rhombusRounded(width: Double, height: Double, cornerRadius r: Double) -> [Vector2] {
+    static func rhombusRounded(width: Double, height: Double, cornerRadius r: Double) -> [[Vector2]] {
         let b = Vector2(width / 2, height / 2)
         let core = Vector2(max(b.x - r, 1e-4), max(b.y - r, 1e-4))
         return trace(halfX: width / 2, halfY: height / 2) { sdRhombus($0, core) - r }
     }
 
-    static func crossRounded(length: Double, thickness: Double, cornerRadius r: Double) -> [Vector2] {
+    static func crossRounded(length: Double, thickness: Double, cornerRadius r: Double) -> [[Vector2]] {
         let l = length / 2, w = min(thickness, length) / 2
         return trace(halfX: l, halfY: l) {
             min(sdRoundBox($0, Vector2(l, w), r), sdRoundBox($0, Vector2(w, l), r))
         }
     }
 
-    static func vesica(width: Double, height: Double, cornerRadius rr: Double) -> [Vector2] {
+    static func vesica(width: Double, height: Double, cornerRadius rr: Double) -> [[Vector2]] {
         let horizontal = width > height
         let a = (horizontal ? width : height) / 2
         let w = max((horizontal ? height : width) / 2, 1e-4)
@@ -145,24 +147,24 @@ enum SDFOutline {
     /// The oriented vesica in its own frame: tips on the local x-axis at
     /// `(±halfLength, 0)`, bulging to `halfWidth` across the y-axis. The Drawer
     /// rotates these into place between the two tip points.
-    static func orientedVesica(halfLength a: Double, halfWidth w: Double) -> [Vector2] {
+    static func orientedVesica(halfLength a: Double, halfWidth w: Double) -> [[Vector2]] {
         let ww = max(w, 1e-4)
         let rCircle = (ww + a * a / ww) / 2
         let dOff = (a * a - ww * ww) / (2 * ww)
         return trace(halfX: a, halfY: ww) { sdVesica(Vector2($0.y, $0.x), rCircle, dOff) }
     }
 
-    static func moon(outerRadius: Double, innerRadius: Double, offset: Double, cornerRadius rr: Double) -> [Vector2] {
+    static func moon(outerRadius: Double, innerRadius: Double, offset: Double, cornerRadius rr: Double) -> [[Vector2]] {
         trace(halfX: outerRadius + rr, halfY: outerRadius + rr) {
             sdMoon($0, offset, outerRadius, innerRadius) - rr
         }
     }
 
-    static func cutDisk(radius: Double, cut: Double) -> [Vector2] {
+    static func cutDisk(radius: Double, cut: Double) -> [[Vector2]] {
         trace(halfX: radius, halfY: radius) { sdCutDisk(Vector2($0.x, -$0.y), radius, cut) }
     }
 
-    static func unevenCapsule(a: Vector2, b: Vector2, ra: Double, rb: Double) -> [Vector2] {
+    static func unevenCapsule(a: Vector2, b: Vector2, ra: Double, rb: Double) -> [[Vector2]] {
         // Local frame centered on (a+b)/2; replicate the fragment's rotation/shift.
         let d = b - a
         let len = d.length
@@ -176,7 +178,7 @@ enum SDFOutline {
         }
     }
 
-    static func horseshoe(radius: Double, thickness: Double, gap: Double) -> [Vector2] {
+    static func horseshoe(radius: Double, thickness: Double, gap: Double) -> [[Vector2]] {
         let an = min(max(gap / 2, 1e-3), Double.pi - 1e-3)
         let c = Vector2(cos(an), sin(an))
         let w = Vector2(thickness / 2, thickness / 2)
@@ -186,7 +188,7 @@ enum SDFOutline {
         }
     }
 
-    static func parabola(width: Double, height: Double) -> [Vector2] {
+    static func parabola(width: Double, height: Double) -> [[Vector2]] {
         let wi = width / 2, he = height
         return trace(halfX: width / 2, halfY: height / 2) { p in
             let u = Vector2(p.x, he * 0.5 - p.y)
@@ -194,14 +196,14 @@ enum SDFOutline {
         }
     }
 
-    static func egg(bottomRadius ra: Double, topRadius rb: Double) -> [Vector2] {
+    static func egg(bottomRadius ra: Double, topRadius rb: Double) -> [[Vector2]] {
         let apex = 1.7320508075688772 * (ra - rb) + rb
         let yc = (apex - ra) * 0.5
         let halfHeight = (apex + ra) / 2
         return trace(halfX: ra, halfY: halfHeight) { sdEgg(Vector2($0.x, -$0.y + yc), ra, rb) }
     }
 
-    static func heart(size: Double) -> [Vector2] {
+    static func heart(size: Double) -> [[Vector2]] {
         let s = size / 1.2036
         return trace(halfX: 0.6018 * s, halfY: 0.54925 * s) { p in
             let u = Vector2(p.x / s, -p.y / s + 0.5538)
@@ -209,20 +211,20 @@ enum SDFOutline {
         }
     }
 
-    static func roundedX(length: Double, thickness: Double) -> [Vector2] {
+    static func roundedX(length: Double, thickness: Double) -> [[Vector2]] {
         let r = thickness / 2
         let w = max(length - thickness * 0.7071067811865476, 0)
         return trace(halfX: length / 2 + r, halfY: length / 2 + r) { sdRoundedX($0, w, r) }
     }
 
-    static func blobbyCross(radius: Double, blobbiness: Double) -> [Vector2] {
+    static func blobbyCross(radius: Double, blobbiness: Double) -> [[Vector2]] {
         let he = min(max(blobbiness, 0.3), 0.6)
         let tipUnit = 1 / (he * 1.4142135623730951) - 1
         let s = radius / tipUnit
         return trace(halfX: radius * 1.08, halfY: radius * 1.08) { sdBlobbyCross($0 / s, he) * s }
     }
 
-    static func tunnel(width: Double, height: Double) -> [Vector2] {
+    static func tunnel(width: Double, height: Double) -> [[Vector2]] {
         let whx = width / 2, why = height - whx
         let yc = (whx - why) * 0.5
         return trace(halfX: width / 2, halfY: height / 2) {
@@ -230,19 +232,33 @@ enum SDFOutline {
         }
     }
 
-    static func coolS(size: Double) -> [Vector2] {
+    static func coolS(size: Double) -> [[Vector2]] {
         let s = size / 2.1
         return trace(halfX: size / 2 + s * 0.1, halfY: size / 2 + s * 0.1) { sdCoolS($0 / s) * s }
+    }
+
+    /// The Cool S's interior line work: the zero-distance valleys strictly inside
+    /// the region. The raster stroke shows them (the stroke band renders
+    /// |distance| ≤ w/2 regardless of sign), but the field only touches zero there
+    /// without crossing, so the marching trace can't see them. They're exact
+    /// straight segments of the SDF's construction: per half, a diagonal from the
+    /// waist point into the center vertical.
+    static func coolSInteriorLines(size: Double) -> [[Vector2]] {
+        let s = size / 2.1
+        return [1.0, -1.0].map { h in
+            [Vector2(0.2 * s * h, 0), Vector2(0, 0.2 * s * h), Vector2(0, 0.6 * s * h)]
+        }
     }
 }
 
 // MARK: - Marching-squares contour tracer
 
 private extension SDFOutline {
-    /// Trace the zero contour of `sdf` over a box around the origin, returning a
-    /// closed polyline. The box is grown a little past the footprint so the
-    /// contour stays interior (and thus closes cleanly).
-    static func trace(halfX: Double, halfY: Double, sdf: (Vector2) -> Double) -> [Vector2] {
+    /// Trace the zero contour of `sdf` over a box around the origin, returning
+    /// every closed boundary loop (most shapes have one; a region cut by interior
+    /// sign flips has several). The box is grown a little past the footprint so
+    /// the contour stays interior (and thus closes cleanly).
+    static func trace(halfX: Double, halfY: Double, sdf: (Vector2) -> Double) -> [[Vector2]] {
         let mx = halfX * 1.06 + 1, my = halfY * 1.06 + 1
         let resX = min(max(Int((mx * 2 / 1.5).rounded(.up)), 24), 360)
         let resY = min(max(Int((my * 2 / 1.5).rounded(.up)), 24), 360)
@@ -290,10 +306,11 @@ private extension SDFOutline {
         return stitch(segments)
     }
 
-    /// Walk marching-squares segments into one ordered closed loop. Endpoints on a
-    /// shared cell edge are computed identically by both cells, so quantized keys
-    /// match exactly.
-    static func stitch(_ segments: [(Vector2, Vector2)]) -> [Vector2] {
+    /// Walk marching-squares segments into ordered closed loops, one walk per
+    /// unvisited segment until every segment is consumed. Endpoints on a shared
+    /// cell edge are computed identically by both cells, so quantized keys match
+    /// exactly.
+    static func stitch(_ segments: [(Vector2, Vector2)]) -> [[Vector2]] {
         guard !segments.isEmpty else { return [] }
         func key(_ v: Vector2) -> Int64 {
             Int64((v.x * 1000).rounded()) &* 2_000_003 &+ Int64((v.y * 1000).rounded())
@@ -304,27 +321,31 @@ private extension SDFOutline {
             adjacency[key(s.1), default: []].append(i)
         }
         var used = [Bool](repeating: false, count: segments.count)
-        used[0] = true
-        let startKey = key(segments[0].0)
-        var loop = [segments[0].0, segments[0].1]
-        var current = segments[0].1
-        while true {
-            let k = key(current)
-            guard let candidates = adjacency[k],
-                  let next = candidates.first(where: { !used[$0] }) else { break }
-            used[next] = true
-            let seg = segments[next]
-            let other = key(seg.0) == k ? seg.1 : seg.0
-            if key(other) == startKey { break }
-            loop.append(other)
-            current = other
+        var loops: [[Vector2]] = []
+        for start in segments.indices where !used[start] {
+            used[start] = true
+            let startKey = key(segments[start].0)
+            var loop = [segments[start].0, segments[start].1]
+            var current = segments[start].1
+            while true {
+                let k = key(current)
+                guard let candidates = adjacency[k],
+                      let next = candidates.first(where: { !used[$0] }) else { break }
+                used[next] = true
+                let seg = segments[next]
+                let other = key(seg.0) == k ? seg.1 : seg.0
+                if key(other) == startKey { break }
+                loop.append(other)
+                current = other
+            }
+            if loop.count >= 3 { loops.append(loop) }   // drop degenerate fragments
         }
-        return loop
+        return loops
     }
 }
 
-// MARK: - Ported signed-distance functions (mirror ShaderShapes.metal, from iq's 2D
-// distance functions). CPU copies used only to trace outlines for SVG export.
+// MARK: - Ported signed-distance functions (mirroring ShaderShapes.metal).
+// CPU copies used only to trace outlines for SVG export.
 
 private func dot(_ a: Vector2, _ b: Vector2) -> Double { a.x * b.x + a.y * b.y }
 private func dot2(_ v: Vector2) -> Double { v.x * v.x + v.y * v.y }

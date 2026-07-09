@@ -216,9 +216,9 @@ extension Drawer {
         guard width > 0, height > 0 else { return }
         let r = max(0, min(cornerRadius, min(width, height) / 2))
         if svgRecorder != nil {
-            let pts = r > 0 ? SDFOutline.rhombusRounded(width: width, height: height, cornerRadius: r)
-                            : SDFOutline.rhombus(width: width, height: height)
-            svgRecord(.polygon(svgOffset(pts, Vector2(x, y))), fill: fillPaint, stroke: strokePaint)
+            let loops = r > 0 ? SDFOutline.rhombusRounded(width: width, height: height, cornerRadius: r)
+                              : [SDFOutline.rhombus(width: width, height: height)]
+            svgRecordTraced(loops, at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .rhombus, center: Vector2(x, y),
@@ -233,15 +233,15 @@ extension Drawer {
     func drawVesica(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0) {
         guard width > 0, height > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.vesica(width: width, height: height, cornerRadius: max(0, cornerRadius)), Vector2(x, y))),
-                      fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(SDFOutline.vesica(width: width, height: height, cornerRadius: max(0, cornerRadius)),
+                            at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
             return
         }
         let horizontal = width > height
         let a = (horizontal ? width : height) / 2     // half-length toward the tips
         let w = max((horizontal ? height : width) / 2, 1e-4)   // waist half-width
         let rr = max(0, cornerRadius)
-        // Map the (along, across) half-extents to iq's circle radius + center
+        // Map the (along, across) half-extents to the vesica's circle radius + center
         // offset:  r = (w + a²/w) / 2,  d = (a² − w²) / (2w)  (a ≥ w; a == w is a
         // circle). Derived from the *full* footprint, not an inset one, so r/d stay
         // well-conditioned for any rounding (insetting toward a zero waist sends
@@ -267,8 +267,8 @@ extension Drawer {
         guard outerRadius > 0, innerRadius > 0, offset > 0 else { return }
         let rr = max(0, cornerRadius)
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.moon(outerRadius: outerRadius, innerRadius: innerRadius, offset: offset, cornerRadius: rr), Vector2(x, y))),
-                      fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(SDFOutline.moon(outerRadius: outerRadius, innerRadius: innerRadius, offset: offset, cornerRadius: rr),
+                            at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .moon, center: Vector2(x, y),
@@ -288,9 +288,9 @@ extension Drawer {
         let armHalfWidth = min(thickness, length) / 2
         let r = max(0, min(cornerRadius, armHalfWidth))
         if svgRecorder != nil {
-            let pts = r > 0 ? SDFOutline.crossRounded(length: length, thickness: thickness, cornerRadius: r)
-                            : SDFOutline.cross(length: length, thickness: thickness)
-            svgRecord(.polygon(svgOffset(pts, Vector2(x, y))), fill: fillPaint, stroke: strokePaint)
+            let loops = r > 0 ? SDFOutline.crossRounded(length: length, thickness: thickness, cornerRadius: r)
+                              : [SDFOutline.cross(length: length, thickness: thickness)]
+            svgRecordTraced(loops, at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .cross, center: Vector2(x, y),
@@ -363,8 +363,8 @@ extension Drawer {
     func drawEgg(_ x: Double, _ y: Double, _ bottomRadius: Double, _ topRadius: Double) {
         guard bottomRadius > 0, topRadius > 0, topRadius <= bottomRadius else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.egg(bottomRadius: bottomRadius, topRadius: topRadius), Vector2(x, y))),
-                      fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(SDFOutline.egg(bottomRadius: bottomRadius, topRadius: topRadius),
+                            at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
             return
         }
         // Native span is y in [-bottomRadius, apex]; the fragment recenters on the
@@ -383,7 +383,7 @@ extension Drawer {
     func drawHeart(_ x: Double, _ y: Double, _ size: Double) {
         guard size > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.heart(size: size), Vector2(x, y))), fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(SDFOutline.heart(size: size), at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
             return
         }
         // The unit heart spans width 1.2036, height 1.0985 (lobes up); scale so the
@@ -404,8 +404,8 @@ extension Drawer {
     func drawCutDisk(_ x: Double, _ y: Double, _ radius: Double, _ cut: Double) {
         guard radius > 0, abs(cut) < radius else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.cutDisk(radius: radius, cut: cut), Vector2(x, y))),
-                      fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(SDFOutline.cutDisk(radius: radius, cut: cut),
+                            at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .cutDisk, center: Vector2(x, y),
@@ -425,8 +425,8 @@ extension Drawer {
         let len = d.length
         guard len > 1e-6, len >= abs(ra - rb) else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.unevenCapsule(a: a, b: b, ra: ra, rb: rb), (a + b) / 2)),
-                      fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(SDFOutline.unevenCapsule(a: a, b: b, ra: ra, rb: rb),
+                            at: (a + b) / 2, fill: fillPaint, stroke: strokePaint)
             return
         }
         let dir = d / len
@@ -447,11 +447,11 @@ extension Drawer {
     func drawHorseshoe(_ x: Double, _ y: Double, _ radius: Double, _ thickness: Double, gap: Double) {
         guard radius > 0, thickness > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.horseshoe(radius: radius, thickness: thickness, gap: gap), Vector2(x, y))),
-                      fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(SDFOutline.horseshoe(radius: radius, thickness: thickness, gap: gap),
+                            at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
             return
         }
-        // iq's `c` is the (cos, sin) of half the opening angle: the band then wraps
+        // `c` is the (cos, sin) of half the opening angle: the band then wraps
         // the remaining 2·(π − gap/2), so `gap` is the full angular opening.
         let an = min(max(gap / 2, 1e-3), Double.pi - 1e-3)
         let w = Float(thickness / 2)
@@ -470,8 +470,8 @@ extension Drawer {
     func drawParabola(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
         guard width > 0, height > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.parabola(width: width, height: height), Vector2(x, y))),
-                      fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(SDFOutline.parabola(width: width, height: height),
+                            at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .parabola, center: Vector2(x, y),
@@ -487,8 +487,8 @@ extension Drawer {
     func drawRoundedX(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double) {
         guard length > 0, thickness > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.roundedX(length: length, thickness: thickness), Vector2(x, y))),
-                      fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(SDFOutline.roundedX(length: length, thickness: thickness),
+                            at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
             return
         }
         let r = thickness / 2
@@ -508,8 +508,8 @@ extension Drawer {
     func drawBlobbyCross(_ x: Double, _ y: Double, _ radius: Double, blobbiness: Double = 0.5) {
         guard radius > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.blobbyCross(radius: radius, blobbiness: blobbiness), Vector2(x, y))),
-                      fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(SDFOutline.blobbyCross(radius: radius, blobbiness: blobbiness),
+                            at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
             return
         }
         let he = min(max(blobbiness, 0.3), 0.6)
@@ -531,8 +531,8 @@ extension Drawer {
     func drawTunnel(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
         guard width > 0, height >= width / 2 else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.tunnel(width: width, height: height), Vector2(x, y))),
-                      fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(SDFOutline.tunnel(width: width, height: height),
+                            at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
             return
         }
         let whx = width / 2                 // half-width = arch radius
@@ -567,7 +567,12 @@ extension Drawer {
     func drawCoolS(_ x: Double, _ y: Double, _ size: Double) {
         guard size > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.polygon(svgOffset(SDFOutline.coolS(size: size), Vector2(x, y))), fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(SDFOutline.coolS(size: size), at: Vector2(x, y), fill: fillPaint, stroke: strokePaint)
+            if strokePaint != nil {
+                for line in SDFOutline.coolSInteriorLines(size: size) {
+                    svgRecord(.polyline(svgOffset(line, Vector2(x, y))), fill: nil, stroke: strokePaint)
+                }
+            }
             return
         }
         // The unit "S" spans about y in [-1.05, 1.05]; scale so `size` is its height.

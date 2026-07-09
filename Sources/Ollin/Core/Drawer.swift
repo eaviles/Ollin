@@ -991,6 +991,24 @@ final class Drawer {
         points.map { $0 + c }
     }
 
+    /// Record a marching-squares traced outline, loops already in user space. A
+    /// single boundary loop stays a plain polygon; a multi-loop trace becomes an
+    /// even-odd path, which reconstructs the SDF's region exactly (crossing any
+    /// zero contour flips inside/outside, which *is* the even-odd rule).
+    func svgRecordTraced(_ loops: [[Vector2]], fill: Paint?, stroke: Paint?) {
+        if loops.count == 1 {
+            svgRecord(.polygon(loops[0]), fill: fill, stroke: stroke)
+        } else if !loops.isEmpty {
+            let contours = loops.map { Contour($0, closed: true) }
+            svgRecord(.path(Shape(contours: contours, winding: .evenOdd)), fill: fill, stroke: stroke)
+        }
+    }
+
+    /// The same, for loops in the shape's local space placed at `c`.
+    func svgRecordTraced(_ loops: [[Vector2]], at c: Vector2, fill: Paint?, stroke: Paint?) {
+        svgRecordTraced(loops.map { svgOffset($0, c) }, fill: fill, stroke: stroke)
+    }
+
     /// Current affine transform (2D homogeneous), applied to every emitted
     /// vertex. Reset to identity each frame.
     var transform = matrix_identity_float3x3

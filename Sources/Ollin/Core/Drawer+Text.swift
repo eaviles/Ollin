@@ -649,8 +649,8 @@ extension Drawer {
         if svgRecorder != nil {
             let perp = Vector2(-dir.y, dir.x)
             let local = SDFOutline.orientedVesica(halfLength: halfLen, halfWidth: halfWidth)
-            svgRecord(.polygon(local.map { center + dir * $0.x + perp * $0.y }),
-                      fill: fillPaint, stroke: strokePaint)
+            svgRecordTraced(local.map { loop in loop.map { center + dir * $0.x + perp * $0.y } },
+                            fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .orientedVesica, center: center, size: half,

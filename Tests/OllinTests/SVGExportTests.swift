@@ -81,6 +81,46 @@ struct SVGExportTests {
         #expect(polygons.contains { $0.filter { $0 == "," }.count > 20 })
     }
 
+    @Test func multiLoopTraceBecomesEvenOddPath() {
+        // A moon whose cut disk sits fully inside the outer disk has two boundary
+        // loops (a ring with an off-center hole); the trace serializes as one
+        // even-odd path carrying both, instead of dropping the hole.
+        final class Donut: Sketch {
+            override var canvasSize: CanvasSize { .square(100) }
+            override func draw() {
+                background(.white); noStroke(); fill(.black)
+                drawMoon(50, 50, 40, 15, 8)
+            }
+        }
+        let svg = OllinApp.svg(of: Donut())
+        let path = svg.components(separatedBy: "\n").first {
+            $0.contains("<path") && $0.contains("fill-rule=\"evenodd\"")
+        }
+        #expect(path != nil)
+        #expect((path ?? "").components(separatedBy: "M ").count - 1 == 2)   // two loops
+    }
+
+    @Test func coolSExportsInteriorLineWork() {
+        // The Cool S's interior lines are zero-distance valleys the field never
+        // crosses (the raster stroke band shows them); the export emits them as
+        // explicit stroke polylines, but only when a stroke is active.
+        final class CoolS: Sketch {
+            override var canvasSize: CanvasSize { .square(100) }
+            var stroked = true
+            override func draw() {
+                background(.white)
+                fill(.black)
+                if stroked { stroke(.red); strokeWeight(2) } else { noStroke() }
+                drawCoolS(50, 50, 80)
+            }
+        }
+        let stroked = OllinApp.svg(of: CoolS())
+        #expect(stroked.components(separatedBy: "<polyline").count - 1 == 2)
+        let fillOnly = CoolS()
+        fillOnly.stroked = false
+        #expect(!OllinApp.svg(of: fillOnly).contains("<polyline"))
+    }
+
     @Test func imagesAreSkippedWithNote() {
         let svg = OllinApp.svg(of: Fixture())
         #expect(svg.contains("image draw(s) skipped"))
