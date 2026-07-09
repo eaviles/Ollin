@@ -78,6 +78,11 @@ public final class RenderTarget {
     /// target leaves it false and allocates no depth, so the 2D path is untouched.
     var needsDepth = false
 
+    /// Set during recording when a clip region (`withClip`) is pushed inside this
+    /// target, so its pass carries a stencil attachment. An unclipped target
+    /// allocates no stencil and its pass is byte-identical to before.
+    var needsStencil = false
+
     /// The depth layer (`depth`), created lazily the first time it's read. Held here
     /// so the renderer can fill its texture from this target's resolved depth buffer.
     /// `nil` until accessed, so a 3D target you draw but never defocus pays only for

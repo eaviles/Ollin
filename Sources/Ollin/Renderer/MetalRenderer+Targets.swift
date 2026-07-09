@@ -40,6 +40,48 @@ extension MetalRenderer {
         return device.makeTexture(descriptor: desc)
     }
 
+    /// A multisample `stencil8` attachment for a clipping pass (`withClip`), matching
+    /// the geometry MSAA target's size and sample count. Memoryless like the depth
+    /// attachment: the stencil is cleared at pass start and consumed within the pass
+    /// (storeAction `.dontCare`), so it holds no data between passes and one cached
+    /// texture per size serves every pass and frame safely.
+    func makeStencilMSAA(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .stencil8, width: width, height: height, mipmapped: false)
+        desc.textureType = .type2DMultisample
+        desc.sampleCount = sampleCount
+        desc.usage = .renderTarget
+        desc.storageMode = .memoryless
+        return device.makeTexture(descriptor: desc)
+    }
+
+    /// Attach the clipping stencil to `pass` when `active` (the drawer pushed a clip
+    /// on this pass's surface), returning whether the pass now carries one, which is
+    /// what `encode` keys its stencil states and pipeline variants on. Cleared to 0
+    /// (unclipped) and never stored; a failed allocation leaves the pass unclipped.
+    func attachClipStencil(to pass: MTLRenderPassDescriptor, active: Bool,
+                           width: Int, height: Int) -> Bool {
+        guard active, let stencil = clipStencilTexture(width: width, height: height) else { return false }
+        pass.stencilAttachment.texture = stencil
+        pass.stencilAttachment.loadAction = .clear
+        pass.stencilAttachment.clearStencil = 0
+        pass.stencilAttachment.storeAction = .dontCare
+        return true
+    }
+
+    /// The cached memoryless stencil attachment for a clipping pass at this size,
+    /// made on first use. Bounded against size churn (a resize drops the cache; the
+    /// textures have no backing store, so churn only costs the descriptor).
+    func clipStencilTexture(width: Int, height: Int) -> MTLTexture? {
+        if let cached = clipStencilTextures.first(where: { $0.width == width && $0.height == height }) {
+            return cached
+        }
+        guard let made = makeStencilMSAA(width: width, height: height) else { return nil }
+        if clipStencilTextures.count >= 8 { clipStencilTextures.removeAll(keepingCapacity: true) }
+        clipStencilTextures.append(made)
+        return made
+    }
+
     /// A single-sample `depth32Float` the MSAA depth attachment of a 3D render target
     /// resolves into, sampled afterward by the depth-normalize pass. `.shaderRead` so
     /// it's sampleable, `.private` since it lives only on the GPU.

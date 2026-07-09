@@ -74,6 +74,23 @@ fragment float4 ollin_fragment(VertexOut in [[stage_in]]) {
     return float4(lin, in.color.a);
 }
 
+// Clip-region pipelines (stencil clipping, see `withClip`). Both draw with the
+// color write mask empty: only the stencil op has any effect. The clip *push*
+// rasterizes the region's fill triangles through `ollin_vertex` above; the clip
+// *pop* covers the frame with one fullscreen triangle so the popped level
+// decrements back everywhere it was raised.
+fragment float4 ollin_clip_fragment(VertexOut in [[stage_in]]) {
+    return float4(0.0);
+}
+
+vertex VertexOut ollin_clip_cover_vertex(uint vertexID [[vertex_id]]) {
+    float2 corners[3] = { float2(-1.0, -1.0), float2(3.0, -1.0), float2(-1.0, 3.0) };
+    VertexOut out;
+    out.position = float4(corners[vertexID], 0.0, 1.0);
+    out.color = float4(0.0);
+    return out;
+}
+
 // Fringe-stroke pipeline (edge-expansion AA). A stroke is expanded
 // CPU-side into a core band plus a ~1px fringe whose AA coverage rides in the
 // vertex's `aa.x`; the GPU interpolates it across the geometry (1 at the core,

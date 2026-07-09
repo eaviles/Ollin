@@ -97,6 +97,8 @@ enum GeometryKind {
     case depthScene   // a backdrop quad in `imageVertices` that also primes the depth buffer from a depth map
     case sdfGroup     // composed SDF field (combinator) in `sdfGroups`, evaluating `sdfNodes`
     case sdfGroup3D   // raymarched composed 3D SDF field in `sdf3DGroups`, evaluating `sdf3DNodes`
+    case clipPush     // stencil-only: the clip region's fill triangles in `vertices` raise the clip level (withClip)
+    case clipPop      // stencil-only: one fullscreen cover lowers the popped clip level (no geometry)
 }
 
 struct GeometryBatch {
@@ -167,6 +169,12 @@ struct GeometryBatch {
     /// main canvas. Set while inside a `withTarget` block, so the renderer routes the
     /// run into that target's texture in a pass before the main one (see `RenderTarget`).
     var target: RenderTarget?
+    /// The clip-nesting level this run draws at (see `withClip`). 0 = unclipped (the
+    /// default, byte-identical). For a content batch it's the stencil reference the
+    /// run tests `equal` against; for a `.clipPush` batch it's the level the push
+    /// establishes, and for a `.clipPop` the level being dismantled. A change opens
+    /// a fresh batch, like a blend-mode change.
+    var clipLevel: Int = 0
 }
 
 /// The drawing state machine and per-frame geometry recorder.
@@ -449,6 +457,137 @@ final class Drawer {
     /// change opens a fresh batch (the finish is bound once per batch as a uniform).
     private var currentBatchMaterial = Material()
 
+    // MARK: Clipping (withClip)
+
+    /// One active clip region: its fill triangles (canvas space, CTM baked at the
+    /// push) kept so `background(_:)` can re-emit the push after wiping the recorded
+    /// batches, and the surface it applies to. Clipping is per surface: a region
+    /// pushed on the canvas doesn't reach into a `withTarget` layer (each pass has
+    /// its own stencil), so a layer opened inside a clip block starts unclipped.
+    private struct ClipFrame {
+        let vertices: [OllinVertex]
+        let target: RenderTarget?
+    }
+    /// The open clip regions, innermost last. Scoped by `withClip`, so frames for
+    /// the current surface are always a suffix of the stack.
+    private var clipStack: [ClipFrame] = []
+    /// The clip-nesting level drawing currently records at: the number of trailing
+    /// stack frames on the current surface. Cached (recomputed on push/pop and at
+    /// `withTarget` boundaries) because every batch open reads it.
+    private(set) var activeClipLevel = 0
+    /// The clip level of the currently-open batch, so a push/pop opens a fresh batch
+    /// even when kind, blend, and depth are unchanged.
+    private var currentBatchClip = 0
+    /// Whether the main canvas needs a stencil attachment this frame (a clip was
+    /// pushed outside any target). Per-frame, like the geometry; targets carry their
+    /// own `needsStencil` flag instead.
+    private(set) var usesClipStencil = false
+
+    private func recomputeClipLevel() {
+        var n = 0
+        for frame in clipStack.reversed() {
+            if frame.target === currentTarget { n += 1 } else { break }
+        }
+        activeClipLevel = n
+    }
+
+    /// Confine subsequent drawing to `shape`'s filled region (its `winding` rule
+    /// honored; open contours don't fill, so a shape with no fillable region clips
+    /// everything out). Nested pushes intersect. The region is fixed where the CTM
+    /// places it now, like a drawn fill; the edge anti-aliases at MSAA resolution.
+    /// Prefer the scoped `withClip(_:_:)`; push and pop must balance within the
+    /// current surface (an unmatched pop is ignored).
+    func pushClip(_ shape: Shape) {
+        if svgRecorder != nil {
+            svgRecorder?.commands.append(.clipPush(shape: shape, transform: transform))
+            clipStack.append(ClipFrame(vertices: [], target: currentTarget))
+            recomputeClipLevel()
+            return
+        }
+        // Tessellate the region like a fill (libtess2, the shape's winding) and bake
+        // the CTM, the same funnel `emit` uses. Color is unused (the clip pipelines
+        // mask color writes off).
+        let triangles = shape.triangulatedFill()
+        var clipVertices: [OllinVertex] = []
+        clipVertices.reserveCapacity(triangles.count)
+        for p in triangles {
+            var position = SIMD2<Float>(Float(p.x), Float(p.y))
+            if !transformIsIdentity {
+                let t = transform * SIMD3<Float>(position.x, position.y, 1)
+                position = SIMD2<Float>(t.x, t.y)
+            }
+            clipVertices.append(OllinVertex(position: position, color: SIMD4<Float>()))
+        }
+        clipStack.append(ClipFrame(vertices: clipVertices, target: currentTarget))
+        recomputeClipLevel()
+        if let target = currentTarget {
+            target.needsStencil = true
+        } else {
+            usesClipStencil = true
+        }
+        appendClipPush(clipVertices, level: activeClipLevel)
+    }
+
+    /// Lift the innermost clip region again (the end of a `withClip` block).
+    func popClip() {
+        guard let last = clipStack.last, last.target === currentTarget else { return }
+        let level = activeClipLevel
+        clipStack.removeLast()
+        recomputeClipLevel()
+        if svgRecorder != nil {
+            svgRecorder?.commands.append(.clipPop)
+            return
+        }
+        batches.append(GeometryBatch(kind: .clipPop, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
+                                     meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
+                                     target: currentTarget, clipLevel: level))
+        currentKind = nil
+    }
+
+    /// Run `body` with drawing confined to `shape`'s filled region, restoring the
+    /// previous clip (and, like `withTarget`, any drawing state the block changed)
+    /// on exit. Nesting intersects regions.
+    func withClip(_ shape: Shape, _ body: () -> Void) {
+        pushClip(shape)
+        pushState()
+        body()
+        popState()
+        popClip()
+    }
+
+    /// Record one clip push as a batch: the region's fill triangles join `vertices`
+    /// (they ride the triangle buffer) under a `.clipPush` batch at `level`.
+    private func appendClipPush(_ clipVertices: [OllinVertex], level: Int) {
+        batches.append(GeometryBatch(kind: .clipPush, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
+                                     meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
+                                     target: currentTarget, clipLevel: level))
+        vertices.append(contentsOf: clipVertices)
+        currentKind = nil
+    }
+
+    /// Re-record the pushes for the clip frames still open on `target` after
+    /// `background(_:)` wiped the recorded batches, so drawing after the wipe stays
+    /// clipped (the stencil pass replays from an empty buffer each frame).
+    private func reemitClipPushes(target: RenderTarget?) {
+        var level = 0
+        for frame in clipStack where frame.target === target {
+            level += 1
+            appendClipPush(frame.vertices, level: level)
+        }
+    }
+
     /// When set, draw calls are recorded as vector geometry for SVG export instead
     /// of being tessellated/SDF-encoded for the GPU (see SVGExport.swift). It lives
     /// outside the per-frame reset so the exporter owns its lifecycle.
@@ -485,15 +624,17 @@ final class Drawer {
         return (index, baked)
     }
 
-    /// Open a new batch when the geometry kind, the blend mode, *or* the 2D depth
-    /// changes; a no-op while all three are unchanged, so it's cheap to call per
-    /// primitive.
+    /// Open a new batch when the geometry kind, the blend mode, the 2D depth, *or*
+    /// the clip level changes; a no-op while all four are unchanged, so it's cheap
+    /// to call per primitive.
     func ensureBatch(_ kind: GeometryKind) {
         guard currentKind != kind || currentBatchBlend != currentBlend
-            || currentBatchDepth != currentDepth else { return }
+            || currentBatchDepth != currentDepth
+            || currentBatchClip != activeClipLevel else { return }
         currentKind = kind
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
+        currentBatchClip = activeClipLevel
         batches.append(GeometryBatch(kind: kind, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -503,7 +644,7 @@ final class Drawer {
                                      sdfGroupStart: sdfGroups.count,
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
-                                     target: currentTarget))
+                                     target: currentTarget, clipLevel: activeClipLevel))
     }
 
     /// Open a fresh `.image` batch carrying `image` as its texture. Unlike
@@ -514,6 +655,7 @@ final class Drawer {
         currentKind = .image
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
+        currentBatchClip = activeClipLevel
         batches.append(GeometryBatch(kind: .image, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -523,7 +665,7 @@ final class Drawer {
                                      sdfGroupStart: sdfGroups.count,
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, image: image, depth: currentDepth,
-                                     target: currentTarget))
+                                     target: currentTarget, clipLevel: activeClipLevel))
     }
 
     /// Open a fresh `.mesh3D` batch for a *textured*, *wireframe*, or *matcap* mesh
@@ -546,7 +688,7 @@ final class Drawer {
                                      material: material, finish: finish,
                                      meshWireframe: wireframe, meshGrid: grid,
                                      gridParams: gridParams, matcap: matcap,
-                                     target: currentTarget))
+                                     target: currentTarget, clipLevel: activeClipLevel))
         currentKind = nil
     }
 
@@ -556,13 +698,15 @@ final class Drawer {
     /// `material(_:)` breaks the batch (like a blend-mode change does).
     private func ensureSolidMeshBatch(_ m: Material) {
         if currentKind == .mesh3D, currentBatchBlend == currentBlend,
-           currentBatchDepth == currentDepth, currentBatchMaterial == m {
+           currentBatchDepth == currentDepth, currentBatchMaterial == m,
+           currentBatchClip == activeClipLevel {
             return
         }
         currentKind = .mesh3D
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
         currentBatchMaterial = m
+        currentBatchClip = activeClipLevel
         batches.append(GeometryBatch(kind: .mesh3D, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -572,7 +716,8 @@ final class Drawer {
                                      sdfGroupStart: sdfGroups.count,
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
-                                     finish: m.gpuMaterial(), target: currentTarget))
+                                     finish: m.gpuMaterial(), target: currentTarget,
+                                     clipLevel: activeClipLevel))
     }
 
     /// Open a new `.sdfGroup3D` batch when the blend, depth, or surface finish changes;
@@ -581,13 +726,15 @@ final class Drawer {
     /// so a `material(_:)` change must break the batch for the fragment to see it.
     func ensureSDF3DBatch(_ m: Material) {
         if currentKind == .sdfGroup3D, currentBatchBlend == currentBlend,
-           currentBatchDepth == currentDepth, currentBatchMaterial == m {
+           currentBatchDepth == currentDepth, currentBatchMaterial == m,
+           currentBatchClip == activeClipLevel {
             return
         }
         currentKind = .sdfGroup3D
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
         currentBatchMaterial = m
+        currentBatchClip = activeClipLevel
         batches.append(GeometryBatch(kind: .sdfGroup3D, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -597,7 +744,8 @@ final class Drawer {
                                      sdfGroupStart: sdfGroups.count,
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
-                                     finish: m.gpuMaterial(), target: currentTarget))
+                                     finish: m.gpuMaterial(), target: currentTarget,
+                                     clipLevel: activeClipLevel))
     }
 
     /// Remove the live ground-grid chrome again, once the on-screen render has
@@ -642,6 +790,7 @@ final class Drawer {
         currentKind = .glyphAtlas
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
+        currentBatchClip = activeClipLevel
         batches.append(GeometryBatch(kind: .glyphAtlas, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -651,7 +800,7 @@ final class Drawer {
                                      sdfGroupStart: sdfGroups.count,
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, atlas: atlas, depth: currentDepth,
-                                     target: currentTarget))
+                                     target: currentTarget, clipLevel: activeClipLevel))
     }
 
     /// Record a compute dispatch for this frame (see `Sketch.compute` / `Particles`).
@@ -670,11 +819,13 @@ final class Drawer {
         if !renderTargets.contains(where: { $0 === target }) { renderTargets.append(target) }
         targetStack.append(TargetFrame(target: target, snapshot: snapshot()))
         currentKind = nil    // force the first draw inside the target into a fresh batch
+        recomputeClipLevel() // clipping is per surface: the layer starts unclipped
         pushState()
         body()
         popState()
         targetStack.removeLast()
         currentKind = nil    // and force the next main draw into a fresh, untagged batch
+        recomputeClipLevel() // back on the enclosing surface's clip level
     }
 
     /// Redirect `body` into a persistent `Feedback` layer's write surface, handing
@@ -791,6 +942,7 @@ final class Drawer {
         currentKind = .particles
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
+        currentBatchClip = activeClipLevel
         batches.append(GeometryBatch(kind: .particles, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -801,7 +953,8 @@ final class Drawer {
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend,
                                      particleBuffer: buffer, particleCount: count,
-                                     depth: currentDepth, target: currentTarget))
+                                     depth: currentDepth, target: currentTarget,
+                                     clipLevel: activeClipLevel))
     }
 
     /// Set the standard compute uniforms for this frame (called by the runner before
@@ -821,13 +974,14 @@ final class Drawer {
         let visibleStroke = (stroke != nil && strokeWidth > 0) ? stroke : nil
         let style = SVGStyle(fill: fill, stroke: visibleStroke, strokeWidth: strokeWidth,
                              join: strokeJoinStyle, cap: strokeCapStyle)
-        recorder.commands.append(RecordedSVG(geometry: geometry, style: style, transform: transform))
+        recorder.commands.append(.draw(RecordedSVG(geometry: geometry, style: style,
+                                                   transform: transform)))
         // Symmetry replicates in vector form too: one more command per remaining
         // fold, the fold left-composed onto the CTM like the raster paths do.
         if let folds = symmetryFolds {
             for fold in folds.dropFirst() {
-                recorder.commands.append(RecordedSVG(geometry: geometry, style: style,
-                                                     transform: fold * transform))
+                recorder.commands.append(.draw(RecordedSVG(geometry: geometry, style: style,
+                                                           transform: fold * transform)))
             }
         }
     }
@@ -906,6 +1060,9 @@ final class Drawer {
             truncate(to: frame.snapshot)
             currentKind = nil
             currentBatchDepth = nil
+            // Clip pushes recorded inside this target were truncated too; re-record
+            // the still-open ones so drawing after the wipe stays clipped.
+            reemitClipPushes(target: frame.target)
             return
         }
         backgroundColor = color
@@ -924,6 +1081,9 @@ final class Drawer {
         currentKind = nil
         currentBatchDepth = nil
         hasDepthScene = false   // background wipes the recorded scene quad too
+        // A background inside a withClip block: the recorded pushes were wiped with
+        // the batches, so re-record the still-open ones.
+        reemitClipPushes(target: nil)
     }
 
     /// Stop clearing the canvas each frame: drawing accumulates on a persistent
@@ -1604,6 +1764,12 @@ final class Drawer {
         renderTargets.removeAll(keepingCapacity: true)
         filterOps.removeAll(keepingCapacity: true)
         frameFilters.removeAll(keepingCapacity: true)
+        // Clip regions are per-frame (close any block left open by an early exit);
+        // the canvas needs a stencil only on frames that actually clip.
+        clipStack.removeAll(keepingCapacity: true)
+        activeClipLevel = 0
+        currentBatchClip = 0
+        usesClipStencil = false
         transform = matrix_identity_float3x3
         transformIsIdentity = true
         modelMatrix = matrix_identity_float4x4

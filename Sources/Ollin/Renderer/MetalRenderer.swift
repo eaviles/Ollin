@@ -91,6 +91,14 @@ final class MetalRenderer {
         /// plus depth, single-sample, blending off: the one MRT pipeline, so it gets its
         /// own descriptor branch in `makePipeline`.
         var isGBuffer = false
+        /// Set (to `.stencil8`) when the pass carries a stencil attachment (clipping is
+        /// active on that surface). Part of the key because *every* pipeline drawn into
+        /// a stencil-carrying pass must declare the format, clipped or not; a pass with
+        /// no stencil leaves it nil so those pipelines stay byte-identical.
+        var stencilFormat: MTLPixelFormat? = nil
+        /// A clip-write pipeline (the stencil-clipping push/pop): rasterizes into the
+        /// stencil only, with the color write mask empty and blending off.
+        var isClipWrite = false
 
         // an IBL bake pass (equirect→cube / irradiance / prefilter / BRDF LUT)
         static func ibl(_ fragment: String, color: MTLPixelFormat = .rgba16Float) -> PipelineKey {
@@ -225,6 +233,18 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_image_vertex", fragment: "ollin_depthscene_fragment",
                         blend: blend, premultiplied: true, depthFormat: depth)
         }
+        // clip push: rasterize the clip region's fill triangles into the stencil
+        // (increment where the current level passes); stencil-only, color masked off.
+        static func clipWrite(depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_vertex", fragment: "ollin_clip_fragment",
+                        depthFormat: depth, stencilFormat: .stencil8, isClipWrite: true)
+        }
+        // clip pop: one fullscreen triangle that decrements the popped level back
+        // wherever the push raised it; stencil-only, color masked off.
+        static func clipCover(depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_clip_cover_vertex", fragment: "ollin_clip_fragment",
+                        depthFormat: depth, stencilFormat: .stencil8, isClipWrite: true)
+        }
         // final fullscreen tone-map pass, float -> sRGB drawable
         static let present = PipelineKey(vertex: "ollin_present_vertex",
                                          fragment: "ollin_present_fragment", isPresent: true)
@@ -275,6 +295,8 @@ final class MetalRenderer {
                      : textured  ? .meshTextured(blend, depth: depth)
                                   : .mesh(blend, depth: depth)
             case .depthScene: return .depthScene(blend, depth: depth)
+            case .clipPush:   return .clipWrite(depth: depth)
+            case .clipPop:    return .clipCover(depth: depth)
             }
         }
     }
@@ -413,6 +435,51 @@ final class MetalRenderer {
         d.isDepthWriteEnabled = false
         return device.makeDepthStencilState(descriptor: d)
     }()
+
+    /// Depth-stencil states for the stencil-clipping path (`withClip`), built on first
+    /// use. The three content depth configs above each gain a variant that stencil-tests
+    /// `equal` against the batch's clip level (the reference value set per batch); the
+    /// two clip-write ops raise (`push`: increment where the enclosing level passes) and
+    /// lower (`pop`: decrement the popped level) the stencil without touching depth.
+    /// Only a stencil-carrying pass ever sets one, so the no-clip paths never look here.
+    struct ClipStateKey: Hashable {
+        enum Depth { case always, test, testNoWrite }
+        enum Stencil { case equal, push, pop }
+        var depth: Depth
+        var stencil: Stencil
+    }
+    private var clipDepthStencilStates: [ClipStateKey: MTLDepthStencilState] = [:]
+    func clipDepthStencilState(_ key: ClipStateKey) -> MTLDepthStencilState? {
+        if let cached = clipDepthStencilStates[key] { return cached }
+        let d = MTLDepthStencilDescriptor()
+        switch key.depth {
+        case .always:
+            d.depthCompareFunction = .always
+            d.isDepthWriteEnabled = false
+        case .test:
+            d.depthCompareFunction = .lessEqual
+            d.isDepthWriteEnabled = true
+        case .testNoWrite:
+            d.depthCompareFunction = .lessEqual
+            d.isDepthWriteEnabled = false
+        }
+        let s = MTLStencilDescriptor()
+        s.stencilCompareFunction = .equal
+        switch key.stencil {
+        case .equal: s.depthStencilPassOperation = .keep
+        case .push:  s.depthStencilPassOperation = .incrementClamp
+        case .pop:   s.depthStencilPassOperation = .decrementClamp
+        }
+        d.frontFaceStencil = s
+        d.backFaceStencil = s
+        let made = device.makeDepthStencilState(descriptor: d)
+        clipDepthStencilStates[key] = made
+        return made
+    }
+
+    /// Cached memoryless MSAA stencil attachments for clipping passes, one per size
+    /// (see `clipStencilTexture`). Tile-only, so reuse across passes and frames is safe.
+    var clipStencilTextures: [MTLTexture] = []
 
     /// Shadow mapping (opt-in via `castShadows()`). The depth pass from the casting
     /// light renders into `shadowMap` — a square `.private` depth texture sampled in
@@ -816,6 +883,10 @@ final class MetalRenderer {
                 passDepthFormat = depthPixelFormat
             }
         }
+        // A clipping frame (`withClip` on the canvas) adds a stencil attachment the
+        // same lazy way; an unclipped frame allocates none and stays byte-identical.
+        let passHasStencil = attachClipStencil(to: geomPass, active: drawer.usesClipStencil,
+                                               width: width, height: height)
 
         guard let commandBuffer = commandQueue.makeCommandBuffer() else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
@@ -898,7 +969,8 @@ final class MetalRenderer {
                pointBuffer: buffers.point, meshBuffer: buffers.mesh,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-               depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
+               depthFormat: passDepthFormat, stencil: passHasStencil,
+               shadowMap: renderedShadow.twoD,
                shadowCube: renderedShadow.cube,
                shadowAccel: renderedShadow.accel,
                reflectAccel: renderedShadow.reflectAccel,
@@ -940,6 +1012,10 @@ final class MetalRenderer {
             frameBoundary.signal()      // nothing encoded; hand the slot back
             return
         }
+        // Clipping works while accumulating too: the stencil is per-frame (cleared
+        // each pass) even though the color pile persists.
+        let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+                                               width: width, height: height)
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else {
             frameBoundary.signal()      // nothing encoded; hand the slot back
@@ -958,7 +1034,8 @@ final class MetalRenderer {
                sdfNodeBuffer: sdfNodeBuffer(at: frameIndex, for: drawer.sdfNodes.count),
                sdf3DGroupBuffer: sdf3DGroupBuffer(at: frameIndex, for: drawer.sdf3DGroups.count),
                sdf3DNodeBuffer: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count),
-               depthFormat: nil)   // 3D + accumulation isn't supported in M1
+               depthFormat: nil,   // 3D + accumulation isn't supported in M1
+               stencil: passHasStencil)
         encoder.endEncoding()
 
         // Present: tone-map the resolved float pile into the drawable. (The pile
@@ -982,6 +1059,8 @@ final class MetalRenderer {
               let pass = accumulationPass(drawer, width: width, height: height),
               let resolve = accumResolve, let display = accumDisplay,
               let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
+        let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+                                               width: width, height: height)
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
@@ -996,7 +1075,8 @@ final class MetalRenderer {
                sdfNodeBuffer: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
                sdf3DGroupBuffer: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
                sdf3DNodeBuffer: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count),
-               depthFormat: nil)   // 3D + accumulation isn't supported in M1
+               depthFormat: nil,   // 3D + accumulation isn't supported in M1
+               stencil: passHasStencil)
         encoder.endEncoding()
 
         // Tone-map the float pile into the sRGB display texture, then read that back.
@@ -1155,6 +1235,9 @@ final class MetalRenderer {
             pass.depthAttachment.storeAction = .dontCare
             passDepthFormat = depthPixelFormat
         }
+        // A clipping frame adds a stencil attachment, so exports clip like the window.
+        let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+                                               width: width, height: height)
 
         let bytesPerRow = width * 4
         let byteCount = bytesPerRow * height
@@ -1231,7 +1314,8 @@ final class MetalRenderer {
                pointBuffer: buffers.point, meshBuffer: buffers.mesh,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-               depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
+               depthFormat: passDepthFormat, stencil: passHasStencil,
+               shadowMap: renderedShadow.twoD,
                shadowCube: renderedShadow.cube,
                shadowAccel: renderedShadow.accel,
                reflectAccel: renderedShadow.reflectAccel,
@@ -1308,6 +1392,8 @@ final class MetalRenderer {
                 pass.depthAttachment.storeAction = .dontCare
                 passDepthFormat = depthPixelFormat
             }
+            let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+                                                   width: width, height: height)
             guard let cb = commandQueue.makeCommandBuffer() else { continue }
             encodeCompute(drawer, into: cb)
             _ = resolveIBL(for: drawer.environment, commandBuffer: cb)   // bake IBL once
@@ -1345,7 +1431,8 @@ final class MetalRenderer {
                    pointBuffer: buffers.point, meshBuffer: buffers.mesh,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                   depthFormat: passDepthFormat, shadowMap: renderedShadow.twoD,
+                   depthFormat: passDepthFormat, stencil: passHasStencil,
+                   shadowMap: renderedShadow.twoD,
                    shadowCube: renderedShadow.cube, shadowAccel: renderedShadow.accel,
                    reflectAccel: renderedShadow.reflectAccel,
                    reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
@@ -1398,6 +1485,8 @@ final class MetalRenderer {
         pass.colorAttachments[0].loadAction = .clear
         pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
         pass.colorAttachments[0].storeAction = .multisampleResolve
+        let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+                                               width: width, height: height)
 
         guard let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
@@ -1414,7 +1503,8 @@ final class MetalRenderer {
                sdfNodeBuffer: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
                sdf3DGroupBuffer: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
                sdf3DNodeBuffer: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count),
-               depthFormat: nil)   // 3D over the texture/Syphon hand-off isn't supported in M1
+               depthFormat: nil,   // 3D over the texture/Syphon hand-off isn't supported in M1
+               stencil: passHasStencil)
         encoder.endEncoding()
 
         // Tone-map the resolved float frame into the sRGB display texture handed out.

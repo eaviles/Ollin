@@ -16,7 +16,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
 - **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape), [drawCurve](#curve)
 - **Batches:** [drawCircles](#batches), [drawPoints](#batches), [drawRects](#batches)
-- **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [symmetry / noSymmetry](#symmetry), [withState](#isolated), [pushState / popState](#push)
+- **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [symmetry / noSymmetry](#symmetry), [withClip](#clip), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
 
@@ -1042,6 +1042,45 @@ drawCircle(0, 0, 26)               // the center medallion, drawn once
 ```
 
 Replication covers all 2D drawing (shapes, strokes, images, text, SDF fields) and rides into SVG export; 3D geometry and GPU particles are untouched. Each copy is real geometry, so `folds` also multiplies the drawing cost, exactly as the equivalent loop would. See the [`Patterns/Kaleidoscope`](../../Examples/Patterns/Kaleidoscope/Sketch.swift) example.
+
+<a name="clip"></a>
+
+#### withClip
+
+```swift
+withClip(_ shape: Shape, _ body: () -> Void)
+withClip(_ rect: Rectangle, _ body: () -> Void)
+withClip(_ circle: Circle, _ body: () -> Void)
+```
+
+Run `body` with drawing confined to the region: a stencil mask, so everything drawn inside the block (fills, strokes, images, text, even 3D geometry) lands only where the region covers, and the previous clip is restored when the block ends. Any vector `Shape` works, holes and concavity included (its `winding` rule is honored; open contours don't fill, so a shape with no fillable region clips everything out).
+
+```
+  withClip(shape) { … }: the block's drawing exists only INSIDE the region.
+
+     ┌─────────────┐        stripes drawn full-canvas
+     │   ▛▀▀▀▀▀▜   │        inside withClip(star) appear
+     │  ▐ ▒▒▒▒▒ ▌  │        only where the star is;
+     │   ▙▄▄▄▄▄▟   │        the canvas outside stays
+     └─────────────┘        untouched.
+
+  Nesting intersects:  withClip(a) { withClip(b) { … } }  →  a ∩ b
+```
+
+The region is fixed where the current transform places it at the call, like a drawn fill; transforms inside the block move the *drawing*, not the clip. Like `withState` (and `layer { }`), any drawing state the block changes is restored on exit. The clip edge anti-aliases at MSAA resolution, and the region rides into [SVG export](../Output/Export.md) as a native `<clipPath>`.
+
+```swift
+translate(width / 2, height / 2)
+withClip(Circle(x: 0, y: 0, radius: 300)) {
+    for i in 0 ..< 24 {                     // stripes exist only in the disk
+        fill(i % 2 == 0 ? .white : .black)
+        drawRect(Double(i) * 30 - 360, -360, 30, 720)
+    }
+}
+drawCircle(0, 0, 12)                        // after the block: unclipped
+```
+
+Clipping is scoped to the current drawing surface: a `layer { }` opened inside a clip block starts unclipped (clip inside the layer's own block instead). For masking a whole layer with soft edges or an image matte, reach for [`masked(by:)`](Effects.md) in the effects tier; `withClip` is the cheaper, geometric tool for "keep this drawing inside that region" mid-frame. See the [`Shapes/Clipping`](../../Examples/Shapes/Clipping/Sketch.swift) example.
 
 <a name="isolated"></a>
 

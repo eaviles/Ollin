@@ -92,6 +92,9 @@ extension MetalRenderer {
                 pass.depthAttachment.depthResolveFilter = .min
                 depthResolve = depth.resolve
             }
+            // A clip pushed inside this layer gives its pass a stencil attachment.
+            let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
+                                                   width: pw, height: ph)
             guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
             // Geometry inside the block used canvas coordinates, so map by the logical
             // size; a fraction-res layer's smaller attachment just downsamples.
@@ -100,7 +103,8 @@ extension MetalRenderer {
                    glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                   depthFormat: depthResolve != nil ? depthPixelFormat : nil, target: target)
+                   depthFormat: depthResolve != nil ? depthPixelFormat : nil,
+                   stencil: passHasStencil, target: target)
             enc.endEncoding()
             target.texture = tex.resolve
             // Expose the scene's depth as a gray layer when the sketch read `.depth`:
@@ -157,13 +161,15 @@ extension MetalRenderer {
             pass.colorAttachments[0].loadAction = .clear
             pass.colorAttachments[0].clearColor = target.clearColor.mtlClearColor
             pass.colorAttachments[0].storeAction = .multisampleResolve
+            let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
+                                                   width: pw, height: ph)
             guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
                    glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                   depthFormat: nil, target: target)
+                   depthFormat: nil, stencil: passHasStencil, target: target)
             enc.endEncoding()
             target.texture = back                // `image` resolves to this frame
             feedbackUsedThisFrame.insert(ObjectIdentifier(fb))
@@ -198,13 +204,15 @@ extension MetalRenderer {
             pass.colorAttachments[0].loadAction = .clear
             pass.colorAttachments[0].clearColor = target.clearColor.mtlClearColor
             pass.colorAttachments[0].storeAction = .multisampleResolve
+            let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
+                                                   width: pw, height: ph)
             if let enc = cb.makeRenderCommandEncoder(descriptor: pass) {
                 encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                        triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
                        glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                       depthFormat: nil, target: target)
+                       depthFormat: nil, stencil: passHasStencil, target: target)
                 enc.endEncoding()
             }
             if let config = sf.sim.fluidConfig {
@@ -1288,7 +1296,9 @@ extension MetalRenderer {
                         pointBuffer: MTLBuffer?, meshBuffer: MTLBuffer?,
                         sdfGroupBuffer: MTLBuffer? = nil, sdfNodeBuffer: MTLBuffer? = nil,
                         sdf3DGroupBuffer: MTLBuffer? = nil, sdf3DNodeBuffer: MTLBuffer? = nil,
-                        depthFormat: MTLPixelFormat?, shadowMap: MTLTexture? = nil,
+                        depthFormat: MTLPixelFormat?,
+                        stencil hasStencil: Bool = false,
+                        shadowMap: MTLTexture? = nil,
                         shadowCube: MTLTexture? = nil,
                         shadowAccel: MTLAccelerationStructure? = nil,
                         reflectAccel: MTLAccelerationStructure? = nil,
@@ -1394,11 +1404,15 @@ extension MetalRenderer {
         // frame with it (a fullscreen view-ray cube sample) before the geometry, with depth
         // disabled, so the depth-tested meshes composite in front and a mirror's reflection
         // matches what's behind it. The per-batch loop resets the pipeline + depth state.
+        var skyKey = PipelineKey.skybox(depth: depthFormat)
+        if hasStencil { skyKey.stencilFormat = .stencil8 }
         if lighting.iblEnabled != 0, drawer.environment?.showsBackground == true,
            var skyUniforms = uniforms3D, let skyTex = currentIBLSkyboxTexture,
-           let skyPipe = try? pipeline(.skybox(depth: depthFormat)) {
+           let skyPipe = try? pipeline(skyKey) {
             encoder.setRenderPipelineState(skyPipe)
-            encoder.setDepthStencilState(nil)   // always-pass, no write
+            // Always-pass, no write. The explicit state, not nil: the Metal
+            // validation layer rejects a nil depth-stencil state.
+            encoder.setDepthStencilState(noDepthState)
             encoder.setFragmentBytes(&skyUniforms, length: MemoryLayout<Uniforms3D>.stride, index: 0)
             // params.y is the auto-exposure-normalized intensity (shared with the lighting);
             // params.z the backdrop blur as an equirect mip LOD. The blur is the user's value
@@ -1490,34 +1504,77 @@ extension MetalRenderer {
             // skips target-tagged runs, and a target pass skips everything but its
             // own. `next` stays the globally-next batch so the buffer range is right.
             if batch.target !== passTarget { continue }
+            // A clip batch without a stencil attachment can't draw (its pipeline
+            // declares the stencil format); skip it, so a failed stencil allocation
+            // degrades to unclipped drawing rather than a validation error.
+            if !hasStencil, batch.kind == .clipPush || batch.kind == .clipPop { continue }
             // The pipeline for this batch's geometry kind, blend mode, *and* the
             // pass's depth format; built on first use of a combination. A mesh batch
             // selects its variant: wireframe (edges only) or textured (a material
-            // texture). Skip the batch if it can't be built (never expected — same shaders).
+            // texture). Skip the batch if it can't be built (never expected; same shaders).
             let meshWireframe = batch.kind == .mesh3D && batch.meshWireframe
             let meshGrid = batch.kind == .mesh3D && batch.meshGrid
             let meshMatcap = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid && batch.matcap != nil
             let meshTextured = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid && !meshMatcap && batch.material?.texture != nil
-            guard let state = try? pipeline(.forBatch(batch.kind, batch.blendMode, depth: depthFormat,
-                                                      textured: meshTextured, wireframe: meshWireframe,
-                                                      matcap: meshMatcap, grid: meshGrid)) else { continue }
+            var pipelineKey = PipelineKey.forBatch(batch.kind, batch.blendMode, depth: depthFormat,
+                                                   textured: meshTextured, wireframe: meshWireframe,
+                                                   matcap: meshMatcap, grid: meshGrid)
+            // A stencil-carrying pass (clipping active) needs every pipeline in it
+            // to declare the stencil format, clipped or not.
+            if hasStencil { pipelineKey.stencilFormat = .stencil8 }
+            guard let state = try? pipeline(pipelineKey) else { continue }
             // In a depth pass (active camera): 3D batches z-test + write depth. A 2D
-            // batch that opted into a depth (`depth(at:)`) does too — its constant
+            // batch that opted into a depth (`depth(at:)`) does too: its constant
             // clip-z is fed to the 2D vertex shader so it occludes / is occluded by
-            // 3D geometry — while a plain 2D batch leaves depth alone (clip-z 0) and
+            // 3D geometry, while a plain 2D batch leaves depth alone (clip-z 0) and
             // composites over in draw order. With no depth attachment the encoder
             // keeps its default state, so 2D-only frames are byte-identical to before.
-            if depthFormat != nil {
+            // A stencil pass layers the clip test on top: a content batch at a clip
+            // level tests `equal` against it (the reference value), the clip push/pop
+            // batches raise and lower it, and level-0 batches keep the plain states.
+            if depthFormat != nil || hasStencil {
                 // 3D splats, a depth-scene backdrop, and any depth-placed 2D batch
                 // z-test + write; a plain 2D batch leaves depth alone. The depth
                 // scene and 3D batches set their own clip-z (a fragment SV_Depth and
                 // the camera projection), so only plain 2D batches feed `clipDepth`.
-                let wantsDepth = batch.kind == .points3D || batch.kind == .mesh3D
-                    || batch.kind == .depthScene || batch.kind == .sdfGroup3D || batch.depth != nil
-                // The grid z-tests but doesn't write depth (occluded by the scene, occludes nothing).
-                encoder.setDepthStencilState(meshGrid ? depthTestNoWriteState
-                                             : (wantsDepth ? depthTestState : noDepthState))
-                if batch.kind != .points3D && batch.kind != .mesh3D && batch.kind != .depthScene && batch.kind != .sdfGroup3D {
+                let wantsDepth = depthFormat != nil && (batch.kind == .points3D || batch.kind == .mesh3D
+                    || batch.kind == .depthScene || batch.kind == .sdfGroup3D || batch.depth != nil)
+                if hasStencil {
+                    switch batch.kind {
+                    case .clipPush:
+                        // Raise the level where the enclosing level passes, so nested
+                        // clips intersect. Depth is untouched.
+                        encoder.setDepthStencilState(
+                            clipDepthStencilState(ClipStateKey(depth: .always, stencil: .push)))
+                        encoder.setStencilReferenceValue(UInt32(max(0, batch.clipLevel - 1)))
+                    case .clipPop:
+                        // Lower the popped level back, everywhere it was raised.
+                        encoder.setDepthStencilState(
+                            clipDepthStencilState(ClipStateKey(depth: .always, stencil: .pop)))
+                        encoder.setStencilReferenceValue(UInt32(batch.clipLevel))
+                    default:
+                        if batch.clipLevel > 0 {
+                            let depthMode: ClipStateKey.Depth = meshGrid ? .testNoWrite
+                                : (wantsDepth ? .test : .always)
+                            encoder.setDepthStencilState(
+                                clipDepthStencilState(ClipStateKey(depth: depthMode, stencil: .equal)))
+                            encoder.setStencilReferenceValue(UInt32(batch.clipLevel))
+                        } else if depthFormat != nil {
+                            encoder.setDepthStencilState(meshGrid ? depthTestNoWriteState
+                                                         : (wantsDepth ? depthTestState : noDepthState))
+                        } else {
+                            // Unclipped content in a stencil-only pass: back to
+                            // always-pass (nil is rejected by the validation layer).
+                            encoder.setDepthStencilState(noDepthState)
+                        }
+                    }
+                } else {
+                    // The grid z-tests but doesn't write depth (occluded by the scene, occludes nothing).
+                    encoder.setDepthStencilState(meshGrid ? depthTestNoWriteState
+                                                 : (wantsDepth ? depthTestState : noDepthState))
+                }
+                if depthFormat != nil,
+                   batch.kind != .points3D && batch.kind != .mesh3D && batch.kind != .depthScene && batch.kind != .sdfGroup3D {
                     uniforms.clipDepth = batch.depth ?? 0
                     encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
                 }
@@ -1564,7 +1621,9 @@ extension MetalRenderer {
                 if let hf = halfResField {
                     if compositedHalfResFields { continue }
                     compositedHalfResFields = true
-                    guard let upState = try? pipeline(.raymarchUpsample(depth: depthFormat ?? depthPixelFormat)) else { continue }
+                    var upKey = PipelineKey.raymarchUpsample(depth: depthFormat ?? depthPixelFormat)
+                    if hasStencil { upKey.stencilFormat = .stencil8 }
+                    guard let upState = try? pipeline(upKey) else { continue }
                     encoder.setRenderPipelineState(upState)
                     var region = hf.region
                     encoder.setFragmentBytes(&region, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
@@ -1773,6 +1832,22 @@ extension MetalRenderer {
                 encoder.setFragmentTexture(depthTex, index: 1)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+            case .clipPush:
+                // The clip region's fill triangles, drawn stencil-only (color masked
+                // off; the increment state + reference were set above). Rides the
+                // triangle buffer like a `.triangles` run.
+                let end = next?.vertexStart ?? vertices.count
+                let count = end - batch.vertexStart
+                guard count > 0, let triangleBuffer else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(triangleBuffer, offset: batch.vertexStart * vertexStride, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+            case .clipPop:
+                // One fullscreen triangle decrementing the popped level (state +
+                // reference set above); the vertex stage synthesizes its corners,
+                // so no buffer is bound.
+                encoder.setRenderPipelineState(state)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
             }
         }
     }

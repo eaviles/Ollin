@@ -233,6 +233,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Swift.md` (language primer) | Ch 1 callouts, Appendix A | taught |
 | `Drawing/Drawing.md` (shapes, state, transforms) | Ch 1, Ch 6 | taught |
 | Kaleidoscope symmetry (`symmetry`/`noSymmetry`, in `Drawing/Drawing.md`) | Ch 6 | pointed |
+| Clipping (`withClip`, in `Drawing/Drawing.md`) | Ch 6 | pointed |
 | `Drawing/Color.md` (Color, OKLab, palettes, colormaps) | Ch 2 | taught |
 | Gradient paint (`Drawing/Color.md`) | Ch 2 | taught |
 | `Helpers/Math.md` (map, lerp, dist; the shaping scalars clamp/fract/step/smoothstep) | Ch 3, Appendix B | taught |
@@ -321,7 +322,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Retained geometry buffers | internal; Appendix D note at most |
 | More SDF shapes | Ch 18 / Appendix D |
 | More model examples (ModelTracker) | Ch 21 |
-| Clipping as drawing state | Ch 6 or 14 |
 | Reproducibility metadata in exports | Ch 4 + Ch 22 |
 | Generative-geometry refinements | Ch 11 |
 | Technique catalog: fractals | Ch 11 (may grow into its own chapter) |

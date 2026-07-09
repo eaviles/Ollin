@@ -614,6 +614,7 @@ let package = Package(
         example("Shapes/ShapeMenagerie"),
         example("Shapes/Primitives"),
         example("Shapes/Booleans"),
+        example("Shapes/Clipping"),
         example("Shapes/InkRibbon"),
         example("Shapes/RubberBand"),
         example("Shapes/SVGImport", resources: [.copy("rocket.svg")]),

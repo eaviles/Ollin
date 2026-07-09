@@ -325,6 +325,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("symmetry",
                  note: "One wedge of drawing folded by symmetry(6, mirrored: true) around an off-axis pivot, over every replicated 2D path: an SDF circle and star, a tessellated polygon fill with its fringe outline, a stroked polyline, a smooth-union SDF field, and bitmap text; a center dot lands once after noSymmetry(). Pins the CTM-conjugated fold matrices, the per-path replication (instances, range copies, group instances), and the on/off scoping. No time, deterministic.",
                  make: { SymmetryScene() }),
+    SnapshotCase("clip",
+                 note: "Stencil clipping (withClip): a stripe pattern, SDF circles, and a fringe stroke confined to a star-shaped region; a nested circle clip that intersects it; unclipped drawing after the pop crossing the old boundary; and a rect-clipped text run. Pins the clip push/pop stencil levels, per-batch clip state across the SDF/triangle/fringe/glyph paths, and the pop restoring level 0. No time, deterministic.",
+                 make: { ClipScene() }),
 ]
 
 /// The ray-tracing-gated snapshots: on a ray-tracing GPU a point caster resolves to the RT
@@ -3404,5 +3407,57 @@ private final class SymmetryScene: Sketch {
         noSymmetry()
         fill(.white)
         drawCircle(0, 0, 7)
+    }
+}
+
+/// Stencil clipping across the batch paths: a star-shaped `withClip` confining
+/// tessellated stripes, SDF circles, and a fringe stroke; a nested circle clip
+/// intersecting it; drawing after the pop crossing the old boundary unclipped;
+/// and a rect-clipped bitmap-text run. `time`-free, so it's deterministic.
+private final class ClipScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101418))
+        // A star-shaped region built as a plain vector Shape.
+        var starPoints: [Vector2] = []
+        for k in 0..<14 {
+            let radius = k % 2 == 0 ? 78.0 : 40.0
+            let a = Double(k) / 14 * 2 * .pi - .pi / 2
+            starPoints.append(Vector2(96 + cos(a) * radius, 100 + sin(a) * radius))
+        }
+        withClip(Shape(starPoints)) {
+            // Tessellated stripes exist only inside the star.
+            noStroke()
+            for i in 0..<16 {
+                fill(i % 2 == 0 ? Color(hex: 0x2EC4B6) : Color(hex: 0x1B6B62))
+                drawPolygon([Vector2(Double(i) * 16, 0), Vector2(Double(i) * 16 + 16, 0),
+                             Vector2(Double(i) * 16 + 16, 256), Vector2(Double(i) * 16, 256)])
+            }
+            // An SDF circle and a fringe stroke cross the boundary and get cut.
+            fill(Color(hex: 0xF6511D))
+            drawCircle(96, 100, 34)
+            stroke(.white)
+            strokeWeight(3)
+            drawLine(0, 60, 256, 150)
+            // Nested clip: the purple fill shows only where circle intersects star.
+            withClip(Circle(x: 140, y: 118, radius: 46)) {
+                noStroke()
+                fill(Color(hex: 0xB388EB))
+                drawRect(0, 0, 256, 256)
+            }
+        }
+        // After the pop: unclipped drawing crosses the old boundary untouched.
+        noFill()
+        stroke(Color(hex: 0x9BF6FF))
+        strokeWeight(2)
+        drawCircle(96, 100, 88)
+        // A rect clip cutting a bitmap-text run (the glyph-atlas quad path).
+        withClip(Rectangle(x: 128, y: 196, width: 84, height: 36)) {
+            fill(Color(hex: 0xFFD166))
+            textFont(BitmapFont.builtin)
+            textSize(14)
+            drawText("clipped text runs long", 96, 220)
+        }
     }
 }

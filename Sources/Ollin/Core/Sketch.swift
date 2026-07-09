@@ -1807,6 +1807,40 @@ open class Sketch {
         body()
     }
 
+    /// Run `body` with drawing confined to `shape`'s filled region, restoring the
+    /// previous clip (and any drawing state the block changed, like `withState`)
+    /// on exit. The region honors the shape's `winding` rule and is fixed where
+    /// the current transform places it, like a drawn fill; nesting intersects
+    /// regions. Everything drawn inside is clipped: fills, strokes, images, text,
+    /// even 3D geometry, with the edge anti-aliased at MSAA resolution. Clipping
+    /// is scoped to the current drawing surface, so a `layer { }` opened inside
+    /// starts unclipped (clip inside the layer block instead).
+    public func withClip(_ shape: Shape, _ body: () -> Void) {
+        drawer.withClip(shape, body)
+    }
+
+    /// Run `body` with drawing confined to `rect`.
+    public func withClip(_ rect: Rectangle, _ body: () -> Void) {
+        drawer.withClip(Shape([
+            Vector2(rect.x, rect.y),
+            Vector2(rect.x + rect.width, rect.y),
+            Vector2(rect.x + rect.width, rect.y + rect.height),
+            Vector2(rect.x, rect.y + rect.height),
+        ]), body)
+    }
+
+    /// Run `body` with drawing confined to `circle`. The circle is flattened to a
+    /// fine polygon for the clip (like the vector exporters), dense enough that
+    /// the edge reads round at canvas resolution.
+    public func withClip(_ circle: Circle, _ body: () -> Void) {
+        let n = max(48, Int((circle.radius * 0.8).rounded(.up)))
+        let points = (0..<n).map { k -> Vector2 in
+            let a = 2 * Double.pi * Double(k) / Double(n)
+            return circle.center + Vector2(cos(a) * circle.radius, sin(a) * circle.radius)
+        }
+        drawer.withClip(Shape(points), body)
+    }
+
     // MARK: Runner plumbing (called by SketchRunner)
 
     func setCanvasSize(width: Double, height: Double) {

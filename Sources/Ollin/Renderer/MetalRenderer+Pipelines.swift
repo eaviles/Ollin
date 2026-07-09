@@ -125,7 +125,8 @@ extension MetalRenderer {
         }
         return try makePipeline(vertex: key.vertex, fragment: key.fragment, using: library,
                                 premultiplied: key.premultiplied, blend: key.blend,
-                                depthFormat: key.depthFormat, singleSample: key.singleSample)
+                                depthFormat: key.depthFormat, singleSample: key.singleSample,
+                                stencilFormat: key.stencilFormat, clipWrite: key.isClipWrite)
     }
 
     /// A shadow pass pipeline. Two shapes share this factory: the **2D map**
@@ -212,7 +213,9 @@ extension MetalRenderer {
                               premultiplied: Bool = false,
                               blend: BlendMode = .normal,
                               depthFormat: MTLPixelFormat? = nil,
-                              singleSample: Bool = false) throws -> MTLRenderPipelineState {
+                              singleSample: Bool = false,
+                              stencilFormat: MTLPixelFormat? = nil,
+                              clipWrite: Bool = false) throws -> MTLRenderPipelineState {
         guard let vertexFunction = library.makeFunction(name: vertex),
               let fragmentFunction = library.makeFunction(name: fragment) else {
             throw RendererError.shaderFunctions
@@ -230,11 +233,23 @@ extension MetalRenderer {
         if let depthFormat {
             descriptor.depthAttachmentPixelFormat = depthFormat
         }
+        // A stencil-carrying pass (clipping active) needs *every* pipeline drawn into
+        // it to declare the stencil format; a pass without one leaves it unset.
+        if let stencilFormat {
+            descriptor.stencilAttachmentPixelFormat = stencilFormat
+        }
 
         let state = blend.blendState(premultiplied: premultiplied)
         let attachment = descriptor.colorAttachments[0]!
         // Geometry composites into the linear-float intermediate, not the drawable.
         attachment.pixelFormat = linearFormat
+        if clipWrite {
+            // The clip push/pop draw only into the stencil: color fully masked off,
+            // blending irrelevant (and disabled).
+            attachment.writeMask = []
+            attachment.isBlendingEnabled = false
+            return try device.makeRenderPipelineState(descriptor: descriptor)
+        }
         attachment.isBlendingEnabled = true
         attachment.rgbBlendOperation = state.colorOperation
         attachment.alphaBlendOperation = state.alphaOperation

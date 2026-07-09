@@ -44,10 +44,19 @@ struct RecordedSVG {
     var transform: simd_float3x3
 }
 
+/// One recorded event: a drawn primitive, or a clip-region boundary (`withClip`).
+/// Clip pushes/pops serialize as native `<clipPath>` defs referenced by nested
+/// `<g clip-path=…>` groups, so the vector output clips exactly like the render.
+enum SVGCommand {
+    case draw(RecordedSVG)
+    case clipPush(shape: Shape, transform: simd_float3x3)
+    case clipPop
+}
+
 /// Accumulates the recorded primitives for one frame. Held by the `Drawer` while
 /// an SVG export is in flight (`Drawer.svgRecorder`).
 final class SVGRecorder {
-    var commands: [RecordedSVG] = []
+    var commands: [SVGCommand] = []
     /// `drawImage` calls dropped from the vector output (raster has no place in an
     /// SVG/plotter file); surfaced as a comment so the omission is visible.
     var skippedImages = 0
@@ -59,15 +68,21 @@ final class SVGRecorder {
 /// outline) so the frame plots on a pen — see `Hatching`. Stroke-only geometry
 /// (lines, curves, polylines, and unfilled shapes) passes through untouched.
 ///
-/// The hatch is computed in *device* space — each fill's outline is pushed
-/// through its CTM first — so the line spacing is uniform on the page regardless
+/// The hatch is computed in *device* space (each fill's outline is pushed
+/// through its CTM first) so the line spacing is uniform on the page regardless
 /// of a sketch's transforms; the emitted polylines carry the identity transform.
-func applyHatching(_ commands: [RecordedSVG], _ options: Hatching) -> [RecordedSVG] {
-    var out: [RecordedSVG] = []
-    for command in commands {
+/// Clip boundaries pass through untouched, so hatch lines emitted inside a clip
+/// group stay clipped by it.
+func applyHatching(_ commands: [SVGCommand], _ options: Hatching) -> [SVGCommand] {
+    var out: [SVGCommand] = []
+    for event in commands {
+        guard case let .draw(command) = event else {
+            out.append(event)                    // clip boundaries pass through
+            continue
+        }
         guard let fill = command.style.fill,
               let (contours, winding) = fillContours(command.geometry) else {
-            out.append(command)                  // nothing to fill — leave as-is
+            out.append(event)                    // nothing to fill; leave as-is
             continue
         }
         // Tone → density: a darker, more opaque fill hatches more tightly. A
@@ -81,8 +96,8 @@ func applyHatching(_ commands: [RecordedSVG], _ options: Hatching) -> [RecordedS
                                join: .miter, cap: .butt)
             for line in hatchLines(device, winding: winding, spacing: spacing,
                                    angle: options.angle, crossHatch: options.crossHatch) {
-                out.append(RecordedSVG(geometry: .polyline(line), style: pen,
-                                       transform: matrix_identity_float3x3))
+                out.append(.draw(RecordedSVG(geometry: .polyline(line), style: pen,
+                                             transform: matrix_identity_float3x3)))
             }
         }
         if options.keepOutline {
@@ -92,8 +107,8 @@ func applyHatching(_ commands: [RecordedSVG], _ options: Hatching) -> [RecordedS
                 style.stroke = .color(opaque(tone))
                 style.strokeWidth = options.penWidth
             }
-            out.append(RecordedSVG(geometry: command.geometry, style: style,
-                                   transform: command.transform))
+            out.append(.draw(RecordedSVG(geometry: command.geometry, style: style,
+                                         transform: command.transform)))
         }
     }
     return out
@@ -179,35 +194,78 @@ private func transformed(_ p: Vector2, _ m: simd_float3x3) -> Vector2 {
 /// user space (so they transform with the element, matching the render);
 /// along-path strokes are split into short solid runs first, and along-path
 /// fills (the conic sweep) fall back to the ramp's midpoint color.
-func serializeSVG(_ commands: [RecordedSVG], background: Color,
+func serializeSVG(_ commands: [SVGCommand], background: Color,
                   width: Int, height: Int, skippedImages: Int = 0) -> String {
     let resolved = approximateAlongPaths(commands)
     let (defs, ids) = gradientDefs(resolved)
+    let (clipDefs, clipIDs) = clipPathDefs(resolved)
     var out = """
     <?xml version="1.0" encoding="UTF-8"?>
     <svg xmlns="http://www.w3.org/2000/svg" width="\(width)" height="\(height)" viewBox="0 0 \(width) \(height)">
 
     """
-    out += defs
+    out += defs + clipDefs
     out += "  <rect width=\"\(width)\" height=\"\(height)\" fill=\"\(svgColor(background))\"\(svgOpacity("fill", background))/>\n"
     if skippedImages > 0 {
         out += "  <!-- \(skippedImages) image draw(s) skipped: raster is omitted from vector export -->\n"
     }
-    for command in resolved {
-        out += "  " + svgElement(command, ids) + "\n"
+    // Clip regions serialize as nested groups referencing the defs above, so
+    // nesting intersects exactly like the render's stencil levels.
+    var open = 0, pushIndex = 0
+    func indent() -> String { String(repeating: "  ", count: open + 1) }
+    for event in resolved {
+        switch event {
+        case .draw(let command):
+            out += indent() + svgElement(command, ids) + "\n"
+        case .clipPush:
+            out += indent() + "<g clip-path=\"url(#\(clipIDs[pushIndex]))\">\n"
+            pushIndex += 1
+            open += 1
+        case .clipPop:
+            if open > 0 {
+                open -= 1
+                out += indent() + "</g>\n"
+            }
+        }
+    }
+    while open > 0 {   // balance a block left open by an early exit
+        open -= 1
+        out += indent() + "</g>\n"
     }
     out += "</svg>\n"
     return out
+}
+
+/// One `<clipPath>` def per recorded clip push, in push order; `clipIDs[k]` is the
+/// id the k-th push's group references. The clip shape keeps its own CTM inside
+/// the def (userSpaceOnUse semantics), matching how the region was placed.
+private func clipPathDefs(_ commands: [SVGCommand]) -> (defs: String, ids: [String]) {
+    var ids: [String] = []
+    var lines: [String] = []
+    for event in commands {
+        guard case let .clipPush(shape, transform) = event else { continue }
+        let id = "clip\(ids.count)"
+        ids.append(id)
+        lines.append("    <clipPath id=\"\(id)\">")
+        let rule = shape.winding == .evenOdd ? " clip-rule=\"evenodd\"" : ""
+        lines.append("      <path d=\"\(pathData(shape))\"\(rule)\(matrixAttr(transform))/>")
+        lines.append("    </clipPath>")
+    }
+    guard !lines.isEmpty else { return ("", ids) }
+    return ("  <defs>\n" + lines.joined(separator: "\n") + "\n  </defs>\n", ids)
 }
 
 /// Replace along-path paints with what SVG can express: a gradient *stroke*
 /// following a path becomes a run of short solid segments (one `<line>` per
 /// piece, round-capped so they chain seamlessly), and an along-path *fill* —
 /// the conic sweep — becomes its ramp's midpoint color.
-private func approximateAlongPaths(_ commands: [RecordedSVG]) -> [RecordedSVG] {
-    var out: [RecordedSVG] = []
-    for command in commands {
-        var command = command
+private func approximateAlongPaths(_ commands: [SVGCommand]) -> [SVGCommand] {
+    var out: [SVGCommand] = []
+    for event in commands {
+        guard case .draw(var command) = event else {
+            out.append(event)   // clip boundaries pass through
+            continue
+        }
         var runs: [RecordedSVG] = []
         if case .gradient(let g) = command.style.stroke, g.geometry == .alongPath,
            let split = alongStrokeRuns(command, g) {
@@ -218,9 +276,9 @@ private func approximateAlongPaths(_ commands: [RecordedSVG]) -> [RecordedSVG] {
             command.style.fill = .color(g.ramp.color(at: 0.5))
         }
         if command.style.fill != nil || command.style.stroke != nil {
-            out.append(command)
+            out.append(.draw(command))
         }
-        out.append(contentsOf: runs)
+        out.append(contentsOf: runs.map { .draw($0) })
     }
     return out
 }
@@ -287,7 +345,7 @@ private func alongStrokeRuns(_ command: RecordedSVG, _ gradient: Gradient) -> [R
 /// `url(#…)` references. `userSpaceOnUse` puts the coordinates in the same
 /// pre-CTM space the geometry is recorded in, so an element's `transform`
 /// carries its gradient along — exactly the render semantics.
-private func gradientDefs(_ commands: [RecordedSVG]) -> (defs: String, ids: [Gradient: String]) {
+private func gradientDefs(_ commands: [SVGCommand]) -> (defs: String, ids: [Gradient: String]) {
     var ids: [Gradient: String] = [:]
     var lines: [String] = []
     func register(_ paint: Paint?) {
@@ -311,7 +369,8 @@ private func gradientDefs(_ commands: [RecordedSVG]) -> (defs: String, ids: [Gra
             break   // resolved by approximateAlongPaths before serialization
         }
     }
-    for command in commands {
+    for event in commands {
+        guard case let .draw(command) = event else { continue }
         register(command.style.fill)
         register(command.style.stroke)
     }
