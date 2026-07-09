@@ -4,7 +4,7 @@
 
 ## Export
 
-Save what a sketch draws — as raster (PNG frames and image sequences), as **motion** (a video file or an animated GIF, encoded directly), or as **vector** (SVG, for pen plotters and any vector pipeline). Export runs the sketch *headlessly*: it calls `setup()`, advances the clock to the frame you ask for, runs `draw()`, and writes the result. No window opens, so the same call works from a script or a render farm.
+Save what a sketch draws: as raster (PNG frames and image sequences), as **motion** (a video file or an animated GIF, encoded directly), or as **vector** (SVG for pen plotters and any vector pipeline, PDF for print). Export runs the sketch *headlessly*: it calls `setup()`, advances the clock to the frame you ask for, runs `draw()`, and writes the result. No window opens, so the same call works from a script or a render farm.
 
 Most exports are reached by a command-line flag on any example's executable; the same work is available as functions on `OllinApp` if you're driving it yourself. A loose sketch file (one you run through the live host, no target of its own) gets the identical flag surface through `OllinLive`, which compiles the file and runs the export headlessly instead of opening a window:
 
@@ -20,9 +20,10 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Video](#video) — `--export-video`, `OllinApp.exportVideo`
 - [Animated GIF](#animated-gif) — `--export-gif`, `OllinApp.exportGIF`
 - [Perfect loops](#perfect-loops): `--export-loop`, `Sketch.loopDuration`
-- [Vector: SVG](#vector-svg) — `--export-svg`, `OllinApp.svg` / `exportSVG`
-- [What SVG export records](#what-svg-export-records) — the shape mapping and the limits
-- [Hatching: solid fills for a pen plotter](#hatching-solid-fills-for-a-pen-plotter) — `--hatch`, `Hatching`
+- [Vector: SVG](#vector-svg): `--export-svg`, `OllinApp.svg` / `exportSVG`
+- [Vector: PDF](#vector-pdf): `--export-pdf`, `OllinApp.pdf` / `exportPDF`, paper sizes
+- [What SVG export records](#what-svg-export-records): the shape mapping and the limits
+- [Hatching: solid fills for a pen plotter](#hatching-solid-fills-for-a-pen-plotter): `--hatch`, `Hatching`
 
 ---
 
@@ -142,15 +143,35 @@ OllinApp.exportSVG(MySketch(), to: "/tmp/shapes.svg")   // writes the file
 
 The output is **standard, general-purpose SVG** — native `<circle>`/`<ellipse>`/`<rect>`, `<polygon>`, and `<path>` with fills, opacity, and transforms preserved — so it opens cleanly in a browser, Inkscape, or Illustrator, and works as scalable vector art in its own right. A **pen plotter** is a common consumer (an AxiDraw plots an SVG through its own tooling), and stroke-based sketches map most naturally there since a pen has no fill — the single-line [stroke fonts](../Drawing/Text.md) and stroked geometry are exactly what it plots — but the export isn't limited to plotting.
 
+### Vector: PDF
+
+Write the same frame as a single-page PDF, the print-ready form of the vector output:
+
+```sh
+swift run Example-Export-VectorExport --export-pdf /tmp/shapes.pdf            # frame 0
+swift run Example-Export-VectorExport --export-pdf /tmp/shapes.pdf --frame 30 # a later frame
+```
+
+In code it's `OllinApp.pdf(of:frame:)` (returns `Data`) and `OllinApp.exportPDF(_:to:frame:)`. PDF export replays the **same recorded geometry** as the SVG export, so the two documents of a frame always agree: everything under [What SVG export records](#what-svg-export-records), including the limits, applies equally, and `--hatch` works the same way. Both flags can even ride one invocation (`--export-svg a.svg --export-pdf b.pdf`). Like the SVG path it runs on the CPU with no GPU, and gradients, clipping, transforms, and alpha all come through as native PDF constructs.
+
+**Paper sizes.** One canvas pixel maps to one PDF point (72 per inch), so the paper presets on [`CanvasSize`](../Core/Canvas.md) produce true-to-size pages: a sketch on `.a4` (595×842) exports as an actual A4 page, ready to print with no scaling. `.usLetter`, `.usLegal`, `.a3`, `.a4`, and `.a5` are built in, portrait like the physical sheet; add `.landscape` to flip:
+
+```swift
+override var canvasSize: CanvasSize { .usLetter }            // 8.5×11 in, portrait
+override var canvasSize: CanvasSize { .a4.landscape }        // 297×210 mm
+```
+
+Any other canvas exports at its pixel size in points; since the geometry is vector it prints sharp at any scale regardless. When the *raster* export should be print resolution too, add `.dpi(_:)` to the preset: `.usLetter.dpi(300)` renders and `--export`s at 2550×3300 pixels while `--export-pdf` still writes a true 8.5×11 in page, the geometry scaled back onto it.
+
 ### What SVG export records
 
-The exporter captures each draw call at its semantic level — before tessellation — so the output is clean vector primitives, not a mesh of triangles:
+The exporter captures each draw call at its semantic level, before tessellation, so the output is clean vector primitives, not a mesh of triangles. The PDF export replays the same recording, so this table and its limits describe both formats (each SVG element maps to the equivalent PDF path):
 
 | You draw | SVG element |
 |---|---|
 | `drawCircle` / `drawEllipse` | `<circle>` / `<ellipse>` |
 | `drawRect` (with `cornerRadius`) | `<rect>` (with `rx`) |
-| `drawLine`, `drawBezier` | `<line>`, `<path>` (round-capped) |
+| `drawLine`, `drawBezier` | `<line>`, `<path>` |
 | `drawPolyline` / `drawPolygon` | `<polyline>` / `<polygon>` |
 | `drawShape`, `drawCurve`, curve-builder, **outline text** | `<path>` (with `fill-rule`) |
 | `drawTriangle` / `drawNgon` / `drawStar` and the polygonal shapes | `<polygon>` |
@@ -170,7 +191,7 @@ A few things the vector format can't express exactly, and how they're handled:
 
 ### Hatching: solid fills for a pen plotter
 
-A pen plotter draws with a pen, so it has no fill — a solid shape would plot as a bare outline. **Hatching** turns each fill into line work: parallel (or cross-hatch) lines clipped to the shape's outline, spaced by the fill's tone, so the plotter shades it. Add `--hatch` to the SVG export:
+A pen plotter draws with a pen, so it has no fill: a solid shape would plot as a bare outline. **Hatching** turns each fill into line work, parallel (or cross-hatch) lines clipped to the shape's outline, spaced by the fill's tone, so the plotter shades it. Add `--hatch` to the SVG export (the PDF export takes the same flags):
 
 ```sh
 swift run Example-Export-Hatching --export-svg /tmp/hatched.svg --hatch

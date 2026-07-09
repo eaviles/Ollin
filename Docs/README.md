@@ -95,7 +95,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 
 ### Output
 
-- [`Export`](./Output/Export.md) - save frames as raster (PNG, sequences), motion (video, animated GIF), or vector (SVG, for pen plotters)
+- [`Export`](./Output/Export.md) - save frames as raster (PNG, sequences), motion (video, animated GIF), or vector (SVG for pen plotters, PDF for print)
 
 ### Tools
 

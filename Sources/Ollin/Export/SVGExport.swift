@@ -8,7 +8,9 @@ import simd
 //
 // The recording happens at the `Drawer` draw-call boundary (see `svgRecord` in
 // Drawer.swift), where the user-space geometry still exists; this file holds the
-// recorded model, the serializer, and the `OllinApp` entry points.
+// recorded model, the shared record-a-frame driver, the SVG serializer, and the
+// SVG `OllinApp` entry points. The PDF exporter (PDFExport.swift) replays the
+// same recorded commands, so the two vector outputs can't drift apart.
 
 // MARK: - Recorded model
 
@@ -30,8 +32,8 @@ struct SVGStyle {
 enum SVGGeometry {
     case ellipse(center: Vector2, rx: Double, ry: Double)   // circle when rx == ry
     case rect(corner: Vector2, width: Double, height: Double, cornerRadius: Double)
-    case line(Vector2, Vector2)                             // round-capped
-    case quad(start: Vector2, control: Vector2, end: Vector2)  // round-capped
+    case line(Vector2, Vector2)                             // stroke-only
+    case quad(start: Vector2, control: Vector2, end: Vector2)  // stroke-only
     case polyline([Vector2])                               // open, stroke-only
     case polygon([Vector2])                                // closed
     case path(Shape)                                       // contours + winding
@@ -255,11 +257,12 @@ private func clipPathDefs(_ commands: [SVGCommand]) -> (defs: String, ids: [Stri
     return ("  <defs>\n" + lines.joined(separator: "\n") + "\n  </defs>\n", ids)
 }
 
-/// Replace along-path paints with what SVG can express: a gradient *stroke*
-/// following a path becomes a run of short solid segments (one `<line>` per
-/// piece, round-capped so they chain seamlessly), and an along-path *fill* —
-/// the conic sweep — becomes its ramp's midpoint color.
-private func approximateAlongPaths(_ commands: [SVGCommand]) -> [SVGCommand] {
+/// Replace along-path paints with what a vector document can express: a
+/// gradient *stroke* following a path becomes a run of short solid segments
+/// (round-capped so they chain seamlessly), and an along-path *fill* (the
+/// conic sweep) becomes its ramp's midpoint color. Shared by the SVG and PDF
+/// serializers, so both approximate identically.
+func approximateAlongPaths(_ commands: [SVGCommand]) -> [SVGCommand] {
     var out: [SVGCommand] = []
     for event in commands {
         guard case .draw(var command) = event else {
@@ -310,6 +313,7 @@ private func alongStrokeRuns(_ command: RecordedSVG, _ gradient: Gradient) -> [R
 
     var penStyle = command.style
     penStyle.fill = nil
+    penStyle.cap = .round   // the pieces chain seamlessly only with round caps
     var out: [RecordedSVG] = []
     for (points, closed) in paths {
         var pts = points
@@ -378,10 +382,11 @@ private func gradientDefs(_ commands: [SVGCommand]) -> (defs: String, ids: [Grad
     return ("  <defs>\n" + lines.joined(separator: "\n") + "\n  </defs>\n", ids)
 }
 
-/// A ramp as SVG `<stop>`s. SVG interpolates stops in plain sRGB, so spans of a
-/// ramp mixing in any other space are subdivided to track the ramp's curve;
-/// duplicate-position stops (hard edges) pass through untouched.
-private func stopLines(_ ramp: Ramp) -> [String] {
+/// A ramp flattened to plain-sRGB stops. SVG and PDF gradients both interpolate
+/// stops in straight sRGB, so spans of a ramp mixing in any other space are
+/// subdivided to track the ramp's curve; duplicate-position stops (hard edges)
+/// pass through untouched. Shared by both serializers.
+func flattenedRampStops(_ ramp: Ramp) -> [(position: Double, color: Color)] {
     var stops: [(position: Double, color: Color)] = []
     for (i, stop) in ramp.stops.enumerated() {
         stops.append((stop.position, stop.color))
@@ -395,7 +400,12 @@ private func stopLines(_ ramp: Ramp) -> [String] {
             }
         }
     }
-    return stops.map { stop in
+    return stops
+}
+
+/// A ramp as SVG `<stop>`s (see `flattenedRampStops`).
+private func stopLines(_ ramp: Ramp) -> [String] {
+    flattenedRampStops(ramp).map { stop in
         let opacity = stop.color.alpha < 1 ? " stop-opacity=\"\(n(stop.color.alpha))\"" : ""
         return "      <stop offset=\"\(n(stop.position))\" stop-color=\"\(svgColor(stop.color))\"\(opacity)/>"
     }
@@ -417,11 +427,11 @@ private func svgElement(_ c: RecordedSVG, _ ids: [Gradient: String]) -> String {
         return "<rect x=\"\(n(corner.x))\" y=\"\(n(corner.y))\" width=\"\(n(w))\" height=\"\(n(h))\"\(radius)\(fillStrokeAttrs(c.style, ids))\(t)/>"
 
     case let .line(a, b):
-        return "<line x1=\"\(n(a.x))\" y1=\"\(n(a.y))\" x2=\"\(n(b.x))\" y2=\"\(n(b.y))\"\(strokeOnlyAttrs(c.style, ids, forceCap: "round"))\(t)/>"
+        return "<line x1=\"\(n(a.x))\" y1=\"\(n(a.y))\" x2=\"\(n(b.x))\" y2=\"\(n(b.y))\"\(strokeOnlyAttrs(c.style, ids))\(t)/>"
 
     case let .quad(s, control, e):
         let d = "M \(n(s.x)) \(n(s.y)) Q \(n(control.x)) \(n(control.y)) \(n(e.x)) \(n(e.y))"
-        return "<path d=\"\(d)\"\(strokeOnlyAttrs(c.style, ids, forceCap: "round"))\(t)/>"
+        return "<path d=\"\(d)\"\(strokeOnlyAttrs(c.style, ids))\(t)/>"
 
     case let .polyline(points):
         return "<polyline points=\"\(pointList(points))\"\(strokeOnlyAttrs(c.style, ids))\(t)/>"
@@ -466,16 +476,16 @@ private func fillStrokeAttrs(_ s: SVGStyle, _ ids: [Gradient: String]) -> String
 }
 
 /// Attributes for a stroke-only shape (no fill).
-private func strokeOnlyAttrs(_ s: SVGStyle, _ ids: [Gradient: String], forceCap: String? = nil) -> String {
-    " fill=\"none\"" + strokeAttrs(s, ids, forceCap: forceCap)
+private func strokeOnlyAttrs(_ s: SVGStyle, _ ids: [Gradient: String]) -> String {
+    " fill=\"none\"" + strokeAttrs(s, ids)
 }
 
 /// The stroke half: nothing when there's no visible stroke.
-private func strokeAttrs(_ s: SVGStyle, _ ids: [Gradient: String], forceCap: String? = nil) -> String {
+private func strokeAttrs(_ s: SVGStyle, _ ids: [Gradient: String]) -> String {
     guard let stroke = s.stroke else { return "" }
     var attrs = " stroke=\"\(paintValue(stroke, ids))\"\(paintOpacity("stroke", stroke)) stroke-width=\"\(n(s.strokeWidth))\""
     attrs += " stroke-linejoin=\"\(joinName(s.join))\""
-    attrs += " stroke-linecap=\"\(forceCap ?? capName(s.cap))\""
+    attrs += " stroke-linecap=\"\(capName(s.cap))\""
     return attrs
 }
 
@@ -545,23 +555,27 @@ private func n(_ value: Double) -> String {
     return s == "-0" ? "0" : s
 }
 
-// MARK: - OllinApp entry points
+// MARK: - Recording driver
 
-public extension OllinApp {
-    /// Render one frame of `sketch` as an SVG document string — no window, no GPU.
-    /// Drives the sketch headlessly the way `image(of:)` does (`setup()`, then
-    /// `draw()` advanced to `frame` at `fps`), but records the draw calls as vector
-    /// geometry instead of rasterizing them. Because it never touches Metal, it
-    /// runs anywhere and is deterministic.
-    ///
-    /// Curves and the analytic SDF-only shapes are emitted as fine polyline/path
-    /// approximations; raster `drawImage` calls are skipped (noted as a comment).
-    ///
-    /// Pass `hatching` to plot solid fills as line work: each fill becomes
-    /// parallel (or cross-hatch) lines clipped to its outline, spaced by tone, so
-    /// a pen plotter can shade it (see `Hatching`).
-    static func svg(of sketch: Sketch, frame: Int = 0, fps: Double = 60,
-                    hatching: Hatching? = nil) -> String {
+/// One frame's recorded vector commands plus the document-level facts both
+/// serializers need. Produced by `OllinApp.recordVectorFrame`.
+struct VectorRecording {
+    var commands: [SVGCommand]
+    var background: Color
+    var width: Int          // canvas pixels (the recorded coordinate space)
+    var height: Int
+    var pointWidth: Int     // physical page in PDF points (differs from the
+    var pointHeight: Int    // pixels only for a `dpi(_:)`-scaled canvas)
+    var skippedImages: Int
+}
+
+extension OllinApp {
+    /// Drive `sketch` headlessly the way `image(of:)` does (`setup()`, then
+    /// `draw()` advanced to `frame` at `fps`) and record that frame's draw calls
+    /// as vector commands, with `hatching` applied when asked. The shared front
+    /// half of the SVG and PDF exports; never touches Metal.
+    static func recordVectorFrame(of sketch: Sketch, frame: Int, fps: Double,
+                                  hatching: Hatching?) -> VectorRecording {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
         let size = sketch.canvasSize
@@ -575,8 +589,34 @@ public extension OllinApp {
         }
         sketch.drawer.svgRecorder = nil
         let commands = hatching.map { applyHatching(recorder.commands, $0) } ?? recorder.commands
-        return serializeSVG(commands, background: sketch.drawer.backgroundColor,
-                            width: size.width, height: size.height, skippedImages: recorder.skippedImages)
+        return VectorRecording(commands: commands, background: sketch.drawer.backgroundColor,
+                               width: size.width, height: size.height,
+                               pointWidth: size.pointSize.width, pointHeight: size.pointSize.height,
+                               skippedImages: recorder.skippedImages)
+    }
+}
+
+// MARK: - OllinApp entry points
+
+public extension OllinApp {
+    /// Render one frame of `sketch` as an SVG document string: no window, no GPU.
+    /// Drives the sketch headlessly the way `image(of:)` does (`setup()`, then
+    /// `draw()` advanced to `frame` at `fps`), but records the draw calls as vector
+    /// geometry instead of rasterizing them. Because it never touches Metal, it
+    /// runs anywhere and is deterministic.
+    ///
+    /// Curves and the analytic SDF-only shapes are emitted as fine polyline/path
+    /// approximations; raster `drawImage` calls are skipped (noted as a comment).
+    ///
+    /// Pass `hatching` to plot solid fills as line work: each fill becomes
+    /// parallel (or cross-hatch) lines clipped to its outline, spaced by tone, so
+    /// a pen plotter can shade it (see `Hatching`).
+    static func svg(of sketch: Sketch, frame: Int = 0, fps: Double = 60,
+                    hatching: Hatching? = nil) -> String {
+        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps, hatching: hatching)
+        return serializeSVG(recording.commands, background: recording.background,
+                            width: recording.width, height: recording.height,
+                            skippedImages: recording.skippedImages)
     }
 
     /// Render one frame of `sketch` and write it as an SVG file — no window, no GPU.

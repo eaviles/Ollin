@@ -30,7 +30,7 @@
 - **Sound and control.** FFT audio analysis with band and beat detection, MIDI and OSC in and out, all bindable to `@Param` knobs.
 - **Physics.** A stepped `World` with Verlet particles and springs on the soft side, and Box2D bodies, colliders, and joints on the rigid side.
 - **Plays in your rig.** Syphon out and in, a system-wide virtual camera any webcam app can read, and video playback as live GPU textures.
-- **Export everything.** Headless PNG stills and deterministic sequences, MP4 and GIF straight from the CLI, and SVG (with optional hatched fills) for pen plotters.
+- **Export everything.** Headless PNG stills and deterministic sequences, MP4 and GIF straight from the CLI, and vector SVG and PDF (with optional hatched fills) for pen plotters and true-to-size print.
 
 ## Hello, circle
 
@@ -101,7 +101,7 @@ Other ways to iterate: tweak and re-run an example (`swift run Example-Motion-Br
 
 ## Export
 
-Any sketch renders headlessly, no window needed. Stills, deterministic PNG sequences, video, GIF, and vector SVG all hang off the same run command:
+Any sketch renders headlessly, no window needed. Stills, deterministic PNG sequences, video, GIF, and vector SVG and PDF all hang off the same run command:
 
 ```sh
 swift run Example-Basic-HelloCircle --export frame.png --frame 120
@@ -109,6 +109,7 @@ swift run Example-Motion-Breathing --export-sequence frames/ --seconds 20 --fps 
 swift run Example-Motion-Breathing --export-video breathing.mp4 --seconds 6
 swift run Example-Motion-Breathing --export-gif breathing.gif --seconds 4
 swift run Example-Basic-HelloCircle --export-svg still.svg   # vector, for pen plotters
+swift run Example-Basic-HelloCircle --export-pdf still.pdf   # vector, for print (paper-size presets)
 swift run OllinLive MySketches/Loop.swift --export-gif loop.gif --seconds 4   # a loose file, same flags
 ```
 
@@ -153,7 +154,7 @@ For how the larger systems work inside (the frame lifecycle, the screen-space ef
 
 ## Why Apple-only
 
-p5.js, OPENRNDR, and openFrameworks run everywhere; Ollin only runs on Apple hardware, and that's the trade it makes on purpose. Sitting directly on Metal means the rendering ceiling is whatever the GPU can do, and staying native puts the rest of the platform in reach: vision on the Neural Engine and an iPhone's depth sensors feeding a sketch the Mac renders are already here (the docs above cover them); ARKit, visionOS, and AR are still ahead (the [roadmap](#roadmap) has them). The point is that the core is built to grow into those things rather than get retrofitted. The same trade rules out a browser version: the web has no Metal, so a web build would mean a second, lesser renderer on WebGPU; sharing a piece happens by exporting it (video, GIF, USDZ, SVG), not by running Ollin in a tab.
+p5.js, OPENRNDR, and openFrameworks run everywhere; Ollin only runs on Apple hardware, and that's the trade it makes on purpose. Sitting directly on Metal means the rendering ceiling is whatever the GPU can do, and staying native puts the rest of the platform in reach: vision on the Neural Engine and an iPhone's depth sensors feeding a sketch the Mac renders are already here (the docs above cover them); ARKit, visionOS, and AR are still ahead (the [roadmap](#roadmap) has them). The point is that the core is built to grow into those things rather than get retrofitted. The same trade rules out a browser version: the web has no Metal, so a web build would mean a second, lesser renderer on WebGPU; sharing a piece happens by exporting it (video, GIF, USDZ, SVG, PDF), not by running Ollin in a tab.
 
 ## Roadmap
 

@@ -1355,8 +1355,8 @@ public extension Sketch {
 public extension OllinApp {
     /// Handle the shared headless command-line surface (the export flags
     /// `--export`, `--export-sequence`, `--export-video`, `--export-gif`,
-    /// `--export-loop`, `--export-svg` with their options, plus `--bench`)
-    /// against a sketch supplied on demand.
+    /// `--export-loop`, `--export-svg`, `--export-pdf` with their options,
+    /// plus `--bench`) against a sketch supplied on demand.
     ///
     /// Returns `true` when a headless flag was recognized (the work ran, or a
     /// usage message was printed), meaning the caller should exit rather than
@@ -1525,10 +1525,13 @@ public extension OllinApp {
             return true
         }
         // `swift run Example-X --export-svg <path> [--frame N]` writes a vector SVG
-        // of one frame and exits (no window, no GPU). Add `--hatch` (or
-        // `--cross-hatch`) to plot solid fills as pen line work:
-        // `--hatch-spacing N` and `--hatch-angle DEG` tune it.
-        if let i = args.firstIndex(of: "--export-svg"), i + 1 < args.count {
+        // of one frame and exits (no window, no GPU); `--export-pdf <path>` writes
+        // the same recorded frame as a single-page PDF (both may be passed at
+        // once). Add `--hatch` (or `--cross-hatch`) to plot solid fills as pen
+        // line work: `--hatch-spacing N` and `--hatch-angle DEG` tune it.
+        let svgFlag = args.firstIndex(of: "--export-svg")
+        let pdfFlag = args.firstIndex(of: "--export-pdf")
+        if svgFlag != nil || pdfFlag != nil {
             func value(_ flag: String) -> String? {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
                 return args[j + 1]
@@ -1543,7 +1546,19 @@ public extension OllinApp {
                 if args.contains("--cross-hatch") { h.crossHatch = true }
                 hatching = h
             }
-            OllinApp.exportSVG(makeSketch(), to: args[i + 1], frame: frame, hatching: hatching)
+            var handled = false
+            if let i = svgFlag, i + 1 < args.count {
+                OllinApp.exportSVG(makeSketch(), to: args[i + 1], frame: frame, hatching: hatching)
+                handled = true
+            }
+            if let i = pdfFlag, i + 1 < args.count {
+                OllinApp.exportPDF(makeSketch(), to: args[i + 1], frame: frame, hatching: hatching)
+                handled = true
+            }
+            if !handled {
+                FileHandle.standardError.write(Data(
+                    "usage: --export-svg <path.svg> | --export-pdf <path.pdf> [--frame N] [--hatch | --cross-hatch] [--hatch-spacing N] [--hatch-angle DEG]\n".utf8))
+            }
             return true
         }
         if let i = args.firstIndex(of: "--bench") {

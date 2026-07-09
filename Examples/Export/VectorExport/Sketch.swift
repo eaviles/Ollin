@@ -1,13 +1,15 @@
 import Ollin
 
-/// Vector (SVG) export: the same draw calls that rasterize to a PNG can instead
-/// be serialized as standard SVG, so a sketch can feed any vector pipeline — a
-/// browser, Inkscape/Illustrator, or a pen plotter. The output is general-purpose
-/// (fills, color, opacity, and transforms are all preserved); a plotter is just a
-/// common consumer. Export one frame with no window and no GPU:
+/// Vector export: the same draw calls that rasterize to a PNG can instead be
+/// serialized as standard SVG or a single-page PDF, so a sketch can feed any
+/// vector pipeline (a browser, Inkscape/Illustrator, a pen plotter) or go
+/// straight to print. Both formats replay one recording, so they always agree;
+/// the output is general-purpose (fills, color, opacity, and transforms are all
+/// preserved). Export one frame with no window and no GPU:
 ///
 /// ```sh
 /// swift run Example-Export-VectorExport --export-svg /tmp/shapes.svg
+/// swift run Example-Export-VectorExport --export-pdf /tmp/shapes.pdf
 /// ```
 ///
 /// This sampler draws the shape catalog as **stroke-only outlines** — the plotter

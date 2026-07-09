@@ -73,8 +73,15 @@ strokeWeight(2 * scale)
 | `.dci4K` | 4096 × 2160 | ~17:9 | cinema 4K (DCI), for film delivery |
 | `.vertical1080` | 1080 × 1920 | 9:16 | full-screen vertical: stories, reels, TikTok, Shorts |
 | `.portrait1080` | 1080 × 1350 | 4:5 | the portrait feed crop (for example Instagram) |
+| `.usLetter` | 612 × 792 | 8.5:11 | US Letter paper (8.5×11 in), for PDF export |
+| `.usLegal` | 612 × 1008 | 8.5:14 | US Legal paper (8.5×14 in), for PDF export |
+| `.a3` | 842 × 1191 | 1:√2 | ISO A3 paper (297×420 mm), for PDF export |
+| `.a4` | 595 × 842 | 1:√2 | ISO A4 paper (210×297 mm), for PDF export |
+| `.a5` | 420 × 595 | 1:√2 | ISO A5 paper (148×210 mm), for PDF export |
 
-Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine; `--export-sequence <dir> --frames N` renders a deterministic numbered PNG sequence (fixed timestep, so it's reproducible and assembles into a smooth video — see [Sketch ▸ Running a sketch](../Core/Sketch.md#running-a-sketch)).
+The paper presets are sized in PDF points (72 per inch) and come portrait like the physical sheet: [PDF export](../Output/Export.md#vector-pdf) maps one canvas pixel to one point, so a sketch on `.a4` exports as a true A4 page, and the vector geometry prints sharp at any resolution. When the *raster* export needs print resolution too, add `.dpi(_:)`: `.a4.dpi(300)` renders and `--export`s at 2479×3508 pixels (300 dots per inch) while `--export-pdf` still writes the page at exactly A4, the pixel geometry scaled back onto it. It works on any size (the size it's called on is taken as the 72-dpi page), and `.dpi(72)` is the identity.
+
+Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840 and `.a4.landscape` is 842×595; the flips compose with `.dpi(_:)` in either order. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine; `--export-sequence <dir> --frames N` renders a deterministic numbered PNG sequence (fixed timestep, so it's reproducible and assembles into a smooth video; see [Sketch ▸ Running a sketch](../Core/Sketch.md#running-a-sketch)).
 
 For a custom size, override `canvasSize` with `.square(_)` (a square) or `.size(_, _)` (any rectangle):
 

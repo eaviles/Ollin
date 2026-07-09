@@ -303,7 +303,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Video/Video.md` (playback as texture) | Ch 21 | taught |
 | `Integration/Syphon.md` | Ch 22 | taught |
 | `Integration/VirtualCamera.md` | Ch 22 | shown |
-| `Output/Export.md` (PNG, sequence, video, GIF, SVG) | Ch 3 (GIF), Ch 13 (SVG), Ch 22 (all) | taught |
+| `Output/Export.md` (PNG, sequence, video, GIF, SVG, PDF) | Ch 3 (GIF), Ch 13 (SVG), Ch 22 (all) | taught |
 | `Tools/LiveCoding.md` (OllinLiveCoding) | Ch 22; OllinLive workflow in Ch 1 | taught |
 | Examples gallery (`swift run OllinExamples`) | Ch 1 | shown |
 | Extension seam (`Sketch.extend`, `SketchExtension`) | Appendix D | pointed |
@@ -316,7 +316,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Roadmap item | Future Guide home |
 |---|---|
 | Normalized u,v coordinates | Ch 1 |
-| PDF export | Ch 22 |
 | Palette file import | Ch 2 |
 | Single-file sketches | Ch 1 (would simplify the setup story; revisit Ch 1 when it ships) |
 | Retained geometry buffers | internal; Appendix D note at most |
