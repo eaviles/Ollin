@@ -14,6 +14,8 @@
 - [Ramp](#ramp)
 - [Gradient paint](#gradient)
 - [Palette](#palette)
+- [Loading palettes from a file](#palette-files)
+- [Extracting a palette from an image](#palette-extraction)
 - [CosinePalette](#cosinepalette)
 - [Colormap](#colormap)
 
@@ -190,6 +192,77 @@ Palette.analogous(of: base, count: 3, spread: 1.0 / 12) // neighbours centered o
 **Built-in sets**: the eight ColorBrewer qualitative palettes ship as data: `.set1`, `.set2`, `.set3`, `.paired`, `.pastel1`, `.pastel2`, `.dark2`, `.accent` (credited under [Influences & attribution](../../ATTRIBUTION.md#color)).
 
 The `Harmonies` example follows a drifting base color through all four builders; `Swatchbook` lays out the built-in sets.
+
+<a name="palette-files"></a>
+
+### Loading palettes from a file
+
+Palettes you collect elsewhere load with one call. `loadPalettes` returns every palette in a file, in file order; `loadPalette` returns the first. A file holding a single palette reads as a one-element array, so `loadPalettes` is the form to reach for when you don't know which you have.
+
+```swift
+let sets = loadPalettes("1000.json")     // many
+let one  = loadPalette("sunset.hex")     // the first, or nil
+
+// From the sketch's own bundle. `in:` has no default: a default would
+// resolve to Ollin's bundle rather than yours.
+let bundled = loadPalettes(resource: "palettes", withExtension: "csv", in: .module)
+```
+
+Five layouts read, and `.auto` picks between them by looking at the bytes:
+
+| Format | Shape | Reads as |
+|---|---|---|
+| hex per line | `#69d2e7` on each line | one palette |
+| CSV | `#69d2e7,#a7dbd8,#e0e4cc` per line | one palette per line |
+| TSV | the same, tab separated | one palette per line |
+| JSON | `[["#69d2e7", …], …]`, or a flat `["#69d2e7", …]`, or `[{"colors": […]}, …]` | many, or one |
+| ASE | Adobe Swatch Exchange | one palette per swatch group |
+
+The text formats share a parser, because they differ only in what separates the colors on a line. That has two consequences worth knowing. A file whose every line holds exactly one color is read as a single palette rather than a stack of one-color palettes, which is what makes hex-per-line work with no format argument. And a line that yields no colors at all is skipped, so a CSV header row or a line of prose falls away on its own.
+
+Hex tokens survive the punctuation they pick up in the wild: surrounding quotes from a CSV cell, an `0x` prefix, and the `#RGB` / `#RGBA` / `#RRGGBB` / `#RRGGBBAA` digit forms `Color(hex:)` accepts.
+
+Name a `PaletteFormat` when the guess goes wrong:
+
+```swift
+loadPalettes("swatches.txt", format: .hexLines)   // one palette, even with commas on a line
+loadPalettes("grid.csv", format: .csv)
+```
+
+**ASE** files map swatch groups onto palettes, in document order. Colors that sit outside any group collect into a palette of their own. RGB, Gray, CMYK, and LAB swatches all decode (CMYK through the plain conversion, LAB through CIELAB on the D50 white point these files are written against). A truncated or malformed file yields an empty array rather than trapping, as every loader here does.
+
+**Where to find palettes.** Ollin ships the loader, and bundles only palette data whose license permits it (the ColorBrewer sets above), the same way the bitmap-font loader ships beside one permissively licensed default rather than a library of fonts. A good source of ready-made palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), whose `100.json` / `1000.json` are exactly the JSON array-of-arrays shape above, so `curl` one into your sketch folder and `loadPalettes` reads it as is. Note that its palettes are scraped from COLOURlovers, whose default license is CC BY-NC-SA, which is why Ollin doesn't redistribute them: the MIT license on that repository covers its code, not the palette data. Fetching the file for your own work is your call to make; bundling it into an MIT framework is not.
+
+That set is worth knowing for a second reason. Because so many people reached for it, its first palette (`#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, `#fa6900`) turns up in an enormous amount of generative art. If you want your work to look like itself, that is an argument for extracting a palette from an image you chose, or curating your own.
+
+The `PaletteFile` example loads a CSV of six palettes and a hex-per-line file, side by side.
+
+<a name="palette-extraction"></a>
+
+### Extracting a palette from an image
+
+The colors a picture is made of are usually a better palette than any list someone else curated.
+
+```swift
+let photo = loadImage("beach.jpg")!
+let p = Palette(extractedFrom: photo, count: 5)
+fill(p[0])                                     // the color the photo is mostly made of
+```
+
+The colors come back **most-used first**, so `p[0]` is the one you would name if asked. Clustering runs in OKLab rather than sRGB, because distance in sRGB is not distance to the eye: sRGB clusters split greens nobody can tell apart and merge blues everybody can.
+
+It is **fully deterministic**. The same image, `count`, and `seed` always give the same palette, so an extracted palette is safe to snapshot and to carry in an export's recipe. Pass a different `seed` to shake the clustering out of a local minimum when a result looks off:
+
+```swift
+Palette(extractedFrom: photo, count: 6, seed: 3)
+extractPalette(from: photo, count: 6)          // the same thing, as a bare call
+```
+
+Three behaviors to expect. Transparent pixels are ignored. An image with fewer distinct colors than `count` yields only the colors it has, rather than inventing filler. And a texture-backed image (a video frame, a Syphon feed) has no readable pixels, so it yields an empty palette; call `snapshot()` on the feed first.
+
+Extraction is setup-time work, not per-frame work. A large image is sampled on an even grid rather than read whole, so cost is bounded, but clustering still runs Lloyd's algorithm over the samples. Extract in `setup()` and hold the result.
+
+The `PaletteFromImage` example paints an image from five known colors and then recovers them from the pixels alone.
 
 <a name="cosinepalette"></a>
 

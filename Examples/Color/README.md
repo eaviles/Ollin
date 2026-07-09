@@ -14,6 +14,8 @@ Palettes, colormaps, and driving color from a value or from time.
 | [Harmonies](Harmonies/Sketch.swift) | a drifting base color and its complementary / split-complementary / triadic / analogous palettes, plus the analogous set as a `Ramp` |
 | [HSBWheel](HSBWheel/Sketch.swift) | a turning HSB color wheel (hue around, saturation outward), over a hex-literal backdrop |
 | [Mixing](Mixing/Sketch.swift) | the same two colors mixed in RGB, HSB, OKLab, OKLCH, and OKHSL, band by band |
+| [PaletteFile](PaletteFile/Sketch.swift) | palettes read off disk: a CSV of six, and a hex-per-line file of one, with no format declared |
+| [PaletteFromImage](PaletteFromImage/Sketch.swift) | a palette clustered out of an image's pixels, recovering the five colors the picture was painted with |
 | [Palettes](Palettes/Sketch.swift) | seven cosine-gradient `CosinePalette` presets, each swept across the canvas and scrolled |
 | [Swatchbook](Swatchbook/Sketch.swift) | the built-in qualitative `Palette` sets as labeled swatch rows, with a wrapping-index highlight |
 

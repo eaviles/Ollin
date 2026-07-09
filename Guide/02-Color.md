@@ -107,6 +107,33 @@ fill(dusk.color(at: t))
 
 And two ramps come pre-made: **`Colormap`** (eight scientific maps like `.viridis` and `.magma`, built to keep perceived brightness marching evenly, the standard way to turn a number into legible color) and **`CosinePalette`** (seven cyclic palettes like `.sunset` and `.neon` from one small formula; they loop, so they're great fed with `time`). Both answer to the same `color(at:)`.
 
+## Palettes from files and pictures
+
+Typing hex codes gets old. Two calls skip it.
+
+The first reads a palette someone already made. `loadPalettes` returns every palette in a file; `loadPalette` returns the first one. You don't say what format the file is in, because the loader looks at the bytes and works it out. It reads a plain list of hex codes one per line, a CSV or TSV with a palette on each line, JSON, and Adobe `.ase` swatch files from Illustrator or Photoshop.
+
+```swift
+let sets = loadPalettes("1000.json")     // however many the file holds
+let one  = loadPalette("sunset.hex")     // just the first
+```
+
+A good place to get palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), a JSON file of a thousand of them in exactly the shape `loadPalettes` expects. Download it next to your sketch and the call above reads it as is. Two things to know about that file. Its palettes were collected from COLOURlovers, whose default license forbids commercial use, so Ollin doesn't bundle them and you should check the terms before selling work that uses them. And because so many people have reached for it, its very first palette (`#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, `#fa6900`) shows up in a startling amount of generative art. If you want your work to look like yours, that is a reason to keep reading.
+
+The second call takes the colors out of a picture. Give it an image and how many colors you want, and it groups the pixels by how similar they look and hands back the center of each group:
+
+```swift
+let photo = loadImage("beach.jpg")!
+let p = Palette(extractedFrom: photo, count: 5)
+fill(p[0])     // the color the photo is mostly made of
+```
+
+The colors come back most-used first, so `p[0]` is the one you would name if someone asked what color the photo is. The grouping happens in OKLab, for the same reason mixing does: it groups colors the way your eye does, not the way the numbers do. Ask for fewer colors than the picture holds and it merges the closest ones rather than dropping any.
+
+Two practical notes. It gives the same answer every time for the same picture, so a sketch that extracts a palette still reproduces exactly, which matters once you start exporting. And it does real work, so call it in `setup()` and keep the result, not in `draw()`.
+
+A palette pulled from a photograph you took is a palette nobody else has.
+
 ## Gradients as paint
 
 A `Ramp` can also *be* the paint. Anywhere `fill` or `stroke` takes a color, it takes a gradient, laid over the canvas by one of three geometries:
@@ -192,7 +219,7 @@ The OKLab family (OKLab, OKLCH, OKHSL) is the work of Björn Ottosson, published
 ## Go deeper
 
 - [Color](../Docs/Drawing/Color.md): the complete reference, including color temperature (`Color(kelvin:)`) and the string-hex grammar.
-- Worked examples, all in [`Examples/Color/`](../Examples/Color/): `Mixing` (the five spaces side by side), `Harmonies`, `Swatchbook`, `Palettes`, `Colormaps`, `HSBWheel`, and `Gradients`.
+- Worked examples, all in [`Examples/Color/`](../Examples/Color/): `Mixing` (the five spaces side by side), `Harmonies`, `Swatchbook`, `Palettes`, `PaletteFile`, `PaletteFromImage`, `Colormaps`, `HSBWheel`, and `Gradients`.
 - [Drawing](../Docs/Drawing/Drawing.md): every place a `Paint` can go.
 
 ---
