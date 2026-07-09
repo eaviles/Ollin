@@ -27,6 +27,7 @@ public extension Sketch {
     func randomSeed(_ seed: Int) {
         rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         gaussianSpare = nil   // so a reseed restarts a deterministic sequence
+        recordedRandomSeed = seed
     }
 
     /// Seed *both* `random` and `noise` from one value, locking the whole

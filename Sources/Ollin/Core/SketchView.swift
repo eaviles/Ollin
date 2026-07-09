@@ -1103,15 +1103,11 @@ public enum OllinApp {
         guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
             fatalError("Ollin: failed to render the frame for export (no Metal device?)")
         }
-        guard let data = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else {
-            fatalError("Ollin: failed to encode PNG")
+        let recipe = ExportMetadata.capture(from: sketch, frame: frame, fps: fps).recipe
+        guard writePNG(cgImage, to: path, recipe: recipe) else {
+            fatalError("Ollin: failed to write \(path)")
         }
-        do {
-            try data.write(to: URL(fileURLWithPath: path))
-            print("Ollin: exported frame \(frame) → \(path) (\(cgImage.width)×\(cgImage.height))")
-        } catch {
-            fatalError("Ollin: failed to write \(path): \(error)")
-        }
+        print("Ollin: exported frame \(frame) → \(path) (\(cgImage.width)×\(cgImage.height))")
     }
 
     /// Render a deterministic PNG sequence of `sketch` into `directory` — no
@@ -1148,15 +1144,13 @@ public enum OllinApp {
 
         let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
                                    quality: quality) { cgImage, index in
-            guard let data = NSBitmapImageRep(cgImage: cgImage).representation(using: .png, properties: [:]) else {
-                fatalError("Ollin: failed to encode PNG for frame \(index)")
-            }
+            // Captured per frame (cheap: the git lookup is cached) so each
+            // file's recipe names the sketch-clock frame it shows.
+            let recipe = ExportMetadata.capture(from: sketch, frame: skipFrames + index, fps: fps).recipe
             let name = String(format: "frame-%05d.png", startFrame + index)
             let path = (directory as NSString).appendingPathComponent(name)
-            do {
-                try data.write(to: URL(fileURLWithPath: path))
-            } catch {
-                fatalError("Ollin: failed to write \(path): \(error)")
+            guard writePNG(cgImage, to: path, recipe: recipe) else {
+                fatalError("Ollin: failed to write \(path)")
             }
         }
 

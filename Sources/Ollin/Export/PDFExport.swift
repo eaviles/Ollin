@@ -21,14 +21,17 @@ import simd
 /// `approximateAlongPaths`).
 func serializePDF(_ commands: [SVGCommand], background: Color,
                   width: Int, height: Int,
-                  pointWidth: Int? = nil, pointHeight: Int? = nil) -> Data {
+                  pointWidth: Int? = nil, pointHeight: Int? = nil,
+                  recipe: String? = nil) -> Data {
     let pageWidth = pointWidth ?? width
     let pageHeight = pointHeight ?? height
     var mediaBox = CGRect(x: 0, y: 0, width: Double(pageWidth), height: Double(pageHeight))
     let data = NSMutableData()
+    var info: [CFString: Any] = [kCGPDFContextCreator: "Ollin"]
+    if let recipe { info[kCGPDFContextSubject] = recipe }   // the reproduction recipe
     guard let consumer = CGDataConsumer(data: data as CFMutableData),
           let ctx = CGContext(consumer: consumer, mediaBox: &mediaBox,
-                              [kCGPDFContextCreator: "Ollin"] as CFDictionary),
+                              info as CFDictionary),
           let space = CGColorSpace(name: CGColorSpace.sRGB) else {
         return Data()
     }
@@ -258,7 +261,8 @@ public extension OllinApp {
         let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps, hatching: hatching)
         return serializePDF(recording.commands, background: recording.background,
                             width: recording.width, height: recording.height,
-                            pointWidth: recording.pointWidth, pointHeight: recording.pointHeight)
+                            pointWidth: recording.pointWidth, pointHeight: recording.pointHeight,
+                            recipe: recording.recipe)
     }
 
     /// Render one frame of `sketch` and write it as a PDF file: no window, no
@@ -270,7 +274,8 @@ public extension OllinApp {
         let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps, hatching: hatching)
         let document = serializePDF(recording.commands, background: recording.background,
                                     width: recording.width, height: recording.height,
-                                    pointWidth: recording.pointWidth, pointHeight: recording.pointHeight)
+                                    pointWidth: recording.pointWidth, pointHeight: recording.pointHeight,
+                                    recipe: recording.recipe)
         if recording.skippedImages > 0 {
             print("Ollin: \(recording.skippedImages) image draw(s) skipped (raster is omitted from vector export)")
         }

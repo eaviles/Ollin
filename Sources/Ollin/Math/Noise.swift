@@ -126,7 +126,10 @@ struct PerlinNoise {
 
 public extension Sketch {
     /// Seed the Perlin field behind `noise()` for reproducible runs.
-    func noiseSeed(_ seed: Int) { perlin.reseed(UInt64(bitPattern: Int64(seed))) }
+    func noiseSeed(_ seed: Int) {
+        perlin.reseed(UInt64(bitPattern: Int64(seed)))
+        recordedNoiseSeed = seed
+    }
 
     /// 1D Perlin noise at `x`, in `0...1`.
     func noise(_ x: Double) -> Double { perlin.value(x, 0, 0) }

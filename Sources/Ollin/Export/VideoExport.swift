@@ -132,8 +132,6 @@ public extension OllinApp {
             kCVPixelBufferHeightKey as String: size.height,
         ])
         writer.add(input)
-        writer.startWriting()
-        writer.startSession(atSourceTime: .zero)
 
         // An exact integer clock at any fps: frame k presents at k·1000/(fps·1000).
         let timescale = Int32((fps * 1000).rounded())
@@ -141,6 +139,21 @@ public extension OllinApp {
         print("Ollin: exporting \(frames) frames at \(Int(fps)) fps → \(path) (\(size.width)×\(size.height), \(codec.rawValue))")
         let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
                                    quality: renderQuality) { cgImage, index in
+            if index == 0 {
+                // Writing starts on the first frame, after the sketch has run
+                // `setup()`, so the reproduction recipe can carry the seed it
+                // applied there (writer metadata must be set before writing).
+                let recipe = ExportMetadata.capture(from: sketch, fps: fps).recipe
+                let description = AVMutableMetadataItem()
+                description.identifier = .commonIdentifierDescription
+                description.value = recipe as NSString
+                let software = AVMutableMetadataItem()
+                software.identifier = .commonIdentifierSoftware
+                software.value = "Ollin" as NSString
+                writer.metadata = [description, software]
+                writer.startWriting()
+                writer.startSession(atSourceTime: .zero)
+            }
             while !input.isReadyForMoreMediaData { usleep(1000) }
             guard let pool = adaptor.pixelBufferPool else {
                 fatalError("Ollin: video encoder rejected the settings: \(writer.error?.localizedDescription ?? "unknown error")")

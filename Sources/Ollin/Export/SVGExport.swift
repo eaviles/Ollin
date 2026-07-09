@@ -197,7 +197,8 @@ private func transformed(_ p: Vector2, _ m: simd_float3x3) -> Vector2 {
 /// along-path strokes are split into short solid runs first, and along-path
 /// fills (the conic sweep) fall back to the ramp's midpoint color.
 func serializeSVG(_ commands: [SVGCommand], background: Color,
-                  width: Int, height: Int, skippedImages: Int = 0) -> String {
+                  width: Int, height: Int, skippedImages: Int = 0,
+                  recipe: String? = nil) -> String {
     let resolved = approximateAlongPaths(commands)
     let (defs, ids) = gradientDefs(resolved)
     let (clipDefs, clipIDs) = clipPathDefs(resolved)
@@ -206,6 +207,10 @@ func serializeSVG(_ commands: [SVGCommand], background: Color,
     <svg xmlns="http://www.w3.org/2000/svg" width="\(width)" height="\(height)" viewBox="0 0 \(width) \(height)">
 
     """
+    if let recipe {
+        // XML comments can't contain "--" (possible only via a text param).
+        out += "  <!-- \(recipe.replacingOccurrences(of: "--", with: "- -")) -->\n"
+    }
     out += defs + clipDefs
     out += "  <rect width=\"\(width)\" height=\"\(height)\" fill=\"\(svgColor(background))\"\(svgOpacity("fill", background))/>\n"
     if skippedImages > 0 {
@@ -567,6 +572,7 @@ struct VectorRecording {
     var pointWidth: Int     // physical page in PDF points (differs from the
     var pointHeight: Int    // pixels only for a `dpi(_:)`-scaled canvas)
     var skippedImages: Int
+    var recipe: String      // the reproduction recipe (see ExportMetadata.swift)
 }
 
 extension OllinApp {
@@ -592,7 +598,8 @@ extension OllinApp {
         return VectorRecording(commands: commands, background: sketch.drawer.backgroundColor,
                                width: size.width, height: size.height,
                                pointWidth: size.pointSize.width, pointHeight: size.pointSize.height,
-                               skippedImages: recorder.skippedImages)
+                               skippedImages: recorder.skippedImages,
+                               recipe: ExportMetadata.capture(from: sketch, frame: frame, fps: fps).recipe)
     }
 }
 
@@ -616,7 +623,7 @@ public extension OllinApp {
         let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps, hatching: hatching)
         return serializeSVG(recording.commands, background: recording.background,
                             width: recording.width, height: recording.height,
-                            skippedImages: recording.skippedImages)
+                            skippedImages: recording.skippedImages, recipe: recording.recipe)
     }
 
     /// Render one frame of `sketch` and write it as an SVG file — no window, no GPU.

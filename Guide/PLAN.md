@@ -304,6 +304,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Integration/Syphon.md` | Ch 22 | taught |
 | `Integration/VirtualCamera.md` | Ch 22 | shown |
 | `Output/Export.md` (PNG, sequence, video, GIF, SVG, PDF) | Ch 3 (GIF), Ch 13 (SVG), Ch 22 (all) | taught |
+| Reproducibility metadata in exports (`Output/Export.md`) | Ch 22 | pointed |
 | `Tools/LiveCoding.md` (OllinLiveCoding) | Ch 22; OllinLive workflow in Ch 1 | taught |
 | Examples gallery (`swift run OllinExamples`) | Ch 1 | shown |
 | Extension seam (`Sketch.extend`, `SketchExtension`) | Appendix D | pointed |

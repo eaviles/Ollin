@@ -205,6 +205,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Perfect loops | Declare `loopDuration` and `--export-loop` renders exactly one seamless lap | [Ch 3](03-MotionAndTime.md) | [Export](../Docs/Output/Export.md) |
 | SVG for plotters | `--export-svg` true vectors, with `--hatch` turning fills into line work | [Ch 13](13-ShapesAsMaterial.md), [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Headless capture | Render any sketch to an image in code, no window | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Reproducibility metadata | Every PNG/SVG/PDF/video embeds its recipe: seed, `@Param` values, git commit, frame | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#reproducibility-metadata) |
 | Syphon | Publish frames to (and read frames from) other Mac apps, GPU to GPU | [Ch 22](22-SharingAndPerforming.md) | [Syphon](../Docs/Integration/Syphon.md) |
 | Virtual camera | Your sketch as a system-wide webcam every video app can pick | [Ch 22](22-SharingAndPerforming.md) | [VirtualCamera](../Docs/Integration/VirtualCamera.md) |
 | Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, perform | [Ch 22](22-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |

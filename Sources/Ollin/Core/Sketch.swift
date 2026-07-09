@@ -980,6 +980,12 @@ open class Sketch {
     /// Backing field for `noise()` / `noiseSeed(_:)` (see Noise.swift).
     var perlin = PerlinNoise(seed: .random(in: .min ... .max))
 
+    /// The seeds last applied through `randomSeed(_:)` / `noiseSeed(_:)` (both
+    /// via `seed(_:)`), recorded so exports can embed the reproduction recipe
+    /// (see ExportMetadata.swift). `nil` while entropy-seeded.
+    var recordedRandomSeed: Int?
+    var recordedNoiseSeed: Int?
+
     /// Cached second sample for `randomGaussian()` — the polar method yields two
     /// normals per pass, so the spare is held for the next call (see Random.swift).
     var gaussianSpare: Double?

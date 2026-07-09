@@ -24,6 +24,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Vector: PDF](#vector-pdf): `--export-pdf`, `OllinApp.pdf` / `exportPDF`, paper sizes
 - [What SVG export records](#what-svg-export-records): the shape mapping and the limits
 - [Hatching: solid fills for a pen plotter](#hatching-solid-fills-for-a-pen-plotter): `--hatch`, `Hatching`
+- [Reproducibility metadata](#reproducibility-metadata): the regeneration recipe every export carries
 
 ---
 
@@ -225,3 +226,22 @@ for line in Hatching(spacing: 8).lines(filling: someShape) {
 ```
 
 `lines(filling:)` takes a `Shape`, `Rectangle`, or `Circle` and returns the hatch lines as open polylines in that shape's coordinates; the shape's `winding` rule decides which regions are interior, so holes and concavities are respected. The [Hatching example](../../Examples/Export/Hatching/Sketch.swift) draws this live.
+
+### Reproducibility metadata
+
+Every export carries the recipe to regenerate itself, embedded as one compact JSON line:
+
+```json
+{"tool":"Ollin","seed":42,"params":{"radius":120},"git":"8167de3","frame":0,"fps":60}
+```
+
+The fields: the seed last applied through `seed(…)` (when `randomSeed`/`noiseSeed` were set individually they appear as separate fields; an unseeded sketch carries none), every `@Param`'s value at export time, the short git commit of the directory the export ran in (a `-dirty` suffix marks uncommitted changes; absent outside a repository), and the frame and fps that produced the file. Where each format keeps it:
+
+| Format | Where |
+|---|---|
+| PNG (`--export`, `--export-sequence`) | the `Description` text chunk (`Software` reads "Ollin") |
+| SVG | a comment right after the opening tag |
+| PDF | the document's Subject field |
+| Video | a description metadata item (`ffprobe` or any tag inspector shows it) |
+
+GIF is the one format without a writable slot. For a quick look at a PNG: `exiftool frame.png`, or `strings frame.png | grep tool`. An artifact found months later names its own seed and knob settings, so the same sketch source plus `--frame` regenerates it exactly; seeding is covered in [Random](../Generators/Random.md).

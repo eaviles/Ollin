@@ -49,6 +49,8 @@ The same recording writes as a **PDF** with `--export-pdf plot.pdf`, and that is
 
 A shared render is better when it can be *re-made*. Three habits from earlier chapters pay off here. Seed the randomness (`seed(…)` in `setup()`, Chapter 4), so the export and the re-export are the same artwork, not siblings. Copy tuned `@Param` values back into their declarations once they feel right, because a headless export reads the defaults written in code, not the inspector. And share the `.swift` file alongside the render when you can: in Ollin the sketch is the artifact, and a reader holding the source holds the whole piece, seeds, knobs, and all.
 
+The exports meet you halfway: every PNG, SVG, PDF, and video Ollin writes carries a small recipe in its metadata, naming the seed, the `@Param` values, the git commit, and the frame that produced it. Find a render months later and the file itself tells you how to make it again (`exiftool poster.png`, or see [the details](../Docs/Output/Export.md#reproducibility-metadata)).
+
 ## Live feeds: into other apps
 
 Some pieces shouldn't become files at all; they should stay alive and go *into* something. **Syphon** is the macOS standard for handing GPU frames between running apps, and one line makes a sketch a source every VJ tool can see:
