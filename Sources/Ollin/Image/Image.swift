@@ -76,6 +76,14 @@ public final class Image {
     /// composites what was drawn into the layer this frame. CPU pixel paths are inert.
     private var renderTargetSource: RenderTarget?
 
+    /// Whether this image has a CPU pixel buffer to read and write. A GPU-backed
+    /// image (a live texture, a compute texture, an effects layer) has none: the
+    /// pixel `subscript` reads `.clear` and writes are dropped. Pixel-reading
+    /// transforms check this and bail rather than returning a blank result.
+    var hasCPUPixels: Bool {
+        externalTexture == nil && computeTextureSource == nil && renderTargetSource == nil
+    }
+
     /// Draw a texture-backed image with its rows flipped (V coordinate inverted).
     /// Syphon textures follow the GL/Syphon bottom-left origin convention, the
     /// opposite of Ollin's top-left image space, so a consumed feed sets this to

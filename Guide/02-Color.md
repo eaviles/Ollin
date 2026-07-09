@@ -134,6 +134,15 @@ Two practical notes. It gives the same answer every time for the same picture, s
 
 A palette pulled from a photograph you took is a palette nobody else has.
 
+Once you have those colors, you can put the picture back together in them:
+
+```swift
+let poster = photo.dithered(.floydSteinberg, to: p)
+drawImage(poster, in: bounds)
+```
+
+Every pixel of the result is one of your five colors. Snapping each pixel straight to the nearest one would leave flat bands where the photo was smooth, so `dithered` scatters the two colors that bracket each tone instead, finely enough that your eye blends them back into the tone that was there. There are several ways to do the scattering, from the crosshatch of `.ordered` to the even grain of `.blueNoise`, and [the color reference](../Docs/Drawing/Color.md#dithering) walks through them. The `Dithering` example puts six of them side by side.
+
 ## Gradients as paint
 
 A `Ramp` can also *be* the paint. Anywhere `fill` or `stroke` takes a color, it takes a gradient, laid over the canvas by one of three geometries:

@@ -585,6 +585,7 @@ let package = Package(
         example("Color/Palettes"),
         example("Color/PaletteFile", resources: [.copy("palettes.csv"), .copy("sunset.hex")]),
         example("Color/PaletteFromImage"),
+        example("Color/Dithering"),
         example("Color/Colormaps"),
         example("Motion/FlowField"),
         example("Motion/EllipseField"),

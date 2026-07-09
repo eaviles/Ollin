@@ -54,6 +54,16 @@ public struct OKLab: Equatable, Sendable {
                                 Color.srgbToLinear(color.blue))
         self.init(l: v.l, a: v.a, b: v.b)
     }
+
+    /// Convert *linear-light* RGB (already through the sRGB transfer curve) to
+    /// OKLab, skipping the sRGB step the `Color` initializer takes. For code that
+    /// already works in linear light and would otherwise round-trip through sRGB
+    /// and back. Components outside `0...1` convert fine: the cube roots are
+    /// odd functions, so an out-of-gamut value keeps its sign.
+    init(linearRed r: Double, green g: Double, blue b: Double) {
+        let v = oklabFromLinear(r, g, b)
+        self.init(l: v.l, a: v.a, b: v.b)
+    }
 }
 
 /// OKLab in polar form: lightness, chroma, hue — the space for hue and

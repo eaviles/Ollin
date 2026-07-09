@@ -238,6 +238,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Gradient paint (`Drawing/Color.md`) | Ch 2 | taught |
 | Palette file import (`loadPalette`/`loadPalettes`, hex/CSV/TSV/JSON/ASE; `Drawing/Color.md`) | Ch 2 | taught |
 | Palette extraction from an image (`Palette(extractedFrom:)`; `Drawing/Color.md`) | Ch 2 | taught |
+| Image dithering (`Image.dithered`: error diffusion, ordered Bayer, blue noise; `Drawing/Color.md`) | Ch 2 | pointed |
 | `Helpers/Math.md` (map, lerp, dist; the shaping scalars clamp/fract/step/smoothstep) | Ch 3, Appendix B | taught |
 | `Helpers/Animation.md` (easing, @Eased, @Smoothed, Timeline; loopProgress/pingPong) | Ch 3 | taught |
 | `Helpers/Input.md` (mouse, keyboard) | Ch 1 | taught |

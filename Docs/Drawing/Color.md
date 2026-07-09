@@ -4,7 +4,7 @@
 
 ## Color
 
-`Color` is an RGBA color with `Double` components in `0...1`. Most of the types below map a single number to a `Color` through the same `color(at:)` call — `Ramp`, `CosinePalette`, and `Colormap` smoothly, the discrete `Palette` in steps — which is the usual way to drive color from a value or from time.
+`Color` is an RGBA color with `Double` components in `0...1`. Most of the types below map a single number to a `Color` through the same `color(at:)` call (`Ramp`, `CosinePalette`, and `Colormap` smoothly, the discrete `Palette` in steps), which is the usual way to drive color from a value or from time.
 
 ### Contents
 
@@ -16,6 +16,7 @@
 - [Palette](#palette)
 - [Loading palettes from a file](#palette-files)
 - [Extracting a palette from an image](#palette-extraction)
+- [Dithering an image to a palette](#dithering)
 - [CosinePalette](#cosinepalette)
 - [Colormap](#colormap)
 
@@ -45,14 +46,14 @@ fill(Color(red: 0.2, green: 0.5, blue: 0.9))
 stroke(Color(white: 0.1))
 ```
 
-**Hex** comes in two forms. The integer form is the one for literals in code — compile-checked, nothing to parse, never optional. An integer carries no digit count (`0xFFF` and `0x000FFF` are the same value), so it's always six digits of RGB, with alpha as its own parameter:
+**Hex** comes in two forms. The integer form is the one for literals in code: compile-checked, nothing to parse, never optional. An integer carries no digit count (`0xFFF` and `0x000FFF` are the same value), so it's always six digits of RGB, with alpha as its own parameter:
 
 ```swift
 background(Color(hex: 0x14171C))
 fill(Color(hex: 0xFF0066, alpha: 0.5))
 ```
 
-The string form takes the full grammar — `"#RGB"`, `"#RGBA"`, `"#RRGGBB"`, `"#RRGGBBAA"`, the `#` optional, case-insensitive — and returns an optional, so a string from a file or the network fails cleanly instead of trapping:
+The string form takes the full grammar (`"#RGB"`, `"#RGBA"`, `"#RRGGBB"`, `"#RRGGBBAA"`, the `#` optional, case-insensitive) and returns an optional, so a string from a file or the network fails cleanly instead of trapping:
 
 ```swift
 let brand = Color(hex: "#ff0066")!        // a literal you know is well-formed
@@ -92,8 +93,8 @@ OKHSL(h:s:l:)     OKHSL(_ color: Color)     Color(_ hsl: OKHSL, alpha: Double = 
 ```
 
 - **`OKLab`** is the workhorse for color *math*: `l` is perceived lightness in `0...1`, `a` runs green → red and `b` runs blue → yellow. Mixing through it comes out visually even.
-- **`OKLCH`** is OKLab in polar form — lightness, chroma, hue — the space for hue and chroma *dials*: turning `h` leaves lightness and colorfulness alone. The maximum displayable chroma depends on hue and lightness, so a dialed-up `c` can ask for colors the screen can't show; converting to `Color` maps those back by reducing chroma at constant lightness and hue, so the color stays itself, just as vivid as sRGB allows.
-- **`OKHSL`** squeezes the same model into the sRGB gamut: `s` and `l` run `0...1` and every combination is displayable — the space for *generated* color ("random hue, same perceived lightness").
+- **`OKLCH`** is OKLab in polar form (lightness, chroma, hue), the space for hue and chroma *dials*: turning `h` leaves lightness and colorfulness alone. The maximum displayable chroma depends on hue and lightness, so a dialed-up `c` can ask for colors the screen can't show; converting to `Color` maps those back by reducing chroma at constant lightness and hue, so the color stays itself, just as vivid as sRGB allows.
+- **`OKHSL`** squeezes the same model into the sRGB gamut: `s` and `l` run `0...1` and every combination is displayable. It is the space for *generated* color ("random hue, same perceived lightness").
 
 Hue is a turn in `0...1` everywhere, like the HSB initializer, and wraps the same way.
 
@@ -117,7 +118,7 @@ let complement = Color(lch)
 Color.mix(_ a: Color, _ b: Color, t: Double, in: ColorSpace = .oklab) -> Color
 ```
 
-Interpolates between two colors in a chosen space: `.rgb`, `.hsb`, `.oklab` (the default — perceptually even), `.oklch` (holds hue identity, arcs through chroma), or `.okhsl`. `t` clamps to `0...1` and alpha interpolates linearly. In the polar spaces hue takes the shortest way around the wheel, and an achromatic endpoint (gray, black, white) adopts the other color's hue, so a fade to white doesn't detour through unrelated hues.
+Interpolates between two colors in a chosen space: `.rgb`, `.hsb`, `.oklab` (the default, perceptually even), `.oklch` (holds hue identity, arcs through chroma), or `.okhsl`. `t` clamps to `0...1` and alpha interpolates linearly. In the polar spaces hue takes the shortest way around the wheel, and an achromatic endpoint (gray, black, white) adopts the other color's hue, so a fade to white doesn't detour through unrelated hues.
 
 ```swift
 let warm = Color(hex: 0xFF5500)
@@ -131,7 +132,7 @@ The `Mixing` example draws the same two colors mixed in all five spaces, band by
 
 ### `Ramp`
 
-A gradient built from a list of colors — spread evenly, or placed with explicit stops — sampled with `color(at:)`. Interpolation runs through a chosen `ColorSpace` (OKLab by default, which blends evenly), and `t` clamps to the ends. Two stops sharing a position make a hard edge.
+A gradient built from a list of colors, spread evenly or placed with explicit stops, sampled with `color(at:)`. Interpolation runs through a chosen `ColorSpace` (OKLab by default, which blends evenly), and `t` clamps to the ends. Two stops sharing a position make a hard edge.
 
 ```swift
 let heat = Ramp([.black, .red, Color(hex: 0xFFCC00), .white])
@@ -154,9 +155,9 @@ fill(.radial(center: sun, radius: 260, [.white, .clear]))         // center → 
 stroke(.alongPath(heat))                                          // along the stroke
 ```
 
-Each factory takes a `Ramp` or a plain `[Color]` list (spread evenly, mixed in OKLab by default — pass `in:` for another space). Coordinates are in drawing space, so a gradient rides the transform stack with the shapes it paints, and one gradient laid across many shapes shades them coherently. `t` clamps at the ends, and alpha rides the ramp — fading a radial gradient to `.clear` makes a soft-edged glow.
+Each factory takes a `Ramp` or a plain `[Color]` list (spread evenly, mixed in OKLab by default; pass `in:` for another space). Coordinates are in drawing space, so a gradient rides the transform stack with the shapes it paints, and one gradient laid across many shapes shades them coherently. `t` clamps at the ends, and alpha rides the ramp, so fading a radial gradient to `.clear` makes a soft-edged glow.
 
-`.alongPath` follows what it paints: on `drawLine`, `drawBezier`, `drawPolyline`, and stroked `drawShape` contours the ramp runs start → end by arc length (each contour runs its own 0…1); on a region shape — including its fill — it sweeps once around the shape's center, starting at 12 o'clock and turning clockwise, so a ring outline becomes a color wheel. A cyclic ramp (matching end colors) hides the seam where the sweep wraps.
+`.alongPath` follows what it paints: on `drawLine`, `drawBezier`, `drawPolyline`, and stroked `drawShape` contours the ramp runs start → end by arc length (each contour runs its own 0…1); on a region shape, including its fill, it sweeps once around the shape's center, starting at 12 o'clock and turning clockwise, so a ring outline becomes a color wheel. A cyclic ramp (matching end colors) hides the seam where the sweep wraps.
 
 `Paint` carries either kind as one value when you want a variable that's "a color or a gradient":
 
@@ -165,7 +166,7 @@ let paint: Paint = beat > 0 ? .gradient(.radial(center: c, radius: r, heat)) : .
 fill(paint)
 ```
 
-The analytic SDF shapes (circles, rects, stars, lines, …) evaluate gradients per pixel, so they're exact at any size. The tessellated shapes (`drawPolygon`, `drawShape`, elliptical arcs, outline text) shade across their vertices instead: gradient strokes subdivide automatically so ramps track the path, but a fill is only sampled at its outline points — a radial gradient centered *inside* a large polygon won't show its bullseye there. Where that matters, prefer an SDF shape. Vector export maps linear and radial gradients to native SVG gradients; an along-path stroke exports as short solid runs, and an along-path fill falls back to the ramp's midpoint color.
+The analytic SDF shapes (circles, rects, stars, lines, …) evaluate gradients per pixel, so they're exact at any size. The tessellated shapes (`drawPolygon`, `drawShape`, elliptical arcs, outline text) shade across their vertices instead: gradient strokes subdivide automatically so ramps track the path, but a fill is only sampled at its outline points, so a radial gradient centered *inside* a large polygon won't show its bullseye there. Where that matters, prefer an SDF shape. Vector export maps linear and radial gradients to native SVG gradients; an along-path stroke exports as short solid runs, and an along-path fill falls back to the ramp's midpoint color.
 
 <a name="palette"></a>
 
@@ -263,6 +264,57 @@ Three behaviors to expect. Transparent pixels are ignored. An image with fewer d
 Extraction is setup-time work, not per-frame work. A large image is sampled on an even grid rather than read whole, so cost is bounded, but clustering still runs Lloyd's algorithm over the samples. Extract in `setup()` and hold the result.
 
 The `PaletteFromImage` example paints an image from five known colors and then recovers them from the pixels alone.
+
+<a name="dithering"></a>
+
+### Dithering an image to a palette
+
+Extraction pulls the colors out of a picture. Dithering puts the picture back together in them.
+
+```swift
+let photo = loadImage("beach.jpg")!
+let p = Palette(extractedFrom: photo, count: 6)
+let poster = photo.dithered(.floydSteinberg, to: p)
+
+drawImage(poster, in: bounds)
+```
+
+Snapping each pixel to its nearest palette color on its own gives flat bands where the picture was smooth. Dithering trades those bands for texture: it scatters the two colors that bracket each tone so the eye, blurring them together at normal viewing distance, reads the tone that was there before. Fewer colors, same picture.
+
+The methods come in two families.
+
+**Threshold maps** decide each pixel by its position alone, from a repeating tile.
+
+- `.ordered(size:)` uses a Bayer matrix, `size` cells across (a power of two in `2...16`). It lays down the visible crosshatch of retro graphics. Larger sizes are finer and less obviously patterned.
+- `.blueNoise` uses a 64×64 tile with no structure in it, giving an even, pattern-free grain. The tile is generated on first use and repeats seamlessly.
+
+**Error diffusion** quantizes a pixel and pushes the leftover error onto the neighbors it has not reached yet, so each mistake is paid back nearby. It cannot run on the GPU (each pixel depends on the one before it), and it gives the organic, scattered look.
+
+| Method | Character |
+|---|---|
+| `.floydSteinberg` | The classic. Four taps, sharp and detailed. |
+| `.jarvisJudiceNinke` | Twelve taps over three rows. Smoother, softens fine detail. |
+| `.stucki` | The Jarvis layout retuned. Cleaner, slightly sharper. |
+| `.atkinson` | Passes on only three quarters of the error, so highlights and shadows blow out to clean white and black. |
+| `.burkes` | Stucki without its bottom row. Fast, and close to it. |
+| `.sierra`, `.twoRowSierra`, `.sierraLite` | Three rows, two rows, and the cheapest diffusion worth having. |
+
+`.none` skips the dithering and just snaps to the nearest color, which is how you show someone what dithering is for.
+
+There is a second form that quantizes to evenly spaced steps per channel instead of to a palette, the posterizing one:
+
+```swift
+photo.dithered(.atkinson, levels: 2)           // 8 colors: black, white, the primaries
+photo.dithered(.ordered(size: 8), levels: 4)   // 64
+```
+
+Two knobs, each ignored by the family it does not apply to. `amount` (`0...1`) scales the grain of the threshold maps: at `1` they hold the image's tone exactly, and at `0` they band like `.none`. `serpentine` (on by default) reverses every other row of an error-diffusion scan, which breaks up the directional streaks a straight left-to-right pass leaves behind.
+
+Dithering is per-pixel CPU work, like extraction. Do it in `setup()` and hold the result. Alpha passes through untouched. A texture-backed image (a video frame, a Syphon feed, an effects layer) has no readable pixels and comes back unchanged, so call `snapshot()` on it first. It is fully deterministic: the same image, method, and palette always give the same pixels, so a dithered result is safe to snapshot and to export.
+
+If what you want is a cheap real-time dither over a whole layer rather than an exact quantization of an image, reach for the `.dither` and `.ditherDuo` [filters](Effects.md) instead. They run on the GPU, and they are a different tool.
+
+The `Dithering` example reduces one painted gradient to four extracted colors six ways, side by side.
 
 <a name="cosinepalette"></a>
 

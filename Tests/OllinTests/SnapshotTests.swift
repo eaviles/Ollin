@@ -265,6 +265,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("blue-noise",
                  note: "A blue-noise (Poisson-disk) point set stippled as dots. Pins Bridson's dart-throwing sampler: the seeded scatter with a minimum spacing (no two dots closer than the radius, no clumps or gaps). Seeded, no time, so the layout is deterministic.",
                  make: { BlueNoiseScene() }),
+    SnapshotCase("dither",
+                 note: "One painted gradient quantized to a three-color palette four ways, at 1:1 pixels: plain nearest-color (banding), ordered Bayer, blue noise, Floyd-Steinberg. Pins the whole dithering pass (the Bayer recurrence, the void-and-cluster tile, the error-diffusion kernel and its serpentine scan) plus the color space each family chooses its colors in. No rng and no time, so it is deterministic.",
+                 make: { DitherScene() }),
     SnapshotCase("truchet",
                  note: "A Truchet tiling: arc tiles in the top half, diagonal tiles in the bottom, each cell's orientation chosen by the seed. Pins both tile geometries and the cross-cell connectivity (the arcs meet at shared edge midpoints, the diagonals at corners). Seeded, no time, so the layout is deterministic.",
                  make: { TruchetScene() }),
@@ -997,6 +1000,51 @@ private final class BlueNoiseScene: Sketch {
             fill(Color.mix(Color(hex: 0xE8ECF4), Color(hex: 0x5AA9E6), t: (flow + 1) * 0.5))
             drawCircle(center: p, radius: 1.6 + (flow + 1) * 1.4)
         }
+    }
+}
+
+/// One gradient reduced to three colors four ways, drawn 1:1 so a dithered pixel
+/// is a canvas pixel. Top row: plain nearest-color quantization (bands) beside an
+/// ordered Bayer dither. Bottom row: a blue-noise dither beside Floyd-Steinberg.
+/// No rng and no `time`, so it is deterministic.
+private final class DitherScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let palette = Palette(Color(hex: 0x14203A), Color(hex: 0xBF3100),
+                                  Color(hex: 0xF7DFA5))
+    private var panels: [Image] = []
+
+    override func setup() {
+        noStroke()
+        let source = paint()
+        panels = [source.dithered(.none, to: palette),
+                  source.dithered(.ordered(size: 4), to: palette),
+                  source.dithered(.blueNoise, to: palette),
+                  source.dithered(.floydSteinberg, to: palette)]
+    }
+
+    override func draw() {
+        background(.black)
+        for (i, panel) in panels.enumerated() {
+            drawImage(panel, in: Rectangle(x: Double(i % 2) * 128, y: Double(i / 2) * 128,
+                                           width: 128, height: 128))
+        }
+    }
+
+    private func paint() -> Image {
+        let n = 128
+        let image = Image(width: n, height: n)
+        for y in 0..<n {
+            for x in 0..<n {
+                let u = Double(x) / Double(n - 1)
+                let v = Double(y) / Double(n - 1)
+                let t = clamp(1 - dist(u, v, 0.3, 0.75) * 1.3, 0, 1)
+                image[x, y] = t < 0.5
+                    ? Color.mix(palette[0], palette[1], t: t * 2)
+                    : Color.mix(palette[1], palette[2], t: (t - 0.5) * 2)
+            }
+        }
+        return image
     }
 }
 
