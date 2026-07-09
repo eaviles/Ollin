@@ -25,6 +25,8 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [What SVG export records](#what-svg-export-records): the shape mapping and the limits
 - [Hatching: solid fills for a pen plotter](#hatching-solid-fills-for-a-pen-plotter): `--hatch`, `Hatching`
 - [Reproducibility metadata](#reproducibility-metadata): the regeneration recipe every export carries
+- [Rendering a chosen variation](#rendering-a-chosen-variation): `--seed`, on every export path
+- [Contact sheets](#contact-sheets-proofing-a-variation-space): `--export-grid`, `OllinApp.contactSheet` / `exportContactSheet`
 
 ---
 
@@ -235,7 +237,7 @@ Every export carries the recipe to regenerate itself, embedded as one compact JS
 {"tool":"Ollin","seed":42,"params":{"radius":120},"git":"8167de3","frame":0,"fps":60}
 ```
 
-The fields: the seed last applied through `seed(…)` (when `randomSeed`/`noiseSeed` were set individually they appear as separate fields; an unseeded sketch carries none), every `@Param`'s value at export time, the short git commit of the directory the export ran in (a `-dirty` suffix marks uncommitted changes; absent outside a repository), and the frame and fps that produced the file. Where each format keeps it:
+The fields: the sketch's [`variation`](../Core/Variations.md), the seed both generators grew from (when `randomSeed`/`noiseSeed` were set individually they appear as separate fields instead), every `@Param`'s value at export time, the short git commit of the directory the export ran in (a `-dirty` suffix marks uncommitted changes; absent outside a repository), and the frame and fps that produced the file. Every sketch is born on a seed, so even an unseeded run records the number that reproduces it. Where each format keeps it:
 
 | Format | Where |
 |---|---|
@@ -244,4 +246,49 @@ The fields: the seed last applied through `seed(…)` (when `randomSeed`/`noiseS
 | PDF | the document's Subject field |
 | Video | a description metadata item (`ffprobe` or any tag inspector shows it) |
 
-GIF is the one format without a writable slot. For a quick look at a PNG: `exiftool frame.png`, or `strings frame.png | grep tool`. An artifact found months later names its own seed and knob settings, so the same sketch source plus `--frame` regenerates it exactly; seeding is covered in [Random](../Generators/Random.md).
+GIF is the one format without a writable slot. For a quick look at a PNG: `exiftool frame.png`, or `strings frame.png | grep tool`. An artifact found months later names its own seed and knob settings, so the same sketch source plus `--seed` and `--frame` regenerates it exactly; seeding is covered in [Random](../Generators/Random.md).
+
+---
+
+### Rendering a chosen variation
+
+`--seed N` reseeds the sketch before its `setup()` on **every** export path above, so a variation you found in the inspector or on a contact sheet comes back exactly:
+
+```sh
+swift run Example-Randomness-Variations --export keeper.png --seed 10
+swift run Example-Randomness-Variations --export-video keeper.mp4 --seconds 6 --seed 10
+```
+
+The same seed always renders the same pixels. A sketch that pins its own seed in `setup()` ignores the flag, as it ignores every other way of setting a seed.
+
+---
+
+### Contact sheets: proofing a variation space
+
+`--export-grid` renders one frame at each of a run of seeds and tiles them into a single labeled proof sheet, the way a photographer contact-prints a roll before choosing an enlargement:
+
+```sh
+swift run Example-Randomness-Variations --export-grid sheet.png --seeds 25
+swift run Example-Randomness-Variations --export-grid sheet.png --seeds 12 --columns 4 --tile 400
+```
+
+| Flag | Meaning |
+|---|---|
+| `--export-grid <path.png>` | the sheet to write |
+| `--seeds N` | how many variations (default 16) |
+| `--seed FIRST` | the first seed (default 1); seeds run consecutively |
+| `--columns C` | grid columns (default: the squarest fit) |
+| `--tile PX` | each thumbnail's width, floored at 64 (default 320) |
+| `--frame N` | which frame of the sketch to render (default 0) |
+| `--fps F` | the clock rate that frame is timed against |
+
+Each tile is a fresh instance of the sketch, seeded before `setup()` runs, so a stateful sketch (accumulation, feedback, a growing simulation) can't leak from one tile into the next. One renderer serves the whole sheet, so a 25-seed sheet costs about what 25 `--export` calls would, minus the startup. The sheet's PNG carries the seed list in its own recipe.
+
+From code:
+
+```swift
+OllinApp.exportContactSheet({ MySketch() }, to: "sheet.png", seeds: Array(1...25))
+let sheet: CGImage? = OllinApp.contactSheet(of: { MySketch() }, seeds: [3, 17, 92], columns: 3)
+```
+
+Pick a tile you like, then render it big with `--export … --seed N`. The whole loop, and the live inspector half of it, is in [Variations](../Core/Variations.md).

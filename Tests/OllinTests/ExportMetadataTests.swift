@@ -56,16 +56,29 @@ struct ExportMetadataTests {
         #expect(recipe["noiseSeed"] as? Int == 2)
     }
 
-    @Test func unseededSketchOmitsSeedsAndParams() throws {
+    /// Even an unseeded sketch is recoverable: its rolled `variation` seeds both
+    /// generators at init, so the recipe carries the one number that brings the
+    /// run back.
+    @Test func unseededSketchRecordsItsRolledVariation() throws {
         final class Plain: Sketch {
             override var canvasSize: CanvasSize { .square(100) }
             override func draw() { background(.white) }
         }
-        let recipe = try recipeJSON(in: OllinApp.svg(of: Plain()))
-        #expect(recipe["seed"] == nil)
-        #expect(recipe["randomSeed"] == nil)
+        let plain = Plain()
+        let recipe = try recipeJSON(in: OllinApp.svg(of: plain))
+        #expect(recipe["seed"] as? Int == plain.variation)
+        #expect(recipe["randomSeed"] == nil)   // one shared seed prints as `seed`
         #expect(recipe["noiseSeed"] == nil)
         #expect(recipe["params"] == nil)
+    }
+
+    @Test func sheetRecipeCarriesTheSeedList() throws {
+        let json = ExportMetadata.sheetRecipe(seeds: [4, 5, 6], frame: 2, fps: 30)
+        let object = try #require(try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+        #expect(object["tool"] as? String == "Ollin")
+        #expect(object["seeds"] as? [Int] == [4, 5, 6])
+        #expect(object["frame"] as? Int == 2)
+        #expect(object["fps"] as? Int == 30)
     }
 
     @Test func recipeFormatsParamKinds() {

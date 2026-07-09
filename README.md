@@ -115,13 +115,20 @@ swift run OllinLive MySketches/Loop.swift --export-gif loop.gif --seconds 4   # 
 
 Sequence, video, and GIF exports advance the clock at a fixed timestep rather than wall-clock, so a slow render still plays back smoothly. In code they're `OllinApp.export`, `exportSequence`, `exportVideo`, and `exportGIF`. Codec and quality dials, the `--skip` warmup, GIF sizing, and the plotter-oriented `--hatch` fills are all in [`Docs/Output/Export.md`](Docs/Output/Export.md).
 
+A seeded sketch is a generator, so Ollin names the seed each run grew from (`variation`) and gives you the tools to explore the space it indexes: step, roll, or jump through seeds from the inspector's Variation card, proof a whole range as a labeled contact sheet, then re-render the keeper at full size.
+
+```sh
+swift run Example-Randomness-Variations --export-grid sheet.png --seeds 25  # proof 25 variations
+swift run Example-Randomness-Variations --export keeper.png --seed 10       # render the one you liked
+```
+
 ## Documentation
 
 New to creative coding, or to Ollin? [The Guide](Guide/README.md) is a practical, book-length introduction taught through Ollin, written for programmers with no math or graphics background and filled in chapter by chapter. Start at [Chapter 1: Hello, Ollin](Guide/01-HelloOllin.md).
 
 The full API reference lives in [`Docs/`](Docs/), one page per topic; [`Docs/README.md`](Docs/README.md) is the annotated index. Most of it ships with the core `import Ollin`; ten satellite libraries live in the same package behind their own `import` (shown on each page), so a sketch links only what it uses.
 
-- **Core** - [Sketch](Docs/Core/Sketch.md), [Canvas](Docs/Core/Canvas.md), [Input](Docs/Helpers/Input.md), [Parameters](Docs/Helpers/Parameters.md), [Math](Docs/Helpers/Math.md), [Animation](Docs/Helpers/Animation.md)
+- **Core** - [Sketch](Docs/Core/Sketch.md), [Canvas](Docs/Core/Canvas.md), [Variations](Docs/Core/Variations.md), [Input](Docs/Helpers/Input.md), [Parameters](Docs/Helpers/Parameters.md), [Math](Docs/Helpers/Math.md), [Animation](Docs/Helpers/Animation.md)
 - **Drawing** - [Drawing](Docs/Drawing/Drawing.md), [Color](Docs/Drawing/Color.md), [Geometry](Docs/Drawing/Geometry.md), [SVG import](Docs/Drawing/SVG.md), [Fourier epicycles](Docs/Drawing/Epicycles.md), [Shape morphing](Docs/Drawing/Morphing.md), [Images](Docs/Drawing/Images.md), [Text](Docs/Drawing/Text.md), [Accumulation](Docs/Drawing/Accumulation.md), [HDR & tone-mapping](Docs/Drawing/HDR.md), [Layered effects](Docs/Drawing/Effects.md), [SDF combinators](Docs/Drawing/Combinators.md), [Voronoi & Delaunay](Docs/Drawing/Voronoi.md), [Truchet tiling](Docs/Drawing/Truchet.md), [Strange attractors](Docs/Drawing/Attractors.md)
 - **Shaders & compute** - [Shaders](Docs/Shaders/Shaders.md), [Visual chains](Docs/Shaders/Visuals.md), [Shader library](Docs/Shaders/ShaderLibrary.md), [Compute & GPU particles](Docs/Shaders/Compute.md)
 - **Generators** - [Random](Docs/Generators/Random.md), [Noise](Docs/Generators/Noise.md), [Blue noise](Docs/Generators/BlueNoise.md), [Circle packing](Docs/Generators/Packing.md), [Shape packing](Docs/Generators/ShapePacking.md), [L-systems](Docs/Generators/LSystem.md), [Differential growth](Docs/Generators/DifferentialGrowth.md), [Wave Function Collapse](Docs/Generators/WaveFunctionCollapse.md), [Flow fields](Docs/Generators/FlowField.md), [Flocking](Docs/Generators/Boids.md), [Steering](Docs/Generators/Steering.md), [Space colonization](Docs/Generators/SpaceColonization.md), [Diffusion-limited aggregation](Docs/Generators/DiffusionLimitedAggregation.md)

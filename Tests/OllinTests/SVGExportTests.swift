@@ -128,8 +128,26 @@ struct SVGExportTests {
     }
 
     @Test func isDeterministic() {
-        // No GPU, fixed timestep — the same frame serializes identically.
-        #expect(OllinApp.svg(of: Fixture(), frame: 3) == OllinApp.svg(of: Fixture(), frame: 3))
+        // No GPU, fixed timestep: the same frame of the same variation
+        // serializes identically. Seeded, because an unseeded sketch rolls a
+        // fresh `variation` per instance and the recipe comment records it.
+        func fixture() -> Fixture {
+            let f = Fixture()
+            f.seed(1)
+            return f
+        }
+        #expect(OllinApp.svg(of: fixture(), frame: 3) == OllinApp.svg(of: fixture(), frame: 3))
+    }
+
+    /// Two unseeded runs of a randomness-free sketch draw the same picture; only
+    /// the recorded variation in the recipe tells them apart.
+    @Test func unseededRunsDifferOnlyInTheRecordedVariation() {
+        func body(_ svg: String) -> String {
+            svg.components(separatedBy: "\n").filter { !$0.contains("<!-- {") }.joined(separator: "\n")
+        }
+        let a = OllinApp.svg(of: Fixture(), frame: 3)
+        let b = OllinApp.svg(of: Fixture(), frame: 3)
+        #expect(body(a) == body(b))
     }
 
     // MARK: - Hatching

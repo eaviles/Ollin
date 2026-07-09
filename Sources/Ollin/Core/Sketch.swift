@@ -984,15 +984,17 @@ open class Sketch {
     private var advancingValues: [FrameAdvancing]?
 
     /// Backing generator for `random()` / `randomSeed(_:)` (see Random.swift).
-    /// Entropy-seeded by default, so unseeded sketches vary per run.
-    var rng = SplitMix64(seed: .random(in: .min ... .max))
+    /// Seeded from `variation` at init, so unseeded sketches vary per run but
+    /// every run is recoverable by its number.
+    var rng: SplitMix64
 
     /// Backing field for `noise()` / `noiseSeed(_:)` (see Noise.swift).
-    var perlin = PerlinNoise(seed: .random(in: .min ... .max))
+    var perlin: PerlinNoise
 
     /// The seeds last applied through `randomSeed(_:)` / `noiseSeed(_:)` (both
     /// via `seed(_:)`), recorded so exports can embed the reproduction recipe
-    /// (see ExportMetadata.swift). `nil` while entropy-seeded.
+    /// (see ExportMetadata.swift). Start at `variation`, which seeds both
+    /// generators at init.
     var recordedRandomSeed: Int?
     var recordedNoiseSeed: Int?
 
@@ -1008,9 +1010,29 @@ open class Sketch {
     /// release (see `handleKey`).
     private var pressedKeys: Set<KeyToken> = []
 
+    /// The seed this run's randomness grew from: the sketch's place in its
+    /// variation space. Rolled fresh each run (a friendly five-digit number)
+    /// and applied to both `random()` and `noise()` at init, so an unseeded
+    /// sketch still varies run to run, yet any run can be brought back by its
+    /// number: the exports embed it in their recipe, the host inspectors show
+    /// it with previous/next/random controls, and `--seed N` re-renders it.
+    /// `seed(n)` sets it; a sketch that calls `seed(42)` in `setup()` pins
+    /// itself to that one variation.
+    public internal(set) var variation: Int
+
     /// `required` so `Self()` works in the static `main()` entry point (see
     /// `Sketch.main()`), letting a sketch file be `@main` with no boilerplate.
-    public required init() {}
+    public required init() {
+        // One entropy roll seeds everything, so the run reproduces from a
+        // single number. Kept to five digits for easy reading and retyping;
+        // SplitMix64's finalizer decorrelates even adjacent seeds.
+        let roll = Int.random(in: 1 ... 99_999)
+        variation = roll
+        rng = SplitMix64(seed: UInt64(bitPattern: Int64(roll)))
+        perlin = PerlinNoise(seed: UInt64(bitPattern: Int64(roll)))
+        recordedRandomSeed = roll
+        recordedNoiseSeed = roll
+    }
 
     private func setLooping(_ value: Bool) {
         guard isLooping != value else { return }

@@ -60,6 +60,11 @@ public final class SketchSession {
     /// loaded sketch so a knob doesn't snap back. Only values the user actually
     /// changed are stored, so editing a default in code still takes effect.
     @ObservationIgnored private var paramValues: [String: ParamStored] = [:]
+    /// A variation seed the user navigated to, re-applied to each freshly
+    /// loaded sketch (before its `setup()`) so the composition doesn't shuffle
+    /// under an edit. Only set once the user actually touches the seed card,
+    /// so an untouched session keeps rolling fresh variations per reload.
+    @ObservationIgnored private var navigatedSeed: Int?
 
     public init(keepClock: Bool = false) {
         self.keepClock = keepClock
@@ -84,6 +89,12 @@ public final class SketchSession {
     /// Record a knob the user changed, so it survives the next evaluation.
     public func recordParam(_ name: String, _ value: ParamStored) {
         paramValues[name] = value
+    }
+
+    /// Record a variation seed the user navigated to, so it survives the next
+    /// evaluation the way tuned knobs do.
+    public func recordSeed(_ seed: Int) {
+        navigatedSeed = seed
     }
 
     /// Set or clear the shader-error channel from a host's own shader path
@@ -144,6 +155,9 @@ public final class SketchSession {
     /// user changed; untouched params keep the sketch's (possibly edited)
     /// defaults.
     private func syncParams(_ sketch: Sketch) {
+        // Carry a navigated variation across the swap. Before setup(), so a
+        // sketch that pins its own seed there still wins, same as anywhere.
+        if let navigatedSeed { sketch.seed(navigatedSeed) }
         let handles = sketch.parameters()
         for handle in handles {
             guard let stored = paramValues[handle.name] else { continue }

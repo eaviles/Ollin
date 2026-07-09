@@ -10,6 +10,8 @@ import OllinRuntime
 /// - A recorded (user-dragged) param value is re-applied to the next
 ///   evaluation's sketch, while an *untouched* param takes the buffer's edited
 ///   default.
+/// - A navigated variation seed carries the same way, so an edit doesn't
+///   reshuffle the composition the user was working on.
 /// - Two back-to-back evaluations resolve to the newer one (supersede), never
 ///   the stale one.
 /// - First-mount bookkeeping: `reloadCount` stays 0 and `lastBuildSeconds`
@@ -69,6 +71,14 @@ enum SessionTest {
             fail("the untouched param kept a stale default instead of the edited one")
         }
 
+        print("OllinLiveCoding sessiontest: variation carry across an evaluation …")
+        session.recordSeed(777)                      // the user navigated the seed space
+        session.evaluate(loader, input: .source(source(radiusDefault: 300, speedDefault: 2)))
+        await settle(session)
+        guard session.sketch?.variation == 777 else {
+            fail("the navigated variation reshuffled to \(session.sketch?.variation ?? -1)")
+        }
+
         print("OllinLiveCoding sessiontest: supersede (two evaluations back to back) …")
         session.evaluate(loader, input: .source(source(radiusDefault: 300, speedDefault: 5)))
         session.evaluate(loader, input: .source(source(radiusDefault: 300, speedDefault: 7)))
@@ -79,7 +89,7 @@ enum SessionTest {
             fail("a superseded evaluation landed last (speed = \(value(of: "speed", session) ?? .nan))")
         }
 
-        print("OllinLiveCoding sessiontest passed: param carry, edited defaults, and supersede hold.")
+        print("OllinLiveCoding sessiontest passed: param carry, variation carry, edited defaults, and supersede hold.")
         exit(0)
     }
 

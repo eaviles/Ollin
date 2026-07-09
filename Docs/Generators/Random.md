@@ -180,3 +180,11 @@ Seed *both* `random` and `noise` from one value, locking the whole sketch's rand
 ```swift
 seed(7)   // random and noise both reproducible
 ```
+
+This is also what sets the sketch's `variation`, the seed the run grew from. Every sketch is born on one (rolled fresh unless you call `seed`), reads it back as `variation`, records it in every export's recipe, and can be walked through it from the inspector's Variation card or rendered at any seed with `--seed N`. See [Variations](../Core/Variations.md).
+
+```swift
+override func draw() {
+    drawCaption("Variation \(variation)")
+}
+```

@@ -17,6 +17,9 @@ struct InspectorPanel: View {
                     MonitorCardView(
                         identity: MonitorIdentity(name: session.fileName, folder: session.folder),
                         stats: session.stats)
+                    VariationCardView(stats: session.stats) { seed in
+                        session.recordSeed(seed)
+                    }
                     ParametersListView(params: session.params) { name, value in
                         session.recordParam(name, value)
                     }

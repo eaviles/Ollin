@@ -32,8 +32,11 @@ public extension Sketch {
 
     /// Seed *both* `random` and `noise` from one value, locking the whole
     /// sketch's randomness so it reproduces exactly. Use `randomSeed` or
-    /// `noiseSeed` to reseed just one.
+    /// `noiseSeed` to reseed just one. This is also what picks the sketch's
+    /// `variation`: calling it moves the whole run to that seed, whether from
+    /// the sketch's own `setup()` or from a host navigating the seed space.
     func seed(_ seed: Int) {
+        variation = seed
         randomSeed(seed)
         noiseSeed(seed)
     }

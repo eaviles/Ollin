@@ -113,6 +113,26 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         self.view?.isPaused = false   // a noLoop() sketch must still snap on demand
     }
 
+    /// Restart the running sketch at a chosen variation seed, requested from a
+    /// host's seed-navigation card. In place, on the same instance: the sketch
+    /// reseeds now, the clock and any accumulated canvas reset, and `setup()`
+    /// re-runs at the top of the next frame, while `@Param` knob values stay
+    /// put (same instance, so every host's parameter surface keeps working).
+    /// A sketch whose `setup()` pins its own seed simply reproduces that one
+    /// variation. **Call on the main thread.**
+    public func restart(variation: Int) {
+        sketch.seed(variation)
+        sketch.frameCount = 0
+        renderer.resetAccumulation()   // a fresh variation starts on a clean canvas
+        didSetup = false               // re-run setup() and restart the clock next frame
+        clockCarry = nil
+        // Restore the running state rather than just unpausing the view: a
+        // still sketch's fresh `noLoop()` must be a *change* to fire the pause
+        // again, or the restarted still image would redraw forever.
+        sketch.loop()
+        view?.isPaused = false
+    }
+
     /// Drive the camera orbit from a drag on the axis widget's puck by feeding the
     /// sketch's mouse state the way the canvas would, so a rig-driven sketch
     /// (`cameraShowcase` / `cameraControl`) orbits exactly as if the scene were
@@ -1058,6 +1078,15 @@ public enum OllinApp {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
         renderer.automaticQuality = quality
+        return renderImage(of: sketch, frame: frame, fps: fps, renderer: renderer)
+    }
+
+    /// The one-frame headless drive behind `image(of:)`, against a caller-owned
+    /// renderer: the contact sheet reuses one renderer (and its compiled
+    /// pipelines) across every tile instead of rebuilding per seed. The caller
+    /// owns `isRenderingHeadless` and the renderer's quality fallback.
+    static func renderImage(of sketch: Sketch, frame: Int, fps: Double,
+                            renderer: MetalRenderer) -> CGImage? {
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.setup()
@@ -1349,8 +1378,9 @@ public extension Sketch {
 public extension OllinApp {
     /// Handle the shared headless command-line surface (the export flags
     /// `--export`, `--export-sequence`, `--export-video`, `--export-gif`,
-    /// `--export-loop`, `--export-svg`, `--export-pdf` with their options,
-    /// plus `--bench`) against a sketch supplied on demand.
+    /// `--export-loop`, `--export-svg`, `--export-pdf`, `--export-grid` with
+    /// their options, `--seed` on any of them, plus `--bench`) against a
+    /// sketch supplied on demand.
     ///
     /// Returns `true` when a headless flag was recognized (the work ran, or a
     /// usage message was printed), meaning the caller should exit rather than
@@ -1373,6 +1403,20 @@ public extension OllinApp {
                   let q = RenderQuality(name: args[i + 1]) else { return .detail }
             return q
         }()
+        // `--seed N` reseeds the sketch before its `setup()` on every export
+        // path, so a variation found in the inspector or on a contact sheet
+        // re-renders exactly (a sketch that pins its own seed in `setup()`
+        // still wins, as anywhere). For `--export-grid` it is the first seed
+        // of the sheet.
+        let seedOverride: Int? = {
+            guard let i = args.firstIndex(of: "--seed"), i + 1 < args.count else { return nil }
+            return Int(args[i + 1])
+        }()
+        func make() -> Sketch {
+            let sketch = makeSketch()
+            if let seedOverride { sketch.seed(seedOverride) }
+            return sketch
+        }
         // `--export-sequence <dir> (--frames N | --seconds S) [--fps F] [--start N]`
         // renders a deterministic numbered PNG sequence and exits.
         if let i = args.firstIndex(of: "--export-sequence"), i + 1 < args.count {
@@ -1393,7 +1437,7 @@ public extension OllinApp {
                     "usage: --export-sequence <dir> (--frames N | --seconds S) [--fps F] [--skip S] [--start N]\n".utf8))
                 return true
             }
-            OllinApp.exportSequence(makeSketch(), to: dir, frames: frames, fps: fps,
+            OllinApp.exportSequence(make(), to: dir, frames: frames, fps: fps,
                                     startFrame: start, skipSeconds: skip, quality: renderQuality)
             return true
         }
@@ -1410,7 +1454,7 @@ public extension OllinApp {
             let isGIF = path.lowercased().hasSuffix(".gif")
             let fps = value("--fps").flatMap(Double.init) ?? (isGIF ? 25 : 60)
             let skip = value("--skip").flatMap(Double.init) ?? 0
-            let sketch = makeSketch()
+            let sketch = make()
             guard let duration = sketch.loopDuration, duration > 0 else {
                 FileHandle.standardError.write(Data("""
                     --export-loop renders one period of a sketch that declares its loop:
@@ -1482,7 +1526,7 @@ public extension OllinApp {
                     "usage: --export-video <path> (--frames N | --seconds S) [--fps F] [--skip S] [--codec C] [--bitrate MBPS] [--quality 0..1]\n".utf8))
                 return true
             }
-            OllinApp.exportVideo(makeSketch(), to: args[i + 1], frames: frames, fps: fps,
+            OllinApp.exportVideo(make(), to: args[i + 1], frames: frames, fps: fps,
                                  codec: codec, bitsPerSecond: bitrate, quality: quality,
                                  renderQuality: renderQuality, skipSeconds: skip)
             return true
@@ -1506,8 +1550,35 @@ public extension OllinApp {
                     "usage: --export-gif <path> (--frames N | --seconds S) [--fps F] [--skip S] [--gif-width PX]\n".utf8))
                 return true
             }
-            OllinApp.exportGIF(makeSketch(), to: args[i + 1], frames: frames, fps: fps,
+            OllinApp.exportGIF(make(), to: args[i + 1], frames: frames, fps: fps,
                                width: width, skipSeconds: skip, renderQuality: renderQuality)
+            return true
+        }
+        // `--export-grid <path.png> [--seeds N] [--columns C] [--tile PX]
+        // [--frame N] [--fps F]` renders a contact sheet of variations, one
+        // labeled tile per seed, and exits. Seeds run consecutively from
+        // `--seed` (default 1); re-render a keeper at full resolution with
+        // `--export <path> --seed N`.
+        if let i = args.firstIndex(of: "--export-grid"), i + 1 < args.count {
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
+            }
+            let count = value("--seeds").flatMap(Int.init) ?? 16
+            guard count > 0 else {
+                FileHandle.standardError.write(Data(
+                    "usage: --export-grid <path.png> [--seeds N] [--columns C] [--tile PX] [--frame N] [--fps F] [--seed FIRST]\n".utf8))
+                return true
+            }
+            let start = seedOverride ?? 1
+            let seeds = Array(start ..< start + count)
+            let columns = value("--columns").flatMap(Int.init)
+            let tile = value("--tile").flatMap(Int.init) ?? 320
+            let frame = value("--frame").flatMap(Int.init) ?? 0
+            let fps = value("--fps").flatMap(Double.init) ?? 60
+            OllinApp.exportContactSheet(makeSketch, to: args[i + 1], seeds: seeds,
+                                        frame: frame, fps: fps, columns: columns,
+                                        tileWidth: tile, quality: renderQuality)
             return true
         }
         if let i = args.firstIndex(of: "--export"), i + 1 < args.count {
@@ -1515,7 +1586,7 @@ public extension OllinApp {
             if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {
                 frame = Int(args[f + 1]) ?? 0
             }
-            OllinApp.export(makeSketch(), to: args[i + 1], frame: frame, quality: renderQuality)
+            OllinApp.export(make(), to: args[i + 1], frame: frame, quality: renderQuality)
             return true
         }
         // `swift run Example-X --export-svg <path> [--frame N]` writes a vector SVG
@@ -1542,11 +1613,11 @@ public extension OllinApp {
             }
             var handled = false
             if let i = svgFlag, i + 1 < args.count {
-                OllinApp.exportSVG(makeSketch(), to: args[i + 1], frame: frame, hatching: hatching)
+                OllinApp.exportSVG(make(), to: args[i + 1], frame: frame, hatching: hatching)
                 handled = true
             }
             if let i = pdfFlag, i + 1 < args.count {
-                OllinApp.exportPDF(makeSketch(), to: args[i + 1], frame: frame, hatching: hatching)
+                OllinApp.exportPDF(make(), to: args[i + 1], frame: frame, hatching: hatching)
                 handled = true
             }
             if !handled {
@@ -1558,7 +1629,7 @@ public extension OllinApp {
         if let i = args.firstIndex(of: "--bench") {
             var frames = 600
             if i + 1 < args.count, let f = Int(args[i + 1]) { frames = f }
-            OllinApp.benchmark(makeSketch(), frames: frames, gpu: args.contains("--gpu"))
+            OllinApp.benchmark(make(), frames: frames, gpu: args.contains("--gpu"))
             return true
         }
         return false

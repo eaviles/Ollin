@@ -55,6 +55,27 @@ This is the working rhythm of generative art, so it's worth spelling out. The co
 
 One relative to know: `seed(5)` (without the `random` prefix) seeds `random` *and* its smooth cousin `noise` in one go. Noise is Chapter 5's whole subject; until then the two calls do the same job.
 
+## Finding a seed worth keeping
+
+Flipping through seeds by editing the number and rebuilding gets old fast, so Ollin does the flipping for you. Every sketch is born on a seed, called its `variation`, and you can read it while the sketch runs:
+
+```swift
+override func draw() {
+    drawCaption("Variation \(variation)")
+}
+```
+
+Run the sketch and the inspector (press ⌘/ if you launched it on its own) shows that number on a Variation card, with arrows to step to the next seed, a die to roll a random one, and a field to type one in. Each press restarts the sketch on the new seed while your parameter knobs stay where you set them, so you can hunt for a composition without touching the code.
+
+When you want to see many at once, ask for a contact sheet. This renders one frame per seed and tiles them into a single labeled image, exactly like the nine-tile sheet you saw a moment ago:
+
+```sh
+swift run Example-Randomness-Variations --export-grid sheet.png --seeds 25
+swift run Example-Randomness-Variations --export keeper.png --seed 10   # render the one you liked
+```
+
+One rule makes this worth doing. A seed is worth flipping through only when it decides something structural: which palette, how dense, how large. Make those choices in `setup()`, where the seeded rolls happen once, and let `draw()` animate what `setup()` decided. Do it in `draw()` instead and every seed gives you the same piece, shaken slightly differently.
+
 ## Letting chance decide
 
 So far chance has answered "where" and "how big": questions of amount. It can also answer yes-or-no and which-one, and those two turn randomness from decoration into composition:
@@ -231,8 +252,9 @@ The grammar of this chapter is the founding grammar of computer art. Vera Molná
 ## Go deeper
 
 - [Random](../Docs/Generators/Random.md): the full reference, including `randomVector` (a roll inside a rectangle), `ring` (a roll inside a ring, great for halos), and the seeded `shuffled`.
+- [Variations](../Docs/Core/Variations.md): `variation` and the seed-exploration tools in full, including contact sheets (`--export-grid`) and re-rendering a keeper (`--seed`).
 - [Noise](../Docs/Generators/Noise.md): the next chapter's subject, if you can't wait to make chance glide.
-- Worked examples, all in [`Examples/Randomness/`](../Examples/Randomness/): `Gaussian` (the bell curve as boiling scatter), `RandomBand` (uniform, for contrast), and `Ring` (the ring roll).
+- Worked examples, all in [`Examples/Randomness/`](../Examples/Randomness/): `Variations` (a whole composition per seed), `Gaussian` (the bell curve as boiling scatter), `RandomBand` (uniform, for contrast), and `Ring` (the ring roll).
 - The Molnár homages in [`Examples/Recreations/VeraMolnar/`](../Examples/Recreations/VeraMolnar/): `DesOrdres` (seeded disorder scrubbed by the mouse) and `Interruptions` (a field of tilted ticks, its gaps carved by the noise you'll meet in Chapter 5).
 
 ---

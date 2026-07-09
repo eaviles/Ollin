@@ -18,6 +18,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | The clock | `time`, `deltaTime`, `frameCount`, `frameRate`; `noLoop()` for stills | [Ch 1](01-HelloOllin.md), [Ch 3](03-MotionAndTime.md) | [Sketch](../Docs/Core/Sketch.md) |
 | Canvas and window | `canvasSize` presets, `windowMode` (auto, fixed, resizable) | [Ch 1](01-HelloOllin.md) | [Canvas](../Docs/Core/Canvas.md) |
 | Normalized coordinates | `uv(u, v)`: the canvas point at 0…1 fractions, layout without `width`/`height` | [Ch 1](01-HelloOllin.md) | [Canvas](../Docs/Core/Canvas.md#uv) |
+| Variations | `variation`: the seed a run grew from, stepped and rolled from the inspector's Variation card | [Ch 4](04-Randomness.md) | [Variations](../Docs/Core/Variations.md) |
 | Mouse | `mouseX`/`mouseY`, pressed state, press and release hooks | [Ch 1](01-HelloOllin.md) | [Input](../Docs/Helpers/Input.md) |
 | Keyboard | `key`, typed `KeyCode`, `isKeyDown(_:)`, press and release hooks | [Ch 1](01-HelloOllin.md) | [Input](../Docs/Helpers/Input.md) |
 | `@Param` knobs | Properties as live inspector controls, typed per value (slider, color well, pad, …) | [Ch 1](01-HelloOllin.md), [Ch 20](20-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
@@ -207,6 +208,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | SVG for plotters | `--export-svg` true vectors, with `--hatch` turning fills into line work | [Ch 13](13-ShapesAsMaterial.md), [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Headless capture | Render any sketch to an image in code, no window | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Reproducibility metadata | Every PNG/SVG/PDF/video embeds its recipe: seed, `@Param` values, git commit, frame | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#reproducibility-metadata) |
+| Contact sheets | `--export-grid` tiles one frame per seed into a labeled proof sheet; `--seed` re-renders a keeper | [Ch 4](04-Randomness.md) | [Variations](../Docs/Core/Variations.md) |
 | Syphon | Publish frames to (and read frames from) other Mac apps, GPU to GPU | [Ch 22](22-SharingAndPerforming.md) | [Syphon](../Docs/Integration/Syphon.md) |
 | Virtual camera | Your sketch as a system-wide webcam every video app can pick | [Ch 22](22-SharingAndPerforming.md) | [VirtualCamera](../Docs/Integration/VirtualCamera.md) |
 | Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, perform | [Ch 22](22-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |

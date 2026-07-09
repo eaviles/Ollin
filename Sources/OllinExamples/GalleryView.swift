@@ -511,6 +511,7 @@ private struct InspectorSidebar: View {
                                 folder: example.subgroup.map { "\(example.category) · \($0)" }
                                     ?? example.category),
                             stats: stats)
+                        VariationCardView(stats: stats)
                         ParametersListView(params: sketch.parameters())
                     }
                 }

@@ -144,6 +144,9 @@ struct LiveCodingRootView: View {
                         identity: MonitorIdentity(name: session.displayName,
                                                   folder: session.folderDisplay),
                         stats: session.core.stats)
+                    VariationCardView(stats: session.core.stats) { seed in
+                        session.core.recordSeed(seed)
+                    }
                     ParametersListView(params: session.core.params) { name, value in
                         session.core.recordParam(name, value)
                     }

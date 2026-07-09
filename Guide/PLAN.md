@@ -305,6 +305,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Integration/VirtualCamera.md` | Ch 22 | shown |
 | `Output/Export.md` (PNG, sequence, video, GIF, SVG, PDF) | Ch 3 (GIF), Ch 13 (SVG), Ch 22 (all) | taught |
 | Reproducibility metadata in exports (`Output/Export.md`) | Ch 22 | pointed |
+| Variations & seed exploration (`Core/Variations.md`): `variation`, the Variation card, `--export-grid`, `--seed` | Ch 4 | taught |
 | Normalized coordinates `uv(u, v)` (`Core/Canvas.md`) | Ch 1 | pointed |
 | `Tools/LiveCoding.md` (OllinLiveCoding) | Ch 22; OllinLive workflow in Ch 1 | taught |
 | Examples gallery (`swift run OllinExamples`) | Ch 1 | shown |
@@ -339,7 +340,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Technique catalog: noise toolkit | Ch 5 |
 | Expressive brushes and strokes | Ch 13 |
 | Project generator | Ch 1 |
-| Variation galleries / seed exploration | Ch 4 + Ch 22 |
 | iPhone sensor array (scene mesh, drift correction) | Ch 19 |
 | 3D: loadScene, live camera environment, 3D rigid bodies | Ch 17 (bodies also Ch 9) |
 | Photorealistic 3D tier | Ch 17/18, likely a new chapter when substantial |

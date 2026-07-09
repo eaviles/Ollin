@@ -141,6 +141,12 @@ final class LiveSession {
         core.recordParam(name, value)
     }
 
+    /// Record a variation seed the user navigated to, so it survives the next
+    /// reload the way tuned knobs do.
+    func recordSeed(_ seed: Int) {
+        core.recordSeed(seed)
+    }
+
     private func startWatching() {
         var dirs = [(sketchPath as NSString).deletingLastPathComponent]
         if let shaderDir {                    // also watch the shader folder

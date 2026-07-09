@@ -37,6 +37,7 @@ struct DetachedInspectorView: View {
         // Material (+ scrim) fills behind it.
         VStack(spacing: 16) {
             MonitorCardView(identity: identity, stats: stats)
+            VariationCardView(stats: stats)
             ParametersListView(params: params)
         }
         .padding(.horizontal, 14)

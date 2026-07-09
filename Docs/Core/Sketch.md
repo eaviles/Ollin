@@ -135,6 +135,8 @@ drawCircle(width / 2, height / 2, r)
 
 For repeating motion on a fixed period, [`loopProgress(over:)` and `pingPong(over:)`](../Helpers/Animation.md#loop) wrap the clock into looping `0...1` progress.
 
+Alongside the clock, `variation` (an `Int`) names the seed this run's randomness grew from. It's rolled fresh unless the sketch calls `seed(_:)`, and it's what the inspector's Variation card walks and every export's recipe records. See [Variations](./Variations.md).
+
 <a name="canvas"></a>
 
 ### Canvas

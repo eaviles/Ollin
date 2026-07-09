@@ -108,7 +108,7 @@ A tier of classic generative-art algorithms that produce *vector geometry* (poin
 - **Parametric L-systems.** The L-systems in place interpret deterministic and stochastic rules through a turtle into `[Contour]` line-work. The remaining extension is *parametric* rules: symbols carrying numeric parameters (`F(3)` = forward 3) with arithmetic in the productions, for the continuous length/angle/width variation the plain symbolic grammar can't express (the ABOP parametric-L-system chapter). It rides the same turtle, so the work is the parameter syntax and the expansion evaluator.
 - **Wave Function Collapse from an example image.** The WFC in place is the simple-tiled model: explicit tiles with edge-socket adjacency. The complementary *overlapping model* learns its adjacency from an example bitmap, extracting the NxN patterns it contains along with their frequencies and which may abut, so a sketch synthesizes more of a texture from a small sample instead of hand-declaring tiles.
 
-The reproducibility note matters: like the Art Blocks model the [variation galleries](#variation-galleries-and-seed-exploration) item formalizes, every one of these is a pure function of `seed()` plus parameters, so the same seed always yields the same packing/growth. License stance is the usual one: implement each from the *published technique* (credited in `ATTRIBUTION.md`'s Techniques list). Origin note: these surfaced from mining the `/algorithmic-art` skill's implicit technique vocabulary against what Ollin already ships (Voronoi/Delaunay, the foundational primitive of the tier, is a pure-Swift Bowyer–Watson, no library vendored).
+The reproducibility note matters: every one of these is a pure function of `seed()` plus parameters, so the same seed always yields the same packing/growth. License stance is the usual one: implement each from the *published technique* (credited in `ATTRIBUTION.md`'s Techniques list). Origin note: these surfaced from mining the `/algorithmic-art` skill's implicit technique vocabulary against what Ollin already ships (Voronoi/Delaunay, the foundational primitive of the tier, is a pure-Swift Bowyer–Watson, no library vendored).
 
 ## Technique and algorithm helpers
 
@@ -142,15 +142,6 @@ The stroke renderer draws every path at one width: the fringe expander edge-expa
 - **Painterly simulation stays separate.** Watercolor-style marks built from layered, deformed translucent geometry are a [technique-catalog](#technique-and-algorithm-helpers) recipe over the shape and accumulation machinery, not a brush engine; keeping the two distinct keeps the stroke renderer lean.
 
 Variable-width strokes keep their export story: the outline of a tapered stroke is the open-path offset the stroke-as-shape item builds, so the SVG path stays vector.
-
-## Variation galleries and seed exploration
-
-The piece of the Art Blocks / `fxhash` generator model Ollin doesn't have yet. A sketch is already a *generator* in everything but name: `seed()` makes a run deterministic, `@Param` exposes its knobs, and `OllinApp.image(of:)` renders any frame off-screen. What's missing is the first-class notion of a sketch's **variation space** and the tools to explore it.
-
-- **Seed navigation.** In the `OllinLive` inspector (and a sibling of the panel-less stats overlay): show the current seed, with previous/next/random/jump-to controls, persisting across reload the way `@Param` values already do (`LiveSession.syncParams` is the precedent). The host owns it, so the sketch only has to read `seed`.
-- **Contact-sheet export.** Render an N×N grid of consecutive (or chosen) seeds into a single image (`OllinApp.contactSheet(of:seeds:)` / a `--export-grid` flag) by looping the existing `renderFrames`/`image(of:)` off-screen driver over seed values and tiling the results. The cheapest high-value piece: it's a loop over machinery that already exists, and it is exactly how a generative artist culls a seed space for the keepers.
-- **What it is *not*.** Distinct from the [project generator](#project-generator--sketch-scaffolding), which scaffolds a *new* sketch folder; this operates on an *existing* sketch's seed/parameter space. The word "generator" is overloaded; keep the two clearly separate in docs.
-- **Why it fits Ollin specifically.** Reproducibility is already a load-bearing design value (seeded `random`/`noise`, deterministic export, the snapshot tests). This surfaces that value as a creative tool rather than only a correctness one, and it's the workflow the whole external generative-art world (Art Blocks, fxhash, the p5.js "100 seeds" idiom, and the `/algorithmic-art` skill, whose entire artifact is a seed-navigable explorer) is built around.
 
 ## Sound, synthesis, and spatial audio
 

@@ -49,6 +49,9 @@ public final class FrameStats {
     /// The logical canvas size, for context.
     public internal(set) var canvasWidth: Double = 0
     public internal(set) var canvasHeight: Double = 0
+    /// The sketch's current variation seed, mirrored for the seed-navigation
+    /// card (`nil` until the first refresh).
+    public internal(set) var variation: Int?
 
     public init() {}
 
@@ -58,7 +61,7 @@ public final class FrameStats {
 
     func update(fps: Double, frameTimeMS: Double, frameCount: Int, time: Double,
                 vertexCount: Int, sdfCount: Int, pointCount: Int, particleCount: Int,
-                canvasWidth: Double, canvasHeight: Double) {
+                canvasWidth: Double, canvasHeight: Double, variation: Int) {
         self.fps = fps
         self.frameTimeMS = frameTimeMS
         self.frameCount = frameCount
@@ -69,6 +72,7 @@ public final class FrameStats {
         self.particleCount = particleCount
         self.canvasWidth = canvasWidth
         self.canvasHeight = canvasHeight
+        self.variation = variation
     }
 }
 
@@ -98,11 +102,13 @@ final class StatsExtension: SketchExtension {
         let vertexCount = info.vertexCount, sdfCount = info.sdfCount
         let pointCount = info.pointCount, particleCount = info.particleCount
         let canvasWidth = sketch.width, canvasHeight = sketch.height
+        let variation = sketch.variation
         DispatchQueue.main.async {
             stats.update(fps: fps, frameTimeMS: frameTimeMS, frameCount: frameCount,
                          time: time, vertexCount: vertexCount, sdfCount: sdfCount,
                          pointCount: pointCount, particleCount: particleCount,
-                         canvasWidth: canvasWidth, canvasHeight: canvasHeight)
+                         canvasWidth: canvasWidth, canvasHeight: canvasHeight,
+                         variation: variation)
         }
     }
 }

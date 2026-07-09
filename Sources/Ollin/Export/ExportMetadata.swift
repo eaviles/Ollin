@@ -56,6 +56,18 @@ struct ExportMetadata {
         return "{\(fields.joined(separator: ","))}"
     }
 
+    /// The recipe for a contact sheet, which reproduces from its seed list
+    /// rather than a single sketch state: any tile re-renders at full
+    /// resolution with `--export --seed N` at the recorded frame.
+    static func sheetRecipe(seeds: [Int], frame: Int, fps: Double) -> String {
+        var fields: [String] = ["\"tool\":\"Ollin\""]
+        fields.append("\"seeds\":[\(seeds.map(String.init).joined(separator: ","))]")
+        if let hash = workingTreeHash { fields.append("\"git\":\(jsonString(hash))") }
+        fields.append("\"frame\":\(frame)")
+        fields.append("\"fps\":\(jsonNumber(fps))")
+        return "{\(fields.joined(separator: ","))}"
+    }
+
     /// The short git commit of the process's working directory, with a
     /// `-dirty` suffix when the tree has uncommitted changes; `nil` outside a
     /// repository (or without git). Looked up once per process, so a sequence
