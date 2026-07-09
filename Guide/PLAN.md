@@ -318,13 +318,11 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 
 | Roadmap item | Future Guide home |
 |---|---|
-| Normalized u,v coordinates | Ch 1 |
 | Palette file import | Ch 2 |
 | Single-file sketches | Ch 1 (would simplify the setup story; revisit Ch 1 when it ships) |
 | Retained geometry buffers | internal; Appendix D note at most |
 | More SDF shapes | Ch 18 / Appendix D |
 | More model examples (ModelTracker) | Ch 21 |
-| Reproducibility metadata in exports | Ch 4 + Ch 22 |
 | Generative-geometry refinements | Ch 11 |
 | Technique catalog: fractals | Ch 11 (may grow into its own chapter) |
 | Technique catalog: GPU-scale agents, ALife, Lenia | Ch 16 |
