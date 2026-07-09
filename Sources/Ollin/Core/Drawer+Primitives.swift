@@ -669,7 +669,7 @@ extension Drawer {
         ensureBatch(.sdf)
         let fillEnc = fill.map { encodePaint($0, center: center) } ?? .none
         let strokeEnc = hasStroke ? encodePaint(stroke!, center: center) : .none
-        sdfInstances.append(SDFInstance(
+        var instance = SDFInstance(
             transform: transform,
             center: center.simd2,
             size: size,
@@ -686,7 +686,17 @@ extension Drawer {
             shape: shape.rawValue | (strokeAlignment.shaderCode << 8)
                  | (fillEnc.kind << 10) | (strokeEnc.kind << 12),
             fillGradient: fillEnc.row,
-            strokeGradient: strokeEnc.row))
+            strokeGradient: strokeEnc.row)
+        sdfInstances.append(instance)
+        // Symmetry: one more instance per remaining fold, the fold left-composed
+        // onto the CTM. The rest of the instance (shape, paint, stroke, the
+        // local-space gradient geometry) copies through, so replicas match exactly.
+        if let folds = symmetryFolds, !isReplicating {
+            for fold in folds.dropFirst() {
+                instance.transform = fold * transform
+                sdfInstances.append(instance)
+            }
+        }
     }
 
     /// Draw a composed signed-distance field (`SDF`): its shapes merge into one
@@ -762,12 +772,21 @@ extension Drawer {
 
         sdfNodes.append(contentsOf: nodes)
         ensureBatch(.sdfGroup)
-        sdfGroups.append(SDFGroupInstance(
+        var group = SDFGroupInstance(
             transform: transform, center: center, size: ext,
             strokeColor: strokeSlot, strokeWidth: weight,
             bandWidth: 0, nodeStart: UInt32(nodeStart), nodeCount: UInt32(nodes.count),
             fillGradientGeo: fillGeo, fillGradientKind: fillKind, fillGradientRow: fillRow,
-            strokeGradientKind: strokeKind, strokeGradientRow: strokeRow))
+            strokeGradientKind: strokeKind, strokeGradientRow: strokeRow)
+        sdfGroups.append(group)
+        // Symmetry: one more group per remaining fold, sharing the flattened node
+        // program (nodeStart/nodeCount copy through; only the transform changes).
+        if let folds = symmetryFolds, !isReplicating {
+            for fold in folds.dropFirst() {
+                group.transform = fold * transform
+                sdfGroups.append(group)
+            }
+        }
     }
 
     /// Draw a composed 3D signed-distance field: sphere-traced through the active
@@ -1143,24 +1162,26 @@ extension Drawer {
             // Anchored on the arc center, so an along-path fill sweeps the same
             // conic the SDF arc evaluates.
             let vp = vertexPaint(fill, anchor: center)
-            switch mode {
-            case .open, .chord:
-                // Circular segment — convex, so a fan from the first point fills it.
-                let p0 = pts[0].simd2
-                let c0 = vp.color(at: pts[0])
-                for i in 1..<(pts.count - 1) {
-                    emit(p0, color: c0)
-                    emit(pts[i].simd2, color: vp.color(at: pts[i]))
-                    emit(pts[i + 1].simd2, color: vp.color(at: pts[i + 1]))
-                }
-            case .pie:
-                // Wedge — fan from the center.
-                let cc = center.simd2
-                let centerColor = vp.color(at: center)
-                for i in 0..<(pts.count - 1) {
-                    emit(cc, color: centerColor)
-                    emit(pts[i].simd2, color: vp.color(at: pts[i]))
-                    emit(pts[i + 1].simd2, color: vp.color(at: pts[i + 1]))
+            replicated {
+                switch mode {
+                case .open, .chord:
+                    // Circular segment: convex, so a fan from the first point fills it.
+                    let p0 = pts[0].simd2
+                    let c0 = vp.color(at: pts[0])
+                    for i in 1..<(pts.count - 1) {
+                        emit(p0, color: c0)
+                        emit(pts[i].simd2, color: vp.color(at: pts[i]))
+                        emit(pts[i + 1].simd2, color: vp.color(at: pts[i + 1]))
+                    }
+                case .pie:
+                    // Wedge: fan from the center.
+                    let cc = center.simd2
+                    let centerColor = vp.color(at: center)
+                    for i in 0..<(pts.count - 1) {
+                        emit(cc, color: centerColor)
+                        emit(pts[i].simd2, color: vp.color(at: pts[i]))
+                        emit(pts[i + 1].simd2, color: vp.color(at: pts[i + 1]))
+                    }
                 }
             }
         }
@@ -1168,21 +1189,23 @@ extension Drawer {
         if let stroke = strokePaint, strokeWidth > 0 {
             let vp = vertexPaint(stroke, anchor: center)
             let half = strokeWidth / 2
-            for i in 1..<pts.count {
-                appendSegment(from: pts[i - 1], to: pts[i], half: half,
-                              colorA: vp.color(at: pts[i - 1]), colorB: vp.color(at: pts[i]))
-            }
-            switch mode {
-            case .open:
-                break
-            case .chord:
-                appendSegment(from: pts[pts.count - 1], to: pts[0], half: half,
-                              colorA: vp.color(at: pts[pts.count - 1]), colorB: vp.color(at: pts[0]))
-            case .pie:
-                appendSegment(from: center, to: pts[0], half: half,
-                              colorA: vp.color(at: center), colorB: vp.color(at: pts[0]))
-                appendSegment(from: pts[pts.count - 1], to: center, half: half,
-                              colorA: vp.color(at: pts[pts.count - 1]), colorB: vp.color(at: center))
+            replicated {
+                for i in 1..<pts.count {
+                    appendSegment(from: pts[i - 1], to: pts[i], half: half,
+                                  colorA: vp.color(at: pts[i - 1]), colorB: vp.color(at: pts[i]))
+                }
+                switch mode {
+                case .open:
+                    break
+                case .chord:
+                    appendSegment(from: pts[pts.count - 1], to: pts[0], half: half,
+                                  colorA: vp.color(at: pts[pts.count - 1]), colorB: vp.color(at: pts[0]))
+                case .pie:
+                    appendSegment(from: center, to: pts[0], half: half,
+                                  colorA: vp.color(at: center), colorB: vp.color(at: pts[0]))
+                    appendSegment(from: pts[pts.count - 1], to: center, half: half,
+                                  colorA: vp.color(at: pts[pts.count - 1]), colorB: vp.color(at: center))
+                }
             }
         }
     }

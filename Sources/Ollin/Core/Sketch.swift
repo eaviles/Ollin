@@ -1744,6 +1744,31 @@ open class Sketch {
     public func scale(_ amount: Double) { drawer.scale(amount, amount) }
     public func scale(_ x: Double, _ y: Double) { drawer.scale(x, y) }
 
+    /// Replicate everything drawn next into `folds` copies rotated evenly around
+    /// the current origin (the kaleidoscope, or mandala, mode). Draw one wedge;
+    /// the folds complete the picture. `mirrored: true` adds a reflected copy per
+    /// fold (mirrored across the local x-axis), the classic kaleidoscope look.
+    ///
+    /// ```swift
+    /// translate(width / 2, height / 2)   // fold around the canvas center
+    /// symmetry(8, mirrored: true)
+    /// drawCircle(240, 40, 30)            // appears 16 times
+    /// ```
+    ///
+    /// The fold pivot and mirror axis are the origin and x-axis at this call, so
+    /// `translate` first to place the center (and `rotate` to aim the mirror
+    /// seam); transforms applied *after* compose inside every fold. Drawing
+    /// state like `fill`: it persists until `noSymmetry()`, and `withState { }`
+    /// restores it. Replication covers all 2D drawing (shapes, strokes, images,
+    /// text, SDF fields) and rides into SVG export; 3D geometry and GPU
+    /// particles are untouched.
+    public func symmetry(_ folds: Int, mirrored: Bool = false) {
+        drawer.symmetry(folds, mirrored: mirrored)
+    }
+
+    /// Stop replicating draw calls: back to drawing each one once (the default).
+    public func noSymmetry() { drawer.noSymmetry() }
+
     // MARK: 3D transforms
 
     // The spatial siblings of the 2D `translate`/`rotate`/`scale` above: these move

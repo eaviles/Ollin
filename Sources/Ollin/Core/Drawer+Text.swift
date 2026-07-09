@@ -126,13 +126,15 @@ extension Drawer {
             let origin = glyph.origin
             if let vp = fillVP {
                 let tri = glyph.localFill
-                for i in stride(from: 0, to: tri.count - 2, by: 3) {
-                    let p0 = tri[i] + origin
-                    let p1 = tri[i + 1] + origin
-                    let p2 = tri[i + 2] + origin
-                    emit(p0.simd2, color: vp.color(at: p0))
-                    emit(p1.simd2, color: vp.color(at: p1))
-                    emit(p2.simd2, color: vp.color(at: p2))
+                replicated {
+                    for i in stride(from: 0, to: tri.count - 2, by: 3) {
+                        let p0 = tri[i] + origin
+                        let p1 = tri[i + 1] + origin
+                        let p2 = tri[i + 2] + origin
+                        emit(p0.simd2, color: vp.color(at: p0))
+                        emit(p1.simd2, color: vp.color(at: p1))
+                        emit(p2.simd2, color: vp.color(at: p2))
+                    }
                 }
             }
             if hasStroke, let vp = strokeVP {
@@ -160,23 +162,25 @@ extension Drawer {
         // small, so corner interpolation tracks the paint), constant for a color.
         let vp = vertexPaint(fill, anchor: Vector2(x, y))
         beginGlyphBatch(font.atlas)
-        for g in placed {
-            guard let slot = font.atlas.slot(for: g.glyph, font: g.font) else { continue }   // space / unplaced
-            // Cell rect (em, y-up) → canvas: x grows with em-x, canvas-y falls as
-            // em-y rises (font y-up vs Ollin y-down).
-            let left = Float(g.origin.x + slot.emLeft * textPixelSize)
-            let right = Float(g.origin.x + slot.emRight * textPixelSize)
-            let top = Float(g.origin.y - slot.emTop * textPixelSize)
-            let bottom = Float(g.origin.y - slot.emBottom * textPixelSize)
-            let tl = imageVertex(left, top, slot.u0, slot.v0,
-                                 vp.color(at: Vector2(Double(left), Double(top))))
-            let tr = imageVertex(right, top, slot.u1, slot.v0,
-                                 vp.color(at: Vector2(Double(right), Double(top))))
-            let br = imageVertex(right, bottom, slot.u1, slot.v1,
-                                 vp.color(at: Vector2(Double(right), Double(bottom))))
-            let bl = imageVertex(left, bottom, slot.u0, slot.v1,
-                                 vp.color(at: Vector2(Double(left), Double(bottom))))
-            glyphVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
+        replicated {
+            for g in placed {
+                guard let slot = font.atlas.slot(for: g.glyph, font: g.font) else { continue }   // space / unplaced
+                // Cell rect (em, y-up) → canvas: x grows with em-x, canvas-y falls as
+                // em-y rises (font y-up vs Ollin y-down).
+                let left = Float(g.origin.x + slot.emLeft * textPixelSize)
+                let right = Float(g.origin.x + slot.emRight * textPixelSize)
+                let top = Float(g.origin.y - slot.emTop * textPixelSize)
+                let bottom = Float(g.origin.y - slot.emBottom * textPixelSize)
+                let tl = imageVertex(left, top, slot.u0, slot.v0,
+                                     vp.color(at: Vector2(Double(left), Double(top))))
+                let tr = imageVertex(right, top, slot.u1, slot.v0,
+                                     vp.color(at: Vector2(Double(right), Double(top))))
+                let br = imageVertex(right, bottom, slot.u1, slot.v1,
+                                     vp.color(at: Vector2(Double(right), Double(bottom))))
+                let bl = imageVertex(left, bottom, slot.u0, slot.v1,
+                                     vp.color(at: Vector2(Double(left), Double(bottom))))
+                glyphVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
+            }
         }
     }
 
@@ -701,10 +705,12 @@ extension Drawer {
             let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(points))
             let p0 = points[0].simd2
             let c0 = vp.color(at: points[0])
-            for i in 1..<(points.count - 1) {        // fan from the first vertex
-                emit(p0, color: c0)
-                emit(points[i].simd2, color: vp.color(at: points[i]))
-                emit(points[i + 1].simd2, color: vp.color(at: points[i + 1]))
+            replicated {
+                for i in 1..<(points.count - 1) {    // fan from the first vertex
+                    emit(p0, color: c0)
+                    emit(points[i].simd2, color: vp.color(at: points[i]))
+                    emit(points[i + 1].simd2, color: vp.color(at: points[i + 1]))
+                }
             }
         }
         if let stroke = strokePaint, strokeWidth > 0 {
@@ -726,10 +732,12 @@ extension Drawer {
         if let fill = fillPaint {
             let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(shape.contours.flatMap(\.points)))
             let triangles = shape.triangulatedFill()
-            for i in stride(from: 0, to: triangles.count - 2, by: 3) {
-                emit(triangles[i].simd2, color: vp.color(at: triangles[i]))
-                emit(triangles[i + 1].simd2, color: vp.color(at: triangles[i + 1]))
-                emit(triangles[i + 2].simd2, color: vp.color(at: triangles[i + 2]))
+            replicated {
+                for i in stride(from: 0, to: triangles.count - 2, by: 3) {
+                    emit(triangles[i].simd2, color: vp.color(at: triangles[i]))
+                    emit(triangles[i + 1].simd2, color: vp.color(at: triangles[i + 1]))
+                    emit(triangles[i + 2].simd2, color: vp.color(at: triangles[i + 2]))
+                }
             }
         }
         if let stroke = strokePaint, strokeWidth > 0 {

@@ -149,6 +149,12 @@ extension Drawer {
     /// rides separately in `aa.x`, so the fragment can keep the paint alpha linear while
     /// remapping only the coverage perceptually.
     func appendFringeStroke(_ points: [Vector2], closed: Bool, paint: VertexPaint) {
+        // Emits only fringe vertices into one `.fringe` batch, so symmetry can
+        // replicate the whole expansion as a range copy (see `replicated`).
+        replicated { appendFringeStrokeSingle(points, closed: closed, paint: paint) }
+    }
+
+    private func appendFringeStrokeSingle(_ points: [Vector2], closed: Bool, paint: VertexPaint) {
         // Drop repeated points (a zero-length segment has no direction) and a
         // closed loop's closing duplicate, so every join is well-defined.
         var pts: [Vector2] = []
@@ -359,6 +365,13 @@ extension Drawer {
     /// segment quads, so only the outer gap is filled.
     func appendStrokedPath(_ points: [Vector2], closed: Bool,
                                    half: Double, paint: VertexPaint) {
+        // Emits only triangles into one batch; symmetry replicates the whole
+        // stroke as a range copy (see `replicated`).
+        replicated { appendStrokedPathSingle(points, closed: closed, half: half, paint: paint) }
+    }
+
+    private func appendStrokedPathSingle(_ points: [Vector2], closed: Bool,
+                                         half: Double, paint: VertexPaint) {
         guard half > 0 else { return }
         // Drop repeated points; a zero-length segment has no direction.
         var pts: [Vector2] = []

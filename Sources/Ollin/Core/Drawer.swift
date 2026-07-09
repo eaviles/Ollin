@@ -204,6 +204,19 @@ final class Drawer {
     var currentBlend: BlendMode = .normal        // how shapes combine with the canvas (see blendMode)
     var currentDepth: Float? = nil               // clip-z for 2D draws in a 3D scene; nil = draw over (see depth(at:))
 
+    /// The active symmetry folds (see `symmetry(_:mirrored:)`): canvas-space
+    /// transforms, the identity first, that every 2D draw call is replicated
+    /// through. `nil` = off (the default). Drawing state like the fill, saved by
+    /// `withState`; the folds are canvas-space constants, so they stay valid as
+    /// the transform stack keeps moving under them.
+    private(set) var symmetryFolds: [matrix_float3x3]?
+
+    /// True while `replicated(_:)` runs its primary body, so a nested emission
+    /// path (a stroke funnel called inside a wrapped fill body) emits once and
+    /// lets the outer wrapper do the replication. Internal so the emission
+    /// funnels in the other `Drawer+*` files can consult it.
+    private(set) var isReplicating = false
+
     /// When true the canvas is *not* cleared each frame — drawing piles up across
     /// frames on a persistent accumulation surface instead (see `noClear` /
     /// `clearEachFrame`). A mode, not per-frame state: it persists until changed.
@@ -804,10 +817,19 @@ final class Drawer {
     /// and CTM. Fill and stroke are passed explicitly (a line has no fill; a point
     /// has no stroke); an invisible stroke (no paint or zero width) is dropped.
     func svgRecord(_ geometry: SVGGeometry, fill: Paint?, stroke: Paint?) {
+        guard let recorder = svgRecorder else { return }
         let visibleStroke = (stroke != nil && strokeWidth > 0) ? stroke : nil
         let style = SVGStyle(fill: fill, stroke: visibleStroke, strokeWidth: strokeWidth,
                              join: strokeJoinStyle, cap: strokeCapStyle)
-        svgRecorder?.commands.append(RecordedSVG(geometry: geometry, style: style, transform: transform))
+        recorder.commands.append(RecordedSVG(geometry: geometry, style: style, transform: transform))
+        // Symmetry replicates in vector form too: one more command per remaining
+        // fold, the fold left-composed onto the CTM like the raster paths do.
+        if let folds = symmetryFolds {
+            for fold in folds.dropFirst() {
+                recorder.commands.append(RecordedSVG(geometry: geometry, style: style,
+                                                     transform: fold * transform))
+            }
+        }
     }
 
     /// Shift origin-centered outline points into user space around `c`.
@@ -866,6 +888,7 @@ final class Drawer {
         var tintColor: Color?
         var currentBlend: BlendMode
         var currentDepth: Float?
+        var symmetryFolds: [matrix_float3x3]?
     }
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
@@ -940,6 +963,40 @@ final class Drawer {
 
     /// Return to solid fills (the default).
     func solid() { hollowWidth = 0 }
+
+    /// Replicate subsequent 2D drawing into `folds` copies rotated evenly around
+    /// the current origin; `mirrored: true` adds a reflected copy per fold (the
+    /// kaleidoscope's dihedral symmetry, mirrored across the local x-axis). The
+    /// fold transforms are built once from the CTM at this call, each local
+    /// rotation/reflection conjugated into canvas space, so they pivot on the
+    /// origin (and axes) the transform stack has established here, and later
+    /// transforms compose *inside* every fold. `folds <= 1` with no mirror turns
+    /// symmetry off, as `noSymmetry()` does.
+    func symmetry(_ folds: Int, mirrored: Bool = false) {
+        let n = max(1, folds)
+        guard n > 1 || mirrored else { symmetryFolds = nil; return }
+        // Conjugate each local fold by the CTM: F = C · R · C⁻¹, so a replica's
+        // effective CTM is F · C · L (later transforms L ride inside the fold).
+        // A degenerate CTM (zero scale) can't be conjugated; fold about the
+        // canvas origin instead of poisoning the geometry with non-finite math.
+        let base = transform
+        let invertible = abs(base.determinant) > 1e-12
+        let c = invertible ? base : matrix_identity_float3x3
+        let cInv = invertible ? c.inverse : matrix_identity_float3x3
+        let mirror = Drawer.scaling(1, -1)
+        var built: [matrix_float3x3] = []
+        built.reserveCapacity(mirrored ? 2 * n : n)
+        for k in 0..<n {
+            let rot = Drawer.rotation(Float(Double(k) * .tau / Double(n)))
+            // Keep fold 0 the exact identity so the primary copy is untouched.
+            built.append(k == 0 ? matrix_identity_float3x3 : c * rot * cInv)
+            if mirrored { built.append(c * (rot * mirror) * cInv) }
+        }
+        symmetryFolds = built
+    }
+
+    /// Stop replicating; back to drawing each call once (the default).
+    func noSymmetry() { symmetryFolds = nil }
 
     /// Tint subsequent `drawImage` calls: every texel is multiplied by `color`,
     /// so its RGB recolors the image and its alpha fades it. The default (no tint)
@@ -1635,6 +1692,67 @@ final class Drawer {
         scale(factors.x, factors.y, factors.z)
     }
 
+    // MARK: Symmetry replication
+
+    /// Run `body` (one primitive's emission into a single open batch) and then
+    /// append a fold-transformed copy of everything it recorded, once per
+    /// remaining symmetry fold. The copies transform the recorded canvas-space
+    /// vertices directly; a fold is rigid, so the screen-space quantities baked
+    /// into them (fringe AA coverage, flattening density, stroke width) stay
+    /// exact, and the copies extend the batch the body opened, so draw order and
+    /// pipeline selection are untouched. The body must emit into one batch kind:
+    /// wrap a primitive's fill section and its stroke section separately (a
+    /// stroke funnel reached *inside* a wrapped body passes through untouched;
+    /// see `isReplicating`). SDF instances and combinator groups replicate at
+    /// their own append sites instead (a matrix column ride, cheaper than a
+    /// range copy).
+    func replicated(_ body: () -> Void) {
+        guard let folds = symmetryFolds, !isReplicating else { body(); return }
+        isReplicating = true
+        let vertexStart = vertices.count
+        let imageStart = imageVertices.count
+        let glyphStart = glyphVertices.count
+        body()
+        isReplicating = false
+        Drawer.replicate(&vertices, from: vertexStart, folds: folds)
+        Drawer.replicate(&imageVertices, from: imageStart, folds: folds)
+        Drawer.replicate(&glyphVertices, from: glyphStart, folds: folds)
+    }
+
+    /// Append a fold-transformed copy of `array[start...]` per remaining fold
+    /// (the first fold is the identity: the primary copy, already recorded).
+    private static func replicate(_ array: inout [OllinVertex], from start: Int,
+                                  folds: [matrix_float3x3]) {
+        let end = array.count
+        guard end > start else { return }
+        array.reserveCapacity(end + (end - start) * (folds.count - 1))
+        for fold in folds.dropFirst() {
+            for i in start..<end {
+                var v = array[i]
+                let p = fold * SIMD3<Float>(v.position.x, v.position.y, 1)
+                v.position = SIMD2<Float>(p.x, p.y)
+                array.append(v)
+            }
+        }
+    }
+
+    /// The textured-quad twin of the vertex replicate above (image and glyph
+    /// quads share `OllinImageVertex`; uv and tint copy through unchanged).
+    private static func replicate(_ array: inout [OllinImageVertex], from start: Int,
+                                  folds: [matrix_float3x3]) {
+        let end = array.count
+        guard end > start else { return }
+        array.reserveCapacity(end + (end - start) * (folds.count - 1))
+        for fold in folds.dropFirst() {
+            for i in start..<end {
+                var v = array[i]
+                let p = fold * SIMD3<Float>(v.position.x, v.position.y, 1)
+                v.position = SIMD2<Float>(p.x, p.y)
+                array.append(v)
+            }
+        }
+    }
+
     /// Save the current transform and style (fill/stroke/weight).
     func pushState() {
         stateStack.append(SavedState(transform: transform, transformIsIdentity: transformIsIdentity,
@@ -1653,7 +1771,8 @@ final class Drawer {
                                      textRenderMode: textRenderMode,
                                      tintColor: tintColor,
                                      currentBlend: currentBlend,
-                                     currentDepth: currentDepth))
+                                     currentDepth: currentDepth,
+                                     symmetryFolds: symmetryFolds))
     }
 
     /// Restore the most recently pushed transform and style. No-op if unbalanced.
@@ -1683,6 +1802,7 @@ final class Drawer {
         tintColor = s.tintColor
         currentBlend = s.currentBlend
         currentDepth = s.currentDepth
+        symmetryFolds = s.symmetryFolds
     }
 
     // MARK: Batches

@@ -620,6 +620,7 @@ let package = Package(
         example("Patterns/Topography"),
         example("Patterns/Voronoi"),
         example("Patterns/BlueNoise"),
+        example("Patterns/Kaleidoscope"),
         example("Patterns/Truchet"),
         example("Patterns/CirclePacking"),
         example("Patterns/LSystem"),

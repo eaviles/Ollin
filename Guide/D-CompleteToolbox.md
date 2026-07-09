@@ -31,6 +31,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | The shape catalog | Circles, rects, lines, arcs, stars, rings, hearts, n-gons, and a few dozen more | [Ch 1](01-HelloOllin.md) | [Drawing](../Docs/Drawing/Drawing.md) |
 | Ink state | `fill`, `stroke`, `strokeWeight`, caps and joins, `hollow` band mode, stroke alignment | [Ch 1](01-HelloOllin.md) | [Drawing](../Docs/Drawing/Drawing.md) |
 | Transforms and the state stack | `translate`/`rotate`/`scale`, scoped with `withState { }` | [Ch 6](06-GridsAndRepetition.md) | [Drawing](../Docs/Drawing/Drawing.md) |
+| Kaleidoscope symmetry | `symmetry(n, mirrored:)`: every draw call folds around a center; one wedge becomes a mandala | [Ch 6](06-GridsAndRepetition.md) | [Drawing](../Docs/Drawing/Drawing.md#symmetry) |
 | Blend modes | Add, subtract, multiply, screen, lightest, darkest, as drawing state | [Ch 14](14-LayersAndEffects.md) | [Drawing](../Docs/Drawing/Drawing.md) |
 | Accumulation | `noClear()`: a persistent canvas that piles up across frames | [Ch 14](14-LayersAndEffects.md), [Ch 16](16-Simulations.md) | [Accumulation](../Docs/Drawing/Accumulation.md) |
 | HDR and tone mapping | Light past full brightness, brought back by `toneMap` (clamp, Reinhard, ACES) | [Ch 14](14-LayersAndEffects.md) | [HDR](../Docs/Drawing/HDR.md) |

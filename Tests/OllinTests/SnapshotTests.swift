@@ -322,6 +322,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("camera-move", frame: 30,
                  note: "A ring of solids viewed through a .turntable cinematic move, captured at a fixed frame, pins the cameraMove() rig (its pose -> Camera3D.orbiting) and the deterministic per-frame dt accumulation (the headless driver advances 1/60).",
                  make: { CameraMoveScene() }),
+    SnapshotCase("symmetry",
+                 note: "One wedge of drawing folded by symmetry(6, mirrored: true) around an off-axis pivot, over every replicated 2D path: an SDF circle and star, a tessellated polygon fill with its fringe outline, a stroked polyline, a smooth-union SDF field, and bitmap text; a center dot lands once after noSymmetry(). Pins the CTM-conjugated fold matrices, the per-path replication (instances, range copies, group instances), and the on/off scoping. No time, deterministic.",
+                 make: { SymmetryScene() }),
 ]
 
 /// The ray-tracing-gated snapshots: on a ray-tracing GPU a point caster resolves to the RT
@@ -3346,5 +3349,60 @@ private final class DesignFiltersSheet: Sketch {
         for (cell, tile) in zip(g.cells, tiles) {
             drawImage(tile.image, in: cell.frame)
         }
+    }
+}
+
+/// One wedge of drawing folded by `symmetry(6, mirrored: true)` around an
+/// off-axis pivot (translate + rotate first, so the fold matrices conjugate a
+/// non-trivial CTM), touching every replicated 2D path: SDF instances (circle,
+/// star, the bitmap-text pixels), the tessellated polygon fill, the fringe
+/// outline and polyline, and a smooth-union SDF field (one group per fold,
+/// sharing its node program). The center dot draws after `noSymmetry()`, so it
+/// lands once. `time`-free, so it's deterministic.
+private final class SymmetryScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101418))
+        translate(128, 132)
+        rotate(0.15)                       // aim the mirror seam off-axis
+        symmetry(6, mirrored: true)
+
+        // SDF instances: a circle and a star along the arm.
+        noStroke()
+        fill(Color(hex: 0x2EC4B6))
+        drawCircle(78, 16, 13)
+        fill(Color(hex: 0xFFD166))
+        drawStar(46, -20, 12, 5, points: 5)
+
+        // A tessellated fill with its fringe outline.
+        fill(Color(hex: 0xF6511D))
+        stroke(.white)
+        strokeWeight(1.5)
+        drawPolygon([Vector2(20, 6), Vector2(58, 12), Vector2(40, 30)])
+
+        // A stroked polyline (the fringe path alone).
+        noFill()
+        stroke(Color(hex: 0x9BF6FF))
+        strokeWeight(2)
+        drawPolyline([Vector2(24, -8), Vector2(56, -18), Vector2(92, -6)])
+
+        // A composed SDF field: the merged blob replicates as one group per fold.
+        noStroke()
+        let blob = SDF.circle(radius: 9).colored(Color(hex: 0xB388EB))
+            .smoothUnion(SDF.circle(radius: 7).at(x: 14, y: -6), k: 8)
+            .at(x: 104, y: -12)
+        drawSDF(blob)
+
+        // Bitmap text rides the folds too (each pixel an SDF box).
+        fill(.white)
+        textFont(BitmapFont.builtin)
+        textSize(10)
+        drawText("ollin", 62, 34)
+
+        // Off again: the center dot lands once.
+        noSymmetry()
+        fill(.white)
+        drawCircle(0, 0, 7)
     }
 }

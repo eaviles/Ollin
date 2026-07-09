@@ -243,6 +243,7 @@ Truchet tiles are named for Sébastien Truchet, a French Carmelite priest who pu
 
 - [Geometry](../Docs/Drawing/Geometry.md): the full `Grid` reference (spanning points, nesting, singular access), `Insets`, and `Rectangle`.
 - [Drawing](../Docs/Drawing/Drawing.md): the transform stack in detail, `pushState`/`popState` (the unscoped siblings of `withState`), and every shape that benefits.
+- [Kaleidoscope symmetry](../Docs/Drawing/Drawing.md#symmetry): this chapter builds repetition with loops; `symmetry(8, mirrored: true)` is the built-in shortcut that folds every draw call around a center, so one wedge becomes a mandala. The [`Patterns/Kaleidoscope`](../Examples/Patterns/Kaleidoscope/Sketch.swift) example draws a single arm and lets the folds do the rest.
 - [Truchet](../Docs/Drawing/Truchet.md): both tiles, the contour output, and feeding the strands to booleans, hatching, or SVG export.
 - Worked examples: [`Patterns/Grid`](../Examples/Patterns/Grid/Sketch.swift) (the grid helper's tour) and [`Patterns/Truchet`](../Examples/Patterns/Truchet/Sketch.swift) (both tiles, animated).
 - A teaser for later: [`Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift) plays the agree-at-the-edges game with *constraints*, tiles that refuse certain neighbors, and Chapter 11 watches it solve.

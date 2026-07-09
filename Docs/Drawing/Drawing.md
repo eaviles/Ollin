@@ -16,7 +16,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
 - **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape), [drawCurve](#curve)
 - **Batches:** [drawCircles](#batches), [drawPoints](#batches), [drawRects](#batches)
-- **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [withState](#isolated), [pushState / popState](#push)
+- **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [symmetry / noSymmetry](#symmetry), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
 
@@ -1007,6 +1007,41 @@ translate(width / 2, height / 2)
 scale(1.5)                              // everything after is 1.5×
 drawCircle(0, 0, 80)
 ```
+
+<a name="symmetry"></a>
+
+#### symmetry / noSymmetry
+
+```swift
+symmetry(_ folds: Int, mirrored: Bool = false)
+noSymmetry()
+```
+
+Replicate everything drawn next into `folds` copies rotated evenly around the current origin: the kaleidoscope, or mandala, mode. Draw one wedge and the folds complete the picture. `mirrored: true` adds a reflected copy per fold (mirrored across the local x-axis), the classic kaleidoscope's doubled symmetry.
+
+```
+  symmetry(8, mirrored: true): draw ONE arm, get SIXTEEN.
+
+          ✳ ✳                 One drawCircle call lands 8 rotated
+       ✳   │   ✳              copies; each also mirrors across the
+         ╲ │ ╱                fold line, closing the petal.
+    ✳ ────( )──── ✳
+         ╱ │ ╲                Everything after the call replicates:
+       ✳   │   ✳              shapes, strokes, images, text, fields.
+          ✳ ✳
+```
+
+The fold pivot and the mirror axis are the origin and x-axis *at the call*, so `translate` first to place the center (and `rotate` to aim the seam); transforms applied after `symmetry` compose inside every fold, so an orbiting shape orbits in all of them at once. It's drawing state like `fill`: it stays on until `noSymmetry()`, and `withState { }` restores it.
+
+```swift
+translate(width / 2, height / 2)   // fold around the canvas center
+symmetry(8, mirrored: true)
+drawCircle(240, 40, 30)            // appears 16 times
+noSymmetry()
+drawCircle(0, 0, 26)               // the center medallion, drawn once
+```
+
+Replication covers all 2D drawing (shapes, strokes, images, text, SDF fields) and rides into SVG export; 3D geometry and GPU particles are untouched. Each copy is real geometry, so `folds` also multiplies the drawing cost, exactly as the equivalent loop would. See the [`Patterns/Kaleidoscope`](../../Examples/Patterns/Kaleidoscope/Sketch.swift) example.
 
 <a name="isolated"></a>
 

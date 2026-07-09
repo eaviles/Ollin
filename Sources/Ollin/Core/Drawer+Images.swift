@@ -32,7 +32,8 @@ extension Drawer {
         let br = imageVertex(x1, y1, 1, vBot, tint)
         let bl = imageVertex(x0, y1, 0, vBot, tint)
         beginImageBatch(image)
-        imageVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
+        // Symmetry replicas extend this same batch (one texture, many quads).
+        replicated { imageVertices.append(contentsOf: [tl, tr, br, tl, br, bl]) }
     }
 
     /// Draw a depth scene into `rect`: `color` is the backdrop and `depth` is a
