@@ -353,6 +353,66 @@ sub-pixel. Verified near-optimal for the raster path: 4x SSAA barely beats it;
 a 1px diagonal's residual softness is fundamental to native-resolution
 rasterization (see `DESIGN-NOTES.md` on the supersampled render scale).
 
+### Retained batches (`Batch` / `makeBatch` / `drawBatch`)
+
+The per-frame model re-records and re-uploads every mark each frame; a
+`Batch` (`Sources/Ollin/Drawing/Batch.swift`) is the escape for *static, heavy*
+content: the recording happens once and the replay costs one reference batch.
+Measured on an M2 at 1080^2, release: 150k circles cost ~13.5 ms/frame CPU
+(~74 fps ceiling) on the per-frame path and ~0.003 ms/frame replayed, with the
+frame's own arrays staying empty.
+
+**Recording is an array swap, not a parallel recorder.** `Drawer.makeBatch`
+swaps the per-frame geometry arrays, the batch list, and the gradient-row table
+for fresh ones, runs the body through the ordinary funnels, moves the results
+into the handle, and swaps back. That buys every 2D path (SDF instances,
+triangles, fringe, images, atlas glyphs, SDF-combinator groups, point clouds)
+with zero funnel changes, and it makes the captured `GeometryBatch` runs
+self-consistent: the encode derives a run's count from the *next* run's start,
+so recorded runs must index the handle's own arrays, never the frame's.
+Swapping the gradient-row table makes the baked row indices inside recorded
+`SDFInstance`s **handle-relative**: at encode the replay binds the batch's own
+strip texture (`MetalRenderer.makeGradientStrip`, the shared builder behind
+the frame's cached strip), so a recorded gradient can never point into
+whatever rows the *current* frame happens to have. The body runs inside
+`pushState`/`popState` from an identity CTM, with the target/clip stacks
+swapped out, so a recording is style-scoped and context-neutral; `drawBatch`
+supplies the draw-time context (target, clip level, 2D depth) on the reference
+batch. Content that interlocks with per-frame passes (meshes and 3D fields,
+which would silently drop out of shadow/reflection passes; particles; layer
+blocks; clipping; `background`) is gated at its funnel with a one-time note,
+because dropping a batch *after* recording would corrupt the next-run count
+derivation.
+
+**Replay is a reference batch plus a flag-gated uniform transform.** `drawBatch`
+appends one `.retained` `GeometryBatch` carrying the handle and the CTM (nil
+when identity). The encode loop hands it to `encodeRetained`, a contained
+sibling of the main per-kind arms that binds the handle's persistent
+`MTLBuffer`s (made once per device from the immutable arrays, so the
+triple-buffer ring rule doesn't apply: nothing ever rewrites them) at each
+inner run's offset. The draw-time CTM rides new `Uniforms` fields
+(`batchTransformed` + `batchTransform`) that every 2D vertex shader applies
+*to its output position only*, behind a flag test that stays 0 outside a
+replay, so the ordinary paths' arithmetic is untouched (the whole snapshot
+suite stayed byte-identical) and an untransformed replay renders byte-identical
+to the recording (pinned by `BatchRenderTests`). Transforming the output alone
+is what keeps SDF analytic AA exact under any replay rotation/scale: the
+shape-local interpolants never change, and `fwidth` re-derives the on-screen
+footprint. Point-cloud runs ignore the 2D transform and project through
+whatever camera is active at replay. On exit the loop's uniforms binding is
+restored so following batches are undisturbed.
+
+**Vector export records commands instead.** Vector mode replaces GPU emission
+per funnel, so a batch can't carry both representations without running the
+body twice (which would double-consume the rng). Instead
+`OllinApp.isVectorExporting` spans the *whole* `recordVectorFrame` drive
+(setup and warmup included, unlike the per-frame `svgRecorder` install), and
+under it `makeBatch` runs the body against a private recorder, storing
+`SVGCommand`s in the handle; `drawBatch` splices them into the active recorder
+with the draw-time CTM left-composed per command. Each export path builds a
+fresh sketch (`handleCommandLine`'s one `make()` wrapper), so a handle never
+needs both representations in one life.
+
 ---
 
 ## Layered-effects substrate

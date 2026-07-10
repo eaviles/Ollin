@@ -340,6 +340,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("clip",
                  note: "Stencil clipping (withClip): a stripe pattern, SDF circles, and a fringe stroke confined to a star-shaped region; a nested circle clip that intersects it; unclipped drawing after the pop crossing the old boundary; and a rect-clipped text run. Pins the clip push/pop stencil levels, per-batch clip state across the SDF/triangle/fringe/glyph paths, and the pop restoring level 0. No time, deterministic.",
                  make: { ClipScene() }),
+    SnapshotCase("retained-batch",
+                 note: "One motif recorded into a Batch (SDF shapes incl. a gradient fill, a fringe polyline, a concave tessellated fill, a smooth-union SDF field) and replayed three ways: in place (the identity replay, byte-identical to recording), under a rotate+scale+translate stamp (the flag-gated shader transform), and with a dynamic shape drawn between the replays (draw-order compositing around a .retained reference batch). Pins the retained encode path, the batch's handle-relative gradient strip, and the per-run blend/pipeline selection. No time, deterministic.",
+                 make: { RetainedBatchScene() }),
 ]
 
 /// The ray-tracing-gated snapshots: on a ray-tracing GPU a point caster resolves to the RT
@@ -3639,6 +3642,61 @@ private final class ClipScene: Sketch {
             textFont(BitmapFont.builtin)
             textSize(14)
             drawText("clipped text runs long", 96, 220)
+        }
+    }
+}
+
+/// One motif recorded into a `Batch` in `setup()` and replayed three ways in
+/// `draw()`: in place (the identity replay), under a rotate+scale+translate stamp
+/// (the flag-gated shader transform), and with a dynamic circle drawn between the
+/// two replays (draw-order compositing around a `.retained` reference batch). The
+/// motif spans the retainable paths: SDF instances (one with a gradient fill, so
+/// the batch's own handle-relative gradient strip is exercised), a fringe-stroked
+/// polyline, a concave tessellated fill, and a smooth-union SDF field.
+private final class RetainedBatchScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private var motif: Batch!
+
+    override func setup() {
+        motif = makeBatch {
+            noStroke()
+            fill(Gradient.linear(from: Vector2(-36, -60), to: Vector2(36, -20),
+                                 [Color(hex: 0x4FC3F7), Color(hex: 0xE84C8B)]))
+            drawRect(-36, -60, 72, 40)
+            fill(Color(hex: 0xE8A23C))
+            drawPolygon([Vector2(-40, 24), Vector2(0, -8), Vector2(40, 24),
+                         Vector2(0, 10)])                 // concave: the triangle path
+            stroke(Color(hex: 0xD6E2FF))
+            strokeWeight(3)
+            noFill()
+            drawPolyline([Vector2(-40, 40), Vector2(-12, 30), Vector2(12, 46),
+                          Vector2(40, 34)])               // the fringe path
+            noStroke()
+            fill(Color(hex: 0x66D48A))
+            smoothUnion(k: 12) {                          // the SDF-combinator path
+                drawCircle(-14, 66, 14)
+                drawCircle(14, 66, 14)
+            }
+            fill(Color(hex: 0xF2F2F2))
+            drawStar(0, -84, 16, 7, points: 5)            // a plain SDF instance
+        }
+    }
+
+    override func draw() {
+        background(Color(hex: 0x14141E))
+        withState {
+            translate(72, 84)
+            drawBatch(motif)                              // identity replay
+        }
+        fill(Color(hex: 0xD84C4C))
+        noStroke()
+        drawCircle(104, 96, 18)                           // dynamic, over the first replay
+        withState {
+            translate(178, 160)
+            rotate(0.5)
+            scale(1.25)
+            drawBatch(motif)                              // transformed stamp, over the circle
         }
     }
 }

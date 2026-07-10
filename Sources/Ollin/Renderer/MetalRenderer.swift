@@ -297,6 +297,9 @@ final class MetalRenderer {
             case .depthScene: return .depthScene(blend, depth: depth)
             case .clipPush:   return .clipWrite(depth: depth)
             case .clipPop:    return .clipCover(depth: depth)
+            // Never reached: a `.retained` reference batch is handed off before the
+            // pipeline lookup (its inner runs each resolve their own key here).
+            case .retained:   return .solid(blend, depth: depth)
             }
         }
     }

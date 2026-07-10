@@ -1537,6 +1537,24 @@ open class Sketch {
         drawer.drawRects(rectangles, cornerRadius: cornerRadius)
     }
 
+    // MARK: Retained batches
+
+    /// Record everything drawn in `body` into a reusable `Batch` whose geometry
+    /// lives on the GPU, so replaying it each frame costs (almost) nothing (see
+    /// `Batch`). Record once, in `setup()`, and hold the result; the body records
+    /// from an identity transform, and state it changes is restored on exit, like
+    /// `withState { }`.
+    public func makeBatch(_ body: () -> Void) -> Batch {
+        drawer.makeBatch(body)
+    }
+
+    /// Replay a recorded `Batch`. The transform in force moves the whole replay
+    /// as a unit, so one recording can be stamped at many placements; the active
+    /// layer, clip, and `depth(at:)` apply to it like any draw call.
+    public func drawBatch(_ batch: Batch) {
+        drawer.drawBatch(batch)
+    }
+
     /// Draw `image` at its native pixel size with its top-left corner at `(x, y)`.
     /// Load it once with `loadImage` (in `setup()`); it rides the transform stack,
     /// so `translate`/`rotate`/`scale` move and warp it, and composites in draw order.

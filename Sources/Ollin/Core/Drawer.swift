@@ -99,6 +99,7 @@ enum GeometryKind {
     case sdfGroup3D   // raymarched composed 3D SDF field in `sdf3DGroups`, evaluating `sdf3DNodes`
     case clipPush     // stencil-only: the clip region's fill triangles in `vertices` raise the clip level (withClip)
     case clipPop      // stencil-only: one fullscreen cover lowers the popped clip level (no geometry)
+    case retained     // a recorded `Batch` replayed from its own persistent buffers (drawBatch)
 }
 
 struct GeometryBatch {
@@ -175,6 +176,14 @@ struct GeometryBatch {
     /// establishes, and for a `.clipPop` the level being dismantled. A change opens
     /// a fresh batch, like a blend-mode change.
     var clipLevel: Int = 0
+    /// The recorded `Batch` a `.retained` reference batch replays; `nil` otherwise.
+    /// The reference consumes no frame geometry (its starts equal the next batch's),
+    /// so it never disturbs the run-length counts around it.
+    var retained: Batch?
+    /// The CTM at `drawBatch` time, moving the whole replay as a unit; `nil` when
+    /// it was the identity, so the encode keeps the flag-gated shader branch
+    /// untaken and the replay is byte-identical to the recording.
+    var retainedTransform: matrix_float3x3?
 }
 
 /// The drawing state machine and per-frame geometry recorder.
@@ -498,6 +507,13 @@ final class Drawer {
     /// Prefer the scoped `withClip(_:_:)`; push and pop must balance within the
     /// current surface (an unmatched pop is ignored).
     func pushClip(_ shape: Shape) {
+        // Clipping is per surface and per frame (stencil levels); a recording is
+        // surface-neutral, so a clip inside it can't replay. The body still draws,
+        // just unclipped; clip where the batch is drawn instead.
+        if isRecordingBatch {
+            noteBatchRecording("withClip inside makeBatch { } is not recorded (the content draws unclipped); clip where the batch is drawn instead.")
+            return
+        }
         if svgRecorder != nil {
             svgRecorder?.commands.append(.clipPush(shape: shape, transform: transform))
             clipStack.append(ClipFrame(vertices: [], target: currentTarget))
@@ -586,6 +602,166 @@ final class Drawer {
             level += 1
             appendClipPush(frame.vertices, level: level)
         }
+    }
+
+    // MARK: Retained batches (makeBatch / drawBatch)
+
+    /// True while a `makeBatch { }` body records. The unsupported funnels (meshes,
+    /// 3D fields, particles, layers, clipping, `background`) consult it and skip
+    /// with a one-time note instead of corrupting the recording's run structure.
+    private(set) var isRecordingBatch = false
+
+    /// One-time notes for content skipped inside `makeBatch { }`, keyed by message
+    /// so each prints once per drawer.
+    private var batchRecordingNotes = Set<String>()
+    func noteBatchRecording(_ message: String) {
+        guard !batchRecordingNotes.contains(message) else { return }
+        batchRecordingNotes.insert(message)
+        print("Ollin: \(message)")
+    }
+
+    /// Record everything drawn in `body` into a reusable `Batch` (see `Batch`).
+    /// The body records into fresh geometry surfaces (swapped in for the frame's),
+    /// from an identity transform, on the main canvas, unclipped; drawing-state
+    /// changes it makes are restored on exit, like `withState { }`. Under a
+    /// whole-run vector export the body's calls are captured as vector commands
+    /// instead, so `drawBatch` can splice them into the exported document.
+    func makeBatch(_ body: () -> Void) -> Batch {
+        if isRecordingBatch {
+            noteBatchRecording("a makeBatch { } inside another makeBatch { } is not recorded; returning an empty batch.")
+            return Batch()
+        }
+        // A vector export never builds GPU geometry (the recorder replaces
+        // emission per funnel), so capture the body as vector commands instead.
+        // The flag spans the whole export run, warmup frames included, so a batch
+        // recorded anywhere in it carries the right representation.
+        if OllinApp.isVectorExporting {
+            let saved = svgRecorder
+            let recorder = SVGRecorder()
+            svgRecorder = recorder
+            isRecordingBatch = true
+            pushState()
+            transform = matrix_identity_float3x3
+            transformIsIdentity = true
+            body()
+            popState()
+            isRecordingBatch = false
+            svgRecorder = saved
+            return Batch(svgCommands: recorder.commands)
+        }
+
+        // Swap fresh recording surfaces in for the frame's, so the body's geometry
+        // and batch runs land in arrays the Batch can take whole. The gradient row
+        // table swaps too: recorded instances bake row indices, and swapping makes
+        // them handle-relative, resolved against the batch's own strip texture.
+        var savedVertices: [OllinVertex] = []
+        var savedSDF: [SDFInstance] = []
+        var savedImage: [OllinImageVertex] = []
+        var savedGlyph: [OllinImageVertex] = []
+        var savedPoints: [OllinPoint] = []
+        var savedGroups: [SDFGroupInstance] = []
+        var savedNodes: [SDFNode] = []
+        var savedBatches: [GeometryBatch] = []
+        var savedRows: [[UInt8]] = []
+        var savedRowIndex: [Ramp: Int] = [:]
+        swap(&savedVertices, &vertices)
+        swap(&savedSDF, &sdfInstances)
+        swap(&savedImage, &imageVertices)
+        swap(&savedGlyph, &glyphVertices)
+        swap(&savedPoints, &points)
+        swap(&savedGroups, &sdfGroups)
+        swap(&savedNodes, &sdfNodes)
+        swap(&savedBatches, &batches)
+        swap(&savedRows, &gradientRows)
+        swap(&savedRowIndex, &gradientRowIndex)
+        // Neutralize the recording context: batch bookkeeping, the target/clip
+        // stacks (the recording is target-neutral; drawBatch supplies both), and
+        // the CTM. `pushState` restores the drawing state the body may change.
+        let savedKind = currentKind
+        let savedBatchBlend = currentBatchBlend
+        let savedBatchDepth = currentBatchDepth
+        let savedBatchClip = currentBatchClip
+        var savedTargets: [TargetFrame] = []
+        var savedClips: [ClipFrame] = []
+        swap(&savedTargets, &targetStack)
+        swap(&savedClips, &clipStack)
+        let savedClipLevel = activeClipLevel
+        activeClipLevel = 0
+        currentKind = nil
+        currentBatchClip = 0
+        isRecordingBatch = true
+        pushState()
+        transform = matrix_identity_float3x3
+        transformIsIdentity = true
+        currentDepth = nil
+        body()
+        popState()
+        isRecordingBatch = false
+
+        let recorded = Batch(vertices: vertices, sdfInstances: sdfInstances,
+                             imageVertices: imageVertices, glyphVertices: glyphVertices,
+                             points: points, sdfGroups: sdfGroups, sdfNodes: sdfNodes,
+                             gradientRows: gradientRows, innerBatches: batches)
+        vertices = savedVertices
+        sdfInstances = savedSDF
+        imageVertices = savedImage
+        glyphVertices = savedGlyph
+        points = savedPoints
+        sdfGroups = savedGroups
+        sdfNodes = savedNodes
+        batches = savedBatches
+        gradientRows = savedRows
+        gradientRowIndex = savedRowIndex
+        targetStack = savedTargets
+        clipStack = savedClips
+        activeClipLevel = savedClipLevel
+        currentKind = savedKind
+        currentBatchBlend = savedBatchBlend
+        currentBatchDepth = savedBatchDepth
+        currentBatchClip = savedBatchClip
+        return recorded
+    }
+
+    /// Replay a recorded `Batch`. The reference batch it appends carries the
+    /// draw-time context: the CTM (moving the whole replay as a unit), the active
+    /// target, clip level, and 2D depth; the recorded content's own state (colors,
+    /// blends) replays as recorded. Active symmetry does not fold the replay;
+    /// record the folds inside the batch instead.
+    func drawBatch(_ batch: Batch) {
+        if isRecordingBatch {
+            noteBatchRecording("drawBatch inside makeBatch { } is not recorded; draw the batch outside the recording.")
+            return
+        }
+        // A vector export splices the batch's captured vector commands under the
+        // draw-time CTM. A batch recorded outside this export run has none; it
+        // can only be empty here, since the whole run never builds GPU geometry.
+        if let recorder = svgRecorder {
+            for command in batch.svgCommands {
+                guard case let .draw(r) = command else { continue }
+                let composed = transformIsIdentity ? r.transform : transform * r.transform
+                recorder.commands.append(.draw(RecordedSVG(geometry: r.geometry,
+                                                           style: r.style,
+                                                           transform: composed)))
+            }
+            return
+        }
+        guard !batch.isEmpty else { return }
+        if batch.hasPointContent {
+            currentTarget?.needsDepth = true   // 3D in a target → that pass carries depth
+        }
+        batches.append(GeometryBatch(kind: .retained, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
+                                     meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
+                                     blendMode: currentBlend, depth: currentDepth,
+                                     target: currentTarget, clipLevel: activeClipLevel,
+                                     retained: batch,
+                                     retainedTransform: transformIsIdentity ? nil : transform))
+        currentKind = nil   // the next primitive opens its own fresh batch
     }
 
     /// When set, draw calls are recorded as vector geometry for SVG export instead
@@ -816,6 +992,13 @@ final class Drawer {
     /// makes (a blend mode, a fill, a transform) is restored on exit, so a layer's
     /// styling never leaks onto the canvas.
     func withTarget(_ target: RenderTarget, _ body: () -> Void) {
+        // Layers are per-frame render passes; a recording holds only replayable
+        // geometry, so a layer block inside it is skipped whole (running the body
+        // would silently flatten the layer's content into the batch).
+        if isRecordingBatch {
+            noteBatchRecording("withTarget/withFeedback/withField inside makeBatch { } is not recorded (the block is skipped); draw into layers where the batch is drawn instead.")
+            return
+        }
         if !renderTargets.contains(where: { $0 === target }) { renderTargets.append(target) }
         targetStack.append(TargetFrame(target: target, snapshot: snapshot()))
         currentKind = nil    // force the first draw inside the target into a fresh batch
@@ -938,6 +1121,12 @@ final class Drawer {
     /// and resets `currentKind` so a following primitive reopens its own batch. The
     /// particle buffer's positions are in canvas space, so it rides no CTM.
     func recordParticles(_ buffer: ComputeBindable, count: Int) {
+        // A particle batch reads a compute buffer the GPU rewrites every frame;
+        // there's nothing static to retain.
+        if isRecordingBatch {
+            noteBatchRecording("drawParticles inside makeBatch { } is not recorded (particles are already GPU-resident); draw them where the batch is drawn.")
+            return
+        }
         guard count > 0 else { return }
         currentKind = .particles
         currentBatchBlend = currentBlend
@@ -1070,6 +1259,12 @@ final class Drawer {
     /// (`noClear`) it additionally wipes the persistent canvas this frame — the
     /// way to reset a long exposure (see `backgroundSetThisFrame`).
     func background(_ color: Color) {
+        // A background inside a batch recording would wipe the recording itself;
+        // it's the frame's wipe, not batch content, so it can't be recorded.
+        if isRecordingBatch {
+            noteBatchRecording("background(_:) inside makeBatch { } is not recorded; set the background where the batch is drawn.")
+            return
+        }
         // Inside a `withTarget` block, background clears *that target* (its clear
         // color + its geometry so far), leaving the main canvas and global clear
         // color untouched.
@@ -1544,7 +1739,10 @@ final class Drawer {
     /// active camera. World-space points (they ride the camera, not the 2D
     /// transform stack). A no-op without a camera or when the cloud is empty.
     func drawPointCloud(_ cloud: PointCloud) {
-        guard camera3D != nil, !cloud.isEmpty else { return }
+        // A recording has no camera (it's per-frame state); the points record
+        // world-space and the replay draws them through whatever camera is active
+        // at drawBatch time, so the guard relaxes while recording.
+        guard isRecordingBatch || camera3D != nil, !cloud.isEmpty else { return }
         // SVG export is 2D vector only; a splat cloud has no vector outline.
         if svgRecorder != nil { return }
         currentTarget?.needsDepth = true   // 3D in a target → that pass carries depth
@@ -1578,6 +1776,12 @@ final class Drawer {
     /// takes the current `fill` color: flat (unlit) with no lights set, Blinn-Phong
     /// shaded once a light is added. A no-op without a camera or when the mesh is empty.
     func drawMesh(_ mesh: Mesh) {
+        // A retained mesh would silently drop out of the shadow and reflection
+        // passes (they read the frame's mesh buffer), so meshes stay per-frame.
+        if isRecordingBatch {
+            noteBatchRecording("meshes inside makeBatch { } are not recorded (a retained mesh would cast no shadow); draw meshes where the batch is drawn.")
+            return
+        }
         guard camera3D != nil, !mesh.isEmpty else { return }
         // Inside a combine block, only the SDF-able primitives (which route through
         // `drawMeshPrimitive` and never reach here) merge; any other mesh is ignored.

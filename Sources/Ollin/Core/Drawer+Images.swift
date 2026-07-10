@@ -42,6 +42,12 @@ extension Drawer {
     /// by the scene — the way a sprite is hidden by a nearer subject. Allocates the
     /// depth buffer (like a camera) with no 3D camera needed; raster only.
     func drawDepthScene(color: Image, depth: Image, in rect: Rectangle, whiteIsNear: Bool) {
+        // A depth scene primes the frame's depth buffer; that's a per-frame pass,
+        // not replayable geometry.
+        if isRecordingBatch {
+            noteBatchRecording("drawDepthScene inside makeBatch { } is not recorded; draw depth scenes where the batch is drawn.")
+            return
+        }
         guard rect.width > 0, rect.height > 0,
               color.width > 0, color.height > 0, depth.width > 0, depth.height > 0 else { return }
         if svgRecorder != nil { return }   // a depth scene has no vector form
@@ -71,6 +77,10 @@ extension Drawer {
     /// matching the metric camera's own letterbox so backdrop and placed geometry
     /// align. Raster only.
     func drawDepthScene(metricFrame frame: RGBDFrame, in rect: Rectangle) {
+        if isRecordingBatch {
+            noteBatchRecording("drawDepthScene inside makeBatch { } is not recorded; draw depth scenes where the batch is drawn.")
+            return
+        }
         guard rect.width > 0, rect.height > 0,
               frame.color.width > 0, frame.color.height > 0,
               frame.depthWidth > 0, frame.depthHeight > 0,

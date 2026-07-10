@@ -37,6 +37,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Clipping | `withClip(shape) { }`: drawing inside the block lands only within the region; nesting intersects | [Ch 6](06-GridsAndRepetition.md) | [Drawing](../Docs/Drawing/Drawing.md#clip) |
 | Blend modes | Add, subtract, multiply, screen, lightest, darkest, as drawing state | [Ch 14](14-LayersAndEffects.md) | [Drawing](../Docs/Drawing/Drawing.md) |
 | Accumulation | `noClear()`: a persistent canvas that piles up across frames | [Ch 14](14-LayersAndEffects.md), [Ch 16](16-Simulations.md) | [Accumulation](../Docs/Drawing/Accumulation.md) |
+| Retained batches | `makeBatch { }` records heavy static drawing once into a `Batch`; `drawBatch` replays it each frame for (almost) nothing, placed or stamped by the transform in force | here | [Retained batches](../Docs/Drawing/Batches.md) |
 | HDR and tone mapping | Light past full brightness, brought back by `toneMap` (clamp, Reinhard, ACES) | [Ch 14](14-LayersAndEffects.md) | [HDR](../Docs/Drawing/HDR.md) |
 | Gradient paint | Linear, radial, and along-path gradients on any shape's fill or stroke | [Ch 2](02-Color.md) | [Color](../Docs/Drawing/Color.md) |
 

@@ -1006,6 +1006,15 @@ public enum OllinApp {
     /// deterministic pull that follows the sketch clock instead.
     package static var isRenderingHeadless = false
 
+    /// True for the *whole* of a vector-export drive (`recordVectorFrame`),
+    /// setup and warmup frames included, not just the recorded frame. Vector
+    /// export replaces GPU emission per draw call, so a `Batch` recorded any
+    /// time during the run must capture vector commands rather than geometry;
+    /// `Drawer.makeBatch` reads this to pick the representation. The drive is
+    /// synchronous on one thread (set, drive, clear), and the nonisolated
+    /// `Drawer` reads it mid-drive, hence `nonisolated(unsafe)`.
+    package nonisolated(unsafe) static var isVectorExporting = false
+
     /// Boot a window running `sketch` and start the app; does not return. Hosts
     /// the sketch in a `SketchView` inside a SwiftUI `App` (`OllinSketchApp`) —
     /// the same lifecycle the live host and gallery use. This is the

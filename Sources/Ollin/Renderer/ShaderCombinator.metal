@@ -45,6 +45,12 @@ vertex SDFGroupOut ollin_sdfgroup_vertex(uint vid [[vertex_id]],
     float2 local = corners[vid] * g.size;
     float2 field = g.center + local;                 // absolute field coordinate
     float3 sketch = g.transform * float3(field, 1.0);
+    // Retained-batch replay transform (see ollin_vertex): only the covering quad's
+    // canvas position moves; `field` stays in field space, so the fragment's node
+    // VM and its fwidth-based AA are untouched by the replay CTM.
+    if (uniforms.batchTransformed != 0.0) {
+        sketch = uniforms.batchTransform * float3(sketch.xy, 1.0);
+    }
 
     float2 ndc;
     ndc.x = (sketch.x / uniforms.viewport.x) * 2.0 - 1.0;

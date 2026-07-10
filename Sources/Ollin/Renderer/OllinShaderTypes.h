@@ -55,6 +55,14 @@ typedef struct {
                             // emit, so 2D draws can occlude/be occluded by 3D
                             // geometry in a depth pass (see depth(at:)). 0 in a
                             // 2D-only frame, so those frames are byte-identical.
+    float batchTransformed; // 1 while a retained `Batch` replays under a draw-time
+                            // CTM: the 2D vertex shaders then left-apply
+                            // `batchTransform` to their canvas-space output. 0
+                            // everywhere else, so the transform branch is untaken
+                            // and the ordinary paths' position math is untouched
+                            // (byte-identical, the flag-gate rule).
+    simd_float3x3 batchTransform;  // canvas space -> canvas space (the CTM at
+                                   // drawBatch time); identity when unused
 } Uniforms;
 
 // Per-frame constants for the 3D pipelines (an active `Camera3D`). Bound at

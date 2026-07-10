@@ -1375,7 +1375,9 @@ extension MetalRenderer {
             }
         }
 
-        var uniforms = Uniforms(viewport: viewport, clipDepth: 0)
+        var uniforms = Uniforms(viewport: viewport, clipDepth: 0,
+                                batchTransformed: 0,
+                                batchTransform: matrix_identity_float3x3)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
 
         // 3D camera constants for the points3D batches, bound once at index 2 —
@@ -1512,6 +1514,17 @@ extension MetalRenderer {
             // declares the stencil format); skip it, so a failed stencil allocation
             // degrades to unclipped drawing rather than a validation error.
             if !hasStencil, batch.kind == .clipPush || batch.kind == .clipPop { continue }
+            // A retained `Batch` replay: hand the whole reference off before the
+            // pipeline lookup (each of its inner runs resolves its own pipeline),
+            // then restore this loop's uniforms binding and carry on.
+            if batch.kind == .retained {
+                if let handle = batch.retained {
+                    encodeRetained(handle, reference: batch, drawer: drawer,
+                                   loopUniforms: uniforms, into: encoder,
+                                   depthFormat: depthFormat, hasStencil: hasStencil)
+                }
+                continue
+            }
             // The pipeline for this batch's geometry kind, blend mode, *and* the
             // pass's depth format; built on first use of a combination. A mesh batch
             // selects its variant: wireframe (edges only) or textured (a material
@@ -1852,8 +1865,134 @@ extension MetalRenderer {
                 // so no buffer is bound.
                 encoder.setRenderPipelineState(state)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            case .retained:
+                continue   // handed off before the pipeline lookup above
             }
         }
+    }
+
+    /// Replay a recorded `Batch` from its own persistent buffers: the retained
+    /// sibling of the per-batch arms in `encode` above, restricted to the kinds a
+    /// recording can hold (2D geometry, images, atlas text, SDF groups, point
+    /// clouds). The reference batch supplies the draw-time context: its CTM rides
+    /// the flag-gated `batchTransform` uniform (identity leaves the flag 0, so an
+    /// untransformed replay renders byte-identically to the recording), and its
+    /// clip level / 2D depth apply to every inner run. Inner runs keep their own
+    /// recorded blend modes. On exit the loop's uniforms binding is restored, so
+    /// the batches after the replay are undisturbed.
+    private func encodeRetained(_ handle: Batch, reference: GeometryBatch,
+                                drawer: Drawer, loopUniforms: Uniforms,
+                                into encoder: MTLRenderCommandEncoder,
+                                depthFormat: MTLPixelFormat?, hasStencil: Bool) {
+        let resources = handle.gpuResources(for: device)
+        var u = loopUniforms
+        if depthFormat != nil { u.clipDepth = reference.depth ?? 0 }
+        if let t = reference.retainedTransform {
+            u.batchTransformed = 1
+            u.batchTransform = t
+        }
+        encoder.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
+
+        let vertexStride = MemoryLayout<OllinVertex>.stride
+        let instanceStride = MemoryLayout<SDFInstance>.stride
+        let groupStride = MemoryLayout<SDFGroupInstance>.stride
+        let imageStride = MemoryLayout<OllinImageVertex>.stride
+        let pointStride = MemoryLayout<OllinPoint>.stride
+        let inner = handle.innerBatches
+        for j in inner.indices {
+            let run = inner[j]
+            let next = j + 1 < inner.count ? inner[j + 1] : nil
+            var key = PipelineKey.forBatch(run.kind, run.blendMode, depth: depthFormat)
+            if hasStencil { key.stencilFormat = .stencil8 }
+            guard let state = try? pipeline(key) else { continue }
+            // Depth/stencil per the main loop's rules, at the reference batch's
+            // clip level and depth: point-cloud runs z-test + write, 2D runs do
+            // only when the replay was depth-placed. Untouched when the pass
+            // carries neither attachment (the byte-identical rule).
+            if depthFormat != nil || hasStencil {
+                let wantsDepth = depthFormat != nil
+                    && (run.kind == .points3D || reference.depth != nil)
+                if hasStencil, reference.clipLevel > 0 {
+                    encoder.setDepthStencilState(clipDepthStencilState(
+                        ClipStateKey(depth: wantsDepth ? .test : .always, stencil: .equal)))
+                    encoder.setStencilReferenceValue(UInt32(reference.clipLevel))
+                } else if depthFormat != nil {
+                    encoder.setDepthStencilState(wantsDepth ? depthTestState : noDepthState)
+                } else {
+                    encoder.setDepthStencilState(noDepthState)
+                }
+            }
+            switch run.kind {
+            case .triangles, .fringe:
+                let end = next?.vertexStart ?? handle.vertices.count
+                let count = end - run.vertexStart
+                guard count > 0, let buffer = resources.triangle else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(buffer, offset: run.vertexStart * vertexStride, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+            case .sdf:
+                let end = next?.instanceStart ?? handle.sdfInstances.count
+                let count = end - run.instanceStart
+                guard count > 0, let buffer = resources.sdf, let strip = resources.strip else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(buffer, offset: run.instanceStart * instanceStride, index: 0)
+                // The batch's own strip: recorded instances carry handle-relative
+                // gradient rows. Later frame batches rebind theirs, like after an
+                // image batch.
+                encoder.setFragmentTexture(strip, index: 0)
+                encoder.setFragmentSamplerState(imageSampler, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
+            case .sdfGroup:
+                let end = next?.sdfGroupStart ?? handle.sdfGroups.count
+                let count = end - run.sdfGroupStart
+                guard count > 0, let groupBuffer = resources.sdfGroup,
+                      let nodeBuffer = resources.sdfNode, let strip = resources.strip else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(groupBuffer, offset: run.sdfGroupStart * groupStride, index: 0)
+                encoder.setFragmentBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setFragmentTexture(strip, index: 0)
+                encoder.setFragmentSamplerState(imageSampler, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
+            case .image:
+                let end = next?.imageStart ?? handle.imageVertices.count
+                let count = end - run.imageStart
+                guard count > 0, let buffer = resources.image, let source = run.image,
+                      let texture = source.texture(for: device) else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(buffer, offset: run.imageStart * imageStride, index: 0)
+                encoder.setFragmentTexture(texture, index: 0)
+                encoder.setFragmentSamplerState(imageSampler, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+            case .glyphAtlas:
+                let end = next?.glyphStart ?? handle.glyphVertices.count
+                let count = end - run.glyphStart
+                guard count > 0, let buffer = resources.glyph, let atlas = run.atlas,
+                      let texture = atlas.texture(for: device) else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(buffer, offset: run.glyphStart * imageStride, index: 0)
+                encoder.setFragmentTexture(texture, index: 0)
+                encoder.setFragmentSamplerState(imageSampler, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+            case .points3D:
+                // Recorded world-space splats replay through whatever camera is
+                // active this frame (Uniforms3D is already bound at index 2 when
+                // one is); without a camera there's nothing to project, like a
+                // live drawPointCloud. The replay CTM is 2D-only, so it doesn't
+                // apply here.
+                let end = next?.pointStart ?? handle.points.count
+                let count = end - run.pointStart
+                guard count > 0, let buffer = resources.point, drawer.camera3D != nil else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(buffer, offset: run.pointStart * pointStride, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
+            default:
+                continue   // unsupported kinds are gated out at record time
+            }
+        }
+
+        // Restore the loop's uniforms binding for the batches after the replay.
+        var restore = loopUniforms
+        encoder.setVertexBytes(&restore, length: MemoryLayout<Uniforms>.stride, index: 1)
     }
 
     /// Encode the frame's recorded compute dispatches into one compute encoder,
@@ -1922,7 +2061,18 @@ extension MetalRenderer {
     /// 1-row placeholder keeps the SDF fragment's texture argument valid.
     func gradientStripTexture(for rows: [[UInt8]]) -> MTLTexture? {
         if let existing = gradientStrip, rows == gradientStripRows { return existing }
+        guard let texture = MetalRenderer.makeGradientStrip(device: device, rows: rows) else { return nil }
+        gradientStrip = texture
+        gradientStripRows = rows
+        return texture
+    }
 
+    /// Bake `rows` into a strip texture. The shared builder behind the frame's
+    /// cached strip above and each retained `Batch`'s own strip (a batch's SDF
+    /// instances carry handle-relative row indices, so it resolves them against
+    /// its own bake, never the frame's). A pure function of its inputs, so it
+    /// stays callable off the main actor.
+    nonisolated static func makeGradientStrip(device: MTLDevice, rows: [[UInt8]]) -> MTLTexture? {
         let height = max(rows.count, 1)
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba8Unorm_srgb, width: BakedGradient.width,
@@ -1940,8 +2090,6 @@ extension MetalRenderer {
                             mipmapLevel: 0, withBytes: raw.baseAddress!,
                             bytesPerRow: bytesPerRow)
         }
-        gradientStrip = texture
-        gradientStripRows = rows
         return texture
     }
 }

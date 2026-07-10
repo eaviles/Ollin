@@ -54,11 +54,19 @@ vertex VertexOut ollin_vertex(uint vertexID [[vertex_id]],
                               constant Uniforms &uniforms [[buffer(1)]]) {
     OllinVertex v = vertices[vertexID];
 
+    // A retained batch replaying under a draw-time CTM: the recorded canvas-space
+    // position moves as a unit. The flag is 0 outside a retained replay, so the
+    // ordinary path's arithmetic is untouched.
+    float2 p = v.position;
+    if (uniforms.batchTransformed != 0.0) {
+        p = (uniforms.batchTransform * float3(p, 1.0)).xy;
+    }
+
     // Map top-left / y-down point coordinates into clip space [-1, 1],
     // flipping Y so that y grows downward on screen (top-left-origin convention).
     float2 ndc;
-    ndc.x = (v.position.x / uniforms.viewport.x) * 2.0 - 1.0;
-    ndc.y = 1.0 - (v.position.y / uniforms.viewport.y) * 2.0;
+    ndc.x = (p.x / uniforms.viewport.x) * 2.0 - 1.0;
+    ndc.y = 1.0 - (p.y / uniforms.viewport.y) * 2.0;
 
     VertexOut out;
     out.position = float4(ndc, uniforms.clipDepth, 1.0);
@@ -109,9 +117,16 @@ vertex FringeVertexOut ollin_fringe_vertex(uint vertexID [[vertex_id]],
                                            const device OllinVertex *vertices [[buffer(0)]],
                                            constant Uniforms &uniforms [[buffer(1)]]) {
     OllinVertex v = vertices[vertexID];
+    // Retained-batch replay transform (see ollin_vertex). The fringe's ~1px AA
+    // band was expanded at record time, so a scaling replay scales it with the
+    // stroke, exactly like scaling any baked geometry.
+    float2 p = v.position;
+    if (uniforms.batchTransformed != 0.0) {
+        p = (uniforms.batchTransform * float3(p, 1.0)).xy;
+    }
     float2 ndc;
-    ndc.x = (v.position.x / uniforms.viewport.x) * 2.0 - 1.0;
-    ndc.y = 1.0 - (v.position.y / uniforms.viewport.y) * 2.0;
+    ndc.x = (p.x / uniforms.viewport.x) * 2.0 - 1.0;
+    ndc.y = 1.0 - (p.y / uniforms.viewport.y) * 2.0;
     FringeVertexOut out;
     out.position = float4(ndc, uniforms.clipDepth, 1.0);
     out.color = v.color;
@@ -143,9 +158,14 @@ vertex ImageOut ollin_image_vertex(uint vertexID [[vertex_id]],
                                    const device OllinImageVertex *vertices [[buffer(0)]],
                                    constant Uniforms &uniforms [[buffer(1)]]) {
     OllinImageVertex v = vertices[vertexID];
+    // Retained-batch replay transform (see ollin_vertex).
+    float2 p = v.position;
+    if (uniforms.batchTransformed != 0.0) {
+        p = (uniforms.batchTransform * float3(p, 1.0)).xy;
+    }
     float2 ndc;
-    ndc.x = (v.position.x / uniforms.viewport.x) * 2.0 - 1.0;
-    ndc.y = 1.0 - (v.position.y / uniforms.viewport.y) * 2.0;
+    ndc.x = (p.x / uniforms.viewport.x) * 2.0 - 1.0;
+    ndc.y = 1.0 - (p.y / uniforms.viewport.y) * 2.0;
 
     ImageOut out;
     out.position = float4(ndc, uniforms.clipDepth, 1.0);

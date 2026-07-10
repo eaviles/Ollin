@@ -583,7 +583,10 @@ extension OllinApp {
     static func recordVectorFrame(of sketch: Sketch, frame: Int, fps: Double,
                                   hatching: Hatching?) -> VectorRecording {
         isRenderingHeadless = true
-        defer { isRenderingHeadless = false }
+        // The whole drive is vector-mode, setup() included, so a `Batch` recorded
+        // anywhere in it captures vector commands for `drawBatch` to splice.
+        isVectorExporting = true
+        defer { isRenderingHeadless = false; isVectorExporting = false }
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.setup()

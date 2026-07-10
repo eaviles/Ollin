@@ -66,6 +66,12 @@ vertex SDFOut ollin_sdf_vertex(uint vid [[vertex_id]],
     float2 extent = inst.size + inst.bandWidth * 0.5 + inst.strokeWidth * 0.5 + outset + 2.0;
     float2 local = corners[vid] * extent;
     float3 sketch = inst.transform * float3(inst.center + local, 1.0);
+    // Retained-batch replay transform (see ollin_vertex): only the covering quad's
+    // canvas position moves; `local` stays shape-local, so the fragment's analytic
+    // distance and its fwidth-based AA stay exact at any replay rotation or scale.
+    if (uniforms.batchTransformed != 0.0) {
+        sketch = uniforms.batchTransform * float3(sketch.xy, 1.0);
+    }
 
     float2 ndc;
     ndc.x = (sketch.x / uniforms.viewport.x) * 2.0 - 1.0;

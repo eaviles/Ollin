@@ -239,6 +239,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Palette file import (`loadPalette`/`loadPalettes`, hex/CSV/TSV/JSON/ASE; `Drawing/Color.md`) | Ch 2 | taught |
 | Palette extraction from an image (`Palette(extractedFrom:)`; `Drawing/Color.md`) | Ch 2 | taught |
 | Image dithering (`Image.dithered`: error diffusion, ordered Bayer, blue noise; `Drawing/Color.md`) | Ch 2 | pointed |
+| Retained batches (`Batch`, `makeBatch`/`drawBatch`; `Drawing/Batches.md`) | Appendix D | pointed |
 | `Helpers/Math.md` (map, lerp, dist; the shaping scalars clamp/fract/step/smoothstep) | Ch 3, Appendix B | taught |
 | `Helpers/Animation.md` (easing, @Eased, @Smoothed, Timeline; loopProgress/pingPong) | Ch 3 | taught |
 | `Helpers/Input.md` (mouse, keyboard) | Ch 1 | taught |
@@ -325,7 +326,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Roadmap item | Future Guide home |
 |---|---|
 | Single-file sketches | Ch 1 (would simplify the setup story; revisit Ch 1 when it ships) |
-| Retained geometry buffers | internal; Appendix D note at most |
 | More SDF shapes | Ch 18 / Appendix D |
 | More model examples (ModelTracker) | Ch 21 |
 | Generative-geometry refinements | Ch 11 |

@@ -800,6 +800,12 @@ extension Drawer {
     /// `fill` colors leaves individually (`.colored` per leaf, melted at smooth seams);
     /// a gradient `fill` paints the whole merged surface by screen position instead.
     func drawSDF3D(_ sdf: SDF3D) {
+        // Raymarched fields interlock with the frame's shadow/lighting passes the
+        // way meshes do, so they stay per-frame too.
+        if isRecordingBatch {
+            noteBatchRecording("drawSDF3D inside makeBatch { } is not recorded; draw 3D fields where the batch is drawn.")
+            return
+        }
         guard camera3D != nil else { return }   // 3D only — needs an active camera
         // SVG export is 2D vector only; a sphere-traced surface has no vector outline.
         if svgRecorder != nil { return }
