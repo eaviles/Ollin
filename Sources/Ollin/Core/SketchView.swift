@@ -1378,9 +1378,9 @@ public extension Sketch {
 public extension OllinApp {
     /// Handle the shared headless command-line surface (the export flags
     /// `--export`, `--export-sequence`, `--export-video`, `--export-gif`,
-    /// `--export-loop`, `--export-svg`, `--export-pdf`, `--export-grid` with
-    /// their options, `--seed` on any of them, plus `--bench`) against a
-    /// sketch supplied on demand.
+    /// `--export-loop`, `--export-svg`, `--export-pdf`, `--export-grid`,
+    /// `--export-separations` with their options, `--seed` on any of them,
+    /// plus `--bench`) against a sketch supplied on demand.
     ///
     /// Returns `true` when a headless flag was recognized (the work ran, or a
     /// usage message was printed), meaning the caller should exit rather than
@@ -1579,6 +1579,55 @@ public extension OllinApp {
             OllinApp.exportContactSheet(makeSketch, to: args[i + 1], seeds: seeds,
                                         frame: frame, fps: fps, columns: columns,
                                         tileWidth: tile, quality: renderQuality)
+            return true
+        }
+        // `--export-separations <path.png> [--frame N] [--inks "black, fluorescent pink"]
+        // [--paper HEX] [--screen dither|halftone] [--pitch PX] [--no-marks]` splits
+        // one frame into per-ink grayscale printing masters plus an overprint
+        // preview and exits. Inks come from the sketch's declared `printInks` unless
+        // `--inks` names catalog inks; `--screen` reduces the masters to 1-bit.
+        if let i = args.firstIndex(of: "--export-separations"), i + 1 < args.count {
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
+            }
+            let frame = value("--frame").flatMap(Int.init) ?? 0
+            var inks: [Ink]?
+            if let list = value("--inks") {
+                var parsed: [Ink] = []
+                for entry in list.split(separator: ",") {
+                    let name = entry.trimmingCharacters(in: .whitespaces)
+                    guard let ink = Ink.named(name) else {
+                        FileHandle.standardError.write(Data(
+                            "unknown ink '\(name)': names match the built-in catalog (Ink.catalog), e.g. \"black\", \"fluorescent pink\", \"medium blue\"\n".utf8))
+                        return true
+                    }
+                    parsed.append(ink)
+                }
+                inks = parsed
+            }
+            var paper = Color.white
+            if let hex = value("--paper") {
+                guard let value = UInt32(hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")), radix: 16) else {
+                    FileHandle.standardError.write(Data("--paper expects a hex color, e.g. FFF7E8\n".utf8))
+                    return true
+                }
+                paper = Color(hex: value)
+            }
+            let pitch = value("--pitch").flatMap(Double.init) ?? 8
+            let screen: (PrintSeparation) -> PrintSeparation
+            switch value("--screen") ?? "none" {
+            case "none": screen = { $0 }
+            case "dither": screen = { $0.dithered() }
+            case "halftone": screen = { $0.halftoned(pitch: pitch) }
+            default:
+                FileHandle.standardError.write(Data(
+                    "usage: --export-separations <path.png> [--frame N] [--inks \"a, b\"] [--paper HEX] [--screen dither|halftone] [--pitch PX] [--no-marks]\n".utf8))
+                return true
+            }
+            OllinApp.exportSeparations(make(), to: args[i + 1], inks: inks, paper: paper,
+                                       frame: frame, registrationMarks: !args.contains("--no-marks"),
+                                       quality: renderQuality, screen: screen)
             return true
         }
         if let i = args.firstIndex(of: "--export"), i + 1 < args.count {

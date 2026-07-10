@@ -21,6 +21,9 @@ struct ExportMetadata {
     var gitHash: String?
     var frame: Int?
     var fps: Double?
+    /// The ink names of a print-separation export, in print order; `nil`
+    /// everywhere else.
+    var inks: [String]? = nil
 
     /// Capture the recipe from `sketch` as it stands: the last seeds applied,
     /// every `@Param`'s current value, and the working tree's git commit.
@@ -49,6 +52,9 @@ struct ExportMetadata {
         if !params.isEmpty {
             let entries = params.map { "\(jsonString($0.name)):\(jsonValue($0.value))" }
             fields.append("\"params\":{\(entries.joined(separator: ","))}")
+        }
+        if let inks, !inks.isEmpty {
+            fields.append("\"inks\":[\(inks.map(jsonString).joined(separator: ","))]")
         }
         if let gitHash { fields.append("\"git\":\(jsonString(gitHash))") }
         if let frame { fields.append("\"frame\":\(frame)") }

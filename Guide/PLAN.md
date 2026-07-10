@@ -308,6 +308,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Integration/VirtualCamera.md` | Ch 22 | shown |
 | `Output/Export.md` (PNG, sequence, video, GIF, SVG, PDF) | Ch 3 (GIF), Ch 13 (SVG), Ch 22 (all) | taught |
 | Reproducibility metadata in exports (`Output/Export.md`) | Ch 22 | pointed |
+| Print separations (`Image.separated` into spot inks, screening, `--export-separations`; `Output/PrintSeparations.md`) | Ch 22 | pointed |
 | Variations & seed exploration (`Core/Variations.md`): `variation`, the Variation card, `--export-grid`, `--seed` | Ch 4 | taught |
 | Normalized coordinates `uv(u, v)` (`Core/Canvas.md`) | Ch 1 | pointed |
 | `Tools/LiveCoding.md` (OllinLiveCoding) | Ch 22; OllinLive workflow in Ch 1 | taught |
@@ -347,7 +348,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Tempo sync | Ch 20 |
 | Live rigs (serial/BLE, DMX/LED, NDI) | Ch 22, or a future installations chapter |
 | New input sources | Ch 20/21 |
-| New output surfaces (haptics, screensaver, USDZ, fabrication, riso separations, performance capture) | Ch 22 |
+| New output surfaces (haptics, screensaver, USDZ, fabrication, performance capture) | Ch 22 |
 | Rendering/color frontier (P3/HDR out, GPU-driven, path tracing) | Ch 14/22 |
 | Authoring/editor tooling | Ch 22 |
 | Collaboration and multi-device | future chapter beside Ch 22 |

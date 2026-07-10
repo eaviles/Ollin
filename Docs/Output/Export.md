@@ -27,6 +27,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Reproducibility metadata](#reproducibility-metadata): the regeneration recipe every export carries
 - [Rendering a chosen variation](#rendering-a-chosen-variation): `--seed`, on every export path
 - [Contact sheets](#contact-sheets-proofing-a-variation-space): `--export-grid`, `OllinApp.contactSheet` / `exportContactSheet`
+- [Print separations](PrintSeparations.md): `--export-separations`, per-ink masters for risograph and screen printing (its own page)
 
 ---
 

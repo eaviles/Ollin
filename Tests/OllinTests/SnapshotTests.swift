@@ -268,6 +268,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("dither",
                  note: "One painted gradient quantized to a three-color palette four ways, at 1:1 pixels: plain nearest-color (banding), ordered Bayer, blue noise, Floyd-Steinberg. Pins the whole dithering pass (the Bayer recurrence, the void-and-cluster tile, the error-diffusion kernel and its serpentine scan) plus the color space each family chooses its colors in. No rng and no time, so it is deterministic.",
                  make: { DitherScene() }),
+    SnapshotCase("print-separation",
+                 note: "A two-ink artwork split into spot-color printing masters: the artwork, its halftoned overprint preview, and the two grayscale masters. Pins the separation search (the linear-light overprint model judged in OKLab), the preview reconstruction from the masters, the rotated round-dot screens, and the minimum-dot highlight cutoff. No rng and no time, so it is deterministic.",
+                 make: { PrintSeparationScene() }),
     SnapshotCase("truchet",
                  note: "A Truchet tiling: arc tiles in the top half, diagonal tiles in the bottom, each cell's orientation chosen by the seed. Pins both tile geometries and the cross-cell connectivity (the arcs meet at shared edge midpoints, the diagonals at corners). Seeded, no time, so the layout is deterministic.",
                  make: { TruchetScene() }),
@@ -1042,6 +1045,62 @@ private final class DitherScene: Sketch {
                 image[x, y] = t < 0.5
                     ? Color.mix(palette[0], palette[1], t: t * 2)
                     : Color.mix(palette[1], palette[2], t: (t - 0.5) * 2)
+            }
+        }
+        return image
+    }
+}
+
+/// A two-ink artwork separated into spot-color printing masters, four panels
+/// at 1:1: the artwork (top-left), its overprint preview screened through the
+/// rotated round-dot halftone (top-right), and the two grayscale masters
+/// below. Pins the separation search (coverages found under the linear-light
+/// overprint model, judged in OKLab), the preview reconstruction from the
+/// masters, the per-layer screen angles, and the minimum-dot highlight
+/// cutoff. No rng and no `time`, so it is deterministic.
+private final class PrintSeparationScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private var panels: [Image] = []
+
+    override func setup() {
+        let source = paint()
+        let separation = source.separated(into: [.fluorescentPink, .blue])
+        panels = [source,
+                  separation.halftoned(pitch: 5).preview(),
+                  separation.layers[0].master,
+                  separation.layers[1].master]
+    }
+
+    override func draw() {
+        background(.black)
+        for (i, panel) in panels.enumerated() {
+            drawImage(panel, in: Rectangle(x: Double(i % 2) * 128, y: Double(i / 2) * 128,
+                                           width: 128, height: 128))
+        }
+    }
+
+    /// A pink wash meeting a blue disk: gradients exercise partial coverage,
+    /// the overlap exercises the two-ink mix, and the corners stay bare paper.
+    private func paint() -> Image {
+        let n = 128
+        let image = Image(width: n, height: n)
+        let pink = Ink.fluorescentPink.color
+        let blue = Ink.blue.color
+        for y in 0..<n {
+            for x in 0..<n {
+                let u = Double(x) / Double(n - 1)
+                let v = Double(y) / Double(n - 1)
+                let wash = clamp(1.2 - (u + v), 0, 1)
+                let disk = (1 - smoothstep(0.30, 0.34, dist(u, v, 0.62, 0.42))) * 0.9
+                var c = Color.white
+                c = Color(red: c.red * (1 - wash + wash * pink.red),
+                          green: c.green * (1 - wash + wash * pink.green),
+                          blue: c.blue * (1 - wash + wash * pink.blue))
+                c = Color(red: c.red * (1 - disk + disk * blue.red),
+                          green: c.green * (1 - disk + disk * blue.green),
+                          blue: c.blue * (1 - disk + disk * blue.blue))
+                image[x, y] = c
             }
         }
         return image

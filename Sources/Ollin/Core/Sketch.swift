@@ -182,6 +182,19 @@ open class Sketch {
     /// `nil` (the default) declares no loop. See `Docs/Output/Export.md`.
     open var loopDuration: Double? { nil }
 
+    /// The spot inks a print separation splits this sketch into, when it is
+    /// made for physical printing (risograph, screen printing). Declaring
+    /// them lets `--export-separations` write one grayscale master per ink
+    /// plus a registration-marked preview with no further flags:
+    ///
+    /// ```swift
+    /// override var printInks: [Ink]? { [.fluorescentPink, .blue, .yellow] }
+    /// ```
+    ///
+    /// `nil` (the default) declares none; the export then needs `--inks`.
+    /// See `Docs/Output/PrintSeparations.md`.
+    open var printInks: [Ink]? { nil }
+
     // MARK: Lifecycle (override in subclasses)
 
     /// Called once, after the canvas size is known, before the first `draw()`.

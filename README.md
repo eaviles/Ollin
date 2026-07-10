@@ -136,7 +136,7 @@ The full API reference lives in [`Docs/`](Docs/), one page per topic; [`Docs/REA
 - **Sound & simulation** - [Audio](Docs/Helpers/Audio.md), [Physics](Docs/Simulation/Physics.md)
 - **Vision & video** - [Vision](Docs/Vision/Vision.md), [Video](Docs/Video/Video.md)
 - **Integration** - [OSC](Docs/Integration/OSC.md), [MIDI](Docs/Integration/MIDI.md), [Syphon](Docs/Integration/Syphon.md), [Virtual camera](Docs/Integration/VirtualCamera.md)
-- **Output** - [Export](Docs/Output/Export.md)
+- **Output** - [Export](Docs/Output/Export.md), [Print separations](Docs/Output/PrintSeparations.md)
 - **Tools** - [Live coding](Docs/Tools/LiveCoding.md)
 
 New to Swift? The [Swift quick reference](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`, and the Guide's [Appendix A](Guide/A-JustEnoughSwift.md) is its slower, narrative companion. Coming from p5.js or Processing? [Appendix C of the Guide](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin.
