@@ -102,6 +102,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 
 ### Tools
 
+- [`Single-file sketches`](./Tools/SingleFile.md) - the `ollin` command: run one `.swift` file as a sketch from anywhere, no package needed
 - [`Live coding`](./Tools/LiveCoding.md) - the OllinLiveCoding performance host: write and evaluate sketch code live, with the code shown over the visuals
 
 Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR.

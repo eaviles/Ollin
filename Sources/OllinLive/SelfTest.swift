@@ -7,6 +7,9 @@ import OllinRuntime
 /// `SketchLoader`, renders a frame off-screen, then *edits* the sketch and does
 /// it again, asserting the two renders differ. That proves the risky part —
 /// recompile → `dlopen` → instantiate → render — end to end (Metal required).
+/// Two further phases cover the directly-executable hashbang form: a
+/// `#!/usr/bin/env ollin` sketch must compile and render, and a broken one
+/// must still report diagnostics at the original line numbers.
 enum SelfTest {
     @MainActor
     static func run() -> Never {
@@ -57,8 +60,53 @@ enum SelfTest {
         guard !a.isEmpty, !b.isEmpty else { fail("a render produced no output") }
         guard a != b else { fail("v1 and v2 rendered identically — the reload had no effect") }
 
-        print("OllinLive selftest: PASS — the edited sketch recompiled, loaded, and "
-            + "rendered differently (\(a.count) vs \(b.count) bytes).")
+        // A hashbang first line (the directly-executable single-file form) must
+        // compile: the loader neutralizes it before handing the source to swiftc,
+        // which otherwise rejects a hashbang outside a main file.
+        print("OllinLive selftest: hashbang sketch compiles + renders …")
+        let shebangSketch = """
+        #!/usr/bin/env ollin
+        import Ollin
+        final class SelfTestSketch: Sketch {
+            override func draw() {
+                background(.white)
+                fill(.black)
+                drawCircle(width / 2, height / 2, 140)
+            }
+        }
+        """
+        try! shebangSketch.write(toFile: sketchFile, atomically: true, encoding: .utf8)
+        let pngC = (dir as NSString).appendingPathComponent("c.png")
+        guard compileLoadRender(to: pngC) else {
+            fail("hashbang sketch failed to compile/load/render")
+        }
+
+        // The neutralization swaps `#!` for `//` in place, so a diagnostic in a
+        // hashbang file must still carry the original line number.
+        print("OllinLive selftest: hashbang diagnostics keep exact line numbers …")
+        let brokenSketch = """
+        #!/usr/bin/env ollin
+        import Ollin
+        final class SelfTestSketch: Sketch {
+            override func draw() {
+                let mistyped: Int = "not an Int"
+                _ = mistyped
+            }
+        }
+        """
+        try! brokenSketch.write(toFile: sketchFile, atomically: true, encoding: .utf8)
+        switch SketchLoader(sketchPath: sketchFile).compile() {
+        case .success:
+            fail("broken hashbang sketch compiled unexpectedly")
+        case .failure(let error):
+            guard "\(error)".contains("Sketch.swift:5:") else {
+                fail("hashbang diagnostic lost its line number: \(error)")
+            }
+        }
+
+        print("OllinLive selftest: PASS: the edited sketch recompiled, loaded, and "
+            + "rendered differently (\(a.count) vs \(b.count) bytes), and the "
+            + "hashbang form compiled with exact diagnostic lines.")
         exit(0)
     }
 

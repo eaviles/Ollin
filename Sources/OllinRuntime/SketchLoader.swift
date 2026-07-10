@@ -81,7 +81,7 @@ public struct SketchLoader: Sendable {
     /// `compile()`, but with the source selected by `input`: the file on disk, or
     /// an in-memory buffer compiled *as* that file (see `Input`).
     public func compile(_ input: Input) -> Result<String, LoadError> {
-        let source: String
+        var source: String
         switch input {
         case .file:
             guard let text = try? String(contentsOfFile: sketchPath, encoding: .utf8) else {
@@ -91,6 +91,15 @@ public struct SketchLoader: Sendable {
         case .source(let text):
             source = text
         }
+        // A `#!/usr/bin/env ollin` hashbang line makes a sketch file directly
+        // executable from the shell, but swiftc allows a hashbang only in a
+        // main file and this compile is a library. Swapping the two marker
+        // characters for `//` turns the line into a comment of identical
+        // length, so every diagnostic keeps its exact line and column; the
+        // modified text then compiles from the work dir like a buffer (see
+        // below), leaving the file on disk untouched.
+        let hasShebang = source.hasPrefix("#!")
+        if hasShebang { source = "//" + source.dropFirst(2) }
         guard let className = Self.sketchClassName(in: source) else {
             return .failure(.noSketchClass(sketchPath))
         }
@@ -141,15 +150,16 @@ public struct SketchLoader: Sendable {
         }
 
         // A `.file` compile hands swiftc the real file, so diagnostics name the
-        // path the user knows. A `.source` compile writes the buffer into the
-        // work dir under the same file name: line numbers match the buffer
-        // exactly (identical content), and the file *name* in a diagnostic still
+        // path the user knows. A `.source` compile (and a hashbang file, whose
+        // first line was neutralized above) writes the text into the work dir
+        // under the same file name: line numbers match the original exactly
+        // (identical line count), and the file *name* in a diagnostic still
         // matches the sketch, which is what an editor keys on to map errors.
         let sourceFile: String
         switch input {
-        case .file:
+        case .file where !hasShebang:
             sourceFile = sketchPath
-        case .source:
+        default:
             sourceFile = (work as NSString)
                 .appendingPathComponent((sketchPath as NSString).lastPathComponent)
             do {

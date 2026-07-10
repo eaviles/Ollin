@@ -64,6 +64,8 @@ A window opens with your circle in it. Three calls made it: `background(.white)`
 
 Here is the part that changes how you work. Keep the window open, go back to your editor, change `200` to `320`, and save. The circle grows in place. `OllinLive` watches the file and swaps in every save while the window keeps running. Try breaking it: delete a parenthesis and save. An error prints in the terminal, and your last working sketch keeps drawing. Fix it, save, and you're back. This edit-save-watch loop is how you'll work through the whole guide, so keep the window and the editor side by side.
 
+One optional shortcut before moving on. If you run `Scripts/ollin install` once (from the repository folder), you get an `ollin` command that does the same thing from anywhere: `ollin FirstCircle.swift` opens the live window without the `swift run` line or the repository as your working directory, and `ollin new NextIdea.swift` writes the starter boilerplate for you. The guide keeps writing the full `swift run OllinLive` form so it works either way; the short form and the details live in [Single-file sketches](../Docs/Tools/SingleFile.md).
+
 ## Where things go
 
 Every position in a sketch is measured from the canvas's top-left corner: x grows to the right, y grows *downward*. That surprises people who remember math class, where y goes up, but it's how screens have worked for decades, and it's the same convention p5.js and Processing use.

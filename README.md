@@ -97,7 +97,18 @@ The window never closes: if an edit doesn't compile, the error prints and the ol
 
 The same engine also powers a performance instrument, [OllinLiveCoding](Docs/Tools/LiveCoding.md): one fullscreen-able window where the code shows over the visuals for the audience and ⌘↩ evaluates the buffer in place, with the clock and tuned `@Param` knobs carrying across each swap. Where OllinLive is the development loop (your editor, a file watcher), OllinLiveCoding is the on-stage one (the editor in the window, evaluate on command).
 
-Other ways to iterate: tweak and re-run an example (`swift run Example-Motion-Breathing`; incremental builds keep it snappy), or open the package in Xcode (`open Package.swift`) for ⌘R, breakpoints, and the debugger. Single-file scripts, so one `.swift` file doubles as a runnable sketch, are on the [roadmap](ROADMAP.md).
+A sketch doesn't need a package at all. `Scripts/ollin install` puts an `ollin` command on your PATH; after that, one `.swift` file anywhere on disk is a whole sketch:
+
+```sh
+ollin new dots.swift        # write a starter sketch
+ollin dots.swift            # live window, hot-reload on save
+./dots.swift                # the file is directly executable (hashbang + chmod +x)
+ollin dots.swift --export-gif dots.gif --seconds 4
+```
+
+See [Single-file sketches](Docs/Tools/SingleFile.md) for assets, satellite imports, and growing a file into a package.
+
+Other ways to iterate: tweak and re-run an example (`swift run Example-Motion-Breathing`; incremental builds keep it snappy), or open the package in Xcode (`open Package.swift`) for ⌘R, breakpoints, and the debugger.
 
 ## Export
 
@@ -137,7 +148,7 @@ The full API reference lives in [`Docs/`](Docs/), one page per topic; [`Docs/REA
 - **Vision & video** - [Vision](Docs/Vision/Vision.md), [Video](Docs/Video/Video.md)
 - **Integration** - [OSC](Docs/Integration/OSC.md), [MIDI](Docs/Integration/MIDI.md), [Syphon](Docs/Integration/Syphon.md), [Virtual camera](Docs/Integration/VirtualCamera.md)
 - **Output** - [Export](Docs/Output/Export.md), [Print separations](Docs/Output/PrintSeparations.md)
-- **Tools** - [Live coding](Docs/Tools/LiveCoding.md)
+- **Tools** - [Single-file sketches](Docs/Tools/SingleFile.md), [Live coding](Docs/Tools/LiveCoding.md)
 
 New to Swift? The [Swift quick reference](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`, and the Guide's [Appendix A](Guide/A-JustEnoughSwift.md) is its slower, narrative companion. Coming from p5.js or Processing? [Appendix C of the Guide](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin.
 

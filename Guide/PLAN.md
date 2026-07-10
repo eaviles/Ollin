@@ -315,6 +315,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Variations & seed exploration (`Core/Variations.md`): `variation`, the Variation card, `--export-grid`, `--seed` | Ch 4 | taught |
 | Normalized coordinates `uv(u, v)` (`Core/Canvas.md`) | Ch 1 | pointed |
 | `Tools/LiveCoding.md` (OllinLiveCoding) | Ch 22; OllinLive workflow in Ch 1 | taught |
+| Single-file sketches (the `ollin` command, hashbang files; `Tools/SingleFile.md`) | Ch 1 | pointed |
 | Examples gallery (`swift run OllinExamples`) | Ch 1 | shown |
 | Extension seam (`Sketch.extend`, `SketchExtension`) | Appendix D | pointed |
 | Headless capture (`OllinApp.image(of:)`) | Ch 22; used by the Guide's own figure runner | shown |
@@ -325,7 +326,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 
 | Roadmap item | Future Guide home |
 |---|---|
-| Single-file sketches | Ch 1 (would simplify the setup story; revisit Ch 1 when it ships) |
 | More SDF shapes | Ch 18 / Appendix D |
 | More model examples (ModelTracker) | Ch 21 |
 | Generative-geometry refinements | Ch 11 |
