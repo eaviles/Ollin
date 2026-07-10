@@ -301,6 +301,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `3D/Phone.md` (capture app streams, world fusion) | Ch 19 | taught |
 | `Helpers/Audio.md` (analysis, beats, sources) | Ch 20 | taught |
 | `Integration/MIDI.md` | Ch 20 | taught |
+| Tempo sync (`TempoClock` over MIDI clock; `Integration/MIDI.md`) | Ch 20 | pointed |
 | `Integration/OSC.md` | Ch 20 | taught |
 | `Vision/Vision.md` (16 trackers, ModelTracker) | Ch 21 | taught/pointed by tracker |
 | `Video/Video.md` (playback as texture) | Ch 21 | taught |
@@ -345,7 +346,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | 3D: loadScene, live camera environment, 3D rigid bodies | Ch 17 (bodies also Ch 9) |
 | Photorealistic 3D tier | Ch 17/18, likely a new chapter when substantial |
 | Sound synthesis, spatial audio, algorithmic composition | Ch 20, likely splitting into its own chapter |
-| Tempo sync | Ch 20 |
+| Tempo sync: Ableton Link | Ch 20 |
 | Live rigs (serial/BLE, DMX/LED, NDI) | Ch 22, or a future installations chapter |
 | New input sources | Ch 20/21 |
 | New output surfaces (haptics, screensaver, USDZ, fabrication, performance capture) | Ch 22 |

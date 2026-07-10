@@ -69,6 +69,13 @@ struct MIDIMessageTests {
         #expect(MIDIMessage(status: 0xF8)?.channel == 0)   // system: no channel
     }
 
+    /// Song position packs its 14-bit sixteenth-note count LSB-first.
+    @Test func parsesSongPosition() {
+        #expect(MIDIMessage(status: 0xF2, data1: 0x02, data2: 0x01)
+            == MIDIMessage(.songPosition(sixteenths: 130)))
+        #expect(MIDIMessage(status: 0xF2)?.kind == .songPosition(sixteenths: 0))
+    }
+
     // MARK: Rejecting what isn't modeled
 
     @Test func rejectsBareDataByteAndUnmodeledSystem() {
@@ -114,6 +121,9 @@ struct MIDIMessageTests {
             MIDIMessage(.pitchBend(value: 0), channel: 5),
             MIDIMessage(.pitchBend(value: 16383), channel: 5),
             MIDIMessage(.clock), MIDIMessage(.start), MIDIMessage(.stop), MIDIMessage(.continue),
+            MIDIMessage(.songPosition(sixteenths: 0)),
+            MIDIMessage(.songPosition(sixteenths: 130)),
+            MIDIMessage(.songPosition(sixteenths: 16383)),
         ]
         for message in messages {
             let (status, data1, data2) = message.bytes
@@ -128,5 +138,8 @@ struct MIDIMessageTests {
         #expect(status == 0xBF)   // channel clamped to 16 → nibble 0x0F
         #expect(data1 == 127)
         #expect(data2 == 127)
+
+        let (_, lsb, msb) = MIDIMessage(.songPosition(sixteenths: 99_999)).bytes
+        #expect(Int(lsb) | (Int(msb) << 7) == 16383)   // clamped to the 14-bit ceiling
     }
 }

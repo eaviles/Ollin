@@ -27,7 +27,7 @@
 - **Text and color.** Bitmap, outline, and single-line plotter fonts through one `drawText`, text as vector `Shape`s, OKLab color mixing, palettes, colormaps, and gradients.
 - **Computer vision.** Sixteen on-device trackers over the Mac's camera or any video: face, hand, and body pose (2D and 3D), segmentation, contours, optical flow, OCR, saliency, and custom Core ML models.
 - **An iPhone as a sensor array.** LiDAR depth clouds, ARKit body and face capture, person segmentation, and device motion, streamed to the Mac over USB by Ollin's own capture app.
-- **Sound and control.** FFT audio analysis with band and beat detection, MIDI and OSC in and out, all bindable to `@Param` knobs.
+- **Sound and control.** FFT audio analysis with band and beat detection, MIDI and OSC in and out (all bindable to `@Param` knobs), and motion locked to MIDI clock so a set runs on the DJ's tempo.
 - **Physics.** A stepped `World` with Verlet particles and springs on the soft side, and Box2D bodies, colliders, and joints on the rigid side.
 - **Plays in your rig.** Syphon out and in, a system-wide virtual camera any webcam app can read, and video playback as live GPU textures.
 - **Export everything.** Headless PNG stills and deterministic sequences, MP4 and GIF straight from the CLI, and vector SVG and PDF (with optional hatched fills) for pen plotters and true-to-size print.

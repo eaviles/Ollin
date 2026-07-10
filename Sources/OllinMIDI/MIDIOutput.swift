@@ -156,7 +156,10 @@ public final class MIDIOutput: @unchecked Sendable {
         var word = message.umpWord
         var list = MIDIEventList()
         let packet = MIDIEventListInit(&list, ._1_0)
-        _ = MIDIEventListAdd(&list, MemoryLayout<MIDIEventList>.size, packet, 0, 1, &word)
+        // Stamped with the actual host time rather than 0: both mean "send now",
+        // but the real stamp gives an in-process receiver (the loopback path) a
+        // precise emission time to derive tempo from.
+        _ = MIDIEventListAdd(&list, MemoryLayout<MIDIEventList>.size, packet, mach_absolute_time(), 1, &word)
         if isVirtual {
             if source != 0 { MIDIReceivedEventList(source, &list) }
         } else if port != 0, destination != 0 {

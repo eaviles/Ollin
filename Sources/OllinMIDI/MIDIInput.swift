@@ -65,6 +65,7 @@ public final class MIDIInput: @unchecked Sendable {
         var heldNotes: Set<NoteKey> = []
         var inbox: [MIDIMessage] = []
         var bindings: [ControlKey: ParamBinding] = [:]
+        var listeners: [@Sendable (MIDIMessage, Double) -> Void] = []
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
 
@@ -220,24 +221,37 @@ public final class MIDIInput: @unchecked Sendable {
         state.withLock { $0.bindings[key] = nil }
     }
 
+    // MARK: Listening (module-internal)
+
+    /// Registers a closure called with every received message and its host-time
+    /// stamp in seconds (the timing a `TempoClock` derives tempo from). Kept
+    /// module-internal: listeners run on the Core MIDI thread and can't be
+    /// removed, so sketches read the caches or `messages()` instead.
+    func addListener(_ listener: @escaping @Sendable (MIDIMessage, Double) -> Void) {
+        state.withLock { $0.listeners.append(listener) }
+    }
+
     // MARK: Receiving (Core MIDI thread)
 
     private func handle(_ eventList: UnsafePointer<MIDIEventList>) {
         let packetCount = Int(eventList.pointee.numPackets)
         guard packetCount > 0 else { return }
 
-        var parsed: [MIDIMessage] = []
+        var parsed: [(message: MIDIMessage, time: Double)] = []
         // The packets follow the list header; walk them with MIDIEventPacketNext,
-        // reading each packet's Universal MIDI Packet words.
+        // reading each packet's Universal MIDI Packet words. Each packet carries a
+        // host-time stamp (0 means "now"), converted to seconds for the listeners.
         var packet = UnsafeRawPointer(eventList)
             .advanced(by: MemoryLayout<MIDIEventList>.offset(of: \.packet)!)
             .assumingMemoryBound(to: MIDIEventPacket.self)
         for _ in 0..<packetCount {
+            let stamp = packet.pointee.timeStamp
+            let seconds = stamp == 0 ? HostClock.now : HostClock.seconds(stamp)
             let wordCount = Int(packet.pointee.wordCount)
             withUnsafeBytes(of: packet.pointee.words) { raw in
                 let words = raw.bindMemory(to: UInt32.self)
                 for i in 0..<min(wordCount, words.count) {
-                    if let message = MIDIMessage(umpWord: words[i]) { parsed.append(message) }
+                    if let message = MIDIMessage(umpWord: words[i]) { parsed.append((message, seconds)) }
                 }
             }
             packet = UnsafePointer(MIDIEventPacketNext(packet))
@@ -245,13 +259,13 @@ public final class MIDIInput: @unchecked Sendable {
         if !parsed.isEmpty { ingest(parsed) }
     }
 
-    private func ingest(_ messages: [MIDIMessage]) {
+    private func ingest(_ messages: [(message: MIDIMessage, time: Double)]) {
         // Update the caches and queue under the lock; collect any bindings to
         // apply, then write the params *outside* the lock so the param's own lock
-        // is never nested under this one.
-        let toApply: [(ParamBinding, Double)] = state.withLock { state in
+        // is never nested under this one. Listeners are called outside it too.
+        let (toApply, listeners): ([(ParamBinding, Double)], [@Sendable (MIDIMessage, Double) -> Void]) = state.withLock { state in
             var collected: [(ParamBinding, Double)] = []
-            for message in messages {
+            for (message, _) in messages {
                 switch message.kind {
                 case .controlChange(let controller, let value):
                     state.latestControl[ControlKey(channel: message.channel, controller: controller)] = value
@@ -273,10 +287,15 @@ public final class MIDIInput: @unchecked Sendable {
             if state.inbox.count > inboxLimit {
                 state.inbox.removeFirst(state.inbox.count - inboxLimit)
             }
-            return collected
+            return (collected, state.listeners)
         }
         for (binding, raw) in toApply {
             binding.param.wrappedValue = MIDIInput.map(raw, from: binding.input, to: binding.param.range)
+        }
+        if !listeners.isEmpty {
+            for (message, time) in messages {
+                for listener in listeners { listener(message, time) }
+            }
         }
     }
 

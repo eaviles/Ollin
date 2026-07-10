@@ -113,6 +113,17 @@ override func draw() {
 
 `start()` connects to every device on the system, including ones plugged in later. Which control sends what is the controller's business, so the first thing to do with new hardware is run the `Integration/MIDIMonitor` example and touch everything: it draws each message as it arrives, and your controller introduces itself.
 
+Knobs aren't the only thing MIDI carries. Gear with a play button (a DAW, a drum machine, a DJ mixer) also broadcasts its beat as *MIDI clock*, and a `TempoClock` reads that into musical time, so motion lands on the beat instead of near it:
+
+```swift
+lazy var clock = TempoClock(from: midi)
+// in draw():
+let throb = 1 + 0.3 * clock.beat     // snaps on each beat, eases off
+let lap = clock.progress(over: 8)    // a 0...1 ramp every eight beats
+```
+
+`clock.beat` is the same ready-made pulse the analyzer's `beat` gave you earlier in this chapter, so a beat-reactive sketch can swap between hearing the room and reading the wire. The `Integration/TempoSync` example is the no-hardware rehearsal, and [the MIDI reference](../Docs/Integration/MIDI.md#tempo-sync-tempoclock) has the full surface.
+
 **OSC** is the networked cousin, the protocol of TouchOSC, Max/MSP, TouchDesigner, and most of the performance world. Messages are named by slash-paths and travel over the network, which means the fader can be a phone on the same Wi-Fi:
 
 ```swift

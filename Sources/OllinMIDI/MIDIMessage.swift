@@ -21,8 +21,8 @@ import Foundation
 ///
 /// Channels are numbered **1…16** the way a DAW or a controller labels them (the
 /// wire uses 0…15; the conversion happens at the Core MIDI boundary). System
-/// real-time messages (`clock`/`start`/`stop`/`continue`) carry no channel and
-/// report `0`.
+/// messages (`clock`/`start`/`stop`/`continue`/`songPosition`) carry no channel
+/// and report `0`.
 public struct MIDIMessage: Sendable, Equatable {
 
     /// What the message says. Channel-voice cases carry their data; the
@@ -52,6 +52,10 @@ public struct MIDIMessage: Sendable, Equatable {
         case stop
         /// Transport resume from the current position. (No channel.)
         case `continue`
+        /// Where in the song the transport sits, counted in sixteenth notes
+        /// (6 timing clocks each), 0…16383. Usually sent while stopped, so a
+        /// following `continue` resumes from the right place. (No channel.)
+        case songPosition(sixteenths: Int)
     }
 
     /// What the message says.
@@ -124,17 +128,18 @@ public extension MIDIMessage {
     /// Builds a message from a MIDI 1.0 status byte and up to two data bytes.
     ///
     /// Returns `nil` for status bytes Ollin doesn't model (System Exclusive, MIDI
-    /// Time Code, song position/select, tune request, active sensing, reset) and
-    /// for a bare data byte (`status < 0x80`), so a caller can skip what it
-    /// doesn't understand without trapping. A note-on with velocity `0` is
-    /// normalized to a note-off, the convention most gear uses.
+    /// Time Code, song select, tune request, active sensing, reset) and for a
+    /// bare data byte (`status < 0x80`), so a caller can skip what it doesn't
+    /// understand without trapping. A note-on with velocity `0` is normalized to
+    /// a note-off, the convention most gear uses.
     init?(status: UInt8, data1: UInt8 = 0, data2: UInt8 = 0) {
         guard status >= 0x80 else { return nil }   // a data byte alone isn't a message
 
-        // System real-time / common: 0xF0…0xFF, no channel. Only the transport
-        // and clock messages are modeled; the rest are skipped.
+        // System real-time / common: 0xF0…0xFF, no channel. Only the transport,
+        // clock, and song-position messages are modeled; the rest are skipped.
         if status >= 0xF0 {
             switch status {
+            case 0xF2: self.init(.songPosition(sixteenths: Int(data1 & 0x7F) | (Int(data2 & 0x7F) << 7)))
             case 0xF8: self.init(.clock)
             case 0xFA: self.init(.start)
             case 0xFB: self.init(.continue)
@@ -201,6 +206,9 @@ public extension MIDIMessage {
         case .start:    return (0xFA, 0, 0)
         case .continue: return (0xFB, 0, 0)
         case .stop:     return (0xFC, 0, 0)
+        case .songPosition(let sixteenths):
+            let s = Swift.max(0, Swift.min(16383, sixteenths))
+            return (0xF2, UInt8(s & 0x7F), UInt8((s >> 7) & 0x7F))
         }
     }
 
@@ -230,6 +238,7 @@ extension MIDIMessage: CustomStringConvertible {
         case .start:                       return "start"
         case .stop:                        return "stop"
         case .continue:                    return "continue"
+        case .songPosition(let s):         return "songPosition \(s)"
         }
         return "ch\(channel) \(body)"
     }

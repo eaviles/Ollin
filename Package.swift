@@ -676,6 +676,10 @@ let package = Package(
         // Listens to every MIDI source and prints/draws what arrives — connect a
         // controller and discover what each knob/pad sends just by touching it.
         example("Integration/MIDIMonitor", [.midi]),
+        // Self-contained: an internal timer sends MIDI clock to itself and a
+        // TempoClock locks the visuals to it; point real gear at the Mac and the
+        // same sketch follows that instead.
+        example("Integration/TempoSync", [.midi]),
         // Self-contained: publishes its own frames as a Syphon source and
         // subscribes to them, so the feedback inset is the round-trip (like
         // OSCLoopback). Open Syphon's Simple Client to see it cross-app.
