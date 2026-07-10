@@ -96,6 +96,9 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
 | Blue noise | Poisson-disk scatter: random but even | [Ch 13](13-ShapesAsMaterial.md) | [BlueNoise](../Docs/Generators/BlueNoise.md) |
+| Low-discrepancy sampling | Halton and Sobol point streams: even at every count, growing the count never moves a point | here | [LowDiscrepancy](../Docs/Generators/LowDiscrepancy.md) |
+| Stippling | Dots packed to reproduce an image's tone (weighted-Voronoi) | here | [Stippling](../Docs/Generators/Stippling.md) |
+| Random walks | The walk family: the local tangle, the Lévy cluster-and-leap, the self-avoiding single stroke | [Ch 4](04-Randomness.md) | [Walks](../Docs/Generators/Walks.md) |
 | Circle packing | Grow-to-touch packings, seeded and reproducible | [Ch 13](13-ShapesAsMaterial.md) | [Packing](../Docs/Generators/Packing.md) |
 | Shape packing | Packing that nestles arbitrary outlines into notches and gaps | [Ch 13](13-ShapesAsMaterial.md) | [ShapePacking](../Docs/Generators/ShapePacking.md) |
 | Truchet tiles | One tile per cell at random spins; loops and mazes emerge | [Ch 6](06-GridsAndRepetition.md) | [Truchet](../Docs/Drawing/Truchet.md) |

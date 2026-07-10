@@ -44,6 +44,10 @@ public final class Image {
     /// Pixel height of the decoded image.
     public let height: Int
 
+    /// The pixel dimensions as a `Vector2`, ready for the geometry helpers
+    /// (`Rectangle(fitting: image.size, in: bounds)` letterboxes an image).
+    public var size: Vector2 { Vector2(Double(width), Double(height)) }
+
     /// The decoded source. The texture is built from this on first draw; also the
     /// interop seam for frameworks that take a `CGImage` (Core Image, Vision, …).
     /// This is the original decode — pixel edits made through the `[x, y]`

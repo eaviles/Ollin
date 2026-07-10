@@ -266,6 +266,9 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Drawing/Geometry.md`: `Path`, `Shape`, booleans, offset | Ch 13 | taught |
 | `Drawing/Voronoi.md` (+ Delaunay, Lloyd) | Ch 13 | taught |
 | `Generators/BlueNoise.md` | Ch 13 | taught |
+| `Generators/LowDiscrepancy.md` (`haltonPoints`, `sobolPoints`) | Appendix D | pointed |
+| `Generators/Stippling.md` (`stipple`, weighted-Voronoi) | Appendix D | pointed |
+| `Generators/Walks.md` (`randomWalk`, `levyFlight`, `selfAvoidingWalk`) | Ch 4 / Appendix D | pointed |
 | `Generators/Packing.md` (circles) | Ch 13 | taught |
 | `Generators/ShapePacking.md` | Ch 13 | shown |
 | Hatching (`Output/Export.md`) | Ch 13 | taught |

@@ -268,6 +268,18 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("blue-noise",
                  note: "A blue-noise (Poisson-disk) point set stippled as dots. Pins Bridson's dart-throwing sampler: the seeded scatter with a minimum spacing (no two dots closer than the radius, no clumps or gaps). Seeded, no time, so the layout is deterministic.",
                  make: { BlueNoiseScene() }),
+    SnapshotCase("low-discrepancy",
+                 note: "The Halton (2,3) sequence in the left half and the Sobol sequence in the right, dotted at a fixed count. Pins both low-discrepancy constructions exactly (radical inverse digits; Gray-code direction numbers): any change to either sequence moves points. No rng and no time, so it is deterministic.",
+                 make: { LowDiscrepancyScene() }),
+    SnapshotCase("stipple",
+                 note: "A painted radial gradient rebuilt as a weighted-Voronoi stipple: dots pack toward the dark center and thin outward. Pins the density rasterization, the rejection-sampled seeding, and the weighted-Lloyd iteration with its exact nearest-dot assignment. Seeded, no time, so the layout is deterministic.",
+                 make: { StippleScene() }),
+    SnapshotCase("levy-flight",
+                 note: "A seeded Lévy flight polyline, scaled to fit: tight step clusters strung together by rare long jumps. Pins the truncated power-law inverse-CDF step sampling and the walk's rng call order. Seeded, no time, so the path is deterministic.",
+                 make: { LevyFlightScene() }),
+    SnapshotCase("self-avoiding-walk",
+                 note: "A seeded self-avoiding walk threading a lattice as one stroke, hue along its length. Pins the backtracking DFS (visited cells stay blocked, the longest path wins), the neighbor shuffling's rng order, and the lattice centering. Seeded, no time, so the path is deterministic.",
+                 make: { SelfAvoidingWalkScene() }),
     SnapshotCase("dither",
                  note: "One painted gradient quantized to a three-color palette four ways, at 1:1 pixels: plain nearest-color (banding), ordered Bayer, blue noise, Floyd-Steinberg. Pins the whole dithering pass (the Bayer recurrence, the void-and-cluster tile, the error-diffusion kernel and its serpentine scan) plus the color space each family chooses its colors in. No rng and no time, so it is deterministic.",
                  make: { DitherScene() }),
@@ -1029,6 +1041,96 @@ private final class BlueNoiseScene: Sketch {
             let flow = signedNoise(p.x * 0.01, p.y * 0.01)
             fill(Color.mix(Color(hex: 0xE8ECF4), Color(hex: 0x5AA9E6), t: (flow + 1) * 0.5))
             drawCircle(center: p, radius: 1.6 + (flow + 1) * 1.4)
+        }
+    }
+}
+
+/// The two low-discrepancy sequences dotted side by side (Halton left, Sobol
+/// right) at a fixed count. Both are pure functions of the index, so the scene
+/// carries no rng and no `time`: any change to either construction moves dots.
+private final class LowDiscrepancyScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x11141C))
+        noStroke()
+        fill(Color(hex: 0xE8ECF4))
+        let left = Rectangle(x: 8, y: 8, width: 116, height: 240)
+        let right = Rectangle(x: 132, y: 8, width: 116, height: 240)
+        for p in haltonPoints(count: 220, in: left) { drawCircle(center: p, radius: 1.8) }
+        for p in sobolPoints(count: 220, in: right) { drawCircle(center: p, radius: 1.8) }
+    }
+}
+
+/// A painted radial gradient rebuilt as a weighted-Voronoi stipple: dots pack
+/// toward the dark center. Seeded and `time`-free, so it's deterministic.
+private final class StippleScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var dots: [Vector2] = []
+
+    override func setup() {
+        seed(7)
+        let n = 64
+        let image = Image(width: n, height: n, color: .white)
+        for y in 0 ..< n {
+            for x in 0 ..< n {
+                let u = Double(x) / Double(n - 1) * 2 - 1
+                let v = Double(y) / Double(n - 1) * 2 - 1
+                let d = (u * u + v * v).squareRoot()
+                image[x, y] = Color(white: clamp(d * 1.1, 0, 1))
+            }
+        }
+        dots = stipple(image, count: 380, in: canvasRectangle.inset(by: 16), iterations: 12)
+    }
+
+    override func draw() {
+        background(Color(hex: 0xF5F2EA))
+        noStroke()
+        fill(Color(hex: 0x1A1B26))
+        for d in dots { drawCircle(center: d, radius: 2.2) }
+    }
+}
+
+/// A seeded Lévy flight polyline scaled to fit the canvas. Seeded and
+/// `time`-free, so it's deterministic.
+private final class LevyFlightScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0E1116))
+        seed(4)
+        let raw = levyFlight(from: Vector2(0, 0), steps: 400, minStep: 3, maxStep: 220, exponent: 1.8)
+        var minX = raw[0].x, maxX = raw[0].x, minY = raw[0].y, maxY = raw[0].y
+        for p in raw {
+            minX = min(minX, p.x); maxX = max(maxX, p.x)
+            minY = min(minY, p.y); maxY = max(maxY, p.y)
+        }
+        let spanX: Double = max(maxX - minX, 1e-9)
+        let spanY: Double = max(maxY - minY, 1e-9)
+        let s: Double = min(216 / spanX, 216 / spanY)
+        let fitted = raw.map { Vector2(20 + ($0.x - minX) * s, 20 + ($0.y - minY) * s) }
+        noFill()
+        stroke(Color(hex: 0x9FC7E8))
+        strokeWeight(1)
+        drawPolyline(fitted)
+    }
+}
+
+/// A seeded self-avoiding walk drawn as one stroke with hue along its length.
+/// Seeded and `time`-free, so it's deterministic.
+private final class SelfAvoidingWalkScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x14161D))
+        seed(12)
+        let path = selfAvoidingWalk(in: canvasRectangle.inset(by: 16), cellSize: 16)
+        strokeCap(.round)
+        strokeWeight(6)
+        let ramp = Ramp([Color(hex: 0x2C7DA0), Color(hex: 0xE9C46A), Color(hex: 0xD1495B)])
+        for i in 1 ..< path.count {
+            stroke(ramp.color(at: Double(i) / Double(max(path.count - 1, 1))))
+            drawLine(path[i - 1], path[i])
         }
     }
 }

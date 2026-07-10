@@ -4,7 +4,7 @@
 
 ## Images
 
-Load a raster image and draw it onto the canvas. An image decodes once on the CPU (via ImageIO, so it reads anything Apple does — PNG, JPEG, HEIC, TIFF, GIF) and uploads to the GPU the first time it's drawn; from then on it's a textured quad like any other shape, so it rides the [transform stack](../Drawing/Drawing.md#translate) and composites in draw order with the rest of your drawing.
+Load a raster image and draw it onto the canvas. An image decodes once on the CPU (via ImageIO, so it reads anything Apple does: PNG, JPEG, HEIC, TIFF, GIF) and uploads to the GPU the first time it's drawn; from then on it's a textured quad like any other shape, so it rides the [transform stack](../Drawing/Drawing.md#translate) and composites in draw order with the rest of your drawing.
 
 The typical shape: load in `setup()`, keep the result in a property, draw it in `draw()`. Decoding a file every frame is wasteful, and the image holds its GPU texture for as long as you hold the image.
 
@@ -27,11 +27,11 @@ final class Photo: Sketch {
 
 ### Contents
 
-- [loadImage](#loadimage) — load from a path or URL
-- [drawImage](#drawimage) — draw at native size, scaled, or into a rectangle
-- [tint](#tint) — recolor and fade images as you draw them
-- [Image](#image) — the value type, and loading from data or a bundle
-- [Pixels](#pixels) — author or sample an image pixel by pixel
+- [loadImage](#loadimage) - load from a path or URL
+- [drawImage](#drawimage) - draw at native size, scaled, or into a rectangle
+- [tint](#tint) - recolor and fade images as you draw them
+- [Image](#image) - the value type, and loading from data or a bundle
+- [Pixels](#pixels) - author or sample an image pixel by pixel
 
 <a name="loadimage"></a>
 
@@ -101,7 +101,7 @@ drawImage(photo, 0, 0)
 noTint()                                          // back to unchanged
 ```
 
-Tint is drawing state like `fill` and `stroke`: it's saved and restored by [`withState { }`](../Drawing/Drawing.md#withstate), so you can tint one image without leaking the wash onto the next. It only multiplies as the image is drawn — it never edits the image's stored pixels, so [reading them back](#pixels) always returns the original colors.
+Tint is drawing state like `fill` and `stroke`: it's saved and restored by [`withState { }`](../Drawing/Drawing.md#withstate), so you can tint one image without leaking the wash onto the next. It only multiplies as the image is drawn; it never edits the image's stored pixels, so [reading them back](#pixels) always returns the original colors.
 
 ```swift
 withState {
@@ -123,13 +123,13 @@ Image(width: Int, height: Int, color: Color = .clear)
 Image(width: Int, height: Int, premultipliedRGBA: [UInt8])
 ```
 
-`Image` is the typed value `drawImage` takes. It's a reference type: it owns a GPU texture and is identified by who holds it, not by value. The failable initializers return `nil` when the bytes aren't a decodable image.
+`Image` is the typed value `drawImage` takes. It's a reference type: it owns a GPU texture and is identified by who holds it, not by value. The failable initializers return `nil` when the bytes aren't a decodable image. Every image reports its pixel `width` / `height` (`Int`s) and `size` (the same pair as a `Vector2`, ready for the geometry helpers: `Rectangle(fitting: image.size, in: bounds)` letterboxes it).
 
 `Image(width:height:color:)` makes a blank `width`×`height` image filled with `color` (transparent by default), so you can [author one from scratch](#pixels) pixel by pixel rather than loading a file.
 
-`Image(width:height:premultipliedRGBA:)` wraps pixels you've already produced in bulk: `width × height × 4` RGBA bytes, premultiplied alpha, rows top to bottom. The buffer becomes the image's own pixels with no decode or conversion — the GPU texture uploads straight from it — so it's the fast lane for per-frame generated images. Returns `nil` when the byte count doesn't match the dimensions.
+`Image(width:height:premultipliedRGBA:)` wraps pixels you've already produced in bulk: `width × height × 4` RGBA bytes, premultiplied alpha, rows top to bottom. The buffer becomes the image's own pixels with no decode or conversion (the GPU texture uploads straight from it), so it's the fast lane for per-frame generated images. Returns `nil` when the byte count doesn't match the dimensions.
 
-Load a bundled asset with the `resource:` initializer. `in:` has no default on purpose — a default argument would resolve to *Ollin's* bundle, never yours — so pass `.module` from the target that bundles the file:
+Load a bundled asset with the `resource:` initializer. `in:` has no default on purpose (a default argument would resolve to *Ollin's* bundle, never yours), so pass `.module` from the target that bundles the file:
 
 ```swift
 let texture = Image(resource: "paper", extension: "png", in: .module)
@@ -137,7 +137,7 @@ let texture = Image(resource: "paper", extension: "png", in: .module)
 
 `Image(cgImage:)` wraps an image you already have in memory (a `CGImage` you rendered yourself, decoded elsewhere, or built procedurally), so anything that can produce a `CGImage` can become drawable.
 
-**Transparency works.** A PNG's alpha is respected — transparent regions let what's behind show through, and the edges composite cleanly.
+**Transparency works.** A PNG's alpha is respected: transparent regions let what's behind show through, and the edges composite cleanly.
 
 <a name="pixels"></a>
 
@@ -152,7 +152,7 @@ image[x, y] = .red           // write one (a set)
 
 Out-of-range access is forgiving so a stray index never crashes a loop: reading off the edge returns `.clear`, and writing off the edge does nothing.
 
-Pair a write with the blank initializer to author an image from scratch — make a transparent canvas, paint it, then draw it:
+Pair a write with the blank initializer to author an image from scratch: make a transparent canvas, paint it, then draw it:
 
 ```swift
 final class PixelArt: Sketch {
@@ -176,7 +176,7 @@ final class PixelArt: Sketch {
 }
 ```
 
-A write shows on the next `drawImage` — the GPU texture rebuilds from the edited pixels — so author in `setup()` when you can rather than rewriting the whole image every frame. Reading is cheap once the first access has decoded the pixels.
+A write shows on the next `drawImage` (the GPU texture rebuilds from the edited pixels), so author in `setup()` when you can rather than rewriting the whole image every frame. Reading is cheap once the first access has decoded the pixels.
 
 Colors pass through the image's premultiplied storage, so round-tripping a translucent color can shift it by a step of `1/255`. Reading is independent of [`tint`](#tint): a get returns the stored color, never the tinted one.
 
