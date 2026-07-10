@@ -30,15 +30,19 @@ import Foundation
 // removes it. (It hides from tile-averaged error statistics, being so thin, so
 // it is pinned below by a single-pixel test on the choice rule itself.)
 //
-// A threshold map has no memory, so it can have both. It picks its two candidate
-// colors perceptually, then lets the threshold choose between them at the
-// fraction that reproduces the pixel's linear light. Its tone is right only
-// because that fraction is linear: perturbing in linear and then deciding by
-// OKLab distance would put a 25% gray against black and white at 46% white
-// instead of 5%.
+// A threshold map has no memory, so it can have both. For each pixel it finds
+// the pair of palette colors whose mix best reproduces the pixel (every pair is
+// tried, scored perceptually), then lets the threshold choose between the two
+// at the fraction that reproduces the pixel's linear light. Its tone is right
+// only because that fraction is linear: perturbing in linear and then deciding
+// by OKLab distance would put a 25% gray against black and white at 46% white
+// instead of 5%. The pair search matters because the best mix often excludes
+// the single nearest color: against black, white, and red, a light gray is
+// perceptually nearest the red, but the mix that *is* gray is black and white.
 //
-// The kernels, the Bayer recurrence, and the blue-noise construction are
-// implemented from the published techniques (credited in ATTRIBUTION.md).
+// The kernels, the Bayer recurrence, the pair search (Yliluoma), and the
+// blue-noise construction are implemented from the published techniques
+// (credited in ATTRIBUTION.md).
 
 /// How an image is dithered when its colors are reduced to a small set.
 ///
@@ -177,10 +181,17 @@ public extension Image {
     /// it is ignored by the threshold maps.
     ///
     /// This is CPU work over every pixel, so call it in `setup()` and hold the
-    /// result, not once per frame. Alpha passes through untouched. A GPU-backed
-    /// image (an effects layer, a compute texture, a live video texture) has no
-    /// CPU pixels to read and comes back unchanged: call `snapshot()` first.
+    /// result, not once per frame. Alpha passes through untouched (and a fully
+    /// transparent pixel passes no error to its neighbors, so a cutout's
+    /// background never bleeds into the subject). A GPU-backed image (an
+    /// effects layer, a compute texture, a live video texture) has no CPU
+    /// pixels to read and comes back unchanged: call `snapshot()` first.
     /// An empty palette also returns the image unchanged.
+    ///
+    /// The threshold maps weigh every pair of palette colors per distinct input
+    /// color, so their cost grows with the square of the palette. Palettes of
+    /// dithering size (a handful to a few dozen colors) are fast; for a palette
+    /// of hundreds, prefer the error-diffusion kernels.
     ///
     /// Deterministic: the same image, method, and palette always give the same
     /// pixels, so a dithered result is safe to snapshot and to export.
@@ -227,8 +238,8 @@ private protocol Quantizing {
     /// The output closest in linear light. For the error-diffusion kernels,
     /// which must choose in the space they accumulate their error in.
     func linearNearest(_ value: SIMD3<Double>) -> Choice
-    /// Pick between the two outputs bracketing `value`, using `threshold`
-    /// (in `-0.5..<0.5`). For the threshold maps.
+    /// Pick between the two outputs whose mix best reproduces `value`, using
+    /// `threshold` (in `-0.5..<0.5`). For the threshold maps.
     func mix(_ value: SIMD3<Double>, threshold: Double) -> Choice
 }
 
@@ -241,12 +252,20 @@ extension Dither {
                                                  amount: Double,
                                                  serpentine: Bool,
                                                  quantizer: Q) -> Image {
+        // Callers guard `hasCPUPixels`, so the bulk read cannot miss.
+        guard let input = image.premultipliedPixels() else { return image }
         let width = image.width, height = image.height
         let kernel = method.diffusionKernel
         let thresholdAt = method.thresholdMap()
         let usesThreshold = method.usesThresholdMap
         let grain = min(max(amount, 0), 1)
         var output = [UInt8](repeating: 0, count: width * height * 4)
+
+        // Pixels are bytes, so linearizing is a 256-entry table: the same
+        // `srgbToLinear` at the same 256 inputs, just not recomputed per pixel.
+        // Only the opaque fast path may use it; a translucent pixel first
+        // un-premultiplies, which lands between table entries.
+        let linearOfByte = (0...255).map { Color.srgbToLinear(Double($0) / 255) }
 
         // Error rides a rolling three-row buffer: no kernel reaches further than
         // two rows down, and a finished row is cleared so it can serve as row+3.
@@ -260,10 +279,24 @@ extension Dither {
             for step in 0..<width {
                 let x = direction == 1 ? step : width - 1 - step
 
-                let color = image[x, y]
-                let target = SIMD3(Color.srgbToLinear(color.red),
-                                   Color.srgbToLinear(color.green),
-                                   Color.srgbToLinear(color.blue))
+                let i = (y * width + x) * 4
+                let alphaByte = input[i + 3]
+                let target: SIMD3<Double>
+                if alphaByte == 255 {
+                    target = SIMD3(linearOfByte[Int(input[i])],
+                                   linearOfByte[Int(input[i + 1])],
+                                   linearOfByte[Int(input[i + 2])])
+                } else if alphaByte == 0 {
+                    target = .zero   // No color of its own; reads back as black.
+                } else {
+                    // Un-premultiply (straight = premultiplied / alpha), exactly
+                    // as the pixel subscript does; clamp for rounding.
+                    let alpha = Double(alphaByte) / 255
+                    target = SIMD3(
+                        Color.srgbToLinear(min(1, Double(input[i]) / 255 / alpha)),
+                        Color.srgbToLinear(min(1, Double(input[i + 1]) / 255 / alpha)),
+                        Color.srgbToLinear(min(1, Double(input[i + 2]) / 255 / alpha)))
+                }
 
                 // Carried error is never clamped away (that would lose the light
                 // it represents and shift the tones), only bounded against a
@@ -281,7 +314,12 @@ extension Dither {
                     chosen = quantizer.linearNearest(value)
                 }
 
-                if !kernel.isEmpty {
+                // A fully transparent pixel has no color of its own (it reads
+                // back as black), so its rounding error is not real light:
+                // diffusing it would darken the visible pixels along a cutout's
+                // edge. It takes a quantized (invisible) color like any other
+                // pixel, but passes nothing on.
+                if !kernel.isEmpty, alphaByte > 0 {
                     let residual = value - chosen.linear
                     for tap in kernel {
                         let tx = x + direction * tap.dx
@@ -291,12 +329,11 @@ extension Dither {
                     }
                 }
 
-                let alpha = color.alpha
-                let i = (y * width + x) * 4
+                let alpha = Double(alphaByte) / 255
                 output[i]     = premultipliedByte(chosen.srgb.x, alpha)
                 output[i + 1] = premultipliedByte(chosen.srgb.y, alpha)
                 output[i + 2] = premultipliedByte(chosen.srgb.z, alpha)
-                output[i + 3] = UInt8((min(max(alpha, 0), 1) * 255).rounded())
+                output[i + 3] = alphaByte
             }
             for x in 0..<width { error[slot(y, x)] = .zero }
         }
@@ -317,6 +354,22 @@ private struct PaletteQuantizer: Quantizing {
     private let linear: [SIMD3<Double>]
     private let srgb: [SIMD3<Double>]
     private let lab: [OKLab]
+    /// Squared OKLab distance between each pair of entries, times the noise
+    /// weight: the fixed half of the pair search's noisiness penalty.
+    private let pairPenalty: [Double]
+    private let plans = PlanCache()
+
+    /// How much a jarring pair costs. The published pair search charges a flat
+    /// tenth of the pair's distance, which suits the dense palettes it was
+    /// built for but robs a sparse one: on plain black and white it hands the
+    /// whole top of the ramp to solid white, because the lone pair's flat
+    /// penalty outweighs the small error of banding. Scaling by the mix's
+    /// actual variance, `fraction * (1 - fraction)` below, keeps the guard
+    /// against high-contrast mixes where they are genuinely noisy (near half
+    /// and half) and lets a near-solid mix through. The weight is sized so the
+    /// solid band a black-and-white ramp does keep at its very ends stays
+    /// within about 0.015 in OKLab lightness, under a just-noticeable step.
+    private static let noiseWeight = 0.005
 
     init(_ palette: Palette) {
         let colors = palette.colors
@@ -326,55 +379,128 @@ private struct PaletteQuantizer: Quantizing {
                   Color.srgbToLinear($0.green),
                   Color.srgbToLinear($0.blue))
         }
-        lab = colors.map { OKLab($0) }
+        let lab = colors.map { OKLab($0) }
+        self.lab = lab
+        var penalty = [Double](repeating: 0, count: colors.count * colors.count)
+        for i in colors.indices {
+            for j in colors.indices {
+                let dl = lab[i].l - lab[j].l
+                let da = lab[i].a - lab[j].a
+                let db = lab[i].b - lab[j].b
+                penalty[i * colors.count + j] = Self.noiseWeight * (dl * dl + da * da + db * db)
+            }
+        }
+        pairPenalty = penalty
     }
 
     func perceptualNearest(_ value: SIMD3<Double>) -> Choice {
-        choice(at: perceptualIndex(to: value, skipping: -1))
+        choice(at: perceptualIndex(to: value))
     }
 
     func linearNearest(_ value: SIMD3<Double>) -> Choice {
         choice(at: linearIndex(to: value))
     }
 
-    /// The near color is the one that looks closest. The far color is the one
-    /// that looks closest to the point just *past* `value` on the same ray, so
-    /// the two straddle the pixel. `fraction` is then how far along that segment
-    /// the pixel's linear light actually sits, and choosing the far color exactly
-    /// that often is what reproduces the original tone once the dots blur: over a
-    /// flat field the threshold sweeps uniformly, so the far color wins a
-    /// `fraction` share of the pixels and the average lands back on `value`.
+    /// A threshold map renders a pixel as a two-color mix, so the real question
+    /// is which two, and in what proportion. Every pair of palette colors is a
+    /// candidate (each color alone too): the pixel's linear light projects onto
+    /// the pair's segment to give the mixing fraction, and the pair is scored by
+    /// how close the mix it can actually reach looks to the pixel, in OKLab,
+    /// plus the variance-weighted noisiness penalty (see `noiseWeight`). Trying
+    /// every pair is the point: the best mix often excludes the single nearest
+    /// color, and anchoring on it instead reads a light gray against black,
+    /// white, and red as a red-and-white pink.
+    ///
+    /// The winning pair is oriented dark to light, so a rising threshold always
+    /// flips toward the lighter color and neighbouring tones lay down the same
+    /// pattern in the same phase. Choosing the light color at exactly the
+    /// fraction of the pixel's linear light is what reproduces the tone once
+    /// the dots blur: over a flat field the threshold sweeps uniformly, so the
+    /// light color wins a `lightShare` share of the pixels and the average
+    /// lands back on the pixel.
     func mix(_ value: SIMD3<Double>, threshold: Double) -> Choice {
-        let nearIndex = perceptualIndex(to: value, skipping: -1)
-        let near = linear[nearIndex]
+        let plan = plan(for: value)
+        return choice(at: (threshold + 0.5) < plan.lightShare ? plan.light : plan.dark)
+    }
 
-        // Reflect past the pixel, away from the near color, and look there.
-        let beyond = value + (value - near)
-        let farIndex = perceptualIndex(to: beyond, skipping: nearIndex)
-        guard farIndex >= 0 else { return choice(at: nearIndex) }
-        let far = linear[farIndex]
+    /// The chosen pair and mixing fraction for one input color. Threshold maps
+    /// carry no error, so the same input color always yields the same plan;
+    /// the cache turns the pair search into a per-distinct-color cost.
+    private struct Plan {
+        var dark: Int
+        var light: Int
+        var lightShare: Double
+    }
 
-        let axis = far - near
-        let lengthSquared = axis.x * axis.x + axis.y * axis.y + axis.z * axis.z
-        guard lengthSquared > 1e-12 else { return choice(at: nearIndex) }
-        let offset = value - near
-        let projection = offset.x * axis.x + offset.y * axis.y + offset.z * axis.z
-        let fraction = min(max(projection / lengthSquared, 0), 1)
+    /// Plans keyed on the input color's exact bits. A reference so the search
+    /// memoizes behind the value-typed quantizer; each dither pass builds its
+    /// own quantizer, so the cache is never shared across threads.
+    private final class PlanCache {
+        var plans: [SIMD3<UInt64>: Plan] = [:]
+        /// Beyond this many distinct colors, plans are computed uncached: the
+        /// search stays correct, the memory stays bounded.
+        static let capacity = 1 << 18
+    }
 
-        return choice(at: (threshold + 0.5) < fraction ? farIndex : nearIndex)
+    private func plan(for value: SIMD3<Double>) -> Plan {
+        let key = SIMD3(value.x.bitPattern, value.y.bitPattern, value.z.bitPattern)
+        if let cached = plans.plans[key] { return cached }
+
+        let probe = OKLab(linearRed: value.x, green: value.y, blue: value.z)
+        var best = Plan(dark: 0, light: 0, lightShare: 0)
+        var bestScore = Double.greatestFiniteMagnitude
+
+        func labScore(_ mixed: SIMD3<Double>) -> Double {
+            let mix = OKLab(linearRed: mixed.x, green: mixed.y, blue: mixed.z)
+            let dl = mix.l - probe.l
+            let da = mix.a - probe.a
+            let db = mix.b - probe.b
+            return dl * dl + da * da + db * db
+        }
+
+        for i in linear.indices {
+            // The color alone, penalty-free: the fallback that keeps a tone
+            // sitting on (or past) a palette color solid instead of noisy.
+            let alone = labScore(linear[i])
+            if alone < bestScore {
+                bestScore = alone
+                best = Plan(dark: i, light: i, lightShare: 0)
+            }
+            for j in (i + 1)..<linear.count {
+                let axis = linear[j] - linear[i]
+                let lengthSquared = axis.x * axis.x + axis.y * axis.y + axis.z * axis.z
+                guard lengthSquared > 1e-12 else { continue }
+                let offset = value - linear[i]
+                let projection = offset.x * axis.x + offset.y * axis.y + offset.z * axis.z
+                let fraction = min(max(projection / lengthSquared, 0), 1)
+                let mixed = linear[i] + fraction * axis
+                let score = labScore(mixed)
+                    + fraction * (1 - fraction) * pairPenalty[i * linear.count + j]
+                if score < bestScore {
+                    bestScore = score
+                    if lab[i].l <= lab[j].l {
+                        best = Plan(dark: i, light: j, lightShare: fraction)
+                    } else {
+                        best = Plan(dark: j, light: i, lightShare: 1 - fraction)
+                    }
+                }
+            }
+        }
+
+        if plans.plans.count < PlanCache.capacity { plans.plans[key] = best }
+        return best
     }
 
     private func choice(at index: Int) -> Choice {
         Choice(linear: linear[index], srgb: srgb[index])
     }
 
-    /// Index of the perceptually closest entry, optionally skipping one.
-    /// Returns `-1` when every entry was skipped (a one-color palette).
-    private func perceptualIndex(to value: SIMD3<Double>, skipping excluded: Int) -> Int {
+    /// Index of the perceptually closest entry.
+    private func perceptualIndex(to value: SIMD3<Double>) -> Int {
         let probe = OKLab(linearRed: value.x, green: value.y, blue: value.z)
-        var bestIndex = -1
+        var bestIndex = 0
         var bestDistance = Double.greatestFiniteMagnitude
-        for i in lab.indices where i != excluded {
+        for i in lab.indices {
             let dl = lab[i].l - probe.l
             let da = lab[i].a - probe.a
             let db = lab[i].b - probe.b

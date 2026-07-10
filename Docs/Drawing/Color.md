@@ -283,7 +283,7 @@ Snapping each pixel to its nearest palette color on its own gives flat bands whe
 
 The methods come in two families.
 
-**Threshold maps** decide each pixel by its position alone, from a repeating tile.
+**Threshold maps** decide each pixel by its position alone, from a repeating tile. Each pixel dithers between the two palette colors whose mix best reproduces it: every pair is considered and scored perceptually, with a preference for quiet, low-contrast pairs, so a gray field near a saturated palette color mixes the colors that average to gray instead of tinting toward the loud neighbor.
 
 - `.ordered(size:)` uses a Bayer matrix, `size` cells across (a power of two in `2...16`). It lays down the visible crosshatch of retro graphics. Larger sizes are finer and less obviously patterned.
 - `.blueNoise` uses a 64×64 tile with no structure in it, giving an even, pattern-free grain. The tile is generated on first use and repeats seamlessly.
@@ -310,7 +310,7 @@ photo.dithered(.ordered(size: 8), levels: 4)   // 64
 
 Two knobs, each ignored by the family it does not apply to. `amount` (`0...1`) scales the grain of the threshold maps: at `1` they hold the image's tone exactly, and at `0` they band like `.none`. `serpentine` (on by default) reverses every other row of an error-diffusion scan, which breaks up the directional streaks a straight left-to-right pass leaves behind.
 
-Dithering is per-pixel CPU work, like extraction. Do it in `setup()` and hold the result. Alpha passes through untouched. A texture-backed image (a video frame, a Syphon feed, an effects layer) has no readable pixels and comes back unchanged, so call `snapshot()` on it first. It is fully deterministic: the same image, method, and palette always give the same pixels, so a dithered result is safe to snapshot and to export.
+Dithering is per-pixel CPU work, like extraction. Do it in `setup()` and hold the result. Alpha passes through untouched, and a fully transparent pixel passes no error to its neighbors, so a cutout's invisible background never bleeds into the subject's edge. A texture-backed image (a video frame, a Syphon feed, an effects layer) has no readable pixels and comes back unchanged, so call `snapshot()` on it first. It is fully deterministic: the same image, method, and palette always give the same pixels, so a dithered result is safe to snapshot and to export.
 
 If what you want is a cheap real-time dither over a whole layer rather than an exact quantization of an image, reach for the `.dither` and `.ditherDuo` [filters](Effects.md) instead. They run on the GPU, and they are a different tool.
 

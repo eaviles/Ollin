@@ -378,6 +378,15 @@ public final class Image {
         }
     }
 
+    /// The premultiplied RGBA8 pixel buffer (row-major, top-left origin),
+    /// materialized on first access, or `nil` for a GPU-backed image, which has
+    /// no CPU pixels. The bulk read for whole-image transforms (dithering), so
+    /// they can walk bytes instead of paying the per-pixel `subscript`.
+    func premultipliedPixels() -> [UInt8]? {
+        guard hasCPUPixels else { return nil }
+        return materializePixels()
+    }
+
     /// Build (once) and return the CPU RGBA8 buffer, drawing the source `cgImage`
     /// into a top-left-origin, premultiplied, device-RGB bitmap.
     private func materializePixels() -> [UInt8] {

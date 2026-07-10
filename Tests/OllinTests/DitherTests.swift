@@ -55,36 +55,156 @@ struct DitherTests {
     /// The whole point of error diffusion: a flat mid-gray dithered to pure black
     /// and white averages back to that same gray *in linear light*. Diffusing the
     /// error in sRGB instead would land near 0.5 linear (far too bright), which
-    /// is the bug this test exists to catch.
+    /// is the bug this test exists to catch. Atkinson forwards only three
+    /// quarters of its error, so it does not preserve tone and is pinned
+    /// separately below.
     @Test func errorDiffusionPreservesLinearTone() {
         for gray in [0.25, 0.5, 0.75] {
             let source = flat(Color(red: gray, green: gray, blue: gray), size: 64)
             let expected = Color.srgbToLinear(gray)
 
-            for method in Self.diffusionKernels {
+            for method in Self.diffusionKernels where method != .atkinson {
                 let out = source.dithered(method, to: Palette(.black, .white))
                 let mean = meanLinearLuminance(of: out)
-                // Atkinson deliberately discards a quarter of the error, so it
-                // crushes toward the ends and is held to a looser bound.
-                let tolerance = method == .atkinson ? 0.16 : 0.02
+                #expect(abs(mean - expected) < 0.02,
+                        "\(method) at gray \(gray): mean \(mean), expected \(expected)")
+            }
+        }
+    }
+
+    /// Atkinson's dropped quarter is the early-Macintosh look: shadows crush to
+    /// clean black (a 25% gray comes out fully black) and the rest lands where
+    /// the leak stops it. The exact means on a flat field are deterministic, so
+    /// they are pinned as recorded values rather than a physics bound; a bound
+    /// loose enough to admit the crush would also admit a real regression.
+    @Test func atkinsonCrushIsStable() {
+        let recorded: [(gray: Double, mean: Double)] = [
+            (0.25, 0.0), (0.5, 0.1455), (0.75, 0.5305),
+        ]
+        for pin in recorded {
+            let source = flat(Color(red: pin.gray, green: pin.gray, blue: pin.gray), size: 64)
+            let out = source.dithered(.atkinson, to: Palette(.black, .white))
+            let mean = meanLinearLuminance(of: out)
+            #expect(abs(mean - pin.mean) < 0.005,
+                    "atkinson at gray \(pin.gray): mean \(mean), pinned \(pin.mean)")
+        }
+    }
+
+    /// The ordered and blue-noise maps are centered offsets, not raw thresholds,
+    /// so they hold their tone too, across the whole ramp. A naive
+    /// `value > matrix / n^2` threshold lifts a dark flat field toward a quarter
+    /// gray, and a pair search whose noisiness penalty is too strong hands the
+    /// light end of the ramp to solid white; this pins that neither happens.
+    @Test func thresholdMapsPreserveLinearTone() {
+        for gray in [0.25, 0.5, 0.75, 0.9] {
+            let source = flat(Color(red: gray, green: gray, blue: gray), size: 64)
+            let expected = Color.srgbToLinear(gray)
+
+            // An n-cell matrix can only hit duty cycles in n-ths, so a flat
+            // field's tone lands within half a step of the ideal: 1/32 for the
+            // 4x4 matrix, finer than the 0.02 catch-all for the others.
+            let cases: [(Dither, Double)] = [
+                (.ordered(size: 4), 1.0 / 32 + 0.005),
+                (.ordered(size: 8), 0.02),
+                (.blueNoise, 0.02),
+            ]
+            for (method, tolerance) in cases {
+                let mean = meanLinearLuminance(of: source.dithered(method, to: Palette(.black, .white)))
                 #expect(abs(mean - expected) < tolerance,
                         "\(method) at gray \(gray): mean \(mean), expected \(expected)")
             }
         }
     }
 
-    /// The ordered and blue-noise maps are centered offsets, not raw thresholds,
-    /// so they hold their tone too. A naive `value > matrix / n^2` threshold
-    /// lifts a dark flat field toward a quarter gray; this pins that it does not.
-    @Test func thresholdMapsPreserveLinearTone() {
-        let gray = 0.25
-        let source = flat(Color(red: gray, green: gray, blue: gray), size: 64)
-        let expected = Color.srgbToLinear(gray)
+    // MARK: - The threshold-map pair search
 
-        for method in [Dither.ordered(size: 4), .ordered(size: 8), .blueNoise] {
-            let mean = meanLinearLuminance(of: source.dithered(method, to: Palette(.black, .white)))
+    /// The pair whose mix best matches the pixel often excludes the single
+    /// nearest color. A neutral gray against black, white, and red sits
+    /// perceptually nearest the red, but the mix that *is* gray is black and
+    /// white: anchoring the pair on the nearest color rendered this field pink.
+    @Test func pairSearchDoesNotTintAGrayField() {
+        let red = Color(red: 1, green: 0, blue: 0)
+        let palette = Palette(.black, .white, red)
+        let gray = Color(red: 0.6, green: 0.6, blue: 0.6)
+        let source = flat(gray, size: 64)
+
+        for method in [Dither.ordered(size: 16), .blueNoise] {
+            let out = source.dithered(method, to: palette)
+            var redPixels = 0
+            for y in 0..<64 {
+                for x in 0..<64 where near(out[x, y], red) { redPixels += 1 }
+            }
+            #expect(redPixels == 0, "\(method) mixed red into a neutral gray field")
+            let mean = meanLinearLuminance(of: out)
+            let expected = Color.srgbToLinear(0.6)
             #expect(abs(mean - expected) < 0.02,
                     "\(method): mean \(mean), expected \(expected)")
+        }
+    }
+
+    /// A tone between two palette colors must dither between them, not snap to
+    /// one. Probing for the far color instead of searching pairs left every
+    /// tone in this band solid (the projection clamped to zero), a flat plateau
+    /// with a false contour at each edge.
+    @Test func pairSearchBracketsInsteadOfBanding() {
+        let gray = Color(hex: 0xBCBCBC)
+        let palette = Palette(.black, gray, .white)
+        // Between black and the gray, nearer the gray.
+        let source = flat(Color(hex: 0xAAAAAA), size: 64)
+
+        let out = source.dithered(.ordered(size: 16), to: palette)
+        var used = Set<Int>()
+        for y in 0..<64 {
+            for x in 0..<64 {
+                for (i, c) in palette.colors.enumerated() where near(out[x, y], c) {
+                    used.insert(i)
+                }
+            }
+        }
+        #expect(used.count > 1, "a between-tones field came out a solid color")
+        #expect(!used.contains(2), "white has no business in a black-to-gray mix")
+
+        let mean = meanLinearLuminance(of: out)
+        let expected = Color.srgbToLinear(Double(0xAA) / 255)
+        #expect(abs(mean - expected) < 0.02, "mean \(mean), expected \(expected)")
+    }
+
+    /// The noisiness penalty: a mid gray flanked by two near-gray tints must
+    /// mix the tints, not black and white, even though the black-and-white mix
+    /// reproduces the tone exactly. Maximum-contrast speckle over a flat field
+    /// is the classic eyesore the pair penalty exists to prevent.
+    @Test func pairSearchPrefersTheQuietPair() {
+        let tintA = Color(hex: 0x7E8582)
+        let tintB = Color(hex: 0x8A7A76)
+        let palette = Palette(.black, .white, tintA, tintB)
+        let source = flat(Color(hex: 0x808080), size: 64)
+
+        let out = source.dithered(.blueNoise, to: palette)
+        var loud = 0
+        for y in 0..<64 {
+            for x in 0..<64 where near(out[x, y], .black) || near(out[x, y], .white) {
+                loud += 1
+            }
+        }
+        #expect(loud == 0, "a mid gray speckled with black or white (\(loud) pixels)")
+    }
+
+    /// A fully transparent pixel reads back as black, but that black is not
+    /// real light: diffusing its error used to darken the visible pixels along
+    /// a cutout's edge. White on a transparent background, quantized to an
+    /// all-light palette, must stay pure white.
+    @Test func transparentPixelsDoNotBleedIntoTheSubject() {
+        let cream = Color(hex: 0xF7DFA5)
+        let image = Image(width: 32, height: 32, color: .clear)
+        for y in 0..<32 {
+            for x in 16..<32 { image[x, y] = .white }
+        }
+        let out = image.dithered(.floydSteinberg, to: Palette(.white, cream))
+        for y in 0..<32 {
+            for x in 16..<32 {
+                #expect(near(out[x, y], .white),
+                        "the cutout's error bled into the subject at \(x),\(y)")
+            }
         }
     }
 
