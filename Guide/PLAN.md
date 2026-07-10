@@ -245,7 +245,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 20 | taught (typed family: sliders/stepper/color well taught in Ch 1's payoff, the rest named + pointed; groups/icons pointed) |
 | `Generators/Random.md` | Ch 4 | taught |
 | `Generators/Noise.md` (noise, signedNoise, loop:, fbm, curlNoise) | Ch 5; curl in Ch 12/16 | taught |
-| Noise toolkit (simplexNoise, worley, ridgedFbm/turbulence, warpedFbm; the `.cellular` generator + `.noise` warp knob; `Generators/Noise.md`) | Ch 5 (fields + shader-lib mirror in Ch 15/16) | gap: not yet in the chapter |
+| Noise toolkit (simplexNoise, worley, ridgedFbm/turbulence, warpedFbm; the `.cellular` generator + `.noise` warp knob; `Generators/Noise.md`) | Ch 5 (shader-lib mirror named in Ch 15) | taught (the family toured with two figures in Ch 5; feature:/jitter: and warp: explained; GPU legs pointed to the Cellular/DomainWarp examples) |
 | `Drawing/Geometry.md`: `Grid`, `Insets` | Ch 6 | taught |
 | `Drawing/Truchet.md` | Ch 6 | taught |
 | `Drawing/Text.md` (three font kinds, textToShapes, atlas) | Ch 7 | taught (drawText/textSize/textAlign, the three kinds, perGlyph, textToShapes warp, atlas mode; on-path/box/metrics/variable axes named + pointed) |

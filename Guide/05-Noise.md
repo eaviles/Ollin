@@ -129,6 +129,36 @@ The big-scale sample carries most of the weight and decides the composition; the
 
 Because you'll reach for it constantly, Ollin also packages the stack as one call: `fbm(x * 0.004)` layers four octaves (each half the size and half the weight of the one before) and still fills `0...1`. Its knobs are `octaves:`, `gain:` (how fast the weights shrink), and `lacunarity:` (how fast the features shrink), and `fbm(x, octaves: 1)` is plain `noise` again, so nothing new to unlearn. It comes in the same shapes as `noise` does: `fbm(x, y)`, `signedFbm`, even `fbm(x, y, loop:)` for layered weather that comes home each lap.
 
+## A family of fields
+
+Once you think of noise as a landscape you can ask, a door opens: there are other landscapes, laid out by other rules. Ollin ships a small family of them. Every one answers in `0...1`, takes the same zoom knob, and is pinned by the same `noiseSeed`, so everything this chapter taught carries over unchanged.
+
+<img src="Images/05-Noise/NoiseFlavors.jpg" alt="Six gray field panels from one seed: classic noise, simplex noise, warped fbm, cellular worley, ridged fbm, and turbulence" width="680">
+
+**`simplexNoise` is a second opinion.** Same idea as `noise`, smooth and coherent, but its landscape is laid out on triangles where the classic one is laid out on squares. The practical difference is grain: simplex is even in every direction, while the classic field carries a faint left-right and up-down bias you can sometimes spot in big soft washes. The two take identical inputs, so trying both is a one-word edit. `signedSimplexNoise` swings `-1...1`, as you'd guess.
+
+**`worley` remembers places, not heights.** It scatters one hidden point into each cell of an invisible grid, and its answer at any position is the distance to the nearest of them: near zero beside a point, peaking on the walls between two. Shade the answers and the canvas divides itself into cells. The pattern is everywhere in nature: stone, foam, cracked earth.
+
+<img src="Images/05-Noise/CellsFromPoints.jpg" alt="Two panels of cellular noise: distances shaded so each hidden point sits in a dark core, and the border reading drawing dark walls between the cells" width="680">
+
+```swift
+let cell = worley(x * 0.02, y * 0.02)                       // stone-wall shading
+let crack = worley(x * 0.02, y * 0.02, feature: .border)    // zero on the walls
+let foam = worley(x * 0.02, y * 0.02, time * 0.3)           // cells that reform
+```
+
+The `feature:` argument picks the reading. `.border` asks how much farther the *second*-nearest point is, an answer that is exactly zero on the wall between two cells, so small values trace the walls: threshold it and you have cracks and veins for free. A `jitter:` of 0 pins every point to its cell center (a regular grid); the default of 1 scatters them fully. And the third coordinate works like it does everywhere else in this chapter: drift it with time and the cells bubble and reform in place.
+
+**`ridgedFbm` and `turbulence` fold the field.** Both start from the signed field and flip every dip upward, and wherever the field crossed zero the fold leaves a sharp crease. `turbulence` layers those folded octaves the way `fbm` does, and the result is billows with creased seams, the classic basis for clouds, smoke, and marble. `ridgedFbm` pushes further: it makes the creases the *bright* lines and lets each octave add detail only where the one below was strong, so the fine grain gathers on the crests instead of filling the valleys. A row of `ridgedFbm` samples reads as a mountain skyline, which is exactly what the `RidgeLines` example stacks into a landscape. Both take `fbm`'s knobs, and both have the `loop:` form.
+
+**`warpedFbm` asks the field where to ask.** Instead of sampling `fbm` at your position, it first asks the field to nudge that position, then asks again, and only then reads the answer. The layers smear into flowing marble, a look no amount of plain layering produces. `warp:` scales the nudging: `0` is exactly `fbm`, `1` is the classic strength, and past `1` the field tears into churn.
+
+```swift
+let marble = warpedFbm(x * 0.004, y * 0.004)
+```
+
+That's the whole tour. You won't need most of these most days; `noise` and `fbm` do the daily work. But when a sketch wants stone instead of clouds, or a skyline instead of hills, the right field is one call away, and every habit transfers: zoom knob, seeding, far-apart rows, `loop:`.
+
 ## The payoff: a meadow in the wind
 
 The piece at the top of this chapter uses everything at once: a field of about 1,500 blades. Each blade *grows* the way Chapter 4's walker walked, one step at a time, except its steps don't jump at random: at every step it asks a `signedNoise` field which way to lean. Nearby blades ask nearby places, so they lean together, and currents appear. A second, bigger-scale ask decides each blade's color and thickness, the layering idea working as composition. And the whole field rides `loop:`, one lap of wind every six seconds, so it sways forever without a seam. Make `MySketches/Meadow.swift`:
@@ -207,12 +237,13 @@ Then make it yours:
 
 ## Where this comes from
 
-Noise has a birthplace: Ken Perlin built it in 1983, fresh from working on the computer imagery of the film *TRON* and frustrated that everything the machine made looked too clean, and published it in his 1985 SIGGRAPH paper "An Image Synthesizer." The Academy of Motion Picture Arts and Sciences gave him a Technical Achievement Award for it in 1997, possibly the only Oscar ever won by a math function. Ollin implements his refined 2002 "improved noise" algorithm. The layering-octaves idea grew alongside it in the fractal-terrain tradition (Benoit Mandelbrot's fractional Brownian motion, brought to graphics by Perlin and the terrain artists who followed), and `fbm` keeps that tradition's name; Daniel Shiffman's *The Nature of Code* and its video incarnations made `noise` a first-class citizen of creative-coding pedagogy, and this chapter walks in those footsteps. The `loop:` trick, touring a circle through a higher-dimensional field so a drift comes home, was popularized by Étienne Jacob's [necessary-disorder tutorials](https://necessarydisorder.wordpress.com/), a rabbit hole of looping-GIF craft worth losing an evening to. The payoff piece is a first cousin of the *flow field*, a technique with a rich generative-art tradition of its own that Chapter 12 meets properly. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Noise has a birthplace: Ken Perlin built it in 1983, fresh from working on the computer imagery of the film *TRON* and frustrated that everything the machine made looked too clean, and published it in his 1985 SIGGRAPH paper "An Image Synthesizer." The Academy of Motion Picture Arts and Sciences gave him a Technical Achievement Award for it in 1997, possibly the only Oscar ever won by a math function. Ollin implements his refined 2002 "improved noise" algorithm. The layering-octaves idea grew alongside it in the fractal-terrain tradition (Benoit Mandelbrot's fractional Brownian motion, brought to graphics by Perlin and the terrain artists who followed), and `fbm` keeps that tradition's name; Daniel Shiffman's *The Nature of Code* and its video incarnations made `noise` a first-class citizen of creative-coding pedagogy, and this chapter walks in those footsteps. The rest of the family has its own lineage: Perlin returned in 2001 with simplex noise, the triangle-lattice redesign (Ollin implements it from Stefan Gustavson's lucid "Simplex noise demystified"); the cellular field is Steven Worley's, from his 1996 paper "A Cellular Texture Basis Function"; the ridged fold comes from F. Kenton Musgrave, whose fractal terrains defined the look of a generation of digital mountains; and domain warping as a named, shareable recipe is Inigo Quilez's, from the article this guide's `warpedFbm` follows. The `loop:` trick, touring a circle through a higher-dimensional field so a drift comes home, was popularized by Étienne Jacob's [necessary-disorder tutorials](https://necessarydisorder.wordpress.com/), a rabbit hole of looping-GIF craft worth losing an evening to. The payoff piece is a first cousin of the *flow field*, a technique with a rich generative-art tradition of its own that Chapter 12 meets properly. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
-- [Noise](../Docs/Generators/Noise.md): the full reference, including the looping `loop:` forms, layered `fbm`, and `curlNoise`, the swirling vector cousin waiting for Chapter 12.
+- [Noise](../Docs/Generators/Noise.md): the full reference, including the looping `loop:` forms, layered `fbm`, the whole field family from this chapter's tour, and `curlNoise`, the swirling vector cousin waiting for Chapter 12.
 - [Random](../Docs/Generators/Random.md): the uncorrelated sibling, for when you *want* the jump.
+- The family at work: [`Patterns/RidgeLines`](../Examples/Patterns/RidgeLines/Sketch.swift) stacks `ridgedFbm` skylines into a looping landscape. The same fields also run per pixel on the GPU: [`Effects/Cellular`](../Examples/Effects/Cellular/Sketch.swift) is `worley` as a generated layer (Chapter 14 territory) and [`Shaders/DomainWarp`](../Examples/Shaders/DomainWarp/Sketch.swift) opens up the warp recipe in shader code (Chapter 15's).
 - Worked examples: [`Randomness/NoiseField`](../Examples/Randomness/NoiseField/Sketch.swift) (the cloud field, scrubbed by the mouse), [`Randomness/NoiseWave`](../Examples/Randomness/NoiseWave/Sketch.swift) (1D noise as a wave, beside its jagged twin [`RandomBand`](../Examples/Randomness/RandomBand/Sketch.swift)), and [`Motion/EllipseField`](../Examples/Motion/EllipseField/Sketch.swift) and [`Motion/ArcField`](../Examples/Motion/ArcField/Sketch.swift) (`signedNoise` driving whole fields of shapes).
 - The Molnár homage [`Interruptions`](../Examples/Recreations/VeraMolnar/Interruptions/Sketch.swift): a field of ticks like the meadow's ancestor, its gaps carved by noise.
 

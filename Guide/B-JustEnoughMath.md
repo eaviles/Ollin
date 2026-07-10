@@ -166,6 +166,12 @@ Give noise two inputs and it answers everywhere on a plane: a **field**, one val
 
 Natural forms have big shapes *and* fine texture, so take noise at both scales and add them, weighted: mostly the broad curve, a little of the busy one, weights summing to 1 so the result stays in range. Stack a few layers like that (each smaller and fainter) and you get the fractal texture `fbm` packages up. [Chapter 5](05-Noise.md) builds it by hand first, so the packaged call has no mystery in it.
 
+### Distance to the nearest point makes cells
+
+<img src="Images/05-Noise/CellsFromPoints.jpg" alt="Two panels of cellular noise: distances shaded so each hidden point sits in a dark core, and the border reading drawing dark walls between the cells" width="680">
+
+Scatter points across a plane, then ask everywhere: how far is the nearest one? The answers are small beside each point and peak on the walls between two, so shading them divides the plane into cells, one per point. Asking for the *second*-nearest distance instead gives a value that hits zero exactly on those walls, so the borders draw themselves. [Chapter 5](05-Noise.md) meets this as `worley`, the cellular member of the noise family.
+
 ## Moving the paper
 
 ### Transforms move the paper, not the shape
