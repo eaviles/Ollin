@@ -17,8 +17,11 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | [EllipseField](EllipseField/Sketch.swift) | rows of `drawEllipse` outlines in two columns, drifting and squashing via `signedNoise` |
 | [Epicycles](Epicycles/Sketch.swift) | Fourier epicycles: a chain of spinning circles re-draws an SVG whale, term count on a knob, one lap per `loopDuration` |
 | [FlowField](FlowField/Sketch.swift) | a `curlNoise` flow field: short lines follow the divergence-free curl, drifting with `time` |
+| [Harmonograph](Harmonograph/Sketch.swift) | a harmonograph performing: damped pendulums (rolled from the seeded `random`, one figure per `variation`) weave a nested trace that replays pen-first, exactly as the machine would draw it (`Harmonograph`) |
+| [Lissajous](Lissajous/Sketch.swift) | the Lissajous table: a grid of `lissajous(a:b:)` figures, column against row frequency, a shared phase rolling every figure through its family while tracers ride at true parametric speed |
 | [Linkage](Linkage/Sketch.swift) | `drawOrientedBox` bars connecting two counter-rotating rings of points — each bar's length and angle change as both endpoints drift (SDF) |
 | [Mandala](Mandala/Sketch.swift) | nested, counter-rotating `hollow` shapes — each a framed band in one call — sliding into a moiré (`hollow`, SDF) |
+| [Morphing](Morphing/Sketch.swift) | shape morphing: a star tweened into a blob, the blob into a donut, every in-between a real vector `Shape` (`ShapeMorph`, `morphed(toward:)`) |
 | [Myriad](Myriad/Sketch.swift) | 8,100 noise-driven circles on the SDF path — thousands of shapes at full speed |
 | [Orbits](Orbits/Sketch.swift) | ten circles orbiting the center at rising speeds |
 | [PerfectLoop](PerfectLoop/Sketch.swift) | a sketch that repeats exactly: `loopDuration` declares the period, looping noise closes the motion, and `--export-loop` renders one seamless lap |

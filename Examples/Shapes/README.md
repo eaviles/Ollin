@@ -9,9 +9,13 @@ The shape-drawing vocabulary: every primitive, the stroke and hollow modes, and 
 | Example | What it shows |
 |---|---|
 | [Booleans](Booleans/Sketch.swift) | the four `Shape` set operations over the same two moving shapes (a turning star and an orbiting disc), each filled result real geometry that strokes and exports like anything drawn by hand (`union`/`intersection`/`subtracting`/`symmetricDifference`) |
+| [Clipping](Clipping/Sketch.swift) | clipping as drawing state: `withClip(shape) { }` confines fills, strokes, images, and text to the shape's filled region, and nested clips intersect |
 | [Combinators](Combinators/Sketch.swift) | SDF combinators: compose signed-distance fields so 2D shapes *merge* instead of stack (`drawSDF`, `smoothUnion { }`) |
+| [CombinatorsDetailing](CombinatorsDetailing/Sketch.swift) | the SDF detailing ops on one crossing-bars pair: `columns` ribs a seam, `pipe` beads a crossing, `engrave` scores a v-notch, `groove`/`tongue` cut and raise a mating channel (`drawSDF`) |
 | [CombinatorsGradient](CombinatorsGradient/Sketch.swift) | a linear/radial gradient `fill` or `stroke` painting a whole merged SDF field as one continuous surface, sampled in field space (`drawSDF`, `Gradient`) |
+| [CombinatorsJoinery](CombinatorsJoinery/Sketch.swift) | the SDF joint ops: chamfer and stairs joins, cuts, and intersections, machined seams beside the organic smooth blends (`drawSDF`) |
 | [CombinatorsStretch](CombinatorsStretch/Sketch.swift) | per-axis sizing of a merged SDF field: an exact `stretched` elongation beside a non-uniform `scaled(x:y:)` bound (`drawSDF`) |
+| [CornerCutting](CornerCutting/Sketch.swift) | Chaikin corner cutting live: a spiky burst relaxing into a flowing blob over its raw ghost, and an open zigzag whose endpoints never move, with the passes on a knob (`smoothed(iterations:)`) |
 | [HollowShapes](HollowShapes/Sketch.swift) | a grid of shapes breathing from solid into framed hollow rings (`hollow`/`solid`, SDF) |
 | [InkRibbon](InkRibbon/Sketch.swift) | stroke as shape: a drifting brush line stroked into a real region (`stroked`), then inset again and again so contour bands ring inside the ribbon (`offset`) |
 | [Markers](Markers/Sketch.swift) | the five `drawPoint` markers, one per row, swept across sizes (`pointMarker`, SDF) |
@@ -21,5 +25,6 @@ The shape-drawing vocabulary: every primitive, the stroke and hollow modes, and 
 | [ShapeMenagerie](ShapeMenagerie/Sketch.swift) | rhombus, vesica, moon, cross, and ring, one per row, with corner radius breathing (`drawRhombus`/`drawVesica`/`drawMoon`/`drawCross`/`drawRing`, SDF) |
 | [StrokeAlignment](StrokeAlignment/Sketch.swift) | the same shapes stroked inside, centered, and outside their outline, weight pulsing (`strokeAlign`, SDF) |
 | [StrokeJoinsAndCaps](StrokeJoinsAndCaps/Sketch.swift) | a zigzag turned with each join and a segment ended with each cap, weight pulsing (`strokeJoin`/`strokeCap`) |
+| [SVGImport](SVGImport/Sketch.swift) | SVG import: the bundled rocket badge drawn as authored (`loadSVG`/`drawSVG`), then mined as geometry, its outlines resampled into even dots |
 
 Run one with `swift run Example-Shapes-<Name>`, e.g. `swift run Example-Shapes-Primitives`.

@@ -295,6 +295,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("streamlines",
                  note: "Evenly-spaced streamlines through a Perlin flow field, seeded from a blue-noise set. Pins the field (angle from noise), the both-directions tracing, and the separation test that keeps the lines from crossing. Seeded, no time, so the lines are deterministic.",
                  make: { StreamlinesScene() }),
+    SnapshotCase("classic-curves",
+                 note: "The classic-curve builders on one sheet: a 3:2 Lissajous figure, a 5-petal rose nesting a 7/3 rational rose, a hypotrochoid and an epitrochoid from the same gear pair, a phyllotaxis scatter at the golden angle, and a spiky star smoothed by Chaikin corner cutting over its raw outline. Pure closed forms, no rng and no time, so the sheet is deterministic.",
+                 make: { ClassicCurvesScene() }),
+    SnapshotCase("harmonograph",
+                 note: "A damped-pendulum harmonograph trace: two pendulums per axis, near-unison fundamentals plus faster overtones, baked once by contour() and drawn as one open polyline. The detune precesses the figure and the damping reels each lap inward. No rng and no time, so the weave is deterministic.",
+                 make: { HarmonographScene() }),
     SnapshotCase("ridge-lines",
                  note: "Stacked mountain ridgelines lifted from ridged fractal noise at a fixed loop phase: back-to-front skyline rows, each occluding the last with an opaque panel. Pins the CPU ridged accumulator (the crease fold and its octave feedback) and its looping form. Seeded, fixed phase, so the ranges are deterministic.",
                  make: { RidgeLinesScene() }),
@@ -1303,6 +1309,95 @@ private final class StreamlinesScene: Sketch {
             let v = (signedNoise(mid.x * 0.004, mid.y * 0.004) + 1) * 0.5
             stroke(Color(hue: 0.52 + v * 0.34, saturation: 0.5, brightness: 0.96))
             drawPolyline(line)
+        }
+    }
+}
+
+/// The classic-curve builders on one sheet, one per grid cell: Lissajous,
+/// whole and rational roses, both trochoids, a phyllotaxis scatter, and a
+/// spiky star smoothed by Chaikin corner cutting over its raw outline. Pure
+/// closed forms with no rng and no time, so the sheet is deterministic.
+private final class ClassicCurvesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(384) }
+
+    override func draw() {
+        background(Color(hex: 0x101318))
+        noFill()
+        strokeWeight(1.5)
+
+        let cells = Grid(in: bounds, columns: 3, rows: 2, padding: .all(16)).cells
+        let radius = 0.42 * min(cells[0].frame.width, cells[0].frame.height)
+
+        withState {
+            translate(cells[0].center.x, cells[0].center.y)
+            stroke(Color(hex: 0x2EC4B6))
+            drawPolyline(lissajous(a: 3, b: 2, width: 2 * radius).points, closed: true)
+        }
+        withState {
+            translate(cells[1].center.x, cells[1].center.y)
+            stroke(Color(hex: 0xF2C14E))
+            drawPolyline(rose(n: 5, radius: radius).points, closed: true)
+            stroke(Color(hex: 0xE86A5B))
+            drawPolyline(rose(n: 7, d: 3, radius: radius * 0.55).points, closed: true)
+        }
+        withState {
+            translate(cells[2].center.x, cells[2].center.y)
+            stroke(Color(hex: 0x8E7CF2))
+            let s = radius / 4.4
+            drawPolyline(hypotrochoid(ring: 5, wheel: 3, pen: 2.4).points.map { $0 * s },
+                         closed: true)
+        }
+        withState {
+            translate(cells[3].center.x, cells[3].center.y)
+            stroke(Color(hex: 0xF6511D))
+            let s = radius / 8.4
+            drawPolyline(epitrochoid(ring: 5, wheel: 2, pen: 1.4).points.map { $0 * s },
+                         closed: true)
+        }
+        withState {
+            translate(cells[4].center.x, cells[4].center.y)
+            noStroke()
+            fill(Color(hex: 0xDDE3EC))
+            drawCircles(phyllotaxis(count: 140, spacing: radius / 12).map {
+                Circle(x: $0.x, y: $0.y, radius: 1.7)
+            })
+        }
+        withState {
+            translate(cells[5].center.x, cells[5].center.y)
+            let star = Contour((0..<22).map { i in
+                Vector2(angle: Double(i) / 22 * .tau,
+                        length: i % 2 == 0 ? radius : radius * 0.45)
+            }, closed: true)
+            noFill()
+            stroke(Color(white: 0.35))
+            strokeWeight(0.8)
+            drawPolyline(star.points, closed: true)
+            stroke(Color(hex: 0x2EC4B6))
+            strokeWeight(1.5)
+            drawPolyline(star.smoothed(iterations: 3).points, closed: true)
+        }
+    }
+}
+
+/// A fixed harmonograph trace: two damped pendulums per axis, near-unison
+/// fundamentals plus faster overtones, baked once by contour() and drawn as
+/// one open polyline. No rng and no time, so the weave is deterministic.
+private final class HarmonographScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0xF4EFE4))
+        let h = Harmonograph(
+            x: [.init(amplitude: 96, frequency: 2.00, damping: 0.015),
+                .init(amplitude: 34, frequency: 6.02, phase: .pi / 2, damping: 0.02)],
+            y: [.init(amplitude: 96, frequency: 2.01, phase: .pi / 4, damping: 0.015),
+                .init(amplitude: 34, frequency: 4.03, phase: .pi / 3, damping: 0.02)])
+        noFill()
+        stroke(Color(hex: 0x232B4A).withAlpha(0.75))
+        strokeWeight(0.8)
+        withState {
+            translate(128, 128)
+            drawPolyline(h.contour(duration: 80, samples: 12_000).points, closed: false)
         }
     }
 }

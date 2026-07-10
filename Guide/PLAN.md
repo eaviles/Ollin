@@ -270,6 +270,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Hatching (`Output/Export.md`) | Ch 13 | taught |
 | Perfect-loop export (`--export-loop`, `loopDuration`; `Output/Export.md`) | Ch 3 | taught |
 | `Drawing/Epicycles.md` (Fourier epicycles) | Ch 13 | pointed |
+| `Drawing/Curves.md` (classic curves: phyllotaxis, lissajous, rose, hypotrochoid/epitrochoid, `Harmonograph`, Chaikin `smoothed`) | Appendix D | pointed |
 | `Drawing/Morphing.md` (shape morphing: `ShapeMorph`, `Tweenable` geometry) | Ch 13 | pointed |
 | `Drawing/SVG.md` (SVG import: `loadSVG`, `drawSVG`) | Ch 13 | taught |
 | `Drawing/Effects.md` (targets, filters, compose, combine) | Ch 14 | taught (targets/filters/generators/compose/feedback taught; combine + aside pointed) |
@@ -334,7 +335,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Technique catalog: growth/morphogenesis (Turing patterns, sandpile, growth on meshes) | Ch 16/17 |
 | Technique catalog: waves, terrain | Ch 16/17 |
 | Technique catalog: IK, pendulums, n-body | Ch 9 |
-| Technique catalog: classic curves, space-filling | Ch 3/6/13 |
 | Technique catalog: tiling/layout families | Ch 6 |
 | Technique catalog: meshing (marching cubes, metaballs) | Ch 17 |
 | Technique catalog: computational geometry | Ch 13 |
