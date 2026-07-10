@@ -1176,12 +1176,53 @@ fragment float4 ollin_gen_bars(PresentOut in [[stage_in]],
 }
 
 // noise: fractal value noise, soft cloud (sharpness 0) to hard two-tone (1).
+// params[0].w > 0 domain-warps the field (0 takes the exact plain-fbm path).
 fragment float4 ollin_gen_noise(PresentOut in [[stage_in]],
                                 constant float4 *params [[buffer(0)]]) {
     float scale = params[0].x, sharpness = params[0].y, aspect = params[0].z;
-    float n = ollin_fbm(float2(in.uv.x * aspect, in.uv.y) * scale);
+    float warp = params[0].w;
+    float2 p = float2(in.uv.x * aspect, in.uv.y) * scale;
+    float n = warp > 0.0 ? warpedFbm(p, warp) : ollin_fbm(p);
     // sharpness widens the smoothstep from a full ramp (soft) to a hard edge at 0.5.
     float w = mix(0.5, 0.002, sharpness);
     float t = smoothstep(0.5 - w, 0.5 + w, n);
     return mix(params[2], params[1], t);
+}
+
+// cellular: Worley cell distances, styled. params[0] = (scale, jitter, aspect,
+// phase), params[1].x = style: 0 cells (nearest-distance ramp), 1 borders
+// (thin lines where nearest and second-nearest meet), 2 mosaic (flat per-cell
+// hash blend). Feature points wander sinusoidally on hashed orbits, so the
+// field is periodic in phase over 2π and a whole lap loops seamlessly.
+fragment float4 ollin_gen_cellular(PresentOut in [[stage_in]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float scale = params[0].x, jitter = params[0].y, aspect = params[0].z;
+    float phase = params[0].w, style = params[1].x;
+    float2 p = float2(in.uv.x * aspect, in.uv.y) * scale;
+    float2 i = floor(p), f = fract(p);
+    float f1 = 8.0, f2 = 8.0;
+    float2 winner = 0.0;
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            float2 nb = float2(x, y);
+            float2 cell = i + nb;
+            // Each cell's point swings on its own hashed phase offset; jitter
+            // scales the swing, so 0 pins every point to its cell center.
+            float2 pt = 0.5 + 0.5 * jitter * sin(phase + 6.28318530718 * hash22(cell));
+            float d = length(nb + pt - f);
+            if (d < f1) { f2 = f1; f1 = d; winner = cell; }
+            else { f2 = min(f2, d); }
+        }
+    }
+    float t;
+    if (style < 0.5) {
+        t = clamp(f1, 0.0, 1.0);
+    } else if (style < 1.5) {
+        float b = f2 - f1;
+        float aa = fwidth(b) + 1e-3;
+        t = 1.0 - smoothstep(0.05 - aa, 0.05 + aa, b);
+    } else {
+        t = hash12(winner);
+    }
+    return mix(params[3], params[2], t);
 }

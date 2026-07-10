@@ -84,3 +84,123 @@ struct NoiseTests {
         }
     }
 }
+
+/// The noise-variant family: simplex, Worley, ridged, turbulence, and warped
+/// fbm. Same rules as the classic field: seeded, deterministic, range-honest.
+@MainActor
+@Suite
+struct NoiseVariantTests {
+
+    @Test func simplexIsSeededAndDeterministic() {
+        let a = Sketch()
+        a.noiseSeed(11)
+        let b = Sketch()
+        b.noiseSeed(11)
+        let c = Sketch()
+        c.noiseSeed(12)
+        var differs = false
+        for i in 0..<64 {
+            let x = Double(i) * 0.37, y = Double(i) * 0.19
+            #expect(a.simplexNoise(x, y) == b.simplexNoise(x, y))
+            #expect(a.simplexNoise(x, y, 1.5) == b.simplexNoise(x, y, 1.5))
+            if a.simplexNoise(x, y) != c.simplexNoise(x, y) { differs = true }
+        }
+        #expect(differs, "a different seed reads a different field")
+    }
+
+    /// Guards the contrast calibration: a broad sweep should reach near both
+    /// ends of `0...1` in 2D and 3D, like the classic field does.
+    @Test func simplexFillsItsRange() {
+        let sketch = Sketch()
+        sketch.noiseSeed(3)
+        var lo2 = 1.0, hi2 = 0.0, lo3 = 1.0, hi3 = 0.0
+        for i in 0..<4096 {
+            let x = Double(i) * 0.173, y = Double(i % 71) * 0.291
+            let n2 = sketch.simplexNoise(x, y)
+            let n3 = sketch.simplexNoise(x, y, Double(i % 53) * 0.117)
+            #expect(n2 >= 0 && n2 <= 1)
+            #expect(n3 >= 0 && n3 <= 1)
+            lo2 = Swift.min(lo2, n2); hi2 = Swift.max(hi2, n2)
+            lo3 = Swift.min(lo3, n3); hi3 = Swift.max(hi3, n3)
+        }
+        #expect(lo2 < 0.05 && hi2 > 0.95, "2D fills its range (\(lo2)...\(hi2))")
+        #expect(lo3 < 0.05 && hi3 > 0.95, "3D fills its range (\(lo3)...\(hi3))")
+        #expect(abs(sketch.signedSimplexNoise(1.7, 2.9) - (sketch.simplexNoise(1.7, 2.9) * 2 - 1)) < 1e-12,
+                "the signed form mirrors the unsigned one")
+    }
+
+    @Test func worleyReadingsAreOrderedAndSeeded() {
+        let a = Sketch()
+        a.noiseSeed(5)
+        let b = Sketch()
+        b.noiseSeed(5)
+        for i in 0..<128 {
+            let x = Double(i) * 0.83, y = Double(i) * 0.41
+            let f1 = a.worley(x, y), f2 = a.worley(x, y, feature: .second)
+            #expect(f1 >= 0)
+            #expect(f2 >= f1, "the second-nearest point is never nearer")
+            #expect(a.worley(x, y, feature: .border) == f2 - f1)
+            #expect(a.worley(x, y) == b.worley(x, y), "seeded: same seed, same cells")
+            let g1 = a.worley(x, y, 0.7), g2 = a.worley(x, y, 0.7, feature: .second)
+            #expect(g2 >= g1)
+        }
+        #expect(a.worley(1.3, 2.6, jitter: 2.5) == a.worley(1.3, 2.6), "jitter clamps to 1")
+    }
+
+    /// With no jitter every feature point sits at its cell center, so the
+    /// distances are pure geometry.
+    @Test func worleyZeroJitterIsARegularGrid() {
+        let sketch = Sketch()
+        sketch.noiseSeed(9)
+        #expect(abs(sketch.worley(0.5, 0.5, jitter: 0)) < 1e-12)
+        #expect(abs(sketch.worley(10.5, 3.5, 7.5, jitter: 0)) < 1e-12)
+        #expect(abs(sketch.worley(0.0, 0.5, jitter: 0) - 0.5) < 1e-12)
+    }
+
+    @Test func ridgedAndTurbulenceStayInRange() {
+        let sketch = Sketch()
+        sketch.noiseSeed(4)
+        var rHi = 0.0, tLo = 1.0
+        for i in 0..<2048 {
+            let x = Double(i) * 0.211, y = Double(i % 97) * 0.173
+            let r = sketch.ridgedFbm(x, y)
+            let t = sketch.turbulence(x, y)
+            #expect(r >= 0 && r <= 1)
+            #expect(t >= 0 && t <= 1)
+            rHi = Swift.max(rHi, r)
+            tLo = Swift.min(tLo, t)
+        }
+        #expect(rHi > 0.8, "ridge lines reach bright (\(rHi))")
+        #expect(tLo < 0.1, "turbulence creases reach dark (\(tLo))")
+    }
+
+    /// One octave reduces each variant to its per-octave definition over the
+    /// classic signed field.
+    @Test func singleOctaveMatchesTheDefinition() {
+        let sketch = Sketch()
+        sketch.noiseSeed(8)
+        for i in 0..<32 {
+            let x = Double(i) * 0.37, y = Double(i) * 0.53
+            let folded = 1 - abs(sketch.signedNoise(x, y))
+            #expect(abs(sketch.ridgedFbm(x, y, octaves: 1) - folded * folded) < 1e-12)
+            #expect(abs(sketch.turbulence(x, y, octaves: 1) - abs(sketch.signedNoise(x, y))) < 1e-12)
+        }
+    }
+
+    @Test func warpZeroIsPlainFbm() {
+        let sketch = Sketch()
+        sketch.noiseSeed(2)
+        for i in 0..<32 {
+            let x = Double(i) * 0.31, y = Double(i) * 0.47
+            #expect(sketch.warpedFbm(x, y, warp: 0) == sketch.fbm(x, y))
+        }
+    }
+
+    @Test func variantLoopsCloseExactly() {
+        let sketch = Sketch()
+        sketch.noiseSeed(7)
+        #expect(sketch.ridgedFbm(3.2, 1.7, loop: 1) == sketch.ridgedFbm(3.2, 1.7, loop: 0))
+        #expect(sketch.turbulence(3.2, 1.7, loop: 1) == sketch.turbulence(3.2, 1.7, loop: 0))
+        #expect(sketch.warpedFbm(3.2, 1.7, loop: 1) == sketch.warpedFbm(3.2, 1.7, loop: 0))
+    }
+}

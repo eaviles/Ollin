@@ -19,7 +19,7 @@ let s = Shader(source, using: [.noise, .sdf])   // only these sections splice
 | (base) | color conversion, luminance, 2D rotation | yes |
 | `.color` | cosine palette, OKLab / OKLCH | no |
 | `.hash` | integer-free pseudo-random hashes, disc sampling | no |
-| `.noise` | value / FBM / gradient / curl noise (depends on `.hash`) | no |
+| `.noise` | value / FBM / gradient / simplex / Worley / curl noise, ridged / turbulence / warped fbm (depends on `.hash`) | no |
 | `.sdf` | smooth-min and the 2D signed-distance catalog | no |
 | `.domain` | repeat / mirror / polar-fold space operators | no |
 
@@ -86,6 +86,14 @@ Mixing in OKLab/OKLCH (interpolate, then convert back) gives even lightness and 
 | `float valueNoise(float3 p)` | the 3D form (trilinear); animate by sliding `z`. |
 | `float fbm(float2 p)` | four-octave fractal sum of `valueNoise`. |
 | `float gradientNoise(float2 p)` | Perlin-style gradient noise (smoother, signed). |
+| `float simplexNoise(float2 p)` | simplex-lattice gradient noise in ~`[-1, 1]`: rounder, more even grain with no axis-aligned bias. Mirrors the CPU `simplexNoise`. |
+| `float simplexNoise(float3 p)` | the 3D form; animate by sliding `z`. |
+| `float worley(float2 p[, float jitter])` | cellular noise: distance to the nearest hashed feature point, ~`[0, 1]` (dark cell cores, bright walls). `jitter` runs the cells from grid (0) to organic (1, the default). Mirrors the CPU `worley`. |
+| `float2 worley2(float2 p[, float jitter])` | the nearest *and* second-nearest distances; their difference is zero on the borders between cells (threshold it for cracks and veins). |
+| `float worley(float3 p[, float jitter])`, `float2 worley2(float3 p[, float jitter])` | the 3D forms; slide `z` and the cells bubble and reform. |
+| `float ridgedFbm(float2 p)` | four octaves folded into creases, detail gathering on the ridge lines: the mountainous-terrain basis, in `[0, 1]`. Mirrors the CPU `ridgedFbm`. |
+| `float turbulence(float2 p)` | four octaves of folded (absolute-value) noise: billows with creased seams, the cloud and marble basis, in `[0, 1]`. Mirrors the CPU `turbulence`. |
+| `float warpedFbm(float2 p, float warp)` | domain-warped fbm: the field displaces its own coordinates twice over. `warp` 0 is exactly `fbm(p)`, 1 the classic strength. Mirrors the CPU `warpedFbm`; the `DomainWarp` example opens the recipe up. |
 | `float2 curlNoise(float2 p)` | the divergence-free curl of a value-noise potential: a flow field whose streams swirl and never converge into sinks. |
 
 ## Signed-distance functions

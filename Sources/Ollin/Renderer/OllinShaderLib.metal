@@ -140,6 +140,11 @@ static inline float2 discSample(float2 seed) {
 // gradient noise (interpolated dot products of per-corner gradients), each with
 // a multi-octave FBM, plus the divergence-free 2D curl of a value-noise
 // potential. Value noise reads in ~[0, 1]; gradient noise in ~[-1, 1].
+// Rounding out the family: simplex noise (2D/3D, ~[-1, 1]), Worley cellular
+// noise (2D/3D nearest/second-nearest distances), ridged and turbulence fbm
+// (both [0, 1]), and warped fbm (the field displacing its own coordinates).
+// Each mirrors the CPU helper of the same name, so a look tuned in draw()
+// carries into per-pixel code.
 
 static inline float ollin_vnoise(float2 p) {
     float2 i = floor(p), f = fract(p);
@@ -186,6 +191,160 @@ static inline float gradientNoise(float2 p) {
     float vc = dot(gc, f - float2(0, 1));
     float vd = dot(gd, f - float2(1, 1));
     return mix(mix(va, vb, u.x), mix(vc, vd, u.x), u.y);
+}
+
+// Simplex noise: gradient noise on the triangular (2D) / tetrahedral (3D)
+// simplex lattice, in ~[-1, 1]. Rounder, more even grain than the square
+// lattices above, with no axis-aligned bias. The contrast gains are kept in
+// sync with the CPU field (NoiseVariants.swift), so both sides read alike.
+
+// The 12 gradient directions (a cube's edge midpoints), picked by a cell hash.
+constant float3 ollin_grad3[12] = {
+    float3( 1,  1, 0), float3(-1,  1, 0), float3( 1, -1, 0), float3(-1, -1, 0),
+    float3( 1,  0, 1), float3(-1,  0, 1), float3( 1,  0,-1), float3(-1,  0,-1),
+    float3( 0,  1, 1), float3( 0, -1, 1), float3( 0,  1,-1), float3( 0, -1,-1),
+};
+
+// One corner's contribution: a radial kernel ((0.5 - d^2)^4, zero beyond its
+// ring, so corners hand off seamlessly) times the hashed gradient's pull.
+static inline float ollin_simplex_corner(float2 d, float2 cell) {
+    float t = 0.5 - dot(d, d);
+    if (t < 0.0) return 0.0;
+    t *= t;
+    float3 g = ollin_grad3[int(hash12(cell) * 12.0)];
+    return t * t * (g.x * d.x + g.y * d.y);
+}
+
+static inline float ollin_simplex_corner(float3 d, float3 cell) {
+    float t = 0.5 - dot(d, d);
+    if (t < 0.0) return 0.0;
+    t *= t;
+    float3 g = ollin_grad3[int(hash13(cell) * 12.0)];
+    return t * t * dot(g, d);
+}
+
+static inline float simplexNoise(float2 p) {
+    const float F2 = 0.3660254038;   // skew: simplex lattice -> square grid
+    const float G2 = 0.2113248654;   // unskew, back to the plane
+    float s = (p.x + p.y) * F2;
+    float2 i = floor(p + s);
+    float t = (i.x + i.y) * G2;
+    float2 d0 = p - (i - t);
+    float2 i1 = d0.x > d0.y ? float2(1, 0) : float2(0, 1);   // which triangle
+    float2 d1 = d0 - i1 + G2;
+    float2 d2 = d0 - 1.0 + 2.0 * G2;
+    float n = ollin_simplex_corner(d0, i)
+            + ollin_simplex_corner(d1, i + i1)
+            + ollin_simplex_corner(d2, i + 1.0);
+    return clamp(n * 81.3, -1.0, 1.0);
+}
+
+static inline float simplexNoise(float3 p) {
+    const float F3 = 1.0 / 3.0, G3 = 1.0 / 6.0;
+    float s = (p.x + p.y + p.z) * F3;
+    float3 i = floor(p + s);
+    float t = (i.x + i.y + i.z) * G3;
+    float3 d0 = p - (i - t);
+    // Rank the offsets: the descent order through the tetrahedron's corners.
+    float3 g = step(d0.yzx, d0.xyz);
+    float3 l = 1.0 - g;
+    float3 i1 = min(g, l.zxy);
+    float3 i2 = max(g, l.zxy);
+    float3 d1 = d0 - i1 + G3;
+    float3 d2 = d0 - i2 + 2.0 * G3;
+    float3 d3 = d0 - 1.0 + 3.0 * G3;
+    float n = ollin_simplex_corner(d0, i)
+            + ollin_simplex_corner(d1, i + i1)
+            + ollin_simplex_corner(d2, i + i2)
+            + ollin_simplex_corner(d3, i + 1.0);
+    return clamp(n * 87.7, -1.0, 1.0);
+}
+
+// Cellular (Worley) noise: one hashed feature point per unit cell; worley2
+// returns the distances to the nearest and second-nearest points (their gap is
+// zero on the borders between cells, the crack-and-vein reading). The nearest
+// distance reads roughly in [0, 1]: dark cell cores, bright walls. `jitter`
+// runs the cells from a regular grid (0) to fully organic (1).
+static inline float2 worley2(float2 p, float jitter) {
+    float2 i = floor(p), f = fract(p);
+    float f1 = 8.0, f2 = 8.0;
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            float2 nb = float2(x, y);
+            float2 pt = 0.5 + (hash22(i + nb) - 0.5) * jitter;
+            float d = length(nb + pt - f);
+            if (d < f1) { f2 = f1; f1 = d; } else { f2 = min(f2, d); }
+        }
+    }
+    return float2(f1, f2);
+}
+static inline float2 worley2(float2 p) { return worley2(p, 1.0); }
+static inline float worley(float2 p, float jitter) { return worley2(p, jitter).x; }
+static inline float worley(float2 p) { return worley2(p, 1.0).x; }
+
+// 3D cellular noise (3x3x3 scan); drift z over time to bubble the cells.
+static inline float2 worley2(float3 p, float jitter) {
+    float3 i = floor(p), f = fract(p);
+    float f1 = 8.0, f2 = 8.0;
+    for (int z = -1; z <= 1; z++) {
+        for (int y = -1; y <= 1; y++) {
+            for (int x = -1; x <= 1; x++) {
+                float3 nb = float3(x, y, z);
+                float3 pt = 0.5 + (hash33(i + nb) - 0.5) * jitter;
+                float d = length(nb + pt - f);
+                if (d < f1) { f2 = f1; f1 = d; } else { f2 = min(f2, d); }
+            }
+        }
+    }
+    return float2(f1, f2);
+}
+static inline float2 worley2(float3 p) { return worley2(p, 1.0); }
+static inline float worley(float3 p, float jitter) { return worley2(p, jitter).x; }
+static inline float worley(float3 p) { return worley2(p, 1.0).x; }
+
+// Ridged fbm: each octave folds the signed field into creases ((1 - |n|)
+// squared), and an octave only contributes where the one below was strong, so
+// bright ridge lines gather over dark valleys (the mountainous-terrain look).
+// In [0, 1]; four octaves, like fbm.
+static inline float ridgedFbm(float2 p) {
+    float sum = 0.0, amp = 0.5, norm = 0.0, feedback = 1.0;
+    for (int i = 0; i < 4; i++) {
+        float n = clamp(gradientNoise(p) * 2.0, -1.0, 1.0);   // fill the fold's input
+        float s = 1.0 - abs(n);
+        s *= s;
+        s *= feedback;
+        sum += s * amp;
+        norm += amp;
+        feedback = clamp(s * 2.0, 0.0, 1.0);
+        p *= 2.0;
+        amp *= 0.5;
+    }
+    return sum / norm;
+}
+
+// Turbulence: fbm over the folded field (each octave takes |signed noise|), so
+// the layers pile into billows with creased seams, the classic cloud and
+// marble basis. In [0, 1]; four octaves, like fbm.
+static inline float turbulence(float2 p) {
+    float sum = 0.0, amp = 0.5, norm = 0.0;
+    for (int i = 0; i < 4; i++) {
+        sum += amp * abs(clamp(gradientNoise(p) * 2.0, -1.0, 1.0));
+        norm += amp;
+        p *= 2.0;
+        amp *= 0.5;
+    }
+    return sum / norm;
+}
+
+// Warped fbm: the field displaces its own sampling coordinates, twice over,
+// smearing the layers into flowing marble and cloud forms. `warp` scales the
+// displacement: 0 is exactly fbm(p), 1 the classic strength. In [0, 1].
+static inline float warpedFbm(float2 p, float warp) {
+    float k = 4.0 * warp;
+    float2 q = float2(ollin_fbm(p), ollin_fbm(p + float2(5.2, 1.3)));
+    float2 r = float2(ollin_fbm(p + k * q + float2(1.7, 9.2)),
+                      ollin_fbm(p + k * q + float2(8.3, 2.8)));
+    return ollin_fbm(p + k * r);
 }
 
 // Curl noise: the divergence-free 2D flow that is the curl of a value-noise

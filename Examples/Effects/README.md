@@ -17,6 +17,7 @@ Layered effects: draw into off-screen layers, filter them on the GPU, and compos
 | [Glitter](Glitter/Sketch.swift) | iridescent and glittering shapes: the thin-film `.iridescence` sheen and the sparkle-fleck `.glitter` filter, per shape via `compose { }` |
 | [Distortion](Distortion/Sketch.swift) | uv-warp filters that re-sample the image: kaleidoscope, swirl, bulge, wave, ripple, polar, … |
 | [Patterns](Patterns/Sketch.swift) | procedural pattern `Generator`s (`generate(_:)`) and a composed mix |
+| [Cellular](Cellular/Sketch.swift) | the Worley cellular generator's three styles (cells, borders, mosaic), the feature points wandering on phase-periodic orbits so the field loops seamlessly (`.cellular`) |
 | [PatternFields](PatternFields/Sketch.swift) | the pattern fields: quasicrystal, moiré, gyroid slice, phyllotaxis, hex pulses |
 | [Fractals](Fractals/Sketch.swift) | escape-time fractals: the Mandelbrot set and a morphing Julia set (`.mandelbrot` / `.julia`) |
 | [Feedback](Feedback/Sketch.swift) | a layer that remembers itself across frames: a spiralling feedback tunnel (`withFeedback`) |

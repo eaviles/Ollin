@@ -15,6 +15,7 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 | [EnergyGrid](EnergyGrid/Sketch.swift) | columns sized by a moving "energy" share (`translate`, `drawRect`) |
 | [LifeQuilt](LifeQuilt/Sketch.swift) | a four-layer Game of Life filling cells with triangular wedges, colored by a radial cosine palette (`drawTriangle`, SDF) |
 | [Phyllotaxis](Phyllotaxis/Sketch.swift) | a sunflower seed-head — points at the golden angle marching outward by `sqrt(i)` — built into a `Circle` array and drawn with a single batch call, spinning slowly while the count breathes (`drawCircles`) |
+| [RidgeLines](RidgeLines/Sketch.swift) | stacked mountain ridgelines from ridged fractal noise, each row's opaque panel occluding the range behind it; the looping field brings the terrain home every lap (`ridgedFbm`) |
 | [Topography](Topography/Sketch.swift) | a breathing blob inset inward over and over until the region pinches out, each surviving ring stroked — contour lines that crowd where the form narrows; pure line work that plots straight to SVG (`Shape.offset(by:join:)`) |
 | [Venation](Venation/Sketch.swift) | space colonization: veins grow live from a bottom root toward a blue-noise attractor scatter, branch weight from the pipe model (`SpaceColonization`, `poissonDisk`) |
 | [Voronoi](Voronoi/Sketch.swift) | a field of noise-drifting sites partitioned into Voronoi cells, evened out with Lloyd relaxation and colored by a sweeping focal point — the cursor is a live site, so the cells crystallize around the mouse (`voronoi`/`lloyd`) |

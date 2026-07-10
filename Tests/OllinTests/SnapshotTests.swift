@@ -175,6 +175,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("escape-time",
                  note: "The Mandelbrot set and a Julia set at fixed framing and phase (no time, no random). Pins the escape-time generator: the z = z^2 + c iteration, the smooth iteration count, the cosine palette fold, and the interior fill, in both modes.",
                  make: { EscapeTimeScene() }),
+    SnapshotCase("noise-toolkit",
+                 note: "The noise-toolkit generators tiled 2x2 at a fixed phase (no time, no random): domain-warped noise (the warp knob on .noise), and the cellular generator in its three styles (cells, borders at reduced jitter, mosaic). Pins the warped-fbm displacement chain, the wandering-feature-point Worley scan, the border AA, and the per-cell mosaic hash, plus that each tile generates at its own size.",
+                 make: { NoiseToolkitScene() }),
     SnapshotCase("effects-simfield", frame: 60,
                  note: "A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame 60 and recoloured. Pins the stateful sim substrate end to end: the persistent ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and the headless render-every-frame warmup the built-up state depends on.",
                  make: { EffectsSimField() }),
@@ -292,6 +295,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("streamlines",
                  note: "Evenly-spaced streamlines through a Perlin flow field, seeded from a blue-noise set. Pins the field (angle from noise), the both-directions tracing, and the separation test that keeps the lines from crossing. Seeded, no time, so the lines are deterministic.",
                  make: { StreamlinesScene() }),
+    SnapshotCase("ridge-lines",
+                 note: "Stacked mountain ridgelines lifted from ridged fractal noise at a fixed loop phase: back-to-front skyline rows, each occluding the last with an opaque panel. Pins the CPU ridged accumulator (the crease fold and its octave feedback) and its looping form. Seeded, fixed phase, so the ranges are deterministic.",
+                 make: { RidgeLinesScene() }),
     SnapshotCase("flocking", frame: 120,
                  note: "A seeded flock of boids stepped to a fixed frame, drawn as heading-colored triangles. Pins Reynolds' separation/alignment/cohesion steering and the spatial-hash neighbor search (the force sums are order-stable, so a seeded flock reproduces). Seeded, fixed frame, so it's deterministic.",
                  make: { FlockingScene() }),
@@ -3088,6 +3094,74 @@ private final class EscapeTimeScene: Sketch {
                   in: Rectangle(x: 1, y: 2, width: Double(w), height: Double(h)))
         drawImage(generate(.julia(iterations: 120, phase: 0.6), width: w, height: h).image,
                   in: Rectangle(x: 129, y: 2, width: Double(w), height: Double(h)))
+    }
+}
+
+/// The noise-toolkit generators at a fixed phase (no time/random): the warp
+/// knob on `.noise` plus the cellular generator's three styles, each tile at
+/// its own size.
+private final class NoiseToolkitScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let w = 126, h = 126
+        let phase = 0.35 * Double.tau
+        let tile: (Int, Int) -> Rectangle = { col, row in
+            Rectangle(x: 1 + Double(col) * 128, y: 1 + Double(row) * 128,
+                      width: Double(w), height: Double(h))
+        }
+        drawImage(generate(.noise(scale: 3, warp: 1), width: w, height: h).image,
+                  in: tile(0, 0))
+        drawImage(generate(.cellular(scale: 5, style: .cells, phase: phase),
+                           width: w, height: h).image,
+                  in: tile(1, 0))
+        drawImage(generate(.cellular(scale: 5, jitter: 0.75, style: .borders,
+                                     foreground: Color(hex: 0xF2C14E),
+                                     background: Color(hex: 0x1B1F2A), phase: phase),
+                           width: w, height: h).image,
+                  in: tile(0, 1))
+        drawImage(generate(.cellular(scale: 5, style: .mosaic,
+                                     foreground: Color(hex: 0x55D6BE),
+                                     background: Color(hex: 0x12161F), phase: phase),
+                           width: w, height: h).image,
+                  in: tile(1, 1))
+    }
+}
+
+/// Stacked ridgeline rows from the CPU ridged accumulator at a fixed loop
+/// phase: seeded, occluding back to front, deterministic.
+private final class RidgeLinesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        seed(7)
+        let paper = Color(hex: 0xF4EFE6), ink = Color(hex: 0x2A2E3A)
+        background(paper)
+        let rows = 12
+        for r in 0 ..< rows {
+            let depth = Double(r) / Double(rows - 1)
+            let baseline = map(depth * depth, 0, 1, height * 0.30, height * 0.96)
+            let amplitude = map(depth, 0, 1, height * 0.06, height * 0.20)
+            var skyline: [Vector2] = []
+            var x = 0.0
+            while x <= width {
+                let n = ridgedFbm(x * 0.013, Double(r) * 0.83, loop: 0.3, radius: 0.6)
+                skyline.append(Vector2(x, baseline - n * amplitude))
+                x += 4
+            }
+            skyline.append(Vector2(width, skyline.last!.y))
+            var panel = skyline
+            panel.append(Vector2(width, height))
+            panel.append(Vector2(0, height))
+            fill(Color.mix(paper, ink, t: 0.04 + depth * 0.10))
+            noStroke()
+            drawPolygon(panel)
+            stroke(ink)
+            strokeWeight(map(depth, 0, 1, 0.5, 1.4))
+            noFill()
+            drawPolyline(skyline)
+        }
     }
 }
 

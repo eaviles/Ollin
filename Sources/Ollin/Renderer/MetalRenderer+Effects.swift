@@ -864,9 +864,13 @@ extension MetalRenderer {
         case let .bars(scale, vertical, fg, bg):
             encodeEffectFragment("ollin_gen_bars", inputs: [], output: output,
                                  params: [SIMD4(Float(scale), vertical ? 1 : 0, aspect, 0), fg, bg], into: cb)
-        case let .noise(scale, sharpness, fg, bg):
+        case let .noise(scale, sharpness, warp, fg, bg):
             encodeEffectFragment("ollin_gen_noise", inputs: [], output: output,
-                                 params: [SIMD4(Float(scale), Float(sharpness), aspect, 0), fg, bg], into: cb)
+                                 params: [SIMD4(Float(scale), Float(sharpness), aspect, Float(warp)), fg, bg], into: cb)
+        case let .cellular(scale, jitter, style, fg, bg, phase):
+            encodeEffectFragment("ollin_gen_cellular", inputs: [], output: output,
+                                 params: [SIMD4(Float(scale), Float(jitter), aspect, Float(phase)),
+                                          SIMD4(style.rawIndex, 0, 0, 0), fg, bg], into: cb)
 
         // Design patterns. Each packs its scalars into leading rows and appends
         // the palette as trailing color rows the fragment indexes past them.

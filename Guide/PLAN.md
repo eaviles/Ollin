@@ -245,6 +245,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 20 | taught (typed family: sliders/stepper/color well taught in Ch 1's payoff, the rest named + pointed; groups/icons pointed) |
 | `Generators/Random.md` | Ch 4 | taught |
 | `Generators/Noise.md` (noise, signedNoise, loop:, fbm, curlNoise) | Ch 5; curl in Ch 12/16 | taught |
+| Noise toolkit (simplexNoise, worley, ridgedFbm/turbulence, warpedFbm; the `.cellular` generator + `.noise` warp knob; `Generators/Noise.md`) | Ch 5 (fields + shader-lib mirror in Ch 15/16) | gap: not yet in the chapter |
 | `Drawing/Geometry.md`: `Grid`, `Insets` | Ch 6 | taught |
 | `Drawing/Truchet.md` | Ch 6 | taught |
 | `Drawing/Text.md` (three font kinds, textToShapes, atlas) | Ch 7 | taught (drawText/textSize/textAlign, the three kinds, perGlyph, textToShapes warp, atlas mode; on-path/box/metrics/variable axes named + pointed) |
@@ -339,7 +340,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Technique catalog: computational geometry | Ch 13 |
 | Technique catalog: image-as-input family | Ch 7 |
 | Technique catalog: painterly marks | Ch 13 |
-| Technique catalog: noise toolkit | Ch 5 |
 | Expressive brushes and strokes | Ch 13 |
 | Project generator | Ch 1 |
 | iPhone sensor array (scene mesh, drift correction) | Ch 19 |

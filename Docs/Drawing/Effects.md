@@ -330,7 +330,8 @@ The basic patterns (cells stay square whatever the layer's aspect ratio):
 - **`.checkers(scale:foreground:background:)`** a two-color board, `scale` cells across.
 - **`.gridLines(scale:weight:foreground:background:)`** a line grid, each line `weight` (0…1) of a cell wide.
 - **`.bars(scale:vertical:foreground:background:)`** parallel stripes, `scale` across, on either axis.
-- **`.noise(scale:sharpness:foreground:background:)`** fractal value noise, from a soft cloud (`sharpness` 0) to a hard two-tone split (1).
+- **`.noise(scale:sharpness:warp:foreground:background:)`** fractal value noise, from a soft cloud (`sharpness` 0) to a hard two-tone split (1). `warp` domain-warps the field (the layers displace their own sampling coordinates, twice over): 0 is the plain field, 1 the classic flowing marble-and-cloud smear.
+- **`.cellular(scale:jitter:style:foreground:background:phase:)`** Worley cellular noise, `scale` cells across: `.cells` (dark cores brightening toward the walls), `.borders` (thin cracks tracing the walls), or `.mosaic` (flat stained-glass panes). `jitter` runs the cells from a regular grid (0) to fully organic (1); `phase` makes the feature points wander on small orbits so the cells crawl and reform, and it is periodic over 2π, so `phase: loopProgress(over: 12) * .tau` loops seamlessly. See the `Cellular` example.
 
 **Design patterns**: richer animated sources in the same mold. Every one takes a
 `phase` you feed `time` for motion (or hold fixed for a still), most take a palette

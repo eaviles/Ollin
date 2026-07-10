@@ -102,7 +102,7 @@ Ollin's shader library is spliced into every user shader, so these helpers are a
 | --- | --- |
 | **color** | `srgbToLinear` / `linearToSrgb` / `luma` / `rotate2D`, `palette(t, a, b, c, d)` (cosine gradient), `linearToOklab` / `oklabToLinear` / `oklabToOklch` / `oklchToOklab` |
 | **hash** | `hash12`, `hash22`, `hash33` |
-| **noise** | `valueNoise`, `fbm`, `gradientNoise` |
+| **noise** | `valueNoise`, `fbm`, `gradientNoise`, `simplexNoise`, `worley` / `worley2`, `ridgedFbm`, `turbulence`, `warpedFbm`, `curlNoise` |
 | **sdf** | `smin(a, b, k)` (smooth minimum) plus the 2D distance catalog (`sdEllipse`, `sdRoundBox`, `sdSegment`, `sdStar`, `sdHeart`, `sdBezier`, …) |
 | **domain** | `pmod` / `pmod2` (repeat), `mirror`, `pmodPolar` (radial fold) |
 

@@ -1004,6 +1004,13 @@ open class Sketch {
     /// Backing field for `noise()` / `noiseSeed(_:)` (see Noise.swift).
     var perlin: PerlinNoise
 
+    /// Backing field for `simplexNoise()` (see NoiseVariants.swift). Seeded
+    /// with `perlin` so `noiseSeed` reproduces every noise flavor at once.
+    var simplex: SimplexNoise
+
+    /// Backing cell field for `worley()` (see NoiseVariants.swift).
+    var worleyNoise: WorleyNoise
+
     /// The seeds last applied through `randomSeed(_:)` / `noiseSeed(_:)` (both
     /// via `seed(_:)`), recorded so exports can embed the reproduction recipe
     /// (see ExportMetadata.swift). Start at `variation`, which seeds both
@@ -1043,6 +1050,8 @@ open class Sketch {
         variation = roll
         rng = SplitMix64(seed: UInt64(bitPattern: Int64(roll)))
         perlin = PerlinNoise(seed: UInt64(bitPattern: Int64(roll)))
+        simplex = SimplexNoise(seed: UInt64(bitPattern: Int64(roll)))
+        worleyNoise = WorleyNoise(seed: UInt64(bitPattern: Int64(roll)))
         recordedRandomSeed = roll
         recordedNoiseSeed = roll
     }

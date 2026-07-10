@@ -29,7 +29,13 @@ public struct Generator: Sendable {
         case bars(scale: Double, vertical: Bool, foreground: SIMD4<Float>, background: SIMD4<Float>)
         /// Fractal value noise, `scale` features across. `sharpness` 0 is a soft
         /// cloud blending `background`→`foreground`; 1 is a hard two-tone threshold.
-        case noise(scale: Double, sharpness: Double, foreground: SIMD4<Float>, background: SIMD4<Float>)
+        /// `warp` > 0 domain-warps the field (0 leaves it byte-identical).
+        case noise(scale: Double, sharpness: Double, warp: Double,
+                   foreground: SIMD4<Float>, background: SIMD4<Float>)
+        /// Worley cellular noise: `scale` cells across, styled by `style`
+        /// (cells / borders / mosaic), feature points wandering with `phase`.
+        case cellular(scale: Double, jitter: Double, style: CellularStyle,
+                      foreground: SIMD4<Float>, background: SIMD4<Float>, phase: Double)
         /// A user-supplied `Shader` run as a source layer (it reads no input).
         case shader(Shader)
 
@@ -134,13 +140,56 @@ public struct Generator: Sendable {
     }
 
     /// Fractal value noise, `scale` features across. `sharpness` runs from a soft
-    /// cloud (0, blending the two colors) to a hard two-tone split (1).
-    public static func noise(scale: Double = 4, sharpness: Double = 0,
+    /// cloud (0, blending the two colors) to a hard two-tone split (1). `warp`
+    /// domain-warps the field (the layers displace their own sampling
+    /// coordinates, twice over): 0 is the plain field, 1 the classic flowing
+    /// marble-and-cloud smear, above 1 churn.
+    public static func noise(scale: Double = 4, sharpness: Double = 0, warp: Double = 0,
                              foreground: Color = .white,
                              background: Color = .black) -> Generator {
         Generator(kind: .noise(scale: max(0.1, scale), sharpness: min(max(sharpness, 0), 1),
+                               warp: min(max(warp, 0), 4),
                                foreground: foreground.linearRGBA,
                                background: background.linearRGBA))
+    }
+
+    /// The look a `cellular` generator paints from its cell distances.
+    public enum CellularStyle: Sendable {
+        /// The classic cell field: each cell dark at its core, brightening
+        /// toward its walls (the nearest-point distance).
+        case cells
+        /// Thin foreground lines tracing the borders between cells (where the
+        /// nearest and second-nearest distances meet): cracks and veins.
+        case borders
+        /// Every cell a flat hashed blend of the two colors: stained glass.
+        case mosaic
+
+        /// The shader's style index (kept in step with `ollin_gen_cellular`).
+        var rawIndex: Float {
+            switch self {
+            case .cells: return 0
+            case .borders: return 1
+            case .mosaic: return 2
+            }
+        }
+    }
+
+    /// Worley cellular noise: space shaded into organic cells (stone, foam,
+    /// cracked earth), `scale` cells across. `jitter` runs the cells from a
+    /// regular grid (0) to fully organic (1), `style` picks the look (see
+    /// `CellularStyle`), and `phase` makes the feature points wander on their
+    /// own small orbits so the cells crawl and reform; it is periodic over 2π,
+    /// so `phase: loopProgress(over: 12) * .tau` loops seamlessly (or feed it
+    /// a slow multiple of `time` and never look back).
+    public static func cellular(scale: Double = 8, jitter: Double = 1,
+                                style: CellularStyle = .cells,
+                                foreground: Color = .white,
+                                background: Color = .black,
+                                phase: Double = 0) -> Generator {
+        Generator(kind: .cellular(scale: max(0.5, scale), jitter: min(max(jitter, 0), 1),
+                                  style: style,
+                                  foreground: foreground.linearRGBA,
+                                  background: background.linearRGBA, phase: phase))
     }
 
     /// A user-supplied `Shader` as a procedural source layer: it reads no input and

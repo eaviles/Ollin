@@ -28,6 +28,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Physics](Physics/) | simulated motion (`import OllinPhysics`) |
 | [Randomness](Randomness/) | `random`, `noise`, and scatter |
 | [Rendering](Rendering/) | how the frame composites — blending, accumulation, HDR tone-mapping, sandpainting |
+| [Shaders](Shaders/) | writing your own GPU code: user shaders inline and from files, and fluent `Visual` chains |
 | [Shapes](Shapes/) | the shape-drawing vocabulary: primitives, stroke and hollow modes, booleans, and SDF combinators |
 | [Simulation](Simulation/) | stateful GPU fields you draw into — fluid, Game of Life, reaction-diffusion (`simField`) |
 | [Text](Text/) | drawing text — bitmap, outline, and stroke fonts over one `drawText` |

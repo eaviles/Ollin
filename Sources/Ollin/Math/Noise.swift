@@ -11,8 +11,9 @@ struct PerlinNoise {
     mutating func reseed(_ seed: UInt64) { perm = PerlinNoise.permutation(seed: seed) }
 
     /// A 0...255 permutation shuffled deterministically by `seed`, then doubled
-    /// so lookups never need to wrap.
-    private static func permutation(seed: UInt64) -> [Int] {
+    /// so lookups never need to wrap. Shared with the simplex field (see
+    /// NoiseVariants.swift), which hashes its lattice through the same table.
+    static func permutation(seed: UInt64) -> [Int] {
         var rng = SplitMix64(seed: seed)
         var p = Array(0...255)
         for i in stride(from: 255, to: 0, by: -1) {        // Fisher–Yates
@@ -125,9 +126,13 @@ struct PerlinNoise {
 }
 
 public extension Sketch {
-    /// Seed the Perlin field behind `noise()` for reproducible runs.
+    /// Seed the noise fields (`noise()`, `simplexNoise()`, `worley()`, and the
+    /// fbm family) for reproducible runs.
     func noiseSeed(_ seed: Int) {
-        perlin.reseed(UInt64(bitPattern: Int64(seed)))
+        let bits = UInt64(bitPattern: Int64(seed))
+        perlin.reseed(bits)
+        simplex.reseed(bits)
+        worleyNoise.reseed(bits)
         recordedNoiseSeed = seed
     }
 
@@ -231,6 +236,115 @@ public extension Sketch {
     func signedFbm(_ x: Double, _ y: Double, loop: Double, radius: Double = 1,
                    octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
         fbm(x, y, loop: loop, radius: radius, octaves: octaves, gain: gain, lacunarity: lacunarity) * 2 - 1
+    }
+
+    // MARK: Ridged and turbulence fbm
+
+    /// 1D ridged fractal noise in `0...1`: fbm's mountainous sibling. Each
+    /// octave folds the signed field into sharp creases (one minus the
+    /// absolute value, squared), and an octave only contributes where the one
+    /// below it was strong, so detail gathers on the ridge lines instead of
+    /// filling the valleys (the multifractal feedback that makes terrain read
+    /// as terrain). Same knobs as `fbm`; bright values are the ridges.
+    func ridgedFbm(_ x: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        ridgedSum(octaves, gain, lacunarity) { f in perlin.signedValue(x * f, 0, 0) }
+    }
+    /// 2D ridged fractal noise at `(x, y)`, in `0...1` (see `ridgedFbm(_:octaves:gain:lacunarity:)`).
+    func ridgedFbm(_ x: Double, _ y: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        ridgedSum(octaves, gain, lacunarity) { f in perlin.signedValue(x * f, y * f, 0) }
+    }
+    /// 3D ridged fractal noise at `(x, y, z)`, in `0...1` (see `ridgedFbm(_:octaves:gain:lacunarity:)`).
+    func ridgedFbm(_ x: Double, _ y: Double, _ z: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        ridgedSum(octaves, gain, lacunarity) { f in perlin.signedValue(x * f, y * f, z * f) }
+    }
+    /// 2D ridged fractal noise that loops as `loop` runs `0...1` (see
+    /// `fbm(_:_:loop:radius:octaves:gain:lacunarity:)` for the loop mechanics).
+    func ridgedFbm(_ x: Double, _ y: Double, loop: Double, radius: Double = 1,
+                   octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        ridgedSum(octaves, gain, lacunarity) { f in
+            let (cx, cy) = loopPoint(loop, radius * f)
+            return perlin.signedValue(x * f, y * f, cx, cy)
+        }
+    }
+
+    /// 1D turbulence in `0...1`: fbm over the folded field (each octave takes
+    /// the absolute value of the signed noise), so instead of rolling hills the
+    /// layers pile into billows with creased seams, the classic basis for
+    /// clouds, smoke, and marble. Same knobs as `fbm`.
+    func turbulence(_ x: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        fbmSum(octaves, gain, lacunarity) { f in Swift.abs(perlin.signedValue(x * f, 0, 0)) }
+    }
+    /// 2D turbulence at `(x, y)`, in `0...1` (see `turbulence(_:octaves:gain:lacunarity:)`).
+    func turbulence(_ x: Double, _ y: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        fbmSum(octaves, gain, lacunarity) { f in Swift.abs(perlin.signedValue(x * f, y * f, 0)) }
+    }
+    /// 3D turbulence at `(x, y, z)`, in `0...1` (see `turbulence(_:octaves:gain:lacunarity:)`).
+    func turbulence(_ x: Double, _ y: Double, _ z: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        fbmSum(octaves, gain, lacunarity) { f in Swift.abs(perlin.signedValue(x * f, y * f, z * f)) }
+    }
+    /// 2D turbulence that loops as `loop` runs `0...1` (see
+    /// `fbm(_:_:loop:radius:octaves:gain:lacunarity:)` for the loop mechanics).
+    func turbulence(_ x: Double, _ y: Double, loop: Double, radius: Double = 1,
+                    octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        fbmSum(octaves, gain, lacunarity) { f in
+            let (cx, cy) = loopPoint(loop, radius * f)
+            return Swift.abs(perlin.signedValue(x * f, y * f, cx, cy))
+        }
+    }
+
+    // MARK: Domain warping
+
+    /// 2D fbm sampled through two rounds of self-displacement: the field warps
+    /// its own coordinates, then warps them again, which smears the layers into
+    /// the flowing marble-and-cloud look no amount of plain layering produces.
+    /// `warp` scales the displacement: 0 is exactly `fbm(x, y)`, 1 the classic
+    /// strength, and beyond 1 the field tears into churn. The other knobs pass
+    /// through to the underlying `fbm`.
+    func warpedFbm(_ x: Double, _ y: Double, warp: Double = 1,
+                   octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        func layer(_ px: Double, _ py: Double) -> Double {
+            fbm(px, py, octaves: octaves, gain: gain, lacunarity: lacunarity)
+        }
+        let k = 4 * warp
+        let qx = layer(x, y), qy = layer(x + 5.2, y + 1.3)
+        let rx = layer(x + k * qx + 1.7, y + k * qy + 9.2)
+        let ry = layer(x + k * qx + 8.3, y + k * qy + 2.8)
+        return layer(x + k * rx, y + k * ry)
+    }
+    /// 2D warped fbm that loops as `loop` runs `0...1`: every layer of the
+    /// warp tours the same closed circle, so the whole churning field drifts
+    /// and returns home each lap (see `noise(loop:radius:)`).
+    func warpedFbm(_ x: Double, _ y: Double, warp: Double = 1, loop: Double, radius: Double = 1,
+                   octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        func layer(_ px: Double, _ py: Double) -> Double {
+            fbm(px, py, loop: loop, radius: radius, octaves: octaves, gain: gain, lacunarity: lacunarity)
+        }
+        let k = 4 * warp
+        let qx = layer(x, y), qy = layer(x + 5.2, y + 1.3)
+        let rx = layer(x + k * qx + 1.7, y + k * qy + 9.2)
+        let ry = layer(x + k * qx + 8.3, y + k * qy + 2.8)
+        return layer(x + k * rx, y + k * ry)
+    }
+
+    /// The ridged accumulator: each octave's signed sample folds into a crease
+    /// ((1 - |n|) squared), attenuated by how strong the previous octave's
+    /// crease was (clamped at twice its value), summed under the same
+    /// gain-per-octave weights as `fbmSum` and normalized to `0...1`.
+    private func ridgedSum(_ octaves: Int, _ gain: Double, _ lacunarity: Double,
+                           _ sample: (Double) -> Double) -> Double {
+        var sum = 0.0, weight = 0.0
+        var amp = 1.0, frequency = 1.0, feedback = 1.0
+        for _ in 0..<Swift.max(1, octaves) {
+            var signal = 1 - Swift.abs(sample(frequency))
+            signal *= signal
+            signal *= feedback
+            sum += signal * amp
+            weight += amp
+            feedback = Swift.min(Swift.max(signal * 2, 0), 1)
+            amp *= gain
+            frequency *= lacunarity
+        }
+        return sum / weight
     }
 
     /// The point `loop` of the way around the sampling circle. `loop` wraps
