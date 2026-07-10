@@ -349,6 +349,18 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("retained-batch",
                  note: "One motif recorded into a Batch (SDF shapes incl. a gradient fill, a fringe polyline, a concave tessellated fill, a smooth-union SDF field) and replayed three ways: in place (the identity replay, byte-identical to recording), under a rotate+scale+translate stamp (the flag-gated shader transform), and with a dynamic shape drawn between the replays (draw-order compositing around a .retained reference batch). Pins the retained encode path, the batch's handle-relative gradient strip, and the per-run blend/pipeline selection. No time, deterministic.",
                  make: { RetainedBatchScene() }),
+    SnapshotCase("tiling-grids",
+                 note: "The hex and triangle grids on one sheet: a pointy-top hex grid tinted by hex distance from its center cell (concentric rings), a flat-top grid tinted by column, and a triangle grid whose up/down parity splits two palettes. Pins both hex orientations' lattice math (centers, corners, the offset half-step, axial distance, gutter insets) and the triangle tiling. No rng and no time, so it is deterministic.",
+                 make: { TilingGridsScene() }),
+    SnapshotCase("subdivision",
+                 note: "Recursive subdivision both ways: a binary aspect-aware split with seeded accent fills (the grid-painting look) beside a probabilistic quadtree tinted by depth. Pins the split recursion (axis choice, fraction clamp, the minSize/maxDepth/chance stops) and the exact partition. Seeded, no time, so the layout is deterministic.",
+                 make: { SubdivisionScene() }),
+    SnapshotCase("maze",
+                 note: "Three perfect mazes, one per carving algorithm (backtracker / Kruskal / Wilson), each with its longest path traced through. Pins the three generators, the merged straight wall runs, and the double-BFS longest path. Seeded, no time, so the mazes are deterministic.",
+                 make: { MazeScene() }),
+    SnapshotCase("apollonian",
+                 note: "An Apollonian gasket tinted by generation order. Pins the Descartes-theorem foam: the closed-form seed triple, the linear other-root recursion filling every three-way gap, tangency without overlap, and the min-radius stop. No rng and no time, so it is deterministic.",
+                 make: { ApollonianScene() }),
 ]
 
 /// The ray-tracing-gated snapshots: on a ray-tracing GPU a point caster resolves to the RT
@@ -3792,6 +3804,127 @@ private final class RetainedBatchScene: Sketch {
             rotate(0.5)
             scale(1.25)
             drawBatch(motif)                              // transformed stamp, over the circle
+        }
+    }
+}
+
+/// The hex and triangle grids on one sheet: a pointy-top hex grid tinted by
+/// hex distance from its center cell, a flat-top grid tinted by column, and a
+/// triangle grid whose up/down parity splits two palettes. No rng and no
+/// `time`, so it's deterministic.
+private final class TilingGridsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101318))
+        noStroke()
+
+        let hexes = HexGrid(in: Rectangle(x: 0, y: 0, width: 128, height: 128),
+                            columns: 6, rows: 6, padding: 5, gutter: 2)
+        let home = hexes.cell(column: 3, row: 3)
+        for cell in hexes.cells {
+            let rings = Double(hexes.distance(from: home, to: cell))
+            fill(Color.mix(Color(hex: 0x7BE0C8), Color(hex: 0x15414B), t: min(1, rings / 5)))
+            drawPolygon(cell.corners)
+        }
+
+        let flat = HexGrid(in: Rectangle(x: 128, y: 0, width: 128, height: 128),
+                           columns: 6, rows: 6, orientation: .flat, padding: 5, gutter: 2)
+        for cell in flat.cells {
+            fill(Color.mix(Color(hex: 0xF9DC5C), Color(hex: 0xC5283D), t: Double(cell.column) / 5))
+            drawPolygon(cell.corners)
+        }
+
+        let tris = TriangleGrid(in: Rectangle(x: 0, y: 128, width: 256, height: 128),
+                                columns: 13, rows: 6, padding: 5, gutter: 2)
+        for cell in tris.cells {
+            let t = Double(cell.column) / Double(tris.columns - 1)
+            fill(cell.pointsUp
+                ? Color.mix(Color(hex: 0x113A4E), Color(hex: 0x3FB8AF), t: t)
+                : Color.mix(Color(hex: 0x3A1330), Color(hex: 0xEE7752), t: t))
+            drawPolygon(cell.vertices)
+        }
+    }
+}
+
+/// Recursive subdivision both ways: a binary aspect-aware split with seeded
+/// accent fills beside a probabilistic quadtree tinted by depth. Seeded and
+/// `time`-free, so it's deterministic.
+private final class SubdivisionScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        seed(5)
+        background(Color(hex: 0xF4EFE6))
+
+        stroke(Color(hex: 0x14110F))
+        strokeWeight(3)
+        strokeJoin(.miter)
+        let accents: [Color] = [Color(hex: 0xC5283D), Color(hex: 0xF9DC5C), Color(hex: 0x255C99)]
+        for cell in subdivide(in: Rectangle(x: 8, y: 8, width: 116, height: 240),
+                              minSize: 22, maxDepth: 6, chance: 0.8) {
+            if random(0, 1) < 0.25 {
+                fill(randomChoice(accents))
+            } else {
+                fill(Color(hex: 0xF4EFE6))
+            }
+            drawRect(cell.frame)
+        }
+
+        noStroke()
+        for cell in subdivide(in: Rectangle(x: 132, y: 8, width: 116, height: 240),
+                              minSize: 10, maxDepth: 5, chance: 0.75, style: .quad) {
+            fill(Color.mix(Color(hex: 0x0E1116), Color(hex: 0x7BE0C8), t: Double(cell.depth) / 5))
+            drawRect(cell.frame.inset(by: 1))
+        }
+    }
+}
+
+/// Three perfect mazes, one per carving algorithm, each with its longest path
+/// traced through. Seeded and `time`-free, so the mazes are deterministic.
+private final class MazeScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        seed(7)
+        background(Color(hex: 0x101318))
+        strokeCap(.round)
+        noFill()
+
+        let algorithms: [Maze.Algorithm] = [.backtracker, .kruskal, .wilson]
+        let accents: [Color] = [Color(hex: 0xF6511D), Color(hex: 0xF9DC5C), Color(hex: 0x7BE0C8)]
+        for (i, algorithm) in algorithms.enumerated() {
+            let rect = Rectangle(x: 10, y: 10 + Double(i) * 82, width: 236, height: 72)
+            let m = maze(columns: 19, rows: 6, algorithm: algorithm)
+            stroke(Color(hex: 0xD8DEE9))
+            strokeWeight(2)
+            drawMaze(m, in: rect)
+            stroke(accents[i])
+            strokeWeight(3)
+            drawPolyline(m.contour(of: m.longestPath(), in: rect).points, closed: false)
+        }
+    }
+}
+
+/// An Apollonian gasket tinted by generation order: the closed-form foam of
+/// mutually tangent circles. No rng and no `time`, so it's deterministic.
+private final class ApollonianScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0E1116))
+        let rim = Circle(x: 128, y: 128, radius: 118)
+        noFill()
+        stroke(Color(hex: 0x2A3140))
+        strokeWeight(2)
+        drawCircle(rim)
+
+        let foam = apollonianGasket(in: rim, minRadius: 1.6)
+        noStroke()
+        for (i, circle) in foam.enumerated() {
+            fill(Color.mix(Color(hex: 0x1D5C63), Color(hex: 0xF9DC5C),
+                           t: Double(i) / Double(foam.count)))
+            drawCircle(circle)
         }
     }
 }
