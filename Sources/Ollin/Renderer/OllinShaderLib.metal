@@ -1129,3 +1129,52 @@ static inline float4 ollin_vis_mask(float4 a, float4 b) {
     return float4(a.rgb * k, a.a * k);
 }
 // OLLIN_LIB_END visual
+
+// MARK: - Spatial-hash neighbor search (compute-only)
+//
+// The GPU uniform-grid fixed-radius neighbor search built by `SpatialHash` and
+// queried by the particle-interaction sims. These are unmarked (outside any
+// `OLLIN_LIB_BEGIN` module) so they always splice into a compute kernel and never
+// bloat a user fragment shader's requested subset. The domain is toroidal and the
+// cell edge equals the query radius, so a position's neighbors within the radius
+// all live in its cell's wrapped 3x3 block. `OllinSpatialGrid` is defined in the
+// spliced shared header.
+
+// Wrapped integer cell coordinate of a world position (positive modulo, so any
+// position maps in range and the grid's edges join).
+static inline int2 ollin_grid_coord(float2 pos, OllinSpatialGrid g) {
+    int cx = int(floor((pos.x - g.origin.x) / g.cellSize));
+    int cy = int(floor((pos.y - g.origin.y) / g.cellSize));
+    cx = ((cx % int(g.gridW)) + int(g.gridW)) % int(g.gridW);
+    cy = ((cy % int(g.gridH)) + int(g.gridH)) % int(g.gridH);
+    return int2(cx, cy);
+}
+
+// Flat cell index (row-major) of a world position: the counting-sort bin.
+static inline uint ollin_grid_cell(float2 pos, OllinSpatialGrid g) {
+    int2 c = ollin_grid_coord(pos, g);
+    return uint(c.y) * g.gridW + uint(c.x);
+}
+
+// Minimum-image displacement on the torus: the shortest `to - from` accounting for
+// the wrap, so distances near the edges are correct.
+static inline float2 ollin_torus_delta(float2 from, float2 to, float2 worldSize) {
+    float2 d = to - from;
+    return d - worldSize * round(d / worldSize);
+}
+
+// Iterate the neighbors of `POS` (the counting-sort's 3x3 wrapped cell block).
+// Pairs with OLLIN_END_NEIGHBORS; inside, `J` is each neighbor particle's index.
+// GRID is an `OllinSpatialGrid`; SORTED/START/COUNT are the `device const uint*`
+// the build produced (sorted indices, per-cell start offset, per-cell count).
+#define OLLIN_FOR_NEIGHBORS(POS, GRID, SORTED, START, COUNT, J) \
+    { int2 _oc = ollin_grid_coord((POS), (GRID)); \
+      for (int _dy = -1; _dy <= 1; ++_dy) { \
+        int _cy = (((_oc.y + _dy) % int((GRID).gridH)) + int((GRID).gridH)) % int((GRID).gridH); \
+        for (int _dx = -1; _dx <= 1; ++_dx) { \
+          int _cx = (((_oc.x + _dx) % int((GRID).gridW)) + int((GRID).gridW)) % int((GRID).gridW); \
+          uint _cell = uint(_cy) * (GRID).gridW + uint(_cx); \
+          uint _beg = (START)[_cell]; uint _end = _beg + (COUNT)[_cell]; \
+          for (uint _k = _beg; _k < _end; ++_k) { \
+            uint J = (SORTED)[_k];
+#define OLLIN_END_NEIGHBORS }}}}

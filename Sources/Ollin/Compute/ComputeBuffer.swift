@@ -89,6 +89,16 @@ public final class PingPong<Element>: @unchecked Sendable {
         b = ComputeBuffer(count: count)
     }
 
+    /// Allocate both buffers at `contents.count`, seeding the initial `read` buffer
+    /// with `contents` (the `write` buffer starts zeroed; the first step overwrites
+    /// it). The CPU-authored start a stateful sim needs when a zeroed buffer isn't
+    /// its "empty" state.
+    public init(_ contents: [Element]) {
+        precondition(!contents.isEmpty, "PingPong needs at least one element")
+        a = ComputeBuffer(contents)
+        b = ComputeBuffer(count: contents.count)
+    }
+
     /// The buffer holding the current state (read this to draw).
     public var read: ComputeBuffer<Element> { flipped ? b : a }
     /// The buffer the next step writes into.

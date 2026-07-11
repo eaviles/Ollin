@@ -84,6 +84,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 ### Simulation
 
 - [`Physics`](./Simulation/Physics.md) - `import OllinPhysics` for a `World` you step each frame so motion comes from simulation: a soft Verlet side (particles, springs, disk collisions) and a rigid side (bodies, colliders, joints, backed by Box2D)
+- [`Artificial life`](./Simulation/ArtificialLife.md) - three emergent-behavior systems on the GPU: `ParticleLife`, the `PPS` turning rule, and `Physarum` slime mold, the first two over a GPU `SpatialHash` neighbor search you can also build your own sims on
 
 ### Integration
 

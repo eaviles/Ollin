@@ -191,6 +191,17 @@ float4 shade(float2 uv, ShaderInfo info) {
 | `float4 ollin_vis_difference(float4 a, float4 b)` | absolute per-channel difference. |
 | `float4 ollin_vis_mask(float4 a, float4 b)` | keep `a` where `b` is bright and opaque. |
 
+## Spatial-hash neighbor search (compute only)
+
+Always available in a **compute kernel** (they take bound buffers, so they are not part of the `using:` fragment-shader subset). The primitives behind [`SpatialHash`](./Compute.md#spatialhash) and the [artificial-life sims](../Simulation/ArtificialLife.md). `OllinSpatialGrid` is the shared grid struct.
+
+| Function | Description |
+| --- | --- |
+| `int2 ollin_grid_coord(float2 pos, OllinSpatialGrid g)` | wrapped integer cell coordinate of a world position (positive modulo, edges join). |
+| `uint ollin_grid_cell(float2 pos, OllinSpatialGrid g)` | flat (row-major) cell index of a position, the counting-sort bin. |
+| `float2 ollin_torus_delta(float2 from, float2 to, float2 worldSize)` | shortest displacement on the torus (minimum image), for wrap-correct distances. |
+| `OLLIN_FOR_NEIGHBORS(pos, grid, sorted, start, count, j)` … `OLLIN_END_NEIGHBORS` | iterate the neighbors of `pos` (the 3×3 wrapped cell block); `j` is each neighbor's particle index. |
+
 ---
 
 ### See also

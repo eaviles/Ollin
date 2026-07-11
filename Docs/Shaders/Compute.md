@@ -22,6 +22,7 @@ Both write the per-element update as a short snippet of Metal — Ollin generate
 - [Texture kernels & simulations](#textures) — `Simulation`, `ComputeTexture`
 - [Kernels in a `.metal` file](#metalfile)
 - [The typed core](#core) — `ComputeKernel`, `ComputeBuffer`, `compute`
+- [SpatialHash, the GPU neighbor search](#spatialhash)
 - [Notes](#notes)
 
 <a id="particles"></a>
@@ -268,6 +269,49 @@ compute(transform, reading: src, writing: dst)
 ```
 
 Draw a `ComputeBuffer<OllinParticle>` directly with `drawParticles(_ buffer:)`; for a custom struct, draw it with your own geometry (read the buffer in your own shader, or copy positions out). Draw a `ComputeTexture` with its `image` (a texture-backed [`Image`](../Drawing/Drawing.md)).
+
+<a id="spatialhash"></a>
+### SpatialHash, the GPU neighbor search
+
+The one-thread-per-particle model can't let a particle see the others near it, which every particle-interaction system needs. `SpatialHash` fills that gap: each frame it sorts the particles into a grid of square cells with a **counting sort** (count how many land in each cell, prefix-sum the counts into per-cell start offsets, then scatter each particle's index into its cell's slot), leaving buffers a query kernel walks. The cell edge equals the query radius over a toroidal domain, so every neighbor within the radius sits in the queried cell's wrapped 3×3 block.
+
+It powers the built-in [artificial-life sims](../Simulation/ArtificialLife.md) (`ParticleLife`, `PPS`); reach for it directly to write your own. The `neighborStep(_:over:reading:writing:)` facade builds the hash over your `reading` particles, then runs your `kernel` with the particle buffers and the hash's buffers bound at fixed indices. Your kernel walks the neighbors with the `OLLIN_FOR_NEIGHBORS` macro (spliced into every kernel, with `ollin_torus_delta` for wrap-correct distances):
+
+```swift
+let hash = spatialHash(radius: 40, count: 18_000)         // cells over the canvas
+let particles = PingPong<OllinParticle>(count: 18_000)     // your own buffers (import COllinShaders)
+
+let step = ComputeKernel(entry: "my_step", """
+kernel void my_step(
+    device const OllinParticle *inBuf  [[buffer(0)]],
+    device OllinParticle       *outBuf [[buffer(1)]],
+    device const uint *sortedIdx [[buffer(2)]],
+    device const uint *cellStart [[buffer(3)]],
+    device const uint *cellCount [[buffer(4)]],
+    constant OllinSpatialGrid &grid [[buffer(5)]],
+    constant OllinComputeUniforms &u [[buffer(10)]],
+    uint id [[thread_position_in_grid]]) {
+    if (id >= u.particleCount) { return; }
+    OllinParticle p = inBuf[id];
+    uint n = 0;
+    OLLIN_FOR_NEIGHBORS(p.position, grid, sortedIdx, cellStart, cellCount, j)
+        if (j == id) { continue; }
+        float2 d = ollin_torus_delta(p.position, inBuf[j].position, grid.worldSize);
+        if (length(d) < grid.cellSize) { n++; }
+    OLLIN_END_NEIGHBORS
+    p.color = float4(float(n) / 12.0, 0.4, 1.0, 1.0);   // color by crowd
+    outBuf[id] = p;
+}
+""")
+
+override func draw() {
+    neighborStep(step, over: hash, reading: particles.read, writing: particles.write)
+    particles.advance()
+    drawParticles(particles.read)
+}
+```
+
+The buffer-index contract for a query kernel: `reading` at 0, `writing` at 1, `sortedIndices` at 2, `cellStart` at 3, `cellCount` at 4, the `OllinSpatialGrid` at 5, then your own buffers at 6 and up (`ParticleLife` binds its interaction matrix at 6). The scatter's within-cell order is set by a GPU atomic race, so a query that *sums* over neighbors (a force) is reproducible only up to float rounding; the neighbor *set* (and any count) is order-independent. Example: `Examples/Compute/NeighborSearch`.
 
 <a id="notes"></a>
 ### Notes

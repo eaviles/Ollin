@@ -37,11 +37,12 @@ enum Satellite: String, CaseIterable {
 func example(
     _ folder: String,
     _ satellites: [Satellite] = [],
-    resources: [Resource]? = nil
+    resources: [Resource]? = nil,
+    dependencies extra: [Target.Dependency] = []
 ) -> Target {
     .executableTarget(
         name: "Example-" + folder.split(separator: "/").joined(separator: "-"),
-        dependencies: ["Ollin"] + satellites.map(\.dependency),
+        dependencies: ["Ollin"] + satellites.map(\.dependency) + extra,
         path: "Examples/" + folder,
         resources: resources
     )
@@ -483,6 +484,9 @@ let package = Package(
         example("Simulation/GrayScott"),
         example("Simulation/GameOfLife"),
         example("Simulation/Fluid"),
+        example("Simulation/ParticleLife"),
+        example("Simulation/PrimordialParticles"),
+        example("Simulation/Physarum"),
         example("Effects/Fractals"),
         example("Effects/Patterns"),
         example("Effects/Cellular"),
@@ -499,6 +503,9 @@ let package = Package(
         // The kernels live in their own .metal file (highlighted, editor-checked);
         // .copy ships the source for Ollin's runtime compiler to read + splice.
         example("Compute/ReactionDiffusion", resources: [.copy("Kernels.metal")]),
+        // Drives the raw SpatialHash, so it constructs OllinParticle buffers directly
+        // and needs the shared-struct module (which the typed sims hide).
+        example("Compute/NeighborSearch", dependencies: [.byName(name: "COllinShaders")]),
         example("3D/Geometry/PointCloud"),
         example("3D/Geometry/StrangeAttractor"),
         example("3D/Geometry/Transforms"),
@@ -809,7 +816,7 @@ let package = Package(
         // `OLLIN_RECORD_SNAPSHOTS=1 swift test`. Skips when no Metal device.
         .testTarget(
             name: "OllinTests",
-            dependencies: ["Ollin"],
+            dependencies: ["Ollin", "COllinShaders"],
             resources: [.copy("References")]
         ),
         // DSP correctness for the audio analyzer: feed synthesized signals and

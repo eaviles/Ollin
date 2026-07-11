@@ -521,6 +521,24 @@ typedef struct {
     simd_float4 custom;         // four free per-dispatch floats (see ComputeParams)
 } OllinComputeUniforms;
 
+// A uniform-grid spatial hash over a toroidal 2-D domain (the GPU neighbor-search
+// primitive `SpatialHash` builds and every particle-interaction sim queries).
+// Cells tile `worldSize` exactly (`worldSize = float2(gridW, gridH) * cellSize`), so
+// wrapping a position into `[origin, origin + worldSize)` and wrapping a cell index
+// modulo `gridW`/`gridH` stay consistent. `cellSize` is set to the query radius, so
+// every neighbor within the radius lives in the queried cell's toroidal 3×3 block
+// (which needs `gridW`/`gridH` at least 3, which `SpatialHash` guarantees). Stride
+// 32: float2 @0, float2 @8, float @16, three uints @20…28. (Distinct from
+// `OllinGridParams` above, which is the 3D reference-floor uniform.)
+typedef struct {
+    simd_float2 origin;         // world-space min corner (points, top-left origin)
+    simd_float2 worldSize;      // the toroidal domain extent = float2(gridW,gridH)*cellSize
+    float cellSize;             // uniform cell edge, set to the neighbor query radius
+    unsigned int gridW;         // cells across
+    unsigned int gridH;         // cells down
+    unsigned int numCells;      // gridW * gridH (the cell-count/start/cursor buffer length)
+} OllinSpatialGrid;
+
 // Per-frame constants bound to a user-supplied shader's fragment (buffer 1). The
 // generated wrapper exposes these to the sketch's `shade(uv, info)` as a
 // `ShaderInfo` value, so a shader reads `info.time` / `info.resolution` / … with

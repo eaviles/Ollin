@@ -329,7 +329,85 @@ open class Sketch {
         drawer.recordParticles(particles.current, count: particles.count)
     }
 
-    // MARK: 3D — camera & point clouds
+    // MARK: Compute (spatial hash & artificial life)
+
+    /// Make a GPU neighbor-search grid over `bounds` (the full canvas by default) with
+    /// cells of `radius` (the query radius your kernel uses), for `count` particles.
+    /// The primitive under the particle-interaction sims; drive your own with
+    /// `neighborStep(_:over:reading:writing:)`. See `SpatialHash`.
+    public func spatialHash(in bounds: Rectangle? = nil, radius: Double, count: Int) -> SpatialHash {
+        SpatialHash(bounds: bounds ?? self.bounds, cellSize: radius, count: count)
+    }
+
+    /// Build `hash` over `reading`, then run your own `kernel` with the particle
+    /// buffers and the hash's neighbor buffers bound at the documented indices
+    /// (`reading` 0, `writing` 1, `sortedIndices` 2, `cellStart` 3, `cellCount` 4,
+    /// `grid` 5). Walk the neighbors in the kernel with `OLLIN_FOR_NEIGHBORS`. Swap
+    /// your ping-pong yourself. See `SpatialHash` for the kernel contract.
+    public func neighborStep(_ kernel: ComputeKernel, over hash: SpatialHash,
+                             reading: ComputeBuffer<OllinParticle>,
+                             writing: ComputeBuffer<OllinParticle>,
+                             params: ComputeParams = ComputeParams()) {
+        hash.recordBuild(into: drawer, positions: reading)
+        drawer.recordDispatch(RecordedDispatch(
+            kernel: kernel, threadCount: hash.count,
+            buffers: [reading, writing, hash.sortedIndices, hash.cellStart,
+                      hash.cellCount, hash.gridBuffer], params: params.bytes))
+    }
+
+    /// Make a `ParticleLife` system: `count` particles of `kinds` kinds over `bounds`
+    /// (the full canvas by default), interacting within `radius`, seeded from `seed`
+    /// (this sketch's `variation` by default). Build it in `setup()`, then
+    /// `updateParticleLife` + `drawParticles` in `draw()`. See `ParticleLife`.
+    public func particleLife(count: Int, kinds: Int, radius: Double,
+                             bounds: Rectangle? = nil, seed: UInt64? = nil) -> ParticleLife {
+        ParticleLife(count: count, kinds: kinds, bounds: bounds ?? self.bounds,
+                     radius: radius, seed: seed ?? UInt64(variation))
+    }
+
+    /// Step a `ParticleLife` system one frame (builds its neighbor hash and runs its
+    /// force/integration kernel).
+    public func updateParticleLife(_ life: ParticleLife) { life.recordStep(into: drawer) }
+
+    /// Draw a `ParticleLife` system's particles as additive discs.
+    public func drawParticles(_ life: ParticleLife) {
+        drawer.recordParticles(life.current, count: life.count)
+    }
+
+    /// Make a `PPS` (Primordial Particle System): `count` particles over `bounds` (the
+    /// full canvas by default) interacting within `radius`, seeded from `seed` (this
+    /// sketch's `variation` by default). `PPS.suggestedCount(for:in:)` estimates a
+    /// good density. See `PPS`.
+    public func primordialParticles(count: Int, radius: Double,
+                                    bounds: Rectangle? = nil, seed: UInt64? = nil) -> PPS {
+        PPS(count: count, bounds: bounds ?? self.bounds, radius: radius,
+            seed: seed ?? UInt64(variation))
+    }
+
+    /// Step a `PPS` one frame (builds its neighbor hash and runs its turn/move kernel).
+    public func updatePPS(_ pps: PPS) { pps.recordStep(into: drawer) }
+
+    /// Draw a `PPS`'s particles as additive discs (colored by local crowd size).
+    public func drawParticles(_ pps: PPS) {
+        drawer.recordParticles(pps.current, count: pps.count)
+    }
+
+    /// Make a `Physarum` slime-mold sim: `agents` agents on a `resolution`×`resolution`
+    /// trail map, seeded from `seed` (this sketch's `variation` by default). Build it
+    /// in `setup()`, then `updatePhysarum` + `drawImage(sim.image, in:)` in `draw()`.
+    /// See `Physarum`.
+    public func physarum(agents: Int, resolution: Int, seed: UInt64? = nil) -> Physarum {
+        Physarum(agents: agents, resolution: resolution, seed: seed ?? UInt64(variation))
+    }
+
+    /// Make a `Physarum` sim on a non-square `width`×`height` trail map.
+    public func physarum(agents: Int, width: Int, height: Int, seed: UInt64? = nil) -> Physarum {
+        Physarum(agents: agents, width: width, height: height, seed: seed ?? UInt64(variation))
+    }
+
+    /// Step a `Physarum` sim one frame (agents sense/steer/move/deposit, then the trail
+    /// diffuses, decays, and colorizes).
+    public func updatePhysarum(_ physarum: Physarum) { physarum.recordStep(into: drawer) }
 
     /// Set the active 3D camera (see `Camera3D`). Setting one puts this frame into
     /// 3D: the renderer adds a depth buffer and draws 3D geometry (point clouds)
