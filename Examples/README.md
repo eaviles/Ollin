@@ -30,7 +30,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Rendering](Rendering/) | how the frame composites — blending, accumulation, HDR tone-mapping, sandpainting |
 | [Shaders](Shaders/) | writing your own GPU code: user shaders inline and from files, and fluent `Visual` chains |
 | [Shapes](Shapes/) | the shape-drawing vocabulary: primitives, stroke and hollow modes, booleans, and SDF combinators |
-| [Simulation](Simulation/) | stateful GPU fields you draw into — fluid, Game of Life, reaction-diffusion (`simField`) |
+| [Simulation](Simulation/) | systems evolving on the GPU: sim fields (`simField`), artificial life, particle fluids and soft bodies |
 | [Text](Text/) | drawing text — bitmap, outline, and stroke fonts over one `drawText` |
 | [Video](Video/) | recorded footage as drawing material (`import OllinVideo`) |
 | [Vision](Vision/) | the camera plus on-device perception (`import OllinVision`) |

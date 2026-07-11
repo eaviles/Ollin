@@ -409,6 +409,50 @@ open class Sketch {
     /// diffuses, decays, and colorizes).
     public func updatePhysarum(_ physarum: Physarum) { physarum.recordStep(into: drawer) }
 
+    /// Make a `ParticleFluid`: `count` fluid particles interacting within `radius`
+    /// (the fluid's resolution), seeded as a block inside `bounds` (the full canvas
+    /// by default) from `seed` (this sketch's `variation` by default). Build it in
+    /// `setup()`, then `updateParticleFluid` + `drawParticles` in `draw()`. See
+    /// `ParticleFluid`.
+    public func particleFluid(count: Int, radius: Double, spacing: Double? = nil,
+                              bounds: Rectangle? = nil, seed: UInt64? = nil) -> ParticleFluid {
+        ParticleFluid(count: count, bounds: bounds ?? self.bounds, radius: radius,
+                      spacing: spacing, seed: seed ?? UInt64(variation))
+    }
+
+    /// Step a `ParticleFluid` one frame (its fixed substeps: predict, rebuild the
+    /// neighbor hash, measure densities, apply pressure + viscosity, integrate).
+    public func updateParticleFluid(_ fluid: ParticleFluid) {
+        fluid.recordStep(into: drawer, frameDt: deltaTime)
+    }
+
+    /// Draw a `ParticleFluid`'s particles as discs, tinted by speed.
+    public func drawParticles(_ fluid: ParticleFluid) {
+        drawer.recordParticles(fluid.current, count: fluid.count)
+    }
+
+    /// Make a `SoftBodies` system: `count` squishy blobs of roughly `radius`,
+    /// scattered inside `bounds` (the full canvas by default) from `seed` (this
+    /// sketch's `variation` by default) so they fall into a pile. Build it in
+    /// `setup()`, then `updateSoftBodies` + `drawParticles` in `draw()`. See
+    /// `SoftBodies`.
+    public func softBodies(count: Int, radius: Double, spacing: Double? = nil,
+                           bounds: Rectangle? = nil, seed: UInt64? = nil) -> SoftBodies {
+        SoftBodies(count: count, bounds: bounds ?? self.bounds, radius: radius,
+                   spacing: spacing, seed: seed ?? UInt64(variation))
+    }
+
+    /// Step a `SoftBodies` system one frame (its fixed substeps: build the neighbor
+    /// hash, fit each body's centroid + rotation, steer, collide, integrate).
+    public func updateSoftBodies(_ bodies: SoftBodies) {
+        bodies.recordStep(into: drawer, frameDt: deltaTime)
+    }
+
+    /// Draw a `SoftBodies` system's particles as discs, colored per body.
+    public func drawParticles(_ bodies: SoftBodies) {
+        drawer.recordParticles(bodies.current, count: bodies.count)
+    }
+
     /// Set the active 3D camera (see `Camera3D`). Setting one puts this frame into
     /// 3D: the renderer adds a depth buffer and draws 3D geometry (point clouds)
     /// through the camera. Per-frame state — set it in `draw()`, where a 3D sketch

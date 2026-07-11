@@ -539,6 +539,64 @@ typedef struct {
     unsigned int numCells;      // gridW * gridH (the cell-count/start/cursor buffer length)
 } OllinSpatialGrid;
 
+// Per-substep parameters for the particle-fluid step (`ParticleFluid`), packed by
+// the CPU each substep and bound at buffer index 11. The fluid runs in canvas
+// points and seconds; `stiffness`/`nearStiffness` scale pressures computed from
+// densities normalized to the seeded rest lattice, so 1 in density units means
+// "packed as seeded". `box` is the wall rectangle the integrate pass clamps to
+// (min x, min y, max x, max y). Stride 112 (16-aligned: two float2 rows, three
+// float4 rows, then twelve floats).
+typedef struct {
+    simd_float2 gravity;          // points/s²
+    simd_float2 interactionPoint; // pull/push center, canvas points
+    simd_float4 box;              // walls: min x, min y, max x, max y (points)
+    simd_float4 colorSlow;        // straight sRGB at rest
+    simd_float4 colorFast;        // straight sRGB at `speedForFastColor`
+    float interactionStrength;    // signed pull(+)/push(−) acceleration; 0 = none
+    float interactionRadius;      // interaction falloff radius, points
+    float restDensity;            // target density relative to the seeded lattice
+    float stiffness;              // pressure constant (≈ speed of sound², pt²/s²)
+    float nearStiffness;          // near-pressure constant (always repulsive)
+    float viscosity;              // neighborhood velocity-smoothing blend, 0…1
+    float dt;                     // substep seconds
+    float wallBounce;             // fraction of normal velocity kept on wall hit
+    float speedForFastColor;      // speed (pt/s) that reaches `colorFast`
+    float predictDt;              // fixed evaluation look-ahead, seconds
+    float _sphPad0;
+    float _sphPad1;
+} OllinSPHParams;
+
+// One soft body: a contiguous run of particles (`start`…`start+count`) that
+// shape-matching pulls back toward its rest layout. The CPU seeds `start`/`count`
+// once; the per-substep reduce pass writes `center` (current centroid) and
+// `rotation` (cos θ, sin θ of the best-fit rest→current rotation), which the
+// particle pass reads to build each particle's goal position. Stride 32.
+typedef struct {
+    simd_float2 center;         // current centroid (written by the reduce pass)
+    simd_float2 rotation;       // best-fit rotation as (cos θ, sin θ) (written)
+    unsigned int start;         // first particle index (seeded, fixed)
+    unsigned int count;         // particles in this body (seeded, fixed)
+    simd_float2 _bodyPad;
+} OllinSoftBody;
+
+// Per-substep parameters for the soft-body step (`SoftBodies`), packed by the CPU
+// and bound at buffer index 11. `stiffness` is the shape-matching pull already
+// converted to this substep's alpha (0…1); `collisionRadius` equals the neighbor
+// hash's cell size. Stride 64 (16-aligned).
+typedef struct {
+    simd_float2 gravity;          // points/s²
+    simd_float2 interactionPoint; // pull/push center, canvas points
+    simd_float4 box;              // walls: min x, min y, max x, max y (points)
+    float interactionStrength;    // signed pull(+)/push(−) acceleration; 0 = none
+    float interactionRadius;      // interaction falloff radius, points
+    float stiffness;              // shape-match alpha for this substep, 0…1
+    float collisionRadius;        // cross-body repulsion range, points
+    float collisionStrength;      // repulsion acceleration at full overlap, pt/s²
+    float dt;                     // substep seconds
+    float wallBounce;             // fraction of normal velocity kept on wall hit
+    float damping;                // fraction of velocity kept per second, 0…1
+} OllinSoftBodyParams;
+
 // Per-frame constants bound to a user-supplied shader's fragment (buffer 1). The
 // generated wrapper exposes these to the sketch's `shade(uv, info)` as a
 // `ShaderInfo` value, so a shader reads `info.time` / `info.resolution` / … with

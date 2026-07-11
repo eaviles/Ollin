@@ -293,6 +293,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Shaders/Compute.md` (kernels, Particles, Simulation) | Ch 16 | taught |
 | Sim fields: Game of Life, Gray-Scott, fluid (`Drawing/Effects.md`) | Ch 16 | taught |
 | Artificial life: `ParticleLife`, `PPS`, `Physarum`, `SpatialHash` (`Simulation/ArtificialLife.md`) | Ch 16 | pending (Ch 16 to grow) |
+| Fluids & soft bodies: `ParticleFluid`, `SoftBodies` (`Simulation/Fluids.md`) | Ch 16 | pending (Ch 16 to grow) |
 | `3D/3D.md` (camera, primitives, meshes, lights, materials) | Ch 17 | taught |
 | `3D/Camera.md` (cameraControl, moves, showcase, views) | Ch 17 | taught |
 | `3D/Combining.md` (what stacks with what) | Ch 17/18 | pointed |
