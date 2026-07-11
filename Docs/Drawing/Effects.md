@@ -467,6 +467,8 @@ override func draw() {
 - See the `Effects/Feedback` example for a spiralling tunnel.
 
 <a id="simfield"></a>
+<a name="simfield"></a>
+
 ### simField(_:) and Sim
 
 Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful simulation** on a persistent layer that evolves every frame by reading its own neighbourhood: reaction-diffusion patterns spreading, cellular-automaton cells living and dying, a fluid carrying color. You don't write the kernel: pick a `Sim` from the catalog, make a `SimField` with it, and **draw into the field to seed or force it**.
@@ -491,6 +493,7 @@ The catalog:
 
 - **`.reactionDiffusion(feed:kill:)`** Gray-Scott reaction-diffusion: two chemicals diffuse and react into coral, spots, stripes, and dividing cells. Draw light marks to inject chemical B (it spreads from there); `feed`/`kill` pick the regime. State is A in red, B in green. Recolor with `.gradientMap`/`.threshold`.
 - **`.gameOfLife()`** Conway's Game of Life (B3/S23). Draw white to make cells alive, black to kill them. Use a low field `scale` so each texel is a visible cell. The `image` is crisp black-and-white.
+- **`.lenia(radius:growthCenter:growthWidth:timeScale:rings:)`** Lenia, the *continuous* Game of Life: the state is a smooth `0...1` mass, and each step convolves it with a soft ring kernel and grows or starves every texel by how close its neighborhood mass sits to `growthCenter` (`growthWidth` is how forgiving that rule is). Blobs pulse, split, and swim. Seed it with a *dense* soup of soft gray-to-white marks; sparse mass starves, and the dying / labyrinth / rings / fat-maze looks are all real regimes of the model, so if everything fades, seed denser or widen the growth. The kernel reads `radius` texels around every texel each step, making the field `scale` the cost lever, and `SimField.sim` is settable live (`field.sim = .lenia(...)`) so growth knobs can ride a `@Param`. The `image` is grayscale mass; recolor with `.gradientMap`. The CPU cellular automata (Wolfram rules, turmites) live in [Generators → Cellular automata](../Generators/CellularAutomata.md).
 - **`.fluid(curl:velocityDissipation:densityDissipation:pressureIterations:buoyancy:)`** a real-time fluid: an incompressible flow that carries color. The mark's *color* injects dye; `withField`'s `force:` pushes the flow where the mark lands, so dragging (or an animated force) swirls the color. `curl` is the swirliness, the dissipations how fast flow and dye fade, and `buoyancy` an optional upward lift on bright dye (smoke that rises on its own). The `image` is the dye; composite or `.filtered(.bloom)` it directly.
 
 ```swift

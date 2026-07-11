@@ -785,7 +785,7 @@ extension MetalRenderer {
         for i in 0..<steps {
             let write = (i == steps - 1) ? output : (read === s0 ? s1 : s0)
             encodeEffectFragment(sim.stepFragment, inputs: [read], output: write,
-                                 params: [texel, sim.params], into: cb)
+                                 params: [texel] + sim.params, into: cb)
             read = write
         }
     }

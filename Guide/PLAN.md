@@ -294,6 +294,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Sim fields: Game of Life, Gray-Scott, fluid (`Drawing/Effects.md`) | Ch 16 | taught |
 | Artificial life: `ParticleLife`, `PPS`, `Physarum`, `SpatialHash` (`Simulation/ArtificialLife.md`) | Ch 16 | pending (Ch 16 to grow) |
 | Fluids & soft bodies: `ParticleFluid`, `SoftBodies` (`Simulation/Fluids.md`) | Ch 16 | pending (Ch 16 to grow) |
+| Cellular automata: Lenia sim, `elementaryCA`/`totalisticCA`, `Turmite` (`Generators/CellularAutomata.md`) | Ch 16 (1D rows and turmites could also serve Ch 11) | pending (Ch 16 to grow) |
 | `3D/3D.md` (camera, primitives, meshes, lights, materials) | Ch 17 | taught |
 | `3D/Camera.md` (cameraControl, moves, showcase, views) | Ch 17 | taught |
 | `3D/Combining.md` (what stacks with what) | Ch 17/18 | pointed |
@@ -337,7 +338,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | More model examples (ModelTracker) | Ch 21 |
 | Generative-geometry refinements | Ch 11 |
 | Technique catalog: fractals | Ch 11 (may grow into its own chapter) |
-| Technique catalog: GPU-scale steering agents, Lenia, cellular-automata helper | Ch 16 |
+| Technique catalog: GPU-scale steering agents | Ch 16 |
 | Technique catalog: growth/morphogenesis (Turing patterns, sandpile, growth on meshes) | Ch 16/17 |
 | Technique catalog: waves, terrain | Ch 16/17 |
 | Technique catalog: IK, pendulums, n-body | Ch 9 |

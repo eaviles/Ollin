@@ -10,6 +10,7 @@ Systems that evolve on the GPU each frame: the built-in `Sim` field catalog (sta
 |---|---|
 | [GrayScott](GrayScott/Sketch.swift) | a Gray-Scott reaction-diffusion field evolving on the GPU (`simField(.reactionDiffusion(...))`) |
 | [GameOfLife](GameOfLife/Sketch.swift) | Conway's Game of Life on the GPU, draw to seed cells (`simField(.gameOfLife)`) |
+| [Lenia](Lenia/Sketch.swift) | Lenia, the continuous Game of Life: a mass field convolved with a soft ring kernel, blobs that pulse, split, and swim, growth knobs live (`simField(.lenia(...))`) |
 | [Fluid](Fluid/Sketch.swift) | a real-time incompressible fluid carrying colour, drag to swirl (`simField(.fluid(...))`) |
 | [ParticleLife](ParticleLife/Sketch.swift) | attraction/repulsion matrices growing membranes, chasers, and worms (`particleLife(...)`) |
 | [PrimordialParticles](PrimordialParticles/Sketch.swift) | one turning rule growing dividing cells (`primordialParticles(...)`) |

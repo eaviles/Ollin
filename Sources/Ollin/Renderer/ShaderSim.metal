@@ -64,6 +64,43 @@ fragment float4 ollin_sim_life(PresentOut in [[stage_in]],
     return float4(float3(alive), 1.0);
 }
 
+// Lenia: the continuous Game of Life. The state is a smooth 0…1 mass in .r. Each step
+// convolves the state with a soft ring kernel to get the neighborhood potential U (an
+// exponential bump copied into up to three concentric rings, normalized by the summed
+// weight in the same loop so the kernel integrates to 1 at any radius), maps U through
+// a bell-curve growth (peak at the growth center, in -1…1), and integrates one small
+// time step, clipped back to 0…1. params[1] = (radius in texels, dt, growthCenter,
+// growthWidth); params[2] = (ring peak heights, ring count).
+fragment float4 ollin_sim_lenia(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float radius = params[1].x, dt = params[1].y;
+    float mu = params[1].z, sigma = params[1].w;
+    float3 rings = params[2].xyz;
+    float ringCount = max(1.0, params[2].w);
+    int r = int(radius);
+    float sum = 0.0, weight = 0.0;
+    for (int dy = -r; dy <= r; dy += 1) {
+        for (int dx = -r; dx <= r; dx += 1) {
+            float d = length(float2(dx, dy)) / radius;   // 0 at the site, 1 at the rim
+            if (d >= 1.0) continue;
+            float ringPos = d * ringCount;
+            float q = fract(ringPos);                    // position across this ring
+            float qq = q * (1.0 - q);
+            if (qq <= 0.0) continue;                     // ring edges (and the site itself) weigh 0
+            float w = rings[int(ringPos)] * exp(4.0 - 1.0 / qq);   // exponential kernel core
+            sum += w * src.sample(samp, fract(in.uv + float2(float(dx), float(dy)) * t)).r;
+            weight += w;
+        }
+    }
+    float u = weight > 0.0 ? sum / weight : 0.0;
+    float growth = 2.0 * exp(-(u - mu) * (u - mu) / (2.0 * sigma * sigma)) - 1.0;
+    float a = clamp(src.sample(samp, in.uv).r + dt * growth, 0.0, 1.0);
+    return float4(float3(a), 1.0);
+}
+
 // MARK: - Fluid simulation (a real-time, splat-driven fluid on the SimField path)
 //
 // A *multi-field* stateful sim, unlike the single-texture RD / Game-of-Life above: it

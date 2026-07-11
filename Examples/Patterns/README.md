@@ -15,6 +15,7 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 | [Dendrite](Dendrite/Sketch.swift) | diffusion-limited aggregation: random walkers freeze where they first touch the cluster, growing frost-like dendrites from a center seed, tinted by arrival time (`DiffusionLimitedAggregation`) |
 | [DifferentialGrowth](DifferentialGrowth/Sketch.swift) | a closed ring relaxed under attraction, alignment, and repulsion with long edges splitting, folding live into brain-coral meanders (`DifferentialGrowth`) |
 | [DotGrid](DotGrid/Sketch.swift) | a grid of black/white dots woven by a modulo rule |
+| [ElementaryCA](ElementaryCA/Sketch.swift) | 1D cellular automata stacked as rows, elementary and 3-color totalistic, the rule and code on knobs: one number flips the picture between order, fractals, and chaos (`elementaryCA`, `totalisticCA`) |
 | [EnergyGrid](EnergyGrid/Sketch.swift) | columns sized by a moving "energy" share (`translate`, `drawRect`) |
 | [Flocking](Flocking/Sketch.swift) | a few hundred boids, each steering only by its neighbors (separate, align, cohere), the flock swirling and regrouping with no leader (`Boids`) |
 | [Grid](Grid/Sketch.swift) | a 16×16 `Grid` showing both element kinds: `cells` outline the frames, `points` dot each center, with `padding` and `gutter` shaping the lattice |
@@ -33,6 +34,7 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 | [Streamlines](Streamlines/Sketch.swift) | evenly-spaced streamlines through a noise flow field, each line stopping when it nears one already drawn, fanning into smooth non-crossing currents (`FlowField.streamlines`) |
 | [Topography](Topography/Sketch.swift) | a breathing blob inset inward over and over until the region pinches out, each surviving ring stroked: contour lines that crowd where the form narrows; pure line work that plots straight to SVG (`Shape.offset(by:join:)`) |
 | [Truchet](Truchet/Sketch.swift) | one tile per grid cell at a seed-chosen spin: quarter-arcs meet across borders into meandering loops while a flow field sweeps hue along them (`truchet`) |
+| [Turmites](Turmites/Sketch.swift) | tiny Turing machines painting a wrapped grid: Langton's ant and its highway, spiral builders, chaotic weavers, all on a preset knob (`Turmite`) |
 | [Venation](Venation/Sketch.swift) | space colonization: veins grow live from a bottom root toward a blue-noise attractor scatter, branch weight from the pipe model (`SpaceColonization`, `poissonDisk`) |
 | [Voronoi](Voronoi/Sketch.swift) | a field of noise-drifting sites partitioned into Voronoi cells, evened out with Lloyd relaxation and colored by a sweeping focal point; the cursor is a live site, so the cells crystallize around the mouse (`voronoi`/`lloyd`) |
 | [WarpGrid](WarpGrid/Sketch.swift) | a checkerboard of rects warped under the mouse (`drawRect`) |

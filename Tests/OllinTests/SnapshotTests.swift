@@ -184,6 +184,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-fluid", frame: 48,
                  note: "A fluid SimField driven by a fixed brush path, run to frame 48. Pins the multi-field fluid pipeline end to end: the velocity + dye splat, curl and vorticity confinement, the Jacobi pressure projection, semi-Lagrangian advection, and the persistent two-pair ping-pong with render-every-frame warmup.",
                  make: { EffectsFluid() }),
+    SnapshotCase("lenia", frame: 60,
+                 note: "A Lenia SimField seeded with a fixed grid of graded-alpha dots, evolved to frame 60 and recoloured. Pins the continuous-CA step end to end: the ring-kernel convolution with in-loop normalization, the bell-curve growth mapping, the dt integration and clip, and the params rows riding after the texel size.",
+                 make: { LeniaScene() }),
     SnapshotCase("effects-feedback", frame: 24,
                  note: "A feedback layer built up over 24 frames: each frame redraws the last, zoomed + spun + faded, plus a new dot. Pins the persistent ping-pong (previous read while writing back, the per-frame swap kept across frames) and the headless render-every-frame warmup the built-up state needs.",
                  make: { EffectsFeedback() }),
@@ -337,6 +340,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("shape-morph",
                  note: "Shape morphing mid-blend: a star-to-donut ShapeMorph at a fixed t (pins contour pairing, the rotation correspondence, and the hole growing out of the center), a strip of triangle-to-circle one-offs at five fractions (pins exact endpoints and the blend between), and an open zigzag-to-arc lerp (pins direction alignment for open runs). Pure CPU build, no time, deterministic.",
                  make: { ShapeMorphScene() }),
+    SnapshotCase("cellular-automata",
+                 note: "Two 1D cellular automata as stacked-row triangles: elementary rule 30 (left) and 3-color totalistic code 777 (right), each from a single center seed. Pins the rule-byte lookup, the totalistic base-k digit table, and row stacking. Pure CPU, no time, no random.",
+                 make: { CellularAutomataScene() }),
+    SnapshotCase("turmites",
+                 note: "Langton's ant run 14,000 steps on a wrapped grid: the chaotic blob plus the emerged highway. Pins the turmite step semantics end to end (read, write, turn, move, state) and the deterministic multi-step drive. Pure CPU, no time, no random.",
+                 make: { TurmiteScene() }),
     SnapshotCase("dla", frame: 110,
                  note: "A diffusion-limited aggregation cluster grown to a fixed frame from a center seed, tinted by arrival order. Pins the seeded walker (spawn/kill radii, far-jump stride, exact touch-distance landing) and the spatial-hash touch test. Seeded, fixed frame, so it's deterministic.",
                  make: { DLAScene() }),
@@ -4028,5 +4037,83 @@ private final class ApollonianScene: Sketch {
                            t: Double(i) / Double(foam.count)))
             drawCircle(circle)
         }
+    }
+}
+
+/// Two 1D cellular automata drawn as stacked generations, side by side: elementary
+/// rule 30 on the left, 3-color totalistic code 777 on the right. Both grow from a
+/// single center seed. Pure CPU, no rng and no `time`, so it's deterministic.
+private final class CellularAutomataScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0E1116))
+        let columns = 41, generations = 41
+        let inks = [Color(hex: 0xF2E9D8), Color(hex: 0xE89A3C), Color(hex: 0x5FA8A0)]
+        let cell = 118.0 / Double(columns)
+        let elementary = elementaryCA(rule: 30, width: columns, generations: generations)
+            .map { $0.map { $0 ? 1 : 0 } }
+        let totalistic = totalisticCA(code: 777, colors: 3, width: columns,
+                                      generations: generations)
+        noStroke()
+        for (side, field) in [elementary, totalistic].enumerated() {
+            let x0 = 8.0 + Double(side) * 124
+            for r in 0 ..< generations {
+                for c in 0 ..< columns where field[r][c] > 0 {
+                    fill(inks[(field[r][c] - 1) % inks.count])
+                    drawRect(x0 + Double(c) * cell, 66 + Double(r) * cell,
+                             cell * 0.9, cell * 0.9)
+                }
+            }
+        }
+    }
+}
+
+/// Langton's ant stepped 14,000 moves on a wrapped 128-cell grid in the first frame:
+/// the chaotic blob plus the emerged highway. Pure CPU, no rng, deterministic.
+private final class TurmiteScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private let machine = Turmite(.langton, columns: 128, rows: 128)
+
+    override func draw() {
+        if machine.stepCount == 0 { machine.step(14000) }
+        background(Color(hex: 0x100E14))
+        let cell = width / 128
+        noStroke()
+        fill(Color(hex: 0xEAE3D4))
+        for painted in machine.paintedCells {
+            drawRect(Double(painted.column) * cell, Double(painted.row) * cell, cell, cell)
+        }
+        fill(Color(hex: 0xFF7B4D))
+        for ant in machine.antPositions {
+            drawCircle((Double(ant.column) + 0.5) * cell, (Double(ant.row) + 0.5) * cell, cell * 1.5)
+        }
+    }
+}
+
+/// A Lenia `SimField` seeded with a fixed grid of graded-alpha dots (no random/time),
+/// run to frame 60 and recoloured. Pins the continuous-CA fragment: the normalized
+/// ring-kernel convolution, the bell growth, and the dt integration and clip.
+private final class LeniaScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var life: SimField!
+    var seeded = false
+
+    override func setup() { life = simField(.lenia(), scale: 0.5) }
+
+    override func draw() {
+        withField(life) {
+            if !seeded {
+                noStroke()
+                for i in 0 ..< 5 {
+                    for j in 0 ..< 5 {
+                        fill(Color(white: 1, alpha: 0.3 + 0.65 * Double((i * 3 + j * 5) % 7) / 6))
+                        drawCircle((Double(i) + 0.5) * width / 5, (Double(j) + 0.5) * height / 5, 18)
+                    }
+                }
+                seeded = true
+            }
+        }
+        drawImage(life.filtered(.gradientMap(.magma)).image, 0, 0)
     }
 }

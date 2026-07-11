@@ -36,8 +36,10 @@ public final class SimField {
     /// features, chunkier automaton cells, and cheaper stepping. Clamped to a sane range.
     public let scale: Double
 
-    /// The simulation this field runs every frame.
-    let sim: Sim
+    /// The simulation this field runs every frame. Settable live: the renderer reads
+    /// it each frame, so retuning a sim's parameters (a growth knob under a `@Param`)
+    /// takes effect immediately while the field's evolved state carries on.
+    public var sim: Sim
 
     /// The drawer that owns the recording, so a `withField` block records against it.
     weak var drawer: Drawer?

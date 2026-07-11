@@ -32,6 +32,8 @@ public struct Sim: Sendable {
     enum Kind: Sendable {
         case reactionDiffusion(feed: Double, kill: Double)
         case gameOfLife
+        case lenia(radius: Int, growthCenter: Double, growthWidth: Double,
+                   timeScale: Double, rings: [Double])
         case fluid(FluidConfig)
     }
 
@@ -66,6 +68,40 @@ public struct Sim: Sendable {
     /// > 0.5, so the `image` is crisp black-and-white. Use a low `scale` on the field
     /// for visible, chunky cells (one texel is one cell).
     public static func gameOfLife() -> Sim { Sim(kind: .gameOfLife) }
+
+    /// **Lenia**: the continuous Game of Life. The state is a smooth 0...1 mass; each
+    /// step convolves it with a soft ring kernel, feeds that neighborhood potential
+    /// through a bell-curve growth rule (mass near `growthCenter` grows, mass away from
+    /// it decays), and integrates a small time step, so cells become glowing blobs that
+    /// pulse, split, and swim. Draw gray-to-white marks into the field to add mass (a
+    /// few soft blobs are enough; black erases); the defaults are the classic regime
+    /// where creatures self-organize.
+    ///
+    /// The raw `image` is grayscale mass, made to be recolored with
+    /// `.filtered(.gradientMap(...))`. The kernel reads `radius` texels around every
+    /// texel each step, so field `scale` is the cost lever; around 0.5 is plenty.
+    ///
+    /// - Parameters:
+    ///   - radius: Kernel reach in field texels (clamped 2...32). Bigger sees further
+    ///     and makes larger, slower creatures.
+    ///   - growthCenter: The neighborhood mass that grows fastest (0...1).
+    ///   - growthWidth: How forgiving growth is around that center. Narrow is stricter
+    ///     and more lifelike; wide blooms.
+    ///   - timeScale: Steps per unit time; the integration step is its inverse. Higher
+    ///     is smoother and slower.
+    ///   - rings: Peak height of each concentric kernel ring, up to three, each 0...1.
+    ///     The default single ring is the classic kernel; extra rings breed different
+    ///     species.
+    public static func lenia(radius: Int = 13, growthCenter: Double = 0.15,
+                             growthWidth: Double = 0.015, timeScale: Double = 10,
+                             rings: [Double] = [1]) -> Sim {
+        let clamped = rings.isEmpty ? [1] : rings.prefix(3).map { min(1, max(0, $0)) }
+        return Sim(kind: .lenia(radius: min(32, max(2, radius)),
+                                growthCenter: min(1, max(0, growthCenter)),
+                                growthWidth: max(0.0001, growthWidth),
+                                timeScale: max(1, timeScale),
+                                rings: clamped))
+    }
 
     /// A real-time **fluid**: an incompressible flow that carries colour. Draw into the
     /// field to inject dye (the mark's colour) and push the fluid with `withField`'s
@@ -104,6 +140,7 @@ public struct Sim: Sendable {
         switch kind {
         case .reactionDiffusion: return 14
         case .gameOfLife:        return 1
+        case .lenia:             return 1
         case .fluid:             return 1   // unused: the fluid runs its own pipeline
         }
     }
@@ -115,6 +152,7 @@ public struct Sim: Sendable {
         switch kind {
         case .reactionDiffusion: return SIMD4(1, 0, 0, 1)
         case .gameOfLife:        return SIMD4(0, 0, 0, 1)
+        case .lenia:             return SIMD4(0, 0, 0, 1)
         case .fluid:             return SIMD4(0, 0, 0, 1)   // unused: runFluid clears its own fields
         }
     }
@@ -124,17 +162,27 @@ public struct Sim: Sendable {
         switch kind {
         case .reactionDiffusion: return "ollin_sim_reaction_diffusion"
         case .gameOfLife:        return "ollin_sim_life"
+        case .lenia:             return "ollin_sim_lenia"
         case .fluid:             return ""   // unused: the fluid dispatches its own fragments
         }
     }
 
-    /// The per-step parameters bound alongside the texel size (renderer packs them as
-    /// `params[1]`).
-    var params: SIMD4<Float> {
+    /// The per-step parameter rows bound after the texel size (the renderer passes
+    /// them to the step fragment as `params[1]` onward).
+    var params: [SIMD4<Float>] {
         switch kind {
-        case let .reactionDiffusion(feed, kill): return SIMD4(Float(feed), Float(kill), 0, 0)
-        case .gameOfLife:                        return SIMD4(repeating: 0)
-        case .fluid:                             return SIMD4(repeating: 0)   // unused
+        case let .reactionDiffusion(feed, kill):
+            return [SIMD4(Float(feed), Float(kill), 0, 0)]
+        case .gameOfLife:
+            return []
+        case let .lenia(radius, growthCenter, growthWidth, timeScale, rings):
+            var ringRow = SIMD4<Float>(0, 0, 0, Float(rings.count))
+            for (i, peak) in rings.prefix(3).enumerated() { ringRow[i] = Float(peak) }
+            return [SIMD4(Float(radius), Float(1 / timeScale),
+                          Float(growthCenter), Float(growthWidth)),
+                    ringRow]
+        case .fluid:
+            return []   // unused: the fluid binds per-pass parameters itself
         }
     }
 }
