@@ -295,6 +295,8 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Artificial life: `ParticleLife`, `PPS`, `Physarum`, `SpatialHash` (`Simulation/ArtificialLife.md`) | Ch 16 | pending (Ch 16 to grow) |
 | Fluids & soft bodies: `ParticleFluid`, `SoftBodies` (`Simulation/Fluids.md`) | Ch 16 | pending (Ch 16 to grow) |
 | Cellular automata: Lenia sim, `elementaryCA`/`totalisticCA`, `Turmite` (`Generators/CellularAutomata.md`) | Ch 16 (1D rows and turmites could also serve Ch 11) | pending (Ch 16 to grow) |
+| Articulated & chaotic motion: `IKChain`, `DoublePendulum`, `NBody` (`Simulation/Motion.md`) | Ch 9 (IK beside the physics toys; pendulum + n-body could also serve Ch 12's chaos thread) | pending (Ch 9 to grow) |
+| Damped spring: `DampedSpring`, `@Sprung` (`Helpers/Animation.md`) | Ch 8 (beside `@Eased`/`@Smoothed` in the motion-helpers pass) | pending (Ch 8 to grow) |
 | `3D/3D.md` (camera, primitives, meshes, lights, materials) | Ch 17 | taught |
 | `3D/Camera.md` (cameraControl, moves, showcase, views) | Ch 17 | taught |
 | `3D/Combining.md` (what stacks with what) | Ch 17/18 | pointed |
@@ -341,7 +343,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Technique catalog: GPU-scale steering agents | Ch 16 |
 | Technique catalog: growth/morphogenesis (Turing patterns, sandpile, growth on meshes) | Ch 16/17 |
 | Technique catalog: waves, terrain | Ch 16/17 |
-| Technique catalog: IK, pendulums, n-body | Ch 9 |
 | Technique catalog: tiling/layout families | Ch 6 |
 | Technique catalog: meshing (marching cubes, metaballs) | Ch 17 |
 | Technique catalog: computational geometry | Ch 13 |

@@ -255,20 +255,3 @@ public extension Sketch {
         drawPoints(map.orbit(count: count, settle: settle))
     }
 }
-
-// MARK: - Integration (file-private)
-
-/// One fixed-step fourth-order Runge-Kutta step of an autonomous system (the
-/// velocity field does not depend on time). The standard weighted average of
-/// four slope samples across the step.
-///
-/// This is the reusable motion primitive a forces/particles helper would also
-/// want; it stays file-private until there's a second caller to share it.
-private func rungeKutta4(_ point: Vector3, step: Double,
-                         derivative: (Vector3) -> Vector3) -> Vector3 {
-    let k1 = derivative(point)
-    let k2 = derivative(point + (step / 2) * k1)
-    let k3 = derivative(point + (step / 2) * k2)
-    let k4 = derivative(point + step * k3)
-    return point + (step / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
-}

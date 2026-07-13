@@ -1,8 +1,8 @@
-/// A value a `OneEuroFilter` can smooth. `Double` and `Vector2` conform, so
-/// `@Smoothed` works on either. Conformance needs only the arithmetic the filter
-/// uses, plus a `smoothingSpeed` magnitude — how the adaptive cutoff measures how
-/// fast the signal is moving (the absolute value for a scalar, the length for a
-/// vector).
+/// A value the motion helpers can carry: `Double` and `Vector2` conform, so
+/// `@Smoothed` and `@Sprung` work on either. Conformance needs only the
+/// arithmetic they share (add, subtract, scale by a `Double`), plus a
+/// `smoothingSpeed` magnitude: how the adaptive cutoff measures how fast the
+/// signal is moving (the absolute value for a scalar, the length for a vector).
 public protocol Smoothable: Sendable {
     static func + (lhs: Self, rhs: Self) -> Self
     static func - (lhs: Self, rhs: Self) -> Self

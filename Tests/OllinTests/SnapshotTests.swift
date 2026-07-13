@@ -325,6 +325,15 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("steering", frame: 150,
                  note: "Steering vehicles stepped to a fixed frame: followers on a closed path (with separation), a seeded wanderer's trail, and a pursuer leading its target. Pins Reynolds' individual steering behaviors (seek/arrive ramp, wander determinism, path projection + seam wrap, pursuit prediction). Seeded, fixed frame, so it's deterministic.",
                  make: { SteeringScene() }),
+    SnapshotCase("ik-chain",
+                 note: "Inverse-kinematics chains solved against fixed targets in one frame: an unconstrained FABRIK arm, a stiffness-limited FABRIK arm on the same target (the bend budget spreads the curve), a CCD arm (tip-heavy curl), an out-of-reach chain stretched straight, and a dragged free-base rope. Pins both solvers, the bend clamp, the unreachable stretch, and drag. No rng, no time, deterministic.",
+                 make: { IKChainScene() }),
+    SnapshotCase("double-pendulum", frame: 140,
+                 note: "Three double pendulums a hair apart stepped to a fixed frame, second-bob trails traced. Pins the equations of motion under the fixed-substep integrator (trajectories are exact functions of the start) and the early, still-coherent divergence. No rng, fixed frame, deterministic.",
+                 make: { DoublePendulumScene() }),
+    SnapshotCase("n-body", frame: 80,
+                 note: "A seeded orbital disk stepped to a fixed frame through the quadtree force pass and the leapfrog integrator, bodies tinted by speed. Pins the tree build, the opening criterion, Plummer softening, and the circular-orbit factory (deterministic iteration orders throughout). Seeded, fixed frame, deterministic.",
+                 make: { NBodyScene() }),
     SnapshotCase("space-colonization", frame: 140,
                  note: "Space colonization grown to a fixed frame: veins from a bottom root toward a seeded blue-noise attractor set, stroked with pipe-model thickness. Pins the closest-node pull association, average-direction growth, attractor consumption, and the thickness pass (all deterministic given the input). Seeded, fixed frame.",
                  make: { SpaceColonizationScene() }),
@@ -1605,6 +1614,119 @@ private final class SteeringScene: Sketch {
         drawVehicle(wanderer, size: 5)
         fill(Color(hex: 0xE8586B))
         drawVehicle(pursuer, size: 6)
+    }
+}
+
+/// Inverse-kinematics chains solved against fixed targets in one frame:
+/// FABRIK plain and stiffness-limited, CCD, the unreachable straight
+/// stretch, and a dragged free-base rope. No rng, no stepping.
+private final class IKChainScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0E1016))
+        strokeCap(.round)
+
+        func show(_ chain: IKChain, _ tint: Color) {
+            noFill()
+            stroke(tint)
+            strokeWeight(3)
+            drawPolyline(chain.joints)
+            noStroke()
+            fill(tint)
+            drawCircle(center: chain.tip, radius: 3.5)
+        }
+
+        // Three arms from one root, one target: plain FABRIK, a stiff
+        // FABRIK, and CCD, so the three poses differ visibly.
+        let target = Vector2(180, 60)
+        let plain = IKChain(from: Vector2(60, 230), segments: 10, length: 24)
+        plain.reach(toward: target, iterations: 20, tolerance: 0.1)
+        show(plain, Color(hex: 0x58B8D8))
+
+        let stiff = IKChain(from: Vector2(60, 230), segments: 10, length: 24)
+        stiff.maxBend = 0.25
+        stiff.reach(toward: target, iterations: 120, tolerance: 0.1)
+        show(stiff, Color(hex: 0x8FBFA0))
+
+        let curl = IKChain(from: Vector2(60, 230), segments: 10, length: 24)
+        curl.solver = .ccd
+        curl.reach(toward: target, iterations: 20, tolerance: 0.1)
+        show(curl, Color(hex: 0xE8586B))
+
+        // Out of reach: stretches dead straight at the target.
+        let stretch = IKChain(from: Vector2(20, 40), segments: 5, length: 14)
+        stretch.reach(toward: Vector2(240, 20))
+        show(stretch, Color(hex: 0xE8B44A))
+
+        // A free-base rope dragged through two pins.
+        let rope = IKChain(from: Vector2(230, 240), segments: 12, length: 12)
+        rope.drag(to: Vector2(140, 180))
+        rope.drag(to: Vector2(210, 130))
+        show(rope, Color(hex: 0xB48EDE))
+
+        noStroke()
+        fill(.white)
+        drawCircle(center: target, radius: 4)
+    }
+}
+
+/// Three double pendulums a hair apart stepped to a fixed frame with
+/// second-bob trails. Pins the equations of motion under the fixed-substep
+/// integrator. No rng, fixed frame.
+private final class DoublePendulumScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let pendulums = (0 ..< 3).map { i in
+        DoublePendulum(length1: 60, length2: 48,
+                       angle1: 2.2 + Double(i) * 0.02, angle2: 2.7)
+    }
+    private var trails: [[Vector2]] = [[], [], []]
+
+    override func draw() {
+        let pivot = Vector2(128, 100)
+        for (i, pendulum) in pendulums.enumerated() {
+            pendulum.step()
+            trails[i].append(pivot + pendulum.bob2)
+        }
+
+        background(Color(hex: 0x0E1016))
+        let tints = [Color(hex: 0x58B8D8), Color(hex: 0xE8B44A), Color(hex: 0xE8586B)]
+        for (i, pendulum) in pendulums.enumerated() {
+            noFill()
+            stroke(tints[i].withAlpha(0.6))
+            strokeWeight(1.5)
+            if trails[i].count > 1 { drawPolyline(trails[i]) }
+            stroke(tints[i])
+            strokeWeight(2)
+            drawLine(pivot, pivot + pendulum.bob1)
+            drawLine(pivot + pendulum.bob1, pivot + pendulum.bob2)
+            noStroke()
+            fill(tints[i])
+            drawCircle(center: pivot + pendulum.bob2, radius: 3)
+        }
+    }
+}
+
+/// A seeded orbital disk stepped through the quadtree force pass and the
+/// leapfrog integrator, tinted by speed. Seeded, fixed frame.
+private final class NBodyScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let system = NBody.disk(count: 220, center: Vector2(128, 128), radius: 92,
+                                    centralMass: 60_000, seed: 6)
+
+    override func draw() {
+        system.step()
+        background(Color(hex: 0x0E1016))
+        noStroke()
+        for body in system.bodies.dropFirst() {
+            let heat = min(body.velocity.length / 40, 1)
+            fill(Color(hue: 0.6 - heat * 0.45, saturation: 0.7, brightness: 0.95))
+            drawCircle(center: body.position, radius: 1.6)
+        }
+        fill(.white)
+        drawCircle(center: system.bodies[0].position, radius: 3)
     }
 }
 

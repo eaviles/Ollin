@@ -13,6 +13,7 @@ Motion is the default in Ollin, so most movement falls out of a `time`-driven te
 - [The curve catalog](#catalog)
 - [`@Eased`](#eased)
 - [`@Smoothed`](#smoothed)
+- [`@Sprung`](#sprung): spring toward a target with momentum
 - [`Timeline`](#timeline)
 
 <a name="loop"></a>
@@ -144,7 +145,7 @@ The [Easing example](../../Examples/Motion/Easing/Sketch.swift) races four dots 
 
 ### `@Smoothed`
 
-`@Eased` glides toward a target you *know*. When instead you have a noisy live signal whose true value you *don't* know — a jittery `mouseX`/`mouseY`, or live input from OSC, MIDI, computer vision, or the phone sensors — reach for `@Smoothed`. It cleans the stream with the [1€ filter](https://gery.casiez.net/1euro/), an adaptive low-pass that stays responsive when the signal moves fast and steady when it's slow, something a fixed low-pass can't manage at both ends.
+`@Eased` glides toward a target you *know*. When instead you have a noisy live signal whose true value you *don't* know (a jittery `mouseX`/`mouseY`, or live input from OSC, MIDI, computer vision, or the phone sensors), reach for `@Smoothed`. It cleans the stream with the [1€ filter](https://gery.casiez.net/1euro/), an adaptive low-pass that stays responsive when the signal moves fast and steady when it's slow, something a fixed low-pass can't manage at both ends.
 
 Assign the raw value each frame and read back a clean one. Like `@Eased`, the sketch advances it for you, so there's no update step to call:
 
@@ -162,8 +163,8 @@ final class Cursor: Sketch {
 
 It works on a `Double` or a `Vector2`. Two knobs tune the feel:
 
-- **`minCutoff`** (default `1`) — lower it to cut jitter while the signal is slow, at the cost of a little more lag.
-- **`beta`** (default `0.007`) — raise it to cut lag while the signal moves fast.
+- **`minCutoff`** (default `1`): lower it to cut jitter while the signal is slow, at the cost of a little more lag.
+- **`beta`** (default `0.007`): raise it to cut lag while the signal moves fast.
 
 ```swift
 @Smoothed(minCutoff: 0.5, beta: 0.02) var angle = 0.0
@@ -171,7 +172,7 @@ It works on a `Double` or a `Vector2`. Two knobs tune the feel:
 
 Both are reachable live through the projected value (`$angle.beta = …`), so a [`@Param`](../Helpers/Parameters.md) knob can dial them in by feel. The projected value also gives you `$p.rawValue` (the last unsmoothed input) and `$p.set(v)` (jump there with no glide). Because the filter is timed in seconds, it behaves the same at any frame rate.
 
-To smooth a value that isn't a sketch property, the `OneEuroFilter<Value>` underneath is public — own the state and step it yourself:
+To smooth a value that isn't a sketch property, the `OneEuroFilter<Value>` underneath is public: own the state and step it yourself.
 
 ```swift
 var filter = OneEuroFilter<Double>(minCutoff: 1, beta: 0.02)
@@ -179,6 +180,44 @@ let clean = filter.filter(noisy, dt: deltaTime)
 ```
 
 The [Smoothing example](../../Examples/Motion/Smoothing/Sketch.swift) shakes jitter onto a moving target so you can watch the filter glide through the noise.
+
+<a name="sprung"></a>
+
+### `@Sprung`
+
+The third sibling: a damped spring. `@Eased` replays a fixed curve over a fixed duration, so retargeting it mid-flight restarts the tween. A spring instead carries real momentum: retarget it and the motion bends smoothly through the turn, which is why springs feel alive under a target that never stops moving (a cursor, a tracked hand, a beat).
+
+```swift
+final class Chase: Sketch {
+    @Sprung var p = Vector2.zero                      // critically damped
+    @Sprung(duration: 0.4, bounce: 0.5) var r = 40.0  // wobbly
+
+    override func draw() {
+        background(.white)
+        p = Vector2(mouseX, mouseY)                   // retarget freely
+        r = mouseIsPressed ? 90 : 40
+        drawCircle(center: p, radius: r * scale)
+    }
+}
+```
+
+Two knobs, both perceptual:
+
+- **`duration`** (default `0.5`) is the response time in seconds, roughly how long a settle takes.
+- **`bounce`** (default `0`) is the character. `0` is critically damped: the fastest possible arrival with no overshoot. Positive values overshoot and wobble (up to `1`, which rings forever); negative values drag in slowly, like moving through honey.
+
+The projected value exposes the physics: `$p.velocity` (read or set), `$p.kick(impulse)` (throw the value and let it spring back, great on a beat or a click), `$p.target`, and `$p.set(v)` to jump with no motion. Works on a `Double` or a `Vector2`.
+
+Each frame advances by the exact closed-form solution of the damped oscillator, not a numeric approximation, so a spring is unconditionally stable: a frame hitch can never make it explode or ring, and the motion is identical at any frame rate.
+
+For spring state that isn't a sketch property (values in an array, say), the `DampedSpring<Value>` underneath is public:
+
+```swift
+var spring = DampedSpring(value: 0.0, duration: 0.6, bounce: 0.3)
+let x = spring.step(toward: target, dt: deltaTime)
+```
+
+The [Springs example](../../Examples/Motion/Springs/Sketch.swift) races five bounces side by side and hangs a kickable chaser on the mouse.
 
 <a name="timeline"></a>
 

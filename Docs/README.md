@@ -77,7 +77,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 ### Helpers
 
 - [`Math`](./Helpers/Math.md) - `map`, `dist`, `lerp`, the shaping scalars (`clamp`/`fract`/`step`/`smoothstep`), and `Double.tau`
-- [`Animation`](./Helpers/Animation.md) - looping progress (`loopProgress`/`pingPong`), the `Easing` curves, `@Eased` (ease toward a target), `@Smoothed` (smooth a noisy signal), and the `Timeline` keyframe sequencer
+- [`Animation`](./Helpers/Animation.md) - looping progress (`loopProgress`/`pingPong`), the `Easing` curves, `@Eased` (ease toward a target), `@Smoothed` (smooth a noisy signal), `@Sprung` (spring toward a target with momentum), and the `Timeline` keyframe sequencer
 - [`Parameters`](./Helpers/Parameters.md) - `@Param` tunable knobs: typed inspector controls (from sliders and toggles to menus, color wells, text, and geometry fields) in grouped cards, value scrubbing, optional smoothing, and binding from OSC or MIDI
 - [`Input`](./Helpers/Input.md) - mouse and keyboard
 - [`Audio`](./Helpers/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`/`spectrum`/band values you read in `draw()`
@@ -87,6 +87,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Physics`](./Simulation/Physics.md) - `import OllinPhysics` for a `World` you step each frame so motion comes from simulation: a soft Verlet side (particles, springs, disk collisions) and a rigid side (bodies, colliders, joints, backed by Box2D)
 - [`Artificial life`](./Simulation/ArtificialLife.md) - three emergent-behavior systems on the GPU: `ParticleLife`, the `PPS` turning rule, and `Physarum` slime mold, the first two over a GPU `SpatialHash` neighbor search you can also build your own sims on
 - [`Fluids & soft bodies`](./Simulation/Fluids.md) - GPU particle dynamics: `ParticleFluid` (smoothed-particle hydrodynamics) and `SoftBodies` (shape-matched jelly blobs), both in a walled box you can splash and knead with the mouse
+- [`Articulated & chaotic motion`](./Simulation/Motion.md) - CPU motion systems you step each frame: `IKChain` (inverse-kinematics tentacles and limbs), `DoublePendulum` (the classic chaos machine), and `NBody` (quadtree gravity for orbits, galaxies, and collisions)
 
 ### Integration
 
