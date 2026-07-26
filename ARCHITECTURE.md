@@ -41,6 +41,8 @@ complete capability index regardless.
 | SDF combinators (2D VM + raymarched 3D) | **This doc** |
 | Layered-effects substrate (render targets, filters, generators, compose, combine, feedback, sim fields / fluid) | **This doc**, *Layered-effects substrate* (the combine wiring under *Screen-space combine effects*) |
 | 3D lighting (PBR / Cook-Torrance, IBL split-sum bake, procedural sky, PCSS + RT shadows, RT reflections) | **This doc**, *3D lighting and environments* (the reflection anti-aliasing chain under *Deferred ray-traced reflection AA*) |
+| Geometry & generator catalog (Grid, booleans/offsets, SVG import, epicycles, curves, morphing, sampling/stippling, walks, tiling, packing, growth, WFC, CA/turmites, fields/boids/steering, attractors, IK/pendulum/N-body) | **This doc**, *The geometry and generator catalog* |
+| Color pipelines (palette import/extraction, image dithering, print separations) | **This doc**, *Color: palettes, dithering, and print separations* |
 | Text & glyphs (libtess2 fill, winding / overlap-clean gotchas, fringe stroke, SDF atlas) | Pending here; CLAUDE.md + `Docs/Drawing/Text.md` |
 | Compute & GPU particles | Pending here; CLAUDE.md + `Docs/Shaders/Compute.md` |
 | User-supplied shaders | **This doc**, *User-supplied shaders* |
@@ -1517,6 +1519,533 @@ the next frame re-reads and recompiles with no swiftc pass (verified
 end-to-end: edit reloads, a break shows the line-accurate overlay error, a fix
 recovers). A framework-segment `.metal` (under the repo's `Renderer` dir) still
 routes to the full library reload; the dispatch tells them apart by path.
+
+---
+
+## The geometry and generator catalog
+
+The CPU-side geometry types and generative-technique recipes live in
+`Sources/Ollin/Geometry/`. CLAUDE.md's *Geometry & color* bullet is the
+capability index and keeps the terse regression-preventing invariants; this
+section carries the mechanism and the history behind them. Two contracts span
+the whole catalog. First, determinism: every builder is a pure function of its
+inputs and seed (or a stateful class that steps reproducibly), so figures,
+export recipes, and snapshot tests reproduce. The recurring rule behind it:
+Swift `Set`/`Dictionary` iteration order is randomized per process, so no rng
+decision or position-mutating pass may walk one directly; use sorted candidate
+lists and fixed iteration orders (WFC is the canonical case, and mazes, space
+colonization, boids, and the physics disk-collision resolver follow it).
+Second, fit-by-points: a figure whose stroke should stay constant-width is
+fitted by scaling its *points*, never `scale()`, because the CTM scales the
+stroke width too (found as the trochoid fat-blob snapshot bug; applies to
+Lévy flights and anything else fitted to the canvas).
+
+### Grid
+
+`Grid` (`Geometry/Grid.swift`) is a regular `columns × rows` grid over a
+`Rectangle`, the typed replacement for margin-then-nested-loop boilerplate.
+The row-major `points` (`Grid.Point`) and `cells` (`Grid.Cell`) elements
+carry their indices, so indexed cases (checkerboard, hue-by-position) are a
+single loop; killing the double `for` was the point of the type.
+`Grid.Distribution` is `.center` (a dot per cell, the default) or `.spanning`
+(an edge-to-edge lattice, ignores `gutter`); `cells` always tile and a cell's
+`.center` is always its true center; `padding` is the outer margin, `gutter`
+the gap between cells, both over the typed `Insets` (per-edge,
+literal-expressible: `padding: 20` equals `.all(20)`). The element type
+churned during design (a `Cell`-wrapping `Collection` whose `center` shifted
+meaning read wrong, then flat arrays, then the rich indexed elements without
+the shape-shifting) and is settled. Most 2D grid examples adopt it;
+warped/proportional/polar layouts stay hand-rolled. Example `Patterns/Grid`.
+
+### Shape booleans, offsets, and stroke-as-shape (Clipper2)
+
+`Shape.union` / `intersection` / `subtracting` / `symmetricDifference` and
+`offset(by:join:)` run over vendored Clipper2 (BSL-1.0, `External/CClipper2`).
+They operate on the filled region; each side is normalized under its own
+`winding` first. Offset output must be run through Clipper2's `SimplifyPaths`
+before returning; without it, cascaded insets balloon vertex counts
+geometrically. `Contour.stroked(width:join:cap:)` / `Shape.stroked(...)`
+convert a stroke to a filled `Shape` via the shim's `cc2_stroke` (Clipper2
+`InflatePaths` at half-width): open contours take `StrokeCap` end types,
+closed ones become bands, and self-crossings union clean under non-zero
+winding. Unlike `cc2_offset`, the input is *not* normalized first;
+normalization would erase open paths, which are the whole point of stroking.
+Open and closed groups stroke in two shim calls, then union. Example
+`Shapes/InkRibbon`; snapshot `stroke-shape`; `StrokeShapeTests`.
+`convexHull(of:)` is the monotone chain: corners in boundary order, collinear
+edge points dropped, duplicates deduped (`ConvexHullTests`; example
+`Shapes/RubberBand`). Both in `Docs/Drawing/Geometry.md`.
+
+### SVG import
+
+`Geometry/SVGImport.swift` reads `<path>` with the full grammar (packed
+numbers, glued arc flags, S/T reflection; elliptical arcs become cubics of at
+most 90° via the SVG F.6.5 center conversion), the basic shapes, `<g>` +
+`transform` lists, presentation and inline styles, and both fill rules, into
+per-element `Shape`s carrying fill/stroke/width/join/cap in document order
+(`SVG.Element`; `id` maps to `name`, looked up via `element(named:)`).
+Control points transform *before* flattening: flattening is affine-invariant,
+so transforming first keeps sampling density matched to the final size (arcs
+convert to cubics first for the same reason). The SVG initial fill is black
+and the initial winding `.nonZero`, unlike Ollin's `.evenOdd` shape default;
+the mismatch is per spec, so the two defaults stay different. An unresolvable
+`url(#…)` paint falls back to mid-gray rather than dropping the element; open
+contours never fill; unsupported containers (defs, clipPath, mask, symbol,
+pattern, marker, style, text) skip their whole subtree via a depth counter.
+Example `Shapes/SVGImport` (an original hand-authored rocket badge, drawn as
+authored and mined as resampled dots); snapshot `svg-import`;
+`SVGImportTests` covers the grammar edge cases including the post-`Z`
+malformed-input stop.
+
+### Fourier epicycles
+
+`Epicycles` + `drawEpicycles(_:at:terms:)` (`Geometry/Epicycles.swift`): a
+plain O(n²) DFT, built once at setup time, over a closed contour's even
+arc-length resamples, into amplitude-sorted spinning-circle `Term`s (signed
+integer `frequency`; k > n/2 folds negative). Read via `point(at:)` /
+`joints(at:)` / `path(samples:terms:)`. The sort's tie-break (slower
+|frequency| first, then positive) keeps symmetric inputs deterministic.
+`terms:` is always a largest-first *prefix* of the one built chain, so a
+detail knob needs no rebuild. `point(at:)` is periodic, so negative phases
+wrap and a fixed-length trail across the lap seam is a one-liner. With all
+terms the reconstruction is exact at sample phases; `EpicyclesTests` pins
+that plus the circle/ellipse closed forms. No rng anywhere. Example
+`Motion/Epicycles` (traces an original whale SVG, declares `loopDuration`);
+snapshot `epicycles`.
+
+### Classic curves and the harmonograph
+
+`Geometry/ClassicCurves.swift` + `Geometry/Harmonograph.swift`, all rng-free
+and deterministic. `phyllotaxis(count:spacing:angle:)` is Vogel's model
+(default `Double.goldenAngle`; index = seed age).
+`lissajous(a:b:phase:width:height:)` reduces shared frequency factors and
+samples one exact period into a closed `Contour`. `rose(n:d:radius:)` reduces
+n/d and samples exactly the parity-dependent closure span (πd when n·d is
+odd, 2πd otherwise) so no arc retraces doubled.
+`hypotrochoid`/`epitrochoid(ring:wheel:pen:)` take integer gear radii so
+closure is guaranteed, sampling exactly `wheel/gcd(ring, wheel)` laps with
+auto sample counts scaling by the laps; figure symmetry is `ring/gcd` lobes,
+and the examples spin one lobe or petal per loop for seamless laps.
+`Harmonograph` sums per-axis damped `Pendulum`s,
+`amplitude·sin(frequency·τ·t + phase)·e^(−damping·t)`, frequency in turns per
+unit time; `point(at:)` reads live, `contour(duration:samples:)` bakes; the
+default duration `settleTime` is the 1%-decay time of the *slowest* pendulum,
+capped at 240 when undamped. Chaikin `smoothed(iterations:)` on
+`Contour`/`Shape` is the quarter-point corner cut; open contours keep exact
+endpoints; each pass doubles the point count, iterations capped at 10.
+Examples `Patterns/Spirograph` / `Patterns/Roses` (both declare
+`loopDuration`), `Motion/Lissajous` (the classic table over `Grid`),
+`Motion/Harmonograph` (pendulums rolled from the seeded `random`, one figure
+per `variation`), `Shapes/CornerCutting`; `Patterns/Phyllotaxis` rides the
+helper. Snapshots `classic-curves` + `harmonograph`; `ClassicCurveTests`
+(astroid/cardioid closed forms, petal counts, exact open-pass Chaikin).
+
+### Shape morphing
+
+`ShapeMorph` (`Geometry/ShapeMorph.swift`) builds correspondence once and
+reads `shape(at:)`; `Shape`/`Contour: Tweenable` lets `Timeline` sequence
+geometry (those conveniences rebuild correspondence per read);
+`morphed(toward:_:spacing:)` is the sugar. Contours pair closed with closed
+and open with open (largest by area/length first, then nearest centroid);
+both sides densify by segment *insertion* so corners survive; spacing derives
+per outline (1/128 of its own length, capped near 4096 points); closed rings
+then take the min-travel cyclic rotation and open runs a direction flip. An
+orientation mismatch reverses *all* target contours: a global flip preserves
+both fill rules, per-pair flips do not. Spacing per outline, not per pair,
+was a real fixed bug (a shared spacing bunches the equalizer's insertions and
+warps the blend). Unmatched contours lerp to their own centroid (uniform
+scale-away, so holes grow in and out without popping). `shape(at:)` returns
+the originals verbatim at 0 and 1; the winding rule switches at t = 0.5; no
+rng anywhere (`ShapeMorphTests`). Example `Motion/Morphing` (star to blob to
+donut cycle, declares `loopDuration`); snapshot `shape-morph`.
+
+### Scattering, sampling, and stippling
+
+Voronoi & Delaunay (`Tessellation.swift`): Bowyer-Watson with a
+Sutherland-Hodgman clip to `bounds` for seamless cells, plus `relaxed()`
+Lloyd; sugar `voronoi` / `delaunay` / `drawVoronoi` / `drawDelaunay` /
+`lloyd`. Blue noise (`Geometry/PoissonDisk.swift`): Bridson's algorithm,
+`poissonDisk(in:radius:candidates:maxCount:)`, as a public generic free
+function over any `RandomNumberGenerator` (`SplitMix64` is public) plus
+seeded `Sketch` sugar; the even-but-organic scatter and the seed set the
+tessellators and packing consume. Example `Patterns/BlueNoise`; snapshot
+`blue-noise`.
+
+Low-discrepancy sampling (`Geometry/Sampling.swift`): `halton(_:base:)` (the
+radical inverse) plus `haltonPoints(count:in:bases:startIndex:)` /
+`sobolPoints(count:in:startIndex:)` give even coverage as an ordered stream:
+any prefix is itself even, and growing the count never moves a placed point,
+the draft-then-refine property neither `random` nor `poissonDisk` has. They
+are pure functions of the index (no rng, no seed, never touching the sketch's
+`rng`); `startIndex` defaults to 1 because index 0 of both sequences is the
+corner point; Halton bases must stay coprime (default (2, 3)); Sobol is
+Gray-code stepped with dim-2 direction numbers from the degree-1 recurrence
+`m_k = 2m_{k−1} ⊕ m_{k−1}`. `SamplingTests` pins the canonical first points
+of both. Example `Patterns/LowDiscrepancy`; snapshot `low-discrepancy`.
+
+Stippling (`Geometry/Stipple.swift`) is Secord's weighted Voronoi:
+`stipple(_ image:count:in:iterations:)` plus a density-closure form. Density
+rasterizes once to a working grid (~256 px per dot, capped); seeding is
+rejection-sampled; weighted-Lloyd passes then assign every ink-bearing pixel
+to its exact nearest dot over a site-bucket grid. The expanding-ring nearest
+search may stop before ring r only once the best find is at most
+(r−1)·bucketSide; the r·bucketSide bound shipped first and was a real bug,
+locking dots onto the bucket lattice (rectilinear runs at bucket scale).
+Image density is (1 − linear `luminance`) · alpha, so transparency carries no
+ink (the same rule the dither pass uses); zero ink anywhere returns an empty
+array, never a uniform scatter. Deterministic given (input, count, seed);
+setup-time work, hold the points. Example `Patterns/Stippling` (paints its
+sphere in `setup()`, no asset); snapshot `stipple`; `StippleTests`.
+
+### Random walks
+
+`Geometry/Walks.swift`. `randomWalk(from:steps:stepLength:)` is isotropic.
+`levyFlight(from:steps:minStep:maxStep:exponent:)` draws truncated power-law
+step lengths via inverse CDF, with the log-uniform special case at μ = 1;
+`minStep` must be > 0 because the power law diverges at zero.
+`selfAvoidingWalk(in:cellSize:from:maxLength:)` is a lattice DFS with
+backtracking: visited-forever marks make the search finite and the path
+self-avoiding, and the best path reconstructs through parent links, valid
+precisely because a visited cell's parent never changes; the lattice centers
+in bounds like the tiling grids. All return `[Vector2]`, seeded and
+deterministic (`WalkTests`); fit a flight by scaling its points (the
+catalog-wide rule above). Examples `Patterns/LevyFlight` +
+`Patterns/SelfAvoidingWalk` (both declare `loopDuration`); snapshots
+`levy-flight` + `self-avoiding-walk`.
+
+### Truchet, tiling, and layout
+
+Truchet (`Geometry/Truchet.swift`): one tile per `Grid` cell at a
+seed-chosen orientation, open `[Contour]` line-work; `Truchet.Tile` is
+`.arcs` (after Smith) or `.diagonals` (the maze look). Arcs are centered on
+cell *corners* through the two adjacent edge midpoints, so abutting cells
+join regardless of flip; they go elliptical for non-square cells. Example
+`Patterns/Truchet`; snapshot `truchet`.
+
+`HexGrid`/`TriangleGrid` are `Grid` siblings whose blocks keep true aspect:
+sized to the tighter fit and centered in the padded bounds, so more columns
+means smaller cells, never stretch. Hex cells carry offset `column`/`row`
+*and* axial `q`/`r` (odd-r/odd-q storage, math in axial:
+`distance`/`neighbors`/`ring`); `cell(at:)` picks exactly via cube rounding
+(round all three cube coordinates, recompute the worst offender; rounding
+the axial pair independently drifts off-lattice near cell edges). Hex
+`gutter` insets the corner radius by g/√3; triangle gutter shrinks vertices
+toward the incenter; triangle parity: up iff `column + row` is even,
+neighbors left/right/across. `Subdivision.cells`/`subdivide` split `.binary`
+(cut across the longer side, fraction clamped so both halves keep `minSize`)
+or `.quad`; the root always splits when it can, `chance` applies from depth
+1; leaves carry `depth`. `Maze` has three carvers (`.backtracker`,
+`.kruskal`, `.wilson`), all perfect mazes (n−1 passages, pinned by
+`TilingTests`). Wilson's loop-erasure is implemented as the
+last-exit-direction map: overwriting a revisited cell's exit *is* the
+erasure, and the path replays from the walk start. `walls(in:)` merges
+collinear segments into single runs (plotter-clean); `longestPath()` is the
+double-BFS tree diameter. Determinism: fixed iteration orders and candidate
+arrays only, no Set/Dictionary walks. `apollonianGasket` applies the
+Descartes circle theorem with every child as the quadratic's *other root*
+given its parent triple (Vieta), so the whole recursion is linear: no
+complex square root, no tangency-validation epsilon; seeds are the closed
+form (2√3−3)·R; BFS order doubles as generation age for tinting. Examples
+`Patterns/HexGrid` / `TriangleGrid` / `Subdivision` / `Maze` / `Apollonian`;
+snapshots `tiling-grids` / `subdivision` / `maze` / `apollonian`;
+`TilingTests`.
+
+### Packing
+
+`Geometry/Packing.swift`. `packCircles(in:count:minRadius:maxRadius:padding:)`
+is grow-to-touch greedy gap-filling, big-first. `packCircles(around:)` grows
+each point's circle to half its nearest-neighbor distance, a closed form
+with no iteration or rng. `relaxCircles(_:iterations:)` parts a coincident
+pair on a fixed axis to stay reproducible. All seeded and deterministic,
+output `[Circle]`. Shape packing is geometry-aware: it fits against each
+shape's actual outline, not bounding circles, so small shapes nestle into
+notches and concave gaps (built to fix the visible space around triangles
+and stars). The engine is the stateful `ContinuousPacking` class:
+grid-accelerated incremental `step()` with even-odd ray-cast rejection and
+grow-to-nearest-outline, broad-phased by a bounding-circle prune over a
+spatial hash; an empty shape bag packs plain circles on a fast path.
+`packShapes(_:in:count:…)` runs it to completion; `packShapes(_:around:…)`
+scatters one shape per point. An unbounded `maxRadius` clamps the grid cell
+*and* the search reach to the region size, else the reach is infinite. The
+example rides `noClear()` accumulation and draws only newly added shapes,
+keeping per-frame cost flat as the field fills. `PackingTests`; examples
+`Patterns/CirclePacking` + `Patterns/ShapePacking`; snapshots
+`circle-packing` + `shape-packing`.
+
+### Growth systems
+
+L-systems (`Geometry/LSystem.swift`): axiom + rules (or stochastic
+`choices`) rewrite to a string a turtle walks into open `[Contour]`
+line-work; 13 presets verified against Wikipedia and Paul Bourke; seeded
+`Sketch` sugar fits the form to the canvas and drives `&rng` so stochastic
+presets vary by `seed`. A 2M-symbol expansion cap stops expansion and keeps
+the last string under it. The turtle flushes one `Contour` per unbroken run,
+so a branch shares its branch point with the trunk and no segment draws
+twice. Example `Patterns/LSystem`; snapshot `l-system`.
+
+Differential growth (`Geometry/DifferentialGrowth.swift`): a stateful
+`final class` you hold and `step()`; attraction/alignment/repulsion over a
+uniform spatial hash, long edges split at midpoints, `jitter` breaks a
+symmetric ring so it buckles; `ring(...)` / `line(...)` seed factories.
+CPU-only and deterministic given the seed (bucket lookups and summation are
+order-stable), so it grows over frames yet a fixed-`frame` snapshot
+reproduces. Example `Patterns/DifferentialGrowth`; snapshot
+`differential-growth` (`frame: 130`).
+
+Space colonization (`Geometry/SpaceColonization.swift`): branching growth
+toward attraction points; each attractor pulls its single closest node
+within `influenceRadius`; attractors within `killRadius` are consumed (keep
+`killRadius` > `stepLength`). No rng: deterministic given input, with
+Dictionary iteration sorted by node index, oscillation guards, and a stall
+counter so unreachable attractors terminate (`isFinished`). Pipe-model
+`thicknesses(leafWidth:exponent:)`; pairs with `poissonDisk`. Example
+`Patterns/Venation`; snapshot `space-colonization` (`frame: 140`).
+
+Diffusion-limited aggregation
+(`Geometry/DiffusionLimitedAggregation.swift`): off-lattice seeded walkers
+freeze at first touch; long strides while far, kill-radius respawn,
+`stickiness` < 1 packs denser, optional `bounds` cage. Particles are
+parent-linked and arrival order equals index, so tint-by-age is free.
+Example `Patterns/Dendrite`; snapshot `dla` (`frame: 110`). `GrowthTests`
+pins both growth systems.
+
+### Wave Function Collapse
+
+`Geometry/WaveFunctionCollapse.swift` is the simple-tiled model (Gumin):
+`WFCTile` edge sockets + weights, min-entropy observe, weight-biased
+collapse, propagate, restart-on-contradiction. Every rng decision runs over
+a sorted candidate list with a fixed cell-iteration order (the catalog-wide
+determinism rule originated here); anything else makes the seeded solve
+irreproducible and the snapshot flaky. Sugar `wfc(...)` +
+`drawWFC(_:in:padding:gutter:tile:)`; draw from `tiles[i].sockets` so one
+draw block covers a tile and all its rotations. Example
+`Patterns/WaveFunctionCollapse`; snapshot `wave-function-collapse`.
+
+### Cellular automata and turmites
+
+`Geometry/CellularAutomata.swift` + `Geometry/Turmite.swift`.
+`elementaryCA(rule:width:generations:from:wrap:)` covers the 256 rule-byte
+automata; `totalisticCA(code:colors:width:generations:from:wrap:)` is the
+base-k digit table over the neighborhood sum; both are pure functions
+returning stacked generation rows, with `startDensity` Sketch sugar rolling
+the start row on the seeded `random`. The Sketch facade mirrors the full
+free-function signatures because any bare-named Sketch member blocks
+unqualified global calls inside sketches (the shadowing rule). `Turmite` is
+the stateful walker class (the `DifferentialGrowth` shape): `[state][color]`
+`Rule(write:turn:state:)` tables over a wrapped grid, turn quarters from the
+published 1/2/4/8 codes, multi-ant in array order, no rng anywhere; the
+`Preset` catalog (`.langton`/`.spiral`/`.highway`/`.chaos`/`.frame`/
+`.fibonacci`) decodes the published turmite catalog and conforms to
+`ParamOption` for free menu knobs. `CellularAutomataTests` pins rule
+30/90/110 known rows, the totalistic 777 opening, wrap semantics, and
+Langton's flip-parity plus the exact 104-step highway period. Examples
+`Patterns/ElementaryCA` + `Patterns/Turmites`; snapshots
+`cellular-automata` + `turmites`. `Docs/Generators/CellularAutomata.md`.
+
+### Flow fields, boids, and steering
+
+`FlowField` (`Geometry/FlowField.swift`) is a value type around an
+`angle: (Vector2) -> Double` closure. `streamline(from:)` traces both
+directions through a seed; `streamlines(from:separation:)` traces evenly
+spaced non-crossing lines (Jobard-Lefer): a batch commits its own points to
+the occupancy grid only *after* tracing, so a line never blocks itself.
+`advected(_:)` steps points along the field. The seeded sugar
+`flowField(scale:turns:z:)` / `curlField(scale:z:)` captures the sketch's
+seeded noise, so the field is transient: trace streamlines once and hold
+those, don't store the field (it retains `self`); `z` is the noise slice.
+Example `Patterns/Streamlines` (distinct from the older `Motion/FlowField`
+field-arrow viz); snapshot `streamlines`.
+
+`Boids` (`Geometry/Boids.swift`) is Reynolds' separation/alignment/cohesion
+over spatial-hash neighbors, with edge avoidance within `margin` (no wrap,
+so no toroidal-seam artifact) and an optional `field: FlowField?` join. The
+grid buckets fill in boid-index order and the 3×3 cell scan is fixed-order,
+so force sums are order-stable and a seeded flock at a fixed frame
+reproduces. `drawBoids(_:size:)` sugar. Example `Patterns/Flocking`;
+snapshot `flocking` (`frame: 120`). `Vehicle` (`Geometry/Steering.swift`)
+is the single-creature side: composable forces (`seek`/`flee`/`arrive`/
+`pursue`/`evade`/`wander`/`follow(field)`/`follow(path:)`/`separate`/
+`contain`) over the public `steer(toward:)`; behaviors return forces you
+weight and sum, `step()` integrates. Only `wander` rolls the rng, and it
+rolls a *unit* then scales by jitter (the zero-width-range gotcha). Path
+following seeks a point further along the arc length; `closed:` wraps
+through the seam (`SteeringTests`). `drawVehicle(_:size:)` sugar. Example
+`Motion/Steering`; snapshot `steering` (`frame: 150`).
+
+### Strange attractors and chaotic maps
+
+`Geometry/Attractors.swift`. `StrangeAttractor` integrates the 3D systems
+(lorenz, rossler, aizawa, thomas, halvorsen, dadras, chen, fourWing) under
+RK4; `ChaoticMap` iterates the 2D maps (clifford, deJong, henon). Both
+carry a user-suppliable `@Sendable` closure and emit orbits via
+`orbit(count:settle:)`; 3D rides `PointCloud` through the camera, 2D plots
+as additive density. RK4 lives in `Math/Integration.swift` behind the
+internal `Integrable` protocol, promoted from file-private when the double
+pendulum became its second caller. Examples `3D/StrangeAttractor` +
+`Patterns/CliffordAttractor`; snapshots `strange-attractor-3d` +
+`clifford-attractor`.
+
+### IK chains, the double pendulum, and N-body
+
+`Geometry/IKChain.swift` / `DoublePendulum.swift` / `NBody.swift`: three
+stepped CPU motion systems, deterministic throughout (no rng; `NBody`
+factories seeded). `IKChain` warm-starts per call. `reach(toward:)` is
+fixed-base: `.fabrik` (default; even, smooth) or `.ccd` (the whippy
+tip-heavy alternative, with `maxTurn` damping). `drag(to:)` is the
+free-base single tip-to-base pass (the classic tentacle); `moveBase(to:)`
+re-roots. `maxBend` is enforced per joint *inside* both FABRIK passes:
+clamp against the pass-side neighbor, then re-place at exact segment
+length; post-clamping would break the rigid lengths. An out-of-reach target
+stretches the chain straight before the iterate loop. Keep the stall exit:
+constraints can make in-range targets unattainable, and `reach` returns
+false rather than spinning.
+
+`DoublePendulum` is the standard point-mass Lagrangian EOM over the shared
+RK4; `step(dt:)` splits into fixed substeps of at most 1/480 s, so default
+stepping is a pure function of the start (energy drift pinned by
+`DoublePendulumTests`); passing live `deltaTime` trades reproducibility for
+wall-clock pacing. `bob1`/`bob2` are pivot-relative, y-down.
+
+`NBody` is a Barnes-Hut quadtree (index-order insertion, incremental
+mass/COM, s/d < θ opening) with Plummer softening and KDK leapfrog;
+accelerations cache across steps and recompute on a body-count change.
+Coincident bodies chain at the depth cap, else subdivision recurses
+forever. The force walk runs on unsafe buffers on purpose (~2× debug frame
+rate, measured). θ = 0 must stay the exact all-pairs sum, and vanilla
+monopole BH at θ = 0.7 runs a few percent of field scale; `NBodyTests` pins
+brute-force equality at θ = 0 plus the roughly quadratic error shrink as θ
+tightens, so don't "tighten" that bound. Seeded factories: `disk` (circular
+orbits from enclosed mass; `velocity:` drift stages collisions) and
+`cluster`. Examples `Motion/InverseKinematics` / `DoublePendulum` /
+`NBody`; snapshots `ik-chain` / `double-pendulum` / `n-body`;
+`IKChainTests` / `DoublePendulumTests` / `NBodyTests`.
+`Docs/Simulation/Motion.md`.
+
+---
+
+## Color: palettes, dithering, and print separations
+
+`Color` itself (the CSS Color 4 named set, `Color(hex:)`, HSB with wrapping
+hue, the gamut-mapped OKLab family written from Ottosson,
+`Color.mix(_:_:t:in:)` over `ColorSpace`, blackbody `Color(kelvin:)`,
+`Ramp` / `Palette` / `CosinePalette` / `Colormap`) is enumerated in
+`Docs/Drawing/Color.md`. This section records the mechanism in the color
+*pipelines* under `Sources/Ollin/Color/`: palette import and extraction,
+image dithering, and print separations. All are CPU-side, setup-time, and
+deterministic, so they are snapshot- and recipe-safe.
+
+### Palette import
+
+`Color/PaletteImport.swift`: `loadPalette` / `loadPalettes` (plus
+`Palette(contentsOf:)` / `palettes(data:format:)` / `resource:in:`) over the
+`PaletteFormat` set: hex-per-line, CSV, TSV, JSON (array-of-arrays, flat
+array, or `{"colors":[…]}`), and ASE (Adobe Swatch Exchange, written from
+the community spec; swatch groups become palettes in document order, loose
+colors flush in place; RGB/Gray/CMYK/LAB, the last via CIELAB on D50, where
+LAB lightness arrives 0…1, not 0…100). The three text formats share one
+parser (they differ only in separator), so `.auto` decides palette-per-line
+by the *file's* shape: every line yielding exactly one color means one
+palette, not a stack of one-color palettes. An explicit format must override
+that sniff; the parameter is `palettePerLine: Bool?` with nil meaning
+"decide", and a plain `Bool` here was a real bug. A line parsing to zero
+colors is skipped (CSV headers fall away), and no comment syntax is
+promised: `#deface` is a color. Every loader returns `[]`/`nil` on malformed
+bytes, never traps (bounds-checked `ByteReader`; the ASE block length is
+authoritative, so an unknown block can't desync the stream). Ship the
+loader, not the data (the `.fnt` rule): bundled palette *data* stays
+license-gated. Example `Color/PaletteFile`; `PaletteImportTests`.
+
+### Palette extraction
+
+`Color/PaletteExtract.swift`: `Palette(extractedFrom:count:seed:)` /
+`extractPalette(from:)` run weighted k-means++ then Lloyd over OKLab (sRGB
+distance splits greens and merges blues). Input is grid-sampled to at most
+16k pixels; identical pixels merge and are sorted before clustering
+(Dictionary order is per-process; determinism is a promise); emptied
+clusters reseed to the worst-explained sample. Output is most-used first, so
+`p[0]` is the dominant color. Fewer distinct colors than `count` returns
+only what's there; a texture-backed `Image` has no CPU pixels and yields an
+empty palette (`snapshot()` first); setup-time work, not per-frame. Example
+`Color/PaletteFromImage`; `PaletteExtractTests`.
+
+### Image dithering
+
+`Color/Dither.swift`: the `Dither` enum + `Image.dithered(_:to:)` /
+`(_:levels:)`. Eight error-diffusion kernels (Floyd-Steinberg,
+Jarvis-Judice-Ninke, Stucki, Atkinson, Burkes, the three Sierras), ordered
+Bayer (`.ordered(size:)`, powers of two 2…16, recurrence-built), and
+`.blueNoise` (a 64² void-and-cluster tile after Ulichney, generated once
+from a fixed seed and cached: ~15 ms release, ~2 s debug; generated, not
+bundled, so no asset and no license). CPU-only by nature: error diffusion is
+serial and can never be a fragment shader. The GPU `Filter.dither` /
+`.ditherDuo` remain the cheap real-time *layer* effect, a different tool.
+
+The load-bearing rule is three color spaces, one per family, and mixing them
+up *is* the bug. Tone always accumulates in linear light (diffusing in sRGB
+brightens gradients). `.none` picks the OKLab-nearest color: it carries no
+error, so it is free to be perceptual, and the bands land evenly. Error
+diffusion must pick the *linear*-nearest: choosing in a space it doesn't
+accumulate in leaves a consistently-signed residual that draws a thin false
+contour of the wrong color along the tone where the two rules disagree. That
+contour is 1-2 px wide, so it hides from tile-averaged error statistics;
+don't try to pin it that way. `DitherTests` pins the rule on a 1×1 image,
+where no neighbor exists and the choice rule is directly observable.
+
+Threshold maps (Bayer and blue noise) run the Yliluoma pair search: every
+palette pair (and each color alone) is scored by the OKLab distance of the
+mix it can actually reach, plus a variance-weighted noisiness penalty
+(`0.005 · f(1−f) · pairDist²`; Yliluoma's flat 0.1 suits dense game palettes
+but bands a sparse one: on plain black+white it hands the whole top of the
+ramp to solid white). The fraction along the winning pair is taken in linear
+light (deciding by OKLab distance instead puts a 25% gray at ~46% white
+instead of 5%), the pair is oriented dark-to-light so neighbouring tones
+share pattern phase, and plans are memoized per distinct color. The shipped
+v1 anchored the search on the single nearest color, a real bug: gray on a
+black/white/red palette dithered *pink*.
+
+Details that earned their place: a fully transparent pixel diffuses no
+residual (its black isn't light; it darkened cutout edges). Input walks the
+premultiplied bytes through a 256-entry linear LUT (bit-identical to the
+subscript path, ~2× release). Bayer thresholds are centered
+(`(m+0.5)/n² − 0.5`) and added *before* quantizing, never compared against
+raw (the naive `v > m/n²` form biases the image lighter). Serpentine
+(default on) mirrors the kernel's `dx`. Void-and-cluster's phase-3 role
+inversion collapses into phase 2: on the torus zeros-energy = G −
+ones-energy, so the tightest cluster of zeros *is* the largest void (one
+loop, provably). Alpha passes through; a texture-backed `Image` returns
+unchanged (`snapshot()` first); an empty palette returns self. Example
+`Color/Dithering`; snapshot `dither`; `DitherTests`.
+
+### Print separations
+
+`Color/Ink.swift` + `Color/PrintSeparation.swift` +
+`Export/SeparationExport.swift`. `Image.separated(into:paper:)` splits a
+frame into per-ink grayscale masters (byte = ink fraction, black = full ink)
+under the translucent-spot-ink overprint model: each ink is a transmittance
+filter (its color in linear light), coverage mixes in linear light, layers
+multiply. The per-distinct-color coverage search (lattice seed, then
+coordinate descent, memoized like the dither planner) is judged in OKLab:
+the dither pass's two-space rule again. `preview()` reconstructs the
+overprint *from the masters*, so screened masters preview their actual dots.
+`dithered(_:)` reuses the `Dither` kernels over the coverage plane (coverage
+*is* the linear quantity, no sRGB detour); `halftoned(pitch:angles:)` runs
+rotated round-dot screens with an area-exact covered-area threshold (darkest
+ink at 45°). Both drop coverage past the 2% minimum dot: the sub-1% residue
+8-bit rounding leaves in "white" otherwise screens into stray specks (a real
+fixed bug). `Ink` carries the 78-ink standard riso catalog (stencil.wiki
+values, credited in `ATTRIBUTION.md`; the workflow references
+p5.riso/Spectrolite are inspiration-only, since p5.riso's license is not
+MIT-compatible). The sketch declares `printInks`, not `inks` (that name
+collided with an example's own property). `--export-separations` writes one
+PNG per ink plus `-preview.png`, each with registration targets and a label
+in a white band *around* the untouched artwork, drawn in full ink on every
+layer so the crosses stack into register; recipes carry the ink list
+(`ExportMetadata.inks`). GPU-backed image yields an empty separation; the
+model limits by physics (inks only darken; no white ink on dark stock).
+Example `Color/PrintSeparation` (the canvas *is* the poster; a `@Param` view
+knob flips artwork/masters/preview so exports separate the artwork, not a
+demo layout); snapshot `print-separation`; `PrintSeparationTests`.
+`Docs/Output/PrintSeparations.md`.
 
 ---
 
