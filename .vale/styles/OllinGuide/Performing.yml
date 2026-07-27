@@ -14,3 +14,10 @@ tokens:
   - 'exquisite(ly)?'
   - 'earn(s|ed|ing)? (its|their) keep'
   - 'pays? the debt'
+  # Framing the reader's learning as a wager or an investment return
+  # (Guide/AUTHORING.md, "prefer plain words for a concept's payoff").
+  - 'the payoff'
+  - 'payoff piece'
+  - "the (framework|project|library)'s (particular )?bet"
+  - 'pays? off in'
+  - 'the big win'

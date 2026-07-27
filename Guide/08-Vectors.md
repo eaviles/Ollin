@@ -92,7 +92,7 @@ final class Thrown: Sketch {
 
 Run it and a ball arcs across, bounces, and settles. Notice what's stored and what isn't: `position` and `velocity` are properties, alive between frames, because motion with memory *is* stored state; that's the line Part I never needed to cross. `gravity` never changes, but every frame it bends `velocity` a little, and the bend is what makes the arc. The bounce is two honest lines: put the ball back on the floor, flip the vertical part of its velocity and keep a bit less than all of it (`0.82` is the bounciness). And both `+=` lines scale by `deltaTime`, so the throw is identical at 60 and 120 frames a second.
 
-The other classic edge policy is **wrapping**: leave the right edge, come back on the left, the canvas bent into a loop. You'll see it in the payoff, four `if`s with `with(x:)` and `with(y:)`.
+The other classic edge policy is **wrapping**: leave the right edge, come back on the left, the canvas bent into a loop. You'll see it in the finished piece, four `if`s with `with(x:)` and `with(y:)`.
 
 ## Steering: the chase
 
@@ -108,7 +108,7 @@ In words: figure out the velocity you *wish* you had (straight at the target, at
 
 Every line is arithmetic you already have: a subtraction pointing from here to there, a normalize choosing a speed, a limit keeping it honest. Chapter 10 builds whole flocks from exactly this correction, aimed at neighbors instead of a target.
 
-## The payoff: the swarm
+## Putting it together: the swarm
 
 One chaser is a pet; a few hundred are weather. The piece at the top of the chapter runs the steering recipe over parallel lists of positions and velocities, gives every mover its own top speed so the crowd stretches into leaders and stragglers, and draws each as a streak along its own velocity: the drawing *is* the motion made visible. The lure wanders on Chapter 5's noise until you hold the mouse down, which hands it to you. Make `MySketches/Swarm.swift`:
 

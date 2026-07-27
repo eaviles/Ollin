@@ -1,0 +1,18 @@
+# Sections that open with a noun-phrase fragment instead of a sentence
+# (Guide/AUTHORING.md, "don't open a section with a fragment"). These read as
+# stage directions rather than teaching: "Now the heart of the chapter." should
+# be "This is the heart of the chapter."
+#
+# Warning, not error: the same words are fine mid-paragraph, and Vale can't see
+# whether this one opens a section. Check the flagged line's position before
+# rewriting it.
+extends: existence
+message: "Fragment opener ('%s'): write the full sentence a teacher would say (Guide/AUTHORING.md)."
+level: warning
+scope: paragraph
+tokens:
+  - '^Now the [a-z]'
+  - '^Time to [a-z]'
+  - '^And now the [a-z]'
+  - '^On to the [a-z]'
+  - '^First the [a-z][a-z]+, then'

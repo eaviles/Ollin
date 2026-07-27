@@ -163,9 +163,9 @@ let brightness = c.red * 0.2126 + c.green * 0.7152 + c.blue * 0.0722
 
 and that single number is the handle generative artists pull most: size by it, choose by it, gate by it. ([Appendix B](B-JustEnoughMath.md#perceived-brightness) keeps this one; average the channels instead and yellows read too dark, blues too bright.) Ollin also carries the ask as a property, `c.luminance`, measured a touch more faithfully on the linearized components; the handwritten weights are the idea, the property is the everyday spelling.
 
-You can also write pixels. `Image(width:height:)` makes a blank image, `image[x, y] = color` paints one pixel, and that's how this chapter's figures work: the repository ships no photograph, so the sunset on the left is *authored*, about twenty lines of Chapter 2 ramps, one `smoothstep` sun, and Chapter 5 noise for the water, written pixel by pixel in `setup()`. The payoff listing below contains the whole recipe, and everything in this section works identically on a photo you load with `loadImage`.
+You can also write pixels. `Image(width:height:)` makes a blank image, `image[x, y] = color` paints one pixel, and that's how this chapter's figures work: the repository ships no photograph, so the sunset on the left is *authored*, about twenty lines of Chapter 2 ramps, one `smoothstep` sun, and Chapter 5 noise for the water, written pixel by pixel in `setup()`. The listing below contains the whole recipe, and everything in this section works identically on a photo you load with `loadImage`.
 
-## The payoff: a picture painted with type
+## Putting it together: a picture painted with type
 
 Now the piece from the top of the chapter, and it's the whole chapter in one grid: words drawn with `drawText`, a picture read with `image[x, y]`, and the two fused so the picture is *made of* the words. A message repeats across a grid in reading order; each letter samples the sunset at its own position, takes the pixel's color, and scales by its brightness. Make `MySketches/TypeMosaic.swift`:
 

@@ -77,9 +77,9 @@ The loop is different from the live-reload host you've used since Chapter 1. The
 
 Evaluation never writes your file (⌘S does), so you can riff as recklessly as the room deserves and keep only what worked.
 
-## The payoff: a set in five evaluations
+## Putting it together: a set in five evaluations
 
-The payoff is a short performed piece. Open the host with a fresh buffer and build the chapter's finale the way an audience would watch it grow, one evaluation at a time, using Chapter 15's `Visual` chains (the natural material for this kind of set, since every step is one added line):
+What you'll build here is a short performed set. Open the host with a fresh buffer and build the chapter's finale the way an audience would watch it grow, one evaluation at a time, using Chapter 15's `Visual` chains (the natural material for this kind of set, since every step is one added line):
 
 <img src="Images/22-SharingAndPerforming/SetSteps.jpg" alt="Five numbered thumbnails: vertical color bands, the bands folded into a five-pointed mandala, the fold melted by noise, the melt posterized into hard bands, and the whole thing color-shifted toward green" width="680">
 
@@ -117,7 +117,7 @@ Then make it yours:
 - Play the set differently: reorder the moves, or swap step 2's fold for `.repeated(x: 3, y: 3)` and the mandala becomes wallpaper.
 - Wire Chapter 20 in: `@Param` the oscillator frequency, bind it to a MIDI knob, and the set gets a second instrument.
 - Feed it eyes: `.displaced(by: .layer(feed), amount: 0.1)` over a layer you draw the webcam into, and the audience melts the piece.
-- Perform an old friend: any payoff from this guide runs in the host as-is; try evaluating changes into Chapter 16's reaction-diffusion while it grows.
+- Perform an old friend: any finished piece from this guide runs in the host as-is; try evaluating changes into Chapter 16's reaction-diffusion while it grows.
 
 ## Where this comes from
 

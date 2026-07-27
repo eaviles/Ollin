@@ -86,7 +86,7 @@ So far every mark has simply covered what was under it. `blendMode(_:)` changes 
 
 The one that changes how you think is `.add`. It sums colors the way light sums: two faint marks make a brighter one, a thousand make a glow. Because Ollin blends color as physical amounts of light, the sum behaves like real lamps overlapping, and against a dark background additive drawing stops reading as paint and starts reading as luminance. `.multiply` is the opposite temperament, stacking color like layered ink or gels, at home on light backgrounds. The rest are variations on lighter and darker; the figure is the honest catalog.
 
-The pairing to remember: bloom output composited with `blendMode(.add)` reads as added light instead of a covering sticker. The payoff uses exactly that.
+The pairing to remember: bloom output composited with `blendMode(.add)` reads as added light instead of a covering sticker. The finished piece uses exactly that.
 
 ## The whole stack in one block
 
@@ -197,7 +197,7 @@ var trail: Feedback?
 override func setup() { trail = feedback() }
 ```
 
-Then, each frame, the loop: read, transform, redraw, add. This is the heart of the payoff below:
+Then, each frame, the loop: read, transform, redraw, add. This is the heart of the finished piece below:
 
 ```swift
 withFeedback(trail) { prev in                 // prev = last frame, as an image
@@ -217,7 +217,7 @@ drawImage(trail.image, 0, 0)                  // composite the result
 
 The `tint` alpha is the decay: at 0.93, each pass keeps 93% of the past, so marks take dozens of frames to melt away. The tiny zoom and rotation mean the past doesn't just fade, it *drifts*, and moving things leave wakes that curve. How is this different from `noClear`? Accumulation adds to a fixed canvas; feedback hands you the past as an image to warp first. The warp is the difference between a long exposure and a hall of mirrors.
 
-## The payoff: comets
+## Putting it together: comets
 
 Chapter 10 ended with a flock of triangles trailing fading paint. Here is the same society rebuilt with this chapter's whole toolkit: the boids draw as bright dots into a feedback layer (wakes that drift and curl), the layer comes back bloomed and added as light, and ACES rolls the hot cores off like film. For contrast, the before:
 

@@ -89,7 +89,7 @@ var sky: Shader {
 }
 ```
 
-Rebuilding the `Shader` value every frame is the normal pattern and costs nothing: the compiled pipeline is cached by the source text, so only the numbers travel. (The payoff below uses exactly this shape.)
+Rebuilding the `Shader` value every frame is the normal pattern and costs nothing: the compiled pipeline is cached by the source text, so only the numbers travel. (The finished piece below uses exactly this shape.)
 
 ## The library in your pocket
 
@@ -121,7 +121,7 @@ drawVisual(
 
 The signature move is the last step: one chain's *color* drives another chain's *coordinates*, per pixel. That `displaced(by:)` is the same idea as Chapter 14's displacement combine, but the driver is any chain, and the whole expression, drivers included, compiles into a single GPU pass. Everything animates by default, every number can ride a knob or a beat without recompiling, and `generate(chain)` hands the result back as an ordinary layer for the rest of the effect graph. The [chains reference](../Docs/Shaders/Visuals.md) has the full vocabulary (sources, warps, color ops, blends, and the feedback loop).
 
-## The payoff: aurora
+## Putting it together: aurora
 
 Now the sky. Curtains of light are vertical noise bands whose x position is bent by more noise; height fades them in above the horizon; a cosine palette colors them green at the core and violet at altitude; hashed stars and a noise ridge finish the scene. Make `MySketches/Aurora.swift`:
 

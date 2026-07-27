@@ -164,7 +164,7 @@ Run it and the walk *grows* in front of you, ten seconds from first step to rest
 
 The walk's core move, a value carried forward and nudged (`x = nx`), is where Part II begins: velocity, springs, and flocks all carry a value forward and nudge it. And the walk has one visual flaw, the constant jitter, which is exactly what Chapter 5 fixes: noise wanders the same way, minus the jitter.
 
-## The payoff: order, with a pinch of disorder
+## Putting it together: order, with a pinch of disorder
 
 Time for the piece at the top of the chapter, and this one holds still on purpose: its motion lives *between* variations, one click apart. The idea is borrowed openly from the founding generation of computer artists, Vera Molnár above all, who worked exactly this way: take a perfectly ordered structure, a grid of nested squares, and add disorder in small, controlled amounts. Here, each square's corners get a random nudge, and the permitted nudge grows from nothing in the top row to full strength at the bottom, so a single image walks from architecture to scribble. Make `MySketches/DisorderGrid.swift`:
 
@@ -247,7 +247,7 @@ Then push it somewhere new:
 
 ## Where this comes from
 
-The grammar of this chapter is the founding grammar of computer art. Vera Molnár, who began making combinatorial drawings by hand in 1959 with what she called her *machine imaginaire* (dice standing in for the computer she didn't yet have), spent six decades applying precise doses of chance to grids of squares; her phrase "1% of disorder" is the payoff piece's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's payoff borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators; Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The grammar of this chapter is the founding grammar of computer art. Vera Molnár, who began making combinatorial drawings by hand in 1959 with what she called her *machine imaginaire* (dice standing in for the computer she didn't yet have), spent six decades applying precise doses of chance to grids of squares; her phrase "1% of disorder" is the finished piece's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished piece borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators; Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

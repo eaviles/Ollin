@@ -151,7 +151,7 @@ let grid = wfc(tiles: tiles, columns: 11, rows: 11)   // [[Int]] of tile indices
 
 `wfc` is seeded like everything else, and `drawWFC` walks the solved grid cell by cell handing you the tile index to draw (the figure above draws a stroke from each cell's center to every edge whose socket is `1`, which is the entire renderer for a pipe network). One draw block covers a tile *and* its rotations, because you draw from the sockets, not from a picture per tile. The `Patterns/WaveFunctionCollapse` example re-rolls a fresh legal network every few seconds.
 
-## The payoff: a garden
+## Putting it together: a garden
 
 Time to plant everything at once. The garden grows three systems in one bed, and one `seed(5)` at the top makes the whole thing a single reproducible organism. Make `MySketches/Garden.swift`:
 

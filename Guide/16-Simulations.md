@@ -57,7 +57,7 @@ The `scale: 0.08` matters: a sim field's `scale` sets its internal resolution, a
 
 ## Two chemicals
 
-Reaction-diffusion is the Game of Life's continuous cousin, and the engine of this chapter's payoff. The idea, from Alan Turing: two chemicals spread through a surface and react, one feeding the pattern and one killing it, and in the balance between those two rates, patterns *make themselves*. Ollin ships it as `.reactionDiffusion(feed:kill:)`, and those two numbers are the whole temperament of the system:
+Reaction-diffusion is the Game of Life's continuous cousin, and the engine of this chapter's finished piece. The idea, from Alan Turing: two chemicals spread through a surface and react, one feeding the pattern and one killing it, and in the balance between those two rates, patterns *make themselves*. Ollin ships it as `.reactionDiffusion(feed:kill:)`, and those two numbers are the whole temperament of the system:
 
 <img src="Images/16-Simulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
 
@@ -140,9 +140,9 @@ Inside the snippet, each particle's `position`, `color`, `size`, and `life` are 
 
 Each grain sheds the same faint light; density does the drawing. At ten thousand you see individuals, at a million you see a *material*. Pair this with Chapter 14's `noClear()` and `toneMap(.aces)` and the grains deposit into the long-exposure sandpainting look (the `Rendering/DepthOfField` example pushes it all the way to a photographic bokeh field). The [compute reference](../Docs/Shaders/Compute.md) has the full snippet vocabulary, `.metal`-file loading, and the typed core underneath.
 
-## The payoff: the organism
+## Putting it together: the organism
 
-The payoff grows a culture. A scatter of spores seeds a reaction-diffusion dish in its mitosis regime; whatever you draw while it runs joins the chemistry; and the display pipeline is pure Chapter 14: a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
+The finished piece grows a culture. A scatter of spores seeds a reaction-diffusion dish in its mitosis regime; whatever you draw while it runs joins the chemistry; and the display pipeline is pure Chapter 14: a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
 
 ```swift
 import Ollin

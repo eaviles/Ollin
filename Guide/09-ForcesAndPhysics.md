@@ -275,7 +275,7 @@ held?.remove()                          // let go
 
 `grab` returns a `Joint` handle. While it exists, the body is dragged toward its `target` like a puppet on a short string, pushing and toppling whatever stands in the way. Call `remove()` and the body is free again, keeping whatever speed you flung it with. Notice it's a *pull*, not a teleport: grab a link mid-chain and the rest of the chain drags along behind, still obeying its hinges.
 
-## The payoff: the wrecking ball
+## Putting it together: the wrecking ball
 
 Now assemble all of it: a tower of rigid bricks, a chain of hinged links with a heavy ball at the end, and a grab so you can swing it yourself. The chain starts hoisted up to one side, so the first demolition runs on its own. After that, it's your turn: hold the mouse near the ball to take it, drag, release to fling, and press space for a fresh tower. Make `MySketches/Wrecker.swift`:
 

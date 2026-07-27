@@ -220,7 +220,7 @@ guard let source else { return }
 let mesh = loadMesh("model.obj")?.normalized(scale: 3)
 ```
 
-The payoff is what *doesn't* happen: `nil` can't sneak into a non-optional value, so the "crashed on a missing thing four functions later" class of bug mostly isn't a thing.
+The finished piece is what *doesn't* happen: `nil` can't sneak into a non-optional value, so the "crashed on a missing thing four functions later" class of bug mostly isn't a thing.
 
 ## Enums and the leading dot
 

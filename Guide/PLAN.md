@@ -53,7 +53,7 @@ Each brief lists what the chapter teaches, what it assumes, the piece it builds 
 Teaches: what a sketch is; `setup`/`draw`; the canvas and its top-left coordinate system; `background`, `fill`, `stroke`; `drawCircle`/`drawRect`/`drawLine`; motion by default (`time` in an expression moves); the working loop for the whole guide: `swift run OllinLive`, edit, save, watch; `@Param` knobs in the inspector; running any repo example.
 Assumes: can program a little, in any language. First Swift callouts: a `class ... : Sketch` is a recipe; `var`/`let`; calling functions with labels.
 Payoff: a small animated composition (drifting circles over a colored ground) the reader tunes live with knobs.
-Figures: the coordinate-system diagram; a first-shapes contact sheet; the payoff at a fixed frame.
+Figures: the coordinate-system diagram; a first-shapes contact sheet; the finished piece at a fixed frame.
 Draws from: `Docs/Core/Sketch.md`, `Docs/Core/Canvas.md`, `Docs/Drawing/Drawing.md`, `Docs/Helpers/Input.md`, `Docs/Helpers/Parameters.md`; `Examples/Basic/`.
 
 **2. Color that works.**
@@ -74,28 +74,28 @@ Draws from: `Docs/Helpers/Math.md`, `Docs/Helpers/Animation.md`; `Examples/Motio
 Teaches: `random` ranges and choices; seeds and why determinism matters (the same piece twice); `randomGaussian` vs uniform, shown as scatter; random walks; picking from palettes/arrays.
 Assumes: Ch 1 to 3.
 Payoff: a Molnár-inspired ordered-grid-with-disorder piece (connects to `Examples/Recreations/`).
-Figures: uniform-vs-Gaussian scatter diagram; a seed contact sheet (same sketch, nine seeds); the payoff.
+Figures: uniform-vs-Gaussian scatter diagram; a seed contact sheet (same sketch, nine seeds); the finished piece.
 Draws from: `Docs/Generators/Random.md`; `Examples/Randomness/`, `Examples/Recreations/`.
 
 **5. Noise.**
 Teaches: noise as "random that remembers"; 1D noise driving a value over time; 2D noise as terrain/texture; the third dimension as drift; `signedNoise`; layering two noise scales by hand for detail; noise vs random side by side.
 Assumes: Ch 4.
 Payoff: a drifting organic field piece.
-Figures: random-vs-noise line comparison; a 2D noise field visualized; a zoom/scale diagram; the payoff.
+Figures: random-vs-noise line comparison; a 2D noise field visualized; a zoom/scale diagram; the finished piece.
 Draws from: `Docs/Generators/Noise.md`; `Examples/Randomness/NoiseField` and friends.
 
 **6. Grids and repetition.**
 Teaches: the `Grid` helper (points, cells, one loop instead of two); margins with `Insets`; transforms (`translate`/`rotate`/`scale`) and `withState`; symmetry by repetition; Truchet tiles and why identical parts join into larger figures.
 Assumes: Ch 1 to 5 (noise/random vary the repetition).
 Payoff: an endlessly varied tiling piece.
-Figures: grid anatomy diagram (padding, gutter, cell vs point); a transform-stack diagram; Truchet connectivity diagram; the payoff.
+Figures: grid anatomy diagram (padding, gutter, cell vs point); a transform-stack diagram; Truchet connectivity diagram; the finished piece.
 Draws from: `Docs/Drawing/Geometry.md` (Grid), `Docs/Drawing/Truchet.md`; `Examples/Patterns/`.
 
 **7. Words and pictures.**
 Teaches: `drawText` and the three font kinds at a glance; text as geometry (`textToShapes`) and warping it; `loadImage`/`drawImage`; reading pixels (`Image[x, y]`) to drive drawing; `tint`.
 Assumes: Ch 1 to 6.
 Payoff: a typographic poster or an image-driven pointillist piece.
-Figures: font-kinds contact sheet; a text-warp step sequence; an image-sampling diagram (photo → grid of marks); the payoff.
+Figures: font-kinds contact sheet; a text-warp step sequence; an image-sampling diagram (photo → grid of marks); the finished piece.
 Draws from: `Docs/Drawing/Text.md`, `Docs/Drawing/Images.md`; `Examples/Text/`, `Examples/Images/`.
 
 ### Part II: Systems that come alive
@@ -119,7 +119,7 @@ Draws from: `Docs/Simulation/Physics.md`; `Examples/Physics/`.
 Teaches: one creature that steers (the steering move: desired velocity minus velocity, capped; seek, arrive, wander, pursue via `Vehicle`); local rules → global behavior; the three boid rules, each visualized alone before combining; perception radius; `Boids`; differential growth as "a line that wants space"; stateful systems you step (holding a class across frames).
 Assumes: Ch 8 (Ch 9 helps).
 Payoff: a living flock piece, colored by heading.
-Figures: steering-move diagram; wander/arrive diagrams; one diagram per boid rule; rule-combination sequence; a growth time-lapse strip; the payoff.
+Figures: steering-move diagram; wander/arrive diagrams; one diagram per boid rule; rule-combination sequence; a growth time-lapse strip; the finished piece.
 Draws from: `Docs/Generators/Steering.md`, `Docs/Generators/Boids.md`, `Docs/Generators/DifferentialGrowth.md`; `Examples/Motion/Steering`, `Examples/Patterns/Flocking`, `Examples/Patterns/DifferentialGrowth`.
 
 **11. Growing things.**
@@ -228,8 +228,8 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 
 | Capability (Docs page) | Guide home | Depth |
 |---|---|---|
-| `Core/Sketch.md` (lifecycle, time, loop) | Ch 1 | taught |
-| `Core/Canvas.md` (canvasSize, windowMode) | Ch 1 | taught |
+| `Core/Sketch.md` (lifecycle, time, loop) | Ch 1 | taught (`setup()`/`draw()` and the clock; `noLoop()` and `@main` pointed) |
+| `Core/Canvas.md` (canvasSize, windowMode) | Ch 1 | pointed (default canvas, `width`/`height`, and the window-as-preview model; sizes, presets, and `windowMode` named + pointed) |
 | `Swift.md` (language primer) | Ch 1 callouts, Appendix A | taught |
 | `Drawing/Drawing.md` (shapes, state, transforms) | Ch 1, Ch 6 | taught |
 | Kaleidoscope symmetry (`symmetry`/`noSymmetry`, in `Drawing/Drawing.md`) | Ch 6 | pointed |
@@ -243,7 +243,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Helpers/Math.md` (map, lerp, dist; the shaping scalars clamp/fract/step/smoothstep) | Ch 3, Appendix B | taught |
 | `Helpers/Animation.md` (easing, @Eased, @Smoothed, Timeline; loopProgress/pingPong) | Ch 3 | taught |
 | `Helpers/Input.md` (mouse, keyboard) | Ch 1 | taught |
-| `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 20 | taught (typed family: sliders/stepper/color well taught in Ch 1's payoff, the rest named + pointed; groups/icons pointed) |
+| `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 20 | taught (typed family: sliders/stepper/color well taught in Ch 1's finished piece, the rest named + pointed; groups/icons pointed) |
 | `Generators/Random.md` | Ch 4 | taught |
 | `Generators/Noise.md` (noise, signedNoise, loop:, fbm, curlNoise) | Ch 5; curl in Ch 12/16 | taught |
 | Noise toolkit (simplexNoise, worley, ridgedFbm/turbulence, warpedFbm; the `.cellular` generator + `.noise` warp knob; `Generators/Noise.md`) | Ch 5 (shader-lib mirror named in Ch 15) | taught (the family toured with two figures in Ch 5; feature:/jitter: and warp: explained; GPU legs pointed to the Cellular/DomainWarp examples) |
@@ -296,7 +296,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Fluids & soft bodies: `ParticleFluid`, `SoftBodies` (`Simulation/Fluids.md`) | Ch 16 | pending (Ch 16 to grow) |
 | Cellular automata: Lenia sim, `elementaryCA`/`totalisticCA`, `Turmite` (`Generators/CellularAutomata.md`) | Ch 16 (1D rows and turmites could also serve Ch 11) | pending (Ch 16 to grow) |
 | Articulated & chaotic motion: `IKChain`, `DoublePendulum`, `NBody` (`Simulation/Motion.md`) | Ch 9 (IK beside the physics toys; pendulum + n-body could also serve Ch 12's chaos thread) | pending (Ch 9 to grow) |
-| Damped spring: `DampedSpring`, `@Sprung` (`Helpers/Animation.md`) | Ch 8 (beside `@Eased`/`@Smoothed` in the motion-helpers pass) | pending (Ch 8 to grow) |
+| Damped spring: `DampedSpring`, `@Sprung` (`Helpers/Animation.md`) | Ch 3 | taught (duration/bounce, the moving-target case that separates it from `@Eased`, and `kick`; `velocity` and `Vector2` springs pointed) |
 | `3D/3D.md` (camera, primitives, meshes, lights, materials) | Ch 17 | taught |
 | `3D/Camera.md` (cameraControl, moves, showcase, views) | Ch 17 | taught |
 | `3D/Combining.md` (what stacks with what) | Ch 17/18 | pointed |
@@ -304,7 +304,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | PBR materials + IBL environments + procedural sky (`3D/3D.md`) | Ch 18 | shown |
 | Shadows: 2D map, PCSS, ray-traced point (`3D/3D.md`) | Ch 17 | shown |
 | Ray-traced reflections (`3D/3D.md`) | Ch 18 | pointed |
-| Wireframe, textured meshes, mesh loading (`3D/3D.md`) | Ch 17 | shown (wireframe in the payoff, loading taught; textured pointed) |
+| Wireframe, textured meshes, mesh loading (`3D/3D.md`) | Ch 17 | shown (wireframe in the finished piece, loading taught; textured pointed) |
 | Point clouds (`3D/3D.md`) | Ch 19 | taught |
 | `Drawing/Combinators.md` (SDF 2D + SDF3D raymarching) | Ch 18 | taught |
 | `3D/DepthCompositing.md` | Ch 19 | shown |

@@ -192,11 +192,11 @@ override func draw() {
 }
 ```
 
-The three rule weights (`flock.separation`, `flock.alignment`, `flock.cohesion`) and the two radii are ordinary properties, and tuning them is tuning the flock's temperament: raise separation and the flock loosens into a crowd keeping polite distance; raise cohesion and it balls up; shrink `perceptionRadius` and big flocks fragment into many small ones. There is no right setting. The payoff piece below puts all three on knobs so you can search for your own.
+The three rule weights (`flock.separation`, `flock.alignment`, `flock.cohesion`) and the two radii are ordinary properties, and tuning them is tuning the flock's temperament: raise separation and the flock loosens into a crowd keeping polite distance; raise cohesion and it balls up; shrink `perceptionRadius` and big flocks fragment into many small ones. There is no right setting. The finished piece below puts all three on knobs so you can search for your own.
 
 ## A line that wants space
 
-Before the payoff, one more system, because it shows how far "local rules, stepped" reaches beyond creatures. Take a closed ring of points. Every step, pull each point toward its neighbors along the line (the line doesn't want to tear), push it away from *every* point that comes near (the line doesn't want to touch itself), and whenever a segment stretches too long, split it in the middle so the line gains a point. That's the whole algorithm. It's called differential growth, and it turns a circle into coral:
+Before the finished piece, one more system, because it shows how far "local rules, stepped" reaches beyond creatures. Take a closed ring of points. Every step, pull each point toward its neighbors along the line (the line doesn't want to tear), push it away from *every* point that comes near (the line doesn't want to touch itself), and whenever a segment stretches too long, split it in the middle so the line gains a point. That's the whole algorithm. It's called differential growth, and it turns a circle into coral:
 
 <img src="Images/10-FlocksAndSwarms/GrowthStrip.jpg" alt="Five small panels showing the same ring at step 0, 80, 180, 320, and 500: a circle wobbles, then folds into a dense meandering coral-like blob" width="680">
 
@@ -228,7 +228,7 @@ final class Coral: Sketch {
 
 Run it live and you can watch the folds negotiate for room in real time. `growth.nodes` is an ordinary point list and `growth.contour` an ordinary contour, so the grown line can be filled, offset, exported for a pen plotter, anything Chapter 13 will do to geometry. Grown forms are made of the same points as drawn ones.
 
-## The payoff: the living flock
+## Putting it together: the living flock
 
 The piece at the top of the chapter is the flock with its temperament on knobs and one new trick for the trails. So far every sketch has started `draw()` by wiping the canvas. `noClear()` turns that off: the canvas keeps everything drawn so far, and *you* decide what fades. Painting a translucent rectangle of the background color over the whole canvas each frame dims the past a little instead of erasing it, and moving things grow tails. (That persistent canvas has a whole world in it, accumulation and long-exposure looks, which Chapter 14 explores; this is a first taste.)
 

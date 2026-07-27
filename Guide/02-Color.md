@@ -6,7 +6,7 @@
 
 <img src="Images/02-Color/ColorField.jpg" alt="A quilt of colored cells running diagonally from deep indigo through coral to warm cream, on a dark ground" width="560">
 
-Color is where a sketch gets its voice, and it's also where beginners lose the most time: mixes that turn to mud, palettes that fight each other, colors that read brighter or darker than their numbers say. This chapter is the toolbox that avoids all of that. You'll learn the ways to name a color, how to think in hue, mixing that trusts your eye instead of the machine's arithmetic, palettes and ramps as kits you carry, and gradients as paint. It ends in the poster above, which redraws itself as a fresh variation on every click.
+Color is where a sketch gets its voice, and it's also where beginners lose the most time. Mixes turn to mud, palettes fight each other, and colors read brighter or darker than their numbers say they should. This chapter gives you the tools that avoid all of that. You'll learn the ways to name a color, how to think in hue rather than in amounts of light, how to mix in a way that trusts your eye instead of the machine's arithmetic, how to carry palettes and ramps around as ready-made kits, and how to paint with a gradient. It ends in the poster above, which redraws itself as a fresh variation on every click.
 
 Everything here builds on [Chapter 1](01-HelloOllin.md); keep working the same way, one file under `OllinLive`, saving as you go.
 
@@ -30,7 +30,7 @@ Colors can also arrive as *strings*, `Color(hex: "#ff0066")`, which matters once
 
 ## Thinking in hue
 
-RGB is how the machine stores color: three amounts of light. It's good for storing, but hard to choose with: nobody thinks "a little less green" when they want a warmer orange. The painter's version is HSB: pick the hue on a wheel, then decide how vivid (saturation) and how bright (brightness):
+RGB is how the machine stores color, as three amounts of light. That's good for storing but hard to choose with, because nobody thinks "a little less green" when what they want is a warmer orange. The painter's version is HSB, where you pick the hue on a wheel and then decide how vivid it is (saturation) and how bright (brightness):
 
 <img src="Images/02-Color/HueWheels.jpg" alt="Left: RGB as three component bars adding up to an orange. Right: the HSB hue wheel with saturation and brightness sweeps" width="680">
 
@@ -38,17 +38,17 @@ RGB is how the machine stores color: three amounts of light. It's good for stori
 fill(Color(hue: 0.07, saturation: 0.85, brightness: 0.95))   // a warm orange
 ```
 
-All three run 0 to 1, and hue *wraps*: 1.2 means the same as 0.2, a full turn plus a bit. That makes hue safe to drive with `time` directly, no bookkeeping. Try it on Chapter 1's swinging circle (`FirstMotion.swift`), replacing its `fill` line:
+All three run from 0 to 1, and hue *wraps*, so 1.2 means the same as 0.2, a full turn around the wheel plus a bit. That makes hue safe to drive with `time` directly, with no bookkeeping to keep it in range. Try it on Chapter 1's swinging circle (`FirstMotion.swift`), replacing its `fill` line:
 
 ```swift
 fill(Color(hue: time * 0.1, saturation: 0.8, brightness: 0.95))
 ```
 
-The circle now cycles the whole rainbow every ten seconds while it swings. One value in, continuous color out; this move alone powers a lot of generative color.
+The circle now cycles through the whole rainbow every ten seconds while it swings. One value goes in and continuous color comes out, and that one move powers a great deal of generative color.
 
 ## Mixing you can trust
 
-Here's the trap every beginner falls into. Take a blue and a yellow, average their RGB numbers to get the halfway color, and you get… mud. Averaging the machine's storage format says nothing about what the *eye* considers halfway:
+Here's the trap every beginner falls into. Take a blue and a yellow, average their RGB numbers to get the halfway color, and you get… mud. Averaging the machine's storage format tells you nothing about what the *eye* considers halfway:
 
 <img src="Images/02-Color/MixingSpaces.jpg" alt="Three rows mixing the same blue and yellow: the RGB row passes through muddy olive, the HSB row detours through bright green, the OKLab row stays even" width="680">
 
@@ -60,7 +60,7 @@ Color.mix(blue, yellow, t: 0.5, in: .rgb)    // the muddy one, when you want it
 Color.mix(blue, yellow, t: 0.5, in: .hsb)    // walks the hue wheel between them
 ```
 
-`t` is "how far along": 0 is the first color, 1 the second, 0.5 halfway. The default space, **OKLab**, is a way of arranging color's numbers so that equal moves *look* equal; a step in it changes the appearance by about the same amount wherever you are. Blue and yellow are opposites, so their midpoint is still a neutral, but it's an even, steady neutral with no lurch in brightness and no accidental detours through other hues. That's the whole idea. You don't need the math (there isn't any in this guide): just mix in OKLab unless you have a reason not to.
+`t` says how far along you are, so 0 gives the first color, 1 gives the second, and 0.5 gives the halfway point. The default space is **OKLab**, which arranges color's numbers so that equal moves *look* equal, meaning a step of a given size changes the appearance by about the same amount wherever you take it. Blue and yellow are opposites, so their midpoint is still a neutral, but it's an even, steady neutral with no lurch in brightness and no accidental detour through some other hue. You don't need the math behind it, and this guide doesn't contain any. The practical version is short: mix in OKLab unless you have a reason not to.
 
 Try it live on the swinging circle:
 
@@ -68,9 +68,9 @@ Try it live on the swinging circle:
 fill(Color.mix(Color(hex: 0x2050C8), Color(hex: 0xFFC800), t: sin(time) * 0.5 + 0.5))
 ```
 
-The `sin(time) * 0.5 + 0.5` squeezes the pendulum's `-1...1` swing into `t`'s `0...1`, so the circle breathes between the two colors. (That squeeze move is worth remembering; Chapter 3 turns it into a proper tool.)
+The `sin(time) * 0.5 + 0.5` squeezes the pendulum's `-1...1` swing into the `0...1` that `t` wants, so the circle breathes between the two colors. That squeeze is worth remembering, and Chapter 3 turns it into a proper tool with a name.
 
-The same perceptual model comes in two more shapes worth knowing about. **OKLCH** turns OKLab into dials (lightness, chroma, hue), so nudging a hue leaves lightness alone; `.oklch` mixing holds a color's identity while it arcs between hues. And **OKHSL** guarantees everything you ask for is displayable, which makes it the space for *generated* color. This chapter's favorite trick with it: hues that genuinely match in weight.
+The same perceptual model comes in two more shapes worth knowing about. **OKLCH** turns OKLab into dials for lightness, chroma, and hue, so nudging a hue leaves the lightness alone, and mixing with `.oklch` holds a color's identity while it arcs between hues. **OKHSL** guarantees that everything you ask for is actually displayable, which makes it the space to reach for when a sketch is *generating* colors rather than using ones you picked. Here's the trick this chapter likes it for, which is hues that genuinely match in weight.
 
 ```swift
 for i in 0..<12 {
@@ -79,15 +79,15 @@ for i in 0..<12 {
 }
 ```
 
-Twelve different hues, and none of them shouts over the others, because they truly share a lightness. Do the same with `Color(hue:...)` and the yellow will glow while the blue turns heavy and dark.
+Twelve different hues, and none of them shouts over the others, because they genuinely share a lightness. Do the same with `Color(hue:...)` and the yellow will glow while the blue turns heavy and dark.
 
 ## Kits you carry: Palette and Ramp
 
-Individual colors get you started; finished pieces usually run on a *kit* chosen once. Ollin has two, plus two ready-made variants:
+Individual colors get you started, but finished pieces usually run on a kit of colors chosen once and used throughout. Ollin has two kinds, plus two ready-made variants of the second:
 
 <img src="Images/02-Color/PaletteShelf.jpg" alt="Five rows: the set2 palette swatches, a triadic harmony, a smooth five-color ramp, the viridis colormap, and the sunset cosine palette" width="680">
 
-A **`Palette`** is a discrete set. Indexing wraps in both directions, so any counter cycles it forever, and `color(at:)` slices `0...1` into equal bands:
+A **`Palette`** is a fixed set of separate colors. Indexing wraps in both directions, so any counter cycles through it forever, and `color(at:)` slices `0...1` into equal bands:
 
 ```swift
 let p = Palette.set2                  // eight ColorBrewer colors, ready to go
@@ -95,9 +95,9 @@ fill(p[i])                            // wraps: p[9] is p[1]
 fill(p.color(at: t))                  // 0...1 quantized into eight bands
 ```
 
-Eight classic sets ship built in (`.set1` through `.accent`), and the **harmony builders** grow a palette from one base color, computed in OKLCH so the companions keep the base's weight: `Palette.complementary(of: base)`, `.triadic(of: base)`, `.analogous(of: base)`, `.splitComplementary(of: base)`.
+Eight classic sets ship built in, from `.set1` through `.accent`. The **harmony builders** grow a whole palette out of one base color, and because they work in OKLCH the companions keep the base's weight rather than drifting lighter or darker: `Palette.complementary(of: base)`, `.triadic(of: base)`, `.analogous(of: base)`, and `.splitComplementary(of: base)`.
 
-A **`Ramp`** is the continuous version: a gradient you sample. Give it colors (evenly spread) or explicit stops, and read it with `color(at:)`; blending runs through OKLab by default, so the in-betweens stay clean:
+A **`Ramp`** is the continuous version, a gradient you can sample anywhere along its length. Give it a list of colors to spread evenly, or explicit stops if you want to place them yourself, and read it with `color(at:)`. Blending runs through OKLab by default, so the in-betweens stay clean:
 
 ```swift
 let dusk = Ramp([Color(hex: 0x14213D), Color(hex: 0x5E60CE),
@@ -105,13 +105,13 @@ let dusk = Ramp([Color(hex: 0x14213D), Color(hex: 0x5E60CE),
 fill(dusk.color(at: t))
 ```
 
-And two ramps come pre-made: **`Colormap`** (eight scientific maps like `.viridis` and `.magma`, built to keep perceived brightness marching evenly, the standard way to turn a number into legible color) and **`CosinePalette`** (seven cyclic palettes like `.sunset` and `.neon` from one small formula; they loop, so they're great fed with `time`). Both answer to the same `color(at:)`.
+Two kinds of ramp come pre-made. **`Colormap`** holds eight scientific maps such as `.viridis` and `.magma`, built so that perceived brightness climbs evenly from one end to the other, which makes them the standard way to turn a number into color a viewer can read. **`CosinePalette`** holds seven cyclic palettes such as `.sunset` and `.neon`, all generated from one small formula, and because they loop they work beautifully when fed with `time`. Both answer to the same `color(at:)`.
 
 ## Palettes from files and pictures
 
-Typing hex codes gets old. Two calls skip it.
+Typing hex codes gets old, and two calls let you skip it.
 
-The first reads a palette someone already made. `loadPalettes` returns every palette in a file; `loadPalette` returns the first one. You don't say what format the file is in, because the loader looks at the bytes and works it out. It reads a plain list of hex codes one per line, a CSV or TSV with a palette on each line, JSON, and Adobe `.ase` swatch files from Illustrator or Photoshop.
+The first reads a palette someone else already made. `loadPalettes` returns every palette in a file, while `loadPalette` returns just the first one. You never have to say what format the file is in, because the loader looks at the bytes and works it out. It reads a plain list of hex codes one per line, a CSV or TSV with a palette on each line, JSON, and Adobe `.ase` swatch files from Illustrator or Photoshop.
 
 ```swift
 let sets = loadPalettes("1000.json")     // however many the file holds
@@ -128,24 +128,36 @@ let p = Palette(extractedFrom: photo, count: 5)
 fill(p[0])     // the color the photo is mostly made of
 ```
 
-The colors come back most-used first, so `p[0]` is the one you would name if someone asked what color the photo is. The grouping happens in OKLab, for the same reason mixing does: it groups colors the way your eye does, not the way the numbers do. Ask for fewer colors than the picture holds and it merges the closest ones rather than dropping any.
+The colors come back most-used first, so `p[0]` is the one you'd name if someone asked what color the photo is. The grouping happens in OKLab for the same reason mixing does, which is that it groups colors the way your eye does rather than the way the numbers do. Ask for fewer colors than the picture holds and it merges the closest ones together instead of dropping any.
 
-Two practical notes. It gives the same answer every time for the same picture, so a sketch that extracts a palette still reproduces exactly, which matters once you start exporting. And it does real work, so call it in `setup()` and keep the result, not in `draw()`.
+Two practical notes. The first is that it gives the same answer every time for the same picture, so a sketch that extracts a palette still reproduces exactly, which will matter once you start exporting. The second is that it does real work, enough that you don't want it running sixty times a second. This is what `setup()` from Chapter 1 is for. Load the photo and extract the palette once, keep both in properties, and let `draw()` read what's already there:
+
+```swift
+var photo: Image?
+var palette = Palette([])
+
+override func setup() {
+    photo = loadImage("beach.jpg")
+    if let photo { palette = Palette(extractedFrom: photo, count: 5) }
+}
+```
 
 A palette pulled from a photograph you took is a palette nobody else has.
 
 Once you have those colors, you can put the picture back together in them:
 
 ```swift
-let poster = photo.dithered(.floydSteinberg, to: p)
-drawImage(poster, in: bounds)
+if let photo {
+    let poster = photo.dithered(.floydSteinberg, to: palette)
+    drawImage(poster, in: bounds)
+}
 ```
 
-Every pixel of the result is one of your five colors. Snapping each pixel straight to the nearest one would leave flat bands where the photo was smooth, so `dithered` scatters the two colors that bracket each tone instead, finely enough that your eye blends them back into the tone that was there. There are several ways to do the scattering, from the crosshatch of `.ordered` to the even grain of `.blueNoise`, and [the color reference](../Docs/Drawing/Color.md#dithering) walks through them. The `Dithering` example puts six of them side by side.
+Every pixel of the result is one of your five colors. (`bounds` there is the whole canvas as a rectangle, which every sketch has ready to hand, so it's a convenient way to say "fill the frame".) Snapping each pixel straight to the nearest color would leave flat bands where the photo was smooth, so `dithered` scatters the two colors that bracket each tone instead, finely enough that your eye blends them back into the tone that was there. There are several ways to do the scattering, from the crosshatch of `.ordered` to the even grain of `.blueNoise`, and [the color reference](../Docs/Drawing/Color.md#dithering) walks through them. The `Dithering` example puts six of them side by side.
 
 ## Gradients as paint
 
-A `Ramp` can also *be* the paint. Anywhere `fill` or `stroke` takes a color, it takes a gradient, laid over the canvas by one of three geometries:
+A `Ramp` can also *be* the paint. Anywhere `fill` or `stroke` accepts a color it will also accept a gradient, laid over the canvas in one of three ways:
 
 <img src="Images/02-Color/GradientPaint.jpg" alt="Three panels: a rectangle with a vertical dusk gradient, a soft radial glow, and a ring stroked with a rainbow that sweeps around it" width="680">
 
@@ -155,15 +167,15 @@ fill(.radial(center: spot, radius: 260, glow))                     // out from a
 stroke(.alongPath(wheel))                                          // along the stroke itself
 ```
 
-Each takes a `Ramp` or a plain color list. Alpha rides along, so a radial ramp that ends in a transparent color is an instant soft glow (the middle panel above). Coordinates live in drawing space, so gradients move with the shapes they paint. `.alongPath` runs start to end on a line; on a closed shape it sweeps once around, which is how the ring above became a color wheel.
+Each of them takes a `Ramp` or a plain list of colors. Alpha rides along, so a radial ramp that ends in a transparent color gives you an instant soft glow, which is the middle panel above. The coordinates live in drawing space, so gradients move with the shapes they paint. `.alongPath` runs from the start of a line to its end, and on a closed shape it sweeps once around, which is how the ring above became a color wheel.
 
 ## A recipe borrowed early: random
 
-Chapter 1 borrowed `sin` from Chapter 3; this chapter's payoff borrows `random` from Chapter 4, and it needs only three lines of understanding. `random(-1, 1)` hands you a fresh unpredictable number in that range each call. On its own that's a problem for a piece that redraws sixty times a second, because every frame would roll new numbers and the canvas would boil. The fix is the third line: `randomSeed(n)` restarts the randomness from a fixed point, so the *same* seed always produces the *same* sequence of "random" numbers. Seed at the top of `draw()` and every frame makes identical choices; change the seed and you get a brand-new, equally coherent variation. Chapter 4 is the whole story; this is enough for now.
+Chapter 1 borrowed `sin` from Chapter 3, and this chapter's finale borrows `random` from Chapter 4. Three sentences will get you through it. `random(-1, 1)` hands you a fresh unpredictable number in that range every time you call it. On its own that's a problem for a piece that redraws sixty times a second, because every frame would roll new numbers and the canvas would boil. The fix is `randomSeed(n)`, which restarts the randomness from a fixed point, so the *same* seed always produces the *same* sequence of "random" numbers. Seed at the top of `draw()` and every frame makes identical choices, which holds the picture still; change the seed and you get a brand-new variation that's just as coherent. Chapter 4 tells the whole story, and this is enough to be going on with.
 
-## The payoff: a color field poster
+## Putting it together: a color field poster
 
-Now the poster. One ramp, a quilt of cells, and three ideas layered on top: each cell samples the ramp by its *diagonal position* (top-left is 0, bottom-right is 1), seeded randomness jitters every sample so the field reads organic instead of mechanical, and a slow `sin` shimmer keeps it alive. Make `MySketches/ColorField.swift`:
+The poster is one ramp and a quilt of cells, with three ideas layered on top. Each cell samples the ramp according to its *diagonal position*, so the top-left corner is 0 and the bottom-right is 1. Seeded randomness then jitters every sample, which is what makes the field read as organic rather than mechanical. And a slow `sin` shimmer keeps the whole thing alive. Make `MySketches/ColorField.swift`:
 
 ```swift
 import Ollin
@@ -207,12 +219,12 @@ final class ColorField: Sketch {
 
 Run it and walk the interesting lines:
 
-- `randomSeed(fieldSeed)` runs at the top of every frame, so all the `random(-0.5, 0.5)` calls that follow roll the same numbers each time and the quilt holds still. Click the canvas: `mousePressed()` bumps the seed, and the next frame rolls an entirely new set of jitters. Same poster, new variation, as many as you can click.
-- Two loops, one inside the other, visit every column and row; `diagonal` turns the cell's position into the ramp's `0...1`.
-- The `t` line is the whole aesthetic: position, plus seeded jitter (scaled by the knob), plus a slow shimmer. Comment out one term at a time and watch what each contributes; with jitter at zero it's a clean mechanical gradient, which is also a look worth keeping.
-- The knobs do a lot here. `Columns` changes the piece's whole character (chunky at 5, woven at 28), and `Jitter` runs it from formal to painterly.
+- `randomSeed(fieldSeed)` runs at the top of every frame, so all the `random(-0.5, 0.5)` calls that follow roll the same numbers each time and the quilt holds still. Now click the canvas. `mousePressed()` bumps the seed, and the next frame rolls an entirely new set of jitters, giving you the same poster as a fresh variation, as many as you care to click through.
+- Two loops, one inside the other, visit every column and row, and `diagonal` turns each cell's position into the `0...1` the ramp wants.
+- The `t` line carries the whole look: position, plus seeded jitter scaled by the knob, plus a slow shimmer. Comment out one term at a time to see what each contributes. With jitter at zero you get a clean mechanical gradient, which is a look worth keeping in its own right.
+- The knobs do a lot of work here. `Columns` changes the piece's whole character, chunky at 5 and woven at 28, and `Jitter` takes it from formal to painterly.
 
-> **Swift note.** `var fieldSeed = 7` is a *property*, declared on the class rather than inside `draw()`, and that's what lets it survive between frames; a `let` or `var` inside `draw()` is born and dies with each frame. `mousePressed()` is another function Ollin calls for you, once per click. And a loop inside a loop is just that: for every column, visit every row.
+> **Swift note.** `var fieldSeed = 7` is a *property*, declared on the class rather than inside `draw()`, and that's what lets it survive from one frame to the next. A `let` or `var` written inside `draw()` is born and dies with that frame. `mousePressed()` is another function Ollin calls for you, once per click, alongside `setup()` and `draw()`. And a loop inside a loop does what it sounds like: for every column, visit every row.
 
 Directions worth a try before Chapter 3:
 
@@ -223,7 +235,7 @@ Directions worth a try before Chapter 3:
 
 ## Where this comes from
 
-The OKLab family (OKLab, OKLCH, OKHSL) is the work of Björn Ottosson, published openly in 2020 and now part of the CSS color standard; it's why "mix in OKLab" is advice you'll meet across modern tools. The built-in qualitative palettes are Cynthia Brewer's ColorBrewer sets, designed for map readability and beloved far beyond maps. The colormaps come from the scientific-visualization world: viridis and friends from matplotlib (Stéfan van der Walt and Nathaniel Smith), turbo from Google. The cosine palette formula is Inigo Quilez's, a name that will keep coming up in this guide. Full credits live in the project's [attribution notes](../ATTRIBUTION.md#color).
+The OKLab family (OKLab, OKLCH, OKHSL) is the work of Björn Ottosson, published openly in 2020 and now part of the CSS color standard, which is why "mix in OKLab" is advice you'll meet across modern tools. The built-in qualitative palettes are Cynthia Brewer's ColorBrewer sets, designed for map readability and loved far beyond maps. The colormaps come from the scientific-visualization world, with viridis and its relatives from matplotlib (Stéfan van der Walt and Nathaniel Smith) and turbo from Google. The cosine palette formula is Inigo Quilez's, a name that will keep coming up in this guide. Full credits live in the project's [attribution notes](../ATTRIBUTION.md#color).
 
 ## Go deeper
 

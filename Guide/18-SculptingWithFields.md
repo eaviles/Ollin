@@ -113,7 +113,7 @@ A mesh is triangles, and the GPU knows how to draw triangles. A field is just a 
 
 <img src="Images/18-SculptingWithFields/MarchRay.jpg" alt="A diagram of sphere tracing: a ray from an eye crossing the canvas in shrinking hops, each hop bounded by a circle showing the distance the field reported, ending on a gray blob's surface" width="680">
 
-The hops shrink as the ray nears a surface (watch them tighten as the ray passes over the lower shape) and grow again in open space, and the ray lands on the surface without ever stepping through it. This is called **sphere tracing**, and it's the second big payoff of the representation: the same number that let shapes melt is what steers the rays that draw them.
+The hops shrink as the ray nears a surface (watch them tighten as the ray passes over the lower shape) and grow again in open space, and the ray lands on the surface without ever stepping through it. This is called **sphere tracing**, and it's the second big advantage of the representation: the same number that let shapes melt is what steers the rays that draw them.
 
 You get all of this without writing any of it. The one practical knob is `raymarchQuality(_:)`: tracing costs by the pixel, so the live window traces at a resolution budget by default while exports always render full quality. If a heavy field stutters while you sketch, `raymarchQuality(.performance)` buys headroom.
 
@@ -156,9 +156,9 @@ There is still only one cluster; the domain operator rewrites each query point (
 
 ## The finish
 
-A field shades like a mesh, so all of Chapter 17 applies: `material(.jade)` gives a melt its glow, `castShadows()` grounds it (a field even self-shadows, and trades shadows with the meshes around it), and an `environment(_:)` lights it from its surroundings (a bundled HDRI like `.studio` or `.sunset`, or the procedural `.sky(sunElevation:)`, which needs no asset at all). That last one is where the physically based materials from Chapter 17 pay off: under `environment(.studio)`, a `material(.dielectric(roughness: 0.07))` field picks up the studio's soft light strips as real reflections, which is the glassy finish the payoff wears. Two pointers for when you want more: `SDF3D.plane()` is an infinite floor you can merge into the field for true horizon-to-horizon self-shadowing, and on Apple silicon `rayTracedReflections()` lets a physically based field mirror the actual meshes around it. The [combining map](../Docs/3D/Combining.md) sorts out exactly which finish applies to which geometry.
+A field shades like a mesh, so all of Chapter 17 applies: `material(.jade)` gives a melt its glow, `castShadows()` grounds it (a field even self-shadows, and trades shadows with the meshes around it), and an `environment(_:)` lights it from its surroundings (a bundled HDRI like `.studio` or `.sunset`, or the procedural `.sky(sunElevation:)`, which needs no asset at all). That last one is where the physically based materials from Chapter 17 pay off: under `environment(.studio)`, a `material(.dielectric(roughness: 0.07))` field picks up the studio's soft light strips as real reflections, which is the glassy look this chapter ends on. Two pointers for when you want more: `SDF3D.plane()` is an infinite floor you can merge into the field for true horizon-to-horizon self-shadowing, and on Apple silicon `rayTracedReflections()` lets a physically based field mirror the actual meshes around it. The [combining map](../Docs/3D/Combining.md) sorts out exactly which finish applies to which geometry.
 
-## The payoff: molten
+## Putting it together: molten
 
 Make `MySketches/Molten.swift`:
 

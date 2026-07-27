@@ -19,7 +19,7 @@ The rule: every listing lives as a compilable figure sketch under `Figures/`, an
 The rule: every image under `Images/` is produced by the figure runner from a committed sketch, never hand-made, never edited after render. Prose listings are a figure file verbatim, or a clearly labeled delta of one ("add this line to `Swarm.swift`"). If a listing can't be a runnable file, rewrite it until it can.
 
 **4. Practice first, tiny steps.**
-The rule: something appears on the reader's canvas within the first page of every chapter. Concepts arrive in steps small enough that each one produces a visible change. Theory that doesn't change what's on the canvas within a page or two gets cut or moved to an appendix. Every chapter ends with a payoff piece that composes what it taught.
+The rule: something appears on the reader's canvas within the first page of every chapter. Concepts arrive in steps small enough that each one produces a visible change. Theory that doesn't change what's on the canvas within a page or two gets cut or moved to an appendix. Every chapter ends with a finished piece that composes what it taught, under a `## Putting it together: <name>` heading.
 
 ## Voice and style
 
@@ -27,6 +27,10 @@ The rule: something appears on the reader's canvas within the first page of ever
 - Short sentences where possible. One idea per paragraph. Read it aloud; if it sounds like documentation, loosen it, if it sounds like marketing, flatten it, and if it sounds pleased with itself, say it straight.
 - Explain in a simple, practical way: what a thing is, what it does, and how you use it, in terms the reader can act on. Given a clever explanation and a practical one, pick practical.
 - Mostly ordinary sentences. Compression is its own kind of performing: prose where every sentence lands an epigram or a clever appositive reads as written by a machine, however plain the words. Vary sentence length, let plain sentences carry the explanation, and budget roughly one memorable line per section. Don't reuse a signature phrasing from an earlier chapter.
+- **Write what a teacher would say out loud.** This is the test that settles most style questions. A teacher explaining something at a whiteboard connects one sentence to the next ("so", "because", "once you do that", "which means"); they don't deliver a series of separate pronouncements and leave the listener to work out the joins. Prose that reads as jumpy is almost always missing those joins.
+- **Watch the colon habit.** The `setup: punchline` sentence is a small drum hit, and a page of them is exhausting to read even when each one is good. It is the single most common cause of jumpy prose in this guide. Keep sentence-internal colons to roughly one every four or five prose lines, and reach for them when a genuine list or definition follows. When counting a draft, the same budget covers the semicolon-joined compound sentence, which is the same move wearing a different hat. Most of them convert to an ordinary sentence with a connective word, and the paragraph reads better for it.
+- **Don't open a section with a fragment.** "Now the heart of the chapter." and "Time to build the piece." are stage directions, not teaching. Write the full sentence: "This is the heart of the chapter."
+- Prefer plain words for a concept's payoff over the language of wagers and returns. "The bet", "the payoff", "pays off", "earns its keep", and "the win" all frame the reader's learning as an investment. Say what actually happens instead: what the technique does, or what it saves you.
 - Plain words (the Apple Style Guide rule: choose words that are easily understood, and if you can use fewer, do). Prefer the common word over the vivid rare one: jitter, not stagger; awkward, not clumsy; gaps, not droughts. Many readers won't have English as a first language; a word they'd need a dictionary for costs more than it adds.
 - Metaphors must teach. One that carries a concept (the noise landscape, the zoom knob, the tile doorways) earns its place; a decorative one ("pays the debt in full", a function with moods or a soul) gets cut. One metaphor per idea, never stacked, never stretched across chapters, and no personified code unless the personification is the explanation.
 - Natural flow over clever flow. No fragment-as-transition ("Everything at once."), no inverted openers ("Six-three-one: ..."), no chains of matched clauses where a plain sentence would do. Write the sentence a good teacher would say out loud.
@@ -38,15 +42,17 @@ The rule: something appears on the reader's canvas within the first page of ever
 - Influences are named openly and generously in prose (Nature of Code, the Book of Shaders, Processing, p5.js, OPENRNDR are part of the story and get credit). Inside `.swift` figure files the repo rule applies: no external framework or product names in comments.
 - Run the humanizer pass over every chapter before it ships.
 - Jokes are allowed. One per chapter is probably plenty.
-- The checkable subset of these rules runs as a lint: `Scripts/prose-lint.sh` (Vale; config in `.vale.ini` plus the custom rules in `.vale/styles/OllinGuide`; first run needs `brew install vale`). Errors block a commit; warnings are judgment prompts, fix them or keep them on purpose. The same lint covers `Docs/`, which shares the plain-words bar in its own reference tone.
+- The checkable subset of these rules runs as a lint: `Scripts/prose-lint.sh` (Vale; config in `.vale.ini` plus the custom rules in `.vale/styles/OllinGuide`; first run needs `brew install vale`). Errors block a commit; warnings are judgment prompts, fix them or keep them on purpose. The same lint covers `Docs/` and the reader-facing `README.md` files, which share the plain-words bar in their own reference tone.
+
+**These voice rules are not Guide-only.** They apply to every page a reader lands on: `Docs/`, the repository `README.md`, and the per-folder READMEs. The Guide is warm and second-person while `Docs/` is neutral and terse, but the teacher test, the colon budget, the fragment rule, and the plain-words bar hold in both. A session correcting prose anywhere in the repository works from this section.
 
 ## Chapter anatomy
 
 A chapter is one markdown file, `NN-PascalCase.md`, and reads like this:
 
-1. **The hook.** An image of the payoff piece and two or three sentences on where the chapter is going. No throat-clearing.
+1. **The hook.** An image of the finished piece and two or three sentences on where the chapter is going. No throat-clearing.
 2. **Steps.** Small numbered or titled sections, each introducing one idea, each with visible output. Code appears as a full small sketch first, then deltas. Swift-language notes appear as short callout blocks (`> **Swift note.** ...`) at the exact moment the reader first needs them, and only for what the step needs.
-3. **The payoff.** The finished piece, built from the chapter's steps, with its full listing (it lives in `Figures/` like everything else) and a rendered image. End by inviting two or three specific variations to try.
+3. **Putting it together.** The finished piece, built from the chapter's steps, with its full listing (it lives in `Figures/` like everything else) and a rendered image. End by inviting two or three specific variations to try.
 4. **Where this comes from.** A short paragraph crediting the technique's originators and canonical sources, consistent with `ATTRIBUTION.md`. This is a feature of the guide: readers learn the field's history and where to read more.
 5. **Go deeper.** Links into `Docs/` pages (this is also how the coverage audit works) and related `Examples/`.
 
@@ -65,7 +71,7 @@ Figure sketches live in `Figures/<NN-ChapterName>/<FigureName>.swift`, rendered 
 - Payoff pieces render at the default square canvas unless the piece wants otherwise.
 - GIFs are used sparingly (motion the prose genuinely can't convey), short (2 to 4 seconds), and small; they weigh on the repository forever.
 - Every image referenced from a chapter must exist in `Images/` and come from the runner; the reverse also holds, no orphaned figures.
-- Embed images with an `<img>` tag carrying a display `width`, never a bare markdown image; a full-bleed 1080-pixel image dominates the page and hurts reading. House widths: `680` for the wide 880×550 diagrams, `560` for square art and payoff pieces, `480` for GIFs. Always keep the `alt` text. (This is the one sanctioned bit of HTML in the Guide; everything else stays plain markdown.)
+- Embed images with an `<img>` tag carrying a display `width`, never a bare markdown image; a full-bleed 1080-pixel image dominates the page and hurts reading. House widths: `680` for the wide 880×550 diagrams, `560` for square art and finished pieces, `480` for GIFs. Always keep the `alt` text. (This is the one sanctioned bit of HTML in the Guide; everything else stays plain markdown.)
 
 Rendering:
 
@@ -82,7 +88,7 @@ One chapter per session, in this order:
 
 1. Read the chapter's brief in [PLAN.md](PLAN.md), and skim the chapters it builds on (at least their step headings) so terminology stays consistent.
 2. Check the brief's parked roadmap items: anything shipped in the framework since the brief was written gets folded in.
-3. Build the figures first. Write each figure sketch, render it, and look at it (open the image, verify it shows what the prose will claim). The payoff piece usually comes first; it tells you what the steps must teach.
+3. Build the figures first. Write each figure sketch, render it, and look at it (open the image, verify it shows what the prose will claim). The finished piece usually comes first; it tells you what the steps must teach.
 4. Write the prose around the verified figures and listings. Track the concept list against principle 1 as you go.
 5. Add the chapter's math ideas to Appendix B (an entry with a picture, in the matching theme group), give its new capabilities rows in Appendix D, and update its "Go deeper" targets in the coverage matrix in PLAN.md (flip rows to their promised depth).
 6. Run `Scripts/guide-figures.sh` (all figures, not just the new ones).

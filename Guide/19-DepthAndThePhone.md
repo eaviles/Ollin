@@ -133,9 +133,9 @@ drawPointCloud(world.cloud)
 
 Each capture is tinted (coral, green, blue) so you can see who saw what: three partial views, one room. The small spheres are the three camera positions, and the walls each frame couldn't see are filled in by the frames that could. On a real phone this is exactly the `PhoneWorldScan` example: ARKit supplies the pose (`device.latestPose`), you sweep the room, and the slices stack into a scan. (Over a long sweep, small pose errors slowly build up; drift correction for long scans is on the [roadmap](../ROADMAP.md#iphone-as-a-sensor-array).)
 
-## The payoff: the ghost room
+## Putting it together: the ghost room
 
-The payoff turns the sweep itself into the artwork: nine frames of the staged room, one joining the world every second, drawn as additive light while the camera orbits. It reads as a room scanning itself into existence. Make `MySketches/GhostRoom.swift` (bring `StageCamera` along from [`Anatomy.swift`](Figures/19-DepthAndThePhone/Anatomy.swift), plus the `pose` helper from [`GhostRoom.swift`](Figures/19-DepthAndThePhone/GhostRoom.swift), the committed figure with the complete listing):
+The finished piece turns the sweep itself into the artwork: nine frames of the staged room, one joining the world every second, drawn as additive light while the camera orbits. It reads as a room scanning itself into existence. Make `MySketches/GhostRoom.swift` (bring `StageCamera` along from [`Anatomy.swift`](Figures/19-DepthAndThePhone/Anatomy.swift), plus the `pose` helper from [`GhostRoom.swift`](Figures/19-DepthAndThePhone/GhostRoom.swift), the committed figure with the complete listing):
 
 ```swift
 import Ollin
@@ -176,7 +176,7 @@ The woven texture is the scan lines of nine viewpoints interleaving; the solid p
 
 Then make it yours:
 
-- Point it at reality: with a LiDAR iPhone, swap `StageCamera` for `device.latestDepthFrame` and `device.latestPose` and sweep your actual room (the `3D/Phone/PhoneWorldScan` example is this payoff with the pretend camera removed).
+- Point it at reality: with a LiDAR iPhone, swap `StageCamera` for `device.latestDepthFrame` and `device.latestPose` and sweep your actual room (the `3D/Phone/PhoneWorldScan` example is this piece with the pretend camera removed).
 - Restage the set: `StageCamera.scene` is a distance field, so everything Chapter 18 taught works in it; melt a blob into the room and scan that.
 - Color by height instead of by image: rebuild the cloud tinting each point by its `y`, and the scan becomes a contour map.
 - Slow the reveal to one frame every five seconds and export a video: the assembly is the piece.

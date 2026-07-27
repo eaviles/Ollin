@@ -73,7 +73,7 @@ You only write the type when there's nothing to infer it from (an empty array, a
 var trail: [Vector2] = []   // an empty array needs its element type stated
 ```
 
-The payoff for the strictness: typos and wrong-type mistakes are caught before the sketch ever runs.
+In exchange for that strictness, typos and wrong-type mistakes are caught before the sketch ever runs.
 
 <a name="double-int"></a>
 

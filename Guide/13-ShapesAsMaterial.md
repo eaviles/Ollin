@@ -69,7 +69,7 @@ Three more verbs finish the shape-editing vocabulary. `offset(by:)` grows a regi
 let ribbon = Contour(wave, closed: false).stroked(width: 120, join: .round, cap: .round)
 ```
 
-That one call is the hinge of this chapter's payoff. Once a stroke is a region, everything above applies to it: subtract it from a mosaic, inset rings inside it, hatch it, export it as a filled outline instead of a fragile stroke attribute. The `Shapes/InkRibbon` example strokes a drifting brush line and rings contour bands inside it, live.
+That one call is the hinge of this chapter's finished piece. Once a stroke is a region, everything above applies to it: subtract it from a mosaic, inset rings inside it, hatch it, export it as a filled outline instead of a fragile stroke attribute. The `Shapes/InkRibbon` example strokes a drifting brush line and rings contour bands inside it, live.
 
 ## The well-mannered scatter
 
@@ -132,7 +132,7 @@ Spacing is the pen's whole idea of tone, and holes and concavities are respected
 
 ## Shapes from a file
 
-One more source of material before the payoff: shapes you didn't draw at all. SVG is the plain-text vector format every design tool exports, and `loadSVG` reads a file into the same types this chapter has been editing, each element a `Shape` carrying the fill and stroke it was authored with:
+One more source of material before the finished piece: shapes you didn't draw at all. SVG is the plain-text vector format every design tool exports, and `loadSVG` reads a file into the same types this chapter has been editing, each element a `Shape` carrying the fill and stroke it was authored with:
 
 ```swift
 if let art = loadSVG("boat.svg") {
@@ -156,7 +156,7 @@ for (i, shape) in fitted.shapes.enumerated() {
 
 A logo, a scanned drawing auto-traced to paths, a file another sketch exported: they all arrive the same way, and they can leave again through `--export-svg`, so a sketch can import a file, rework it, and hand the result to a plotter. Two things to know before you lean on it: text doesn't import (convert it to outlines in the design tool first), and a gradient fill falls back to flat gray so the form stays visible. The [SVG import reference](../Docs/Drawing/SVG.md) lists exactly what the importer reads and skips.
 
-## The payoff: the plate
+## Putting it together: the plate
 
 The plate brings the whole chapter to one piece of paper: a blue-noise scatter, relaxed once; its Voronoi mosaic, inset cell by cell; a stroked ribbon subtracted from every cell with a halo of breathing room; and two pens' worth of hatching. Make `MySketches/Plate.swift`:
 

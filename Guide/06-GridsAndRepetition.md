@@ -167,9 +167,9 @@ drawTruchet(columns: 8, rows: 8, tile: .arcs)
 
 The arc tile touches its cell's boundary in only four places, the edge midpoints, no matter which way it's spun. Think of the midpoints as doorways: every tile has a doorway in the middle of each wall, so whatever your neighbor did, your marks and theirs meet at the doorway and flow through. Local rule, global order. Each tile only promises to hit its own doorways, and the loops, corridors, and long wandering strands emerge across the whole canvas without any tile knowing about them.
 
-The tiling is drawn from the seeded `random`, so it's reproducible like everything since Chapter 4: same seed, same maze. And when the plain white line-work isn't enough, `truchet(columns:rows:tile:)` hands you the raw strands instead of drawing them, one list of points per arc, which is exactly what the payoff wants.
+The tiling is drawn from the seeded `random`, so it's reproducible like everything since Chapter 4: same seed, same maze. And when the plain white line-work isn't enough, `truchet(columns:rows:tile:)` hands you the raw strands instead of drawing them, one list of points per arc, which is exactly what the finished piece wants.
 
-## The payoff: a meandering tangle
+## Putting it together: a meandering tangle
 
 Time to build the image at the top. The plan: lay Truchet arcs over a grid, then stroke every strand twice, a wide pass in a dark rim tone and a narrower colored pass on top, so the strands read as piping with a little depth. For the color, reach back to Chapter 5: sample `noise` at each strand's midpoint, so neighbors wear neighboring colors and the palette drifts across the tangle like weather, slowly changing with `time`. Make a new file, `MySketches/Meander.swift`:
 

@@ -120,9 +120,9 @@ override func draw() { drawFrame(player) }
 
 Frames arrive as GPU textures (drawing them costs almost nothing), `drawFrame` letterboxes them the same way, trackers analyze the footage as it plays, and `snapshot()` hands you a CPU still for the one-shot `detect(in:)` calls. Chapter 20's `Soundtrack(of: player)` completes the loop: one clip can drive a piece with its pixels *and* its music. The `Video/VideoPlayback` example ships with a short clip of the *Voladores de Papantla* to play with, and `Vision/VideoTrace` runs a contour tracker over it live. One export note: headless exports drive the player deterministically (frame `k` of the export always shows the clip at `k/fps`), but a *tracker* attached to it analyzes nothing during an export, since analysis rides the live clock.
 
-## The payoff: motion paints
+## Putting it together: motion paints
 
-The payoff is the interactive mirror promised at the top: stand in front of the camera and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed; stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift` (the committed figure [`MotionBrush.swift`](Figures/21-Seeing/MotionBrush.swift) carries `StagePerformer`, the pretend dancer that stands in for a webcam so the figure renders without you; the listing below is the sketch as you'd run it live):
+The finished piece is the interactive mirror promised at the top: stand in front of the camera and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed; stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift` (the committed figure [`MotionBrush.swift`](Figures/21-Seeing/MotionBrush.swift) carries `StagePerformer`, the pretend dancer that stands in for a webcam so the figure renders without you; the listing below is the sketch as you'd run it live):
 
 ```swift
 import Ollin

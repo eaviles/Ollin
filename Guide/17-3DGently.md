@@ -232,9 +232,9 @@ The one habit that saves confusion is **`normalized(scale:)`**: a file arrives a
 
 3D scenes are easy to get lost in, so the tools for finding yourself again are built in. `cameraView(.front)` snaps the camera to a canonical angle (front, top, left, isometric, and friends) and `resetCamera()` returns to the opening shot; the host apps put the same snaps in a **Camera** menu (⌘0 through ⌘7), so they work on any running sketch without a line of code. Two more calls help while you build: `cameraAxis()` shows a small clickable x-y-z compass, and `groundGrid()` lays a faint reference floor. Both are development chrome, drawn only in the live window, never in an export, which is why you won't find them in any figure in this chapter.
 
-## The payoff: the plaza
+## Putting it together: the plaza
 
-The payoff is a small sculpture court you curate yourself: five plinths, five pieces, each wearing a different finish, under golden-hour light with soft shadows, on a camera that orbits until you take over. Make `MySketches/Plaza.swift`:
+The finished piece is a small sculpture court you curate yourself: five plinths, five pieces, each wearing a different finish, under golden-hour light with soft shadows, on a camera that orbits until you take over. Make `MySketches/Plaza.swift`:
 
 ```swift
 import Ollin

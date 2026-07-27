@@ -16,15 +16,19 @@ final class FirstShapes: Sketch {
         textSize(19)
         textAlign(.center, .top)
 
-        // Top row: one call per shape, filled with the current fill.
+        // Top row: one call per shape, filled with the current fill. The two
+        // closed shapes carry an anchor dot, because x, y means the center for
+        // a circle and the top-left corner for a rectangle.
         noStroke()
         fill(ink)
         drawCircle(147, 140, 62)
+        anchor(147, 140, "x, y is the center")
         caption("drawCircle(x, y, radius)", 147, 228)
 
         noStroke()
         fill(ink)
         drawRect(340, 78, 200, 124)
+        anchor(340, 78, "x, y is the corner")
         caption("drawRect(x, y, w, h)", 440, 228)
 
         stroke(ink)
@@ -53,7 +57,24 @@ final class FirstShapes: Sketch {
 
     func caption(_ text: String, _ x: Double, _ y: Double) {
         noStroke()
+        textSize(19)
+        textAlign(.center, .top)
         fill(label)
         drawText(text, x, y)
+    }
+
+    /// Mark the point a shape's x, y actually refers to, and name it. The
+    /// label sits clear of the shape with a leader line back to the dot, so it
+    /// stays legible over both the dark fills and the light ground.
+    func anchor(_ x: Double, _ y: Double, _ text: String) {
+        stroke(accent)
+        strokeWeight(1.5)
+        drawLine(x, y, x, 54)
+        noStroke()
+        fill(accent)
+        drawCircle(x, y, 7)
+        textSize(15)
+        textAlign(.center, .bottom)
+        drawText(text, x, 48)
     }
 }

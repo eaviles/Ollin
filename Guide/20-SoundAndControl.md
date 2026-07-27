@@ -76,7 +76,7 @@ source.beatCount       // how many beats so far
 source.timeSinceBeat   // seconds of audio since the last one
 ```
 
-`beat` is the ready-made value: multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the payoff spawns sparks. Look at the timeline: every kick lands, and so does the quiet off-beat hat, with the same confidence. That's what detection is: onset detection hears *arrivals*, sudden changes in the sound, not loudness and not "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. For most visuals that's exactly what you want; when it isn't, `beatSensitivity` is the knob (higher asks for stronger arrivals before firing), and the detector is deliberately steady the rest of the time: held chords and drones don't drift into false triggers, and the same recording always beats in the same places.
+`beat` is the ready-made value: multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the finished piece spawns sparks. Look at the timeline: every kick lands, and so does the quiet off-beat hat, with the same confidence. That's what detection is: onset detection hears *arrivals*, sudden changes in the sound, not loudness and not "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. For most visuals that's exactly what you want; when it isn't, `beatSensitivity` is the knob (higher asks for stronger arrivals before firing), and the detector is deliberately steady the rest of the time: held chords and drones don't drift into false triggers, and the same recording always beats in the same places.
 
 ## Four places sound comes from
 
@@ -156,9 +156,9 @@ override func setup() {
 
 Each incoming value is mapped into the parameter's own range and assigned; the sketch keeps reading plain `radius` and never knows who moved it. The inspector slider, the hardware, the phone, and plain assignment in code all stay live at once, and whichever moved most recently wins. One more line makes hardware feel good: give the parameter a `smoothing:` (`.eased(0.3)` for a fixed glide, `.smoothed` for the adaptive filter that stays steady at rest and opens up under a moving hand), and every source glides instead of stepping, because the softening belongs to the knob, not to the wire.
 
-## The payoff: a playable instrument
+## Putting it together: a playable instrument
 
-The payoff wires the whole chapter into one piece: `bands` worn as a crown of spokes, a core that throbs on `beatCount`, sparks flung on each arrival, and two `@Param` knobs waiting for whatever hands you have. Make `MySketches/Resonator.swift` (bring `StageMic` along from [`Anatomy.swift`](Figures/20-SoundAndControl/Anatomy.swift); the committed figure with everything together is [`Resonator.swift`](Figures/20-SoundAndControl/Resonator.swift)):
+The finished piece wires the whole chapter together: `bands` worn as a crown of spokes, a core that throbs on `beatCount`, sparks flung on each arrival, and two `@Param` knobs waiting for whatever hands you have. Make `MySketches/Resonator.swift` (bring `StageMic` along from [`Anatomy.swift`](Figures/20-SoundAndControl/Anatomy.swift); the committed figure with everything together is [`Resonator.swift`](Figures/20-SoundAndControl/Resonator.swift)):
 
 ```swift
 import Ollin

@@ -222,7 +222,7 @@ A spring has one opinion, its **rest length**. Longer than that, it pulls its en
 
 <img src="Images/B-JustEnoughMath/Verlet.jpg" alt="Dots labeled previous and now, the step between them carried forward as a dashed arrow, then bent down by gravity to the next position" width="680">
 
-Verlet integration stores no velocity at all; it remembers where the particle *was* last frame. The gap between then and now *is* the velocity, so each step replays that gap and bends it by the frame's forces. The payoff is sturdiness under constraints: when a spring yanks a particle somewhere new, its implied velocity updates automatically, no bookkeeping to contradict. It's the quiet engine under [Chapter 9](09-ForcesAndPhysics.md)'s soft bodies.
+Verlet integration stores no velocity at all; it remembers where the particle *was* last frame. The gap between then and now *is* the velocity, so each step replays that gap and bends it by the frame's forces. The finished piece is sturdiness under constraints: when a spring yanks a particle somewhere new, its implied velocity updates automatically, no bookkeeping to contradict. It's the quiet engine under [Chapter 9](09-ForcesAndPhysics.md)'s soft bodies.
 
 ### One second is one second
 
