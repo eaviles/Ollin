@@ -130,7 +130,7 @@ Figures: branch-stack diagram; L-system expansion table + drawing per iteration;
 Draws from: `Docs/Generators/LSystem.md`, `Docs/Generators/SpaceColonization.md`, `Docs/Generators/DiffusionLimitedAggregation.md`, `Docs/Generators/WaveFunctionCollapse.md`; `Examples/Patterns/LSystem`, `Examples/Patterns/Venation`, `Examples/Patterns/Dendrite`, `Examples/Patterns/WaveFunctionCollapse`.
 
 **12. Fields and flow.**
-Teaches: a field as "an answer at every point" (the mental model that later pays off in shaders and SDFs); visualizing a field with arrows; `FlowField` from noise; tracing streamlines; evenly-spaced streamlines; advecting particles; strange attractors as found motion.
+Teaches: a field as "an answer at every point" (the mental model shaders and SDFs later reuse); visualizing a field with arrows; `FlowField` from noise; tracing streamlines; evenly-spaced streamlines; advecting particles; strange attractors as found motion.
 Assumes: Ch 5 (noise), Ch 8 (vectors).
 Payoff: a flow-field print (the Fidenza look, credited as such).
 Figures: field-of-arrows diagram; streamline tracing step diagram; even-spacing comparison; attractor plates; the print.
@@ -292,10 +292,10 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Shaders/ShaderLibrary.md` (helper reference) | Ch 15 | pointed |
 | `Shaders/Compute.md` (kernels, Particles, Simulation) | Ch 16 | taught |
 | Sim fields: Game of Life, Gray-Scott, fluid (`Drawing/Effects.md`) | Ch 16 | taught |
-| Artificial life: `ParticleLife`, `PPS`, `Physarum`, `SpatialHash` (`Simulation/ArtificialLife.md`) | Ch 16 | pending (Ch 16 to grow) |
-| Fluids & soft bodies: `ParticleFluid`, `SoftBodies` (`Simulation/Fluids.md`) | Ch 16 | pending (Ch 16 to grow) |
-| Cellular automata: Lenia sim, `elementaryCA`/`totalisticCA`, `Turmite` (`Generators/CellularAutomata.md`) | Ch 16 (1D rows and turmites could also serve Ch 11) | pending (Ch 16 to grow) |
-| Articulated & chaotic motion: `IKChain`, `DoublePendulum`, `NBody` (`Simulation/Motion.md`) | Ch 9 (IK beside the physics toys; pendulum + n-body could also serve Ch 12's chaos thread) | pending (Ch 9 to grow) |
+| Artificial life: `ParticleLife`, `PPS`, `Physarum`, `SpatialHash` (`Simulation/ArtificialLife.md`) | Ch 16 | taught ("Crowds that organize themselves" with a three-panel figure: the neighbor-search problem `SpatialHash` solves, all three systems with their rules and calls, and the no-frame-exact-reproducibility caveat) |
+| Fluids & soft bodies: `ParticleFluid`, `SoftBodies` (`Simulation/Fluids.md`) | Ch 16 | taught ("Liquids and jellies" with a two-panel figure: SPH density-to-pressure explained, `stiffness`/`nearStiffness`/`gravity`, shape matching and `squish`, and grabbing with `pull`) |
+| Cellular automata: Lenia sim, `elementaryCA`/`totalisticCA`, `Turmite` (`Generators/CellularAutomata.md`) | Ch 16 | taught ("More ways to be an automaton": elementary rules as a numbered rule byte with rules 30/90/110, `totalisticCA` named, `Turmite`/Langton's ant held and stepped, and Lenia with its knobs and the dense-seed rule; two figures) |
+| Articulated & chaotic motion: `IKChain`, `DoublePendulum`, `NBody` (`Simulation/Motion.md`) | Ch 9 | taught (all three toured in "Three ready-made motion systems" with a three-panel figure: `reach`/`drag` and the solver/`maxBend` knobs, the pendulum's determinism-plus-sensitivity, and n-body's `theta`/`softening` and the seeded factories) |
 | Damped spring: `DampedSpring`, `@Sprung` (`Helpers/Animation.md`) | Ch 3 | taught (duration/bounce, the moving-target case that separates it from `@Eased`, and `kick`; `velocity` and `Vector2` springs pointed) |
 | `3D/3D.md` (camera, primitives, meshes, lights, materials) | Ch 17 | taught |
 | `3D/Camera.md` (cameraControl, moves, showcase, views) | Ch 17 | taught |

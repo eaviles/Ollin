@@ -4,7 +4,7 @@
 
 # D. The complete toolbox
 
-Everything Ollin can do, one line each. The guide teaches by building pieces, which means some capabilities get a chapter and others only a sentence; this appendix is the guarantee that nothing shipped goes unmentioned. Each row says what a capability is in plain words, where the guide works with it, and where its full reference lives in [`Docs/`](../Docs/README.md).
+Everything Ollin can do, one line each. The guide teaches by building pieces, which means some capabilities get a chapter and others only a sentence, so this appendix is the guarantee that nothing shipped goes unmentioned. Each row says what a capability is in plain words, where the guide works with it, and where its full reference lives in [`Docs/`](../Docs/README.md).
 
 Use it two ways: as an index ("I remember the guide showing blur somewhere"), and as a map of what you haven't tried yet. If something you want isn't in these tables, it isn't in the framework yet; the [roadmap](../ROADMAP.md) is the list of what's ahead.
 
@@ -115,6 +115,8 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Space colonization | Branching growth toward attraction points: veins and venation | [Ch 11](11-GrowingThings.md) | [SpaceColonization](../Docs/Generators/SpaceColonization.md) |
 | Diffusion-limited aggregation | Walkers that freeze on contact into dendrites and frost | [Ch 11](11-GrowingThings.md) | [DiffusionLimitedAggregation](../Docs/Generators/DiffusionLimitedAggregation.md) |
 | Strange attractors | Lorenz, Clifford, de Jong, and friends, as orbits you draw | [Ch 12](12-FieldsAndFlow.md) | [Attractors](../Docs/Drawing/Attractors.md) |
+| Cellular automata | `elementaryCA` / `totalisticCA` rules and `Turmite` ants: tiny rules, long runs | [Ch 16](16-Simulations.md) | [Cellular automata](../Docs/Generators/CellularAutomata.md) |
+| Lenia | `.lenia`: the continuous Game of Life, smooth mass that grows colonies and creatures | [Ch 16](16-Simulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
 
 ## Physics
 
@@ -123,6 +125,13 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Soft physics | Verlet particles and springs: cloth, blobs, ropes, with disk collisions | [Ch 9](09-ForcesAndPhysics.md) | [Physics](../Docs/Simulation/Physics.md) |
 | Rigid physics | Bodies, colliders, and joints in the same `World`: stacks, chains, machines | [Ch 9](09-ForcesAndPhysics.md) | [Physics](../Docs/Simulation/Physics.md) |
 | Grabbing | `grab`: pick up any rigid body with the mouse | [Ch 9](09-ForcesAndPhysics.md) | [Physics](../Docs/Simulation/Physics.md) |
+| Inverse kinematics | `IKChain`: a segmented limb that reaches for a target, or a rope dragged by its tip | [Ch 9](09-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
+| Double pendulum | `DoublePendulum`: the classic chaos machine, deterministic and wildly sensitive | [Ch 9](09-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
+| Gravity at scale | `NBody`: thousands of bodies pulling on each other, with seeded disk and cluster scenes | [Ch 9](09-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
+
+| Artificial life | `ParticleLife`, `PPS`, `Physarum` on the public `SpatialHash` neighbor search | [Ch 16](16-Simulations.md) | [Artificial life](../Docs/Simulation/ArtificialLife.md) |
+| Particle fluids | `ParticleFluid`: SPH liquid with a free surface, splashes, and grabbing | [Ch 16](16-Simulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |
+| Soft bodies | `SoftBodies`: shape-matched jellies that squash and pile | [Ch 16](16-Simulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |
 
 ## Layers and effects
 

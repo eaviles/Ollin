@@ -6,11 +6,11 @@
 
 <img src="Images/16-Simulations/Organism.jpg" alt="A dense teal brain-coral labyrinth grown by reaction-diffusion, its winding ridges lit with a wet sheen against deep navy gaps" width="560">
 
-Nobody drew those corridors. They grew, over six hundred frames, from a scatter of dots and two chemical rules, and if you ran the sketch and dragged the mouse, your marks would grow the same way. This chapter is about **simulations**: fields that carry their own state on the GPU and evolve it every frame by simple local rules. You bring the seed; the rules do the drawing.
+Nobody drew those corridors. They grew, over six hundred frames, from a scatter of dots and two chemical rules, and if you ran the sketch and dragged the mouse, your marks would grow the same way. This chapter is about **simulations**, fields that carry their own state on the GPU and evolve it every frame by simple local rules. You bring the seed; the rules do the drawing.
 
 ## State that lives on the GPU
 
-Chapter 14's feedback layer was the first taste: a picture fed its transformed self back in, frame after frame. A simulation field replaces "transform the whole picture" with something more local and more alive: every cell of the field computes its next value *from its neighbors*, all at once, every frame. It's Chapter 15's per-pixel function with one addition that changes everything: memory.
+Chapter 14's feedback layer was the first taste, a picture fed its transformed self back in, frame after frame. A simulation field replaces "transform the whole picture" with something more local and more alive, because every cell of the field computes its next value *from its neighbors*, all at once, every frame. It's Chapter 15's per-pixel function with one addition that changes everything: memory.
 
 In Ollin that's a `SimField`. Like `Feedback`, it's persistent (make it once, keep it), and you never write the kernel for the built-in ones: pick a `Sim`, draw into the field to seed it, and composite its `image`:
 
@@ -53,21 +53,55 @@ withField(life) {
 
 <img src="Images/16-Simulations/LifeField.jpg" alt="A Game of Life field ninety generations after a random soup: scattered still lifes, blinkers, and small debris in crisp white cells on black" width="560">
 
-The `scale: 0.08` matters: a sim field's `scale` sets its internal resolution, and for a cellular automaton one texel is one cell, so a low scale gives cells you can see. (For the other sims, lower scale just means broader, cheaper features.)
+The `scale: 0.08` matters, because a sim field's `scale` sets its internal resolution, and for a cellular automaton one texel is one cell, so a low scale gives cells you can see. (For the other sims, lower scale just means broader, cheaper features.)
+
+## More ways to be an automaton
+
+The Game of Life is one rule on one grid, and the same recipe runs in several other shapes. Two of them are cheap enough to run on the CPU, which means they hand you plain arrays instead of a field and you draw the result however you like.
+
+**Wolfram's elementary rules** shrink the grid to a single row. Each cell looks only at itself and its two neighbors, so there are eight possible neighborhoods, and a rule is nothing more than which of those eight leave a cell alive, which packs into one number from 0 to 255. `elementaryCA` runs one and hands back a row per generation, so drawing time downward turns a one-dimensional automaton into a two-dimensional picture:
+
+```swift
+let rows = elementaryCA(rule: 30, width: 161, generations: 161)
+```
+
+<img src="Images/16-Simulations/WolframAndTurmite.jpg" alt="Two panels of black cells on cream. Left, rule 30 grown from a single cell into a triangle whose left half is regular stripes and whose right half is irregular, dotted with white triangles. Right, Langton's ant, a chaotic blot crossed by straight diagonal highways running off the edges" width="680">
+
+Rule 30, on the left, is the famous one, because a rule that small has no business producing something that irregular, and Wolfram used its middle column as a source of random numbers for years. Rule 90 draws the Sierpinski triangle, and rule 110 turns out to be complicated enough to compute anything a computer can. `totalisticCA` is the same idea with more colors, where a cell reads the *sum* of its neighborhood rather than the exact pattern.
+
+**A turmite** is an ant on a grid instead of a whole row of cells. It reads the color under it, writes a new one, turns, steps forward, and adopts a new state, and that is the entire creature. Langton's ant, the classic, spends about ten thousand steps making an incoherent blot and then, with no warning at all, starts laying a perfectly regular diagonal highway and walks off along it forever. Nobody has a satisfying explanation for why. You hold one and step it, the way you held a `DifferentialGrowth` in Chapter 10:
+
+```swift
+let ant = Turmite(.langton, columns: 260, rows: 260)
+
+// each frame:
+ant.step(500)
+for painted in ant.paintedCells { /* draw a cell */ }
+```
+
+**Lenia** goes the other way and makes the Game of Life *continuous*. Instead of cells that are alive or dead, every texel carries a smooth mass between 0 and 1, and instead of counting eight neighbors, each texel weighs a soft ring of neighborhood around it and grows or starves depending on how close that weight lands to a target. It's a `Sim` like the others:
+
+```swift
+dish = simField(.lenia(radius: 13), scale: 0.55)
+```
+
+<img src="Images/16-Simulations/Lenia.jpg" alt="Lenia colonies on near-black: several large patches of fine cream-colored ridges with soft glowing teal edges, growing outward into open space, with a few small round organisms drifting alone at the left" width="560">
+
+Those knobs are the model's whole personality. `radius` is how far the ring reaches, and the growth center and width are the target mass and how forgiving the rule is about missing it. The one thing to know before running it is that **Lenia needs a dense seed**. Sparse mass starves and fades to nothing, which looks like a bug and isn't, so give it a generous soup of soft marks and a few hundred frames. What grows are colonies with soft glowing edges, and at the right settings, small self-contained creatures that swim.
 
 ## Two chemicals
 
-Reaction-diffusion is the Game of Life's continuous cousin, and the engine of this chapter's finished piece. The idea, from Alan Turing: two chemicals spread through a surface and react, one feeding the pattern and one killing it, and in the balance between those two rates, patterns *make themselves*. Ollin ships it as `.reactionDiffusion(feed:kill:)`, and those two numbers are the whole temperament of the system:
+Reaction-diffusion is the Game of Life's continuous cousin, and the engine of this chapter's finished piece. The idea comes from Alan Turing. Two chemicals spread through a surface and react, one feeding the pattern and one killing it, and in the balance between those two rates, patterns *make themselves*. Ollin ships it as `.reactionDiffusion(feed:kill:)`, and those two numbers are the whole temperament of the system:
 
 <img src="Images/16-Simulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
 
-Read the map honestly: most of the parameter space is quiet. Life, in this system, is a narrow band where feeding and killing balance, and every regime along that band has its own signature: dividing dots (the defaults), worm mazes, coral walls. Put `feed` and `kill` on `@Param` knobs and you can walk the map live; the `Simulation/GrayScott` example is exactly that.
+Read the map honestly, because most of the parameter space is quiet. Life, in this system, is a narrow band where feeding and killing balance, and every regime along that band has its own signature: dividing dots (the defaults), worm mazes, coral walls. Put `feed` and `kill` on `@Param` knobs and you can walk the map live, and the `Simulation/GrayScott` example is exactly that.
 
 Seeding is drawing, same as before, and it's worth watching what one mark becomes:
 
 <img src="Images/16-Simulations/Seeding.jpg" alt="Four dishes seeded with the same ring at different moments, showing its growth: the raw ring, a thickened double ring, a wavy cross, and a labyrinth filling the dish" width="680">
 
-One more habit for this chapter: the raw field is *data*, not a picture. Reaction-diffusion's state reads as dim red-green; you give it a look by filtering, the same catalog as everything else: `dish.filtered(.gradientMap(.viridis))`, a `.threshold` for hard ink, or Chapter 14's `.relight` to light it as matter.
+One more habit is worth forming here. The raw field is *data*, not a picture. Reaction-diffusion's state reads as dim red-green, so you give it a look by filtering, using the same catalog as everything else: `dish.filtered(.gradientMap(.viridis))`, a `.threshold` for hard ink, or Chapter 14's `.relight` to light it as matter.
 
 ## Water you can stir
 
@@ -100,7 +134,7 @@ override func draw() {
 
 ## Iteration without memory
 
-A quick sidebar, because it answers a natural question: does everything that iterates need a field that persists? No. The most famous iteration in mathematics runs entirely inside a single frame:
+Here's a quick sidebar, because it answers a natural question. Does everything that iterates need a field that persists? No. The most famous iteration in mathematics runs entirely inside a single frame:
 
 ```swift
 drawImage(generate(.mandelbrot(phase: time * 0.03)).image, 0, 0)
@@ -108,11 +142,11 @@ drawImage(generate(.mandelbrot(phase: time * 0.03)).image, 0, 0)
 
 <img src="Images/16-Simulations/FractalPair.jpg" alt="The Mandelbrot set and a Julia set side by side, banded in deep blue, teal, and cream by their escape times" width="680">
 
-Every pixel of the Mandelbrot set runs its own private loop (`z = z² + c`, over and over) and is colored by how fast that orbit flies off to infinity; a Julia set is the same loop with the roles of the two numbers swapped. The simulation fields spread their iteration across *frames* because their rules need neighbors and memory; the fractal needs neither, so its whole life fits in one evaluation. Both are the same lesson at different speeds: iterate something simple, and structure appears. Zooming is one `center:`/`zoom:` away, and `Examples/Effects/Fractals` sets the Julia's `c` drifting so the filigree morphs.
+Every pixel of the Mandelbrot set runs its own private loop (`z = z² + c`, over and over) and is colored by how fast that orbit flies off to infinity, and a Julia set is the same loop with the roles of the two numbers swapped. The simulation fields spread their iteration across *frames* because their rules need neighbors and memory. The fractal needs neither, so its whole life fits in one evaluation. Both are the same lesson at different speeds: iterate something simple, and structure appears. Zooming is one `center:`/`zoom:` away, and `Examples/Effects/Fractals` sets the Julia's `c` drifting so the filigree morphs.
 
 ## A million grains
 
-The fields so far evolved *textures*. The other half of GPU simulation evolves *particles*: a buffer of hundreds of thousands of individuals, each updated by a small program, none of them ever touching the CPU. In Ollin that's `Particles`, and the update is a snippet of Metal, the same language as Chapter 15's shaders, presented here as a recipe you can adapt without ceremony:
+The fields so far evolved *textures*. The other half of GPU simulation evolves *particles*, a buffer of hundreds of thousands of individuals, each updated by a small program, none of them ever touching the CPU. In Ollin that's `Particles`, and the update is a snippet of Metal, the same language as Chapter 15's shaders, presented here as a recipe you can adapt without ceremony:
 
 ```swift
 lazy var sand = Particles(count: 1_000_000, step: """
@@ -140,9 +174,72 @@ Inside the snippet, each particle's `position`, `color`, `size`, and `life` are 
 
 Each grain sheds the same faint light; density does the drawing. At ten thousand you see individuals, at a million you see a *material*. Pair this with Chapter 14's `noClear()` and `toneMap(.aces)` and the grains deposit into the long-exposure sandpainting look (the `Rendering/DepthOfField` example pushes it all the way to a photographic bokeh field). The [compute reference](../Docs/Shaders/Compute.md) has the full snippet vocabulary, `.metal`-file loading, and the typed core underneath.
 
+## Crowds that organize themselves
+
+The grains in the last section never noticed each other. Making a hundred thousand particles *aware* of their neighbors is a harder problem than it looks, because asking "who is near me" the obvious way means comparing everyone against everyone, which is billions of comparisons a frame. The standard fix is to sort the particles into a grid of cells first, so each one only ever checks the nine cells around it. Ollin ships that sort as `SpatialHash`, and it's public, so you can build your own neighbor-aware system on it. Three classic ones come already built.
+
+<img src="Images/16-Simulations/ArtificialLife.jpg" alt="Three dark panels. Left, Particle Life in dense magenta, yellow, green, and red clusters forming membranes and cells. Middle, the Primordial Particle System, yellow rings of crowded particles scattered among lone blue wanderers. Right, Physarum, a pale branching network of transport loops on a violet trail field" width="680">
+
+**Particle Life** gives you a few *kinds* of particle and one attraction number for every ordered pair of kinds. That's the whole model. Red is drawn to green, green flees blue, and out of that asymmetry come membranes, cells, chasers, and worms that nobody designed:
+
+```swift
+life = particleLife(count: 24_000, kinds: 6, radius: 46)
+
+// each frame:
+updateParticleLife(life)
+drawParticles(life)
+```
+
+The matrix is rolled at build, and `life.randomizeMatrix(seed:)` rolls a fresh one. Most rolls are dull and a few are alive, which makes this another seed-hunting system in the spirit of Chapter 4.
+
+**The Primordial Particle System** is leaner still. Each particle counts its neighbors, notices whether more of them sit to its left or its right, and turns toward the busier side by a fixed amount plus a crowd-proportional one. From that single rule come cells that grow, divide, and die. The middle panel above is a few seconds in, with yellow marking the crowded cell walls and blue the free wanderers.
+
+**Physarum** models slime mold and needs no neighbor search at all, because its agents talk through the floor instead of to each other. Each one sniffs three points ahead, turns toward the strongest trail, steps forward, and deposits a little trail of its own, and the trail map blurs and fades a touch each frame. What emerges is the branching transport network on the right, the same kind of network real slime mold famously uses to solve mazes:
+
+```swift
+slime = physarum(agents: 220_000, resolution: 1024)
+
+// each frame:
+updatePhysarum(slime)
+drawImage(slime.image, in: bounds)
+```
+
+One honest caveat covers all three. The neighbor sort settles ties with a race between GPU threads, and these systems are chaotic, so a run is not reproducible frame for frame. Seed them for a repeatable *starting* layout, but don't expect two exports to match.
+
+## Liquids and jellies
+
+That same neighbor search carries two more systems, and these two behave like matter.
+
+<img src="Images/16-Simulations/FluidAndBlobs.jpg" alt="Two dark panels. Left, a blue particle fluid mid-slosh, a wave climbing the left wall over a churning cavity. Right, nine soft bodies in orange, green, blue, red, purple, and cyan piled at the bottom of a box, squashing flat where they press against each other" width="680">
+
+**`ParticleFluid`** is smoothed-particle hydrodynamics, a long name for a simple bargain: represent a liquid as thousands of particles, have each one measure how crowded it is, and push it away from wherever it's crowded. Density becomes pressure, pressure becomes motion, and a free surface, splashes, and sloshing all come out without anyone modelling them:
+
+```swift
+fluid = particleFluid(count: 26_000, radius: 12)
+
+// each frame:
+if mouseIsPressed { fluid.pull(at: Vector2(mouseX, mouseY)) }
+updateParticleFluid(fluid)
+drawParticles(fluid)
+```
+
+`gravity` tilts the box, `stiffness` sets how hard the liquid resists being squeezed, and `nearStiffness` is an extra short-range pressure that stops particles clumping and gives the surface its tension. Grabbing a handful with `pull(at:)` and flinging it is most of the fun.
+
+**`SoftBodies`** is the jelly counterpart, and it works by *shape matching*. Each body remembers the shape it was born with, and every step it works out where that shape would be now, its center and its rotation, then pulls its particles back toward those remembered positions. `squish` is how firmly it pulls, and that one knob is the difference between a bouncing ball and a slime:
+
+```swift
+blobs = softBodies(count: 12, radius: 80)
+
+// each frame:
+updateSoftBodies(blobs)
+drawParticles(blobs)
+```
+
+Bodies collide with each other and flatten where they press together, which is the pile on the right. Both systems run fixed substeps against a clamped clock, so a dropped frame slows them down rather than detonating them, and both carry the same reproducibility caveat as the last section.
+
 ## Putting it together: the organism
 
-The finished piece grows a culture. A scatter of spores seeds a reaction-diffusion dish in its mitosis regime; whatever you draw while it runs joins the chemistry; and the display pipeline is pure Chapter 14: a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
+The finished piece grows a culture. A scatter of spores seeds a reaction-diffusion dish in its mitosis regime, whatever you draw while it runs joins the chemistry, and the display pipeline is pure Chapter 14: a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
 
 ```swift
 import Ollin
@@ -186,20 +283,25 @@ Run it live and draw. Your marks don't appear on the canvas; they enter the chem
 
 Then make it yours:
 
-- Walk the map: put `feed` and `kill` on knobs and steer the culture between mitosis, worms, and coral while it grows.
+- Walk the map by putting `feed` and `kill` on knobs, and steer the culture between mitosis, worms, and coral while it grows.
 - Recolor the skin ramp. The same labyrinth reads as coral, lichen, or circuitry depending entirely on four colors.
-- Seed with meaning: Chapter 7's `drawText` into the field grows a word into a labyrinth that slowly forgets it was a word.
+- Seed with meaning. Chapter 7's `drawText` into the field grows a word into a labyrinth that slowly forgets it was a word.
 - Swap `.relight(.liquid)` for `.relight(.metal, color:)` and the organism becomes an engraving.
 
 ## Where this comes from
 
-The Game of Life is John Horton Conway's, from 1970, and reached the world through Martin Gardner's *Scientific American* column; it remains the standard demonstration that computation and life-like behavior need almost nothing to start. Reaction-diffusion begins with Alan Turing's 1952 paper *The Chemical Basis of Morphogenesis*; the two-chemical model Ollin ships is the Gray-Scott variant, and the feed/kill map figure follows the territory John Pearson charted in his 1993 classification of its patterns (Karl Sims' interactive tutorial later made that map a creative-coding staple). The real-time fluid descends from Jos Stam's 1999 *Stable Fluids* and the GPU formulation popularized by Mark Harris. The Mandelbrot set is named for Benoit Mandelbrot, who first plotted it in 1980, on the mathematics of Gaston Julia's 1918 sets. GPU particle systems are a demoscene and games inheritance; the additive light-deposit rendering they power here is as old as long-exposure photography. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The Game of Life is John Horton Conway's, from 1970, and reached the world through Martin Gardner's *Scientific American* column; it remains the standard demonstration that computation and life-like behavior need almost nothing to start. Reaction-diffusion begins with Alan Turing's 1952 paper *The Chemical Basis of Morphogenesis*, and the two-chemical model Ollin ships is the Gray-Scott variant, and the feed/kill map figure follows the territory John Pearson charted in his 1993 classification of its patterns (Karl Sims' interactive tutorial later made that map a creative-coding staple). The real-time fluid descends from Jos Stam's 1999 *Stable Fluids* and the GPU formulation popularized by Mark Harris. The Mandelbrot set is named for Benoit Mandelbrot, who first plotted it in 1980, on the mathematics of Gaston Julia's 1918 sets. GPU particle systems are a demoscene and games inheritance, and the additive light-deposit rendering they power here is as old as long-exposure photography.
+
+The newer arrivals have their own names attached. The 256 elementary rules were catalogued and numbered by Stephen Wolfram in 1983, and turmites generalize Christopher Langton's 1986 ant. Lenia is Bert Wang-Chak Chan's continuous generalization of the Game of Life, from his 2019 paper "Lenia: Biology of Artificial Life", and Ollin implements the exponential kernel and growth rule it describes, with the paper's Orbium creature as the defaults. Particle Life descends from Jeffrey Ventrella's *Clusters*, and the Primordial Particle System is Thomas Schmickl, Martin Stefanec, and Karl Crailsheim's, published in *Scientific Reports* in 2016. The slime-mold agents follow Jeff Jones's 2010 model of *Physarum polycephalum* transport networks. The fluid is Matthias Müller and colleagues' 2003 particle-based formulation with the near-density anti-clumping term Simon Clavet, Philippe Beaudoin, and Pierre Poulin added in 2005, and the jellies use Müller's 2005 meshless shape matching. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Simulation fields](../Docs/Drawing/Effects.md#simfield): the `Sim` catalog with every knob, seeding semantics, and field scale.
 - [Compute & GPU particles](../Docs/Shaders/Compute.md): the full `Particles` snippet vocabulary, texture kernels, `.metal` files, and the typed core.
 - [Escape-time fractals](../Docs/Drawing/Effects.md#generate): `.mandelbrot` / `.julia` framing, iterations, and coloring.
+- [Cellular automata](../Docs/Generators/CellularAutomata.md): every elementary and totalistic rule, random start rows, the `Turmite` preset catalog, and writing your own rule table.
+- [Artificial life](../Docs/Simulation/ArtificialLife.md): all three systems with every knob, plus building your own on the public `SpatialHash`.
+- [Fluids & soft bodies](../Docs/Simulation/Fluids.md): the SPH and shape-matching knobs, grabbing, and the substep model.
 - Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/GameOfLife`](../Examples/Simulation/GameOfLife/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Effects/Fractals`](../Examples/Effects/Fractals/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
 
 ---

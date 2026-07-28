@@ -10,11 +10,11 @@ Chapter 13 treated shapes as outlines you cut and joined, like paper. This chapt
 
 ## A shape as a question
 
-Chapter 12 defined a field as an answer at every point. A **signed distance field** is a shape stored that way: ask any point of the canvas, and it answers with one number, *how far is the nearest surface*. The sign carries which side you're on: positive outside, negative inside, zero exactly on the boundary.
+Chapter 12 defined a field as an answer at every point. A **signed distance field** is a shape stored that way. Ask any point of the canvas and it answers with one number, *how far is the nearest surface*. The sign carries which side you're on: positive outside, negative inside, zero exactly on the boundary.
 
 <img src="Images/18-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted circle-and-box shape in warm orange, surrounded by concentric cool bands of equal distance, with a bold dark line at distance zero" width="680">
 
-That's the whole idea, and it's worth a slow look. The shape is not stored as an outline; the *bold line* is just the places where the field happens to answer zero. Chapter 15 used this trick per pixel (a circle was "all the points within `radius`", and `smoothstep` softened its edge). What's new here is what the representation buys: if two shapes are each a distance function, then *combining the answers* combines the shapes.
+That's the whole idea, and it's worth a slow look. The shape is not stored as an outline, and the *bold line* is only the places where the field happens to answer zero. Chapter 15 used this trick per pixel (a circle was "all the points within `radius`", and `smoothstep` softened its edge). What's new here is what the representation makes possible, because if two shapes are each a distance function, then *combining the answers* combines the shapes.
 
 ## Melting
 
@@ -39,13 +39,13 @@ final class Melt: Sketch {
 }
 ```
 
-Run it and watch the seam. `SDF.circle` and `SDF.rect` are field *values*, like a `Shape` or a `Color`; `.at` moves one; `.colored` paints one; `.smoothUnion` merges two into a new field; and `drawSDF` rasterizes whatever field you hand it, in one pass. The knob `k` is the width of the melt, in canvas points:
+Run it and watch the seam. `SDF.circle` and `SDF.rect` are field *values*, like a `Shape` or a `Color`. From there `.at` moves one, `.colored` paints one, `.smoothUnion` merges two into a new field, and `drawSDF` rasterizes whatever field you hand it in a single pass. The knob `k` is the width of the melt, in canvas points:
 
 <img src="Images/18-SculptingWithFields/MeltStrip.jpg" alt="The same orange and blue circles at four smoothing radii: touching hard at k = 0, necking together at 22, flowing into a peanut at 55, and fused into one capsule at 110" width="680">
 
-At `k = 0` the union is hard, two shapes overlapping like Chapter 13. As `k` grows, the seam becomes a fillet, then a neck, then the pair is one body. Look at the colors: the smooth union blends the two operands' colors across the melt, which is what makes the result read as one object rather than a trick. This one knob is most of the medium; put it on a `@Param` slider and you'll feel it immediately.
+At `k = 0` the union is hard, two shapes overlapping like Chapter 13. As `k` grows, the seam becomes a fillet, then a neck, then the pair is one body. Look at the colors, because the smooth union blends the two operands' colors across the melt, and that is what makes the result read as one object rather than a trick. This one knob is most of the medium, so put it on a `@Param` slider and you'll feel it immediately.
 
-One habit worth setting early: **order matters in the chain**. Every call wraps the field before it, so `circle.at(p).scaled(2)` scales the *moved* circle (it lands twice as far out), while `circle.scaled(2).at(p)` scales in place and then moves. Read chains inside out and they always make sense.
+One habit is worth setting early, and it's that **order matters in the chain**. Every call wraps the field before it, so `circle.at(p).scaled(2)` scales the *moved* circle (it lands twice as far out), while `circle.scaled(2).at(p)` scales in place and then moves. Read chains inside out and they always make sense.
 
 ## The verbs
 
@@ -62,7 +62,7 @@ a.intersect(b)           // only the overlap
 a.morph(b, amount: 0.5)  // a shape halfway between the two
 ```
 
-These are Chapter 13's booleans reborn on fields, plus two that outlines can't do: the smooth forms, and `morph`, which blends the *boundary itself*, so at `0.5` you get a genuinely in-between shape, not a crossfade. Two modifiers round out the kit: `.rounded(12)` inflates any field with soft corners, and `.onion(8)` hollows it into a shell. And past the melted family there's a whole *machined* family (`chamferUnion`, `stairsUnion`, `columnsUnion`, plus engrave, groove, tongue, and pipe detailing) that shapes the seam like joinery instead of wax; the [combinators reference](../Docs/Drawing/Combinators.md#combining) has the full bench.
+These are Chapter 13's booleans reborn on fields, plus two things outlines can't do. The smooth forms are one. The other is `morph`, which blends the *boundary itself*, so at `0.5` you get a genuinely in-between shape rather than a crossfade. Two modifiers round out the kit: `.rounded(12)` inflates any field with soft corners, and `.onion(8)` hollows it into a shell. And past the melted family there's a whole *machined* family (`chamferUnion`, `stairsUnion`, `columnsUnion`, plus engrave, groove, tongue, and pipe detailing) that shapes the seam like joinery instead of wax. The [combinators reference](../Docs/Drawing/Combinators.md#combining) has the full bench.
 
 ## Writing it like drawing
 
@@ -78,7 +78,7 @@ smoothUnion(k: 18) {
 }
 ```
 
-Everything drawable with a fill can join a block, including shapes the `SDF` type doesn't name (hearts, stars, trapezoids), and each call's own `fill` becomes its color in the melt. It reads like normal drawing; the block just holds the shapes open until it closes, then merges them all.
+Everything drawable with a fill can join a block, including shapes the `SDF` type doesn't name (hearts, stars, trapezoids), and each call's own `fill` becomes its color in the melt. It reads like normal drawing, and the block simply holds the shapes open until it closes, then merges them all.
 
 ## Into space
 
@@ -105,7 +105,7 @@ final class FirstMarch: Sketch {
 
 <img src="Images/18-SculptingWithFields/FirstMarch.jpg" alt="Two spheres melted into a single teal-to-pink body with a smooth crater carved into its upper left, shaded like polished jade" width="560">
 
-Try building that from triangle meshes and you'll appreciate what just happened: the two spheres aren't two surfaces cleverly joined, they are *one* surface, because the field underneath is one function. The leaf catalog matches the mesh primitives (sphere, box, torus, capsule, cylinder, cone, octahedron, and more, plus `line(from:to:radius:)`, a stroke between two points that's perfect for sketching limbs and branches for the melt to flesh out). Fields and meshes coexist in one scene and correctly hide each other; the [combinators reference](../Docs/Drawing/Combinators.md#fields-3d) has the whole catalog.
+Try building that from triangle meshes and you'll appreciate what just happened: the two spheres aren't two surfaces cleverly joined, they are *one* surface, because the field underneath is one function. The leaf catalog matches the mesh primitives (sphere, box, torus, capsule, cylinder, cone, octahedron, and more, plus `line(from:to:radius:)`, a stroke between two points that's perfect for sketching limbs and branches for the melt to flesh out). Fields and meshes coexist in one scene and correctly hide each other, and the [combinators reference](../Docs/Drawing/Combinators.md#fields-3d) has the whole catalog.
 
 ## How the picture gets made
 
@@ -115,11 +115,11 @@ A mesh is triangles, and the GPU knows how to draw triangles. A field is just a 
 
 The hops shrink as the ray nears a surface (watch them tighten as the ray passes over the lower shape) and grow again in open space, and the ray lands on the surface without ever stepping through it. This is called **sphere tracing**, and it's the second big advantage of the representation: the same number that let shapes melt is what steers the rays that draw them.
 
-You get all of this without writing any of it. The one practical knob is `raymarchQuality(_:)`: tracing costs by the pixel, so the live window traces at a resolution budget by default while exports always render full quality. If a heavy field stutters while you sketch, `raymarchQuality(.performance)` buys headroom.
+You get all of this without writing any of it. The one practical knob is `raymarchQuality(_:)`. Tracing costs by the pixel, so the live window traces at a resolution budget by default while exports always render at full quality. If a heavy field stutters while you sketch, `raymarchQuality(.performance)` loosens that budget further.
 
 ## Sculpting like clay
 
-For forms you build up rather than compose, the `sculpt { }` block turns the operators into working state: shapes `add()` on or `carve()` away, melting by the current `blend(_:)` amount, top to bottom like a session at a potter's wheel:
+For forms you build up rather than compose, the `sculpt { }` block turns the operators into working state. Shapes `add()` on or `carve()` away, melting by the current `blend(_:)` amount, and the block reads top to bottom like a session at a potter's wheel:
 
 ```swift
 sculpt {
@@ -138,7 +138,7 @@ sculpt {
 
 <img src="Images/18-SculptingWithFields/Vessel.jpg" alt="A round terracotta vessel with a melted-on lip, a hollowed mouth, and a crisp ring handle, thrown from spheres and tori inside a sculpt block" width="560">
 
-Flip one `add()` to `carve()` and a bump becomes a dent, which is exactly the kind of edit live coding thrives on. A further set of distortions bends whole forms: `.twisted(1.2)` screws a shape around its axis, `.bent(0.6)` curls it, and `.displaced` / `.roughened` ripple or roughen the surface (the rock look). They're all safe to stack; the tracer automatically compensates for the distortion.
+Flip one `add()` to `carve()` and a bump becomes a dent, which is exactly the kind of edit live coding thrives on. A further set of distortions bends whole forms: `.twisted(1.2)` screws a shape around its axis, `.bent(0.6)` curls it, and `.displaced` / `.roughened` ripple or roughen the surface (the rock look). They're all safe to stack, because the tracer compensates for the distortion on its own.
 
 ## Folding space
 
@@ -152,15 +152,17 @@ cluster.repeated(spacing: Vector2(88, 88), count: 1)  // a 3×3 tiling
 petal.at(x: 82, y: 0).repeatedRadially(count: 9)      // a rosette
 ```
 
-There is still only one cluster; the domain operator rewrites each query point (folding it across the mirror, wrapping it into a cell, rotating it into a wedge) before the field answers. Copies are free: a thousand-copy tiling costs what one copy costs. All three work in 3D too, where `repeatedRadially` fans a wedge around an axis and a mirrored melt becomes a symmetric creature. One honest note: the radial fold is exact when the repeated content is symmetric within its wedge; an asymmetric cluster can show a faint seam where wedges meet (the rosette panel uses a symmetric petal for exactly that reason).
+There is still only one cluster, because the domain operator rewrites each query point before the field answers, folding it across the mirror, wrapping it into a cell, or rotating it into a wedge. Copies are free, so a thousand-copy tiling costs what one copy costs. All three work in 3D too, where `repeatedRadially` fans a wedge around an axis and a mirrored melt becomes a symmetric creature. One honest caveat is worth knowing. The radial fold is exact when the repeated content is symmetric within its wedge, and an asymmetric cluster can show a faint seam where the wedges meet, which is why the rosette panel uses a symmetric petal.
 
 ## The finish
 
-A field shades like a mesh, so all of Chapter 17 applies: `material(.jade)` gives a melt its glow, `castShadows()` grounds it (a field even self-shadows, and trades shadows with the meshes around it), and an `environment(_:)` lights it from its surroundings (a bundled HDRI like `.studio` or `.sunset`, or the procedural `.sky(sunElevation:)`, which needs no asset at all). That last one is where the physically based materials from Chapter 17 pay off: under `environment(.studio)`, a `material(.dielectric(roughness: 0.07))` field picks up the studio's soft light strips as real reflections, which is the glassy look this chapter ends on. Two pointers for when you want more: `SDF3D.plane()` is an infinite floor you can merge into the field for true horizon-to-horizon self-shadowing, and on Apple silicon `rayTracedReflections()` lets a physically based field mirror the actual meshes around it. The [combining map](../Docs/3D/Combining.md) sorts out exactly which finish applies to which geometry.
+A field shades like a mesh, so all of Chapter 17 applies: `material(.jade)` gives a melt its glow, `castShadows()` grounds it (a field even self-shadows, and trades shadows with the meshes around it), and an `environment(_:)` lights it from its surroundings (a bundled HDRI like `.studio` or `.sunset`, or the procedural `.sky(sunElevation:)`, which needs no asset at all). That last one is where the physically based materials from Chapter 17 come into their own. Under `environment(.studio)`, a `material(.dielectric(roughness: 0.07))` field picks up the studio's soft light strips as real reflections, and that's the glassy look this chapter ends on. An environment also paints itself behind the scene as a backdrop, so when you want your own `background(_:)` to show through instead, ask for `.lightingOnly()` and you keep the light without the picture.
+
+Two pointers wait for when you want more. `SDF3D.plane()` is an infinite floor you can merge into the field for true horizon-to-horizon self-shadowing, and on Apple silicon `rayTracedReflections()` lets a physically based field mirror the actual meshes around it. The [combining map](../Docs/3D/Combining.md) sorts out exactly which finish applies to which geometry.
 
 ## Putting it together: molten
 
-Make `MySketches/Molten.swift`:
+The finished piece is a single body of four melted lobes, twisted a little, finished as glass under studio light, breathing slowly over a floor that catches its shadow. Make `MySketches/Molten.swift`:
 
 ```swift
 import Ollin
@@ -203,23 +205,24 @@ final class Molten: Sketch {
 
 <img src="Images/18-SculptingWithFields/Molten.jpg" alt="The finished molten piece: a glossy mint body of fused lobes with a drooping drip, its reflection-lit surface reading as glass, over a dark floor with a soft shadow" width="560">
 
-Four primitive lobes, three smooth unions, one twist, and a glassy finish; the breathing comes from `signedNoise` easing the first melt radius in and out. Notice the mesh floor and the traced field sharing the frame: the field drops its shadow onto the plane, and each would hide the other if they overlapped. That's the everyday reality of this chapter: fields aren't a separate world, they're one more kind of thing your scene draws.
+The whole sculpture is four primitive lobes, three smooth unions, one twist, and a glassy finish, and the breathing comes from `signedNoise` easing the first melt radius in and out. Notice the mesh floor and the traced field sharing the frame. The field drops its shadow onto the plane, and each would hide the other if they overlapped. That's the everyday reality of this chapter: fields aren't a separate world, they're one more kind of thing your scene draws.
 
 Then make it yours:
 
-- Replace a lobe with `SDF3D.line(from:to:radius:)` and grow the drop a limb; a few chained lines plus a big `k` is how creatures start.
+- Replace a lobe with `SDF3D.line(from:to:radius:)` and grow the drop a limb. A few chained lines plus a big `k` is how creatures start.
 - Wrap the body in `.repeatedRadially(count: 5)` (offset it from the axis first) and the drop becomes a chandelier.
 - Trade the glass for `.metal(roughness: 0.15)` with `environment(.sunset)`, and add `rayTracedReflections()` if your Mac traces.
-- Carve it: one `smoothSubtract` of a big sphere turns the sculpture into a grotto.
+- Carve it, since one `smoothSubtract` of a big sphere turns the sculpture into a grotto.
 
 ## Where this comes from
 
-Distance fields as a drawing medium are the craft of the demoscene and Shadertoy communities, and above all of Inigo Quilez, whose catalogs of distance functions, the polynomial smooth minimum, and raymarching articles underlie nearly everything here and are credited throughout Ollin's implementation. Sphere tracing was formalized by John C. Hart in 1996; the blobby, merging-spheres idea is much older, going back to Jim Blinn's 1982 "blobby model" and the metaballs of 1980s Japanese graphics research. The space-folding domain operators follow the hg_sdf library by the demogroup Mercury. The sculpt-block idea of building form by adding and carving under a melt radius is the working model of digital clay tools, studied from Shader Park's composable API. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Distance fields as a drawing medium are the craft of the demoscene and Shadertoy communities, and above all of Inigo Quilez, whose catalogs of distance functions, the polynomial smooth minimum, and raymarching articles underlie nearly everything here and are credited throughout Ollin's implementation. Sphere tracing was formalized by John C. Hart in 1996, and the blobby, merging-spheres idea is much older, going back to Jim Blinn's 1982 "blobby model" and the metaballs of 1980s Japanese graphics research. The space-folding domain operators follow the hg_sdf library by the demogroup Mercury. The sculpt-block idea of building form by adding and carving under a melt radius is the working model of digital clay tools, studied from Shader Park's composable API. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [SDF combinators](../Docs/Drawing/Combinators.md): the complete reference, including the machined joint family, gradient paint on merged fields, per-axis stretching, the infinite plane, and the quality dials.
 - [Combining 3D features](../Docs/3D/Combining.md): what fields take (materials, shadows, environments) and where they differ from meshes.
+- [3D](../Docs/3D/3D.md): the environments, physically based materials, and ray-traced reflections this chapter finishes with, covered in full.
 - Worked examples: [`Examples/Shapes/Combinators`](../Examples/Shapes/Combinators/Sketch.swift) and [`CombinatorsGradient`](../Examples/Shapes/CombinatorsGradient/Sketch.swift) in 2D; in 3D, [`Examples/3D/Raymarching/RaymarchedSDF`](../Examples/3D/Raymarching/RaymarchedSDF/Sketch.swift), [`RaymarchedShapes`](../Examples/3D/Raymarching/RaymarchedShapes/Sketch.swift), [`RaymarchedSculpt`](../Examples/3D/Raymarching/RaymarchedSculpt/Sketch.swift), [`RaymarchedClay`](../Examples/3D/Raymarching/RaymarchedClay/Sketch.swift), [`RaymarchedDomain`](../Examples/3D/Raymarching/RaymarchedDomain/Sketch.swift), [`RaymarchedRadial`](../Examples/3D/Raymarching/RaymarchedRadial/Sketch.swift), [`RaymarchedPlane`](../Examples/3D/Raymarching/RaymarchedPlane/Sketch.swift), and [`RaymarchedEnvironment`](../Examples/3D/Raymarching/RaymarchedEnvironment/Sketch.swift).
 
 ---

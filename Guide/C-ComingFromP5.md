@@ -46,7 +46,7 @@ Save it as `Pulse.swift`, run `swift run OllinLive Pulse.swift`, and it breathes
 
 - **The sketch is a class.** Global functions become methods you `override` on a `Sketch` subclass, and sketch state that lived in globals becomes properties on the class. Chapter 1 walks through every line of this.
 - **There is no `createCanvas`.** The canvas is 1080 by 1080 unless you say otherwise, and the size is a declaration rather than a call: `override var canvasSize: CanvasSize { .size(800, 600) }`.
-- **`drawCircle` takes a radius.** p5's `circle()` takes a diameter, which is why 480 became 240. Watch for this one; it's the classic off-by-two.
+- **`drawCircle` takes a radius.** p5's `circle()` takes a diameter, which is why 480 became 240. Watch for this one, because it's the classic off-by-two.
 - **Motion reads a clock.** `frameCount * 0.03` becomes `time * 1.8`. `time` is seconds since the sketch started, so the speed holds on any display; at 60 frames a second the two expressions match exactly.
 - **Colors are values.** `fill("#2050C8")` becomes `fill(Color(hex: 0x2050C8))`, a typed value you can store, mix, and pass around. Channels run `0...1`, not 0 to 255.
 
@@ -143,7 +143,7 @@ Worth meeting while you're here: `signedNoise` swings `-1...1` (no more `* 2 - 1
 | `p5.Vector.lerp(a, b, t)` | `a.lerp(to: b, t)` | |
 | `a.dot(b)` | `a.dot(b)` | |
 
-One habit to notice: p5's vector methods change the vector in place, so `a.add(b)` alters `a`. Ollin's return new values and leave the inputs alone, which is why they read as math. Chapter 8 makes vectors comfortable.
+One habit is worth noticing. p5's vector methods change the vector in place, so `a.add(b)` alters `a`. Ollin's return new values and leave the inputs alone, which is why they read as math. Chapter 8 makes vectors comfortable.
 
 ### Everyday math
 
@@ -217,15 +217,15 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 
 **`let` changes teams.** JavaScript's `let` is Swift's `var`, and JavaScript's `const` is Swift's `let`. It stings for a week. Swift sketches prefer `let` (most values in `draw()` are computed fresh each frame), and the [Swift quick reference](../Docs/Swift.md) covers the rest of the language delta.
 
-**Values have types.** Positions are `Vector2`, colors are `Color`, outlines are `Shape`: values you store and pass around, where p5 scatters loose numbers across calls. The compiler checks all of it before the sketch runs, which is most of why a saved file that compiles tends to behave.
+**Values have types.** Positions are `Vector2`, colors are `Color`, outlines are `Shape`, and these are values you store and pass around, where p5 scatters loose numbers across calls. The compiler checks all of it before the sketch runs, which is most of why a saved file that compiles tends to behave.
 
-**Modes became labels and enums.** There's no `rectMode`, `ellipseMode`, `colorMode`, or `angleMode` to set and later forget: the anchor is a label on the call (`drawRect(center:width:height:)`), the color model is the initializer you pick (`Color(hue:…)`), and the constants are typed cases (`.pie`, `.round`, `.add`). A drawing can't be broken by a mode set three functions away.
+**Modes became labels and enums.** There's no `rectMode`, `ellipseMode`, `colorMode`, or `angleMode` to set and later forget, because the anchor is a label on the call (`drawRect(center:width:height:)`), the color model is the initializer you pick (`Color(hue:…)`), and the constants are typed cases (`.pie`, `.round`, `.add`). A drawing can't be broken by a mode set three functions away.
 
 **Every sketch is already an instance.** What p5 calls instance mode is the only mode: a sketch is a class, its state is properties, and nothing leaks between sketches. `this.` ceremony doesn't come along; inside the class you write `particles`, not `self.particles`.
 
 **The clock replaces the frame counter.** `time` and `deltaTime` are seconds, and motion written against them holds its speed on a 60 Hz display and a 120 Hz one alike. `frameCount` is still there for counting frames; it's the wrong unit for speed. Chapter 3 builds the whole motion vocabulary on this.
 
-**Files, not browser tabs.** The working loop is `swift run OllinLive Pulse.swift`: save the file and the running window swaps in the change. What you give up is the browser; sharing a sketch means exporting an artifact (a still, a video, a GIF, an SVG) rather than sending a URL, and Chapter 22 is about doing that well.
+**Files, not browser tabs.** The working loop is `swift run OllinLive Pulse.swift`, so you save the file and the running window swaps in the change. What you give up is the browser; sharing a sketch means exporting an artifact (a still, a video, a GIF, an SVG) rather than sending a URL, and Chapter 22 is about doing that well.
 
 ## Habits worth dropping
 
@@ -234,7 +234,7 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 - **Animating with `frameCount` arithmetic.** Reach for `time`. The magic numbers become real units (turns per second, pixels per second) and survive a change of display.
 - **Mixing colors in RGB.** `Color.mix` defaults to a perceptual space, so the midpoint of blue and yellow is a color you'd actually want. Chapter 2 shows the difference side by side.
 - **Hand-rolling grids from margins and nested loops.** `grid(columns: 12, rows: 8)` hands you the cells and their centers in one loop, indices included. Chapter 6.
-- **Hardcoding a constant, re-running, hardcoding again.** Declare it `@Param` and drag the knob while the sketch runs; when the value feels right, make it the new default. Chapter 1.
+- **Hardcoding a constant, re-running, hardcoding again.** Declare it `@Param` and drag the knob while the sketch runs, and when the value feels right, make it the new default. Chapter 1.
 - **Writing pixel loops for effects.** Blur, glow, and their relatives are GPU filters on layers (Chapter 14), and anything per-pixel you'd invent yourself is a short `shade` function away (Chapter 15).
 
 ## Go deeper

@@ -6,11 +6,11 @@
 
 <img src="Images/20-SoundAndControl/Resonator.jpg" alt="A glowing amber orb wearing a crown of spectrum spokes, magenta at the quiet ends and pale gold at the loud ones, with sparks drifting outward from a recent beat" width="560">
 
-Every sketch so far has listened to two things: the clock and the mouse. This chapter adds ears and hands. Ears first: a microphone or a song becomes a handful of numbers you read in `draw()`, so the picture moves with the music. Then hands: a hardware knob, a phone fader, or the inspector slider drives the same parameters, so a running sketch becomes something you play. The piece above is doing both at once, and by the end you'll have built it.
+Every sketch so far has listened to two things, the clock and the mouse. This chapter adds ears and hands. The ears come first, so a microphone or a song becomes a handful of numbers you read in `draw()` and the picture moves with the music. Then come the hands, where a hardware knob, a phone fader, or the inspector slider drives the same parameters and a running sketch becomes something you play. The piece above is doing both at once, and by the end you'll have built it.
 
 ## The first listening sketch
 
-Sound reaches a sketch through `OllinAudio`, a small library you import alongside the framework. The simplest start is the microphone and one number, `amplitude`: how loud things are right now, roughly `0...1`, smoothed so it doesn't flicker.
+Sound reaches a sketch through `OllinAudio`, a small library you import alongside the framework. The simplest start is the microphone and one number, `amplitude`, which is how loud things are right now, roughly `0...1`, smoothed so it doesn't flicker.
 
 ```swift
 import Ollin
@@ -35,21 +35,21 @@ Run it with `swift run OllinLive` like any sketch, say yes when macOS asks about
 
 ## A microphone we can print
 
-A guide has a problem a live sketch doesn't: every figure in these pages must render the same way on any machine, and no two rooms sound alike. Chapter 19 solved this with a pretend depth camera; this chapter fakes a microphone. `StageMic`, about thirty lines at the bottom of the committed figure [`Anatomy.swift`](Figures/20-SoundAndControl/Anatomy.swift), synthesizes a little band (a kick drum every half second, a hat between the kicks, a held bass note, a slow four-note arpeggio, a whisper of hiss) and feeds the samples into a real `AudioAnalyzer`, the same analysis engine behind `AudioInput`. Every audio number in this chapter comes out of that analyzer, exactly as it would from the air; only the air is missing. Swap `StageMic` for `AudioInput()` in any figure and it listens to your room instead.
+A guide has a problem a live sketch doesn't. Every figure in these pages must render the same way on any machine, and no two rooms sound alike. Chapter 19 solved this with a pretend depth camera, and this chapter fakes a microphone. `StageMic`, about thirty lines at the bottom of the committed figure [`Anatomy.swift`](Figures/20-SoundAndControl/Anatomy.swift), synthesizes a little band (a kick drum every half second, a hat between the kicks, a held bass note, a slow four-note arpeggio, a whisper of hiss) and feeds the samples into a real `AudioAnalyzer`, the same analysis engine behind `AudioInput`. Every audio number in this chapter comes out of that analyzer, exactly as it would from the air, and only the air is missing. Swap `StageMic` for `AudioInput()` in any figure and it listens to your room instead.
 
-The analyzer is worth meeting directly, because it's also the seam for sounds Ollin hasn't heard of: it's public, and anything that can produce a stream of samples can feed one.
+The analyzer is worth meeting directly, because it's also the seam for sounds Ollin hasn't heard of. It's public, so anything that can produce a stream of samples can feed one.
 
 ## What the analyzer hears
 
-Sound arrives as **samples**: measurements of air pressure, 44,100 of them per second. A microphone hands the analyzer that stream, and the analyzer answers three questions about the most recent instant.
+Sound arrives as **samples**, which are measurements of air pressure, 44,100 of them per second. A microphone hands the analyzer that stream, and the analyzer answers three questions about the most recent instant.
 
 <img src="Images/20-SoundAndControl/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform wiggle, the spectrum with spikes marked at the kick, bass, and melody frequencies, and 24 normalized band bars" width="680">
 
-The top panel is the **waveform**, the samples themselves: one big slow swell (the kick's low thump mid-decay) with fast wiggles riding on it (the melody). It's the honest raw material, and mostly you'll draw it only when you want an oscilloscope look.
+The top panel is the **waveform**, the samples themselves, one big slow swell (the kick's low thump mid-decay) with fast wiggles riding on it (the melody). It's the honest raw material, and mostly you'll draw it only when you want an oscilloscope look.
 
-The middle panel is the **spectrum**, and it's the reason audio-reactive visuals work at all. Sound is vibration, and pitch is how fast the vibration is: a low note shakes the air few times a second (measured in hertz, cycles per second), a high note many. The spectrum splits the instant into how much energy sits at each speed, like a prism splitting light into colors. Suddenly the mix is legible: the kick's 55 Hz thump, the bass note at 110 Hz, the melody near 659 Hz, each its own spike you can watch independently. The tool that computes this split is the Fourier transform; the analyzer runs it for you every frame, and `spectrum` is the result, an array of magnitudes from low frequencies to high.
+The middle panel is the **spectrum**, and it's the reason audio-reactive visuals work at all. Sound is vibration, and pitch is how fast the vibration is, so a low note shakes the air few times a second (measured in hertz, cycles per second) and a high note many more. The spectrum splits the instant into how much energy sits at each speed, like a prism splitting light into colors. Suddenly the mix is legible: the kick's 55 Hz thump, the bass note at 110 Hz, the melody near 659 Hz, each its own spike you can watch independently. The tool that computes this split is the Fourier transform. The analyzer runs it for you every frame, and `spectrum` is the result, an array of magnitudes from low frequencies to high.
 
-Raw spectra are awkward to draw, though: the values are unnormalized, and the interesting musical action crowds into the first few bins because hearing is logarithmic (every doubling of frequency sounds like one equal step, which is what an octave is). So the bottom panel is the read you'll actually use, **`bands(_:)`**:
+Raw spectra are awkward to draw, though. The values are unnormalized, and the interesting musical action crowds into the first few bins because hearing is logarithmic (every doubling of frequency sounds like one equal step, which is what an octave is). So the bottom panel is the read you'll actually use, **`bands(_:)`**:
 
 ```swift
 for (i, level) in source.bands(24).enumerated() {
@@ -64,7 +64,7 @@ Between the raw spectrum and the shaped bands sit three named conveniences, `bas
 
 ## Hearing the beat
 
-Loudness and spectrum answer "how much"; the other thing music has is **arrivals**. A drum hit is a moment, not a level, and a visual that flashes on the drum reads as listening in a way a level meter never does.
+Loudness and spectrum answer "how much", but the other thing music has is **arrivals**. A drum hit is a moment, not a level, and a visual that flashes on the drum reads as listening in a way a level meter never does.
 
 <img src="Images/20-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
 
@@ -76,7 +76,7 @@ source.beatCount       // how many beats so far
 source.timeSinceBeat   // seconds of audio since the last one
 ```
 
-`beat` is the ready-made value: multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the finished piece spawns sparks. Look at the timeline: every kick lands, and so does the quiet off-beat hat, with the same confidence. That's what detection is: onset detection hears *arrivals*, sudden changes in the sound, not loudness and not "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. For most visuals that's exactly what you want; when it isn't, `beatSensitivity` is the knob (higher asks for stronger arrivals before firing), and the detector is deliberately steady the rest of the time: held chords and drones don't drift into false triggers, and the same recording always beats in the same places.
+`beat` is the ready-made value, so multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the finished piece spawns sparks. Look at the timeline, where every kick lands and so does the quiet off-beat hat, with the same confidence. That's what the detector really is: onset detection hears *arrivals*, sudden changes in the sound, not loudness and not "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. For most visuals that's exactly what you want; when it isn't, `beatSensitivity` is the knob (higher asks for stronger arrivals before firing), and the detector is deliberately steady the rest of the time, so held chords and drones don't drift into false triggers, and the same recording always beats in the same places.
 
 ## Four places sound comes from
 
@@ -89,13 +89,13 @@ let tone = Tone(frequency: 220, waveform: .sine)               // a note of your
 let sound = Soundtrack(of: player)                             // a playing video's audio
 ```
 
-`AudioInput` is the microphone, permission and all. `AudioPlayer` plays a file (`.m4a`, `.mp3`, `.wav`, and friends) and analyzes it as it sounds; the `Audio/FilePlayer` example ships with a violin recording and shows the shape. It's also the source that survives export: during a headless render it follows the export clock through the file, so an audio-reactive piece writes the same frames every time (Chapter 22 has the whole export story). `Tone` is a modest oscillator that both sounds and feeds the analyzer, which makes it the self-contained option: the `Audio/Spectrum` example generates a gliding sawtooth and draws its own harmonics, no permission, no file. And `Soundtrack` taps the audio of a playing `VideoPlayer` from Chapter 21's territory, so footage can drive visuals with its own music. One habit applies to all four: an audio file you bundle follows the same license care as any asset, so credit what you ship.
+`AudioInput` is the microphone, permission and all. `AudioPlayer` plays a file (`.m4a`, `.mp3`, `.wav`, and friends) and analyzes it as it sounds, and the `Audio/FilePlayer` example ships with a violin recording and shows the shape. It's also the source that survives export, because during a headless render it follows the export clock through the file, so an audio-reactive piece writes the same frames every time (Chapter 22 has the whole export story). `Tone` is a modest oscillator that both sounds and feeds the analyzer, which makes it the self-contained option, and the `Audio/Spectrum` example generates a gliding sawtooth and draws its own harmonics, with no permission and no file. And `Soundtrack` taps the audio of a playing `VideoPlayer` from Chapter 21's territory, so footage can drive visuals with its own music. One habit applies to all four. An audio file you bundle follows the same license care as any asset, so credit what you ship.
 
 ## Knobs from anywhere
 
-Now the hands. Since Chapter 1 you've tuned sketches with `@Param` knobs in the inspector; the news here is that the inspector is only one of the hands that can hold those knobs.
+The hands come next. Since Chapter 1 you've tuned sketches with `@Param` knobs in the inspector, and the news here is that the inspector is only one of the hands that can hold those knobs.
 
-**MIDI** is the protocol music hardware has spoken since 1983: knob boxes, fader banks, pad grids, keyboards. A controller sends small messages (a knob is a *control change* carrying a number `0...127`; a pad is a *note* with a velocity), and `OllinMIDI` reads them:
+**MIDI** is the protocol music hardware has spoken since 1983: knob boxes, fader banks, pad grids, keyboards. A controller sends small messages (a knob is a *control change* carrying a number `0...127`, and a pad is a *note* with a velocity), and `OllinMIDI` reads them:
 
 ```swift
 import OllinMIDI
@@ -111,7 +111,7 @@ override func draw() {
 }
 ```
 
-`start()` connects to every device on the system, including ones plugged in later. Which control sends what is the controller's business, so the first thing to do with new hardware is run the `Integration/MIDIMonitor` example and touch everything: it draws each message as it arrives, and your controller introduces itself.
+`start()` connects to every device on the system, including ones plugged in later. Which control sends what is the controller's business, so the first thing to do with new hardware is run the `Integration/MIDIMonitor` example and touch everything. It draws each message as it arrives, and your controller introduces itself.
 
 Knobs aren't the only thing MIDI carries. Gear with a play button (a DAW, a drum machine, a DJ mixer) also broadcasts its beat as *MIDI clock*, and a `TempoClock` reads that into musical time, so motion lands on the beat instead of near it:
 
@@ -136,7 +136,7 @@ override func draw() {
 }
 ```
 
-Point TouchOSC (or anything that speaks OSC) at your Mac's IP and port 8000, and its controls land in the sketch. There's an `OSCSender` for the other direction, so a sketch can drive a mixer or a lighting desk too. And you can rehearse all of it with no hardware at all: the `Integration/MIDILoopback` and `Integration/OSCLoopback` examples send to themselves, so the round-trip is visible on any bare Mac.
+Point TouchOSC (or anything that speaks OSC) at your Mac's IP and port 8000, and its controls land in the sketch. There's an `OSCSender` for the other direction, so a sketch can drive a mixer or a lighting desk too. And you can rehearse all of it with no hardware at all, because the `Integration/MIDILoopback` and `Integration/OSCLoopback` examples send to themselves, so the round-trip is visible on any bare Mac.
 
 ## One knob, three hands
 
@@ -154,7 +154,7 @@ override func setup() {
 
 <img src="Images/20-SoundAndControl/BindingFlow.jpg" alt="A diagram of three boxes, a MIDI knob, an OSC message, and the inspector slider, with arrows converging on one @Param box, and one arrow onward to a dial labeled: the sketch reads radius" width="680">
 
-Each incoming value is mapped into the parameter's own range and assigned; the sketch keeps reading plain `radius` and never knows who moved it. The inspector slider, the hardware, the phone, and plain assignment in code all stay live at once, and whichever moved most recently wins. One more line makes hardware feel good: give the parameter a `smoothing:` (`.eased(0.3)` for a fixed glide, `.smoothed` for the adaptive filter that stays steady at rest and opens up under a moving hand), and every source glides instead of stepping, because the softening belongs to the knob, not to the wire.
+Each incoming value is mapped into the parameter's own range and assigned, and the sketch keeps reading plain `radius` without ever knowing who moved it. The inspector slider, the hardware, the phone, and plain assignment in code all stay live at once, and whichever moved most recently wins. One more line makes hardware feel good. Give the parameter a `smoothing:` (`.eased(0.3)` for a fixed glide, `.smoothed` for the adaptive filter that stays steady at rest and opens up under a moving hand), and every source glides instead of stepping, because the softening belongs to the knob rather than to the wire.
 
 ## Putting it together: a playable instrument
 
@@ -265,18 +265,18 @@ final class Resonator: Sketch {
 
 <img src="Images/20-SoundAndControl/Resonator.jpg" alt="The finished Resonator: an amber orb below center wearing a tilted crown of spectrum spokes, sparks scattered around it against the dark" width="560">
 
-The additive blend and the ACES tone map from Chapter 14 are what make the glow feel like light instead of paint; the mirrored bands are an old trick that keeps a spectrum symmetric and calm. Watch it run and the crown breathes with the arpeggio while the core keeps time.
+Each spoke is a `drawOrientedBox`, which fills a thick bar between two points at whatever angle they happen to lie, so a band level turns straight into a spike pointing out from the center. The additive blend and the ACES tone map from Chapter 14 are what make the glow feel like light instead of paint, and the mirrored bands are an old trick that keeps a spectrum symmetric and calm. Watch it run and the crown breathes with the arpeggio while the core keeps time.
 
 Then make it yours:
 
-- Give it your ears: swap `StageMic` for `AudioInput()`, start it in `setup()`, and delete the `mic.listen()` line (a live source feeds itself). Then play music at your Mac.
+- Give it your ears by swapping `StageMic` for `AudioInput()`, starting it in `setup()`, and deleting the `mic.listen()` line (a live source feeds itself). Then play music at your Mac.
 - Give it your hands: `midi.bind(controlChange: 7, to: $brightness)`, or bind `/brightness` over OSC and play it from a phone on the sofa.
-- Give it your music: an `AudioPlayer` with a favorite track, and `beatSensitivity` tuned until the sparks land on the drums.
-- Rebuild the crown: the spokes are just `bands` and trigonometry, so try concentric rings, a horizon of bars, or Chapter 12's flow field with its strength driven by `bass`.
+- Give it your music with an `AudioPlayer` and a favorite track, then tune `beatSensitivity` until the sparks land on the drums.
+- Rebuild the crown, since the spokes are only `bands` and trigonometry. Try concentric rings, a horizon of bars, or Chapter 12's flow field with its strength driven by `bass`.
 
 ## Where this comes from
 
-The idea that any sound splits into pure vibrations is Joseph Fourier's (1822); the fast algorithm that made it real-time, the FFT, is Cooley and Tukey's (1965), and Ollin runs Apple's implementation. Detecting arrivals by spectral flux is a standard technique from music information retrieval, surveyed well in Bello and colleagues' onset-detection tutorial (2005); the real-time recipe Ollin follows is Böck, Krebs, and Schedl's online method (2012). MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other, a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. And the audio-reactive visual itself has a long lineage, from Oskar Fischinger's hand-drawn sound films through the oscilloscope and music-visualizer traditions to today's VJ and live-coding scenes. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The idea that any sound splits into pure vibrations is Joseph Fourier's (1822), and the fast algorithm that made it real-time, the FFT, is Cooley and Tukey's (1965), and Ollin runs Apple's implementation. Detecting arrivals by spectral flux is a standard technique from music information retrieval, surveyed well in Bello and colleagues' onset-detection tutorial (2005), and the real-time recipe Ollin follows is Böck, Krebs, and Schedl's online method (2012). MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other, a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. And the audio-reactive visual itself has a long lineage, from Oskar Fischinger's hand-drawn sound films through the oscilloscope and music-visualizer traditions to today's VJ and live-coding scenes. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

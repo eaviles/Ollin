@@ -6,9 +6,9 @@
 
 <img src="Images/10-FlocksAndSwarms/Flock.jpg" alt="Hundreds of small triangles sweeping across a dark canvas in bands of color, each band a sub-flock sharing one direction, with soft trails fading behind them" width="560">
 
-Chapter 8 ended with a swarm chasing the mouse: one steering recipe, run over a few hundred movers, all wanting the same thing. This chapter gives each creature wants of its own. You'll build one creature that can chase, stop at its target, and roam on its own. Then you'll set loose a few hundred that watch only each other, which turns out to be enough to make the flock above, with nobody in charge. And at the end, the same neighborly rules get aimed at geometry instead of motion, and a circle grows into coral.
+Chapter 8 ended with a swarm chasing the mouse, one steering recipe run over a few hundred movers, all wanting the same thing. This chapter gives each creature wants of its own. You'll build one creature that can chase, stop at its target, and roam on its own. Then you'll set loose a few hundred that watch only each other, which turns out to be enough to make the flock above, with nobody in charge. And at the end, the same neighborly rules get aimed at geometry instead of motion, and a circle grows into coral.
 
-One word before we start. The field calls these creatures *autonomous agents*, the name Craig Reynolds gave them in 1986, decades before "agent" came to mean software with a chat window. The idea is his either way; this guide will say creature, boid, and flock.
+One word before we start. The field calls these creatures *autonomous agents*, the name Craig Reynolds gave them in 1986, decades before "agent" came to mean software with a chat window. The idea is his either way, and this guide will say creature, boid, and flock.
 
 ## A creature that steers
 
@@ -34,13 +34,13 @@ creature.step()                             // then move one step
 
 Behaviors don't move the creature. They only return forces, and you decide which to apply and how loudly each one counts (`creature.flee(danger) * 2` shouts twice as hard). `step()` adds the sum to the velocity, caps the speed, and moves. It's Chapter 9's force accumulation again, with the forces coming from wants instead of gravity.
 
-Something changed quietly since Chapter 8: there's no `deltaTime` here. A `Vehicle`, like every simulation you'll meet in this chapter, moves in fixed steps. You call `step()` once per frame, and speeds are in points per step. The trade is deliberate. A stepped simulation is exactly repeatable: the same seed replays the same run, which is how the figures in this guide (and any piece you export) can be reproduced at all. The cost is that a dropped frame slows the world down a little instead of skipping ahead, and for creatures that's almost always fine.
+Something changed quietly since Chapter 8. There's no `deltaTime` here. A `Vehicle`, like every simulation you'll meet in this chapter, moves in fixed steps. You call `step()` once per frame, and speeds are in points per step. The trade is deliberate. A stepped simulation is exactly repeatable: the same seed replays the same run, which is how the figures in this guide (and any piece you export) can be reproduced at all. The cost is that a dropped frame slows the world down a little instead of skipping ahead, and for creatures that's almost always fine.
 
-> **Swift note.** `creature` is declared with `let` even though it changes every frame. That works because `Vehicle` is a *class*: the `let` pins which creature the name points at, not what's inside it. You met the same pattern in Chapter 9 with `World`. Holding one instance and poking it every frame is the house shape for simulations, and you'll see it three times in this chapter.
+> **Swift note.** `creature` is declared with `let` even though it changes every frame. That works because `Vehicle` is a *class*, so the `let` pins which creature the name points at, not what's inside it. You met the same pattern in Chapter 9 with `World`. Holding one instance and poking it every frame is the house shape for simulations, and you'll see it three times in this chapter.
 
 ## Seek, and the art of stopping
 
-`seek` aims at full speed forever, and that's its flaw: it has no idea of *enough*. Run it at a fixed target and the creature overshoots, turns around, and shoots through again, forever. The fix is `arrive`, which wants full speed far away but ramps its desired speed down inside a slowing radius, so the creature eases in and parks. Watch both at once. Make `MySketches/ChaseDot.swift`:
+`seek` aims at full speed forever, and that's its flaw, because it has no idea of *enough*. Run it at a fixed target and the creature overshoots, turns around, and shoots through again, forever. The fix is `arrive`, which wants full speed far away but ramps its desired speed down inside a slowing radius, so the creature eases in and parks. Watch both at once. Make `MySketches/ChaseDot.swift`:
 
 ```swift
 import Ollin
@@ -93,7 +93,7 @@ final class ChaseDot: Sketch {
 
 <img src="Images/10-FlocksAndSwarms/ChaseDot.jpg" alt="Two curved trails sweep toward a white ring on a dark canvas. The teal trail bends in and stops at the ring; the coral trail swings past it and back through it in a line, its creature caught mid-swing" width="560">
 
-Both creatures launch with the same speed and the same turning cap; only the wanting differs. The teal arriver bends in, slows, and parks on the dot. The coral seeker swings through it, brakes, comes back, and shoots through again; its trail past the target is that oscillation drawn. `drawVehicle` is a small courtesy from Ollin: a triangle pointing along the creature's heading, in the current `fill`.
+Both creatures launch with the same speed and the same turning cap, and only the wanting differs. The teal arriver bends in, slows, and parks on the dot. The coral seeker swings through it, brakes, comes back, and shoots through again, and its trail past the target is that oscillation drawn. `drawVehicle` is a small courtesy from Ollin, a triangle pointing along the creature's heading, in the current `fill`.
 
 Both trails here are just arrays of positions, appended each frame and drawn with `drawPolyline`, the same trick as every trail in this chapter.
 
@@ -103,7 +103,7 @@ The most lifelike behavior needs no target at all. `wander` gives a creature aim
 
 <img src="Images/10-FlocksAndSwarms/WanderCircle.jpg" alt="Two-panel diagram. Left: a dot with a heading arrow, a faint circle ahead of it, an orange point on the circle's rim labeled the wandering target, and ghost points showing the jitter. Right: a long looping meander labeled what that produces" width="680">
 
-Because the target can only slide gradually, the creature's curve bends gradually too: it remembers roughly where it was going. The jitter amount is the personality knob. Small values drift in long, calm arcs; large values get twitchy. Three of them, with trails, make `MySketches/Wanderer.swift`:
+Because the target can only slide gradually, the creature's curve bends gradually too, so it remembers roughly where it was going. The jitter amount is the personality knob. Small values drift in long, calm arcs; large values get twitchy. Three of them, with trails, make `MySketches/Wanderer.swift`:
 
 ```swift
 import Ollin
@@ -149,7 +149,7 @@ final class Wanderer: Sketch {
 
 <img src="Images/10-FlocksAndSwarms/Wanderer.jpg" alt="Three long looping trails in teal, gold, and coral meander over a dark canvas, each ending in a small triangle" width="560">
 
-Two behaviors are stacked here, and that's the point of forces-that-compose: `wander` supplies the roaming and `contain` supplies the walls, a push back inside the canvas that only wakes up within `margin` of an edge. Each creature has its own `seed`, because wander is the one behavior that draws random numbers; give two creatures the same seed and they roam in eerie lockstep.
+Two behaviors are stacked here, and that's the point of forces-that-compose: `wander` supplies the roaming and `contain` supplies the walls, a push back inside the canvas that only wakes up within `margin` of an edge. Each creature has its own `seed`, because wander is the one behavior that draws random numbers, and giving two creatures the same seed makes them roam in eerie lockstep.
 
 The rest of the behavior shelf works the same way, so a list will do. `pursue` and `evade` chase and dodge a *moving* target by aiming where it will be, not where it is, the hunting trick every kitten knows. `follow(path:)` keeps a creature inside a corridor along a polyline, correcting only when it strays. `follow(_ field:)` rides the flow fields coming in Chapter 12. `separate(from:)` keeps personal space within a group, and you'll meet it properly in a moment. The `Motion/Steering` example runs most of the shelf in one scene, and the [steering reference](../Docs/Generators/Steering.md) has every knob.
 
@@ -169,7 +169,7 @@ Now the leap that made this famous. In 1986 Reynolds set out to animate a flock 
 
 <img src="Images/10-FlocksAndSwarms/RuleCohesion.jpg" alt="Diagram of one dark boid inside a faint circle, gray neighbors clustered to one side, an orange ringed dot at their center of the group, and an orange arrow from the boid toward it" width="680">
 
-Every arrow above is the same steering move from the start of the chapter; only *desired* changes. And notice what none of the rules mention: the flock. A boid sees a handful of neighbors inside its perception radius and nothing else. No boid knows the flock exists, and the flock happens anyway. That's the pattern this chapter is really about, local rules producing global behavior, and it's why these three small rules have been studied by biologists and roboticists ever since.
+Every arrow above is the same steering move from the start of the chapter, and only *desired* changes. And notice what none of the rules mention: the flock. A boid sees a handful of neighbors inside its perception radius and nothing else. No boid knows the flock exists, and the flock happens anyway. That's the pattern this chapter is really about, local rules producing global behavior, and it's why these three small rules have been studied by biologists and roboticists ever since.
 
 Here are the rules switched on one at a time, same creatures, same seed:
 
@@ -192,7 +192,7 @@ override func draw() {
 }
 ```
 
-The three rule weights (`flock.separation`, `flock.alignment`, `flock.cohesion`) and the two radii are ordinary properties, and tuning them is tuning the flock's temperament: raise separation and the flock loosens into a crowd keeping polite distance; raise cohesion and it balls up; shrink `perceptionRadius` and big flocks fragment into many small ones. There is no right setting. The finished piece below puts all three on knobs so you can search for your own.
+The three rule weights (`flock.separation`, `flock.alignment`, `flock.cohesion`) and the two radii are ordinary properties, and tuning them is tuning the flock's temperament. Raise separation and the flock loosens into a crowd keeping polite distance. Raise cohesion and it balls up. Shrink `perceptionRadius` and big flocks fragment into many small ones. There is no right setting. The finished piece below puts all three on knobs so you can search for your own.
 
 ## A line that wants space
 
@@ -230,7 +230,7 @@ Run it live and you can watch the folds negotiate for room in real time. `growth
 
 ## Putting it together: the living flock
 
-The piece at the top of the chapter is the flock with its temperament on knobs and one new trick for the trails. So far every sketch has started `draw()` by wiping the canvas. `noClear()` turns that off: the canvas keeps everything drawn so far, and *you* decide what fades. Painting a translucent rectangle of the background color over the whole canvas each frame dims the past a little instead of erasing it, and moving things grow tails. (That persistent canvas has a whole world in it, accumulation and long-exposure looks, which Chapter 14 explores; this is a first taste.)
+The piece at the top of the chapter is the flock with its temperament on knobs and one new trick for the trails. So far every sketch has started `draw()` by wiping the canvas. `noClear()` turns that off, so the canvas keeps everything drawn so far and *you* decide what fades. Painting a translucent rectangle of the background color over the whole canvas each frame dims the past a little instead of erasing it, and moving things grow tails. (That persistent canvas has a whole world in it, accumulation and long-exposure looks, which Chapter 14 explores, and this is a first taste.)
 
 Make `MySketches/Flock.swift`:
 
@@ -290,9 +290,9 @@ Each boid is a triangle rotated to its heading (Chapter 6's transforms doing cre
 
 Then make it yours:
 
-- Drag the three knobs while it runs. Somewhere around high cohesion and low separation the flock balls up into a swirling knot; high separation with low everything else dissolves it into a polite crowd. Find the edge between flock and crowd.
-- Give the flock somewhere to go: a `flock.field = curlField(scale: 0.003)` with a small `flock.fieldStrength` sends the whole society drifting along an invisible current (a preview of Chapter 12).
-- Add a predator: one `Vehicle` that pursues the flock's first boid, drawn large and pale. For real drama, make nearby boids `flee` it. All the forces compose.
+- Drag the three knobs while it runs. Somewhere around high cohesion and low separation the flock balls up into a swirling knot, while high separation with low everything else dissolves it into a polite crowd. Find the edge between flock and crowd.
+- Give the flock somewhere to go. Setting `flock.field = curlField(scale: 0.003)` with a small `flock.fieldStrength` sends the whole society drifting along an invisible current (a preview of Chapter 12).
+- Add a predator, one `Vehicle` that pursues the flock's first boid, drawn large and pale. For real drama, make nearby boids `flee` it. All the forces compose.
 - Swap the triangle for a short line along the velocity, and the piece stops reading as creatures and starts reading as brushstrokes.
 
 ## Where this comes from

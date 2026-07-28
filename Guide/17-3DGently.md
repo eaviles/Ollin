@@ -16,7 +16,7 @@ Every sketch so far lived on a flat canvas. This chapter adds the third axis, an
 let p = Vector3(2, 1, -3)     // 2 right, 1 up, 3 away
 ```
 
-Two habits from the canvas need resetting. First, in the world, **y goes up**, the opposite of the canvas, where y grows downward; a tower rises toward positive y. Second, there are no pixels here: world distances are **world units**, and a unit means whatever your scene wants it to mean (a meter for a room, a "sphere-width" for an abstract piece). Sizes on screen come from where the camera stands.
+Two habits from the canvas need resetting. First, in the world **y goes up**, the opposite of the canvas, where y grows downward, so a tower rises toward positive y. Second, there are no pixels here. World distances are **world units**, and a unit means whatever your scene wants it to mean (a meter for a room, a "sphere-width" for an abstract piece). Sizes on screen come from where the camera stands.
 
 ## A camera and a sphere
 
@@ -37,7 +37,7 @@ final class FirstSphere: Sketch {
 
 <img src="Images/17-3DGently/FirstSphere.jpg" alt="A single coral-red sphere, softly shaded, floating on a near-black background" width="560">
 
-Run it live and drag. The sphere isn't a flat disc: it's a shaded ball, and the mouse orbits around it. `cameraShowcase` gives you the camera most 3D sketches want, with no wiring: it circles the scene slowly on its own, you can grab it any time (drag to orbit, scroll to move closer or farther, right-drag to slide the view), and after ten seconds of being left alone it drifts back to the opening shot and resumes. A sketch on a wall keeps moving; a curious viewer can always explore.
+Run it live and drag. The sphere isn't a flat disc, it's a shaded ball, and the mouse orbits around it. `cameraShowcase` gives you the camera most 3D sketches want with no wiring at all. It circles the scene slowly on its own, you can grab it any time (drag to orbit, scroll to move closer or farther, right-drag to slide the view), and after ten seconds of being left alone it drifts back to the opening shot and resumes. That way a sketch on a wall keeps moving and a curious viewer can always explore.
 
 Notice you set up no lights. Solids are lit by a default rig automatically, so a shape looks three-dimensional out of the box. We'll take the lights over ourselves in a few pages.
 
@@ -74,19 +74,19 @@ override func draw() {
 
 <img src="Images/17-3DGently/DepthRow.jpg" alt="Six spheres in a row marching away from the camera across a pale floor, each one smaller and partly hidden behind the one before it" width="560">
 
-Three things happened at once. `translate` grew a third argument, so it moves things in space now; the spheres get smaller as they get farther, because the camera has perspective; and each sphere *hides* the ones behind it. That hiding is the **depth test**: the renderer remembers, per pixel, how far away the nearest surface was, and anything farther loses. You never sort anything by hand. Draw in any order; the world works it out.
+Three things happened at once. `translate` grew a third argument, so it moves things in space now. The spheres get smaller as they get farther away, because the camera has perspective. And each sphere *hides* the ones behind it. That hiding is the **depth test**, which means the renderer remembers, per pixel, how far away the nearest surface was, and anything farther loses. You never sort anything by hand. Draw in any order and the world works it out.
 
-`drawPlane` is the floor: a flat sheet on the ground, the stage most scenes stand on. And `fieldOfView` is the lens: smaller angles are telephoto (calm, flat, good for product shots), bigger angles are wide-angle (dramatic, stretched at the edges). The default is a fairly wide lens; this sketch tightens it to a quarter turn.
+`drawPlane` is the floor, a flat sheet on the ground, and it's the stage most scenes stand on. `fieldOfView` is the lens. Smaller angles are telephoto, which reads calm and flat and suits product shots, while bigger angles are wide-angle, dramatic and stretched at the edges. The default is a fairly wide lens, so this sketch tightens it to a quarter turn.
 
 ## A catalog of solids
 
-Spheres, boxes, and a whole shelf more. Each of these is one call, shaded and depth-tested like everything else:
+The catalog runs well past spheres and boxes. Each of these is one call, shaded and depth-tested like everything else:
 
 <img src="Images/17-3DGently/Catalog.jpg" alt="A four-by-four grid of labeled solid primitives: box, sphere, icosphere, cylinder, cone, capsule, rounded box, torus, the four larger Platonic solids, pyramid, helix, torus knot, and plane" width="560">
 
-The names are what you'd guess: `drawBox(size: 1.5)`, `drawTorus(radius: 0.6, tube: 0.25)`, `drawCone(radius: 0.7, height: 1.5)`, and so on. Past the everyday ones there's also a small shape *factory*: `drawSupershape` and `drawSuperellipsoid` sweep whole families of organic and gem-like forms from a few numbers, `drawExtrude` pushes any flat 2D shape into depth, `drawLathe` revolves a side profile into a vase, and `drawTube` sweeps a tube along any 3D path. The `3D/ShapeFactory` example is the tour.
+The names are what you'd guess: `drawBox(size: 1.5)`, `drawTorus(radius: 0.6, tube: 0.25)`, `drawCone(radius: 0.7, height: 1.5)`, and so on. Past the everyday ones there's also a small shape *factory*. `drawSupershape` and `drawSuperellipsoid` sweep whole families of organic and gem-like forms from a few numbers, `drawExtrude` pushes any flat 2D shape into depth, `drawLathe` revolves a side profile into a vase, and `drawTube` sweeps a tube along any 3D path. The `3D/ShapeFactory` example is the tour.
 
-Under every one of these calls is a **`Mesh`**: the shape as a cloud of triangles, which is what all 3D surfaces are made of here. The `draw*` calls rebuild their mesh every frame, which is fine for a box and wasteful for a dense knot. The pattern for anything heavy is the one you know from images and fonts, build once, draw forever:
+Under every one of these calls is a **`Mesh`**, the shape as a cloud of triangles, which is what all 3D surfaces are made of here. The `draw*` calls rebuild their mesh every frame, which is fine for a box and wasteful for a dense knot. The pattern for anything heavy is the one you know from images and fonts, build once, draw forever:
 
 ```swift
 let knot = Mesh.torusKnot(radius: 0.62, tube: 0.2, segments: 220, sides: 14)
@@ -96,7 +96,7 @@ drawMesh(knot)
 
 ## Placing things: transforms compose
 
-You've been using `withState` and `translate` since Chapter 6; in 3D they're joined by `rotateX`, `rotateY`, `rotateZ` (each spins around one axis), and the same `scale`. The important idea hasn't changed: **every move builds on the moves before it**. In 3D that compounding is where structures come from:
+You've been using `withState` and `translate` since Chapter 6, and in 3D they're joined by `rotateX`, `rotateY`, `rotateZ` (each spins around one axis), and the same `scale`. The important idea hasn't changed: **every move builds on the moves before it**. In 3D that compounding is where structures come from:
 
 ```swift
 override func draw() {
@@ -125,11 +125,11 @@ override func draw() {
 
 <img src="Images/17-3DGently/Stairs.jpg" alt="A spiral staircase built from twenty-six colored slabs winding up a dark central post, cyan at the bottom shading to pink at the top" width="560">
 
-Read the loop closely, because it uses both halves of the tool. The climb and the turn sit *outside* any `withState`, so they accumulate, step after step; that accumulation is the spiral. The sideways step to hang each tread off the post sits *inside* a `withState`, so it applies to one tread and is forgotten. One repeated move-and-turn, and a staircase happens.
+Read the loop closely, because it uses both halves of the tool. The climb and the turn sit *outside* any `withState`, so they accumulate, step after step, and that accumulation is the spiral. The sideways step to hang each tread off the post sits *inside* a `withState`, so it applies to one tread and is forgotten. One repeated move-and-turn, and a staircase happens.
 
-This sketch also shows the plain `camera(.orbiting(...))` call: a fixed pose you specify completely, no mouse. Reach for it when you want to compose a shot exactly; reach for `cameraShowcase` when you want the scene alive and explorable.
+This sketch also shows the plain `camera(.orbiting(...))` call, a fixed pose you specify completely, with no mouse involved. Reach for it when you want to compose a shot exactly, and for `cameraShowcase` when you want the scene alive and explorable.
 
-Nesting `withState` blocks builds solar systems: translate to a planet and draw it, then translate again and draw its moon, and the moon inherits the planet's motion for free. The `3D/Transforms` example is exactly that, three transforms deep.
+Nesting `withState` blocks builds solar systems. Translate to a planet and draw it, then translate again and draw its moon, and the moon inherits the planet's motion for free. The `3D/Transforms` example is exactly that, three transforms deep.
 
 ## Light, by playing
 
@@ -141,7 +141,7 @@ Everything so far wore the default lighting. Taking over is one call before you 
 lightingPreset(.goldenHour)     // one call relights the whole scene
 ```
 
-The six presets (`.standard`, `.threePoint`, `.goldenHour`, `.noir`, `.studio`, `.moonlight`) are each an ambient wash plus a few placed lights, tuned like film rigs. Play first; the mood of a 3D piece is mostly its light, and swapping presets on a knob teaches you more in a minute than any paragraph.
+The six presets (`.standard`, `.threePoint`, `.goldenHour`, `.noir`, `.studio`, `.moonlight`) are each an ambient wash plus a few placed lights, tuned like film rigs. Play with them first, because the mood of a 3D piece is mostly its light, and swapping presets on a knob teaches you more in a minute than any paragraph.
 
 When you're ready to place your own, there are three kinds of light, and one scene can carry all of them:
 
@@ -156,9 +156,9 @@ castShadows()
 
 <img src="Images/17-3DGently/LightKinds.jpg" alt="A sphere, box, and torus on a pale floor lit three ways at once: warm directional light from the left, a cyan point light marked by a small ball, and a magenta spot pooling on the floor" width="680">
 
-A **directional** light is the sun: parallel rays from a direction, no position, lighting everything evenly. A **point** light is a bulb at a place; nearby things catch it strongly. A **spot** is a point light narrowed to an aimed cone, with a `penumbra` for how soft its edge falls. The `ambientLight` is a flat wash added to every surface so the unlit sides aren't pure black. Each light takes an `intensity`, and in the figure each has its own color so you can see who's doing what: the warm key shades everything, the cyan bulb blooms on the surfaces near it, the magenta cone pools on the floor.
+A **directional** light is the sun, parallel rays from a direction, with no position of its own, lighting everything evenly. A **point** light is a bulb at a place, so nearby things catch it strongly. A **spot** is a point light narrowed to an aimed cone, with a `penumbra` for how soft its edge falls. The `ambientLight` is a flat wash added to every surface so the unlit sides aren't pure black. Each light takes an `intensity`, and in the figure each has its own color so you can see who's doing what: the warm key shades everything, the cyan bulb blooms on the surfaces near it, the magenta cone pools on the floor.
 
-That one extra line, **`castShadows()`**, is what plants objects in the scene. It's opt-in (a frame without it pays nothing) and automatic once on: the light does the casting, and the shadows are soft in the way real ones are, crisp where an object meets the floor and blurrier as they fall away. `shadowSoftness(_:)` dials that from hard-edged (`0`) to very soft (`1`).
+That one extra line, **`castShadows()`**, is what plants objects in the scene. It's opt-in, so a frame without it costs nothing, and it's automatic once on. The light does the casting, and the shadows come out soft in the way real ones are, crisp where an object meets the floor and blurrier as they fall away. `shadowSoftness(_:)` dials that from hard-edged (`0`) to very soft (`1`).
 
 Two smaller dials finish the surface's response to light: `specular(_:)` sets how strong the highlight is (0 is matte) and `shininess(_:)` how tight. But mostly you won't set those by hand, because of what's next.
 
@@ -186,11 +186,11 @@ fill(Color(hue: 0.02, saturation: 0.8, brightness: 0.4))
 drawSphere(radius: 0.62)
 ```
 
-There's a further tier, the physically based metals and plastics (`material(.metal(roughness: 0.2))`), that really comes alive once a scene has surroundings to reflect. That's the next chapter's territory, where environments light the scene; a pointer for now.
+There's a further tier, the physically based metals and plastics (`material(.metal(roughness: 0.2))`), that really comes alive once a scene has surroundings to reflect. That's the next chapter's territory, where environments light the scene, so treat it as a pointer for now.
 
 ## Shading from a picture
 
-Matcaps are the shortcut of the sculpting world: instead of lights and materials, the entire look, lighting included, is painted into one photograph of a sphere, and every surface point borrows the color the sphere would have there.
+Matcaps are the shortcut of the sculpting world. Instead of lights and materials, the entire look, lighting included, is painted into one photograph of a sphere, and every surface point borrows the color the sphere would have there.
 
 ```swift
 matcap(.chrome)
@@ -199,7 +199,7 @@ drawMesh(knot)
 
 <img src="Images/17-3DGently/MatcapRow.jpg" alt="The same knot wearing four matcaps: reflective chrome, brown terracotta clay, red car paint, and a flat toon look" width="680">
 
-One call, no lights to place, and the look is total: chrome, clay, car paint, cel shading. The trade is that the lighting is baked into the picture, so a matcap ignores your lights, materials, and shadows; the highlights slide as the view turns, which is what makes it read as material. `matcap(loadImage("my-matcap.png"))` wears any sphere image you find or paint, and `Matcap.shaded(baseColor:metallic:roughness:)` makes one on the fly with no asset at all.
+One call, no lights to place, and the look is total: chrome, clay, car paint, cel shading. The trade is that the lighting is baked into the picture, so a matcap ignores your lights, materials, and shadows. The highlights slide as the view turns, which is what makes it read as material. `matcap(loadImage("my-matcap.png"))` wears any sphere image you find or paint, and `Matcap.shaded(baseColor:metallic:roughness:)` makes one on the fly with no asset at all.
 
 ## A mesh from a file
 
@@ -224,13 +224,13 @@ final class Loaded: Sketch {
 }
 ```
 
-The one habit that saves confusion is **`normalized(scale:)`**: a file arrives at whatever size and position its author saved, from millimeters to kilometers, and normalizing recenters it and scales its longest side to the world units you ask for. Keep the `fill` white so the model's own colors show; a colored fill tints it. (Models you build yourself are yours to ship; downloaded ones carry licenses worth checking before you bundle them.)
+The one habit that saves confusion is **`normalized(scale:)`**. A file arrives at whatever size and position its author saved, anywhere from millimeters to kilometers, and normalizing recenters it and scales its longest side to the world units you ask for. Keep the `fill` white so the model's own colors show, because a colored fill tints it. (Models you build yourself are yours to ship, while downloaded ones carry licenses worth checking before you bundle them.)
 
 > **Swift note.** `loadMesh(...)?.normalized(scale: 3)` chains with `?.` because loading can fail: if the file isn't there, `loadMesh` returns `nil`, the chain stops, and `model` stays `nil`. The `if let model` in `draw()` then simply skips drawing, so a missing file never crashes the sketch.
 
 ## Keeping your bearings
 
-3D scenes are easy to get lost in, so the tools for finding yourself again are built in. `cameraView(.front)` snaps the camera to a canonical angle (front, top, left, isometric, and friends) and `resetCamera()` returns to the opening shot; the host apps put the same snaps in a **Camera** menu (⌘0 through ⌘7), so they work on any running sketch without a line of code. Two more calls help while you build: `cameraAxis()` shows a small clickable x-y-z compass, and `groundGrid()` lays a faint reference floor. Both are development chrome, drawn only in the live window, never in an export, which is why you won't find them in any figure in this chapter.
+3D scenes are easy to get lost in, so the tools for finding yourself again are built in. `cameraView(.front)` snaps the camera to a canonical angle (front, top, left, isometric, and friends) and `resetCamera()` returns to the opening shot. The host apps put the same snaps in a **Camera** menu (⌘0 through ⌘7), so they work on any running sketch without a line of code. Two more calls help while you build: `cameraAxis()` shows a small clickable x-y-z compass, and `groundGrid()` lays a faint reference floor. Both are development chrome, drawn only in the live window, never in an export, which is why you won't find them in any figure in this chapter.
 
 ## Putting it together: the plaza
 
@@ -315,14 +315,14 @@ Everything in it is this chapter: meshes built once, plinths placed with the tra
 
 Then make it yours:
 
-- Recast the show: swap in a supershape, a lathe of your own profile, or a loaded model on the tallest plinth.
+- Recast the show by swapping in a supershape, a lathe of your own profile, or a loaded model on the tallest plinth.
 - Relight it: `.noir` turns the court into a crime scene, `.moonlight` into a garden at night. Put the preset on a `@Param` menu knob.
 - Give the pearl's plinth a slow `rotateY` of its own and let the whole pedestal turn.
 - Try `matcap(.chrome)` on the gem and notice what stops responding: lights, shadows, everything but the view.
 
 ## Where this comes from
 
-The camera-on-an-orbit model is the shared convention of 3D tools everywhere, from CAD turntables to the orbit controls of three.js. The lighting model under the materials is Blinn-Phong shading, Jim Blinn's 1977 refinement of Bui Tuong Phong's specular model, the workhorse of real-time graphics for decades; the toon and warm-to-cool finishes descend from the non-photorealistic rendering literature, notably Amy Gooch and colleagues' 1998 technical illustration shading. The three-point lighting behind the presets is a film-set convention nearly as old as film. Matcaps grew up in the digital-sculpting world, where painters bake a whole studio into one sphere image. The supershape formula is Johan Gielis's superformula (2003); the lathe and extrude are as old as pottery and pasta. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The camera-on-an-orbit model is the shared convention of 3D tools everywhere, from CAD turntables to the orbit controls of three.js. The lighting model under the materials is Blinn-Phong shading, Jim Blinn's 1977 refinement of Bui Tuong Phong's specular model, the workhorse of real-time graphics for decades. The toon and warm-to-cool finishes descend from the non-photorealistic rendering literature, notably Amy Gooch and colleagues' 1998 technical illustration shading. The three-point lighting behind the presets is a film-set convention nearly as old as film. Matcaps grew up in the digital-sculpting world, where painters bake a whole studio into one sphere image. The supershape formula is Johan Gielis's superformula (2003), while the lathe and extrude are as old as pottery and pasta. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

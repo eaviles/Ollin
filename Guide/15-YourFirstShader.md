@@ -6,15 +6,15 @@
 
 <img src="Images/15-YourFirstShader/Aurora.jpg" alt="An aurora: teal and green curtains of light swaying against a violet night sky full of small stars, above a black mountain ridge" width="560">
 
-That aurora is about forty lines of code and no assets, and it runs at full resolution at full frame rate because the drawing isn't happening one shape at a time. It's a **shader**: a small function the GPU runs at every pixel of the canvas at once. This chapter teaches you to write one, and by the end most of what you'll need was already taught chapters ago; it just changes costume.
+That aurora is about forty lines of code and no assets, and it runs at full resolution at full frame rate because the drawing isn't happening one shape at a time. It's a **shader**, a small function the GPU runs at every pixel of the canvas at once. This chapter teaches you to write one, and by the end you'll find that most of what you need was already taught chapters ago. It just changes costume.
 
 ## One question, a million times
 
-Chapter 12 gave you the mental model without saying so: a field is an answer at every point. A flow field answered with a direction. A shader is a field that answers with a **color**, and the GPU is hardware built to ask it at every pixel simultaneously:
+Chapter 12 gave you the mental model without saying so, in that a field is an answer at every point. A flow field answered with a direction. A shader is a field that answers with a **color**, and the GPU is hardware built to ask it at every pixel simultaneously:
 
 <img src="Images/15-YourFirstShader/PixelGrid.jpg" alt="Two panels evaluating the same glow function: coarsely on the left, where each grid cell shows one answer, and at full pixel resolution on the right where the answers fuse into a smooth image" width="680">
 
-That's the whole shift. Until now, `draw()` has been imperative: *put a circle here, a line there*. A shader is one small function with the opposite job: *given a position, say what color lives there*. No loops over shapes, no order of operations, just position in, color out, everywhere, at once. The million evaluations per frame are why the aurora costs nothing; the "at once" is why a shader can't know what its neighbor pixels decided.
+That's the whole shift. Until now `draw()` has been imperative, telling the canvas to put a circle here and a line there. A shader is one small function with the opposite job: *given a position, say what color lives there*. No loops over shapes, no order of operations, just position in, color out, everywhere, at once. The million evaluations per frame are why the aurora costs nothing, and the "at once" is why a shader can't know what its neighbor pixels decided.
 
 ## The first shader
 
@@ -38,15 +38,15 @@ final class FirstShader: Sketch {
 
 <img src="Images/15-YourFirstShader/FirstShader.jpg" alt="The first shader's output: a smooth gradient, dark blue at the top left corner, red growing to the right, green growing downward, meeting in pink and yellow" width="560">
 
-The string is the shader; everything around it is plumbing you already know (Chapter 14's `generate` makes a layer, `drawImage` shows it). The function is the contract: Ollin calls your `shade` once per pixel, handing it that pixel's `uv` position, and whatever color you return is what that pixel becomes. Here red is `uv.x` and green is `uv.y`, so the image *is* the coordinate system:
+The string is the shader, and everything around it is plumbing you already know, since Chapter 14's `generate` makes a layer and `drawImage` shows it. The function is the contract. Ollin calls your `shade` once per pixel, handing it that pixel's `uv` position, and whatever color you return is what that pixel becomes. Here red is `uv.x` and green is `uv.y`, so the image *is* the coordinate system:
 
 <img src="Images/15-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,0) top right, (0,1) bottom left, (1,1) bottom right, with the center marked (0.5, 0.5)" width="680">
 
-`uv` runs `0...1` across the layer whatever its pixel size, top-left origin like the rest of the canvas. Painting coordinates as color looks like a toy, but it's the debugging tool you'll use forever: when a shader misbehaves, return the thing you're unsure about as a color and look at it.
+`uv` runs `0...1` across the layer whatever its pixel size, top-left origin like the rest of the canvas. Painting coordinates as color looks like a toy, but it's the debugging tool you'll use forever. When a shader misbehaves, return the thing you're unsure about as a color and look at it.
 
-> **Metal note.** The shader is written in Metal, the GPU's language, which is C-flavored: statements end with `;`, there are no argument labels, and the vector types are `float2`, `float3`, `float4` instead of `Vector2` and `Color`. A `float4` color is red, green, blue, alpha, each `0...1`, and constructors nest: `float4(col, 1.0)` packs a `float3` color plus an alpha. The math vocabulary (`sin`, `cos`, `length`, `mix`, `smoothstep`) is the one you've used all along, with the same meanings.
+> **Metal note.** The shader is written in Metal, the GPU's language, which is C-flavored. Statements end with `;`, there are no argument labels, and the vector types are `float2`, `float3`, and `float4` instead of `Vector2` and `Color`. A `float4` color is red, green, blue, alpha, each `0...1`, and constructors nest, so `float4(col, 1.0)` packs a `float3` color plus an alpha. The math vocabulary (`sin`, `cos`, `length`, `mix`, `smoothstep`) is the one you've used all along, with the same meanings.
 
-> **Swift note.** The triple-quoted `"""` string is a multiline string literal: everything between the quotes, line breaks included, is one string. The shader lives inside it, which is why a typo in the shader is reported at this file's own line numbers. And a broken shader never crashes the sketch: the pass is skipped, the error prints (or shows in OllinLive's overlay), and it clears when you fix it.
+> **Swift note.** The triple-quoted `"""` string is a multiline string literal, so everything between the quotes, line breaks included, is one string. The shader lives inside it, which is why a typo in the shader is reported at this file's own line numbers. And a broken shader never crashes the sketch. The pass is skipped, the error prints (or shows in OllinLive's overlay), and it clears when you fix it.
 
 ## Drawing with distance
 
@@ -64,7 +64,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 """)
 ```
 
-Look at the third line. `smoothstep` is Chapter 3's easing curve, the one you watched as a graph and used to cushion motion. Here it answers a different question with the same shape: as `d` crosses from 0.35 down to 0.34, the result ramps smoothly from 0 to 1, and that one-percent ramp is the disc's anti-aliased rim. Widen the ramp and the rim becomes a glow; collapse it and the edge goes hard and pixelated:
+Look at the third line. `smoothstep` is Chapter 3's easing curve, the one you watched as a graph and used to cushion motion. Here it answers a different question with the same shape, because as `d` crosses from 0.35 down to 0.34 the result ramps smoothly from 0 to 1, and that one-percent ramp is the disc's anti-aliased rim. Widen the ramp and the rim becomes a glow; collapse it and the edge goes hard and pixelated:
 
 <img src="Images/15-YourFirstShader/EdgeStep.jpg" alt="The same amber disc three times: a hard stepped edge, a clean rim from a narrow smoothstep, and a wide soft glow from a broad one" width="680">
 
@@ -89,13 +89,13 @@ var sky: Shader {
 }
 ```
 
-Rebuilding the `Shader` value every frame is the normal pattern and costs nothing: the compiled pipeline is cached by the source text, so only the numbers travel. (The finished piece below uses exactly this shape.)
+Rebuilding the `Shader` value every frame is the normal pattern and costs nothing, because the compiled pipeline is cached by the source text, so only the numbers travel. (The finished piece below uses exactly this shape.)
 
 ## The library in your pocket
 
-Ollin splices its own shader library into every shader you write, so the helpers its built-in effects use are yours too, with no import. The ones you already know by other names: `fbm` is Chapter 5's layered noise as one call, and the rest of that chapter's field family (`simplexNoise`, `worley`, `ridgedFbm`, `turbulence`, `warpedFbm`) is here under the same names; `hash12` is a random number that never changes between frames (feed it a cell and it's Chapter 4's seeded random, per pixel); the `sd*` family measures distance to ellipses, stars, hearts, and béziers the way `length` measured distance to a point; and `palette(t, a, b, c, d)` turns a `0...1` value into color along a designed gradient (four `float3`s shape the ramp; steal starting values from its documentation and nudge). The [shader library reference](../Docs/Shaders/ShaderLibrary.md) lists every function.
+Ollin splices its own shader library into every shader you write, so the helpers its built-in effects use are yours too, with no import. Several you already know by other names. `fbm` is Chapter 5's layered noise as one call, and the rest of that chapter's field family (`simplexNoise`, `worley`, `ridgedFbm`, `turbulence`, `warpedFbm`) is here under the same names. `hash12` is a random number that never changes between frames, so feed it a cell and it's Chapter 4's seeded random, per pixel. The `sd*` family measures distance to ellipses, stars, hearts, and béziers the way `length` measured distance to a point. And `palette(t, a, b, c, d)` turns a `0...1` value into color along a designed gradient, where four `float3`s shape the ramp, so steal starting values from its documentation and nudge. The [shader library reference](../Docs/Shaders/ShaderLibrary.md) lists every function.
 
-You've also been *using* shaders all along: every Chapter 14 filter and generator is one. The pattern fields are the purest examples, each a few lines of the math this chapter teaches:
+You've also been *using* shaders all along, since every Chapter 14 filter and generator is one. The pattern fields are the purest examples, each a few lines of the math this chapter teaches:
 
 ```swift
 drawImage(generate(.quasicrystal(phase: time)).image, 0, 0)
@@ -103,11 +103,11 @@ drawImage(generate(.quasicrystal(phase: time)).image, 0, 0)
 
 <img src="Images/15-YourFirstShader/Fields.jpg" alt="Two built-in pattern fields side by side: a blue quasicrystal of interfering waves with sevenfold stars, and a gyroid slice of interwoven cream bands on slate" width="680">
 
-The quasicrystal is a handful of `cos` waves summed at evenly spaced angles; the gyroid is one line of `sin` and `cos` products. When a built-in look is close to what you want, take it; when it isn't, you now know how they're made.
+The quasicrystal is a handful of `cos` waves summed at evenly spaced angles, and the gyroid is one line of `sin` and `cos` products. When a built-in look is close to what you want, take it, and when it isn't, you now know how they're made.
 
 ## Chains: patching without typing Metal
 
-Sometimes you want a shader's texture without writing one. A `Visual` chain composes per-pixel imagery the way you compose anything else in Swift: start from a source, warp it, color it, and patch chains into each other:
+Sometimes you want a shader's texture without writing one. A `Visual` chain composes per-pixel imagery the way you compose anything else in Swift. You start from a source, warp it, color it, and patch chains into each other:
 
 ```swift
 drawVisual(
@@ -119,11 +119,11 @@ drawVisual(
 
 <img src="Images/15-YourFirstShader/ChainGraph.jpg" alt="A chain shown as a graph of real renders: striped oscillator bands, folded into a hexagonal kaleidoscope, then organically warped by a noise driver patched in from below" width="680">
 
-The signature move is the last step: one chain's *color* drives another chain's *coordinates*, per pixel. That `displaced(by:)` is the same idea as Chapter 14's displacement combine, but the driver is any chain, and the whole expression, drivers included, compiles into a single GPU pass. Everything animates by default, every number can ride a knob or a beat without recompiling, and `generate(chain)` hands the result back as an ordinary layer for the rest of the effect graph. The [chains reference](../Docs/Shaders/Visuals.md) has the full vocabulary (sources, warps, color ops, blends, and the feedback loop).
+The signature move is the last step, where one chain's *color* drives another chain's *coordinates*, per pixel. That `displaced(by:)` is the same idea as Chapter 14's displacement combine, but the driver is any chain, and the whole expression, drivers included, compiles into a single GPU pass. Everything animates by default, every number can ride a knob or a beat without recompiling, and `generate(chain)` hands the result back as an ordinary layer for the rest of the effect graph. The [chains reference](../Docs/Shaders/Visuals.md) has the full vocabulary (sources, warps, color ops, blends, and the feedback loop).
 
 ## Putting it together: aurora
 
-Now the sky. Curtains of light are vertical noise bands whose x position is bent by more noise; height fades them in above the horizon; a cosine palette colors them green at the core and violet at altitude; hashed stars and a noise ridge finish the scene. Make `MySketches/Aurora.swift`:
+Now the sky. Curtains of light are vertical noise bands whose x position is bent by more noise. Height fades them in above the horizon, a cosine palette colors them green at the core and violet at altitude, and hashed stars and a noise ridge finish the scene. Make `MySketches/Aurora.swift`:
 
 ```swift
 import Ollin
@@ -187,13 +187,13 @@ Read the shader top to bottom and count the old friends: `fbm` (Chapter 5) bends
 Then make it yours:
 
 - Run it under OllinLive and drag `sway` and `strength` while it plays. Then break a line on purpose and watch the error point at your own file, at the right line, while the sketch keeps running.
-- Reflect it: draw the sky into the top half and again below, flipped and darkened, and there's a lake.
+- Reflect it. Draw the sky into the top half and again below, flipped and darkened, and there's a lake.
 - Feed `info.mouse` into the palette so the colors follow your hand.
-- Chain it: `generate(sky).filtered(.bloom())` glows the curtains; a `Visual` reading `.layer(generate(sky))` can kaleidoscope the whole night.
+- Chain it. `generate(sky).filtered(.bloom())` glows the curtains, and a `Visual` reading `.layer(generate(sky))` can kaleidoscope the whole night.
 
 ## Where this comes from
 
-Shaders come out of computer graphics research and the demoscene, but the reason a creative coder in this century can learn them at all is largely two projects. *The Book of Shaders*, by Patricio Gonzalez Vivo and Jen Lowe, taught a generation the per-pixel mental model (this chapter's distance-and-smoothstep sentence is its heart, and if you want a deeper, GLSL-flavored second pass, it remains wonderful). And Shadertoy, built by Inigo Quilez and Pol Jeremias, made shaders a shared, remixable culture; Quilez's articles are also the source of half the techniques in Ollin's shader library, including the cosine `palette` and the `sd*` distance functions. The fractal noise behind `fbm` descends from Ken Perlin's Oscar-winning noise. The chain idiom of `Visual` is inspired by Olivia Jack's Hydra, the browser live-coding instrument whose patching model made combining visuals feel like playing an instrument. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Shaders come out of computer graphics research and the demoscene, but the reason a creative coder in this century can learn them at all is largely two projects. *The Book of Shaders*, by Patricio Gonzalez Vivo and Jen Lowe, taught a generation the per-pixel mental model (this chapter's distance-and-smoothstep sentence is its heart, and if you want a deeper, GLSL-flavored second pass, it remains wonderful). And Shadertoy, built by Inigo Quilez and Pol Jeremias, made shaders a shared, remixable culture. Quilez's articles are also the source of half the techniques in Ollin's shader library, including the cosine `palette` and the `sd*` distance functions. The fractal noise behind `fbm` descends from Ken Perlin's Oscar-winning noise. The chain idiom of `Visual` is inspired by Olivia Jack's Hydra, the browser live-coding instrument whose patching model made combining visuals feel like playing an instrument. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

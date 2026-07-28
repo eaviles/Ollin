@@ -6,11 +6,11 @@
 
 <img src="Images/14-LayersAndEffects/Comets.jpg" alt="A dark canvas full of glowing comet swarms: hundreds of small lights in orange, pink, and green, each dragging a soft luminous tail that curves with its flock's turn" width="560">
 
-Every sketch so far has drawn onto one surface. This chapter adds more of them: off-screen layers you can hold, blur, glow, feed back into themselves, and stack like sheets of film. By the end, Chapter 10's flock comes back rebuilt out of light, and along the way the canvas learns three tricks a single surface can't do: remembering, accumulating, and being brighter than the screen.
+Every sketch so far has drawn onto one surface. This chapter adds more of them, off-screen layers you can hold, blur, glow, feed back into themselves, and stack like sheets of film. By the end, Chapter 10's flock comes back rebuilt out of light, and along the way the canvas learns three tricks a single surface can't do: remembering, accumulating, and being brighter than the screen.
 
 ## A drawing you can hold
 
-A layer is a second canvas that lives off screen. You make one, aim your drawing at it, and nothing appears; the drawing is *held*, waiting for you to decide what happens to it. Make `MySketches/FirstLayer.swift`:
+A layer is a second canvas that lives off screen. You make one, aim your drawing at it, and nothing appears, because the drawing is *held*, waiting for you to decide what happens to it. Make `MySketches/FirstLayer.swift`:
 
 ```swift
 import Ollin
@@ -39,9 +39,9 @@ final class FirstLayer: Sketch {
 
 <img src="Images/14-LayersAndEffects/FirstLayer.jpg" alt="A wave of colored dots shown twice: hugely blurred across the whole canvas, and sharp inside a smaller card floating in front of its own blur" width="560">
 
-Three calls carry the whole idea. `renderTarget()` makes the layer. `withTarget(art) { }` redirects everything drawn inside the block into it, the way `withState { }` scopes a transform; a `background(_:)` inside clears just the layer. And `art.image` hands the finished layer back as an image for Chapter 7's `drawImage`, so the same drawing can appear twice: once blurred across the whole canvas, once sharp in a card floating over its own ghost. One drawing, two appearances. That's the move everything else in this chapter builds on.
+Three calls carry the whole idea. `renderTarget()` makes the layer. `withTarget(art) { }` redirects everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for Chapter 7's `drawImage`, so the same drawing can appear twice, once blurred across the whole canvas and once sharp in a card floating over its own ghost. One drawing, two appearances. That's the move everything else in this chapter builds on.
 
-Two habits worth forming now. A `renderTarget()` is per-frame scaffolding: make it fresh inside `draw()`, don't store it. And a layer that isn't composited never shows up; `withTarget` records the drawing, `drawImage` is what puts it on screen.
+Two habits worth forming now. A `renderTarget()` is per-frame scaffolding, so make it fresh inside `draw()` rather than storing it. And a layer that isn't composited never shows up, because `withTarget` records the drawing and `drawImage` is what puts it on screen.
 
 Here's the same idea as a picture, one thumbnail per stage:
 
@@ -49,19 +49,19 @@ Here's the same idea as a picture, one thumbnail per stage:
 
 ## Filters
 
-That `.filtered(.gaussianBlur(radius: 45))` in the first listing was a **filter**: an operation that reads a layer and hands back a new, transformed layer, with the original untouched. Filters run on the GPU, so they cost almost nothing you'd notice, and they chain:
+That `.filtered(.gaussianBlur(radius: 45))` in the first listing was a **filter**, an operation that reads a layer and hands back a new, transformed layer, with the original untouched. Filters run on the GPU, so they cost almost nothing you'd notice, and they chain:
 
 ```swift
 let moody = art.filtered(.posterize(levels: 5)).filtered(.vignette())
 ```
 
-Ollin ships fifty-some of them, in families: blur and glow, color and tone, stylize, retro, and warps that bend the image's coordinates. Here is one scene through a sample, one tile per family:
+Ollin ships fifty-some of them, in families: blur and glow, color and tone, stylize, retro, and the warps that bend an image's coordinates. Here is one scene through a sample, one tile per family:
 
 <img src="Images/14-LayersAndEffects/FilterSheet.jpg" alt="A twelve-tile contact sheet: one sunset landscape shown plain and through gaussianBlur, bloom, posterize, duotone, halftone, pixelate, edges, oilPaint, glitch, swirl, and crosshatch filters" width="560">
 
 The one to meet properly is **bloom**, because it's the chapter's workhorse. `.bloom(threshold:intensity:radius:)` finds the parts of the image brighter than `threshold`, blurs them, and adds the blur back, so bright marks bleed light into their surroundings the way a streetlight bleeds into fog. It's the difference between a white dot and a *glowing* dot, and you'll reach for it constantly.
 
-A few notes for the road. Filters are values you pass around, so a `[Filter]` array or a `@Param`-driven choice works the way you'd hope. `postProcess(.bloom())` applies a filter to the whole finished frame, no layer needed, which is the quick way to glow everything. And some filters want particular food: `.relight` reads a layer as a height map and lights it like embossed physical matter (feed it a noise field and it turns to hammered gold; the `Effects/Relight` example shows all five finishes), and the two-tone `.dither(dark:light:)` screens an image into exactly two colors, the newsprint look in any palette. The [effects reference](../Docs/Drawing/Effects.md#filter) has the full catalog with every knob.
+A few notes for the road. Filters are values you pass around, so a `[Filter]` array or a `@Param`-driven choice works the way you'd hope. `postProcess(.bloom())` applies a filter to the whole finished frame, no layer needed, which is the quick way to glow everything. And some filters want particular food. `.relight` reads a layer as a height map and lights it like embossed physical matter (feed it a noise field and it turns to hammered gold, and the `Effects/Relight` example shows all five finishes), and the two-tone `.dither(dark:light:)` screens an image into exactly two colors, the newsprint look in any palette. The [effects reference](../Docs/Drawing/Effects.md#filter) has the full catalog with every knob.
 
 ## Layers from nowhere
 
@@ -76,7 +76,7 @@ drawImage(sky.filtered(.paperTexture()).image, 0, 0)
 
 <img src="Images/14-LayersAndEffects/Generated.jpg" alt="A poster-like wash of terracotta, teal, and amber blobs melting into each other, laid onto textured paper with visible grain and crumple creases" width="560">
 
-Three lines, and the canvas is a printed poster: a mesh gradient (soft color blobs melting into each other) laid onto a synthesized sheet of paper, crumples and all. The generator catalog runs from plain checkers and noise up through designer patterns (god rays, spirals, pulsing borders), and the design filters (`.paperTexture`, `.flutedGlass`, `.water`, `.liquidMetal`) are their finishing counterparts. Most take a `phase` you can feed `time`, so any of them animates. They make good backdrops for everything else in this chapter, and the `Effects/DesignPatterns` and `Effects/DesignFilters` examples tour the whole set.
+Three lines, and the canvas is a printed poster, a mesh gradient of soft color blobs melting into each other, laid onto a synthesized sheet of paper, crumples and all. The generator catalog runs from plain checkers and noise up through designer patterns (god rays, spirals, pulsing borders), and the design filters (`.paperTexture`, `.flutedGlass`, `.water`, `.liquidMetal`) are their finishing counterparts. Most take a `phase` you can feed `time`, so any of them animates. They make good backdrops for everything else in this chapter, and the `Effects/DesignPatterns` and `Effects/DesignFilters` examples tour the whole set.
 
 ## How new paint meets old
 
@@ -84,13 +84,13 @@ So far every mark has simply covered what was under it. `blendMode(_:)` changes 
 
 <img src="Images/14-LayersAndEffects/BlendModes.jpg" alt="Seven tiles of the same orange and blue discs overlapping on a gray ground, each composited with a different blend mode: normal, add, subtract, multiply, screen, lightest, darkest" width="680">
 
-The one that changes how you think is `.add`. It sums colors the way light sums: two faint marks make a brighter one, a thousand make a glow. Because Ollin blends color as physical amounts of light, the sum behaves like real lamps overlapping, and against a dark background additive drawing stops reading as paint and starts reading as luminance. `.multiply` is the opposite temperament, stacking color like layered ink or gels, at home on light backgrounds. The rest are variations on lighter and darker; the figure is the honest catalog.
+The one that changes how you think is `.add`. It sums colors the way light sums, so two faint marks make a brighter one and a thousand make a glow. Because Ollin blends color as physical amounts of light, the sum behaves like real lamps overlapping, and against a dark background additive drawing stops reading as paint and starts reading as luminance. `.multiply` is the opposite temperament, stacking color like layered ink or gels, at home on light backgrounds. The rest are variations on lighter and darker, and the figure is the honest catalog.
 
-The pairing to remember: bloom output composited with `blendMode(.add)` reads as added light instead of a covering sticker. The finished piece uses exactly that.
+Here's the pairing to remember. Bloom output composited with `blendMode(.add)` reads as added light instead of a covering sticker. The finished piece uses exactly that.
 
 ## The whole stack in one block
 
-By now a frame might be: draw a backdrop layer, blur it, draw a lights layer, bloom it, composite one normally and one additively. You can wire that by hand, or declare it as one `compose { }` block where each `layer { }` carries its own filters and blend mode:
+By now a frame might go like this: draw a backdrop layer, blur it, draw a lights layer, bloom it, then composite one normally and one additively. You can wire that by hand, or declare it as one `compose { }` block where each `layer { }` carries its own filters and blend mode:
 
 ```swift
 import Ollin
@@ -127,7 +127,7 @@ final class ComposeStack: Sketch {
 
 <img src="Images/14-LayersAndEffects/ComposeStack.jpg" alt="A ring of fifteen small warm lights and a thin gold circle glowing over a deeply blurred field of indigo, teal, and plum" width="560">
 
-Layers composite bottom to top in the order written. `.post(_:)` filters a layer, `.blend(_:)` sets its mode, and `.scale(0.5)` renders it at half resolution, which is free money for a layer a blur will soften anyway. It's pure shorthand: everything `compose` does, the calls you already know can do by hand. When an effect needs *two* layers (a mask, a displacement map), the same block takes an `aside { }`, a helper layer drawn only to feed another one; that's a rabbit hole for another day, and the [effects reference](../Docs/Drawing/Effects.md#aside) goes all the way down.
+Layers composite bottom to top in the order written. `.post(_:)` filters a layer, `.blend(_:)` sets its mode, and `.scale(0.5)` renders it at half resolution, which is free money for a layer a blur will soften anyway. It's pure shorthand, since everything `compose` does, the calls you already know can do by hand. When an effect needs *two* layers (a mask, a displacement map), the same block takes an `aside { }`, a helper layer drawn only to feed another one. That's a rabbit hole for another day, and the [effects reference](../Docs/Drawing/Effects.md#aside) goes all the way down.
 
 ## The canvas that keeps everything
 
@@ -170,23 +170,23 @@ final class Sandpainting: Sketch {
 
 <img src="Images/14-LayersAndEffects/Sandpainting.jpg" alt="Golden streamlines built from hundreds of thousands of faint accumulated dots, swirling around eddies like polished wood grain made of light" width="560">
 
-Each frame draws only 2,600 dots at 4% opacity, barely visible alone. Six hundred frames later the canvas holds more than a million deposits, and the curl field's eddies (Chapter 12's, advecting grains exactly as it advected walkers) emerge as rivers of light. Nothing here is drawn as a line; the lines are where light kept landing.
+Each frame draws only 2,600 dots at 4% opacity, barely visible alone. Six hundred frames later the canvas holds more than a million deposits, and the curl field's eddies (Chapter 12's, advecting grains exactly as it advected walkers) emerge as rivers of light. Nothing here is drawn as a line. The lines are simply where light kept landing.
 
-Two practical notes. While accumulating, `background(_:)` becomes the reset: call it on the frame you want to wipe, or never. And a perfectly still additive scene just brightens toward white forever, so keep something moving; the glow finds its level when light flows across the canvas instead of parking.
+Two practical notes. While accumulating, `background(_:)` becomes the reset, so call it on the frame you want to wipe, or never. And a perfectly still additive scene just brightens toward white forever, so keep something moving. The glow finds its level when light flows across the canvas instead of parking.
 
 ## Brighter than the screen
 
-That `toneMap(.aces, exposure: 1.5)` line needs its own moment, because it solves a problem you now have. Additive light doesn't stop at "full brightness": three overlapping lamps sum to three times what the screen can show. Ollin composites every frame in a high-precision format that keeps those too-bright values, and `toneMap(_:)` decides what happens when the frame finally meets the screen. The default rounds every too-bright value to white, which is honest and abrupt:
+That `toneMap(.aces, exposure: 1.5)` line needs its own moment, because it solves a problem you now have. Additive light doesn't stop at "full brightness", because three overlapping lamps sum to three times what the screen can show. Ollin composites every frame in a high-precision format that keeps those too-bright values, and `toneMap(_:)` decides what happens when the frame finally meets the screen. The default rounds every too-bright value to white, which is honest and abrupt:
 
 <img src="Images/14-LayersAndEffects/ToneClamp.jpg" alt="Three overlapping tinted lamps under the default clamp tone map: the entire overlapping middle blows out to a flat white slab with hard seams" width="680">
 
 <img src="Images/14-LayersAndEffects/ToneAces.jpg" alt="The same three lamps through the ACES film curve: the middle stays bright but keeps its warm, mint, and blue tints, rolling off softly like film" width="680">
 
-Same lamps, same brightness, one line different. `.aces` runs the frame through the S-shaped response of film, which rolls highlights off gradually instead of chopping them, keeping color alive inside the glare. Set it once in `setup()`; `exposure` is the brightness dial applied before the curve, like a camera's. For any glow, accumulation, or additive piece, `toneMap(.aces)` is the difference between light and chalk. The details live in the [HDR reference](../Docs/Drawing/HDR.md).
+Same lamps, same brightness, one line different. `.aces` runs the frame through the S-shaped response of film, which rolls highlights off gradually instead of chopping them, keeping color alive inside the glare. Set it once in `setup()`, and `exposure` is the brightness dial applied before the curve, like a camera's. For any glow, accumulation, or additive piece, `toneMap(.aces)` is the difference between light and chalk. The details live in the [HDR reference](../Docs/Drawing/HDR.md).
 
 ## The canvas that remembers itself
 
-Accumulation piles new marks onto a canvas that otherwise sits still. **Feedback** is stranger and livelier: each frame you get last frame's *finished picture* back as an image, transform it however you like, draw it into the new frame, and add this frame's marks on top. The transformed past becomes the new present, over and over. Point a camera at its own monitor and you've built one out of hardware; the fade-zoom-rotate you choose is the whole personality of the effect:
+Accumulation piles new marks onto a canvas that otherwise sits still. **Feedback** is stranger and livelier. Each frame you get last frame's *finished picture* back as an image, transform it however you like, draw it into the new frame, and add this frame's marks on top. The transformed past becomes the new present, over and over. Point a camera at its own monitor and you've built one out of hardware, and the fade-zoom-rotate you choose is the whole personality of the effect:
 
 <img src="Images/14-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a short tail, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
 
@@ -197,7 +197,7 @@ var trail: Feedback?
 override func setup() { trail = feedback() }
 ```
 
-Then, each frame, the loop: read, transform, redraw, add. This is the heart of the finished piece below:
+Then each frame runs the loop: read, transform, redraw, add. This is the heart of the finished piece below:
 
 ```swift
 withFeedback(trail) { prev in                 // prev = last frame, as an image
@@ -215,11 +215,11 @@ withFeedback(trail) { prev in                 // prev = last frame, as an image
 drawImage(trail.image, 0, 0)                  // composite the result
 ```
 
-The `tint` alpha is the decay: at 0.93, each pass keeps 93% of the past, so marks take dozens of frames to melt away. The tiny zoom and rotation mean the past doesn't just fade, it *drifts*, and moving things leave wakes that curve. How is this different from `noClear`? Accumulation adds to a fixed canvas; feedback hands you the past as an image to warp first. The warp is the difference between a long exposure and a hall of mirrors.
+The `tint` alpha is the decay, so at 0.93 each pass keeps 93% of the past and marks take dozens of frames to melt away. The tiny zoom and rotation mean the past doesn't just fade, it *drifts*, and moving things leave wakes that curve. How is this different from `noClear`? Accumulation adds to a fixed canvas, while feedback hands you the past as an image to warp first. The warp is the difference between a long exposure and a hall of mirrors.
 
 ## Putting it together: comets
 
-Chapter 10 ended with a flock of triangles trailing fading paint. Here is the same society rebuilt with this chapter's whole toolkit: the boids draw as bright dots into a feedback layer (wakes that drift and curl), the layer comes back bloomed and added as light, and ACES rolls the hot cores off like film. For contrast, the before:
+Chapter 10 ended with a flock of triangles trailing fading paint. Here is the same society rebuilt with this chapter's whole toolkit. The boids draw as bright dots into a feedback layer, giving wakes that drift and curl, the layer comes back bloomed and added as light, and ACES rolls the hot cores off like film. For contrast, here is the before:
 
 <img src="Images/10-FlocksAndSwarms/FlockMotion.gif" alt="Chapter 10's flock: colored triangles with short painted trails on a flat dark canvas" width="480">
 
@@ -276,18 +276,18 @@ final class Comets: Sketch {
 
 <img src="Images/14-LayersAndEffects/Comets.jpg" alt="The finished piece: comet swarms of glowing dots in orange, pink, and green, each flock dragging soft curved tails of light through the dark" width="560">
 
-Read it as three acts. The flock is untouched Chapter 10, still steering by the same three rules. The middle act is the feedback loop from the last section, with the boids drawn inside it so their light lands *in* the layer that remembers. And the final act is one line of compositing: the trail layer, bloomed, added as light, rolled off by the tone map set back in `setup()`. Every hue still means a heading; now it also smears into a wake that shows where the heading has been.
+Read it as three acts. The flock is untouched Chapter 10, still steering by the same three rules. The middle act is the feedback loop from the last section, with the boids drawn inside it so their light lands *in* the layer that remembers. And the final act is one line of compositing: the trail layer, bloomed, added as light, rolled off by the tone map set back in `setup()`. Every hue still means a heading, and now it also smears into a wake that shows where the heading has been.
 
 Then make it yours:
 
-- Turn the feedback knobs: `alpha: 0.85` gives short nervous tails, `0.97` fills the sky with fog; flip `scale(1.006)` to `0.994` and the wakes fall inward instead of blooming outward.
+- Turn the feedback knobs. An `alpha: 0.85` gives short nervous tails while `0.97` fills the sky with fog, and flipping `scale(1.006)` to `0.994` makes the wakes fall inward instead of blooming outward.
 - Put a `@Param` on the bloom `intensity` and `exposure` and grade the piece live, like color-timing film.
 - Swap the flock for anything that moves: Chapter 12's advected particles, Chapter 9's bouncing bodies, or just your mouse.
 - Add a second `compose` layer beneath with a dim `generate(.meshGradient(...))` and the comets fly over weather.
 
 ## Where this comes from
 
-Off-screen layers are as old as computer graphics has had memory to spare; the shape they take here, layers plus a filter catalog plus explicit compositing, follows the model OPENRNDR refined for creative coding. The compositing arithmetic descends from Thomas Porter and Tom Duff's 1984 paper *Compositing Digital Images*, and the everyday blend-mode vocabulary (multiply, screen, and friends) was standardized by image editors in the decades after. Tone mapping comes from photography by way of Erik Reinhard and colleagues' 2002 *Photographic Tone Reproduction for Digital Images*; the film-like curve Ollin uses is the Academy's ACES, in Krzysztof Narkowicz's widely used approximation. Video feedback is the analog ancestor of the `Feedback` layer: point a camera at its own monitor, as Nam June Paik and the Vasulkas did in the 1960s and 70s, and the transform is whatever the room does to the signal. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Off-screen layers are as old as computer graphics has had memory to spare, and the shape they take here, layers plus a filter catalog plus explicit compositing, follows the model OPENRNDR refined for creative coding. The compositing arithmetic descends from Thomas Porter and Tom Duff's 1984 paper *Compositing Digital Images*, and the everyday blend-mode vocabulary (multiply, screen, and friends) was standardized by image editors in the decades after. Tone mapping comes from photography by way of Erik Reinhard and colleagues' 2002 *Photographic Tone Reproduction for Digital Images*, and the film-like curve Ollin uses is the Academy's ACES, in Krzysztof Narkowicz's widely used approximation. Video feedback is the analog ancestor of the `Feedback` layer. Point a camera at its own monitor, as Nam June Paik and the Vasulkas did in the 1960s and 70s, and the transform is whatever the room does to the signal. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
