@@ -4,7 +4,7 @@
 
 ## Classic curves
 
-The curve builders of the generative-art canon, each a **pure closed form**: give them numbers, get geometry back. They return ordinary values (`[Vector2]` points or a `Contour`), so everything downstream already works: `drawPolyline` and `drawShape`, the [shape booleans](./Geometry.md#shape-booleans), [Chaikin smoothing](#smoothing), hatching, and [SVG export](../Output/Export.md) for the pen plotter. None of them touch `random` or `noise`; the same arguments always produce the same curve, so a fixed frame reproduces and exports are recipe-safe.
+These are the curve builders of the generative-art canon, and each one is a **pure closed form**. You give them numbers and get geometry back. They return ordinary values (`[Vector2]` points or a `Contour`), so everything downstream already works: `drawPolyline` and `drawShape`, the [shape booleans](./Geometry.md#shape-booleans), [Chaikin smoothing](#smoothing), hatching, and [SVG export](../Output/Export.md) for the pen plotter. None of them touch `random` or `noise`, so the same arguments always produce the same curve, a fixed frame reproduces, and exports are recipe-safe.
 
 ```swift
 drawPolyline(rose(n: 5, radius: 300).points, closed: true)
@@ -14,7 +14,7 @@ for (i, p) in phyllotaxis(count: 600, spacing: 9).enumerated() {
 }
 ```
 
-(The space-filling curves, Hilbert, Peano, Gosper, and the dragon, live with the [L-systems](../Generators/LSystem.md) as built-in presets; the related drawing-machine for arbitrary outlines is [Fourier epicycles](./Epicycles.md).)
+(The space-filling curves, Hilbert, Peano, Gosper, and the dragon, live with the [L-systems](../Generators/LSystem.md) as built-in presets. The related drawing machine for arbitrary outlines is [Fourier epicycles](./Epicycles.md).)
 
 ### Contents
 
@@ -33,9 +33,9 @@ for (i, p) in phyllotaxis(count: 600, spacing: 9).enumerated() {
 phyllotaxis(count: Int, spacing: Double, angle: Double = .goldenAngle) -> [Vector2]
 ```
 
-Vogel's model of the sunflower seed-head: point `i` sits `i * angle` around and `spacing * sqrt(i)` out from the center, so every new seed lands in the gap the earlier ones left and the disk stays evenly filled at any count. The default `angle` is `Double.goldenAngle` (`pi * (3 - sqrt(5))`, about 137.5°), the "most irrational" slice of a turn, which is exactly why the spacing works; nudge it a few hundredths of a degree and the even scatter collapses into spokes, itself a classic study.
+This is Vogel's model of the sunflower seed-head. Point `i` sits `i * angle` around and `spacing * sqrt(i)` out from the center, so every new seed lands in the gap the earlier ones left and the disk stays evenly filled at any count. The default `angle` is `Double.goldenAngle` (`pi * (3 - sqrt(5))`, about 137.5°), the "most irrational" slice of a turn, which is exactly why the spacing works. Nudge it a few hundredths of a degree and the even scatter collapses into spokes, itself a classic study.
 
-The points are centered on the origin (place them with `translate`), and the array index is the seed's age: oldest at the center, which is the natural handle for size and color ramps. Example: `Patterns/Phyllotaxis`. (A pixel-field sibling lives in the effect generators as `Generator.phyllotaxis`.)
+The points are centered on the origin (place them with `translate`), and the array index is the seed's age, oldest at the center, which is the natural handle for size and color ramps. Example: `Patterns/Phyllotaxis`. (A pixel-field sibling lives in the effect generators as `Generator.phyllotaxis`.)
 
 <a name="lissajous"></a>
 
@@ -46,9 +46,9 @@ lissajous(a: Int, b: Int, phase: Double = .pi / 2,
           width: Double, height: Double? = nil, samples: Int = 512) -> Contour
 ```
 
-The curve of two sine waves meeting: a point swings side to side `a` times while it bobs up and down `b` times. Equal frequencies give a circle (that collapses toward a line as `phase` heads to `0`); unequal ones weave. `width` and `height` are the figure's full extents, `height` defaulting to `width`, and the returned contour is closed, centered on the origin, and exactly one period long. Shared factors cancel (`a: 2, b: 4` is the same curve as `a: 1, b: 2`).
+This is the curve two sine waves make when they meet, a point swinging side to side `a` times while it bobs up and down `b` times. Equal frequencies give a circle that collapses toward a line as `phase` heads to `0`, while unequal ones weave. `width` and `height` are the figure's full extents, `height` defaulting to `width`, and the returned contour is closed, centered on the origin, and exactly one period long. Shared factors cancel (`a: 2, b: 4` is the same curve as `a: 1, b: 2`).
 
-Animate `phase` and a figure rolls through its whole family; a grid of them, column frequency against row frequency, is the classic Lissajous table. Example: `Motion/Lissajous`.
+Animate `phase` and a figure rolls through its whole family. A grid of them, column frequency against row frequency, is the classic Lissajous table. Example: `Motion/Lissajous`.
 
 <a name="rose"></a>
 
@@ -58,7 +58,7 @@ Animate `phase` and a figure rolls through its whole family; a grid of them, col
 rose(n: Int, d: Int = 1, radius: Double, samples: Int? = nil) -> Contour
 ```
 
-Petals from one polar equation, `r = radius * cos(k * theta)` with `k = n / d`. With the default `d: 1`, an odd `n` draws `n` petals and an even `n` draws `2n`; fractional `k` (say `n: 7, d: 3`) interleaves the petals into woven, open stars. The sampling covers exactly the span that closes the curve once (the span depends on the parity of `n * d`), so there is no retraced doubling in the geometry: what you plot is what exists. Leave `samples` nil and the density scales with that span.
+Petals from one polar equation, `r = radius * cos(k * theta)` with `k = n / d`. With the default `d: 1`, an odd `n` draws `n` petals and an even `n` draws `2n`, while a fractional `k` (say `n: 7, d: 3`) interleaves the petals into woven, open stars. The sampling covers exactly the span that closes the curve once (the span depends on the parity of `n * d`), so there is no retraced doubling in the geometry, and what you plot is what exists. Leave `samples` nil and the density scales with that span.
 
 The contour starts at `(radius, 0)` and is centered on the origin. A rose has as many symmetry steps as petals, so rotating by one petal per loop makes a seamless lap. Example: `Patterns/Roses`.
 
@@ -71,7 +71,7 @@ hypotrochoid(ring: Int, wheel: Int, pen: Double, samples: Int? = nil) -> Contour
 epitrochoid(ring: Int, wheel: Int, pen: Double, samples: Int? = nil) -> Contour
 ```
 
-The toy gear set. A `wheel`-radius gear rolls around a fixed `ring`-radius gear, inside it for the hypotrochoid, outside for the epitrochoid, with the pen `pen` units from the wheel's center. Integer radii are the gears' teeth: they guarantee the pen eventually lines back up with its start, and the sampling covers exactly the `wheel / gcd(ring, wheel)` laps that close the curve once. The pen distance sets the character: less than `wheel` rounds the lobes, equal gives cusps (the hypocycloid and epicycloid), more loops them over themselves.
+These are the toy gear set. A `wheel`-radius gear rolls around a fixed `ring`-radius gear, inside it for the hypotrochoid, outside for the epitrochoid, with the pen `pen` units from the wheel's center. Integer radii stand in for the gears' teeth, which guarantees that the pen eventually lines back up with its start, and the sampling covers exactly the `wheel / gcd(ring, wheel)` laps that close the curve once. The pen distance sets the character: less than `wheel` rounds the lobes, equal gives cusps (the hypocycloid and epicycloid), more loops them over themselves.
 
 Both return a closed, origin-centered contour. The finished figure repeats every `ring / gcd(ring, wheel)` lobes around the center, so spinning by one lobe per loop is seamless. Nested pen distances from one gear pair stack into the woven rosette every childhood knows. Example: `Patterns/Spirograph`.
 
@@ -96,9 +96,9 @@ struct Harmonograph {
 }
 ```
 
-The Victorian drawing machine: a pen hung from swinging pendulums, each losing a little energy per swing. Every pendulum contributes one damped sine wave, the `x` list sums into the horizontal position and the `y` list into the vertical. Two pendulums per axis is the classic instrument; one per axis draws damped [Lissajous figures](#lissajous).
+A harmonograph is the Victorian drawing machine whose pen hangs from swinging pendulums, each losing a little energy per swing. Every pendulum contributes one damped sine wave, the `x` list sums into the horizontal position and the `y` list into the vertical. Two pendulums per axis is the classic instrument, and one per axis draws damped [Lissajous figures](#lissajous).
 
-The signature look comes from **near-unison detune**: frequencies like `2` against `2.01` make the trace precess slowly while the damping reels each lap inside the last, weaving the nested web. Read it two ways: `point(at:)` with a growing `t` performs the drawing live, pen and all; `contour()` bakes the whole trace at once (by default through `settleTime`, when the slowest-decaying pendulum reaches 1% of its swing). There is no randomness inside, so the same pendulums always draw the same figure; roll the *parameters* from the sketch's seeded `random` and every [variation](../Core/Variations.md) commissions a new one. Example: `Motion/Harmonograph`.
+The signature look comes from **near-unison detune**. Frequencies like `2` against `2.01` make the trace precess slowly while the damping reels each lap inside the last, weaving the nested web. You can read the machine two ways. `point(at:)` with a growing `t` performs the drawing live, pen and all, and `contour()` bakes the whole trace at once, by default through `settleTime`, when the slowest-decaying pendulum has shrunk to 1% of its starting swing. There is no randomness inside, so the same pendulums always draw the same figure. Roll the *parameters* from the sketch's seeded `random` and every [variation](../Core/Variations.md) commissions a new one. Example: `Motion/Harmonograph`.
 
 <a name="smoothing"></a>
 
@@ -109,7 +109,7 @@ Contour.smoothed(iterations: Int = 2) -> Contour
 Shape.smoothed(iterations: Int = 2) -> Shape
 ```
 
-Chaikin's corner cutting: each pass replaces every corner with two points, a quarter and three quarters of the way along its adjoining segments. Two or three passes relax any jagged polyline into a flowing curve; a few more and it converges toward a smooth spline. Each pass doubles the point count (`iterations` caps at 10), a closed contour rounds all the way around, and an **open contour keeps its exact endpoints**, so a smoothed connector still lands where it aimed. The `Shape` form smooths every contour and keeps the winding rule.
+Chaikin's corner cutting rounds a path one pass at a time. Each pass replaces every corner with two points, a quarter and three quarters of the way along its adjoining segments. Two or three passes relax any jagged polyline into a flowing curve, and a few more converge toward a smooth spline. Each pass doubles the point count (`iterations` caps at 10), a closed contour rounds all the way around, and an **open contour keeps its exact endpoints**, so a smoothed connector still lands where it aimed. The `Shape` form smooths every contour and keeps the winding rule.
 
 It pairs with everything that emits raw line-work: a random walk, [streamlines](../Generators/FlowField.md), [L-system](../Generators/LSystem.md) turtle paths, hand-placed zigzags. Example: `Shapes/CornerCutting`.
 
@@ -117,7 +117,7 @@ It pairs with everything that emits raw line-work: a random walk, [streamlines](
 
 #### Where this comes from
 
-Vogel's phyllotaxis model, the classical Lissajous, rose, and trochoid parametric forms, the damped-pendulum harmonograph, and Chaikin's corner-cutting algorithm; see [`ATTRIBUTION.md`](../../ATTRIBUTION.md) for the sources.
+These curves come from Vogel's phyllotaxis model, the classical Lissajous, rose, and trochoid parametric forms, the damped-pendulum harmonograph, and Chaikin's corner-cutting algorithm. See [`ATTRIBUTION.md`](../../ATTRIBUTION.md) for the sources.
 
 #### Go deeper
 

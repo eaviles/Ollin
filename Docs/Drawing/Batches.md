@@ -24,23 +24,23 @@ override func draw() {
 }
 ```
 
-As a reference point, at 150,000 circles the ordinary path costs ~13.5 ms of CPU per frame in a release build on an M2 (a ~74 fps ceiling before anything else happens); the same field replayed as a `Batch` costs ~0.003 ms. The [`RetainedBatch`](../../Examples/Rendering/RetainedBatch/Sketch.swift) example has a knob that flips between the two paths so the difference shows live in the inspector.
+As a reference point, at 150,000 circles the ordinary path costs ~13.5 ms of CPU per frame in a release build on an M2 (a ~74 fps ceiling before anything else happens), while the same field replayed as a `Batch` costs ~0.003 ms. The [`RetainedBatch`](../../Examples/Rendering/RetainedBatch/Sketch.swift) example has a knob that flips between the two paths so the difference shows live in the inspector.
 
-(Don't confuse this with the *collection calls* like [`drawCircles(_:)`](./Drawing.md#batches), which draw many shapes in one call but still record them every frame. Those are the right tool for *dynamic* crowds; a `Batch` is the right tool for *static* ones.)
+(Don't confuse this with the *collection calls* like [`drawCircles(_:)`](./Drawing.md#batches), which draw many shapes in one call but still record them every frame. Those are the right tool for *dynamic* crowds, and a `Batch` is the right tool for *static* ones.)
 
 ### Contents
 
-- [makeBatch: record a drawing once](#makebatch)
-- [drawBatch: replay it, place it, stamp it](#drawbatch)
+- [makeBatch](#makebatch) - record a drawing once
+- [drawBatch](#drawbatch) - replay it, place it, stamp it
 - [What records](#what-records)
 - [Notes](#notes)
 
 <a id="makebatch"></a>
 ### makeBatch(_:) → Batch
 
-Record everything drawn inside the block into a reusable `Batch`. Call it once, usually in `setup()`, and hold the result; a `Batch` is **persistent** like a `Feedback` layer, so re-recording it every frame rebuilds the geometry and buys nothing. Contents are immutable once recorded; when the content actually changes, record a new batch.
+Record everything drawn inside the block into a reusable `Batch`. Call it once, usually in `setup()`, and hold the result. A `Batch` is **persistent** like a `Feedback` layer, so re-recording it every frame rebuilds the geometry and buys nothing. Contents are immutable once recorded, so when the content actually changes, record a new batch.
 
-The block records in its own canvas-space frame: the transform starts at the identity inside it, so build the drawing around whatever origin suits it (the origin itself is a good anchor for content meant to be stamped). Drawing state works like [`withState { }`](./Drawing.md#isolated): the state in force carries in, per-shape state set inside (fill, stroke, blend mode) is honored by the replay, and any change is restored when the block ends.
+The block records in its own canvas-space frame, with the transform starting at the identity inside it, so build the drawing around whatever origin suits it (the origin itself is a good anchor for content meant to be stamped). Drawing state works like [`withState { }`](./Drawing.md#isolated): the state in force carries in, per-shape state set inside (fill, stroke, blend mode) is honored by the replay, and any change is restored when the block ends.
 
 ```swift
 let motif = makeBatch {
@@ -73,21 +73,21 @@ override func draw() {
 }
 ```
 
-Replays composite in draw order with everything else, exactly like the calls they recorded; drawing before and after a `drawBatch` layers under and over it. The active layer ([`withTarget`](./Effects.md)), clip region ([`withClip`](./Drawing.md#clip)), and [`depth(at:)`](../3D/DepthCompositing.md) all apply to the replay the way they would to any draw call. Analytic SDF shapes keep their crisp ~1px edge under any replay rotation or scale; tessellated fills and strokes transform like any baked geometry, so a large scale-up eventually shows its tessellation.
+Replays composite in draw order with everything else, exactly like the calls they recorded, so drawing before and after a `drawBatch` layers under and over it. The active layer ([`withTarget`](./Effects.md)), clip region ([`withClip`](./Drawing.md#clip)), and [`depth(at:)`](../3D/DepthCompositing.md) all apply to the replay the way they would to any draw call. Analytic SDF shapes keep their crisp ~1px edge under any replay rotation or scale, while tessellated fills and strokes transform like any baked geometry, so a large scale-up eventually shows its tessellation.
 
 The batch also replays into vector exports: `--export-svg` and `--export-pdf` splice the recorded drawing in under the draw-time transform, so a plotter file sees every stamp.
 
 <a id="what-records"></a>
 ### What records
 
-Everything on the 2D drawing surface: the analytic SDF shapes (gradients included), fills and strokes, curves, polygons and polylines, text (outline and atlas), images, and [SDF combinator](./Combinators.md) fields. Point clouds record too; they replay through whatever camera is active that frame, and the draw-time transform (which is 2D) leaves them untouched.
+The whole 2D drawing surface records: the analytic SDF shapes (gradients included), fills and strokes, curves, polygons and polylines, text (outline and atlas), images, and [SDF combinator](./Combinators.md) fields. Point clouds record too, and they replay through whatever camera is active that frame, since the draw-time transform (which is 2D) leaves them untouched.
 
-A few things are per-frame by nature and skip the recording with a one-time note instead: meshes and raymarched 3D fields (they interlock with the frame's shadow and reflection passes), GPU particles (already GPU-resident), layer blocks (`withTarget` and friends), clipping, and `background(_:)`. Draw those where the batch is *drawn*, not inside the recording. [`symmetry(_:)`](./Drawing.md#symmetry) folds content recorded *inside* the block; symmetry active at `drawBatch` time doesn't fold the replay.
+A few things are per-frame by nature and skip the recording with a one-time note instead: meshes and raymarched 3D fields (they interlock with the frame's shadow and reflection passes), GPU particles (already GPU-resident), layer blocks (`withTarget` and friends), clipping, and `background(_:)`. Draw those where the batch is *drawn*, not inside the recording. [`symmetry(_:)`](./Drawing.md#symmetry) folds content recorded *inside* the block, but symmetry active at `drawBatch` time doesn't fold the replay.
 
 <a id="notes"></a>
 ### Notes
 
 - **Record in `setup()`.** A batch made once and held is the whole point. Recording inside `draw()` works, but it re-does the recording every frame, which is exactly what the batch exists to avoid.
-- **The inspector's per-frame counts drop to zero** for retained content. Those counters show what the frame *records*, and a replayed batch records nothing; that's the saving, made visible.
-- **A layer's image drawn inside a recording stays frozen.** `drawImage` of a live source (a render target's `.image`, a video frame) records a reference to that texture as it exists when the batch is *drawn*, but the recording won't re-issue per-frame layer work; keep live layers outside the recording.
-- **Variations and reload re-record naturally.** `setup()` re-runs on a seed change or a live reload, so batches rebuild with the new content; old GPU buffers release with the old handles.
+- **The inspector's per-frame counts drop to zero** for retained content. Those counters show what the frame *records*, and a replayed batch records nothing, which is the saving made visible.
+- **A layer's image drawn inside a recording stays frozen.** `drawImage` of a live source (a render target's `.image`, a video frame) records a reference to that texture as it exists when the batch is *drawn*, but the recording won't re-issue per-frame layer work, so keep live layers outside the recording.
+- **Variations and reload re-record naturally.** `setup()` re-runs on a seed change or a live reload, so batches rebuild with the new content, and old GPU buffers release with the old handles.
