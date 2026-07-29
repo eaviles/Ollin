@@ -90,7 +90,7 @@ ring(innerRadius: Double, outerRadius: Double) -> Vector2
 A random point in the ring between the two radii, centered on the origin. Add a center to place it. See the `Ring` example.
 
 ```
-  ring(innerRadius: r, outerRadius: R) — a uniform random point whose
+  ring(innerRadius: r, outerRadius: R) gives a uniform random point whose
   distance from the origin O lands between r and R (a ring).
 
   By distance from O (a ray pointing outward):
@@ -175,7 +175,7 @@ randomSeed(42)   // same scatter every run
 seed(_ seed: Int)
 ```
 
-Seed *both* `random` and `noise` from one value, locking the whole sketch's randomness so it reproduces exactly; reach for this when one seed should fully determine a piece. Use `randomSeed` or [`noiseSeed`](../Generators/Noise.md#noiseSeed) to reseed only one.
+Seed *both* `random` and `noise` from one value, locking the whole sketch's randomness so it reproduces exactly, so reach for this when one seed should fully determine a piece. Use `randomSeed` or [`noiseSeed`](../Generators/Noise.md#noiseSeed) to reseed only one.
 
 ```swift
 seed(7)   // random and noise both reproducible

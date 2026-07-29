@@ -8,7 +8,7 @@ Share live visuals with the other apps running on your Mac. Syphon is the macOS 
 
 It works two ways, and a sketch can do either or both:
 
-- a **[server](#sharing-your-frames)** publishes the sketch's rendered frames as a Syphon *source* other apps can read;
+- a **[server](#sharing-your-frames)** publishes the sketch's rendered frames as a Syphon *source* other apps can read.
 - a **[client](#receiving-a-feed)** subscribes to a source from another app and hands you each frame as an [`Image`](../Drawing/Images.md) you draw with `drawImage`.
 
 ```text
@@ -37,11 +37,11 @@ final class Visuals: Sketch {
 
 ### Contents
 
-- [Sharing your frames](#sharing-your-frames) — publish a Syphon source
-- [Receiving a feed](#receiving-a-feed) — draw an incoming source as an `Image`
-- [Discovering sources](#discovering-sources) — list what's available
-- [How frames are shared](#how-frames-are-shared) — the GPU path, and a note on devices
-- [Testing without a second app](#testing-without-a-second-app) — loopback, viewer, and Simple Client
+- [Sharing your frames](#sharing-your-frames) - publish a Syphon source
+- [Receiving a feed](#receiving-a-feed) - draw an incoming source as an `Image`
+- [Discovering sources](#discovering-sources) - list what's available
+- [How frames are shared](#how-frames-are-shared) - the GPU path, and a note on devices
+- [Testing without a second app](#testing-without-a-second-app) - loopback, viewer, and Simple Client
 
 <a name="sharing-your-frames"></a>
 
@@ -57,7 +57,7 @@ var isPublishing: Bool      // has at least one frame gone out?
 func stop()
 ```
 
-Call `publishSyphon(name:)` in `setup()` and the sketch's frames are shared from then on, under that name. The name is how consumers identify the source (usually paired with the app's name in their menus); it needn't be unique. That's all it takes:
+Call `publishSyphon(name:)` in `setup()` and the sketch's frames are shared from then on, under that name. The name is how consumers identify the source (usually paired with the app's name in their menus), and it needn't be unique. That's all it takes:
 
 ```swift
 override func setup() {
@@ -65,7 +65,7 @@ override func setup() {
 }
 ```
 
-`publishSyphon` builds a `SyphonServer` and registers it as a [`SketchExtension`](../Core/Sketch.md), then returns it so you can check `hasClients` — handy if a frame is expensive to draw and you'd rather skip the work when nobody's watching:
+`publishSyphon` builds a `SyphonServer` and registers it as a [`SketchExtension`](../Core/Sketch.md), then returns it so you can check `hasClients`, which helps if a frame is expensive to draw and you'd rather skip the work when nobody's watching:
 
 ```swift
 let syphon = publishSyphon(name: "Ollin")
@@ -93,7 +93,7 @@ func reconnect(named: String?, appName: String?)
 func stop()
 ```
 
-Make a client, then read its frames in `draw()`. `newFrame()` hands you the latest frame as an [`Image`](../Drawing/Images.md) backed by the source's live GPU texture, so you draw it like any other image — scaled, into a `Rectangle`, tinted, under the transform stack:
+Make a client, then read its frames in `draw()`. `newFrame()` hands you the latest frame as an [`Image`](../Drawing/Images.md) backed by the source's live GPU texture, so you draw it like any other image: scaled, into a `Rectangle`, tinted, under the transform stack:
 
 ```swift
 final class Viewer: Sketch {
@@ -108,7 +108,7 @@ final class Viewer: Sketch {
 }
 ```
 
-Call `newFrame()` each frame and draw the result; don't hold onto it across frames (the next call gives you the current frame). A source can come and go — if the publishing app quits, `isActive` goes `false` and `newFrame()` returns `nil`; call `reconnect()` to look again. Because the returned `Image` wraps a live texture, its CPU side (the `[x, y]` pixel subscript, `cgImage`) isn't meaningful; it's for drawing.
+Call `newFrame()` each frame and draw the result, and don't hold onto it across frames (the next call gives you the current frame). A source can come and go, so if the publishing app quits, `isActive` goes `false` and `newFrame()` returns `nil`, and `reconnect()` looks again. Because the returned `Image` wraps a live texture, its CPU side (the `[x, y]` pixel subscript, `cgImage`) isn't meaningful, since it's for drawing.
 
 <a name="discovering-sources"></a>
 
@@ -137,19 +137,19 @@ let feed = SyphonClient(named: "Composition", appName: "Resolume Arena")
 
 ### How frames are shared
 
-A published frame is the rendered canvas, handed over on the GPU with no CPU round-trip: Ollin re-renders the frame off-screen into a texture and shares that, which is pixel-identical to what's on screen and to `--export`. Syphon carries it as an `IOSurface`, so another app reads the same memory rather than a copy over a wire.
+A published frame is the rendered canvas, handed over on the GPU with no CPU round-trip, so Ollin re-renders the frame off-screen into a texture and shares that, which is pixel-identical to what's on screen and to `--export`. Syphon carries it as an `IOSurface`, so another app reads the same memory rather than a copy over a wire.
 
-Sharing happens on the sketch's own Metal device, and a client connects on the system's default device. On a single-GPU Mac (the common case) those are the same, which is what every consumer expects. On a multi-GPU machine they can differ; that case isn't handled yet.
+Sharing happens on the sketch's own Metal device, and a client connects on the system's default device. On a single-GPU Mac (the common case) those are the same, which is what every consumer expects. On a multi-GPU machine they can differ, and that case isn't handled.
 
-Orientation and color are handled so the frame looks right both in another app and back in Ollin: frames are published with the vertical flip Syphon's convention wants (so consumers like Simple Client, `ofxSyphon`, and Resolume show them upright), and a feed read by `SyphonClient` is flipped back to Ollin's top-left space. Color is carried as display-ready (sRGB-encoded) bytes, the Syphon convention, so tones match across apps. (A small residual difference between Ollin's own window and another app is normal — each app presents the shared surface through its own display color handling.)
+Orientation and color are handled so the frame looks right both in another app and back in Ollin. Frames are published with the vertical flip Syphon's convention wants (so consumers like Simple Client, `ofxSyphon`, and Resolume show them upright), and a feed read by `SyphonClient` is flipped back to Ollin's top-left space. Color is carried as display-ready (sRGB-encoded) bytes, the Syphon convention, so tones match across apps. (A small residual difference between Ollin's own window and another app is normal, since each app presents the shared surface through its own display color handling.)
 
 <a name="testing-without-a-second-app"></a>
 
 ### Testing without a second app
 
-You can exercise Syphon with nothing but the Mac in front of you. The **SyphonLoopback** example (`Examples/Integration/SyphonLoopback`) runs both ends in one sketch: it publishes its own frames *and* subscribes to them, drawing the received frame back as an inset. Because that inset is part of the next published frame, you get a video-feedback tunnel — the round-trip made visible, the way the **OSCLoopback** example shows an OSC message making its trip.
+You can exercise Syphon with nothing but the Mac in front of you. The **SyphonLoopback** example (`Examples/Integration/SyphonLoopback`) runs both ends in one sketch, publishing its own frames *and* subscribing to them, drawing the received frame back as an inset. Because that inset is part of the next published frame, you get a video-feedback tunnel, the round-trip made visible, the way the **OSCLoopback** example shows an OSC message making its trip.
 
-To prove the cross-app path, run a sketch that publishes and open **Syphon's Simple Client** (a small free app from [syphon.github.io](https://syphon.github.io) that lists every source and shows the one you pick) — "Ollin" should appear there, and in an `ofxSyphon` sketch, Resolume, or MadMapper just the same. Going the other way, the **SyphonViewer** example (`Examples/Integration/SyphonViewer`) subscribes to any external source and draws it letterboxed, listing what it can see while it waits; point Syphon's **Simple Server** (or any publisher) at it.
+To prove the cross-app path, run a sketch that publishes and open **Syphon's Simple Client** (a small free app from [syphon.github.io](https://syphon.github.io) that lists every source and shows the one you pick). "Ollin" should appear there, and in an `ofxSyphon` sketch, Resolume, or MadMapper just the same. Going the other way, the **SyphonViewer** example (`Examples/Integration/SyphonViewer`) subscribes to any external source and draws it letterboxed, listing what it can see while it waits, so point Syphon's **Simple Server** (or any publisher) at it.
 
 ---
 

@@ -6,14 +6,14 @@
 
 Talk to the other tools in a performance rig. OSC (Open Sound Control) is the small networked-message protocol that TouchOSC, Max/MSP, TouchDesigner, Ableton, Resolume, and most lighting desks speak, so a sketch can take a fader from a phone or hand a value off to a video mixer. It lives in a separate library so the drawing core stays free of networking. Add `import OllinOSC` alongside `import Ollin` to reach it.
 
-A message is an address (a slash path like `/synth/freq`) and a few typed values. You send messages with an [`OSCSender`](#oscsender) and read incoming ones with an [`OSCReceiver`](#oscreceiver). Both go over UDP, built on Apple's `Network.framework`; the OSC wire format is written from the spec, so nothing is vendored.
+A message is an address (a slash path like `/synth/freq`) and a few typed values. You send messages with an [`OSCSender`](#oscsender) and read incoming ones with an [`OSCReceiver`](#oscreceiver). Both go over UDP, built on Apple's `Network.framework`, and the OSC wire format is written from the spec, so nothing is vendored.
 
 ```text
   /synth/1/freq   440.0   "on"   true
   └─ address ─┘   └─── arguments ───┘
 ```
 
-The usual shape: make the sender and receiver in `setup()`, send and read in `draw()`.
+The usual shape is to make the sender and receiver in `setup()`, then send and read in `draw()`.
 
 ```swift
 import Ollin
@@ -36,12 +36,12 @@ final class Knob: Sketch {
 
 ### Contents
 
-- [OSCMessage & arguments](#oscmessage--arguments) — the value you send and receive
-- [OSCSender](#oscsender) — send messages and bundles
-- [OSCReceiver](#oscreceiver) — read incoming messages three ways
-- [Binding to a `@Param`](#binding-to-a-param) — drive a knob from an address
-- [Bundles & time tags](#bundles--time-tags) — group messages
-- [Testing without hardware](#testing-without-hardware) — loopback, monitors, and TouchOSC
+- [OSCMessage & arguments](#oscmessage--arguments) - the value you send and receive
+- [OSCSender](#oscsender) - send messages and bundles
+- [OSCReceiver](#oscreceiver) - read incoming messages three ways
+- [Binding to a `@Param`](#binding-to-a-param) - drive a knob from an address
+- [Bundles & time tags](#bundles--time-tags) - group messages
+- [Testing without hardware](#testing-without-hardware) - loopback, monitors, and TouchOSC
 
 <a name="oscmessage--arguments"></a>
 
@@ -54,7 +54,7 @@ OSCMessage("/x", .float(value), .int(count))     // a variable is wrapped by its
 
 An `OSCMessage` is an `address` and an array of `arguments`. Literals turn into arguments on their own (`0.8` is a float, `1` an int, `"on"` a string, `true` a bool), so the common case stays terse. A value held in a variable is wrapped by its case (`.float(x)`, `.int(n)`, `.string(s)`), since Swift doesn't convert a `Float` to an argument on its own.
 
-`OSCArgument` covers the OSC 1.0 types: `.int` (32-bit), `.float`, `.string`, `.blob` (raw bytes), plus `.double`, `.int64`, `.bool`, `.null`, and `.impulse` (a bare trigger). Reading back, the coercing accessors save a `switch`: `.asFloat`, `.asInt`, `.asString`, `.asBool` convert across the numeric types where it makes sense.
+`OSCArgument` covers the OSC 1.0 types: `.int` (32-bit), `.float`, `.string`, `.blob` (raw bytes), plus `.double`, `.int64`, `.bool`, `.null`, and `.impulse` (a bare trigger). Reading back, the coercing accessors save a `switch`, so `.asFloat`, `.asInt`, `.asString`, and `.asBool` convert across the numeric types where it makes sense.
 
 <a name="oscsender"></a>
 
@@ -68,7 +68,7 @@ func send(_ address: String, _ arguments: OSCArgument...)   // build-and-send su
 func close()
 ```
 
-Points at a destination and sends. The `host` is an IP or a hostname; `127.0.0.1` is this Mac, a phone on the same network is something like `192.168.1.42`. The one-line `send(address, args…)` form is the one you'll reach for most:
+Points at a destination and sends. The `host` is an IP or a hostname, where `127.0.0.1` is this Mac and a phone on the same network is something like `192.168.1.42`. The one-line `send(address, args…)` form is the one you'll reach for most:
 
 ```swift
 let out = OSCSender(host: "192.168.1.42", port: 9000)
@@ -76,7 +76,7 @@ out.send("/level", .float(level))
 out.send("/note", 60, 100)          // two int literals
 ```
 
-Sending over UDP is fire-and-forget: a `send` returns right away and delivery isn't acknowledged, which is what live control traffic wants. A dropped frame of a continuous value is replaced by the next one a moment later.
+Sending over UDP is fire-and-forget, so a `send` returns right away and delivery isn't acknowledged, which is what live control traffic wants. A dropped frame of a continuous value is replaced by the next one a moment later.
 
 <a name="oscreceiver"></a>
 
@@ -127,18 +127,18 @@ for note in osc.messages() where note.address == "/note" {
    └────────────┘               └──────────────────┘
 ```
 
-Datagrams arrive on a background queue while the sketch reads on the main thread; everything shared is held behind locks, so the reads are safe from `draw()`.
+Datagrams arrive on a background queue while the sketch reads on the main thread, and everything shared is held behind locks, so the reads are safe from `draw()`.
 
 <a name="binding-to-a-param"></a>
 
 ### Binding to a `@Param`
 
 ```swift
-func bind(_ address: String, to param: Param, from input: ClosedRange<Double> = 0...1)
+func bind(_ address: String, to param: Param<Double>, from input: ClosedRange<Double> = 0...1)
 func unbind(_ address: String)
 ```
 
-The third way to read: wire an address straight onto a [`@Param`](../Helpers/Parameters.md) knob, so an incoming value drives the same parameter a live-inspector slider does. Each message's first value is mapped from `input` into the parameter's own range and assigned (clamped):
+The third way to read is to wire an address straight onto a [`@Param`](../Helpers/Parameters.md) knob, so an incoming value drives the same parameter a live-inspector slider does. Each message's first value is mapped from `input` into the parameter's own range and assigned (clamped):
 
 ```swift
 @Param(20...400) var radius = 120.0
@@ -150,7 +150,7 @@ override func setup() {
 }
 ```
 
-A bound knob updates on its own as messages arrive, so you don't read it each frame. The same parameter still works from the inspector slider and from code; whichever moved most recently wins.
+A bound knob updates on its own as messages arrive, so you don't read it each frame. The same parameter still works from the inspector slider and from code, and whichever moved most recently wins.
 
 <a name="bundles--time-tags"></a>
 
@@ -175,7 +175,7 @@ On the receiving side a bundle's messages flow into the same latest-value cache 
 
 ### Testing without hardware
 
-You can exercise OSC with nothing but the Mac in front of you by running both ends on `127.0.0.1`: a sender and a receiver in the same sketch. The **OSCLoopback** example (`Examples/Integration/OSCLoopback`) does exactly that: it sends an animated position to itself and draws the dot from what it reads back, so the picture you see is the round-trip itself.
+You can exercise OSC with nothing but the Mac in front of you by running both ends on `127.0.0.1`, a sender and a receiver in the same sketch. The **OSCLoopback** example (`Examples/Integration/OSCLoopback`) does exactly that, sending an animated position to itself and drawing the dot from what it reads back, so the picture you see is the round-trip itself.
 
 To bring in real gear, point a phone running TouchOSC (or any OSC source) at this Mac's IP and the receiver's port, sending the addresses your sketch reads. The **OSCMonitor** example (`Examples/Integration/OSCMonitor`) listens on a port and prints and draws every message it receives, so you can discover the addresses each control sends just by touching them. To watch what a sketch emits, aim a monitor like Protokol at the sender's port, or use `oscdump` from the command line.
 

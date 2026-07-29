@@ -81,7 +81,7 @@ strokeWeight(2 * scale)
 
 The paper presets are sized in PDF points (72 per inch) and come portrait like the physical sheet: [PDF export](../Output/Export.md#vector-pdf) maps one canvas pixel to one point, so a sketch on `.a4` exports as a true A4 page, and the vector geometry prints sharp at any resolution. When the *raster* export needs print resolution too, add `.dpi(_:)`: `.a4.dpi(300)` renders and `--export`s at 2479×3508 pixels (300 dots per inch) while `--export-pdf` still writes the page at exactly A4, the pixel geometry scaled back onto it. It works on any size (the size it's called on is taken as the 72-dpi page), and `.dpi(72)` is the identity.
 
-Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840 and `.a4.landscape` is 842×595; the flips compose with `.dpi(_:)` in either order. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine; `--export-sequence <dir> --frames N` renders a deterministic numbered PNG sequence (fixed timestep, so it's reproducible and assembles into a smooth video; see [Sketch ▸ Running a sketch](../Core/Sketch.md#running-a-sketch)).
+Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840 and `.a4.landscape` is 842×595, and the flips compose with `.dpi(_:)` in either order. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine. `--export-sequence <dir> --frames N` renders a deterministic numbered PNG sequence (fixed timestep, so it's reproducible and assembles into a smooth video; see [Sketch ▸ Running a sketch](../Core/Sketch.md#running-a-sketch)).
 
 For a custom size, override `canvasSize` with `.square(_)` (a square) or `.size(_, _)` (any rectangle):
 
@@ -111,7 +111,7 @@ The on-screen window does not have to match `canvasSize`; a 1080² (or 4K) sketc
 override var windowMode: WindowMode { .fixed(0.5) }   // always half of canvasSize
 ```
 
-`.auto` and `.fixed` lock the window; `.resizable` does not. (Resizing applies to the standalone `swift run` window today; the examples gallery and live host show the sketch at the auto-fit size with a collapsible sidebar.)
+`.auto` and `.fixed` lock the window, while `.resizable` does not. (Resizing applies to the standalone `swift run` window. The examples gallery and live host show the sketch at the auto-fit size with a collapsible sidebar.)
 
 Either way, a sketch written with `scale` composes the same at the preview size and the export size, so what you see while iterating matches the exported frame. That is what keeps the export dependable for video and Instagram.
 
@@ -121,7 +121,7 @@ Either way, a sketch written with `scale` composes the same at the preview size 
 
 When a sketch feels slow, **View ▸ Show Inspector** (⌘/) opens a floating panel beside the sketch window: frame rate, the CPU time spent building a frame, the geometry the frame emitted (vertices, SDF shapes, point-cloud splats, and GPU particles), the clock, and the canvas size, with a slider for each of the sketch's `@Param` knobs below. Toggle it back off the same way.
 
-It's a separate utility window, not in-canvas drawing, so it never appears in an exported frame — `--export` renders only the canvas. The CPU time is the cost of building a frame on the draw thread, the first thing to climb when a sketch gets heavy, and it reads far lower in a release build (`swift run -c release`) than the default debug build.
+It's a separate utility window, not in-canvas drawing, so it never appears in an exported frame, since `--export` renders only the canvas. The CPU time is the cost of building a frame on the draw thread, the first thing to climb when a sketch gets heavy, and it reads far lower in a release build (`swift run -c release`) than the default debug build.
 
 The live host (`OllinLive`) shows the same readout in its own inspector sidebar, so there it's built into the window.
 
