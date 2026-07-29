@@ -4,7 +4,7 @@
 
 ## Blue noise
 
-Plain [`random`](./Random.md) scatter clumps: some points land almost on top of each other, and elsewhere gaps open up. **Blue-noise** (Poisson-disk) sampling fixes that: it lays down points that are spread *evenly but organically*, with **no two closer than a radius** and no visible clustering. It's the distribution behind natural-looking stippling, object scatter, and the even seed sets the [Voronoi](../Drawing/Voronoi.md) and packing paths like to consume.
+Plain [`random`](./Random.md) scatter clumps, so some points land almost on top of each other while elsewhere gaps open up. **Blue-noise** (Poisson-disk) sampling fixes that by laying down points spread *evenly but organically*, with **no two closer than a radius** and no visible clustering. It's the distribution behind natural-looking stippling, object scatter, and the even seed sets the [Voronoi](../Drawing/Voronoi.md) and packing paths like to consume.
 
 `poissonDisk` is Bridson's dart-throwing sampler, and it's driven by the seedable `random`, so the same [`seed`](./Random.md#seed) always lays the points down the same way.
 
@@ -39,7 +39,7 @@ poissonDisk(in bounds: Rectangle? = nil,
             maxCount: Int? = nil) -> [Vector2]
 ```
 
-A blue-noise scatter of `bounds` (the whole canvas by default): points spread evenly, with no two closer than `radius`. The number of points follows from `radius` and the area rather than being requested directly (halving the radius roughly quadruples the points). Pass `maxCount` to stop once enough have landed. `candidates` is how many darts are thrown around each point before it's retired (Bridson's `k`, 30 by default; more is slightly tighter and slower).
+A blue-noise scatter of `bounds` (the whole canvas by default), with points spread evenly and no two closer than `radius`. The number of points follows from `radius` and the area rather than being requested directly (halving the radius roughly quadruples the points). Pass `maxCount` to stop once enough have landed. `candidates` is how many darts are thrown around each point before it's retired (Bridson's `k`, 30 by default, and more is slightly tighter and slower).
 
 ```swift
 seed(9)
@@ -48,7 +48,7 @@ noStroke(); fill(.black)
 drawPoints(dots, size: 4)
 ```
 
-Because the layout is a pure function of the seed, compute it once and hold it (in a stored property) rather than every frame; animate something visual (a dot's size, its color) so the field moves without the points jumping. See the `BlueNoise` example.
+Because the layout is a pure function of the seed, compute it once and hold it (in a stored property) rather than every frame, then animate something visual (a dot's size, its color) so the field moves without the points jumping. See the `BlueNoise` example.
 
 <a name="feeding"></a>
 
@@ -69,7 +69,7 @@ for (i, cell) in voronoi(sites).cells.enumerated() {
 
 #### Standalone (outside a sketch)
 
-The `Sketch` method is sugar over a free function that takes any random source, so geometry code outside a sketch can sample reproducibly too: hand it a seeded [`SplitMix64`](./Random.md) (Ollin's PRNG):
+The `Sketch` method is sugar over a free function that takes any random source, so geometry code outside a sketch can sample reproducibly too. Hand it a seeded [`SplitMix64`](./Random.md), Ollin's PRNG:
 
 ```swift
 var rng = SplitMix64(seed: 9)

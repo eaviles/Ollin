@@ -4,7 +4,7 @@
 
 ## Cellular automata
 
-Grids of cells that evolve by a local rule. The one-dimensional family (`elementaryCA`, `totalisticCA`) computes a row of cells generation by generation, and stacking the generations as rows is the classic picture: one number picks the rule, and the rule picks order, fractals, or chaos. The **turmite** family (`Turmite`) is the other shape of the idea: a tiny machine *walks* a 2D grid and paints as it goes, Langton's ant being the famous one. Both are pure CPU geometry sources, deterministic, and cheap enough to rebuild live under a knob.
+Grids of cells that evolve by a local rule. The one-dimensional family (`elementaryCA`, `totalisticCA`) computes a row of cells generation by generation, and stacking the generations as rows is the classic picture, where one number picks the rule and the rule picks order, fractals, or chaos. The **turmite** family (`Turmite`) is the other shape of the idea, a tiny machine that *walks* a 2D grid and paints as it goes, Langton's ant being the famous one. Both are pure CPU geometry sources, deterministic, and cheap enough to rebuild live under a knob.
 
 ```
   elementary: each cell reads             turmite: an ant reads the cell
@@ -18,7 +18,7 @@ Grids of cells that evolve by a local rule. The one-dimensional family (`element
                                                 └───────┴─┘
 ```
 
-The GPU sibling is **Lenia**, the continuous Game of Life, which runs as a `Sim` on a persistent field; it lives with the other simulations in [Layered effects → simField](../Drawing/Effects.md#simfield), next to `.gameOfLife()`.
+The GPU sibling is **Lenia**, the continuous Game of Life, which runs as a `Sim` on a persistent field. It lives with the other simulations in [Layered effects → simField](../Drawing/Effects.md#simfield), next to `.gameOfLife()`.
 
 ### Contents
 
@@ -32,7 +32,7 @@ The GPU sibling is **Lenia**, the continuous Game of Life, which runs as a `Sim`
 
 #### Elementary rules
 
-`elementaryCA` runs one of the 256 two-color rules: every cell reads its three-cell neighborhood (left, self, right) and looks its next value up in the rule's 8-bit table, so the rule number *is* the system. It returns `generations` rows (the first is the start row), each `width` cells wide, ready to draw as rects or over a [`Grid`](../Drawing/Geometry.md#grid).
+`elementaryCA` runs one of the 256 two-color rules, where every cell reads its three-cell neighborhood (left, self, right) and looks its next value up in the rule's 8-bit table, so the rule number *is* the system. It returns `generations` rows (the first is the start row), each `width` cells wide, ready to draw as rects or over a [`Grid`](../Drawing/Geometry.md#grid).
 
 ```swift
 func elementaryCA(rule: Int, width: Int, generations: Int,
@@ -50,26 +50,26 @@ for (r, row) in rows.enumerated() {
 }
 ```
 
-`start` is the first row (`nil` is the classic single live cell at the center). `wrap` joins the row's two ends into a ring; turn it off to read past the edges as dead. Three rules worth knowing: **30** (chaos, once used as a random-number source), **90** (the Sierpinski triangle), **110** (structured machinery, famously Turing-complete).
+`start` is the first row (`nil` is the classic single live cell at the center). `wrap` joins the row's two ends into a ring, and turning it off reads past the edges as dead. Three rules worth knowing: **30** (chaos, once used as a random-number source), **90** (the Sierpinski triangle), and **110** (structured machinery, famously Turing-complete).
 
 <a name="totalistic"></a>
 
 #### Totalistic rules
 
-`totalisticCA` is the multi-color generalization: a cell's next value depends only on the *sum* of its three-cell neighborhood, looked up as a digit of `code` written in base `colors`. With three or more colors it draws textures the elementary rules can't reach.
+`totalisticCA` is the multi-color generalization, where a cell's next value depends only on the *sum* of its three-cell neighborhood, looked up as a digit of `code` written in base `colors`. With three or more colors it draws textures the elementary rules can't reach.
 
 ```swift
 func totalisticCA(code: Int, colors: Int = 3, width: Int, generations: Int,
                   from start: [Int]? = nil, wrap: Bool = true) -> [[Int]]
 ```
 
-Rows hold color indices `0 ..< colors`, so a palette lookup per cell is the natural draw. Code **777** over 3 colors is a classic irregular grower; sweeping the code with a knob is a good way to prospect.
+Rows hold color indices `0 ..< colors`, so a palette lookup per cell is the natural draw. Code **777** over 3 colors is a classic irregular grower, and sweeping the code with a knob is a good way to prospect.
 
 <a name="random-start"></a>
 
 #### Random start rows
 
-Both functions also come as sketch methods with a `startDensity` in place of `from`: the start row is rolled on the sketch's seeded [`random`](./Random.md), so a [`variation`](../Core/Variations.md) brings the same field back.
+Both functions also come as sketch methods with a `startDensity` in place of `from`, so the start row is rolled on the sketch's seeded [`random`](./Random.md) and a [`variation`](../Core/Variations.md) brings the same field back.
 
 ```swift
 let rows = elementaryCA(rule: 22, width: 181, generations: 181, startDensity: 0.3)
@@ -99,14 +99,14 @@ The `Preset` catalog collects known characters, each a distinct personality:
 
 | Preset | Behavior |
 |---|---|
-| `.langton` | the classic ant: chaos, then an endless diagonal highway after ~10,000 steps |
+| `.langton` | the classic ant, chaotic at first, then an endless diagonal highway after ~10,000 steps |
 | `.spiral` | spiral growth, a tightening square coil |
 | `.highway` | builds a highway after a period of chaotic growth |
 | `.chaos` | chaotic growth with a distinctive woven texture |
 | `.frame` | textured growth inside an expanding frame |
 | `.fibonacci` | counts its way outward in a Fibonacci-like spiral, growing very slowly |
 
-`paintedCells` is every non-zero cell (rebuilt per call; use `colorIndex(atColumn:row:)` for tight loops), `antPositions` marks the walkers, and `stepCount` is how far the machine has run. Everything is deterministic, with no randomness anywhere, so a fixed step count always paints the same picture. Multiple ants are one array away: `Turmite(.langton, columns: 270, rows: 270, ants: [(60, 60), (210, 210)])`; within a step they move in array order.
+`paintedCells` is every non-zero cell (rebuilt per call, so use `colorIndex(atColumn:row:)` for tight loops), `antPositions` marks the walkers, and `stepCount` is how far the machine has run. Everything is deterministic, with no randomness anywhere, so a fixed step count always paints the same picture. Multiple ants are one array away with `Turmite(.langton, columns: 270, rows: 270, ants: [(60, 60), (210, 210)])`, and within a step they move in array order.
 
 <a name="turmite-rules"></a>
 
@@ -120,7 +120,7 @@ let langton = Turmite(rules: [[Turmite.Rule(write: 1, turn: .right, state: 0),
                       columns: 270, rows: 270)
 ```
 
-Every state must handle the same number of colors (that count is the machine's `colors`); writes and next-states are clamped into range. Two states and two colors are already enough for spirals, highways, and framed textures, so small tables are worth exploring by hand.
+Every state must handle the same number of colors (that count is the machine's `colors`), and writes and next-states are clamped into range. Two states and two colors are already enough for spirals, highways, and framed textures, so small tables are worth exploring by hand.
 
 ---
 

@@ -4,7 +4,7 @@
 
 ## Low-discrepancy sampling
 
-Plain [`random`](./Random.md) scatter clumps and leaves holes. [Blue noise](./BlueNoise.md) fixes the spacing, but it's one fixed layout for one radius. A **low-discrepancy sequence** is the third option: an ordered, deterministic *stream* of points that covers a region evenly at **every** count, where growing the count only adds points and never moves the ones already placed.
+Plain [`random`](./Random.md) scatter clumps and leaves holes. [Blue noise](./BlueNoise.md) fixes the spacing, but it's one fixed layout for one radius. A **low-discrepancy sequence** is the third option, an ordered, deterministic *stream* of points that covers a region evenly at **every** count, where growing the count only adds points and never moves the ones already placed.
 
 ```
   haltonPoints(count: 4)          haltonPoints(count: 8)
@@ -17,7 +17,7 @@ Plain [`random`](./Random.md) scatter clumps and leaves holes. [Blue noise](./Bl
   in the same places; the new ones land in the largest gaps
 ```
 
-That *prefix property* is the whole trick: draft a piece with 100 points and render it with 10,000, and the draft is a subset of the final. There's no seed and no rng anywhere; index in, point out.
+That *prefix property* is the whole trick. Draft a piece with 100 points and render it with 10,000, and the draft is a subset of the final. There's no seed and no rng anywhere, just index in, point out.
 
 ### Contents
 
@@ -38,7 +38,7 @@ haltonPoints(count: Int,
              startIndex: Int = 1) -> [Vector2]
 ```
 
-The first `count` points of the 2D Halton sequence, scaled into `bounds` (the whole canvas by default). Each axis mirrors the point's index digits in its own base; with **coprime** bases the two axes stay uncorrelated. The defaults (2 and 3) are the canonical pair; don't pass bases that share a factor, or the points collapse onto lines.
+The first `count` points of the 2D Halton sequence, scaled into `bounds` (the whole canvas by default). Each axis mirrors the point's index digits in its own base; with **coprime** bases the two axes stay uncorrelated. The defaults (2 and 3) are the canonical pair, and bases that share a factor collapse the points onto lines.
 
 ```swift
 for (i, p) in haltonPoints(count: 800).enumerated() {
@@ -59,7 +59,7 @@ sobolPoints(count: Int,
             startIndex: Int = 1) -> [Vector2]
 ```
 
-The first `count` points of the 2D Sobol sequence, the more uniform sibling. Its binary construction gives it a stronger guarantee: every aligned power-of-two block of the stream lands exactly one point in each cell of the matching power-of-two grid. Same prefix property, same determinism, slightly more visible dyadic structure if you look closely.
+The first `count` points of the 2D Sobol sequence, the more uniform sibling. Its binary construction gives it a stronger guarantee, since every aligned power-of-two block of the stream lands exactly one point in each cell of the matching power-of-two grid. Same prefix property, same determinism, slightly more visible dyadic structure if you look closely.
 
 <a name="halton"></a>
 
@@ -75,9 +75,9 @@ The scalar building block (the radical inverse), useful on its own whenever you 
 
 #### Choosing between them
 
-- **Need the count to grow or shrink live, or draft-then-refine?** A sequence (either one); that's the prefix property, and neither blue noise nor `random` has it.
-- **Want the most even single layout and the count is free?** [`poissonDisk`](./BlueNoise.md); its minimum-distance guarantee is stronger than either sequence.
-- **Want honest clumps?** Plain [`random`](./Random.md); clumping *is* a look.
+- **Need the count to grow or shrink live, or draft-then-refine?** Use a sequence, either one. That's the prefix property, and neither blue noise nor `random` has it.
+- **Want the most even single layout and the count is free?** Use [`poissonDisk`](./BlueNoise.md), whose minimum-distance guarantee is stronger than either sequence.
+- **Want honest clumps?** Use plain [`random`](./Random.md), because clumping *is* a look.
 
 Both sequences are pure functions of the index, so they don't consume the sketch's seeded `random` and never affect reproducibility.
 
