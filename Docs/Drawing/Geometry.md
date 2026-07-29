@@ -32,7 +32,7 @@
 
 ### `Vector2`
 
-An `(x, y)` point in sketch points. The type primitives like `drawPolyline`, `drawCircle(center:)`, and `drawLine` take. A `Vector2` doubles as a **point** (a location) and a **vector** (an arrow with a direction and a length); the methods below lean on whichever reading fits.
+An `(x, y)` point in sketch points. The type primitives like `drawPolyline`, `drawCircle(center:)`, and `drawLine` take. A `Vector2` doubles as a **point** (a location) and a **vector** (an arrow with a direction and a length), and the methods below lean on whichever reading fits.
 
 ```swift
 Vector2(_ x: Double, _ y: Double)
@@ -44,7 +44,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **Constants:** `.zero` `(0, 0)`, `.one` `(1, 1)`, `.unitX` `(1, 0)`, `.unitY` `(0, 1)`.
 
-**A note on orientation.** Ollin's y-axis points down (top-left origin), the opposite of the math-class convention where y points up. The formulas are the same, but the direction of rotation looks flipped on screen: a positive angle, and anything the usual math convention calls "counter-clockwise", turns clockwise as you watch it. The diagrams below are drawn in screen space (y down) to match what you see.
+**A note on orientation.** Ollin's y-axis points down (top-left origin), the opposite of the math-class convention where y points up. The formulas are the same, but the direction of rotation looks flipped on screen. A positive angle, and anything the usual math convention calls "counter-clockwise", turns clockwise as you watch it. The diagrams below are drawn in screen space (y down) to match what you see.
 
 ```
   (0,0)
@@ -59,7 +59,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 #### Length & direction
 
-**`length` / `lengthSquared`** — how far the point is from the origin, that is, how long the arrow is. It's the Pythagorean theorem: the hypotenuse of the right triangle with sides `x` and `y`.
+**`length` / `lengthSquared`** measure how far the point is from the origin, that is, how long the arrow is. It's the Pythagorean theorem, the hypotenuse of the right triangle with sides `x` and `y`.
 
 ```
   v = (3, 4)
@@ -75,9 +75,9 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
   lengthSquared = 3² + 4² = 25     (skip the √ when you only compare)
 ```
 
-**In a sketch:** turn a distance or a speed into something you can see — a dot that grows as the mouse nears, or a trail that reacts to how fast it moves (`velocity.length`).
+**In a sketch:** turn a distance or a speed into something you can see, a dot that grows as the mouse nears, or a trail that reacts to how fast it moves (`velocity.length`).
 
-**`normalized`** — the same direction rescaled to length exactly 1 (a "unit vector"). Handy when you want a pure heading and will set the length yourself. Returns `.zero` if `v` has no length to scale.
+**`normalized`** is the same direction rescaled to length exactly 1 (a "unit vector"). Handy when you want a pure heading and will set the length yourself. Returns `.zero` if `v` has no length to scale.
 
 ```
   v = (3, 4), length 5        v.normalized = (0.6, 0.8), length 1
@@ -86,9 +86,9 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
         same heading, divided by its own length
 ```
 
-**In a sketch:** the move-toward-a-target trick — `pos += (target - pos).normalized * speed` steps a fixed amount the right way, however far the target is.
+**In a sketch:** this is the move-toward-a-target trick, where `pos += (target - pos).normalized * speed` steps a fixed amount the right way, however far the target is.
 
-**`angle`** — the direction as one number: the angle of the arrow from the `+x` axis, in radians (`atan2(y, x)`). `Vector2(angle:length:)` is the inverse, building an arrow from an angle and a length.
+**`angle`** gives the direction as one number, the angle of the arrow from the `+x` axis, in radians (`atan2(y, x)`). `Vector2(angle:length:)` is the inverse, building an arrow from an angle and a length.
 
 ```
   v.angle = atan2(y, x)
@@ -99,9 +99,9 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
    +y
 ```
 
-**In a sketch:** point a shape the way it's heading — `rotate(velocity.angle)` before you draw, so an arrow or a fish faces where it's going.
+**In a sketch:** point a shape the way it's heading. Call `rotate(velocity.angle)` before you draw, so an arrow or a fish faces where it's going.
 
-**`perpendicular`** — a quarter turn, swapping and negating the components: `(x, y) → (−y, x)`. Useful for offsetting to the side of a line (for example giving a stroke its width).
+**`perpendicular`** is a quarter turn, swapping and negating the components so `(x, y)` becomes `(−y, x)`. Useful for offsetting to the side of a line (for example giving a stroke its width).
 
 ```
   v.perpendicular = (−y, x)
@@ -112,13 +112,13 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
     ● v.perpendicular = (0, 3)
 ```
 
-**In a sketch:** the sideways direction — give a freehand line real thickness by stepping out both ways, or make a thing strafe or orbit.
+**In a sketch:** this is the sideways direction, so you can give a freehand line real thickness by stepping out both ways, or make a thing strafe or orbit.
 
 <a name="v2-arithmetic"></a>
 
 #### Arithmetic
 
-**`+`, `-`, unary `-`** — add two vectors *head to tail*; subtract to get the step between two points. (Plus the in-place `+=` / `-=`, the `pos += vel` idiom.)
+**`+`, `-`, unary `-`** add two vectors *head to tail*, and subtract to get the step between two points. (Plus the in-place `+=` / `-=`, the `pos += vel` idiom.)
 
 ```
   a + b : walk a, then walk b from where a ended (head-to-tail)
@@ -130,22 +130,22 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
   −v    : same length, opposite direction
 ```
 
-**In a sketch:** `target - pos` is the arrow pointing from one point to another — the seed of every chase, spring, and look-at. `pos += velocity` is how anything moves.
+**In a sketch:** `target - pos` is the arrow pointing from one point to another, the seed of every chase, spring, and look-at. `pos += velocity` is how anything moves.
 
-**`*` / `/` by a scalar** — stretch or shrink the arrow, keeping its heading (negative flips it). For `*` the scalar can sit on either side. (Plus the in-place `*=` / `/=`.)
+**`*` / `/` by a scalar** stretch or shrink the arrow, keeping its heading (negative flips it). For `*` the scalar can sit on either side. (Plus the in-place `*=` / `/=`.)
 
 ```
   ●──►v        ●──────►v * 2        ◄──● v * -1
               (twice as long)      (flipped)
 ```
 
-**In a sketch:** set how big a step is — `direction * speed` to go faster, or `* deltaTime` so motion runs the same on any machine.
+**In a sketch:** set how big a step is. Use `direction * speed` to go faster, or `* deltaTime` so motion runs the same on any machine.
 
 <a name="v2-measuring"></a>
 
 #### Measuring between two vectors
 
-**`distance(to:)` / `distanceSquared(to:)`** — straight-line distance between two points. (Same Pythagoras as `length`, applied to `a − b`; the squared form skips the `√` for comparisons.)
+**`distance(to:)` / `distanceSquared(to:)`** measure the straight-line distance between two points. (Same Pythagoras as `length`, applied to `a − b`, and the squared form skips the `√` for comparisons.)
 
 ```
   a.distance(to: b)
@@ -156,9 +156,9 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
          ● b
 ```
 
-**In a sketch:** proximity effects — connect dots closer than N, fade things by how near they are, or push neighbours apart when they crowd. (Use the squared form inside big loops to skip the slow `√`.)
+**In a sketch:** proximity effects, so you can connect dots closer than N, fade things by how near they are, or push neighbours apart when they crowd. (Use the squared form inside big loops to skip the slow `√`.)
 
-**`dot(_:)`** — one number measuring how much two vectors point the *same way*: `ax·bx + ay·by`, which equals `|a|·|b|·cos θ`. Its sign alone tells you the rough relationship.
+**`dot(_:)`** is one number measuring how much two vectors point the *same way*, `ax·bx + ay·by`, which equals `|a|·|b|·cos θ`. Its sign alone tells you the rough relationship.
 
 ```
   a.dot(b)
@@ -169,9 +169,9 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
       ◄ b          θ > 90°  → dot < 0   (aim opposite ways)
 ```
 
-**In a sketch:** "same way or opposite?" and "in front of me or behind?" — the basis of simple lighting (how squarely a surface faces the light) and field-of-view checks.
+**In a sketch:** this answers "same way or opposite?" and "in front of me or behind?", the basis of simple lighting (how squarely a surface faces the light) and field-of-view checks.
 
-**`cross(_:)`** — the 2D "perp-dot", `ax·by − ay·bx`, also one number. Its *magnitude* is the area of the parallelogram the two vectors span; its *sign* tells you the turn direction from `a` to `b`.
+**`cross(_:)`** is the 2D "perp-dot", `ax·by − ay·bx`, also one number. Its *magnitude* is the area of the parallelogram the two vectors span, and its *sign* tells you the turn direction from `a` to `b`.
 
 ```
   a.cross(b) = ax·by − ay·bx     (a single number)
@@ -190,7 +190,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch (2D):** the sign answers "is the target on my left or my right?", so a creature can turn the short way toward it. Summed around a shape's points it gives the area and which way the shape winds.
 
-**`angle(to:)`** — the *signed* angle from `a` to `b`, in `−π…π` (it's `atan2(cross, dot)`). Unlike `b.angle − a.angle`, it never wraps and tells you which way to turn.
+**`angle(to:)`** is the *signed* angle from `a` to `b`, in `−π…π` (it's `atan2(cross, dot)`). Unlike `b.angle − a.angle`, it never wraps and tells you which way to turn.
 
 ```
   a.angle(to: b)
@@ -201,13 +201,13 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
       ◄ b
 ```
 
-**In a sketch:** swivel to face something smoothly — rotate by a fraction of `heading.angle(to: toTarget)` each frame and a creature tracks the mouse.
+**In a sketch:** swivel to face something smoothly. Rotate by a fraction of `heading.angle(to: toTarget)` each frame and a creature tracks the mouse.
 
 <a name="v2-producing"></a>
 
 #### Producing new vectors
 
-**`lerp(to:_:)`** — slide from `a` toward `b` by a fraction `t` (`0` = `a`, `1` = `b`). `t = 0.5` is the midpoint; `t` past `0…1` extrapolates.
+**`lerp(to:_:)`** slides from `a` toward `b` by a fraction `t` (`0` = `a`, `1` = `b`). `t = 0.5` is the midpoint, and `t` past `0…1` extrapolates.
 
 ```
   a.lerp(to: b, t)
@@ -218,9 +218,9 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
             midpoint at t = 0.5
 ```
 
-**In a sketch:** the easiest smooth-follow there is — `pos = pos.lerp(to: target, 0.1)` makes anything glide after the mouse with a soft lag. Also midpoints and in-betweens.
+**In a sketch:** this is the easiest smooth-follow there is, since `pos = pos.lerp(to: target, 0.1)` makes anything glide after the mouse with a soft lag. Also midpoints and in-betweens.
 
-**`rotated(by:)` / `rotated(by:around:)`** — spin the arrow by an angle, about the origin or about a given pivot point.
+**`rotated(by:)` / `rotated(by:around:)`** spin the arrow by an angle, about the origin or about a given pivot point.
 
 ```
   v.rotated(by: θ)             spins v about the origin (0, 0)
@@ -234,7 +234,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** lay things out in a ring, orbit a moon around a planet, or swing a clock hand with `rotated(by:around:)` about its pivot.
 
-**`limited(to:)`** — clamp the length to a maximum, keeping the direction. Shorter vectors pass through untouched (for example a velocity cap).
+**`limited(to:)`** clamps the length to a maximum, keeping the direction. Shorter vectors pass through untouched (for example a velocity cap).
 
 ```
   v.limited(to: m)
@@ -243,9 +243,9 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
     len > m :  ●──────────►v  →   ●─────► length m
 ```
 
-**In a sketch:** keep speeds from blowing up — `vel = vel.limited(to: maxSpeed)` is the staple that keeps flocking and steering stable.
+**In a sketch:** keep speeds from blowing up, since `vel = vel.limited(to: maxSpeed)` is the staple that keeps flocking and steering stable.
 
-**`projected(onto:)`** — the part of `a` that lies along `b`: `a`'s shadow cast straight down onto `b`'s line.
+**`projected(onto:)`** is the part of `a` that lies along `b`, its shadow cast straight down onto `b`'s line.
 
 ```
   a.projected(onto: b)
@@ -261,13 +261,13 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** snap a point onto a guide line, find the nearest spot on a path, or split a bounce into "along the wall" and "into the wall".
 
-**`with(x:)` / `with(y:)`** — a copy with one component replaced (the other kept). `p.with(y: 0)` flattens a point onto the top edge, for instance.
+**`with(x:)` / `with(y:)`** return a copy with one component replaced (the other kept). `p.with(y: 0)` flattens a point onto the top edge, for instance.
 
-**In a sketch:** pin one axis — drop points to the top edge with `.with(y: 0)`, or let x scroll while y holds still.
+**In a sketch:** pin one axis, dropping points to the top edge with `.with(y: 0)`, or letting x scroll while y holds still.
 
-**`points.centroid`** — on any collection of `Vector2`: the centroid (arithmetic mean) of the points, or `nil` when the collection is empty. It's the mean of the points themselves — where vertices crowd, the centroid is pulled toward them — so for a polygon outline it's not the area's center of mass.
+**`points.centroid`** works on any collection of `Vector2`, giving the centroid (arithmetic mean) of the points, or `nil` when the collection is empty. It's the mean of the points themselves, so where vertices crowd the centroid is pulled toward them, which means for a polygon outline it's not the area's center of mass.
 
-**In a sketch:** the center of a cluster — a flock's middle to steer toward, or the center of a tracker's landmark points (an eye region's loop, a quad's corners).
+**In a sketch:** find the center of a cluster, a flock's middle to steer toward, or the center of a tracker's landmark points (an eye region's loop, a quad's corners).
 
 <a name="v2-together"></a>
 
@@ -288,7 +288,7 @@ p += dir * 10                       // step 10 units toward b
 
 ### `Vector3`
 
-An `(x, y, z)` point or vector. Ollin draws in 2D, but some values live in space — a 3D body joint in meters, a point of a depth cloud — and `Vector3` carries them: `Vector2`'s arithmetic with a `z`.
+An `(x, y, z)` point or vector. Ollin draws in 2D, but some values live in space (a 3D body joint in meters, a point of a depth cloud), and `Vector3` carries them with `Vector2`'s arithmetic plus a `z`.
 
 ```swift
 Vector3(_ x: Double, _ y: Double, _ z: Double)
@@ -297,10 +297,10 @@ Vector3(x: Double, y: Double, z: Double)
 
 - **Constants:** `.zero`, `.one`, `.unitX`, `.unitY`, `.unitZ`.
 - **Same surface as `Vector2`** where it generalizes: `length` / `lengthSquared` / `normalized`, the `+ - * /` operators and their in-place forms, `dot`, `distance(to:)` / `distanceSquared(to:)`, `lerp(to:_:)`, `limited(to:)`, `projected(onto:)`, and `with(x:)` / `with(y:)` / `with(z:)`.
-- **3D-specific:** `cross(_:)` returns the perpendicular `Vector3` (in 2D it's a scalar), and `xy` drops the depth — the projection back onto the canvas plane.
-- **Not here:** the angle and rotation helpers — a 3D rotation needs an axis, which lives in the [3D transform stack](../3D/3D.md#transforms), not a lone vector.
+- **3D-specific:** `cross(_:)` returns the perpendicular `Vector3` (in 2D it's a scalar), and `xy` drops the depth, the projection back onto the canvas plane.
+- **Not here:** the angle and rotation helpers, because a 3D rotation needs an axis, which lives in the [3D transform stack](../3D/3D.md#transforms), not a lone vector.
 
-Axis meaning (which way is up, where the origin sits) belongs to whatever produced the value — a producer like [`Body3D`](../Vision/Vision.md#body3d) documents its own spaces.
+Axis meaning (which way is up, where the origin sits) belongs to whatever produced the value, so a producer like [`Body3D`](../Vision/Vision.md#body3d) documents its own spaces.
 
 ```swift
 let joint = Vector3(0.2, 1.4, -0.3)          // meters, say
@@ -327,7 +327,7 @@ Rectangle(fitting size: Vector2, in container: Rectangle)
 - **Inset:** `inset(by: Insets)`, the rectangle shrunk inward by a per-edge margin (see [`Grid`](#grid)).
 - **Normalized coordinates:** `point(u:v:)`, the point at 0…1 fractions of the rectangle (`point(u: 0.5, v: 0.5)` is `center`; values outside 0…1 land proportionally outside), and its inverse `uv(of:)`. The canvas-wide sugar is [`uv(u, v)`](../Core/Canvas.md#uv).
 
-`Rectangle(fitting:in:)` is the letterbox fit: the largest rectangle of `size`'s aspect ratio centered inside `container` — the box to draw an image or video frame into without stretching it (the fit behind `drawFrame` and `fittedRect(in:)`).
+`Rectangle(fitting:in:)` is the letterbox fit, the largest rectangle of `size`'s aspect ratio centered inside `container`. That is the box to draw an image or video frame into without stretching it (the fit behind `drawFrame` and `fittedRect(in:)`).
 
 ```swift
 let box = Rectangle(center: Vector2(width / 2, height / 2), width: 200, height: 120)
@@ -339,20 +339,20 @@ let p = randomVector(in: box)       // a random point inside it
 
 ### `Grid`
 
-A regular grid of `columns × rows` over a rectangle: the typed answer to the margin-then-nested-loop boilerplate so many sketches repeat. `Grid` is geometry, not a draw call. It gives you two things, and you loop whichever you're drawing: the **points** (the dots) or the **cells** (the rectangles). Each element carries its `column`/`row`, so **one** loop covers the indexed cases too, with no nested `for`.
+A regular grid of `columns × rows` over a rectangle, the typed answer to the margin-then-nested-loop boilerplate so many sketches repeat. `Grid` is geometry, not a draw call. It gives you two things, and you loop whichever you're drawing: the **points** (the dots) or the **cells** (the rectangles). Each element carries its `column`/`row`, so **one** loop covers the indexed cases too, with no nested `for`.
 
 ```swift
 Grid(in: Rectangle, columns: Int, rows: Int, padding: Insets = .zero, gutter: Double = 0, distribution: Distribution = .center)
 grid(columns: Int, rows: Int, padding: Insets = .zero, gutter: Double = 0, distribution: Distribution = .center)   // Sketch sugar, over the canvas
 ```
 
-The `Sketch` form `grid(columns:rows:…)` lays the grid over the canvas `bounds`; the `Grid(in:…)` initializer takes any rectangle, so a grid can fill a render target, or a single cell, since grids nest. `padding` insets the whole grid from the edges; `gutter` is the gap *between* cells.
+The `Sketch` form `grid(columns:rows:…)` lays the grid over the canvas `bounds`, while the `Grid(in:…)` initializer takes any rectangle, so a grid can fill a render target, or a single cell, since grids nest. `padding` insets the whole grid from the edges, and `gutter` is the gap *between* cells.
 
 - **Layout:** `bounds` (the region the cells fill, after `padding`), `columns`, `rows`, `gutter`, `cellWidth`, `cellHeight`, `cellSize`.
-- **Points:** `points`, every dot (`[Point]`, row-major); each a `column`, `row`, and `position`, laid out per the grid's `distribution` (below); `point(column:row:)` for one.
-- **Cells:** `cells`, every cell (`[Cell]`, row-major); each a `column`, `row`, true `center`, and `frame` rectangle; `cell(column:row:)` for one.
+- **Points:** `points`, every dot (`[Point]`, row-major), each carrying a `column`, `row`, and `position`, laid out per the grid's `distribution` (below). Use `point(column:row:)` for one.
+- **Cells:** `cells`, every cell (`[Cell]`, row-major), each carrying a `column`, `row`, true `center`, and `frame` rectangle. Use `cell(column:row:)` for one.
 
-Loop whichever you're drawing; the indices ride along, so a checkerboard or a hue-by-position is still one loop:
+Loop whichever you're drawing, and the indices ride along, so a checkerboard or a hue-by-position is still one loop:
 
 ```swift
 for dot in grid.points {                          // dots
@@ -364,10 +364,10 @@ for cell in grid.cells {                          // cells, with indices
 }
 ```
 
-**Cells or dots: `distribution`.** A grid gives you the same `columns × rows` count either way; `distribution` only chooses where the **points** fall (`cells` always tile the bounds):
+**Cells or dots: `distribution`.** A grid gives you the same `columns × rows` count either way, and `distribution` only chooses where the **points** fall (`cells` always tile the bounds):
 
 - `.center` (default): one dot at the center of each cell, inset half a cell from the edges. The "a thing in every cell" layout.
-- `.spanning`: the dots form a lattice spanning the bounds edge to edge, the outer ones sitting on the boundary (the four corners at the rectangle's corners). The "grid of dots" layout, when you want the dots to reach the edges rather than float inside. (`gutter` doesn't apply; spanning dots span the full bounds.)
+- `.spanning`: the dots form a lattice spanning the bounds edge to edge, the outer ones sitting on the boundary (the four corners at the rectangle's corners). The "grid of dots" layout, when you want the dots to reach the edges rather than float inside. (`gutter` doesn't apply, since spanning dots span the full bounds.)
 
 ```
    .center (5×5)                 .spanning (5×5)
@@ -387,7 +387,7 @@ for dot in grid(columns: 24, rows: 24, padding: 60, distribution: .spanning).poi
 }
 ```
 
-**Gaps between cells: `gutter`.** `padding` is the margin around the whole grid; `gutter` is the gap *between* cells (0 = they touch). A contact sheet of tiles with an even gap inside and between them:
+**Gaps between cells: `gutter`.** `padding` is the margin around the whole grid, and `gutter` is the gap *between* cells (0 = they touch). A contact sheet of tiles with an even gap inside and between them:
 
 ```swift
 let g = grid(columns: 3, rows: 2, padding: .all(12), gutter: 12)
@@ -450,7 +450,7 @@ if dot.contains(Vector2(mouseX, mouseY)) { /* pointer is inside */ }
 
 ### `Contour`
 
-One connected path: an ordered run of points, either open (a stroked path) or closed (a fillable outline). Polygonal — straight segments between the points. The building block of a `Shape`. To author a *curved* outline, use [`Path`](#path) (or the `curveThrough` initializer below, which fairs a smooth spline through points).
+One connected path, an ordered run of points, either open (a stroked path) or closed (a fillable outline). It is polygonal, with straight segments between the points. The building block of a `Shape`. To author a *curved* outline, use [`Path`](#path) (or the `curveThrough` initializer below, which fairs a smooth spline through points).
 
 ```swift
 Contour(_ points: [Vector2], closed: Bool = true)
@@ -462,15 +462,15 @@ var midpoint: Vector2           // point(at: 0.5)
 func resampled(spacing: Double) -> Contour   // points respaced evenly along the walk
 ```
 
-The walk helpers measure *along* the contour, so they land mid-stroke even when the points are spaced unevenly (a `textToShapes` glyph, a two-point diagonal). `midpoint` is the handy anchor for styling per contour: color each strand of a [Truchet tiling](./Truchet.md) by a noise field sampled at its middle, or hang a label off a path's center.
+The walk helpers measure *along* the contour, so they land mid-stroke even when the points are spaced unevenly (a `textToShapes` glyph, a two-point diagonal). `midpoint` is the handy anchor for styling per contour, so you can color each strand of a [Truchet tiling](./Truchet.md) by a noise field sampled at its middle, or hang a label off a path's center.
 
-`resampled(spacing:)` rebuilds the contour with its points an even arc-length `spacing` apart, keeping `isClosed`. It's the step before dot, dash, and jitter effects: contours that arrive with uneven vertices (a glyph outline is dense on curves and sparse on straights) come back marching at a steady interval, so marks placed one-per-point spread evenly. `Shape.resampled(spacing:)` applies it to every contour, keeping the shape's `winding`. See the `PointShimmer`, `JitterType`, and `GlyphContours` examples.
+`resampled(spacing:)` rebuilds the contour with its points an even arc-length `spacing` apart, keeping `isClosed`. It's the step before dot, dash, and jitter effects, because contours that arrive with uneven vertices (a glyph outline is dense on curves and sparse on straights) come back marching at a steady interval, so marks placed one-per-point spread evenly. `Shape.resampled(spacing:)` applies it to every contour, keeping the shape's `winding`. See the `PointShimmer`, `JitterType`, and `GlyphContours` examples.
 
 <a name="shape"></a>
 
 ### `Shape`
 
-A fillable region of one or more `Contour`s. Unlike a convex `drawPolygon`, a `Shape` can be **concave** and can have **holes**: contours nested inside the outer one cut holes out of the fill (even-odd winding, so a contour's direction doesn't matter). Draw it with [`drawShape`](../Drawing/Drawing.md#shape).
+A fillable region of one or more `Contour`s. Unlike a convex `drawPolygon`, a `Shape` can be **concave** and can have **holes**, since contours nested inside the outer one cut holes out of the fill (even-odd winding, so a contour's direction doesn't matter). Draw it with [`drawShape`](../Drawing/Drawing.md#shape).
 
 ```swift
 Shape(_ points: [Vector2], closed: Bool = true)   // a single contour
@@ -486,9 +486,9 @@ fill(.black)
 drawShape(Shape(outer: outer, holes: [hole]))      // a square frame
 ```
 
-**Fill winding.** A `Shape` carries a `winding` rule (`FillWinding`) that decides which regions are inside the fill — `.evenOdd` by default (a contour's direction doesn't matter; the simple rule for hand-built shapes), or `.nonZero` (direction *does* matter, and a self-overlapping outline still fills — the rule font outlines use, so glyph shapes from [`textToShapes`](../Drawing/Text.md#texttoshapes) set it). Pass it to `Shape(contours:winding:)`.
+**Fill winding.** A `Shape` carries a `winding` rule (`FillWinding`) that decides which regions are inside the fill. It is `.evenOdd` by default (a contour's direction doesn't matter, the simple rule for hand-built shapes), or `.nonZero` (direction *does* matter, and a self-overlapping outline still fills, which is the rule font outlines use, so glyph shapes from [`textToShapes`](../Drawing/Text.md#texttoshapes) set it). Pass it to `Shape(contours:winding:)`.
 
-**Transforming a shape.** `mapPoints(_:)` returns a copy with every contour point passed through a closure, keeping the `winding` rule and open/closed flags — the safe way to move or warp a shape (a glyph from `textToShapes`, say) without dropping its winding:
+**Transforming a shape.** `mapPoints(_:)` returns a copy with every contour point passed through a closure, keeping the `winding` rule and open/closed flags. That makes it the safe way to move or warp a shape (a glyph from `textToShapes`, say) without dropping its winding:
 
 ```swift
 let wobbled = shape.mapPoints { $0 + Vector2(0, signedNoise($0.x * 0.01, time) * 20) }
@@ -506,7 +506,7 @@ func subtracting(_ other: Shape) -> Shape          // this one, with `other` cut
 func symmetricDifference(_ other: Shape) -> Shape  // covered by exactly one
 ```
 
-Take `a`, the square from `(0, 0)` to `(100, 100)`, and `b`, the square from `(50, 50)` to `(150, 150)`; they share the 50×50 patch in the middle:
+Take `a`, the square from `(0, 0)` to `(100, 100)`, and `b`, the square from `(50, 50)` to `(150, 150)`. They share the 50×50 patch in the middle:
 
 ```
 (0,0)
@@ -519,7 +519,7 @@ Take `a`, the square from `(0, 0)` to `(100, 100)`, and `b`, the square from `(5
        └─────────┘ (150,150)
 ```
 
-The operations work on the **filled region**: each side first resolves under its own `winding` rule (so self-overlaps and holes mean exactly what they mean when the shape draws), closed contours take part, and open contours sit out. The result is an ordinary `Shape` — fill it, stroke it, hatch it, offset it, export it — whose outer boundaries and holes come back oppositely wound, marked `.nonZero`. Where regions don't touch, the result simply holds more than one contour; where nothing remains (say, intersecting shapes that don't overlap), `contours` comes back empty and drawing it is a no-op.
+The operations work on the **filled region**, so each side first resolves under its own `winding` rule (self-overlaps and holes mean exactly what they mean when the shape draws), closed contours take part, and open contours sit out. The result is an ordinary `Shape` you can fill, stroke, hatch, offset, or export, whose outer boundaries and holes come back oppositely wound, marked `.nonZero`. Where regions don't touch, the result simply holds more than one contour. Where nothing remains (say, intersecting shapes that don't overlap), `contours` comes back empty and drawing it is a no-op.
 
 ```swift
 let bite = star.subtracting(disc)     // a star with a bite taken out
@@ -537,7 +537,7 @@ The `Examples/Shapes/Booleans` sketch shows all four operations side by side ove
 func offset(by delta: Double, join: StrokeJoin = .miter) -> Shape
 ```
 
-Positive `delta` grows, negative shrinks. Holes move the opposite way — offsetting a ring outward thickens the band on both edges. Shrinking past a region's narrowest waist pinches it apart (one contour can split into several) and eventually leaves nothing, which is what makes repeated insets read as topographic contour lines:
+Positive `delta` grows, negative shrinks. Holes move the opposite way, so offsetting a ring outward thickens the band on both edges. Shrinking past a region's narrowest waist pinches it apart (one contour can split into several) and eventually leaves nothing, which is what makes repeated insets read as topographic contour lines:
 
 ```swift
 var ring = blob
@@ -547,7 +547,7 @@ while !ring.contours.isEmpty {        // inset until the region pinches out
 }
 ```
 
-`join` decides the corners with the same vocabulary as [`strokeJoin(_:)`](../Drawing/Drawing.md#strokeJoin): `.miter` keeps them sharp (falling back to a flat bevel past the same spike limit the stroked path uses), `.bevel` always cuts them flat, `.round` arcs around them. Open contours sit out here too — `offset` moves a region's edge, not a stroked line.
+`join` decides the corners with the same vocabulary as [`strokeJoin(_:)`](../Drawing/Drawing.md#strokeJoin): `.miter` keeps them sharp (falling back to a flat bevel past the same spike limit the stroked path uses), `.bevel` always cuts them flat, `.round` arcs around them. Open contours sit out here too, because `offset` moves a region's edge, not a stroked line.
 
 The `Examples/Patterns/Topography` sketch is the inset loop above, drawn live.
 
@@ -560,7 +560,7 @@ The `Examples/Patterns/Topography` sketch is the inset loop above, drawn live.
 func stroked(width: Double, join: StrokeJoin = .round, cap: StrokeCap = .butt) -> Shape
 ```
 
-The path is thickened by half the width on each side. An open contour takes `cap` ends with the same vocabulary as [`strokeCap(_:)`](../Drawing/Drawing.md#strokeCap) (`.butt`, `.round`, `.square`); a closed contour's stroke runs all the way around it and comes back as a band, an outer boundary plus a hole. A path that crosses itself merges into one clean region. The result feeds everything a `Shape` can do: fill it with a gradient, `offset` it, cut it with the booleans, hatch it for a plotter, export it as a true SVG region instead of a stroke attribute.
+The path is thickened by half the width on each side. An open contour takes `cap` ends with the same vocabulary as [`strokeCap(_:)`](../Drawing/Drawing.md#strokeCap) (`.butt`, `.round`, `.square`), while a closed contour's stroke runs all the way around it and comes back as a band, an outer boundary plus a hole. A path that crosses itself merges into one clean region. The result feeds everything a `Shape` can do: fill it with a gradient, `offset` it, cut it with the booleans, hatch it for a plotter, export it as a true SVG region instead of a stroke attribute.
 
 ```swift
 let ribbon = Contour(line, closed: false).stroked(width: 90, join: .round, cap: .round)
@@ -579,13 +579,13 @@ The smallest convex polygon containing a point set, like a rubber band snapped a
 func convexHull(of points: [Vector2]) -> [Vector2]
 ```
 
-Returns the hull's corners in order around the boundary (collinear points along an edge are dropped; fewer than three distinct points return what there is). The result is an ordinary point list: `drawPolygon` it, wrap it in a `Contour` to stroke or offset it, or use it as a coarse "footprint" for a scatter of marks. The `Examples/Shapes/RubberBand` sketch recomputes the hull of a drifting herd every frame.
+Returns the hull's corners in order around the boundary (collinear points along an edge are dropped, and fewer than three distinct points return what there is). The result is an ordinary point list, so `drawPolygon` it, wrap it in a `Contour` to stroke or offset it, or use it as a coarse "footprint" for a scatter of marks. The `Examples/Shapes/RubberBand` sketch recomputes the hull of a drifting herd every frame.
 
 <a name="path"></a>
 
 ### `Path`
 
-A builder for one curved or straight outline. Trace it with pen-style commands and it samples the curves into a polygonal [`Contour`](#contour) (and a single-contour [`Shape`](#shape)) you can fill or stroke — curved geometry rides the same triangulated-fill and stroked path everything else does, no special setup.
+A builder for one curved or straight outline. Trace it with pen-style commands and it samples the curves into a polygonal [`Contour`](#contour) (and a single-contour [`Shape`](#shape)) you can fill or stroke. Curved geometry rides the same triangulated-fill and stroked path everything else does, with no special setup.
 
 ```swift
 Path()                          // empty; trace it with the methods below
@@ -604,9 +604,9 @@ var shape: Shape                // a single-contour Shape, ready for drawShape
 
 The three curve verbs differ in who supplies the bend:
 
-- **`curve(to:)`** — a smooth curve that passes *through* the points, with tangents derived automatically from the neighbours. Consecutive `curve(to:)` calls form one smooth run. This is the "draw a wiggle straight from points" curve; the bare name `curve` is reserved for it precisely because you give no control point.
-- **`quadCurve(to:control:)`** — a quadratic Bézier; you supply one control point.
-- **`cubicCurve(to:control1:control2:)`** — a cubic Bézier; you supply two.
+- **`curve(to:)`** is a smooth curve that passes *through* the points, with tangents derived automatically from the neighbours. Consecutive `curve(to:)` calls form one smooth run. This is the "draw a wiggle straight from points" curve, and the bare name `curve` is reserved for it precisely because you give no control point.
+- **`quadCurve(to:control:)`** is a quadratic Bézier, where you supply one control point.
+- **`cubicCurve(to:control1:control2:)`** is a cubic Bézier, where you supply two.
 
 A `Path` describes a *single* outline. For a filled region with holes (a donut, a frame), compose contours with `Shape(outer:holes:)` instead.
 
@@ -621,4 +621,4 @@ fill(.black)
 drawShape(blob.shape)
 ```
 
-The drawing-side sugar — `drawShape { p in … }` and `drawCurve` — is in [Drawing](../Drawing/Drawing.md#shape).
+The drawing-side sugar, `drawShape { p in … }` and `drawCurve`, is in [Drawing](../Drawing/Drawing.md#shape).

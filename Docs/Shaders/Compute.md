@@ -4,31 +4,31 @@
 
 ## Compute & GPU particles
 
-A compute shader is a small program that runs on the GPU over a grid of data — one thread per element, all at once. Ollin uses it for the workloads creative coding most wants and the CPU can't reach, in two shapes:
+A compute shader is a small program that runs on the GPU over a grid of data, one thread per element, all at once. Ollin uses it for the workloads creative coding most wants and the CPU can't reach, in two shapes:
 
-- **Buffers** — *hundreds of thousands to millions of particles*, each updated and drawn on the GPU so the data never round-trips through the CPU. The engine behind the depth-of-field "sandpainting" look — faint particles summed as light — at counts a `draw()` loop could never iterate. The headline is [`Particles`](#particles).
-- **Textures** — *ping-pong simulations over a 2-D field*: reaction-diffusion, cellular automata, fluid, and image kernels. Each cell reads its neighbours and writes the next state, every frame, on the GPU; the result draws like any image. The headline is [`Simulation`](#simulation).
+- **Buffers** hold *hundreds of thousands to millions of particles*, each updated and drawn on the GPU so the data never round-trips through the CPU. This is the engine behind the depth-of-field "sandpainting" look, faint particles summed as light, at counts a `draw()` loop could never iterate. The headline is [`Particles`](#particles).
+- **Textures** hold *ping-pong simulations over a 2-D field*: reaction-diffusion, cellular automata, fluid, and image kernels. Each cell reads its neighbours and writes the next state, every frame, on the GPU, and the result draws like any image. The headline is [`Simulation`](#simulation).
 
-Both write the per-element update as a short snippet of Metal — Ollin generates the kernel, owns the double-buffering, and renders the result — over one typed core ([`ComputeKernel`](#computekernel), [`ComputeBuffer`](#computebuffer), [`ComputeTexture`](#computetexture), [`compute`](#compute)) you can drop to for full control.
+Both write the per-element update as a short snippet of Metal, and Ollin generates the kernel, owns the double-buffering, and renders the result. Underneath sits one typed core ([`ComputeKernel`](#computekernel), [`ComputeBuffer`](#computebuffer), [`ComputeTexture`](#computetexture), [`compute`](#compute)) you can drop to for full control.
 
-> Compute kernels are written in **Metal Shading Language (MSL)** — a C++-like GPU language. You can write them inline as a Swift string, or keep them in their own [**`.metal` file**](#metalfile) for editor highlighting and checking. Ollin compiles them at runtime, so editing a kernel hot-reloads with the sketch. The snippets below are MSL, not Swift.
+> Compute kernels are written in **Metal Shading Language (MSL)**, a C++-like GPU language. You can write them inline as a Swift string, or keep them in their own [**`.metal` file**](#metalfile) for editor highlighting and checking. Ollin compiles them at runtime, so editing a kernel hot-reloads with the sketch. The snippets below are MSL, not Swift.
 
 ### Contents
 
-- [Particles — a GPU particle system in a few lines](#particles)
-- [The kernel snippet](#snippet) — what's in scope
-- [The prelude](#prelude) — the shared shader library, spliced into every kernel
+- [Particles](#particles) - a GPU particle system in a few lines
+- [The kernel snippet](#snippet) - what's in scope
+- [The prelude](#prelude) - the shared shader library, spliced into every kernel
 - [Custom live parameters](#custom)
-- [Texture kernels & simulations](#textures) — `Simulation`, `ComputeTexture`
+- [Texture kernels & simulations](#textures) - `Simulation`, `ComputeTexture`
 - [Kernels in a `.metal` file](#metalfile)
-- [The typed core](#core) — `ComputeKernel`, `ComputeBuffer`, `compute`
+- [The typed core](#core) - `ComputeKernel`, `ComputeBuffer`, `compute`
 - [SpatialHash, the GPU neighbor search](#spatialhash)
 - [Notes](#notes)
 
 <a id="particles"></a>
 ### Particles
 
-`Particles` is a GPU particle system. Give it a count and a per-particle update written as a Metal **body snippet**; step it and draw it from `draw()`:
+`Particles` is a GPU particle system. Give it a count and a per-particle update written as a Metal **body snippet**, then step it and draw it from `draw()`:
 
 ```swift
 import Ollin
@@ -57,10 +57,10 @@ final class Flow: Sketch {
 }
 ```
 
-- **`updateParticles(_:)`** records the simulation step — the kernel runs once over every particle, on the GPU, before the frame is drawn.
-- **`drawParticles(_:)`** draws the particles as additive sub-pixel discs (the same area-conserving coverage [`drawCircle`](../Drawing/Drawing.md) uses, so a million tiny jittered marks fade by area instead of flickering). They composite under the active [`blendMode`](../Drawing/Drawing.md#blendmode) and in draw order with everything else — draw particles, then switch to `.normal` and draw a caption over them.
+- **`updateParticles(_:)`** records the simulation step, so the kernel runs once over every particle, on the GPU, before the frame is drawn.
+- **`drawParticles(_:)`** draws the particles as additive sub-pixel discs (the same area-conserving coverage [`drawCircle`](../Drawing/Drawing.md) uses, so a million tiny jittered marks fade by area instead of flickering). They composite under the active [`blendMode`](../Drawing/Drawing.md#blendmode) and in draw order with everything else, so you can draw particles, then switch to `.normal` and draw a caption over them.
 
-That's the whole loop. For the sandpainting look, pair it with [`blendMode(.add)`](../Drawing/Drawing.md#blendmode), [`noClear()`](../Drawing/Accumulation.md), and [`toneMap`](../Drawing/HDR.md) — particles sum as light into a float buffer that tone-maps to a glow. See `Examples/Compute/CurlField` and `Examples/Rendering/DepthOfField`.
+That's the whole loop. For the sandpainting look, pair it with [`blendMode(.add)`](../Drawing/Drawing.md#blendmode), [`noClear()`](../Drawing/Accumulation.md), and [`toneMap`](../Drawing/HDR.md), so particles sum as light into a float buffer that tone-maps to a glow. See `Examples/Compute/CurlField` and `Examples/Rendering/DepthOfField`.
 
 <a id="snippet"></a>
 ### The kernel snippet
@@ -78,29 +78,29 @@ In the `step:` snippet these per-particle fields are **locals you read and write
 
 And these are **read-only**:
 
-- `id` — this particle's index (`uint`).
-- `u` — the per-frame constants: `u.time`, `u.dt`, `u.frameCount`, `u.resolution`, `u.mouse`, `u.particleCount`.
-- `custom` — a `float4` of [live parameters](#custom) you pass to `updateParticles`.
+- `id` is this particle's index (`uint`).
+- `u` holds the per-frame constants: `u.time`, `u.dt`, `u.frameCount`, `u.resolution`, `u.mouse`, `u.particleCount`.
+- `custom` is a `float4` of [live parameters](#custom) you pass to `updateParticles`.
 
-Particles start zeroed, so `life` begins at 0 — the `if (life <= 0.0)` spawn pattern above seeds every particle on the first frame.
+Particles start zeroed, so `life` begins at 0, which is why the `if (life <= 0.0)` spawn pattern above seeds every particle on the first frame.
 
 <a id="prelude"></a>
 ### The prelude
 
-Every kernel gets the [shader library](./ShaderLibrary.md) spliced in for free: the *same* helper set a fragment [`Shader`](./Shaders.md) gets, so a helper learned in one works identically in the other. The ones kernels reach for most:
+Every kernel gets the [shader library](./ShaderLibrary.md) spliced in for free, the *same* helper set a fragment [`Shader`](./Shaders.md) gets, so a helper learned in one works identically in the other. The ones kernels reach for most:
 
-- `hash11`/`hash12`/`hash13` → `float`, `hash22` → `float2`, `hash33` → `float3` — fast hashes for randomness (`hashNM`: `N` output channels from an `M`-component seed).
-- `valueNoise(float2)` / `valueNoise(float3)` → `float`, and `fbm(float2)` — smooth value noise.
-- `curlNoise(float2)` → `float2` — a divergence-free flow field; particles advected by it swirl without clumping.
-- `discSample(float2 seed)` → `float2` — a point in the unit disc, uniform over its *area* (the right scatter for energy-conserving bokeh).
-- `srgbToLinear(float3)` — if you need linear color.
+- `hash11`/`hash12`/`hash13` → `float`, `hash22` → `float2`, and `hash33` → `float3` are fast hashes for randomness (`hashNM` gives `N` output channels from an `M`-component seed).
+- `valueNoise(float2)` / `valueNoise(float3)` → `float` and `fbm(float2)` give smooth value noise.
+- `curlNoise(float2)` → `float2` is a divergence-free flow field, so particles advected by it swirl without clumping.
+- `discSample(float2 seed)` → `float2` is a point in the unit disc, uniform over its *area* (the right scatter for energy-conserving bokeh).
+- `srgbToLinear(float3)` converts when you need linear color.
 
-The rest of the library is there too (cosine `palette`, OKLab conversions, the `sd*` distance-function catalog, the domain operators); see the [shader library reference](./ShaderLibrary.md) for the full set.
+The rest of the library is there too (cosine `palette`, OKLab conversions, the `sd*` distance-function catalog, the domain operators). See the [shader library reference](./ShaderLibrary.md) for the full set.
 
 <a id="custom"></a>
 ### Custom live parameters
 
-Pass up to four live floats per step — a focal distance, a strength, a mouse-driven knob — and read them as `custom.x`…`custom.w`:
+Pass up to four live floats per step (a focal distance, a strength, a mouse-driven knob) and read them as `custom.x`…`custom.w`:
 
 ```swift
 let focus = mouseIsPressed ? Float(map(mouseX, 0, width, -1, 1)) : 0
@@ -115,12 +115,12 @@ float defocus = abs(depth - custom.x);
 <a id="textures"></a>
 ### Texture kernels & simulations
 
-Where `Particles` evolves a *buffer*, [`Simulation`](#simulation) evolves a *2-D texture* — a field where every cell reads its neighbours and writes the next state each frame. It's the engine for reaction-diffusion, cellular automata, fluid, and any "ping-pong" sim.
+Where `Particles` evolves a *buffer*, [`Simulation`](#simulation) evolves a *2-D texture*, a field where every cell reads its neighbours and writes the next state each frame. It's the engine for reaction-diffusion, cellular automata, fluid, and any "ping-pong" sim.
 
 <a id="simulation"></a>
 #### Simulation
 
-Give it a size and a per-cell update written as a Metal **body snippet**; step it from `draw()` and draw its `image`:
+Give it a size and a per-cell update written as a Metal **body snippet**, then step it from `draw()` and draw its `image`:
 
 ```swift
 import Ollin
@@ -156,8 +156,8 @@ final class RD: Sketch {
 }
 ```
 
-- **`updateSimulation(_:custom:)`** records the sim — `subSteps` kernel iterations run, on the GPU, before the frame is drawn. `custom` passes up to four live floats the snippet reads as `custom.x…w`.
-- **`field.image`** wraps the current field as an [`Image`](../Drawing/Drawing.md) for `drawImage` — it composites in draw order, rides the transform stack, and takes `tint`, like any image. Its texels are treated as **linear** color; author sRGB tones through `srgbToLinear` in the kernel.
+- **`updateSimulation(_:custom:)`** records the sim, so `subSteps` kernel iterations run, on the GPU, before the frame is drawn. `custom` passes up to four live floats the snippet reads as `custom.x…w`.
+- **`field.image`** wraps the current field as an [`Image`](../Drawing/Drawing.md) for `drawImage`, so it composites in draw order, rides the transform stack, and takes `tint`, like any image. Its texels are treated as **linear** color, so author sRGB tones through `srgbToLinear` in the kernel.
 
 In the `step:` snippet these are in scope:
 
@@ -165,41 +165,42 @@ In the `step:` snippet these are in scope:
 | --- | --- | --- |
 | `value` | `float4` | this cell's current value (read) |
 | `result` | `float4` | what to write, pre-set to `value` (write) |
-| `tap(dx, dy)` | `float4` | the source field at integer offset `(dx, dy)`, **toroidal** (edges wrap) — for neighbour stencils |
+| `tap(dx, dy)` | `float4` | the source field at integer offset `(dx, dy)`, **toroidal** (edges wrap), for neighbour stencils |
 | `gid` | `uint2` | this cell's coordinate |
 | `size` | `uint2` | the field's size in texels |
-| `u`, `custom` | — | per-frame constants and live knobs, read-only (as for particles) |
+| `u` | `OllinComputeUniforms` | per-frame constants, read-only (as for particles) |
+| `custom` | `float4` | live knobs, read-only (as for particles) |
 
 Fresh fields start **zeroed**, so seed a sim's initial state with a one-shot `compute(_:writing: sim.current)` on the first frame (the `seeded` flag above). For a full custom kernel signature, pass `Simulation(width:height:kernel:)`.
 
 <a id="computetexture"></a>
 #### ComputeTexture
 
-The storage behind a sim — a persistent, GPU-resident 2-D texture a kernel reads and writes. Like a [`ComputeBuffer`](#computebuffer), it's allocated lazily (constructible with no device) and starts zeroed; draw it with its `image`:
+This is the storage behind a sim, a persistent, GPU-resident 2-D texture a kernel reads and writes. Like a [`ComputeBuffer`](#computebuffer), it's allocated lazily (constructible with no device) and starts zeroed. Draw it with its `image`:
 
 ```swift
 let tex = ComputeTexture(width: 512, height: 512)                 // .rgba16Float by default
 let single = ComputeTexture(width: 256, height: 256, format: .r32Float)
 ```
 
-Run a kernel that **writes** a texture (one thread per texel; the write texture binds at `texture(0)`), or **reads one and writes another** (ping-pong, `texture(0)` → `texture(1)`):
+Run a kernel that **writes** a texture (one thread per texel, with the write texture bound at `texture(0)`), or **reads one and writes another** (ping-pong, `texture(0)` → `texture(1)`):
 
 ```swift
-// Generate / seed — kernel takes texture2d<…, access::write> [[texture(0)]]:
+// Generate / seed, kernel takes texture2d<…, access::write> [[texture(0)]]:
 compute(generator, writing: tex)
 
-// Transform — kernel takes read [[texture(0)]] + write [[texture(1)]]:
+// Transform, kernel takes read [[texture(0)]] + write [[texture(1)]]:
 compute(blur, reading: src, writing: dst)
 ```
 
-For a field the render path also reads each frame, drive a [`PingPongTexture`](#computetexture) pair (two textures swapped each step) — or just use `Simulation`, which owns one for you.
+For a field the render path also reads each frame, drive a [`PingPongTexture`](#computetexture) pair (two textures swapped each step), or just use `Simulation`, which owns one for you.
 
-`ComputeTexture.snapshot()` reads the float texels back to the CPU (tests/debugging; float formats only).
+`ComputeTexture.snapshot()` reads the float texels back to the CPU (tests and debugging, float formats only).
 
 <a id="metalfile"></a>
 ### Kernels in a `.metal` file
 
-Inline strings are terse, but an editor can't highlight or check them. For anything substantial, keep the kernel in its own **`.metal` file** — real Metal syntax highlighting and checking — and load it with `ComputeKernel(entry:resource:in:)`:
+Inline strings are terse, but an editor can't highlight or check them. For anything substantial, keep the kernel in its own **`.metal` file**, which gets real Metal syntax highlighting and checking, and load it with `ComputeKernel(entry:resource:in:)`:
 
 ```swift
 // Kernels.metal (bundled as a .copy resource on the sketch's target):
@@ -210,7 +211,7 @@ Inline strings are terse, but an editor can't highlight or check them. For anyth
 let blur = ComputeKernel(entry: "blur", resource: "Kernels", in: .module)!
 ```
 
-The shared types and the [shader library](#prelude) are still spliced in, so the file references `OllinComputeUniforms` / `hash22` / `curlNoise` / … and writes no `#include`s. One file can hold any number of kernels; load each by its `entry` name (they share one compile). Pass `in: .module` explicitly (a default would resolve to *Ollin's* bundle, not yours), and list the file as a `.copy` resource on your target. There's also `ComputeKernel(entry:contentsOf:)` for an arbitrary file URL. See `Examples/Compute/ReactionDiffusion`, which keeps its seed and colorize passes in `Kernels.metal`.
+The shared types and the [shader library](#prelude) are still spliced in, so the file references `OllinComputeUniforms` / `hash22` / `curlNoise` / … and writes no `#include`s. One file can hold any number of kernels, and you load each by its `entry` name (they share one compile). Pass `in: .module` explicitly (a default would resolve to *Ollin's* bundle, not yours), and list the file as a `.copy` resource on your target. There's also `ComputeKernel(entry:contentsOf:)` for an arbitrary file URL. See `Examples/Compute/ReactionDiffusion`, which keeps its seed and colorize passes in `Kernels.metal`.
 
 <a id="core"></a>
 ### The typed core
@@ -220,7 +221,7 @@ The shared types and the [shader library](#prelude) are still spliced in, so the
 <a id="computekernel"></a>
 #### ComputeKernel
 
-A Metal `kernel` function plus its entry name. Write no `#include`s; the shared types and the shader library are spliced in for you:
+A Metal `kernel` function plus its entry name. Write no `#include`s, because the shared types and the shader library are spliced in for you:
 
 ```swift
 let sim = ComputeKernel(entry: "step", """
@@ -236,12 +237,12 @@ let sim = ComputeKernel(entry: "step", """
 """)
 ```
 
-Bind your own buffers at indices **0…9**; index **10** is the standard `OllinComputeUniforms`, index **11** is `custom`/params. The compiled pipeline is cached by the source's hash, so re-creating the same kernel value each frame is free.
+Bind your own buffers at indices **0…9**. Index **10** is the standard `OllinComputeUniforms`, and index **11** is `custom`/params. The compiled pipeline is cached by the source's hash, so re-creating the same kernel value each frame is free.
 
 <a id="computebuffer"></a>
 #### ComputeBuffer
 
-A persistent, typed GPU buffer — the storage a kernel reads and writes each frame. The Metal buffer is allocated lazily (like an `Image`'s texture), so a `ComputeBuffer` is constructible anywhere. Fresh buffers start zeroed; seed one with initial CPU contents via `init(_:)`.
+A persistent, typed GPU buffer, the storage a kernel reads and writes each frame. The Metal buffer is allocated lazily (like an `Image`'s texture), so a `ComputeBuffer` is constructible anywhere. Fresh buffers start zeroed, so seed one with initial CPU contents via `init(_:)`.
 
 ```swift
 let buffer = ComputeBuffer<MyParticle>(count: 500_000)
@@ -256,26 +257,26 @@ For a buffer the render path reads each frame, use a [`PingPong`](#computebuffer
 Record a dispatch:
 
 ```swift
-// In place — one buffer, read and written:
+// In place, one buffer read and written:
 compute(sim, over: buffer)
 
-// Ping-pong — read one, write the other (swap between frames):
+// Ping-pong, read one and write the other (swap between frames):
 compute(sim, reading: pp.read, writing: pp.write)
 pp.advance()
 
-// Textures — write one (texture 0), or read one and write another (0 → 1):
+// Textures, write one (texture 0), or read one and write another (0 → 1):
 compute(generator, writing: tex)
 compute(transform, reading: src, writing: dst)
 ```
 
-Draw a `ComputeBuffer<OllinParticle>` directly with `drawParticles(_ buffer:)`; for a custom struct, draw it with your own geometry (read the buffer in your own shader, or copy positions out). Draw a `ComputeTexture` with its `image` (a texture-backed [`Image`](../Drawing/Drawing.md)).
+Draw a `ComputeBuffer<OllinParticle>` directly with `drawParticles(_ buffer:)`. For a custom struct, draw it with your own geometry (read the buffer in your own shader, or copy positions out). Draw a `ComputeTexture` with its `image` (a texture-backed [`Image`](../Drawing/Drawing.md)).
 
 <a id="spatialhash"></a>
 ### SpatialHash, the GPU neighbor search
 
-The one-thread-per-particle model can't let a particle see the others near it, which every particle-interaction system needs. `SpatialHash` fills that gap: each frame it sorts the particles into a grid of square cells with a **counting sort** (count how many land in each cell, prefix-sum the counts into per-cell start offsets, then scatter each particle's index into its cell's slot), leaving buffers a query kernel walks. The cell edge equals the query radius over a toroidal domain, so every neighbor within the radius sits in the queried cell's wrapped 3×3 block.
+The one-thread-per-particle model can't let a particle see the others near it, which every particle-interaction system needs. `SpatialHash` fills that gap. Each frame it sorts the particles into a grid of square cells with a **counting sort** (count how many land in each cell, prefix-sum the counts into per-cell start offsets, then scatter each particle's index into its cell's slot), leaving buffers a query kernel walks. The cell edge equals the query radius over a toroidal domain, so every neighbor within the radius sits in the queried cell's wrapped 3×3 block.
 
-It powers the built-in [artificial-life sims](../Simulation/ArtificialLife.md) (`ParticleLife`, `PPS`); reach for it directly to write your own. The `neighborStep(_:over:reading:writing:)` facade builds the hash over your `reading` particles, then runs your `kernel` with the particle buffers and the hash's buffers bound at fixed indices. Your kernel walks the neighbors with the `OLLIN_FOR_NEIGHBORS` macro (spliced into every kernel, with `ollin_torus_delta` for wrap-correct distances):
+It powers the built-in [artificial-life sims](../Simulation/ArtificialLife.md) (`ParticleLife`, `PPS`), and you can reach for it directly to write your own. The `neighborStep(_:over:reading:writing:)` facade builds the hash over your `reading` particles, then runs your `kernel` with the particle buffers and the hash's buffers bound at fixed indices. Your kernel walks the neighbors with the `OLLIN_FOR_NEIGHBORS` macro (spliced into every kernel, with `ollin_torus_delta` for wrap-correct distances):
 
 ```swift
 let hash = spatialHash(radius: 40, count: 18_000)         // cells over the canvas
@@ -311,7 +312,7 @@ override func draw() {
 }
 ```
 
-The buffer-index contract for a query kernel: `reading` at 0, `writing` at 1, `sortedIndices` at 2, `cellStart` at 3, `cellCount` at 4, the `OllinSpatialGrid` at 5, then your own buffers at 6 and up (`ParticleLife` binds its interaction matrix at 6). The scatter's within-cell order is set by a GPU atomic race, so a query that *sums* over neighbors (a force) is reproducible only up to float rounding; the neighbor *set* (and any count) is order-independent. Example: `Examples/Compute/NeighborSearch`.
+The buffer-index contract for a query kernel: `reading` at 0, `writing` at 1, `sortedIndices` at 2, `cellStart` at 3, `cellCount` at 4, the `OllinSpatialGrid` at 5, then your own buffers at 6 and up (`ParticleLife` binds its interaction matrix at 6). The scatter's within-cell order is set by a GPU atomic race, so a query that *sums* over neighbors (a force) is reproducible only up to float rounding, while the neighbor *set* (and any count) is order-independent. See `Examples/Compute/NeighborSearch`.
 
 <a id="notes"></a>
 ### Notes
@@ -322,4 +323,4 @@ The buffer-index contract for a query kernel: `reading` at 0, `writing` at 1, `s
 - **Determinism.** GPU floating-point results are deterministic on a given device but can differ across GPUs (reassociation), so compute renders aren't pinned to exact reference images.
 - **It's Metal.** Kernels are MSL, compiled at runtime. A syntax error prints to the console and the dispatch is skipped (the frame still renders), so a broken kernel shows as missing particles rather than a crash.
 
-Compute is a core capability — it ships with `import Ollin`, no satellite needed.
+Compute is a core capability, so it ships with `import Ollin`, with no satellite needed.
