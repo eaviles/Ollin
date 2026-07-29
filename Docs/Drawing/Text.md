@@ -6,30 +6,30 @@
 
 Ollin draws text in three kinds of font, all behind the same `drawText` / `textFont` / `textSize` / `textAlign` surface:
 
-- An **outline font** — a real TrueType/OpenType (`.ttf`/`.otf`) face, each glyph stored as vector contours and drawn as a [`Shape`](../Drawing/Geometry.md#shape). One load draws crisp at *any* size, the type takes both `fill` and `stroke`, and the glyph geometry is yours to manipulate. The default font is an outline font, so text works with zero setup.
-- A **bitmap font** — a glyph is a small grid of pixels, each lit pixel stamped as one square on the same instanced-SDF path the shapes use. No rasterizer, no separate pipeline.
-- A **stroke font** — a single-line (plotter) face whose glyphs are open pen paths with *no fill*, drawn with the current `stroke`. The kind of letterform a pen plotter draws. Hershey Sans comes bundled.
+- An **outline font** is a real TrueType/OpenType (`.ttf`/`.otf`) face, each glyph stored as vector contours and drawn as a [`Shape`](../Drawing/Geometry.md#shape). One load draws crisp at *any* size, the type takes both `fill` and `stroke`, and the glyph geometry is yours to manipulate. The default font is an outline font, so text works with zero setup.
+- A **bitmap font** stores each glyph as a small grid of pixels, each lit pixel stamped as one square on the same instanced-SDF path the shapes use. No rasterizer, no separate pipeline.
+- A **stroke font** is a single-line (plotter) face whose glyphs are open pen paths with *no fill*, drawn with the current `stroke`. It's the kind of letterform a pen plotter draws, and Hershey Sans comes bundled.
 
 All three ride the [transform stack](../Drawing/Drawing.md#translate), composite in draw order with everything else, and stay crisp at any size.
 
-The default font is `OutlineFont.systemMedium` — the system UI face (San Francisco on macOS) at medium weight, a touch sturdier than the regular weight so text holds up over busy canvases — so `drawText` works with zero setup. For a pixel look, the bundled `BitmapFont.builtin` is **[Cozette](https://github.com/the-moonwitch/Cozette)**, a 13px pixel font covering a wide range: Latin (including the Spanish accents `á é í ó ú`, `ñ`, `ü`, `¿`, `¡`), Cyrillic, Greek, and Japanese kana. Call these bare inside `draw()`; they forward to the `Drawer`.
+The default font is `OutlineFont.systemMedium`, the system UI face (San Francisco on macOS) at medium weight, a touch sturdier than the regular weight so text holds up over busy canvases, which is why `drawText` works with zero setup. For a pixel look, the bundled `BitmapFont.builtin` is **[Cozette](https://github.com/the-moonwitch/Cozette)**, a 13px pixel font covering a wide range: Latin (including the Spanish accents `á é í ó ú`, `ñ`, `ü`, `¿`, `¡`), Cyrillic, Greek, and Japanese kana. Call these bare inside `draw()`, and they forward to the `Drawer`.
 
 ### Contents
 
-- [drawText](#drawtext) — draw a string
-- [drawStatus & drawCaption](#notices) — standard notices and labels, one call each
-- [textFont](#textfont), [textSize](#textsize), [textAlign](#textalign) — text state
-- [textWidth](#textwidth) — measure a string
-- [Outline fonts](#outlinefont) — `OutlineFont`, loading a `.ttf`/`.otf` from anywhere
-- [Rendering at volume](#textmode) — `textMode(.atlas)` for paragraphs and large glyph counts
-- [Variable fonts](#variable) — animate weight, width, and other axes
-- [Stroke fonts](#strokefont) — `StrokeFont`, single-line / plotter type
-- [Per-glyph drawText](#perglyph) — give each letter its own transform and color
-- [Text on a path](#onpath) — lay glyphs along a curve
-- [Box layout](#box) — wrap a paragraph into a rectangle
-- [textToShapes](#texttoshapes) — text as first-class geometry
-- [Metrics](#metrics) — `textAscent` / `textDescent` / `textLeading` / `textBounds`
-- [BitmapFont](#bitmapfont) — the bitmap font value type, and authoring your own
+- [drawText](#drawtext) - draw a string
+- [drawStatus & drawCaption](#notices) - standard notices and labels, one call each
+- [textFont](#textfont), [textSize](#textsize), [textAlign](#textalign) - text state
+- [textWidth](#textwidth) - measure a string
+- [Outline fonts](#outlinefont) - `OutlineFont`, loading a `.ttf`/`.otf` from anywhere
+- [Rendering at volume](#textmode) - `textMode(.atlas)` for paragraphs and large glyph counts
+- [Variable fonts](#variable) - animate weight, width, and other axes
+- [Stroke fonts](#strokefont) - `StrokeFont`, single-line / plotter type
+- [Per-glyph drawText](#perglyph) - give each letter its own transform and color
+- [Text on a path](#onpath) - lay glyphs along a curve
+- [Box layout](#box) - wrap a paragraph into a rectangle
+- [textToShapes](#texttoshapes) - text as first-class geometry
+- [Metrics](#metrics) - `textAscent` / `textDescent` / `textLeading` / `textBounds`
+- [BitmapFont](#bitmapfont) - the bitmap font value type, and authoring your own
 
 <a name="drawtext"></a>
 
@@ -40,7 +40,7 @@ drawText(_ string: String, _ x: Double, _ y: Double)
 drawText(_ string: String, at position: Vector2)
 ```
 
-Draw `string` at a point, in the current `fill` color, using the active `textFont` / `textSize` / `textAlign`. `\n` starts a new line. Glyphs are geometry (vector shapes for an outline font, SDF squares for a bitmap one), so text rotates and scales with the [transform stack](../Drawing/Drawing.md#translate) like everything else. `noFill()` draws nothing; characters the font doesn't have advance the pen but draw nothing.
+Draw `string` at a point, in the current `fill` color, using the active `textFont` / `textSize` / `textAlign`. `\n` starts a new line. Glyphs are geometry (vector shapes for an outline font, SDF squares for a bitmap one), so text rotates and scales with the [transform stack](../Drawing/Drawing.md#translate) like everything else. `noFill()` draws nothing, and characters the font doesn't have advance the pen but draw nothing.
 
 ```swift
 background(.black)
@@ -61,17 +61,17 @@ drawCaption(_ text: String, edge: CaptionEdge = .bottom)
 
 Two one-call conveniences for the text every sketch ends up wearing, so the states a sketch should report never stay silently blank:
 
-- `drawStatus` centers a standard notice in `container` (the whole canvas by default), wrapped if long — quiet gray for `.info` ("Waiting for camera…"; [`drawFrame`](../Vision/Vision.md#camera) draws this one for you), salmon for `.warning` (a vision model that [can't run here](../Vision/Vision.md#availability), a missing install).
-- `drawCaption` sets a small white label along the bottom edge (or the top, with `edge: .top`) — what the sketch is, what it's showing, what to do with it.
+- `drawStatus` centers a standard notice in `container` (the whole canvas by default), wrapped if long. It draws quiet gray for `.info` ("Waiting for camera…", which [`drawFrame`](../Vision/Vision.md#camera) does for you) and salmon for `.warning` (a vision model that [can't run here](../Vision/Vision.md#availability), a missing install).
+- `drawCaption` sets a small white label along the bottom edge (or the top, with `edge: .top`), saying what the sketch is, what it's showing, and what to do with it.
 
 ```swift
 if let reason = tracker.unavailableReason {
     return drawStatus(reason, style: .warning)
 }
-drawCaption("FaceTracking — \(faces.count) faces")
+drawCaption("FaceTracking · \(faces.count) faces")
 ```
 
-Both draw in their own standard typeface, size, and alignment, scoped like a `withState { }` — the sketch's fill, font, and alignment are untouched afterward.
+Both draw in their own standard typeface, size, and alignment, scoped like a `withState { }`, so the sketch's fill, font, and alignment are untouched afterward.
 
 <a name="textfont"></a>
 
@@ -83,7 +83,7 @@ textFont(_ font: OutlineFont)
 textFont(_ font: StrokeFont)
 ```
 
-Set the active font — a bitmap (pixel-grid), outline (`.ttf`/`.otf`), or stroke (single-line) font. The default is `OutlineFont.systemMedium`; write `textFont(OutlineFont.systemMedium)` to switch back to it (or `textFont(BitmapFont.builtin)` for the bundled Cozette pixel font). Like the other drawing state, the active font is part of the [push/pop stack](../Drawing/Drawing.md#withstate), so `withState { textFont(custom); … }` restores the previous font automatically on exit. (See [BitmapFont](#bitmapfont) to load or build a bitmap font, [Outline fonts](#outlinefont) for a `.ttf`/`.otf`, or [Stroke fonts](#strokefont) for single-line type.)
+Set the active font, either a bitmap (pixel-grid), outline (`.ttf`/`.otf`), or stroke (single-line) face. The default is `OutlineFont.systemMedium`, and `textFont(OutlineFont.systemMedium)` switches back to it (or `textFont(BitmapFont.builtin)` for the bundled Cozette pixel font). Like the other drawing state, the active font is part of the [push/pop stack](../Drawing/Drawing.md#withstate), so `withState { textFont(custom); … }` restores the previous font automatically on exit. (See [BitmapFont](#bitmapfont) to load or build a bitmap font, [Outline fonts](#outlinefont) for a `.ttf`/`.otf`, or [Stroke fonts](#strokefont) for single-line type.)
 
 <a name="textsize"></a>
 
@@ -93,7 +93,7 @@ Set the active font — a bitmap (pixel-grid), outline (`.ttf`/`.otf`), or strok
 textSize(_ size: Double)
 ```
 
-Set the rendered text height in points — the height one line of glyphs occupies on screen. A `BitmapFont` is authored at a native pixel height; `textSize` scales each pixel to a module of `size / font.pixelHeight` points, so `textSize(140)` makes one line of the font 140 points tall whatever the font's grid. Defaults to 24.
+Set the rendered text height in points, the height one line of glyphs occupies on screen. A `BitmapFont` is authored at a native pixel height, and `textSize` scales each pixel to a module of `size / font.pixelHeight` points, so `textSize(140)` makes one line of the font 140 points tall whatever the font's grid. Defaults to 24.
 
 <a name="textalign"></a>
 
@@ -106,7 +106,7 @@ textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline)
 Set how text is anchored to the `drawText` position.
 
 - Horizontal (`TextAlignH`): `.left` (default) starts the text at the x, `.center` centers it, `.right` ends it at the x.
-- Vertical (`TextAlignV`): `.baseline` (default, like p5) sits the first line's baseline on the y; `.top` / `.bottom` align the block's top / bottom edge; `.middle` centers the whole block (`.center` is accepted as an alias, so `textAlign(.center, .center)` compiles).
+- Vertical (`TextAlignV`): `.baseline` (default, like p5) sits the first line's baseline on the y, `.top` / `.bottom` align the block's top / bottom edge, and `.middle` centers the whole block (`.center` is accepted as an alias, so `textAlign(.center, .center)` compiles).
 
 ```
   textAlign(h, v): how text anchors to the (x, y) you pass (● = that point).
@@ -138,7 +138,7 @@ drawText("two\nlines", width / 2, 100)   // centered, growing downward from y = 
 textWidth(_ string: String) -> Double
 ```
 
-The on-screen width of `string`'s widest line, in points, at the current `textFont` / `textSize` — for laying text out (centering by hand, wrapping, marquees).
+The on-screen width of `string`'s widest line, in points, at the current `textFont` / `textSize`, for laying text out (centering by hand, wrapping, marquees).
 
 ```swift
 let size = 42; textSize(size)
@@ -154,9 +154,9 @@ drawRect(center: Vector2(x, y), width: w + 24, height: size + 16)   // a padded 
 textFont(_ font: OutlineFont)
 ```
 
-An `OutlineFont` is a real TrueType/OpenType (`.ttf`/`.otf`) face. Unlike a bitmap font it stores each glyph as **vector contours**, so one load draws crisp at *any* `textSize` — you never reload per size. Set it with the same `textFont`; then `drawText`, `textSize`, `textAlign`, and `textWidth` all work exactly as before.
+An `OutlineFont` is a real TrueType/OpenType (`.ttf`/`.otf`) face. Unlike a bitmap font it stores each glyph as **vector contours**, so one load draws crisp at *any* `textSize` and you never reload per size. Set it with the same `textFont`, and `drawText`, `textSize`, `textAlign`, and `textWidth` all work exactly as before.
 
-Because an outline glyph is rendered as a [`Shape`](../Drawing/Geometry.md#shape) — the same vector fill the triangulator draws — outline text takes the current `fill` **and** an active `stroke`, and composites in draw order with everything else. Filled, outlined, and stroke-only text all fall out of that:
+Because an outline glyph is rendered as a [`Shape`](../Drawing/Geometry.md#shape), the same vector fill the triangulator draws, outline text takes the current `fill` **and** an active `stroke`, and composites in draw order with everything else. Filled, outlined, and stroke-only text all fall out of that:
 
 ```swift
 let display = OutlineFont(name: "Avenir Next") ?? .system
@@ -172,7 +172,7 @@ drawText("outline", width / 2, 480)
 ```
 
 > [!NOTE]
-> Outline text honors `stroke` like every other shape, so the default 1px stroke will outline your glyphs — call `noStroke()` for plain filled text.
+> Outline text honors `stroke` like every other shape, so the default 1px stroke will outline your glyphs. Call `noStroke()` for plain filled text.
 
 **Loading a font, from anywhere:**
 
@@ -184,20 +184,20 @@ OutlineFont(data: bytes)                          // raw .ttf/.otf data
 OutlineFont(resource: "Font.ttf", in: .module)   // a font bundled beside your sketch
 
 OutlineFont.system        // the system UI font (San Francisco on macOS)
-OutlineFont.systemMedium  // medium weight — the default text font
+OutlineFont.systemMedium  // medium weight, the default text font
 OutlineFont.systemBold
 OutlineFont.systemMono
 ```
 
-`init(name:)` returns `nil` if no installed font matches, so a typo fails loudly instead of silently substituting another face — pair it with a fallback: `OutlineFont(name: "Futura") ?? .system`. A remote `https://` URL needs an asynchronous download, which can't run on the draw thread: fetch it in `setup()` (or ahead of time) and pass the bytes to `init(data:)`.
+`init(name:)` returns `nil` if no installed font matches, so a typo fails loudly instead of silently substituting another face. Pair it with a fallback, as in `OutlineFont(name: "Futura") ?? .system`. A remote `https://` URL needs an asynchronous download, which can't run on the draw thread, so fetch it in `setup()` (or ahead of time) and pass the bytes to `init(data:)`.
 
-Ollin ships no `.ttf`/`.otf` of its own — you bring the font (installed, bundled, or fetched). Layout goes through Core Text, so kerning, ligatures, and fallback for missing glyphs come for free.
+Ollin ships no `.ttf`/`.otf` of its own, so you bring the font (installed, bundled, or fetched). Layout goes through Core Text, so kerning, ligatures, and fallback for missing glyphs come for free.
 
 <a name="textmode"></a>
 
 ### Rendering at volume
 
-By default each outline glyph is filled as a vector shape — highest quality, and it takes `fill` *and* `stroke`. That's the right choice for headlines and body text, but a paragraph of thousands of glyphs re-tessellated every frame gets expensive. `textMode(.atlas)` switches outline text to a signed-distance-field atlas instead: each glyph is rasterized once into a shared texture and drawn as a single quad sampling it, so the per-glyph cost drops to a handful of vertex writes. It stays crisp under magnification, and one raster serves every `textSize`.
+By default each outline glyph is filled as a vector shape, the highest quality, and it takes `fill` *and* `stroke`. That's the right choice for headlines and body text, but a paragraph of thousands of glyphs re-tessellated every frame gets expensive. `textMode(.atlas)` switches outline text to a signed-distance-field atlas instead, where each glyph is rasterized once into a shared texture and drawn as a single quad sampling it, so the per-glyph cost drops to a handful of vertex writes. It stays crisp under magnification, and one raster serves every `textSize`.
 
 ```swift
 textFont(OutlineFont.systemMono)
@@ -209,20 +209,20 @@ for (i, line) in paragraph.enumerated() {
 }
 ```
 
-`textMode` is drawing state, like `textSize` and `textAlign` — it persists until you change it and scopes with `withState { }`, so you can keep big headlines on the crisp `.outline` path and switch to `.atlas` for the wall of small text:
+`textMode` is drawing state, like `textSize` and `textAlign`, so it persists until you change it and scopes with `withState { }`, letting you keep big headlines on the crisp `.outline` path and switch to `.atlas` for the wall of small text:
 
 ```swift
 textMode(.outline); textSize(120); drawText("Title", x, y)
 textMode(.atlas);   textSize(16);  drawText(bodyText, x, y2)
 ```
 
-Two things to know. The atlas path is **fill-only** (it ignores `stroke` — the volume case is filled text; reach for `.outline` when you want stroked glyphs), and the single-channel field rounds *very* sharp corners at extreme magnification, which is invisible at the body and display sizes this path is for. `textMode` is a no-op for bitmap and stroke fonts, which have no atlas. See the [TextVolume example](../../Examples/Text/TextVolume).
+Two things to know. The atlas path is **fill-only** (it ignores `stroke`, since the volume case is filled text, so reach for `.outline` when you want stroked glyphs), and the single-channel field rounds *very* sharp corners at extreme magnification, which is invisible at the body and display sizes this path is for. `textMode` is a no-op for bitmap and stroke fonts, which have no atlas. See the [TextVolume example](../../Examples/Text/TextVolume).
 
 <a name="variable"></a>
 
 ### Variable fonts
 
-A variable font packs a family's continuous design axes — weight, width, optical size, slant — into one file. `OutlineFont` exposes them: `variation(_:)` returns a copy with axes set, and `variationAxes` lists what a font offers and its ranges.
+A variable font packs a family's continuous design axes (weight, width, optical size, slant) into one file. `OutlineFont` exposes them, so `variation(_:)` returns a copy with axes set and `variationAxes` lists what a font offers and its ranges.
 
 ```swift
 let skia = OutlineFont(name: "Skia")!
@@ -231,9 +231,9 @@ print(skia.variationAxes)   // [(tag: "wght", name: "Weight", min: 0.48, max: 3.
 textFont(skia.variation(["wght": 2.6, "wdth": 1.2]))   // heavy, a touch wide
 ```
 
-Keys are the 4-character axis tags (`"wght"`, `"wdth"`, `"opsz"`, `"slnt"`); values are in the font's **own** axis units (ranges are font-specific — read them from `variationAxes`). The one-axis conveniences `weight`, `width`, `opticalSize`, and `slant` set a single axis; combine several in one `variation(_:)` call so they don't reset each other.
+Keys are the 4-character axis tags (`"wght"`, `"wdth"`, `"opsz"`, `"slnt"`), and values are in the font's **own** axis units (ranges are font-specific, so read them from `variationAxes`). The one-axis conveniences `weight`, `width`, `opticalSize`, and `slant` set a single axis, so combine several in one `variation(_:)` call and they don't reset each other.
 
-A varied font is just another `OutlineFont`, so you can animate the axes — a word that breathes from thin to heavy:
+A varied font is just another `OutlineFont`, so you can animate the axes for a word that breathes from thin to heavy:
 
 ```swift
 textFont(skia.variation(["wght": map(sin(time), -1, 1, 0.5, 3.1)]))
@@ -250,7 +250,7 @@ drawText("ollin", width / 2, height / 2)
 textFont(_ font: StrokeFont)
 ```
 
-A `StrokeFont` is a **single-line** font: each glyph is a set of open pen paths with no interior. Where a bitmap font stamps pixels and an outline font fills contours, a stroke font is *stroked* — so it draws with the current `stroke` (weight, join, cap) and **ignores `fill`**, the mirror image of outline text. It's the letterform a pen plotter wants, and it pairs naturally with thin, even line weights.
+A `StrokeFont` is a **single-line** font, so each glyph is a set of open pen paths with no interior. Where a bitmap font stamps pixels and an outline font fills contours, a stroke font is *stroked*, drawing with the current `stroke` (weight, join, cap) and **ignoring `fill`**, the mirror image of outline text. It's the letterform a pen plotter wants, and it pairs naturally with thin, even line weights.
 
 ```swift
 textFont(StrokeFont.builtin)        // Hershey Sans, bundled
@@ -261,7 +261,7 @@ strokeCap(.round); strokeJoin(.round)   // a softer, drawn line
 drawText("ollin", width / 2, height / 2)
 ```
 
-The bundled default is **Hershey Sans**, from the public-domain [Hershey vector fonts](https://paulbourke.net/dataformats/hershey/). Because the glyphs are open paths, `textToShapes` hands them back as open contours (stroke or warp them — don't fill), and they flow through the same [per-glyph](#perglyph) and [text-on-a-path](#onpath) surface as the other kinds.
+The bundled default is **Hershey Sans**, from the public-domain [Hershey vector fonts](https://paulbourke.net/dataformats/hershey/). Because the glyphs are open paths, `textToShapes` hands them back as open contours (stroke or warp them rather than filling), and they flow through the same [per-glyph](#perglyph) and [text-on-a-path](#onpath) surface as the other kinds.
 
 **Loading more single-line fonts:** Ollin reads the Hershey `.jhf` format, so you can drop in any of the many Hershey faces (serif, script, gothic, Cyrillic, Greek):
 
@@ -270,7 +270,7 @@ let serif = StrokeFont(resource: "rowmans.jhf", in: .module) ?? .builtin
 textFont(serif)
 ```
 
-`StrokeFont(resource:in:)` loads one bundled beside your sketch (pass `.module` for a `swift run` sketch's resources); `StrokeFont(jhfContentsOf:)` takes any file URL, and `StrokeFont(jhf:)` parses `.jhf` text you already have. The Hershey faces live in many public-domain mirrors (for example [kamalmostafa/hershey-fonts](https://github.com/kamalmostafa/hershey-fonts)); for the wider world of single-line type, [Golan Levin's single-line-font resources](https://github.com/golanlevin/p5-single-line-font-resources) is a good map (mind the per-font licenses there). Ollin ships only the parser and the one Hershey default.
+`StrokeFont(resource:in:)` loads one bundled beside your sketch (pass `.module` for a `swift run` sketch's resources), `StrokeFont(jhfContentsOf:)` takes any file URL, and `StrokeFont(jhf:)` parses `.jhf` text you already have. The Hershey faces live in many public-domain mirrors (for example [kamalmostafa/hershey-fonts](https://github.com/kamalmostafa/hershey-fonts)), and for the wider world of single-line type, [Golan Levin's single-line-font resources](https://github.com/golanlevin/p5-single-line-font-resources) is a good map (mind the per-font licenses there). Ollin ships only the parser and the one Hershey default.
 
 <a name="perglyph"></a>
 
@@ -281,7 +281,7 @@ drawText(_ string: String, _ x: Double, _ y: Double, perGlyph: (TextGlyph) -> Vo
 drawText(_ string: String, at position: Vector2, perGlyph: (TextGlyph) -> Void)
 ```
 
-A trailing-closure form of `drawText` that hands you each glyph as a `TextGlyph` instead of drawing the string for you. Give each letter its own transform or color, then stamp it with `g.draw()`. It's the hook for per-letter waves, rainbows, and springs — effects p5 and openFrameworks have no direct API for. Single line.
+A trailing-closure form of `drawText` that hands you each glyph as a `TextGlyph` instead of drawing the string for you. Give each letter its own transform or color, then stamp it with `g.draw()`. It's the hook for per-letter waves, rainbows, and springs. Single line.
 
 ```swift
 textAlign(.center, .middle)
@@ -296,10 +296,10 @@ drawText("ollin", at: center) { g in
 
 A `TextGlyph` carries:
 
-- `character` — the source `Character`; `index` and `count` — its place in the run; `t` — the normalized position `0...1` across the run (handy for a gradient or a phase).
-- `position` — the pen origin (left edge, on the baseline) in canvas space; `center` — the natural pivot for rotating the glyph in place; `bounds` — its advance box.
-- `shapes` — the glyph geometry in canvas space (for text-as-geometry per letter).
-- `draw()` — stamp the glyph with the current `fill` / `stroke`, through your transform.
+- `character` is the source `Character`, `index` and `count` its place in the run, and `t` the normalized position `0...1` across the run (handy for a gradient or a phase).
+- `position` is the pen origin (left edge, on the baseline) in canvas space, `center` the natural pivot for rotating the glyph in place, and `bounds` its advance box.
+- `shapes` is the glyph geometry in canvas space, for text-as-geometry per letter.
+- `draw()` stamps the glyph with the current `fill` / `stroke`, through your transform.
 
 To rotate a glyph about its own center, pivot on `center`:
 
@@ -318,7 +318,7 @@ withState {
 drawText(_ string: String, along path: Path, offset: Double = 0)
 ```
 
-Lay each glyph along a [`Path`](../Drawing/Geometry.md#path), rotated to the path's tangent so the baseline follows the curve. Each glyph is centered on the point `offset` plus its distance along the run, measured as arc length from the path's start. Glyphs that fall before the start or past the end are **skipped**, so animating `offset` flows the text on and off the ends. Single line; takes `fill` and `stroke` like `drawText`.
+Lay each glyph along a [`Path`](../Drawing/Geometry.md#path), rotated to the path's tangent so the baseline follows the curve. Each glyph is centered on the point `offset` plus its distance along the run, measured as arc length from the path's start. Glyphs that fall before the start or past the end are **skipped**, so animating `offset` flows the text on and off the ends. Single line, and it takes `fill` and `stroke` like `drawText`.
 
 ```swift
 let path = Path { p in
@@ -332,7 +332,7 @@ fill(.white)
 drawText("text on a curve · ", along: path, offset: -time * 120)   // scrolling
 ```
 
-(Where a path bends tighter than the text is tall, glyphs crowd on the concave side — that's inherent to text-on-path, so keep curves broad relative to the text size.)
+(Where a path bends tighter than the text is tall, glyphs crowd on the concave side. That's inherent to text-on-path, so keep curves broad relative to the text size.)
 
 <a name="box"></a>
 
@@ -342,7 +342,7 @@ drawText("text on a curve · ", along: path, offset: -time * 120)   // scrolling
 drawText(_ string: String, in rect: Rectangle)
 ```
 
-Wrap `string` into a [`Rectangle`](../Drawing/Geometry.md#rectangle): words break to the next line at the box width, and `textAlign` positions the wrapped block within the box — horizontal `.left`/`.center`/`.right` against the box edges, vertical `.top`/`.middle`/`.bottom`. Explicit `\n`s start new paragraphs. Works for every font kind.
+Wrap `string` into a [`Rectangle`](../Drawing/Geometry.md#rectangle), so words break to the next line at the box width and `textAlign` positions the wrapped block within the box, horizontal `.left`/`.center`/`.right` against the box edges, vertical `.top`/`.middle`/`.bottom`. Explicit `\n`s start new paragraphs. Works for every font kind.
 
 ```swift
 textSize(42); textAlign(.left, .top)
@@ -362,7 +362,7 @@ textToShapes(_ string: String, _ x: Double, _ y: Double) -> [Shape]
 textToShapes(_ string: String, at position: Vector2) -> [Shape]
 ```
 
-The glyphs of `string` as vector [`Shape`](../Drawing/Geometry.md#shape)s, positioned exactly where `drawText` would place them (current `textFont` / `textSize` / `textAlign`). This is **text as first-class geometry**: warp it, sample points along it, scatter particles on it, animate the contours — then fill or stroke the result like any other shape. An outline font returns one `Shape` per glyph (a letter with a counter — `o`, `e`, `a` — keeps its hole); a bitmap font returns its lit pixels as squares.
+The glyphs of `string` as vector [`Shape`](../Drawing/Geometry.md#shape)s, positioned exactly where `drawText` would place them (current `textFont` / `textSize` / `textAlign`). This is **text as first-class geometry**: warp it, sample points along it, scatter particles on it, or animate the contours, then fill or stroke the result like any other shape. An outline font returns one `Shape` per glyph, so a letter with a counter (`o`, `e`, `a`) keeps its hole, while a bitmap font returns its lit pixels as squares.
 
 ```swift
 textSize(300); textAlign(.center, .middle)
@@ -379,9 +379,9 @@ for shape in textToShapes("ollin", width / 2, height / 2) {
 ```
 
 > [!WARNING]
-> Displacing outline points by a *large or uneven* amount can fold a contour over itself, which the fill renders as a spike. Keep warps **bounded and smooth** (for example `signedNoise`, which stays in `-1...1`) rather than raw `curlNoise`, whose magnitude is unbounded; see the `OutlineText` example.
+> Displacing outline points by a *large or uneven* amount can fold a contour over itself, which the fill renders as a spike. Keep warps **bounded and smooth** (for example `signedNoise`, which stays in `-1...1`) rather than raw `curlNoise`, whose magnitude is unbounded. See the `OutlineText` example.
 
-One more thing to know about the returned geometry: the outline points come back **unevenly spaced**, the raw layout vertices, dense on curves and sparse on straights. That's fine for warping and filling, but marks placed one-per-point (dots, dashes, particles) would clump. Respace a glyph first with [`resampled(spacing:)`](Geometry.md#contour), as `shape.resampled(spacing: 8)` or per contour, and the marks spread evenly; the `PointShimmer` and `GlyphContours` examples do exactly this.
+One more thing to know about the returned geometry is that the outline points come back **unevenly spaced**, the raw layout vertices, dense on curves and sparse on straights. That's fine for warping and filling, but marks placed one-per-point (dots, dashes, particles) would clump. Respace a glyph first with [`resampled(spacing:)`](Geometry.md#contour), as `shape.resampled(spacing: 8)` or per contour, and the marks spread evenly. The `PointShimmer` and `GlyphContours` examples do exactly this.
 
 <a name="metrics"></a>
 
@@ -409,13 +409,13 @@ textBounds(_ string: String, at position: Vector2) -> Rectangle
    textLeading()  baseline → next baseline    (line spacing; one '\n')
 ```
 
-All in points at the current `textFont` / `textSize`, for every font kind. `textBounds` returns the box `string` would occupy if drawn at `(x, y)` with the current alignment — handy for backings, layout, and hit-testing.
+All in points at the current `textFont` / `textSize`, for every font kind. `textBounds` returns the box `string` would occupy if drawn at `(x, y)` with the current alignment, handy for backings, layout, and hit-testing.
 
 <a name="bitmapfont"></a>
 
 ### BitmapFont
 
-A `BitmapFont` is a value type: a table of `BitmapGlyph`s (each a small bit grid) plus layout metrics (`pixelHeight`, `baseline`, `lineHeight`). The built-in font is **Cozette** (see above).
+A `BitmapFont` is a value type, a table of `BitmapGlyph`s (each a small bit grid) plus layout metrics (`pixelHeight`, `baseline`, `lineHeight`). The built-in font is **Cozette** (see above).
 
 Load your own pixel font from a **BDF** file (the standard bitmap-font format, what the X11 catalog and Cozette ship):
 
@@ -427,7 +427,7 @@ if let mine = BitmapFont(bdfContentsOf: url) {
 
 BDF fonts are easy to come by: the classic [X11 bitmap fonts](https://github.com/toitlang/pkg-font-x11-adobe) (Adobe/DEC, permissively licensed) and the large [u8g2 font collection](https://github.com/olikraus/u8g2/wiki/fntlistall) are good places to look (check each font's own license). Drop the `.bdf` beside your sketch and load it with `BitmapFont(resource:in:)`.
 
-Or hand-author a fixed-cell font from ASCII art with the grid initializer — `#` marks a lit pixel:
+Or hand-author a fixed-cell font from ASCII art with the grid initializer, where `#` marks a lit pixel:
 
 ```swift
 let blocks = BitmapFont(grid: [
@@ -442,23 +442,23 @@ drawText("AI", width / 2, height / 2)
 
 #### Loading a Playdate `.fnt`
 
-Ollin also reads the **Playdate `.fnt`** format — a line-oriented metrics file (per-glyph widths, `tracking`, and kerning pairs) paired with a 1-bit glyph strike, either embedded in the file as base64 or sitting beside it as a `<name>-table-<width>-<height>.png`. It's a common pixel-font format, with a large pool of free community fonts to draw from. Kerning pairs in the file are applied automatically during layout.
+Ollin also reads the **Playdate `.fnt`** format, a line-oriented metrics file (per-glyph widths, `tracking`, and kerning pairs) paired with a 1-bit glyph strike, either embedded in the file as base64 or sitting beside it as a `<name>-table-<width>-<height>.png`. It's a common pixel-font format, with a large pool of free community fonts to draw from. Kerning pairs in the file are applied automatically during layout.
 
 ```swift
 let font = BitmapFont(resource: "MyFont.fnt", in: .module) ?? .builtin
 textFont(font)
 ```
 
-`BitmapFont(resource:in:)` is the easy path for a font bundled beside your sketch: pass the filename (the loader picks BDF or `.fnt` from the extension) and the bundle it lives in — `.module` for a `swift run` sketch's own resources, or the default `.main` for an app. It returns `nil` if the resource is missing, so the `?? .builtin` falls back to the default font.
+`BitmapFont(resource:in:)` is the easy path for a font bundled beside your sketch. Pass the filename (the loader picks BDF or `.fnt` from the extension) and the bundle it lives in, `.module` for a `swift run` sketch's own resources or the default `.main` for an app. It returns `nil` if the resource is missing, so the `?? .builtin` falls back to the default font.
 
-Under it, `BitmapFont(fntContentsOf:)` takes a file URL and handles both strike forms — it finds the sibling `-table` PNG when the strike is external. If you already have the text (say, fetched over the network), `BitmapFont(fnt:)` parses the self-contained embedded form directly:
+Under it, `BitmapFont(fntContentsOf:)` takes a file URL and handles both strike forms, finding the sibling `-table` PNG when the strike is external. If you already have the text (say, fetched over the network), `BitmapFont(fnt:)` parses the self-contained embedded form directly:
 
 ```swift
 let text = try String(contentsOf: someURL, encoding: .utf8)
 if let font = BitmapFont(fnt: text) { textFont(font) }
 ```
 
-Ollin bundles only the *loader*, not a library of `.fnt` fonts — drop your own beside your sketch (the `PlaydateFont` example does exactly this). Free, redistributable pixel fonts are easy to find; the public-domain set at [playdate-arcade-fonts](https://github.com/idleberg/playdate-arcade-fonts) is one source.
+Ollin bundles only the *loader*, not a library of `.fnt` fonts, so drop your own beside your sketch (the `PlaydateFont` example does exactly this). Free, redistributable pixel fonts are easy to find, and the public-domain set at [playdate-arcade-fonts](https://github.com/idleberg/playdate-arcade-fonts) is one source.
 
 ---
 
