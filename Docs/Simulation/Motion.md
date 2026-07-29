@@ -4,9 +4,9 @@
 
 ## Articulated & chaotic motion
 
-Three CPU motion systems you hold on the sketch and drive each frame: an inverse-kinematics chain that reaches (tentacles, limbs, ropes), the double pendulum (the classic chaos machine), and a gravitational n-body simulation (orbits, galaxies, collisions). All three are deterministic: no hidden randomness, fixed iteration orders, and the n-body factories roll from a seed, so a run replays exactly and a fixed-frame export reproduces.
+Three CPU motion systems you hold on the sketch and drive each frame: an inverse-kinematics chain that reaches (tentacles, limbs, ropes), the double pendulum (the classic chaos machine), and a gravitational n-body simulation (orbits, galaxies, collisions). All three are deterministic, with no hidden randomness and fixed iteration orders, and the n-body factories roll from a seed, so a run replays exactly and a fixed-frame export reproduces.
 
-They pair naturally with the rest of the family: the [strange attractors](../Drawing/Attractors.md) are the *baked-orbit* side of chaos (build once, draw the path), while `DoublePendulum` and `NBody` are the *live* side you step and watch. The [`@Sprung` damped spring](../Helpers/Animation.md#sprung) is the third member of the motion-helper family beside them.
+They pair naturally with the rest of the family. The [strange attractors](../Drawing/Attractors.md) are the *baked-orbit* side of chaos (build once, draw the path), while `DoublePendulum` and `NBody` are the *live* side you step and watch. The [`@Sprung` damped spring](../Helpers/Animation.md#sprung) is the third member of the motion-helper family beside them.
 
 ### Contents
 
@@ -84,10 +84,10 @@ Solving is warm-started from the current pose each call, so a chain moves cohere
 
 **Two solvers, one aesthetic choice.** `chain.solver` picks how `reach` thinks:
 
-- **`.fabrik`** (the default) alternates a tip-to-base and a base-to-tip pass, re-placing each joint at its segment length. Motion spreads evenly along the chain; poses come out smooth and plant-like.
+- **`.fabrik`** (the default) alternates a tip-to-base and a base-to-tip pass, re-placing each joint at its segment length. Motion spreads evenly along the chain, so poses come out smooth and plant-like.
 - **`.ccd`** swings one joint at a time to aim the tip, sweeping from the tip's joint down to the base. It favors the joints near the tip, so the chain whips and curls. `maxTurn` (radians per joint per sweep) damps the swing for smoother, kink-free motion.
 
-Both honor **`maxBend`**, the stiffness limit: the largest angle a segment may fold against its neighbor, enforced at every interior joint during solving (never patched afterward, so segment lengths stay exact). Low values make stiff rods and spines, `nil` (the default) bends freely. Stiffness can put a reachable target out of reach; the solve settles as close as it can and reports `false` rather than spinning.
+Both honor **`maxBend`**, the stiffness limit, which is the largest angle a segment may fold against its neighbor, enforced at every interior joint during solving (never patched afterward, so segment lengths stay exact). Low values make stiff rods and spines, and `nil` (the default) bends freely. Stiffness can put a reachable target out of reach, in which case the solve settles as close as it can and reports `false` rather than spinning.
 
 The [InverseKinematics example](../../Examples/Motion/InverseKinematics/Sketch.swift) plants five tentacles under a swimming lure with both knobs live.
 
@@ -95,32 +95,32 @@ The [InverseKinematics example](../../Examples/Motion/InverseKinematics/Sketch.s
 
 ### `DoublePendulum`: chaos from two arms
 
-Two point masses on rigid arms, swinging under gravity: the simplest system with genuinely chaotic motion. Configure it at creation (`length1`/`length2` in canvas units, `mass1`/`mass2`, starting `angle1`/`angle2` in radians measured from hanging straight down, optional starting velocities, and `gravity`, whose default treats 100 canvas units as a meter), then `step()` it each frame.
+Two point masses on rigid arms, swinging under gravity, which is the simplest system with genuinely chaotic motion. Configure it at creation (`length1`/`length2` in canvas units, `mass1`/`mass2`, starting `angle1`/`angle2` in radians measured from hanging straight down, optional starting velocities, and `gravity`, whose default treats 100 canvas units as a meter), then `step()` it each frame.
 
-Read positions through **`bob1`** and **`bob2`**, both relative to the pivot with y pointing down, so drawing is a `translate` to the pivot and two lines. `bob2` is the point worth tracing; all the drama lives at the end of the second arm.
+Read positions through **`bob1`** and **`bob2`**, both relative to the pivot with y pointing down, so drawing is a `translate` to the pivot and two lines. `bob2` is the point worth tracing, because all the drama lives at the end of the second arm.
 
-`step(_ dt:)` defaults to one 60 fps frame and splits the interval into fixed substeps sized so the integration holds energy steady (the `energy` property is the check: it stays put to a hair). Two consequences worth knowing:
+`step(_ dt:)` defaults to one 60 fps frame and splits the interval into fixed substeps sized so the integration holds energy steady (the `energy` property is the check, and it stays put to a hair). Two consequences worth knowing:
 
-- **Determinism:** calling `step()` with the default every frame makes the whole run a pure function of the starting angles. The same start replays the same chaos; a start a ten-thousandth of a radian away diverges into a completely different dance within seconds. That sensitivity is the classic demonstration, and the [DoublePendulum example](../../Examples/Motion/DoublePendulum/Sketch.swift) draws it as a 24-pendulum fan.
+- **Determinism:** calling `step()` with the default every frame makes the whole run a pure function of the starting angles. The same start replays the same chaos, while a start a ten-thousandth of a radian away diverges into a completely different dance within seconds. That sensitivity is the classic demonstration, and the [DoublePendulum example](../../Examples/Motion/DoublePendulum/Sketch.swift) draws it as a 24-pendulum fan.
 - Passing a live `deltaTime` follows the wall clock instead, at the cost of exact reproducibility. For exports and snapshots, keep the default.
 
 <a name="nbody"></a>
 
 ### `NBody`: gravity at scale
 
-Every body pulls on every other; that one rule makes orbits, spiral shear, tidal tails, and mergers. `NBody` holds a public `bodies` array (`NBody.Body`: `position`, `velocity`, `mass`) you may mutate freely between steps, and `step()` advances the whole system.
+Every body pulls on every other, and that one rule makes orbits, spiral shear, tidal tails, and mergers. `NBody` holds a public `bodies` array (`NBody.Body`, with `position`, `velocity`, and `mass`) you may mutate freely between steps, and `step()` advances the whole system.
 
 Three knobs shape the physics:
 
 - **`gravity`** (default `1`) is the gravitational constant, the one pace knob.
-- **`theta`** (default `0.7`) is the accuracy dial for the far field. Forces run through a quadtree: clumps of distant bodies act as single points when their region looks smaller than `theta` times its distance, which is what makes a few thousand bodies cheap. `0` forces the exact all-pairs sum; `0.5` when accuracy shows; `1` is fast and loose.
+- **`theta`** (default `0.7`) is the accuracy dial for the far field. Forces run through a quadtree, where clumps of distant bodies act as single points when their region looks smaller than `theta` times its distance, which is what makes a few thousand bodies cheap. Use `0` for the exact all-pairs sum, `0.5` when accuracy shows, and `1` for fast and loose.
 - **`softening`** (default `4`) caps how hard a close encounter pulls, so near-collisions swing through smoothly instead of slingshotting to infinity. A few pixels, about the typical body spacing, reads well.
 
-The integrator is the standard leapfrog for gravity: it holds orbital energy bounded over long runs instead of letting orbits slowly decay, and it costs one force pass per step. Keep `dt` fixed frame to frame (the default is one 60 fps frame); that fixedness is part of what keeps orbits stable.
+The integrator is the standard leapfrog for gravity, which holds orbital energy bounded over long runs instead of letting orbits slowly decay, and it costs one force pass per step. Keep `dt` fixed frame to frame (the default is one 60 fps frame), because that fixedness is part of what keeps orbits stable.
 
 Two seeded factories stage the classic scenes:
 
-- **`NBody.disk(count:center:radius:...)`** builds a spinning disk around a heavy central body (`bodies[0]`), each light body started on the circular orbit its radius calls for. `spin` flips the direction, `jitter` roughens the orbits, and `velocity` drifts the whole disk, which is how you stage a two-galaxy encounter: build two disks, append one's `bodies` to the other's.
+- **`NBody.disk(count:center:radius:...)`** builds a spinning disk around a heavy central body (`bodies[0]`), each light body started on the circular orbit its radius calls for. `spin` flips the direction, `jitter` roughens the orbits, and `velocity` drifts the whole disk, which is how you stage a two-galaxy encounter. Build two disks, then append one's `bodies` to the other's.
 - **`NBody.cluster(count:center:radius:...)`** scatters motionless bodies that collapse, swing through, and puff into a bound swarm.
 
-Read `positions` for drawing and `centerOfMass` to keep a camera or `translate` anchored on drifting action. The [NBody example](../../Examples/Motion/NBody/Sketch.swift) stages two galaxies on a bound grazing orbit; small additive points make the arms glow where they cross.
+Read `positions` for drawing and `centerOfMass` to keep a camera or `translate` anchored on drifting action. The [NBody example](../../Examples/Motion/NBody/Sketch.swift) stages two galaxies on a bound grazing orbit, where small additive points make the arms glow as they cross.

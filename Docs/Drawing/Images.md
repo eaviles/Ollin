@@ -4,9 +4,9 @@
 
 ## Images
 
-Load a raster image and draw it onto the canvas. An image decodes once on the CPU (via ImageIO, so it reads anything Apple does: PNG, JPEG, HEIC, TIFF, GIF) and uploads to the GPU the first time it's drawn; from then on it's a textured quad like any other shape, so it rides the [transform stack](../Drawing/Drawing.md#translate) and composites in draw order with the rest of your drawing.
+Load a raster image and draw it onto the canvas. An image decodes once on the CPU (via ImageIO, so it reads anything Apple does: PNG, JPEG, HEIC, TIFF, GIF) and uploads to the GPU the first time it's drawn. From then on it's a textured quad like any other shape, so it rides the [transform stack](../Drawing/Drawing.md#translate) and composites in draw order with the rest of your drawing.
 
-The typical shape: load in `setup()`, keep the result in a property, draw it in `draw()`. Decoding a file every frame is wasteful, and the image holds its GPU texture for as long as you hold the image.
+The typical shape is to load in `setup()`, keep the result in a property, and draw it in `draw()`. Decoding a file every frame is wasteful, and the image holds its GPU texture for as long as you hold the image.
 
 ```swift
 final class Photo: Sketch {
@@ -60,7 +60,7 @@ drawImage(_ image: Image, _ x: Double, _ y: Double, _ width: Double, _ height: D
 drawImage(_ image: Image, in rect: Rectangle)
 ```
 
-Draw `image` with its top-left corner at `(x, y)`. The first form uses the image's native pixel size; the second stretches it to fill a `width`×`height` box; the [`Rectangle`](../Drawing/Geometry.md#rectangle) form is the same, with a value you can pass around.
+Draw `image` with its top-left corner at `(x, y)`. The first form uses the image's native pixel size, the second stretches it to fill a `width`×`height` box, and the [`Rectangle`](../Drawing/Geometry.md#rectangle) form does the same with a value you can pass around.
 
 ```swift
 drawImage(logo, 40, 40)                       // native size, top-left at (40, 40)
@@ -89,7 +89,7 @@ tint(_ color: Color)
 noTint()
 ```
 
-Tint every following `drawImage` by multiplying each texel by `color`: the RGB recolors the image and the alpha fades it. White at full alpha is the default, which leaves the image unchanged. `noTint()` returns to drawing images as-is.
+Tint every following `drawImage` by multiplying each texel by `color`, so the RGB recolors the image and the alpha fades it. White at full alpha is the default, which leaves the image unchanged. `noTint()` returns to drawing images as-is.
 
 ```swift
 tint(Color(red: 1, green: 0.7, blue: 0.3))        // warm wash
@@ -101,7 +101,7 @@ drawImage(photo, 0, 0)
 noTint()                                          // back to unchanged
 ```
 
-Tint is drawing state like `fill` and `stroke`: it's saved and restored by [`withState { }`](../Drawing/Drawing.md#withstate), so you can tint one image without leaking the wash onto the next. It only multiplies as the image is drawn; it never edits the image's stored pixels, so [reading them back](#pixels) always returns the original colors.
+Tint is drawing state like `fill` and `stroke`, so it's saved and restored by [`withState { }`](../Drawing/Drawing.md#withstate) and you can tint one image without leaking the wash onto the next. It only multiplies as the image is drawn; it never edits the image's stored pixels, so [reading them back](#pixels) always returns the original colors.
 
 ```swift
 withState {
@@ -123,7 +123,7 @@ Image(width: Int, height: Int, color: Color = .clear)
 Image(width: Int, height: Int, premultipliedRGBA: [UInt8])
 ```
 
-`Image` is the typed value `drawImage` takes. It's a reference type: it owns a GPU texture and is identified by who holds it, not by value. The failable initializers return `nil` when the bytes aren't a decodable image. Every image reports its pixel `width` / `height` (`Int`s) and `size` (the same pair as a `Vector2`, ready for the geometry helpers: `Rectangle(fitting: image.size, in: bounds)` letterboxes it).
+`Image` is the typed value `drawImage` takes. It's a reference type, so it owns a GPU texture and is identified by who holds it, not by value. The failable initializers return `nil` when the bytes aren't a decodable image. Every image reports its pixel `width` / `height` (`Int`s) and `size` (the same pair as a `Vector2`, ready for the geometry helpers, so `Rectangle(fitting: image.size, in: bounds)` letterboxes it).
 
 `Image(width:height:color:)` makes a blank `width`×`height` image filled with `color` (transparent by default), so you can [author one from scratch](#pixels) pixel by pixel rather than loading a file.
 
@@ -137,22 +137,22 @@ let texture = Image(resource: "paper", extension: "png", in: .module)
 
 `Image(cgImage:)` wraps an image you already have in memory (a `CGImage` you rendered yourself, decoded elsewhere, or built procedurally), so anything that can produce a `CGImage` can become drawable.
 
-**Transparency works.** A PNG's alpha is respected: transparent regions let what's behind show through, and the edges composite cleanly.
+**Transparency works.** A PNG's alpha is respected, so transparent regions let what's behind show through and the edges composite cleanly.
 
 <a name="pixels"></a>
 
 ### Pixels
 
-Read or write a single pixel through the subscript. `(0, 0)` is the top-left corner; coordinates run to `(width - 1, height - 1)`.
+Read or write a single pixel through the subscript. `(0, 0)` is the top-left corner, and coordinates run to `(width - 1, height - 1)`.
 
 ```swift
 let c = image[x, y]          // read a pixel's Color (a get)
 image[x, y] = .red           // write one (a set)
 ```
 
-Out-of-range access is forgiving so a stray index never crashes a loop: reading off the edge returns `.clear`, and writing off the edge does nothing.
+Out-of-range access is forgiving so a stray index never crashes a loop, since reading off the edge returns `.clear` and writing off the edge does nothing.
 
-Pair a write with the blank initializer to author an image from scratch: make a transparent canvas, paint it, then draw it:
+Pair a write with the blank initializer to author an image from scratch. Make a transparent canvas, paint it, then draw it:
 
 ```swift
 final class PixelArt: Sketch {
@@ -178,6 +178,6 @@ final class PixelArt: Sketch {
 
 A write shows on the next `drawImage` (the GPU texture rebuilds from the edited pixels), so author in `setup()` when you can rather than rewriting the whole image every frame. Reading is cheap once the first access has decoded the pixels.
 
-Colors pass through the image's premultiplied storage, so round-tripping a translucent color can shift it by a step of `1/255`. Reading is independent of [`tint`](#tint): a get returns the stored color, never the tinted one.
+Colors pass through the image's premultiplied storage, so round-tripping a translucent color can shift it by a step of `1/255`. Reading is independent of [`tint`](#tint), so a get returns the stored color, never the tinted one.
 
 See the **PixelField** example for authoring a field with `set`, sampling it back with `get`, and an animated `tint` over the top.

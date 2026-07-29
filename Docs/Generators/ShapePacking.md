@@ -35,7 +35,7 @@ packShapes(_ shapes: [Shape], in bounds: Rectangle? = nil,
            scale: Double = 1) -> [Shape]
 ```
 
-Pack up to `count` shapes into `bounds` (the canvas by default). `minRadius` is the smallest shape to place (by bounding-circle radius) and `maxRadius` a cap; `padding` opens a gap between shapes; `rotation` is the range each is randomly turned within (radians; `0 ... 0` leaves them upright); and `scale` is how much of its bounding circle a shape fills (`1` touching, less for a margin).
+Pack up to `count` shapes into `bounds` (the canvas by default). `minRadius` is the smallest shape to place (by bounding-circle radius) and `maxRadius` is a cap. `padding` opens a gap between shapes. `rotation` is the range in radians each shape is randomly turned within, so `0 ... 0` leaves them upright. `scale` is how much of its bounding circle a shape fills, with `1` touching and anything less leaving a margin.
 
 ```swift
 seed(4)
@@ -51,7 +51,7 @@ Compute the packing once and hold it (in a stored property), then animate someth
 
 #### Continuous packing (animated)
 
-`packShapes` fills the region in one call. `ContinuousPacking` is the same engine held open: you `step()` it each frame so the packing *fills in over time*, and because big gaps fill first, each new shape is smaller than the last, densifying from a few large shapes to a scatter of tiny ones.
+`packShapes` fills the region in one call. `ContinuousPacking` is the same engine held open. You `step()` it each frame so the packing *fills in over time*, and because big gaps fill first, each new shape is smaller than the last, densifying from a few large shapes to a scatter of tiny ones.
 
 ```swift
 ContinuousPacking(shapes: [Shape] = [], in: Rectangle, seed: UInt64 = 0,
@@ -60,7 +60,7 @@ ContinuousPacking(shapes: [Shape] = [], in: Rectangle, seed: UInt64 = 0,
                   attemptsPerStep: Int = 10)
 ```
 
-Pair it with accumulation (`noClear()`): a placed shape never moves, so each frame draws only the *new* shapes (`packer.count` grows), and the per-frame cost stays flat however full it gets.
+Pair it with accumulation (`noClear()`). A placed shape never moves, so each frame draws only the *new* shapes (`packer.count` grows), and the per-frame cost stays flat however full it gets.
 
 ```swift
 let packer = ContinuousPacking(shapes: bag, in: bounds, seed: 4,
@@ -76,13 +76,13 @@ override func draw() {
 }
 ```
 
-Pass an empty bag to pack plain circles instead; then read `packer.circles`. See the `ShapePacking` example.
+Pass an empty bag to pack plain circles instead, then read `packer.circles`. See the `ShapePacking` example.
 
 <a name="around"></a>
 
 #### From a set of points
 
-To place *one* shape at each of a set of points (a scatter rather than a dense fill), use the `around:` form; each shape's bounding circle grows to touch the nearest other point, so a [blue-noise](./BlueNoise.md) set makes an even, non-overlapping scatter.
+To place *one* shape at each of a set of points (a scatter rather than a dense fill), use the `around:` form. Each shape's bounding circle grows to touch the nearest other point, so a [blue-noise](./BlueNoise.md) set makes an even, non-overlapping scatter.
 
 ```swift
 seed(7)
@@ -94,7 +94,7 @@ for shape in packShapes(bag, around: sites, padding: 4) { fill(.white); drawShap
 
 #### Building the shape bag
 
-Any `Shape` works, so the bag is yours: regular polygons, stars, glyphs from [`textToShapes`](../Drawing/Text.md), booleans of other shapes. A shape's position and size are set by the packing, so build each at any convenient size around the origin. A regular polygon or star:
+Any `Shape` works, so the bag is yours: regular polygons, stars, glyphs from [`textToShapes`](../Drawing/Text.md), booleans of other shapes. A shape's position and size are set by the packing, so build each at any convenient size around the origin. Here is a regular polygon or star:
 
 ```swift
 func polygon(_ sides: Int, star: Bool = false) -> Shape {

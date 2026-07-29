@@ -4,7 +4,7 @@
 
 ## Single-file sketches
 
-One `.swift` file can be a whole sketch: no package to set up, no target to declare, no project folder. The `ollin` command runs the file in the live window from any directory, exports it headlessly with the same flags a packaged sketch takes, and writes the starter file so you never type the boilerplate.
+One `.swift` file can be a whole sketch, with no package to set up, no target to declare, and no project folder. The `ollin` command runs the file in the live window from any directory, exports it headlessly with the same flags a packaged sketch takes, and writes the starter file so you never type the boilerplate.
 
 ```sh
 ollin new dots.swift        # write a starter sketch
@@ -35,9 +35,9 @@ cd Ollin
 Scripts/ollin install
 ```
 
-`install` symlinks the script into a writable directory already on your `PATH` (or into `~/.local/bin`, telling you what to add if that isn't on it). Because it's a symlink into the clone, there's nothing to re-install after a `git pull`: the next run rebuilds whatever changed. You can also pass an explicit directory: `Scripts/ollin install ~/bin`.
+`install` symlinks the script into a writable directory already on your `PATH` (or into `~/.local/bin`, telling you what to add if that isn't on it). Because it's a symlink into the clone, there's nothing to re-install after a `git pull`, since the next run rebuilds whatever changed. You can also pass an explicit directory, as in `Scripts/ollin install ~/bin`.
 
-The requirements are Ollin's own: macOS 26+, a Metal-capable GPU, and the Swift toolchain (the command compiles your sketch, so it needs `swiftc`). The first run builds the framework in release mode, which takes a few minutes; after that, starting a sketch takes seconds, and saves take less.
+The requirements are Ollin's own: macOS 26+, a Metal-capable GPU, and the Swift toolchain (the command compiles your sketch, so it needs `swiftc`). The first run builds the framework in release mode, which takes a few minutes. After that, starting a sketch takes seconds, and saves take less.
 
 ### Dash off an idea
 
@@ -46,7 +46,7 @@ ollin new dots.swift
 ollin dots.swift
 ```
 
-`new` writes a minimal breathing-circle sketch (the class named after the file) and marks it executable. `ollin dots.swift` opens it in the live host: edit and save, and the window swaps in the change without closing; a save that doesn't compile shows the error over the canvas while the last good sketch keeps drawing. Everything the live host offers is there: the `@Param` inspector, the seed card, `--keep-clock` to carry the clock across reloads.
+`new` writes a minimal breathing-circle sketch (the class named after the file) and marks it executable. `ollin dots.swift` opens it in the live host, so edit and save and the window swaps in the change without closing. A save that doesn't compile shows the error over the canvas while the last good sketch keeps drawing. Everything the live host offers is there: the `@Param` inspector, the seed card, and `--keep-clock` to carry the clock across reloads.
 
 The file is an ordinary Ollin sketch, so there's nothing single-file-specific to learn:
 
@@ -75,7 +75,7 @@ The first line above is a shell hashbang. With it, and the executable bit `new` 
 ./dots.swift --export dots.png
 ```
 
-Ollin treats the hashbang line as a comment, and compile errors still point at the real line numbers in your file. The line is optional; `ollin dots.swift` works either way.
+Ollin treats the hashbang line as a comment, and compile errors still point at the real line numbers in your file. The line is optional, and `ollin dots.swift` works either way.
 
 ### Exports and flags
 
@@ -103,8 +103,8 @@ The satellite libraries are all available: `import OllinAudio`, `import OllinMID
 
 ### Growing into a package
 
-The sketch file is the artifact, and it stays portable: when an idea outgrows one file, move the same file into a SwiftPM executable target that depends on `Ollin`, delete the hashbang line, and it builds unchanged (`@main` already makes it the entry point). Nothing about the single-file form is a dialect.
+The sketch file is the artifact, and it stays portable. When an idea outgrows one file, move the same file into a SwiftPM executable target that depends on `Ollin`, delete the hashbang line, and it builds unchanged (`@main` already makes it the entry point). Nothing about the single-file form is a dialect.
 
 ### How it works
 
-`ollin` finds its own repository through the symlink, builds the live host there if anything changed, and hands it your file. The host compiles just that file against the built framework and loads it into the running window, which is the same mechanism behind live reload: only your sketch recompiles, never the framework. Headless flags skip the window entirely.
+`ollin` finds its own repository through the symlink, builds the live host there if anything changed, and hands it your file. The host compiles just that file against the built framework and loads it into the running window, which is the same mechanism behind live reload, so only your sketch recompiles, never the framework. Headless flags skip the window entirely.

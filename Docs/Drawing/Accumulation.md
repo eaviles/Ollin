@@ -4,13 +4,13 @@
 
 ## Accumulation
 
-By default Ollin clears the canvas at the start of every frame, so `draw()` paints a fresh picture each time — motion is the default. `noClear()` turns that off: the canvas becomes a **persistent surface** that survives across frames, so drawing *piles up* over time instead of starting blank. It's the basis for progressive refinement, long-exposure stills, paint-on-canvas sketches, and — paired with [`blendMode(.add)`](../Drawing/Drawing.md#blendmode) — light-accumulation ("sandpainting") rendering.
+By default Ollin clears the canvas at the start of every frame, so `draw()` paints a fresh picture each time and motion is the default. `noClear()` turns that off, and the canvas becomes a **persistent surface** that survives across frames, so drawing *piles up* over time instead of starting blank. It's the basis for progressive refinement, long-exposure stills, paint-on-canvas sketches, and, paired with [`blendMode(.add)`](../Drawing/Drawing.md#blendmode), light-accumulation ("sandpainting") rendering.
 
 ### Contents
 
-- [noClear](#noclear) — stop clearing the canvas each frame
-- [background as the reset](#reset) — wipe the accumulated canvas
-- [clearEachFrame](#cleareachframe) — return to the default
+- [noClear](#noclear) - stop clearing the canvas each frame
+- [background as the reset](#reset) - wipe the accumulated canvas
+- [clearEachFrame](#cleareachframe) - return to the default
 - [Notes](#notes)
 
 <a id="noclear"></a>
@@ -20,7 +20,7 @@ Stop clearing the canvas each frame. From this point on, every frame draws on to
 
 ```swift
 override func setup() {
-    background(.black)   // the one base wipe — the canvas starts here
+    background(.black)   // the one base wipe, the canvas starts here
     noClear()            // then accumulate forever
 }
 
@@ -34,12 +34,12 @@ override func draw() {
 
 Each frame your `draw()` still records only that frame's *new* marks (the geometry resets every frame as usual); what persists is the rendered canvas they accumulate onto.
 
-Pair it with `blendMode(.add)` for the classic look: each mark adds a little light, so dense regions glow toward white while sparse ones hold a dim tint. Because Ollin blends in linear light, the sum is physically correct. See the `Rendering/Accumulation` example for a depth-of-field particle field built this way.
+Pair it with `blendMode(.add)` for the classic look, where each mark adds a little light, so dense regions glow toward white while sparse ones hold a dim tint. Because Ollin blends in linear light, the sum is physically correct. See the `Rendering/Accumulation` example for a depth-of-field particle field built this way.
 
 <a id="reset"></a>
 ### background as the reset
 
-While accumulating, [`background(_:)`](../Drawing/Drawing.md#background) wipes the persistent canvas to that color — the way to reset a long exposure or start a new pass. Call it on the frame you want to clear:
+While accumulating, [`background(_:)`](../Drawing/Drawing.md#background) wipes the persistent canvas to that color, which is the way to reset a long exposure or start a new pass. Call it on the frame you want to clear:
 
 ```swift
 override func draw() {
@@ -53,7 +53,7 @@ Omit it entirely and the canvas accumulates without bound. Call it every frame a
 <a id="cleareachframe"></a>
 ### clearEachFrame()
 
-Return to the default — clearing the canvas at the start of every frame — undoing `noClear()`.
+Return to the default, clearing the canvas at the start of every frame, undoing `noClear()`.
 
 ```swift
 clearEachFrame()
@@ -63,6 +63,6 @@ clearEachFrame()
 ### Notes
 
 - **Continuous motion avoids saturation.** A perfectly static scene drawn additively keeps getting brighter until it saturates to white. Keep the scene moving (a slow rotation, drifting particles, a sweep) so light flows across the canvas and reaches a steady glow instead.
-- **Float precision.** The accumulation surface composites in linear floating-point, so even very faint samples (well below 1/255) sum correctly instead of quantizing away, and light can build past full brightness. Pair it with [`toneMap(_:)`](../Drawing/HDR.md) to roll that built-up light off smoothly rather than clipping it — the basis of the depth-of-field "sandpainting" look.
+- **Float precision.** The accumulation surface composites in linear floating-point, so even very faint samples (well below 1/255) sum correctly instead of quantizing away, and light can build past full brightness. Pair it with [`toneMap(_:)`](../Drawing/HDR.md) to roll that built-up light off smoothly rather than clipping it, which is the basis of the depth-of-field "sandpainting" look.
 - **Window resizing resets it.** The persistent surface is sized to the window; resizing reallocates it and starts the accumulation over.
 - **Export works the same way.** The headless still (`--export --frame N`) and the sequence/video/GIF exports drive the accumulation across frames just like the live window, so what you export matches what you see.
