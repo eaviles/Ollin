@@ -1697,6 +1697,47 @@ array, never a uniform scatter. Deterministic given (input, count, seed);
 setup-time work, hold the points. Example `Patterns/Stippling` (paints its
 sphere in `setup()`, no asset); snapshot `stipple`; `StippleTests`.
 
+### Spanning-tree line art and isolines
+
+`spanningTree(through:)` (`Geometry/SpanningTree.swift`) is the branching
+sibling of the `singleLine` tour: the exact Euclidean minimum spanning tree,
+built by Kruskal over the unique edges of the `Delaunay` triangulation
+(which always contains the EMST), ties broken by (distance², index) so the
+build is deterministic. Degenerate inputs take two fallbacks: fully
+collinear points have no triangulation, so the tree is the lexicographic
+chain (exactly the MST along a line); exactly-coincident duplicates never
+enter the triangulation, so leftover components join by nearest-vertex
+passes. The output is the minimal trail decomposition, one open `Contour`
+per pair of odd-degree vertices: a walk may start only at a vertex whose
+*unconsumed* degree is odd (each walk flips its two endpoints odd-to-even
+and no vertex ever flips back, so an index-order sweep is minimal;
+starting at *originally*-odd vertices strands edges into extra chains, a
+real first-build bug caught by `decompositionIsMinimal`). The image sugar
+`spanningTree(of:points:in:iterations:cutoff:)` mirrors
+`singleLine(of:...)` over the same stipple + cutoff pipeline. Example
+`Images/SpanningTree`; snapshot `spanning-tree`; `SpanningTreeTests`
+(brute-force Prim match, minimality, degenerate inputs).
+
+`isolines(at:in:resolution:field:)` (`Geometry/Isolines.swift`) is marching
+squares over an on-demand sampling grid (`resolution` cells across the
+longer side, square-ish cells). The case table emits *oriented* segments
+(inside on a fixed side), so stitching walks directionally: forward along
+to→from key matches until the chain closes or runs out, then backward from
+the start, which is what lets a contour that exits the bounds come back as
+an open `Contour` ending on the edge. Saddle cells (codes 5/10) are settled
+by the cell-average rule. Two invariants: a contour passing exactly through
+a grid corner (corner value exactly zero) makes its cell emit a null
+segment, dropped before stitching (the real bug was two-point litter beside
+an intact ring, seen with a radius-100 circle whose lattice hits are exact);
+and the endpoint maps are only ever indexed, never iterated, so the walk
+order is the segment order and the trace is deterministic. The levels form
+samples the grid once and traces per level; the image form reduces pixels
+to linear-luminance-on-white (transparency reads as paper), samples
+bilinearly, and takes its levels in sRGB tone (converted once), matching
+the stipple/`cutoff` convention. Examples `Patterns/ContourMap` (looping
+fbm terrain, index contours); snapshot `isolines` (metaball merge/split +
+image tone lines); `IsolineTests`.
+
 ### Random walks
 
 `Geometry/Walks.swift`. `randomWalk(from:steps:stepLength:)` is isotropic.

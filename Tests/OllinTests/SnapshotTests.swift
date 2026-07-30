@@ -280,6 +280,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("single-line",
                  note: "The same kind of painted radial gradient rendered as one continuous closed line: a seeded stipple toured by nearest-neighbor plus 2-opt. Pins the tour construction and improvement (any change to the heuristics rewires the meander) on top of the stipple. Seeded, no time, so the line is deterministic.",
                  make: { SingleLineScene() }),
+    SnapshotCase("spanning-tree",
+                 note: "The same kind of painted radial gradient joined by the minimum spanning tree instead of a tour: branching chains that crowd toward the dark center. Pins the Delaunay-edge Kruskal build and the odd-vertex chain decomposition (any change rewires the branching) on top of the stipple. Seeded, no time, so the tree is deterministic.",
+                 make: { SpanningTreeScene() }),
+    SnapshotCase("isolines",
+                 note: "Level curves two ways: a two-blob metaball field traced at rising levels on the left (outer rings merged, the tightest level split in two), and the tone lines of a painted diagonal gradient with a dark disk on the right. Pins the marching-squares case table, the cell-average saddle rule, the open-chain stitching against the bounds, and the image tone sampling. No rng and no time, so it is deterministic.",
+                 make: { IsolineScene() }),
     SnapshotCase("glyph-mosaic",
                  note: "A painted diagonal gradient with a bright disk, rebuilt as a glyph mosaic in the bundled bitmap font: dense marks in the bright corner and around the disk, a lone dot at the faint edge, true emptiness below the floor. Pins the measured ink ramp, the nearest-coverage selection, the empty floor, and the cell layout. No rng and no time, so it is deterministic.",
                  make: { GlyphMosaicScene() }),
@@ -1167,6 +1173,80 @@ private final class SingleLineScene: Sketch {
         stroke(Color(hex: 0x1A1B26))
         strokeWeight(1.4)
         drawPolyline(line.points, closed: line.isClosed)
+    }
+}
+
+/// The same painted radial gradient joined by the minimum spanning tree.
+/// Seeded and `time`-free, so it's deterministic.
+private final class SpanningTreeScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var chains: [Contour] = []
+
+    override func setup() {
+        seed(7)
+        let n = 64
+        let image = Image(width: n, height: n, color: .white)
+        for y in 0 ..< n {
+            for x in 0 ..< n {
+                let u = Double(x) / Double(n - 1) * 2 - 1
+                let v = Double(y) / Double(n - 1) * 2 - 1
+                let d = (u * u + v * v).squareRoot()
+                image[x, y] = Color(white: clamp(d * 1.1, 0, 1))
+            }
+        }
+        chains = spanningTree(of: image, points: 320, in: canvasRectangle.inset(by: 16),
+                              iterations: 12)
+    }
+
+    override func draw() {
+        background(Color(hex: 0xF5F2EA))
+        noFill()
+        stroke(Color(hex: 0x1A1B26))
+        strokeWeight(1.4)
+        for chain in chains { drawPolyline(chain.points) }
+    }
+}
+
+/// A two-blob metaball field's level curves beside the tone lines of a
+/// painted gradient with a dark disk. No rng and no `time`, so it's
+/// deterministic.
+private final class IsolineScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0xF5F2EA))
+        noFill()
+        stroke(Color(hex: 0x1A1B26))
+        strokeWeight(1.2)
+
+        // Left: the metaball sum of two blobs, traced at rising levels; the
+        // outer levels merge across the neck, the tightest splits in two.
+        let left = Rectangle(x: 8, y: 8, width: 112, height: 240)
+        let a = Vector2(64, 92), b = Vector2(72, 168)
+        let field = isolines(at: [0.9, 1.4, 2.2, 3.5], in: left, resolution: 96) { p in
+            2200 / max(p.distanceSquared(to: a), 1) + 2200 / max(p.distanceSquared(to: b), 1)
+        }
+        for group in field {
+            for curve in group { drawPolyline(curve.points, closed: curve.isClosed) }
+        }
+
+        // Right: tone lines of a diagonal gradient carrying a dark disk, so
+        // open chains end on the frame and rings wrap the disk.
+        let n = 48
+        let image = Image(width: n, height: n, color: .white)
+        for y in 0 ..< n {
+            for x in 0 ..< n {
+                var tone = (Double(x) + Double(y)) / Double(2 * (n - 1))
+                let d = dist(Double(x), Double(y), Double(n) * 0.62, Double(n) * 0.4)
+                if d < Double(n) * 0.22 { tone = 0.08 }
+                image[x, y] = Color(white: tone)
+            }
+        }
+        let right = Rectangle(x: 136, y: 8, width: 112, height: 240)
+        let tones = isolines(of: image, at: [0.35, 0.55, 0.75], in: right, resolution: 96)
+        for group in tones {
+            for curve in group { drawPolyline(curve.points, closed: curve.isClosed) }
+        }
     }
 }
 

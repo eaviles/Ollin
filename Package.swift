@@ -645,6 +645,7 @@ let package = Package(
         example("Shapes/CornerCutting"),
         example("Shapes/SVGImport", resources: [.copy("rocket.svg")]),
         example("Patterns/Topography"),
+        example("Patterns/ContourMap"),
         example("Patterns/RidgeLines"),
         example("Patterns/Voronoi"),
         example("Patterns/BlueNoise"),
@@ -702,6 +703,7 @@ let package = Package(
         example("Images/PixelSort"),
         example("Images/SingleLine"),
         example("Images/SlitScan"),
+        example("Images/SpanningTree"),
         example("Audio/Spectrum", [.audio]),
         example("Audio/Microphone", [.audio]),
         // The bundled clip the sketch loads via Bundle.module (a launch path

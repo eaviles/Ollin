@@ -269,6 +269,8 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/LowDiscrepancy.md` (`haltonPoints`, `sobolPoints`) | Appendix D | pointed |
 | `Generators/Stippling.md` (`stipple`, weighted-Voronoi) | Appendix D | pointed |
 | `Generators/SingleLine.md` (`singleLine`, the TSP tour) | Appendix D (Ch 7 when it grows) | pointed |
+| `Generators/SpanningTree.md` (`spanningTree`, the MST rendering) | Appendix D (Ch 7 when it grows) | pointed |
+| `Generators/Isolines.md` (`isolines`, marching-squares level curves) | Appendix D (Ch 5 when it grows) | pointed |
 | `Drawing/GlyphMosaic.md` (`drawGlyphMosaic`, measured glyph ramps) | Appendix D (Ch 7 when it grows) | pointed |
 | `Drawing/PixelSorting.md` (`Image.pixelSorted`) | Appendix D (Ch 7 when it grows) | pointed |
 | `Drawing/Halftone.md` (`drawHalftone`, area-exact dot screens) | Appendix D (Ch 7 when it grows) | pointed |

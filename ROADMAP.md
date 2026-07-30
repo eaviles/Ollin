@@ -40,7 +40,6 @@ A tier of classic generative-art building blocks that emit vector geometry (poin
 - **Meshing and surfaces.** Marching cubes (turn a scalar field, metaballs, or a point cloud into a mesh), metaballs and implicit surfaces, and subdivision-surface smoothing (Catmull-Clark / Loop); these route to [3D mode](#3d-mode).
 - **Computational geometry.** Alpha shapes / concave hulls and the medial axis / straight skeleton, each feeding the shape booleans, hatching, and plotter paths.
 - **Painterly marks.** Generative watercolor (recursive polygon deformation under layered translucency, the recipe the [brush tier](#expressive-brushes-and-strokes) deliberately leaves to this catalog) and mathematical paper marbling (closed-form drop and tine-line transforms, pure contour deformation, so it stays vector and plotter-clean).
-- **Plotter line art.** A minimum-spanning-tree single-line rendering of an image, and contour extraction via marching squares (already used internally for SDF outlines, worth surfacing).
 
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 
