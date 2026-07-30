@@ -1415,6 +1415,51 @@ fragment float4 ollin_fx_gem_smoke(PresentOut in [[stage_in]],
     return ollin_pat_out(ollin_pat_over(smoke, bodyFill));
 }
 
+// MARK: - melt
+//
+// Luminance melt: one displacement field does double duty. A two-level domain
+// warp (the classic marble construction) yields a displacement vector; the
+// field is fbm read through that warp, and the *same* vector shifts where the
+// layer is sampled, so the picture smears along the field's own currents
+// while its brightness mixes back into the field before the palette ramp.
+// The sway offsets are low-amplitude sines at non-commensurate rates, so the
+// field churns in place instead of sliding as a sheet. (params[0]: scale,
+// liquify, blend, aspect; params[1]: warp, phase; params[2..5]: the four ramp
+// stops, dark to light.)
+fragment float4 ollin_fx_melt(PresentOut in [[stage_in]],
+                              texture2d<float> src [[texture(0)]],
+                              sampler samp [[sampler(0)]],
+                              constant float4 *params [[buffer(0)]]) {
+    float scale = params[0].x, liquify = params[0].y;
+    float blend = params[0].z, aspect = params[0].w;
+    float warp = params[1].x, phase = params[1].y;
+
+    float2 p = float2((in.uv.x - 0.5) * aspect, in.uv.y - 0.5) * (scale * 3.0);
+    float d1 = 1.8 * sin(phase * 0.12) + 1.2 * cos(phase * 0.067);
+    float d2 = 1.8 * cos(phase * 0.10) + 1.2 * sin(phase * 0.084);
+    float2 m1 = float2(d1, d2);
+    float2 m2 = float2(d2, -d1);
+    float2 q = float2(ollin_fbm(p + 0.5 * m1),
+                      ollin_fbm(p + float2(5.2, 1.3) + 0.5 * m2));
+    float2 disp = float2(ollin_fbm(p + warp * q + float2(1.7, 9.2) + m1),
+                         ollin_fbm(p + warp * q + float2(8.3, 2.8) + m2));
+    float f = clamp((ollin_fbm(p + warp * disp) - 0.5) * 1.5 + 0.5, 0.0, 1.0);
+    f = smoothstep(0.08, 0.92, f);
+
+    // The field's displacement liquifies the image; the liquified image's
+    // brightness steers the field.
+    float2 tuv = clamp(in.uv + (disp - 0.5) * liquify * 0.25, 0.0, 1.0);
+    float4 tap = src.sample(samp, tuv);
+    float3 straight = tap.a > 1e-4 ? tap.rgb / tap.a : tap.rgb;
+    float lum = ollin_luma(linearToSrgb(max(straight, 0.0)));
+    f = mix(f, lum, blend);
+
+    float4 c = ollin_pat_ramp(params + 2, 4, f);
+    c.rgb += smoothstep(0.72, 1.0, f) * 0.12 * c.a;   // soft highlight bloom
+    float alpha = mix(1.0, tap.a, blend);
+    return ollin_pat_out(c) * alpha;
+}
+
 // MARK: - Interior-inflation field (the alpha-shape filters' curvature proxy)
 //
 // Solves the pillow-inflation problem over the shape's interior: u satisfying

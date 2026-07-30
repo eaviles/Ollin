@@ -543,6 +543,10 @@ extension MetalRenderer {
                                           SIMD4(Float(phase), aspect, 0, 0),
                                           body] + colors, into: cb)
             return output
+        case let .melt(colors, scale, warp, liquify, blend, phase):
+            return pass("ollin_fx_melt", [input],
+                        [SIMD4(Float(scale), Float(liquify), Float(blend), aspect),
+                         SIMD4(Float(warp), Float(phase), 0, 0)] + colors)
         }
     }
 

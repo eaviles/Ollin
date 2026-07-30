@@ -222,7 +222,8 @@ The image-filter siblings of the [design-pattern generators](#generate), with th
 same conventions: animation is an explicit `phase` you feed `time`, and palettes
 blend in sRGB so designer colors read true. Three of them read the layer's
 **alpha shape** (draw a shape or logo into a transparent layer, then filter it),
-and the other three transform the whole layer. `Effects/DesignFilters` shows all six.
+and the others transform the whole layer. `Effects/DesignFilters` shows six of
+them; `Images/LuminanceMelt` shows the melt.
 
 - **`.liquidMetal(repetition:softness:dispersion:distortion:contour:angle:tint:phase:)`**
   render the alpha shape as flowing chrome: reflectance bands that compress and wrap
@@ -247,6 +248,14 @@ and the other three transform the whole layer. `Effects/DesignFilters` shows all
 - **`.paperTexture(paper:shading:contrast:roughness:fiber:crumples:folds:drops:seed:)`**
   lay the image onto a synthesized sheet of paper (tooth, fibers, crumple facets,
   fold creases, speckles), embossed by the same relief lighting. Static by design.
+- **`.melt(colors:scale:warp:liquify:blend:phase:)`** the luminance melt: the layer
+  liquified by a warped noise field and poured through a four-stop palette (dark to
+  light). One displacement does double duty, warping the field's own domain and
+  shifting where the layer is sampled, so the picture smears along the field's
+  currents while its brightness steers the field back. `liquify` is the smear,
+  `blend` how much the image leads (1 reads the liquified picture straight through
+  the palette), `warp` the turbulence, `scale` the field zoom. The picture survives
+  as light and shadow, not as its own colors; that dyed reading is the look.
 
 ```swift
 let logo = renderTarget()

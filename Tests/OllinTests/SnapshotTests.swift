@@ -283,6 +283,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("glyph-mosaic",
                  note: "A painted diagonal gradient with a bright disk, rebuilt as a glyph mosaic in the bundled bitmap font: dense marks in the bright corner and around the disk, a lone dot at the faint edge, true emptiness below the floor. Pins the measured ink ramp, the nearest-coverage selection, the empty floor, and the cell layout. No rng and no time, so it is deterministic.",
                  make: { GlyphMosaicScene() }),
+    SnapshotCase("halftone",
+                 note: "A painted tonal study (gradient, solid-ink disk, bare-paper disk) screened as vector halftone dots twice: the dark-ink reading on the left and the inverted light-ink reading on the right, both on a rotated screen. Pins the rotated-cell binning, the area-exact dot sizing through the edge-clipped branch, the printable-dot cutoff, and the inverted mapping. No rng and no time, so it is deterministic.",
+                 make: { HalftoneScene() }),
+    SnapshotCase("luminance-melt",
+                 note: "A painted tonal study (gradient plus a bright disk) poured through the luminance melt at a fixed phase. Pins the two-level domain warp, the shared displacement (field warp and image liquify from one vector), the luminance steer into the field, the four-stop sRGB ramp, and the highlight bloom. No rng and no time, so it is deterministic.",
+                 make: { LuminanceMeltScene() }),
     SnapshotCase("pixel-sort",
                  note: "A painted noisy gradient with guard bands, pixel-sorted vertically then horizontally inside a midtone window, drawn at 1:1 pixels. Pins the interval detection (runs bounded where brightness leaves the window), the brightness key, and the deterministic tie-break. Seeded paint, no time, so it is deterministic.",
                  make: { PixelSortScene() }),
@@ -1174,6 +1180,66 @@ private final class GlyphMosaicScene: Sketch {
         textFont(BitmapFont.builtin)
         fill(.white)
         drawGlyphMosaic(image, columns: 20, in: canvasRectangle.inset(by: 8))
+    }
+}
+
+/// A painted tonal study screened as vector halftone dots, the classic
+/// reading beside the inverted one, both on a rotated screen. No rng and no
+/// `time`, so it's deterministic.
+private final class HalftoneScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.93))
+        let n = 64
+        let image = Image(width: n, height: n, color: .white)
+        for y in 0 ..< n {
+            for x in 0 ..< n {
+                let u = Double(x) / Double(n - 1)
+                let v = Double(y) / Double(n - 1)
+                var tone = 0.15 + 0.75 * ((u + (1 - v)) / 2)
+                let da = ((u - 0.32) * (u - 0.32) + (v - 0.34) * (v - 0.34)).squareRoot()
+                if da < 0.2 { tone = 0.01 }   // solid ink: the corner-reaching cap
+                let db = ((u - 0.72) * (u - 0.72) + (v - 0.72) * (v - 0.72)).squareRoot()
+                if db < 0.16 { tone = 0.995 } // bare paper: the printable-dot cutoff
+                image[x, y] = Color(white: tone)
+            }
+        }
+        noStroke()
+        let left = Rectangle(x: 6, y: 66, width: 118, height: 124)
+        fill(Color(white: 0.12))
+        drawHalftone(image, pitch: 9, angle: 0.35, in: left)
+
+        let right = Rectangle(x: 132, y: 66, width: 118, height: 124)
+        fill(Color(white: 0.1))
+        drawRect(right.x, right.y, right.width, right.height)
+        fill(Color(white: 0.95))
+        drawHalftone(image, pitch: 9, angle: 0.35, in: right, inverted: true)
+    }
+}
+
+/// A painted tonal study poured through the luminance melt at a fixed phase.
+/// No rng and no `time`, so it's deterministic.
+private final class LuminanceMeltScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        let n = 64
+        let image = Image(width: n, height: n, color: .black)
+        for y in 0 ..< n {
+            for x in 0 ..< n {
+                let u = Double(x) / Double(n - 1)
+                let v = Double(y) / Double(n - 1)
+                var tone = 0.15 + 0.55 * (1 - v) + 0.15 * u
+                let d = ((u - 0.6) * (u - 0.6) + (v - 0.35) * (v - 0.35)).squareRoot()
+                if d < 0.18 { tone = 0.97 }
+                image[x, y] = Color(white: min(tone, 1))
+            }
+        }
+        let layer = renderTarget()
+        withTarget(layer) { drawImage(image, in: canvasRectangle) }
+        drawImage(layer.filtered(.melt(phase: 3)).image, in: canvasRectangle)
     }
 }
 

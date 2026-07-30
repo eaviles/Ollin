@@ -62,6 +62,8 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Pixels | Read and write any pixel with `image[x, y]`; build images from scratch | [Ch 7](07-WordsAndPictures.md) | [Images](../Docs/Drawing/Images.md) |
 | Glyph mosaic | A picture rebuilt as a grid of characters, each chosen by its measured ink in the active font | here | [GlyphMosaic](../Docs/Drawing/GlyphMosaic.md) |
 | Pixel sorting | Brightness-bounded runs of a picture's own pixels reordered into streaks, the classic glitch melt | here | [PixelSorting](../Docs/Drawing/PixelSorting.md) |
+| Halftone | A picture as the classic print dot screen: area-exact dots on a rotated grid, real circles for the plotter | here | [Halftone](../Docs/Drawing/Halftone.md) |
+| Luminance melt | A picture liquified by a warped noise field and poured through a palette, the `.melt` filter | here | [Effects](../Docs/Drawing/Effects.md) |
 
 ## Geometry you can hold
 

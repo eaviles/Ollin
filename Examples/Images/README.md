@@ -4,11 +4,13 @@
 
 ## Images
 
-Loading, drawing, tinting, and authoring raster images (the `Image` value type, `drawImage`, `tint`, and the `Image[x, y]` pixel subscript), plus the image-as-input renderings that turn a picture into glyphs, streaks, or a single line.
+Loading, drawing, tinting, and authoring raster images (the `Image` value type, `drawImage`, `tint`, and the `Image[x, y]` pixel subscript), plus the image-as-input renderings that turn a picture into glyphs, streaks, halftone dots, a single line, or a molten field.
 
 | Example | What it shows |
 |---|---|
 | [GlyphMosaic](GlyphMosaic/Sketch.swift) | a drifting field of light rebuilt as a grid of geometric marks, each cell's character chosen by its measured ink in the bundled bitmap font (`drawGlyphMosaic`, `GlyphSet`, a custom character set) |
+| [Halftone](Halftone/Sketch.swift) | a shaded still life as a print dot screen that swings through a quarter turn while the tone holds, the inverted reading on mouse hold, plotter-ready via `--export-svg` (`drawHalftone`, `pitch`, `angle`, `inverted`) |
+| [LuminanceMelt](LuminanceMelt/Sketch.swift) | a painted dusk seascape liquified by a warped noise field and poured through a four-stop palette, the source on mouse hold (`.melt`, `renderTarget`, `filtered`) |
 | [PixelField](PixelField/Sketch.swift) | a blank image painted pixel by pixel into a flowing colormap field, drawn under an animated warm↔cool `tint`, with a row of swatches read back with `get` (`Image(width:height:)`, `image[x, y]`, `tint`) |
 | [PixelSort](PixelSort/Sketch.swift) | a painted dusk skyline melted into falling streaks, the sort window breathing over the loop and a second axis on mouse hold (`Image.pixelSorted`, threshold intervals, `reversed`) |
 | [SingleLine](SingleLine/Sketch.swift) | a ringed planet drawn by one unbroken line that reveals and unwinds, stipple plus traveling-salesman tour, plotter-ready via `--export-svg` (`singleLine(of:points:)`, `cutoff`) |

@@ -692,6 +692,8 @@ let package = Package(
         example("Text/PointShimmer"),
         example("Text/JitterType"),
         example("Images/GlyphMosaic"),
+        example("Images/Halftone"),
+        example("Images/LuminanceMelt"),
         example("Images/PixelField"),
         example("Images/PixelSort"),
         example("Images/SingleLine"),

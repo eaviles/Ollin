@@ -225,17 +225,6 @@ public struct PrintSeparation {
         clampToPrintableDots(&plane)
         let cosA = cos(angle), sinA = sin(angle)
 
-        // Fraction of the cell a centered disk of radius rho (cell half-width
-        // 1) has covered: a quarter circle until it meets the edges, then the
-        // circle minus the four clipped segments, reaching 1 at the corners.
-        func coveredArea(_ rho: Double) -> Double {
-            if rho <= 0 { return 0 }
-            if rho >= 2.0.squareRoot() { return 1 }
-            let quarter = .pi * rho * rho / 4
-            if rho <= 1 { return quarter }
-            return quarter - rho * rho * acos(1 / rho) + (rho * rho - 1).squareRoot()
-        }
-
         for y in 0..<height {
             for x in 0..<width {
                 let px = Double(x) + 0.5, py = Double(y) + 0.5
@@ -243,7 +232,7 @@ public struct PrintSeparation {
                 let v = (-px * sinA + py * cosA) / pitch
                 let s = 2 * (u - u.rounded(.down)) - 1
                 let t = 2 * (v - v.rounded(.down)) - 1
-                let threshold = coveredArea((s * s + t * t).squareRoot())
+                let threshold = halftoneCoveredFraction((s * s + t * t).squareRoot())
                 let p = y * width + x
                 plane[p] = plane[p] > threshold ? 1 : 0
             }

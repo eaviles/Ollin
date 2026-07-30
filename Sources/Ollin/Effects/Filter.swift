@@ -212,6 +212,11 @@ public struct Filter: Sendable {
         case gemSmoke(colors: [SIMD4<Float>], body: SIMD4<Float>, innerSwirl: Double,
                       outerSwirl: Double, innerGlow: Double, outerGlow: Double,
                       offset: Double, scale: Double, angle: Double, phase: Double)
+        /// Luminance melt: the layer liquified by a warped noise field and
+        /// poured through a four-stop palette, its brightness steering the
+        /// field back.
+        case melt(colors: [SIMD4<Float>], scale: Double, warp: Double,
+                  liquify: Double, blend: Double, phase: Double)
     }
 
     let kind: Kind
@@ -820,6 +825,30 @@ public struct Filter: Sendable {
                                       outerGlow: min(max(outerGlow, 0), 1),
                                       offset: min(max(offset, -1), 1),
                                       scale: min(max(scale, 0), 1), angle: angle, phase: phase))
+    }
+
+    /// Luminance melt: the layer liquified by a warped noise field and poured
+    /// through a four-stop palette. One displacement does double duty: it
+    /// warps the field's own domain and shifts where the layer is sampled, so
+    /// the picture smears along the field's currents while its brightness
+    /// steers the field back. `liquify` is the smear amount, `blend` how much
+    /// the image leads the field (`1` reads the liquified photo straight
+    /// through the palette), `warp` the field's turbulence, `scale` its zoom.
+    /// `colors` is the ramp dark to light; `phase` animates the churn: feed
+    /// it your `time`.
+    public static func melt(colors: [Color] = [Color(hex: 0x0A0A1A), Color(hex: 0x3A1F7A),
+                                               Color(hex: 0xC84FE0), Color(hex: 0xFFE1F5)],
+                            scale: Double = 1.5, warp: Double = 4.5,
+                            liquify: Double = 0.8, blend: Double = 0.6,
+                            phase: Double = 0) -> Filter {
+        var stops = colors.isEmpty ? [Color(hex: 0x0A0A1A)] : Array(colors.prefix(4))
+        while stops.count < 4 { stops.append(stops[stops.count - 1]) }
+        return Filter(kind: .melt(colors: stops.map(\.linearRGBA),
+                                  scale: min(max(scale, 0.05), 7),
+                                  warp: min(max(warp, 0), 10),
+                                  liquify: min(max(liquify, 0), 2),
+                                  blend: min(max(blend, 0), 1),
+                                  phase: phase))
     }
 }
 
