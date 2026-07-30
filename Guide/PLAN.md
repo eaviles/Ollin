@@ -271,6 +271,8 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/SingleLine.md` (`singleLine`, the TSP tour) | Appendix D (Ch 7 when it grows) | pointed |
 | `Generators/SpanningTree.md` (`spanningTree`, the MST rendering) | Appendix D (Ch 7 when it grows) | pointed |
 | `Generators/Isolines.md` (`isolines`, marching-squares level curves) | Appendix D (Ch 5 when it grows) | pointed |
+| `Generators/Hulls.md` (`concaveHull` / `alphaShape`) | Appendix D (Ch 13 when it grows) | pointed |
+| `Generators/MedialAxis.md` (`medialAxis`, skeletons with radii) | Appendix D (Ch 13 when it grows) | pointed |
 | `Drawing/GlyphMosaic.md` (`drawGlyphMosaic`, measured glyph ramps) | Appendix D (Ch 7 when it grows) | pointed |
 | `Drawing/PixelSorting.md` (`Image.pixelSorted`) | Appendix D (Ch 7 when it grows) | pointed |
 | `Drawing/Halftone.md` (`drawHalftone`, area-exact dot screens) | Appendix D (Ch 7 when it grows) | pointed |
@@ -353,7 +355,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Technique catalog: waves, terrain | Ch 16/17 |
 | Technique catalog: tiling/layout families | Ch 6 |
 | Technique catalog: meshing (marching cubes, metaballs) | Ch 17 |
-| Technique catalog: computational geometry | Ch 13 |
 | Technique catalog: painterly marks | Ch 13 |
 | Expressive brushes and strokes | Ch 13 |
 | Project generator | Ch 1 |

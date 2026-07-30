@@ -286,6 +286,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("isolines",
                  note: "Level curves two ways: a two-blob metaball field traced at rising levels on the left (outer rings merged, the tightest level split in two), and the tone lines of a painted diagonal gradient with a dark disk on the right. Pins the marching-squares case table, the cell-average saddle rule, the open-chain stitching against the bounds, and the image tone sampling. No rng and no time, so it is deterministic.",
                  make: { IsolineScene() }),
+    SnapshotCase("concave-hull",
+                 note: "A dotted ring with an offshore cluster wrapped three ways: the alpha shape filled (two islands, the ring keeping its hole), the concave hull stroked dipping into the gulf between them, and the convex hull faint behind. Pins the chi-shape erosion order and its opposite-vertex stop, the hull-notch capping, and the alpha complex's island and hole resolution. Seeded, no time, so it is deterministic.",
+                 make: { ConcaveHullScene() }),
+    SnapshotCase("medial-axis",
+                 note: "A wobbly blob with an off-center hole reduced to its skeleton: branches stroked over the faint outline, a closed ring around the hole, and inscribed circles riding the carried radii. Pins the Voronoi-subcomplex extraction (ring-neighbor filter and inside test), the twig pruning, and the branch decomposition with its canonical ordering. Seeded, no time, so it is deterministic.",
+                 make: { MedialAxisScene() }),
     SnapshotCase("glyph-mosaic",
                  note: "A painted diagonal gradient with a bright disk, rebuilt as a glyph mosaic in the bundled bitmap font: dense marks in the bright corner and around the disk, a lone dot at the faint edge, true emptiness below the floor. Pins the measured ink ramp, the nearest-coverage selection, the empty floor, and the cell layout. No rng and no time, so it is deterministic.",
                  make: { GlyphMosaicScene() }),
@@ -1246,6 +1252,96 @@ private final class IsolineScene: Sketch {
         let tones = isolines(of: image, at: [0.35, 0.55, 0.75], in: right, resolution: 96)
         for group in tones {
             for curve in group { drawPolyline(curve.points, closed: curve.isClosed) }
+        }
+    }
+}
+
+/// A dotted ring plus an offshore cluster, outlined by all three hulls.
+/// Seeded and no `time`, so it's deterministic.
+private final class ConcaveHullScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var scatter: [Vector2] = []
+
+    override func setup() {
+        seed(7)
+        let hub = Vector2(112, 138)
+        for band in 0 ..< 3 {
+            let radius = 56.0 + Double(band) * 15
+            let count = Int(radius * .tau / 15)
+            for i in 0 ..< count {
+                let angle = Double(i) / Double(count) * .tau + random(-0.05, 0.05)
+                let r = radius + random(-5, 5)
+                scatter.append(hub + Vector2(cos(angle), sin(angle)) * r)
+            }
+        }
+        let island = Vector2(210, 52)
+        for _ in 0 ..< 16 {
+            scatter.append(island + ring(innerRadius: 0, outerRadius: 22))
+        }
+    }
+
+    override func draw() {
+        background(Color(hex: 0x101318))
+        noStroke()
+        fill(Color(hex: 0x232E44))
+        for islandShape in alphaShape(of: scatter, alpha: 24) {
+            drawShape(islandShape)
+        }
+        noFill()
+        stroke(Color(hex: 0x4A5468))
+        strokeWeight(1)
+        drawPolygon(convexHull(of: scatter))
+        stroke(Color(hex: 0xE8B44A))
+        strokeWeight(1.6)
+        drawPolygon(concaveHull(of: scatter, concavity: 0.6))
+        noStroke()
+        fill(Color(hex: 0x8B97AB))
+        drawCircles(scatter, radius: 1.6)
+    }
+}
+
+/// A wobbly blob with an off-center hole, reduced to its skeleton with the
+/// inscribed circles the axis carries. Seeded and no `time`, so it's
+/// deterministic.
+private final class MedialAxisScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var blob = Shape(contours: [])
+    private var skeleton = MedialAxis(branches: [])
+
+    override func setup() {
+        seed(9)
+        let center = Vector2(126, 130)
+        let outer = (0 ..< 40).map { i in
+            let angle = Double(i) / 40 * .tau
+            let r = 92 + signedNoise(Double(i) * 0.35) * 18
+            return center + Vector2(cos(angle), sin(angle)) * r
+        }
+        let hole = (0 ..< 24).map { i in
+            let angle = Double(i) / 24 * .tau
+            let r = 26 + random(-2, 2)
+            return center + Vector2(34, -10) + Vector2(cos(angle), sin(angle)) * r
+        }
+        blob = Shape(outer: outer, holes: [hole])
+        skeleton = medialAxis(of: blob, spacing: 3, prune: 10)
+    }
+
+    override func draw() {
+        background(Color(hex: 0xF5F2EA))
+        noFill()
+        stroke(Color(hex: 0x1A1B26).withAlpha(0.35))
+        strokeWeight(1)
+        drawShape(blob)
+        stroke(Color(hex: 0x1A1B26))
+        strokeWeight(1.6)
+        for branch in skeleton.branches {
+            drawPolyline(branch.points, closed: branch.isClosed)
+        }
+        strokeWeight(0.6)
+        for branch in skeleton.branches {
+            for (i, pair) in zip(branch.points, branch.radii).enumerated()
+            where pair.1 > 5 && i % 5 == 0 {
+                drawCircle(center: pair.0, radius: pair.1)
+            }
         }
     }
 }

@@ -495,6 +495,12 @@ let wobbled = shape.mapPoints { $0 + Vector2(0, signedNoise($0.x * 0.01, time) *
 drawShape(wobbled)
 ```
 
+**Point-in-shape test.** `contains(_:)` reports whether a point lies inside the filled region, honoring the shape's `winding` rule, with every contour treated as closed the way a fill treats an outline. It's the hit-test for "did the click land in the blob" and the membership test scatter algorithms build on. A point exactly on an edge may land on either side (it's a floating-point ray test), so don't lean on the boundary itself:
+
+```swift
+if shape.contains(Vector2(mouseX, mouseY)) { fill(.red) }
+```
+
 <a name="shape-booleans"></a>
 
 **Set operations.** Two shapes combine like sets, each call returning a new `Shape`:
@@ -580,6 +586,8 @@ func convexHull(of points: [Vector2]) -> [Vector2]
 ```
 
 Returns the hull's corners in order around the boundary (collinear points along an edge are dropped, and fewer than three distinct points return what there is). The result is an ordinary point list, so `drawPolygon` it, wrap it in a `Contour` to stroke or offset it, or use it as a coarse "footprint" for a scatter of marks. The `Examples/Shapes/RubberBand` sketch recomputes the hull of a drifting herd every frame.
+
+When the rubber band bridges too much, the tighter wraps live on the [`Hulls`](../Generators/Hulls.md) page: `concaveHull` (one simple polygon that dips into the gulfs) and `alphaShape` (the scatter's true footprint, islands and holes included).
 
 <a name="path"></a>
 

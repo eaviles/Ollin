@@ -153,3 +153,33 @@ public struct Shape: Equatable, Sendable {
               winding: winding)
     }
 }
+
+public extension Shape {
+    /// Whether `point` lies inside the filled region, honoring the shape's
+    /// `winding` rule (even-odd crossings, or the non-zero winding number).
+    /// Every contour is treated as closed, the same way a fill treats an
+    /// outline. A point exactly on an edge may land on either side (it's a
+    /// floating-point ray test), so don't lean on the boundary itself.
+    func contains(_ point: Vector2) -> Bool {
+        var crossings = 0
+        var windingNumber = 0
+        for contour in contours {
+            let pts = contour.points
+            guard pts.count >= 3 else { continue }
+            for i in pts.indices {
+                let a = pts[i]
+                let b = pts[(i + 1) % pts.count]
+                // Count crossings of the ray running +x from `point`, using
+                // the half-open vertex rule so a ray through a corner never
+                // double-counts.
+                guard (a.y > point.y) != (b.y > point.y) else { continue }
+                let t = (point.y - a.y) / (b.y - a.y)
+                if a.x + (b.x - a.x) * t > point.x {
+                    crossings += 1
+                    windingNumber += b.y > a.y ? 1 : -1
+                }
+            }
+        }
+        return winding == .evenOdd ? crossings % 2 == 1 : windingNumber != 0
+    }
+}

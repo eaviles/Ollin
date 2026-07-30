@@ -17,8 +17,10 @@ The shape-drawing vocabulary: every primitive, the stroke and hollow modes, and 
 | [CombinatorsStretch](CombinatorsStretch/Sketch.swift) | per-axis sizing of a merged SDF field: an exact `stretched` elongation beside a non-uniform `scaled(x:y:)` bound (`drawSDF`) |
 | [CornerCutting](CornerCutting/Sketch.swift) | Chaikin corner cutting live: a spiky burst relaxing into a flowing blob over its raw ghost, and an open zigzag whose endpoints never move, with the passes on a knob (`smoothed(iterations:)`) |
 | [HollowShapes](HollowShapes/Sketch.swift) | a grid of shapes breathing from solid into framed hollow rings (`hollow`/`solid`, SDF) |
+| [Hulls](Hulls/Sketch.swift) | three answers to "what shape are these points?": the convex hull faint, the concave hull breathing from loose to tight, and the alpha shape resolving islands and a hole neither hull can express (`concaveHull`/`alphaShape`/`convexHull`) |
 | [InkRibbon](InkRibbon/Sketch.swift) | stroke as shape: a drifting brush line stroked into a real region (`stroked`), then inset again and again so contour bands ring inside the ribbon (`offset`) |
 | [Markers](Markers/Sketch.swift) | the five `drawPoint` markers, one per row, swept across sizes (`pointMarker`, SDF) |
+| [MedialAxis](MedialAxis/Sketch.swift) | letterforms reduced to their bones: each glyph's skeleton stroked, inscribed circles riding the carried radii, and a bead rolling along each bone at the letter's local thickness (`medialAxis`) |
 | [NamedPolygons](NamedPolygons/Sketch.swift) | the named regular polygons turning in a labeled row (`drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`, SDF) |
 | [Primitives](Primitives/Sketch.swift) | every `draw*` primitive, one per cell, turning slowly: a reference sheet for the whole drawing vocabulary |
 | [RubberBand](RubberBand/Sketch.swift) | convex hull: the rubber band around a drifting herd of points, recomputed each frame, corners lit, the band itself a stroked region (`convexHull`, `stroked`) |

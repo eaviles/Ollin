@@ -1738,6 +1738,73 @@ the stipple/`cutoff` convention. Examples `Patterns/ContourMap` (looping
 fbm terrain, index contours); snapshot `isolines` (metaball merge/split +
 image tone lines); `IsolineTests`.
 
+### Hulls and the medial axis
+
+`Geometry/ConcaveHull.swift` holds the two tighter scatter outlines, both
+carved from the shared Bowyer-Watson `Delaunay`. `concaveHull(of:concavity:)`
+is the characteristic shape (chi-shape) of Duckham, Kulik, Worboys, and
+Galton: the starting boundary is the triangulation's outer edge, and border
+triangles erode longest-boundary-edge-first through a max-heap, each pop
+allowed only while the edge exceeds a length threshold and the triangle's
+opposite vertex is not already on the boundary. That single stop rule is
+what keeps the polygon simple and every input point inside, and it makes
+each edge a one-shot decision (boundary vertices never leave the boundary,
+so a blocked edge stays blocked). The public knob inverts the JTS-style
+edge-length ratio into `concavity` 0...1, interpolating the threshold
+between the triangulation's longest and shortest edge, so it reads
+scale-free.
+
+One repair proved load-bearing: the shared `Delaunay` builds against a
+finite super-triangle (20x the input span), and a nearly collinear hull
+triple has a circumcircle that reaches that scale, so the sliver triangle
+can drop out of the mesh and leave the boundary with a shallow notch (a
+real case: a point 0.35 units inside a hull edge on a 400-unit scatter,
+found the day the suite pinned "concavity 0 equals `convexHull`"). Rather
+than touch the substrate (whose exact output existing snapshots pin),
+`capHullNotches` compares the mesh boundary against `convexHull(of:)`,
+walks each notch path, and caps it with a fan of sliver triangles before
+erosion starts. Zero concavity then reproduces the convex hull exactly,
+and a cap erodes away like any border triangle the moment the knob turns,
+so higher concavities are untouched. `HullTests` keeps the seed-7 scatter
+that first exposed the notch as the regression.
+
+`alphaShape(of:alpha:)` is Edelsbrunner's alpha complex in its standard
+form: keep the triangles whose circumradius is at most `alpha`, orient
+them counterclockwise, and link the edges owned by exactly one kept
+triangle into loops (at a pinch vertex the walk takes the clockwise-most
+departure relative to the reversed arrival, which keeps each loop on its
+own face). Union-find over shared edges groups kept triangles into
+islands; each island's loops sort largest-area-first, so a `Shape` comes
+back outer contour first with its holes after.
+
+`Geometry/MedialAxis.swift` approximates Blum's medial axis as the Voronoi
+subcomplex of a boundary sampling (Brandt-Algazi): every contour resamples
+at `spacing`, the samples triangulate, and the Voronoi edge between two
+adjacent triangles survives when its dual Delaunay edge joins samples that
+are not neighbors along their ring and both circumcenters pass the new
+winding-honoring `Shape.contains(_:)` (tested against the resampled
+domain, so the test and the triangulation agree). Each skeleton vertex is
+a circumcenter whose circumradius is exactly its clearance, which is what
+makes the carried radii honest inscribed-disk radii. The graph decomposes
+into branches between degree-not-2 vertices plus leftover pure rings (a
+hole's skeleton), and `prune` trims terminal twigs shorter than the knob.
+Pruning collects each round's twigs against the round-start graph and only
+then removes them together: the first cut removes a twig, drops its
+junction to degree 2, and a same-round sibling walk would run straight
+past the vanished junction down the trunk (a real bug, caught by the
+rectangle's roof-ridge test). A twig that is its own component never
+prunes, so small regions keep their skeletons.
+
+All three functions canonicalize their output by geometry rather than
+construction order, because the substrate's triangle *order* is
+process-varying (the Bowyer-Watson refan iterates a Dictionary) even
+though the triangle *set* is stable: hull loops rotate to their
+lexicographically smallest vertex, alpha islands sort by their outer
+points, and skeleton branches orient and sort by their endpoints. Examples
+`Shapes/Hulls` (the three-outline scatter) and `Shapes/MedialAxis`
+(letterform skeletons with rolling inscribed disks); snapshots
+`concave-hull` / `medial-axis`; `HullTests` / `MedialAxisTests`.
+
 ### Random walks
 
 `Geometry/Walks.swift`. `randomWalk(from:steps:stepLength:)` is isotropic.

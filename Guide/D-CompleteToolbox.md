@@ -105,6 +105,8 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Single-line drawing | One unbroken tour through a stipple: the picture as a single closed line (TSP art) | here | [SingleLine](../Docs/Generators/SingleLine.md) |
 | Spanning-tree drawing | The same stipple joined by the minimum spanning tree: the picture as branching veins | here | [SpanningTree](../Docs/Generators/SpanningTree.md) |
 | Isolines | Level curves of any field or an image's tone (marching squares): metaball outlines, contour maps | here | [Isolines](../Docs/Generators/Isolines.md) |
+| Hulls | The tighter wraps around a scatter: the concave hull (one gulf-hugging simple polygon) and the alpha shape (islands and holes) | here | [Hulls](../Docs/Generators/Hulls.md) |
+| Medial axis | A shape reduced to its skeleton, every point carrying its inscribed-disk radius | here | [MedialAxis](../Docs/Generators/MedialAxis.md) |
 | Random walks | The walk family: the local tangle, the Lévy cluster-and-leap, the self-avoiding single stroke | [Ch 4](04-Randomness.md) | [Walks](../Docs/Generators/Walks.md) |
 | Circle packing | Grow-to-touch packings, seeded and reproducible | [Ch 13](13-ShapesAsMaterial.md) | [Packing](../Docs/Generators/Packing.md) |
 | Shape packing | Packing that nestles arbitrary outlines into notches and gaps | [Ch 13](13-ShapesAsMaterial.md) | [ShapePacking](../Docs/Generators/ShapePacking.md) |
