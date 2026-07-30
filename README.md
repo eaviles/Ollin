@@ -1,36 +1,19 @@
 # Ollin
 
-**Motion-first creative coding for Swift, rendered with Metal.**
+**A comprehensive creative-coding framework for Swift, rendered with Metal.**
 
-*Ollin* (OH-leen) is the Aztec glyph for **movement**, the seventeenth day sign of the calendar, and the name says what the framework is about, because in Ollin sketches **move by default**. The draw loop runs continuously at the display's refresh rate from the very first line of code, so animation is never something you switch on, and `noLoop()` is the rare still-image escape hatch. The API borrows the friendly `setup()`/`draw()` feel of [p5.js](https://p5js.org), the typed core of [OPENRNDR](https://openrndr.org), and the simple structure of [openFrameworks](https://openframeworks.cc), reimplemented in Swift idioms rather than ported (see [Influences & attribution](#influences--attribution)).
+[Guide](Guide/README.md) · [Docs](Docs/README.md) · [Examples](Examples/) · [Roadmap](ROADMAP.md) · [Architecture](ARCHITECTURE.md)
+
+Ollin is the whole creative-coding toolkit as one typed Swift API. The techniques you reach for are already in it, from Voronoi and L-systems to raymarched signed-distance fields, GPU fluids, and on-device computer vision. The renderer sits directly on Metal and composites in linear light. The tooling around it, live reload and a typed parameter inspector and deterministic headless export, is built for finishing work rather than demoing it.
+
+The API borrows the friendly `setup()`/`draw()` feel of [p5.js](https://p5js.org), the typed core of [OPENRNDR](https://openrndr.org), and the simple structure of [openFrameworks](https://openframeworks.cc), reimplemented in Swift idioms rather than ported (see [Influences & attribution](#influences--attribution)). *Ollin* (OH-leen) is the Aztec glyph for movement, the seventeenth day sign of the calendar.
 
 - **Platform:** macOS 26+, Swift 6+; Apple platforms only, [by design](#why-apple-only)
 - **Rendering:** Metal, built on Foundation / SwiftUI / MetalKit / simd; no package dependencies, just a little vendored source ([details](ATTRIBUTION.md#bundled-third-party-code))
 - **License:** MIT
 - **Built with:** an AI coding assistant (Claude) under [@eaviles](https://github.com/eaviles)'s direction; see [Built with AI](#built-with-ai)
 
-> **Status: alpha, pre-1.0, built in public.** Everything documented below runs today, but the project is young: names and APIs still change between commits, and there's no stability or support guarantee yet. See [Status & contributing](#status--contributing).
-
-## Features
-
-- **Motion by default.** `draw()` runs at the display's refresh rate from the first line, so `120 + sin(time) * 40` is already an animation, and `time`, `frameCount`, and `deltaTime` are ready in every sketch.
-- **Live reload.** `swift run OllinLive Sketch.swift` watches the file and hot-swaps each save into the running window, and a typo never closes it. `@Param` properties become typed inspector controls (sliders, steppers, toggles, menus, color wells) in grouped cards, and they keep their values across reloads.
-- **Live coding on stage.** `swift run OllinLiveCoding` is a performance instrument: the sketch fills the window, the code rides over it as translucent text, and ⌘↩ recompiles the buffer mid-motion, with the clock and tuned knobs carrying across the swap. A typo shows as a strip at the bottom while the last good sketch keeps playing.
-- **A Metal core.** Most shapes render as analytic signed-distance fields (one instanced quad each, so thousands of moving shapes stay cheap), strokes carry their own anti-aliasing fringe, and every frame composites in linear light with HDR tone-mapping, dithered output, and up to 8× MSAA.
-- **A deep 2D catalog.** Some thirty shapes from circles to stars to hearts, curved paths, concave and holed fills, shape booleans and offsets, gradient paint on everything, blend modes, and `noClear()` accumulation for long-exposure looks.
-- **Shapes that merge.** SDF combinators: smooth union, subtract, morph, machined joints and carpentry detailing (chamfer, stairs, columns, engrave/groove/tongue), and domain mirror/tile/radial via `drawSDF`, a scoped `smoothUnion { }` block, or the clay-like `sculpt { }` block (`add()`/`carve()`/`blend()` as live state), in 2D and in raymarched 3D with shadows. The 3D side sculpts too, with twist, bend, surface displacement, and free-point armature strokes.
-- **Generative geometry.** Voronoi and Delaunay, Poisson-disk scatter, circle and shape packing, L-systems, differential growth, Wave Function Collapse, flow-field streamlines, boids flocking, Truchet tiles, hex and triangle grids, recursive subdivision, mazes, the Apollonian gasket, strange attractors, and the classic-curve canon (phyllotaxis, Lissajous, roses, the spirograph gears, the harmonograph, Chaikin smoothing).
-- **Layered effects.** Off-screen layers with fifty-plus GPU filters (bloom, halftone, glitch, oil paint, …), two-layer combines (mask, displace, depth-of-field, ambient occlusion, screen-space reflections), feedback layers, and GPU simulation fields (reaction-diffusion, Game of Life, real-time fluid), all declarable as one `compose { }` block.
-- **Your own shaders.** Write a `shade(uv, info)` fragment function, inline or in a hot-reloading `.metal` file, and run it as a generator, filter, or blend, with a built-in helper library and compile errors reported at your own line numbers. Or skip the Metal and *chain*: `Visual` composes oscillators, noise, shapes, and layers through warps, blends, and modulations, one GPU pass however deep the chain grows.
-- **GPU compute.** A million particles updated and drawn each frame without touching the CPU, plus ping-pong texture simulations drawn as images.
-- **Opt-in 3D.** Orbit and cinematic cameras, a solid-primitive catalog plus meshes from file (OBJ, glTF, USDZ, …), point clouds, stylized and physically based materials, image-based lighting from bundled HDRIs or a procedural sky, soft shadows, and ray-traced reflections and shadows on RT GPUs. A 2D sketch never pays for any of it.
-- **Text and color.** Bitmap, outline, and single-line plotter fonts through one `drawText`, text as vector `Shape`s, OKLab color mixing, palettes, colormaps, and gradients.
-- **Computer vision.** Sixteen on-device trackers over the Mac's camera or any video: face, hand, and body pose (2D and 3D), segmentation, contours, optical flow, OCR, saliency, and custom Core ML models.
-- **An iPhone as a sensor array.** LiDAR depth clouds, ARKit body and face capture, person segmentation, and device motion, streamed to the Mac over USB by Ollin's own capture app.
-- **Sound and control.** FFT audio analysis with band and beat detection, MIDI and OSC in and out (all bindable to `@Param` knobs), and motion locked to MIDI clock so a set runs on the DJ's tempo.
-- **Physics.** A stepped `World` with Verlet particles and springs on the soft side, and Box2D bodies, colliders, and joints on the rigid side.
-- **Plays in your rig.** Syphon out and in, a system-wide virtual camera any webcam app can read, and video playback as live GPU textures.
-- **Export everything.** Headless PNG stills and deterministic sequences, MP4 and GIF straight from the CLI, and vector SVG and PDF (with optional hatched fills) for pen plotters and true-to-size print.
+> **Status: alpha, pre-1.0, built in public.** The rendering, the color, and the output are production-grade. The API is not frozen yet. Everything documented below runs today, but names and signatures still change between commits, and there's no stability or support guarantee. See [Status & contributing](#status--contributing).
 
 ## Hello, circle
 
@@ -68,9 +51,9 @@ That builds the package and opens a window with the breathing circle above. More
 
 The canvas is 1080×1080 by default, previewed fit to your screen. `canvasSize` sets the resolution a sketch renders and exports at, and `windowMode` sizes the preview window. The [Canvas](Docs/Core/Canvas.md) page covers the presets and how to write resolution-independent sketches.
 
-## Install
+### Install
 
-Add Ollin to your own package:
+To use Ollin from your own package:
 
 ```swift
 // Package.swift
@@ -84,6 +67,73 @@ targets: [
     )
 ]
 ```
+
+A sketch doesn't need a package at all, though. One loose `.swift` file is a whole sketch: see [Single-file sketches](Docs/Tools/SingleFile.md), or the [Live reload](#live-reload) section below.
+
+## Why Ollin exists
+
+<!--
+  PLACEHOLDER: @eaviles to write. Target 150-250 words, three short paragraphs.
+  Delete the visible placeholder line below when this is filled in.
+
+  Prompts to answer:
+    - What were you making when you hit the wall, and what actually stopped you?
+    - Was there a specific moment? A piece you couldn't finish, an export you lost,
+      a set that broke mid-performance.
+    - What did you get tired of rebuilding?
+    - Why Swift, when you already had a working practice somewhere else?
+    - Who else do you picture using this?
+
+  Decisions already in the repo that this section can point at, since each one
+  only gets made by someone solving a real problem:
+    - plotter SVG with hatching, riso separations, true-to-size PDF
+        -> the work is meant to end up on paper
+    - Syphon both directions, a virtual camera, MIDI clock sync, the live-coding host
+        -> the work gets performed, inside a rig other people already run
+    - seeds recorded in every export, contact sheets, reproducibility recipes
+        -> a good result is worthless if you can't get it back
+    - the sheer breadth of the technique catalog
+        -> tired of reimplementing the same things before starting
+    - sixteen vision trackers and a custom iPhone capture app
+        -> the room belongs in the work
+
+  Voice: written as the one first-person section on the page (everything else is
+  third person). End it with a short signed line so the shift reads as deliberate.
+  If you'd rather keep the whole page third person, rewrite as "@eaviles built..."
+  and drop the signature.
+-->
+
+> **[Placeholder: the origin story goes here.]**
+
+## What's in it
+
+Coverage is the point. Whatever you reach for is already here, in one typed API, with the same conventions throughout.
+
+- **Built to finish work.** Every frame composites in linear light with HDR tone-mapping, dithered output, analytic anti-aliasing, and up to 8× MSAA. Color is OKLab with real gamut mapping, not HSB approximations. Exports are deterministic and carry a reproducibility recipe: the seed, the parameter values, the commit. Rendering is snapshot-tested against committed reference images.
+- **The edit-to-see loop is instant.** `swift run OllinLive Sketch.swift` watches the file and hot-swaps each save into the running window, and a typo never closes it. `@Param` properties become typed inspector controls (sliders, steppers, toggles, menus, color wells) in grouped cards, and they keep their values across reloads.
+- **Live coding on stage.** `swift run OllinLiveCoding` is a performance instrument: the sketch fills the window, the code rides over it as translucent text, and ⌘↩ recompiles the buffer mid-motion, with the clock and tuned knobs carrying across the swap. A typo shows as a strip at the bottom while the last good sketch keeps playing.
+- **A Metal core with no ceiling.** Most shapes render as analytic signed-distance fields (one instanced quad each, so thousands of moving shapes stay cheap), strokes carry their own anti-aliasing fringe, frames composite through an [HDR float pipeline](Docs/Drawing/HDR.md), and when you outgrow the built-ins you write your own fragment shader or compute kernel without leaving the framework.
+- **Motion is the default, and it's handled.** `draw()` runs at the display's refresh rate from the first line, so `120 + sin(time) * 40` is already an animation. Underneath that sits a real motion layer: frame-rate-independent easing and springs, keyframe timelines, input smoothing, noise that closes exactly over a lap, perfect-loop export, and motion locked to MIDI clock.
+- **Output that leaves the screen.** Headless PNG stills and deterministic sequences, MP4 and GIF straight from the CLI, vector SVG and PDF with optional hatched fills for pen plotters, and [print separations](Docs/Output/PrintSeparations.md) with a real ink model for riso and screen printing.
+
+### The catalog
+
+Everything below ships in this repository, first-party, with consistent conventions. Each row links to its reference page.
+
+| Area | What's in it |
+| --- | --- |
+| [**Shapes & geometry**](Docs/Drawing/Drawing.md) | Some thirty analytic shapes from circles to stars to hearts, curved paths, concave and holed fills, [booleans and offsets](Docs/Drawing/Geometry.md), [gradient paint](Docs/Drawing/Geometry.md) on everything, blend modes, clipping, [SVG import](Docs/Drawing/SVG.md), `noClear()` [accumulation](Docs/Drawing/Accumulation.md) for long-exposure looks, and [retained batches](Docs/Drawing/Batches.md) when static content gets heavy |
+| [**Shapes that merge**](Docs/Drawing/Combinators.md) | SDF combinators: smooth union, subtract, morph, machined joints, carpentry detailing, domain mirror/tile/radial, via `drawSDF`, a scoped `smoothUnion { }` block, or the clay-like `sculpt { }` block. In 2D and in raymarched 3D, where the same fields twist, bend, and take surface displacement |
+| [**Generative technique**](Docs/README.md) | [Voronoi and Delaunay](Docs/Drawing/Voronoi.md), [Poisson-disk scatter](Docs/Generators/BlueNoise.md), [low-discrepancy sampling](Docs/Generators/LowDiscrepancy.md), [circle](Docs/Generators/Packing.md) and [shape packing](Docs/Generators/ShapePacking.md), [stippling](Docs/Generators/Stippling.md), [L-systems](Docs/Generators/LSystem.md), [differential growth](Docs/Generators/DifferentialGrowth.md), [space colonization](Docs/Generators/SpaceColonization.md), [diffusion-limited aggregation](Docs/Generators/DiffusionLimitedAggregation.md), [Wave Function Collapse](Docs/Generators/WaveFunctionCollapse.md), [flow fields](Docs/Generators/FlowField.md), [boids](Docs/Generators/Boids.md) and [steering](Docs/Generators/Steering.md), [random walks](Docs/Generators/Walks.md), [Truchet](Docs/Drawing/Truchet.md), [hex and triangle grids](Docs/Drawing/Tiling.md), subdivision, mazes, the Apollonian gasket, [strange attractors](Docs/Drawing/Attractors.md), [cellular automata](Docs/Generators/CellularAutomata.md), [classic curves](Docs/Drawing/Curves.md), [Fourier epicycles](Docs/Drawing/Epicycles.md), [shape morphing](Docs/Drawing/Morphing.md), and seedable [randomness](Docs/Generators/Random.md) |
+| [**Layered effects**](Docs/Drawing/Effects.md) | Off-screen layers with fifty-plus GPU filters, two-layer combines (mask, displace, depth of field, ambient occlusion, screen-space reflections), feedback layers, and GPU simulation fields, all declarable as one `compose { }` block |
+| [**Your own shaders**](Docs/Shaders/Shaders.md) | Write a `shade(uv, info)` fragment function inline or in a hot-reloading `.metal` file, with compile errors reported at your own line numbers and a [built-in helper library](Docs/Shaders/ShaderLibrary.md) spliced in. Or skip the Metal and chain: [`Visual`](Docs/Shaders/Visuals.md) composes oscillators, noise, shapes, and layers through warps, blends, and modulations, in one GPU pass however deep it grows |
+| [**GPU compute**](Docs/Shaders/Compute.md) | A million particles updated and drawn each frame without touching the CPU, a cooperative neighbor-search primitive underneath [artificial life](Docs/Simulation/ArtificialLife.md) and SPH fluids, and ping-pong texture simulations drawn as images |
+| [**3D**](Docs/3D/3D.md) (opt-in) | Orbit and [cinematic cameras](Docs/3D/Camera.md), a solid-primitive catalog plus meshes from file (OBJ, glTF, USDZ), point clouds, stylized and physically based materials, image-based lighting from bundled HDRIs or a procedural sky, soft shadows, and ray-traced reflections on RT GPUs. 2D drawing sits inside the depth buffer via [depth compositing](Docs/3D/DepthCompositing.md), and [Combining 3D features](Docs/3D/Combining.md) covers how the pieces stack. A 2D sketch never pays for any of it |
+| [**Simulation & physics**](Docs/Simulation/Physics.md) | A stepped `World` with Verlet particles and springs on the soft side, Box2D bodies and joints on the rigid side, plus [SPH fluids and soft bodies](Docs/Simulation/Fluids.md), reaction-diffusion, Lenia, Game of Life, and real-time fluid on the GPU, and [articulated and chaotic motion](Docs/Simulation/Motion.md) for IK chains, pendulums, and n-body gravity |
+| [**Perception**](Docs/Vision/Vision.md) | Sixteen on-device trackers over the Mac's camera or any [video](Docs/Video/Video.md): face, hand, and body pose in 2D and 3D, segmentation, contours, optical flow, OCR, saliency, and custom Core ML models. An [iPhone](Docs/3D/Phone.md) extends that with LiDAR depth clouds, ARKit body and face capture, and device motion over USB, live or from [recorded clips](Docs/3D/Record3D.md), all as metric [RGBD frames](Docs/3D/RGBD.md) |
+| [**Sound & control**](Docs/Helpers/Audio.md) | FFT analysis with band and beat detection, [MIDI](Docs/Integration/MIDI.md) and [OSC](Docs/Integration/OSC.md) in and out (bindable to `@Param` knobs), and tempo sync so a set runs on the DJ's clock |
+| [**Text & color**](Docs/Drawing/Text.md) | Bitmap, outline, and single-line plotter fonts through one `drawText`, text as vector `Shape`s, [OKLab mixing](Docs/Drawing/Color.md), palette import and extraction, colormaps, gradients, and [images](Docs/Drawing/Images.md) with pixel access and dithering |
+| **Plays in your rig** | [Syphon](Docs/Integration/Syphon.md) out and in, a system-wide [virtual camera](Docs/Integration/VirtualCamera.md) any webcam app can read, and [video playback](Docs/Video/Video.md) as live GPU textures |
 
 ## Live reload
 
@@ -126,7 +176,7 @@ swift run OllinLive MySketches/Loop.swift --export-gif loop.gif --seconds 4   # 
 
 Sequence, video, and GIF exports advance the clock at a fixed timestep rather than wall-clock, so a slow render still plays back smoothly. In code they're `OllinApp.export`, `exportSequence`, `exportVideo`, and `exportGIF`. Codec and quality dials, the `--skip` warmup, GIF sizing, and the plotter-oriented `--hatch` fills are all in [`Docs/Output/Export.md`](Docs/Output/Export.md).
 
-A seeded sketch is a generator, so Ollin names the seed each run grew from (`variation`) and gives you the tools to explore the space it indexes: step, roll, or jump through seeds from the inspector's Variation card, proof a whole range as a labeled contact sheet, then re-render the keeper at full size.
+A seeded sketch is a generator, so Ollin names the seed each run grew from ([`variation`](Docs/Core/Variations.md)) and gives you the tools to explore the space it indexes: step, roll, or jump through seeds from the inspector's Variation card, proof a whole range as a labeled contact sheet, then re-render the keeper at full size.
 
 ```sh
 swift run Example-Randomness-Variations --export-grid sheet.png --seeds 25  # proof 25 variations
@@ -135,20 +185,20 @@ swift run Example-Randomness-Variations --export keeper.png --seed 10       # re
 
 ## Documentation
 
-New to creative coding, or to Ollin? [The Guide](Guide/README.md) is a practical, book-length introduction taught through Ollin, written for programmers with no math or graphics background and filled in chapter by chapter. Start at [Chapter 1: Hello, Ollin](Guide/01-HelloOllin.md).
+New to creative coding, or to Ollin? [The Guide](Guide/README.md) is a practical, book-length introduction taught through Ollin, written for programmers with no math or graphics background. Start at [Chapter 1: Hello, Ollin](Guide/01-HelloOllin.md).
 
-The full API reference lives in [`Docs/`](Docs/), one page per topic, and [`Docs/README.md`](Docs/README.md) is the annotated index. Most of it ships with the core `import Ollin`, while ten satellite libraries live in the same package behind their own `import` (shown on each page), so a sketch links only what it uses.
+The full API reference lives in [`Docs/`](Docs/), one page per topic, and **[`Docs/README.md`](Docs/README.md) is the annotated index**. Most of it ships with the core `import Ollin`, while ten satellite libraries live in the same package behind their own `import` (shown on each page), so a sketch links only what it uses.
 
-- **Core** - [Sketch](Docs/Core/Sketch.md), [Canvas](Docs/Core/Canvas.md), [Variations](Docs/Core/Variations.md), [Input](Docs/Helpers/Input.md), [Parameters](Docs/Helpers/Parameters.md), [Math](Docs/Helpers/Math.md), [Animation](Docs/Helpers/Animation.md)
-- **Drawing** - [Drawing](Docs/Drawing/Drawing.md), [Color](Docs/Drawing/Color.md), [Geometry](Docs/Drawing/Geometry.md), [SVG import](Docs/Drawing/SVG.md), [Fourier epicycles](Docs/Drawing/Epicycles.md), [Classic curves](Docs/Drawing/Curves.md), [Shape morphing](Docs/Drawing/Morphing.md), [Images](Docs/Drawing/Images.md), [Text](Docs/Drawing/Text.md), [Accumulation](Docs/Drawing/Accumulation.md), [HDR & tone-mapping](Docs/Drawing/HDR.md), [Retained batches](Docs/Drawing/Batches.md), [Layered effects](Docs/Drawing/Effects.md), [SDF combinators](Docs/Drawing/Combinators.md), [Voronoi & Delaunay](Docs/Drawing/Voronoi.md), [Truchet tiling](Docs/Drawing/Truchet.md), [Tiling & layout](Docs/Drawing/Tiling.md), [Strange attractors](Docs/Drawing/Attractors.md)
-- **Shaders & compute** - [Shaders](Docs/Shaders/Shaders.md), [Visual chains](Docs/Shaders/Visuals.md), [Shader library](Docs/Shaders/ShaderLibrary.md), [Compute & GPU particles](Docs/Shaders/Compute.md)
-- **Generators** - [Random](Docs/Generators/Random.md), [Noise](Docs/Generators/Noise.md), [Blue noise](Docs/Generators/BlueNoise.md), [Low-discrepancy sampling](Docs/Generators/LowDiscrepancy.md), [Stippling](Docs/Generators/Stippling.md), [Random walks](Docs/Generators/Walks.md), [Circle packing](Docs/Generators/Packing.md), [Shape packing](Docs/Generators/ShapePacking.md), [L-systems](Docs/Generators/LSystem.md), [Differential growth](Docs/Generators/DifferentialGrowth.md), [Wave Function Collapse](Docs/Generators/WaveFunctionCollapse.md), [Cellular automata](Docs/Generators/CellularAutomata.md), [Flow fields](Docs/Generators/FlowField.md), [Flocking](Docs/Generators/Boids.md), [Steering](Docs/Generators/Steering.md), [Space colonization](Docs/Generators/SpaceColonization.md), [Diffusion-limited aggregation](Docs/Generators/DiffusionLimitedAggregation.md)
-- **3D** - [3D](Docs/3D/3D.md), [Combining 3D features](Docs/3D/Combining.md), [Camera control](Docs/3D/Camera.md), [Depth compositing](Docs/3D/DepthCompositing.md), [Record3D](Docs/3D/Record3D.md), [RGBD](Docs/3D/RGBD.md), [Phone](Docs/3D/Phone.md)
-- **Sound & simulation** - [Audio](Docs/Helpers/Audio.md), [Physics](Docs/Simulation/Physics.md), [Artificial life](Docs/Simulation/ArtificialLife.md), [Fluids & soft bodies](Docs/Simulation/Fluids.md), [Articulated & chaotic motion](Docs/Simulation/Motion.md)
-- **Vision & video** - [Vision](Docs/Vision/Vision.md), [Video](Docs/Video/Video.md)
-- **Integration** - [OSC](Docs/Integration/OSC.md), [MIDI](Docs/Integration/MIDI.md), [Syphon](Docs/Integration/Syphon.md), [Virtual camera](Docs/Integration/VirtualCamera.md)
-- **Output** - [Export](Docs/Output/Export.md), [Print separations](Docs/Output/PrintSeparations.md)
-- **Tools** - [Single-file sketches](Docs/Tools/SingleFile.md), [Live coding](Docs/Tools/LiveCoding.md)
+Good places to start:
+
+- [Sketch](Docs/Core/Sketch.md) and [Canvas](Docs/Core/Canvas.md), the lifecycle and the drawing surface
+- [Drawing](Docs/Drawing/Drawing.md) and [Color](Docs/Drawing/Color.md), the day-to-day API
+- [Input](Docs/Helpers/Input.md) and [Math](Docs/Helpers/Math.md), mouse and keys, and the helpers you'll reach for constantly
+- [Parameters](Docs/Helpers/Parameters.md), the `@Param` inspector controls
+- [Animation](Docs/Helpers/Animation.md) and [Noise](Docs/Generators/Noise.md), the motion and texture layers
+- [Layered effects](Docs/Drawing/Effects.md) and [Shaders](Docs/Shaders/Shaders.md), when you go to the GPU
+- [3D](Docs/3D/3D.md), the opt-in third dimension
+- [Export](Docs/Output/Export.md), getting work out of the window
 
 New to Swift? The [Swift quick reference](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`, and the Guide's [Appendix A](Guide/A-JustEnoughSwift.md) is its slower, narrative companion. Coming from p5.js or Processing? [Appendix C of the Guide](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin.
 
@@ -156,23 +206,17 @@ Coordinates use a top-left origin with y increasing downward, the same as p5, Pr
 
 ## How it works
 
-`Sketch.draw()` calls the bare drawing functions, which forward to a `Drawer`
-state machine. Most primitives (circles, ellipses, rectangles, lines, circular
-arcs, and a broad catalog of analytic shapes) take a signed-distance-field path:
-one quad each, with fill, stroke, and anti-aliasing computed analytically in the
-fragment shader, so thousands of them stay cheap.
-The rest (polygons, polylines, and elliptical arcs) are tessellated into
-triangles in sketch-space points. The `Drawer` records both into call-ordered batches, and once a frame
-`MetalRenderer` uploads them and issues a draw per batch (the triangle pipeline,
-or the instanced-SDF one), so shapes composite in the order you drew them. A
-vertex shader maps points to clip space (flipping Y), and MSAA (8× where the
-GPU supports it) covers the triangle path. The renderer is heavily commented because you'll be extending it.
+`Sketch.draw()` calls the bare drawing functions, which forward to a `Drawer` state machine. Most primitives take a signed-distance-field path, one quad each with fill, stroke, and anti-aliasing computed analytically in the fragment shader; the rest tessellate into triangles. The `Drawer` records both into call-ordered batches, and once a frame `MetalRenderer` uploads them and issues a draw per batch, so shapes composite in the order you drew them.
 
-For how the larger systems work inside (the frame lifecycle, the screen-space effects, the SDF combinators, and more as they're written up), see [`ARCHITECTURE.md`](ARCHITECTURE.md).
+The renderer is heavily commented, because you'll be extending it. For how the larger systems work inside (the frame lifecycle, the screen-space effects, the SDF combinators, and more), see [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Why Apple-only
 
-p5.js, OPENRNDR, and openFrameworks run everywhere, while Ollin only runs on Apple hardware, and that's the trade it makes on purpose. Sitting directly on Metal means the rendering ceiling is whatever the GPU can do, and staying native puts the rest of the platform in reach: vision on the Neural Engine and an iPhone's depth sensors feeding a sketch the Mac renders are already here (the docs above cover them), while ARKit, visionOS, and AR are still ahead (the [roadmap](#roadmap) has them). The point is that the core is built to grow into those things rather than get retrofitted. The same trade rules out a browser version, because the web has no Metal, so a web build would mean a second, lesser renderer on WebGPU. Sharing a piece happens by exporting it (video, GIF, USDZ, SVG, PDF), not by running Ollin in a tab.
+p5.js, OPENRNDR, and openFrameworks run everywhere, while Ollin only runs on Apple hardware, and that's the trade it makes on purpose.
+
+Sitting directly on Metal means the rendering ceiling is whatever the GPU can do. Staying native puts the rest of the platform in reach: vision on the Neural Engine and an iPhone's depth sensors feeding a sketch the Mac renders are already here, while ARKit, visionOS, and AR are still ahead. The point is that the core is built to grow into those things rather than get retrofitted.
+
+The same trade rules out a browser version, because the web has no Metal, so a web build would mean a second, lesser renderer on WebGPU. Sharing a piece happens by exporting it (video, GIF, USDZ, SVG, PDF), not by running Ollin in a tab.
 
 ## Roadmap
 
@@ -198,9 +242,13 @@ The full record lives in [`ATTRIBUTION.md`](ATTRIBUTION.md): the framework influ
 
 ## Status & contributing
 
-Ollin is **alpha and pre-1.0**, developed in the open. Practically, that means:
+Ollin is **alpha and pre-1.0**, developed in the open. Two different things are meant by that, and they're worth separating:
 
-- **The API will change.** Names, signatures, and structure can shift between commits, and there's no tagged release or SemVer guarantee until 1.0.
+- **The output is production-grade.** Linear-light rendering, real anti-aliasing, OKLab color, deterministic and reproducible export, snapshot-tested rendering. Work made with Ollin is meant to be finished and shown.
+- **The API is not.** Names, signatures, and structure can shift between commits, and there's no tagged release or SemVer guarantee until 1.0.
+
+Beyond that:
+
 - **No support guarantee.** This is built nights and weekends. Issues and discussions get read, but a response time isn't promised.
 - **macOS 26+ and a Metal-capable GPU are required.** That's the trade described up top rather than a gap to be filled later, so there's no Linux or Windows path, by design.
 
