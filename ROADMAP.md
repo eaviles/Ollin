@@ -40,9 +40,9 @@ A tier of classic generative-art building blocks that emit vector geometry (poin
 - **Tiling and layout.** Aperiodic tilings (Penrose, Wang, Islamic / girih star patterns) and force-directed graph layout, beside the Wave Function Collapse and Truchet builders in [generative geometry](#generative-geometry).
 - **Meshing and surfaces.** Marching cubes (turn a scalar field, metaballs, or a point cloud into a mesh), metaballs and implicit surfaces, and subdivision-surface smoothing (Catmull-Clark / Loop); these route to [3D mode](#3d-mode).
 - **Computational geometry.** Alpha shapes / concave hulls and the medial axis / straight skeleton, each feeding the shape booleans, hatching, and plotter paths.
-- **Image as input.** Turn a source image into generative output: pixel sorting, image-to-stipple and image-to-single-line (TSP) renderings, ASCII / glyph-mosaic rendering over the glyph atlas, the luminance melt (an image's brightness steering a warped field while the field's displacement liquifies the image), and slit-scan time displacement over a video or camera frame history, over the pixel access the `Image` type already exposes.
+- **Image as input.** Turn a source image into generative output: the luminance melt (an image's brightness steering a warped field while the field's displacement liquifies the image) and dot-modulation halftoning, over the pixel access the `Image` type already exposes.
 - **Painterly marks.** Generative watercolor (recursive polygon deformation under layered translucency, the recipe the [brush tier](#expressive-brushes-and-strokes) deliberately leaves to this catalog) and mathematical paper marbling (closed-form drop and tine-line transforms, pure contour deformation, so it stays vector and plotter-clean).
-- **Plotter line art.** TSP and minimum-spanning-tree single-line renderings of an image, and contour extraction via marching squares (already used internally for SDF outlines, worth surfacing).
+- **Plotter line art.** A minimum-spanning-tree single-line rendering of an image, and contour extraction via marching squares (already used internally for SDF outlines, worth surfacing).
 
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 

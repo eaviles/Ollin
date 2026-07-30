@@ -277,6 +277,18 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("stipple",
                  note: "A painted radial gradient rebuilt as a weighted-Voronoi stipple: dots pack toward the dark center and thin outward. Pins the density rasterization, the rejection-sampled seeding, and the weighted-Lloyd iteration with its exact nearest-dot assignment. Seeded, no time, so the layout is deterministic.",
                  make: { StippleScene() }),
+    SnapshotCase("single-line",
+                 note: "The same kind of painted radial gradient rendered as one continuous closed line: a seeded stipple toured by nearest-neighbor plus 2-opt. Pins the tour construction and improvement (any change to the heuristics rewires the meander) on top of the stipple. Seeded, no time, so the line is deterministic.",
+                 make: { SingleLineScene() }),
+    SnapshotCase("glyph-mosaic",
+                 note: "A painted diagonal gradient with a bright disk, rebuilt as a glyph mosaic in the bundled bitmap font: dense marks in the bright corner and around the disk, a lone dot at the faint edge, true emptiness below the floor. Pins the measured ink ramp, the nearest-coverage selection, the empty floor, and the cell layout. No rng and no time, so it is deterministic.",
+                 make: { GlyphMosaicScene() }),
+    SnapshotCase("pixel-sort",
+                 note: "A painted noisy gradient with guard bands, pixel-sorted vertically then horizontally inside a midtone window, drawn at 1:1 pixels. Pins the interval detection (runs bounded where brightness leaves the window), the brightness key, and the deterministic tie-break. Seeded paint, no time, so it is deterministic.",
+                 make: { PixelSortScene() }),
+    SnapshotCase("slit-scan",
+                 note: "Twelve painted frames of a falling bar pushed into a SlitScan history and read back through a left-to-right delay, so the bar shears into a staircase. Pins the frame ring's ordering, the delay quantization, and the closure delay's uv mapping. No rng and no time, so it is deterministic.",
+                 make: { SlitScanScene() }),
     SnapshotCase("levy-flight",
                  note: "A seeded Lévy flight polyline, scaled to fit: tight step clusters strung together by rare long jumps. Pins the truncated power-law inverse-CDF step sampling and the walk's rng call order. Seeded, no time, so the path is deterministic.",
                  make: { LevyFlightScene() }),
@@ -1106,6 +1118,123 @@ private final class StippleScene: Sketch {
         noStroke()
         fill(Color(hex: 0x1A1B26))
         for d in dots { drawCircle(center: d, radius: 2.2) }
+    }
+}
+
+/// A painted radial gradient rendered as one continuous line (stipple plus
+/// TSP tour). Seeded and `time`-free, so it's deterministic.
+private final class SingleLineScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var line = Contour([], closed: false)
+
+    override func setup() {
+        seed(7)
+        let n = 64
+        let image = Image(width: n, height: n, color: .white)
+        for y in 0 ..< n {
+            for x in 0 ..< n {
+                let u = Double(x) / Double(n - 1) * 2 - 1
+                let v = Double(y) / Double(n - 1) * 2 - 1
+                let d = (u * u + v * v).squareRoot()
+                image[x, y] = Color(white: clamp(d * 1.1, 0, 1))
+            }
+        }
+        line = singleLine(of: image, points: 320, in: canvasRectangle.inset(by: 16),
+                          iterations: 12)
+    }
+
+    override func draw() {
+        background(Color(hex: 0xF5F2EA))
+        noFill()
+        stroke(Color(hex: 0x1A1B26))
+        strokeWeight(1.4)
+        drawPolyline(line.points, closed: line.isClosed)
+    }
+}
+
+/// A painted diagonal gradient with a bright disk, rebuilt as a glyph mosaic
+/// in the bundled bitmap font. No rng and no `time`, so it's deterministic.
+private final class GlyphMosaicScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        let n = 64
+        let image = Image(width: n, height: n, color: .black)
+        for y in 0 ..< n {
+            for x in 0 ..< n {
+                let u = Double(x) / Double(n - 1)
+                let v = Double(y) / Double(n - 1)
+                var tone = (u + (1 - v)) / 2 * 0.85
+                let du = u - 0.35, dv = v - 0.4
+                if (du * du + dv * dv).squareRoot() < 0.18 { tone = 0.95 }
+                image[x, y] = Color(white: tone)
+            }
+        }
+        textFont(BitmapFont.builtin)
+        fill(.white)
+        drawGlyphMosaic(image, columns: 20, in: canvasRectangle.inset(by: 8))
+    }
+}
+
+/// A painted noisy gradient with dark and bright guard bands, pixel-sorted on
+/// both axes inside a midtone window, at 1:1 pixels. Seeded paint and no
+/// `time`, so it's deterministic.
+private final class PixelSortScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var sorted: Image?
+
+    override func setup() {
+        seed(11)
+        let n = 256
+        let image = Image(width: n, height: n, color: .black)
+        for y in 0 ..< n {
+            for x in 0 ..< n {
+                let u = Double(x) / Double(n - 1)
+                let v = Double(y) / Double(n - 1)
+                var tone = clamp(v * 0.9 + signedNoise(u * 6, v * 6) * 0.15, 0, 1)
+                if v < 0.12 { tone = 0.04 }          // dark guard band
+                if v > 0.9 { tone = 0.96 }           // bright guard band
+                image[x, y] = Color(hue: 0.6 + tone * 0.25, saturation: 0.5,
+                                    brightness: tone)
+            }
+        }
+        sorted = image.pixelSorted(.vertical, threshold: 0.2 ... 0.8)
+                      .pixelSorted(.horizontal, threshold: 0.2 ... 0.8)
+    }
+
+    override func draw() {
+        background(.black)
+        if let sorted { drawImage(sorted, in: canvasRectangle) }
+    }
+}
+
+/// Twelve painted frames of a falling bar, read back through a left-to-right
+/// slit-scan delay. No rng and no `time`, so it's deterministic.
+private final class SlitScanScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var warped: Image?
+
+    override func setup() {
+        let history = SlitScan(frames: 12)
+        let n = 128
+        for frame in 0 ..< 12 {
+            let source = Image(width: n, height: n, color: .black)
+            let barTop = Int(Double(frame) / 12 * Double(n - 20))
+            for y in barTop ..< min(barTop + 20, n) {
+                for x in 0 ..< n {
+                    source[x, y] = Color(hue: Double(frame) / 12,
+                                         saturation: 0.6, brightness: 0.9)
+                }
+            }
+            history.push(source)
+        }
+        warped = history.image(delay: { uv in uv.x })
+    }
+
+    override func draw() {
+        background(.black)
+        if let warped { drawImage(warped, in: canvasRectangle) }
     }
 }
 

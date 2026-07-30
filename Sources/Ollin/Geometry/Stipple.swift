@@ -60,12 +60,9 @@ public func stipple<R: RandomNumberGenerator>(
                                image.width - 1)
             let c = image[px, py]
             guard c.alpha > 0 else { continue }
-            // Pixels are premultiplied; unpremultiply before reading tone, then
-            // scale the ink by coverage so soft edges stipple lighter.
-            let tone = Color(red: Swift.min(c.red / c.alpha, 1),
-                             green: Swift.min(c.green / c.alpha, 1),
-                             blue: Swift.min(c.blue / c.alpha, 1)).luminance
-            density[gy * gridWidth + gx] = (1 - tone) * c.alpha
+            // The subscript already returns straight color; scale the ink by
+            // coverage so soft edges stipple lighter.
+            density[gy * gridWidth + gx] = (1 - c.luminance) * c.alpha
         }
     }
     return stippleGrid(count: count, bounds: bounds, iterations: iterations,

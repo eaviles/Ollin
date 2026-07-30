@@ -268,6 +268,10 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/BlueNoise.md` | Ch 13 | taught |
 | `Generators/LowDiscrepancy.md` (`haltonPoints`, `sobolPoints`) | Appendix D | pointed |
 | `Generators/Stippling.md` (`stipple`, weighted-Voronoi) | Appendix D | pointed |
+| `Generators/SingleLine.md` (`singleLine`, the TSP tour) | Appendix D (Ch 7 when it grows) | pointed |
+| `Drawing/GlyphMosaic.md` (`drawGlyphMosaic`, measured glyph ramps) | Appendix D (Ch 7 when it grows) | pointed |
+| `Drawing/PixelSorting.md` (`Image.pixelSorted`) | Appendix D (Ch 7 when it grows) | pointed |
+| `Video/SlitScan.md` (`SlitScan` frame history) | Appendix D (Ch 21 when it grows) | pointed |
 | `Generators/Walks.md` (`randomWalk`, `levyFlight`, `selfAvoidingWalk`) | Ch 4 / Appendix D | pointed |
 | `Generators/Packing.md` (circles) | Ch 13 | taught |
 | `Generators/ShapePacking.md` | Ch 13 | shown |
@@ -346,7 +350,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Technique catalog: tiling/layout families | Ch 6 |
 | Technique catalog: meshing (marching cubes, metaballs) | Ch 17 |
 | Technique catalog: computational geometry | Ch 13 |
-| Technique catalog: image-as-input family | Ch 7 |
+| Technique catalog: image-as-input remainder (luminance melt, dot halftoning) | Ch 7 |
 | Technique catalog: painterly marks | Ch 13 |
 | Expressive brushes and strokes | Ch 13 |
 | Project generator | Ch 1 |

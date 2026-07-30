@@ -691,7 +691,11 @@ let package = Package(
         example("Text/GlyphContours"),
         example("Text/PointShimmer"),
         example("Text/JitterType"),
+        example("Images/GlyphMosaic"),
         example("Images/PixelField"),
+        example("Images/PixelSort"),
+        example("Images/SingleLine"),
+        example("Images/SlitScan"),
         example("Audio/Spectrum", [.audio]),
         example("Audio/Microphone", [.audio]),
         // The bundled clip the sketch loads via Bundle.module (a launch path

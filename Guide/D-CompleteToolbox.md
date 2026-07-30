@@ -60,6 +60,8 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Atlas text | `textMode(.atlas)` for fast, crisp text when there's a lot of it | [Ch 7](07-WordsAndPictures.md) | [Text](../Docs/Drawing/Text.md) |
 | Images | Load PNG/JPEG/HEIC and friends, draw, tint, and scale them | [Ch 7](07-WordsAndPictures.md) | [Images](../Docs/Drawing/Images.md) |
 | Pixels | Read and write any pixel with `image[x, y]`; build images from scratch | [Ch 7](07-WordsAndPictures.md) | [Images](../Docs/Drawing/Images.md) |
+| Glyph mosaic | A picture rebuilt as a grid of characters, each chosen by its measured ink in the active font | here | [GlyphMosaic](../Docs/Drawing/GlyphMosaic.md) |
+| Pixel sorting | Brightness-bounded runs of a picture's own pixels reordered into streaks, the classic glitch melt | here | [PixelSorting](../Docs/Drawing/PixelSorting.md) |
 
 ## Geometry you can hold
 
@@ -98,6 +100,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Blue noise | Poisson-disk scatter: random but even | [Ch 13](13-ShapesAsMaterial.md) | [BlueNoise](../Docs/Generators/BlueNoise.md) |
 | Low-discrepancy sampling | Halton and Sobol point streams: even at every count, growing the count never moves a point | here | [LowDiscrepancy](../Docs/Generators/LowDiscrepancy.md) |
 | Stippling | Dots packed to reproduce an image's tone (weighted-Voronoi) | here | [Stippling](../Docs/Generators/Stippling.md) |
+| Single-line drawing | One unbroken tour through a stipple: the picture as a single closed line (TSP art) | here | [SingleLine](../Docs/Generators/SingleLine.md) |
 | Random walks | The walk family: the local tangle, the Lévy cluster-and-leap, the self-avoiding single stroke | [Ch 4](04-Randomness.md) | [Walks](../Docs/Generators/Walks.md) |
 | Circle packing | Grow-to-touch packings, seeded and reproducible | [Ch 13](13-ShapesAsMaterial.md) | [Packing](../Docs/Generators/Packing.md) |
 | Shape packing | Packing that nestles arbitrary outlines into notches and gaps | [Ch 13](13-ShapesAsMaterial.md) | [ShapePacking](../Docs/Generators/ShapePacking.md) |
@@ -216,6 +219,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | `ModelTracker` | Bring any Core ML model: classifiers, detectors, segmenters | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
 | Still analysis | Every tracker also runs one-shot on an `Image` | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
 | Video playback | Files as live textures: play, seek, loop, analyze, all export-reproducible | [Ch 21](21-Seeing.md) | [Video](../Docs/Video/Video.md) |
+| Slit scan | A rolling frame history read back through a per-pixel time delay: time as a spatial dimension | here | [SlitScan](../Docs/Video/SlitScan.md) |
 
 ## Sharing and performing
 

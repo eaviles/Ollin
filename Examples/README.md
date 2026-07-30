@@ -19,7 +19,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Compute](Compute/) | GPU compute — a million particles, and reaction-diffusion / texture simulations |
 | [Effects](Effects/) | layered effects — GPU filters, feedback, generators, and the `compose { }` stack |
 | [Export](Export/) | saving a sketch out — raster frame grab, vector SVG, and plotter hatching |
-| [Images](Images/) | loading, drawing, tinting, and authoring images |
+| [Images](Images/) | loading, drawing, tinting, and authoring images, plus glyph mosaics, pixel sorting, single-line renderings, and slit scan |
 | [Input](Input/) | mouse-driven sketches |
 | [Integration](Integration/) | talking to other apps and gear — OSC, MIDI, Syphon (`import OllinOSC` / `OllinMIDI` / `OllinSyphon`) |
 | [Live](Live/) | tunable `@Param` knobs under OllinLive |
