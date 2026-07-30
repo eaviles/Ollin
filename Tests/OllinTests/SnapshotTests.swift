@@ -409,6 +409,18 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("apollonian",
                  note: "An Apollonian gasket tinted by generation order. Pins the Descartes-theorem foam: the closed-form seed triple, the linear other-root recursion filling every three-way gap, tangency without overlap, and the min-radius stop. No rng and no time, so it is deterministic.",
                  make: { ApollonianScene() }),
+    SnapshotCase("ifs",
+                 note: "The three bundled iterated function systems side by side (the fern, the triangle, the carpet), each condensed by a seeded chaos game and fitted to its panel. Pins the preset coefficient tables, the weighted map selection's rng order, the burn-in, and the fitted placement. Seeded, no time, so the clouds are deterministic.",
+                 make: { IFSScene() }),
+    SnapshotCase("inversion-fractal",
+                 note: "The limit set of a ring of five tangent circles plus the inner circle, rendered by the seeded inversion chaos game over the drawn mirrors. Pins the inversion formula, the never-the-same-circle-twice walk, the outside start, and the burn-in. Seeded, no time, so the dust is deterministic.",
+                 make: { InversionFractalScene() }),
+    SnapshotCase("kleinian",
+                 note: "Two Kleinian limit sets, the Apollonian-gasket curve above a lacy quasi-Fuchsian one, each traced as a single ordered closed polyline and fitted to its half. Pins the two-generator trace recipe, the depth-first walk's cyclic ordering and landmark points, and the epsilon termination. No rng and no time, so the curves are deterministic.",
+                 make: { KleinianScene() }),
+    SnapshotCase("fractal-flame",
+                 note: "A seeded random fractal flame accumulated to a fixed sample count and developed once. Pins the chaos-game loop (weighted picks, the fuse), the variation formulas and their theta convention, structural coloring, and the log-density display with gamma and vibrancy. Seeded, and the sample count is fixed, so the render is deterministic.",
+                 make: { FractalFlameScene() }),
 ]
 
 /// The ray-tracing-gated snapshots: on a ray-tracing GPU a point caster resolves to the RT
@@ -4432,5 +4444,93 @@ private final class LeniaScene: Sketch {
             }
         }
         drawImage(life.filtered(.gradientMap(.magma)).image, 0, 0)
+    }
+}
+
+/// The three bundled IFS presets condensed by seeded chaos games, one per
+/// panel. Seeded, no `time`, so it's deterministic.
+private final class IFSScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101318))
+        noStroke()
+        fill(Color(white: 0.92, alpha: 0.7))
+        let systems: [(IFS, Bool)] = [(.barnsleyFern, true),
+                                      (.sierpinskiTriangle, true),
+                                      (.sierpinskiCarpet, false)]
+        var rng = SplitMix64(seed: 6)
+        for (index, entry) in systems.enumerated() {
+            let frame = Rectangle(x: 6 + Double(index) * 82, y: 64,
+                                  width: 76, height: 128)
+            var cloud = entry.0.points(count: 9_000, using: &rng)
+            if entry.1 { cloud = cloud.map { Vector2($0.x, -$0.y) } }
+            drawPoints(fitted(cloud, in: frame), size: 1)
+        }
+    }
+}
+
+/// The tangent-ring inversion limit set over its drawn mirrors. Seeded, no
+/// `time`, so it's deterministic.
+private final class InversionFractalScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0D0F14))
+        let center = Vector2(128, 128)
+        let ringRadius = 88.0
+        let radius = ringRadius * sin(.pi / 5)
+        var mirrors: [Circle] = (0 ..< 5).map { i in
+            let angle = Double(i) / 5 * 2 * .pi
+            return Circle(center: Vector2(center.x + cos(angle) * ringRadius,
+                                          center.y + sin(angle) * ringRadius),
+                          radius: radius)
+        }
+        mirrors.append(Circle(center: center, radius: ringRadius - radius))
+        noFill()
+        stroke(Color(hex: 0x2A3242))
+        drawCircles(mirrors)
+        var rng = SplitMix64(seed: 4)
+        fill(Color(hex: 0xE8C97D, alpha: 0.8))
+        drawPoints(inversionLimitSet(of: mirrors, count: 9_000, using: &rng), size: 1)
+    }
+}
+
+/// Two Kleinian limit-set curves, the gasket above the lace, each one
+/// ordered closed polyline. No rng and no `time`, so it's deterministic.
+private final class KleinianScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0B0D12))
+        noFill()
+        stroke(Color(white: 0.85))
+        strokeWeight(1)
+        let top = kleinianLimitSet(.gasket, epsilon: 0.012)
+        drawPolyline(fitted(top.points, in: Rectangle(x: 16, y: 8, width: 224, height: 112)),
+                     closed: true)
+        let bottom = kleinianLimitSet(.lace, epsilon: 0.012)
+        drawPolyline(fitted(bottom.points, in: Rectangle(x: 16, y: 136, width: 224, height: 112)),
+                     closed: true)
+    }
+}
+
+/// A seeded random flame at a fixed sample count, developed once. Seeded and
+/// sample-fixed, so it's deterministic.
+private final class FractalFlameScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var picture: Image?
+
+    override func setup() {
+        var rng = SplitMix64(seed: 12)
+        let flame = FractalFlame.random(using: &rng)
+        let renderer = FractalFlame.Renderer(flame, width: 128, height: 128, seed: 12)
+        renderer.accumulate(samples: 700_000)
+        picture = renderer.image()
+    }
+
+    override func draw() {
+        background(.black)
+        if let picture { drawImage(picture, in: canvasRectangle) }
     }
 }

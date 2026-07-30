@@ -292,6 +292,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Relight, two-tone dither, warp centers (`Drawing/Effects.md`) | Ch 14 | pointed |
 | Pattern fields (`Drawing/Effects.md`) | Ch 15 | shown |
 | Escape-time fractals (`Drawing/Effects.md`) | Ch 16 | shown |
+| `Generators/Fractals.md` (`IFS`, `FractalFlame`, inversion and Kleinian limit sets) | Appendix D (Ch 11 when it grows) | pointed |
 | Depth-of-field `.defocus`, SSAO, SSR (`Drawing/Effects.md`) | Ch 17 | pointed |
 | `Shaders/Shaders.md` (user shaders) | Ch 15 | taught |
 | `Shaders/Visuals.md` (Visual chains) | Ch 15 | taught |
@@ -345,7 +346,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | More SDF shapes | Ch 18 / Appendix D |
 | More model examples (ModelTracker) | Ch 21 |
 | Generative-geometry refinements | Ch 11 |
-| Technique catalog: fractals | Ch 11 (may grow into its own chapter) |
 | Technique catalog: GPU-scale steering agents | Ch 16 |
 | Technique catalog: growth/morphogenesis (Turing patterns, sandpile, growth on meshes) | Ch 16/17 |
 | Technique catalog: waves, terrain | Ch 16/17 |

@@ -64,6 +64,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Blue noise`](./Generators/BlueNoise.md) - `poissonDisk`, an even-but-organic scatter with no clumps or gaps (Poisson-disk sampling)
 - [`Low-discrepancy sampling`](./Generators/LowDiscrepancy.md) - `haltonPoints` / `sobolPoints`, even coverage as an ordered stream: growing the count only adds points, never moves them
 - [`Stippling`](./Generators/Stippling.md) - `stipple`, dots packed to reproduce an image's tone (weighted-Voronoi stippling), or any density function
+- [`Fractals`](./Generators/Fractals.md) - `IFS` chaos games, `FractalFlame` renders, circle-inversion limit sets, and Kleinian limit-set curves, plus the `fitted` placement helper
 - [`Single line`](./Generators/SingleLine.md) - `singleLine`, one continuous tour through an image's stipple (TSP art), a plotter-friendly `Contour`
 - [`Random walks`](./Generators/Walks.md) - `randomWalk` / `levyFlight` / `selfAvoidingWalk`, paths built one random step at a time: the local tangle, the cluster-and-leap, and the never-crossing single stroke
 - [`Circle packing`](./Generators/Packing.md) - `packCircles` and `relaxCircles`, filling a region with non-overlapping circles that grow until they touch

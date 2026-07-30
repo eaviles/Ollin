@@ -18,8 +18,12 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 | [ElementaryCA](ElementaryCA/Sketch.swift) | 1D cellular automata stacked as rows, elementary and 3-color totalistic, the rule and code on knobs: one number flips the picture between order, fractals, and chaos (`elementaryCA`, `totalisticCA`) |
 | [EnergyGrid](EnergyGrid/Sketch.swift) | columns sized by a moving "energy" share (`translate`, `drawRect`) |
 | [Flocking](Flocking/Sketch.swift) | a few hundred boids, each steering only by its neighbors (separate, align, cohere), the flock swirling and regrouping with no leader (`Boids`) |
+| [FractalFlame](FractalFlame/Sketch.swift) | a random fractal flame refining live: the chaos game with nonlinear variations, structural coloring, and the log-density display, accumulated slice by slice; click to reroll (`FractalFlame`, `FractalFlame.Renderer`) |
 | [Grid](Grid/Sketch.swift) | a 16×16 `Grid` showing both element kinds: `cells` outline the frames, `points` dot each center, with `padding` and `gutter` shaping the lattice |
+| [InversionFractal](InversionFractal/Sketch.swift) | the limit-set lace of a tangent circle ring, resampled every frame so it shimmers; click to change the ring (`inversionLimitSet`, `inverted`) |
+| [IteratedFunctions](IteratedFunctions/Sketch.swift) | the chaos game condensing the fern, the triangle, and the carpet onto the accumulation surface, a few thousand visits per frame (`IFS`, `ifsPoints`, `fitted`) |
 | [Kaleidoscope](Kaleidoscope/Sketch.swift) | one drawn arm replicated into a sixteen-fold mandala by `symmetry(8, mirrored: true)`, every draw call folding through the mirrors |
+| [Kleinian](Kleinian/Sketch.swift) | Kleinian limit sets as one ordered closed curve, a bright head running the whole lap each loop; click for the next preset traces (`kleinianLimitSet`, `KleinianPreset`) |
 | [LevyFlight](LevyFlight/Sketch.swift) | a Lévy flight: power-law step lengths make tight scribble clusters strung together by sudden long jumps, a comet retracing the journey out and back (`levyFlight`) |
 | [LifeQuilt](LifeQuilt/Sketch.swift) | a four-layer Game of Life filling cells with triangular wedges, colored by a radial cosine palette (`drawTriangle`, SDF) |
 | [LowDiscrepancy](LowDiscrepancy/Sketch.swift) | random, Poisson-disk, Halton, and Sobol scatter side by side while the count breathes: the sequences stay even at every count and only ever add points, never reshuffle (`haltonPoints`, `sobolPoints`) |

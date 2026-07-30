@@ -76,3 +76,27 @@ public struct Rectangle: Equatable, Hashable, Sendable {
                 height > 0 ? (point.y - corner.y) / height : 0)
     }
 }
+
+/// `points` uniformly scaled and centered to fill `frame` while keeping their
+/// aspect: the "fit the points, not the transform" rule as a helper, so a
+/// generated figure (a walk, an attractor, a chaos-game cloud) lands in a
+/// frame without `scale()` fattening its strokes. A degenerate cloud (empty,
+/// or all one point) comes back centered, unscaled.
+public func fitted(_ points: [Vector2], in frame: Rectangle) -> [Vector2] {
+    guard let first = points.first else { return [] }
+    var minX = first.x, maxX = first.x, minY = first.y, maxY = first.y
+    for point in points {
+        minX = Swift.min(minX, point.x); maxX = Swift.max(maxX, point.x)
+        minY = Swift.min(minY, point.y); maxY = Swift.max(maxY, point.y)
+    }
+    let spanX = maxX - minX, spanY = maxY - minY
+    let scale = Swift.min(spanX > 0 ? frame.width / spanX : .infinity,
+                          spanY > 0 ? frame.height / spanY : .infinity)
+    let factor = scale.isFinite ? scale : 1
+    let center = frame.center
+    let midX = (minX + maxX) / 2, midY = (minY + maxY) / 2
+    return points.map {
+        Vector2(center.x + ($0.x - midX) * factor,
+                center.y + ($0.y - midY) * factor)
+    }
+}
