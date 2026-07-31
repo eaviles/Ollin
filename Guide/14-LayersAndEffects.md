@@ -61,7 +61,27 @@ Ollin ships fifty-some of them, in families: blur and glow, color and tone, styl
 
 The one to meet properly is **bloom**, because it's the chapter's workhorse. `.bloom(threshold:intensity:radius:)` finds the parts of the image brighter than `threshold`, blurs them, and adds the blur back, so bright marks bleed light into their surroundings the way a streetlight bleeds into fog. It's the difference between a white dot and a *glowing* dot, and you'll reach for it constantly.
 
-A few notes for the road. Filters are values you pass around, so a `[Filter]` array or a `@Param`-driven choice works the way you'd hope. `postProcess(.bloom())` applies a filter to the whole finished frame, no layer needed, which is the quick way to glow everything. And some filters want particular food. `.relight` reads a layer as a height map and lights it like embossed physical matter (feed it a noise field and it turns to hammered gold, and the `Effects/Relight` example shows all five finishes), and the two-tone `.dither(dark:light:)` screens an image into exactly two colors, the newsprint look in any palette. The [effects reference](../Docs/Drawing/Effects.md#filter) has the full catalog with every knob.
+A few notes for the road. Filters are values you pass around, so a `[Filter]` array or a `@Param`-driven choice works the way you'd hope, and `postProcess(.bloom())` applies a filter to the whole finished frame with no layer needed, which is the quick way to glow everything.
+
+## Filters that read the layer as something else
+
+Most filters treat your layer as a picture and adjust it. A few instead treat the same pixels as *information about something else*, and those are worth meeting individually, because what you feed them matters more than the knobs.
+
+<img src="Images/14-LayersAndEffects/SpecialFilters.jpg" alt="Three panels from one noise layer: hammered gold metal lit from the upper left, the same noise screened into a two-color newsprint pattern in navy and sand, and the noise swirled around a marked off-center point" width="680">
+
+```swift
+layer.filtered(.relight(.metal, angle: -.pi * 0.7, elevation: 0.55))
+layer.filtered(.dither(dark: navy, light: sand, pixelSize: 3))
+layer.filtered(.swirl(angle: 4.2, radius: 0.42, center: Vector2(0.3, 0.34)))
+```
+
+**`.relight` reads brightness as height.** It treats a bright pixel as a high point and a dark one as a low point, works out which way the resulting surface faces, and lights it from an angle you choose. Hand it a photograph and you get an odd embossed thing; hand it a noise field, as the first panel does, and you get hammered metal, because noise makes a plausible bumpy surface. Five finishes change how the material responds, from `.matte` through `.metal` and `.glass` to `.sand` and `.liquid`, which is why Chapter 16's ripple pool used it to turn a height field into water.
+
+**`.dither(dark:light:)` reads brightness as tone.** It screens the layer into exactly two colors of your choosing, deciding each pixel from a repeating pattern the way Chapter 2's ordered dither did, so gradients survive as texture rather than collapsing into two flat regions. `pixelSize` makes the grain coarser, which is how you get the look of cheap newsprint or an early screen in any two colors you like.
+
+**The warp filters read a center.** `.swirl`, `.bulge`, `.ripple`, and their relatives all default to distorting around the middle of the layer, but each takes a `center` given in `0...1` layer coordinates. That one argument is what turns a symmetric effect into a composition, and feeding it `uv(of: mouse)` puts the distortion under the pointer. The marked circle in the third panel is the center that swirl was given.
+
+The [effects reference](../Docs/Drawing/Effects.md#filter) has the full catalog with every knob, and the `Effects/Relight` example shows all five finishes side by side.
 
 ## Layers from nowhere
 

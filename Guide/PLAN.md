@@ -300,7 +300,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Drawing/Accumulation.md` (noClear) | Ch 14; used in Ch 16 | taught |
 | `Drawing/HDR.md` (toneMap) | Ch 14 | taught |
 | Design patterns + design filters (`Drawing/Effects.md`) | Ch 14 | shown |
-| Relight, two-tone dither, warp centers (`Drawing/Effects.md`) | Ch 14 | pointed |
+| Relight, two-tone dither, warp centers (`Drawing/Effects.md`) | Ch 14 | taught ("Filters that read the layer as something else" with a three-panel figure: brightness as height and the five finishes, brightness as tone with `pixelSize` grain, and `center:` in 0…1 layer coordinates as the knob that makes a warp a composition) |
 | Pattern fields (`Drawing/Effects.md`) | Ch 15 | shown |
 | Escape-time fractals (`Drawing/Effects.md`) | Ch 16 | shown |
 | `Generators/Fractals.md` (`IFS`, `FractalFlame`, inversion and Kleinian limit sets) | Ch 11 | taught ("The same fern, played as a game" derives the chaos game from the chapter's own L-system fern with a condensing figure and explains why contraction forces the attractor; "Three more games worth knowing" covers flames, inversion, and Kleinian with a three-panel figure, plus `fitted` and the Contour return) |
@@ -331,7 +331,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `3D/Phone.md` (capture app streams, world fusion) | Ch 19 | taught |
 | `Helpers/Audio.md` (analysis, beats, sources) | Ch 20 | taught |
 | `Integration/MIDI.md` | Ch 20 | taught |
-| Tempo sync (`TempoClock` over MIDI clock; `Integration/MIDI.md`) | Ch 20 | pointed |
+| Tempo sync (`TempoClock` over MIDI clock; `Integration/MIDI.md`) | Ch 20 | taught (a musical-time diagram: 24 ticks per beat is the whole protocol, why counting means the grid can't drift, every reader with a worked position, `progress(over:)`, and the arm-on-next-tick and free-running-master behaviors) |
 | `Integration/OSC.md` | Ch 20 | taught |
 | `Vision/Vision.md` (16 trackers, ModelTracker) | Ch 21 | taught/pointed by tracker |
 | `Video/Video.md` (playback as texture) | Ch 21 | taught |

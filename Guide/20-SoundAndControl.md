@@ -113,7 +113,11 @@ override func draw() {
 
 `start()` connects to every device on the system, including ones plugged in later. Which control sends what is the controller's business, so the first thing to do with new hardware is run the `Integration/MIDIMonitor` example and touch everything. It draws each message as it arrives, and your controller introduces itself.
 
-Knobs aren't the only thing MIDI carries. Gear with a play button (a DAW, a drum machine, a DJ mixer) also broadcasts its beat as *MIDI clock*, and a `TempoClock` reads that into musical time, so motion lands on the beat instead of near it:
+Knobs aren't the only thing MIDI carries. Gear with a play button (a DAW, a drum machine, a DJ mixer) also broadcasts its beat as *MIDI clock*, and a `TempoClock` reads that into musical time, so motion lands on the beat instead of near it.
+
+The wire itself is almost comically simple, and knowing that makes everything else make sense. A MIDI clock master sends one tick, twenty-four times per beat, forever. There is no tempo number in the message, no bar count, no position. Twenty-four ticks per beat is the entire protocol, and everything musical you want is derived by counting them.
+
+<img src="Images/20-SoundAndControl/MusicalTime.jpg" alt="A strip of evenly spaced tick marks divided into four labelled beats spanning one bar, with a marker partway through beat two, and a list of what each clock reader returns at that position" width="680">
 
 ```swift
 lazy var clock = TempoClock(from: midi)
@@ -122,7 +126,13 @@ let throb = 1 + 0.3 * clock.beat     // snaps on each beat, eases off
 let lap = clock.progress(over: 8)    // a 0...1 ramp every eight beats
 ```
 
-`clock.beat` is the same ready-made pulse the analyzer's `beat` gave you earlier in this chapter, so a beat-reactive sketch can swap between hearing the room and reading the wire. The `Integration/TempoSync` example is the no-hardware rehearsal, and [the MIDI reference](../Docs/Integration/MIDI.md#tempo-sync-tempoclock) has the full surface.
+Counting is why the grid can't drift. Each tick is exactly one twenty-fourth of a beat by definition, so the position is arithmetic rather than an estimate, and a sketch left running for an hour is still on the beat. The tempo is estimated (it has to be, since nobody sends it), but that estimate only smooths motion *between* ticks and never moves the grid itself.
+
+The readers in the figure cover most of what you'll want. `beats` is the running count with a fraction, `phase` is where you sit inside the current beat as `0...1`, and `bar` and `barPhase` are the same idea one level up, over however many beats you declare a bar to be. `progress(over:)` is the one to reach for most, giving you a ramp that resets every N beats, which is how you make a slow sweep that lands exactly on the downbeat.
+
+`clock.beat` is the same ready-made pulse the analyzer's `beat` gave you earlier in this chapter, so a beat-reactive sketch can swap between hearing the room and reading the wire, which is worth knowing when the room is loud and the wire is honest.
+
+Two behaviors to expect from real gear. Pressing play on the master arms the clock and it starts on the *next* tick rather than immediately, which is the MIDI convention and keeps the first beat exact. And some gear, DJ mixers especially, never sends a transport message at all and simply free-runs its clock, so `TempoClock` starts following from the first tick it hears. The `Integration/TempoSync` example rehearses all of this with no hardware, by having the sketch send clock to itself, and [the MIDI reference](../Docs/Integration/MIDI.md#tempo-sync-tempoclock) has the full surface.
 
 **OSC** is the networked cousin, the protocol of TouchOSC, Max/MSP, TouchDesigner, and most of the performance world. Messages are named by slash-paths and travel over the network, which means the fader can be a phone on the same Wi-Fi:
 
