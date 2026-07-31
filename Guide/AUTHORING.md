@@ -63,6 +63,7 @@ Keep chapters honest about hardware: anything needing a device beyond the Mac (a
 Figure sketches live in `Figures/<NN-ChapterName>/<FigureName>.swift`, rendered to `Images/<NN-ChapterName>/<FigureName>.jpg` (or `.png`/`.gif`) by the runner. Conventions:
 
 - A figure file is an ordinary Ollin sketch (a `class ... : Sketch`), self-contained, with no dependencies beyond the framework.
+- **Pin the seed in any figure that touches `random` or `noise`.** A sketch's `variation` is rolled fresh at launch, so an unseeded figure re-renders differently every run and shows up as churn in `git status` after each full gate. Call `seed(_:)` (or `noiseSeed(_:)`) in the figure. The check is to render twice and `cmp` the output. The two exceptions are `16-Simulations/ArtificialLife` and `FluidAndBlobs`, whose GPU sims are genuinely not reproducible; restore those rather than committing them.
 - The first line may carry a directive comment configuring the render:
   - `// figure: frame=120` renders that frame as a still (default: `frame=0`).
   - `// figure: gif duration=3 fps=30` renders an animated GIF loop.

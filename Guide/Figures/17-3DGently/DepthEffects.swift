@@ -45,6 +45,9 @@ final class DepthEffects: Sketch {
     /// A packed field of blocks: gaps for occlusion to settle into, and a long
     /// run into the distance for the focus to fall off along.
     func blocks() {
+        // The block heights come from noise, so the seed has to be pinned or
+        // the figure re-renders differently every run.
+        noiseSeed(4)
         background(Color(hex: 0x121318))
         camera(.orbiting(target: Vector3(0, 0.4, 0), radius: 9, azimuth: 0.7,
                          elevation: 0.42, fieldOfView: .pi / 4, near: 3, far: 18))
