@@ -360,6 +360,22 @@ static inline float2 curlNoise(float2 p) {
     float dpsidx = (n_xp - n_xm) / (2.0 * e);
     return float2(dpsidy, -dpsidx);
 }
+
+// The Chladni standing-wave field of a square plate: two mirrored plate modes
+// superposed, a*cos(n*pi*x)*cos(m*pi*y) + b*cos(m*pi*x)*cos(n*pi*y) over plate
+// coordinates 0...1, normalized to [-1, 1]. Sand gathers on the zero set.
+// Mirrors the CPU helper of the same name; m == n cancels to zero at the
+// default amplitudes (1, -1).
+static inline float chladni(float2 p, float m, float n, float a, float b) {
+    float span = abs(a) + abs(b);
+    if (span <= 0.0) return 0.0;
+    float value = a * cos(n * M_PI_F * p.x) * cos(m * M_PI_F * p.y)
+                + b * cos(m * M_PI_F * p.x) * cos(n * M_PI_F * p.y);
+    return value / span;
+}
+static inline float chladni(float2 p, float m, float n) {
+    return chladni(p, m, n, 1.0, -1.0);
+}
 // OLLIN_LIB_END noise
 
 // OLLIN_LIB_BEGIN color

@@ -779,8 +779,9 @@ extension MetalRenderer {
         guard let s0 = acquireFilterTexture(width: width, height: height, pooled: pooled),
               let s1 = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return }
         let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
-        // Inject the seed marks onto the current state (composited by the seed's alpha).
-        encodeEffectFragment("ollin_sim_inject", inputs: [state, seed], output: s0,
+        // Inject the seed marks onto the current state (composited by the seed's
+        // alpha, or added, per the sim's inject fragment).
+        encodeEffectFragment(sim.injectFragment, inputs: [state, seed], output: s0,
                              params: [texel], into: cb)
         // Step: read s0, ping-pong s0↔s1 between steps, write the final step into the
         // back buffer. Read and write are always distinct, so there's no in-pass hazard.
@@ -985,6 +986,11 @@ extension MetalRenderer {
                                  params: [SIMD4(Float(colors.count), aspect, Float(scale), Float(gap)),
                                           SIMD4(Float(phase), 0, 0, 0),
                                           background] + colors, into: cb)
+        case let .chladni(m, n, style, weight, grain, foreground, background, scale, phase):
+            encodeEffectFragment("ollin_gen_chladni", inputs: [], output: output,
+                                 params: [SIMD4(aspect, Float(m), Float(n), Float(scale)),
+                                          SIMD4(style.rawIndex, Float(weight), Float(grain), Float(phase)),
+                                          foreground, background], into: cb)
         case let .escapeTime(colors, interior, mode, c, center, zoom, iterations, cycles, phase):
             encodeEffectFragment("ollin_gen_escape", inputs: [], output: output,
                                  params: [SIMD4(Float(colors.count), aspect, Float(mode), Float(iterations)),

@@ -34,6 +34,7 @@ public struct Sim: Sendable {
         case gameOfLife
         case lenia(radius: Int, growthCenter: Double, growthWidth: Double,
                    timeScale: Double, rings: [Double])
+        case ripples(speed: Double, damping: Double)
         case fluid(FluidConfig)
     }
 
@@ -103,6 +104,27 @@ public struct Sim: Sendable {
                                 rings: clamped))
     }
 
+    /// A water surface: the 2D wave equation on a height field, the classic
+    /// interactive **ripple pool**. Draw into the field to drop water: a mark's
+    /// brightness is *added* to the surface height (velocity is left alone), the
+    /// bump collapses, and rings spread, reflect softly off the borders, and die
+    /// away. Soft-edged marks make the cleanest rings: a `drawCircle` under a
+    /// radial `Gradient` fading to clear is the ideal drop, where a hard-edged
+    /// disc rings at every frequency (a real splash).
+    /// Dab marks rather than holding them: an opaque mark held down pours water
+    /// every frame.
+    ///
+    /// The state is height in red, velocity in green, both signed around zero.
+    /// The raw `image` is only the debugging view; recolor it, or better, shade
+    /// it as a surface with `.filtered(.relight(...))`. `speed` sets how fast
+    /// rings run (it is the neighbor-coupling gain; the default 2 is the
+    /// classic, stable value), and `damping` (0…1) how long they last, with a
+    /// soft absorbing rim at the borders so echoes fade instead of slapping
+    /// back hard.
+    public static func ripples(speed: Double = 2, damping: Double = 0.995) -> Sim {
+        Sim(kind: .ripples(speed: min(max(speed, 0.1), 2), damping: min(max(damping, 0), 1)))
+    }
+
     /// A real-time **fluid**: an incompressible flow that carries colour. Draw into the
     /// field to inject dye (the mark's colour) and push the fluid with `withField`'s
     /// `force:` (so dragging or an animated force swirls the colour). The flow advects,
@@ -141,6 +163,7 @@ public struct Sim: Sendable {
         case .reactionDiffusion: return 14
         case .gameOfLife:        return 1
         case .lenia:             return 1
+        case .ripples:           return 3   // rings cross the field at a usable pace
         case .fluid:             return 1   // unused: the fluid runs its own pipeline
         }
     }
@@ -153,6 +176,7 @@ public struct Sim: Sendable {
         case .reactionDiffusion: return SIMD4(1, 0, 0, 1)
         case .gameOfLife:        return SIMD4(0, 0, 0, 1)
         case .lenia:             return SIMD4(0, 0, 0, 1)
+        case .ripples:           return SIMD4(0, 0, 0, 1)   // a still surface
         case .fluid:             return SIMD4(0, 0, 0, 1)   // unused: runFluid clears its own fields
         }
     }
@@ -163,7 +187,21 @@ public struct Sim: Sendable {
         case .reactionDiffusion: return "ollin_sim_reaction_diffusion"
         case .gameOfLife:        return "ollin_sim_life"
         case .lenia:             return "ollin_sim_lenia"
+        case .ripples:           return "ollin_sim_ripples"
         case .fluid:             return ""   // unused: the fluid dispatches its own fragments
+        }
+    }
+
+    /// The `ollin_sim_*` fragment that composites this frame's drawn seed marks
+    /// onto the state before stepping. Most sims *replace* the state's channels
+    /// with the mark's color where it covers (the default); ripples instead
+    /// *adds* the mark's brightness to the height channel only, since its other
+    /// channel is velocity and a mark that overwrote it would pin the surface
+    /// (the drop model the wave equation wants).
+    var injectFragment: String {
+        switch kind {
+        case .ripples: return "ollin_sim_inject_height"
+        default:       return "ollin_sim_inject"
         }
     }
 
@@ -181,6 +219,8 @@ public struct Sim: Sendable {
             return [SIMD4(Float(radius), Float(1 / timeScale),
                           Float(growthCenter), Float(growthWidth)),
                     ringRow]
+        case let .ripples(speed, damping):
+            return [SIMD4(Float(speed), Float(damping), 0, 0)]
         case .fluid:
             return []   // unused: the fluid binds per-pass parameters itself
         }

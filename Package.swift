@@ -485,6 +485,7 @@ let package = Package(
         example("Simulation/GameOfLife"),
         example("Simulation/Lenia"),
         example("Simulation/Fluid"),
+        example("Simulation/Ripples"),
         example("Simulation/ParticleLife"),
         example("Simulation/PrimordialParticles"),
         example("Simulation/Physarum"),
@@ -534,6 +535,7 @@ let package = Package(
         example("3D/Geometry/Wireframe"),
         example("3D/Geometry/LoadedMesh", resources: [.copy("model.gltf"), .copy("model.obj")]),
         example("3D/Geometry/ShapeFactory"),
+        example("3D/Geometry/Terrain"),
         example("3D/Camera/CameraControl"),
         example("3D/Camera/CameraMoves"),
         example("3D/Camera/SceneViews"),
@@ -681,6 +683,7 @@ let package = Package(
         example("Patterns/InversionFractal"),
         example("Patterns/Kleinian"),
         example("Patterns/Marbling"),
+        example("Patterns/Chladni"),
         example("Shapes/HollowShapes"),
         example("Shapes/StrokeAlignment"),
         example("Shapes/StrokeJoinsAndCaps"),
@@ -710,6 +713,7 @@ let package = Package(
         example("Images/SpanningTree"),
         example("Audio/Spectrum", [.audio]),
         example("Audio/Microphone", [.audio]),
+        example("Audio/ChladniResonance", [.audio]),
         // The bundled clip the sketch loads via Bundle.module (a launch path
         // overrides it). CC BY-SA, provenance in THIRD-PARTY-NOTICES.md.
         example("Audio/FilePlayer", [.audio], resources: [.copy("fandanguito.m4a")]),

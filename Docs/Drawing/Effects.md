@@ -6,7 +6,7 @@
 
 Draw into **off-screen layers**, run GPU **filters** over them (blur, bloom), and **composite** the results back onto the canvas with blend modes. It's how you build glow, soft backdrops, depth-of-field haze, and post-processing looks, following the OPENRNDR `compose`/`Filter` model on Ollin's Metal core.
 
-Everything stays on the GPU. A layer is a Metal texture you draw into and then sample, a filter reads one texture and writes another, and compositing is an ordinary [`drawImage`](../Drawing/Images.md) with a [`blendMode`](../Drawing/Drawing.md#blendmode). Nothing is ever read back to the CPU between steps, so the slow path other tools fall into (copying a layer back to combine it) never happens here.
+Everything stays on the GPU. A layer is a Metal texture you draw into and then sample, a filter reads one texture and writes another, and compositing is an ordinary [`drawImage`](../Drawing/Images.md) with a [`blendMode`](../Drawing/Drawing.md#blendMode). Nothing is ever read back to the CPU between steps, so the slow path other tools fall into (copying a layer back to combine it) never happens here.
 
 ```swift
 override func draw() {
@@ -62,7 +62,7 @@ Make a target inside `draw()`. It's a per-frame handle, and the GPU texture behi
 <a id="withtarget"></a>
 ### withTarget(_:_:)
 
-Redirect everything drawn in the closure into `target` instead of the canvas. Scoped exactly like [`withState { }`](../Drawing/Drawing.md#withstate), so the current drawing state and transform carry in, and drawing returns to the canvas when it ends.
+Redirect everything drawn in the closure into `target` instead of the canvas. Scoped exactly like [`withState { }`](../Drawing/Drawing.md#isolated), so the current drawing state and transform carry in, and drawing returns to the canvas when it ends.
 
 ```swift
 let layer = renderTarget()
@@ -402,8 +402,16 @@ feed `time`, sRGB palette blending, square cells at any aspect):
   by age. Past `dotSize` ≈ 1 the dots fuse into a cellular texture, and `phase` spins the head.
 - **`.hexPulse(colors:background:scale:gap:phase:)`** a hexagonal lattice whose every
   cell breathes on its own hashed rhythm, brightness and a little size riding the pulse.
+- **`.chladni(m:n:style:weight:grain:foreground:background:scale:phase:)`** the
+  standing-wave field of a ringing square plate: `.sand` gathers speckled ink along the
+  still nodal lines (`weight` the gather width, `grain` from smooth ink to loose sand,
+  shivering as `phase` advances), `.wave` breathes the signed field between the colors.
+  Integer `m`/`n` ring true modes and fractional values morph between figures; the
+  full story (the CPU field, nodal isolines, the audio join) is on its
+  [own page](../Generators/Chladni.md).
 
-See `Examples/Effects/PatternFields` for all five (plus a field chained into `.relight`).
+See `Examples/Effects/PatternFields` for the first five (plus a field chained into
+`.relight`), and `Examples/Patterns/Chladni` for the plate.
 
 **Escape-time fractals**: the classic sets as generators, colored by the smooth
 (stepless) iteration count through the palette, `phase` cycling the bands:
@@ -503,6 +511,7 @@ The catalog:
 - **`.reactionDiffusion(feed:kill:)`** Gray-Scott reaction-diffusion: two chemicals diffuse and react into coral, spots, stripes, and dividing cells. Draw light marks to inject chemical B (it spreads from there), and `feed`/`kill` pick the regime. State is A in red, B in green. Recolor with `.gradientMap`/`.threshold`.
 - **`.gameOfLife()`** Conway's Game of Life (B3/S23). Draw white to make cells alive, black to kill them. Use a low field `scale` so each texel is a visible cell. The `image` is crisp black-and-white.
 - **`.lenia(radius:growthCenter:growthWidth:timeScale:rings:)`** Lenia, the *continuous* Game of Life: the state is a smooth `0...1` mass, and each step convolves it with a soft ring kernel and grows or starves every texel by how close its neighborhood mass sits to `growthCenter` (`growthWidth` is how forgiving that rule is). Blobs pulse, split, and swim. Seed it with a *dense* soup of soft gray-to-white marks, because sparse mass starves, and the dying, labyrinth, rings, and fat-maze looks are all real regimes of the model, so if everything fades, seed denser or widen the growth. The kernel reads `radius` texels around every texel each step, making the field `scale` the cost lever, and `SimField.sim` is settable live (`field.sim = .lenia(...)`) so growth knobs can ride a `@Param`. The `image` is grayscale mass; recolor with `.gradientMap`. The CPU cellular automata (Wolfram rules, turmites) live in [Generators → Cellular automata](../Generators/CellularAutomata.md).
+- **`.ripples(speed:damping:)`** a water surface: the 2D wave equation on a height field, the classic interactive ripple pool. A drawn mark's brightness is *added* to the surface height (this sim's inject leaves its velocity channel alone), the bump collapses, and rings spread, reflect softly off an absorbing rim, and die away by `damping`. Dab soft marks (a `drawCircle` under a radial gradient fading to clear is the ideal drop; a hard-edged disc rings at every frequency, a real splash) and don't hold them, since an opaque held mark pours water every frame. The state is height in red and velocity in green, both signed; the raw `image` is a debugging view, so recolor it or shade it as a surface with `.filtered(.relight(...))`. See the `Simulation/Ripples` example.
 - **`.fluid(curl:velocityDissipation:densityDissipation:pressureIterations:buoyancy:)`** a real-time fluid, an incompressible flow that carries color. The mark's *color* injects dye, and `withField`'s `force:` pushes the flow where the mark lands, so dragging (or an animated force) swirls the color. `curl` is the swirliness, the dissipations how fast flow and dye fade, and `buoyancy` an optional upward lift on bright dye (smoke that rises on its own). The `image` is the dye; composite or `.filtered(.bloom)` it directly.
 
 ```swift
@@ -550,12 +559,12 @@ override func draw() {
 }
 ```
 
-It's pure sugar over the substrate: `compose` makes a [`renderTarget`](#rendertarget) for each layer, draws into it with [`withTarget`](#withtarget), chains its [`filtered`](#filtered) calls, and composites the result with [`drawImage`](#image) under its [`blendMode`](../Drawing/Drawing.md#blendmode). Anything you can do in a block, you can do by hand with those calls, and `compose` just gathers them.
+It's pure sugar over the substrate: `compose` makes a [`renderTarget`](#rendertarget) for each layer, draws into it with [`withTarget`](#withtarget), chains its [`filtered`](#filtered) calls, and composites the result with [`drawImage`](#image) under its [`blendMode`](../Drawing/Drawing.md#blendMode). Anything you can do in a block, you can do by hand with those calls, and `compose` just gathers them.
 
 The layer modifiers chain in any order:
 
 - `.post(_:)` runs a filter over the layer before it composites. Chain calls (or pass several to `.post(_:_:)`) to stack filters: `.post(.threshold()).post(.bloom())`.
-- `.blend(_:)` sets the [blend mode](../Drawing/Drawing.md#blendmode) the layer composites with (default `.normal`).
+- `.blend(_:)` sets the [blend mode](../Drawing/Drawing.md#blendMode) the layer composites with (default `.normal`).
 - `.scale(_:)` renders the layer at a fraction of the canvas resolution (default `1`), like [`renderTarget(scale:)`](#rendertarget), and drop it for a layer a blur or glow will soften anyway.
 
 Notes:
@@ -600,7 +609,7 @@ They interleave with `.post(_:)` in call order, and an aside can itself carry fi
 - **Linear light, premultiplied.** Layers composite in the same [linear-float](../Drawing/HDR.md) space as the canvas, so blur and bloom are physically correct (blurring in linear light, not gamma). Tone-mapping and dithering still happen once, at present, so a layer holds raw linear color.
 - **Layers take 2D and 3D alike.** A `withTarget` block is a full drawing surface, so 2D marks, meshes, point clouds, and GPU particles all render into it and composite back. A target a 3D scene is drawn into also captures depth, which is what [`depth`](#depth) reads.
 - **Filtered layers composite on the canvas, not inside another target.** Geometry layers are filled before the frame's filters run, so a `withTarget` block that draws a *filtered* layer's `image` samples it before it exists (an empty texture). Composite filtered results on the canvas, or chain further `filtered(_:)`/`combined(_:)` calls, which resolve in order.
-- **Pair bloom with `.add`.** Bloom output is self-contained (sharp image + glow). Compositing it with [`blendMode(.add)`](../Drawing/Drawing.md#blendmode) over a scene reads as added light rather than a covering layer.
+- **Pair bloom with `.add`.** Bloom output is self-contained (sharp image + glow). Compositing it with [`blendMode(.add)`](../Drawing/Drawing.md#blendMode) over a scene reads as added light rather than a covering layer.
 - See the `Effects/Bloom` example for a blurred backdrop behind a bloomed foreground.
 
 ---

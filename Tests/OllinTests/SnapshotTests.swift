@@ -178,12 +178,21 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("noise-toolkit",
                  note: "The noise-toolkit generators tiled 2x2 at a fixed phase (no time, no random): domain-warped noise (the warp knob on .noise), and the cellular generator in its three styles (cells, borders at reduced jitter, mosaic). Pins the warped-fbm displacement chain, the wandering-feature-point Worley scan, the border AA, and the per-cell mosaic hash, plus that each tile generates at its own size.",
                  make: { NoiseToolkitScene() }),
+    SnapshotCase("chladni",
+                 note: "The Chladni generator tiled 2x2 at fixed phases (no time, no random): the sand style at the default mode, at a higher mode with full grain, and at a fractional (morphing) mode, plus the wave style mid-swing. Pins the standing-wave field, the Gaussian sand gather + speckle threshold and its phase re-throw, the wave color swing, and each tile generating at its own size.",
+                 make: { ChladniScene() }),
+    SnapshotCase("terrain-3d",
+                 note: "A small seeded diamond-square heightfield eroded hydraulically and thermally, emitted as a height-textured mesh under a fixed camera (no time; all randomness seeded). Pins the whole Heightfield chain: the subdivision generator, the droplet erosion (steering, capacity, brush take, bilinear deposit), the thermal relaxation, the mesh emission (positions, smooth normals, winding, UVs), and the height-ramp texture mapping.",
+                 make: { TerrainScene() }),
     SnapshotCase("effects-simfield", frame: 60,
                  note: "A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame 60 and recoloured. Pins the stateful sim substrate end to end: the persistent ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and the headless render-every-frame warmup the built-up state depends on.",
                  make: { EffectsSimField() }),
     SnapshotCase("effects-fluid", frame: 48,
                  note: "A fluid SimField driven by a fixed brush path, run to frame 48. Pins the multi-field fluid pipeline end to end: the velocity + dye splat, curl and vorticity confinement, the Jacobi pressure projection, semi-Lagrangian advection, and the persistent two-pair ping-pong with render-every-frame warmup.",
                  make: { EffectsFluid() }),
+    SnapshotCase("ripples", frame: 90,
+                 note: "A ripples SimField rained on by seeded drops (seed set once in setup), run to frame 90 and shaded by .relight. Pins the wave-equation step (height/velocity coupling, damping, the absorbing rim), the add-to-height inject that keeps the velocity channel clean, the 3-substep pacing, and the render-every-frame headless warmup the evolving surface depends on.",
+                 make: { RipplesScene() }),
     SnapshotCase("lenia", frame: 60,
                  note: "A Lenia SimField seeded with a fixed grid of graded-alpha dots, evolved to frame 60 and recoloured. Pins the continuous-CA step end to end: the ring-kernel convolution with in-loop normalization, the bell-curve growth mapping, the dt integration and clip, and the params rows riding after the texel size.",
                  make: { LeniaScene() }),
@@ -3923,6 +3932,103 @@ private final class NoiseToolkitScene: Sketch {
                                      background: Color(hex: 0x12161F), phase: phase),
                            width: w, height: h).image,
                   in: tile(1, 1))
+    }
+}
+
+/// The Chladni generator's two styles at fixed modes and phases (no time, no
+/// random): sand at the default and a higher mode, sand at a fractional
+/// morphing mode, and the wave style mid-swing, each tile at its own size.
+private final class ChladniScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let w = 126, h = 126
+        let tile: (Int, Int) -> Rectangle = { col, row in
+            Rectangle(x: 1 + Double(col) * 128, y: 1 + Double(row) * 128,
+                      width: Double(w), height: Double(h))
+        }
+        drawImage(generate(.chladni(), width: w, height: h).image,
+                  in: tile(0, 0))
+        drawImage(generate(.chladni(m: 9, n: 4, weight: 0.08, grain: 1,
+                                    foreground: Color(hex: 0xF2C14E),
+                                    background: Color(hex: 0x1B1F2A),
+                                    phase: 0.8),
+                           width: w, height: h).image,
+                  in: tile(1, 0))
+        drawImage(generate(.chladni(m: 6.5, n: 2.5, grain: 0.3,
+                                    foreground: Color(hex: 0x55D6BE),
+                                    background: Color(hex: 0x12161F)),
+                           width: w, height: h).image,
+                  in: tile(0, 1))
+        drawImage(generate(.chladni(m: 7, n: 3, style: .wave,
+                                    foreground: Color(hex: 0xE8DCC8),
+                                    background: Color(hex: 0x2A2E3A),
+                                    phase: 0.9),
+                           width: w, height: h).image,
+                  in: tile(1, 1))
+    }
+}
+
+/// A ripples SimField rained on by seeded soft drops, evolved to the captured
+/// frame and shaded into water with .relight. Seeded once in setup, so the
+/// drop schedule (and therefore every frame) is deterministic.
+private final class RipplesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var pool: SimField!
+
+    override func setup() {
+        seed(7)
+        pool = simField(.ripples())
+    }
+
+    override func draw() {
+        background(.black)
+        withField(pool) {
+            if frameCount % 18 == 1 {
+                let x = random(40, width - 40), y = random(40, height - 40)
+                let r = random(8, 18)
+                fill(.radial(center: Vector2(x, y), radius: r,
+                             [Color(white: 1, alpha: 0.7), Color(white: 1, alpha: 0)]))
+                drawCircle(x, y, r)
+            }
+        }
+        let water = pool.filtered(.relight(.liquid, angle: -.pi * 0.7, elevation: 0.7,
+                                           height: 9, intensity: 1.15,
+                                           color: Color(hex: 0x3D6E8F)))
+        drawImage(water.image, 0, 0)
+    }
+}
+
+/// A seeded diamond-square field, eroded (a light hydraulic pass then thermal
+/// settling), meshed with a height-ramp texture, and framed by a fixed camera.
+private final class TerrainScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0A0D12))
+        let land = Heightfield.diamondSquare(size: 65, roughness: 0.55, seed: 7)
+            .eroded(.hydraulic(drops: 6_000), seed: 7)
+            .eroded(.thermal(talus: 0.03, iterations: 12))
+
+        let ramp = Ramp([Color(hex: 0x2E4A33), Color(hex: 0x8A7E66), Color(hex: 0xEDEFF2)])
+        var pixels = [UInt8]()
+        for value in land.values {
+            let c = ramp.color(at: min(max(value, 0), 1))
+            pixels.append(contentsOf: [UInt8((c.red * 255).rounded()),
+                                       UInt8((c.green * 255).rounded()),
+                                       UInt8((c.blue * 255).rounded()), 255])
+        }
+        var mesh = land.mesh(width: 10, depth: 10, height: 2.2)
+        if let texture = Image(width: land.columns, height: land.rows,
+                               premultipliedRGBA: pixels) {
+            mesh = mesh.textured(texture)
+        }
+
+        lightingPreset(.goldenHour)
+        camera(Camera3D.orbiting(target: .zero, radius: 13, azimuth: 0.8,
+                                 elevation: 0.55, fieldOfView: .pi / 4))
+        drawMesh(mesh)
     }
 }
 

@@ -1687,6 +1687,37 @@ fragment float4 ollin_gen_hexpulse(PresentOut in [[stage_in]],
     return ollin_pat_out(ollin_pat_over(cell * cov, ollin_pat_stop(params[2])));
 }
 
+// chladni: the standing-wave field of a square plate (the library's `chladni`,
+// two mirrored plate modes superposed), read two ways. Sand: ink accumulates
+// around the nodal zero set with a Gaussian falloff in field units, `grain`
+// melting the smooth density into a per-cell speckle re-thrown as `phase`
+// advances (the grains shivering on the ringing plate). Wave: the signed field
+// swings the antinodes between the colors by cos(phase) while the nodes hold
+// still. (params[0]: aspect, m, n, scale; params[1]: style, weight, grain,
+// phase; params[2]: foreground, params[3]: background.)
+fragment float4 ollin_gen_chladni(PresentOut in [[stage_in]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float aspect = params[0].x, m = params[0].y, n = params[0].z, scale = params[0].w;
+    float style = params[1].x, weight = params[1].y;
+    float grain = params[1].z, phase = params[1].w;
+
+    float2 p = (ollin_pat_square(in.uv, aspect) + 0.5) * scale;
+    float s = chladni(p, m, n);
+
+    if (style < 0.5) {   // sand
+        float density = exp(-(s * s) / (weight * weight));
+        float2 cell = floor(p * 900.0);
+        float speck = step(hash12(cell + floor(phase * 8.0) * 17.31), density);
+        float ink = mix(density, speck, grain);
+        float4 sand = ollin_pat_stop(params[2]) * ink;
+        return ollin_pat_out(ollin_pat_over(sand, ollin_pat_stop(params[3])));
+    }
+    // wave
+    float t = 0.5 + 0.5 * s * cos(phase);
+    float4 c = mix(ollin_pat_stop(params[3]), ollin_pat_stop(params[2]), t);
+    return ollin_pat_out(c);
+}
+
 // MARK: - Escape-time fractals
 //
 // The Mandelbrot iteration z = z^2 + c, escape-time colored: pixels whose orbit

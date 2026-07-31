@@ -23,6 +23,50 @@ fragment float4 ollin_sim_inject(PresentOut in [[stage_in]],
     return float4(mix(s.rgb, ollin_unpremul(d), d.a), 1.0);
 }
 
+// The ripples inject: a drawn mark's brightness is *added* to the height
+// channel, velocity untouched. Replacing (the default inject) would pin the
+// surface and hand the velocity channel color values; adding is the drop
+// model the wave equation wants. The seed is premultiplied, so its luminance
+// already carries the mark's alpha (a soft-alpha mark is a soft bump).
+fragment float4 ollin_sim_inject_height(PresentOut in [[stage_in]],
+                                        texture2d<float> state [[texture(0)]],
+                                        texture2d<float> seed [[texture(1)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float4 s = state.sample(samp, in.uv);
+    float4 d = seed.sample(samp, in.uv);
+    float drop = dot(d.rgb, float3(0.2126, 0.7152, 0.0722));
+    return float4(s.r + drop, s.g, 0.0, 1.0);
+}
+
+// The interactive-water step: state is (height, velocity), both signed about
+// zero. Velocity accelerates toward the four-neighbor average (the coupling
+// gain is the wave speed), is damped a little so waves die away, and moves the
+// height. Taps clamp at the borders (no wrap: rings don't teleport across),
+// and a soft absorbing rim scales the damping down near the edges so echoes
+// fade out instead of slapping back at full strength. Velocity damping decays
+// motion but leaves a settled level alone, so each drop's volume stays in the
+// pool (visible only as a slow level rise, not an artifact).
+// (params[0]: texel; params[1]: speed, damping.)
+fragment float4 ollin_sim_ripples(PresentOut in [[stage_in]],
+                                  texture2d<float> src [[texture(0)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float speed = params[1].x, damping = params[1].y;
+    float2 uv = in.uv;
+    float4 c = src.sample(samp, uv);
+    float average = (src.sample(samp, uv - float2(t.x, 0.0)).r +
+                     src.sample(samp, uv + float2(t.x, 0.0)).r +
+                     src.sample(samp, uv - float2(0.0, t.y)).r +
+                     src.sample(samp, uv + float2(0.0, t.y)).r) * 0.25;
+    float v = c.g + (average - c.r) * speed;
+    float rim = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+    v *= mix(0.9, damping, smoothstep(0.0, 0.08, rim));
+    float h = c.r + v;
+    return float4(h, v, 0.0, 1.0);
+}
+
 // reaction-diffusion (Gray-Scott): chemical A in .r, B in .g. A 9-point Laplacian
 // stencil diffuses each, then the bimolecular reaction A·B² converts A to B, with A
 // fed back toward 1 and B killed back toward 0. params[1] = (feed, kill).

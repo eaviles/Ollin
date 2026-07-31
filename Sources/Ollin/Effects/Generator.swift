@@ -102,6 +102,11 @@ public struct Generator: Sendable {
         /// Per-cell brightness pulses over a hexagonal lattice.
         case hexPulse(colors: [SIMD4<Float>], background: SIMD4<Float>, scale: Double,
                       gap: Double, phase: Double)
+        /// The Chladni standing-wave field of a square plate, read as sand
+        /// gathered on the nodal lines or as the breathing wave itself.
+        case chladni(m: Double, n: Double, style: ChladniStyle, weight: Double,
+                     grain: Double, foreground: SIMD4<Float>, background: SIMD4<Float>,
+                     scale: Double, phase: Double)
         /// An escape-time fractal (Mandelbrot or Julia), colored by smooth
         /// iteration count through the palette. `mode` 0 = Mandelbrot, 1 = Julia.
         case escapeTime(colors: [SIMD4<Float>], interior: SIMD4<Float>, mode: Double,
@@ -518,6 +523,51 @@ public struct Generator: Sendable {
                                   background: background.linearRGBA,
                                   scale: min(max(scale, 1), 64),
                                   gap: min(max(gap, 0), 0.9), phase: phase))
+    }
+
+    /// The look a `chladni` generator paints from the standing-wave field.
+    public enum ChladniStyle: Sendable {
+        /// Sand gathered along the nodal lines: the classic figure, grains
+        /// accumulating where the plate stands still.
+        case sand
+        /// The signed wave itself: antinodes breathing between the two colors
+        /// with `phase` while the nodal lines hold still.
+        case wave
+
+        /// The shader's style index (kept in step with `ollin_gen_chladni`).
+        var rawIndex: Float {
+            switch self {
+            case .sand: return 0
+            case .wave: return 1
+            }
+        }
+    }
+
+    /// A **Chladni figure**: the standing-wave field of a vibrating square
+    /// plate, the symmetric line drawing sand traces as it gathers along the
+    /// still (nodal) lines. `m` and `n` are the mode numbers: integers ring
+    /// true modes (higher, finer), fractional values morph smoothly between
+    /// figures, and `m == n` cancels to a still plate (no figure). `style`
+    /// picks the reading (see `ChladniStyle`): for `.sand`, `weight` is the
+    /// gather width around the nodes and `grain` runs the lines from smooth
+    /// ink (0) to loose sand speckle (1), re-thrown as `phase` advances so the
+    /// grains shiver on the ringing plate; for `.wave`, `phase` breathes the
+    /// antinodes through a full swing per 2π. `scale` above 1 tiles mirrored
+    /// plates. The CPU sibling `chladni(_:_:m:n:)` is the same field for
+    /// geometry (nodal isolines, settling particles).
+    public static func chladni(m: Double = 5, n: Double = 2,
+                               style: ChladniStyle = .sand,
+                               weight: Double = 0.12, grain: Double = 0.5,
+                               foreground: Color = Color(hex: 0xE8DCC8),
+                               background: Color = Color(hex: 0x14181F),
+                               scale: Double = 1, phase: Double = 0) -> Generator {
+        Generator(kind: .chladni(m: min(max(m, 0), 32), n: min(max(n, 0), 32),
+                                 style: style,
+                                 weight: min(max(weight, 0.01), 1),
+                                 grain: min(max(grain, 0), 1),
+                                 foreground: foreground.linearRGBA,
+                                 background: background.linearRGBA,
+                                 scale: min(max(scale, 0.05), 8), phase: phase))
     }
 
     // MARK: Escape-time fractals

@@ -275,6 +275,9 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/MedialAxis.md` (`medialAxis`, skeletons with radii) | Appendix D (Ch 13 when it grows) | pointed |
 | `Generators/Marbling.md` (`Marbling`, closed-form paper marbling) | Appendix D (Ch 13 when it grows) | pointed |
 | `Generators/Watercolor.md` (`Watercolor` / `drawWatercolor`, layered deformation) | Appendix D (Ch 13 when it grows) | pointed |
+| `Generators/Chladni.md` (`chladni` field + `.chladni` generator, mode-by-pitch audio join) | Appendix D (Ch 16 when it grows; the audio join Ch 20) | pointed |
+| `Generators/Terrain.md` (`Heightfield`, diamond-square, hydraulic + thermal erosion, terrain meshes) | Appendix D (Ch 17 when it grows) | pointed |
+| `.ripples` wave-equation Sim (`Drawing/Effects.md`) | Appendix D (Ch 16 when it grows) | pointed |
 | `Drawing/GlyphMosaic.md` (`drawGlyphMosaic`, measured glyph ramps) | Appendix D (Ch 7 when it grows) | pointed |
 | `Drawing/PixelSorting.md` (`Image.pixelSorted`) | Appendix D (Ch 7 when it grows) | pointed |
 | `Drawing/Halftone.md` (`drawHalftone`, area-exact dot screens) | Appendix D (Ch 7 when it grows) | pointed |
@@ -354,7 +357,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Generative-geometry refinements | Ch 11 |
 | Technique catalog: GPU-scale steering agents | Ch 16 |
 | Technique catalog: growth/morphogenesis (Turing patterns, sandpile, growth on meshes) | Ch 16/17 |
-| Technique catalog: waves, terrain | Ch 16/17 |
 | Technique catalog: tiling/layout families | Ch 6 |
 | Technique catalog: meshing (marching cubes, metaballs) | Ch 17 |
 | Expressive brushes and strokes | Ch 13 |
