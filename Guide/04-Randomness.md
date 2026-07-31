@@ -166,6 +166,26 @@ Run it and the walk *grows* in front of you, ten seconds from first step to rest
 
 The walk's core move is a value carried forward and nudged (`x = nx`), and it's where Part II begins, because velocity, springs, and flocks all carry a value forward and nudge it. The walk does have one visual flaw, the constant jitter, and that's exactly what Chapter 5 fixes, since noise wanders the same way without it.
 
+## Three walks, three rules
+
+Writing that walk by hand is worth doing, and after that Ollin has it ready, along with two relatives that each change exactly one rule about what the next step is allowed to be.
+
+<img src="Images/04-Randomness/WalkFamily.jpg" alt="Three panels from the same seed: a dense tangle pooling in one area, a set of tight clusters joined by long straight leaps, and an orange path on a grid that fills the square without ever crossing itself" width="680">
+
+```swift
+randomWalk(steps: 5000, stepLength: 3)
+levyFlight(steps: 900, minStep: 1.5, maxStep: 90)
+selfAvoidingWalk(cellSize: 22)
+```
+
+**`randomWalk`** is the one you just wrote, seeded and shipped. Notice what it does with five thousand steps in the first panel: it pools. A walk with equal-sized steps spreads outward only as fast as the square root of the number of steps, so it spends most of its time revisiting a small patch.
+
+**`levyFlight`** changes the step size rule. Instead of every step being about the same length, the lengths come from a distribution where small steps are overwhelmingly likely but occasionally an enormous one comes up. The result is the second panel: tight clusters joined by long straight leaps. This turns out to be how foraging animals actually move when they don't know where the food is, which is why the pattern shows up in tracking data for albatrosses, sharks, and bees. One knob needs care, and `minStep` must stay above zero, because the distribution's tail runs to infinity at zero and a zero minimum produces steps that never end.
+
+**`selfAvoidingWalk`** changes the memory rule. It moves on a grid and refuses to enter a cell it has already visited, so it can't pool, and it fills its region instead. It also gets stuck, which is not a bug but the whole character of the thing. When every neighbor has been used, the walk stops, and where it stops is part of the drawing.
+
+All three are seeded like everything else in this chapter, so the same seed gives the same journey.
+
 ## Putting it together: order, with a pinch of disorder
 
 This is the piece from the top of the chapter, and it holds still on purpose, because its motion lives *between* variations, one click apart. The idea is borrowed openly from the founding generation of computer artists, Vera Molnár above all, who worked exactly this way. You take a perfectly ordered structure, a grid of nested squares, and add disorder in small, controlled amounts. Here each square's corners get a random nudge, and the permitted nudge grows from nothing in the top row to full strength at the bottom, so a single image walks from architecture to scribble. Make `MySketches/DisorderGrid.swift`:

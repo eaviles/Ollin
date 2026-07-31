@@ -40,6 +40,8 @@ Statuses: `not started` → `figures` (figure sketches built and rendered) → `
 Also tracked here so they aren't forgotten:
 
 - CI wiring for the figure runner is deliberately deferred (CI minutes are scarce); `Scripts/guide-figures.sh` run locally per session is the gate for now. Revisit when several chapters exist.
+- The full run has grown past 190 figures and now takes roughly twenty minutes, since a few figures do heavy setup work (erosion, stippling, flame accumulation). `--only` covers the figures a session touches; run the whole suite once before committing. If it keeps growing, the options are a manifest of which figures a chapter owns, or caching by source hash so unchanged figures skip.
+- Two figures are legitimately not reproducible and re-render differently every run: `16-Simulations/ArtificialLife` and `16-Simulations/FluidAndBlobs`. Their sims are GPU-atomic-race-ordered and chaotic (the no-pixel-snapshot rule in `CLAUDE.md`), so `git restore` those two after a full run rather than committing the churn.
 - A website (Guide + Docs + gallery) is a later project; keep all markdown portable (plain relative links, standard tables, no HTML beyond the sanctioned `<img width>` figure embed in AUTHORING.md).
 - Translations are out of scope for now.
 
@@ -283,7 +285,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Drawing/Halftone.md` (`drawHalftone`, area-exact dot screens) | Ch 7 | taught (same section and figure: `pitch`/`angle`, area-exact coverage, real circles for the plotter, and continuous tone versus the mosaic's steps) |
 | `.melt` design filter (`Drawing/Effects.md`, the luminance melt) | Ch 14 | taught (a before/after figure beside the design filters, the shared displacement vector that makes it read as dyed rather than smeared, the brightness mix-back, the dial-back knobs, and the never-perfectly-loops caveat) |
 | `Video/SlitScan.md` (`SlitScan` frame history) | Ch 21 | taught ("The past as material" with a synthetic-clip figure: the rolling history, the delay closure and what 0 and 1 mean, alternative delay maps and the image form, the memory cost, and the `Ollin.SlitScan` shadowing note) |
-| `Generators/Walks.md` (`randomWalk`, `levyFlight`, `selfAvoidingWalk`) | Ch 4 / Appendix D | pointed |
+| `Generators/Walks.md` (`randomWalk`, `levyFlight`, `selfAvoidingWalk`) | Ch 4 | taught ("Three walks, three rules" after the hand-rolled walk, with a same-seed three-panel figure: why an even-stepped walk pools, the power-law step lengths and the foraging connection, the `minStep` divergence, and getting stuck as the point of the self-avoiding one) |
 | `Generators/Packing.md` (circles) | Ch 13 | taught |
 | `Generators/ShapePacking.md` | Ch 13 | shown |
 | Hatching (`Output/Export.md`) | Ch 13 | taught |
