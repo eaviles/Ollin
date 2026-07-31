@@ -158,7 +158,29 @@ There is still only one cluster, because the domain operator rewrites each query
 
 A field shades like a mesh, so all of Chapter 17 applies: `material(.jade)` gives a melt its glow, `castShadows()` grounds it (a field even self-shadows, and trades shadows with the meshes around it), and an `environment(_:)` lights it from its surroundings (a bundled HDRI like `.studio` or `.sunset`, or the procedural `.sky(sunElevation:)`, which needs no asset at all). That last one is where the physically based materials from Chapter 17 come into their own. Under `environment(.studio)`, a `material(.dielectric(roughness: 0.07))` field picks up the studio's soft light strips as real reflections, and that's the glassy look this chapter ends on. An environment also paints itself behind the scene as a backdrop, so when you want your own `background(_:)` to show through instead, ask for `.lightingOnly()` and you keep the light without the picture.
 
-Two pointers wait for when you want more. `SDF3D.plane()` is an infinite floor you can merge into the field for true horizon-to-horizon self-shadowing, and on Apple silicon `rayTracedReflections()` lets a physically based field mirror the actual meshes around it. The [combining map](../Docs/3D/Combining.md) sorts out exactly which finish applies to which geometry.
+`SDF3D.plane()` is worth knowing about here too, since it's an infinite floor you can merge into the field for true horizon-to-horizon self-shadowing.
+
+## Mirrors that see off screen
+
+Chapter 17 finished with screen-space reflections and an honest limit: they reflect what is on the screen, so they cannot show you anything the camera can't already see. `rayTracedReflections()` is the answer to that, and it works differently enough to be worth understanding.
+
+Instead of searching the finished picture for what a reflection should show, it fires an actual ray off each reflective surface and asks what the ray hits, using the real geometry. Off-screen objects appear. Hidden faces appear. The underside of a ball resting on a mirrored floor appears, because the ray goes there and looks. It integrates into the environment lighting rather than sitting on top as a post-process, so a traced hit simply replaces what the environment would have contributed, and a ray that hits nothing shows the sky.
+
+<img src="Images/18-SculptingWithFields/TracedMirror.jpg" alt="An orange sphere and a pale box on a nearly polished dark floor under studio lighting, with a blue sphere overhead cropped by the top of the frame. Both floor reflections are sharp, and the box's shows its underside" width="560">
+
+Look at the box's reflection rather than the sphere's. You can see its underside, the face resting toward the floor, which the camera never sees from where it stands. That face exists in the geometry, so a ray sent to it comes back with an answer. A screen-space reflection has no pixels of that face to borrow, because the picture simply doesn't contain it, and has to approximate.
+
+```swift
+environment(.studio)
+rayTracedReflections()          // needs a ray-tracing GPU; a no-op elsewhere
+material(.metal(roughness: 0.08))
+```
+
+Three conditions come with it. It needs an `environment(_:)` to fall back to, it only affects physically based materials, and it needs a GPU that can trace rays. Every Apple silicon Mac can, though the M3 generation and later do it in dedicated hardware and earlier chips do it in software, so the same scene costs more frames on an M1 or M2. Anywhere it isn't available the call does nothing at all rather than failing, so a sketch that asks for it still runs and simply looks plainer, which is why you can leave the call in.
+
+There's one behavior worth expecting rather than being puzzled by. Reflections are traced with a limited number of rays and cleaned up over time while the camera holds still, so a fresh view can look faintly noisy for a moment before it settles. Exports don't have that problem, because there Ollin averages several rays within each frame instead of across frames, which is also why a video export can't flicker.
+
+When you want the map of which finish applies to which kind of geometry, meshes and fields differing in a few places, the [combining reference](../Docs/3D/Combining.md) is the table for it.
 
 ## Putting it together: molten
 

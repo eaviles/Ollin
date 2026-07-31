@@ -259,9 +259,35 @@ Once the field is shaped, it reads out three ways. `mesh(width:depth:height:)` g
 
 One practical note carries all of this. Erosion is genuine work, tens of thousands of drops each walking dozens of steps, so it belongs in `setup()`. Grow the field, weather it, keep the mesh, and let `draw()` just draw it.
 
+## What the depth buffer is for
+
+Chapter 14 filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has: for every pixel, how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.
+
+```swift
+let scene = renderTarget()
+withTarget(scene) { /* your 3D scene */ }
+
+drawImage(scene.combined(with: scene.depth,
+                         .ambientOcclusion(radius: 0.7, intensity: 1.5)).image, 0, 0)
+```
+
+<img src="Images/17-3DGently/DepthEffects.jpg" alt="Three panels of the same field of pale blocks on a ground plane: plain, then with ambient occlusion darkening the gaps and contacts, then with depth of field leaving one band of blocks sharp while the front and back blur" width="680">
+
+`scene.depth` is an ordinary layer whose brightness is distance, so it feeds `combined(with:)` like any other, and everything else in Chapter 14 still applies.
+
+**`.ambientOcclusion`** darkens the places light struggles to reach: crevices, the gaps between objects, and the line where something meets the ground. Compare the first two panels and the blocks stop floating. That single change is most of what makes a render read as solid rather than pasted together, and it costs one line because the depth layer already knows where the crevices are.
+
+**`.defocus`** is a camera lens. It keeps a band of distance sharp, set by `focus` and `range`, and blurs everything else more the further it is from that band, up to `maxBlur`. It's how you point at one thing in a busy scene. Both `focus` and `range` are read against the depth layer's `0...1`, so they depend on the camera's `near` and `far`, which is why setting those to actually bracket your scene matters rather than leaving them enormous.
+
+**`.screenSpaceReflections`** makes a floor glossy by reflecting the scene in it, and it runs on any Mac. It has one limit worth understanding rather than being surprised by: it reflects what is on the screen, and a picture does not contain the back of anything. Where the true reflection would be of a surface the camera cannot see, such as the underside of a ball resting on a floor, it can only approximate, which shows as a soft zone right at the contact. A touch of `roughness` hides it, and Chapter 18 has the exact alternative.
+
+All three take a `quality` tier, `.performance`, `.default`, or `.detail`, which trades frame rate for smoothness. The tier is relative to your machine rather than an absolute setting, so `.default` means "the balanced choice for this GPU" and buys more samples on a faster one. Raising it to `.detail` for a final export is the usual move, since the export doesn't have to keep up with a display.
+
 ## Keeping your bearings
 
 3D scenes are easy to get lost in, so the tools for finding yourself again are built in. `cameraView(.front)` snaps the camera to a canonical angle (front, top, left, isometric, and friends) and `resetCamera()` returns to the opening shot. The host apps put the same snaps in a **Camera** menu (⌘0 through ⌘7), so they work on any running sketch without a line of code. Two more calls help while you build: `cameraAxis()` shows a small clickable x-y-z compass, and `groundGrid()` lays a faint reference floor. Both are development chrome, drawn only in the live window, never in an export, which is why you won't find them in any figure in this chapter.
+
+One more thing to keep straight as you combine features. Ollin draws several *kinds* of 3D thing, and they don't all take the same finishes. Solid meshes are the fullest citizens, taking materials, textures, shadows, and reflections. The raymarched fields of Chapter 18 take materials, environments, and shadows but arrive by a different route. Point clouds are camera-facing splats and take neither lighting nor shadows, which is exactly right for what they are. None of this is arbitrary, since each kind is a different way of getting pixels on screen, but it does mean a material that transforms a mesh may do nothing to a cloud. When something you expected to apply doesn't, the [combining reference](../Docs/3D/Combining.md) is a table of what stacks with what.
 
 ## Putting it together: the plaza
 

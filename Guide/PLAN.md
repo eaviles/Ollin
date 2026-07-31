@@ -304,10 +304,10 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Pattern fields (`Drawing/Effects.md`) | Ch 15 | shown |
 | Escape-time fractals (`Drawing/Effects.md`) | Ch 16 | shown |
 | `Generators/Fractals.md` (`IFS`, `FractalFlame`, inversion and Kleinian limit sets) | Ch 11 | taught ("The same fern, played as a game" derives the chaos game from the chapter's own L-system fern with a condensing figure and explains why contraction forces the attractor; "Three more games worth knowing" covers flames, inversion, and Kleinian with a three-panel figure, plus `fitted` and the Contour return) |
-| Depth-of-field `.defocus`, SSAO, SSR (`Drawing/Effects.md`) | Ch 17 | pointed |
+| Depth-of-field `.defocus`, SSAO, SSR (`Drawing/Effects.md`) | Ch 17 | taught ("What the depth buffer is for" with a three-panel figure: depth as an ordinary layer, occlusion as what stops objects floating, focus/range read against near/far, SSR's cannot-see-the-back limit, and quality tiers resolving on export) |
 | `Shaders/Shaders.md` (user shaders) | Ch 15 | taught |
 | `Shaders/Visuals.md` (Visual chains) | Ch 15 | taught |
-| `Shaders/ShaderLibrary.md` (helper reference) | Ch 15 | pointed |
+| `Shaders/ShaderLibrary.md` (helper reference) | Ch 15 | taught (the named families, plus what splicing means: one source compiled into framework shaders, user shaders, and compute kernels, so a field behaves identically wherever you move it, and the `using:` opt-out) |
 | `Shaders/Compute.md` (kernels, Particles, Simulation) | Ch 16 | taught |
 | Sim fields: Game of Life, Gray-Scott, fluid (`Drawing/Effects.md`) | Ch 16 | taught |
 | Artificial life: `ParticleLife`, `PPS`, `Physarum`, `SpatialHash` (`Simulation/ArtificialLife.md`) | Ch 16 | taught ("Crowds that organize themselves" with a three-panel figure: the neighbor-search problem `SpatialHash` solves, all three systems with their rules and calls, and the no-frame-exact-reproducibility caveat) |
@@ -317,11 +317,11 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Damped spring: `DampedSpring`, `@Sprung` (`Helpers/Animation.md`) | Ch 3 | taught (duration/bounce, the moving-target case that separates it from `@Eased`, and `kick`; `velocity` and `Vector2` springs pointed) |
 | `3D/3D.md` (camera, primitives, meshes, lights, materials) | Ch 17 | taught |
 | `3D/Camera.md` (cameraControl, moves, showcase, views) | Ch 17 | taught |
-| `3D/Combining.md` (what stacks with what) | Ch 17/18 | pointed |
+| `3D/Combining.md` (what stacks with what) | Ch 17/18 | taught (the concept in Ch 17's bearings section: several kinds of 3D thing reach the screen by different routes, so finishes apply unevenly, with the table pointed for lookup) |
 | Matcap (`3D/3D.md`) | Ch 17 | shown |
 | PBR materials + IBL environments + procedural sky (`3D/3D.md`) | Ch 18 | shown |
 | Shadows: 2D map, PCSS, ray-traced point (`3D/3D.md`) | Ch 17 | shown |
-| Ray-traced reflections (`3D/3D.md`) | Ch 18 | pointed |
+| Ray-traced reflections (`3D/3D.md`) | Ch 18 | taught ("Mirrors that see off screen": traced rays versus searching the finished picture, integration into the environment rather than post-process, the three conditions, no-op where unavailable so the call can stay in, and the settle-then-clean behavior) |
 | Wireframe, textured meshes, mesh loading (`3D/3D.md`) | Ch 17 | shown (wireframe in the finished piece, loading taught; textured pointed) |
 | Point clouds (`3D/3D.md`) | Ch 19 | taught |
 | `Drawing/Combinators.md` (SDF 2D + SDF3D raymarching) | Ch 18 | taught |
@@ -345,7 +345,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Tools/LiveCoding.md` (OllinLiveCoding) | Ch 22; OllinLive workflow in Ch 1 | taught |
 | Single-file sketches (the `ollin` command, hashbang files; `Tools/SingleFile.md`) | Ch 1 | taught ("A shorter way to run things": `install`/`new`/run, what it means that a sketch is one file, export flags on a loose file, and the hashbang form) |
 | Examples gallery (`swift run OllinExamples`) | Ch 1 | shown |
-| Extension seam (`Sketch.extend`, `SketchExtension`) | Appendix D | pointed |
+| Extension seam (`Sketch.extend`, `SketchExtension`) | Ch 22 | taught ("Adding behavior without touching the sketch": why cross-cutting behavior does not belong in `draw()`, the built-in stats extension as the example, and the opt-in frame readback) |
 | Headless capture (`OllinApp.image(of:)`) | Ch 22; used by the Guide's own figure runner | shown |
 
 ## Roadmap parking lot

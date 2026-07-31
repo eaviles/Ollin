@@ -247,7 +247,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Syphon | Publish frames to (and read frames from) other Mac apps, GPU to GPU | [Ch 22](22-SharingAndPerforming.md) | [Syphon](../Docs/Integration/Syphon.md) |
 | Virtual camera | Your sketch as a system-wide webcam every video app can pick | [Ch 22](22-SharingAndPerforming.md) | [VirtualCamera](../Docs/Integration/VirtualCamera.md) |
 | Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, perform | [Ch 22](22-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |
-| Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | here | [Sketch](../Docs/Core/Sketch.md#extensions) |
+| Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | [Ch 22](22-SharingAndPerforming.md) | [Sketch](../Docs/Core/Sketch.md#extensions) |
 
 ---
 

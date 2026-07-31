@@ -93,7 +93,17 @@ Rebuilding the `Shader` value every frame is the normal pattern and costs nothin
 
 ## The library in your pocket
 
-Ollin splices its own shader library into every shader you write, so the helpers its built-in effects use are yours too, with no import. Several you already know by other names. `fbm` is Chapter 5's layered noise as one call, and the rest of that chapter's field family (`simplexNoise`, `worley`, `ridgedFbm`, `turbulence`, `warpedFbm`) is here under the same names. `hash12` is a random number that never changes between frames, so feed it a cell and it's Chapter 4's seeded random, per pixel. The `sd*` family measures distance to ellipses, stars, hearts, and béziers the way `length` measured distance to a point. And `palette(t, a, b, c, d)` turns a `0...1` value into color along a designed gradient, where four `float3`s shape the ramp, so steal starting values from its documentation and nudge. The [shader library reference](../Docs/Shaders/ShaderLibrary.md) lists every function.
+Ollin splices its own shader library into every shader you write, so the helpers its built-in effects use are yours too, with no import. Several you already know by other names. `fbm` is Chapter 5's layered noise as one call, and the rest of that chapter's field family (`simplexNoise`, `worley`, `ridgedFbm`, `turbulence`, `warpedFbm`) is here under the same names. `hash12` is a random number that never changes between frames, so feed it a cell and it's Chapter 4's seeded random, per pixel. The `sd*` family measures distance to ellipses, stars, hearts, and béziers the way `length` measured distance to a point. And `palette(t, a, b, c, d)` turns a `0...1` value into color along a designed gradient, where four `float3`s shape the ramp, so steal starting values from its documentation and nudge.
+
+The word "splices" in that first sentence is doing real work, and it's worth a moment because it explains why the names never drift. There is one library file, and it gets pasted into three different places: the framework's own effect shaders, every shader you write, and every compute kernel from Chapter 16. So `fbm` in your filter, `fbm` in Ollin's built-in noise generator, and `fbm` in a particle kernel are not three implementations that happen to agree. They are the same source text compiled three times, which is why a field you prototype in a shader behaves identically when you move it into a kernel.
+
+Splicing the whole library into every shader would make every compile larger than it needs to be, so there's an opt-out:
+
+```swift
+Shader(source, using: [.noise, .sdf])   // keep only these sections
+```
+
+Leave it off and you get everything, which is the right default while you're exploring. Reach for it when a sketch has many shaders and compiles start to feel slow. The [shader library reference](../Docs/Shaders/ShaderLibrary.md) lists every function and which section it lives in.
 
 You've also been *using* shaders all along, since every Chapter 14 filter and generator is one. The pattern fields are the purest examples, each a few lines of the math this chapter teaches:
 

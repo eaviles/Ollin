@@ -95,6 +95,20 @@ Resolume, MadMapper, VDMX, and other creative-coding frameworks all read it live
 
 The **virtual camera** goes where Syphon can't: `publishVirtualCamera()` makes the sketch a system-wide webcam called "Ollin Camera", so Zoom, Photo Booth, QuickTime, OBS, and (importantly) the *browser* can all take a sketch as their camera. It needs a one-time install of the camera extension (the Ollin Camera app in this repo, approved once in System Settings), and from then on any sketch can feed it, with a broadcast test card showing whenever none is. Your next video call can open on a reaction-diffusion field.
 
+## Adding behavior without touching the sketch
+
+One more piece is worth knowing about once you have several sketches, because it answers a question that comes up as soon as you want the same extra behavior in all of them: how do you add something to a sketch's life cycle without editing the sketch?
+
+An **extension** is a small object that gets told when things happen. You register it once, and from then on it hears about setup, about each frame before and after the drawing, and, if it asks, about the finished rendered image.
+
+```swift
+extend(MyWatermark())
+```
+
+The reason this exists rather than you just adding lines to `draw()` is that some behavior isn't about the artwork. A frame recorder, an on-screen readout of the frame rate, a guide overlay you toggle while composing, a logger that notes which seed produced which render: none of those belong in the piece, and all of them want to apply to every piece. Ollin's own frame-rate statistics work exactly this way, as an extension registered by the host rather than anything in your sketch.
+
+The one detail worth flagging is that hearing about the rendered image is opt-in, through a property the extension sets, because reading pixels back from the GPU costs real time. An extension that only watches timing pays nothing. The [extension seam](../Docs/Core/Sketch.md#extensions) has the hook list.
+
 ## Performing the code itself
 
 The last output is a stage. `swift run OllinLiveCoding` opens the performance host, where the sketch fills the window and the code rides over it as translucent text, part of the show:
