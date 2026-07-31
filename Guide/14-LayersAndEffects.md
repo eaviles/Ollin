@@ -100,7 +100,7 @@ Three lines, and the canvas is a printed poster, a mesh gradient of soft color b
 
 ### The design family
 
-Two lines of that listing came from a set worth knowing as a set. Alongside the plain generators (checkers, noise, gradients) there's a **design** family, built to look like the finished graphics you'd meet on a product page rather than like test patterns. On the generator side that's `.meshGradient`, `.godRays`, `.spiral`, `.dotOrbit`, `.quasicrystal`, `.moire`, `.gyroid`, `.phyllotaxis`, and `.hexPulse`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured, and each takes colors plus a handful of knobs when you want it to be yours.
+Two lines of that listing came from a set worth knowing as a set. Alongside the plain generators (checkers, noise, gradients) there's a **design** family, built to look like the finished graphics you'd meet on a product page rather than like test patterns: `.meshGradient`, `.filaments`, `.smokeRing`, `.colorPanels`, `.spiral`, `.waves`, `.dotOrbit`, `.grainGradient`, `.pulsingBorder`, and `.godRays`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured, and each takes colors plus a handful of knobs when you want it to be yours. (There's a third group, the pattern fields, with a more mathematical flavor. Chapter 15 picks those up, because by then you'll be able to read how they work.)
 
 Nearly all of them take a **`phase`**, and that is the one detail to remember: they have no clock of their own, so nothing moves until you feed it one.
 

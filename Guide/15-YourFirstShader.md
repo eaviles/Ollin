@@ -105,15 +105,47 @@ Shader(source, using: [.noise, .sdf])   // keep only these sections
 
 Leave it off and you get everything, which is the right default while you're exploring. Reach for it when a sketch has many shaders and compiles start to feel slow. The [shader library reference](../Docs/Shaders/ShaderLibrary.md) lists every function and which section it lives in.
 
-You've also been *using* shaders all along, since every Chapter 14 filter and generator is one. The pattern fields are the purest examples, each a few lines of the math this chapter teaches:
+## The pattern fields
+
+You've also been *using* shaders all along, since every Chapter 14 filter and generator is one. Chapter 14 introduced the design generators, and held one group back for here: the **pattern fields**, because they're the ones this chapter has just taught you to read.
+
+What makes them a group is a property, not a style. A pattern field is **closed form**: it has no state, no source picture, and it reads no textures. Every pixel is a small piece of arithmetic on its own coordinates, exactly like the shaders you've been writing. Three consequences follow, and they're the reason to reach for one.
+
+- It costs the same at any size, so a pattern field fills a 4K poster as happily as a thumbnail, and there's nothing to load.
+- It has no history, so frame 900 doesn't depend on frames 1 through 899. That's what makes them safe to export, scrub, or jump around in.
+- It's a pure function of `phase`, so the same phase gives the same picture, forever.
 
 ```swift
 drawImage(generate(.quasicrystal(phase: time)).image, 0, 0)
 ```
 
-<img src="Images/15-YourFirstShader/Fields.jpg" alt="Two built-in pattern fields side by side: a blue quasicrystal of interfering waves with sevenfold stars, and a gyroid slice of interwoven cream bands on slate" width="680">
+<img src="Images/15-YourFirstShader/Fields.jpg" alt="Six labeled tiles: a blue quasicrystal of interfering waves, a black and white moire of beating ring gratings, cream interwoven gyroid bands on slate, an orange golden-angle dot spiral, a hexagonal lattice of teal, red and gold cells, and a sandy white Chladni figure of nodal lines on near-black" width="680">
 
-The quasicrystal is a handful of `cos` waves summed at evenly spaced angles, and the gyroid is one line of `sin` and `cos` products. When a built-in look is close to what you want, take it, and when it isn't, you now know how they're made.
+There are six. `.quasicrystal` sums plane waves at evenly spaced angles, so it's ordered but never repeats. `.moire` overlaps ring gratings and shows you their beat, which travels much faster than the rings themselves. `.gyroid` slices a famous minimal surface. `.phyllotaxis` is the sunflower's golden-angle spiral from Chapter 13, drawn per pixel. `.hexPulse` gives every cell of a hex lattice its own hashed heartbeat. `.chladni` is a ringing plate's standing wave, which Chapter 16 comes back to and Chapter 20 plays with sound.
+
+Here's the part worth doing rather than reading. Take the gyroid, which is genuinely one line: a sum of three `sin` and `cos` products, read at a fixed slice through space.
+
+```swift
+let mine = Shader("""
+float4 shade(float2 uv, ShaderInfo info) {
+    float2 p = (uv - 0.5) * 14.0;
+    float z = info.time;
+    float g = sin(p.x) * cos(p.y) + sin(p.y) * cos(z) + sin(z) * cos(p.x);
+    float band = 1.0 - smoothstep(0.0, 0.55, abs(g));
+    return float4(mix(float3(0.16, 0.19, 0.24), float3(0.91, 0.86, 0.78), band), 1.0);
+}
+""")
+```
+
+<img src="Images/15-YourFirstShader/HandRolledField.jpg" alt="Two panels: the five-line hand-written shader producing horizontal undulating cream bands on dark slate, and the built-in gyroid producing vertical interwoven cream bands with small dark seed shapes between them" width="680">
+
+Not identical, and the differences are instructive. The bands run a different way because the built-in slices along another axis, and it adds a dimmed second copy behind the first to suggest depth, which is where those little dark seeds come from. But it's plainly the same animal, and you wrote it with five lines of vocabulary from earlier in this chapter: coordinates recentered, `sin` and `cos`, `smoothstep` for the edge, `mix` for the color.
+
+Nothing about `z = info.time` is special either. Reading a 3D field at a moving slice is a general trick worth keeping: it's why the bands crawl and reconnect instead of just sliding.
+
+Two conventions apply across the whole design and pattern-field set. Their palettes blend in **sRGB**, the space design tools work in, so mixes look like what a design tool would show rather than what physically correct light would do. And centered compositions stay centered and round whatever the canvas shape, so a tall layer doesn't get a squashed crystal.
+
+So: when a built-in is close to what you want, take it and turn its knobs. When it isn't, you now know what's inside one.
 
 ## Chains: patching without typing Metal
 

@@ -200,15 +200,31 @@ The natural next step is to stop choosing the mode numbers by hand. [Chapter 20]
 
 ## Iteration without memory
 
-Here's a quick sidebar, because it answers a natural question. Does everything that iterates need a field that persists? No. The most famous iteration in mathematics runs entirely inside a single frame:
+Does everything that iterates need a field that persists? No, and the counterexample is the most famous iteration in mathematics. The **escape-time fractals** run their whole life inside a single frame:
 
 ```swift
 drawImage(generate(.mandelbrot(phase: time * 0.03)).image, 0, 0)
 ```
 
-<img src="Images/16-Simulations/FractalPair.jpg" alt="The Mandelbrot set and a Julia set side by side, banded in deep blue, teal, and cream by their escape times" width="680">
+Here is the entire method. Every pixel stands for a complex number, and the pixel runs one tiny loop of its own: square the number you have, add a fixed one, repeat. Some starting points stay near home forever. Others eventually run away to infinity, and the only thing the fractal records is **how many steps that took**. That count, turned into a color, is the picture. The regions that never escape are the set itself, painted in `interior`.
 
-Every pixel of the Mandelbrot set runs its own private loop (`z = z² + c`, over and over) and is colored by how fast that orbit flies off to infinity, and a Julia set is the same loop with the roles of the two numbers swapped. The simulation fields spread their iteration across *frames* because their rules need neighbors and memory. The fractal needs neither, so its whole life fits in one evaluation. Both are the same lesson at different speeds: iterate something simple, and structure appears. Zooming is one `center:`/`zoom:` away, and `Examples/Effects/Fractals` sets the Julia's `c` drifting so the filigree morphs.
+<img src="Images/16-Simulations/FractalPair.jpg" alt="Three panels in blue, gold, and cream. The whole Mandelbrot set with a small red circle marking a point on the edge of its left bulb; a Julia set of dense spiral filigree; and a deep zoom into the Mandelbrot boundary showing the same shapes recurring at a smaller scale" width="680">
+
+The first two panels are the same loop, differing only in which of its two numbers is held still. In the **Mandelbrot set**, the added number varies from pixel to pixel and the orbit always starts at zero. In a **Julia set**, that added number is fixed for the whole image (you pass it as `c`) and each pixel starts its orbit at its own position instead.
+
+That is why the red mark matters. It sits at `c = -0.79 + 0.15i`, and the middle panel is the Julia set for exactly that `c`. Move the mark and you get a different Julia set, and the rule of thumb worth keeping is that points near the Mandelbrot set's *edge* give the richest ones. Deep inside gives a plain blob, far outside gives dust. Every Julia set is a portrait of one point of the Mandelbrot set.
+
+The bands look stepless rather than like contour lines because the coloring uses a smoothed escape count rather than a whole number, and `cycles` sets how many times the palette repeats across the range. `phase` walks the colors along the bands, which is the drifting-color animation, and it costs nothing because it recolors rather than recomputes.
+
+There is one thing to get right, and it's the third panel:
+
+```swift
+generate(.mandelbrot(center: Vector2(-0.7463, 0.1102), zoom: 900, iterations: 400))
+```
+
+**`zoom` and `iterations` have to climb together.** The iteration cap is how long you're willing to wait before calling a point "trapped", and as you magnify the boundary, more points need more steps to reveal that they do escape after all. Leave `iterations` at its default while zooming and the fine filigree fills in as a flat blob, because everything is being declared trapped too early. If a zoom looks like it lost its detail, raise the cap before you suspect anything else.
+
+Which brings the sidebar back to the chapter. The simulation fields spread their iteration across *frames*, because their rules need neighbors and memory, so a Gray-Scott pattern at frame 900 genuinely required the 899 before it. The fractal needs neither, so its whole life fits in one evaluation and any frame can be computed on its own. Both are the same lesson at different speeds: iterate something simple, and structure appears. `Examples/Effects/Fractals` sets a Julia's `c` drifting so the filigree morphs continuously, which is the best argument for the technique that exists.
 
 ## A million grains
 
