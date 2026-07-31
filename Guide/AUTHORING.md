@@ -74,14 +74,33 @@ Figure sketches live in `Figures/<NN-ChapterName>/<FigureName>.swift`, rendered 
 - Every image referenced from a chapter must exist in `Images/` and come from the runner; the reverse also holds, no orphaned figures.
 - Embed images with an `<img>` tag carrying a display `width`, never a bare markdown image; a full-bleed 1080-pixel image dominates the page and hurts reading. House widths: `680` for the wide 880×550 diagrams, `560` for square art and finished pieces, `480` for GIFs. Always keep the `alt` text. (This is the one sanctioned bit of HTML in the Guide; everything else stays plain markdown.)
 
+- **A figure whose render genuinely cannot reproduce carries `// figure: unstable`.** Only two do: the GPU sims in `16-Simulations/ArtificialLife` and `FluidAndBlobs`, whose particle scatter order is decided by GPU atomics. The runner then verifies them (they still have to compile and render) without rewriting their committed images, so they stop showing up as changes. This is not a way out of pinning a seed; use it only when the framework itself makes no reproducibility promise.
+
 Rendering:
 
 ```sh
 Scripts/guide-figures.sh                  # render every figure, fail on any error
 Scripts/guide-figures.sh --only Swarm     # just figures whose path contains "Swarm"
+Scripts/guide-figures.sh --force          # ignore the cache
+Scripts/guide-figures.sh --help           # every option, and how the cache is keyed
 ```
 
 The runner (`swift run OllinGuideFigures`) compiles each figure with the same loader the live host uses, renders it headlessly, and writes the image beside the chapter's others. A compile error in any figure exits nonzero and names the file and line.
+
+Run the whole suite, not `--only`. It costs about three minutes cold and under a second when nothing changed, because of two things worth knowing about:
+
+- **Unchanged figures are skipped**, using `Guide/.figure-cache.json` (gitignored). A figure re-renders when its own source changes, when its image is missing or was edited by hand, or when the framework moves: anything under `Sources/` or `External/`, the package manifest, or the compiler version. That last rule is deliberately broad, since a renderer change can alter any figure.
+- **The work is split across four worker processes.** Sharding rather than threads, because the expensive figures spend their time in `setup()` on the main actor, and only separate processes run those at once.
+
+Both exist for one reason. The full run once took twenty minutes, which is long enough that a session under pressure talks itself into skipping the gate, and a gate nobody runs protects nothing. If a future change pushes the cold run back toward that, treat it as a real problem rather than a fact of life. The runner prints its slowest figures after every run, so you can see where the time is going.
+
+## Coverage: the Guide cannot fall behind the framework
+
+The matrix in [PLAN.md](PLAN.md) is the promise that no capability is merely named in a table. `Scripts/guide-coverage.sh` is what makes the promise checkable, and it is step 5 of the ship checklist in `CLAUDE.md`. It fails when a Docs page has no matrix row, when a row names a page that does not exist, when a page is unreachable from a numbered chapter's "Go deeper" list, when a page is missing from Appendix D, or when any row is still `pointed` without an entry in the Guide debt ledger.
+
+That last rule is the point. **`pointed` is not an acceptable resting place for something that shipped.** The floor is `shown` (a chapter mention plus a worked example) in the same commit that ships the feature, and `taught` is the goal. This is the gap that produced the backlog: a `pointed` row satisfied the old checklist completely, so seven feature slices shipped over two days at the end of July 2026 with one-line table entries and no teaching, and every audit passed because a row existed.
+
+If a session truly cannot teach what it just shipped, the honest move is a Guide debt entry naming the chapter that owes the section, mentioned in the commit message. The script prints every entry on every run, so debt stays visible and countable instead of hiding in a table cell.
 
 ## The session workflow
 

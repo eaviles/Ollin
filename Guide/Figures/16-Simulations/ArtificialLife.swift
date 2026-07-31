@@ -1,4 +1,4 @@
-// figure: frame=420
+// figure: frame=420 unstable
 //
 // Guide diagram (Chapter 16): three emergent-behavior systems side by side.
 // Left, Particle Life sorts a few kinds into membranes and cells. Middle, the

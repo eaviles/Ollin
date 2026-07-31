@@ -25,6 +25,9 @@ DerivedData/
 # Local agent tooling state (session worktrees, local settings)
 .claude/
 
+# Guide figure render cache (Scripts/guide-figures.sh); local timing + hashes
+/Guide/.figure-cache.json
+
 # Vale style packages fetched by `vale sync` (Scripts/prose-lint.sh); only the
 # OllinGuide style is ours and committed
 .vale/styles/*

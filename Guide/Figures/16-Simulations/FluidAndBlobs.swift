@@ -1,4 +1,4 @@
-// figure: frame=260
+// figure: frame=260 unstable
 //
 // Guide diagram (Chapter 16): the two particle-dynamics systems, mid-motion.
 // Left, an SPH fluid released as a dam break, sloshing up the far wall.

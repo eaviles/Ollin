@@ -23,6 +23,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Keyboard | `key`, typed `KeyCode`, `isKeyDown(_:)`, press and release hooks | [Ch 1](01-HelloOllin.md) | [Input](../Docs/Helpers/Input.md) |
 | `@Param` knobs | Properties as live inspector controls, typed per value (slider, color well, pad, …) | [Ch 1](01-HelloOllin.md), [Ch 20](20-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
 | Live reload | `swift run OllinLive Sketch.swift`: save the file, the window swaps the change in | [Ch 1](01-HelloOllin.md) | [Sketch](../Docs/Core/Sketch.md) |
+| Single-file sketches | `ollin new` and `ollin <file>.swift`: one loose file is a whole sketch, runnable from anywhere | [Ch 1](01-HelloOllin.md) | [SingleFile](../Docs/Tools/SingleFile.md) |
 | The examples gallery | `swift run OllinExamples`: every example, browsable, with knobs | [Ch 1](01-HelloOllin.md) | [`Examples/`](../Examples/README.md) |
 | Swift itself | The language at sketch speed | [Appendix A](A-JustEnoughSwift.md) | [Swift quick reference](../Docs/Swift.md) |
 
@@ -241,6 +242,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Video and GIF | `--export-video` (H.264, HEVC, ProRes) and `--export-gif`, deterministic | [Ch 3](03-MotionAndTime.md), [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Perfect loops | Declare `loopDuration` and `--export-loop` renders exactly one seamless lap | [Ch 3](03-MotionAndTime.md) | [Export](../Docs/Output/Export.md) |
 | SVG for plotters | `--export-svg` true vectors, with `--hatch` turning fills into line work | [Ch 13](13-ShapesAsMaterial.md), [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Print separations | `--export-separations`: one grayscale master per spot ink, screened, with an overprint preview | [Ch 22](22-SharingAndPerforming.md) | [PrintSeparations](../Docs/Output/PrintSeparations.md) |
 | Headless capture | Render any sketch to an image in code, no window | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Reproducibility metadata | Every PNG/SVG/PDF/video embeds its recipe: seed, `@Param` values, git commit, frame | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#reproducibility-metadata) |
 | Contact sheets | `--export-grid` tiles one frame per seed into a labeled proof sheet; `--seed` re-renders a keeper | [Ch 4](04-Randomness.md) | [Variations](../Docs/Core/Variations.md) |

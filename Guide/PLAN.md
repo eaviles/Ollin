@@ -40,8 +40,8 @@ Statuses: `not started` → `figures` (figure sketches built and rendered) → `
 Also tracked here so they aren't forgotten:
 
 - CI wiring for the figure runner is deliberately deferred (CI minutes are scarce); `Scripts/guide-figures.sh` run locally per session is the gate for now. Revisit when several chapters exist.
-- The full run has grown past 190 figures and now takes roughly twenty minutes, since a few figures do heavy setup work (erosion, stippling, flame accumulation). `--only` covers the figures a session touches; run the whole suite once before committing. If it keeps growing, the options are a manifest of which figures a chapter owns, or caching by source hash so unchanged figures skip.
-- Two figures are legitimately not reproducible and re-render differently every run: `16-Simulations/ArtificialLife` and `16-Simulations/FluidAndBlobs`. Their sims are GPU-atomic-race-ordered and chaotic (the no-pixel-snapshot rule in `CLAUDE.md`), so `git restore` those two after a full run rather than committing the churn.
+- The full run of 199 figures takes about three minutes cold and under a second when nothing changed, so run the whole suite rather than reaching for `--only`. It used to take twenty, which was long enough that a session could talk itself into skipping the gate; the cache and the worker shards that fixed it are described in *Figures* in [AUTHORING.md](AUTHORING.md).
+- The two figures that genuinely cannot reproduce (`16-Simulations/ArtificialLife` and `16-Simulations/FluidAndBlobs`, whose GPU sims are atomic-race-ordered and chaotic) carry `// figure: unstable`, so the runner verifies them without rewriting their images. There is no `git restore` step any more; a clean `git status` after a run is now the expected result, and churn under `Guide/Images` means something real changed.
 - A website (Guide + Docs + gallery) is a later project; keep all markdown portable (plain relative links, standard tables, no HTML beyond the sanctioned `<img width>` figure embed in AUTHORING.md).
 - Translations are out of scope for now.
 
@@ -226,7 +226,15 @@ Draws from: `Docs/Output/Export.md`, `Docs/Integration/Syphon.md`, `Docs/Integra
 
 ## Feature-coverage matrix
 
-The guarantee that the Guide gives awareness of everything Ollin ships. One row per capability (keyed by Docs page, plus rows for capabilities without their own page). Depth: **taught** (a chapter section explains it), **shown** (appears in a worked example with a sentence or two), **pointed** (named with a one-liner and a Docs link, at minimum in Appendix D). Rules: no row may be unassigned; every Docs page must be reachable from at least one chapter's "Go deeper" list; when a new feature ships in the framework, it gets a row here (see the ship checklist note in `CLAUDE.md`).
+The guarantee that the Guide gives awareness of everything Ollin ships. One row per capability (keyed by Docs page, plus rows for capabilities without their own page). Depth, from most to least:
+
+- **taught**: a chapter section explains it, with a figure. This is the goal for every row.
+- **shown**: it appears in a worked example with a sentence or two, so a reader can find it and run it. This is the floor for anything that has shipped.
+- **pointed**: named with a one-liner and a Docs link, at minimum in Appendix D. **Not a resting place.** A `pointed` row is a promise to teach, and it is only legal while the Guide debt ledger below names the chapter it is owed to.
+
+`Scripts/guide-coverage.sh` enforces the rules: no row unassigned, no row `pointed` without a debt entry, every Docs page has a row, every Docs page reachable from a numbered chapter's "Go deeper" list, and every Docs page present in Appendix D. Run it before committing anything that ships a user-facing capability; it is step 5 of the ship checklist in `CLAUDE.md`.
+
+Why the script exists rather than a habit: a row marked `pointed` used to satisfy the checklist completely, so a feature could ship, get its one-line table entry, and never be taught. Seven slices landed that way over two days at the end of July 2026 while every audit stayed green, because the matrix said each row was accounted for. Counting rows was never the check; the check is that the depth column is honest.
 
 | Capability (Docs page) | Guide home | Depth |
 |---|---|---|
@@ -347,6 +355,17 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Examples gallery (`swift run OllinExamples`) | Ch 1 | shown |
 | Extension seam (`Sketch.extend`, `SketchExtension`) | Ch 22 | taught ("Adding behavior without touching the sketch": why cross-cutting behavior does not belong in `draw()`, the built-in stats extension as the example, and the opt-in frame readback) |
 | Headless capture (`OllinApp.image(of:)`) | Ch 22; used by the Guide's own figure runner | shown |
+
+## Guide debt
+
+Capabilities that shipped in the framework without a Guide section yet. An entry here is the only legal way for a matrix row to sit at `pointed`, and it is a commitment, not a filing cabinet: it names the chapter that owes the section and the date the capability shipped, so the wait is visible and countable.
+
+Add an entry only when a session genuinely cannot teach the feature it just shipped, and say so in the commit message. Then the *next* session touching that chapter clears it. `Scripts/guide-coverage.sh` prints every entry on every run, and fails the build for a `pointed` row that has no entry.
+
+The table is empty, which is the state to keep it in.
+
+| Capability (Docs page) | Owed to | Since |
+|---|---|---|
 
 ## Roadmap parking lot
 
