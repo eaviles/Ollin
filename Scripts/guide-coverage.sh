@@ -110,10 +110,13 @@ for line in ${(f)rows}; do
 
     [[ -n $home ]] || fail "row '$capability' has no Guide home"
 
-    case ${depth:l} in
-        taught*) ;;
-        shown*)  ;;
-        pointed*)
+    # Judge the depth *token* only: the word before the note, so a row reading
+    # `taught (… the rest named + pointed)` is taught and its note is free to say
+    # which sub-items are not. A compound token ("taught/pointed by tracker") is
+    # judged by its weakest part, or the rule is avoidable by prefixing "taught".
+    token=${${depth%% *}%%\(*}
+    case ${token:l} in
+        *pointed*)
             pointed_rows+=("$capability")
             if [[ -n ${debt_owed[$capability]} ]]; then
                 note "debt: '$capability' is owed a section in ${debt_owed[$capability]}, waiting since ${debt_since[$capability]}"
@@ -124,6 +127,8 @@ for line in ${(f)rows}; do
 "    $plan with the chapter it is owed to."
             fi
             ;;
+        taught*) ;;
+        shown*)  ;;
         "")      fail "row '$capability' has no depth" ;;
         *)       fail "row '$capability' has an unknown depth '$depth'" ;;
     esac

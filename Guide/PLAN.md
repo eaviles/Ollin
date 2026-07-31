@@ -40,7 +40,7 @@ Statuses: `not started` → `figures` (figure sketches built and rendered) → `
 Also tracked here so they aren't forgotten:
 
 - CI wiring for the figure runner is deliberately deferred (CI minutes are scarce); `Scripts/guide-figures.sh` run locally per session is the gate for now. Revisit when several chapters exist.
-- The full run of 199 figures takes about three minutes cold and under a second when nothing changed, so run the whole suite rather than reaching for `--only`. It used to take twenty, which was long enough that a session could talk itself into skipping the gate; the cache and the worker shards that fixed it are described in *Figures* in [AUTHORING.md](AUTHORING.md).
+- The full run of 210 figures takes about three minutes cold and under a second when nothing changed, so run the whole suite rather than reaching for `--only`. It used to take twenty, which was long enough that a session could talk itself into skipping the gate; the cache and the worker shards that fixed it are described in *Figures* in [AUTHORING.md](AUTHORING.md).
 - The two figures that genuinely cannot reproduce (`16-Simulations/ArtificialLife` and `16-Simulations/FluidAndBlobs`, whose GPU sims are atomic-race-ordered and chaotic) carry `// figure: unstable`, so the runner verifies them without rewriting their images. There is no `git restore` step any more; a clean `git status` after a run is now the expected result, and churn under `Guide/Images` means something real changed.
 - A website (Guide + Docs + gallery) is a later project; keep all markdown portable (plain relative links, standard tables, no HTML beyond the sanctioned `<img width>` figure embed in AUTHORING.md).
 - Translations are out of scope for now.
@@ -341,7 +341,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Integration/MIDI.md` | Ch 20 | taught |
 | Tempo sync (`TempoClock` over MIDI clock; `Integration/MIDI.md`) | Ch 20 | taught (a musical-time diagram: 24 ticks per beat is the whole protocol, why counting means the grid can't drift, every reader with a worked position, `progress(over:)`, and the arm-on-next-tick and free-running-master behaviors) |
 | `Integration/OSC.md` | Ch 20 | taught |
-| `Vision/Vision.md` (16 trackers, ModelTracker) | Ch 21 | taught/pointed by tracker |
+| `Vision/Vision.md` (16 trackers, ModelTracker) | Ch 21 | pointed for nine of the sixteen (hands, face, body, contours, optical flow, and segmentation are taught; the remaining nine share one paragraph of one-liners) |
 | `Video/Video.md` (playback as texture) | Ch 21 | taught |
 | `Integration/Syphon.md` | Ch 22 | taught |
 | `Integration/VirtualCamera.md` | Ch 22 | taught ("The sketch as a webcam": why the browser needs a camera and Syphon cannot cross that line, the system extension and its one-time approval, the test card, the fixed 1280x720 letterbox and 30 fps, and suspecting the viewer first when the picture looks mirrored or cropped) |
@@ -362,10 +362,11 @@ Capabilities that shipped in the framework without a Guide section yet. An entry
 
 Add an entry only when a session genuinely cannot teach the feature it just shipped, and say so in the commit message. Then the *next* session touching that chapter clears it. `Scripts/guide-coverage.sh` prints every entry on every run, and fails the build for a `pointed` row that has no entry.
 
-The table is empty, which is the state to keep it in.
+One entry, and it predates the ledger rather than being new debt.
 
 | Capability (Docs page) | Owed to | Since |
 |---|---|---|
+| `Vision/Vision.md` (16 trackers, ModelTracker) | Ch 21, a section for the nine one-liner trackers | 2026-07-31 |
 
 ## Roadmap parking lot
 

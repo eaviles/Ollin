@@ -296,9 +296,9 @@ Two knobs span a plane, where every pair of settings is a point and a system's b
 
 ### Escape time
 
-<img src="Images/16-Simulations/FractalPair.jpg" alt="The Mandelbrot set and a Julia set side by side, banded by their escape times" width="680">
+<img src="Images/16-Simulations/FractalPair.jpg" alt="Three panels banded in blue, gold, and cream: the whole Mandelbrot set with a small red circle marking one point on its edge, the Julia set that same point produces, and a deep zoom into the Mandelbrot boundary" width="680">
 
-Iterate a formula at every pixel and ask one question: how many rounds until the value flies off past a bound? Points that never escape are painted the set's interior, and everywhere else the *count itself* becomes the color, so the smooth bands you see are equal-patience contours. The most famous images in mathematics are literally a loop counter, colorized. [Chapter 16](16-Simulations.md) shades both fractals this way.
+Iterate a formula at every pixel and ask one question: how many rounds until the value flies off past a bound? Points that never escape are painted the set's interior, and everywhere else the *count itself* becomes the color, so the smooth bands you see are equal-patience contours. The most famous images in mathematics are literally a loop counter, colorized. Which of the formula's two numbers you hold still decides which fractal you get, so the marked point in the first panel is the one whose Julia set sits beside it. [Chapter 16](16-Simulations.md) shades both this way.
 
 ### Density as tone
 
