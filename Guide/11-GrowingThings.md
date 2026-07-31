@@ -90,6 +90,63 @@ final class Fern: Sketch {
 
 One more idea turns plants into *populations*. Give a symbol several possible rewrites and let a seeded roll pick one each time it's rewritten (`.randomPlant` does this), and every plant grown from the same grammar is a different individual with the same species' look. Chapter 4's promise holds here. Because the rolls come from your `seed`, the same seed grows the same garden, down to the last twig.
 
+## The same fern, played as a game
+
+There is a completely different way to grow that fern, and it's strange enough to be worth seeing. Instead of rewriting a sentence and walking it with a turtle, you play a game of chance with a handful of transformations.
+
+Take four rules, each of which squashes, tilts, and shifts the entire plane. One draws the fern's main body slightly smaller and rotated. One draws the left frond, one the right, one the stem. Now put a dot anywhere at all, pick one of the four rules at random, move the dot by it, and mark where it lands. Then do that again, sixty thousand times.
+
+<img src="Images/11-GrowingThings/ChaosGame.jpg" alt="Three panels of the Barnsley fern from the chaos game, at 400 jumps a loose dust that vaguely suggests a leaf, at 6,000 a recognizable fern, and at 80,000 a dense one with every frond resolved" width="680">
+
+```swift
+let cloud = ifsPoints(.barnsleyFern, count: 60_000)
+    .map { Vector2($0.x, -$0.y) }        // the fern's own y grows upward
+noStroke()
+fill(Color(hex: 0x2E5E3A))
+drawPoints(fitted(cloud, in: canvasRectangle.inset(by: .all(80))), size: 1.5)
+```
+
+The reason this works is worth sitting with for a second, because it feels like it shouldn't. Every one of the four rules *shrinks* the plane. So wherever your dot started, a few jumps later that starting position has been squashed down to nothing and forgotten. What's left is the only set of points that the four rules, taken together, map exactly onto itself. The dot can't escape it and can't stay away from it, so given enough jumps it traces it out. That set is called the attractor, and the collection of rules is an **iterated function system**.
+
+The picture also explains what the weights are for. The fern's rules aren't chosen with equal probability, and the one drawing the main body gets picked about 85 percent of the time, which is what keeps the fine tip as well drawn as the base. Ollin ships `.barnsleyFern`, `.sierpinskiTriangle`, and `.sierpinskiCarpet`, and a system of your own is six numbers per rule plus a weight.
+
+Two small practical notes come with it. The points arrive in the system's own coordinate space rather than canvas pixels, so `fitted` scales and centers them into any rectangle you name, and the fern needs its y negated because it grows upward while the canvas counts downward.
+
+## Three more games worth knowing
+
+The same move (play transformations at random, see where the orbit lives) generalizes further than ferns, and Ollin ships three of the places it goes.
+
+<img src="Images/11-GrowingThings/FractalFamily.jpg" alt="Three dark panels: a fractal flame in orange and blue smoke, a golden lace of dust sitting among five faint tangent circles, and a pale blue closed curve that spirals into itself at every scale" width="680">
+
+A **fractal flame** is the chaos game with two additions. Each rule finishes with a nonlinear twist, a swirl or a fold or a turning-inside-out, and instead of plotting dots you have every pixel *count* how many times the orbit visited it. Displaying the logarithm of those counts is what lets the blazing core and the faintest veil appear in one image, and the color comes from which rules carried the orbit there rather than from where it landed.
+
+```swift
+var source = SplitMix64(seed: 6)
+let flame = FractalFlame.random(using: &source)
+drawImage(flame.render(width: 900, height: 900, quality: 90, using: &source),
+          in: canvasRectangle)
+```
+
+`quality` is how many samples each output pixel gets, so a few dozen previews and a few hundred makes a clean still. There's also a progressive `Renderer` you feed a slice of samples per frame, which is how flames are meant to be watched, rising out of the noise. Rolling a random flame is genuinely a roll, and some come out muddy, so rerolling until one sings is part of the practice rather than a sign you did it wrong.
+
+**Inversion** is a different transformation to play with. Inverting a point in a circle turns the plane inside out around that circle: the rim stays exactly where it is, points near the center fly far away, and points far away land near the center. Take an arrangement of circles, repeatedly invert in one picked at random, and the orbit settles onto the arrangement's limit set. The one rule is never to pick the same circle twice in a row, because inverting twice in the same circle just undoes itself.
+
+```swift
+drawPoints(inversionLimitSet(of: mirrors, count: 26_000), size: 1.5)
+```
+
+Since the circles are in canvas coordinates, the dust needs no fitting and lands among the mirrors that produced it, which is what the middle panel shows. Tangent rings give lace, separated circles give scattered dust, and overlapping ones tear the lace apart.
+
+The third has no randomness in it at all. A **Kleinian limit set** comes from two Möbius transformations, which are the maps that send circles to circles, and the group of everything you can build by combining them. Walking that group systematically traces the boundary its orbits pile up against.
+
+```swift
+let curve = kleinianLimitSet(.lace)
+noFill()
+drawPolygon(fitted(curve.points, in: canvasRectangle.inset(by: .all(60))))
+```
+
+What makes this one immediately useful is the return type. It's a single `Contour`, one ordered closed curve with evenly spaced points, so it strokes, exports, and plots like any other geometry in this guide rather than being a cloud you can only splat.
+
 ## Growth that claims space
 
 Grammars grow blind, and the fern doesn't know where the canvas ends or where its own leaves already are. The next grower looks before it grows. Scatter *attraction points* over the region you want filled, plant a root, then repeat three moves. Every attractor pulls on the closest branch tip within its reach. Every pulled tip grows one small step toward the average of its pulls. Every attractor a branch reaches is consumed, so its pull disappears and the growth moves on:
@@ -250,7 +307,9 @@ Then make it yours:
 
 ## Where this comes from
 
-L-systems are Aristid Lindenmayer's 1968 invention, and their visual language comes from *The Algorithmic Beauty of Plants* (1990), his book with Przemyslaw Prusinkiewicz, still free to read online and still beautiful. Space colonization is by Adam Runions, Brendan Lane, and Prusinkiewicz at the University of Calgary's Algorithmic Botany group ("Modeling Trees with a Space Colonization Algorithm", 2007, after their 2005 leaf-venation work). Diffusion-limited aggregation was described by the physicists Thomas Witten and Leonard Sander in 1981, and generative artists have been growing frost with it ever since. Wave Function Collapse is Maxim Gumin's 2016 algorithm, named with a physicist's wink, and the tile-and-socket form here is its simple-tiled model. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+L-systems are Aristid Lindenmayer's 1968 invention, and their visual language comes from *The Algorithmic Beauty of Plants* (1990), his book with Przemyslaw Prusinkiewicz, still free to read online and still beautiful. Space colonization is by Adam Runions, Brendan Lane, and Prusinkiewicz at the University of Calgary's Algorithmic Botany group ("Modeling Trees with a Space Colonization Algorithm", 2007, after their 2005 leaf-venation work). Diffusion-limited aggregation was described by the physicists Thomas Witten and Leonard Sander in 1981, and generative artists have been growing frost with it ever since. Wave Function Collapse is Maxim Gumin's 2016 algorithm, named with a physicist's wink, and the tile-and-socket form here is its simple-tiled model.
+
+The chance games have their own shelf. Iterated function systems and the chaos game are Michael Barnsley's, from *Fractals Everywhere* (1988), and the fern uses his published four-map table. The fractal flame is Scott Draves and Erik Reckase's algorithm, which Draves began in 1992 and which ran for years as a distributed screensaver that evolved flames by popular vote. Circle-inversion limit sets follow Michael Frame and Tatiana Cogevina's 2000 rendering method, and Frame's Yale course pages explain them clearly. The Kleinian curves come from David Mumford, Caroline Series, and David Wright's *Indra's Pearls*, four hundred pages of making Felix Klein's groups visible. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -259,7 +318,8 @@ L-systems are Aristid Lindenmayer's 1968 invention, and their visual language co
 - [Diffusion-limited aggregation](../Docs/Generators/DiffusionLimitedAggregation.md): stickiness, cages, and drawing the skeleton.
 - [Wave Function Collapse](../Docs/Generators/WaveFunctionCollapse.md): sockets, weights, rotations, and what to do when a solve fails.
 - [Blue noise](../Docs/Generators/BlueNoise.md): the even scatter the tree's crown was carved from, properly explained in Chapter 13.
-- Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), and [`Examples/Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift).
+- [Fractals](../Docs/Generators/Fractals.md): the `IFS` type and its presets, the whole `FractalFlame` surface including the progressive renderer, inversion limit sets, the Kleinian trace presets, and `fitted` for placing any point cloud.
+- Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), [`Examples/Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift), [`Examples/Patterns/IteratedFunctions`](../Examples/Patterns/IteratedFunctions/Sketch.swift), [`Examples/Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Examples/Patterns/InversionFractal`](../Examples/Patterns/InversionFractal/Sketch.swift), and [`Examples/Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift).
 
 ---
 

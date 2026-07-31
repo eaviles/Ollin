@@ -123,7 +123,7 @@ Figures: steering-move diagram; wander/arrive diagrams; one diagram per boid rul
 Draws from: `Docs/Generators/Steering.md`, `Docs/Generators/Boids.md`, `Docs/Generators/DifferentialGrowth.md`; `Examples/Motion/Steering`, `Examples/Patterns/Flocking`, `Examples/Patterns/DifferentialGrowth`.
 
 **11. Growing things.**
-Teaches: recursion by drawing (a fractal tree written by hand first); rewriting rules (L-systems) and the turtle, grown iteration by iteration; branching with the stack; stochastic rules; space colonization (growth that claims space: veins and trees from attraction points, the pipe model for weight); diffusion-limited aggregation (growth by chance: frost from frozen walkers); Wave Function Collapse as "every neighbor must agree", watched as it solves.
+Teaches: recursion by drawing (a fractal tree written by hand first); rewriting rules (L-systems) and the turtle, grown iteration by iteration; branching with the stack; stochastic rules; space colonization (growth that claims space: veins and trees from attraction points, the pipe model for weight); diffusion-limited aggregation (growth by chance: frost from frozen walkers); Wave Function Collapse as "every neighbor must agree", watched as it solves; the chance games (the chaos game deriving the same fern a second way, then fractal flames, circle-inversion limit sets, and Kleinian limit curves).
 Assumes: Ch 4 (seeds), Ch 6 (grids, for WFC), Ch 10 (stateful steppers).
 Payoff: a procedural garden.
 Figures: branch-stack diagram; L-system expansion table + drawing per iteration; a space-colonization growth sequence; a DLA cluster; WFC solve sequence; the garden.
@@ -301,7 +301,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Relight, two-tone dither, warp centers (`Drawing/Effects.md`) | Ch 14 | pointed |
 | Pattern fields (`Drawing/Effects.md`) | Ch 15 | shown |
 | Escape-time fractals (`Drawing/Effects.md`) | Ch 16 | shown |
-| `Generators/Fractals.md` (`IFS`, `FractalFlame`, inversion and Kleinian limit sets) | Appendix D (Ch 11 when it grows) | pointed |
+| `Generators/Fractals.md` (`IFS`, `FractalFlame`, inversion and Kleinian limit sets) | Ch 11 | taught ("The same fern, played as a game" derives the chaos game from the chapter's own L-system fern with a condensing figure and explains why contraction forces the attractor; "Three more games worth knowing" covers flames, inversion, and Kleinian with a three-panel figure, plus `fitted` and the Contour return) |
 | Depth-of-field `.defocus`, SSAO, SSR (`Drawing/Effects.md`) | Ch 17 | pointed |
 | `Shaders/Shaders.md` (user shaders) | Ch 15 | taught |
 | `Shaders/Visuals.md` (Visual chains) | Ch 15 | taught |
