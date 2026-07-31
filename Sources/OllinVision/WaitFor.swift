@@ -18,6 +18,12 @@ import Ollin
 /// Two cautions. It parks the calling thread until the analysis finishes, so
 /// never call it from an async context (just `await` there), and don't await
 /// main-actor work inside the closure (the main thread may be the one parked).
+/// The common way to trip the second one is to read a property of the calling
+/// sketch from inside the closure: a `Sketch` is main-actor isolated, stored
+/// and static properties included, so the read waits on the thread that is
+/// already waiting and the call hangs with no diagnostic. Read what the closure
+/// needs into locals first.
+///
 /// A live sketch usually wants neither: start a `Task`, stash the result, and
 /// keep drawing until it lands.
 public func waitFor<T: Sendable>(

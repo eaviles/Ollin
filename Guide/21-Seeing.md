@@ -72,7 +72,22 @@ Three trackers carry most interactive pieces, and they all speak in named parts:
 
 **`FaceTracker`** finds every face with its head pose (`roll`/`yaw`/`pitch`) and 76 landmark points grouped into named regions: `.faceContour`, the brows, the eyes, `.nose`, the lips, the pupils. Each region comes back ready to `drawPolyline`, which is why the five-minute face overlay is a creative-coding classic.
 
-**`BodyTracker`** finds every person as a 19-joint pose skeleton, head to ankles. Joints it can't see are simply absent (often the legs, at a desk), so what you get is what the camera saw. Its sibling `BodyTracker3D` places one person's 17 joints in *meters*, real 3D positions you can view from angles no camera was at, and it drops straight into Chapter 17's world.
+**`BodyTracker`** finds every person as a 19-joint pose skeleton, head to ankles. Joints it can't see are simply absent (often the legs, at a desk), so what you get is what the camera saw.
+
+**`BodyTracker3D`** reads a person as positions in space instead. From the same ordinary webcam it places 17 joints in *meters*, so the sketch knows how far away someone is standing and what their pose looks like from the side. You read it in whichever of three spaces suits what you're drawing. `point(_:in:)` and `bones(in:)` behave exactly like the flat tracker's, for an overlay on the feed. `position(_:)` and the no-argument `bones()` give meters with the pelvis at the origin, so plotting `(z, y)` draws the person from the side and `(x, z)` from above, views no camera was at. And `cameraRelativePosition(_:)` gives meters from the lens, which makes a joint's z its distance, with `body.distance` as the shortcut for the whole person's.
+
+```swift
+lazy var pose = BodyTracker3D(camera)
+// in draw(), with `rect` from drawFrame and `side` a spot to draw the side view:
+if let body = pose.body {
+    for (a, b) in body.bones(in: rect) { drawLine(a, b) }        // over the feed
+    for (a, b) in body.bones() {                                 // seen from the side
+        drawLine(side + Vector2(a.z, -a.y) * 200, side + Vector2(b.z, -b.y) * 200)
+    }
+}
+```
+
+Those meters drop straight into Chapter 17's world, which is what `Examples/Vision/BodyPose3D` does with them. It behaves differently from the flat tracker in ways worth knowing before you reach for it. It follows only one person, so `body` is a single optional rather than a list, and it always places the whole skeleton, guessing at the joints it can't see, with no per-joint confidence. The 2D tracker is the opposite on both counts. There's also `body.height`, an estimate of how tall the person is, and `heightEstimation` tells you whether that came from real depth data or from scaling the skeleton to a standard height, which is all a plain webcam can offer.
 
 Two practical notes are worth keeping. These are neural models, and the heavier ones (body pose, segmentation) want Apple silicon. Every tracker exposes `isAvailable` and `unavailableReason`, and `drawStatus(reason, style: .warning)` turns the reason into the standard on-canvas notice instead of a silent nothing. And every tracker also runs one-shot on a still picture with no camera at all. `try await FaceTracker.detect(in: image)` analyzes a loaded `Image`, which is how you analyze photos, and how this chapter's figures were made honest.
 
@@ -102,9 +117,139 @@ if let field = flow.field {
 
 Motion is also only measurable where the picture has texture, and a featureless area (a blank wall, a solid backdrop) doesn't politely read as zero. It reads as noise, because there is nothing to match from one frame to the next. If your scene is mostly flat, give it some texture before trusting the field there. Treat the magnitudes as a signal to scale by a gain of your own rather than a calibrated speed. The measured field has its own name, `MotionField`, so you won't confuse it with Chapter 12's generative `FlowField`: one is a rule you invent, the other is motion the camera actually saw.
 
-## The wider catalog
+## Lifting the subject
 
-The rest of the trackers follow the exact same attach-and-read shape, so knowing they exist is most of knowing how to use them. `RectangleDetector` finds rectangular things (paper, screens, cards) with their four corners in perspective. `BarcodeScanner` reads QR codes, a nice way to hand a running installation some input. `TextRecognizer` is on-device OCR over the feed. `ObjectTracker` follows a patch you point at, and `TrajectoryTracker` waits for things that fly and reports their parabolic arcs, predicted ahead. `PersonSegmenter` and `SubjectSegmenter` lift people (or whatever stands out) from the frame as a soft matte and a cutout `Image`, ready to composite over anything your sketch draws. `ImageClassifier` names what's in view from about 1,300 everyday labels, and `SaliencyTracker` maps where an eye would look. And when the built-ins run out, `ModelTracker` runs *your own* Core ML model over the frames with the same read surfaces, which opens the whole published-model world (depth estimators, object detectors, style transfer, semantic segmentation). The [vision reference](../Docs/Vision/Vision.md) covers each in detail, and there's a worked example for every one of them in [`Examples/Vision/`](../Examples/Vision).
+One more pair reads the picture as foreground and background. **`PersonSegmenter`** finds the people in the frame, **`SubjectSegmenter`** finds whatever stands out whether or not it's a person, and both hand back the same two pictures.
+
+```swift
+lazy var people = PersonSegmenter(camera)
+
+override func draw() {
+    background(.black)                       // or anything: this is the new backdrop
+    guard let rect = drawFrame(camera) else { return }
+    if let cutout = people.cutout { drawImage(cutout, in: rect) }
+}
+```
+
+Where the pose trackers reduce a person to joints, these give you their pixels. `matte` is a soft white silhouette whose alpha says how much each pixel belongs to the subject, so `tint(_:)` turns it into a shadow, a glow, or a flat colored figure. `cutout` is the frame's own pixels with the background gone, ready to composite over whatever your sketch has already drawn. Both come back as ordinary `Image`s, so draw them into the same rectangle as the frame and they land exactly on the picture.
+
+Stamp the matte every frame without clearing and you have a trail of yourself, which is Chapter 14's accumulation with a person as the brush. `PersonSegmenter` takes a `quality:` that trades edge detail for speed, and `SubjectSegmenter` adds a `count` of how many separate subjects it found, going to `nil` and `0` while nothing in the picture stands out. Both need Apple silicon, like the pose trackers.
+
+## Reading what's printed
+
+The next three trackers aren't looking for people. They look for the flat printed things the world is full of, and none of them needs Apple silicon. Two are classical computer vision with no neural model at all, and the third, the text reader, runs on a model every Mac already has.
+
+<img src="Images/21-Seeing/ReadingACard.jpg" alt="Two panels: a printed card lying at an angle on a speckled desk, and the same picture with an orange quad on the card's four corners and dark boxes around the two lines of type" width="680">
+
+**`RectangleDetector`** finds rectangular things, a sheet of paper, a screen, a card on a desk, and reports each one's four corners. It works on them at an angle, so the corners come back in perspective rather than as an upright box, which is what a document scanner needs to flatten a page.
+
+```swift
+lazy var cards = RectangleDetector(camera)
+
+// in draw(), after `guard let rect = drawFrame(camera) else { return }`
+noFill(); stroke(.green)
+for card in cards.rectangles { drawPolygon(card.corners(in: rect)) }
+```
+
+A `DetectedRectangle` also offers `center(in:)`, `bounds(in:)` (the upright box around those corners) and a `confidence`, and the initializer takes aspect, size and confidence limits when you want to be fussy about what counts as one.
+
+**`TextRecognizer`** reads text off the feed with Apple's on-device OCR. `reader.lines` is one `DetectedText` per line, each carrying its `text` and its `bounds(in:)`, and `reader.text` joins every line into a single string. The `level:` argument trades speed for thoroughness, so `.fast` keeps up with a live feed while `.accurate` reads more and is the default for a still image.
+
+**`BarcodeScanner`** decodes barcodes and QR codes. A `DetectedBarcode` gives you the decoded `payload`, the `symbology` that says which kind of code it was, and `corners(in:)` for where it sits. Pointing a webcam at a QR code is a friendly way to hand a running installation some input, since anyone in the room can make one on their phone.
+
+The figure above used no camera and no photograph. The committed figure [`ReadingACard.swift`](Figures/21-Seeing/ReadingACard.swift) draws the desk, the card and the type into a picture pixel by pixel (the letters are Chapter 7's `textToShapes` outlines, filled in by hand), then hands that picture to the two real detectors through `waitFor`. Its right-hand caption is written from the words that came back, so if the reader ever came back with something else, the figure would say so rather than keep the old claim.
+
+## Following one thing
+
+Detecting and tracking sound like the same job, and they're not. A detector looks at each frame fresh and finds whatever it has a model for. A tracker is handed one thing and keeps up with it, whether or not anything knows what that thing is.
+
+**`ObjectTracker`** is the second kind. You give it a box and it follows that patch of picture from frame to frame, which is how you keep tabs on something no recognizer has ever heard of.
+
+```swift
+lazy var tracker = ObjectTracker(camera)
+var view = Rectangle(x: 0, y: 0, width: 1, height: 1)
+
+override func draw() {
+    guard let rect = drawFrame(camera) else { return }
+    view = rect
+    if let object = tracker.trackedObject {
+        noFill(); stroke(.green)
+        drawRect(object.bounds(in: view))
+    }
+}
+
+override func mousePressed() {
+    tracker.track(centeredAt: Vector2(mouseX, mouseY), size: 160, in: view)
+}
+```
+
+Click something and the sketch follows it. Alongside its box, `trackedObject` carries a `confidence` that falls as the patch is hidden, leaves the frame, or moves too fast to keep up with. That's a good number to fade an overlay by, and a good one to threshold on so the sketch can decide it has lost the thing and ask for a new box.
+
+**`TrajectoryTracker`** waits for things that fly. Rather than being pointed at something, it watches for the signature of ballistic motion, so a thrown ball or a bouncing pebble arrives on its own as a `DetectedTrajectory`: a run of sightings, and the parabola fitted through them.
+
+<img src="Images/21-Seeing/Trajectory.jpg" alt="Two panels: six frames of a made-up clip overlaid, showing a bright ball rising in six steps, and the same clip's newest frame with orange dots on the sightings, a fitted arc, and a dashed continuation passing through pale rings" width="680">
+
+The dashed line is the part worth staying with. `equationCoefficients` is that fitted parabola in normalized coordinates, `y = c.x · x² + c.y · x + c.z`, and nothing stops you sampling it past the last sighting, which is a guess about where the thing is going.
+
+```swift
+for arc in tracker.trajectories {
+    drawPolyline(arc.projectedPoints(in: view))              // the path so far
+    let c = arc.equationCoefficients
+    drawPolyline(stride(from: 0.5, through: 1, by: 0.02).map { x in
+        VisionSpace.point(x, c.x * x * x + c.y * x + c.z, in: view)
+    })                                                       // where it's headed
+}
+```
+
+In the figure the detector was shown the first 24 frames of a made-up flight, all of them on the way up, and the pale rings are where the ball actually went in the frames it never saw. The dashed curve runs through them. A parabola has only three numbers in it, so once the detector holds a handful of sightings, the rest of the flight follows.
+
+It asks two things of you. Hold the camera still, because a moving camera turns the whole scene into motion, and be patient, because an arc is only reported once its object has been seen `trajectoryLength` times (ten by default). Call `reset()` after the scene jumps, like a clip looping back to its start, so the jump isn't read as something flying. Each arc also keeps a stable `id` as more of it comes into view, so you can gather sightings into trails that outlive any single frame. And `detectedPoints(in:)` gives the raw sightings where `projectedPoints(in:)` gives them projected onto the fitted curve, which is the smoother of the two and usually the one to draw.
+
+## What the picture is about
+
+Two trackers answer a question about the whole picture rather than finding things inside it. Both are neural models, so both want Apple silicon.
+
+<img src="Images/21-Seeing/AttentionAndLabels.jpg" alt="Two panels: a dimmed picture of the card with an orange saliency glow concentrated on the word SEEING, and a bar chart with document and printed page at 21 percent reaching past a dashed line, and six fainter labels below it starting with sticky note at 8 percent" width="680">
+
+**`ImageClassifier`** names what's in view, from a fixed vocabulary of about 1,300 everyday words. It reports no positions at all, only labels and how confident it is about each, which is the right shape for a sketch that reacts to its surroundings instead of drawing on top of them.
+
+```swift
+lazy var classifier = ImageClassifier(camera)
+
+// in draw():
+for (i, found) in classifier.labels.prefix(5).enumerated() {
+    drawText("\(found.name) \(Int(found.confidence * 100))%", 40, 60 + Double(i) * 32)
+}
+```
+
+The bars on the right of the figure are that list, drawn for the made-up card. The vocabulary is hierarchical, so one clear subject lights up its whole family at once, which is why `document` and `printed page` tie. And the classifier scores every word it knows on every frame, nearly all of them near zero, so `minimumConfidence` (`0.1` by default) is what keeps `labels` down to the few worth reading. The figure asked for a much lower floor so that the tail shows, and the dashed line marks where the default would have cut.
+
+The other way to read the same result suits knobs better. `confidence(of: "plant")` answers for any word in the vocabulary whether or not it cleared the floor, so "how much does this look like a plant" can drive a color or a speed straight from the room.
+
+**`SaliencyTracker`** maps where an eye would go. `heatMap` is a white image whose alpha is the salience, so a `tint(_:)` turns it into a glow over the picture. `regions` are the boxes it peaks in. And `salience(at:in:)` answers for one canvas point, which is the field-shaped reading of Chapter 12: a density for stippling, a weight for where to spend detail, an attractor for particles.
+
+In the figure the attention piles onto the words rather than onto the card as a whole. That's the model doing exactly what it was trained on, since type and contrast are what people look at. There are two flavors, chosen with `mode:`. The default `.attention` predicts human gaze, while `.objectness` highlights regions likely to hold discrete objects whether or not they draw the eye. The mode is fixed when you make the tracker, so read both by making two.
+
+## Bringing your own model
+
+When the built-ins run out, **`ModelTracker`** runs a Core ML model of your own over the same frames, with the same attach-and-read shape. That opens the whole published-model world: depth estimators, object detectors, style transfer, semantic segmentation, anything that converts to Core ML.
+
+It fills whichever read surfaces match what your model puts out. A classifier gives you `labels` and `top` and `confidence(of:)`, over your own vocabulary rather than Apple's. A detector gives you `objects`, labeled boxes you map with `bounds(in:)`. An image-to-image model, a depth estimator say, shows up in two forms at once, since `map` reads its output as a value field (white-alpha and tintable, with `value(at:in:)` for the number under a point) while `outputImage` reads the same output as a picture, which is what you want from a model that paints rather than measures. And a semantic segmenter fills `classMask`, which knows which classes are in frame, which one sits under a point, and how to hand you any of them as a drawable mask.
+
+```swift
+lazy var depth = ModelTracker(camera, modelAt: URL(fileURLWithPath:
+    "Models/DepthAnythingV2SmallF16.mlpackage"))
+
+override func draw() {
+    guard let rect = drawFrame(camera) else { return }
+    if let map = depth.map { drawImage(map, in: rect) }
+    let near = depth.value(at: Vector2(mouseX, mouseY), in: rect)   // 0 far … 1 near
+}
+```
+
+This is the one corner of the chapter with a download step, because Ollin ships no weights. `Scripts/fetch-models.sh` pulls the ones the examples use, and `Examples/Vision/DepthRelief`, `ObjectDetection`, `DigitReader` and `PaintByClass` each show a different one of the four surfaces above. `StyleMirror` is the odd one out and trains its own model from a style image you pick, so nobody's weights are involved.
+
+Loading runs in the background off the frame loop, and `isLoaded` flips when the model is ready, with frames simply passing by until then. Expect the first launch of a freshly built sketch to sit for a few seconds while Core ML specializes the model for your Mac; every later launch of that same build starts immediately. A model file that's missing or won't load reports through the same `isAvailable` and `unavailableReason` pair the built-in trackers use, so you can tell the person in front of the screen what to do about it.
 
 ## Footage as material
 
@@ -212,7 +357,10 @@ Camera-as-instrument art is older than the personal computer: Myron Krueger's *V
 - [Vision](../Docs/Vision/Vision.md): every tracker in detail, coordinate mapping, still images, availability.
 - [Video](../Docs/Video/Video.md): loading and playing footage, analysis, the soundtrack, deterministic export.
 - [Slit scan](../Docs/Video/SlitScan.md): the frame history, both delay forms, memory cost, and the delay maps worth trying.
-- Worked examples: [`Examples/Vision/FaceTracking`](../Examples/Vision/FaceTracking/Sketch.swift), [`Examples/Vision/HandTracking`](../Examples/Vision/HandTracking/Sketch.swift), [`Examples/Vision/BodyPose`](../Examples/Vision/BodyPose/Sketch.swift), [`Examples/Vision/ContourTrace`](../Examples/Vision/ContourTrace/Sketch.swift), [`Examples/Vision/OpticalFlow`](../Examples/Vision/OpticalFlow/Sketch.swift), [`Examples/Vision/PersonSegmentation`](../Examples/Vision/PersonSegmentation/Sketch.swift), [`Examples/Vision/EyeCatcher`](../Examples/Vision/EyeCatcher/Sketch.swift), [`Examples/Vision/DigitReader`](../Examples/Vision/DigitReader/Sketch.swift) (a model over the sketch's own pixels, no camera anywhere), and the rest of [`Examples/Vision/`](../Examples/Vision); [`Examples/Video/VideoPlayback`](../Examples/Video/VideoPlayback/Sketch.swift) and [`Examples/Vision/VideoTrace`](../Examples/Vision/VideoTrace/Sketch.swift) for footage; [`Examples/Images/SlitScan`](../Examples/Images/SlitScan/Sketch.swift) for the frame history.
+- Worked examples, people first: [`FaceTracking`](../Examples/Vision/FaceTracking/Sketch.swift), [`HandTracking`](../Examples/Vision/HandTracking/Sketch.swift), [`BodyPose`](../Examples/Vision/BodyPose/Sketch.swift), [`BodyPose3D`](../Examples/Vision/BodyPose3D/Sketch.swift), [`PersonSegmentation`](../Examples/Vision/PersonSegmentation/Sketch.swift), [`SubjectLift`](../Examples/Vision/SubjectLift/Sketch.swift).
+- Then the picture itself: [`ContourTrace`](../Examples/Vision/ContourTrace/Sketch.swift), [`OpticalFlow`](../Examples/Vision/OpticalFlow/Sketch.swift), [`RectangleScan`](../Examples/Vision/RectangleScan/Sketch.swift), [`TextScan`](../Examples/Vision/TextScan/Sketch.swift), [`BarcodeReader`](../Examples/Vision/BarcodeReader/Sketch.swift), [`ObjectTracking`](../Examples/Vision/ObjectTracking/Sketch.swift), [`TrajectoryTracking`](../Examples/Vision/TrajectoryTracking/Sketch.swift), [`SceneLabels`](../Examples/Vision/SceneLabels/Sketch.swift), [`EyeCatcher`](../Examples/Vision/EyeCatcher/Sketch.swift).
+- Models of your own: [`DepthRelief`](../Examples/Vision/DepthRelief/Sketch.swift), [`ObjectDetection`](../Examples/Vision/ObjectDetection/Sketch.swift), [`PaintByClass`](../Examples/Vision/PaintByClass/Sketch.swift), [`StyleMirror`](../Examples/Vision/StyleMirror/Sketch.swift), and [`DigitReader`](../Examples/Vision/DigitReader/Sketch.swift), which points a model at the sketch's own pixels with no camera anywhere. The rest live in [`Examples/Vision/`](../Examples/Vision).
+- Footage and history: [`Examples/Video/VideoPlayback`](../Examples/Video/VideoPlayback/Sketch.swift), [`Examples/Vision/VideoTrace`](../Examples/Vision/VideoTrace/Sketch.swift), and [`Examples/Images/SlitScan`](../Examples/Images/SlitScan/Sketch.swift).
 
 ---
 

@@ -13,7 +13,7 @@ The check ("the smoothstep test"): reread each page asking, could someone with n
 
 **2. The Guide can't rot.**
 Books about living software go stale; readers hit examples that no longer compile and conclude they're the problem.
-The rule: every listing lives as a compilable figure sketch under `Figures/`, and `Scripts/guide-figures.sh` compiles and renders all of them. Run it before every commit that touches the Guide. A failing figure blocks the commit. (CI wiring is deliberately deferred for now; the script is the gate. See PLAN.md.)
+The rule: every listing lives as a compilable figure sketch under `Figures/`, and `Scripts/guide-figures.sh` compiles and renders all of them. Run it before every commit that touches the Guide. A failing figure blocks the commit. (This is a local gate on purpose, not a CI job, because a virtualized runner cannot run the Vision figures or match anyone's GPU. The reasoning is in PLAN.md.)
 
 **3. Everything runs, every image is honest.**
 The rule: every image under `Images/` is produced by the figure runner from a committed sketch, never hand-made, never edited after render. Prose listings are a figure file verbatim, or a clearly labeled delta of one ("add this line to `Swarm.swift`"). If a listing can't be a runnable file, rewrite it until it can.
@@ -74,6 +74,7 @@ Figure sketches live in `Figures/<NN-ChapterName>/<FigureName>.swift`, rendered 
 - Every image referenced from a chapter must exist in `Images/` and come from the runner; the reverse also holds, no orphaned figures.
 - Embed images with an `<img>` tag carrying a display `width`, never a bare markdown image; a full-bleed 1080-pixel image dominates the page and hurts reading. House widths: `680` for the wide 880×550 diagrams, `560` for square art and finished pieces, `480` for GIFs. Always keep the `alt` text. (This is the one sanctioned bit of HTML in the Guide; everything else stays plain markdown.)
 
+- **A figure that analyzes a still with `waitFor` must not read the sketch's own properties inside the closure.** `waitFor` parks the main thread, and a sketch's properties (static ones too) are main-actor isolated, so a read from inside the closure waits on the parked thread and the figure hangs forever with nothing printed. Read the values into locals first. Chapter 21's `AttentionAndLabels` hit this and looked exactly like a Neural Engine deadlock.
 - **A figure whose render genuinely cannot reproduce carries `// figure: unstable`.** Only two do: the GPU sims in `16-Simulations/ArtificialLife` and `FluidAndBlobs`, whose particle scatter order is decided by GPU atomics. The runner then verifies them (they still have to compile and render) without rewriting their committed images, so they stop showing up as changes. This is not a way out of pinning a seed; use it only when the framework itself makes no reproducibility promise.
 
 Rendering:

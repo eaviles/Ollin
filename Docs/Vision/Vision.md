@@ -921,6 +921,15 @@ let arcs   = try waitFor(frames) { try await TrajectoryTracker.detect(across: $0
 
 Pass the image (or pair, or sequence) as the argument rather than capturing it, because the argument is what carries it into the analysis task safely. Since `waitFor` parks the calling thread, never call it from an async context (just `await` there). A live sketch usually wants neither, so start a `Task`, stash its result in a property, and keep drawing until detection lands.
 
+The same parking makes one small mistake hang with nothing printed: reading a property of your sketch from *inside* the closure. A sketch is main-actor isolated, its stored and static properties along with it, so a read from the closure waits for the main thread, which is the thread already parked. Read the values you need into locals first and let the closure capture those.
+
+```swift
+let floor = minimumScore              // a property of the sketch, read out here
+let labels = try waitFor(image) {
+    try await ImageClassifier.detect(in: $0, minimumConfidence: floor)
+}
+```
+
 <a name="availability"></a>
 
 ### Availability

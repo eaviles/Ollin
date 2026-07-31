@@ -233,7 +233,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | People trackers | Faces with landmarks, hands, 2D and 3D body poses, person segmentation | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
 | Scene trackers | Contours, rectangles, barcodes, text (OCR), saliency, classification, subject lift | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
 | Motion trackers | Object tracking, thrown-object trajectories, dense optical flow | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| `ModelTracker` | Bring any Core ML model: classifiers, detectors, segmenters | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| `ModelTracker` | Bring any Core ML model: classifiers, detectors, image-to-image maps, segmenters | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
 | Still analysis | Every tracker also runs one-shot on an `Image` | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
 | Video playback | Files as live textures: play, seek, loop, analyze, all export-reproducible | [Ch 21](21-Seeing.md) | [Video](../Docs/Video/Video.md) |
 | Slit scan | A rolling frame history read back through a per-pixel time delay: time as a spatial dimension | [Ch 21](21-Seeing.md) | [SlitScan](../Docs/Video/SlitScan.md) |
