@@ -153,7 +153,21 @@ if let photo {
 }
 ```
 
-Every pixel of the result is one of your five colors. (`bounds` there is the whole canvas as a rectangle, which every sketch has ready to hand, so it's a convenient way to say "fill the frame".) Snapping each pixel straight to the nearest color would leave flat bands where the photo was smooth, so `dithered` scatters the two colors that bracket each tone instead, finely enough that your eye blends them back into the tone that was there. There are several ways to do the scattering, from the crosshatch of `.ordered` to the even grain of `.blueNoise`, and [the color reference](../Docs/Drawing/Color.md#dithering) walks through them. The `Dithering` example puts six of them side by side.
+Every pixel of the result is one of your five colors. (`bounds` there is the whole canvas as a rectangle, which every sketch has ready to hand, so it's a convenient way to say "fill the frame".)
+
+The interesting word in that listing is `dithered`, and it's worth understanding rather than just calling, because it is the answer to a problem you will meet constantly: you have fewer colors than the picture needs.
+
+<img src="Images/02-Color/Dithering.jpg" alt="Three panels of the same smooth color gradient reduced to five colors: the first showing wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, both of the latter reading as a smooth gradient from a distance" width="680">
+
+Snapping each pixel to the nearest available color is the obvious approach, and the first panel shows what it costs. Smooth regions turn into flat bands with hard edges, because a whole stretch of subtly different tones all round to the same color. Dithering trades those bands for texture. Where a tone falls between two of your colors, it scatters both of them in the right proportion, and your eye, blurring them together at any normal distance, reads the tone that was actually there. The picture keeps its gradients using colors it doesn't have.
+
+There are two families, and they look different on purpose.
+
+**Threshold maps** decide each pixel from its position alone, using a repeating tile. `.ordered(size: 8)` uses a Bayer matrix and lays down the regular crosshatch of retro graphics and old newsprint, while `.blueNoise` uses a tile with no structure in it and gives an even, pattern-free grain. Because the decision is positional, these are cheap and completely local.
+
+**Error diffusion** works differently. It commits to a color for one pixel, measures how far off that was, and pushes the leftover error onto neighbors it hasn't reached yet, so every mistake gets paid back nearby. `.floydSteinberg` is the classic, and it gives the organic scattered look in the third panel. `.atkinson` deliberately throws away a quarter of the error, which blows highlights and shadows out to clean white and black, a look worth knowing by name.
+
+A few practical notes. `.none` skips the scattering entirely, which is what the first panel uses and what you reach for to show someone the difference. There's a second form, `dithered(.atkinson, levels: 2)`, that quantizes to evenly spaced steps per channel instead of to a palette, which is the posterizing one. And this is CPU work over every pixel, so do it in `setup()` and hold the result rather than redoing it each frame. [The color reference](../Docs/Drawing/Color.md#dithering) has the full method list, and the `Dithering` example puts six of them side by side.
 
 ## Gradients as paint
 

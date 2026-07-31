@@ -37,7 +37,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Clipping | `withClip(shape) { }`: drawing inside the block lands only within the region; nesting intersects | [Ch 6](06-GridsAndRepetition.md) | [Drawing](../Docs/Drawing/Drawing.md#clip) |
 | Blend modes | Add, subtract, multiply, screen, lightest, darkest, as drawing state | [Ch 14](14-LayersAndEffects.md) | [Drawing](../Docs/Drawing/Drawing.md) |
 | Accumulation | `noClear()`: a persistent canvas that piles up across frames | [Ch 14](14-LayersAndEffects.md), [Ch 16](16-Simulations.md) | [Accumulation](../Docs/Drawing/Accumulation.md) |
-| Retained batches | `makeBatch { }` records heavy static drawing once into a `Batch`; `drawBatch` replays it each frame for (almost) nothing, placed or stamped by the transform in force | here | [Retained batches](../Docs/Drawing/Batches.md) |
+| Retained batches | `makeBatch { }` records heavy static drawing once into a `Batch`; `drawBatch` replays it each frame for (almost) nothing, placed or stamped by the transform in force | [Ch 13](13-ShapesAsMaterial.md) | [Retained batches](../Docs/Drawing/Batches.md) |
 | HDR and tone mapping | Light past full brightness, brought back by `toneMap` (clamp, Reinhard, ACES) | [Ch 14](14-LayersAndEffects.md) | [HDR](../Docs/Drawing/HDR.md) |
 | Gradient paint | Linear, radial, and along-path gradients on any shape's fill or stroke | [Ch 2](02-Color.md) | [Color](../Docs/Drawing/Color.md) |
 
@@ -77,7 +77,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Stroke as shape | Turn any stroked line into a filled region for booleans and plotting | [Ch 13](13-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | SVG import | Vector artwork read into shapes: draw it as authored, or mine it as geometry | [Ch 13](13-ShapesAsMaterial.md) | [SVG](../Docs/Drawing/SVG.md) |
 | Fourier epicycles | Rebuild any closed outline as a chain of spinning circles, term count as the detail dial | [Ch 13](13-ShapesAsMaterial.md) | [Epicycles](../Docs/Drawing/Epicycles.md) |
-| Classic curves | Phyllotaxis, Lissajous figures, roses, the spirograph gears, the harmonograph, and Chaikin corner-cut smoothing, all closed forms with no randomness | here | [Classic curves](../Docs/Drawing/Curves.md) |
+| Classic curves | Phyllotaxis, Lissajous figures, roses, the spirograph gears, the harmonograph, and Chaikin corner-cut smoothing, all closed forms with no randomness | [Ch 13](13-ShapesAsMaterial.md) | [Classic curves](../Docs/Drawing/Curves.md) |
 | Shape morphing | Tween one shape into another; holes grow in and out, and every in-between is real geometry | [Ch 13](13-ShapesAsMaterial.md) | [Morphing](../Docs/Drawing/Morphing.md) |
 | Paper marbling | Ink floated on a bath and raked: drops, tines, combs, and vortices, all exact transforms of vector outlines | [Ch 13](13-ShapesAsMaterial.md) | [Marbling](../Docs/Generators/Marbling.md) |
 | Watercolor | Pigment from one polygon deformed and stacked at low opacity: dense cores, uneven blooming edges | [Ch 13](13-ShapesAsMaterial.md) | [Watercolor](../Docs/Generators/Watercolor.md) |
@@ -102,7 +102,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
 | Blue noise | Poisson-disk scatter: random but even | [Ch 13](13-ShapesAsMaterial.md) | [BlueNoise](../Docs/Generators/BlueNoise.md) |
-| Low-discrepancy sampling | Halton and Sobol point streams: even at every count, growing the count never moves a point | here | [LowDiscrepancy](../Docs/Generators/LowDiscrepancy.md) |
+| Low-discrepancy sampling | Halton and Sobol point streams: even at every count, growing the count never moves a point | [Ch 13](13-ShapesAsMaterial.md) | [LowDiscrepancy](../Docs/Generators/LowDiscrepancy.md) |
 | Stippling | Dots packed to reproduce an image's tone (weighted-Voronoi) | [Ch 7](07-WordsAndPictures.md) | [Stippling](../Docs/Generators/Stippling.md) |
 | Single-line drawing | One unbroken tour through a stipple: the picture as a single closed line (TSP art) | [Ch 7](07-WordsAndPictures.md) | [SingleLine](../Docs/Generators/SingleLine.md) |
 | Spanning-tree drawing | The same stipple joined by the minimum spanning tree: the picture as branching veins | [Ch 7](07-WordsAndPictures.md) | [SpanningTree](../Docs/Generators/SpanningTree.md) |
@@ -116,7 +116,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Hex and triangle grids | The other regular tilings, with hex distance, neighbors, and exact picking | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
 | Recursive subdivision | Uneven panels by aspect-aware splitting, binary or quadtree | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
 | Mazes | Perfect labyrinths (three carving textures), walls as clean line-work | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
-| Apollonian gasket | A circle filled with an endless foam of kissing circles | here | [Tiling](../Docs/Drawing/Tiling.md) |
+| Apollonian gasket | A circle filled with an endless foam of kissing circles | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
 | Fractals | IFS chaos games, fractal flames, circle-inversion lace, and Kleinian limit-set curves | [Ch 11](11-GrowingThings.md) | [Fractals](../Docs/Generators/Fractals.md) |
 | L-systems | Grammar rewriting walked by a turtle: ferns, trees, lichens | [Ch 11](11-GrowingThings.md) | [LSystem](../Docs/Generators/LSystem.md) |
 | Wave Function Collapse | Socketed tiles solved by constraint propagation | [Ch 11](11-GrowingThings.md) | [WaveFunctionCollapse](../Docs/Generators/WaveFunctionCollapse.md) |

@@ -146,6 +146,68 @@ This time there's no `withState`, on purpose. Each `rotate(.tau / 12)` *adds* to
 
 > **Swift note.** `func drawArm()` declares a helper function on your sketch, a named block you call like any built-in. Pulling the arm out of the loop keeps `draw()` readable and gives you one obvious place to redesign the arm.
 
+## The fold, done for you
+
+Writing that loop yourself is worth doing once, because it shows you what symmetry actually is. After that there's a shortcut, and it can do something the loop can't.
+
+```swift
+symmetry(8)                  // every draw call now happens eight times
+symmetry(8, mirrored: true)  // sixteen times, alternate copies flipped
+noSymmetry()                 // back to normal
+```
+
+`symmetry` is drawing state, like `fill` or a transform, so it applies to everything you draw until you turn it off, and `withState { }` scopes it. Once it's on you stop thinking about repetition entirely. You draw one wedge, and every circle, line, and shape in it lands in all the folds at once.
+
+<img src="Images/06-GridsAndRepetition/Kaleidoscope.jpg" alt="Three panels: a single small crooked wedge with a red dot at its tip, the same wedge under eightfold symmetry forming a snowflake, and under mirrored eightfold symmetry forming a denser one with paired reflections" width="680">
+
+The mirrored form is the part worth having. A plain rotation copies your wedge around like a pinwheel, and every copy still leans the same way. Mirroring flips alternate copies, so neighbors face each other and the seams between them close. That's the difference between a pinwheel and an actual kaleidoscope, and doing it by hand means negative scales and reversed winding, which is a mess you now don't have to write.
+
+The folds are computed around wherever you are when you call it, so `translate` first if the center isn't the canvas center. And because it happens per draw call rather than per shape, a whole composition folds just as easily as a single arm.
+
+## Drawing inside a shape
+
+Repetition fills space. Sometimes you want it to fill *only part* of the space, and specifically a part shaped like something.
+
+```swift
+withClip(star) {
+    // everything here lands only inside the star
+}
+```
+
+<img src="Images/06-GridsAndRepetition/ClipRegions.jpg" alt="Three panels of the same diagonal orange stripes: confined to a star, confined to a circle, and confined to both at once so only the overlap of star and circle is striped" width="680">
+
+`withClip` takes a `Shape`, a `Rectangle`, or a `Circle`, and confines everything drawn inside the block to that region. What makes it useful rather than merely convenient is that you don't have to work out the intersection yourself. The stripes in the figure are the same handful of long diagonal lines in all three panels, drawn straight past the edges, and the region decides what survives.
+
+Nesting is the other half. A clip inside a clip keeps only what falls in both, which is how the third panel gets the lens-shaped overlap without any geometry on your part. Letters make good clips too, since Chapter 7's `textToShapes` hands back shapes, so you can pour a whole pattern into a word.
+
+## Grids that aren't square
+
+The `Grid` this chapter opened with divides a rectangle into rectangles, which covers a great deal but not everything. Four more shapes of division come with Ollin, and all of them read the same way: ask for the cells, loop over them once.
+
+<img src="Images/06-GridsAndRepetition/OtherGrids.jpg" alt="Four panels: a honeycomb tinted by ring distance from one cell, a field of alternating up and down triangles, a rectangle split recursively into unequal panels, and a carved maze" width="680">
+
+```swift
+for cell in hexGrid(columns: 12, rows: 10, gutter: 6).cells {
+    drawPolygon(cell.corners)
+}
+for cell in triangleGrid(columns: 21, rows: 10).cells {
+    fill(cell.pointsUp ? .white : .black)
+    drawPolygon(cell.vertices)
+}
+for cell in subdivide(minSize: 90, chance: 0.75) {
+    drawRect(cell.frame)
+}
+drawMaze(maze(columns: 24, rows: 24))
+```
+
+`hexGrid` and `triangleGrid` are the other two regular tilings, the only other shapes that tile a plane with no gaps and no overlaps. Hexagons can't stretch the way a rectangle can, so the block keeps its true proportions and centers itself rather than distorting to fill your bounds. The hex grid also knows its own geometry, so `distance(from:to:)` counts rings between two cells, which is what colors the first panel and is exactly what a board game needs.
+
+`subdivide` splits a rectangle in two, then splits the halves, and keeps going until the pieces hit `minSize` or a coin says stop. Uneven panels like that are hard to get from a grid and easy to get from recursion, which is why the result reads as a layout rather than a table.
+
+`maze` carves a **perfect maze**, meaning every cell is reachable and there is exactly one route between any two, so it has no loops and no isolated pockets. The algorithm you choose is a texture control as much as a technical one: `.backtracker` gives long winding corridors, while `.kruskal` gives an even sprawl of short dead ends. `drawMaze` strokes the walls, and the maze can also hand you its longest path, which is the single hardest route through it.
+
+One more member of this family is a circle rather than a grid. `apollonianGasket(in:minRadius:)` fills a circle with the classic foam of ever-smaller kissing circles, each one the single circle that exactly touches its three neighbors. There's no randomness in it at all, so the same circle always gives the same foam, and since the circles come back in the order they were created, their index doubles as an age you can color by.
+
 ## Tiles that agree at their edges
 
 The pinwheel quilt hinted at this. When identical parts meet their cell edges the same way, random spins still fit. In 1704 a French priest named Sébastien Truchet worked out how far that idea goes, and the tiles named after him are its purest form. Ollin ships two as `drawTruchet`:
@@ -243,10 +305,10 @@ Truchet tiles are named for Sébastien Truchet, a French Carmelite priest who pu
 
 - [Geometry](../Docs/Drawing/Geometry.md): the full `Grid` reference (spanning points, nesting, singular access), `Insets`, and `Rectangle`.
 - [Drawing](../Docs/Drawing/Drawing.md): the transform stack in detail, `pushState`/`popState` (the unscoped siblings of `withState`), and every shape that benefits.
-- [Kaleidoscope symmetry](../Docs/Drawing/Drawing.md#symmetry): this chapter builds repetition with loops, while `symmetry(8, mirrored: true)` is the built-in shortcut that folds every draw call around a center, so one wedge becomes a mandala. The [`Patterns/Kaleidoscope`](../Examples/Patterns/Kaleidoscope/Sketch.swift) example draws a single arm and lets the folds do the rest.
-- [Clipping](../Docs/Drawing/Drawing.md#clip): `withClip(shape) { }` confines everything drawn inside the block to a region, so a pattern can fill a star, a letter, or any vector shape without computing the intersection yourself, and nested clips intersect. The [`Shapes/Clipping`](../Examples/Shapes/Clipping/Sketch.swift) example sweeps a lens across a striped star.
+- [Kaleidoscope symmetry](../Docs/Drawing/Drawing.md#symmetry): the full reference for `symmetry`/`noSymmetry`, including which drawing paths fold and which don't. The [`Patterns/Kaleidoscope`](../Examples/Patterns/Kaleidoscope/Sketch.swift) example draws a single arm and lets the folds do the rest.
+- [Clipping](../Docs/Drawing/Drawing.md#clip): the reference, including how clips interact with layers and what vector export does with them. The [`Shapes/Clipping`](../Examples/Shapes/Clipping/Sketch.swift) example sweeps a lens across a striped star.
 - [Truchet](../Docs/Drawing/Truchet.md): both tiles, the contour output, and feeding the strands to booleans, hatching, or SVG export.
-- [Tiling and layout](../Docs/Drawing/Tiling.md): grids this chapter's square one can't make. `HexGrid` and `TriangleGrid` tile with the same one-loop shape, `Subdivision` splits a rectangle into smaller ones until you tell it to stop, `Maze` carves a perfect maze on any grid, and `apollonianGasket` packs circles into circles forever.
+- [Tiling and layout](../Docs/Drawing/Tiling.md): every knob for `HexGrid`, `TriangleGrid`, `Subdivision`, `Maze`, and `apollonianGasket`, including hex orientation and picking, the quadtree split style, all three maze algorithms, and the longest-path helper.
 - Worked examples: [`Patterns/Grid`](../Examples/Patterns/Grid/Sketch.swift) (the grid helper's tour) and [`Patterns/Truchet`](../Examples/Patterns/Truchet/Sketch.swift) (both tiles, animated).
 - A teaser for later: [`Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift) plays the agree-at-the-edges game with *constraints*, tiles that refuse certain neighbors, and Chapter 11 watches it solve.
 

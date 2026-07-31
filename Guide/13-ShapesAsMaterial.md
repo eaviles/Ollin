@@ -46,6 +46,69 @@ final class Leaf: Sketch {
 
 A cubic curve bends from one point to the next, steered by two control points it leans toward but never touches, and two of them, mirrored, make the leaf. The vein uses the friendlier `drawCurve`, which threads a smooth curve *through* the points you give it, no control points to manage. One honest gotcha, learned the honest way. A fill needs a *closed* contour, and ending a path back where it started isn't enough. Forget `p.close()` and the leaf silently refuses to fill, leaving only the vein.
 
+## Curves you can write down
+
+The leaf was drawn by hand, one control point at a time. Some outlines don't need that, because somebody already found the formula, and the formula is shorter than the drawing. Six of them come with Ollin, all deterministic and none of them touching randomness.
+
+<img src="Images/13-ShapesAsMaterial/ClassicCurves.jpg" alt="Six panels: a sunflower seed spiral, a woven Lissajous figure, a five-petal rose, a looping spirograph curve, a decaying harmonograph tangle, and a rough polygon shown beside its smoothed version" width="680">
+
+```swift
+phyllotaxis(count: 520, spacing: 7)                   // [Vector2]
+lissajous(a: 3, b: 2, width: 200)                     // Contour
+rose(n: 5, radius: 100)
+hypotrochoid(ring: 84, wheel: 33, pen: 26)
+```
+
+**Phyllotaxis** is how a sunflower packs its seeds. Seed number `i` sits `i` golden angles around the center and `spacing * sqrt(i)` out from it, and that one rule fills the disk evenly at any count. The golden angle (about 137.5 degrees) is doing all the work here, because it's the fraction of a turn that never lines back up with itself, so no seed ever lands behind an earlier one. Nudge the angle by a hundredth of a degree and the whole thing collapses into spokes, which is worth trying once just to watch it happen.
+
+**Lissajous figures** are what two sine waves make when one drives the horizontal and the other the vertical. A point swings side to side `a` times while it bobs up and down `b` times, and the ratio between them is the whole character of the figure. **Roses** come from one polar equation, `r = radius * cos(k * theta)`, where an odd `n` gives you `n` petals and an even `n` gives you `2n`.
+
+**Hypotrochoids and epitrochoids** are the toy gear set from childhood. A wheel rolls around a ring, inside for the first and outside for the second, with a pen stuck through a hole `pen` units from the wheel's center. Using whole numbers for the gears is what guarantees the pen eventually returns to where it started, and Ollin samples exactly the number of laps that closes the curve once, so nothing is drawn twice.
+
+**Harmonographs** were real Victorian machines: pendulums swinging under a pen, drawing while they slowly died away. Ollin's takes a list of pendulums per axis, each with its own amplitude, frequency, phase, and damping, and near-but-not-quite matching frequencies are where the good tangles come from.
+
+The last panel isn't a curve at all. `smoothed(iterations:)` is Chaikin's corner cutting, which repeatedly replaces every corner with two points partway along its edges. Do it three or four times and a rough polygon becomes a soft curve, and open contours keep their exact endpoints so a line still starts and ends where you put it.
+
+One habit applies to all of them. These come back in their own coordinates, and the way to fit one to your canvas is `fitted(points, in: rect)`, which scales the *points*. Reaching for `scale()` instead would scale your stroke width along with the geometry, which is rarely what you want on a drawing made of lines.
+
+## Circles all the way down
+
+Here is a fact that sounds false. Any closed outline at all, however irregular, is exactly a sum of circles, each spinning at a whole-number rate, each one riding on the tip of the one before it. That's Fourier's idea, and Ollin will do the decomposition for you.
+
+<img src="Images/13-ShapesAsMaterial/EpicycleTerms.jpg" alt="Three panels rebuilding the letter g from spinning circles: with three circles it is a wobbly loop, with twelve it is recognizably the letter, and with sixty-four it is exact, with the faint construction circles visible in each" width="680">
+
+```swift
+let chain = Epicycles(outline, samples: 512)
+drawPolygon(chain.path(samples: 600, terms: 64).points)   // the reconstruction
+drawEpicycles(chain, at: phase, terms: 64)                // the construction itself
+```
+
+`terms` is the dial, and it takes the largest circles first. That ordering is what makes the figure above work: three circles already give you the outline's gross shape because the big circles were always doing most of the work, and the rest are adding detail. At the full term count the reconstruction is exact, not approximate.
+
+Two ways to use it. `path(samples:terms:)` hands you the whole traced outline as geometry, so a deliberately under-termed version of a shape is a way to *simplify* it that keeps it smooth. `point(at:terms:)` gives one position, which is what you animate, and `drawEpicycles` draws the whole nest of circles and spokes at a moment so the machine is visible. The `Motion/Epicycles` example traces a whale that way, with the pen leaving a fading trail.
+
+## One shape becoming another
+
+Two shapes and a number between them gives you every shape in between.
+
+<img src="Images/13-ShapesAsMaterial/MorphSteps.jpg" alt="Five panels of a solid orange star turning into a ring with a hole, the star's points retracting and the hole opening from nothing in the middle" width="680">
+
+```swift
+var morph: ShapeMorph?
+
+override func setup() {
+    morph = ShapeMorph(from: star, to: ring)
+}
+
+override func draw() {
+    if let morph { drawShape(morph.shape(at: pingPong(over: 4))) }
+}
+```
+
+Build it once and keep it, because working out which part of the first shape corresponds to which part of the second is the expensive step, and doing it in `setup()` makes every frame afterward cheap. At `0` and `1` you get your original shapes back exactly, not a re-derived approximation of them.
+
+The holes are the part worth watching. When the two shapes don't have the same number of contours, the unmatched ones grow out of (or shrink into) their own center, which is why the ring's hole opens from nothing in the middle instead of flying in from off-screen. Timing lives outside the morph, so pass it an eased phase, a `pingPong` for there-and-back, or a `Timeline`'s progress. For a one-off blend with no state to keep, `star.morphed(toward: ring, 0.5)` gives you the single shape.
+
 ## Shape arithmetic
 
 Held shapes can be combined like quantities. Four operations do it all:
@@ -83,6 +146,21 @@ let some = poissonDisk(in: region, radius: 26)    // or a region
 ```
 
 One number, `radius`, sets the density. Nearly every technique in this chapter eats these points, which is why the scatter came first.
+
+There's a second kind of even, and it earns its place by being *incremental*.
+
+```swift
+let points = haltonPoints(count: 500)
+let finer = sobolPoints(count: 5000, in: frame)
+```
+
+<img src="Images/13-ShapesAsMaterial/HaltonGrowth.jpg" alt="Three panels showing the first 40, 160, and 640 points of one Halton sequence; the earlier points appear in identical positions in every panel, drawn dark, while the new points fill the remaining gaps in orange" width="680">
+
+These are **low-discrepancy sequences**, and they are not random at all. Each one is a fixed list of positions, computed from an index, so point number 57 is always in the same place. That sounds like a limitation until you see what it buys, which the figure shows: asking for more points never moves the ones you already had. Every new point simply lands in the largest gap left so far.
+
+Blue noise can't do that. Adding a dart to a Poisson-disk scatter means running the whole process again and getting a different arrangement. So when you want to keep adding detail to something already on screen, or render progressively, or sample a picture more finely without starting over, this is the tool. It also never touches your sketch's `random`, being pure arithmetic on the index, so mixing it into a seeded piece changes nothing else.
+
+`halton(i, base:)` is the one-dimensional version, which is handy well away from scatters: spacing hues around a wheel, offsetting animation phases, choosing sample times, anywhere you want values that spread out evenly no matter how many you end up taking.
 
 ## Territories and neighbors
 
@@ -326,6 +404,27 @@ final class Plate: Sketch {
 
 All the geometry happens once in `setup()` and lands in four plain arrays, and `draw()` only replays lines. That split isn't just tidy, it *is* the plotter mindset, a piece reduced to strokes a machine could follow, and it keeps the sketch fast no matter how elaborate the geometry gets.
 
+There's one more step available when even the replaying gets heavy. Computing the geometry once is half the saving; the other half is that `draw()` still walks those arrays and re-issues every line to the GPU on every frame, sixty times a second, for a picture that never changes.
+
+```swift
+var plate: Batch?
+
+override func setup() {
+    plate = makeBatch {
+        // exactly the drawing calls that are in draw() now
+    }
+}
+
+override func draw() {
+    background(Color(hex: 0xF4F0E6))
+    if let plate { drawBatch(plate) }
+}
+```
+
+`makeBatch { }` records your drawing once into a `Batch` you hold, and `drawBatch` replays it from the GPU's own memory. For static work at scale the difference is not subtle: a hundred and fifty thousand circles cost around thirteen milliseconds a frame drawn the ordinary way and effectively nothing replayed. The transform in force when you call `drawBatch` still applies, so one recorded batch can be stamped at several positions or sizes.
+
+The rule of thumb is the same one the plate already follows. If the drawing doesn't change between frames, it belongs in a batch, and if it does change, leave it alone. A few things can't be recorded (3D meshes, particles, layer blocks, clipping), and rather than silently dropping them Ollin refuses at the point you draw them and tells you why.
+
 Then make it yours:
 
 - Export it: `swift run` your sketch with `--export-svg plate.svg` and open the file in a vector editor. Every hatch line is really there.
@@ -339,14 +438,17 @@ Then make it yours:
 
 ## Where this comes from
 
-The territories are named for Georgy Voronoy and the triangulation for Boris Delaunay, mathematicians a century apart from the generative artists who adopted them, and the settling pass is Stuart Lloyd's algorithm from 1957 signal processing. The dart-throwing scatter is Robert Bridson's 2007 fast Poisson-disk sampling. Grow-until-touching circle packing entered the generative canon through Jared Tarbell's work in the early 2000s. The shape booleans and offsets are powered by Angus Johnson's Clipper2 library, one of the few pieces of bundled code in Ollin (credited in full in the project notices). The convex hull uses A. M. Andrew's monotone-chain construction from 1979, the concave hull is the characteristic-shape construction of Matt Duckham, Lars Kulik, Mike Worboys, and Antony Galton from 2008, and the alpha shape is Herbert Edelsbrunner, David Kirkpatrick, and Raimund Seidel's from 1983. The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe biological shape, approximated here by the Voronoi method of J. W. Brandt and V. R. Algazi. The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it, and the watercolor recipe is Tyler Hobbs', from his generous written guide to simulating paint with generative art. And hatching itself is far older than any of this, since it's how engravers and etchers made tone from lines for centuries. The plotter just holds the pen steadier. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The territories are named for Georgy Voronoy and the triangulation for Boris Delaunay, mathematicians a century apart from the generative artists who adopted them, and the settling pass is Stuart Lloyd's algorithm from 1957 signal processing. The dart-throwing scatter is Robert Bridson's 2007 fast Poisson-disk sampling. Grow-until-touching circle packing entered the generative canon through Jared Tarbell's work in the early 2000s. The shape booleans and offsets are powered by Angus Johnson's Clipper2 library, one of the few pieces of bundled code in Ollin (credited in full in the project notices). The named curves each carry a person with them. Lissajous figures are Jules Antoine Lissajous's, from 1857, though Nathaniel Bowditch drew them first; roses are Guido Grandi's rhodonea, named in the 1720s for their resemblance to flowers; the trochoids are the mathematics behind the Spirograph toy; the harmonograph was a real Victorian instrument, a pen hung from swinging pendulums; and the sunflower packing is Helmut Vogel's 1979 model. Corner cutting is George Chaikin's, from 1974. Drawing with epicycles goes back through Fourier to the Greek astronomers, who used circles riding on circles to explain the wandering of the planets. The two even-sampling sequences are John Halton's and Ilya Sobol's, both from the early 1960s and both invented for numerical integration rather than for drawing. The convex hull uses A. M. Andrew's monotone-chain construction from 1979, the concave hull is the characteristic-shape construction of Matt Duckham, Lars Kulik, Mike Worboys, and Antony Galton from 2008, and the alpha shape is Herbert Edelsbrunner, David Kirkpatrick, and Raimund Seidel's from 1983. The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe biological shape, approximated here by the Voronoi method of J. W. Brandt and V. R. Algazi. The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it, and the watercolor recipe is Tyler Hobbs', from his generous written guide to simulating paint with generative art. And hatching itself is far older than any of this, since it's how engravers and etchers made tone from lines for centuries. The plotter just holds the pen steadier. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Geometry](../Docs/Drawing/Geometry.md): `Contour`, `Shape`, `Path`, the booleans, offsetting, stroke-as-shape, and the convex hull, with every signature.
 - [SVG import](../Docs/Drawing/SVG.md): loading, drawing, the element list, and what the importer reads and skips.
-- [Fourier epicycles](../Docs/Drawing/Epicycles.md): rebuild an imported outline as a chain of spinning circles, and the [`Examples/Motion/Epicycles`](../Examples/Motion/Epicycles/Sketch.swift) example traces a whale with them.
-- [Shape morphing](../Docs/Drawing/Morphing.md): tween one shape into another, with every in-between a real vector shape you can fill, hatch, or export. The [`Examples/Motion/Morphing`](../Examples/Motion/Morphing/Sketch.swift) example loops a star through a blob and a donut.
+- [Fourier epicycles](../Docs/Drawing/Epicycles.md): the `Term` list, the joint and path readers, and resampling requirements. The [`Examples/Motion/Epicycles`](../Examples/Motion/Epicycles/Sketch.swift) example traces a whale with them.
+- [Shape morphing](../Docs/Drawing/Morphing.md): the correspondence rules, `spacing`, and `Tweenable` geometry inside a `Timeline`. The [`Examples/Motion/Morphing`](../Examples/Motion/Morphing/Sketch.swift) example loops a star through a blob and a donut.
+- [Classic curves](../Docs/Drawing/Curves.md): every parameter of all six, including what closes each curve exactly once.
+- [Low-discrepancy sampling](../Docs/Generators/LowDiscrepancy.md): Halton bases, Sobol, `startIndex`, and the scalar `halton`.
+- [Retained batches](../Docs/Drawing/Batches.md): what a `Batch` can and can't record, how transforms apply at replay, and the measured numbers.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.
 - [Hulls](../Docs/Generators/Hulls.md): `concaveHull` and `alphaShape`, with the knob ranges that read well and the cost of each.
 - [Medial axis](../Docs/Generators/MedialAxis.md): the skeleton, the `Branch` type, and what the radii guarantee.

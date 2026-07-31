@@ -232,14 +232,14 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Core/Canvas.md` (canvasSize, windowMode) | Ch 1 | pointed (default canvas, `width`/`height`, and the window-as-preview model; sizes, presets, and `windowMode` named + pointed) |
 | `Swift.md` (language primer) | Ch 1 callouts, Appendix A | taught |
 | `Drawing/Drawing.md` (shapes, state, transforms) | Ch 1, Ch 6 | taught |
-| Kaleidoscope symmetry (`symmetry`/`noSymmetry`, in `Drawing/Drawing.md`) | Ch 6 | pointed |
-| Clipping (`withClip`, in `Drawing/Drawing.md`) | Ch 6 | pointed |
+| Kaleidoscope symmetry (`symmetry`/`noSymmetry`, in `Drawing/Drawing.md`) | Ch 6 | taught ("The fold, done for you" after the hand-rolled rotate loop, with a three-panel figure: symmetry as drawing state, why the mirrored form is the one worth having, and folding around the current origin) |
+| Clipping (`withClip`, in `Drawing/Drawing.md`) | Ch 6 | taught ("Drawing inside a shape" with a three-panel figure: the same stripes confined three ways, all three region types, and nesting as intersection) |
 | `Drawing/Color.md` (Color, OKLab, palettes, colormaps) | Ch 2 | taught |
 | Gradient paint (`Drawing/Color.md`) | Ch 2 | taught |
 | Palette file import (`loadPalette`/`loadPalettes`, hex/CSV/TSV/JSON/ASE; `Drawing/Color.md`) | Ch 2 | taught |
 | Palette extraction from an image (`Palette(extractedFrom:)`; `Drawing/Color.md`) | Ch 2 | taught |
-| Image dithering (`Image.dithered`: error diffusion, ordered Bayer, blue noise; `Drawing/Color.md`) | Ch 2 | pointed |
-| Retained batches (`Batch`, `makeBatch`/`drawBatch`; `Drawing/Batches.md`) | Appendix D | pointed |
+| Image dithering (`Image.dithered`: error diffusion, ordered Bayer, blue noise; `Drawing/Color.md`) | Ch 2 | taught (a three-panel figure over one gradient: why snapping bands, the two families and how each decides, `.none` as the teaching control, `levels:` posterizing, and the do-it-in-setup rule) |
+| Retained batches (`Batch`, `makeBatch`/`drawBatch`; `Drawing/Batches.md`) | Ch 13 | taught (after the plate's setup/draw split: what is still costing you per frame, `makeBatch`/`drawBatch`, the measured 150k-circle numbers, transforms at replay, and the refuse-at-the-funnel list) |
 | `Helpers/Math.md` (map, lerp, dist; the shaping scalars clamp/fract/step/smoothstep) | Ch 3, Appendix B | taught |
 | `Helpers/Animation.md` (easing, @Eased, @Smoothed, Timeline; loopProgress/pingPong) | Ch 3 | taught |
 | `Helpers/Input.md` (mouse, keyboard) | Ch 1 | taught |
@@ -249,7 +249,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Noise toolkit (simplexNoise, worley, ridgedFbm/turbulence, warpedFbm; the `.cellular` generator + `.noise` warp knob; `Generators/Noise.md`) | Ch 5 (shader-lib mirror named in Ch 15) | taught (the family toured with two figures in Ch 5; feature:/jitter: and warp: explained; GPU legs pointed to the Cellular/DomainWarp examples) |
 | `Drawing/Geometry.md`: `Grid`, `Insets` | Ch 6 | taught |
 | `Drawing/Truchet.md` | Ch 6 | taught |
-| `Drawing/Tiling.md` (HexGrid/TriangleGrid, subdivide, Maze, apollonianGasket) | Ch 6 / Appendix D | pointed |
+| `Drawing/Tiling.md` (HexGrid/TriangleGrid, subdivide, Maze, apollonianGasket) | Ch 6 | taught ("Grids that aren't square" with a four-panel figure: the other two regular tilings and why hexes keep their proportions, hex ring distance, recursion versus tabulation for layout, what makes a maze perfect and the algorithm as a texture knob, plus the gasket) |
 | `Drawing/Text.md` (three font kinds, textToShapes, atlas) | Ch 7 | taught (drawText/textSize/textAlign, the three kinds, perGlyph, textToShapes warp, atlas mode; on-path/box/metrics/variable axes named + pointed) |
 | `Drawing/Images.md` (Image, pixels, tint) | Ch 7 | taught (loadImage/drawImage/tint, blank-image authoring, the pixel subscript both ways; resource loading named) |
 | `Drawing/Geometry.md`: `Vector2`/`Vector3`, `Rectangle`, `Circle` | Ch 8, Ch 17 | taught (Vector2 arrows, +/−/scale, length/normalized/limited/distance/angle, with(x:y:) taught in Ch 8; dot/cross/lerp/rotated/projected pointed; Vector3 waits for Ch 17) |
@@ -266,7 +266,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Drawing/Geometry.md`: `Path`, `Shape`, booleans, offset | Ch 13 | taught |
 | `Drawing/Voronoi.md` (+ Delaunay, Lloyd) | Ch 13 | taught |
 | `Generators/BlueNoise.md` | Ch 13 | taught |
-| `Generators/LowDiscrepancy.md` (`haltonPoints`, `sobolPoints`) | Appendix D | pointed |
+| `Generators/LowDiscrepancy.md` (`haltonPoints`, `sobolPoints`) | Ch 13 | taught (beside blue noise, with a growth figure: not random at all, the incremental property blue noise lacks, why it never touches the sketch rng, and the scalar `halton`) |
 | `Generators/Stippling.md` (`stipple`, weighted-Voronoi) | Ch 7 | taught ("A picture as one line" explains the settling method in plain words before the Voronoi structure is named in Ch 13, plus `count` and the `cutoff` rounding) |
 | `Generators/SingleLine.md` (`singleLine`, the TSP tour) | Ch 7 | taught (the tour beside the tree in a three-panel figure, both the `through:` and `of:points:` forms) |
 | `Generators/SpanningTree.md` (`spanningTree`, the MST rendering) | Ch 7 | taught (same figure and section; the minimal-chain decomposition explained as pen lifts) |
@@ -288,9 +288,9 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/ShapePacking.md` | Ch 13 | shown |
 | Hatching (`Output/Export.md`) | Ch 13 | taught |
 | Perfect-loop export (`--export-loop`, `loopDuration`; `Output/Export.md`) | Ch 3 | taught |
-| `Drawing/Epicycles.md` (Fourier epicycles) | Ch 13 | pointed |
-| `Drawing/Curves.md` (classic curves: phyllotaxis, lissajous, rose, hypotrochoid/epitrochoid, `Harmonograph`, Chaikin `smoothed`) | Appendix D | pointed |
-| `Drawing/Morphing.md` (shape morphing: `ShapeMorph`, `Tweenable` geometry) | Ch 13 | pointed |
+| `Drawing/Epicycles.md` (Fourier epicycles) | Ch 13 | taught ("Circles all the way down" with a rising-term figure: the largest-first prefix, exactness at full terms, under-terming as a smooth simplifier, and the construction versus the path) |
+| `Drawing/Curves.md` (classic curves: phyllotaxis, lissajous, rose, hypotrochoid/epitrochoid, `Harmonograph`, Chaikin `smoothed`) | Ch 13 | taught ("Curves you can write down" with a six-panel figure: the golden angle and why it can't line up, the frequency ratio, petal parity, whole-number gears, damped pendulums, corner cutting, and the fit-by-points rule) |
+| `Drawing/Morphing.md` (shape morphing: `ShapeMorph`, `Tweenable` geometry) | Ch 13 | taught ("One shape becoming another" with a five-step figure: build-once-read-cheap, exact originals at the ends, unmatched contours growing from their own centre, and timing living outside the read) |
 | `Drawing/SVG.md` (SVG import: `loadSVG`, `drawSVG`) | Ch 13 | taught |
 | `Drawing/Effects.md` (targets, filters, compose, combine) | Ch 14 | taught (targets/filters/generators/compose/feedback taught; combine + aside pointed) |
 | Blend modes (`Drawing/Drawing.md`) | Ch 14 | taught |
