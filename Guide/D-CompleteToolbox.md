@@ -155,7 +155,9 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | The compose DSL | `compose { layer { } … }`: a stack of layers, filters, and blends in one block | [Ch 14](14-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Combines | Two-layer ops: mask, displace, mix, depth-of-field, SSAO, reflections | [Ch 14](14-LayersAndEffects.md), [Ch 17](17-3DGently.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Feedback | A layer that remembers last frame: trails, tunnels, video feedback | [Ch 14](14-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Simulation fields | Game of Life, Gray-Scott reaction-diffusion, and real-time fluid you seed by drawing | [Ch 16](16-Simulations.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Simulation fields | Game of Life, Gray-Scott reaction-diffusion, Lenia, the ripple pool, and real-time fluid, all seeded by drawing into them | [Ch 16](16-Simulations.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Ripple pool | `.ripples`: the wave equation as an interactive water surface; drawn marks add height, rings spread and reflect | [Ch 16](16-Simulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
+| Chladni figures | The standing-wave patterns of a driven plate in closed form, as a field, a generator, or nodal contours | [Ch 16](16-Simulations.md) | [Chladni](../Docs/Generators/Chladni.md) |
 
 ## Shaders and compute
 

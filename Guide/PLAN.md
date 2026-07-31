@@ -160,7 +160,7 @@ Figures: the pixel-grid mental-model diagram; uv-space diagram; smoothstep-as-ed
 Draws from: `Docs/Shaders/Shaders.md`, `Docs/Shaders/Visuals.md`, `Docs/Shaders/ShaderLibrary.md`; `Examples/Shaders/`.
 
 **16. Simulations.**
-Teaches: state that lives on the GPU; Game of Life (rules → life); reaction-diffusion (two chemicals, endless pattern) with the feed/kill map explored by knobs; fluid; seeding and forcing a sim by drawing into it; recoloring sim state through filters; GPU particles at a million (the sandpainting look, with accumulation from Ch 14).
+Teaches: state that lives on the GPU; Game of Life (rules → life); reaction-diffusion (two chemicals, endless pattern) with the feed/kill map explored by knobs; fluid; the ripple pool (marks add height, and why a drop must be soft and brief); Chladni figures as the wave you solve rather than simulate; seeding and forcing a sim by drawing into it; recoloring sim state through filters; GPU particles at a million (the sandpainting look, with accumulation from Ch 14).
 Assumes: Ch 14 (Ch 15 helps but isn't required; kernels are presented as recipes).
 Payoff: a reaction-diffusion organism piece, seeded by the reader's drawing.
 Figures: GoL rules diagram; feed/kill parameter map; sim-seeding sequence; particle-count scaling strip; the organism.
@@ -275,9 +275,9 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/MedialAxis.md` (`medialAxis`, skeletons with radii) | Ch 13 | taught ("The skeleton inside" with a two-panel figure: branches and the inscribed disks, `spacing`/`prune` explained, `isClosed` rings, and what the radii are good for) |
 | `Generators/Marbling.md` (`Marbling`, closed-form paper marbling) | Ch 13 | taught ("Ink on water" with a four-panel figure: the bull's-eye of drops, the area-preserving push, the shared falloff law, all four raking tools, `add`, and the concentric-swirl no-op) |
 | `Generators/Watercolor.md` (`Watercolor` / `drawWatercolor`, layered deformation) | Ch 13 | taught ("Pigment from a polygon" with a three-panel figure: the starting polygon, one 4% layer, forty stacked; layers-vs-opacity, `variance`, the paint-once rule, and interleaving two pigments) |
-| `Generators/Chladni.md` (`chladni` field + `.chladni` generator, mode-by-pitch audio join) | Appendix D (Ch 16 when it grows; the audio join Ch 20) | pointed |
+| `Generators/Chladni.md` (`chladni` field + `.chladni` generator, mode-by-pitch audio join) | Ch 16 | taught ("Standing waves" with a six-mode figure: the closed form and plate coordinates, sand settling at the zero crossing, the m == n degeneracy, fractional modes for morphing, both generator styles, and the Ch 20 audio join pointed) |
 | `Generators/Terrain.md` (`Heightfield`, diamond-square, hydraulic + thermal erosion, terrain meshes) | Appendix D (Ch 17 when it grows) | pointed |
-| `.ripples` wave-equation Sim (`Drawing/Effects.md`) | Appendix D (Ch 16 when it grows) | pointed |
+| `.ripples` wave-equation Sim (`Drawing/Effects.md`) | Ch 16 | taught ("A pool you can drop things into" with a figure: marks add height rather than set it, the soft-dab and brief-drop rules and why, `damping`, and the raw state as a debug view to shade with `.relight`) |
 | `Drawing/GlyphMosaic.md` (`drawGlyphMosaic`, measured glyph ramps) | Ch 7 | taught ("A picture as marks" with a two-panel figure: measured ink per font, the curated sets, `glyphScale` gutters, the data form, and the inverted-polarity trap it shares with halftone) |
 | `Drawing/PixelSorting.md` (`Image.pixelSorted`) | Ch 7 | taught ("Sorting the pixels" with a before/after figure: the threshold as the whole technique, the keys, and the needs-texture and reversed-on-a-gradient caveats) |
 | `Drawing/Halftone.md` (`drawHalftone`, area-exact dot screens) | Ch 7 | taught (same section and figure: `pitch`/`angle`, area-exact coverage, real circles for the plotter, and continuous tone versus the mosaic's steps) |
