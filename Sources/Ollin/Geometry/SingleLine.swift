@@ -236,4 +236,14 @@ public extension Sketch {
         }
         return Ollin.singleLine(through: dots, closed: closed)
     }
+
+    /// The tour itself, over points you already have: a stipple, a blue-noise
+    /// scatter, cluster centers, hand-placed anchors. `closed` returns to the
+    /// start; an open tour cuts the longest edge and walks end to end.
+    ///
+    /// Mirrors the free function of the same name, which the `of:points:` form
+    /// above would otherwise shadow inside a `Sketch`.
+    func singleLine(through points: [Vector2], closed: Bool = true) -> Contour {
+        Ollin.singleLine(through: points, closed: closed)
+    }
 }

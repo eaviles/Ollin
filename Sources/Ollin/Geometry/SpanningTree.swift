@@ -189,4 +189,14 @@ public extension Sketch {
         }
         return Ollin.spanningTree(through: dots)
     }
+
+    /// The tree itself, over points you already have: a stipple, a blue-noise
+    /// scatter, attractor orbits, cluster centers. Returns the minimal set of
+    /// open chains, one per pair of odd-degree vertices.
+    ///
+    /// Mirrors the free function of the same name, which the `of:points:` form
+    /// above would otherwise shadow inside a `Sketch`.
+    func spanningTree(through points: [Vector2]) -> [Contour] {
+        Ollin.spanningTree(through: points)
+    }
 }

@@ -165,9 +165,88 @@ and that single number is the handle generative artists pull most: size by it, c
 
 You can also write pixels. `Image(width:height:)` makes a blank image, `image[x, y] = color` paints one pixel, and that's how this chapter's figures work. The repository ships no photograph, so the sunset on the left is *authored*, about twenty lines of Chapter 2 ramps, one `smoothstep` sun, and Chapter 5 noise for the water, written pixel by pixel in `setup()`. The listing below contains the whole recipe, and everything in this section works identically on a photo you load with `loadImage`.
 
+## A picture as marks
+
+Reading a pixel and drawing a mark is such a common move that Ollin ships two finished versions of it, and both are worth knowing before you hand-roll your own.
+
+<img src="Images/07-WordsAndPictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same sunset: on the left a mosaic of ASCII characters that get denser toward the sun, on the right a halftone screen of dots that grow toward the sun" width="680">
+
+`drawGlyphMosaic` divides the picture into a grid and puts one character in each cell:
+
+```swift
+textFont(BitmapFont.builtin)
+fill(.white)
+drawGlyphMosaic(picture, columns: 72)
+```
+
+The interesting part is how it picks the character. It doesn't use a ramp somebody typed out from memory. It *measures* every character you offer it in the font you're currently using, counting lit pixels for a bitmap font, outline area for an outline font, pen travel for a stroke font, and then matches each cell to the character whose ink comes closest. So any string works as a ramp, in any font, and the tones stay honest. `GlyphSet.technical`, `.classic`, and `.blocks` are curated sets to start from, and `glyphScale` is the fraction of its cell a glyph draws at, defaulting to 0.85 so gutters keep even the densest characters reading as separate marks.
+
+`drawHalftone` does the same job with the printing industry's answer, which is one dot per cell, grown until it covers the right fraction of that cell:
+
+```swift
+fill(.black)
+noStroke()
+drawHalftone(picture, pitch: 14)
+```
+
+`pitch` is the cell size and `angle` rotates the screen, defaulting to the 45 degrees printers have used for a century because a diagonal grid is the least visible to the eye. Coverage is computed exactly, so tone is right rather than approximated, and the dots are real circles. That last detail matters more than it sounds: a halftone can go straight out to a pen plotter as circles it can actually draw.
+
+Comparing the two panels shows the honest difference between them. A mosaic has exactly as many tones as it has characters, so it steps, while a halftone's radius is continuous and gives you a smooth ramp. Choose by which texture you want, not by which is better.
+
+One polarity trap sits between them. `drawGlyphMosaic` grows its mark with *brightness* by default, which suits glowing marks on a dark ground, while `drawHalftone` grows its dot with *darkness*, because it is modeling ink on paper. Each takes `inverted: true` to flip, and the figure above uses the mosaic's default beside the halftone's inverted form to get both reading the same way.
+
+Both also come in a data form, `glyphMosaic(of:)` and `halftone(of:)`, which hand back the cells or dots instead of drawing them. That's the door to your own marks: same measurement, but you draw hexagons, or letters from a message, or nothing at all where the tone is light.
+
+## A picture as one line
+
+The other family turns a picture into line work, and all of it starts with **stippling**, which is placing loose dots so that their density reproduces the picture's tone. Getting that right is harder than scattering dots at random, because random placement clumps. The method Ollin uses is a settling process. Give every dot the patch of canvas that lies closer to it than to any other dot, move the dot to the center of that patch weighted by how dark the picture is there, and repeat. Dots drift toward darkness and away from each other at the same time, and after a few dozen rounds they sit in an even spread that is dense in the shadows and sparse in the light. (Chapter 13 names the structure underneath this, since it turns out to be useful for a lot more than dots.)
+
+```swift
+let dots = stipple(picture, count: 4000, in: frame)
+```
+
+<img src="Images/07-WordsAndPictures/PictureAsLines.jpg" alt="Three panels: a stipple of the sunset with a clear void where the sun is, the same dots joined into one maze-like unbroken tour, and the same dots joined into branching tree chains" width="680">
+
+Once you have the dots, two ways of joining them give two very different drawings:
+
+```swift
+let tour = singleLine(through: dots)        // one closed loop
+let chains = spanningTree(through: dots)    // branching, minimal pen lifts
+```
+
+`singleLine` finds a short tour that visits every dot once and comes back, which is the classic routing problem known as TSP, and drawings made this way are called TSP art. The result is one continuous line, and the picture appears out of how tightly that line has to wander. `spanningTree` instead finds the shortest set of links that still connects every dot, then breaks the result into the fewest separate chains it can, so a drawing machine lifts its pen as few times as the branching truly requires. The first reads as a maze, the second as veins.
+
+Both also take a picture directly and do the stippling for you:
+
+```swift
+let line = singleLine(of: picture, points: 4000, in: frame)
+let veins = spanningTree(of: picture, points: 4000, in: frame)
+```
+
+In those forms `cutoff` is the knob to know. It rounds bright grays up to paper, so pixels lighter than it place no dots at all. Without it a light region collects a thin wandering thread instead of staying empty, which is exactly what the sun in the figure would have done.
+
+## Sorting the pixels
+
+The last treatment doesn't add marks, it rearranges the ones already there. **Pixel sorting** walks each row or column, finds runs of pixels whose brightness falls inside a band you choose, and sorts each run.
+
+<img src="Images/07-WordsAndPictures/SortedPixels.jpg" alt="The sunset beside a version with its columns sorted: the sky bands reorganize into a dome around the sun, the water smears into vertical streaks, and the sun and horizon stay intact" width="680">
+
+```swift
+let melted = picture.pixelSorted(.vertical, threshold: 0.2 ... 0.75)
+let glitched = picture.pixelSorted(.vertical).pixelSorted(.horizontal)
+```
+
+The threshold is the whole technique. It decides which pixels are in play, and everything outside the band stays exactly where it was, which is why the sun and the horizon survive in the picture above while the sky reorganizes around them. Sort by `.brightness`, `.hue`, or `.saturation`, and `reversed` flips which end of the run the bright pixels pile up at.
+
+Two honest notes. The look needs some texture in the source, because run boundaries have to vary from line to line, and a perfectly clean gradient sorts almost invisibly. And on a picture that already runs dark to bright down the column, sorting ascending changes nearly nothing, so `reversed: true` is the direction with the drama there.
+
+Everything in these three sections reads real pixels on the CPU, which means two practical things. A texture-backed image needs `snapshot()` first, and all of it is setup work: run it once, hold the result, and let `draw()` replay it.
+
 ## Putting it together: a picture painted with type
 
-This is the piece from the top of the chapter, and it's the whole chapter in one grid: words drawn with `drawText`, a picture read with `image[x, y]`, and the two fused so the picture is *made of* the words. A message repeats across a grid in reading order, and each letter samples the sunset at its own position, takes the pixel's color, and scales by its brightness. Make `MySketches/TypeMosaic.swift`:
+This is the piece from the top of the chapter, and it's the whole chapter in one grid: words drawn with `drawText`, a picture read with `image[x, y]`, and the two fused so the picture is *made of* the words. A message repeats across a grid in reading order, and each letter samples the sunset at its own position, takes the pixel's color, and scales by its brightness.
+
+It is a glyph mosaic built by hand, and that's on purpose. `drawGlyphMosaic` would give you a better ramp in one line, but it chooses the character for you, and this piece needs the characters to spell something. Building the grid yourself is what buys that. Make `MySketches/TypeMosaic.swift`:
 
 ```swift
 import Ollin
@@ -266,10 +345,13 @@ Then make it yours:
 - Change the alphabet. A message of `"·•●"` becomes halftone dots, and `textFont(BitmapFont.builtin)` in `setup()` makes it a terminal.
 - Sample with an offset. Read the pixel at `u + time * 0.01` (wrapped with `fract`) and the picture slides through the words.
 - Recolor by replacing the sampled color with `Colormap.magma.color(at: brightness)` for a duotone poster.
+- Trade the letters for line work. Feed the same sunset to `singleLine(of:points:in:)` and the poster becomes one unbroken thread a plotter could draw.
 
 ## Where this comes from
 
-Making pictures out of characters is older than computing. Typewriter artists were composing portraits from letters by the 1890s, and when 1960s line printers became the first output devices many people ever touched, the tradition became ASCII art. The deeper idea, an image rebuilt from small marks whose size carries the tone, is the halftone screen that printed every newspaper photograph for a century, and pointillism if you ask a painter. This chapter's tools have their own lineages. The bundled pixel font is [Cozette](https://github.com/the-moonwitch/Cozette) by Ines. The bundled stroke font is Hershey Sans, one of the vector fonts A. V. Hershey drew at the U.S. National Bureau of Standards in 1967 for early plotters, still beloved by the pen-plotter community. And outline text is laid out by the system's own type machinery, so kerning and ligatures come for free. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Making pictures out of characters is older than computing. Typewriter artists were composing portraits from letters by the 1890s, and when 1960s line printers became the first output devices many people ever touched, the tradition became ASCII art. The deeper idea, an image rebuilt from small marks whose size carries the tone, is the halftone screen that printed every newspaper photograph for a century, and pointillism if you ask a painter. This chapter's tools have their own lineages. The bundled pixel font is [Cozette](https://github.com/the-moonwitch/Cozette) by Ines. The bundled stroke font is Hershey Sans, one of the vector fonts A. V. Hershey drew at the U.S. National Bureau of Standards in 1967 for early plotters, still beloved by the pen-plotter community. And outline text is laid out by the system's own type machinery, so kerning and ligatures come for free.
+
+The picture-as-marks tools each come from a named piece of work. Halftone screening is the printing industry's own, and Robert Ulichney's *Digital Halftoning* is the standard account of it. The settling method behind stippling is Adrian Secord's, published in 2002. Joining those dots into one line is TSP art, from Robert Bosch and Adrianne Herman in 2004, with the tone-driven dot placement Craig Kaplan and Bosch added a year later; joining them into a tree instead comes from Kohei Inoue and Kiichi Urahama in 2009. Pixel sorting is Kim Asendorf's, who wrote the original in Processing in 2010 and gave a generation of glitch artists their favorite verb. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -277,6 +359,10 @@ Making pictures out of characters is older than computing. Typewriter artists we
 - [Images](../Docs/Drawing/Images.md): the complete `Image` surface, including `Image(resource:in:)` for bundled assets and the bulk pixel initializer.
 - Worked examples, in [`Examples/Text/`](../Examples/Text/): `GlyphWave` and `JitterType` (per-glyph motion), `TextOnPath`, `TextBox`, `VariableFont`, `OutlineText` (the warp, live), `StrokeText` and `PlaydateFont` (the other two font kinds in action), and `TextVolume` (the atlas mode at paragraph scale).
 - [`Examples/Images/PixelField`](../Examples/Images/PixelField/Sketch.swift): authoring an image pixel by pixel and reading it back, under an animated tint.
+- [Glyph mosaic](../Docs/Drawing/GlyphMosaic.md) and [halftone](../Docs/Drawing/Halftone.md): the measured-ink ramp, the curated glyph sets, screen angles, and the data forms that let you draw your own marks.
+- [Stippling](../Docs/Generators/Stippling.md), [single line](../Docs/Generators/SingleLine.md), and [spanning tree](../Docs/Generators/SpanningTree.md): dot placement and the two ways to join it, with the `cutoff` and point-count guidance.
+- [Pixel sorting](../Docs/Drawing/PixelSorting.md): every key and direction, and how to get each of the classic looks.
+- Worked examples: [`Examples/Images/GlyphMosaic`](../Examples/Images/GlyphMosaic/Sketch.swift), [`Halftone`](../Examples/Images/Halftone/Sketch.swift), [`PixelSort`](../Examples/Images/PixelSort/Sketch.swift), [`SingleLine`](../Examples/Images/SingleLine/Sketch.swift), and [`SpanningTree`](../Examples/Images/SpanningTree/Sketch.swift).
 
 ---
 

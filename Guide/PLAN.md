@@ -92,7 +92,7 @@ Figures: grid anatomy diagram (padding, gutter, cell vs point); a transform-stac
 Draws from: `Docs/Drawing/Geometry.md` (Grid), `Docs/Drawing/Truchet.md`; `Examples/Patterns/`.
 
 **7. Words and pictures.**
-Teaches: `drawText` and the three font kinds at a glance; text as geometry (`textToShapes`) and warping it; `loadImage`/`drawImage`; reading pixels (`Image[x, y]`) to drive drawing; `tint`.
+Teaches: `drawText` and the three font kinds at a glance; text as geometry (`textToShapes`) and warping it; `loadImage`/`drawImage`; reading pixels (`Image[x, y]`) to drive drawing; `tint`; then the picture-as-input family that grows out of pixel reading: glyph mosaic and halftone (a mark per cell), stippling joined into a single-line tour or a spanning tree (line work for a plotter), and pixel sorting.
 Assumes: Ch 1 to 6.
 Payoff: a typographic poster or an image-driven pointillist piece.
 Figures: font-kinds contact sheet; a text-warp step sequence; an image-sampling diagram (photo → grid of marks); the finished piece.
@@ -267,9 +267,9 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Drawing/Voronoi.md` (+ Delaunay, Lloyd) | Ch 13 | taught |
 | `Generators/BlueNoise.md` | Ch 13 | taught |
 | `Generators/LowDiscrepancy.md` (`haltonPoints`, `sobolPoints`) | Appendix D | pointed |
-| `Generators/Stippling.md` (`stipple`, weighted-Voronoi) | Appendix D | pointed |
-| `Generators/SingleLine.md` (`singleLine`, the TSP tour) | Appendix D (Ch 7 when it grows) | pointed |
-| `Generators/SpanningTree.md` (`spanningTree`, the MST rendering) | Appendix D (Ch 7 when it grows) | pointed |
+| `Generators/Stippling.md` (`stipple`, weighted-Voronoi) | Ch 7 | taught ("A picture as one line" explains the settling method in plain words before the Voronoi structure is named in Ch 13, plus `count` and the `cutoff` rounding) |
+| `Generators/SingleLine.md` (`singleLine`, the TSP tour) | Ch 7 | taught (the tour beside the tree in a three-panel figure, both the `through:` and `of:points:` forms) |
+| `Generators/SpanningTree.md` (`spanningTree`, the MST rendering) | Ch 7 | taught (same figure and section; the minimal-chain decomposition explained as pen lifts) |
 | `Generators/Isolines.md` (`isolines`, marching-squares level curves) | Appendix D (Ch 5 when it grows) | pointed |
 | `Generators/Hulls.md` (`concaveHull` / `alphaShape`) | Ch 13 | taught ("What shape are these points?" with a three-panel figure over one scatter: convex vs concave vs alpha, the `concavity` and `alpha` ranges that read well, and which to reach for by what happens next) |
 | `Generators/MedialAxis.md` (`medialAxis`, skeletons with radii) | Ch 13 | taught ("The skeleton inside" with a two-panel figure: branches and the inscribed disks, `spacing`/`prune` explained, `isClosed` rings, and what the radii are good for) |
@@ -278,9 +278,9 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/Chladni.md` (`chladni` field + `.chladni` generator, mode-by-pitch audio join) | Appendix D (Ch 16 when it grows; the audio join Ch 20) | pointed |
 | `Generators/Terrain.md` (`Heightfield`, diamond-square, hydraulic + thermal erosion, terrain meshes) | Appendix D (Ch 17 when it grows) | pointed |
 | `.ripples` wave-equation Sim (`Drawing/Effects.md`) | Appendix D (Ch 16 when it grows) | pointed |
-| `Drawing/GlyphMosaic.md` (`drawGlyphMosaic`, measured glyph ramps) | Appendix D (Ch 7 when it grows) | pointed |
-| `Drawing/PixelSorting.md` (`Image.pixelSorted`) | Appendix D (Ch 7 when it grows) | pointed |
-| `Drawing/Halftone.md` (`drawHalftone`, area-exact dot screens) | Appendix D (Ch 7 when it grows) | pointed |
+| `Drawing/GlyphMosaic.md` (`drawGlyphMosaic`, measured glyph ramps) | Ch 7 | taught ("A picture as marks" with a two-panel figure: measured ink per font, the curated sets, `glyphScale` gutters, the data form, and the inverted-polarity trap it shares with halftone) |
+| `Drawing/PixelSorting.md` (`Image.pixelSorted`) | Ch 7 | taught ("Sorting the pixels" with a before/after figure: the threshold as the whole technique, the keys, and the needs-texture and reversed-on-a-gradient caveats) |
+| `Drawing/Halftone.md` (`drawHalftone`, area-exact dot screens) | Ch 7 | taught (same section and figure: `pitch`/`angle`, area-exact coverage, real circles for the plotter, and continuous tone versus the mosaic's steps) |
 | `.melt` design filter (`Drawing/Effects.md`, the luminance melt) | Appendix D (Ch 15 when it grows) | pointed |
 | `Video/SlitScan.md` (`SlitScan` frame history) | Appendix D (Ch 21 when it grows) | pointed |
 | `Generators/Walks.md` (`randomWalk`, `levyFlight`, `selfAvoidingWalk`) | Ch 4 / Appendix D | pointed |
