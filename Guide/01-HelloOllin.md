@@ -64,7 +64,26 @@ A window opens with your circle in it. Three calls made it happen. `background(.
 
 The next part is what will change how you work. Keep the window open, go back to your editor, change `200` to `320`, and save. The circle grows in place, because `OllinLive` watches the file and swaps in every save while the window keeps running. Now try breaking it on purpose: delete a parenthesis and save. An error prints in the terminal while your last working sketch keeps drawing, so nothing is lost. Fix the parenthesis, save again, and you're back where you were. You'll work this way through the whole guide, so it's worth arranging the window and the editor side by side now.
 
-One optional shortcut before moving on. If you run `Scripts/ollin install` once from the repository folder, you get an `ollin` command that does the same thing from anywhere. Then `ollin FirstCircle.swift` opens the live window without the `swift run` line and without needing the repository as your working directory, and `ollin new NextIdea.swift` writes the starter boilerplate for you. The guide keeps writing the full `swift run OllinLive` form so it works either way, and the short form is covered in [Single-file sketches](../Docs/Tools/SingleFile.md).
+### A shorter way to run things
+
+Typing `swift run OllinLive path/to/thing.swift` from inside the repository folder every time gets old, and it also means your sketches have to live somewhere near the repository. There's a one-time fix.
+
+```sh
+Scripts/ollin install        # run once, from the repository folder
+```
+
+That puts an `ollin` command on your path, and from then on a sketch is just a file you can run from anywhere:
+
+```sh
+ollin new NextIdea.swift     # writes a starter sketch, named after the file
+ollin NextIdea.swift         # opens it in the live window
+```
+
+The thing worth understanding here is what a sketch actually *is* in Ollin. It's one `.swift` file. Not a project, not a folder with configuration in it, not something you have to register anywhere. That's deliberate, because it means a sketch is small enough to keep in a notes folder, mail to someone, or paste into a message, and it will run on any machine that has Ollin. Every export option works on a loose file too, so `ollin NextIdea.swift --export-gif out.gif` renders a GIF from a file sitting on your desktop.
+
+If you want to go one step further, putting `#!/usr/bin/env ollin` on the first line and running `chmod +x` on the file makes the sketch directly executable, so `./NextIdea.swift` opens it.
+
+The guide keeps writing the full `swift run OllinLive` form so everything works whether or not you installed the shortcut. [Single-file sketches](../Docs/Tools/SingleFile.md) covers the rest.
 
 ## Once, then every frame
 
@@ -90,7 +109,42 @@ Every position in a sketch is measured from the canvas's top-left corner, with x
 
 <img src="Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system: origin at the top left, x right, y down, with the point (380, 240) marked" width="680">
 
-Your canvas is 1080 by 1080 by default, and the window is a scaled preview of it rather than the canvas itself, so a small window still draws a full-size picture. You can choose other sizes, including paper sizes for printing, by overriding `canvasSize`, and the [Canvas](../Docs/Core/Canvas.md) page covers the options. Inside `draw()`, `width` and `height` always hold the canvas size, which is why `drawCircle(width / 2, height / 2, 200)` lands dead center. Try replacing the coordinates with plain numbers, like `drawCircle(380, 240, 60)`, and check the result against the diagram. Building a feel for where a coordinate lands will serve you in every chapter after this one.
+Inside `draw()`, `width` and `height` always hold the canvas size, which is why `drawCircle(width / 2, height / 2, 200)` lands dead center. Try replacing the coordinates with plain numbers, like `drawCircle(380, 240, 60)`, and check the result against the diagram. Building a feel for where a coordinate lands will serve you in every chapter after this one.
+
+## The canvas is not the window
+
+This trips up almost everyone once, so it's worth being clear about early. The thing you draw on and the thing you look at are two different things.
+
+<img src="Images/01-HelloOllin/CanvasVsWindow.jpg" alt="A large dark square labelled as the canvas at 1080 by 1080 pixels, with its corners marked as (0,0) and (1080,1080), and a smaller window containing exactly the same picture scaled down, joined by lines labelled scaled to fit" width="680">
+
+The **canvas** is a fixed grid of pixels, 1080 by 1080 unless you say otherwise, and it's what all your coordinates are measured against. The **window** is a scaled view of that canvas, sized to fit comfortably on your screen. Drag the window smaller and the picture gets smaller on screen, but nothing about your sketch changes. `width` still reports 1080, a circle at `(540, 540)` is still exactly in the middle, and an exported image comes out at full canvas resolution regardless of how big the window happened to be.
+
+Two properties control the pair, and they're independent:
+
+```swift
+override var canvasSize: CanvasSize { .square(1080) }   // the pixels you draw on
+override var windowMode: WindowMode { .auto }           // how it's previewed
+```
+
+`canvasSize` takes a square, an explicit width and height, or one of the named presets, and the presets are worth skimming once so you know what's there: `.fhd1080` and `.uhd4K` for video, `.vertical1080` for a phone screen, and real paper sizes like `.a4` and `.usLetter` for printing. Paper sizes come with a companion, since `.a4.dpi(300)` keeps the page the same physical size while raising the pixel grid to print resolution.
+
+`windowMode` is `.auto` by default, which picks a preview size that fits your screen. `.fixed(0.5)` pins the preview to a specific fraction, and `.resizable` lets you drag it. None of these change the drawing.
+
+## Placing things without pixels
+
+Once you know the canvas can be any size, a habit becomes worth forming immediately, because it will save you rewriting layouts later.
+
+<img src="Images/01-HelloOllin/NormalizedPlacement.jpg" alt="Two rows of three canvases each, square, wide, and tall. In the top row, marks placed at fixed pixel positions fall off the edges of the wide and tall canvases; in the bottom row, the same marks placed as fractions sit correctly in all three" width="680">
+
+Writing `drawCircle(85, 71, 34)` says "85 pixels from the left". That's fine until the canvas changes shape, and then, as the top row shows, your careful arrangement slides off the edge. Writing the same position as a *fraction* of the canvas says "a bit left of center, near the top", which is what you actually meant, and it survives any canvas you give it.
+
+```swift
+drawCircle(center: uv(0.5, 0.42), radius: scale * 0.2)
+```
+
+`uv(u, v)` hands back the canvas point at those fractions, so `uv(0, 0)` is the top-left corner, `uv(1, 1)` the bottom-right, and `uv(0.5, 0.5)` the middle. Sizes want the same treatment, and `scale` is a single number that tracks the canvas dimensions, so multiplying by it keeps a circle the same relative size whether you render at 1080 pixels or at print resolution.
+
+You don't have to do this everywhere, and plenty of sketches in this guide use plain pixels because they only ever run at one size. But when you find yourself wanting to export a piece for a poster as well as a screen, the sketch that was written in fractions just works.
 
 ## Shapes and ink
 

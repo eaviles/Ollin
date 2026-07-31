@@ -45,13 +45,39 @@ The exporter records each draw call at its own level, before any pixels exist: c
 
 The same recording writes as a **PDF** with `--export-pdf plot.pdf`, and that is the path to paper. One canvas pixel maps to one PDF point, so the paper presets on `CanvasSize` come out true to size. Declare `override var canvasSize: CanvasSize { .a4 }` (or `.usLetter`, `.a5`, with `.landscape` to turn the sheet) and the exported page *is* that sheet, vector-sharp at any printer's resolution. If the raster export should be print-grade too, `.a4.dpi(300)` renders the pixels at 300 dots per inch while the PDF page stays exactly A4. Everything the SVG carries, the PDF carries the same way, hatching included.
 
-One more paper route exists for presses that print one ink at a time, like a risograph or a screen-print rig. Declare the inks the press will run (`override var printInks: [Ink]? { [.fluorescentPink, .blue, .yellow] }`) and `--export-separations` writes one grayscale master per ink, black meaning full coverage, plus a registration-marked preview of how the overprint will read. [Print separations](../Docs/Output/PrintSeparations.md) has the ink catalog and the screening details.
+## Printing one ink at a time
+
+Some presses can't print a full-color image at all. A risograph or a screen-printing rig lays down one ink per pass, and it needs you to hand it a separate grayscale plate for each one. If you have never prepared work for that kind of press, the mental model is the useful part.
+
+<img src="Images/22-SharingAndPerforming/Separations.jpg" alt="Four panels: three grayscale masters labelled fluorescent pink, blue, and yellow, each carrying a different part of the same image, followed by the color preview of the three overprinted" width="680">
+
+Each ink gets a **master**, a grayscale image where black means "lay down full ink here" and white means "leave the paper bare". The press runs the paper through once per master, and the inks stack up. Because printing inks are translucent rather than opaque, overlapping them mixes: pink over blue makes a purple neither drum could print alone. That's why the three plain-looking plates above produce a picture with more colors in it than three.
+
+```swift
+override var printInks: [Ink]? { [.fluorescentPink, .blue, .yellow] }
+```
+
+Declare that on your sketch, export with `--export-separations`, and you get one master per ink plus a preview with registration marks on it, which is the sheet you check before committing to paper. Working the other way round, `artwork.separated(into:)` does the same job to any `Image` in code, so you can look at the plates while you compose.
+
+The interesting part is what happens for a color no single ink can make. Ollin searches for the combination of ink coverages whose overprint comes closest, judged the way your eye judges rather than by raw numbers, using the same perceptual space Chapter 2's color mixing uses. Draw in an ink's own color and it separates exactly. Draw anything else, including gradients and photographs, and it lands on the nearest mix those drums can actually reach.
+
+One practical note carries over from Chapter 7's halftone. A press cannot hold a dot smaller than about two percent coverage, so anything fainter drops to bare paper rather than becoming invisible speckle, and `separation.halftoned(pitch:)` rotates each ink's dot grid to its own angle so the drums overprint into a rosette instead of a moire. `separation.dithered()` is the grainier alternative. [Print separations](../Docs/Output/PrintSeparations.md) has the full ink catalog, which carries the community-measured colors of the standard risograph line, plus the screening details.
 
 ## Reproducibility is part of the piece
 
 A shared render is better when it can be *re-made*. Three habits from earlier chapters do the work here. Seed the randomness (`seed(…)` in `setup()`, Chapter 4), so the export and the re-export are the same artwork, not siblings. Copy tuned `@Param` values back into their declarations once they feel right, because a headless export reads the defaults written in code, not the inspector. And share the `.swift` file alongside the render when you can, because in Ollin the sketch is the artifact, and a reader holding the source holds the whole piece, seeds, knobs, and all.
 
-The exports meet you halfway. Every PNG, SVG, PDF, and video Ollin writes carries a small recipe in its metadata, naming the seed, the `@Param` values, the git commit, and the frame that produced it. Find a render months later and the file itself tells you how to make it again (`exiftool poster.png`, or see [the details](../Docs/Output/Export.md#reproducibility-metadata)).
+The exports meet you halfway. Every PNG, SVG, PDF, and video Ollin writes carries a small **recipe** in its metadata: the seeds the run used, the value of every `@Param`, the git commit the code was at (marked dirty if you had uncommitted edits), and which frame at which rate produced it.
+
+Image metadata has existed for decades, in the same place a camera writes its shutter speed and lens. Ollin puts something more useful there. Read it back with any metadata tool:
+
+```sh
+exiftool -Description poster.png
+```
+
+This matters when you need to recover a past render. You find an image from four months ago that you like, you have no memory of which of eleven variations produced it, and the sketch has changed since. The file tells you: seed 48213, these knob values, that commit. Check out the commit, pass the seed, and you have it back.
+
+Two limits. GIF has no metadata slot in its format, so a GIF export carries nothing. And a recipe only takes you back to the code if the code still exists, which is another argument for committing your sketches. [The details](../Docs/Output/Export.md#reproducibility-metadata) list every field.
 
 ## Live feeds: into other apps
 

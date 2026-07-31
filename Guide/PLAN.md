@@ -231,7 +231,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | Capability (Docs page) | Guide home | Depth |
 |---|---|---|
 | `Core/Sketch.md` (lifecycle, time, loop) | Ch 1 | taught (`setup()`/`draw()` and the clock; `noLoop()` and `@main` pointed) |
-| `Core/Canvas.md` (canvasSize, windowMode) | Ch 1 | pointed (default canvas, `width`/`height`, and the window-as-preview model; sizes, presets, and `windowMode` named + pointed) |
+| `Core/Canvas.md` (canvasSize, windowMode) | Ch 1 | taught ("The canvas is not the window" with a diagram: the two are independent, `width` reports the canvas either way, exports ignore the window, the preset families including paper sizes and `.dpi()`, and the three `windowMode` cases) |
 | `Swift.md` (language primer) | Ch 1 callouts, Appendix A | taught |
 | `Drawing/Drawing.md` (shapes, state, transforms) | Ch 1, Ch 6 | taught |
 | Kaleidoscope symmetry (`symmetry`/`noSymmetry`, in `Drawing/Drawing.md`) | Ch 6 | taught ("The fold, done for you" after the hand-rolled rotate loop, with a three-panel figure: symmetry as drawing state, why the mirrored form is the one worth having, and folding around the current origin) |
@@ -338,12 +338,12 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Integration/Syphon.md` | Ch 22 | taught |
 | `Integration/VirtualCamera.md` | Ch 22 | shown |
 | `Output/Export.md` (PNG, sequence, video, GIF, SVG, PDF) | Ch 3 (GIF), Ch 13 (SVG), Ch 22 (all) | taught |
-| Reproducibility metadata in exports (`Output/Export.md`) | Ch 22 | pointed |
-| Print separations (`Image.separated` into spot inks, screening, `--export-separations`; `Output/PrintSeparations.md`) | Ch 22 | pointed |
+| Reproducibility metadata in exports (`Output/Export.md`) | Ch 22 | taught (what the recipe holds, where it lives and why that slot exists, reading it back with `exiftool`, the recover-a-past-render scenario, and the GIF and missing-code limits) |
+| Print separations (`Image.separated` into spot inks, screening, `--export-separations`; `Output/PrintSeparations.md`) | Ch 22 | taught ("Printing one ink at a time" with a masters-plus-overprint figure: what a master is, why translucent inks make more colors than drums, `printInks` and the in-code form, the perceptual nearest-mix search, and the minimum-dot and rosette notes) |
 | Variations & seed exploration (`Core/Variations.md`): `variation`, the Variation card, `--export-grid`, `--seed` | Ch 4 | taught |
-| Normalized coordinates `uv(u, v)` (`Core/Canvas.md`) | Ch 1 | pointed |
+| Normalized coordinates `uv(u, v)` (`Core/Canvas.md`) | Ch 1 | taught ("Placing things without pixels" with a six-panel figure of one layout in three canvas shapes, placed by pixels and by fractions; `uv` corners and `scale` for sizes, plus honest guidance on when plain pixels are fine) |
 | `Tools/LiveCoding.md` (OllinLiveCoding) | Ch 22; OllinLive workflow in Ch 1 | taught |
-| Single-file sketches (the `ollin` command, hashbang files; `Tools/SingleFile.md`) | Ch 1 | pointed |
+| Single-file sketches (the `ollin` command, hashbang files; `Tools/SingleFile.md`) | Ch 1 | taught ("A shorter way to run things": `install`/`new`/run, what it means that a sketch is one file, export flags on a loose file, and the hashbang form) |
 | Examples gallery (`swift run OllinExamples`) | Ch 1 | shown |
 | Extension seam (`Sketch.extend`, `SketchExtension`) | Appendix D | pointed |
 | Headless capture (`OllinApp.image(of:)`) | Ch 22; used by the Guide's own figure runner | shown |
