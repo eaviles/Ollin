@@ -96,7 +96,43 @@ drawImage(sky.filtered(.paperTexture()).image, 0, 0)
 
 <img src="Images/14-LayersAndEffects/Generated.jpg" alt="A poster-like wash of terracotta, teal, and amber blobs melting into each other, laid onto textured paper with visible grain and crumple creases" width="560">
 
-Three lines, and the canvas is a printed poster, a mesh gradient of soft color blobs melting into each other, laid onto a synthesized sheet of paper, crumples and all. The generator catalog runs from plain checkers and noise up through designer patterns (god rays, spirals, pulsing borders), and the design filters (`.paperTexture`, `.flutedGlass`, `.water`, `.liquidMetal`) are their finishing counterparts. Most take a `phase` you can feed `time`, so any of them animates. They make good backdrops for everything else in this chapter, and the `Effects/DesignPatterns` and `Effects/DesignFilters` examples tour the whole set.
+Three lines, and the canvas is a printed poster, a mesh gradient of soft color blobs melting into each other, laid onto a synthesized sheet of paper, crumples and all.
+
+### The design family
+
+Two lines of that listing came from a set worth knowing as a set. Alongside the plain generators (checkers, noise, gradients) there's a **design** family, built to look like the finished graphics you'd meet on a product page rather than like test patterns. On the generator side that's `.meshGradient`, `.godRays`, `.spiral`, `.dotOrbit`, `.quasicrystal`, `.moire`, `.gyroid`, `.phyllotaxis`, and `.hexPulse`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured, and each takes colors plus a handful of knobs when you want it to be yours.
+
+Nearly all of them take a **`phase`**, and that is the one detail to remember: they have no clock of their own, so nothing moves until you feed it one.
+
+```swift
+generate(.gyroid(phase: time * 0.4))     // animated
+generate(.gyroid())                      // a still, and the same still every run
+```
+
+That's deliberate rather than an oversight. Because the motion is a number you pass, a frame export is reproducible, and you can drive a pattern from audio, a slider, or a scroll position as easily as from `time`.
+
+The filters have their own design set, and it splits into two halves that behave differently enough to be worth separating:
+
+<img src="Images/14-LayersAndEffects/DesignFilters.jpg" alt="Six tiles in two labeled rows. The top row, 'these read the shape', shows the same heart silhouette as flowing chrome, as a red-and-blue thermal map with contour bands, and as pale swirling gem smoke. The bottom row, 'these read the picture', shows the same orange and teal mesh gradient behind angled glass flutes, refracted through rippling water, and embossed onto a crumpled paper sheet" width="680">
+
+The bottom row is what you'd expect from a filter: hand it a picture, get the picture back changed. `.flutedGlass` puts ribbed glass in front of it, `.water` refracts it through ripples, `.paperTexture` lays it onto a sheet with tooth and creases.
+
+The top row works the other way, and this is the part that isn't obvious from the names. `.liquidMetal`, `.heatmap`, and `.gemSmoke` mostly ignore your layer's colors and read its **alpha**, the silhouette. All three tiles above started as one white heart on a transparent layer, and each filter built a whole material out of that outline. So the working method for these is: draw a shape into a layer, then filter the layer.
+
+```swift
+let shape = renderTarget()
+withTarget(shape) {
+    noStroke(); fill(.white)
+    drawHeart(width / 2, height / 2, width * 0.5)
+}
+drawImage(shape.filtered(.liquidMetal(phase: time)).image, 0, 0)
+```
+
+Any silhouette works, which is the interesting part: text from Chapter 7, a shape you built in Chapter 13, a tracked hand from Chapter 21. The filter never knows or cares where the outline came from.
+
+One practical warning, since it cost the figure above a few attempts. These filters are tuned for **full-canvas** use, so on a small layer the defaults can look like almost nothing, and pushing them hard makes the distortion reach past the layer's edge and drag the transparent surround in as dark smears. The `edges` knob on the distorting ones controls how close to the border they're allowed to work, and a continuous field takes a strong refraction more gracefully than a pattern of separate marks does.
+
+The `Effects/DesignPatterns` and `Effects/DesignFilters` examples tour both sets in full.
 
 One of those filters deserves singling out, because it does something the others don't. `.melt` liquifies a layer by its own brightness.
 

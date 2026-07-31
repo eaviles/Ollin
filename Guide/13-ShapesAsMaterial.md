@@ -187,7 +187,27 @@ Packing goes the other way around. Instead of carving space between points, you 
 let circles = packCircles(count: 300, minRadius: 4, maxRadius: 120)
 ```
 
-The big-first, small-fill rhythm is the signature of the technique, and the finished foam feeds anything that eats circles or shapes. `packShapes` generalizes it to arbitrary shapes grown against each other's actual outlines (stars nest into triangle notches), and the `Patterns/ShapePacking` example runs it continuously, densifying forever.
+The big-first, small-fill rhythm is the signature of the technique, and the finished foam feeds anything that eats circles or shapes.
+
+### Packing shapes, not circles
+
+Circles are the easy case, because two circles touch when the distance between their centers equals the sum of their radii, and that's one line of arithmetic. Real shapes are harder and much more interesting, because a star is mostly *not* there: five points and a lot of empty air between them. `packShapes` takes a bag of shapes and grows each one against its neighbors' **actual outlines**:
+
+```swift
+let bag = [triangle, square, hexagon, star]
+let packed = packShapes(bag, in: bounds, count: 160,
+                        minRadius: 7, maxRadius: 62, padding: 2, using: &rng)
+```
+
+<img src="Images/13-ShapesAsMaterial/ShapePacking.jpg" alt="Two panels of the same dense packing of dark triangles, squares, hexagons, and four- and five-pointed stars on cream. The left panel also draws each shape's bounding circle in faint gray, and those circles visibly overlap and cross each other. The right panel shows the shapes alone, with small stars tucked into the notches of larger shapes" width="680">
+
+Both panels are the same packing. The left one also draws each shape's bounding circle, and the giveaway is that **those circles overlap**, which a circle packing could never allow. That overlap is the whole feature: the fit was measured to the outlines, so a small star can settle into a big star's notch or lie along a triangle's edge, in space a circle would have reserved and wasted.
+
+The knobs beyond `count` and the radius range are worth knowing, because they change the character rather than just the density. `padding` opens a consistent gap between shapes (useful when they'll be cut or plotted). `rotation` is the range each placement is randomly turned within, so `0 ... 0` keeps everything upright and gives a much stiffer, more typographic result. And `scale` is how much of its own bounding circle a shape fills, so anything under `1` shrinks every placement a little and loosens the whole field.
+
+The output is `[Shape]`, which means it flows straight into everything earlier in this chapter: fill it, stroke it, boolean it, hatch it, export it as SVG. Compute the packing once and hold it, then animate something visual like each shape's color, or the shapes will jump every frame.
+
+`ContinuousPacking` is the same engine held open instead of run to completion. You `step()` it each frame and the region fills in as you watch, and since the big gaps go first, each new shape is smaller than the last. Paired with `noClear()` from Chapter 14 it costs almost nothing per frame, because a placed shape never moves and only the new ones need drawing. That's what the `Patterns/ShapePacking` example does, densifying forever.
 
 ## What shape are these points?
 
@@ -454,7 +474,7 @@ The territories are named for Georgy Voronoy and the triangulation for Boris Del
 - [Medial axis](../Docs/Generators/MedialAxis.md): the skeleton, the `Branch` type, and what the radii guarantee.
 - [Marbling](../Docs/Generators/Marbling.md): the bath, every raking tool, and floating your own outlines as ink.
 - [Watercolor](../Docs/Generators/Watercolor.md): the sugar, the typed base, and how the deformation actually runs.
-- [Blue noise](../Docs/Generators/BlueNoise.md) and [circle packing](../Docs/Generators/Packing.md) / [shape packing](../Docs/Generators/ShapePacking.md).
+- [Blue noise](../Docs/Generators/BlueNoise.md) and [circle packing](../Docs/Generators/Packing.md) / [shape packing](../Docs/Generators/ShapePacking.md), which also covers packing around a set of points you already have and the practical notes on building a shape bag.
 - [Export](../Docs/Output/Export.md): the whole `--export-svg` and `--hatch` surface, plus stills, sequences, video, and GIF.
 - Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Shapes/RubberBand`](../Examples/Shapes/RubberBand/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), and [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift).
 

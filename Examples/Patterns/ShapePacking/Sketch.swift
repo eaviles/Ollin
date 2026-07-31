@@ -8,9 +8,10 @@ import Ollin
 ///
 /// It rides accumulation (`noClear()`): a placed shape never moves, so each frame
 /// draws only the *new* shapes onto the persistent canvas, and the per-frame cost
-/// stays flat however full it gets. `ContinuousPacking` packs each shape's
-/// bounding circle, so the output is ordinary geometry, plotter-friendly like the
-/// rest of the packing family.
+/// stays flat however full it gets. With a shape bag the fit is measured against
+/// each neighbor's *outline*, not its bounding circle, so small shapes settle into
+/// a star's notches instead of being held off at arm's length. The output is
+/// ordinary geometry, plotter-friendly like the rest of the packing family.
 @main
 final class ShapePacking: Sketch {
     private var packer: ContinuousPacking?
