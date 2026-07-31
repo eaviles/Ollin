@@ -47,6 +47,40 @@ final class Compass: Sketch {
 
 One habit keeps the sugar honest: `flowField` reads the sketch's seeded noise, so call `seed(...)` first and build the field fresh each frame (or trace what you need once and keep the *results*). It's a lens over the noise, not a stored grid.
 
+## Where the field equals something
+
+A `FlowField` answers with a direction. The other kind of field answers with a number, and you already have one, because Chapter 5's noise hands back a value at every point. Fields like that invite a different question. Instead of asking which way to go, you ask where the field equals some particular value, and the answer is a set of curves.
+
+Those curves are **level curves**, or contours, and you have read thousands of them on maps. A contour line on a map is the set of places at exactly 400 metres, which is why walking along one is flat and crossing several quickly means the slope is steep.
+
+<img src="Images/12-FieldsAndFlow/Isolines.jpg" alt="Three panels of the same noise field: as a grayscale picture, then a single orange contour tracing one level through it, then a full stack of black contours reading as a topographic map" width="680">
+
+```swift
+let rings = isolines(at: 0.55, in: frame, resolution: 200) { p in
+    fbm(p.x * 0.006, p.y * 0.006, octaves: 4)
+}
+noFill()
+for ring in rings { drawPolyline(ring.points, closed: ring.isClosed) }
+```
+
+The method is worth a sentence, because it's unusually easy to picture. Sample the field on a grid, then look at one little square at a time and note which of its four corners are above the level and which are below. There are only sixteen ways that can come out, and each one tells you exactly how the curve crosses that square. Do that everywhere and stitch the crossings together, and the contours fall out. It's called marching squares, and `resolution` is how many cells go across the longer side, so raising it tightens the curves at a proportional cost in samples.
+
+For a map you want many levels, and there's a form for that which matters more than it looks:
+
+```swift
+let levels = Array(stride(from: 0.3, through: 0.75, by: 0.045))
+for (i, group) in isolines(at: levels, in: frame, field: terrain).enumerated() {
+    strokeWeight(i % 5 == 0 ? 2 : 0.8)      // heavy every fifth, like a real map
+    for curve in group { drawPolyline(curve.points, closed: curve.isClosed) }
+}
+```
+
+Passing all the levels at once samples the field a single time and traces them all from that one pass. Since evaluating the field is nearly all of the work, ten levels cost barely more than one, which is the difference between a contour map you can animate and one you can't.
+
+Two details show up the moment you use this. Curves come back **closed** when they close inside your region and **open** when they run off its edge, which is why `drawPolyline` wants `isClosed` rather than guessing. And there's a version that reads a picture instead of a function, `isolines(of: image, at:)`, which treats the image's tone as the field. That's how you get a contour map of a photograph, or clean vector outlines from anything you can draw.
+
+This is also the general answer to "how do I get a real outline out of a field". Metaball silhouettes, the boundary of a simulation, the nodal lines of the vibrating plate in Chapter 16: they are all one `isolines` call, and what comes back is ordinary geometry you can stroke, offset, or send to a plotter.
+
 ## Following the flow
 
 The field becomes drawing the moment you stop interviewing it and start obeying it. Put a point down anywhere. Ask the field which way. Take a small step that way. Ask again from where you landed:
@@ -145,13 +179,14 @@ Then make it yours:
 
 ## Where this comes from
 
-Vector fields are old mathematics, since fluid dynamics and electromagnetism both run on them, and creative coding borrowed the flow field as a drawing device, with Processing-era sketches passing the recipe around. The evenly spaced tracing is Bruno Jobard and Wilfrid Lefer's 1997 streamline-placement algorithm from scientific visualization. Curl noise as a graphics tool is Robert Bridson's 2007 formulation. The print at the top tips its hat to Tyler Hobbs, whose flow-field work, above all *Fidenza* (2021), defined the look for a generation and whose essay "Flow Fields" generously teaches the craft. The Clifford attractor is named for Clifford Pickover and the de Jong attractor for Peter de Jong, both popularized through Paul Bourke's long-running fractal pages. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Vector fields are old mathematics, since fluid dynamics and electromagnetism both run on them, and creative coding borrowed the flow field as a drawing device, with Processing-era sketches passing the recipe around. The evenly spaced tracing is Bruno Jobard and Wilfrid Lefer's 1997 streamline-placement algorithm from scientific visualization. Curl noise as a graphics tool is Robert Bridson's 2007 formulation. The print at the top tips its hat to Tyler Hobbs, whose flow-field work, above all *Fidenza* (2021), defined the look for a generation and whose essay "Flow Fields" generously teaches the craft. The Clifford attractor is named for Clifford Pickover and the de Jong attractor for Peter de Jong, both popularized through Paul Bourke's long-running fractal pages. Marching squares is the two-dimensional version of the marching cubes algorithm William Lorensen and Harvey Cline published in 1987 for medical imaging, which is where a great many of these techniques were born before artists found them. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Flow fields](../Docs/Generators/FlowField.md): the full `FlowField` reference, including advection and the transient-sugar rule.
 - [Attractors](../Docs/Drawing/Attractors.md): every built-in system, 2D and 3D, and how to supply your own equations.
 - [Noise](../Docs/Generators/Noise.md): the field the flow is made of.
+- [Isolines](../Docs/Generators/Isolines.md): the single-level and stacked-level forms, the image form, resolution, and what open versus closed contours mean.
 - [Steering](../Docs/Generators/Steering.md): creatures that *follow* a field instead of riding it (Chapter 10's `follow(_:)`).
 - Worked examples: [`Examples/Patterns/Streamlines`](../Examples/Patterns/Streamlines/Sketch.swift) (evenly spaced, hue drifting along the flow), [`Examples/Patterns/CliffordAttractor`](../Examples/Patterns/CliffordAttractor/Sketch.swift) (the density bloom, built up live), and [`Examples/Motion/FlowField`](../Examples/Motion/FlowField/Sketch.swift) (a curl field of drifting needles).
 

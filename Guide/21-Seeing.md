@@ -122,6 +122,33 @@ override func draw() { drawFrame(player) }
 
 Frames arrive as GPU textures (drawing them costs almost nothing), `drawFrame` letterboxes them the same way, trackers analyze the footage as it plays, and `snapshot()` hands you a CPU still for the one-shot `detect(in:)` calls. Chapter 20's `Soundtrack(of: player)` completes the loop: one clip can drive a piece with its pixels *and* its music. The `Video/VideoPlayback` example ships with a short clip of the *Voladores de Papantla* to play with, and `Vision/VideoTrace` runs a contour tracker over it live. One export note is worth carrying forward. Headless exports drive the player deterministically (frame `k` of the export always shows the clip at `k/fps`), but a *tracker* attached to it analyzes nothing during an export, since analysis rides the live clock.
 
+## The past as material
+
+Everything so far reads the frame in front of you. Keeping the *previous* frames around opens a different technique, and it's one of the oldest tricks in camera art.
+
+A `SlitScan` is a rolling history of frames. You push the newest one every time you draw, it keeps the last few dozen, and then you ask it for a picture in which each pixel comes from a different moment.
+
+```swift
+let history = Ollin.SlitScan(frames: 48)
+
+override func draw() {
+    history.push(camera.snapshot())
+    if let warped = history.image(delay: { uv in uv.x }) {
+        drawImage(warped, in: canvasRectangle)
+    }
+}
+```
+
+The closure is the whole idea. It receives a pixel's position as fractions across the picture and returns how far back to read there, where 0 is the newest frame and 1 is the oldest one still held. Returning `uv.x` means the left edge shows a moment ago and the right edge shows now, so time runs left to right across the image.
+
+<img src="Images/21-Seeing/SlitScanDelay.jpg" alt="Two panels: a synthetic clip's newest frame showing horizontal stripes with one bright horizontal band, and the slit-scanned version where that band has become a clean diagonal and the stripes have sheared" width="680">
+
+The figure uses a made-up clip rather than a webcam so it can be reproduced, and it shows what the delay actually does. A bright band that was sweeping down the frame becomes a diagonal line, because each column caught it at a different height. Any delay map works, so `1 - uv.y` puts now at the bottom, and `dist(uv.x, uv.y, 0.5, 0.5) / 0.71` makes time ripple outward from the center. There's also a form that takes an `Image` as the delay map, which means you can paint where time runs slow.
+
+Two practical notes. The history costs width times height times four bytes per frame, so push modest sizes rather than full-resolution stills. And the first push fixes the size, after which differently sized frames are skipped with a one-time note in the console.
+
+> **Swift note.** The type is written `Ollin.SlitScan` in the listing above because the example sketch that ships with this technique is itself named `SlitScan`, and a class shadows a type of the same name. Qualifying with the module name is how you say "I mean the framework's one", the same move SwiftUI code makes for `Image`.
+
 ## Putting it together: motion paints
 
 The finished piece is the interactive mirror promised at the top, where you stand in front of the camera and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed. Stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift` (the committed figure [`MotionBrush.swift`](Figures/21-Seeing/MotionBrush.swift) carries `StagePerformer`, the pretend dancer that stands in for a webcam so the figure renders without you, while the listing below is the sketch as you'd run it live):
@@ -178,13 +205,14 @@ Then make it yours:
 
 ## Where this comes from
 
-Camera-as-instrument art is older than the personal computer: Myron Krueger's *Videoplace* (mid-1970s) let people play with their own silhouettes, David Rokeby's *Very Nervous System* (1986) turned body motion into sound, and Camille Utterback and Romy Achituv's *Text Rain* (1999) let falling letters rest on your outline. That lineage runs straight through today's interactive mirrors, and Golan Levin's writing on computer vision for artists is a fine map of it. Optical flow goes back to Berthold Horn and Brian Schunck, and Bruce Lucas and Takeo Kanade, in the same year (1981). The perception itself here is Apple's Vision framework and Core ML, running on the machine, and Ollin's contribution is the typed, canvas-mapped reading surface. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Camera-as-instrument art is older than the personal computer: Myron Krueger's *Videoplace* (mid-1970s) let people play with their own silhouettes, David Rokeby's *Very Nervous System* (1986) turned body motion into sound, and Camille Utterback and Romy Achituv's *Text Rain* (1999) let falling letters rest on your outline. That lineage runs straight through today's interactive mirrors, and Golan Levin's writing on computer vision for artists is a fine map of it. Optical flow goes back to Berthold Horn and Brian Schunck, and Bruce Lucas and Takeo Kanade, in the same year (1981). Slit scanning started as a photographic technique with a physical slit and moving film, gave *2001: A Space Odyssey* its stargate sequence, and became a per-pixel delay map once video was digital; Golan Levin's informal catalogue of slit-scan works is the map of that history. The perception itself here is Apple's Vision framework and Core ML, running on the machine, and Ollin's contribution is the typed, canvas-mapped reading surface. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Vision](../Docs/Vision/Vision.md): every tracker in detail, coordinate mapping, still images, availability.
 - [Video](../Docs/Video/Video.md): loading and playing footage, analysis, the soundtrack, deterministic export.
-- Worked examples: [`Examples/Vision/FaceTracking`](../Examples/Vision/FaceTracking/Sketch.swift), [`Examples/Vision/HandTracking`](../Examples/Vision/HandTracking/Sketch.swift), [`Examples/Vision/BodyPose`](../Examples/Vision/BodyPose/Sketch.swift), [`Examples/Vision/ContourTrace`](../Examples/Vision/ContourTrace/Sketch.swift), [`Examples/Vision/OpticalFlow`](../Examples/Vision/OpticalFlow/Sketch.swift), [`Examples/Vision/PersonSegmentation`](../Examples/Vision/PersonSegmentation/Sketch.swift), [`Examples/Vision/EyeCatcher`](../Examples/Vision/EyeCatcher/Sketch.swift), [`Examples/Vision/DigitReader`](../Examples/Vision/DigitReader/Sketch.swift) (a model over the sketch's own pixels, no camera anywhere), and the rest of [`Examples/Vision/`](../Examples/Vision); [`Examples/Video/VideoPlayback`](../Examples/Video/VideoPlayback/Sketch.swift) and [`Examples/Vision/VideoTrace`](../Examples/Vision/VideoTrace/Sketch.swift) for footage.
+- [Slit scan](../Docs/Video/SlitScan.md): the frame history, both delay forms, memory cost, and the delay maps worth trying.
+- Worked examples: [`Examples/Vision/FaceTracking`](../Examples/Vision/FaceTracking/Sketch.swift), [`Examples/Vision/HandTracking`](../Examples/Vision/HandTracking/Sketch.swift), [`Examples/Vision/BodyPose`](../Examples/Vision/BodyPose/Sketch.swift), [`Examples/Vision/ContourTrace`](../Examples/Vision/ContourTrace/Sketch.swift), [`Examples/Vision/OpticalFlow`](../Examples/Vision/OpticalFlow/Sketch.swift), [`Examples/Vision/PersonSegmentation`](../Examples/Vision/PersonSegmentation/Sketch.swift), [`Examples/Vision/EyeCatcher`](../Examples/Vision/EyeCatcher/Sketch.swift), [`Examples/Vision/DigitReader`](../Examples/Vision/DigitReader/Sketch.swift) (a model over the sketch's own pixels, no camera anywhere), and the rest of [`Examples/Vision/`](../Examples/Vision); [`Examples/Video/VideoPlayback`](../Examples/Video/VideoPlayback/Sketch.swift) and [`Examples/Vision/VideoTrace`](../Examples/Vision/VideoTrace/Sketch.swift) for footage; [`Examples/Images/SlitScan`](../Examples/Images/SlitScan/Sketch.swift) for the frame history.
 
 ---
 

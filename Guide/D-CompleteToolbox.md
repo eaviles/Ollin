@@ -63,7 +63,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Glyph mosaic | A picture rebuilt as a grid of characters, each chosen by its measured ink in the active font | [Ch 7](07-WordsAndPictures.md) | [GlyphMosaic](../Docs/Drawing/GlyphMosaic.md) |
 | Pixel sorting | Brightness-bounded runs of a picture's own pixels reordered into streaks, the classic glitch melt | [Ch 7](07-WordsAndPictures.md) | [PixelSorting](../Docs/Drawing/PixelSorting.md) |
 | Halftone | A picture as the classic print dot screen: area-exact dots on a rotated grid, real circles for the plotter | [Ch 7](07-WordsAndPictures.md) | [Halftone](../Docs/Drawing/Halftone.md) |
-| Luminance melt | A picture liquified by a warped noise field and poured through a palette, the `.melt` filter | here | [Effects](../Docs/Drawing/Effects.md) |
+| Luminance melt | A picture liquified by a warped noise field and poured through a palette, the `.melt` filter | [Ch 14](14-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 
 ## Geometry you can hold
 
@@ -106,7 +106,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Stippling | Dots packed to reproduce an image's tone (weighted-Voronoi) | [Ch 7](07-WordsAndPictures.md) | [Stippling](../Docs/Generators/Stippling.md) |
 | Single-line drawing | One unbroken tour through a stipple: the picture as a single closed line (TSP art) | [Ch 7](07-WordsAndPictures.md) | [SingleLine](../Docs/Generators/SingleLine.md) |
 | Spanning-tree drawing | The same stipple joined by the minimum spanning tree: the picture as branching veins | [Ch 7](07-WordsAndPictures.md) | [SpanningTree](../Docs/Generators/SpanningTree.md) |
-| Isolines | Level curves of any field or an image's tone (marching squares): metaball outlines, contour maps | here | [Isolines](../Docs/Generators/Isolines.md) |
+| Isolines | Level curves of any field or an image's tone (marching squares): metaball outlines, contour maps | [Ch 12](12-FieldsAndFlow.md) | [Isolines](../Docs/Generators/Isolines.md) |
 | Hulls | The tighter wraps around a scatter: the concave hull (one gulf-hugging simple polygon) and the alpha shape (islands and holes) | [Ch 13](13-ShapesAsMaterial.md) | [Hulls](../Docs/Generators/Hulls.md) |
 | Medial axis | A shape reduced to its skeleton, every point carrying its inscribed-disk radius | [Ch 13](13-ShapesAsMaterial.md) | [MedialAxis](../Docs/Generators/MedialAxis.md) |
 | Random walks | The walk family: the local tangle, the Lévy cluster-and-leap, the self-avoiding single stroke | [Ch 4](04-Randomness.md) | [Walks](../Docs/Generators/Walks.md) |
@@ -231,7 +231,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | `ModelTracker` | Bring any Core ML model: classifiers, detectors, segmenters | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
 | Still analysis | Every tracker also runs one-shot on an `Image` | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
 | Video playback | Files as live textures: play, seek, loop, analyze, all export-reproducible | [Ch 21](21-Seeing.md) | [Video](../Docs/Video/Video.md) |
-| Slit scan | A rolling frame history read back through a per-pixel time delay: time as a spatial dimension | here | [SlitScan](../Docs/Video/SlitScan.md) |
+| Slit scan | A rolling frame history read back through a per-pixel time delay: time as a spatial dimension | [Ch 21](21-Seeing.md) | [SlitScan](../Docs/Video/SlitScan.md) |
 
 ## Sharing and performing
 

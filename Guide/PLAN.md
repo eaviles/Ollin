@@ -130,7 +130,7 @@ Figures: branch-stack diagram; L-system expansion table + drawing per iteration;
 Draws from: `Docs/Generators/LSystem.md`, `Docs/Generators/SpaceColonization.md`, `Docs/Generators/DiffusionLimitedAggregation.md`, `Docs/Generators/WaveFunctionCollapse.md`; `Examples/Patterns/LSystem`, `Examples/Patterns/Venation`, `Examples/Patterns/Dendrite`, `Examples/Patterns/WaveFunctionCollapse`.
 
 **12. Fields and flow.**
-Teaches: a field as "an answer at every point" (the mental model shaders and SDFs later reuse); visualizing a field with arrows; `FlowField` from noise; tracing streamlines; evenly-spaced streamlines; advecting particles; strange attractors as found motion.
+Teaches: a field as "an answer at every point" (the mental model shaders and SDFs later reuse); visualizing a field with arrows; `FlowField` from noise; level curves of a scalar field (`isolines`, marching squares, the stacked-levels contour map, the image form); tracing streamlines; evenly-spaced streamlines; advecting particles; strange attractors as found motion.
 Assumes: Ch 5 (noise), Ch 8 (vectors).
 Payoff: a flow-field print (the Fidenza look, credited as such).
 Figures: field-of-arrows diagram; streamline tracing step diagram; even-spacing comparison; attractor plates; the print.
@@ -270,7 +270,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/Stippling.md` (`stipple`, weighted-Voronoi) | Ch 7 | taught ("A picture as one line" explains the settling method in plain words before the Voronoi structure is named in Ch 13, plus `count` and the `cutoff` rounding) |
 | `Generators/SingleLine.md` (`singleLine`, the TSP tour) | Ch 7 | taught (the tour beside the tree in a three-panel figure, both the `through:` and `of:points:` forms) |
 | `Generators/SpanningTree.md` (`spanningTree`, the MST rendering) | Ch 7 | taught (same figure and section; the minimal-chain decomposition explained as pen lifts) |
-| `Generators/Isolines.md` (`isolines`, marching-squares level curves) | Appendix D (Ch 5 when it grows) | pointed |
+| `Generators/Isolines.md` (`isolines`, marching-squares level curves) | Ch 12 | taught ("Where the field equals something" with a three-panel figure: scalar versus direction fields, marching squares explained by the sixteen corner patterns, `resolution`, why the stacked-levels form costs almost nothing extra, open versus closed contours, and the image form) |
 | `Generators/Hulls.md` (`concaveHull` / `alphaShape`) | Ch 13 | taught ("What shape are these points?" with a three-panel figure over one scatter: convex vs concave vs alpha, the `concavity` and `alpha` ranges that read well, and which to reach for by what happens next) |
 | `Generators/MedialAxis.md` (`medialAxis`, skeletons with radii) | Ch 13 | taught ("The skeleton inside" with a two-panel figure: branches and the inscribed disks, `spacing`/`prune` explained, `isClosed` rings, and what the radii are good for) |
 | `Generators/Marbling.md` (`Marbling`, closed-form paper marbling) | Ch 13 | taught ("Ink on water" with a four-panel figure: the bull's-eye of drops, the area-preserving push, the shared falloff law, all four raking tools, `add`, and the concentric-swirl no-op) |
@@ -281,8 +281,8 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Drawing/GlyphMosaic.md` (`drawGlyphMosaic`, measured glyph ramps) | Ch 7 | taught ("A picture as marks" with a two-panel figure: measured ink per font, the curated sets, `glyphScale` gutters, the data form, and the inverted-polarity trap it shares with halftone) |
 | `Drawing/PixelSorting.md` (`Image.pixelSorted`) | Ch 7 | taught ("Sorting the pixels" with a before/after figure: the threshold as the whole technique, the keys, and the needs-texture and reversed-on-a-gradient caveats) |
 | `Drawing/Halftone.md` (`drawHalftone`, area-exact dot screens) | Ch 7 | taught (same section and figure: `pitch`/`angle`, area-exact coverage, real circles for the plotter, and continuous tone versus the mosaic's steps) |
-| `.melt` design filter (`Drawing/Effects.md`, the luminance melt) | Appendix D (Ch 15 when it grows) | pointed |
-| `Video/SlitScan.md` (`SlitScan` frame history) | Appendix D (Ch 21 when it grows) | pointed |
+| `.melt` design filter (`Drawing/Effects.md`, the luminance melt) | Ch 14 | taught (a before/after figure beside the design filters, the shared displacement vector that makes it read as dyed rather than smeared, the brightness mix-back, the dial-back knobs, and the never-perfectly-loops caveat) |
+| `Video/SlitScan.md` (`SlitScan` frame history) | Ch 21 | taught ("The past as material" with a synthetic-clip figure: the rolling history, the delay closure and what 0 and 1 mean, alternative delay maps and the image form, the memory cost, and the `Ollin.SlitScan` shadowing note) |
 | `Generators/Walks.md` (`randomWalk`, `levyFlight`, `selfAvoidingWalk`) | Ch 4 / Appendix D | pointed |
 | `Generators/Packing.md` (circles) | Ch 13 | taught |
 | `Generators/ShapePacking.md` | Ch 13 | shown |

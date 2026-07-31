@@ -78,6 +78,18 @@ drawImage(sky.filtered(.paperTexture()).image, 0, 0)
 
 Three lines, and the canvas is a printed poster, a mesh gradient of soft color blobs melting into each other, laid onto a synthesized sheet of paper, crumples and all. The generator catalog runs from plain checkers and noise up through designer patterns (god rays, spirals, pulsing borders), and the design filters (`.paperTexture`, `.flutedGlass`, `.water`, `.liquidMetal`) are their finishing counterparts. Most take a `phase` you can feed `time`, so any of them animates. They make good backdrops for everything else in this chapter, and the `Effects/DesignPatterns` and `Effects/DesignFilters` examples tour the whole set.
 
+One of those filters deserves singling out, because it does something the others don't. `.melt` liquifies a layer by its own brightness.
+
+<img src="Images/14-LayersAndEffects/Melt.jpg" alt="Two panels: a simple painted dusk scene with a graded sky, a low sun, and a dark headland, and the same layer after the melt filter, poured into swirling violet and white marbling in which the sun survives as a bright knot" width="680">
+
+```swift
+drawImage(scene.filtered(.melt(phase: time)).image, 0, 0)
+```
+
+Underneath, the filter builds a swirling noise field and uses one displacement vector for two jobs at once. That vector warps the field's own coordinates, and it also shifts where the filter reads your layer. Because the same vector does both, the picture and the swirl move together instead of one sliding over the other, which is why the result reads as the image having been *dyed* rather than just smeared. The layer's brightness mixes back into the field before it goes through a color ramp, so bright regions stay bright and structural. The sun in the figure is still recognizably the sun.
+
+It is a strong effect at its defaults, and `liquify`, `warp`, and `blend` dial back how far it takes the picture. The sway that animates it uses frequencies that don't divide evenly into each other, so it never perfectly repeats, which means it drifts forever but won't give you a seamless loop.
+
 ## How new paint meets old
 
 So far every mark has simply covered what was under it. `blendMode(_:)` changes the arithmetic of that meeting, and it's ordinary drawing state like `fill`, saved by `withState { }`, applying to shapes and composited layers alike:
