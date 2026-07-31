@@ -195,8 +195,7 @@ Circles are the easy case, because two circles touch when the distance between t
 
 ```swift
 let bag = [triangle, square, hexagon, star]
-let packed = packShapes(bag, in: bounds, count: 160,
-                        minRadius: 7, maxRadius: 62, padding: 2, using: &rng)
+let packed = packShapes(bag, count: 160, minRadius: 7, maxRadius: 62, padding: 2)
 ```
 
 <img src="Images/13-ShapesAsMaterial/ShapePacking.jpg" alt="Two panels of the same dense packing of dark triangles, squares, hexagons, and four- and five-pointed stars on cream. The left panel also draws each shape's bounding circle in faint gray, and those circles visibly overlap and cross each other. The right panel shows the shapes alone, with small stars tucked into the notches of larger shapes" width="680">

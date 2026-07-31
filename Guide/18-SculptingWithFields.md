@@ -173,7 +173,7 @@ material(.dielectric(roughness: 0.4))     // a non-metal, satin
 
 That is one material with one number changed. The leftmost sphere is a mirror, so what you see on it is mostly a reflection of the room it's standing in, which is why it's dark with one small bright highlight. As roughness grows, that reflection smears out into a wide sheen, and by `1.0` it has spread so far that the sphere just reads as its average brightness. `fill` still sets the color, exactly as before; roughness only decides how the surface handles light.
 
-There are ready-made ones for the common cases (`.brushedMetal`, `.polishedMetal`, `.plastic`), and they're all the same two properties underneath.
+There are ready-made ones for the common cases (`.brushedMetal`, `.polishedMetal`, `.smoothPlastic`, `.roughPlastic`), and they're all the same two properties underneath. Watch the naming, though: plain `.plastic` is one of the *stylized* finishes from Chapter 17, not a physically based one, so reach for `.smoothPlastic` when you want this family.
 
 ### Surroundings as the light
 

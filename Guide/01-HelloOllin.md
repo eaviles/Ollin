@@ -26,7 +26,23 @@ swift run Example-Basic-HelloCircle
 
 The first build takes a few minutes, and after that builds are quick. A window opens with a circle slowly breathing on a white canvas. What you're looking at is a sketch, which is a small program that draws the same picture over and over, changing it a little each time so that the drawing turns into motion.
 
-While you're here, try `swift run OllinExamples` too. It opens a gallery of every example in the repository with a sidebar to browse them. When a chapter mentions an example, this is a comfortable way to see it.
+### The gallery
+
+While you're here, run this too:
+
+```sh
+swift run OllinExamples
+```
+
+That opens the **gallery**, a window holding every example in the repository. It's worth two minutes now, because this guide points at examples constantly and the gallery is the comfortable way to see them.
+
+<img src="Images/01-HelloOllin/Gallery.jpg" alt="A diagram of the gallery window in three panes: a left sidebar listing example groups as a collapsible tree with one entry selected and a filter field at its foot, a dark center pane showing the running sketch, and a right sidebar of four labeled sliders" width="680">
+
+Three panes, and each is doing an obvious job. On the left, every example as a collapsible tree that mirrors the folders on disk, with a filter field at the bottom for finding one by name. In the middle, the selected sketch, actually running rather than pictured. On the right, that sketch's knobs, which you can drag while it runs, and hide with ⌘/ when you want the picture to yourself.
+
+One piece of behavior will confuse you for a moment if nobody mentions it. **Arrow keys move through the example list**, not into the sketch, because the canvas only takes the keyboard once you *click* it. That's deliberate: plenty of examples read key presses, and if the canvas grabbed the keyboard on selection you could never arrow to the next one. Examples that use the keyboard show a small hint saying so, and clicking the canvas hands the keys over.
+
+The thing to remember about the gallery is what it isn't. It's not a separate collection of demos: every entry is an ordinary sketch file sitting at `Examples/<Group>/<Name>/Sketch.swift`, the same shape as the file you're about to write. When one does something you want, open it, read it, copy the part you need.
 
 ## Your first sketch
 

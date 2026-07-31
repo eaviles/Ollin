@@ -21,6 +21,26 @@ swift run Example-Motion-Breathing --export-sequence /tmp/out --seconds 5 --fps 
 
 `--export` writes one frame as a PNG, and `--export-sequence` writes every frame, lossless, ready for `ffmpeg` or an edit timeline. Exports default to the best render quality (`.detail`), since a file has no frame rate to protect, and `--render-quality` dials that down when you want a fast draft.
 
+### Rendering from code
+
+Those flags are a command-line wrapper around one function, and the function is available to you directly:
+
+```swift
+if let frame = OllinApp.image(of: MySketch(), frame: 200) {
+    // a CGImage, rendered with no window anywhere in sight
+}
+```
+
+`OllinApp.image(of:frame:)` builds the sketch, runs `setup()`, advances the clock to the frame you asked for, renders, and hands back a `CGImage`. (`OllinApp.export` is that call plus a PNG writer, which is all `--export` is.)
+
+This matters the moment you want to render *many* things, or render on your own terms. A contact sheet of twenty seeds, thumbnails for a catalog, a batch job over a folder of inputs, a test that checks a render hasn't changed: all of them are a loop around this one call, and none of them need a window, a display, or a person watching.
+
+<img src="Images/22-SharingAndPerforming/HeadlessCapture.jpg" alt="Four dark square tiles in a row, each showing the same cluster of green-to-orange circles in a different arrangement, labeled frame 0, frame 30, frame 60, and frame 90, above the caption OllinApp.image(of: Pulse(), frame:), four renders, no window" width="680">
+
+That figure is the call demonstrating itself. It's one sketch whose `draw()` renders a *different* sketch four times at four frames and lays out the results, and because a fresh instance is built per capture, each render starts cleanly from `setup()`.
+
+It's also how this guide is made. Every image you've seen in it is a committed sketch under `Guide/Figures/`, rendered by a small tool that walks the folder and calls `OllinApp.image(of:frame:)` on each one. That's the reason nothing here can quietly rot: a listing that stops compiling fails the render, and a figure that stops matching its prose is a file someone can open and run.
+
 ## Motion: video and GIF
 
 For a file you can post, skip the stitching and encode directly:
@@ -93,7 +113,31 @@ override func setup() {
 
 Resolume, MadMapper, VDMX, and other creative-coding frameworks all read it live, pixel-identical to your window, with nothing touching disk. It works the other way too: `SyphonClient` subscribes to another app's feed and hands you each frame as an `Image` to draw, warp, or feed to Chapter 21's trackers. Pair it with Chapter 20 and the rig conversation goes both directions at once: visuals over Syphon, control over OSC or MIDI. The `Integration/SyphonLoopback` example runs both ends in one sketch (a video-feedback tunnel, since it watches itself), so you can see the plumbing with no second app installed.
 
-The **virtual camera** goes where Syphon can't: `publishVirtualCamera()` makes the sketch a system-wide webcam called "Ollin Camera", so Zoom, Photo Booth, QuickTime, OBS, and (importantly) the *browser* can all take a sketch as their camera. It needs a one-time install of the camera extension (the Ollin Camera app in this repo, approved once in System Settings), and from then on any sketch can feed it, with a broadcast test card showing whenever none is. Your next video call can open on a reaction-diffusion field.
+### The sketch as a webcam
+
+Syphon is app-to-app, which means both ends have to have agreed to speak it. That covers the VJ world and misses everything else, including the one destination people ask about most: the browser. A web page asks the operating system for a *camera*, and no amount of Syphon will make it see one.
+
+So the other publishing route makes the sketch an actual camera:
+
+```swift
+import Ollin
+import OllinCamera
+
+override func setup() {
+    publishVirtualCamera()      // every frame now feeds a system-wide camera
+}
+```
+
+After that, "Ollin Camera" is in the camera menu of every app on the machine. Zoom, Meet, QuickTime, OBS, Photo Booth, and any web page that asks for a camera can all take a sketch as their input. Your next video call can open on a reaction-diffusion field.
+
+There's a one-time setup, and it's worth knowing why. A camera device is a piece of the operating system, not something a sketch can conjure, so the device itself is a macOS **system extension** installed by the Ollin Camera app in this repository: launch it from `/Applications` and approve the extension in *System Settings ▸ General ▸ Login Items & Extensions ▸ Camera Extensions*. From then on the device exists whether or not any sketch is running, and when nothing is publishing it shows a "no signal" test card, which is a friendlier thing for a video call to find than a black rectangle. If you publish without having installed it, nothing breaks: the sketch keeps drawing, and `isAvailable` and `unavailableReason` tell you what's missing.
+
+Two facts about the frame will save you a confused minute:
+
+- **The camera frame is a fixed 1280×720.** Your canvas is scaled to fit and centered, so a square canvas arrives with black bars down both sides. If a piece is destined for a call, `canvasSize = .size(1280, 720)` fills the frame exactly.
+- **The camera runs at 30 fps.** A sketch running faster publishes every other frame, and a slower one simply updates the camera at its own pace.
+
+And when the picture looks wrong, suspect the *viewer* first. Photo Booth mirrors every camera preview like a selfie mirror, so text in your sketch reads backwards there exactly as it would on the built-in camera, and it crops, because its preview pane isn't 16:9. Conferencing apps usually mirror your self-view while sending the unmirrored picture to everyone else. QuickTime's File ▸ New Movie Recording shows the frame as published, uncropped and unmirrored, so it's the fastest way to see what other apps are really receiving.
 
 ## Adding behavior without touching the sketch
 

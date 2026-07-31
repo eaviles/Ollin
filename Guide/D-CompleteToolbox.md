@@ -24,7 +24,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | `@Param` knobs | Properties as live inspector controls, typed per value (slider, color well, pad, …) | [Ch 1](01-HelloOllin.md), [Ch 20](20-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
 | Live reload | `swift run OllinLive Sketch.swift`: save the file, the window swaps the change in | [Ch 1](01-HelloOllin.md) | [Sketch](../Docs/Core/Sketch.md) |
 | Single-file sketches | `ollin new` and `ollin <file>.swift`: one loose file is a whole sketch, runnable from anywhere | [Ch 1](01-HelloOllin.md) | [SingleFile](../Docs/Tools/SingleFile.md) |
-| The examples gallery | `swift run OllinExamples`: every example, browsable, with knobs | [Ch 1](01-HelloOllin.md) | [`Examples/`](../Examples/README.md) |
+| The examples gallery | `swift run OllinExamples`: every example browsable in a tree, running, with its knobs beside it | [Ch 1](01-HelloOllin.md) | [`Examples/`](../Examples/README.md) |
 | Swift itself | The language at sketch speed | [Appendix A](A-JustEnoughSwift.md) | [Swift quick reference](../Docs/Swift.md) |
 
 ## Drawing
@@ -112,7 +112,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Medial axis | A shape reduced to its skeleton, every point carrying its inscribed-disk radius | [Ch 13](13-ShapesAsMaterial.md) | [MedialAxis](../Docs/Generators/MedialAxis.md) |
 | Random walks | The walk family: the local tangle, the Lévy cluster-and-leap, the self-avoiding single stroke | [Ch 4](04-Randomness.md) | [Walks](../Docs/Generators/Walks.md) |
 | Circle packing | Grow-to-touch packings, seeded and reproducible | [Ch 13](13-ShapesAsMaterial.md) | [Packing](../Docs/Generators/Packing.md) |
-| Shape packing | Packing that nestles arbitrary outlines into notches and gaps | [Ch 13](13-ShapesAsMaterial.md) | [ShapePacking](../Docs/Generators/ShapePacking.md) |
+| Shape packing | Packing measured against real outlines, so small shapes settle into a star's notches; one-shot or filled in over time | [Ch 13](13-ShapesAsMaterial.md) | [ShapePacking](../Docs/Generators/ShapePacking.md) |
 | Truchet tiles | One tile per cell at random spins; loops and mazes emerge | [Ch 6](06-GridsAndRepetition.md) | [Truchet](../Docs/Drawing/Truchet.md) |
 | Hex and triangle grids | The other regular tilings, with hex distance, neighbors, and exact picking | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
 | Recursive subdivision | Uneven panels by aspect-aware splitting, binary or quadtree | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
@@ -152,7 +152,11 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 |---|---|---|---|
 | Render targets | Off-screen layers: draw into them with `withTarget`, composite back | [Ch 14](14-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 | The filter catalog | ~55 GPU filters: blurs, glows, color, stylize, retro, distortion, design | [Ch 14](14-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
-| Generator fills | Procedural patterns into layers: design patterns, pattern fields, fractals | [Ch 14](14-LayersAndEffects.md), [Ch 16](16-Simulations.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Generator fills | Procedural patterns into a layer: checkers, gradients, noise, cellular | [Ch 14](14-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Design patterns | Composed graphic sources: mesh gradients, god rays, spirals, orbiting dots, grain gradients, pulsing borders | [Ch 14](14-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Design filters | Fluted glass, water, and paper that transform a picture; liquid metal, heatmap, and gem smoke that read a shape's silhouette | [Ch 14](14-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Pattern fields | Closed-form animated fields: quasicrystal, moire, gyroid, phyllotaxis, hex pulse, Chladni | [Ch 15](15-YourFirstShader.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Escape-time fractals | The Mandelbrot set and Julia sets, colored by how fast each point escapes, zoomable | [Ch 16](16-Simulations.md) | [Effects](../Docs/Drawing/Effects.md) |
 | The compose DSL | `compose { layer { } … }`: a stack of layers, filters, and blends in one block | [Ch 14](14-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Combines | Two-layer ops: mask, displace, mix, depth-of-field, SSAO, reflections | [Ch 14](14-LayersAndEffects.md), [Ch 17](17-3DGently.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Feedback | A layer that remembers last frame: trails, tunnels, video feedback | [Ch 14](14-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
@@ -178,18 +182,18 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | The camera | `camera()`, `perspective`, `ortho`; 2D sketches never pay for it | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
 | Solid primitives | Box, sphere, torus, knots, Platonic solids, lathes, extrusions, and more | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
 | Terrain | `Heightfield`: landscapes grown from noise or diamond-square, weathered by simulated rain and gravity, read out as a mesh, an image, or samples | [Ch 17](17-3DGently.md) | [Terrain](../Docs/Generators/Terrain.md) |
-| Meshes from file | OBJ, glTF, USDZ, STL, PLY, with materials and textures | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
+| Meshes from file | OBJ, glTF, USDZ, STL, PLY, with materials and textures; `normalized(scale:)` recenters and fits whatever arrives | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
 | Lights | Directional, point, spot, ambient, plus curated lighting presets | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
-| Materials | Stylized finishes (toon, iridescent, velvet, sparkle) and physically based metal and gloss | [Ch 17](17-3DGently.md), [Ch 18](18-SculptingWithFields.md) | [3D](../Docs/3D/3D.md) |
-| Matcaps | Sphere-texture shading: chrome, clay, car paint, in one call | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
-| Environments | HDRI image-based lighting, bundled and downloadable, plus a procedural sky | [Ch 18](18-SculptingWithFields.md) | [3D](../Docs/3D/3D.md) |
-| Shadows | Cast shadows with a softness dial, ray-traced for point lights on capable GPUs | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
+| Materials | Stylized finishes (toon, iridescent, velvet, sparkle), and physically based metal and gloss from just metalness and roughness | [Ch 17](17-3DGently.md), [Ch 18](18-SculptingWithFields.md) | [3D](../Docs/3D/3D.md) |
+| Matcaps | Shading read from a picture of a lit sphere: chrome, clay, car paint, in one call and no lights | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md#matcap-materials) |
+| Environments | HDRI image-based lighting (eight bundled, twelve downloading) plus a zero-asset procedural sky; the surroundings become the light | [Ch 18](18-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#environment-lighting) |
+| Shadows | Contact-hardening cast shadows with a softness dial, ray-traced for point lights on capable GPUs | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md#shadows) |
 | Ray-traced reflections | Metals that reflect the actual scene, off-screen parts included | [Ch 18](18-SculptingWithFields.md) | [3D](../Docs/3D/3D.md) |
-| Wireframe and textures | Any mesh as line work; any mesh wrapped in an image | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
+| Wireframe and textures | Any mesh as its triangle edges (which do not light); any mesh wrapped in an image through its UVs | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md#textures) |
 | Point clouds | Instanced splats by the hundred thousand, camera-facing | [Ch 19](19-DepthAndThePhone.md) | [3D](../Docs/3D/3D.md) |
 | Camera control and moves | Viewer orbiting, cinematic `CameraMove`s, the self-driving showcase, snap views | [Ch 17](17-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
 | Scene chrome | The axis widget and ground grid, live-only, never exported | [Ch 17](17-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
-| Depth compositing | 2D drawing placed *inside* the 3D depth buffer; billboards; depth feeds | [Ch 19](19-DepthAndThePhone.md) | [DepthCompositing](../Docs/3D/DepthCompositing.md) |
+| Depth compositing | Flat 2D drawing placed *inside* the 3D depth buffer, so the scene occludes it: `depth(at:)`, `project`, billboards, depth feeds | [Ch 19](19-DepthAndThePhone.md) | [DepthCompositing](../Docs/3D/DepthCompositing.md) |
 | What stacks with what | The compatibility map across the 3D features | [Ch 17](17-3DGently.md), [Ch 18](18-SculptingWithFields.md) | [Combining](../Docs/3D/Combining.md) |
 
 ## Sculpting with fields
@@ -243,11 +247,11 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Perfect loops | Declare `loopDuration` and `--export-loop` renders exactly one seamless lap | [Ch 3](03-MotionAndTime.md) | [Export](../Docs/Output/Export.md) |
 | SVG for plotters | `--export-svg` true vectors, with `--hatch` turning fills into line work | [Ch 13](13-ShapesAsMaterial.md), [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Print separations | `--export-separations`: one grayscale master per spot ink, screened, with an overprint preview | [Ch 22](22-SharingAndPerforming.md) | [PrintSeparations](../Docs/Output/PrintSeparations.md) |
-| Headless capture | Render any sketch to an image in code, no window | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Headless capture | `OllinApp.image(of:frame:)` renders any sketch to a `CGImage` in code, no window; the export flags are wrappers around it, and this guide's figures are made with it | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Reproducibility metadata | Every PNG/SVG/PDF/video embeds its recipe: seed, `@Param` values, git commit, frame | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#reproducibility-metadata) |
 | Contact sheets | `--export-grid` tiles one frame per seed into a labeled proof sheet; `--seed` re-renders a keeper | [Ch 4](04-Randomness.md) | [Variations](../Docs/Core/Variations.md) |
 | Syphon | Publish frames to (and read frames from) other Mac apps, GPU to GPU | [Ch 22](22-SharingAndPerforming.md) | [Syphon](../Docs/Integration/Syphon.md) |
-| Virtual camera | Your sketch as a system-wide webcam every video app can pick | [Ch 22](22-SharingAndPerforming.md) | [VirtualCamera](../Docs/Integration/VirtualCamera.md) |
+| Virtual camera | Your sketch as a system-wide webcam every video app can pick, including the browser, which Syphon cannot reach | [Ch 22](22-SharingAndPerforming.md) | [VirtualCamera](../Docs/Integration/VirtualCamera.md) |
 | Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, perform | [Ch 22](22-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |
 | Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | [Ch 22](22-SharingAndPerforming.md) | [Sketch](../Docs/Core/Sketch.md#extensions) |
 

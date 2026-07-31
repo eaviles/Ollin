@@ -295,7 +295,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Video/SlitScan.md` (`SlitScan` frame history) | Ch 21 | taught ("The past as material" with a synthetic-clip figure: the rolling history, the delay closure and what 0 and 1 mean, alternative delay maps and the image form, the memory cost, and the `Ollin.SlitScan` shadowing note) |
 | `Generators/Walks.md` (`randomWalk`, `levyFlight`, `selfAvoidingWalk`) | Ch 4 | taught ("Three walks, three rules" after the hand-rolled walk, with a same-seed three-panel figure: why an even-stepped walk pools, the power-law step lengths and the foraging connection, the `minStep` divergence, and getting stuck as the point of the self-avoiding one) |
 | `Generators/Packing.md` (circles) | Ch 13 | taught |
-| `Generators/ShapePacking.md` | Ch 13 | shown |
+| `Generators/ShapePacking.md` | Ch 13 | taught ("Packing shapes, not circles" with a two-panel figure of one packing: why a spiky outline is the interesting case, the bounding circles drawn overlapping as proof the fit used outlines, what `padding`/`rotation`/`scale` change in character, and `ContinuousPacking` held open against `noClear()`) |
 | Hatching (`Output/Export.md`) | Ch 13 | taught |
 | Perfect-loop export (`--export-loop`, `loopDuration`; `Output/Export.md`) | Ch 3 | taught |
 | `Drawing/Epicycles.md` (Fourier epicycles) | Ch 13 | taught ("Circles all the way down" with a rising-term figure: the largest-first prefix, exactness at full terms, under-terming as a smooth simplifier, and the construction versus the path) |
@@ -307,10 +307,10 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Feedback (`Drawing/Effects.md`) | Ch 14 | taught |
 | `Drawing/Accumulation.md` (noClear) | Ch 14; used in Ch 16 | taught |
 | `Drawing/HDR.md` (toneMap) | Ch 14 | taught |
-| Design patterns + design filters (`Drawing/Effects.md`) | Ch 14 | shown |
+| Design patterns + design filters (`Drawing/Effects.md`) | Ch 14 | taught ("The design family" with a six-tile two-row figure: the generator set and the phase-is-a-number rule that keeps exports reproducible, then the filters split into the alpha-shape readers (draw a shape, then filter it) and the picture transformers, plus the tuned-for-full-canvas caveat and the `edges` knob) |
 | Relight, two-tone dither, warp centers (`Drawing/Effects.md`) | Ch 14 | taught ("Filters that read the layer as something else" with a three-panel figure: brightness as height and the five finishes, brightness as tone with `pixelSize` grain, and `center:` in 0…1 layer coordinates as the knob that makes a warp a composition) |
-| Pattern fields (`Drawing/Effects.md`) | Ch 15 | shown |
-| Escape-time fractals (`Drawing/Effects.md`) | Ch 16 | shown |
+| Pattern fields (`Drawing/Effects.md`) | Ch 15 | taught ("The pattern fields" with a six-field catalog plus a hand-rolled gyroid beside the built-in: closed form as the defining property and its three consequences, all six named, reading a 3D field at a moving slice, and the sRGB palette convention) |
+| Escape-time fractals (`Drawing/Effects.md`) | Ch 16 | taught (escape time as the step count that becomes the color, the marked-c figure showing a Julia set as a portrait of one Mandelbrot point and why edge points are richest, smooth banding with `cycles`/`phase`, and the zoom-needs-iterations trap) |
 | `Generators/Fractals.md` (`IFS`, `FractalFlame`, inversion and Kleinian limit sets) | Ch 11 | taught ("The same fern, played as a game" derives the chaos game from the chapter's own L-system fern with a condensing figure and explains why contraction forces the attractor; "Three more games worth knowing" covers flames, inversion, and Kleinian with a three-panel figure, plus `fitted` and the Contour return) |
 | Depth-of-field `.defocus`, SSAO, SSR (`Drawing/Effects.md`) | Ch 17 | taught ("What the depth buffer is for" with a three-panel figure: depth as an ordinary layer, occlusion as what stops objects floating, focus/range read against near/far, SSR's cannot-see-the-back limit, and quality tiers resolving on export) |
 | `Shaders/Shaders.md` (user shaders) | Ch 15 | taught |
@@ -326,14 +326,14 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `3D/3D.md` (camera, primitives, meshes, lights, materials) | Ch 17 | taught |
 | `3D/Camera.md` (cameraControl, moves, showcase, views) | Ch 17 | taught |
 | `3D/Combining.md` (what stacks with what) | Ch 17/18 | taught (the concept in Ch 17's bearings section: several kinds of 3D thing reach the screen by different routes, so finishes apply unevenly, with the table pointed for lookup) |
-| Matcap (`3D/3D.md`) | Ch 17 | shown |
-| PBR materials + IBL environments + procedural sky (`3D/3D.md`) | Ch 18 | shown |
-| Shadows: 2D map, PCSS, ray-traced point (`3D/3D.md`) | Ch 17 | shown |
+| Matcap (`3D/3D.md`) | Ch 17 | taught ("Shading from a picture": sampling by facing direction, why baked lighting is both the appeal and the limit, when a material is the better choice, the 26 built-ins by family, `Matcap.shaded`, and the `fill` tint) |
+| PBR materials + IBL environments + procedural sky (`3D/3D.md`) | Ch 18 | taught ("The finish" in two parts with a roughness run and a two-image environment pair: metal versus dielectric and roughness, why a mirror with nothing to reflect goes dark (so PBR and environments are one topic), the bundled eight versus the downloading twelve, `.sky` as the zero-asset option, and `lightingOnly`/`backgroundBlur`) |
+| Shadows: 2D map, PCSS, ray-traced point (`3D/3D.md`) | Ch 17 | taught ("Shadows, and what they tell you" with a rising-height figure: shadows as the only cue for height, contact hardening and `shadowSoftness`, the four practical notes (a receiver is needed, opt-in and per-frame, one caster chosen for you, nothing to aim), the three caster routes as an explanation of cost, and `shadowQuality` for graininess) |
 | Ray-traced reflections (`3D/3D.md`) | Ch 18 | taught ("Mirrors that see off screen": traced rays versus searching the finished picture, integration into the environment rather than post-process, the three conditions, no-op where unavailable so the call can stay in, and the settle-then-clean behavior) |
-| Wireframe, textured meshes, mesh loading (`3D/3D.md`) | Ch 17 | shown (wireframe in the finished piece, loading taught; textured pointed) |
+| Wireframe, textured meshes, mesh loading (`3D/3D.md`) | Ch 17 | taught (loading with the `normalized(scale:)` habit, then a three-panel figure for the other two dressings: `wireframe()` as both an inspection tool and a look (and why it does not light), `textured(_:)` with the pole pinch a checker reveals, and all three as stack state in one frame) |
 | Point clouds (`3D/3D.md`) | Ch 19 | taught |
 | `Drawing/Combinators.md` (SDF 2D + SDF3D raymarching) | Ch 18 | taught |
-| `3D/DepthCompositing.md` | Ch 19 | shown |
+| `3D/DepthCompositing.md` | Ch 19 | taught ("Flat drawing that knows where it is" with a three-pillar figure: `depth(at:)` sets depth alone, `project` returns nil behind the camera, `withBillboard` does both and moves the origin, why a 2D mark keeps its canvas size, and `depth(_:)` for a feed) |
 | `3D/RGBD.md` | Ch 19 | taught |
 | `3D/Record3D.md` | Ch 19 | taught |
 | `3D/Phone.md` (capture app streams, world fusion) | Ch 19 | taught |
@@ -344,7 +344,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Vision/Vision.md` (16 trackers, ModelTracker) | Ch 21 | taught/pointed by tracker |
 | `Video/Video.md` (playback as texture) | Ch 21 | taught |
 | `Integration/Syphon.md` | Ch 22 | taught |
-| `Integration/VirtualCamera.md` | Ch 22 | shown |
+| `Integration/VirtualCamera.md` | Ch 22 | taught ("The sketch as a webcam": why the browser needs a camera and Syphon cannot cross that line, the system extension and its one-time approval, the test card, the fixed 1280x720 letterbox and 30 fps, and suspecting the viewer first when the picture looks mirrored or cropped) |
 | `Output/Export.md` (PNG, sequence, video, GIF, SVG, PDF) | Ch 3 (GIF), Ch 13 (SVG), Ch 22 (all) | taught |
 | Reproducibility metadata in exports (`Output/Export.md`) | Ch 22 | taught (what the recipe holds, where it lives and why that slot exists, reading it back with `exiftool`, the recover-a-past-render scenario, and the GIF and missing-code limits) |
 | Print separations (`Image.separated` into spot inks, screening, `--export-separations`; `Output/PrintSeparations.md`) | Ch 22 | taught ("Printing one ink at a time" with a masters-plus-overprint figure: what a master is, why translucent inks make more colors than drums, `printInks` and the in-code form, the perceptual nearest-mix search, and the minimum-dot and rosette notes) |
@@ -352,9 +352,9 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Normalized coordinates `uv(u, v)` (`Core/Canvas.md`) | Ch 1 | taught ("Placing things without pixels" with a six-panel figure of one layout in three canvas shapes, placed by pixels and by fractions; `uv` corners and `scale` for sizes, plus honest guidance on when plain pixels are fine) |
 | `Tools/LiveCoding.md` (OllinLiveCoding) | Ch 22; OllinLive workflow in Ch 1 | taught |
 | Single-file sketches (the `ollin` command, hashbang files; `Tools/SingleFile.md`) | Ch 1 | taught ("A shorter way to run things": `install`/`new`/run, what it means that a sketch is one file, export flags on a loose file, and the hashbang form) |
-| Examples gallery (`swift run OllinExamples`) | Ch 1 | shown |
+| Examples gallery (`swift run OllinExamples`) | Ch 1 | taught ("The gallery" with a layout diagram: the three panes, the filter field, hiding the knobs, why arrow keys move the list rather than reaching the sketch, and that every entry is an ordinary sketch file to open and copy) |
 | Extension seam (`Sketch.extend`, `SketchExtension`) | Ch 22 | taught ("Adding behavior without touching the sketch": why cross-cutting behavior does not belong in `draw()`, the built-in stats extension as the example, and the opt-in frame readback) |
-| Headless capture (`OllinApp.image(of:)`) | Ch 22; used by the Guide's own figure runner | shown |
+| Headless capture (`OllinApp.image(of:)`) | Ch 22; used by the Guide's own figure runner | taught ("Rendering from code": the flags are a wrapper around one call, what it does step by step, the batch cases it unlocks, a figure that renders another sketch four times to demonstrate itself, and the Guide's own figure runner as the worked example) |
 
 ## Guide debt
 
