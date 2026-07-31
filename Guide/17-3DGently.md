@@ -158,9 +158,37 @@ castShadows()
 
 A **directional** light is the sun, parallel rays from a direction, with no position of its own, lighting everything evenly. A **point** light is a bulb at a place, so nearby things catch it strongly. A **spot** is a point light narrowed to an aimed cone, with a `penumbra` for how soft its edge falls. The `ambientLight` is a flat wash added to every surface so the unlit sides aren't pure black. Each light takes an `intensity`, and in the figure each has its own color so you can see who's doing what: the warm key shades everything, the cyan bulb blooms on the surfaces near it, the magenta cone pools on the floor.
 
-That one extra line, **`castShadows()`**, is what plants objects in the scene. It's opt-in, so a frame without it costs nothing, and it's automatic once on. The light does the casting, and the shadows come out soft in the way real ones are, crisp where an object meets the floor and blurrier as they fall away. `shadowSoftness(_:)` dials that from hard-edged (`0`) to very soft (`1`).
+Two smaller dials finish the surface's response to light: `specular(_:)` sets how strong the highlight is (0 is matte) and `shininess(_:)` how tight. But mostly you won't set those by hand, because of what's next. First, though, there is that one extra line in the listing above to account for.
 
-Two smaller dials finish the surface's response to light: `specular(_:)` sets how strong the highlight is (0 is matte) and `shininess(_:)` how tight. But mostly you won't set those by hand, because of what's next.
+## Shadows, and what they tell you
+
+**`castShadows()`** is what plants objects in a scene. Without it, a floating sphere and a resting sphere look the same, because nothing in the picture says where either one is. A shadow answers that.
+
+```swift
+directionalLight(.white, direction: Vector3(-0.22, -1, -0.16))
+castShadows()
+shadowSoftness(1)
+
+drawPlane(width: 14, depth: 8)                                  // something to catch them
+withState { translate(0, 3.4, 0); drawSphere(radius: 0.5) }     // and something to cast one
+```
+
+<img src="Images/17-3DGently/Shadows.jpg" alt="Four identical orange spheres over one pale floor, each higher than the last, their four shadows in a row on the floor. The leftmost sphere rests on the floor and its shadow is a tight dark ellipse; each shadow further right is a little smaller, further from its sphere, and visibly blurrier" width="680">
+
+Four identical spheres, one floor, one light. You know instantly which one is resting and which is highest, and the only thing telling you is the shadow. Two things change as a sphere climbs: the shadow drifts away from it, and the edge gets softer. The one on the left, touching down, has a tight ellipse with a crisp edge. The one on the right, three and a bit units up, has a blurry patch with a wide grey skirt.
+
+That softening is worth knowing about because it is the thing that makes rendered shadows look real. Shadows here are **contact-hardening** by default: sharp where an object meets a surface, softer as the shadow falls away. `shadowSoftness(_:)` sets how strong the effect is, from `0` (a hard edge, the classic look) through the `0.5` default to `1`. The figure asks for `1` so the difference is easy to see at this size; at the default it is subtler and usually what you want.
+
+Some practical notes, in the order they tend to bite:
+
+- **You need something to catch a shadow.** A sphere alone in space casts into nothing. A floor, or another object, is what makes the shadow visible.
+- **It's opt-in and per-frame.** A sketch that never calls `castShadows()` pays nothing at all, so shadows cost you only when you ask. Call it in `draw()` alongside the lights, and `noShadows()` turns it back off.
+- **One light does the casting**, chosen for you: the first directional light, or a spot if there's no directional, or a point light failing that. The default rig's key light is directional, so a scene you haven't relit already works.
+- **Nothing needs aiming.** The shadow's frame auto-fits around whatever the camera is looking at.
+
+The three kinds of light cast by different routes, which mostly matters because it explains the cost. A directional or spot light renders the scene once from the light's own viewpoint and darkens whatever that view can't see. A point light casts in every direction at once, so on Apple silicon it instead traces actual rays from each lit pixel toward the light, which is exact (no bias artifacts) but the most expensive of the three. On a GPU that can't trace rays it falls back to a depth map sampled by direction, so point shadows still work everywhere and your sketch doesn't change either way.
+
+If a penumbra looks grainy rather than smooth, that's the sample count, not the softness: `shadowQuality(.detail)` asks for more samples relative to whatever GPU is running, and `shadowSamples(16)` sets an exact number.
 
 ## Materials
 
@@ -199,7 +227,13 @@ drawMesh(knot)
 
 <img src="Images/17-3DGently/MatcapRow.jpg" alt="The same knot wearing four matcaps: reflective chrome, brown terracotta clay, red car paint, and a flat toon look" width="680">
 
-One call, no lights to place, and the look is total: chrome, clay, car paint, cel shading. The trade is that the lighting is baked into the picture, so a matcap ignores your lights, materials, and shadows. The highlights slide as the view turns, which is what makes it read as material. `matcap(loadImage("my-matcap.png"))` wears any sphere image you find or paint, and `Matcap.shaded(baseColor:metallic:roughness:)` makes one on the fly with no asset at all.
+One call, no lights to place, and the look is total: chrome, clay, car paint, cel shading. It works by asking, for each point on the surface, which way that point is facing relative to you, then reading the color from the matching spot on the sphere picture. Point straight at the camera and you get the middle of the picture; face away toward the edge and you get the rim. Because the picture was lit once, all of that lighting comes along for free, which is why the highlights slide as the view turns and why it reads as a real material rather than a paint job.
+
+The trade is the same fact seen from the other side. **A matcap ignores your lights, your `material(_:)`, and your shadows**, because it isn't lit at all: the light is a photograph. That makes matcaps a separate axis rather than another finish, and it makes them the wrong choice when an object needs to belong to a scene (matched to its lighting, grounded by a shadow) and the right one when you want a good-looking surface with no lighting work, which is most of the time you're sketching a form.
+
+There are 26 built in, real studio captures grouped by family: metals like `.chrome` and `.bronze`, clays like `.terracotta` and `.sage`, ceramics like `.pearl`, translucents like `.wax`, the neutral studio set, `.toon` and `.toonDark`, and a handful of diagnostic ones (`.checkNormal`, `.checkGradient`) meant for reading geometry rather than looking good. Beyond those, `matcap(loadImage("my-matcap.png"))` wears any sphere image you find or paint, and `Matcap.shaded(baseColor:metallic:roughness:)` bakes one on the spot with no asset at all, which is the option to reach for when you want a specific color and don't want to ship a file.
+
+Two smaller things: the current `fill` tints the result, so keep it `.white` to see a matcap as captured, and `matcap(_:)` is drawing state like `fill`, so `withState` scopes it and `noMatcap()` returns to the lit path.
 
 ## A mesh from a file
 
@@ -227,6 +261,22 @@ final class Loaded: Sketch {
 The one habit that saves confusion is **`normalized(scale:)`**. A file arrives at whatever size and position its author saved, anywhere from millimeters to kilometers, and normalizing recenters it and scales its longest side to the world units you ask for. Keep the `fill` white so the model's own colors show, because a colored fill tints it. (Models you build yourself are yours to ship, while downloaded ones carry licenses worth checking before you bundle them.)
 
 > **Swift note.** `loadMesh(...)?.normalized(scale: 3)` chains with `?.` because loading can fail: if the file isn't there, `loadMesh` returns `nil`, the chain stops, and `model` stays `nil`. The `if let model` in `draw()` then simply skips drawing, so a missing file never crashes the sketch.
+
+Whether a mesh came from a file or a generator, there are two other ways to dress it besides lighting a solid surface.
+
+<img src="Images/17-3DGently/SurfaceKinds.jpg" alt="Three spheres side by side: a solid glossy teal one, the same sphere drawn as a pale cyan net of triangle edges, and one wrapped in an orange and cream checker whose squares narrow toward the poles" width="680">
+
+```swift
+withState { fill(teal); material(.glossy); drawMesh(globe) }     // solid
+withState { stroke(pale); wireframe(); drawMesh(globe) }         // edges only
+withState { fill(.white); drawMesh(globe.textured(checker)) }    // wrapped in an image
+```
+
+**`wireframe()`** draws the mesh as its triangle edges instead of filled faces, taking the current `stroke` color and `strokeWeight`. It's how you see what a mesh is actually made of, which is genuinely useful when a generator gives you something odd, and it's also just a look: the standard way to show a form that's still a proposal rather than a finished object. Because the faces are see-through, a wireframe doesn't light, so lights and materials have nothing to do.
+
+**`textured(_:)`** returns a copy of a mesh wrapped in an `Image`. Every built-in generator emits the texture coordinates that decide where each part of the picture lands, and the checker above is chosen to make those readable: the squares stay square around the middle and narrow to slivers at the poles, which is what wrapping a flat rectangle onto a ball does and something you'll meet whenever you texture a sphere. A textured mesh still lights normally, so it takes materials and shadows like any other surface. Keep the `fill` white unless you want the image tinted, the same rule as a loaded model.
+
+Both are ordinary drawing state, saved by `withState`, so one frame holds all three treatments (the figure is a single render).
 
 ## A landscape you grow
 
@@ -387,7 +437,9 @@ The camera-on-an-orbit model is the shared convention of 3D tools everywhere, fr
 - [Camera control](../Docs/3D/Camera.md): `cameraShowcase`, the cinematic move catalog, view snaps, and the input surface underneath.
 - [Combining 3D features](../Docs/3D/Combining.md): the practical map of what stacks with what (which geometry takes materials, casts shadows, appears in reflections).
 - Lens and grounding effects: draw a 3D scene into a render target and its depth layer feeds Chapter 14's combine effects, `.defocus` for camera-like depth of field, `.ambientOcclusion` to darken contacts and crevices, `.screenSpaceReflections` for glossy floors on any Mac. See [Effects](../Docs/Drawing/Effects.md#combined) and the `3D/SceneDefocus` example.
-- Dressing a mesh in an image: [`Mesh.textured(_:)`](../Docs/3D/3D.md#textures) wraps any `Image` around a mesh through its texture coordinates.
+- [Shadows in full](../Docs/3D/3D.md#shadows): how each caster kind works, the soft-shadow quality dials, and the frustum fitting you never have to touch.
+- Textures and wireframes: [`Mesh.textured(_:)`](../Docs/3D/3D.md#textures) also takes a `baseColor` for tinting a shared texture, and [`Mesh.uvs`](../Docs/3D/3D.md) is where the coordinates live if you're generating your own geometry.
+- [The 26 built-in matcaps](../Docs/3D/3D.md#the-built-in-matcaps), listed by family, plus `Matcap.shaded` for baking one from a color.
 - [Terrain](../Docs/Generators/Terrain.md): building heightfields from noise or subdivision, every erosion knob, and reading a field out as a mesh, an image, or samples.
 - Worked examples: [`Examples/3D/Geometry/Solids`](../Examples/3D/Geometry/Solids/Sketch.swift), [`Examples/3D/Geometry/ShapeFactory`](../Examples/3D/Geometry/ShapeFactory/Sketch.swift), [`Examples/3D/Geometry/Transforms`](../Examples/3D/Geometry/Transforms/Sketch.swift), [`Examples/3D/Lighting/LightingPresets`](../Examples/3D/Lighting/LightingPresets/Sketch.swift), [`Examples/3D/Lighting/Shadows`](../Examples/3D/Lighting/Shadows/Sketch.swift), [`Examples/3D/Materials/Materials`](../Examples/3D/Materials/Materials/Sketch.swift), [`Examples/3D/Materials/Matcap`](../Examples/3D/Materials/Matcap/Sketch.swift), [`Examples/3D/Geometry/LoadedMesh`](../Examples/3D/Geometry/LoadedMesh/Sketch.swift), and [`Examples/3D/Geometry/Terrain`](../Examples/3D/Geometry/Terrain/Sketch.swift).
 

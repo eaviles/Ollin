@@ -156,7 +156,54 @@ There is still only one cluster, because the domain operator rewrites each query
 
 ## The finish
 
-A field shades like a mesh, so all of Chapter 17 applies: `material(.jade)` gives a melt its glow, `castShadows()` grounds it (a field even self-shadows, and trades shadows with the meshes around it), and an `environment(_:)` lights it from its surroundings (a bundled HDRI like `.studio` or `.sunset`, or the procedural `.sky(sunElevation:)`, which needs no asset at all). That last one is where the physically based materials from Chapter 17 come into their own. Under `environment(.studio)`, a `material(.dielectric(roughness: 0.07))` field picks up the studio's soft light strips as real reflections, and that's the glassy look this chapter ends on. An environment also paints itself behind the scene as a backdrop, so when you want your own `background(_:)` to show through instead, ask for `.lightingOnly()` and you keep the light without the picture.
+A field shades like a mesh, so all of Chapter 17 applies: `material(.jade)` gives a melt its glow, and `castShadows()` grounds it (a field even self-shadows, and trades shadows with the meshes around it). But there is one family of finishes Chapter 17 deliberately left for here, because it doesn't work without something this chapter's sculptures finally give it a reason to set up.
+
+### Two numbers for most real surfaces
+
+The materials in Chapter 17 were named looks: velvet, jade, toon. The **physically based** ones are different in kind. Instead of a name, you give two properties, and the renderer works out how light should behave:
+
+```swift
+material(.metal(roughness: 0.12))         // a metal, nearly polished
+material(.dielectric(roughness: 0.4))     // a non-metal, satin
+```
+
+**Metal or not** is the first question, and it's close to binary in the real world. Metals tint the light they reflect (gold reflects gold) and have no color of their own underneath. Everything else, called a *dielectric* (plastic, glass, skin, paint, stone), reflects white highlights and shows its own color through them. **Roughness** is the second, and it's the one you'll actually reach for: how scattered the reflection is, from `0` for a mirror to `1` for chalk.
+
+<img src="Images/18-SculptingWithFields/Roughness.jpg" alt="Five identical grey metal spheres in a row labeled 0.02, 0.15, 0.32, 0.6, and 1.0. The first is a dark mirror with a tiny sharp highlight, and each one after it has a broader, softer, paler highlight until the last is an almost flat matte grey" width="680">
+
+That is one material with one number changed. The leftmost sphere is a mirror, so what you see on it is mostly a reflection of the room it's standing in, which is why it's dark with one small bright highlight. As roughness grows, that reflection smears out into a wide sheen, and by `1.0` it has spread so far that the sphere just reads as its average brightness. `fill` still sets the color, exactly as before; roughness only decides how the surface handles light.
+
+There are ready-made ones for the common cases (`.brushedMetal`, `.polishedMetal`, `.plastic`), and they're all the same two properties underneath.
+
+### Surroundings as the light
+
+Here's the catch that makes this a Chapter 18 topic. A mirror reflects its surroundings, so **a physically based surface with no surroundings has almost nothing to work with** and goes dark and dull. Named lights don't fix it, because a point light is a point: it makes a highlight, not a reflection.
+
+What fixes it is an **environment**: a photograph of a whole place, wrapped around your scene as a sphere, used as the light.
+
+```swift
+environment(.sunset)
+material(.metal(roughness: 0.12))
+drawSDF3D(body)
+```
+
+<img src="Images/18-SculptingWithFields/EnvironmentSky.jpg" alt="A chrome blob of three fused lobes over a grey-blue floor under a clear pale blue sky, its whole surface reflecting soft sky gradients" width="680">
+
+<img src="Images/18-SculptingWithFields/EnvironmentSunset.jpg" alt="The same chrome blob in the same position, now under a warm evening HDRI of Venice. Ochre buildings and trees fill the background, and the buildings are clearly visible reflected in the left side of the blob" width="680">
+
+Those two images are the same field, the same material, the same camera, and the same floor. The only difference is one word. Look at the left flank of the second blob and you can read the buildings in it, which is the whole idea in one glance: the surroundings *are* the reflection, and they are also the light. The floor is lit by the sky in the first and by an ochre evening in the second, without a single light being placed.
+
+Twenty environments come curated. Eight of them (`.studio`, `.city`, `.courtyard`, `.forest`, `.interior`, `.night`, `.sunrise`, `.sunset`) are bundled, so they work offline and instantly; the other twelve download the first time you use one and cache from then on. They range enormously in real brightness, so each is exposed to a consistent level for you, and they pair well with `toneMap(.aces)` from Chapter 14 for a filmic rolloff on the highlights.
+
+The first image uses none of them. **`.sky(...)`** builds a daylight sky at runtime with nothing to load:
+
+```swift
+environment(.sky(sunElevation: 0.35))       // no asset, and the sun can move
+```
+
+It takes a sun elevation and a `turbidity` for how hazy the air is, and because it's computed rather than loaded, you can animate the sun and watch the whole scene's light follow. It's the one to reach for when you want good lighting and don't want to think about assets at all.
+
+Two knobs come up immediately in practice. An environment paints itself **behind** your scene as a backdrop, which is usually what you want, since the reflections then match what you can see. When you'd rather keep your own `background(_:)`, `.lightingOnly()` keeps the light and drops the picture. And `.backgroundBlur(_:)` softens just the backdrop, which pushes it back behind the subject; both figures above use a little.
 
 `SDF3D.plane()` is worth knowing about here too, since it's an infinite floor you can merge into the field for true horizon-to-horizon self-shadowing.
 
@@ -244,7 +291,9 @@ Distance fields as a drawing medium are the craft of the demoscene and Shadertoy
 
 - [SDF combinators](../Docs/Drawing/Combinators.md): the complete reference, including the machined joint family, gradient paint on merged fields, per-axis stretching, the infinite plane, and the quality dials.
 - [Combining 3D features](../Docs/3D/Combining.md): what fields take (materials, shadows, environments) and where they differ from meshes.
-- [3D](../Docs/3D/3D.md): the environments, physically based materials, and ray-traced reflections this chapter finishes with, covered in full.
+- [Environment lighting](../Docs/3D/3D.md#environment-lighting): all twenty curated environments listed by mood, which eight are bundled offline, `highRes` backdrops, loading your own `.exr` or `.hdr`, where downloads cache, and the full procedural-sky knobs.
+- [Physically based materials](../Docs/3D/3D.md): the metallic-roughness model in full, plus the ready-made metals and dielectrics and how they combine with the stylized finishes.
+- Worked examples for this section: [`Examples/3D/Materials/PhysicalMaterials`](../Examples/3D/Materials/PhysicalMaterials/Sketch.swift), [`Examples/3D/Environments/ImageBasedLighting`](../Examples/3D/Environments/ImageBasedLighting/Sketch.swift), [`EnvironmentGallery`](../Examples/3D/Environments/EnvironmentGallery/Sketch.swift) (steps through all twenty), and [`ProceduralSky`](../Examples/3D/Environments/ProceduralSky/Sketch.swift).
 - Worked examples: [`Examples/Shapes/Combinators`](../Examples/Shapes/Combinators/Sketch.swift) and [`CombinatorsGradient`](../Examples/Shapes/CombinatorsGradient/Sketch.swift) in 2D; in 3D, [`Examples/3D/Raymarching/RaymarchedSDF`](../Examples/3D/Raymarching/RaymarchedSDF/Sketch.swift), [`RaymarchedShapes`](../Examples/3D/Raymarching/RaymarchedShapes/Sketch.swift), [`RaymarchedSculpt`](../Examples/3D/Raymarching/RaymarchedSculpt/Sketch.swift), [`RaymarchedClay`](../Examples/3D/Raymarching/RaymarchedClay/Sketch.swift), [`RaymarchedDomain`](../Examples/3D/Raymarching/RaymarchedDomain/Sketch.swift), [`RaymarchedRadial`](../Examples/3D/Raymarching/RaymarchedRadial/Sketch.swift), [`RaymarchedPlane`](../Examples/3D/Raymarching/RaymarchedPlane/Sketch.swift), and [`RaymarchedEnvironment`](../Examples/3D/Raymarching/RaymarchedEnvironment/Sketch.swift).
 
 ---
