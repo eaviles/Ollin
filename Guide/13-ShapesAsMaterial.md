@@ -111,9 +111,113 @@ let circles = packCircles(count: 300, minRadius: 4, maxRadius: 120)
 
 The big-first, small-fill rhythm is the signature of the technique, and the finished foam feeds anything that eats circles or shapes. `packShapes` generalizes it to arbitrary shapes grown against each other's actual outlines (stars nest into triangle notches), and the `Patterns/ShapePacking` example runs it continuously, densifying forever.
 
-## The rubber band
+## What shape are these points?
 
-One last tool for point sets, new in the toolbox: `convexHull(of:)` returns the smallest convex polygon containing them all, the shape a rubber band would snap to. It's the quick answer to "what's the footprint of this scatter?", and since the corners come back in boundary order, the hull is instantly a `Contour` to stroke, offset, or fill. The `Shapes/RubberBand` example recomputes it live around a drifting herd.
+A scatter usually has an outline you need for something: the footprint of a drifting herd, the ground a blue-noise scatter covers, an outline to offset, hatch, or clip against. Three tools answer that question, and they differ in what each one is allowed to do.
+
+`convexHull(of:)` returns the smallest convex polygon containing every point, the shape a rubber band would snap to around a handful of pins. It is quick and it always comes back as one simple loop. It also can never dip inward, which is the limit as much as the strength, because a ring of points comes back as a filled blob. A rubber band has no way to reach into the middle.
+
+`concaveHull(of:concavity:)` lets the band sink into the gulfs between clusters while staying one simple polygon with every point inside it. The `concavity` knob runs `0...1`, where 0 gives you exactly the convex hull and 1 hugs the points as tightly as their spacing allows. Around 0.5 to 0.8 it reads as following the scatter; pushed near 1 it erodes every bridge it can and starts to look like a maze.
+
+`alphaShape(of:alpha:)` asks a different question, and it's the one that can say "these are two things". Picture rolling a disk of radius `alpha` over the points and keeping only the parts the disk can't get into. Nothing requires the answer to be a single piece, so a clustered scatter can come back as several islands, and a ring comes back as a ring.
+
+<img src="Images/13-ShapesAsMaterial/HullTrio.jpg" alt="Three panels over one scatter of a dotted ring plus a small offshore cluster: the convex hull as one taut band around everything, the concave hull dipping a channel toward the cluster, and the alpha shape resolving the ring's hole and the island separately" width="680">
+
+```swift
+let band = convexHull(of: scatter)                        // [Vector2]
+let snug = concaveHull(of: scatter, concavity: 0.65)      // [Vector2]
+let islands = alphaShape(of: scatter, alpha: 40)          // [Shape]
+```
+
+The two hulls hand back boundary points in order, so wrap them in a `Contour` or pass them straight to `drawPolygon`. The alpha shape hands back finished `Shape`s, holes included, ready for `drawShape` and for everything earlier in this chapter.
+
+Choosing between them comes down to what you'll do next. When the result has to be one simple polygon, because it's a plotter path or a region you'll offset, use a hull. When you want the honest footprint of a scatter that really is clumpy, use the alpha shape.
+
+The one number that needs care is `alpha`, which is a radius in the same units as your points. It wants to sit a bit above the typical gap between neighbors, and set much below that the shape crumbles into dust. All three are deterministic, so the same points and the same knob give the same outline every run. The `Shapes/Hulls` example breathes `concavity` from 0 to tight so you can watch the band sink into the gulf.
+
+## The skeleton inside
+
+Hulls describe a region from the outside. The **medial axis** describes it from the inside by finding its middle. Take every disk that fits within the shape while touching the boundary in two or more places, and the centers of those disks trace a skeleton. A blob collapses to the veins running down its lobes, and a letterform collapses to the stroke a pen would have made to write it.
+
+<img src="Images/13-ShapesAsMaterial/Skeleton.jpg" alt="Two panels of the same lobed blob: on the left its medial axis as branching lines down the middle of each lobe, on the right the inscribed disks those branches carry, each disk touching the outline" width="680">
+
+```swift
+let skeleton = medialAxis(of: blob, spacing: 3, prune: 8)
+noFill()
+for branch in skeleton.branches {
+    drawPolyline(branch.points, closed: branch.isClosed)
+}
+```
+
+Two knobs shape the result. `spacing` is how finely the boundary gets sampled, so smaller means a more faithful skeleton and more work, and halving it roughly quadruples the cost. `prune` trims whiskers, removing terminal twigs shorter than the value you give. You want some pruning almost always, because every convex corner of the outline honestly grows a twig, and a couple of spacings clears the fuzz while keeping the trunk. Branches come back as polylines, open runs between forks, or closed rings around holes, which is why `drawPolyline` takes `branch.isClosed`.
+
+What makes this more than a line drawing is that the skeleton remembers thickness. Each branch carries `radii` alongside `points`, one radius per vertex, holding the size of the disk that fits there. So the skeleton knows how fat the shape is at every step along itself. Walk a branch drawing a circle from each pair and you rebuild the region as a train of disks; size marks by the radius and a drawing swells through the thick parts and thins into the tips. The largest radius anywhere marks the deepest point of the shape, the spot furthest from any edge.
+
+Skeletons are setup work rather than per-frame work, so extract once and hold the result. Glyph shapes from Chapter 7's `textToShapes` skeletonize as they are, counters and all, which is what the `Shapes/MedialAxis` example does to spell a word in bones.
+
+## Ink on water
+
+Paper marbling has a few hundred years of craft behind it and a simple physical setup. Ink floats on a bath of thickened water, and because it floats instead of mixing, anything done to the surface moves the ink around without blending it. You drop fresh ink in, you rake the surface with a stylus or a comb, and you lay a sheet of paper on top to lift the pattern off.
+
+`Marbling` reproduces that in closed form, which means every move is an exact transform applied to outlines rather than a simulation of fluid. Ink regions are ordinary vector shapes, and each operation bends them. Because the outlines only ever deform, ink never tears and never mixes, exactly as on a real bath.
+
+<img src="Images/13-ShapesAsMaterial/MarblingSteps.jpg" alt="Four panels from one bull's-eye of alternating drops: the drops alone as concentric rings, a single stylus pulled down through them into a heart, a comb of teeth feathering them into a nonpareil, and an off-center vortex curling them" width="680">
+
+Nearly every classic pattern starts from the bull's-eye in the first panel, and a bull's-eye is just concentric drops of alternating color.
+
+```swift
+var bath = Marbling()
+for i in 0 ..< 20 {
+    bath.drop(at: center, radius: 200 - Double(i) * 9,
+              color: i.isMultiple(of: 2) ? navy : cream)
+}
+```
+
+A drop pushes every floating point straight away from its own center, sending a point at distance `d` out to `sqrt(d * d + r * r)`. That particular rule is the one that keeps the area around the drop unchanged, which is why earlier rings thin into crescents rather than getting wiped out. Since paper-colored ink displaces just like any other, dropping the color of your background carves negative space.
+
+Then you rake the bath. Four tools do it, and all of them share one rule for how the pull fades with distance. A point `d` away from the tool moves by `strength · 2^(−d / falloff)`, always parallel to the direction the tool traveled, so `strength` is how far the tool itself drags and `falloff` is the distance at which the pull halves.
+
+```swift
+bath.tine(through: center, direction: .unitY, strength: 120, falloff: 48)
+bath.comb(through: edge, direction: .unitY, spacing: 110, strength: 260, falloff: 30)
+bath.tine(around: center, radius: 200, strength: 300, falloff: 48)
+bath.swirl(at: center, strength: 400, falloff: 96)
+```
+
+`tine` pulls one stylus along a line, and that is the stroke that drags a bull's-eye into a heart. `comb` pulls a whole row of teeth spaced `spacing` apart, feathering rows of drops into the pattern marblers call nonpareil. Keep a comb's `falloff` well under its tooth spacing, because otherwise the teeth blur together into one broad shear. The circular `tine` drags the stylus around a ring, and `swirl` stirs a vortex that spins hardest at its middle, which is the tight curl at the heart of French-curl papers.
+
+Stirring a vortex at the exact center of a bull's-eye does nothing whatsoever, which is worth knowing before you spend an evening wondering why the swirl has no effect. Spinning a set of concentric circles about their shared center maps every circle onto itself. The fourth panel above is stirred slightly off-center, which is what a real hand would have done anyway.
+
+`bath.add(shape, color:)` floats an outline you already have, so text outlines can go into the bath and get combed with their counters intact. Nothing in here is random either, so the same operations always produce the same sheet. Randomize the drop positions with the sketch's seeded `random` and the whole paper still comes back from its seed.
+
+```swift
+noStroke()
+drawMarbling(bath)      // fills every ink in its own color, oldest first
+```
+
+Later drops sit above earlier ones and drawing runs oldest first, so the stack reads exactly as it was poured. Every ink is a plain `Shape`, which means a marbled sheet leaves through `--export-svg` as real paths like everything else in this chapter.
+
+## Pigment from a polygon
+
+Watercolor is the least geometric-looking thing in this chapter, and that is exactly why it belongs here. A pool of paint on wet paper has a dense middle and an edge that wanders, blooming in some places and staying crisp in others. Ollin gets that look from nothing but polygon deformation and translucency.
+
+Start with one irregular polygon. Split every edge at its midpoint, jump that midpoint a small random distance, and repeat. Each edge carries its own variance and passes a decayed share of it to the two edges it splits into, so some stretches of outline bloom while others stay nearly straight. That inheritance is what keeps the result from looking like a uniformly fuzzy circle. Paint one such outline at about four percent opacity and almost nothing shows. Stack forty independently deformed copies and the middle saturates while the fringe stays uneven, which is what the eye reads as pigment.
+
+<img src="Images/13-ShapesAsMaterial/WatercolorLayers.jpg" alt="Three panels: a plain ten-sided irregular polygon, one deformed layer of it painted at four percent opacity showing only a faint wandering outline, and forty layers stacked into a solid blue pool with a ragged fringe" width="560">
+
+One call does the whole thing:
+
+```swift
+fill(Color(hex: 0x2B5D8A))
+drawWatercolor(center: center, radius: 300)
+drawWatercolor(center: center, radius: 300, layers: 60, opacity: 0.03, variance: 40)
+```
+
+`layers` and `opacity` trade against each other, and more layers at a lower opacity looks smoother and wetter. If a blob reads thin and translucent everywhere, add layers rather than raising opacity, because the flat saturated core is most of what sells it as paint. `variance` sets how far the edge is free to wander, and it defaults to a fifth of the radius. All of it rides the sketch's seeded `random`, so `seed(_:)` reproduces a painting exactly and every variation pours a different one.
+
+This is deliberately heavy drawing, since each layer is a full concave fill. Paint in `setup()` or behind `noLoop()` rather than every frame. The cost is one reason, and the other is that regenerating every frame re-rolls the layers and makes the blob shimmer.
+
+Two moves are worth knowing once the basic pool works. For two pigments that mix instead of one covering the other, build a typed `Watercolor` base per pool and interleave their layers a few at a time, so overlaps glaze in both directions. And for the grainy look of pigment settling into paper, speckle small translucent circles inside a `withClip` of the pool's own outline.
 
 ## Lines for a pen
 
@@ -229,10 +333,13 @@ Then make it yours:
 - Give every third cell a solid fill instead of hatching, and the plate gains ink-block weight.
 - Swap the ribbon for text: Chapter 7's `textToShapes` returns shapes, and shapes are what everything here eats. Hatched letters parting a mosaic make a poster.
 - Work in three pens by hatching the cells nearest the ribbon in a middle color, picked by distance from the wave's points.
+- Give the plate a deckled edge: intersect every cell with `Shape(concaveHull(of: sites, concavity: 0.4))` instead of trimming to the margin rectangle, and the mosaic stops at the scatter's own outline.
+- Trade hatching for bones. Run `medialAxis` on each cell piece and stroke its branches, and the plate reads as a nervous system rather than a mosaic.
+- Float the ribbon instead of stroking it: `bath.add(ribbon, color:)` into a `Marbling`, comb it, and hatch the inks that come out. It still exports as plotter line work.
 
 ## Where this comes from
 
-The territories are named for Georgy Voronoy and the triangulation for Boris Delaunay, mathematicians a century apart from the generative artists who adopted them, and the settling pass is Stuart Lloyd's algorithm from 1957 signal processing. The dart-throwing scatter is Robert Bridson's 2007 fast Poisson-disk sampling. Grow-until-touching circle packing entered the generative canon through Jared Tarbell's work in the early 2000s. The shape booleans and offsets are powered by Angus Johnson's Clipper2 library, one of the few pieces of bundled code in Ollin (credited in full in the project notices). The convex hull uses A. M. Andrew's monotone-chain construction from 1979. And hatching itself is far older than any of this, since it's how engravers and etchers made tone from lines for centuries. The plotter just holds the pen steadier. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The territories are named for Georgy Voronoy and the triangulation for Boris Delaunay, mathematicians a century apart from the generative artists who adopted them, and the settling pass is Stuart Lloyd's algorithm from 1957 signal processing. The dart-throwing scatter is Robert Bridson's 2007 fast Poisson-disk sampling. Grow-until-touching circle packing entered the generative canon through Jared Tarbell's work in the early 2000s. The shape booleans and offsets are powered by Angus Johnson's Clipper2 library, one of the few pieces of bundled code in Ollin (credited in full in the project notices). The convex hull uses A. M. Andrew's monotone-chain construction from 1979, the concave hull is the characteristic-shape construction of Matt Duckham, Lars Kulik, Mike Worboys, and Antony Galton from 2008, and the alpha shape is Herbert Edelsbrunner, David Kirkpatrick, and Raimund Seidel's from 1983. The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe biological shape, approximated here by the Voronoi method of J. W. Brandt and V. R. Algazi. The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it, and the watercolor recipe is Tyler Hobbs', from his generous written guide to simulating paint with generative art. And hatching itself is far older than any of this, since it's how engravers and etchers made tone from lines for centuries. The plotter just holds the pen steadier. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -241,9 +348,13 @@ The territories are named for Georgy Voronoy and the triangulation for Boris Del
 - [Fourier epicycles](../Docs/Drawing/Epicycles.md): rebuild an imported outline as a chain of spinning circles, and the [`Examples/Motion/Epicycles`](../Examples/Motion/Epicycles/Sketch.swift) example traces a whale with them.
 - [Shape morphing](../Docs/Drawing/Morphing.md): tween one shape into another, with every in-between a real vector shape you can fill, hatch, or export. The [`Examples/Motion/Morphing`](../Examples/Motion/Morphing/Sketch.swift) example loops a star through a blob and a donut.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.
+- [Hulls](../Docs/Generators/Hulls.md): `concaveHull` and `alphaShape`, with the knob ranges that read well and the cost of each.
+- [Medial axis](../Docs/Generators/MedialAxis.md): the skeleton, the `Branch` type, and what the radii guarantee.
+- [Marbling](../Docs/Generators/Marbling.md): the bath, every raking tool, and floating your own outlines as ink.
+- [Watercolor](../Docs/Generators/Watercolor.md): the sugar, the typed base, and how the deformation actually runs.
 - [Blue noise](../Docs/Generators/BlueNoise.md) and [circle packing](../Docs/Generators/Packing.md) / [shape packing](../Docs/Generators/ShapePacking.md).
 - [Export](../Docs/Output/Export.md): the whole `--export-svg` and `--hatch` surface, plus stills, sequences, video, and GIF.
-- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Shapes/RubberBand`](../Examples/Shapes/RubberBand/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), and [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift).
+- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Shapes/RubberBand`](../Examples/Shapes/RubberBand/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), and [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift).
 
 ---
 

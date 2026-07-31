@@ -55,7 +55,7 @@ land.eroded(.hydraulic(drops: 100_000, inertia: 0.1, radius: 4), seed: 7)
 
 What turns "noise" into "landscape": tens of thousands of simulated raindrops, each landing at a random point and rolling downhill, picking up sediment while it runs fast and full and laying it down as it slows or dries. Ravines deepen where drops agree, sediment fans build below them, and the result carries the drainage language of real rain on real slopes. This is the particle (droplet) method, implemented from the published technique.
 
-The knobs, roughly in order of how much they change the look: `drops` (how much history rains on the terrain), `inertia` (0 hugs every wrinkle into dense fine ravines, higher plows straighter), `capacity` (how hard each drop can carve), `radius` (the brush a drop erodes with: 1 cuts wire-thin, 3–4 reads natural), `deposition`/`erosion` (how eagerly sediment drops out and gets picked up), `evaporation` (how long a drop's reach lasts), plus `minSlope`, `gravity`, and `maxSteps`. Determinism is exact per seed; heights clamp at 0 so border runoff can't dig unbounded drains.
+The knobs, roughly in order of how much they change the look: `drops` (how much history rains on the terrain), `inertia` (0 hugs every wrinkle into dense fine ravines, higher plows straighter), `capacity` (how hard each drop can carve), `radius` (the brush a drop erodes with: 1 cuts wire-thin, 3 to 4 reads natural), `deposition`/`erosion` (how eagerly sediment drops out and gets picked up), `evaporation` (how long a drop's reach lasts), plus `minSlope`, `gravity`, and `maxSteps`. Determinism is exact per seed; heights clamp at 0 so border runoff can't dig unbounded drains.
 
 <a name="thermal"></a>
 
@@ -94,7 +94,7 @@ let contours = isolines(at: levels, in: sheet, resolution: 220) { p in
 #### Practical notes
 
 - **Erode once, in `setup()`.** A big erosion pass is real work (tens of thousands of drops each walking dozens of steps); generate and weather the field once, keep the mesh, and redraw that. The `weathered` toggle in the example precomputes both meshes for instant flipping.
-- **Resolution before drops.** 257² erodes convincingly with 50–70k drops; doubling the grid wants roughly 4× the drops to reach the same texture.
+- **Resolution before drops.** 257² erodes convincingly with 50 to 70k drops; doubling the grid wants roughly 4× the drops to reach the same texture.
 - **Hydraulic then thermal.** Rain first (it needs the sharp relief to carve), gravity second (it settles what the rain left too steep). Thermal alone is also the cheap way to age any spiky field.
 - **Mass is honest.** Thermal conserves material exactly; hydraulic can only lose it (drops carry sediment off the map's edge), so repeated passes lower the extremes rather than inventing height. Renormalize with `normalized()` if a long weathering chain should span `0…1` again.
 - **Not a per-frame simulation.** `Heightfield` is setup-shaped CPU geometry, like the [painterly tools](Marbling.md). For live evolving surfaces, the GPU [`Sim` fields](../Drawing/Effects.md#simfield) are the right substrate.

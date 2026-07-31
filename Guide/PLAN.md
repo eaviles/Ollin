@@ -271,10 +271,10 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/SingleLine.md` (`singleLine`, the TSP tour) | Appendix D (Ch 7 when it grows) | pointed |
 | `Generators/SpanningTree.md` (`spanningTree`, the MST rendering) | Appendix D (Ch 7 when it grows) | pointed |
 | `Generators/Isolines.md` (`isolines`, marching-squares level curves) | Appendix D (Ch 5 when it grows) | pointed |
-| `Generators/Hulls.md` (`concaveHull` / `alphaShape`) | Appendix D (Ch 13 when it grows) | pointed |
-| `Generators/MedialAxis.md` (`medialAxis`, skeletons with radii) | Appendix D (Ch 13 when it grows) | pointed |
-| `Generators/Marbling.md` (`Marbling`, closed-form paper marbling) | Appendix D (Ch 13 when it grows) | pointed |
-| `Generators/Watercolor.md` (`Watercolor` / `drawWatercolor`, layered deformation) | Appendix D (Ch 13 when it grows) | pointed |
+| `Generators/Hulls.md` (`concaveHull` / `alphaShape`) | Ch 13 | taught ("What shape are these points?" with a three-panel figure over one scatter: convex vs concave vs alpha, the `concavity` and `alpha` ranges that read well, and which to reach for by what happens next) |
+| `Generators/MedialAxis.md` (`medialAxis`, skeletons with radii) | Ch 13 | taught ("The skeleton inside" with a two-panel figure: branches and the inscribed disks, `spacing`/`prune` explained, `isClosed` rings, and what the radii are good for) |
+| `Generators/Marbling.md` (`Marbling`, closed-form paper marbling) | Ch 13 | taught ("Ink on water" with a four-panel figure: the bull's-eye of drops, the area-preserving push, the shared falloff law, all four raking tools, `add`, and the concentric-swirl no-op) |
+| `Generators/Watercolor.md` (`Watercolor` / `drawWatercolor`, layered deformation) | Ch 13 | taught ("Pigment from a polygon" with a three-panel figure: the starting polygon, one 4% layer, forty stacked; layers-vs-opacity, `variance`, the paint-once rule, and interleaving two pigments) |
 | `Generators/Chladni.md` (`chladni` field + `.chladni` generator, mode-by-pitch audio join) | Appendix D (Ch 16 when it grows; the audio join Ch 20) | pointed |
 | `Generators/Terrain.md` (`Heightfield`, diamond-square, hydraulic + thermal erosion, terrain meshes) | Appendix D (Ch 17 when it grows) | pointed |
 | `.ripples` wave-equation Sim (`Drawing/Effects.md`) | Appendix D (Ch 16 when it grows) | pointed |

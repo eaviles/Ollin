@@ -79,6 +79,8 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Fourier epicycles | Rebuild any closed outline as a chain of spinning circles, term count as the detail dial | [Ch 13](13-ShapesAsMaterial.md) | [Epicycles](../Docs/Drawing/Epicycles.md) |
 | Classic curves | Phyllotaxis, Lissajous figures, roses, the spirograph gears, the harmonograph, and Chaikin corner-cut smoothing, all closed forms with no randomness | here | [Classic curves](../Docs/Drawing/Curves.md) |
 | Shape morphing | Tween one shape into another; holes grow in and out, and every in-between is real geometry | [Ch 13](13-ShapesAsMaterial.md) | [Morphing](../Docs/Drawing/Morphing.md) |
+| Paper marbling | Ink floated on a bath and raked: drops, tines, combs, and vortices, all exact transforms of vector outlines | [Ch 13](13-ShapesAsMaterial.md) | [Marbling](../Docs/Generators/Marbling.md) |
+| Watercolor | Pigment from one polygon deformed and stacked at low opacity: dense cores, uneven blooming edges | [Ch 13](13-ShapesAsMaterial.md) | [Watercolor](../Docs/Generators/Watercolor.md) |
 | Convex hull | The rubber band around a point set | [Ch 13](13-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | Voronoi and Delaunay | Territories and neighbor networks from points, with Lloyd relaxation | [Ch 13](13-ShapesAsMaterial.md) | [Voronoi](../Docs/Drawing/Voronoi.md) |
 
@@ -105,8 +107,8 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Single-line drawing | One unbroken tour through a stipple: the picture as a single closed line (TSP art) | here | [SingleLine](../Docs/Generators/SingleLine.md) |
 | Spanning-tree drawing | The same stipple joined by the minimum spanning tree: the picture as branching veins | here | [SpanningTree](../Docs/Generators/SpanningTree.md) |
 | Isolines | Level curves of any field or an image's tone (marching squares): metaball outlines, contour maps | here | [Isolines](../Docs/Generators/Isolines.md) |
-| Hulls | The tighter wraps around a scatter: the concave hull (one gulf-hugging simple polygon) and the alpha shape (islands and holes) | here | [Hulls](../Docs/Generators/Hulls.md) |
-| Medial axis | A shape reduced to its skeleton, every point carrying its inscribed-disk radius | here | [MedialAxis](../Docs/Generators/MedialAxis.md) |
+| Hulls | The tighter wraps around a scatter: the concave hull (one gulf-hugging simple polygon) and the alpha shape (islands and holes) | [Ch 13](13-ShapesAsMaterial.md) | [Hulls](../Docs/Generators/Hulls.md) |
+| Medial axis | A shape reduced to its skeleton, every point carrying its inscribed-disk radius | [Ch 13](13-ShapesAsMaterial.md) | [MedialAxis](../Docs/Generators/MedialAxis.md) |
 | Random walks | The walk family: the local tangle, the Lévy cluster-and-leap, the self-avoiding single stroke | [Ch 4](04-Randomness.md) | [Walks](../Docs/Generators/Walks.md) |
 | Circle packing | Grow-to-touch packings, seeded and reproducible | [Ch 13](13-ShapesAsMaterial.md) | [Packing](../Docs/Generators/Packing.md) |
 | Shape packing | Packing that nestles arbitrary outlines into notches and gaps | [Ch 13](13-ShapesAsMaterial.md) | [ShapePacking](../Docs/Generators/ShapePacking.md) |
