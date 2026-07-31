@@ -176,6 +176,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 |---|---|---|---|
 | The camera | `camera()`, `perspective`, `ortho`; 2D sketches never pay for it | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
 | Solid primitives | Box, sphere, torus, knots, Platonic solids, lathes, extrusions, and more | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
+| Terrain | `Heightfield`: landscapes grown from noise or diamond-square, weathered by simulated rain and gravity, read out as a mesh, an image, or samples | [Ch 17](17-3DGently.md) | [Terrain](../Docs/Generators/Terrain.md) |
 | Meshes from file | OBJ, glTF, USDZ, STL, PLY, with materials and textures | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
 | Lights | Directional, point, spot, ambient, plus curated lighting presets | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
 | Materials | Stylized finishes (toon, iridescent, velvet, sparkle) and physically based metal and gloss | [Ch 17](17-3DGently.md), [Ch 18](18-SculptingWithFields.md) | [3D](../Docs/3D/3D.md) |

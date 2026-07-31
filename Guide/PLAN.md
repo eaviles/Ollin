@@ -169,7 +169,7 @@ Draws from: `Docs/Shaders/Compute.md`, `Docs/Drawing/Effects.md` (sim fields); `
 ### Part IV: The third dimension
 
 **17. 3D, gently.**
-Teaches: the camera as an orbiting eye (`cameraShowcase`, drag to look); depth; solid primitives; the 3D transform stack; lights and materials by playing (presets, then individual lights); matcap as "shading from a picture"; loading a mesh; casting shadows; the scene-inspection views.
+Teaches: the camera as an orbiting eye (`cameraShowcase`, drag to look); depth; solid primitives; the 3D transform stack; lights and materials by playing (presets, then individual lights); matcap as "shading from a picture"; loading a mesh; growing a landscape (`Heightfield`, diamond-square, hydraulic and thermal erosion, the three read-outs); casting shadows; the scene-inspection views.
 Assumes: Part I; Ch 8 (vectors; `Vector3` is introduced as "the same, plus z").
 Payoff: a rotating sculptural scene the viewer can orbit.
 Figures: camera-orbit diagram; primitive catalog sheet; lighting-preset contact sheet; material sweep; the scene.
@@ -276,7 +276,7 @@ The guarantee that the Guide gives awareness of everything Ollin ships. One row 
 | `Generators/Marbling.md` (`Marbling`, closed-form paper marbling) | Ch 13 | taught ("Ink on water" with a four-panel figure: the bull's-eye of drops, the area-preserving push, the shared falloff law, all four raking tools, `add`, and the concentric-swirl no-op) |
 | `Generators/Watercolor.md` (`Watercolor` / `drawWatercolor`, layered deformation) | Ch 13 | taught ("Pigment from a polygon" with a three-panel figure: the starting polygon, one 4% layer, forty stacked; layers-vs-opacity, `variance`, the paint-once rule, and interleaving two pigments) |
 | `Generators/Chladni.md` (`chladni` field + `.chladni` generator, mode-by-pitch audio join) | Ch 16 | taught ("Standing waves" with a six-mode figure: the closed form and plate coordinates, sand settling at the zero crossing, the m == n degeneracy, fractional modes for morphing, both generator styles, and the Ch 20 audio join pointed) |
-| `Generators/Terrain.md` (`Heightfield`, diamond-square, hydraulic + thermal erosion, terrain meshes) | Appendix D (Ch 17 when it grows) | pointed |
+| `Generators/Terrain.md` (`Heightfield`, diamond-square, hydraulic + thermal erosion, terrain meshes) | Ch 17 | taught ("A landscape you grow" with a three-stage erosion figure and a lit mesh: the closure and diamond-square builders, `roughness`, why rain is what makes noise read as land, thermal talus settling, the three read-outs, and the erode-in-setup rule) |
 | `.ripples` wave-equation Sim (`Drawing/Effects.md`) | Ch 16 | taught ("A pool you can drop things into" with a figure: marks add height rather than set it, the soft-dab and brief-drop rules and why, `damping`, and the raw state as a debug view to shade with `.relight`) |
 | `Drawing/GlyphMosaic.md` (`drawGlyphMosaic`, measured glyph ramps) | Ch 7 | taught ("A picture as marks" with a two-panel figure: measured ink per font, the curated sets, `glyphScale` gutters, the data form, and the inverted-polarity trap it shares with halftone) |
 | `Drawing/PixelSorting.md` (`Image.pixelSorted`) | Ch 7 | taught ("Sorting the pixels" with a before/after figure: the threshold as the whole technique, the keys, and the needs-texture and reversed-on-a-gradient caveats) |
