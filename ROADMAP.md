@@ -39,7 +39,6 @@ A tier of classic generative-art building blocks that emit vector geometry (poin
 - **Tiling and layout.** Aperiodic tilings (Penrose, Wang, Islamic / girih star patterns) and force-directed graph layout, beside the Wave Function Collapse and Truchet builders in [generative geometry](#generative-geometry).
 - **Meshing and surfaces.** Marching cubes (turn a scalar field, metaballs, or a point cloud into a mesh), metaballs and implicit surfaces, and subdivision-surface smoothing (Catmull-Clark / Loop); these route to [3D mode](#3d-mode).
 - **Computational geometry.** The straight skeleton (the mitered-offset roof-line relative of the medial axis), feeding the shape booleans, hatching, and plotter paths.
-- **Painterly marks.** Generative watercolor (recursive polygon deformation under layered translucency, the recipe the [brush tier](#expressive-brushes-and-strokes) deliberately leaves to this catalog) and mathematical paper marbling (closed-form drop and tine-line transforms, pure contour deformation, so it stays vector and plotter-clean).
 
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 

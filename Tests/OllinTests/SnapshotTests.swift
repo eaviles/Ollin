@@ -292,6 +292,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("medial-axis",
                  note: "A wobbly blob with an off-center hole reduced to its skeleton: branches stroked over the faint outline, a closed ring around the hole, and inscribed circles riding the carried radii. Pins the Voronoi-subcomplex extraction (ring-neighbor filter and inside test), the twig pruning, and the branch decomposition with its canonical ordering. Seeded, no time, so it is deterministic.",
                  make: { MedialAxisScene() }),
+    SnapshotCase("marbling",
+                 note: "A marbled paper built from fixed operations: a two-ink bull's-eye combed downward into feathers, a stylus pull, and a small vortex. Pins every closed-form transform (the area-preserving drop, the tine/comb falloff law, the swirl rotation), the stretch-driven outline refinement, and drawMarbling's oldest-first stacking. No rng and no time, so it is deterministic.",
+                 make: { MarblingScene() }),
+    SnapshotCase("watercolor",
+                 note: "Two overlapping watercolor pools, layers interleaved so the overlap glazes both ways. Pins the recursive midpoint deformation (Gaussian jumps, inherited decaying variance, the detail floor), the shared-base layering, and the non-zero-wound layer fill (even-odd would cut pinholes where a layer self-crosses). Seeded through a local SplitMix64 in setup, no time, so it is deterministic.",
+                 make: { WatercolorScene() }),
     SnapshotCase("glyph-mosaic",
                  note: "A painted diagonal gradient with a bright disk, rebuilt as a glyph mosaic in the bundled bitmap font: dense marks in the bright corner and around the disk, a lone dot at the faint edge, true emptiness below the floor. Pins the measured ink ramp, the nearest-coverage selection, the empty floor, and the cell layout. No rng and no time, so it is deterministic.",
                  make: { GlyphMosaicScene() }),
@@ -1342,6 +1348,71 @@ private final class MedialAxisScene: Sketch {
             where pair.1 > 5 && i % 5 == 0 {
                 drawCircle(center: pair.0, radius: pair.1)
             }
+        }
+    }
+}
+
+/// A marbled paper from fixed operations (no rng): bull's-eye drops, a comb,
+/// a tine pull, and a vortex. No `time`, so it's deterministic.
+private final class MarblingScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var bath = Marbling()
+
+    override func setup() {
+        bath = Marbling(spacing: 2)
+        let eye = Vector2(118, 122)
+        for ring in 0 ..< 8 {
+            bath.drop(at: eye, radius: 100 - Double(ring) * 12,
+                      color: ring.isMultiple(of: 2)
+                          ? Color(hex: 0x1F2A44) : Color(hex: 0xEFE7D6))
+        }
+        bath.drop(at: Vector2(205, 60), radius: 26, color: Color(hex: 0xA43B2A))
+        bath.drop(at: Vector2(60, 205), radius: 22, color: Color(hex: 0xC8912F))
+        bath.comb(through: Vector2(0, 128), direction: .unitY,
+                  spacing: 48, strength: 60, falloff: 12)
+        bath.tine(through: Vector2(128, 0), direction: Vector2(0.2, 1),
+                  strength: 40, falloff: 24)
+        bath.swirl(at: Vector2(178, 178), strength: 140, falloff: 44)
+    }
+
+    override func draw() {
+        background(Color(hex: 0xEFE7D6))
+        noStroke()
+        drawMarbling(bath)
+    }
+}
+
+/// Two overlapping watercolor pools with interleaved layers, seeded through
+/// a local generator in `setup()`. No `time`, so it's deterministic.
+private final class WatercolorScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var sheets: [(Shape, Color)] = []
+
+    override func setup() {
+        var rng = SplitMix64(seed: 11)
+        let pools = [
+            (Watercolor(around: Vector2(108, 112), radius: 62, using: &rng),
+             Color(hex: 0x2B5D8A)),
+            (Watercolor(around: Vector2(152, 148), radius: 54, using: &rng),
+             Color(hex: 0xB0413E)),
+        ]
+        sheets = []
+        for _ in 0 ..< 7 {
+            for (pool, color) in pools {
+                for _ in 0 ..< 2 {
+                    sheets.append((pool.layerShape(using: &rng),
+                                   color.withAlpha(0.07)))
+                }
+            }
+        }
+    }
+
+    override func draw() {
+        background(Color(hex: 0xF7F3E8))
+        noStroke()
+        for (shape, color) in sheets {
+            fill(color)
+            drawShape(shape)
         }
     }
 }

@@ -1805,6 +1805,68 @@ points, and skeleton branches orient and sort by their endpoints. Examples
 (letterform skeletons with rolling inscribed disks); snapshots
 `concave-hull` / `medial-axis`; `HullTests` / `MedialAxisTests`.
 
+### Painterly marks: marbling and watercolor
+
+`Geometry/Marbling.swift` is mathematical paper marbling in Jaffer's
+closed-form model (the Lu-Jaffer-Jin-Zhao-Mao formulation): a `Marbling`
+bath is an ordered stack of `MarbledInk`s (a fillable `Shape` plus a
+color; a value type, so a copied bath forks its history), and every
+operation is one exact point transform run over every outline. `drop`
+displaces each point at distance `d` from the center to `√(d² + r²)`
+(the area-preserving displacement; the `d → 0` limit lands on the new
+rim, direction picked deterministically) and then appends the new disk,
+polygonized at the bath's `spacing`. The stylus family shares one falloff
+law, displacement `strength · 2^(−d/falloff)` parallel to the tool's
+motion: the straight tine takes `d` from the line, the comb from the
+nearest tooth (`offset − round(offset/teeth)·teeth`), and the two
+rotational tools (circular tine, `swirl`) convert the same decayed length
+into an arc about the center, which is why both preserve each point's
+radius exactly. The exponential form is Jaffer's `z·uᵈ` with the base
+reparameterized so `falloff` reads as a half-distance in canvas units.
+
+Refinement is what keeps stretched outlines smooth, and its direction
+matters: segments subdivide at **pre-transform** midpoints while the
+*transformed* span exceeds `spacing` (depth-capped, with a source-length
+floor so a drop centered on an outline can't recurse forever), so every
+inserted point lies exactly on the transformed curve; refining after the
+fact could never recover a fold. Since the transforms are homeomorphisms
+the outlines never self-cross, `add(_:color:)` floats arbitrary
+shapes (holes intact, so glyph counters survive), and the whole bath is
+rng-free and deterministic. Cost note: points accumulate per operation,
+so a bath is setup-shaped work redrawn from the held value.
+
+`Geometry/Watercolor.swift` is the generative-watercolor recipe (the
+Hobbs formulation): recursive midpoint subdivision where each edge splits
+at its midpoint, the midpoint jumps by an isotropic Gaussian scaled by
+that edge's own variance, children inherit `0.4...0.8` of it, and the
+starting edges draw jittered (`0.2...1.8`) shares of the base variance,
+which is what gives one blob crisp stretches beside blooming ones. The
+`Watercolor` value is the *base*: an irregular polygon pushed through the
+shared rounds once, held immutable, with every `layer` deforming a copy a
+few rounds further so all layers agree at the core and differ at the
+fringe. Two decisions proved load-bearing: layers must fill through
+`layerShape` / the `drawShape` route with **non-zero winding**, because
+the deformed outline self-crosses and even-odd cuts white pinholes while
+a triangle-fan `drawPolygon` fill shatters the concave outline into
+radial spokes (both real first-render bugs); and the `detail` floor
+(edges below it stop subdividing) bounds a layer's point count no matter
+the round count, which took the first full-sheet render from ~40 s to
+seconds with no visible change (sub-pixel splits are invisible). The
+Gaussian is a stateless Box-Muller over the generic rng so the draw count
+per call is fixed and a seed reproduces exactly. The `drawWatercolor`
+sugar dilutes the current solid fill color to the per-layer opacity and
+stacks layers via the sketch's own rng; painting is deliberately
+setup-shaped (every layer is a full concave fill).
+
+Examples `Patterns/Marbling` (bull's-eyes, nonpareil combs, a vortex;
+click drops, drag pulls a stylus) and `Shapes/Watercolor` (three
+interleaved pigment pools glazing where they overlap, a clipped speckle
+for granulating texture, `noLoop`); snapshots `marbling` / `watercolor`;
+`MarblingTests` (exact-displacement, falloff, radius-preservation, and
+refinement-bound checks) / `WatercolorTests`. Docs
+`Docs/Generators/Marbling.md` / `Watercolor.md`; technique credits in
+`ATTRIBUTION.md` (Jaffer / Lu et al.; Hobbs).
+
 ### Random walks
 
 `Geometry/Walks.swift`. `randomWalk(from:steps:stepLength:)` is isotropic.
