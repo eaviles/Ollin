@@ -13,6 +13,7 @@
 - [`Single line`](./SingleLine.md) - `singleLine`, one continuous tour through an image's stipple (TSP art), a plotter-friendly `Contour`
 - [`Spanning tree`](./SpanningTree.md) - `spanningTree`, the minimum spanning tree of an image's stipple: the branching, vein-like sibling of the single line
 - [`Isolines`](./Isolines.md) - `isolines`, level curves of any scalar field or an image's tone by marching squares, from metaball outlines to contour maps
+- [`Isosurfaces`](./Isosurface.md) - `isosurface` / `Metaballs`, the surface where a field over space crosses a level, marched into a `Mesh`: soft spheres that fuse, noise volumes, gyroids
 - [`Hulls`](./Hulls.md) - `concaveHull` / `alphaShape`, the tighter answers to "what shape are these points?": one gulf-hugging simple polygon, or the scatter's true footprint with islands and holes
 - [`Medial axis`](./MedialAxis.md) - `medialAxis`, a shape reduced to its skeleton, every point carrying its inscribed-disk radius
 - [`Marbling`](./Marbling.md) - `Marbling` / `drawMarbling`, paper marbling in closed form: drops, tines, combs, and swirls raking vector ink outlines into feathered papers

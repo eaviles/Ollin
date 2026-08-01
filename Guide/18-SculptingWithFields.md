@@ -117,6 +117,32 @@ The hops shrink as the ray nears a surface (watch them tighten as the ray passes
 
 You get all of this without writing any of it. The one practical knob is `raymarchQuality(_:)`. Tracing costs by the pixel, so the live window traces at a resolution budget by default while exports always render at full quality. If a heavy field stutters while you sketch, `raymarchQuality(.performance)` loosens that budget further.
 
+## The other way out
+
+Everything so far turns a field into pixels. Sometimes you want it to turn into an object instead.
+
+`isosurface` walks a grid of cubes through space, asks the field for a value at every cube corner, and stitches the crossings into triangles. What comes back is an ordinary `Mesh`, so it lights, takes materials and shadows, and exports like anything else you draw.
+
+The field worth reaching for first is `Metaballs`: soft spheres whose values add up.
+
+```swift
+var blobs = Metaballs()
+blobs.add(at: Vector3(-0.9, 0.25, 0), radius: 0.62)
+blobs.add(at: Vector3(0.5, -0.2, 0.15), radius: 0.52)
+blobs.add(at: Vector3(1.4, 0.45, -0.2), radius: 0.40)
+drawMesh(blobs.mesh())
+```
+
+<img src="Images/18-SculptingWithFields/FieldToMesh.jpg" alt="Two panels: a chain of three pale blobs fused by smooth necks, and the same form again as a light blue wireframe showing the triangles it is made of" width="680">
+
+`radius` is the size a ball reads at on its own. Put two within reach of each other and the values in the gap add up to more than either one makes there, so the surface swells across it and the pair runs together. Move them apart and the bridge necks down and snaps. `level` is the value the surface is drawn at, so lowering it fattens everything and makes blobs merge from further away, and raising it thins them until they separate. A negative `strength` carves into a neighbour instead of joining it.
+
+The right panel is that same form with `wireframe()` on, marched deliberately coarse so the cells show. The left one is the same coarse mesh, and it still looks smooth, because the shading normals come from the field rather than from the flat faces.
+
+Any field works here, not just metaballs. The one thing to know is which side it treats as solid: the surface wraps the region where the field runs *above* the level, so a distance function, which is negative inside, needs a minus sign in front of it.
+
+So there are two ways out of a field, and they cost differently. `drawSDF3D` shades straight to pixels and pays by the pixel; `isosurface` makes geometry and pays by the volume, cubically in `resolution`. Reach for the mesh when you need a real object, and for the traced field when you just want it on screen.
+
 ## Sculpting like clay
 
 For forms you build up rather than compose, the `sculpt { }` block turns the operators into working state. Shapes `add()` on or `carve()` away, melting by the current `blend(_:)` amount, and the block reads top to bottom like a session at a potter's wheel:
@@ -290,10 +316,12 @@ Distance fields as a drawing medium are the craft of the demoscene and Shadertoy
 ## Go deeper
 
 - [SDF combinators](../Docs/Drawing/Combinators.md): the complete reference, including the machined joint family, gradient paint on merged fields, per-axis stretching, the infinite plane, and the quality dials.
+- [Isosurfaces and metaballs](../Docs/Generators/Isosurface.md): the mesh route in full, including all three merge knobs, how the marching handles the faces that could be joined two ways, and the resolution and cost rules.
 - [Combining 3D features](../Docs/3D/Combining.md): what fields take (materials, shadows, environments) and where they differ from meshes.
 - [Environment lighting](../Docs/3D/3D.md#environment-lighting): all twenty curated environments listed by mood, which eight are bundled offline, `highRes` backdrops, loading your own `.exr` or `.hdr`, where downloads cache, and the full procedural-sky knobs.
 - [Physically based materials](../Docs/3D/3D.md): the metallic-roughness model in full, plus the ready-made metals and dielectrics and how they combine with the stylized finishes.
 - Worked examples for this section: [`Examples/3D/Materials/PhysicalMaterials`](../Examples/3D/Materials/PhysicalMaterials/Sketch.swift), [`Examples/3D/Environments/ImageBasedLighting`](../Examples/3D/Environments/ImageBasedLighting/Sketch.swift), [`EnvironmentGallery`](../Examples/3D/Environments/EnvironmentGallery/Sketch.swift) (steps through all twenty), and [`ProceduralSky`](../Examples/3D/Environments/ProceduralSky/Sketch.swift).
+- Worked example for the mesh route: [`Examples/3D/Geometry/Metaballs`](../Examples/3D/Geometry/Metaballs/Sketch.swift), a cluster that keeps fusing and parting, with the merge level and the grid detail on knobs.
 - Worked examples: [`Examples/Shapes/Combinators`](../Examples/Shapes/Combinators/Sketch.swift) and [`CombinatorsGradient`](../Examples/Shapes/CombinatorsGradient/Sketch.swift) in 2D; in 3D, [`Examples/3D/Raymarching/RaymarchedSDF`](../Examples/3D/Raymarching/RaymarchedSDF/Sketch.swift), [`RaymarchedShapes`](../Examples/3D/Raymarching/RaymarchedShapes/Sketch.swift), [`RaymarchedSculpt`](../Examples/3D/Raymarching/RaymarchedSculpt/Sketch.swift), [`RaymarchedClay`](../Examples/3D/Raymarching/RaymarchedClay/Sketch.swift), [`RaymarchedDomain`](../Examples/3D/Raymarching/RaymarchedDomain/Sketch.swift), [`RaymarchedRadial`](../Examples/3D/Raymarching/RaymarchedRadial/Sketch.swift), [`RaymarchedPlane`](../Examples/3D/Raymarching/RaymarchedPlane/Sketch.swift), and [`RaymarchedEnvironment`](../Examples/3D/Raymarching/RaymarchedEnvironment/Sketch.swift).
 
 ---

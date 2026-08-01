@@ -536,6 +536,7 @@ let package = Package(
         example("3D/Geometry/LoadedMesh", resources: [.copy("model.gltf"), .copy("model.obj")]),
         example("3D/Geometry/ShapeFactory"),
         example("3D/Geometry/Terrain"),
+        example("3D/Geometry/Metaballs"),
         example("3D/Camera/CameraControl"),
         example("3D/Camera/CameraMoves"),
         example("3D/Camera/SceneViews"),

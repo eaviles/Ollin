@@ -109,6 +109,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Single-line drawing | One unbroken tour through a stipple: the picture as a single closed line (TSP art) | [Ch 7](07-WordsAndPictures.md) | [SingleLine](../Docs/Generators/SingleLine.md) |
 | Spanning-tree drawing | The same stipple joined by the minimum spanning tree: the picture as branching veins | [Ch 7](07-WordsAndPictures.md) | [SpanningTree](../Docs/Generators/SpanningTree.md) |
 | Isolines | Level curves of any field or an image's tone (marching squares): metaball outlines, contour maps | [Ch 12](12-FieldsAndFlow.md) | [Isolines](../Docs/Generators/Isolines.md) |
+| Isosurfaces and metaballs | The surface where a field over space crosses a level, marched into a `Mesh` (marching cubes): soft spheres that fuse, noise volumes, gyroids | [Ch 18](18-SculptingWithFields.md) | [Isosurfaces](../Docs/Generators/Isosurface.md) |
 | Hulls | The tighter wraps around a scatter: the concave hull (one gulf-hugging simple polygon) and the alpha shape (islands and holes) | [Ch 13](13-ShapesAsMaterial.md) | [Hulls](../Docs/Generators/Hulls.md) |
 | Medial axis | A shape reduced to its skeleton, every point carrying its inscribed-disk radius | [Ch 13](13-ShapesAsMaterial.md) | [MedialAxis](../Docs/Generators/MedialAxis.md) |
 | Random walks | The walk family: the local tangle, the Lévy cluster-and-leap, the self-avoiding single stroke | [Ch 4](04-Randomness.md) | [Walks](../Docs/Generators/Walks.md) |

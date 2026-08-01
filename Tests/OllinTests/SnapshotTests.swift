@@ -188,6 +188,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("terrain-3d",
                  note: "A small seeded diamond-square heightfield eroded hydraulically and thermally, emitted as a height-textured mesh under a fixed camera (no time; all randomness seeded). Pins the whole Heightfield chain: the subdivision generator, the droplet erosion (steering, capacity, brush take, bilinear deposit), the thermal relaxation, the mesh emission (positions, smooth normals, winding, UVs), and the height-ramp texture mapping.",
                  make: { TerrainScene() }),
+    SnapshotCase("metaballs",
+                 note: "Four metaballs at fixed positions (a fusing pair, a lone ball, and a negative ball carving into it) marched into a mesh under a fixed camera (no time, no random). Pins the marching-cubes path end to end: the soft-object falloff and its summed field, the face-contour construction with the asymptotic decider, the welded vertices and gradient normals, the outward winding, and the auto-padded bounds that let the surface close.",
+                 make: { MetaballsScene() }),
     SnapshotCase("effects-simfield", frame: 60,
                  note: "A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame 60 and recoloured. Pins the stateful sim substrate end to end: the persistent ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and the headless render-every-frame warmup the built-up state depends on.",
                  make: { EffectsSimField() }),
@@ -4119,6 +4122,31 @@ private final class TerrainScene: Sketch {
         camera(Camera3D.orbiting(target: .zero, radius: 13, azimuth: 0.8,
                                  elevation: 0.55, fieldOfView: .pi / 4))
         drawMesh(mesh)
+    }
+}
+
+/// Metaballs marched into a mesh at fixed positions: a merged pair on the
+/// left, a lone ball on the right, and a negative ball biting into it. Fixed
+/// camera, no time, no randomness.
+private final class MetaballsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0A0D12))
+
+        var field = Metaballs()
+        // Far enough apart that their spheres don't overlap, close enough that
+        // the summed field still bridges them: the neck is the thing to pin.
+        field.add(at: Vector3(-2.0, 0.35, 0.0), radius: 1.05)
+        field.add(at: Vector3(0.1, -0.30, 0.35), radius: 0.85)
+        field.add(at: Vector3(3.2, 0.50, -0.40), radius: 0.90)              // out of reach, stands alone
+        field.add(at: Vector3(3.9, -0.10, 0.30), radius: 0.70, strength: -1) // bites into it
+
+        fill(Color(hex: 0x7C8A9C))
+        lightingPreset(.studio)
+        camera(Camera3D.orbiting(target: Vector3(0.6, 0, 0), radius: 9.5,
+                                 azimuth: 0.55, elevation: 0.35, fieldOfView: .pi / 4))
+        drawMesh(field.mesh(resolution: 64))
     }
 }
 
