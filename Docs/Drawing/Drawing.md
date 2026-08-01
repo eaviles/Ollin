@@ -225,6 +225,8 @@ Two things to know:
 
 A profiled stroke stays vector on the way out: `--export-svg` and `--export-pdf` write the region the mark covers as a filled outline rather than a stroked path with one width, so a plotted or printed mark matches the screen. See [Export](../Output/Export.md).
 
+A profile shapes a stroke by *where you are* along a finished path. For a mark being drawn right now, where there is no finished path to take a fraction of, see [Marks](Marks.md): a `StrokeMark` measures how fast the pointer is travelling and how hard it is pressed, and drives width and opacity from that. The two multiply, so a dynamic mark can still take a profiled lift-off.
+
 <a name="hollow"></a>
 
 #### hollow / solid

@@ -144,6 +144,51 @@ Two practical notes. The width is read at every point of the path, measured alon
 
 The mark survives the trip out, too. Run the sketch with `--export-svg` and a profiled stroke is written as the region it actually covers rather than a line with one width attribute, so what the plotter draws is what you saw.
 
+## A mark you are still making
+
+A profile asks one question at every point: where am I along this path? That works because the path is finished before you draw it. Now think about painting. You drag the mouse, and the stroke has to appear *as it grows*. There is no finished path, so there is no fraction, and the whole idea falls apart.
+
+What is available instead is everything the hand just did: how fast it was moving, how hard it was pressing, which way it was heading. That is what **stroke dynamics** reads.
+
+```swift
+var mark = StrokeMark(.speed(fast: 0.15))
+
+override func draw() {
+    background(.white)
+    if mouseIsPressed { record(into: &mark) }
+    stroke(.black)
+    strokeWeight(24)
+    drawMark(mark)
+}
+```
+
+Ten lines, and you can paint. `record(into:)` hands the mark where the pointer is and how long this frame took; the mark works out the speed, smooths it, and stores a width for that point. `drawMark` strokes what has been recorded so far, which is why the line appears under the cursor instead of when you let go.
+
+<img src="Images/13-ShapesAsMaterial/MarkDynamics.jpg" alt="One S-curve drawn three times at one stroke weight by a hand that is slow at the ends and fast through the middle: ignoring the pace it is an even line, letting the pace drive width it swells at the ends and narrows to a hairline in the middle, letting the pace drive opacity it stays the same width but fades" width="680">
+
+The figure is one curve walked three times by the same pretend hand, nearly still at the ends and flicking through the middle. Only what the pace is allowed to *drive* changes.
+
+Which is the thing worth remembering here: **width and opacity are separate axes, and you say so.**
+
+```swift
+StrokeDynamics(width: .pressure(light: 0.1),      // press for a fat mark
+               opacity: .speed(fast: 0.4))        // hurry for a faint one
+```
+
+An axis you don't name isn't driven, so nothing moves behind your back. `.speed(fast:)` and `.pressure(light:)` on their own are shorthands for the everyday brush, and they drive width only.
+
+`.pressure` needs a device that can feel it. Every MacBook trackpad since 2015 can, and so can a pen tablet; a plain mouse cannot, and reports full force the whole time, so a pressure brush on one comes out at a single weight rather than not drawing. `pressureIsAvailable` tells you which you have, and it is worth asking in `mousePressed()` rather than `setup()`, because the answer arrives with the first press:
+
+```swift
+override func mousePressed() {
+    mark = StrokeMark(pressureIsAvailable ? .pressure(light: 0.1) : .speed(fast: 0.15))
+}
+```
+
+Three practical notes. A mark is an ordinary value, so finishing one is `strokes.append(mark)` and `mark.clear()`. The `smoothing` knob matters more than it looks: raw frame-to-frame speed is far too jumpy to drive a width directly, and the default sits where a mark feels deliberate without lagging the pointer. And profiles compose with dynamics rather than competing, so `strokeProfile(.taper(start: 1))` still gives a dynamic mark a clean lift-off at the end.
+
+`Examples/Shapes/Brushwork` is the whole thing to drag around in, and [Marks](../Docs/Drawing/Marks.md) has the rest.
+
 ## Growing, shrinking, and thickening
 
 Three more verbs finish the shape-editing vocabulary. `offset(by:)` grows a region outward (positive) or shrinks it inward (negative), holes moving the opposite way, and shrinking a region repeatedly reads as topographic contour lines until it pinches apart and disappears (the `Patterns/Topography` example is exactly that loop). New in the toolbox, `stroked(width:)` turns a *line* into a *region*, giving the closed shape a pen stroke of that width would cover, round or square or butt ends included, and a closed contour comes back as a band:
@@ -487,6 +532,7 @@ The territories are named for Georgy Voronoy and the triangulation for Boris Del
 - [Shape morphing](../Docs/Drawing/Morphing.md): the correspondence rules, `spacing`, and `Tweenable` geometry inside a `Timeline`. The [`Examples/Motion/Morphing`](../Examples/Motion/Morphing/Sketch.swift) example loops a star through a blob and a donut.
 - [Classic curves](../Docs/Drawing/Curves.md): every parameter of all six, including what closes each curve exactly once.
 - [Low-discrepancy sampling](../Docs/Generators/LowDiscrepancy.md): Halton bases, Sobol, `startIndex`, and the scalar `halton`.
+- [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing knobs do, building a mark without a pointer, and what survives vector export.
 - [Retained batches](../Docs/Drawing/Batches.md): what a `Batch` can and can't record, how transforms apply at replay, and the measured numbers.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.
 - [Hulls](../Docs/Generators/Hulls.md): `concaveHull` and `alphaShape`, with the knob ranges that read well and the cost of each.
@@ -495,7 +541,7 @@ The territories are named for Georgy Voronoy and the triangulation for Boris Del
 - [Watercolor](../Docs/Generators/Watercolor.md): the sugar, the typed base, and how the deformation actually runs.
 - [Blue noise](../Docs/Generators/BlueNoise.md) and [circle packing](../Docs/Generators/Packing.md) / [shape packing](../Docs/Generators/ShapePacking.md), which also covers packing around a set of points you already have and the practical notes on building a shape bag.
 - [Export](../Docs/Output/Export.md): the whole `--export-svg` and `--hatch` surface, plus stills, sequences, video, and GIF.
-- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Shapes/RubberBand`](../Examples/Shapes/RubberBand/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), and [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift).
+- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Shapes/RubberBand`](../Examples/Shapes/RubberBand/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift), and [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift).
 
 ---
 

@@ -43,7 +43,7 @@ See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 
 ## Expressive brushes and strokes
 
-The hand-drawn, mark-making axis, built on the variable-width stroke renderer (a width per vertex, shaped by a `strokeProfile`). What's ahead: pressure and velocity response, the payoff for the trackpad-pressure and Pencil inputs planned under [new input sources](#new-input-sources), which otherwise have nothing to drive; and stamped or scattered brushes that repeat a shape or texture along the path with spacing, jitter, and rotation. Painterly simulation (the generative-watercolor family) stays a [technique-catalog](#technique-and-algorithm-helpers) recipe rather than a brush-engine feature. See the [design notes](DESIGN-NOTES.md#expressive-brushes-and-strokes).
+The hand-drawn, mark-making axis, built on the variable-width stroke renderer (a width per vertex, shaped by a `strokeProfile`) and the recorded marks that drive it from the hand. What's ahead: stamped or scattered brushes that repeat a shape or texture along the path with spacing, jitter, and rotation; and Apple Pencil tilt and azimuth as further drivers, which wait on the iOS leg under [new input sources](#new-input-sources). Painterly simulation (the generative-watercolor family) stays a [technique-catalog](#technique-and-algorithm-helpers) recipe rather than a brush-engine feature. See the [design notes](DESIGN-NOTES.md#expressive-brushes-and-strokes).
 
 ## Project generator
 
@@ -99,7 +99,7 @@ More of the platform's live signals, each a `FrameSource` or a simple value read
 
 - **Screen and window capture.** Any app's window or the whole screen as a live texture, processed like a video feed (the non-cooperative complement to Syphon, which needs the other app to publish).
 - **Voice and sound events.** Speech recognition as drawable live captions, and sound-event classification (a clap, a genre, a bark) as a trigger, the audio analogue of the vision trackers.
-- **Rich controllers.** Game controllers (gyro, triggers, touchpad), trackpad pressure, and, on the iOS leg, Apple Pencil tilt and azimuth.
+- **Rich controllers.** Game controllers (gyro, triggers, touchpad), and, on the iOS leg, Apple Pencil tilt and azimuth.
 - **Body and world data.** Heart rate from a paired Watch for biofeedback, and real-world ambient data (weather, location) as a slow live input.
 
 Several overlap the [iPhone sensor array](#iphone-as-a-sensor-array); these are the Mac-side direct sources. See the [design notes](DESIGN-NOTES.md#new-input-sources).

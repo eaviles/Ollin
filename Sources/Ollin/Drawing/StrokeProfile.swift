@@ -104,6 +104,38 @@ public struct StrokeProfile: Sendable {
         })
     }
 
+    /// A profile sampled from multipliers at *given* fractions along the path,
+    /// linearly interpolated between them.
+    ///
+    /// This is the form for values that were measured rather than designed, where
+    /// the samples are not evenly spaced. A recorded mark is the case that needs
+    /// it: its points bunch up where the hand slowed and spread out where it
+    /// hurried, so spacing them evenly would slide every width away from the place
+    /// it was measured. `positions` must run from low to high; anything outside
+    /// `0...1` is clamped, and the ends hold their end values.
+    public static func values(_ values: [Double], at positions: [Double]) -> StrokeProfile {
+        let n = min(values.count, positions.count)
+        guard n > 0 else { return StrokeProfile { _ in 1 } }
+        guard n > 1 else {
+            let only = values[0]
+            return StrokeProfile { _ in only }
+        }
+        let vs = Array(values.prefix(n)), ps = Array(positions.prefix(n))
+        return StrokeProfile { t in
+            if t <= ps[0] { return vs[0] }
+            if t >= ps[n - 1] { return vs[n - 1] }
+            // The last sample at or before `t`. A mark records a point per frame,
+            // so this runs thousands of times per stroke and wants the search.
+            var lo = 0, hi = n - 1
+            while hi - lo > 1 {
+                let mid = (lo + hi) / 2
+                if ps[mid] <= t { lo = mid } else { hi = mid }
+            }
+            let span = ps[hi] - ps[lo]
+            return span > 1e-12 ? lerp(vs[lo], vs[hi], (t - ps[lo]) / span) : vs[hi]
+        }
+    }
+
     /// A profile sampled from evenly spaced multipliers along the path, linearly
     /// interpolated between them: a hand-drawn width curve, or one recorded from an
     /// input. A single value is a constant width; an empty array is full width.

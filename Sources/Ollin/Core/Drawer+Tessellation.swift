@@ -165,7 +165,7 @@ extension Drawer {
         // instead of interpolating straight through its stops. A width profile
         // varies along the run the same way, and is sampled per vertex, so it wants
         // the same split. Plain solid strokes are untouched, geometry unchanged.
-        if paint.isGradient || !strokeProfileShape.isUniform {
+        if paint.isGradient || !strokeProfileShape.isUniform || !strokeOpacityShape.isUniform {
             pts = Drawer.subdivided(pts, closed: closed, maxLength: 12)
         }
         let n = pts.count
@@ -181,8 +181,11 @@ extension Drawer {
         // Per-vertex paint color (rgb + the paint's own alpha). Along-path reads the
         // arc-length fraction; the rest read the position — matching the tessellated
         // path. Constant across the stroke width (a stroke's gradient runs along it).
+        // An opacity profile needs the same arc-length fraction a gradient does, so
+        // the two share one measurement of the path.
+        let varyingOpacity = !strokeOpacityShape.isUniform
         var cols = [SIMD4<Float>](repeating: .zero, count: n)
-        if case .solid(let c) = paint {
+        if case .solid(let c) = paint, !varyingOpacity {
             for i in 0..<n { cols[i] = c }
         } else {
             var cum = [Double](repeating: 0, count: n)
@@ -190,7 +193,13 @@ extension Drawer {
             var total = cum[n - 1]
             if closed { total += (pts[0] - pts[n - 1]).length }
             for i in 0..<n {
-                cols[i] = paint.color(at: pts[i], pathT: total > 0 ? cum[i] / total : 0)
+                let t = total > 0 ? cum[i] / total : 0
+                var color = paint.color(at: pts[i], pathT: t)
+                // The paint's own alpha stays whole and the recorded opacity scales
+                // it, so a translucent brush and a faint moment multiply the way a
+                // second pass of ink would.
+                if varyingOpacity { color.w *= Float(strokeOpacityShape(t)) }
+                cols[i] = color
             }
         }
 

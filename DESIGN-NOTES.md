@@ -134,9 +134,8 @@ Origin note, the same as the generative-geometry tier: this catalog is the broad
 
 ## Expressive brushes and strokes
 
-The fringe expander carries a half-width per path vertex, and `StrokeProfile` shapes it. The tier builds out from there:
+The fringe expander carries a half-width per path vertex, `StrokeProfile` shapes it by position along the path, and a recorded `StrokeMark` drives it from the hand. The tier builds out from there:
 
-- **Dynamics.** Pressure and velocity mapped onto width and opacity: mouse velocity today, trackpad pressure and Pencil tilt when the [new input sources](#new-input-sources) land. Frame-rate independence matters (velocity from `deltaTime`, smoothing through the shipped input filters). The read surface is a profile fed by a sampled width per point rather than a function of arc length, so the input path wants a way to hand the expander widths it has already measured.
 - **Stamped and scatter brushes.** A shape or texture repeated along the path with spacing, jitter, and rotation parameters. This is geometry emission (instanced SDF shapes or textured quads along the flattened path), not a stroke-renderer change, so it can land independently.
 - **Painterly simulation stays separate.** Watercolor-style marks built from layered, deformed translucent geometry are a [technique-catalog](#technique-and-algorithm-helpers) recipe over the shape and accumulation machinery, not a brush engine; keeping the two distinct keeps the stroke renderer lean.
 
@@ -174,7 +173,7 @@ Each conforms to the core `FrameSource` (so the vision trackers and effect graph
 
 - **Screen and window capture.** ScreenCaptureKit (`SCStream` over an `SCContentFilter`) delivers a chosen window or display as `CMSampleBuffer`s the existing texture path turns into a live `Image`. The non-cooperative complement to Syphon (which needs the source app to publish). The cost a pure-drawing framework never had is the screen-recording consent prompt, so the API should make the permission explicit rather than surprising.
 - **Voice and sound events.** The Speech framework (`SFSpeechRecognizer`) for recognition (live captions, voice as control) and SoundAnalysis (`SNClassifySoundRequest`) for sound-event classification (the audio sibling of the vision trackers). Both run on the Mac and both also appear in the [iPhone sensor catalog](#iphone-as-a-sensor-array), so they share result types. Background-producer to main-reader handoff, the locked pattern the analyzers and receivers already use.
-- **Rich controllers.** GameController (`GCController`) surfaces a modern controller's motion (gyro), triggers, and touchpad; NSEvent carries trackpad pressure on the Mac; Apple Pencil (tilt, azimuth, force, hover) waits on the iOS leg. Each reads as plain values in `draw()` or a pressed/released hook like the keyboard.
+- **Rich controllers.** GameController (`GCController`) surfaces a modern controller's motion (gyro), triggers, and touchpad; Apple Pencil (tilt, azimuth, force, hover) waits on the iOS leg, and its force joins the pressure `Sketch` already reads. Each reads as plain values in `draw()` or a pressed/released hook like the keyboard.
 - **Body and world data.** HealthKit (heart rate from a paired Apple Watch) for biofeedback, WeatherKit and Core Location for slow ambient input. Each needs its entitlement and consent prompt, the same "keep the easy things easy, make the prompt explicit" concern as screen capture. Niche but distinctive (native Apple-sensor-sourced live data) and impossible in a browser.
 
 ## New output surfaces

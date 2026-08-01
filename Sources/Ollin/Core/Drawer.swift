@@ -210,6 +210,11 @@ final class Drawer {
     var strokeJoinStyle: StrokeJoin = .miter     // how stroked-path corners turn (see strokeJoin)
     var strokeCapStyle: StrokeCap = .butt        // how open stroked-path ends finish (see strokeCap)
     var strokeProfileShape: StrokeProfile = .uniform  // how stroke width varies along a path (see strokeProfile)
+    // How stroke alpha varies along a path, the width profile's sibling. Set only
+    // by drawMark, which is the one thing that measures opacity per point; a
+    // `.uniform` value leaves the per-vertex color untouched, so every other
+    // stroke in the framework is byte-identical to before it existed.
+    var strokeOpacityShape: StrokeProfile = .uniform
     var currentMaterial = Material()    // 3D mesh surface finish (shading model + specular/rim/subsurface/iridescence); see material(_:)
     private var wireframeEnabled = false        // 3D mesh: draw triangle edges only (see wireframe)
     private var currentMatcap: Image?           // 3D mesh: a matcap sphere texture replacing the lit look (see matcap(_:))
@@ -1270,6 +1275,7 @@ final class Drawer {
         var strokeJoinStyle: StrokeJoin
         var strokeCapStyle: StrokeCap
         var strokeProfileShape: StrokeProfile
+        var strokeOpacityShape: StrokeProfile
         var currentMaterial: Material
         var wireframeEnabled: Bool
         var currentMatcap: Image?
@@ -2224,6 +2230,7 @@ final class Drawer {
                                      strokeJoinStyle: strokeJoinStyle,
                                      strokeCapStyle: strokeCapStyle,
                                      strokeProfileShape: strokeProfileShape,
+                                     strokeOpacityShape: strokeOpacityShape,
                                      currentMaterial: currentMaterial,
                                      wireframeEnabled: wireframeEnabled,
                                      currentMatcap: currentMatcap,
@@ -2253,6 +2260,7 @@ final class Drawer {
         strokeJoinStyle = s.strokeJoinStyle
         strokeCapStyle = s.strokeCapStyle
         strokeProfileShape = s.strokeProfileShape
+        strokeOpacityShape = s.strokeOpacityShape
         currentMaterial = s.currentMaterial
         wireframeEnabled = s.wireframeEnabled
         currentMatcap = s.currentMatcap

@@ -557,19 +557,42 @@ private final class OllinMTKView: MTKView {
     }
 
     override func mouseMoved(with event: NSEvent) { reportPointer(event) }
-    override func mouseDragged(with event: NSEvent) { reportPointer(event) }
+    override func mouseDragged(with event: NSEvent) {
+        reportPointer(event)
+        reportPressure(event)
+    }
     override func mouseDown(with event: NSEvent) {
         // A click reclaims keyboard focus (e.g. after a click on an inspector
         // control moved first responder away), so the canvas keeps the keys.
         window?.makeFirstResponder(self)
         reportPointer(event)
+        reportPressure(event)
         sketch?.mouseIsPressed = true
         sketch?.mousePressed()
     }
     override func mouseUp(with event: NSEvent) {
         reportPointer(event)
+        sketch?.setPressure(0, canVary: false)
         sketch?.mouseIsPressed = false
         sketch?.mouseReleased()
+    }
+
+    /// A pressure-sensing device keeps sending pressure while the press deepens
+    /// without the pointer moving, so a still hand still swells the mark.
+    override func pressureChange(with event: NSEvent) {
+        reportPressure(event)
+    }
+
+    /// Hand the sketch the press force, and whether this device can vary it at all.
+    /// `associatedEventsMask` reports which other events this input could also send,
+    /// so a pressure bit in it is what separates a trackpad reporting a real 0.4
+    /// from a plain mouse reporting a flat 1.
+    ///
+    /// Only valid on mouse down/up/drag, tablet-point, and pressure events: reading
+    /// `pressure` on anything else (a plain `mouseMoved`) raises.
+    private func reportPressure(_ event: NSEvent) {
+        sketch?.setPressure(Double(event.pressure),
+                            canVary: event.associatedEventsMask.contains(.pressure))
     }
 
     // The secondary (right) button drives the camera-control pan (alongside a
@@ -793,6 +816,10 @@ private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -
     view.sampleCount = 1
     view.isPaused = false                    // run continuously...
     view.enableSetNeedsDisplay = false       // ...driven by the display timer
+    // Ask a Force Touch trackpad for the drawing gesture rather than the default
+    // one: a single stage over the full 0...1 range, so a press reads as a smooth
+    // amount instead of arming the force-click that fires look-up mid-stroke.
+    view.pressureConfiguration = NSPressureConfiguration(pressureBehavior: .primaryGeneric)
     view.preferredFramesPerSecond = NSScreen.main?.maximumFramesPerSecond ?? 60
     return view
 }

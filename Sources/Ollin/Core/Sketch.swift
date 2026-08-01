@@ -109,6 +109,22 @@ open class Sketch {
     /// a sketch can also poll it for its own secondary action.
     public internal(set) var rightMouseIsPressed = false
 
+    /// How hard the pointer is being pressed, `0` (nothing held) to `1` (as hard
+    /// as the device reports). On a pressure-sensing device (a Force Touch
+    /// trackpad, a pen tablet) it varies continuously through a press, which is
+    /// what `StrokeDynamics.pressure(...)` reads to make a mark swell under a
+    /// heavier hand. On a device that can't measure pressure it is simply `1`
+    /// while a button is down, so a pressure-driven sketch still draws, just at
+    /// one weight. Check `pressureIsAvailable` to pick a different driver
+    /// (`.speed(...)` works anywhere) when there's nothing to feel.
+    public internal(set) var pressure: Double = 0
+
+    /// Whether the device sending pointer events can actually measure pressure.
+    /// `false` until the first press says otherwise: the answer comes from the
+    /// event rather than the machine, so plugging in a tablet mid-sketch updates
+    /// it.
+    public internal(set) var pressureIsAvailable = false
+
     /// How far the scroll wheel (or a trackpad two-finger scroll) moved this frame,
     /// summed since the last frame; `0` when nothing scrolled. Positive is a scroll
     /// up. Read it in `draw()` (it is a per-frame value, like `mouseX`); the
@@ -1623,6 +1639,25 @@ open class Sketch {
     public func drawPolyline(_ points: [Vector2], closed: Bool = false) {
         drawer.drawPolyline(points, closed: closed)
     }
+
+    /// Stroke a recorded `StrokeMark` at the width and opacity it asked for at
+    /// every point along the way. Draws nothing until two points are recorded.
+    ///
+    /// ```swift
+    /// if mouseIsPressed { record(into: &mark) }
+    /// drawMark(mark)
+    /// ```
+    public func drawMark(_ mark: StrokeMark) { drawer.drawMark(mark) }
+
+    /// Record where the pointer is now into `mark`, timed by this frame.
+    ///
+    /// Sugar for `mark.record(Vector2(mouseX, mouseY), dt: deltaTime, pressure: pressure)`:
+    /// it hands the mark the three things it needs to measure a stroke, and using
+    /// `deltaTime` is what makes the mark come out the same at any frame rate.
+    /// Call it from `draw()` while the pointer is down.
+    public func record(into mark: inout StrokeMark) {
+        mark.record(Vector2(mouseX, mouseY), dt: deltaTime, pressure: pressure)
+    }
     public func drawPolygon(_ points: [Vector2]) { drawer.drawPolygon(points) }
     public func drawShape(_ shape: Shape) { drawer.drawShape(shape) }
 
@@ -2077,6 +2112,15 @@ open class Sketch {
 
     func setRightMousePressed(_ pressed: Bool) {
         rightMouseIsPressed = pressed
+    }
+
+    /// Record how hard the pointer is pressed, and whether the device measuring it
+    /// can vary at all. `canVary` latches on: a session that has felt real pressure
+    /// once keeps reporting the capability even between presses, when the platform
+    /// has nothing to tell us.
+    func setPressure(_ amount: Double, canVary: Bool) {
+        pressure = min(max(amount, 0), 1)
+        if canVary { pressureIsAvailable = true }
     }
 
     /// Scroll delivered between frames, summed here and surfaced as `scrollDeltaY`

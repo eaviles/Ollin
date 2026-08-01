@@ -11,6 +11,7 @@ Pointer and keyboard input live on the sketch as plain properties and overridabl
 - [mouseX / mouseY](#mouse)
 - [mouseIsPressed](#mouseIsPressed)
 - [mousePressed / mouseReleased](#mousePressed)
+- [pressure / pressureIsAvailable](#pressure)
 - [key / keyCode / keyIsPressed](#key)
 - [keyPressed / keyReleased](#keyPressed)
 - [isKeyDown](#isKeyDown)
@@ -69,6 +70,27 @@ override func mousePressed() {
     randomSeed(frameCount)   // re-roll the randomness on each click
 }
 ```
+
+<a name="pressure"></a>
+
+### pressure / pressureIsAvailable
+
+```swift
+pressure: Double            // 0...1, 0 when nothing is held
+pressureIsAvailable: Bool   // whether this device can measure it at all
+```
+
+How hard the pointer is being pressed. On a pressure-sensing device (a Force Touch trackpad, a pen tablet) it varies continuously through a press. On a device that cannot measure pressure it is simply `1` while a button is down, so a pressure-driven sketch still works, just at one level.
+
+`pressureIsAvailable` says which you have. It is `false` until the first press tells us, since the answer comes from the event rather than the machine, so read it in `mousePressed()` rather than `setup()`:
+
+```swift
+override func mousePressed() {
+    brush = pressureIsAvailable ? .pressure(light: 0.1) : .speed(fast: 0.15)
+}
+```
+
+Ollin asks the trackpad for the drawing gesture, a single stage over the full range, so a press reads as a smooth amount and no force-click fires look-up mid-stroke. See [Marks](../Drawing/Marks.md) for the brush that reads it.
 
 <a name="key"></a>
 

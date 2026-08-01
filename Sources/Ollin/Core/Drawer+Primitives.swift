@@ -1273,6 +1273,59 @@ extension Drawer {
                            paint: vertexPaint(stroke, anchor: points[0]))
     }
 
+    /// Stroke a recorded `StrokeMark`: the path it travelled, drawn at the width
+    /// and opacity it asked for at every point.
+    ///
+    /// The mark reaches the same fringe expander every other stroke goes through,
+    /// by turning its per-point widths into a width profile keyed to their *real*
+    /// fractions along the path rather than evenly spaced ones. That is the whole
+    /// reason a mark is its own type: its points bunch where the hand slowed, so
+    /// spreading the widths evenly would slide each one off the place it was
+    /// measured. Opacity rides the per-vertex color the same way.
+    ///
+    /// A width profile already set with `strokeProfile(_:)` still applies, and the
+    /// two multiply. That is how a dynamic mark also gets a clean lift-off:
+    /// `strokeProfile(.taper(start: 1))` on top of the recorded widths.
+    ///
+    /// Needs at least two recorded points and a stroke to draw anything.
+    func drawMark(_ mark: StrokeMark) {
+        guard mark.samples.count >= 2, let stroke = strokePaint, strokeWidth > 0 else { return }
+        let points = mark.positions
+        let fractions = mark.pathFractions
+
+        pushState()
+        defer { popState() }
+
+        if mark.variesWidth {
+            let recorded = StrokeProfile.values(mark.samples.map(\.width), at: fractions)
+            let ambient = strokeProfileShape
+            strokeProfileShape = ambient.isUniform ? recorded
+                : StrokeProfile(directional: { t, d in recorded(t) * ambient(t, direction: d) })
+        }
+
+        if mark.variesOpacity {
+            if svgRecorder != nil {
+                // A vector document draws one fill at one alpha per path, so a
+                // varying opacity has nowhere to go. Flattening it to the ink the
+                // mark laid down on average keeps the exported weight right, and
+                // for the plotter case (one pen, one ink) it costs nothing at all.
+                noteOnce("A mark's varying opacity flattens to its average in vector export; its varying width is exported exactly.")
+                if case .color(let c) = stroke {
+                    strokePaint = .color(c.withAlpha(c.alpha * mark.averageOpacity))
+                }
+            } else {
+                strokeOpacityShape = StrokeProfile.values(mark.samples.map(\.opacity), at: fractions)
+            }
+        }
+
+        if svgRecorder != nil {
+            svgRecord(.polyline(points), fill: nil, stroke: strokePaint)
+            return
+        }
+        appendFringeStroke(points, closed: false,
+                           paint: vertexPaint(strokePaint ?? stroke, anchor: points[0]))
+    }
+
     /// An axis-aligned `Rectangle`. Recorded as a single SDF instance (a box
     /// signed-distance field), not tessellated: the fragment derives fill, a
     /// stroke straddling the edges (width `strokeWeight`), and anti-aliasing
