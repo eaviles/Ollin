@@ -117,12 +117,20 @@ public struct Sim: Sendable {
     /// The state is height in red, velocity in green, both signed around zero.
     /// The raw `image` is only the debugging view; recolor it, or better, shade
     /// it as a surface with `.filtered(.relight(...))`. `speed` sets how fast
-    /// rings run (it is the neighbor-coupling gain; the default 2 is the
-    /// classic, stable value), and `damping` (0…1) how long they last, with a
-    /// soft absorbing rim at the borders so echoes fade instead of slapping
-    /// back hard.
-    public static func ripples(speed: Double = 2, damping: Double = 0.995) -> Sim {
-        Sim(kind: .ripples(speed: min(max(speed, 0.1), 2), damping: min(max(damping, 0), 1)))
+    /// rings run (it is the neighbor-coupling gain) and `damping` (0…1) how long
+    /// they last, with a soft absorbing rim at the borders so echoes fade instead
+    /// of slapping back hard.
+    ///
+    /// `speed` is capped at 1 because the step goes unstable at 2: there the
+    /// shortest wave the grid can hold (a two-pixel checkerboard) sits on a
+    /// repeated root and grows with every step instead of oscillating, so each
+    /// drop pumps a grid-scale rattle that damping can only hold at a level
+    /// rather than remove. It settles some twenty times stronger than the rings
+    /// themselves and shades into glitter. Below 1 that mode behaves like every
+    /// other one, and rings still run at a usable pace because the step takes six
+    /// substeps a frame.
+    public static func ripples(speed: Double = 0.5, damping: Double = 0.995) -> Sim {
+        Sim(kind: .ripples(speed: min(max(speed, 0.05), 1), damping: min(max(damping, 0), 1)))
     }
 
     /// A real-time **fluid**: an incompressible flow that carries colour. Draw into the
@@ -163,7 +171,11 @@ public struct Sim: Sendable {
         case .reactionDiffusion: return 14
         case .gameOfLife:        return 1
         case .lenia:             return 1
-        case .ripples:           return 3   // rings cross the field at a usable pace
+        case .ripples:           return 6   // rings cross the field at a usable pace:
+                                            // wave speed scales as the square root of
+                                            // the coupling gain, so a gain held well
+                                            // under its stability limit buys its pace
+                                            // back in substeps instead
         case .fluid:             return 1   // unused: the fluid runs its own pipeline
         }
     }

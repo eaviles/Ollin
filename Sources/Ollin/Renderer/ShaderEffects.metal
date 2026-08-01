@@ -769,20 +769,34 @@ fragment float4 ollin_fx_relight(PresentOut in [[stage_in]],
     float angle = params[1].x, elevation = params[1].y, intensity = params[1].z;
     bool hasColor = params[1].w > 0.5;
 
-    float l00 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2(-1, -1))));
-    float l10 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 0, -1))));
-    float l20 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 1, -1))));
-    float l01 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2(-1,  0))));
-    float l21 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 1,  0))));
-    float l02 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2(-1,  1))));
-    float l12 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 0,  1))));
-    float l22 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + t * float2( 1,  1))));
+    // The slope is measured over a span, not over one texel, and the taps sit on the
+    // half-texel grid so each bilinear fetch averages a 2x2 block for free. Both
+    // matter: slope weights a wavelength by 1/L, so content a few texels across
+    // produces as steep a normal as the relief the layer is actually made of, and a
+    // one-texel difference passes that content at ~0.4-0.8 of full strength. Together
+    // the span and the box roll it off (a 3-texel ripple reads ~0, a 4-texel one ~0.2)
+    // while relief 20 texels and wider keeps 95%+ of its strength, so a smooth input
+    // shades as it did before. The span grows with resolution past the default canvas
+    // so relief stays a fixed fraction of the image instead of tracking texel size.
+    float texels = 1.0 / max(t.x, 1e-6);
+    float span = max(1.0, texels / 720.0);   // never below a texel: no data down there
+    float2 d = t * span;
+    float2 halfTexel = t * 0.5;
+    float l00 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + halfTexel + d * float2(-1, -1))));
+    float l10 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + halfTexel + d * float2( 0, -1))));
+    float l20 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + halfTexel + d * float2( 1, -1))));
+    float l01 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + halfTexel + d * float2(-1,  0))));
+    float l21 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + halfTexel + d * float2( 1,  0))));
+    float l02 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + halfTexel + d * float2(-1,  1))));
+    float l12 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + halfTexel + d * float2( 0,  1))));
+    float l22 = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + halfTexel + d * float2( 1,  1))));
     float gx = (l20 + 2.0 * l21 + l22) - (l00 + 2.0 * l01 + l02);
     float gy = (l02 + 2.0 * l12 + l22) - (l00 + 2.0 * l10 + l20);
-    // Normalize the Sobel gradient to uv space (per-texel differences shrink with
-    // resolution, which would flatten a smooth field's relief at high res), then
+    // Normalize the gradient to uv space (per-texel differences shrink with
+    // resolution, which would flatten a smooth field's relief at high res) and by the
+    // span, so widening the stencil leaves smooth relief exactly where it was, then
     // tune so the default height reads as gentle hills on a soft noise cloud.
-    float2 slope = float2(gx, gy) * (0.03 / max(t.x, 1e-6)) * height;
+    float2 slope = float2(gx, gy) * (0.03 / (max(t.x, 1e-6) * span)) * height;
     float3 n = normalize(float3(-slope, 1.0));
 
     if (finish == 3) {                                        // sand: grain the surface
@@ -820,6 +834,10 @@ fragment float4 ollin_fx_relight(PresentOut in [[stage_in]],
     } else if (finish == 4) {                                 // liquid: wet sheen + refraction
         float3 refr = hasColor ? base
                                : ollin_unpremul(src.sample(samp, in.uv - n.xy * 0.02));
+        // The exponent stays tight. A pinpoint lobe only speckles when the normal
+        // itself rattles, which is the slope's job to prevent; broadening it here
+        // instead would lift the highlight on flat, unrippled areas and wash out
+        // whatever sits under them.
         lit = refr * (0.35 + 0.65 * diff)
             + float3(1.0) * (pow(sh, 140.0) * 1.2 + rim * 0.12);
     } else {                                                  // matte clay

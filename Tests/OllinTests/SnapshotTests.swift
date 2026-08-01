@@ -191,7 +191,7 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  note: "A fluid SimField driven by a fixed brush path, run to frame 48. Pins the multi-field fluid pipeline end to end: the velocity + dye splat, curl and vorticity confinement, the Jacobi pressure projection, semi-Lagrangian advection, and the persistent two-pair ping-pong with render-every-frame warmup.",
                  make: { EffectsFluid() }),
     SnapshotCase("ripples", frame: 90,
-                 note: "A ripples SimField rained on by seeded drops (seed set once in setup), run to frame 90 and shaded by .relight. Pins the wave-equation step (height/velocity coupling, damping, the absorbing rim), the add-to-height inject that keeps the velocity channel clean, the 3-substep pacing, and the render-every-frame headless warmup the evolving surface depends on.",
+                 note: "A ripples SimField rained on by seeded drops (seed set once in setup), run to frame 90 and shaded by .relight. Pins the wave-equation step (height/velocity coupling, damping, the absorbing rim), the add-to-height inject that keeps the velocity channel clean, the sub-CFL coupling gain and 6-substep pacing that keep the grid-scale mode from rattling, and the render-every-frame headless warmup the evolving surface depends on.",
                  make: { RipplesScene() }),
     SnapshotCase("lenia", frame: 60,
                  note: "A Lenia SimField seeded with a fixed grid of graded-alpha dots, evolved to frame 60 and recoloured. Pins the continuous-CA step end to end: the ring-kernel convolution with in-loop normalization, the bell-curve growth mapping, the dt integration and clip, and the params rows riding after the texel size.",
