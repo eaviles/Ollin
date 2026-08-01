@@ -669,10 +669,24 @@ extension MetalRenderer {
             // layer's resolution one is the other (the texel-size row keeps the disk
             // round on a non-square layer). The third texel slot carries the resolved
             // bokeh tap budget for the gather.
+            //
+            // Two passes: a pre-pass reduces the aux depth to per-pixel circle-of-
+            // confusion sizes (the size a pixel scatters by, min-filtered so an
+            // anti-aliased silhouette can't fling the colour under it across the whole
+            // blur radius, and the size it receives, seam-dilated), then the bokeh
+            // gather reads that instead of the raw depth. It costs one fullscreen pass
+            // and takes the dilation's 8 taps back out of the per-pixel gather.
             let taps = Float(resolveDofTaps(quality))
             let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), taps, 0)
-            return pass("ollin_fx_depth_of_field",
-                        [SIMD4(Float(focus), Float(range), Float(maxBlur), 0), texel])
+            let dof = SIMD4(Float(focus), Float(range), Float(maxBlur), 0)
+            guard let coc = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let out = acquireFilterTexture(width: width, height: height, pooled: pooled)
+            else { return nil }
+            encodeEffectFragment("ollin_fx_dof_prepass", inputs: [aux], output: coc,
+                                 params: [dof, texel], into: cb)
+            encodeEffectFragment("ollin_fx_depth_of_field", inputs: [base, coc], output: out,
+                                 params: [dof, texel], into: cb)
+            return out
         case let .ambientOcclusion(radius, intensity, bias, quality):
             // Two passes: a hemisphere-kernel occlusion estimate (rebuilding view-space
             // position + normal from the aux depth, with the camera geometry stamped on

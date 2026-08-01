@@ -73,12 +73,66 @@ static inline float ollin_dof_depth(float4 texel) { return linearToSrgb(float3(o
 
 #define OLLIN_DOF_TAPS 128
 
+// Depth-of-field pre-pass: reduce the aux depth map to the three per-pixel quantities
+// the gather wants, so a tap costs one sample and no neighbourhood walk. Writes
+// (scatter size, depth, receive size, 1). Runs at the gather's own resolution, since
+// both sizes are in output pixels.
+//
+// The two sizes differ, and that is the whole point of the pass:
+//
+// **Receive** (`.z`) is the seam dilation, the max over a small ring. A hard-edged
+// depth map crosses the focal plane at every silhouette (its anti-aliased boundary
+// sweeps through `focus`), leaving a ~1px in-focus ring bracketed by blur that traces
+// each defocused mark and, left sharp, reads as a thin dotted circle. Taking a pixel's
+// blur size as the max over its neighbourhood consumes that seam (it has defocus on
+// both sides), while a real in-focus subject is thick enough to keep its own near-zero
+// size and stay sharp but for a few px of softened edge.
+//
+// **Scatter** (`.x`) is the opposite, the min over the immediate neighbourhood, and it
+// answers the same anti-aliased rim from the other side. That rim is a sub-pixel band
+// of in-between depth, so wherever it lands in the fully defocused range it flings the
+// colour beneath it across the entire blur radius; because the whole rim shares one
+// depth it also cuts off at one radius, which is why a perfectly in-focus object came
+// out ringed by a faint, hard-edged, concentrically ridged halo of its own colour. A
+// rim texel always has a low-blur neighbour on the object side, so the min erases it,
+// while a genuinely defocused region (every neighbour defocused too) keeps its size.
+// The radius is 2px rather than 1 so the erased band is wider than the gather's
+// bilinear footprint, which would otherwise average half the rim's size straight back.
+fragment float4 ollin_fx_dof_prepass(PresentOut in [[stage_in]],
+                                     texture2d<float> depthMap [[texture(0)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float focus = params[0].x, range = params[0].y, maxBlur = params[0].z;
+    float2 texel = params[1].xy;
+    float depth = ollin_dof_depth(depthMap.sample(samp, in.uv));
+    float own = ollin_dof_coc(depth, focus, range, maxBlur);
+
+    float scatter = own;
+    for (int y = -2; y <= 2; y++) {
+        for (int x = -2; x <= 2; x++) {
+            float2 uv = clamp(in.uv + float2(float(x), float(y)) * texel, 0.0, 1.0);
+            float d = ollin_dof_depth(depthMap.sample(samp, uv));
+            scatter = min(scatter, ollin_dof_coc(d, focus, range, maxBlur));
+        }
+    }
+
+    float receive = own;
+    float dilate = max(3.0, maxBlur * 0.06);
+    for (int k = 0; k < 8; k++) {
+        float ka = float(k) * 0.78539816;   // 8 directions
+        float2 uv = clamp(in.uv + float2(cos(ka), sin(ka)) * dilate * texel, 0.0, 1.0);
+        float d = ollin_dof_depth(depthMap.sample(samp, uv));
+        receive = max(receive, ollin_dof_coc(d, focus, range, maxBlur));
+    }
+    return float4(scatter, depth, receive, 1.0);
+}
+
 fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
                                         texture2d<float> base [[texture(0)]],
-                                        texture2d<float> depthMap [[texture(1)]],
+                                        texture2d<float> cocMap [[texture(1)]],
                                         sampler samp [[sampler(0)]],
                                         constant float4 *params [[buffer(0)]]) {
-    float focus = params[0].x, range = params[0].y, maxBlur = params[0].z;
+    float focus = params[0].x, maxBlur = params[0].z;
     float2 texel = params[1].xy;
     // The bokeh tap budget (resolved from the `.defocus` quality on the CPU side); falls
     // back to the default if a caller leaves the slot empty.
@@ -88,31 +142,17 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     // the op is a cheap no-op at maxBlur 0 and snapshot-safe in that case.
     if (maxBlur < 0.5) return base.sample(samp, in.uv);
 
-    // This pixel's own depth and circle-of-confusion radius (its "blur size" in px),
-    // the reference every tap is measured against.
-    float centerDepth = ollin_dof_depth(depthMap.sample(samp, in.uv));
-    float centerSize  = ollin_dof_coc(centerDepth, focus, range, maxBlur);
-
-    // Dilate the blur into thin in-focus seams. A hard-edged depth map crosses the focal
-    // plane at every silhouette (its anti-aliased boundary sweeps through `focus`),
-    // leaving a ~1px in-focus ring bracketed by blur that traces each defocused mark and,
-    // left sharp, reads as a thin dotted circle. Taking the centre's blur size as the max
-    // over a small neighbourhood consumes that seam (it has defocus on both sides), while
-    // a real in-focus subject is thick enough to keep its own (near-zero) size and stay
-    // sharp but for a few px of softened edge.
-    float dilate = max(3.0, maxBlur * 0.06);
-    for (int k = 0; k < 8; k++) {
-        float ka = float(k) * 0.78539816;   // 8 directions
-        float2 ko = float2(cos(ka), sin(ka)) * dilate * texel;
-        float kd = ollin_dof_depth(depthMap.sample(samp, clamp(in.uv + ko, 0.0, 1.0)));
-        centerSize = max(centerSize, ollin_dof_coc(kd, focus, range, maxBlur));
-    }
+    // This pixel's depth and the blur size it *receives* (seam-dilated), the reference
+    // every tap is measured against. Both come from the pre-pass above.
+    float4 centerInfo = cocMap.sample(samp, in.uv);
+    float centerDepth = centerInfo.y;
+    float centerSize  = centerInfo.z;
 
     // The gather. An *expanding* golden-angle spiral (`radius += radScale/radius`) packs
     // rings progressively denser toward the rim, so a bokeh disc's edge stays smooth
     // without a per-pixel jitter (which would add grain to the near/far fields below);
     // `radScale` is scaled by maxBlur² so the tap count stays bounded (~OLLIN_DOF_TAPS).
-    // A tap reaches this pixel where its own blur size spans the tap's distance (`pct`,
+    // A tap reaches this pixel where its own blur size spans the tap's distance (`reach`,
     // the scatter-as-gather test).
     //
     // **Near / far separation** (README Techniques for the references) is what a plain
@@ -126,43 +166,74 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     float radScale = max(0.5, maxBlur * maxBlur / (budget * 2.0));   // ≈ `budget` taps to the rim
     int maxIters = int(budget * 2.0);                               // safety cap (the break ends it first)
     float4 centerColor = base.sample(samp, in.uv);
-    float3 bgColor = centerColor.rgb; float bgTotal = 1.0;   // background + in-focus
-    float3 fgColor = float3(0.0);     float fgTotal = 1.0;   // near (foreground)
-    float fgCoverage = 0.0;
+    // Both fields seed with the centre texel, so a field no tap reaches resolves to the
+    // centre rather than to a phantom sample. Seeding the near field with black instead
+    // (the obvious "nothing here yet" value) leaves its running average converging *from*
+    // black, and a partly covered foreground then composites that bias over the
+    // background: a uniformly white layer comes back with a ~12% dark ring at the edge of
+    // the near spread. The whole layer is premultiplied, so alpha rides the gather with
+    // the colour; blurring rgb past a sharp alpha would stop the result being
+    // premultiplied at all. An opaque layer is unaffected either way.
+    // If this pixel is itself under a near blur, whatever sits behind it is hidden, so
+    // the background field is allowed to gather from anywhere inside that blur: the
+    // surrounding in-focus scene stands in for the unknown. Without it there is nothing
+    // for the foreground to become transparent against, and a near object keeps a razor
+    // edge on the *inside* while blurring only outward (measured: a step of 36% in one
+    // pixel, right at the blob's own silhouette). Reconstructing what a foreground truly
+    // hides is impossible from one image; standing its neighbourhood in for it is the
+    // usual approximation and reads correctly.
+    float nearReveal = centerDepth < focus ? centerSize : 0.0;
+    float4 bgColor = centerColor; float bgTotal = 1.0;   // background + in-focus
+    float4 fgColor = centerColor; float fgTotal = 1.0;   // near (foreground)
+    float fgCoverage = 0.0, nearMax = 0.0;
     float radius = radScale;
     for (int i = 0; i < maxIters; i++) {
         if (radius >= maxBlur) break;
         float a = float(i) * goldenAngle;
         float2 uv = clamp(in.uv + float2(cos(a), sin(a)) * radius * texel, 0.0, 1.0);
-        float3 s = base.sample(samp, uv).rgb;
-        float sd = ollin_dof_depth(depthMap.sample(samp, uv));
-        float sSize = ollin_dof_coc(sd, focus, range, maxBlur);
+        float4 s = base.sample(samp, uv);
+        float4 tap = cocMap.sample(samp, uv);
+        float sd = tap.y;
+        float sSize = tap.x;                                 // the size it *scatters* by
         bool isNear = sd < focus;                            // nearer than the focal plane
-        // background + in-focus field: every non-near tap that reaches blends in, so
-        // overlapping defocused orbs merge like real bokeh (no hard occlusion cut of a
-        // farther disc along a nearer one's silhouette). A sharp subject doesn't need an
-        // occlusion clamp here — it's protected by the `blend` term below, which ignores
-        // this field where the centre is in focus and no foreground covers it.
-        float bgReach = isNear ? 0.0 : smoothstep(radius - 0.5, radius + 0.5, sSize);
+        // Occlusion: a tap *behind* this pixel is hidden by it, so it may spill no further
+        // than twice this pixel's own blur. Without the clamp a heavily defocused backdrop
+        // pours over a barely defocused midground for the full maxBlur and dissolves its
+        // silhouette (measured: a 12px-blur square loses 45px of its edge to a 48px-blur
+        // backdrop). Two comparably defocused regions are each within 2x the other, so
+        // overlapping bokeh still merges instead of hard-cutting along a silhouette.
+        if (sd > centerDepth) sSize = min(sSize, centerSize * 2.0);
+        float reach = smoothstep(radius - 0.5, radius + 0.5, sSize);
+        // background + in-focus field, then the near field: each a running average, plus
+        // how much foreground covers this pixel and how wide that foreground's blur is.
+        float bgReach = isNear ? 0.0 : max(reach, smoothstep(radius - 0.5, radius + 0.5, nearReveal));
         bgColor += mix(bgColor / bgTotal, s, bgReach); bgTotal += 1.0;
-        // near field: foreground taps only, plus how much foreground covers this pixel.
-        float fgReach = isNear ? smoothstep(radius - 0.5, radius + 0.5, sSize) : 0.0;
+        float fgReach = isNear ? reach : 0.0;
         fgColor += mix(fgColor / fgTotal, s, fgReach); fgTotal += 1.0;
         fgCoverage += fgReach;
+        nearMax = max(nearMax, isNear ? sSize : 0.0);
         radius += radScale / radius;
     }
-    float3 bg = bgColor / bgTotal;
-    float3 fg = fgColor / fgTotal;
-    // Foreground coverage → an alpha (normalised by the tap count, tuned so a foreground
-    // that fills a good fraction of the disc reads as full cover); composite it over the
-    // background, then blend the sharp centre toward that bokeh by how defocused the
-    // centre is *or* how much foreground covers it — the latter is what hides an in-focus
-    // subject under a blurry foreground instead of leaving the sharp crescent.
-    float fgAlpha = saturate(fgCoverage / (fgTotal * 0.4));
-    float3 bokeh = mix(bg, fg, fgAlpha);
+    float4 bg = bgColor / bgTotal;
+    float4 fg = fgColor / fgTotal;
+    // Resolve the far side first (the sharp centre blended toward its own bokeh by how
+    // defocused it is), then composite the near field *over* that by its coverage.
+    // Folding both into one `mix(centre, mix(bg, fg, a), max(dof, a))` applies the
+    // coverage twice, so a half-covered sharp subject keeps a quarter more of its sharp
+    // self than it should: the crescent the near field exists to remove.
+    //
+    // Coverage is an *area fraction*, and the area it is a fraction of is the widest
+    // near blur that reached here, not the whole gather disc. The spiral is equal-area
+    // per tap, so taps inside radius r are `total * (r/maxBlur)^2` of them. Normalising
+    // by the disc instead (with a constant fudge to make up the difference) pins the
+    // alpha at 1 well inside a foreground's silhouette, which leaves its inner edge
+    // hard; normalised by the near blur it ramps across the silhouette over that blur's
+    // own radius, which is what makes a foreground soften on both sides of itself.
+    float nearArea = nearMax / max(maxBlur, 1e-4);
+    float fgAlpha = nearMax < 0.5 ? 0.0
+                                  : saturate(fgCoverage / max(fgTotal * nearArea * nearArea, 1e-4));
     float dofStrength = smoothstep(0.5, 1.5, centerSize);
-    float blend = max(dofStrength, fgAlpha);
-    return float4(mix(centerColor.rgb, bokeh, blend), centerColor.a);
+    return mix(mix(centerColor, bg, dofStrength), fg, fgAlpha);
 }
 
 // depth normalize: turn a 3D render target's resolved clip-space depth into the gray

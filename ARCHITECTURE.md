@@ -859,33 +859,94 @@ gather is Gustafsson's running-average form, Tuxedo Labs, studied via LYGIA's
 The aux is read perceptually as a depth map (`linearToSrgb(luma)`, matching the
 depth-feed read so the gray a sketch draws is the depth).
 
+It runs as **two passes**. A pre-pass (`ollin_fx_dof_prepass`) reduces the depth
+map to three per-pixel numbers, `(scatter, depth, receive)`, and the gather then
+reads those instead of the depth, so a tap costs one texture sample and no math.
+Moving the seam dilation into that pass as well took its 8 taps out of the
+per-pixel loop; the whole change measures **~35% faster** at 192 taps (M2,
+1080x1080, three runs each back to back: 22.0 ms before, 14.2 ms after).
+
+The two sizes are deliberately different, and each answers the *same* problem from
+one side. A depth map's silhouettes are anti-aliased, so every outline carries a
+sub-pixel band of in-between depth:
+
+- **Receive** is the max over a small ring (the seam dilation). Where that band
+  sweeps through `focus` it leaves a ~1px in-focus ring tracing each defocused
+  mark, which reads as a thin dotted circle; taking a pixel's own blur as the
+  neighbourhood max consumes it, while a real in-focus subject is thick enough to
+  keep its near-zero size.
+- **Scatter** is the min over the immediate neighbourhood. Where the band instead
+  lands in the *fully defocused* range it flings the colour beneath it across the
+  entire blur radius, and because the whole rim shares one depth it cuts off at
+  one radius too: a perfectly in-focus object came out ringed by a faint,
+  hard-edged, concentrically ridged halo of its own colour (7 to 10% of the
+  object's brightness against a dark backdrop, out to `maxBlur`). A rim texel
+  always has a low-blur neighbour on the object side, so the min erases it, while
+  a genuinely defocused region keeps its size. The radius is 2px, not 1, so the
+  erased band is wider than the gather's bilinear footprint, which would otherwise
+  average half the rim's size straight back in.
+
 Each tap is sorted by whether it is nearer than focus (foreground) or not, into
 two accumulators, each a Gustafsson running average:
 `acc += mix(acc/tot, sample, reach); tot += 1`, where `reach` tests whether a
 tap's own blur spans its distance. A non-reaching tap adds the current average
 rather than zero, so every tap counts. This both kills grain (no variance from a
 varying effective sample count, so no per-pixel jitter is needed) and blends
-overlapping bokeh.
+overlapping bokeh. Three details of the accumulation are load-bearing:
+
+- **Both fields seed with the centre texel.** Seeding the near field with black
+  instead (the obvious "nothing here yet" value) leaves its running average
+  converging *from* black, weighted `1/(taps+1)` per reaching tap, so a partly
+  covered foreground composites that bias over the background. A uniformly white
+  layer with a near disc in its depth map came back with a ~12% dark ring.
+- **Alpha rides the gather with the colour.** The layers are premultiplied, so
+  blurring rgb past a sharp alpha stops the result being premultiplied at all: a
+  shape on a transparent layer kept a razor silhouette however much blur was
+  asked for. An opaque layer is unaffected either way.
+- **A tap behind this pixel is occlusion-clamped** to twice this pixel's own blur
+  (Gustafsson's clamp). Without it a heavily defocused backdrop pours over a
+  barely defocused midground for the full `maxBlur`, whatever the midground's own
+  blur: a square with a 4.8px circle of confusion lost 30px of its edge to a 48px
+  backdrop. Two comparably defocused regions are each within 2x the other, so
+  overlapping bokeh still merges instead of hard-cutting along a silhouette.
 
 **Near/far separation is the load-bearing idea**, and it is the thing a plain
-single-pass gather cannot do. The foreground field carries a coverage that
-composites it *over* the background field, so a defocused foreground spreads over
-and hides an in-focus subject behind it instead of leaving a sharp crescent. The
-sharp center is then blended toward the bokeh by `max(centerDefocus,
-foregroundCoverage)`, so an in-focus subject stays crisp and correctly occludes
-blurred things behind it with a sharp edge, unless a foreground blur covers it.
+single-pass gather cannot do. The far side resolves first (the sharp centre
+blended toward its own bokeh by how defocused it is), then the foreground field
+composites *over* that by its coverage, so a defocused foreground spreads over
+and hides an in-focus subject behind it instead of leaving a sharp crescent, and
+an in-focus subject otherwise stays crisp and correctly occludes what is behind
+it. Folding the two into one `mix(centre, mix(bg, fg, a), max(dof, a))` applies
+the coverage twice and leaves a half-covered sharp subject a quarter more of its
+sharp self than it should have.
 
-Two supports complete it. An expanding golden-angle spiral
-(`radius += radScale/radius`, with `radScale` proportional to `maxBlur` squared)
-packs rings denser toward the rim so the bokeh edge is smooth without jitter. And
-a **seam dilation** (center blur size taken as the max over a small neighbourhood)
-consumes the thin in-focus ring a hard depth edge leaves where its anti-aliased
-boundary crosses the focal plane (the dotted-circle artifact). The seam was the
-most stubborn artifact in this effect, and the lesson is general: an artifact that
-survives every change to subsystem X is not in X. The seam survived every gather
-rewrite because it lived in the CoC/depth, not in the gather; a debug
-visualization of the in-focus map (returning `1 - centerCoC/maxBlur`) made it
-visible directly.
+Two rules make the foreground's own silhouette soften on **both** sides of itself,
+which is the half that is easy to get wrong (it blurred outward and stayed razor
+sharp inward, stepping 40% of the way to the background in a single pixel):
+
+- **A pixel under a near blur lets the background field gather from anywhere
+  inside that blur** (`nearReveal`). Otherwise nothing sits behind the foreground
+  for it to become transparent against, since the in-focus scene around it never
+  "reaches". What a foreground truly hides cannot be recovered from one image;
+  standing its neighbourhood in for it is the usual approximation and reads right.
+- **Foreground coverage is an area fraction of that near blur, not of the whole
+  gather disc.** The spiral is equal-area per tap, so taps inside radius `r` number
+  `total * (r/maxBlur)^2`; normalising by the disc instead (with a constant fudge
+  to make up the difference) pins the alpha at 1 well inside the silhouette, which
+  is exactly what kept the inner edge hard. Normalised properly the alpha passes
+  through the silhouette mid-ramp and falls off over the foreground's own blur
+  radius either side.
+
+An expanding golden-angle spiral (`radius += radScale/radius`, with `radScale`
+proportional to `maxBlur` squared) packs rings denser toward the rim so the bokeh
+edge is smooth without jitter.
+
+The seam was the most stubborn artifact in this effect, and the lesson is general:
+an artifact that survives every change to subsystem X is not in X. The seam
+survived every gather rewrite because it lived in the CoC/depth, not in the
+gather; a debug visualization of the in-focus map (returning
+`1 - centerCoC/maxBlur`) made it visible directly. Returning the pre-pass channels
+raw out of the gather is the same move and worth reaching for early.
 
 This works on smooth/continuous depth (a gradient or a depth feed) and on
 hard-edged discrete per-object depths with overlapping objects. `quality` is a
@@ -895,14 +956,22 @@ controls, so `.detail` is creamier and `.performance` is faster, while `maxBlur`
 is the blur amount.
 
 The tap budget was tuned with data from `Scripts/benchmark.sh dof`
-(`DofBenchmarkTests` sweeps tap counts via the internal `dofTapsOverride` hook
-and the effects-aware `benchmarkGPUMilliseconds`): on an M2 at 1080x1080,
-`.default` (128 taps) measures 9.9 ms and holds 60 fps with headroom, and
-`.detail` (256 taps) measures 19 ms (30 fps, for creamier blur). The shader's
-`OLLIN_DOF_TAPS` constant is the fallback default when no budget is passed. The
-`Effects/Defocus` example racks focus through orbs at discrete per-object depths
-(a moderate count, so dense occlusion stays readable), and its snapshot pins the
-overlapping hard-depth case.
+(`DofBenchmarkTests` sweeps tap counts via the internal `dofTapsOverride` hook and
+the effects-aware `benchmarkGPUMilliseconds`). Take the numbers back to back on a
+cool machine: single runs drift by 50% under thermal load, which is enough to
+invert an A/B. On an M2 at 1080x1080 the `.default` tier (192 taps) measures
+~14 ms and holds 60 fps. The shader's `OLLIN_DOF_TAPS` constant is the fallback
+default when no budget is passed. The `Effects/Defocus` example racks focus
+through orbs at discrete per-object depths (a moderate count, so dense occlusion
+stays readable), and its snapshot pins the overlapping hard-depth case.
+
+The pixel snapshots passed within tolerance across every one of the fixes above,
+because a mean-per-channel comparison averages away defects that live in a band
+around each silhouette, which is where all of them live. `DefocusTests` pins them
+directly instead: a near spread invents no colour, a sharp subject rejects the
+backdrop, a lightly defocused midground keeps its edge, a foreground silhouette
+softens on both sides, transparency blurs its coverage, and `maxBlur` 0 is a
+pass-through. Reach for a behavioral probe here, not a whole-frame diff.
 
 ---
 
