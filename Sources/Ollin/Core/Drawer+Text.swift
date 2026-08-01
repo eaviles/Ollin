@@ -578,6 +578,7 @@ extension Drawer {
     /// and gradient strokes all take this path. Needs a stroke to draw.
     func drawLine(_ a: Vector2, _ b: Vector2) {
         guard let stroke = strokePaint, strokeWidth > 0 else { return }
+        if strokedAsBrush([a, b], closed: false) { return }
         if svgRecorder != nil {
             svgRecord(.line(a, b), fill: nil, stroke: stroke)
             return
@@ -674,6 +675,11 @@ extension Drawer {
     /// to draw.
     func drawBezier(_ start: Vector2, _ control: Vector2, _ end: Vector2) {
         guard let stroke = strokePaint, strokeWidth > 0 else { return }
+        if strokeBrushShape != nil {
+            var flat = [start]
+            flat.append(contentsOf: CurveSampling.quadratic(from: start, control: control, end: end))
+            if strokedAsBrush(flat, closed: false) { return }
+        }
         if svgRecorder != nil {
             svgRecord(.quad(start: start, control: control, end: end), fill: nil, stroke: stroke)
             return
@@ -725,6 +731,19 @@ extension Drawer {
     /// contours are stroke-only. Both fill and stroke go through the triangle
     /// path, so a `Shape` composites in draw order with everything else.
     func drawShape(_ shape: Shape) {
+        // A brushed outline stamps on the vector path as well as the raster one,
+        // so the fill is emitted on its own first (this call again, with no
+        // stroke) and the stamps follow it in draw order.
+        if strokeBrushShape != nil, strokePaint != nil, strokeWidth > 0 {
+            let saved = strokePaint
+            strokePaint = nil
+            drawShape(shape)
+            strokePaint = saved
+            for contour in shape.contours where contour.points.count >= 2 {
+                _ = strokedAsBrush(contour.points, closed: contour.isClosed)
+            }
+            return
+        }
         if svgRecorder != nil {
             svgRecord(.path(shape), fill: fillPaint, stroke: strokePaint)
             return

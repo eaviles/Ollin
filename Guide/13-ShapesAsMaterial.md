@@ -189,6 +189,35 @@ Three practical notes. A mark is an ordinary value, so finishing one is `strokes
 
 `Examples/Shapes/Brushwork` is the whole thing to drag around in, and [Marks](../Docs/Drawing/Marks.md) has the rest.
 
+## A mark made of many marks
+
+Both tools so far shape one continuous ribbon. A real brush is not continuous: it is a tip pressed down over and over, close enough that the prints run together. `strokeBrush` works that way too.
+
+```swift
+strokeWeight(20)
+strokeBrush(.spray())
+drawPolyline(points)
+```
+
+It is drawing state, like `strokeCap` or a profile, and `noStrokeBrush()` puts the ribbon back. It applies to everything that strokes a path, `drawMark` included.
+
+<img src="Images/13-ShapesAsMaterial/BrushStamps.jpg" alt="The same S-curve stamped three ways at one stroke weight: close-packed circles reading as a solid mark, squares turning with the path like a chisel nib, and a loose spray of translucent circles thrown either side of the line" width="680">
+
+The first panel is the thing worth noticing. Those are separate circles, spaced a fifth of their own width apart, and they read as one solid stroke. Spacing is the knob that decides whether a brush is a mark or a scatter, and it is measured in *stamp sizes* rather than pixels, so a brush keeps its texture when you change `strokeWeight`. Twice the weight is the same mark, twice as big.
+
+The rest of the knobs are what you would guess: `sizeJitter` and `opacityJitter` vary each print, `angle` faces it (down the path, at a fixed angle, or anywhere), `scatter` throws it off the line, and `count` lays down several at each step. Every one of them is a fraction of the stamp's size, and everything random comes from a `seed`, so a mark stays exactly where it was frame after frame.
+
+The tip does not have to be a circle. `.square` turns with the path, and `.shape` and `.image` take anything you can draw or load, so a trail of leaves is a shape tip with a little angle jitter.
+
+Brushes multiply with the two previous tools rather than replacing them. A profile still sizes the stamps along the path, so a spray that fades out at both ends is one more line:
+
+```swift
+strokeBrush(.spray())
+strokeProfile(.taper())
+```
+
+And because each stamp is a real shape rather than a stretch of ribbon, `--export-svg` writes every one of them as a circle or a polygon a plotter can follow. `Examples/Shapes/Brushes` has the family side by side.
+
 ## Growing, shrinking, and thickening
 
 Three more verbs finish the shape-editing vocabulary. `offset(by:)` grows a region outward (positive) or shrinks it inward (negative), holes moving the opposite way, and shrinking a region repeatedly reads as topographic contour lines until it pinches apart and disappears (the `Patterns/Topography` example is exactly that loop). New in the toolbox, `stroked(width:)` turns a *line* into a *region*, giving the closed shape a pen stroke of that width would cover, round or square or butt ends included, and a closed contour comes back as a band:

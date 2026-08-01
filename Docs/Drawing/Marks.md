@@ -20,7 +20,7 @@ override func draw() {
 
 Drag, and the mark comes out full where you moved slowly and thin where you hurried.
 
-**Contents:** [The pieces](#pieces) · [StrokeInput](#input) · [StrokeResponse](#response) · [StrokeDynamics](#dynamics) · [StrokeMark](#mark) · [drawMark](#drawMark) · [Pressure](#pressure) · [Building a mark by hand](#byhand) · [What exports](#export)
+**Contents:** [The pieces](#pieces) · [StrokeInput](#input) · [StrokeResponse](#response) · [StrokeDynamics](#dynamics) · [StrokeMark](#mark) · [drawMark](#drawMark) · [Pressure](#pressure) · [Building a mark by hand](#byhand) · [Brushes](#brushes) · [What exports](#export)
 
 <a name="pieces"></a>
 
@@ -211,6 +211,58 @@ for (i, p) in path.enumerated() {
 
 This is also how a mark differs from `StrokeProfile.values([...])`, and why it is its own type. A profile's values are spread **evenly** along the path. A recorded hand's points are not evenly spaced: they bunch where it slowed and spread out where it hurried, which is exactly the information the mark is carrying. Spreading its widths evenly would slide every one of them off the place it was measured. (`StrokeProfile.values(_:at:)` is the general form, taking the fractions to place them at, and it is what `drawMark` builds internally.)
 
+<a name="brushes"></a>
+
+## Brushes
+
+A width profile and a recorded mark both shape one continuous ribbon. A **`Brush`** replaces the ribbon: it repeats a shape along the path instead.
+
+```swift
+strokeWeight(20)
+strokeBrush(.spray())
+drawPolyline(points)
+```
+
+`strokeBrush(_:)` is style, set once and held like `strokeCap` or `strokeProfile`, and `noStrokeBrush()` goes back to the ribbon. It applies wherever a path is stroked: `drawLine`, `drawBezier`, `drawPolyline`, `drawCurve`, `drawArc`, `drawMark`, and the outlines of `drawShape` and `drawPolygon`. The analytic shapes (`drawCircle`, `drawRect`, and friends) have no path to walk, so they keep drawing a continuous outline and say so once.
+
+The stamp takes its **size** from `strokeWeight` and its **color** from `stroke`. A brush decides texture, not weight or color, which is what lets you swap brushes without re-tuning everything else.
+
+### The knobs
+
+| | |
+|---|---|
+| `tip` | What gets stamped: `.circle`, `.square`, `.shape(Shape)`, or `.image(Image)` |
+| `spacing` | Gap between stamps, as a fraction of the stamp's size. `0.2` reads as one mark, `1` as a row of beads |
+| `sizeJitter` | How much each stamp's size varies, `0` to `1` |
+| `angle` | `.followPath`, `.fixed(radians)`, or `.random` |
+| `angleJitter` | A random turn on top of `angle`, in radians |
+| `scatter` | How far stamps stray off the line, as a fraction of their size |
+| `count` | Stamps laid down at each step. Above `1` with `scatter`, this is a scatter brush |
+| `opacityJitter` | How much each stamp's opacity varies, `0` to `1` |
+| `seed` | Fixes the randomness |
+
+Four presets cover the common marks: `.round`, `.chisel()`, `.spray()`, and `.scatter()`.
+
+### Spacing is measured in stamps, not pixels
+
+Every distance in a brush is a fraction of the stamp's own size, so one brush keeps its texture at any weight. The same brush at twice the `strokeWeight` makes the same mark, twice as big, rather than a differently textured one.
+
+### It multiplies with a profile
+
+`strokeProfile` still shapes the size along the path, so a scattered mark that tapers at both ends is one more call:
+
+```swift
+strokeBrush(.spray())
+strokeProfile(.taper())
+drawPolyline(points)
+```
+
+A `drawMark`'s recorded widths and opacities feed in the same way, so a brush can be driven by the hand.
+
+### It is stable
+
+A stamp's randomness comes from its index along the path and the brush's `seed`, never from the sketch's `random`, so a brush cannot shift randomness a sketch is using elsewhere, and the same path draws the same mark every frame. Animate the path and the stamps travel with it rather than boiling in place.
+
 <a name="export"></a>
 
 ## What exports
@@ -219,9 +271,11 @@ A mark's **width** exports exactly. `--export-svg` and `--export-pdf` write the 
 
 A mark's **opacity flattens** to its average, weighted along the mark's length. A vector document draws one fill at one alpha per path, so a varying opacity has nowhere to go; Ollin says so once on the console rather than silently. For the plotter case, one pen and one ink, this costs nothing.
 
+A **brush** exports as its stamps: real circles, polygons, and paths a plotter can follow, one per stamp, so the exported document carries the mark the screen showed rather than the bare path running under it. Because each stamp is its own shape, a brushed mark keeps its varying opacity in vector export where a ribbon has to flatten it. The one thing a brush cannot vary is opacity over a *gradient* stroke, which would mean rewriting the ramp; it says so once and stamps at the ramp's own alpha.
+
 ## See also
 
 - [Drawing](Drawing.md#strokeProfile) for `strokeProfile`, the designed-mark sibling
 - [Input](../Helpers/Input.md) for the rest of the pointer and keyboard surface
 - [Export](../Output/Export.md) for the vector exporters
-- Example: `Examples/Shapes/Brushwork` (paint with it), `Examples/Shapes/StrokeProfiles` (the profile family)
+- Example: `Examples/Shapes/Brushwork` (paint with it), `Examples/Shapes/StrokeProfiles` (the profile family), `Examples/Shapes/Brushes` (the brush family)

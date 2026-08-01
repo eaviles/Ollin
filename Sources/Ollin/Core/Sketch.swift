@@ -1276,6 +1276,19 @@ open class Sketch {
     }
     /// Return to a constant-width stroke (the default), undoing `strokeProfile(_:)`.
     public func noStrokeProfile() { drawer.noStrokeProfile() }
+    /// Repeat a shape along the path instead of expanding it into a continuous
+    /// ribbon: `strokeBrush(.spray())` sprays round stamps either side of the
+    /// line, `strokeBrush(.chisel())` lays down squares that turn with it.
+    ///
+    /// The stamp takes its size from `strokeWeight` and its color from `stroke`,
+    /// so a brush changes a stroke's texture, not its weight or its color, and an
+    /// ambient `strokeProfile` still shapes the size along the path. Applies to
+    /// the stroked paths (`drawLine`, `drawBezier`, `drawPolyline`, `drawCurve`,
+    /// `drawMark`, and `drawShape` / `drawPolygon` outlines); the analytic shapes
+    /// keep their continuous outline. See `Brush`.
+    public func strokeBrush(_ brush: Brush) { drawer.strokeBrush(brush) }
+    /// Return to a continuous stroke (the default), undoing `strokeBrush(_:)`.
+    public func noStrokeBrush() { drawer.noStrokeBrush() }
     public func pointSize(_ size: Double) { drawer.pointSize(size) }
     public func pointMarker(_ marker: PointMarker) { drawer.pointMarker(marker) }
     public func drawPoint(_ x: Double, _ y: Double) { drawer.drawPoint(x, y) }

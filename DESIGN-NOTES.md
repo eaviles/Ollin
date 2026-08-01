@@ -134,9 +134,8 @@ Origin note, the same as the generative-geometry tier: this catalog is the broad
 
 ## Expressive brushes and strokes
 
-The fringe expander carries a half-width per path vertex, `StrokeProfile` shapes it by position along the path, and a recorded `StrokeMark` drives it from the hand. The tier builds out from there:
+The fringe expander carries a half-width per path vertex, `StrokeProfile` shapes it by position along the path, a recorded `StrokeMark` drives it from the hand, and a `Brush` stamps a shape along the path instead of expanding it. The tier builds out from there:
 
-- **Stamped and scatter brushes.** A shape or texture repeated along the path with spacing, jitter, and rotation parameters. This is geometry emission (instanced SDF shapes or textured quads along the flattened path), not a stroke-renderer change, so it can land independently.
 - **Painterly simulation stays separate.** Watercolor-style marks built from layered, deformed translucent geometry are a [technique-catalog](#technique-and-algorithm-helpers) recipe over the shape and accumulation machinery, not a brush engine; keeping the two distinct keeps the stroke renderer lean.
 
 ## Sound, synthesis, and spatial audio

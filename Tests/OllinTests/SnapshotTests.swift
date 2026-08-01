@@ -131,6 +131,8 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { StrokeJoinsCaps() }),
     SnapshotCase("stroke-profiles", note: "strokeProfile width profiles on the fringe stroke path.",
                  make: { StrokeProfilesScene() }),
+    SnapshotCase("brushes", note: "strokeBrush stamps: tips, spacing, jitter, scatter, and a taper.",
+                 make: { BrushesScene() }),
     SnapshotCase("bitmap-text", note: "The bitmap font specimen.",
                  make: { TextSpecimen() }),
     SnapshotCase("tinted-image", note: "A tinted textured-quad image.",
@@ -3543,6 +3545,47 @@ private final class StrokeJoinsCaps: Sketch {
 /// expansion (trapezoid segments, joins and caps at the local width) and the
 /// area-conserving sub-pixel coverage that lets a taper vanish instead of trailing
 /// a ghost line. Black on white, no rng and no time, so it is deterministic.
+private final class BrushesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.white)
+        stroke(.black)
+        strokeWeight(14)
+
+        func wave(_ y: Double) -> [Vector2] {
+            (0...40).map { i in
+                let t = Double(i) / 40
+                return Vector2(20 + t * 216, y + sin(t * .pi * 2) * 12)
+            }
+        }
+
+        strokeBrush(.round)
+        drawPolyline(wave(26))
+
+        strokeBrush(.chisel())
+        drawPolyline(wave(70))
+
+        strokeBrush(.spray(seed: 5))
+        drawPolyline(wave(114))
+
+        strokeBrush(.scatter(seed: 9))
+        drawPolyline(wave(158))
+
+        // A brush and a width profile multiply.
+        strokeBrush(Brush(.circle, spacing: 0.4, sizeJitter: 0.3, seed: 2))
+        strokeProfile(.taper())
+        drawPolyline(wave(202))
+        noStrokeProfile()
+
+        // A fixed angle, a closed path, and a shape tip.
+        strokeWeight(10)
+        strokeBrush(Brush(.square, spacing: 1.1, angle: .fixed(.pi / 4), seed: 4))
+        drawPolyline([Vector2(30, 226), Vector2(120, 240), Vector2(210, 226)], closed: true)
+        noStrokeBrush()
+    }
+}
+
 private final class StrokeProfilesScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

@@ -212,6 +212,13 @@ extension Drawer {
     }
 
     func appendFringeStroke(_ points: [Vector2], closed: Bool, paint: VertexPaint) {
+        // A brush replaces the ribbon with a row of stamps. It branches here, ahead
+        // of `replicated`, because each stamp draws through an ordinary draw method
+        // that replicates itself; wrapping them again would fold every copy twice.
+        if let brush = strokeBrushShape {
+            appendBrushStamps(points, closed: closed, brush: brush)
+            return
+        }
         // Emits only fringe vertices into one `.fringe` batch, so symmetry can
         // replicate the whole expansion as a range copy (see `replicated`).
         replicated { appendFringeStrokeSingle(points, closed: closed, paint: paint) }

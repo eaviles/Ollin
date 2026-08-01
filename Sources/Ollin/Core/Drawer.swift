@@ -215,6 +215,10 @@ final class Drawer {
     // `.uniform` value leaves the per-vertex color untouched, so every other
     // stroke in the framework is byte-identical to before it existed.
     var strokeOpacityShape: StrokeProfile = .uniform
+    // A shape repeated along a path in place of the continuous ribbon (see
+    // strokeBrush). `nil` is the ribbon, so every stroke that does not ask for a
+    // brush takes exactly the path it always did.
+    var strokeBrushShape: Brush?
     var currentMaterial = Material()    // 3D mesh surface finish (shading model + specular/rim/subsurface/iridescence); see material(_:)
     private var wireframeEnabled = false        // 3D mesh: draw triangle edges only (see wireframe)
     private var currentMatcap: Image?           // 3D mesh: a matcap sphere texture replacing the lit look (see matcap(_:))
@@ -1276,6 +1280,7 @@ final class Drawer {
         var strokeCapStyle: StrokeCap
         var strokeProfileShape: StrokeProfile
         var strokeOpacityShape: StrokeProfile
+        var strokeBrushShape: Brush?
         var currentMaterial: Material
         var wireframeEnabled: Bool
         var currentMatcap: Image?
@@ -1447,6 +1452,16 @@ final class Drawer {
 
     /// Return to a constant-width stroke (the default).
     func noStrokeProfile() { strokeProfileShape = .uniform }
+
+    /// Repeat a shape along the path instead of expanding it into a continuous
+    /// ribbon (see `Brush`). The stamp takes its size from `strokeWeight` and its
+    /// color from `stroke`, and an ambient `strokeProfile` still shapes the size
+    /// along the path. Affects the stroked paths; the analytic SDF shapes keep
+    /// their continuous outline.
+    func strokeBrush(_ brush: Brush) { strokeBrushShape = brush }
+
+    /// Return to a continuous stroke (the default).
+    func noStrokeBrush() { strokeBrushShape = nil }
 
     /// The half-width at each point of a path, or `nil` when the stroke is the
     /// plain constant-width kind. `points` is the path as it will be expanded
@@ -2231,6 +2246,7 @@ final class Drawer {
                                      strokeCapStyle: strokeCapStyle,
                                      strokeProfileShape: strokeProfileShape,
                                      strokeOpacityShape: strokeOpacityShape,
+                                     strokeBrushShape: strokeBrushShape,
                                      currentMaterial: currentMaterial,
                                      wireframeEnabled: wireframeEnabled,
                                      currentMatcap: currentMatcap,
@@ -2261,6 +2277,7 @@ final class Drawer {
         strokeCapStyle = s.strokeCapStyle
         strokeProfileShape = s.strokeProfileShape
         strokeOpacityShape = s.strokeOpacityShape
+        strokeBrushShape = s.strokeBrushShape
         currentMaterial = s.currentMaterial
         wireframeEnabled = s.wireframeEnabled
         currentMatcap = s.currentMatcap

@@ -673,6 +673,11 @@ extension Drawer {
         if hasStroke, !strokeProfileShape.isUniform {
             noteOnce("strokeProfile(_:) applies to stroked paths (drawLine / drawBezier / drawPolyline / drawCurve / drawShape outlines); \(shape) draws its outline at strokeWeight.")
         }
+        // Same story for a brush: an analytic shape's outline is one continuous
+        // band the fragment evaluates, with no path to walk laying stamps along.
+        if hasStroke, strokeBrushShape != nil {
+            noteOnce("strokeBrush(_:) applies to stroked paths (drawLine / drawBezier / drawPolyline / drawCurve / drawShape outlines); \(shape) draws its outline as a continuous stroke.")
+        }
         // Hollow mode applies only to region shapes the fragment can onion; the
         // round-dot point path shares the `.ellipse` tag, so it opts out here.
         let band = (applyHollow && shape.honorsHollow) ? Float(hollowWidth) : 0
@@ -1134,15 +1139,37 @@ extension Drawer {
         let sweep = stop - start
         guard abs(sweep) > 1e-9 else { return }
 
-        if svgRecorder != nil {
+        /// The arc as points, which both the vector recorder and the tessellated
+        /// path need.
+        func sampled() -> [Vector2] {
             let full = circleSegments(for: max(rx, ry))
             let segments = max(2, Int((Double(full) * abs(sweep) / (2.0 * .pi)).rounded(.up)))
-            var pts: [Vector2] = []
-            pts.reserveCapacity(segments + 1)
-            for i in 0...segments {
+            return (0...segments).map { i in
                 let a = start + sweep * (Double(i) / Double(segments))
-                pts.append(Vector2(x + cos(a) * rx, y + sin(a) * ry))
+                return Vector2(x + cos(a) * rx, y + sin(a) * ry)
             }
+        }
+
+        // A brush stamps the outline, and it needs the arc as points whichever
+        // path would otherwise draw it, so it comes ahead of both the vector
+        // recorder and the analytic circular-arc case. The fill is emitted first
+        // by this same call with the stroke cleared, so the stamps land over it.
+        if strokeBrushShape != nil, strokePaint != nil, strokeWidth > 0 {
+            let saved = strokePaint
+            strokePaint = nil
+            drawArc(x, y, rx, ry, start: start, stop: stop, mode: mode)
+            strokePaint = saved
+            let pts = sampled()
+            switch mode {
+            case .open:  _ = strokedAsBrush(pts, closed: false)
+            case .chord: _ = strokedAsBrush(pts, closed: true)
+            case .pie:   _ = strokedAsBrush([Vector2(x, y)] + pts, closed: true)
+            }
+            return
+        }
+
+        if svgRecorder != nil {
+            let pts = sampled()
             let center = Vector2(x, y)
             if let fill = fillPaint {
                 svgRecord(.polygon(mode == .pie ? [center] + pts : pts), fill: fill, stroke: nil)
@@ -1164,14 +1191,7 @@ extension Drawer {
 
         // Sample the arc, scaling the segment count to the swept fraction so a
         // short arc stays cheap and a near-full one stays smooth.
-        let full = circleSegments(for: max(rx, ry))
-        let segments = max(2, Int((Double(full) * abs(sweep) / (2.0 * .pi)).rounded(.up)))
-        var pts: [Vector2] = []
-        pts.reserveCapacity(segments + 1)
-        for i in 0...segments {
-            let a = start + sweep * (Double(i) / Double(segments))
-            pts.append(Vector2(x + cos(a) * rx, y + sin(a) * ry))
-        }
+        let pts = sampled()
         let center = Vector2(x, y)
 
         if let fill = fillPaint {
@@ -1254,6 +1274,7 @@ extension Drawer {
     /// default). Needs at least two points and a stroke to draw anything.
     func drawPolyline(_ points: [Vector2], closed: Bool = false) {
         guard points.count >= 2, let stroke = strokePaint, strokeWidth > 0 else { return }
+        if strokedAsBrush(points, closed: closed) { return }
         if svgRecorder != nil {
             svgRecord(closed ? .polygon(points) : .polyline(points), fill: nil, stroke: stroke)
             return
@@ -1295,7 +1316,10 @@ extension Drawer {
         }
 
         if mark.variesOpacity {
-            if svgRecorder != nil {
+            // A brush stamps each moment as its own shape, so it can carry the
+            // recorded opacity into a vector document too; only the single-path
+            // ribbon has to flatten it.
+            if svgRecorder != nil, strokeBrushShape == nil {
                 // A vector document draws one fill at one alpha per path, so a
                 // varying opacity has nowhere to go. Flattening it to the ink the
                 // mark laid down on average keeps the exported weight right, and
@@ -1309,6 +1333,7 @@ extension Drawer {
             }
         }
 
+        if strokedAsBrush(points, closed: false) { return }
         if svgRecorder != nil {
             svgRecord(.polyline(points), fill: nil, stroke: strokePaint)
             return
