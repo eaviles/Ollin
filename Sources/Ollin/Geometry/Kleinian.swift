@@ -19,86 +19,8 @@ import Foundation
 /// `epsilon`), so points come back roughly evenly spaced along the curve,
 /// plotter-ready. Deterministic given (traces, epsilon, maxDepth).
 
-// MARK: - Complex scalars and Möbius maps
-
-private struct ComplexValue {
-    var re: Double
-    var im: Double
-
-    static let zero = ComplexValue(re: 0, im: 0)
-    static let one = ComplexValue(re: 1, im: 0)
-
-    static func + (a: ComplexValue, b: ComplexValue) -> ComplexValue {
-        ComplexValue(re: a.re + b.re, im: a.im + b.im)
-    }
-
-    static func - (a: ComplexValue, b: ComplexValue) -> ComplexValue {
-        ComplexValue(re: a.re - b.re, im: a.im - b.im)
-    }
-
-    static func * (a: ComplexValue, b: ComplexValue) -> ComplexValue {
-        ComplexValue(re: a.re * b.re - a.im * b.im,
-                     im: a.re * b.im + a.im * b.re)
-    }
-
-    static func / (a: ComplexValue, b: ComplexValue) -> ComplexValue {
-        let d = max(b.re * b.re + b.im * b.im, 1e-300)
-        return ComplexValue(re: (a.re * b.re + a.im * b.im) / d,
-                            im: (a.im * b.re - a.re * b.im) / d)
-    }
-
-    var magnitude: Double { (re * re + im * im).squareRoot() }
-
-    /// The principal square root: halve the argument, root the modulus.
-    var squareRoot: ComplexValue {
-        let m = magnitude
-        let angle = atan2(im, re) / 2
-        let r = m.squareRoot()
-        return ComplexValue(re: r * cos(angle), im: r * sin(angle))
-    }
-
-    static func real(_ value: Double) -> ComplexValue { ComplexValue(re: value, im: 0) }
-}
-
-/// A 2x2 complex matrix acting as the Möbius map z → (pz + q) / (rz + s).
-private struct MobiusMap {
-    var p: ComplexValue
-    var q: ComplexValue
-    var r: ComplexValue
-    var s: ComplexValue
-
-    static func * (a: MobiusMap, b: MobiusMap) -> MobiusMap {
-        MobiusMap(p: a.p * b.p + a.q * b.r,
-                  q: a.p * b.q + a.q * b.s,
-                  r: a.r * b.p + a.s * b.r,
-                  s: a.r * b.q + a.s * b.s)
-    }
-
-    /// The adjugate: the inverse of a unit-determinant matrix.
-    var inverse: MobiusMap {
-        MobiusMap(p: s, q: ComplexValue(re: -q.re, im: -q.im),
-                  r: ComplexValue(re: -r.re, im: -r.im), s: p)
-    }
-
-    func apply(_ z: ComplexValue) -> ComplexValue {
-        (p * z + q) / (r * z + s)
-    }
-
-    /// The attracting fixed point (either fixed point when parabolic).
-    var attractingFixedPoint: ComplexValue {
-        let trace = p + s
-        let root = (trace * trace - ComplexValue.real(4)).squareRoot
-        if r.magnitude < 1e-12 {
-            // Fixed points are infinity and q / (s − p); return the finite one.
-            return q / (s - p)
-        }
-        let lambda = (trace + root) / ComplexValue.real(2)
-        let k = lambda * lambda
-        let plus = ((p - s) + root) / (r * ComplexValue.real(2))
-        let minus = ((p - s) - root) / (r * ComplexValue.real(2))
-        return k.magnitude > 1 ? plus : minus
-    }
-}
+// Complex scalars and Möbius maps live in `MobiusMap.swift`, shared with the
+// Schottky circle orbit.
 
 // MARK: - The two-generator recipe
 

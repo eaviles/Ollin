@@ -683,6 +683,7 @@ let package = Package(
         example("Patterns/FractalFlame"),
         example("Patterns/InversionFractal"),
         example("Patterns/Kleinian"),
+        example("Patterns/Schottky"),
         example("Patterns/Marbling"),
         example("Patterns/Chladni"),
         example("Shapes/HollowShapes"),

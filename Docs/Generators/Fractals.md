@@ -4,7 +4,7 @@
 
 ## Fractals
 
-Four ways a handful of numbers unfolds into infinite detail: **iterated function systems** (a few affine maps condensing onto a fern), **fractal flames** (the chaos game grown up, with nonlinear warps and a log-density display), **circle-inversion limit sets** (lace living in the gaps of a mirror arrangement), and **Kleinian limit sets** (the fractal boundary curves of Möbius groups, traced in order). All four are deterministic: the point emitters run off a seedable generator, the Kleinian walk uses no randomness at all. The escape-time siblings (`.mandelbrot`, `.julia`) live on the GPU as [generators](../Drawing/Effects.md#generate).
+Five ways a handful of numbers unfolds into infinite detail: **iterated function systems** (a few affine maps condensing onto a fern), **fractal flames** (the chaos game grown up, with nonlinear warps and a log-density display), **circle-inversion limit sets** (lace living in the gaps of a mirror arrangement), **Kleinian limit sets** (the fractal boundary curves of Möbius groups, traced in order), and **Schottky circle orbits** (circles paired off by Möbius maps, nesting forever). All five are deterministic: the point emitters run off a seedable generator, the Kleinian walk uses no randomness at all. The escape-time siblings (`.mandelbrot`, `.julia`) live on the GPU as [generators](../Drawing/Effects.md#generate).
 
 ```
   IFS                    flame                  inversion            Kleinian
@@ -21,6 +21,7 @@ Four ways a handful of numbers unfolds into infinite detail: **iterated function
 - [FractalFlame](#flame)
 - [inversionLimitSet](#inversion)
 - [kleinianLimitSet](#kleinian)
+- [schottkyCircles](#schottky)
 - [fitted](#fitted)
 
 <a name="ifs"></a>
@@ -109,6 +110,43 @@ drawPolyline(fitted(curve.points, in: canvasRectangle.inset(by: 100)), closed: t
 ```
 
 `KleinianPreset` names the landmarks: `.gasket` (the Apollonian gasket at traces `(2, 2)`), `.spiralPair`, `.lace`, `.doubleCusp` (the celebrated 1/15 cusp), `.cusp`, and `.symmetricCusps`. Custom traces just inside the quasi-Fuchsian region spiral tighter and tighter; outside it there is no curve to trace, and the polyline degenerates. Cusps converge slowly, so they reward a larger `maxDepth`.
+
+<a name="schottky"></a>
+
+#### schottkyCircles
+
+```swift
+schottkyCircles(pairing: [SchottkyPairing], minRadius: Double = 0.5,
+                maxDepth: Int = 40) -> [Circle]
+schottkyCircles(_ preset: SchottkyPreset, in bounds: Rectangle, ...) -> [Circle]
+schottkyLimitSet(pairing: [SchottkyPairing], ...) -> [Vector2]
+```
+
+Take an even number of circles and pair them up. A `SchottkyPairing` is the Möbius map carrying the *outside* of one circle onto the *inside* of its partner, so applying it drops whatever it touches into the partner disc, smaller. Apply the pairings and their inverses in every order and the circles nest forever; what they close down onto is the group's limit set.
+
+The output is real `Circle`s, not a flattened polyline, because a Möbius map carries a circle to a circle. `drawCircles` renders them analytically and the vector-export path writes true circle geometry, so the whole lace goes to a plotter as circles.
+
+```swift
+noFill()
+drawCircles(schottkyCircles(.kissing, in: canvasRectangle.inset(by: 80)))
+```
+
+Circles come back in canvas coordinates, needing no fitting: the lace lands among the circles that made it. The walk is rng-free and adaptive, stopping a branch once its circle falls under `minRadius`, since everything below nests inside it. `schottkyLimitSet` keeps the centers of those stopped circles instead, each within `minRadius` of the limit set, and uses no randomness where the chaos game behind [`inversionLimitSet`](#inversion) does.
+
+**Tangency is what fills the picture.** When a pairing's two circles *touch*, its generator holds the tangency point fixed and is parabolic: it barely contracts near that point, so the orbit keeps producing large circles for many generations and they crowd into a fan at the tangency. Pair circles across a ring instead and every generator contracts hard, leaving a thin dust. The difference is not subtle, and it is why there are two family builders:
+
+```swift
+schottkyCuspedPairs(in: Rectangle, spread: Double = 1,
+                    lean: Double = 0, twist: Double = 0) -> [SchottkyPairing]
+schottkyNecklace(pairs: Int, in: Rectangle,
+                 tightness: Double = 0.9, twist: Double = 0) -> [SchottkyPairing]
+```
+
+`schottkyCuspedPairs` is the dense one: four circles in two touching pairs. `spread` slides the pairs apart (at `1` all four circles are mutually tangent and the limit set closes into a round circle with four cusps; above `1` the top and bottom tangencies open into gaps); `lean` swings each pair about its own tangency point, in opposite senses, which keeps both generators parabolic and so keeps the lace dense all the way along it; `twist` turns each pairing off its tangency-preserving setting, winding the limit set into a spiral but thinning it as it goes. `lean` is the dial to animate, `twist` the one that costs you density.
+
+`SchottkyPreset` names the landmarks: `.kissing`, `.leaning`, `.cusped`, `.spiral`, and `.dust` (the thin cross-ring pairing, for contrast).
+
+Discs should be disjoint, tangency allowed. Overlapping circles make the group non-discrete and the lace turns to mud; a hard ceiling on emitted circles keeps such an arrangement from running away rather than letting it exhaust memory.
 
 <a name="fitted"></a>
 

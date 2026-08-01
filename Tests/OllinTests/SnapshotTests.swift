@@ -452,6 +452,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("kleinian",
                  note: "Two Kleinian limit sets, the Apollonian-gasket curve above a lacy quasi-Fuchsian one, each traced as a single ordered closed polyline and fitted to its half. Pins the two-generator trace recipe, the depth-first walk's cyclic ordering and landmark points, and the epsilon termination. No rng and no time, so the curves are deterministic.",
                  make: { KleinianScene() }),
+    SnapshotCase("schottky",
+                 note: "A Schottky group's circle orbit: four circles in two touching pairs, drawn beside the same arrangement leaned over. Pins the pairing map (outside onto inside, the tangency-preserving twist zero point that makes a touching pair's generator parabolic), the closed-form Möbius image of a circle, and the radius-pruned walk over reduced words. No rng and no time, so both laces are deterministic.",
+                 make: { SchottkyScene() }),
     SnapshotCase("fractal-flame",
                  note: "A seeded random fractal flame accumulated to a fixed sample count and developed once. Pins the chaos-game loop (weighted picks, the fuse), the variation formulas and their theta convention, structural coloring, and the log-density display with gamma and vibrancy. Seeded, and the sample count is fixed, so the render is deterministic.",
                  make: { FractalFlameScene() }),
@@ -4983,6 +4986,26 @@ private final class KleinianScene: Sketch {
         let bottom = kleinianLimitSet(.lace, epsilon: 0.012)
         drawPolyline(fitted(bottom.points, in: Rectangle(x: 16, y: 136, width: 224, height: 112)),
                      closed: true)
+    }
+}
+
+/// A Schottky circle orbit twice over: the kissing arrangement above, the same
+/// pairs leaned over below. No rng and no `time`, so it's deterministic.
+private final class SchottkyScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0B0D12))
+        noFill()
+        stroke(Color(white: 0.8, alpha: 0.55))
+        strokeWeight(0.6)
+        for (index, lean) in [0.0, 0.85].enumerated() {
+            let box = Rectangle(x: 8, y: 8 + Double(index) * 124, width: 240, height: 116)
+            let pairings = schottkyCuspedPairs(in: box, lean: lean)
+            for circle in schottkyCircles(pairing: pairings, minRadius: 0.5, maxDepth: 60) {
+                drawCircle(circle)
+            }
+        }
     }
 }
 
