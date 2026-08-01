@@ -10,7 +10,7 @@ import Foundation
 /// forever; what they close down onto is the group's limit set.
 ///
 /// ```swift
-/// let lace = schottkyCircles(.necklace, in: canvasRectangle.inset(by: 60))
+/// let lace = schottkyCircles(.kissing, in: canvasRectangle.inset(by: 60))
 /// noFill()
 /// drawCircles(lace)
 /// ```
