@@ -74,6 +74,21 @@ struct ExportMetadata {
         return "{\(fields.joined(separator: ","))}"
     }
 
+    /// The recipe for a parameter sweep: the swept `@Param`'s name, its
+    /// values, and the seed every tile was pinned to, so any tile re-renders
+    /// at full resolution by setting that knob at that seed.
+    static func sheetRecipe(sweep name: String, values: [Double], seed: Int,
+                            frame: Int, fps: Double) -> String {
+        var fields: [String] = ["\"tool\":\"Ollin\""]
+        fields.append("\"sweep\":\(jsonString(name))")
+        fields.append("\"values\":[\(values.map { jsonNumber($0) }.joined(separator: ","))]")
+        fields.append("\"seed\":\(seed)")
+        if let hash = workingTreeHash { fields.append("\"git\":\(jsonString(hash))") }
+        fields.append("\"frame\":\(frame)")
+        fields.append("\"fps\":\(jsonNumber(fps))")
+        return "{\(fields.joined(separator: ","))}"
+    }
+
     /// The short git commit of the process's working directory, with a
     /// `-dirty` suffix when the tree has uncommitted changes; `nil` outside a
     /// repository (or without git). Looked up once per process, so a sequence

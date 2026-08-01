@@ -3,12 +3,13 @@ import CoreText
 import Foundation
 import Metal
 
-// The contact-sheet export: render one frame of a sketch at each of a list of
-// variation seeds and tile the results into a single labeled proof sheet, the
-// way a generative artist culls a seed space for the keepers. Each tile is a
-// fresh instance of the sketch seeded before `setup()`, driven by the same
-// fixed-timestep headless engine as every other export, so a tile matches what
-// `--export --seed N` would render at full resolution.
+// The contact-sheet export: render one frame of a sketch per tile and lay the
+// results into a single labeled proof sheet, the way a generative artist culls
+// a space for the keepers. Two spaces are sweepable: the variation seeds (one
+// tile per seed) and a named `@Param` (one tile per value, seed pinned). Each
+// tile is a fresh instance of the sketch prepared before `setup()`, driven by
+// the same fixed-timestep headless engine as every other export, so a tile
+// matches what a full-resolution export with the same settings would render.
 
 extension OllinApp {
 
@@ -27,7 +28,63 @@ extension OllinApp {
                                     frame: Int = 0, fps: Double = 60,
                                     columns: Int? = nil, tileWidth: Int = 320,
                                     quality: RenderQuality = .detail) -> CGImage? {
-        guard !seeds.isEmpty, let device = MTLCreateSystemDefaultDevice(),
+        renderSheet(of: make,
+                    tiles: seeds.map { seed in ("\(seed)", { $0.seed(seed) }) },
+                    frame: frame, fps: fps, columns: columns,
+                    tileWidth: tileWidth, quality: quality)
+    }
+
+    /// Render `frame` of the sketch at each value of a named `@Param` and tile
+    /// the results into one proof-sheet image: a grid of thumbnails, each
+    /// labeled with the value that made it. The complement of the seed sheet:
+    /// where `contactSheet(of:seeds:)` walks the sketch's chance, this walks
+    /// one of its knobs.
+    ///
+    /// `name` is the `@Param` property's name (`"radius"`, not `"Radius"`);
+    /// numeric values apply to `Double` and `Int` parameters through the same
+    /// restore path the live hosts use to carry knobs across reloads, so a
+    /// value lands exactly as if the knob had been dragged there. Every tile
+    /// runs at the same `seed` (one is rolled and recorded when not given), so
+    /// the parameter is the only thing changing across the sheet. Returns
+    /// `nil` when the sketch has no parameter by that name, listing what it
+    /// does have on standard error.
+    public static func contactSheet(of make: () -> Sketch,
+                                    sweeping name: String, values: [Double],
+                                    seed: Int? = nil,
+                                    frame: Int = 0, fps: Double = 60,
+                                    columns: Int? = nil, tileWidth: Int = 320,
+                                    quality: RenderQuality = .detail) -> CGImage? {
+        guard !values.isEmpty else { return nil }
+        let probe = make()
+        let handles = probe.parameters()
+        guard handles.contains(where: { $0.name == name }) else {
+            let available = handles.map(\.name).sorted().joined(separator: ", ")
+            FileHandle.standardError.write(Data(
+                "Ollin: no @Param named '\(name)'; this sketch has: \(available.isEmpty ? "none" : available)\n".utf8))
+            return nil
+        }
+        let pinned = seed ?? Int.random(in: 1 ... 99_999)
+        return renderSheet(of: make,
+                           tiles: values.map { value in
+                               (sheetNumber(value), { sketch in
+                                   sketch.seed(pinned)
+                                   sketch.parameters()
+                                       .first(where: { $0.name == name })?
+                                       .param.restore(.number(value))
+                               })
+                           },
+                           frame: frame, fps: fps, columns: columns,
+                           tileWidth: tileWidth, quality: quality)
+    }
+
+    /// The shared tiling core: one fresh sketch per tile, prepared by its
+    /// tile's closure before the headless drive runs `setup()`, rendered
+    /// through one reused renderer, and labeled.
+    private static func renderSheet(of make: () -> Sketch,
+                                    tiles: [(label: String, prepare: (Sketch) -> Void)],
+                                    frame: Int, fps: Double, columns: Int?,
+                                    tileWidth: Int, quality: RenderQuality) -> CGImage? {
+        guard !tiles.isEmpty, let device = MTLCreateSystemDefaultDevice(),
               let renderer = try? MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
                                                 sampleCount: ollinPreferredSampleCount(device)) else {
             return nil
@@ -42,8 +99,8 @@ extension OllinApp {
         let canvas = first.canvasSize
         let tileW = max(64, tileWidth)
         let tileH = max(1, Int((Double(tileW) * Double(canvas.height) / Double(canvas.width)).rounded()))
-        let cols = max(1, columns ?? Int(Double(seeds.count).squareRoot().rounded(.up)))
-        let rows = (seeds.count + cols - 1) / cols
+        let cols = max(1, columns ?? Int(Double(tiles.count).squareRoot().rounded(.up)))
+        let rows = (tiles.count + cols - 1) / cols
         let margin = max(10, tileW / 20)
         let gutter = margin
         let labelHeight = max(20, Int(Double(tileW) * 0.085))
@@ -62,26 +119,26 @@ extension OllinApp {
         context.interpolationQuality = .high
         context.textMatrix = .identity
 
-        for (index, seed) in seeds.enumerated() {
+        for (index, tile) in tiles.enumerated() {
             let sketch = index == 0 ? first : make()
-            sketch.seed(seed)
+            tile.prepare(sketch)
             renderer.resetAccumulation()   // a `noClear()` pile must not leak across tiles
-            guard let tile = renderImage(of: sketch, frame: frame, fps: fps, renderer: renderer) else {
-                FileHandle.standardError.write(Data("\nOllin: failed to render seed \(seed)\n".utf8))
+            guard let image = renderImage(of: sketch, frame: frame, fps: fps, renderer: renderer) else {
+                FileHandle.standardError.write(Data("\nOllin: failed to render tile '\(tile.label)'\n".utf8))
                 return nil
             }
             let column = index % cols, row = index / cols
             let x = margin + column * (tileW + gutter)
             let topDownY = margin + row * (cellHeight + gutter)
             let tileRect = CGRect(x: x, y: sheetHeight - topDownY - tileH, width: tileW, height: tileH)
-            context.draw(tile, in: tileRect)
-            drawSheetLabel("\(seed)", in: context,
+            context.draw(image, in: tileRect)
+            drawSheetLabel(tile.label, in: context,
                            centerX: tileRect.midX,
                            baselineY: tileRect.minY - Double(labelHeight) * 0.70,
                            fontSize: Double(labelHeight) * 0.46)
 
-            let line = String(format: "\r  rendering tile %d/%d (seed %d)    ",
-                              index + 1, seeds.count, seed)
+            let line = String(format: "\r  rendering tile %d/%d (%@)    ",
+                              index + 1, tiles.count, tile.label)
             FileHandle.standardError.write(Data(line.utf8))
         }
         FileHandle.standardError.write(Data("\n".utf8))
@@ -105,6 +162,37 @@ extension OllinApp {
             fatalError("Ollin: failed to write \(path)")
         }
         print("Ollin: exported contact sheet of \(seeds.count) seeds → \(path) (\(sheet.width)×\(sheet.height))")
+    }
+
+    /// Render a parameter sweep (see `contactSheet(of:sweeping:values:)`) and
+    /// write it as a PNG carrying the sweep's reproduction recipe (the
+    /// parameter name, its values, and the pinned seed), so the sheet itself
+    /// records how to regenerate any tile.
+    public static func exportContactSheet(_ make: () -> Sketch, to path: String,
+                                          sweeping name: String, values: [Double],
+                                          seed: Int? = nil,
+                                          frame: Int = 0, fps: Double = 60,
+                                          columns: Int? = nil, tileWidth: Int = 320,
+                                          quality: RenderQuality = .detail) {
+        let pinned = seed ?? Int.random(in: 1 ... 99_999)
+        print("Ollin: rendering a sweep of '\(name)' over \(values.count) values at seed \(pinned)")
+        guard let sheet = contactSheet(of: make, sweeping: name, values: values,
+                                       seed: pinned, frame: frame, fps: fps,
+                                       columns: columns, tileWidth: tileWidth, quality: quality) else {
+            fatalError("Ollin: failed to render the sweep (unknown parameter, or no Metal device?)")
+        }
+        let recipe = ExportMetadata.sheetRecipe(sweep: name, values: values, seed: pinned,
+                                                frame: frame, fps: fps)
+        guard writePNG(sheet, to: path, recipe: recipe) else {
+            fatalError("Ollin: failed to write \(path)")
+        }
+        print("Ollin: exported sweep of '\(name)' over \(values.count) values → \(path) (\(sheet.width)×\(sheet.height))")
+    }
+
+    /// A number formatted the way a tile label wants it: `0.25`, not
+    /// `0.250000`, and `2`, not `2.0`.
+    static func sheetNumber(_ value: Double) -> String {
+        String(format: "%g", value)
     }
 
     /// Draw a centered single-line label into the sheet, monospaced so seed

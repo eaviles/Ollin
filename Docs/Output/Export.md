@@ -26,7 +26,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Hatching: solid fills for a pen plotter](#hatching-solid-fills-for-a-pen-plotter) - `--hatch`, `Hatching`
 - [Reproducibility metadata](#reproducibility-metadata) - the regeneration recipe every export carries
 - [Rendering a chosen variation](#rendering-a-chosen-variation) - `--seed`, on every export path
-- [Contact sheets](#contact-sheets-proofing-a-variation-space) - `--export-grid`, `OllinApp.contactSheet` / `exportContactSheet`
+- [Contact sheets](#contact-sheets-proofing-a-variation-space) - `--export-grid` (seeds) and `--export-sweep` (a `@Param`), `OllinApp.contactSheet` / `exportContactSheet`
 - [Print separations](PrintSeparations.md) - `--export-separations`, per-ink masters for risograph and screen printing (its own page)
 
 ---
@@ -293,3 +293,28 @@ let sheet: CGImage? = OllinApp.contactSheet(of: { MySketch() }, seeds: [3, 17, 9
 ```
 
 Pick a tile you like, then render it big with `--export … --seed N`. The whole loop, and the live inspector half of it, is in [Variations](../Core/Variations.md).
+
+`--export-sweep` is the same sheet over a different axis: instead of walking the sketch's chance, it walks one of its knobs. Name a [`@Param`](../Helpers/Parameters.md) and a range (or explicit values), and every tile renders at the same seed with only that parameter changing, which is what makes the sheet a fair comparison:
+
+```sh
+swift run Example-Live-Parameters --export-sweep sweep.png --param radius --from 40 --to 360 --steps 9
+swift run Example-Live-Parameters --export-sweep sweep.png --param rings --values "2,3,5,8" --seed 7
+```
+
+| Flag | Meaning |
+|---|---|
+| `--export-sweep <path.png>` | the sheet to write |
+| `--param <name>` | the `@Param` property to sweep, by its Swift name (`radius`, not `Radius`) |
+| `--from A --to B` | the range, spread evenly over `--steps` (default 9) |
+| `--values "a,b,c"` | explicit values instead of a range |
+| `--seed N` | the seed every tile is pinned to (one is rolled and recorded if omitted) |
+| `--columns`, `--tile`, `--frame`, `--fps` | as on `--export-grid` |
+
+Values apply through the same restore path the live hosts use to carry knobs across reloads, so a tile matches what dragging the knob there would show. Numeric parameters (`Double`, `Int`) sweep; an unknown name fails with the sketch's actual parameter list. The sheet's PNG records the knob, its values, and the pinned seed.
+
+From code:
+
+```swift
+OllinApp.exportContactSheet({ MySketch() }, to: "sweep.png",
+                            sweeping: "radius", values: [40, 120, 360], seed: 7)
+```

@@ -1415,7 +1415,8 @@ public extension OllinApp {
     /// Handle the shared headless command-line surface (the export flags
     /// `--export`, `--export-sequence`, `--export-video`, `--export-gif`,
     /// `--export-loop`, `--export-svg`, `--export-pdf`, `--export-grid`,
-    /// `--export-separations` with their options, `--seed` on any of them,
+    /// `--export-sweep`, `--export-separations` with their options, `--seed`
+    /// on any of them,
     /// plus `--bench`) against a sketch supplied on demand.
     ///
     /// Returns `true` when a headless flag was recognized (the work ran, or a
@@ -1613,6 +1614,48 @@ public extension OllinApp {
             let frame = value("--frame").flatMap(Int.init) ?? 0
             let fps = value("--fps").flatMap(Double.init) ?? 60
             OllinApp.exportContactSheet(makeSketch, to: args[i + 1], seeds: seeds,
+                                        frame: frame, fps: fps, columns: columns,
+                                        tileWidth: tile, quality: renderQuality)
+            return true
+        }
+        // `--export-sweep <path.png> --param <name> (--values "a,b,c" | --from A
+        // --to B [--steps N]) [--columns C] [--tile PX] [--frame N] [--fps F]`
+        // renders a contact sheet sweeping one `@Param` across a range, one
+        // labeled tile per value, every tile pinned to the same seed (`--seed`,
+        // or one rolled and recorded in the sheet's recipe), and exits.
+        if let i = args.firstIndex(of: "--export-sweep"), i + 1 < args.count {
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
+            }
+            let usage = "usage: --export-sweep <path.png> --param <name> (--values \"a,b,c\" | --from A --to B [--steps N]) [--columns C] [--tile PX] [--frame N] [--fps F] [--seed N]\n"
+            guard let name = value("--param") else {
+                FileHandle.standardError.write(Data(usage.utf8))
+                return true
+            }
+            var values: [Double] = []
+            if let list = value("--values") {
+                values = list.split(separator: ",").compactMap {
+                    Double($0.trimmingCharacters(in: .whitespaces))
+                }
+            } else if let from = value("--from").flatMap(Double.init),
+                      let to = value("--to").flatMap(Double.init) {
+                let steps = max(value("--steps").flatMap(Int.init) ?? 9, 1)
+                values = steps == 1 ? [from] : (0 ..< steps).map {
+                    from + (to - from) * Double($0) / Double(steps - 1)
+                }
+            }
+            guard !values.isEmpty else {
+                FileHandle.standardError.write(Data(usage.utf8))
+                return true
+            }
+            let columns = value("--columns").flatMap(Int.init)
+            let tile = value("--tile").flatMap(Int.init) ?? 320
+            let frame = value("--frame").flatMap(Int.init) ?? 0
+            let fps = value("--fps").flatMap(Double.init) ?? 60
+            OllinApp.exportContactSheet(makeSketch, to: args[i + 1],
+                                        sweeping: name, values: values,
+                                        seed: seedOverride,
                                         frame: frame, fps: fps, columns: columns,
                                         tileWidth: tile, quality: renderQuality)
             return true

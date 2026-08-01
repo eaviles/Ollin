@@ -98,6 +98,12 @@ OllinApp.exportContactSheet({ MySketch() }, to: "sheet.png", seeds: Array(1...25
 let sheet: CGImage? = OllinApp.contactSheet(of: { MySketch() }, seeds: [3, 17, 92])
 ```
 
+Seeds are one axis of a sketch's space; its [`@Param`](../Helpers/Parameters.md) knobs are the other. `--export-sweep` tiles a sheet along a knob instead: every tile renders at the *same* seed with only the named parameter changing, so what varies across the sheet is exactly the thing you are judging. The flags and the code form are in [Export](../Output/Export.md#contact-sheets-proofing-a-variation-space):
+
+```sh
+swift run Example-Live-Parameters --export-sweep sweep.png --param radius --from 40 --to 360
+```
+
 ### Re-rendering a keeper
 
 `--seed N` reseeds the sketch before `setup()` on **every** export path, so a variation you found on a sheet or in the inspector comes back at full resolution, as a video, or as vector art:
