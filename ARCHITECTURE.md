@@ -327,7 +327,20 @@ turn inside out, so the ends stay square there (NanoVG's inner-bevel case, the
 sharp folds over itself whatever we do, and an overlap is a kinder failure than a
 crack. Near-hairpins bail the same way rather than take NanoVG's clamped miter,
 which would pull the two ribbons short of each other and open a white seam.
-`appendStrokedPath`, retained for glyph stroking, still overlaps.
+
+`appendStrokedPath`, the tessellated path retained for outline-glyph stroking,
+shares the rule through `Drawer.innerCrossings`, but pays for it differently.
+Its segments are plain quads with no point on the centerline, so once the inner
+end bends away to the crossing, the end edge no longer passes through the path
+vertex, and a join filler fanning from that vertex lands mid-edge. That is the
+same T-junction the centerline point fixes above, and it showed immediately: a
+comb of *pale* ticks on the outside of every curve, the exact mirror of the dark
+comb being removed. Splitting each segment in two at the centerline fixes it and
+costs two triangles per segment. Moving the filler's apex onto the crossing fixes
+it and costs nothing, because the gap is bounded by the two end edges, both of
+which now run to that point, and it is still star-shaped about it. The two are
+pixel-identical; the apex move ships. The fringe path cannot do the same, since
+its fan has to meet the centerline point its cross-section already carries.
 
 Cost is nothing measurable: the triangle count does not change at all, only
 vertex positions, and the pre-pass is a few flops per vertex (`Patterns/Streamlines`,

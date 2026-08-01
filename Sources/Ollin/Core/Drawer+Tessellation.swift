@@ -148,6 +148,69 @@ extension Drawer {
     /// gradient first splits long segments so the baked LUT is tracked. The AA coverage
     /// rides separately in `aa.x`, so the fragment can keep the paint alpha linear while
     /// remapping only the coverage perceptually.
+    /// Where consecutive segments of a stroked path cross on the inside of each
+    /// turn, as a direction per path vertex (`nil` where there is no usable
+    /// crossing and the ends stay square).
+    ///
+    /// A stroke is expanded segment by segment, and if each segment ends on its
+    /// own perpendicular it runs past the point where its inner edge meets its
+    /// neighbour's, so both quads cover the wedge between the two perpendiculars.
+    /// Opaque ink hides that. Ink that is not opaque composites the wedge twice:
+    /// a hard darker patch at every corner (a full second coat at a right angle),
+    /// a graded dark band down the inside of a dense curve, a comb of dark radial
+    /// spokes along a spiral. Ending both segments on the shared crossing instead
+    /// draws the turn once, with no gap opened in exchange.
+    ///
+    /// The returned vector is scaled so that `pts[v] + result[v] * off` sits
+    /// exactly `off` from *both* centerlines, which is what lets a caller keep
+    /// using its own offsets (and any coverage ramp derived from them) unchanged.
+    /// `halfWidth` reports the outermost offset the caller will apply at a vertex,
+    /// since that is what has to stay inside the neighbouring segments.
+    static func innerCrossings(_ pts: [Vector2], closed: Bool,
+                               halfWidth: (Int) -> Double) -> [Vector2?] {
+        let n = pts.count
+        var crossings = [Vector2?](repeating: nil, count: n)
+        guard n >= 3 else { return crossings }
+        func dir(_ a: Vector2, _ b: Vector2) -> Vector2 {
+            let d = b - a; let l = d.length
+            return l > 1e-9 ? d / l : Vector2(1, 0)
+        }
+        for v in closed ? 0..<n : 1..<(n - 1) {
+            let prev = pts[(v - 1 + n) % n], curr = pts[v], next = pts[(v + 1) % n]
+            let d0 = dir(prev, curr), d1 = dir(curr, next)
+            let cross = d0.x * d1.y - d0.y * d1.x
+            guard abs(cross) > 1e-6 else { continue }   // collinear: nothing crosses
+            let bisector = Vector2(-d0.y - d1.y, d0.x + d1.x) * 0.5   // of the two normals
+            let dmr2 = bisector.x * bisector.x + bisector.y * bisector.y
+            guard dmr2 > 1e-6 else { continue }         // a hairpin has no crossing
+            let scale = 1 / dmr2                        // |bisector| is cos(half the turn)
+            guard scale <= 600 else { continue }        // near enough to a hairpin
+            // The crossing has to fall inside both neighbouring segments, or the
+            // stroke turns itself inside out. Where it does not the ends stay
+            // square: a corner that sharp folds over itself whatever we do, and an
+            // overlap is a kinder failure than a crack. Clamping the crossing to a
+            // maximum distance instead of bailing out would pull both ends short of
+            // each other and open exactly that crack.
+            let w = halfWidth(v)
+            let shorter = min((curr - prev).length, (next - curr).length)
+            let limit = max(1.01, w > 0 ? shorter / w : 1.01)
+            guard dmr2 * limit * limit >= 1 else { continue }
+            let inward: Double = cross >= 0 ? 1 : -1    // toward the inside of the turn
+            crossings[v] = bisector * (scale * inward)
+        }
+        return crossings
+    }
+
+    /// Split a segment's left normal into the two directions its cross-section
+    /// spreads along at one end: both perpendiculars, unless a join at that vertex
+    /// offers a shared inner crossing, which replaces whichever side faces the
+    /// inside of the turn. The outer side always keeps its perpendicular, so a
+    /// join filler still meets the segment exactly where it used to.
+    static func spread(_ crossing: Vector2?, about perp: Vector2) -> (Vector2, Vector2) {
+        guard let m = crossing else { return (perp, perp * -1) }
+        return m.x * perp.x + m.y * perp.y >= 0 ? (m, perp * -1) : (perp, m)
+    }
+
     func appendFringeStroke(_ points: [Vector2], closed: Bool, paint: VertexPaint) {
         // Emits only fringe vertices into one `.fringe` batch, so symmetry can
         // replicate the whole expansion as a range copy (see `replicated`).
@@ -227,45 +290,7 @@ extension Drawer {
         }
         func leftNormal(_ d: Vector2) -> Vector2 { Vector2(-d.y, d.x) }
 
-        // On the inside of a turn the two segments' edges genuinely cross, at the
-        // inner miter point. If each segment simply ends on its own perpendicular,
-        // both quads cover the wedge between the two perpendiculars, and ink that
-        // is not opaque composites there twice: a translucent stroke grows a hard
-        // darker patch at every corner (a full second coat at a right angle), and a
-        // dense curve grows a graded dark band down the inside of the turn.
-        //
-        // So both ribbons end on that crossing point instead. `innerMiter[v]` is
-        // the direction to expand along on the inner side, scaled so that
-        // `pts[v] + innerMiter[v] * off` sits exactly `off` away from *both*
-        // centerlines. That is what keeps the existing coverage ramp correct, since
-        // coverage is a function of distance from the centerline, and the two
-        // ribbons end up sharing that edge exactly: no overlap, and no gap either.
-        //
-        // The outer side is untouched. It still ends on the segment's own
-        // perpendicular, and the join filler below fans from the path vertex to
-        // bridge the two, so joins and the seam they close are unaffected.
-        var innerMiter = [Vector2?](repeating: nil, count: n)
-        for v in closed ? 0..<n : 1..<(n - 1) {
-            let prev = pts[(v - 1 + n) % n], curr = pts[v], next = pts[(v + 1) % n]
-            let d0 = segDir(prev, curr), d1 = segDir(curr, next)
-            let cross = d0.x * d1.y - d0.y * d1.x
-            guard abs(cross) > 1e-6 else { continue }   // collinear: nothing crosses
-            let bisector = (leftNormal(d0) + leftNormal(d1)) * 0.5
-            let dmr2 = bisector.x * bisector.x + bisector.y * bisector.y
-            guard dmr2 > 1e-6 else { continue }         // a hairpin has no crossing
-            let scale = 1 / dmr2                        // |bisector| is cos(half the turn)
-            guard scale <= 600 else { continue }        // near enough to a hairpin
-            // The crossing has to fall inside both neighbouring segments, or the
-            // ribbon turns itself inside out. Where it does not the ends stay
-            // square: a corner that sharp folds over itself whatever we do, and an
-            // overlap is a kinder failure than a crack.
-            let w = outerHalf(v)
-            let shorter = min((curr - prev).length, (next - curr).length)
-            let limit = max(1.01, w > 0 ? shorter / w : 1.01)
-            guard dmr2 * limit * limit >= 1 else { continue }
-            let inward: Double = cross >= 0 ? 1 : -1    // toward the inside of the turn
-            innerMiter[v] = bisector * (scale * inward)
-        }
+        let innerMiter = Drawer.innerCrossings(pts, closed: closed, halfWidth: outerHalf)
 
         // A fringe vertex: position, AA coverage, and the path color at this point.
         typealias FV = (SIMD2<Float>, Float, SIMD4<Float>)
@@ -304,13 +329,8 @@ extension Drawer {
             return Cross(outA: at(dirA, outer), coreA: at(dirA, core), center: at(dirA, 0),
                          coreB: at(dirB, core), outB: at(dirB, outer))
         }
-        // The pair of directions to expand along at path vertex `v`, for a segment
-        // whose left normal is `perp`. Whichever of the two sides faces the inside
-        // of the join swaps in the shared crossing direction; a vertex that is not
-        // a join (or whose corner folds) keeps both perpendiculars.
         func spread(at v: Int, _ perp: Vector2) -> (Vector2, Vector2) {
-            guard let m = innerMiter[v] else { return (perp, perp * -1) }
-            return m.x * perp.x + m.y * perp.y >= 0 ? (m, perp * -1) : (perp, m)
+            Drawer.spread(innerMiter[v], about: perp)
         }
         // Connect two cross-sections into four quad bands (fringe | core | core |
         // fringe). Coverage is equal across the two core bands, so splitting the
@@ -479,11 +499,10 @@ extension Drawer {
     /// past `miterLimit` so an acute corner doesn't spike), `.bevel` always cuts
     /// it flat, `.round` fills it with an arc. Open paths finish their ends with
     /// the cap style (`strokeCap`); closed ones join every vertex and have no
-    /// ends. The inner side of a turn is already covered by the overlapping
-    /// segment quads, so only the outer gap is filled. That overlap paints
-    /// translucent ink twice at every corner, which is why the fringe expander
-    /// ends both ribbons on the shared inner crossing instead; this path, retained
-    /// for glyph stroking, still overlaps there.
+    /// ends. Only the outer gap needs a filler: on the inner side the two segments
+    /// end on their shared crossing (`innerCrossings`), which covers the turn
+    /// exactly once so translucent ink lays down one coat. The filler fans from
+    /// that crossing, which is the point both end edges run to.
     func appendStrokedPath(_ points: [Vector2], closed: Bool,
                                    half: Double, paint: VertexPaint) {
         // Emits only triangles into one batch; symmetry replicates the whole
@@ -530,6 +549,10 @@ extension Drawer {
             solidColor ?? paint.color(at: pts[i], pathT: ts[i])
         }
 
+        // Consecutive segments end on their shared inner crossing rather than each
+        // on its own perpendicular, so a turn is covered once and translucent ink
+        // lays down one coat (see `innerCrossings`).
+        let innerMiter = Drawer.innerCrossings(pts, closed: closed, halfWidth: { _ in half })
         let segments = closed ? n : n - 1
         for i in 0..<segments {
             // The closing segment runs back to the start: its far end is the
@@ -537,8 +560,18 @@ extension Drawer {
             let j = (i + 1) % n
             let colorB = (closed && j == 0 && solidColor == nil)
                 ? paint.color(at: pts[0], pathT: 1) : colorAt(j)
-            appendSegment(from: pts[i], to: pts[j], half: half,
-                          colorA: colorAt(i), colorB: colorB)
+            let d = pts[j] - pts[i]
+            let len = d.length
+            guard len > 0 else { continue }   // skip zero-length (repeated) points
+            let perp = Vector2(-d.y, d.x) / len
+            let (a0, b0) = Drawer.spread(innerMiter[i], about: perp)
+            let (a1, b1) = Drawer.spread(innerMiter[j], about: perp)
+            let colorA = colorAt(i)
+            // Quad (start +side, end +side, end -side, start -side).
+            let s0 = (pts[i] + a0 * half).simd2, s1 = (pts[i] + b0 * half).simd2
+            let e0 = (pts[j] + a1 * half).simd2, e1 = (pts[j] + b1 * half).simd2
+            emit(s0, color: colorA); emit(e0, color: colorB); emit(e1, color: colorB)
+            emit(s0, color: colorA); emit(e1, color: colorB); emit(s1, color: colorA)
         }
 
         let miterLimit = 8.0
@@ -560,6 +593,14 @@ extension Drawer {
             let side: Double = cross >= 0 ? -1 : 1
             let cornerA = curr + n0 * (side * half)
             let cornerB = curr + n1 * (side * half)
+            // The gap is bounded by the two segments' end edges, and both of those
+            // now run from their outer corner to the shared inner crossing, so the
+            // fan starts there. Fanning from `curr` instead would put the apex in
+            // the middle of each edge: a T-junction, whose hairline shows as a pale
+            // tick on the outside of every turn. Where there is no usable crossing
+            // the ends are square and `curr` is the point they share.
+            let apex = innerMiter[v].map { curr + $0 * half } ?? curr
+            let apexV = apex.simd2
             switch strokeJoinStyle {
             case .round:
                 // Arc the outer gap from one corner to the other about `curr`,
@@ -567,20 +608,20 @@ extension Drawer {
                 let va = cornerA - curr, vb = cornerB - curr
                 let startAngle = atan2(va.y, va.x)
                 let sweep = atan2(va.x * vb.y - va.y * vb.x, va.x * vb.x + va.y * vb.y)
-                appendArcFan(center: curr, radius: half,
-                             startAngle: startAngle, sweep: sweep, color: color)
+                appendArcFan(center: curr, radius: half, startAngle: startAngle,
+                             sweep: sweep, color: color, apex: apex)
             case .bevel:
-                emit(curr.simd2, color: color); emit(cornerA.simd2, color: color); emit(cornerB.simd2, color: color)
+                emit(apexV, color: color); emit(cornerA.simd2, color: color); emit(cornerB.simd2, color: color)
             case .miter:
                 let bisector = n0 + n1
                 let bisectorLength = bisector.length
                 let cosHalf = bisectorLength > 1e-6 ? (bisector.x * n0.x + bisector.y * n0.y) / bisectorLength : 0
                 if cosHalf > 1e-4, 1 / cosHalf <= miterLimit {
                     let miter = (curr + bisector / bisectorLength * (side * half / cosHalf)).simd2
-                    emit(curr.simd2, color: color); emit(cornerA.simd2, color: color); emit(miter, color: color)
-                    emit(curr.simd2, color: color); emit(miter, color: color); emit(cornerB.simd2, color: color)
+                    emit(apexV, color: color); emit(cornerA.simd2, color: color); emit(miter, color: color)
+                    emit(apexV, color: color); emit(miter, color: color); emit(cornerB.simd2, color: color)
                 } else {
-                    emit(curr.simd2, color: color); emit(cornerA.simd2, color: color); emit(cornerB.simd2, color: color)
+                    emit(apexV, color: color); emit(cornerA.simd2, color: color); emit(cornerB.simd2, color: color)
                 }
             }
         }
@@ -761,12 +802,17 @@ extension Drawer {
     /// Triangle-fan an arc of `radius` about `center`, starting at `startAngle`
     /// and sweeping `sweep` radians (signed). The step count scales with the arc
     /// length, so round joins and caps stay smooth without over-tessellating.
+    ///
+    /// `apex` moves the point the triangles fan from, for a round join whose two
+    /// segments meet at their inner crossing rather than at the path vertex. The
+    /// region is still star-shaped about it, so the fan covers the same gap.
     private func appendArcFan(center: Vector2, radius: Double,
-                              startAngle: Double, sweep: Double, color: SIMD4<Float>) {
+                              startAngle: Double, sweep: Double, color: SIMD4<Float>,
+                              apex: Vector2? = nil) {
         guard radius > 0, abs(sweep) > 1e-6 else { return }
         let full = Double(circleSegments(for: radius))
         let steps = max(1, Int((abs(sweep) / (2 * .pi) * full).rounded(.up)))
-        let c = center.simd2
+        let c = (apex ?? center).simd2
         var prev = SIMD2<Float>(Float(center.x + cos(startAngle) * radius),
                                 Float(center.y + sin(startAngle) * radius))
         for i in 1...steps {
