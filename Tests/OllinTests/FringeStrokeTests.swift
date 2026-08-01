@@ -192,4 +192,46 @@ struct FringeStrokeTests {
             #expect(flat <= 1, "\(points) points: coat varies by \(flat) across the band")
         }
     }
+
+    /// An elliptical or full-turn arc misses the analytic circular-arc path and
+    /// is sampled into a polyline, whose outline is stroked like any other path.
+    private final class Ellipse: Sketch {
+        var mode: ArcMode = .open
+        override var canvasSize: CanvasSize { .square(512) }
+        override func setup() { noLoop() }
+        override func draw() {
+            background(.white)
+            noFill()
+            stroke(Color.black.withAlpha(0.25))
+            strokeWeight(28)
+            drawArc(256, 256, 190, 120, start: 0, stop: .pi * 1.4, mode: mode)
+        }
+    }
+
+    /// The arc outline used to be laid down as bare segment quads, with no joins
+    /// or caps and nothing sharing the inside of a turn, so it carried both
+    /// defects at once: the inner overlap darkened it and the outer gaps let
+    /// paper through, together a fine faceting along the whole band.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aTranslucentArcIsAnEvenCoat() throws {
+        let sweep = Double.pi * 1.4
+        for mode in [ArcMode.open, .chord, .pie] {
+            let arc = Ellipse()
+            arc.mode = mode
+            let ink = InkProbe(try #require(OllinApp.image(of: arc)), inkDarkerThan: 250)
+            // A closed arc folds where its straight edge meets the finely
+            // sampled curve, so those corners are left out of the count.
+            var folds: [(center: Vector2, radius: Double)] = []
+            if mode != .open {
+                folds = [(Vector2(256 + 190, 256), 46), (Vector2(256 + 190 * cos(sweep),
+                                                                 256 + 120 * sin(sweep)), 46)]
+                if mode == .pie { folds.append((Vector2(256, 256), 46)) }
+            }
+            #expect(ink.coatArea > 5_000, "\(mode): probe missed the arc")
+            #expect(ink.paintedTwice(ignoring: folds) == 0,
+                    "\(mode): \(ink.paintedTwice(ignoring: folds)) pixels painted twice (coat \(ink.coat))")
+            #expect(ink.hairlines == 0,
+                    "\(mode): \(ink.hairlines) pixels of hairline inside the ink")
+        }
+    }
 }

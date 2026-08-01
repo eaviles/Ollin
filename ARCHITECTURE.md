@@ -150,7 +150,12 @@ instances and have since moved to the fringe stroke path below; their shader
 cases are retained but unemitted. Arbitrary `drawPolygon`/`drawPolyline` and
 elliptical or full-turn arcs stay on the triangle path by nature (`drawArc`
 runtime-branches: `rx == ry` and sweep less than a full turn goes SDF, else it
-tessellates).
+tessellates). What tessellates there is the *fill*: a tessellated arc's outline
+is a path like any other, so it strokes through the fringe expander, which is
+what gives it joins and caps and keeps translucent ink to one coat. The three
+modes hand it the same shapes the vector recorder writes (open as a polyline,
+chord as a closed loop, pie as that loop through the center), so a rendered arc
+and an exported one trace the same outline.
 
 One rule is not safely discoverable from the code, so it is recorded: the four
 roundable shapes (rhombus/vesica/moon/cross) take a footprint-preserving

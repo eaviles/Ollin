@@ -1202,26 +1202,17 @@ extension Drawer {
             }
         }
 
+        // The outline is a path like any other, so it goes through the fringe
+        // expander: joins where the samples meet, caps on an open arc's ends, and
+        // the shared inner crossing that keeps translucent ink to one coat. The
+        // shapes match what the vector recorder above writes, so a rendered arc and
+        // an exported one trace the same outline.
         if let stroke = strokePaint, strokeWidth > 0 {
             let vp = vertexPaint(stroke, anchor: center)
-            let half = strokeWidth / 2
-            replicated {
-                for i in 1..<pts.count {
-                    appendSegment(from: pts[i - 1], to: pts[i], half: half,
-                                  colorA: vp.color(at: pts[i - 1]), colorB: vp.color(at: pts[i]))
-                }
-                switch mode {
-                case .open:
-                    break
-                case .chord:
-                    appendSegment(from: pts[pts.count - 1], to: pts[0], half: half,
-                                  colorA: vp.color(at: pts[pts.count - 1]), colorB: vp.color(at: pts[0]))
-                case .pie:
-                    appendSegment(from: center, to: pts[0], half: half,
-                                  colorA: vp.color(at: center), colorB: vp.color(at: pts[0]))
-                    appendSegment(from: pts[pts.count - 1], to: center, half: half,
-                                  colorA: vp.color(at: pts[pts.count - 1]), colorB: vp.color(at: center))
-                }
+            switch mode {
+            case .open:  appendFringeStroke(pts, closed: false, paint: vp)
+            case .chord: appendFringeStroke(pts, closed: true, paint: vp)
+            case .pie:   appendFringeStroke([center] + pts, closed: true, paint: vp)
             }
         }
     }

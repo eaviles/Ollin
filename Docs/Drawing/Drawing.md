@@ -477,6 +477,8 @@ An elliptical arc sweeping from `start` to `stop` (radians, measured from the po
 - `.chord` closes with a straight chord between the endpoints, so the stroke traces it and the fill is that segment.
 - `.pie` closes through the center like a pie slice, so the stroke traces both radii and the fill is the wedge.
 
+The outline is stroked like any other path, so [`strokeJoin`](#strokejoin) shapes its corners and [`strokeCap`](#strokecap) finishes an open arc's two ends.
+
 ```
   Angles are measured from +x and increase CLOCKWISE (because y is down):
 
