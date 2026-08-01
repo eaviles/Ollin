@@ -151,7 +151,7 @@ Discs should be disjoint, tangency allowed. Overlapping circles make the group n
 
 **Viewing and containing.** Two refinements produce the classic framings. A `viewpoint` re-seats the whole picture by sending that point to the horizon: put it inside one of the pairing discs and that disc turns inside out to become the picture's outer boundary, with the fundamental domain showing as the large empty pockets. And a pairing's disc may be declared its circle's *exterior* (`fromExterior:` / `toExterior:` on `SchottkyPairing`), which lets one circle contain the whole arrangement, the way the gasket figures are drawn.
 
-**From traces.** `schottkyCircles(ta:tb:in:)` renders the circle orbit of the same trace-recipe group whose boundary [`kleinianLimitSet`](#kleinian) traces as a curve, taking each generator's isometric circles as its pairing discs. At the gasket traces `(2, 2)` the orbit is the classic tangent-circle packing of the Apollonian gasket; nearby traces bend and twist it, which is what the `Patterns/Schottky` example animates.
+**From traces.** `schottkyCircles(ta:tb:in:)` renders the circle orbit of the same trace-recipe group whose boundary [`kleinianLimitSet`](#kleinian) traces as a curve, taking each generator's isometric circles as its pairing discs. The `KleinianPreset` overload accepts the same named landmarks, so `schottkyCircles(.gasket, in:)` and `kleinianLimitSet(.gasket)` are one group drawn two ways. At the gasket traces `(2, 2)` the orbit is the classic tangent-circle packing of the Apollonian gasket; nearby traces bend and twist it, which is what the `Patterns/Schottky` example animates. The deep-cusp presets sit at the region's edge where the orbit shrinks slowly, so they reward a larger `minRadius`.
 
 <a name="fitted"></a>
 

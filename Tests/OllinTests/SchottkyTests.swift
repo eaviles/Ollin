@@ -312,4 +312,19 @@ import Testing
         let box = Rectangle(corner: Vector2(0, 0), width: 300, height: 300)
         #expect(schottkyCircles(ta: Vector2(0, 0), tb: Vector2(0, 0), in: box).isEmpty)
     }
+
+    /// The Kleinian preset sugar forwards to the traces form, so `.gasket` is
+    /// exactly traces `(2, 2)`, and every preset yields an orbit.
+    @Test func kleinianPresetSugarForwardsToTraces() {
+        let box = Rectangle(corner: Vector2(0, 0), width: 400, height: 400)
+        let sugar = schottkyCircles(.gasket, in: box, minRadius: 2, maxDepth: 30)
+        let direct = schottkyCircles(ta: Vector2(2, 0), tb: Vector2(2, 0), in: box,
+                                     minRadius: 2, maxDepth: 30)
+        #expect(sugar == direct)
+
+        for preset in KleinianPreset.allCases {
+            let circles = schottkyCircles(preset, in: box, minRadius: 3, maxDepth: 25)
+            #expect(circles.count > 20, "\(preset) produced \(circles.count) circles")
+        }
+    }
 }

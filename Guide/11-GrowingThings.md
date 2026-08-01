@@ -167,6 +167,17 @@ That is why `schottkyCuspedPairs` builds its four circles as two touching pairs,
 
 What comes back is `[Circle]`, not a cloud of points, because a Möbius map sends a circle to a circle and nothing has to be flattened on the way. The lace exports as real circles, so a pen plotter draws it with the same round strokes you see on screen.
 
+The circles and the Kleinian curves are two views of one thing, and the bridge between them is a pair of numbers. `schottkyCircles(ta:tb:in:)` takes the same two traces that `kleinianLimitSet` takes, builds the same group, and draws its whole orbit as circles instead of tracing its boundary as a curve. At traces `(2, 2)` the orbit is the Apollonian gasket, and every nearby pair of traces is another member of the same family: bend the traces complex and the packing wobbles, loosen them and it opens.
+
+<img src="Images/11-GrowingThings/GasketFamily.jpg" alt="Four dark panels of golden circle lace: the Apollonian gasket packing, two wobbled variations of it, and a looser open version, each labeled with its pair of traces" width="560">
+
+```swift
+noFill()
+drawCircles(schottkyCircles(.gasket, in: canvasRectangle.inset(by: .all(60))))
+```
+
+The named presets are the same ones the Kleinian curves use, so `.gasket` here and `.gasket` there are the same group wearing different clothes. The `Patterns/Schottky` example animates a small arc of this family, out from the gasket and back.
+
 ## Growth that claims space
 
 Grammars grow blind, and the fern doesn't know where the canvas ends or where its own leaves already are. The next grower looks before it grows. Scatter *attraction points* over the region you want filled, plant a root, then repeat three moves. Every attractor pulls on the closest branch tip within its reach. Every pulled tip grows one small step toward the average of its pulls. Every attractor a branch reaches is consumed, so its pull disappears and the growth moves on:

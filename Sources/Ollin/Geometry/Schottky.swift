@@ -304,6 +304,35 @@ public func schottkyLimitSet(ta: Vector2, tb: Vector2,
     return result
 }
 
+/// The circle orbit of a named `KleinianPreset`, laid out to fill `bounds`:
+/// the same landmarks `kleinianLimitSet(_:)` traces as curves, drawn as
+/// nesting circles. `.gasket` is the classic packing; the deep-cusp presets
+/// sit at the quasi-Fuchsian region's edge, where the orbit shrinks slowly,
+/// so they reward a larger `minRadius` and read as texture rather than lace.
+public func schottkyCircles(_ preset: KleinianPreset,
+                            in bounds: Rectangle,
+                            viewpoint: Vector2? = nil,
+                            minRadius: Double = 0.5,
+                            maxDepth: Int = 40) -> [Circle] {
+    let traces = preset.traces
+    return schottkyCircles(ta: traces.ta, tb: traces.tb, in: bounds,
+                           viewpoint: viewpoint,
+                           minRadius: minRadius, maxDepth: maxDepth)
+}
+
+/// The limit set of a named `KleinianPreset`'s circle orbit. See
+/// `schottkyCircles(_:in:)`.
+public func schottkyLimitSet(_ preset: KleinianPreset,
+                             in bounds: Rectangle,
+                             viewpoint: Vector2? = nil,
+                             minRadius: Double = 0.5,
+                             maxDepth: Int = 40) -> [Vector2] {
+    let traces = preset.traces
+    return schottkyLimitSet(ta: traces.ta, tb: traces.tb, in: bounds,
+                            viewpoint: viewpoint,
+                            minRadius: minRadius, maxDepth: maxDepth)
+}
+
 /// The trace-recipe group with its isometric circles, conjugated by the
 /// similarity that fits those circles into `bounds`. `nil` when the recipe
 /// degenerates or a generator fixes infinity (no isometric circle to pair).
