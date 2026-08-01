@@ -37,6 +37,30 @@ enum SVGGeometry {
     case polyline([Vector2])                               // open, stroke-only
     case polygon([Vector2])                                // closed
     case path(Shape)                                       // contours + winding
+
+    /// The geometry as flattened polylines to walk along, or `nil` when there is no
+    /// path to follow (the analytic ellipse and rect outlines, which the renderer
+    /// draws from their own signed-distance field rather than by expanding a path).
+    var strokePaths: [(points: [Vector2], closed: Bool)]? {
+        switch self {
+        case let .line(a, b):
+            return [([a, b], false)]
+        case let .quad(start, control, end):
+            let n = 24
+            return [((0...n).map { k in
+                let t = Double(k) / Double(n), u = 1 - t
+                return start * (u * u) + control * (2 * u * t) + end * (t * t)
+            }, false)]
+        case let .polyline(points):
+            return [(points, false)]
+        case let .polygon(points):
+            return [(points, true)]
+        case let .path(shape):
+            return shape.contours.map { ($0.points, $0.isClosed) }
+        case .ellipse, .rect:
+            return nil
+        }
+    }
 }
 
 /// A recorded primitive: its geometry, the resolved style, and the CTM in force.
@@ -294,27 +318,7 @@ func approximateAlongPaths(_ commands: [SVGCommand]) -> [SVGCommand] {
 /// An along-path stroke as solid runs, or `nil` when the geometry has no path
 /// to follow (an ellipse/rect outline sweep stays a midpoint-color stroke).
 private func alongStrokeRuns(_ command: RecordedSVG, _ gradient: Gradient) -> [RecordedSVG]? {
-    var paths: [(points: [Vector2], closed: Bool)]
-    switch command.geometry {
-    case let .line(a, b):
-        paths = [([a, b], false)]
-    case let .quad(start, control, end):
-        let n = 24
-        let pts = (0...n).map { k -> Vector2 in
-            let t = Double(k) / Double(n)
-            let u = 1 - t
-            return start * (u * u) + control * (2 * u * t) + end * (t * t)
-        }
-        paths = [(pts, false)]
-    case let .polyline(points):
-        paths = [(points, false)]
-    case let .polygon(points):
-        paths = [(points, true)]
-    case let .path(shape):
-        paths = shape.contours.map { ($0.points, $0.isClosed) }
-    case .ellipse, .rect:
-        return nil
-    }
+    guard let paths = command.geometry.strokePaths else { return nil }
 
     var penStyle = command.style
     penStyle.fill = nil

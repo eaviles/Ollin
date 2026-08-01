@@ -209,6 +209,7 @@ final class Drawer {
     var strokeAlignment: StrokeAlign = .center   // where the stroke sits on the outline (see strokeAlign)
     var strokeJoinStyle: StrokeJoin = .miter     // how stroked-path corners turn (see strokeJoin)
     var strokeCapStyle: StrokeCap = .butt        // how open stroked-path ends finish (see strokeCap)
+    var strokeProfileShape: StrokeProfile = .uniform  // how stroke width varies along a path (see strokeProfile)
     var currentMaterial = Material()    // 3D mesh surface finish (shading model + specular/rim/subsurface/iridescence); see material(_:)
     private var wireframeEnabled = false        // 3D mesh: draw triangle edges only (see wireframe)
     private var currentMatcap: Image?           // 3D mesh: a matcap sphere texture replacing the lit look (see matcap(_:))
@@ -617,6 +618,16 @@ final class Drawer {
     func noteBatchRecording(_ message: String) {
         guard !batchRecordingNotes.contains(message) else { return }
         batchRecordingNotes.insert(message)
+        print("Ollin: \(message)")
+    }
+
+    /// One-time notes for state a path can't honor (a width profile on an analytic
+    /// shape, say), keyed by message so each prints once per drawer rather than
+    /// every frame.
+    private var drawerNotes = Set<String>()
+    func noteOnce(_ message: String) {
+        guard !drawerNotes.contains(message) else { return }
+        drawerNotes.insert(message)
         print("Ollin: \(message)")
     }
 
@@ -1159,9 +1170,29 @@ final class Drawer {
     /// and CTM. Fill and stroke are passed explicitly (a line has no fill; a point
     /// has no stroke); an invisible stroke (no paint or zero width) is dropped.
     func svgRecord(_ geometry: SVGGeometry, fill: Paint?, stroke: Paint?) {
-        guard let recorder = svgRecorder else { return }
+        guard svgRecorder != nil else { return }
         let visibleStroke = (stroke != nil && strokeWidth > 0) ? stroke : nil
-        let style = SVGStyle(fill: fill, stroke: visibleStroke, strokeWidth: strokeWidth,
+        // A width profile has no single `stroke-width` to ride on, so the stroke
+        // exports as the region it covers: a filled outline, still vector and still
+        // true to size. The fill, if any, stays the shape it was.
+        if let visibleStroke, !strokeProfileShape.isUniform,
+           let paths = geometry.strokePaths {
+            if fill != nil { svgAppend(geometry, fill: fill, stroke: nil) }
+            for (points, isClosed) in paths {
+                if let outline = variableStrokeOutline(points, closed: isClosed) {
+                    svgAppend(.path(outline), fill: visibleStroke, stroke: nil)
+                }
+            }
+            return
+        }
+        svgAppend(geometry, fill: fill, stroke: visibleStroke)
+    }
+
+    /// Append one recorded command (and its symmetry copies) to the vector
+    /// recorder. `stroke` is already resolved to what should actually be stroked.
+    private func svgAppend(_ geometry: SVGGeometry, fill: Paint?, stroke: Paint?) {
+        guard let recorder = svgRecorder else { return }
+        let style = SVGStyle(fill: fill, stroke: stroke, strokeWidth: strokeWidth,
                              join: strokeJoinStyle, cap: strokeCapStyle)
         recorder.commands.append(.draw(RecordedSVG(geometry: geometry, style: style,
                                                    transform: transform)))
@@ -1238,6 +1269,7 @@ final class Drawer {
         var strokeAlignment: StrokeAlign
         var strokeJoinStyle: StrokeJoin
         var strokeCapStyle: StrokeCap
+        var strokeProfileShape: StrokeProfile
         var currentMaterial: Material
         var wireframeEnabled: Bool
         var currentMatcap: Image?
@@ -1400,6 +1432,46 @@ final class Drawer {
     /// (`drawLine`, `drawBezier`, `drawPolyline`, open `drawShape` contours);
     /// closed outlines have no ends.
     func strokeCap(_ cap: StrokeCap) { strokeCapStyle = cap }
+
+    /// Set how the stroke width varies along a path (see `StrokeProfile`). The
+    /// profile multiplies `strokeWeight`, so `.taper()` makes a mark that swells to
+    /// the set weight in the middle and vanishes at both ends. Affects the fringe
+    /// stroked paths; the analytic SDF shapes keep their constant width.
+    func strokeProfile(_ profile: StrokeProfile) { strokeProfileShape = profile }
+
+    /// Return to a constant-width stroke (the default).
+    func noStrokeProfile() { strokeProfileShape = .uniform }
+
+    /// The half-width at each point of a path, or `nil` when the stroke is the
+    /// plain constant-width kind. `points` is the path as it will be expanded
+    /// (already flattened and de-duplicated); `closed` wraps the last segment back
+    /// to the first, which also makes the profile's `0` and `1` ends meet.
+    ///
+    /// Width is sampled *per path vertex* rather than per segment, which is what
+    /// keeps the joins simple: the two segments meeting at a corner agree on the
+    /// width there, so a corner is still the constant-width corner problem, solved
+    /// at the local width.
+    func strokeHalfWidths(for points: [Vector2], closed: Bool) -> [Double]? {
+        guard !strokeProfileShape.isUniform, points.count >= 2 else { return nil }
+        let n = points.count
+        var cum = [Double](repeating: 0, count: n)
+        for i in 1..<n { cum[i] = cum[i - 1] + (points[i] - points[i - 1]).length }
+        var total = cum[n - 1]
+        if closed { total += (points[0] - points[n - 1]).length }
+        let invTotal = total > 0 ? 1 / total : 0
+
+        let hw = strokeWidth / 2
+        return (0..<n).map { i in
+            // The tangent at a vertex: the mean of the segments meeting there, so a
+            // nib's width turns continuously through a corner instead of jumping.
+            let prev = (i == 0) ? (closed ? n - 1 : 0) : i - 1
+            let next = (i == n - 1) ? (closed ? 0 : n - 1) : i + 1
+            let d = points[next] - points[prev]
+            let len = d.length
+            let dir = len > 1e-9 ? d / len : Vector2(1, 0)
+            return hw * strokeProfileShape(cum[i] * invTotal, direction: dir)
+        }
+    }
 
     /// Set the active text font to a bitmap (pixel-grid) font. Defaults to
     /// `.builtin`.
@@ -2151,6 +2223,7 @@ final class Drawer {
                                      strokeAlignment: strokeAlignment,
                                      strokeJoinStyle: strokeJoinStyle,
                                      strokeCapStyle: strokeCapStyle,
+                                     strokeProfileShape: strokeProfileShape,
                                      currentMaterial: currentMaterial,
                                      wireframeEnabled: wireframeEnabled,
                                      currentMatcap: currentMatcap,
@@ -2179,6 +2252,7 @@ final class Drawer {
         strokeAlignment = s.strokeAlignment
         strokeJoinStyle = s.strokeJoinStyle
         strokeCapStyle = s.strokeCapStyle
+        strokeProfileShape = s.strokeProfileShape
         currentMaterial = s.currentMaterial
         wireframeEnabled = s.wireframeEnabled
         currentMatcap = s.currentMatcap

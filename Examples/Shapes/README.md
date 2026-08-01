@@ -27,6 +27,7 @@ The shape-drawing vocabulary: every primitive, the stroke and hollow modes, and 
 | [ShapeMenagerie](ShapeMenagerie/Sketch.swift) | rhombus, vesica, moon, cross, and ring, one per row, with corner radius breathing (`drawRhombus`/`drawVesica`/`drawMoon`/`drawCross`/`drawRing`, SDF) |
 | [StrokeAlignment](StrokeAlignment/Sketch.swift) | the same shapes stroked inside, centered, and outside their outline, weight pulsing (`strokeAlign`, SDF) |
 | [StrokeJoinsAndCaps](StrokeJoinsAndCaps/Sketch.swift) | a zigzag turned with each join and a segment ended with each cap, weight pulsing (`strokeJoin`/`strokeCap`) |
+| [StrokeProfiles](StrokeProfiles/Sketch.swift) | one spiral at one weight under each width profile: taper, lift off, wedge, a turning calligraphy nib, and one by hand (`strokeProfile`) |
 | [SVGImport](SVGImport/Sketch.swift) | SVG import: the bundled rocket badge drawn as authored (`loadSVG`/`drawSVG`), then mined as geometry, its outlines resampled into even dots |
 | [Watercolor](Watercolor/Sketch.swift) | watercolor pigment from polygon deformation: three pools of interleaved translucent layers glazing where they overlap, plus a clipped speckle for granulating texture; a fresh sheet per variation (`Watercolor`, `drawShape`) |
 

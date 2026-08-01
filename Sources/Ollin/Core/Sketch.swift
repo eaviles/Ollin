@@ -1238,6 +1238,28 @@ open class Sketch {
     /// `drawLine`, `drawBezier`, `drawPolyline`, and open `drawShape` contours;
     /// closed outlines have no ends to cap. See `StrokeCap`.
     public func strokeCap(_ cap: StrokeCap) { drawer.strokeCap(cap) }
+    /// Set how the stroke width varies along a path: `.uniform` (default, one
+    /// width the whole way), `.taper(start:end:)` (thin at the ends, full in the
+    /// middle), `.ramp(from:to:)` (a straight wedge), `.nib(angle:)` (a flat
+    /// calligraphy pen, thick across its edge and thin along it), or `.values(_:)`.
+    /// The profile multiplies `strokeWeight` rather than replacing it. Applies to
+    /// the stroked paths (`drawLine`, `drawBezier`, `drawPolyline`, `drawCurve`,
+    /// and `drawShape` / `drawPolygon` outlines); the analytic shapes keep their
+    /// constant width. See `StrokeProfile`.
+    public func strokeProfile(_ profile: StrokeProfile) { drawer.strokeProfile(profile) }
+    /// Set the stroke's width profile from a closure over the path fraction
+    /// (`0` at the start of the path, `1` at its end), returning the fraction of
+    /// `strokeWeight` to draw there: `strokeProfile { t in sin(t * .pi) }`.
+    ///
+    /// The closure runs where the stroke is expanded rather than on the sketch, so
+    /// it can't reach `time` or a `@Param` directly. Copy what it needs into a
+    /// local first (`let clock = time`) and capture that. The named profiles take
+    /// their animation as an argument instead, so `.nib(angle: time)` is fine.
+    public func strokeProfile(_ multiplier: @escaping @Sendable (_ t: Double) -> Double) {
+        drawer.strokeProfile(StrokeProfile(multiplier))
+    }
+    /// Return to a constant-width stroke (the default), undoing `strokeProfile(_:)`.
+    public func noStrokeProfile() { drawer.noStrokeProfile() }
     public func pointSize(_ size: Double) { drawer.pointSize(size) }
     public func pointMarker(_ marker: PointMarker) { drawer.pointMarker(marker) }
     public func drawPoint(_ x: Double, _ y: Double) { drawer.drawPoint(x, y) }

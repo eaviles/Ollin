@@ -134,14 +134,11 @@ Origin note, the same as the generative-geometry tier: this catalog is the broad
 
 ## Expressive brushes and strokes
 
-The stroke renderer draws every path at one width: the fringe expander edge-expands each segment into quads with a screen-space AA fringe, and width is a per-path constant. The brush tier generalizes it in stages:
+The fringe expander carries a half-width per path vertex, and `StrokeProfile` shapes it. The tier builds out from there:
 
-- **Variable-width strokes first.** Width per vertex instead of per path is the enabling change, and it stays inside the existing fringe expander (the per-segment quads already carry per-vertex attributes; the expansion distance becomes one). A width profile over 0…1 arc length (a closure or a `[Double]`) is the API shape; tapered ends and calligraphic nibs (width as a function of stroke direction against a nib angle) are pure functions on top. Joins need care where widths differ across a joint, the same outer-gap-filler territory the constant-width joins already handle.
-- **Dynamics.** Pressure and velocity mapped onto width and opacity: mouse velocity today, trackpad pressure and Pencil tilt when the [new input sources](#new-input-sources) land. Frame-rate independence matters (velocity from `deltaTime`, smoothing through the shipped input filters).
+- **Dynamics.** Pressure and velocity mapped onto width and opacity: mouse velocity today, trackpad pressure and Pencil tilt when the [new input sources](#new-input-sources) land. Frame-rate independence matters (velocity from `deltaTime`, smoothing through the shipped input filters). The read surface is a profile fed by a sampled width per point rather than a function of arc length, so the input path wants a way to hand the expander widths it has already measured.
 - **Stamped and scatter brushes.** A shape or texture repeated along the path with spacing, jitter, and rotation parameters. This is geometry emission (instanced SDF shapes or textured quads along the flattened path), not a stroke-renderer change, so it can land independently.
 - **Painterly simulation stays separate.** Watercolor-style marks built from layered, deformed translucent geometry are a [technique-catalog](#technique-and-algorithm-helpers) recipe over the shape and accumulation machinery, not a brush engine; keeping the two distinct keeps the stroke renderer lean.
-
-Variable-width strokes keep their export story: the outline of a tapered stroke is the open-path offset the stroke-as-shape item builds, so the SVG path stays vector.
 
 ## Sound, synthesis, and spatial audio
 

@@ -161,18 +161,22 @@ extension Drawer {
         for p in points where (pts.last.map { ($0 - p).length > 1e-9 } ?? true) { pts.append(p) }
         if closed, pts.count > 1, (pts[0] - pts[pts.count - 1]).length <= 1e-9 { pts.removeLast() }
         // A gradient varies along the run, so split long segments first (like the
-        // tessellated path) — the per-vertex color samples the baked LUT densely
-        // instead of interpolating straight through its stops. Solid strokes are
-        // untouched, so their geometry is unchanged.
-        if paint.isGradient { pts = Drawer.subdivided(pts, closed: closed, maxLength: 12) }
+        // tessellated path): the per-vertex color samples the baked LUT densely
+        // instead of interpolating straight through its stops. A width profile
+        // varies along the run the same way, and is sampled per vertex, so it wants
+        // the same split. Plain solid strokes are untouched, geometry unchanged.
+        if paint.isGradient || !strokeProfileShape.isUniform {
+            pts = Drawer.subdivided(pts, closed: closed, maxLength: 12)
+        }
         let n = pts.count
         guard n >= 2 else { return }
 
-        let hw = strokeWidth / 2
         let fw = 1.0 / ctmScale                 // ~1px AA fringe in screen space
-        let outerHalf = hw + fw / 2
-        let coreHalf = max(0, hw - fw / 2)
         let miterLimit = 8.0
+        // Half-width per path vertex. A uniform stroke keeps one constant, which is
+        // what makes its geometry and coverage identical to the pre-profile path.
+        let hws = strokeHalfWidths(for: pts, closed: closed)
+            ?? [Double](repeating: strokeWidth / 2, count: n)
 
         // Per-vertex paint color (rgb + the paint's own alpha). Along-path reads the
         // arc-length fraction; the rest read the position — matching the tessellated
@@ -190,12 +194,26 @@ extension Drawer {
             }
         }
 
-        // Coverage vs. distance from the centerline: 1 in the solid core, ramping to
-        // 0 across the outer fringe (and < 1 at the center for a sub-pixel stroke, so
-        // thin lines fade by width instead of snapping to a 1px floor).
-        func covU(_ off: Double) -> Float { Float(min(max((outerHalf - abs(off)) / fw, 0), 1)) }
-        let offs = [outerHalf, coreHalf, -coreHalf, -outerHalf]
-        let centerCov = covU(0), coreCov = covU(coreHalf)
+        // Per-vertex band radii: the solid core, and the outer edge the fringe fades
+        // to. The fringe straddles the true edge, so perceived width is the stroke's.
+        func outerHalf(_ i: Int) -> Double { hws[i] + fw / 2 }
+        func coreHalf(_ i: Int) -> Double { max(0, hws[i] - fw / 2) }
+
+        // Coverage vs. distance from the centerline at vertex `i`: 1 in the solid
+        // core, ramping to 0 across the outer fringe (and < 1 at the center for a
+        // sub-pixel stroke, so thin lines fade by width instead of snapping to a
+        // 1px floor). A profile reaches sub-pixel widths far more often than a
+        // constant weight does, since that is what a taper is for, but the ramp is
+        // the shipped one either way: profiled and unprofiled strokes of the same
+        // width lay down the same ink.
+        func covU(_ i: Int, _ off: Double) -> Float {
+            Float(min(max((outerHalf(i) - abs(off)) / fw, 0), 1))
+        }
+        func offsets(_ i: Int) -> [Double] {
+            [outerHalf(i), coreHalf(i), -coreHalf(i), -outerHalf(i)]
+        }
+        func centerCov(_ i: Int) -> Float { covU(i, 0) }
+        func coreCov(_ i: Int) -> Float { covU(i, coreHalf(i)) }
 
         func segDir(_ a: Vector2, _ b: Vector2) -> Vector2 {
             let d = b - a; let l = d.length
@@ -211,22 +229,24 @@ extension Drawer {
             emitFringe(d.0, cov: d.1, color: d.2)
         }
         func quad(_ a: FV, _ b: FV, _ d: FV, _ e: FV) { tri(a, b, d); tri(a, d, e) }
-        // A cross-section at `p` along `perp` in path vertex `i`'s color, coverage
-        // scaled by `s` (1 on the line, 0 at a length-fringe tip so butt/square ends
-        // fade out across the fringe).
-        func crossAt(_ p: Vector2, _ perp: Vector2, _ s: Float, _ col: SIMD4<Float>) -> [FV] {
-            offs.map { ((p + perp * $0).simd2, covU($0) * s, col) }
+        // A cross-section at `p` along `perp` at path vertex `i`'s width and color,
+        // coverage scaled by `s` (1 on the line, 0 at a length-fringe tip so
+        // butt/square ends fade out across the fringe).
+        func crossAt(_ i: Int, _ p: Vector2, _ perp: Vector2, _ s: Float, _ col: SIMD4<Float>) -> [FV] {
+            offsets(i).map { ((p + perp * $0).simd2, covU(i, $0) * s, col) }
         }
         // Connect two cross-sections into 3 quad bands (outer-fringe | core | outer-fringe).
         func ribbon(_ a: [FV], _ b: [FV]) { for k in 0..<3 { quad(a[k], b[k], b[k + 1], a[k + 1]) } }
 
         // Body: each segment is its own butt-ended fringe quad along its perpendicular,
         // its two ends carrying their path vertices' colors (the GPU interpolates).
+        // Under a width profile the quad is a trapezoid, which is exact: the offset of
+        // a linearly varying width along a straight run is itself a straight edge.
         let segCount = closed ? n : n - 1
         for i in 0..<segCount {
             let j = (i + 1) % n
             let perp = leftNormal(segDir(pts[i], pts[j]))
-            ribbon(crossAt(pts[i], perp, 1, cols[i]), crossAt(pts[j], perp, 1, cols[j]))
+            ribbon(crossAt(i, pts[i], perp, 1, cols[i]), crossAt(j, pts[j], perp, 1, cols[j]))
         }
 
         // Interior joins: fill the outer gap between the two segment quads at each
@@ -242,7 +262,10 @@ extension Drawer {
             let p0 = leftNormal(d0), p1 = leftNormal(d1)
             let side: Double = cross >= 0 ? -1 : 1          // outer side of the turn
             let col = cols[v]
-            let center:  FV = (curr.simd2, centerCov, col)
+            // Both segments meeting here were expanded at this vertex's width, so the
+            // join is the constant-width join solved at that one local width.
+            let coreHalf = coreHalf(v), outerHalf = outerHalf(v), coreCov = coreCov(v)
+            let center:  FV = (curr.simd2, centerCov(v), col)
             let inCore:  FV = ((curr + p0 * (side * coreHalf)).simd2, coreCov, col)
             let inEdge:  FV = ((curr + p0 * (side * outerHalf)).simd2, 0, col)
             let outCore: FV = ((curr + p1 * (side * coreHalf)).simd2, coreCov, col)
@@ -290,15 +313,19 @@ extension Drawer {
         }
 
         // Caps on the two open ends (honor strokeCap; ends fade over the fringe).
+        // A cap takes its end vertex's width, so a tapered stroke's cap shrinks with
+        // it and a tip tapered to nothing has no cap left to draw.
         guard !closed else { return }
-        func cap(at p: Vector2, perp: Vector2, outward: Vector2, _ col: SIMD4<Float>) {
+        func cap(at i: Int, _ p: Vector2, perp: Vector2, outward: Vector2, _ col: SIMD4<Float>) {
+            let hw = hws[i], outerHalf = outerHalf(i), coreHalf = coreHalf(i)
+            let centerCov = centerCov(i), coreCov = coreCov(i)
             switch strokeCapStyle {
             case .butt:
-                ribbon(crossAt(p, perp, 1, col), crossAt(p + outward * fw, perp, 0, col))
+                ribbon(crossAt(i, p, perp, 1, col), crossAt(i, p + outward * fw, perp, 0, col))
             case .square:
                 let tip = p + outward * hw
-                ribbon(crossAt(p, perp, 1, col), crossAt(tip, perp, 1, col))
-                ribbon(crossAt(tip, perp, 1, col), crossAt(tip + outward * fw, perp, 0, col))
+                ribbon(crossAt(i, p, perp, 1, col), crossAt(i, tip, perp, 1, col))
+                ribbon(crossAt(i, tip, perp, 1, col), crossAt(i, tip + outward * fw, perp, 0, col))
             case .round:
                 let steps = max(4, Int((outerHalf * ctmScale).rounded()))
                 let base = atan2(perp.y, perp.x)
@@ -316,8 +343,8 @@ extension Drawer {
             }
         }
         let d0 = segDir(pts[0], pts[1]), dL = segDir(pts[n - 2], pts[n - 1])
-        cap(at: pts[0], perp: leftNormal(d0), outward: d0 * -1, cols[0])
-        cap(at: pts[n - 1], perp: leftNormal(dL), outward: dL, cols[n - 1])
+        cap(at: 0, pts[0], perp: leftNormal(d0), outward: d0 * -1, cols[0])
+        cap(at: n - 1, pts[n - 1], perp: leftNormal(dL), outward: dL, cols[n - 1])
     }
 
     /// Pick a vertex count that keeps each edge segment ≲ 8 points long, so big
@@ -477,10 +504,121 @@ extension Drawer {
         }
     }
 
+    /// The region a profiled stroke along `points` covers, as one nonzero-wound
+    /// `Shape`: a trapezoid per segment, a corner wedge per join, and the end caps,
+    /// each wound the same way so the nonzero rule reads their union without any
+    /// boolean work. `nil` when the stroke is the plain constant-width kind, which
+    /// exports as a stroked path with a `stroke-width` instead.
+    ///
+    /// This is the vector counterpart of the fringe expander, minus the fringe: an
+    /// exported document has no anti-aliasing to carry, so the outline is the true
+    /// edge. Both are built from the same per-vertex half-widths, so what a plotter
+    /// or a PDF draws is the mark the screen showed.
+    func variableStrokeOutline(_ points: [Vector2], closed: Bool) -> Shape? {
+        guard !strokeProfileShape.isUniform, strokeWidth > 0 else { return nil }
+        var pts: [Vector2] = []
+        for p in points where (pts.last.map { ($0 - p).length > 1e-9 } ?? true) { pts.append(p) }
+        if closed, pts.count > 1, (pts[0] - pts[pts.count - 1]).length <= 1e-9 { pts.removeLast() }
+        pts = Drawer.subdivided(pts, closed: closed, maxLength: 12)
+        let n = pts.count
+        guard n >= 2, let hws = strokeHalfWidths(for: pts, closed: closed) else { return nil }
+
+        var contours: [Contour] = []
+        /// Add one piece of the outline, wound counter-clockwise so every piece
+        /// agrees and the nonzero rule fills their union.
+        func piece(_ poly: [Vector2]) {
+            guard poly.count >= 3 else { return }
+            var area = 0.0
+            for i in 0..<poly.count {
+                let a = poly[i], b = poly[(i + 1) % poly.count]
+                area += a.x * b.y - b.x * a.y
+            }
+            guard abs(area) > 1e-12 else { return }
+            contours.append(Contour(area > 0 ? poly : poly.reversed(), closed: true))
+        }
+        func segDir(_ a: Vector2, _ b: Vector2) -> Vector2 {
+            let d = b - a; let l = d.length
+            return l > 1e-9 ? d / l : Vector2(1, 0)
+        }
+        func leftNormal(_ d: Vector2) -> Vector2 { Vector2(-d.y, d.x) }
+
+        // Body: one trapezoid per segment, its two ends at their vertices' widths.
+        for i in 0..<(closed ? n : n - 1) {
+            let j = (i + 1) % n
+            let perp = leftNormal(segDir(pts[i], pts[j]))
+            piece([pts[i] + perp * hws[i], pts[j] + perp * hws[j],
+                   pts[j] - perp * hws[j], pts[i] - perp * hws[i]])
+        }
+
+        // Corners: fill the outer gap between two segments, per `strokeJoin`.
+        for v in closed ? Array(0..<n) : Array(1..<(n - 1)) {
+            let curr = pts[v]
+            let d0 = segDir(pts[(v - 1 + n) % n], curr), d1 = segDir(curr, pts[(v + 1) % n])
+            let cross = d0.x * d1.y - d0.y * d1.x
+            guard abs(cross) > 1e-9 else { continue }
+            let p0 = leftNormal(d0), p1 = leftNormal(d1)
+            let side: Double = cross >= 0 ? -1 : 1
+            let half = hws[v]
+            let a = curr + p0 * (side * half), b = curr + p1 * (side * half)
+            switch strokeJoinStyle {
+            case .bevel:
+                piece([curr, a, b])
+            case .miter:
+                let bis = p0 + p1, bl = bis.length
+                let cosHalf = bl > 1e-6 ? (bis.x * p0.x + bis.y * p0.y) / bl : 0
+                if cosHalf > 1e-4, 1 / cosHalf <= 8 {
+                    piece([curr, a, curr + bis / bl * (side * half / cosHalf), b])
+                } else {
+                    piece([curr, a, b])
+                }
+            case .round:
+                let oa = p0 * side, ob = p1 * side
+                let a0 = atan2(oa.y, oa.x)
+                let sweep = atan2(oa.x * ob.y - oa.y * ob.x, oa.x * ob.x + oa.y * ob.y)
+                let steps = max(1, Int((abs(sweep) / (2 * .pi)
+                                        * Double(circleSegments(for: half))).rounded(.up)))
+                var fan = [curr]
+                for s in 0...steps {
+                    let ang = a0 + sweep * Double(s) / Double(steps)
+                    fan.append(curr + Vector2(cos(ang), sin(ang)) * half)
+                }
+                piece(fan)
+            }
+        }
+
+        // Ends: the cap style, at the end vertex's own width.
+        if !closed {
+            func cap(at i: Int, _ outward: Vector2) {
+                let p = pts[i], half = hws[i], perp = leftNormal(outward)
+                switch strokeCapStyle {
+                case .butt:
+                    return
+                case .square:
+                    piece([p + perp * half, p + perp * half + outward * half,
+                           p - perp * half + outward * half, p - perp * half])
+                case .round:
+                    let steps = max(4, circleSegments(for: half) / 2)
+                    let base = atan2(perp.y, perp.x)
+                    let rot90 = Vector2(-perp.y, perp.x)
+                    let dir: Double = (outward.x * rot90.x + outward.y * rot90.y) >= 0 ? 1 : -1
+                    var fan = [p]
+                    for s in 0...steps {
+                        let ang = base + .pi * (Double(s) / Double(steps)) * dir
+                        fan.append(p + Vector2(cos(ang), sin(ang)) * half)
+                    }
+                    piece(fan)
+                }
+            }
+            cap(at: 0, segDir(pts[0], pts[1]) * -1)
+            cap(at: n - 1, segDir(pts[n - 2], pts[n - 1]))
+        }
+        return contours.isEmpty ? nil : Shape(contours: contours, winding: .nonZero)
+    }
+
     /// `pts` with every segment longer than `maxLength` split into equal pieces
     /// (the closing segment of a closed path included), so per-vertex gradient
     /// color tracks the paint instead of skipping its stops.
-    private static func subdivided(_ pts: [Vector2], closed: Bool, maxLength: Double) -> [Vector2] {
+    static func subdivided(_ pts: [Vector2], closed: Bool, maxLength: Double) -> [Vector2] {
         guard pts.count >= 2 else { return pts }
         var out: [Vector2] = []
         out.reserveCapacity(pts.count)

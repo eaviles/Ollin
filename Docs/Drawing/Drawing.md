@@ -10,7 +10,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 
 ### Contents
 
-- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [strokeJoin](#strokeJoin), [strokeCap](#strokeCap), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker), [blendMode](#blendMode)
+- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [strokeJoin](#strokeJoin), [strokeCap](#strokeCap), [strokeProfile](#strokeProfile), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker), [blendMode](#blendMode)
 - **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawOrientedBox](#orientedbox), [drawTriangle](#triangle), [drawArc](#arc), [drawBezier](#bezier)
 - **More shapes:** [drawNgon](#ngon) (+ `drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawOrientedVesica](#orientedvesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
@@ -177,6 +177,53 @@ drawPolyline([Vector2(300, 540), Vector2(780, 540)])   // rounded tips past each
 ```
 
 It applies to the open stroked paths: `drawLine`, `drawBezier`, `drawPolyline`, and any open `drawShape` contour. Closed outlines (the `drawPolygon` outline, a closed contour) have no ends to cap.
+
+<a name="strokeProfile"></a>
+
+#### strokeProfile / noStrokeProfile
+
+```swift
+strokeProfile(_ profile: StrokeProfile)         // .uniform (default), .taper, .ramp, .nib, .values
+strokeProfile { t in ... }                      // width by hand, over the path fraction
+noStrokeProfile()
+```
+
+How the stroke width varies as the path travels, which is the difference between a drawn line and a made mark. A profile is a *multiplier*, not a width: `strokeWeight` still says how fat the mark gets, and the profile says what fraction of that it uses at each point. This is state, like `strokeWeight`, so it holds until changed, and `withState { }` saves and restores it.
+
+The named profiles cover the common marks:
+
+| Profile | The mark |
+| --- | --- |
+| `.uniform` | One width the whole way. The default. |
+| `.taper(start:end:)` | Thin at the ends, full in the middle: a brush pressed down and lifted. `start` and `end` are the multipliers *at* the two ends, both `0` by default, so `.taper(start: 1)` keeps a blunt start and lifts off at the end. |
+| `.ramp(from:to:)` | A straight wedge from one width to another. |
+| `.nib(angle:thinness:)` | A flat calligraphy pen held at `angle`: the mark is fattest where the path runs across the nib and a hairline where it runs along it. `thinness` is how much width the thinnest direction keeps. |
+| `.values([...])` | Evenly spaced multipliers along the path, interpolated between: a width curve by hand, or one recorded from an input. |
+
+```
+  strokeProfile, at one strokeWeight:
+
+  .uniform          ▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+  .taper()          ▁▂▄▆████▆▄▂▁
+  .taper(start: 1)  ██████▆▄▂▁
+  .ramp(from:to:)   ▁▁▂▂▄▄▆▆████
+  .nib(angle:)      width follows the path's direction, not its length
+```
+
+```swift
+strokeWeight(12)
+strokeProfile(.taper())
+drawBezier(Vector2(120, 700), Vector2(540, 120), Vector2(960, 700))   // thin, fat, thin
+```
+
+It applies wherever a path is expanded into a stroke: `drawLine`, `drawBezier`, `drawPolyline`, `drawCurve`, and the outlines of `drawShape` and `drawPolygon`. The analytic shapes (`drawCircle`, `drawRect`, `drawStar`, and the rest of the SDF catalog) carry a single width by construction, so they keep drawing at `strokeWeight` and say so once on the console.
+
+Two things to know:
+
+- **Width is read at every point of the path**, from `0` at the start to `1` at the end, measured along the path's own length. A path with only a handful of points changes width in visible steps, so sample a curve densely enough for the profile to have somewhere to go. Long segments are split automatically, but the profile can only follow the points it is given.
+- **A closure profile runs where the stroke is expanded**, not on the sketch, so it can't reach `time` or a `@Param` directly. Copy what it needs into a local first (`let clock = time`) and capture that. The named profiles take their animation as an argument, so `.nib(angle: time)` needs nothing special.
+
+A profiled stroke stays vector on the way out: `--export-svg` and `--export-pdf` write the region the mark covers as a filled outline rather than a stroked path with one width, so a plotted or printed mark matches the screen. See [Export](../Output/Export.md).
 
 <a name="hollow"></a>
 

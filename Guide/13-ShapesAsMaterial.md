@@ -124,6 +124,26 @@ let rind = circle.symmetricDifference(star)   // either, but not both
 
 These are the **shape booleans**, and they turn drawing into sentence-building. A window is a wall subtracting a rectangle, a crescent is a circle subtracting a shifted circle, and the plate at the top is a mosaic subtracting a ribbon. Holes come along correctly, results are ordinary `Shape`s, and you can chain as deep as the sentence needs. When a boolean's result looks unexpectedly *solid* or *hollow*, the shape's winding rule is usually the reason, and the [geometry reference](../Docs/Drawing/Geometry.md#shape-booleans) covers the two rules and when each reads more naturally.
 
+## A mark, not a line
+
+Every stroke so far has been one width from end to end. That is the honest look of a machine drawing a line, and it is the wrong look for a hand making a mark. `strokeProfile` gives the width a shape of its own along the path.
+
+The profile is a multiplier, not a width. `strokeWeight` still says how fat the mark gets, and the profile says what fraction of that it uses at each point:
+
+```swift
+strokeWeight(17)
+strokeProfile(.taper())
+drawPolyline(curve)
+```
+
+`.taper()` is a brush pressed down and lifted: nothing at either end, full width in the middle. Its two arguments are the widths *at* the ends, so `.taper(start: 1)` starts blunt and lifts off at the finish. `.ramp(from:to:)` cuts a straight wedge, and `.values([...])` takes a width curve you write out yourself. `.nib(angle:)` is the odd one, because it ignores where you are along the path entirely. It holds a flat calligraphy pen at a fixed angle, so the mark is fattest where the path runs across the nib and a hairline where it runs along it. That is why the third panel below is an S-curve: a straight line would only ever show one nib width.
+
+<img src="Images/13-ShapesAsMaterial/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
+
+Two practical notes. The width is read at every point of the path, measured along the path's length, so a shape with four points changes width in four steps. Sample your curves densely enough to give the profile somewhere to go. And the analytic shapes (`drawCircle`, `drawRect`, and the rest of that family) carry a single width by construction, so a profile does nothing to them. Profiles are for paths.
+
+The mark survives the trip out, too. Run the sketch with `--export-svg` and a profiled stroke is written as the region it actually covers rather than a line with one width attribute, so what the plotter draws is what you saw.
+
 ## Growing, shrinking, and thickening
 
 Three more verbs finish the shape-editing vocabulary. `offset(by:)` grows a region outward (positive) or shrinks it inward (negative), holes moving the opposite way, and shrinking a region repeatedly reads as topographic contour lines until it pinches apart and disappears (the `Patterns/Topography` example is exactly that loop). New in the toolbox, `stroked(width:)` turns a *line* into a *region*, giving the closed shape a pen stroke of that width would cover, round or square or butt ends included, and a closed contour comes back as a band:

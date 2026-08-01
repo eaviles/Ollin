@@ -129,6 +129,8 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { CurvedPaths() }),
     SnapshotCase("stroke-joins-caps", note: "strokeJoin / strokeCap on the fringe stroke path.",
                  make: { StrokeJoinsCaps() }),
+    SnapshotCase("stroke-profiles", note: "strokeProfile width profiles on the fringe stroke path.",
+                 make: { StrokeProfilesScene() }),
     SnapshotCase("bitmap-text", note: "The bitmap font specimen.",
                  make: { TextSpecimen() }),
     SnapshotCase("tinted-image", note: "A tinted textured-quad image.",
@@ -3529,6 +3531,51 @@ private final class StrokeJoinsCaps: Sketch {
             strokeCap(cap)
             drawPolyline([Vector2(70, cy), Vector2(186, cy)])
         }
+    }
+}
+
+/// `strokeProfile` across the width-profile family, all at one `strokeWeight` so
+/// only the profile differs: `.uniform` (the control, which must stay identical to
+/// the unprofiled path), `.taper()`, `.ramp`, `.values`, and a `.nib` on an arc
+/// that turns through a wide range of directions. The last row is a closed
+/// triangle, whose profile wraps end to start, and a tapered stroke on a curve
+/// whose corners are joins at varying width. Pins the per-vertex half-width
+/// expansion (trapezoid segments, joins and caps at the local width) and the
+/// area-conserving sub-pixel coverage that lets a taper vanish instead of trailing
+/// a ghost line. Black on white, no rng and no time, so it is deterministic.
+private final class StrokeProfilesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.white)
+        stroke(.black); strokeWeight(20); strokeCap(.butt)
+
+        let profiles: [StrokeProfile] = [
+            .uniform,
+            .taper(),
+            .ramp(from: 0.05, to: 1),
+            .values([0.2, 1, 0.35, 0.9, 0.1]),
+        ]
+        for (i, profile) in profiles.enumerated() {
+            let cy = 26.0 + Double(i) * 32
+            strokeProfile(profile)
+            drawPolyline([Vector2(24, cy), Vector2(96, cy - 9),
+                          Vector2(160, cy + 9), Vector2(232, cy)])
+        }
+
+        // A nib on a half-turn arc: the mark is fattest where the arc runs across
+        // the nib and a hairline where it runs along it.
+        strokeProfile(.nib(angle: .pi / 4))
+        strokeWeight(24)
+        drawPolyline((0...48).map { k in
+            let a = .pi + Double(k) / 48 * .pi
+            return Vector2(76 + cos(a) * 40, 190 + sin(a) * 40)
+        })
+
+        // A closed path (the profile wraps) and a taper over sharp joins.
+        strokeWeight(16)
+        strokeProfile(.taper(start: 1, end: 0))
+        drawPolyline([Vector2(150, 168), Vector2(232, 186), Vector2(176, 230)], closed: true)
     }
 }
 

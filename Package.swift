@@ -687,6 +687,7 @@ let package = Package(
         example("Shapes/HollowShapes"),
         example("Shapes/StrokeAlignment"),
         example("Shapes/StrokeJoinsAndCaps"),
+        example("Shapes/StrokeProfiles"),
         example("Motion/Mandala"),
         example("Text/HelloText"),
         example("Text/TextVolume"),

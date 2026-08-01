@@ -242,6 +242,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Core/Canvas.md` (canvasSize, windowMode) | Ch 1 | taught ("The canvas is not the window" with a diagram: the two are independent, `width` reports the canvas either way, exports ignore the window, the preset families including paper sizes and `.dpi()`, and the three `windowMode` cases) |
 | `Swift.md` (language primer) | Ch 1 callouts, Appendix A | taught |
 | `Drawing/Drawing.md` (shapes, state, transforms) | Ch 1, Ch 6 | taught |
+| Variable-width strokes (`strokeProfile`/`noStrokeProfile`, `StrokeProfile`, in `Drawing/Drawing.md`) | Ch 13 | taught ("A mark, not a line" with a three-panel figure: the profile as a multiplier on `strokeWeight`, taper/ramp/values along the path against the direction-driven nib, sampling density, why the analytic shapes ignore it, and the filled-outline vector export) |
 | Kaleidoscope symmetry (`symmetry`/`noSymmetry`, in `Drawing/Drawing.md`) | Ch 6 | taught ("The fold, done for you" after the hand-rolled rotate loop, with a three-panel figure: symmetry as drawing state, why the mirrored form is the one worth having, and folding around the current origin) |
 | Clipping (`withClip`, in `Drawing/Drawing.md`) | Ch 6 | taught ("Drawing inside a shape" with a three-panel figure: the same stripes confined three ways, all three region types, and nesting as intersection) |
 | `Drawing/Color.md` (Color, OKLab, palettes, colormaps) | Ch 2 | taught |
@@ -380,7 +381,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Technique catalog: growth/morphogenesis (Turing patterns, sandpile, growth on meshes) | Ch 16/17 |
 | Technique catalog: tiling/layout families | Ch 6 |
 | Technique catalog: meshing (marching cubes, metaballs) | Ch 17 |
-| Expressive brushes and strokes | Ch 13 |
+| Expressive brushes: stroke dynamics, stamped and scatter brushes | Ch 13 |
 | Project generator | Ch 1 |
 | iPhone sensor array (scene mesh, drift correction) | Ch 19 |
 | 3D: loadScene, live camera environment, 3D rigid bodies | Ch 17 (bodies also Ch 9) |

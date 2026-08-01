@@ -43,7 +43,7 @@ See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 
 ## Expressive brushes and strokes
 
-Every stroke today is a uniform-width line; the hand-drawn, mark-making axis is missing. The foundation is variable-width strokes on the stroke renderer (a width per vertex instead of per path), and the rest layers on top: tapered ends, pressure and velocity response (the payoff for the trackpad-pressure and Pencil inputs planned under [new input sources](#new-input-sources), which otherwise have nothing to drive), calligraphic nibs, and stamped or scattered brushes that repeat a shape or texture along the path. Painterly simulation (the generative-watercolor family) stays a [technique-catalog](#technique-and-algorithm-helpers) recipe rather than a brush-engine feature. See the [design notes](DESIGN-NOTES.md#expressive-brushes-and-strokes).
+The hand-drawn, mark-making axis, built on the variable-width stroke renderer (a width per vertex, shaped by a `strokeProfile`). What's ahead: pressure and velocity response, the payoff for the trackpad-pressure and Pencil inputs planned under [new input sources](#new-input-sources), which otherwise have nothing to drive; and stamped or scattered brushes that repeat a shape or texture along the path with spacing, jitter, and rotation. Painterly simulation (the generative-watercolor family) stays a [technique-catalog](#technique-and-algorithm-helpers) recipe rather than a brush-engine feature. See the [design notes](DESIGN-NOTES.md#expressive-brushes-and-strokes).
 
 ## Project generator
 

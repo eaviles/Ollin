@@ -668,6 +668,11 @@ extension Drawer {
         let weight = strokeWidth ?? self.strokeWidth
         let hasStroke = stroke != nil && weight > 0
         guard fill != nil || hasStroke else { return }
+        // An analytic shape carries one width in its instance, so a width profile
+        // has nowhere to live: it draws at the plain weight and says so once.
+        if hasStroke, !strokeProfileShape.isUniform {
+            noteOnce("strokeProfile(_:) applies to stroked paths (drawLine / drawBezier / drawPolyline / drawCurve / drawShape outlines); \(shape) draws its outline at strokeWeight.")
+        }
         // Hollow mode applies only to region shapes the fragment can onion; the
         // round-dot point path shares the `.ellipse` tag, so it opts out here.
         let band = (applyHollow && shape.honorsHollow) ? Float(hollowWidth) : 0
