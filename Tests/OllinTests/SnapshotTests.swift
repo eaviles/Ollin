@@ -453,7 +453,7 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  note: "Two Kleinian limit sets, the Apollonian-gasket curve above a lacy quasi-Fuchsian one, each traced as a single ordered closed polyline and fitted to its half. Pins the two-generator trace recipe, the depth-first walk's cyclic ordering and landmark points, and the epsilon termination. No rng and no time, so the curves are deterministic.",
                  make: { KleinianScene() }),
     SnapshotCase("schottky",
-                 note: "A Schottky group's circle orbit: four circles in two touching pairs, drawn beside the same arrangement leaned over. Pins the pairing map (outside onto inside, the tangency-preserving twist zero point that makes a touching pair's generator parabolic), the closed-form Möbius image of a circle, and the radius-pruned walk over reduced words. No rng and no time, so both laces are deterministic.",
+                 note: "A Schottky group's circle orbit twice over: four circles in two touching pairs above, the gasket-trace group's orbit below. Pins the pairing map (outside onto inside, the tangency-preserving twist zero point that makes a touching pair's generator parabolic), the closed-form Möbius image of a circle, the radius-pruned walk over reduced words, and the trace-recipe bridge that seats a matrix group's isometric circles as pairing discs. No rng and no time, so both laces are deterministic.",
                  make: { SchottkyScene() }),
     SnapshotCase("fractal-flame",
                  note: "A seeded random fractal flame accumulated to a fixed sample count and developed once. Pins the chaos-game loop (weighted picks, the fuse), the variation formulas and their theta convention, structural coloring, and the log-density display with gamma and vibrancy. Seeded, and the sample count is fixed, so the render is deterministic.",
@@ -4989,8 +4989,9 @@ private final class KleinianScene: Sketch {
     }
 }
 
-/// A Schottky circle orbit twice over: the kissing arrangement above, the same
-/// pairs leaned over below. No rng and no `time`, so it's deterministic.
+/// A Schottky circle orbit twice over: the kissing pair arrangement above,
+/// the gasket-trace group's orbit below. No rng and no `time`, so it's
+/// deterministic.
 private final class SchottkyScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -4999,10 +5000,15 @@ private final class SchottkyScene: Sketch {
         noFill()
         stroke(Color(white: 0.8, alpha: 0.55))
         strokeWeight(0.6)
-        for (index, lean) in [0.0, 0.85].enumerated() {
-            let box = Rectangle(x: 8, y: 8 + Double(index) * 124, width: 240, height: 116)
-            let pairings = schottkyCuspedPairs(in: box, lean: lean)
-            for circle in schottkyCircles(pairing: pairings, minRadius: 0.5, maxDepth: 60) {
+        let top = Rectangle(x: 8, y: 8, width: 240, height: 116)
+        for circle in schottkyCircles(pairing: schottkyCuspedPairs(in: top),
+                                      minRadius: 0.5, maxDepth: 60) {
+            drawCircle(circle)
+        }
+        let bottom = Rectangle(x: 8, y: 132, width: 240, height: 116)
+        withClip(bottom) {
+            for circle in schottkyCircles(ta: Vector2(2, 0), tb: Vector2(2, 0),
+                                          in: bottom, minRadius: 0.5, maxDepth: 60) {
                 drawCircle(circle)
             }
         }

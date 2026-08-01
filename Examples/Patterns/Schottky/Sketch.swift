@@ -1,21 +1,20 @@
 import Ollin
 
-/// Schottky groups, toured across their parameter space.
+/// A Schottky group's circle orbit, toured around the Apollonian gasket.
 ///
-/// Four circles, paired off in touching pairs. Each pairing turns the plane
-/// outside one circle into the inside of its partner, so applying the pairings
-/// in every order nests circles inside circles forever, and the lace they leave
-/// behind is the whole group drawn at once.
+/// Two complex traces pick a Möbius group, the same recipe behind
+/// `kleinianLimitSet`, and the orbit walk draws that group as circles nesting
+/// inside circles forever. At traces `(2, 2)` the four pairing discs are
+/// mutually tangent and the orbit is the classic gasket packing: a disc laced
+/// full of tangent circles, empty pockets where the fundamental domain shows
+/// through, and fans crowding into every cusp.
 ///
-/// Because each pair *touches*, its generator holds the tangency point fixed
-/// and barely contracts near it, which is what keeps the picture full. Leaning
-/// the pairs about those points swings the family through its parameter space
-/// without ever giving that up: the round limit set opens into swept arcs
-/// gathering on two cusps, then closes again. Click or press a key to hold a
-/// frame still.
+/// The loop walks a small arc in trace space, out from the gasket and back:
+/// pulling the real part above 2 loosens the packing, and bending the traces
+/// complex twists it. Click or press a key to hold a frame still.
 @main
 final class Schottky: Sketch {
-    override var loopDuration: Double? { 20 }
+    override var loopDuration: Double? { 24 }
 
     private let paper = Color(hex: 0xF3F0E7)
     private let ink = Color(hex: 0xA83C51)
@@ -25,26 +24,30 @@ final class Schottky: Sketch {
     override func draw() {
         background(paper)
 
-        let phase = running ? pingPong(over: 20) : held
+        let phase = running ? pingPong(over: 24) : held
         held = phase
-        let lean = (phase * 2 - 1) * 0.95
+        let arc = phase * .pi
+        let traces = Vector2(2 + 0.10 * (1 + cos(arc)) / 2, 0.07 * sin(arc))
 
-        let pairings = schottkyCuspedPairs(in: canvasRectangle, lean: lean)
-        let circles = schottkyCircles(pairing: pairings, minRadius: 0.4, maxDepth: 90)
+        let box = canvasRectangle
+        let circles = schottkyCircles(ta: traces, tb: traces, in: box,
+                                      minRadius: 0.4, maxDepth: 150)
 
-        // The limit set is what the eye follows, so frame on that rather than on
-        // the pairing circles, which swing far wider as the pairs lean. A coarse
-        // walk is plenty for a bounding box.
-        let frame = fit(from: bounds(of: schottkyLimitSet(pairing: pairings, minRadius: 8)),
-                        into: canvasRectangle.inset(by: 70))
+        // Frame on the packing itself (the limit set's span), not on the
+        // pairing circles, which reach far outside it; and turn the picture a
+        // quarter turn so the parabolic fans sit left and right, the way
+        // these figures are usually shown.
+        let frame = fit(from: bounds(of: schottkyLimitSet(ta: traces, tb: traces,
+                                                          in: box, minRadius: 6)),
+                        into: box.inset(by: 56))
 
         noFill()
         stroke(ink.withAlpha(0.45))
-        strokeWeight(0.7)
-        drawCircles(circles.map(frame))
+        strokeWeight(0.65)
+        drawCircles(circles.map { turned(frame($0), about: box.center) })
 
-        drawCaption("lean \(String(format: "%+.2f", lean)), \(circles.count) circles"
-                    + (running ? "" : ", held"))
+        drawCaption("traces \(String(format: "%.3f %+.3fi", traces.x, traces.y)), "
+                    + "\(circles.count) circles" + (running ? "" : ", held"))
     }
 
     override func mousePressed() { running.toggle() }
@@ -71,5 +74,10 @@ final class Schottky: Sketch {
             Circle(center: to + (circle.center - from) * factor,
                    radius: circle.radius * factor)
         }
+    }
+
+    private func turned(_ circle: Circle, about pivot: Vector2) -> Circle {
+        let d = circle.center - pivot
+        return Circle(center: pivot + Vector2(-d.y, d.x), radius: circle.radius)
     }
 }

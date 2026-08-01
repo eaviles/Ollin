@@ -128,13 +128,25 @@ struct MobiusMap {
     /// Substituting `z = M⁻¹z'` carries it to `H' = (M⁻¹)† H M⁻¹`, so the image
     /// costs a pair of 2x2 products rather than a three-point refit.
     ///
+    /// Requires a unit-determinant matrix, so that `inverse` is exact.
+    func image(of circle: Circle) -> Circle? {
+        discImage(of: circle, exterior: false)?.circle
+    }
+
+    /// The image of a circle *carrying a disc*: `exterior` says which side of
+    /// the source circle the disc is (false = the interior).
+    ///
+    /// The sign of the transformed form's `A'` says which side of the image
+    /// circle the disc landed on: when the map's pole sits inside the source
+    /// disc, the disc turns inside out and comes back as the image circle's
+    /// exterior. That orientation is what a nesting walk needs, because an
+    /// exterior disc is unbounded and its circle's radius bounds nothing.
+    ///
     /// Returns `nil` when the image is a straight line (the source circle runs
     /// through the map's pole, so `A'` collapses to zero) or when the arithmetic
     /// leaves the finite plane. Callers treat that as a branch to drop: it is a
     /// measure-zero case for circles that stay clear of the pole.
-    ///
-    /// Requires a unit-determinant matrix, so that `inverse` is exact.
-    func image(of circle: Circle) -> Circle? {
+    func discImage(of circle: Circle, exterior: Bool) -> (circle: Circle, exterior: Bool)? {
         let center = ComplexValue(re: circle.center.x, im: circle.center.y)
         let a = ComplexValue.one
         let b = -center
@@ -162,32 +174,79 @@ struct MobiusMap {
         let radius = radiusSquared.squareRoot()
         guard radius.isFinite else { return nil }
 
-        return Circle(center: Vector2(imageCenter.re, imageCenter.im), radius: radius)
+        return (Circle(center: Vector2(imageCenter.re, imageCenter.im), radius: radius),
+                (aPrime < 0) != exterior)
     }
 
-    /// The pairing map carrying the *outside* of `from` onto the *inside* of
-    /// `to`, turned by `twist` about the target center.
+    /// The isometric circle: the locus where the map neither stretches nor
+    /// shrinks, `|cz + d| = 1` for a unit-determinant matrix. The map carries
+    /// the *outside* of its isometric circle onto the *inside* of its
+    /// inverse's, which is exactly a Schottky pairing, so a group given by
+    /// matrices instead of circles can still feed the orbit walk. `nil` for a
+    /// map fixing infinity (`c ≈ 0`), which has no isometric circle.
+    var isometricCircle: Circle? {
+        let c = r.magnitude
+        guard c > 1e-12 else { return nil }
+        let center = -(s / r)
+        return Circle(center: Vector2(center.re, center.im), radius: 1 / c)
+    }
+
+    /// The involution sending `point` to infinity (and infinity to `point`),
+    /// scaled by `radius`: `z → z₀ + R²/(z − z₀)`. This is the "move a point to
+    /// the horizon" viewing transform: the plane turns inside out around the
+    /// point, and whichever disc contained it becomes the picture's outside.
+    static func horizon(at point: Vector2, radius: Double) -> MobiusMap {
+        let z0 = ComplexValue(re: point.x, im: point.y)
+        let r2 = ComplexValue.real(radius * radius)
+        return MobiusMap(p: z0, q: r2 - z0 * z0, r: .one, s: -z0).normalized
+    }
+
+    /// The pairing map carrying the complement of the `from` disc onto the
+    /// `to` disc, turned by `twist`. Each disc is its circle's interior
+    /// unless flagged exterior, which is what lets one pairing circle
+    /// *contain* the rest of an arrangement.
     ///
-    /// `g(z) = q − s·r·u²·e^{iθ} / (z − p)` for `from = (p, r)`, `to = (q, s)`,
-    /// and `u` the unit vector from one center to the other: on `|z − p| = r`
-    /// the image satisfies `|g − q| = s`, so the rim lands on the rim, and a
-    /// point further out lands further in. That inside-out sense is what makes
-    /// a Schottky pairing nest.
-    ///
-    /// The `−u²` factor sets where `twist` counts from. Without it the zero
-    /// point falls on nothing in particular; with it, two circles that touch
-    /// and are paired at `twist == 0` hold their tangency point fixed, which
-    /// makes the generator parabolic. That is the case worth having as the
-    /// default, because a parabolic generator barely contracts near its fixed
-    /// point, so the orbit stays large for many generations instead of
-    /// collapsing in three.
-    static func pairing(from: Circle, to: Circle, twist: Double) -> MobiusMap {
+    /// Built by composition: the from side normalizes its disc complement onto
+    /// the unit disc, a rotation applies the twist, and the to side carries
+    /// the unit disc onto the target disc. For the everyday interior-interior
+    /// case this collapses to `g(z) = q − s·r·u²·e^{iθ}/(z − p)` with `u` the
+    /// unit vector between the centers; the `−u²` factor sets the twist's zero
+    /// point so that two *touching* interior discs paired at `twist == 0` hold
+    /// their tangency point fixed, making the generator parabolic. That is the
+    /// case worth having as the default, because a parabolic generator barely
+    /// contracts near its fixed point, so the orbit stays large for many
+    /// generations instead of collapsing in three. An exterior-interior
+    /// pairing gets the same courtesy for internal tangency: at `twist == 0`
+    /// a `to` circle internally tangent to an exterior `from` holds the
+    /// tangency point fixed.
+    static func pairing(from: Circle, fromExterior: Bool = false,
+                        to: Circle, toExterior: Bool = false,
+                        twist: Double) -> MobiusMap {
         let p = ComplexValue(re: from.center.x, im: from.center.y)
         let q = ComplexValue(re: to.center.x, im: to.center.y)
-        let span = q - p
-        let length = span.magnitude
-        let u = length > 1e-12 ? span / ComplexValue.real(length) : ComplexValue.one
-        let k = -(ComplexValue.real(to.radius * from.radius) * u * u * .unit(twist))
-        return MobiusMap(p: q, q: k - q * p, r: .one, s: -p).normalized
+        let rf = ComplexValue.real(from.radius)
+        let rt = ComplexValue.real(to.radius)
+
+        // The twist's zero point: interior-interior folds in −u², so touching
+        // discs pair parabolically at zero; the flagged cases use the plain
+        // rotation, which does the same for internal tangency.
+        var rotation = ComplexValue.unit(twist)
+        if !fromExterior && !toExterior {
+            let span = q - p
+            let length = span.magnitude
+            let u = length > 1e-12 ? span / ComplexValue.real(length) : ComplexValue.one
+            rotation = -(u * u * rotation)
+        }
+
+        // Complement of the from disc → unit disc.
+        let normalize = fromExterior
+            ? MobiusMap(p: .one, q: -p, r: .zero, s: rf)   // (z − p) / r
+            : MobiusMap(p: .zero, q: rf, r: .one, s: -p)   // r / (z − p)
+        // Unit disc → to disc.
+        let place = toExterior
+            ? MobiusMap(p: q, q: rt, r: .one, s: .zero)    // q + r/w
+            : MobiusMap(p: rt, q: q, r: .zero, s: .one)    // q + r·w
+        let rotate = MobiusMap(p: rotation, q: .zero, r: .zero, s: .one)
+        return (place * rotate * normalize).normalized
     }
 }

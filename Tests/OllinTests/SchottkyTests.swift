@@ -185,4 +185,131 @@ import Testing
                                        minRadius: 1, maxDepth: 60)
         #expect(cusped.count > necklace.count * 2)
     }
+
+    // MARK: - The viewpoint
+
+    /// Viewing is conjugation, so the viewed orbit is the horizon involution
+    /// applied to the plain orbit: same circles, re-seated. Spot-check that
+    /// every viewed base circle is the involution image of its plain twin.
+    @Test func viewpointReseatsTheOrbitByInvolution() {
+        let box = Rectangle(corner: Vector2(0, 0), width: 500, height: 500)
+        let pairings = schottkyCuspedPairs(in: box, lean: 0.3)
+        let vp = pairings[0].to.center
+
+        let plain = schottkyCircles(pairing: pairings, minRadius: 2, maxDepth: 12)
+        let viewed = schottkyCircles(pairing: pairings, viewpoint: vp,
+                                     minRadius: 2, maxDepth: 12)
+
+        // The four base circles come first on both walks, in the same order.
+        let d = (vp - pairings[0].to.center).length
+        let clearance = (pairings[0].to.radius * pairings[0].to.radius - d * d).squareRoot()
+        let horizon = MobiusMap.horizon(at: vp, radius: clearance)
+        for k in 0 ..< 4 {
+            guard let mapped = horizon.image(of: plain[k]) else {
+                Issue.record("a base circle mapped to a line"); return
+            }
+            #expect(abs(mapped.center.x - viewed[k].center.x) < 1e-6)
+            #expect(abs(mapped.center.y - viewed[k].center.y) < 1e-6)
+            #expect(abs(mapped.radius - viewed[k].radius) < 1e-6)
+        }
+    }
+
+    /// A viewpoint inside a disc turns that disc inside out, so its circle
+    /// becomes the picture's outer boundary: the other three base circles sit
+    /// inside it. (The flipped letter's own subtree legitimately lives
+    /// outside, the faint far arcs of the classic figures, so the bound
+    /// applies to the re-seated bases, not to every image.)
+    @Test func viewpointInsideADiscBoundsTheBases() {
+        let box = Rectangle(corner: Vector2(0, 0), width: 500, height: 500)
+        let pairings = schottkyCuspedPairs(in: box, spread: 1.1)
+        let circles = schottkyCircles(pairing: pairings,
+                                      viewpoint: pairings[1].from.center,
+                                      minRadius: 1, maxDepth: 30)
+        #expect(circles.count > 50)
+
+        let bases = Array(circles.prefix(4))
+        let bound = bases.max(by: { $0.radius < $1.radius })!
+        for circle in bases where circle != bound {
+            let reach = (circle.center - bound.center).length + circle.radius
+            #expect(reach <= bound.radius + 1e-6)
+        }
+    }
+
+    // MARK: - Exterior discs
+
+    /// Flag a containing circle's disc as its exterior and its pairing map
+    /// sends the *inside* of that circle into its partner: the arrangement
+    /// with three discs inside a fourth becomes legal, and the forward
+    /// generators' images all land inside the container. (The flagged
+    /// letter's own subtree maps into the exterior, so the bound is on the
+    /// images of words that avoid it.)
+    @Test func exteriorDiscKeepsForwardImagesInside() {
+        let outer = Circle(center: Vector2(250, 250), radius: 200)
+        let inner = Circle(center: Vector2(250, 130), radius: 60)
+        let side = Circle(center: Vector2(150, 320), radius: 70)
+        let other = Circle(center: Vector2(350, 320), radius: 70)
+        let pairings = [SchottkyPairing(from: outer, to: inner, fromExterior: true),
+                        SchottkyPairing(from: side, to: other)]
+        let circles = schottkyCircles(pairing: pairings, minRadius: 1, maxDepth: 30)
+        #expect(circles.count > 100)
+
+        // The map with the exterior from-disc sends the container's inside
+        // (probe: the arrangement center region) into its partner disc.
+        let map = MobiusMap.pairing(from: outer, fromExterior: true,
+                                    to: inner, twist: 0)
+        let image = map.apply(ComplexValue(re: 250, im: 260))
+        let landed = Vector2(image.re, image.im)
+        #expect(inner.contains(landed))
+
+        // And the three interior base discs sit inside the container.
+        for circle in [inner, side, other] {
+            let reach = (circle.center - outer.center).length + circle.radius
+            #expect(reach <= outer.radius + 1e-6)
+        }
+    }
+
+    // MARK: - The trace recipe's orbit
+
+    /// At the gasket traces both generators are parabolic, and a parabolic
+    /// map's isometric pair is tangent at its fixed point. Pin those two
+    /// tangencies: letter k's circle against its inverse's, for both
+    /// generators. (The cross pairs overlap at these traces, which the walk
+    /// tolerates: nesting is a property of each map alone.)
+    @Test func gasketTracesGiveTangentIsometricPairs() {
+        let box = Rectangle(corner: Vector2(0, 0), width: 800, height: 800)
+        let circles = schottkyCircles(ta: Vector2(2, 0), tb: Vector2(2, 0), in: box,
+                                      minRadius: 4, maxDepth: 20)
+        #expect(circles.count > 100)
+
+        let bases = Array(circles.prefix(4))
+        for (i, j) in [(0, 2), (1, 3)] {
+            let gap = (bases[i].center - bases[j].center).length
+                - bases[i].radius - bases[j].radius
+            #expect(abs(gap) < 1e-6 * 800, "pair \(i)-\(j) gap \(gap)")
+        }
+    }
+
+    /// The traced orbit is deterministic and scales into whatever bounds it
+    /// is asked for.
+    @Test func tracedOrbitIsDeterministicAndSeated() {
+        let box = Rectangle(corner: Vector2(100, 50), width: 400, height: 400)
+        let ta = Vector2(2.05, 0.03)
+        let a = schottkyCircles(ta: ta, tb: ta, in: box, minRadius: 2, maxDepth: 40)
+        let b = schottkyCircles(ta: ta, tb: ta, in: box, minRadius: 2, maxDepth: 40)
+        #expect(a == b)
+        #expect(a.count > 50)
+
+        // The four base circles land inside the asked-for bounds.
+        for circle in a.prefix(4) {
+            #expect(circle.center.x > box.x - box.width, "\(circle.center)")
+            #expect(circle.center.x < box.x + box.width * 2)
+        }
+    }
+
+    /// Degenerate traces (the recipe's excluded values) return empty rather
+    /// than trapping.
+    @Test func degenerateTracesReturnEmpty() {
+        let box = Rectangle(corner: Vector2(0, 0), width: 300, height: 300)
+        #expect(schottkyCircles(ta: Vector2(0, 0), tb: Vector2(0, 0), in: box).isEmpty)
+    }
 }

@@ -28,7 +28,7 @@ import Foundation
 /// `tr(a) = ta`, `tr(b) = tb`, and a parabolic commutator, the normalization
 /// the classic limit-set figures all use. The trace of `ab` comes from the
 /// Markov identity's minus root (the plus root draws the mirror image).
-private func grandmaGenerators(ta: ComplexValue, tb: ComplexValue) -> (MobiusMap, MobiusMap)? {
+func grandmaGenerators(ta: ComplexValue, tb: ComplexValue) -> (MobiusMap, MobiusMap)? {
     let four = ComplexValue.real(4)
     let two = ComplexValue.real(2)
     let twoI = ComplexValue(re: 0, im: 2)

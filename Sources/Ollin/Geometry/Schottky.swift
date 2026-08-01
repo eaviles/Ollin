@@ -32,22 +32,36 @@ import Foundation
 
 // MARK: - Pairings
 
-/// One circle pairing: the Möbius map carrying the outside of `from` onto the
-/// inside of `to`, turned by `twist` radians about the target center.
+/// One circle pairing: the Möbius map carrying everything outside the `from`
+/// disc into the `to` disc, turned by `twist` radians.
 ///
-/// A `twist` of zero is the plain pairing, which reads as a mirror-like fold;
-/// turning it rotates each nested generation against the last, which is what
-/// puts the spiral in a spiral lace. The angle runs in canvas orientation
-/// (clockwise, with y down).
+/// A disc is its circle's interior unless flagged exterior. The exterior flag
+/// is what lets one pairing circle *contain* the whole arrangement: flag the
+/// containing circle's disc as its outside, and the orbit nests inward from
+/// it, bounded, with the fundamental domain showing as the empty pockets.
+/// That is the classic gasket framing.
+///
+/// A `twist` of zero is the tangency-respecting pairing: touching interior
+/// discs, or a `to` circle internally tangent to an exterior `from`, hold
+/// their tangency point fixed, which keeps the lace dense. Turning it rotates
+/// each nested generation against the last, which is what puts the spiral in
+/// a spiral lace. The angle runs in canvas orientation (clockwise, y down).
 public struct SchottkyPairing: Equatable, Sendable {
     public var from: Circle
     public var to: Circle
     public var twist: Double
+    /// Whether the `from` disc is its circle's exterior.
+    public var fromExterior: Bool
+    /// Whether the `to` disc is its circle's exterior.
+    public var toExterior: Bool
 
-    public init(from: Circle, to: Circle, twist: Double = 0) {
+    public init(from: Circle, to: Circle, twist: Double = 0,
+                fromExterior: Bool = false, toExterior: Bool = false) {
         self.from = from
         self.to = to
         self.twist = twist
+        self.fromExterior = fromExterior
+        self.toExterior = toExterior
     }
 }
 
@@ -66,31 +80,88 @@ private let schottkyCircleLimit = 2_000_000
 /// following the cancelling letter. Circle `i` is pairing `i`'s target and
 /// circle `i + n` its source, which is exactly the labelling that makes
 /// generator `i` carry circle `inverse(i)` onto circle `i`.
+///
+/// A `viewpoint` re-seats the whole picture before the walk begins: the group
+/// is conjugated by the involution sending that point to the horizon, so the
+/// walk runs in the *viewed* plane and `minRadius` prunes against the sizes
+/// actually drawn. Whichever disc held the viewpoint turns inside out, so its
+/// circle bounds the picture from outside; a disc that comes back as an
+/// exterior is unbounded, and the walk recurses past it on depth alone rather
+/// than trusting a radius that bounds nothing.
 private func schottkyWalk(_ pairings: [SchottkyPairing],
+                          viewpoint: Vector2?,
                           minRadius: Double,
                           maxDepth: Int,
                           emit: (Circle, Bool) -> Void) {
     let n = pairings.count
-    let letters = n * 2
 
-    var circles: [Circle] = []
+    var bases: [(circle: Circle, exterior: Bool)] = []
     var generators: [MobiusMap] = []
-    circles.reserveCapacity(letters)
-    generators.reserveCapacity(letters)
-    for pairing in pairings { circles.append(pairing.to) }
-    for pairing in pairings { circles.append(pairing.from) }
+    bases.reserveCapacity(n * 2)
+    generators.reserveCapacity(n * 2)
+    for pairing in pairings { bases.append((pairing.to, pairing.toExterior)) }
+    for pairing in pairings { bases.append((pairing.from, pairing.fromExterior)) }
     for pairing in pairings {
         generators.append(MobiusMap.pairing(from: pairing.from,
+                                            fromExterior: pairing.fromExterior,
                                             to: pairing.to,
+                                            toExterior: pairing.toExterior,
                                             twist: pairing.twist))
     }
     for i in 0 ..< n { generators.append(generators[i].inverse) }
 
+    schottkyOrbitWalk(generators: generators, bases: bases, viewpoint: viewpoint,
+                      minRadius: minRadius, maxDepth: maxDepth, emit: emit)
+}
+
+/// The walk itself, over an explicit letter list: `generators` holds the `n`
+/// forward maps followed by their `n` inverses, and `bases[k]` is the disc
+/// letter `k` maps into, so the sub-orbit of every word starting with letter
+/// `k` nests inside it.
+private func schottkyOrbitWalk(generators baseGenerators: [MobiusMap],
+                               bases: [(circle: Circle, exterior: Bool)],
+                               viewpoint: Vector2?,
+                               minRadius: Double,
+                               maxDepth: Int,
+                               emit: (Circle, Bool) -> Void) {
+    let letters = baseGenerators.count
+    let n = letters / 2
+    var generators = baseGenerators
+
+    // The viewed plane: conjugate every generator and re-seat every base
+    // circle. The horizon radius is the point's clearance to the nearest
+    // rim, which keeps the picture at roughly the arrangement's size, so
+    // `minRadius` and the canvas keep meaning what they meant.
+    var circles = bases
+    if let viewpoint {
+        var clearance = Double.infinity
+        for base in bases {
+            let d = (viewpoint - base.circle.center).length
+            if d < base.circle.radius {
+                clearance = (base.circle.radius * base.circle.radius - d * d).squareRoot()
+                break
+            }
+            clearance = min(clearance, d - base.circle.radius)
+        }
+        guard clearance > 1e-9 else { return }
+        let horizon = MobiusMap.horizon(at: viewpoint, radius: clearance)
+        var viewed: [(circle: Circle, exterior: Bool)] = []
+        viewed.reserveCapacity(letters)
+        for base in bases {
+            guard let seated = horizon.discImage(of: base.circle,
+                                                 exterior: base.exterior) else { return }
+            viewed.append(seated)
+        }
+        circles = viewed
+        // The involution is its own inverse, so conjugation is H·g·H.
+        generators = generators.map { (horizon * $0 * horizon).normalized }
+    }
+
     var emitted = 0
 
     // The starting circles, the only ones no word produces.
-    for circle in circles {
-        emit(circle, false)
+    for entry in circles {
+        emit(entry.circle, false)
         emitted += 1
     }
 
@@ -98,12 +169,16 @@ private func schottkyWalk(_ pairings: [SchottkyPairing],
         let cancelling = (last + n) % letters
         for k in 0 ..< letters where k != cancelling {
             guard emitted < schottkyCircleLimit else { return }
-            guard let image = matrix.image(of: circles[k]) else { continue }
-            // Everything below this child nests inside `image`, so its radius
-            // is the branch's own error bound: under `minRadius` there is
-            // nothing left to draw.
-            let isLeaf = image.radius < minRadius || depth >= maxDepth
-            emit(image, isLeaf)
+            guard let image = matrix.discImage(of: circles[k].circle,
+                                               exterior: circles[k].exterior)
+            else { continue }
+            // Everything below this child nests inside the image *disc*. For
+            // an interior disc the circle's radius is the branch's own error
+            // bound: under `minRadius` there is nothing left to draw. An
+            // exterior disc is unbounded, so only depth can stop it.
+            let isLeaf = (!image.exterior && image.circle.radius < minRadius)
+                || depth >= maxDepth
+            emit(image.circle, isLeaf)
             emitted += 1
             if !isLeaf {
                 walk((matrix * generators[k]).normalized, k, depth + 1)
@@ -123,21 +198,29 @@ private func schottkyWalk(_ pairings: [SchottkyPairing],
 ///   - pairings: The circle pairings, one per generator (two of them is the
 ///     classic two-generator family). Discs should be disjoint: overlapping
 ///     ones make the group non-discrete and the lace turns to mud.
-///   - minRadius: The size at which a branch stops, in canvas points. Half a
-///     pixel is the natural floor; larger values return a sparser lace and
-///     return it faster.
+///   - viewpoint: A canvas point sent to the horizon, turning the picture
+///     inside out around it. Put it *inside one of the pairing discs* and that
+///     disc becomes the picture's outer boundary, with the lace filling it and
+///     the fundamental domain showing as the large empty regions: the classic
+///     framing of these figures. `nil` views the plane as it is. Keep it off
+///     the circles themselves.
+///   - minRadius: The size at which a branch stops, in canvas points, measured
+///     in the viewed picture. Half a pixel is the natural floor; larger values
+///     return a sparser lace and return it faster.
 ///   - maxDepth: A backstop on word length for arrangements that shrink slowly
 ///     (near-tangent circles do).
 /// - Returns: The pairing circles followed by their images, parents before
 ///   children.
 public func schottkyCircles(pairing pairings: [SchottkyPairing],
+                            viewpoint: Vector2? = nil,
                             minRadius: Double = 0.5,
                             maxDepth: Int = 40) -> [Circle] {
     guard !pairings.isEmpty, minRadius > 0 else { return [] }
     guard pairings.allSatisfy({ $0.from.radius > 0 && $0.to.radius > 0 }) else { return [] }
 
     var result: [Circle] = []
-    schottkyWalk(pairings, minRadius: minRadius, maxDepth: maxDepth) { circle, _ in
+    schottkyWalk(pairings, viewpoint: viewpoint,
+                 minRadius: minRadius, maxDepth: maxDepth) { circle, _ in
         result.append(circle)
     }
     return result
@@ -153,16 +236,114 @@ public func schottkyCircles(pairing pairings: [SchottkyPairing],
 /// Unlike the chaos game behind `inversionLimitSet`, this uses no randomness
 /// at all, so the same arrangement always returns the same cloud.
 public func schottkyLimitSet(pairing pairings: [SchottkyPairing],
+                             viewpoint: Vector2? = nil,
                              minRadius: Double = 0.5,
                              maxDepth: Int = 40) -> [Vector2] {
     guard !pairings.isEmpty, minRadius > 0 else { return [] }
     guard pairings.allSatisfy({ $0.from.radius > 0 && $0.to.radius > 0 }) else { return [] }
 
     var result: [Vector2] = []
-    schottkyWalk(pairings, minRadius: minRadius, maxDepth: maxDepth) { circle, isLeaf in
+    schottkyWalk(pairings, viewpoint: viewpoint,
+                 minRadius: minRadius, maxDepth: maxDepth) { circle, isLeaf in
         if isLeaf { result.append(circle.center) }
     }
     return result
+}
+
+// MARK: - The trace recipe's circle orbit
+
+/// The circle orbit of the two-generator group with traces `ta` and `tb`: the
+/// same group whose boundary `kleinianLimitSet(ta:tb:)` traces as a curve,
+/// drawn instead as nesting circles.
+///
+/// The group comes from the classic trace recipe, so it is given by matrices
+/// rather than by paired circles; the orbit walk takes each generator's
+/// *isometric circles* as its pairing discs, since a Möbius map carries the
+/// outside of its isometric circle onto the inside of its inverse's. At the
+/// gasket traces `(2, 2)` each parabolic generator's isometric pair is
+/// tangent at its fixed point and the orbit draws the classic gasket packing;
+/// nearby traces bend and twist it. (The four discs need not be pairwise
+/// disjoint: nesting is a property of each map alone, so the walk's pruning
+/// stays sound.)
+///
+/// The picture is scaled so the four isometric circles fill `bounds`, and a
+/// `viewpoint` re-frames it exactly as in `schottkyCircles(pairing:)`. Traces
+/// far outside the quasi-Fuchsian region make the group non-discrete and the
+/// lace turns to mud.
+public func schottkyCircles(ta: Vector2, tb: Vector2,
+                            in bounds: Rectangle,
+                            viewpoint: Vector2? = nil,
+                            minRadius: Double = 0.5,
+                            maxDepth: Int = 40) -> [Circle] {
+    guard let seated = tracedSchottkyGroup(ta: ta, tb: tb, in: bounds) else { return [] }
+    guard minRadius > 0 else { return [] }
+    var result: [Circle] = []
+    schottkyOrbitWalk(generators: seated.generators, bases: seated.bases,
+                      viewpoint: viewpoint,
+                      minRadius: minRadius, maxDepth: maxDepth) { circle, _ in
+        result.append(circle)
+    }
+    return result
+}
+
+/// The limit set of the trace-recipe group, as the centers of the circles the
+/// orbit walk stopped at. See `schottkyCircles(ta:tb:in:)`.
+public func schottkyLimitSet(ta: Vector2, tb: Vector2,
+                             in bounds: Rectangle,
+                             viewpoint: Vector2? = nil,
+                             minRadius: Double = 0.5,
+                             maxDepth: Int = 40) -> [Vector2] {
+    guard let seated = tracedSchottkyGroup(ta: ta, tb: tb, in: bounds) else { return [] }
+    guard minRadius > 0 else { return [] }
+    var result: [Vector2] = []
+    schottkyOrbitWalk(generators: seated.generators, bases: seated.bases,
+                      viewpoint: viewpoint,
+                      minRadius: minRadius, maxDepth: maxDepth) { circle, isLeaf in
+        if isLeaf { result.append(circle.center) }
+    }
+    return result
+}
+
+/// The trace-recipe group with its isometric circles, conjugated by the
+/// similarity that fits those circles into `bounds`. `nil` when the recipe
+/// degenerates or a generator fixes infinity (no isometric circle to pair).
+private func tracedSchottkyGroup(ta: Vector2, tb: Vector2, in bounds: Rectangle)
+    -> (generators: [MobiusMap], bases: [(circle: Circle, exterior: Bool)])? {
+    guard let (a, b) = grandmaGenerators(ta: ComplexValue(re: ta.x, im: ta.y),
+                                         tb: ComplexValue(re: tb.x, im: tb.y))
+    else { return nil }
+
+    let letters = [a, b, a.inverse, b.inverse]
+    // Letter k's target disc is the isometric circle of its inverse.
+    var raw: [Circle] = []
+    for map in [a.inverse, b.inverse, a, b] {
+        guard let circle = map.isometricCircle else { return nil }
+        raw.append(circle)
+    }
+
+    // Fit the four circles into bounds with one similarity.
+    var lo = Vector2(.infinity, .infinity), hi = Vector2(-.infinity, -.infinity)
+    for c in raw {
+        lo = Vector2(min(lo.x, c.center.x - c.radius), min(lo.y, c.center.y - c.radius))
+        hi = Vector2(max(hi.x, c.center.x + c.radius), max(hi.y, c.center.y + c.radius))
+    }
+    let span = max(hi.x - lo.x, hi.y - lo.y)
+    guard span > 1e-12, span.isFinite else { return nil }
+    let scale = min(bounds.width, bounds.height) / span
+    let mid = Vector2((lo.x + hi.x) / 2, (lo.y + hi.y) / 2)
+
+    let similarity = MobiusMap(
+        p: ComplexValue.real(scale),
+        q: ComplexValue(re: bounds.center.x - mid.x * scale,
+                        im: bounds.center.y - mid.y * scale),
+        r: .zero, s: .one).normalized
+    let seatedGenerators = letters.map { (similarity * $0 * similarity.inverse).normalized }
+    let seatedBases = raw.map { circle in
+        (Circle(center: Vector2(circle.center.x * scale + bounds.center.x - mid.x * scale,
+                                circle.center.y * scale + bounds.center.y - mid.y * scale),
+                radius: circle.radius * scale), false)
+    }
+    return (seatedGenerators, seatedBases)
 }
 
 // MARK: - The necklace family
