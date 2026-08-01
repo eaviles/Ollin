@@ -227,6 +227,46 @@ extension Drawer {
         }
         func leftNormal(_ d: Vector2) -> Vector2 { Vector2(-d.y, d.x) }
 
+        // On the inside of a turn the two segments' edges genuinely cross, at the
+        // inner miter point. If each segment simply ends on its own perpendicular,
+        // both quads cover the wedge between the two perpendiculars, and ink that
+        // is not opaque composites there twice: a translucent stroke grows a hard
+        // darker patch at every corner (a full second coat at a right angle), and a
+        // dense curve grows a graded dark band down the inside of the turn.
+        //
+        // So both ribbons end on that crossing point instead. `innerMiter[v]` is
+        // the direction to expand along on the inner side, scaled so that
+        // `pts[v] + innerMiter[v] * off` sits exactly `off` away from *both*
+        // centerlines. That is what keeps the existing coverage ramp correct, since
+        // coverage is a function of distance from the centerline, and the two
+        // ribbons end up sharing that edge exactly: no overlap, and no gap either.
+        //
+        // The outer side is untouched. It still ends on the segment's own
+        // perpendicular, and the join filler below fans from the path vertex to
+        // bridge the two, so joins and the seam they close are unaffected.
+        var innerMiter = [Vector2?](repeating: nil, count: n)
+        for v in closed ? 0..<n : 1..<(n - 1) {
+            let prev = pts[(v - 1 + n) % n], curr = pts[v], next = pts[(v + 1) % n]
+            let d0 = segDir(prev, curr), d1 = segDir(curr, next)
+            let cross = d0.x * d1.y - d0.y * d1.x
+            guard abs(cross) > 1e-6 else { continue }   // collinear: nothing crosses
+            let bisector = (leftNormal(d0) + leftNormal(d1)) * 0.5
+            let dmr2 = bisector.x * bisector.x + bisector.y * bisector.y
+            guard dmr2 > 1e-6 else { continue }         // a hairpin has no crossing
+            let scale = 1 / dmr2                        // |bisector| is cos(half the turn)
+            guard scale <= 600 else { continue }        // near enough to a hairpin
+            // The crossing has to fall inside both neighbouring segments, or the
+            // ribbon turns itself inside out. Where it does not the ends stay
+            // square: a corner that sharp folds over itself whatever we do, and an
+            // overlap is a kinder failure than a crack.
+            let w = outerHalf(v)
+            let shorter = min((curr - prev).length, (next - curr).length)
+            let limit = max(1.01, w > 0 ? shorter / w : 1.01)
+            guard dmr2 * limit * limit >= 1 else { continue }
+            let inward: Double = cross >= 0 ? 1 : -1    // toward the inside of the turn
+            innerMiter[v] = bisector * (scale * inward)
+        }
+
         // A fringe vertex: position, AA coverage, and the path color at this point.
         typealias FV = (SIMD2<Float>, Float, SIMD4<Float>)
         func tri(_ a: FV, _ b: FV, _ d: FV) {
@@ -249,14 +289,28 @@ extension Drawer {
         // inside solid ink. Splitting the edge where the join meets it is what makes
         // the seam watertight.
         struct Cross { var outA, coreA, center, coreB, outB: FV }
-        // A cross-section at `p` along `perp` at path vertex `i`'s width and color,
-        // coverage scaled by `s` (1 on the line, 0 at a length-fringe tip so
-        // butt/square ends fade out across the fringe).
-        func crossAt(_ i: Int, _ p: Vector2, _ perp: Vector2, _ s: Float, _ col: SIMD4<Float>) -> Cross {
-            func at(_ off: Double) -> FV { ((p + perp * off).simd2, covU(i, off) * s, col) }
+        // A cross-section at `p` at path vertex `i`'s width and color, spreading
+        // along `dirA` on one side and `dirB` on the other, coverage scaled by `s`
+        // (1 on the line, 0 at a length-fringe tip so butt/square ends fade out
+        // across the fringe). The two directions are a segment's own perpendicular
+        // and its opposite, except on the inner side of a join, where the shared
+        // crossing direction takes over.
+        func crossAt(_ i: Int, _ p: Vector2, _ dirA: Vector2, _ dirB: Vector2,
+                     _ s: Float, _ col: SIMD4<Float>) -> Cross {
+            func at(_ d: Vector2, _ off: Double) -> FV {
+                ((p + d * off).simd2, covU(i, off) * s, col)
+            }
             let outer = outerHalf(i), core = coreHalf(i)
-            return Cross(outA: at(outer), coreA: at(core), center: at(0),
-                         coreB: at(-core), outB: at(-outer))
+            return Cross(outA: at(dirA, outer), coreA: at(dirA, core), center: at(dirA, 0),
+                         coreB: at(dirB, core), outB: at(dirB, outer))
+        }
+        // The pair of directions to expand along at path vertex `v`, for a segment
+        // whose left normal is `perp`. Whichever of the two sides faces the inside
+        // of the join swaps in the shared crossing direction; a vertex that is not
+        // a join (or whose corner folds) keeps both perpendiculars.
+        func spread(at v: Int, _ perp: Vector2) -> (Vector2, Vector2) {
+            guard let m = innerMiter[v] else { return (perp, perp * -1) }
+            return m.x * perp.x + m.y * perp.y >= 0 ? (m, perp * -1) : (perp, m)
         }
         // Connect two cross-sections into four quad bands (fringe | core | core |
         // fringe). Coverage is equal across the two core bands, so splitting the
@@ -276,7 +330,9 @@ extension Drawer {
         for i in 0..<segCount {
             let j = (i + 1) % n
             let perp = leftNormal(segDir(pts[i], pts[j]))
-            ribbon(crossAt(i, pts[i], perp, 1, cols[i]), crossAt(j, pts[j], perp, 1, cols[j]))
+            let (a0, b0) = spread(at: i, perp), (a1, b1) = spread(at: j, perp)
+            ribbon(crossAt(i, pts[i], a0, b0, 1, cols[i]),
+                   crossAt(j, pts[j], a1, b1, 1, cols[j]))
         }
 
         // Interior joins: fill the outer gap between the two segment quads at each
@@ -349,13 +405,18 @@ extension Drawer {
         func cap(at i: Int, _ p: Vector2, perp: Vector2, outward: Vector2, _ col: SIMD4<Float>) {
             let hw = hws[i], outerHalf = outerHalf(i), coreHalf = coreHalf(i)
             let centerCov = centerCov(i), coreCov = coreCov(i)
+            // An end vertex is never a join, so a cap expands along the plain
+            // perpendicular on both sides.
+            let back = perp * -1
             switch strokeCapStyle {
             case .butt:
-                ribbon(crossAt(i, p, perp, 1, col), crossAt(i, p + outward * fw, perp, 0, col))
+                ribbon(crossAt(i, p, perp, back, 1, col),
+                       crossAt(i, p + outward * fw, perp, back, 0, col))
             case .square:
                 let tip = p + outward * hw
-                ribbon(crossAt(i, p, perp, 1, col), crossAt(i, tip, perp, 1, col))
-                ribbon(crossAt(i, tip, perp, 1, col), crossAt(i, tip + outward * fw, perp, 0, col))
+                ribbon(crossAt(i, p, perp, back, 1, col), crossAt(i, tip, perp, back, 1, col))
+                ribbon(crossAt(i, tip, perp, back, 1, col),
+                       crossAt(i, tip + outward * fw, perp, back, 0, col))
             case .round:
                 let steps = max(4, Int((outerHalf * ctmScale).rounded()))
                 let base = atan2(perp.y, perp.x)
@@ -419,7 +480,10 @@ extension Drawer {
     /// it flat, `.round` fills it with an arc. Open paths finish their ends with
     /// the cap style (`strokeCap`); closed ones join every vertex and have no
     /// ends. The inner side of a turn is already covered by the overlapping
-    /// segment quads, so only the outer gap is filled.
+    /// segment quads, so only the outer gap is filled. That overlap paints
+    /// translucent ink twice at every corner, which is why the fringe expander
+    /// ends both ribbons on the shared inner crossing instead; this path, retained
+    /// for glyph stroking, still overlaps there.
     func appendStrokedPath(_ points: [Vector2], closed: Bool,
                                    half: Double, paint: VertexPaint) {
         // Emits only triangles into one batch; symmetry replicates the whole

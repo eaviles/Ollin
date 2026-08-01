@@ -292,6 +292,50 @@ positions rather than the values: every hole sat on the radial line through an
 integer path vertex, outside the turn, between 0 and `coreHalf` of it, which is
 precisely the span the join's apex edge shares with the ribbon.
 
+**Consecutive segments end on their shared inner crossing, and that is what
+makes translucent ink lay down one coat.** On the inside of a turn the two
+segments' edges genuinely cross, at the inner miter point. A segment that ends
+on its own perpendicular runs past that crossing and into its neighbour, so both
+quads cover the wedge between the two perpendiculars. Opaque ink hides it. Ink
+that is not opaque composites the wedge twice: a 40pt stroke at alpha 0.25 read
+224 along the arm and 197 in a hard-edged diamond at a right-angle corner, which
+is 0.75 against 0.75 squared in the linear light everything composites in, a
+clean second coat. Spread over a dense curve the same defect became a graded band
+down the inside of the turn (mean 224.6 falling to 221.5, single pixels as low as
+197) and, on a spiral, a comb of dark radial spokes, one per join.
+
+So both ribbons end on the crossing point. `innerMiter[v]` holds the direction to
+expand along on the inner side, scaled so that `pts[v] + innerMiter[v] * off`
+sits exactly `off` from *both* centerlines, which is what keeps the coverage ramp
+correct (coverage is a function of distance from the centerline, and a miter
+point preserves that distance to both segments by construction). The two ribbons
+then share that edge exactly: no overlap, and no gap. This is NanoVG's
+`nvg__chooseBevel` model, written from the technique.
+
+Three things make it safe to leave everything else alone. The **outer** side is
+untouched, still ending on the segment's own perpendicular, so the join filler
+and the centerline seam above are unaffected. The covered **region is
+unchanged** for an opaque stroke: the union of two overlapping strips is already
+bounded by the two inner edges meeting at the crossing, so moving the internal
+seam onto that crossing draws the same shape, which is why the whole snapshot
+suite passed unrecorded. And **collinear vertices are skipped**, so a straight
+polyline is byte-identical.
+
+Where the crossing falls outside either neighbouring segment the ribbon would
+turn inside out, so the ends stay square there (NanoVG's inner-bevel case, the
+`dmr2 * limit * limit >= 1` test against the shorter neighbour). A corner that
+sharp folds over itself whatever we do, and an overlap is a kinder failure than a
+crack. Near-hairpins bail the same way rather than take NanoVG's clamped miter,
+which would pull the two ribbons short of each other and open a white seam.
+`appendStrokedPath`, retained for glyph stroking, still overlaps.
+
+Cost is nothing measurable: the triangle count does not change at all, only
+vertex positions, and the pre-pass is a few flops per vertex (`Patterns/Streamlines`,
+M2 release, 1080², three interleaved runs: 5.516 against 5.521 ms/frame, inside
+the noise of either variant). Vector export was never affected, since a profiled
+stroke's outline is one nonzero-wound `Shape` and a uniform one is a native
+`stroke-width`; the raster path now agrees with both.
+
 Splitting the core is worth two extra triangles per segment (six to eight, about
 21% more fringe vertices). Paid for by building each cross-section as a fixed
 `Cross` value instead of the two arrays `offsets(_:).map` used to allocate per
