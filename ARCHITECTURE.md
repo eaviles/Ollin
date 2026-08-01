@@ -269,6 +269,39 @@ path) is retained for text glyph stroking only.
 would reintroduce abutting-fill seams (Voronoi, LifeQuilt) or fatten shapes,
 so the fringe is strokes-only.
 
+**A cross-section carries a point on the centerline, and that is load-bearing.**
+The five points are outer edge, core, center, core, outer edge, so a segment's
+ribbon is four quad bands rather than three. Coverage does not change across the
+two core bands, so the split draws nothing new; what it removes is a T-junction.
+Every join fans out from the path vertex itself (`center` in `appendFringeStroke`,
+shared by the miter, bevel, and round builders), and with no cross-section point
+at offset 0 that apex landed in the *middle* of the core band's end edge. The two
+edges are collinear in exact arithmetic, but the rasterizer snaps each endpoint to
+its sub-pixel grid independently, and the hairline that opens between them
+swallowed the occasional MSAA sample. The symptom was isolated pixels of 6/8
+coverage buried inside solid ink, never runs, appearing and vanishing as the
+stroke weight moved by half a point.
+
+Worth recording, because it sent the first investigation down a blind alley: the
+artifact reads as *46% coverage* if you measure the pixel in sRGB, which is
+impossible for the sub-pixel gap the geometry allows, and the contradiction
+looked like evidence against a seam. Compositing is linear-light, so the same
+pixel is 75% coverage, exactly two samples of eight. **Measure coverage in linear
+light before reasoning about how wide a gap must be.** Diagnosis came from the
+positions rather than the values: every hole sat on the radial line through an
+integer path vertex, outside the turn, between 0 and `coreHalf` of it, which is
+precisely the span the join's apex edge shares with the ribbon.
+
+Splitting the core is worth two extra triangles per segment (six to eight, about
+21% more fringe vertices). Paid for by building each cross-section as a fixed
+`Cross` value instead of the two arrays `offsets(_:).map` used to allocate per
+call, four allocations per segment on a path that runs over every stroke in a
+frame: a stroke-only sketch measures ~10% *faster* than before the seam was
+closed (`Patterns/Streamlines`, M2 release, 1080²: 6.18 to 5.55 ms/frame).
+`FringeStrokeTests` pins the seam behaviorally across joins, weights, and
+curvatures, since the defect is a few pixels in a million and any whole-frame
+mean difference averages it away.
+
 ### Fills and the triangulator
 
 The vector `Shape`/`Contour` type (concave polygons, holes) fills via vendored

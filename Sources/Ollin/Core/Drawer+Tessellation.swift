@@ -218,9 +218,6 @@ extension Drawer {
         func covU(_ i: Int, _ off: Double) -> Float {
             Float(min(max((outerHalf(i) - abs(off)) / fw, 0), 1))
         }
-        func offsets(_ i: Int) -> [Double] {
-            [outerHalf(i), coreHalf(i), -coreHalf(i), -outerHalf(i)]
-        }
         func centerCov(_ i: Int) -> Float { covU(i, 0) }
         func coreCov(_ i: Int) -> Float { covU(i, coreHalf(i)) }
 
@@ -238,14 +235,38 @@ extension Drawer {
             emitFringe(d.0, cov: d.1, color: d.2)
         }
         func quad(_ a: FV, _ b: FV, _ d: FV, _ e: FV) { tri(a, b, d); tri(a, d, e) }
+        // The five points across the stroke at one path vertex, outer edge to outer
+        // edge. It is a value with a fixed shape rather than an array, so a cross
+        // section costs no allocation: the expander builds two per segment, and this
+        // path runs over every stroke in a frame.
+        //
+        // The centerline is one of the five even though coverage does not change
+        // there. Every join fans from the path vertex itself, so without a point at
+        // offset 0 that apex would land in the middle of the core band's end edge:
+        // a T-junction, where the two edges are collinear in exact arithmetic but
+        // not after the rasterizer snaps each endpoint to its sub-pixel grid. The
+        // hairline between them swallows the odd sample and leaves a lighter pixel
+        // inside solid ink. Splitting the edge where the join meets it is what makes
+        // the seam watertight.
+        struct Cross { var outA, coreA, center, coreB, outB: FV }
         // A cross-section at `p` along `perp` at path vertex `i`'s width and color,
         // coverage scaled by `s` (1 on the line, 0 at a length-fringe tip so
         // butt/square ends fade out across the fringe).
-        func crossAt(_ i: Int, _ p: Vector2, _ perp: Vector2, _ s: Float, _ col: SIMD4<Float>) -> [FV] {
-            offsets(i).map { ((p + perp * $0).simd2, covU(i, $0) * s, col) }
+        func crossAt(_ i: Int, _ p: Vector2, _ perp: Vector2, _ s: Float, _ col: SIMD4<Float>) -> Cross {
+            func at(_ off: Double) -> FV { ((p + perp * off).simd2, covU(i, off) * s, col) }
+            let outer = outerHalf(i), core = coreHalf(i)
+            return Cross(outA: at(outer), coreA: at(core), center: at(0),
+                         coreB: at(-core), outB: at(-outer))
         }
-        // Connect two cross-sections into 3 quad bands (outer-fringe | core | outer-fringe).
-        func ribbon(_ a: [FV], _ b: [FV]) { for k in 0..<3 { quad(a[k], b[k], b[k + 1], a[k + 1]) } }
+        // Connect two cross-sections into four quad bands (fringe | core | core |
+        // fringe). Coverage is equal across the two core bands, so splitting the
+        // core costs two triangles and changes nothing it draws.
+        func ribbon(_ a: Cross, _ b: Cross) {
+            quad(a.outA,   b.outA,   b.coreA,  a.coreA)
+            quad(a.coreA,  b.coreA,  b.center, a.center)
+            quad(a.center, b.center, b.coreB,  a.coreB)
+            quad(a.coreB,  b.coreB,  b.outB,   a.outB)
+        }
 
         // Body: each segment is its own butt-ended fringe quad along its perpendicular,
         // its two ends carrying their path vertices' colors (the GPU interpolates).
