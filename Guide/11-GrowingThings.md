@@ -147,6 +147,26 @@ drawPolygon(fitted(curve.points, in: canvasRectangle.inset(by: .all(60))))
 
 What makes this one immediately useful is the return type. It's a single `Contour`, one ordered closed curve with evenly spaced points, so it strokes, exports, and plots like any other geometry in this guide rather than being a cloud you can only splat.
 
+## Circles that pair off
+
+Those Möbius maps have a second use, and this one hands you circles rather than a curve.
+
+Start with four circles and pair them up, two and two. A pairing is the map that turns everything outside one circle into the inside of its partner, so whatever you give it comes back smaller and sitting in the partner. Hand a pairing the other three circles and you get three smaller circles nested inside one of them. Do it again with every pairing and its inverse, in every order, and those nest again, forever. The group you have built is a **Schottky group**, and the lace it leaves behind is that whole group drawn at once.
+
+<img src="Images/11-GrowingThings/CirclesPairOff.jpg" alt="Three dark panels: four circles in two colored pairs touching at two points, then the same circles with a first generation of pale circles nested inside them, then the full lace with a bright ring of cusps" width="680">
+
+```swift
+let pairings = schottkyCuspedPairs(in: canvasRectangle.inset(by: .all(60)))
+noFill()
+drawCircles(schottkyCircles(pairing: pairings))
+```
+
+One thing decides whether that picture comes out full or nearly empty, and it is worth knowing before you touch any of the numbers. When a pairing's two circles *touch*, its map holds the point where they touch perfectly still, and near that point it barely shrinks anything at all. So the orbit keeps handing back large circles generation after generation, and they pile into the fan you can see at the left and right of the third panel. Separate that pair by even a third of its radius and every application shrinks harder, so the arrangement that gave back nine thousand circles gives back fewer than three thousand. Same code, same four circles, and most of the picture is gone.
+
+That is why `schottkyCuspedPairs` builds its four circles as two touching pairs, and it also tells you which dial to reach for when you want motion. `lean` swings each pair around its own tangency point, so the pair goes on touching however far it swings and the picture stays full while the figure opens and closes. `twist`, which rotates a pairing off that setting, gives you spirals instead, and thins the lace as it goes. The `Patterns/Schottky` example walks `lean` back and forth and never drops below ten thousand circles.
+
+What comes back is `[Circle]`, not a cloud of points, because a Möbius map sends a circle to a circle and nothing has to be flattened on the way. The lace exports as real circles, so a pen plotter draws it with the same round strokes you see on screen.
+
 ## Growth that claims space
 
 Grammars grow blind, and the fern doesn't know where the canvas ends or where its own leaves already are. The next grower looks before it grows. Scatter *attraction points* over the region you want filled, plant a root, then repeat three moves. Every attractor pulls on the closest branch tip within its reach. Every pulled tip grows one small step toward the average of its pulls. Every attractor a branch reaches is consumed, so its pull disappears and the growth moves on:
@@ -309,7 +329,7 @@ Then make it yours:
 
 L-systems are Aristid Lindenmayer's 1968 invention, and their visual language comes from *The Algorithmic Beauty of Plants* (1990), his book with Przemyslaw Prusinkiewicz, still free to read online and still beautiful. Space colonization is by Adam Runions, Brendan Lane, and Prusinkiewicz at the University of Calgary's Algorithmic Botany group ("Modeling Trees with a Space Colonization Algorithm", 2007, after their 2005 leaf-venation work). Diffusion-limited aggregation was described by the physicists Thomas Witten and Leonard Sander in 1981, and generative artists have been growing frost with it ever since. Wave Function Collapse is Maxim Gumin's 2016 algorithm, named with a physicist's wink, and the tile-and-socket form here is its simple-tiled model.
 
-The chance games have their own shelf. Iterated function systems and the chaos game are Michael Barnsley's, from *Fractals Everywhere* (1988), and the fern uses his published four-map table. The fractal flame is Scott Draves and Erik Reckase's algorithm, which Draves began in 1992 and which ran for years as a distributed screensaver that evolved flames by popular vote. Circle-inversion limit sets follow Michael Frame and Tatiana Cogevina's 2000 rendering method, and Frame's Yale course pages explain them clearly. The Kleinian curves come from David Mumford, Caroline Series, and David Wright's *Indra's Pearls*, four hundred pages of making Felix Klein's groups visible. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The chance games have their own shelf. Iterated function systems and the chaos game are Michael Barnsley's, from *Fractals Everywhere* (1988), and the fern uses his published four-map table. The fractal flame is Scott Draves and Erik Reckase's algorithm, which Draves began in 1992 and which ran for years as a distributed screensaver that evolved flames by popular vote. Circle-inversion limit sets follow Michael Frame and Tatiana Cogevina's 2000 rendering method, and Frame's Yale course pages explain them clearly. The Kleinian curves and the paired circles both come from David Mumford, Caroline Series, and David Wright's *Indra's Pearls*, four hundred pages of making Felix Klein's groups visible. Friedrich Schottky described the paired-circle groups in 1877. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -318,7 +338,7 @@ The chance games have their own shelf. Iterated function systems and the chaos g
 - [Diffusion-limited aggregation](../Docs/Generators/DiffusionLimitedAggregation.md): stickiness, cages, and drawing the skeleton.
 - [Wave Function Collapse](../Docs/Generators/WaveFunctionCollapse.md): sockets, weights, rotations, and what to do when a solve fails.
 - [Blue noise](../Docs/Generators/BlueNoise.md): the even scatter the tree's crown was carved from, properly explained in Chapter 13.
-- [Fractals](../Docs/Generators/Fractals.md): the `IFS` type and its presets, the whole `FractalFlame` surface including the progressive renderer, inversion limit sets, the Kleinian trace presets, and `fitted` for placing any point cloud.
+- [Fractals](../Docs/Generators/Fractals.md): the `IFS` type and its presets, the whole `FractalFlame` surface including the progressive renderer, inversion limit sets, the Kleinian trace presets, the Schottky circle orbit with both of its family builders, and `fitted` for placing any point cloud.
 - Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), [`Examples/Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift), [`Examples/Patterns/IteratedFunctions`](../Examples/Patterns/IteratedFunctions/Sketch.swift), [`Examples/Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Examples/Patterns/InversionFractal`](../Examples/Patterns/InversionFractal/Sketch.swift), and [`Examples/Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift).
 
 ---

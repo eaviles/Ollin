@@ -315,7 +315,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Relight, two-tone dither, warp centers (`Drawing/Effects.md`) | Ch 14 | taught ("Filters that read the layer as something else" with a three-panel figure: brightness as height and the five finishes, brightness as tone with `pixelSize` grain, and `center:` in 0…1 layer coordinates as the knob that makes a warp a composition) |
 | Pattern fields (`Drawing/Effects.md`) | Ch 15 | taught ("The pattern fields" with a six-field catalog plus a hand-rolled gyroid beside the built-in: closed form as the defining property and its three consequences, all six named, reading a 3D field at a moving slice, and the sRGB palette convention) |
 | Escape-time fractals (`Drawing/Effects.md`) | Ch 16 | taught (escape time as the step count that becomes the color, the marked-c figure showing a Julia set as a portrait of one Mandelbrot point and why edge points are richest, smooth banding with `cycles`/`phase`, and the zoom-needs-iterations trap) |
-| `Generators/Fractals.md` (`IFS`, `FractalFlame`, inversion and Kleinian limit sets, Schottky circle orbits) | Ch 11 | taught for the first four ("The same fern, played as a game" derives the chaos game from the chapter's own L-system fern with a condensing figure and explains why contraction forces the attractor; "Three more games worth knowing" covers flames, inversion, and Kleinian with a three-panel figure, plus `fitted` and the Contour return); `schottkyCircles` is pointed only, see the debt ledger |
+| `Generators/Fractals.md` (`IFS`, `FractalFlame`, inversion and Kleinian limit sets, Schottky circle orbits) | Ch 11 | taught ("The same fern, played as a game" derives the chaos game from the chapter's own L-system fern with a condensing figure and explains why contraction forces the attractor; "Three more games worth knowing" covers flames, inversion, and Kleinian with a three-panel figure, plus `fitted` and the Contour return; "Circles that pair off" builds the Schottky lace from four paired circles with a three-panel nesting figure, and explains why a touching pair keeps the picture full where a separated one empties it) |
 | Depth-of-field `.defocus`, SSAO, SSR (`Drawing/Effects.md`) | Ch 17 | taught ("What the depth buffer is for" with a three-panel figure: depth as an ordinary layer, occlusion as what stops objects floating, focus/range read against near/far, SSR's cannot-see-the-back limit, and quality tiers resolving on export) |
 | `Shaders/Shaders.md` (user shaders) | Ch 15 | taught |
 | `Shaders/Visuals.md` (Visual chains) | Ch 15 | taught |
@@ -366,9 +366,10 @@ Capabilities that shipped in the framework without a Guide section yet. An entry
 
 Add an entry only when a session genuinely cannot teach the feature it just shipped, and say so in the commit message. Then the *next* session touching that chapter clears it. `Scripts/guide-coverage.sh` prints every entry on every run, and fails the build for a `pointed` row that has no entry.
 
+No entries. The one that stood here, Schottky circle orbits owed to Chapter 11, was cleared on 2026-08-01.
+
 | Capability (Docs page) | Owed to | Since |
 |---|---|---|
-| Schottky circle orbits (`Generators/Fractals.md`) | Ch 11 | 2026-08-01 |
 
 ## Roadmap parking lot
 
