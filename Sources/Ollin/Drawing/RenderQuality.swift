@@ -12,6 +12,14 @@
 /// overrides it). A sketch that dials a *non-default* tier is making an explicit choice and is
 /// honoured on every path. For an exact, hardware-independent value use the feature's raw setter
 /// instead (for shadows, `Sketch.shadowSamples`; for the raymarch, `Sketch.raymarchSteps`).
+///
+/// **Scope: GPU sampling budgets only.** Every consumer trades sampling density for frame rate
+/// on the *same* image, which is what makes the export auto-upgrade safe. Dials that change
+/// generated *geometry* (a growth's `maxVertices`, `subdivided(_:levels:)`, an isosurface's
+/// `resolution`, an erosion's length) are artwork parameters, never tier consumers: geometry is
+/// data a sketch reads back, so a tier change would change the piece itself, and a per-GPU tier
+/// would make the same seed produce different forms on different machines. See `ARCHITECTURE.md`
+/// section *Performance and the quality dial*.
 public enum RenderQuality: Sendable, Equatable, CaseIterable {
     /// Favor frame rate.
     case performance

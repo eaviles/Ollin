@@ -1455,6 +1455,31 @@ too, coverage-adaptively. The dial rides the shared `RenderQuality` model, where
 by the `--render-quality` flag. All four quality knobs (shadows, defocus, ambient
 occlusion, and raymarch resolution) target frame-rate bands.
 
+**The tier is a GPU sampling budget only; geometry dials never join it.** Every
+`RenderQuality` consumer changes how the *same* image is sampled (shadow rays,
+bokeh taps, AO samples, SSR steps, the raymarch's internal resolution), which is
+exactly what licenses the export auto-upgrade and the byte-identical
+default-tier snapshots. The CPU geometry features' cost dials
+(`MeshGrowth.maxVertices`, `subdivided(_:levels:)`, isosurface / `Metaballs`
+`resolution`, an erosion's droplet count, `medialAxis(of:spacing:prune:)`'s
+sampling step) look similar
+but are kept out on purpose, for three structural reasons. First, geometry is
+data the sketch reads back: vertex counts drive loops, positions seed per-point
+decisions, results feed physics and coloring, so a tier that moved one of these
+dials would change the *piece* (and how much of the seeded RNG stream the
+downstream code consumes), not the fidelity of its rendering, and the
+seed-plus-params reproduction promise (`ExportMetadata`) would break. Second,
+the tiers resolve per-GPU by design, and a hardware-relative form is
+unacceptable for geometry: the same seed must produce the same artwork on every
+machine. Third, there is no shared axis: a vertex ceiling, a refinement count, a
+grid density, and a droplet count each mean something the artist should choose
+in domain terms, and a tier-to-value mapping picked by the framework would
+itself be an artistic decision. Even the dials that converge toward an ideal (an
+isosurface's `resolution`, subdivision `levels`, `medialAxis` spacing) fail the
+first two tests. The framework's taxonomy already covers these: seeds are
+identity, knobs are tuning, and a geometry dial is a knob, served by `@Param`
+and `--export-sweep` rather than by a tier.
+
 ---
 
 ## 3D lighting and environments
