@@ -160,7 +160,13 @@ $radius.range       // the declared bounds (Double and Int parameters)
 
 Assignment retargets (and glides, when smoothed), while `set(_:)` lands immediately. The live host uses `set` to restore your tuned values across a reload, where gliding in from the default would look wrong.
 
-A knob is also sweepable offline: `--export-sweep` renders a contact sheet along one parameter's range, every tile at the same seed, so you can proof a knob the way [Variations](../Core/Variations.md) proofs seeds. The flags are on the [Export](../Output/Export.md#contact-sheets-proofing-a-variation-space) page.
+A knob is also sweepable offline. `--export-sweep` renders a proof sheet along one parameter's range, one tile per value, and every tile is pinned to the same seed, so the knob is the only thing changing across the sheet. Seeds stay what they are on the [Variations](../Core/Variations.md) page, a sketch's identity; a sweep is a tuning tool, the inspector's drag laid out as a sheet:
+
+```sh
+swift run Example-Live-Parameters --export-sweep sweep.png --param radius --from 40 --to 360
+```
+
+The full flag list is on the [Export](../Output/Export.md#contact-sheets-proofing-a-variation-space) page, and `OllinApp.contactSheet(of:sweeping:values:seed:)` is the code form.
 
 For building your own control surface, `parameters()` returns the sketch's knobs as `[ParamHandle]`: a stable `name` key, a display `label`, the `icon` and `group` metadata, and the type-erased `param`. Its `control` describes the matching UI (kind, ranges, options, and live get/set closures), and `stored` / `restore(_:)` round-trip the value through the small `ParamStored` payload the hosts persist. The live host builds its inspector from exactly this, and most sketches never call it.
 

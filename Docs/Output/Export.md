@@ -294,7 +294,7 @@ let sheet: CGImage? = OllinApp.contactSheet(of: { MySketch() }, seeds: [3, 17, 9
 
 Pick a tile you like, then render it big with `--export … --seed N`. The whole loop, and the live inspector half of it, is in [Variations](../Core/Variations.md).
 
-`--export-sweep` is the same sheet over a different axis: instead of walking the sketch's chance, it walks one of its knobs. Name a [`@Param`](../Helpers/Parameters.md) and a range (or explicit values), and every tile renders at the same seed with only that parameter changing, which is what makes the sheet a fair comparison:
+`--export-sweep` is the same sheet as a tuning tool: instead of walking the sketch's chance, it walks one of its [`@Param`](../Helpers/Parameters.md) knobs. Name the parameter and a range (or explicit values), and every tile renders at the same seed with only that parameter changing, which is what makes the sheet a fair comparison. Seeds remain the identity a piece reproduces from; a sweep is for choosing the knob's value before you commit to it:
 
 ```sh
 swift run Example-Live-Parameters --export-sweep sweep.png --param radius --from 40 --to 360 --steps 9
