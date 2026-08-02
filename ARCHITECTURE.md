@@ -1969,6 +1969,67 @@ points, and skeleton branches orient and sort by their endpoints. Examples
 (letterform skeletons with rolling inscribed disks); snapshots
 `concave-hull` / `medial-axis`; `HullTests` / `MedialAxisTests`.
 
+### The straight skeleton
+
+`Geometry/StraightSkeleton.swift` computes the mitered-offset sibling of
+the medial axis exactly (no boundary sampling): the shrinking-wavefront
+simulation over circular lists of active wavefront vertices (one per ring,
+holes included), an event heap ordered by inset distance, and one supporting
+line per boundary edge that never changes while its wavefront segment
+slides along it. Naive event-at-a-time processing is famously wrong on
+real inputs, where right angles and symmetry land several events on one
+point at one time, so the queue drains in *levels*: every event within
+tolerance of the lowest distance loads at once, the level clusters events
+that share a meeting point or a parent vertex, and each cluster processes
+as one generalized event over *chains* (runs of consecutive collapsing
+edges, split vertices, and the opposite edges splits land on, sorted by
+angle around the meeting point; one new wavefront vertex is born into each
+gap between consecutive chains). A split's opposite edge resolves against
+the live wavefront at processing time (projecting the meeting point onto
+the edge picks the right segment when earlier splits already divided it),
+splits cut one LAV in two, cross-LAV splits merge a hole's wavefront into
+the outer one, and a chain of collapsing edges inside a multi-split
+retires all its vertices like a lone edge event would (the mixed-chain
+case the studied reference leaves unhandled). Events computed during a
+level that land back on it are stale echoes and are purged, which is also
+why a LAV down to two vertices closes as a *bridge* (the ridge arc between
+where its pair stopped) rather than through an event: the pair's mutual
+event always lands on the current level.
+
+Two hardening rules earned their place. First, degenerate multi-splits can
+leave a *ghost corner*: two wavefront vertices at one point flanking a
+zero-length front, whose mutual event lands on the current level forever
+(purged each time), starving the LAV; a level-end pass fuses each such
+pair into the single vertex it should have been (a real bug, caught by a
+nine-lobed 400-vertex blob whose partition came back 8% short, pinned by
+`facesPartitionSpikyBlobs`). Second, output assembly does not use the
+reference implementations' face-queue pointer surgery at all: every event
+creates one shared *node* (point + distance), each wavefront vertex
+records its origin and death node, and a face reassembles at the end from
+its edge plus the origin-to-death arcs of every vertex that carried one of
+the edge's endpoint roles, stitched by node identity. Node sharing is what
+makes arcs dedupe exactly across neighboring faces, and it gives the whole
+system its test net: the faces must partition the shape, so their areas
+sum to its area (held to 1e-7 relative by the fuzz tests).
+
+`inset(by:)` leans on faces being roof planes: within a face, inset
+distance is an affine function (distance to the edge's line), so the inset
+at `d` is a straight chord through each face crossing level `d`, paired
+even-odd along the edge direction. A chord endpoint lies on a face-boundary
+arc shared with a neighbor face, and because inset distance restricted to
+that shared segment is the same affine function from both sides, chords
+stitch into rings by *arc identity* (canonical node-pair keys), no epsilon
+matching. Rings start at their lexicographically smallest chord, outer
+rings come out positive, holes negative, and `distance <= 0` returns the
+normalized input rings. Determinism holds the house rule throughout: the
+SLAV is an array in creation order, sets are membership-only, level lists
+sort by (distance, point, sequence), and chain sorting tie-breaks by edge
+id. Example `Shapes/StraightSkeleton` (the island contour ladder);
+snapshot `straight-skeleton`; `StraightSkeletonTests` (closed-form squares,
+ridges, spokes, hand-mitered L and plus insets, the notch pinch, hole
+merges, the symmetric square ring whose wavefronts annihilate along whole
+segments, and the partition fuzz).
+
 ### Painterly marks: marbling and watercolor
 
 `Geometry/Marbling.swift` is mathematical paper marbling in Jaffer's

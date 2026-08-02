@@ -25,6 +25,7 @@ The shape-drawing vocabulary: every primitive, the stroke and hollow modes, and 
 | [Primitives](Primitives/Sketch.swift) | every `draw*` primitive, one per cell, turning slowly: a reference sheet for the whole drawing vocabulary |
 | [RubberBand](RubberBand/Sketch.swift) | convex hull: the rubber band around a drifting herd of points, recomputed each frame, corners lit, the band itself a stroked region (`convexHull`, `stroked`) |
 | [ShapeMenagerie](ShapeMenagerie/Sketch.swift) | rhombus, vesica, moon, cross, and ring, one per row, with corner radius breathing (`drawRhombus`/`drawVesica`/`drawMoon`/`drawCross`/`drawRing`, SDF) |
+| [StraightSkeleton](StraightSkeleton/Sketch.swift) | the straight skeleton as a topographic survey: an island's ridge network extracted once, then an animated contour ladder of mitered insets that splits where the land pinches and rings the lake (`straightSkeleton`, `inset(by:)`) |
 | [StrokeAlignment](StrokeAlignment/Sketch.swift) | the same shapes stroked inside, centered, and outside their outline, weight pulsing (`strokeAlign`, SDF) |
 | [StrokeJoinsAndCaps](StrokeJoinsAndCaps/Sketch.swift) | a zigzag turned with each join and a segment ended with each cap, weight pulsing (`strokeJoin`/`strokeCap`) |
 | [Brushwork](Brushwork/Sketch.swift) | drag to paint: a `StrokeMark` measures how fast and how hard you drew and turns that into width and opacity, with three pre-recorded marks showing each axis (`StrokeDynamics`, `drawMark`) |

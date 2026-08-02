@@ -36,7 +36,6 @@ A tier of classic generative-art building blocks that emit vector geometry (poin
 - **Growth and morphogenesis.** Multi-scale Turing patterns, the Abelian sandpile, and the 3D forms of the 2D growth systems (differential growth and reaction-diffusion over a mesh surface, the coral genre), which want the subdivision work below.
 - **Tiling and layout.** Force-directed graph layout, beside the Wave Function Collapse and Truchet builders in [generative geometry](#generative-geometry).
 - **Meshing and surfaces.** Surface reconstruction from a point cloud, and subdivision-surface smoothing (Catmull-Clark / Loop); these route to [3D mode](#3d-mode).
-- **Computational geometry.** The straight skeleton (the mitered-offset roof-line relative of the medial axis), feeding the shape booleans, hatching, and plotter paths.
 
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 

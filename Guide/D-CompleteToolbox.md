@@ -112,6 +112,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Isosurfaces and metaballs | The surface where a field over space crosses a level, marched into a `Mesh` (marching cubes): soft spheres that fuse, noise volumes, gyroids | [Ch 18](18-SculptingWithFields.md) | [Isosurfaces](../Docs/Generators/Isosurface.md) |
 | Hulls | The tighter wraps around a scatter: the concave hull (one gulf-hugging simple polygon) and the alpha shape (islands and holes) | [Ch 13](13-ShapesAsMaterial.md) | [Hulls](../Docs/Generators/Hulls.md) |
 | Medial axis | A shape reduced to its skeleton, every point carrying its inscribed-disk radius | [Ch 13](13-ShapesAsMaterial.md) | [MedialAxis](../Docs/Generators/MedialAxis.md) |
+| Straight skeleton | The shrinking-boundary ridge network, with exact mitered insets cut from one build | [Ch 13](13-ShapesAsMaterial.md) | [StraightSkeleton](../Docs/Generators/StraightSkeleton.md) |
 | Random walks | The walk family: the local tangle, the Lévy cluster-and-leap, the self-avoiding single stroke | [Ch 4](04-Randomness.md) | [Walks](../Docs/Generators/Walks.md) |
 | Circle packing | Grow-to-touch packings, seeded and reproducible | [Ch 13](13-ShapesAsMaterial.md) | [Packing](../Docs/Generators/Packing.md) |
 | Shape packing | Packing measured against real outlines, so small shapes settle into a star's notches; one-shot or filled in over time | [Ch 13](13-ShapesAsMaterial.md) | [ShapePacking](../Docs/Generators/ShapePacking.md) |

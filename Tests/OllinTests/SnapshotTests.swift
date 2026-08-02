@@ -311,6 +311,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("medial-axis",
                  note: "A wobbly blob with an off-center hole reduced to its skeleton: branches stroked over the faint outline, a closed ring around the hole, and inscribed circles riding the carried radii. Pins the Voronoi-subcomplex extraction (ring-neighbor filter and inside test), the twig pruning, and the branch decomposition with its canonical ordering. Seeded, no time, so it is deterministic.",
                  make: { MedialAxisScene() }),
+    SnapshotCase("straight-skeleton",
+                 note: "A lobed blob with an off-center hole carrying its straight skeleton: corner arcs faint, interior ridges strong, and a ladder of mitered insets that rings the hole and splits between the lobes. Pins the wavefront simulation (edge and split events, the clustered simultaneous cases, the hole's LAV merge) and the face-plane inset extraction with its exact stitching. Seeded, no time, so it is deterministic.",
+                 make: { StraightSkeletonScene() }),
     SnapshotCase("marbling",
                  note: "A marbled paper built from fixed operations: a two-ink bull's-eye combed downward into feathers, a stylus pull, and a small vortex. Pins every closed-form transform (the area-preserving drop, the tine/comb falloff law, the swirl rotation), the stretch-driven outline refinement, and drawMarbling's oldest-first stacking. No rng and no time, so it is deterministic.",
                  make: { MarblingScene() }),
@@ -1383,6 +1386,56 @@ private final class MedialAxisScene: Sketch {
                 drawCircle(center: pair.0, radius: pair.1)
             }
         }
+    }
+}
+
+/// A lobed blob with an off-center hole carrying its straight skeleton and
+/// a fixed ladder of mitered insets. Seeded and no `time`, so it's
+/// deterministic.
+private final class StraightSkeletonScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var blob = Shape(contours: [])
+    private var skeleton = StraightSkeleton(arcs: [], faces: [], maxInset: 0)
+
+    override func setup() {
+        seed(9)
+        let center = Vector2(128, 126)
+        let outer = (0 ..< 30).map { i in
+            let u = Double(i) / 30
+            let angle = u * .tau
+            let r = 88 + sin(angle * 3) * 16 + signedNoise(5, loop: u, radius: 1.4) * 10
+            return center + Vector2(cos(angle), sin(angle)) * r
+        }
+        let hole = (0 ..< 16).map { i in
+            let angle = Double(i) / 16 * .tau
+            let r = 20 + random(-2, 2)
+            return center + Vector2(30, -14) + Vector2(cos(angle), sin(angle)) * r
+        }
+        blob = Shape(outer: outer, holes: [hole])
+        skeleton = straightSkeleton(of: blob)
+    }
+
+    override func draw() {
+        background(Color(hex: 0xF5F2EA))
+        noFill()
+        stroke(Color(hex: 0x1A1B26).withAlpha(0.55))
+        strokeWeight(0.8)
+        for step in 1 ..< 6 {
+            drawShape(skeleton.inset(by: skeleton.maxInset * Double(step) / 6))
+        }
+        strokeWeight(0.6)
+        stroke(Color(hex: 0x1A1B26).withAlpha(0.3))
+        for arc in skeleton.arcs where arc.startDistance == 0 {
+            drawLine(arc.start, arc.end)
+        }
+        strokeWeight(1.4)
+        stroke(Color(hex: 0xB44A28))
+        for arc in skeleton.arcs where arc.startDistance > 0 {
+            drawLine(arc.start, arc.end)
+        }
+        stroke(Color(hex: 0x1A1B26))
+        strokeWeight(1.4)
+        drawShape(blob)
     }
 }
 
