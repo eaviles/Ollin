@@ -384,7 +384,6 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Technique catalog: growth/morphogenesis (Turing patterns, sandpile, growth on meshes) | Ch 16/17 |
 | Technique catalog: tiling/layout families | Ch 6 |
 | Technique catalog: meshing (point-cloud reconstruction, subdivision surfaces) | Ch 17 |
-| Expressive brushes: stroke dynamics, stamped and scatter brushes | Ch 13 |
 | Project generator | Ch 1 |
 | iPhone sensor array (scene mesh, drift correction) | Ch 19 |
 | 3D: loadScene, live camera environment, 3D rigid bodies | Ch 17 (bodies also Ch 9) |

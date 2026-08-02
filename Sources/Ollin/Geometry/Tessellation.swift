@@ -73,8 +73,12 @@ public struct Delaunay: Sendable {
     /// The input points, in their original order.
     public let points: [Vector2]
 
-    /// Triangle corners as a flat list of indices into `points` — three per
-    /// triangle (`indices[0..<3]` is the first triangle, and so on).
+    /// Triangle corners as a flat list of indices into `points`, three per
+    /// triangle (`indices[0..<3]` is the first triangle, and so on). The order
+    /// is canonical: each triple starts at its smallest index, winds so the
+    /// triangle's signed area in canvas space is non-negative, and triangles
+    /// are sorted by their triples, so the same input always yields the same
+    /// list, byte for byte.
     public let indices: [Int]
 
     /// Triangulate `points`. Points are used as given, in order.
@@ -201,10 +205,27 @@ public struct Delaunay: Sendable {
             }
         }
 
-        // Drop everything still touching a super-triangle vertex.
-        var out: [Int] = []
-        out.reserveCapacity(tris.count * 3)
+        // Drop everything still touching a super-triangle vertex, and put the
+        // survivors in canonical order: the refan above iterates a Dictionary,
+        // so the raw triangle order (and winding) varies per process while the
+        // set is stable. Each triple is sorted ascending, wound so its signed
+        // area in canvas space is non-negative, and the list is sorted by its
+        // triples, so the same input yields the same output every run.
+        var triples: [(a: Int, b: Int, c: Int)] = []
+        triples.reserveCapacity(tris.count)
         for t in tris where t.a < n && t.b < n && t.c < n {
+            var (a, b, c) = (t.a, t.b, t.c)
+            if a > b { swap(&a, &b) }
+            if b > c { swap(&b, &c) }
+            if a > b { swap(&a, &b) }
+            if (pts[b] - pts[a]).cross(pts[c] - pts[a]) < 0 { swap(&b, &c) }
+            triples.append((a, b, c))
+        }
+        triples.sort { ($0.a, $0.b, $0.c) < ($1.a, $1.b, $1.c) }
+
+        var out: [Int] = []
+        out.reserveCapacity(triples.count * 3)
+        for t in triples {
             out.append(t.a); out.append(t.b); out.append(t.c)
         }
         return out

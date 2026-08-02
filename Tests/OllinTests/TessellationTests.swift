@@ -61,6 +61,30 @@ struct TessellationTests {
         #expect(abs(area - 40) < 1e-6)   // the single non-degenerate triangle
     }
 
+    @Test func indicesComeOutInCanonicalOrder() {
+        // The Bowyer-Watson refan iterates a Dictionary, so the raw triangle
+        // order is process-varying; the public `indices` promise a canonical
+        // form instead: each triple starts at its smallest index, winds with
+        // non-negative signed area in canvas space, and the list is sorted.
+        // (Same-process rebuilds share the Dictionary seed, so the real-world
+        // symptom is cross-run churn; the canonical form is checkable here.)
+        let d = Delaunay(sites)
+        var previous: (Int, Int, Int)? = nil
+        var i = 0
+        while i + 2 < d.indices.count {
+            let (a, b, c) = (d.indices[i], d.indices[i + 1], d.indices[i + 2])
+            #expect(a < b && a < c, "triple should lead with its smallest index")
+            let cross = (d.points[b] - d.points[a]).cross(d.points[c] - d.points[a])
+            #expect(cross >= 0, "triple should wind with non-negative area")
+            if let p = previous {
+                #expect(p < (a, b, c), "triples should be sorted")
+            }
+            previous = (a, b, c)
+            i += 3
+        }
+        #expect(previous != nil)
+    }
+
     @Test func triangleCircumcirclePassesThroughEveryCorner() {
         let t = Triangle(Vector2(0, 0), Vector2(4, 0), Vector2(0, 3))
         let circle = t.circumcircle

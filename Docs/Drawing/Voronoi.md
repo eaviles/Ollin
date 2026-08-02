@@ -110,7 +110,7 @@ let cells = mesh.voronoi(bounds: canvasRectangle).cells   // the dual diagram
 | `points: [Vector2]` | The input points, in order. |
 | `triangles: [Triangle]` | The triangles (see [`Triangle`](#triangle)). |
 | `triangleShapes: [Shape]` | Each triangle as a fillable `Shape`. |
-| `indices: [Int]` | Triangle corners as a flat list of indices into `points`, three per triangle. |
+| `indices: [Int]` | Triangle corners as a flat list of indices into `points`, three per triangle, in a canonical deterministic order (each triple leads with its smallest index; the list is sorted). |
 | `neighbors(of i: Int) -> [Int]` | The points sharing an edge with point `i`. |
 | `voronoi(bounds:) -> Voronoi` | The dual Voronoi diagram, clipped to `bounds`. |
 
