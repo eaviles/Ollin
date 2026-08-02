@@ -294,6 +294,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Generators/Chladni.md` (`chladni` field + `.chladni` generator, mode-by-pitch audio join) | Ch 16 | taught ("Standing waves" with a six-mode figure: the closed form and plate coordinates, sand settling at the zero crossing, the m == n degeneracy, fractional modes for morphing, both generator styles, and the Ch 20 audio join pointed) |
 | `Generators/Isosurface.md` (`isosurface`, `Metaballs`, marching cubes) | Ch 18 | taught ("The other way out" after the sphere-tracing section, with a two-panel figure of one coarse metaball chain shaded and wireframed: a field becoming an ordinary `Mesh` rather than pixels, `radius` as the size a ball reads at alone, why summed fields make blobs fuse and neck, the `level` and negative-`strength` knobs, why a coarse mesh still reads smooth (normals from the field, not the facets), the above-the-level solidity convention that makes a distance function need a minus sign, and the pay-by-the-pixel versus pay-by-the-volume choice) |
 | `Generators/Terrain.md` (`Heightfield`, diamond-square, hydraulic + thermal erosion, terrain meshes) | Ch 17 | taught ("A landscape you grow" with a three-stage erosion figure and a lit mesh: the closure and diamond-square builders, `roughness`, why rain is what makes noise read as land, thermal talus settling, the three read-outs, and the erode-in-setup rule) |
+| `Generators/SubdivisionSurfaces.md` (`mesh.subdivided`, Catmull-Clark + Loop control cages) | Ch 17 | taught ("Smooth from a cage" with a cage/level-1/level-2 star figure: the control-cage idea, easing toward the averages so the surface sits inside the cage and points round fastest, the chunkier-cage fix, the no-preparation welding and face recovery, open rims kept, the `.loop` scheme pointed at the reference, and the refine-in-setup rule) |
 | `.ripples` wave-equation Sim (`Drawing/Effects.md`) | Ch 16 | taught ("A pool you can drop things into" with a figure: marks add height rather than set it, the soft-dab and brief-drop rules and why, `damping`, and the raw state as a debug view to shade with `.relight`) |
 | `Drawing/GlyphMosaic.md` (`drawGlyphMosaic`, measured glyph ramps) | Ch 7 | taught ("A picture as marks" with a two-panel figure: measured ink per font, the curated sets, `glyphScale` gutters, the data form, and the inverted-polarity trap it shares with halftone) |
 | `Drawing/PixelSorting.md` (`Image.pixelSorted`) | Ch 7 | taught ("Sorting the pixels" with a before/after figure: the threshold as the whole technique, the keys, and the needs-texture and reversed-on-a-gradient caveats) |
@@ -389,7 +390,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Technique catalog: GPU-scale steering agents | Ch 16 |
 | Technique catalog: growth/morphogenesis (growth on meshes) | Ch 17 |
 | Technique catalog: tiling/layout families | Ch 6 |
-| Technique catalog: meshing (point-cloud reconstruction, subdivision surfaces) | Ch 17 |
+| Technique catalog: meshing (point-cloud reconstruction) | Ch 17 |
 | Project generator | Ch 1 |
 | iPhone sensor array (scene mesh, drift correction) | Ch 19 |
 | 3D: loadScene, live camera environment, 3D rigid bodies | Ch 17 (bodies also Ch 9) |

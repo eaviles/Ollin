@@ -278,6 +278,23 @@ withState { fill(.white); drawMesh(globe.textured(checker)) }    // wrapped in a
 
 Both are ordinary drawing state, saved by `withState`, so one frame holds all three treatments (the figure is a single render).
 
+## Smooth from a cage
+
+There is a third way to get a mesh, and it's the one character artists live in: build something crude out of a few boxes and extrusions, then let the computer round it. `subdivided(levels:)` takes any mesh as a **control cage**, splits every face, and eases every vertex toward its neighbors, once per level.
+
+```swift
+let cage = Mesh.extrude(Profile.star(), depth: 0.75)
+let smooth = cage.subdivided(levels: 2)
+```
+
+<img src="Images/17-3DGently/SubdivisionCage.jpg" alt="Three views of the same extruded five-pointed star: the control cage as a pale cyan wireframe, one level of subdivision as a plump amber star with soft edges, and two levels as a much softer orange form sitting inside the ghosted wireframe of the cage whose points now reach far past it" width="680">
+
+You model the cage; the smoothness is computed. One level already turns the slab-sided star into something you'd want to hold, and by two the form has melted well inside its cage, which is the thing to internalize: the smooth surface eases *toward the averages* of the cage, so it always sits inside it, and pointy features round off the fastest. If a shape comes out softer than you wanted, the fix is a chunkier cage, not fewer levels.
+
+Any mesh works as a cage with no preparation. The primitives, an extrusion, a lathe, a loaded model: `subdivided` welds their shared corners and recovers their intended faces before refining, so a box rounds as one closed surface rather than six drifting plates. Open sheets keep their rims (a subdivided `plane` smooths along its edge instead of shrinking away from it). Triangle-native meshes like an icosphere or a marching-cubes blob have their own refinement rules a scheme argument away, `subdivided(.loop, levels: 2)`, and the [reference page](../Docs/Generators/SubdivisionSurfaces.md) covers when to pick which.
+
+Like erosion below, this is `setup()`-shaped work: each level roughly quadruples the face count, so refine once, keep the mesh, and let `draw()` just draw it. Two or three levels is almost always enough.
+
 ## A landscape you grow
 
 Loading a mesh gets you a shape somebody else made. Generating one gets you a shape nobody has seen. Terrain is the friendliest place to start, because a landscape is just a height for every point on a grid, and Ollin has a type for exactly that.

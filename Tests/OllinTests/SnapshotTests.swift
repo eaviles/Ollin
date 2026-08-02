@@ -191,6 +191,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("metaballs",
                  note: "Four metaballs at fixed positions (a fusing pair, a lone ball, and a negative ball carving into it) marched into a mesh under a fixed camera (no time, no random). Pins the marching-cubes path end to end: the soft-object falloff and its summed field, the face-contour construction with the asymptotic decider, the welded vertices and gradient normals, the outward winding, and the auto-padded bounds that let the surface close.",
                  make: { MetaballsScene() }),
+    SnapshotCase("subdivision-surfaces",
+                 note: "A cube and an extruded star smoothed with mesh.subdivided under a fixed camera (no time, no random): the cube through the quad rules at levels 1 and 3 with its wireframe cage ghosted over the level-3 solid, the star through both the quad and triangle rules. Pins the whole pipeline: the positional weld of flat-shaded cage vertices, quad recovery from the generator triangle pattern, the Catmull-Clark and Loop masks with the limit push, and the smooth-normal output the lighting reads.",
+                 make: { SubdivisionSurfaceScene() }),
     SnapshotCase("effects-simfield", frame: 60,
                  note: "A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame 60 and recoloured. Pins the stateful sim substrate end to end: the persistent ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and the headless render-every-frame warmup the built-up state depends on.",
                  make: { EffectsSimField() }),
@@ -4377,6 +4380,53 @@ private final class MetaballsScene: Sketch {
         camera(Camera3D.orbiting(target: Vector3(0.6, 0, 0), radius: 9.5,
                                  azimuth: 0.55, elevation: 0.35, fieldOfView: .pi / 4))
         drawMesh(field.mesh(resolution: 64))
+    }
+}
+
+/// A cube and an extruded star smoothed as subdivision surfaces at fixed
+/// levels and angles. Fixed camera, no time, no randomness.
+private final class SubdivisionSurfaceScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0A0D12))
+        lightingPreset(.studio)
+        camera(Camera3D.orbiting(target: .zero, radius: 9.0,
+                                 azimuth: 0.5, elevation: 0.33, fieldOfView: .pi / 4))
+
+        let cube = Mesh.box(size: 1.6)
+        let star = Mesh.extrude(Profile.star(points: 5, outerRadius: 1.0, innerRadius: 0.45),
+                                depth: 0.6)
+        // Back row: the cube at quad-rule levels 1 and 3, the cage ghosted
+        // over the smoother one. Front row: the star through both schemes.
+        withState {
+            translate(-1.9, 1.15, 0)
+            rotateY(0.6); rotateX(0.25)
+            fill(Color(hex: 0x53D1FF))
+            drawMesh(cube.subdivided(.catmullClark, levels: 1))
+        }
+        withState {
+            translate(1.9, 1.15, 0)
+            rotateY(0.6); rotateX(0.25)
+            fill(Color(hex: 0x53D1FF))
+            drawMesh(cube.subdivided(.catmullClark, levels: 3))
+            wireframe()
+            stroke(Color(hex: 0x53D1FF).withAlpha(0.35))
+            strokeWeight(1.0)
+            drawMesh(cube)
+        }
+        withState {
+            translate(-1.9, -1.35, 0)
+            rotateY(-0.4); rotateX(0.3)
+            fill(Color(hex: 0xFFB13D))
+            drawMesh(star.subdivided(.catmullClark, levels: 3))
+        }
+        withState {
+            translate(1.9, -1.35, 0)
+            rotateY(-0.4); rotateX(0.3)
+            fill(Color(hex: 0xFF7AB0))
+            drawMesh(star.subdivided(.loop, levels: 3))
+        }
     }
 }
 
