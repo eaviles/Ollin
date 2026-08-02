@@ -197,6 +197,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("mesh-growth",
                  note: "Two seeded surfaces grown to a fixed step count under a fixed camera (no time, one pinned seed each): a sphere under the uniform driver, which folds evenly all over, and one under a banded field driver, which ruffles only where the band grows. Pins the growth pipeline end to end: the welded input topology, the growth springs and two-hop self-avoidance, the split/collapse/flip remeshing that keeps the surface a closed manifold while its topology churns, and the bending term that decides how big the folds come out.",
                  make: { MeshGrowthScene() }),
+    SnapshotCase("surface-from-points",
+                 note: "Both point-cloud surfacing paths under a fixed camera (no time, no random): a golden-spiral sphere sample reconstructed closed by reconstructSurface beside the same sample with its top third removed, whose rim stays an honest open hole, and a particleSurface skin over a small helix of points. Pins the tangent-plane fit, the spanning-tree orientation, the validity cutoff that keeps data gaps open, the near-surface band, and the blended-ball field, all through the shared marching-cubes pass.",
+                 make: { SurfaceFromPointsScene() }),
     SnapshotCase("effects-simfield", frame: 60,
                  note: "A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame 60 and recoloured. Pins the stateful sim substrate end to end: the persistent ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and the headless render-every-frame warmup the built-up state depends on.",
                  make: { EffectsSimField() }),
@@ -5399,6 +5402,51 @@ private final class FractalFlameScene: Sketch {
 /// Two surfaces grown to a fixed step count: a sphere under even growth beside
 /// one grown only in a band around its equator. Fixed camera, fixed seeds, no
 /// time.
+private final class SurfaceFromPointsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    /// Golden-spiral sphere sample: deterministic, no randomness.
+    private func spherePoints(_ count: Int, radius: Double) -> [Vector3] {
+        let golden = Double.pi * (3 - 5.0.squareRoot())
+        return (0 ..< count).map { i in
+            let y = 1 - 2 * (Double(i) + 0.5) / Double(count)
+            let ring = (1 - y * y).squareRoot()
+            let angle = golden * Double(i)
+            return Vector3(cos(angle) * ring, y, sin(angle) * ring) * radius
+        }
+    }
+
+    override func draw() {
+        background(Color(hex: 0x0A0D12))
+        lightingPreset(.studio)
+        camera(Camera3D.orbiting(target: .zero, radius: 9.5,
+                                 azimuth: 0.55, elevation: 0.4, fieldOfView: .pi / 4))
+
+        let sample = spherePoints(900, radius: 1.05)
+        let closed = reconstructSurface(of: sample, resolution: 44, maxGap: .infinity)
+        let opened = reconstructSurface(of: sample.filter { $0.y < 0.4 }, resolution: 44)
+
+        let helix = (0 ..< 60).map { i -> Vector3 in
+            let t = Double(i) / 59 * 2 * .tau
+            return Vector3(cos(t) * 0.7, (Double(i) / 59 - 0.5) * 1.6, sin(t) * 0.7)
+        }
+        let skin = particleSurface(of: helix, radius: 0.24, blend: 2, resolution: 56)
+
+        fill(Color(hex: 0xE2603A))
+        withState {
+            translate(-2.6, 0, 0)
+            drawMesh(closed)
+        }
+        withState {
+            drawMesh(opened)
+        }
+        withState {
+            translate(2.6, 0, 0)
+            drawMesh(skin)
+        }
+    }
+}
+
 private final class MeshGrowthScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

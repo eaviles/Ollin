@@ -164,6 +164,25 @@ drawPointCloud(world.cloud)
 
 Each capture is tinted (coral, green, blue) so you can see who saw what: three partial views, one room. The small spheres are the three camera positions, and the walls each frame couldn't see are filled in by the frames that could. On a real phone this is exactly the `PhoneWorldScan` example. ARKit supplies the pose (`device.latestPose`), you sweep the room, and the slices stack into a scan. (Over a long sweep, small pose errors slowly build up, and drift correction for long scans is on the [roadmap](../ROADMAP.md#iphone-as-a-sensor-array).)
 
+## From the cloud to a surface
+
+A fused cloud is still dust: beautiful, but nothing in it has a face, a shadow, or a material. **`reconstructSurface`** turns the sweep into a solid. It fits a small plane to every point's neighborhood, uses the sweep's own camera positions to decide which side of each plane faces the room, and pulls one mesh out of the whole thing:
+
+```swift
+let mesh = reconstructSurface(of: world.cloud, spacing: world.voxelSize * 2,
+                              orientedToward: eyes)
+material(.dielectric(roughness: 0.55))
+drawMesh(mesh)
+```
+
+<img src="Images/19-DepthAndThePhone/RoomRebuilt.jpg" alt="The staged room corner rebuilt as one solid plaster-like surface, the floor meeting two walls in a crisp crease, the sweep's camera positions floating as small blue spheres, the surface ending in a torn rim where the sweep stopped" width="680">
+
+The torn rim is the honest part: where no camera reached, the surface simply stops, and nothing is guessed. That honesty has a practical reading, and it is the one rule worth carrying to a real scan: **the mesh can only be as complete as the sweep**. A body you only arc in front of keeps an unobserved back, and the rebuilt surface frays just past where its data stops, so walk around the things you care about. Doorways and windows stay open, which is the truthful shape of a room.
+
+The camera path does double duty here. Every fitted plane has two sides, and the reconstruction turns each toward the cameras that plausibly saw it, so pass the sweep's positions in `orientedToward:` whenever you have them (they are the same `eyes` the capture loop already collects). Without them, orientation propagates point to point across the cloud, which works on a smooth single surface and struggles exactly where a camera would have known better.
+
+What comes back is an ordinary `Mesh`, so everything Chapter 17 taught applies: materials, lighting, cast shadows, even `subdivided(_:)` to soften the scan. And when points are not a scan at all but material of their own (a splash, a swarm dense enough to read as a body), the sibling `particleSurface` skins them as one blended form with no cameras involved. The [reference page](../Docs/Generators/SurfaceReconstruction.md) covers both, and the `3D/Geometry/SurfaceFromPoints` example puts the two side by side on one cloud.
+
 ## Putting it together: the ghost room
 
 The finished piece turns the sweep itself into the artwork. Nine frames of the staged room join the world one per second, drawn as additive light while the camera orbits. It reads as a room scanning itself into existence. Make `MySketches/GhostRoom.swift` (bring `StageCamera` along from [`Anatomy.swift`](Figures/19-DepthAndThePhone/Anatomy.swift), plus the `pose` helper from [`GhostRoom.swift`](Figures/19-DepthAndThePhone/GhostRoom.swift), the committed figure with the complete listing):
@@ -211,6 +230,7 @@ Then make it yours:
 - Restage the set. `StageCamera.scene` is a distance field, so everything Chapter 18 taught works in it, and you can melt a blob into the room and scan that.
 - Color by height instead of by image, rebuilding the cloud with each point tinted by its `y`, and the scan becomes a contour map.
 - Slow the reveal to one frame every five seconds and export a video, because the assembly is the piece.
+- Rebuild it solid. Hand the finished world cloud to `reconstructSurface(of:spacing:orientedToward:)` with the nine eyes, and the ghost becomes a room you can light, shadow, and walk a camera through.
 
 ## Where this comes from
 
@@ -223,7 +243,8 @@ Depth capture entered art practice when the Microsoft Kinect shipped in 2010 and
 - [Record3D](../Docs/3D/Record3D.md): recorded `.r3d` clips and the live USB stream, frame by frame.
 - [The iPhone capture app](../Docs/3D/Phone.md): body, faces, world depth with pose, segmentation, motion, and world fusion.
 - [Depth compositing](../Docs/3D/DepthCompositing.md): `depth(at:)`, billboards, `drawDepthScene`, and the metric camera.
-- Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/Record3DLiveCloud`](../Examples/3D/Depth/Record3DLiveCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
+- [Surface reconstruction](../Docs/Generators/SurfaceReconstruction.md): rebuilding a scanned cloud as a mesh, skinning particle sets, and the holes and orientation details.
+- Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/Record3DLiveCloud`](../Examples/3D/Depth/Record3DLiveCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Geometry/SurfaceFromPoints`](../Examples/3D/Geometry/SurfaceFromPoints/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
 
 ---
 

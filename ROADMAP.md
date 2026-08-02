@@ -33,8 +33,6 @@ A tier of classic generative-art building blocks that emit vector geometry (poin
 
 - **Agents and steering.** Scaling the steering behaviors onto the GPU compute path the particle and `SimField` systems already use (a million seekers and wanderers), plus **genetic / evolutionary** form-finding on the same path.
 - **Particle-interaction and artificial life.** More simple-per-particle-rule systems on the GPU over the spatial-hash neighbor search. Pushed toward self-replication, mutation, and selection, this is the open-ended-evolution territory the ALIEN environment (chrxh/alien) explores, studied as *techniques* and reimplemented in Metal compute (inspiration, not a port, credited in `ATTRIBUTION.md`).
-- **Meshing and surfaces.** Surface reconstruction from a point cloud; routes to [3D mode](#3d-mode).
-
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 
 ## Expressive brushes and strokes

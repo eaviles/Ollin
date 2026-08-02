@@ -44,6 +44,27 @@ public func isosurface(at level: Double = 0,
     return grid.march(values: grid.sample(field, level: level))
 }
 
+/// `isosurface` over a field that may decline to answer: where `field` returns
+/// nil the surface is *undefined*, and every cell touching an undefined sample
+/// is skipped rather than guessed at, leaving the mesh open there. This is
+/// what lets a reconstruction report holes in its data as holes in the
+/// surface. Internal, and named apart from `isosurface` on purpose: a same-name
+/// overload differing only in the closure's return optionality makes every
+/// public trailing-closure call ambiguous. The public entry points are
+/// `isosurface` (total fields) and `reconstructSurface` (which builds its
+/// field on this).
+func partialIsosurface(at level: Double,
+                       in bounds: (min: Vector3, max: Vector3),
+                       resolution: Int,
+                       field: (Vector3) -> Double?) -> Mesh {
+    guard let grid = IsosurfaceGrid(bounds: bounds, resolution: resolution) else {
+        return Mesh(positions: [], indices: [])
+    }
+    var defined: [Bool] = []
+    let values = grid.sample(field, level: level, defined: &defined)
+    return grid.march(values: values, defined: defined)
+}
+
 // MARK: - The cube
 
 /// A cube corner is a 3-bit number: bit 0 is x, bit 1 is y, bit 2 is z. Every
@@ -92,7 +113,7 @@ private enum Cube {
 // MARK: - The grid
 
 /// The sampling lattice over `bounds`, and the march across it.
-private struct IsosurfaceGrid {
+struct IsosurfaceGrid {
 
     let origin: Vector3      // the lattice's (0, 0, 0) corner
     let spacing: Double      // one cell, cubic
@@ -141,9 +162,30 @@ private struct IsosurfaceGrid {
         return values
     }
 
+    /// The partial-field sampling: nil answers record as undefined (and a
+    /// placeholder 0 value the march never reads through a defined cell).
+    func sample(_ field: (Vector3) -> Double?, level: Double,
+                defined: inout [Bool]) -> [Double] {
+        var values = [Double](repeating: 0, count: sx * sy * sz)
+        defined = [Bool](repeating: false, count: sx * sy * sz)
+        var index = 0
+        for k in 0 ..< sz {
+            for j in 0 ..< sy {
+                for i in 0 ..< sx {
+                    if let v = field(point(i, j, k)) {
+                        values[index] = v - level
+                        defined[index] = true
+                    }
+                    index += 1
+                }
+            }
+        }
+        return values
+    }
+
     // MARK: The march
 
-    func march(values: [Double]) -> Mesh {
+    func march(values: [Double], defined: [Bool]? = nil) -> Mesh {
         var positions: [Vector3] = []
         var normals: [Vector3] = []
         var indices: [UInt32] = []
@@ -165,12 +207,19 @@ private struct IsosurfaceGrid {
             for j in 0 ..< ny {
                 for i in 0 ..< nx {
                     // Gather the eight corner values and the inside/outside mask.
+                    // A cell touching an undefined sample is skipped whole: the
+                    // surface there is unknown, not absent, and guessing at it
+                    // is how a data hole would grow a fictitious cap.
                     var mask = 0
+                    var known = true
                     for c in 0 ..< 8 {
-                        let v = values[latticeIndex(i + (c & 1), j + ((c >> 1) & 1), k + ((c >> 2) & 1))]
+                        let lattice = latticeIndex(i + (c & 1), j + ((c >> 1) & 1), k + ((c >> 2) & 1))
+                        if let defined, !defined[lattice] { known = false; break }
+                        let v = values[lattice]
                         corner[c] = v
                         if v > 0 { mask |= 1 << c }
                     }
+                    guard known else { continue }
                     if mask == 0 || mask == 255 { continue }   // wholly out or wholly in
 
                     // Chain the six faces' contour segments into a permutation
@@ -198,7 +247,8 @@ private struct IsosurfaceGrid {
                         // faces the triangles inward, so it is walked backwards.
                         for e in loop where crossing[e] < 0 {
                             crossing[e] = weld(edge: e, cell: (i, j, k), corner: corner,
-                                               values: values, vertexAt: &vertexAt,
+                                               values: values, defined: defined,
+                                               vertexAt: &vertexAt,
                                                positions: &positions, normals: &normals)
                         }
                         emit(loop: loop, crossing: crossing,
@@ -269,7 +319,7 @@ private struct IsosurfaceGrid {
 
     /// The welded vertex for a crossed edge of one cell, made on first use.
     private func weld(edge: Int, cell: (i: Int, j: Int, k: Int), corner: [Double],
-                      values: [Double], vertexAt: inout [Int32],
+                      values: [Double], defined: [Bool]?, vertexAt: inout [Int32],
                       positions: inout [Vector3], normals: inout [Vector3]) -> Int {
         let (low, high) = Cube.edges[edge]
         let axis = Cube.axis(of: edge)
@@ -294,7 +344,8 @@ private struct IsosurfaceGrid {
         // The normal is the field's own gradient, read off the samples already
         // taken and interpolated the way the position was, so a smooth field
         // gets a smooth surface at no extra field calls.
-        let g = gradient(li, lj, lk, values) * (1 - t) + gradient(hi.i, hi.j, hi.k, values) * t
+        let g = gradient(li, lj, lk, values, defined) * (1 - t)
+              + gradient(hi.i, hi.j, hi.k, values, defined) * t
         let n = g.lengthSquared > 0 ? (g * -1).normalized : Vector3(0, 1, 0)
 
         let index = positions.count
@@ -305,29 +356,33 @@ private struct IsosurfaceGrid {
     }
 
     /// The field's gradient at a lattice point by central differences, one-sided
-    /// against the walls. Unnormalized: the caller interpolates then normalizes.
-    private func gradient(_ i: Int, _ j: Int, _ k: Int, _ values: [Double]) -> Vector3 {
+    /// against the walls and against undefined samples (a nil `defined` makes
+    /// every sample count as known, keeping the total-field path untouched).
+    /// Unnormalized: the caller interpolates then normalizes.
+    private func gradient(_ i: Int, _ j: Int, _ k: Int, _ values: [Double],
+                          _ defined: [Bool]?) -> Vector3 {
         func slope(_ lo: Int, _ hi: Int, _ span: Int) -> Double {
             (values[hi] - values[lo]) / (Double(span) * spacing)
         }
+        func known(_ index: Int) -> Bool { defined?[index] ?? true }
         let here = latticeIndex(i, j, k)
         let dx: Double
-        if i > 0 && i < sx - 1 { dx = slope(here - 1, here + 1, 2) }
-        else if i > 0 { dx = slope(here - 1, here, 1) }
-        else if sx > 1 { dx = slope(here, here + 1, 1) }
+        if i > 0 && i < sx - 1 && known(here - 1) && known(here + 1) { dx = slope(here - 1, here + 1, 2) }
+        else if i > 0 && known(here - 1) { dx = slope(here - 1, here, 1) }
+        else if i < sx - 1 && known(here + 1) { dx = slope(here, here + 1, 1) }
         else { dx = 0 }
 
         let dy: Double
-        if j > 0 && j < sy - 1 { dy = slope(here - sx, here + sx, 2) }
-        else if j > 0 { dy = slope(here - sx, here, 1) }
-        else if sy > 1 { dy = slope(here, here + sx, 1) }
+        if j > 0 && j < sy - 1 && known(here - sx) && known(here + sx) { dy = slope(here - sx, here + sx, 2) }
+        else if j > 0 && known(here - sx) { dy = slope(here - sx, here, 1) }
+        else if j < sy - 1 && known(here + sx) { dy = slope(here, here + sx, 1) }
         else { dy = 0 }
 
         let plane = sx * sy
         let dz: Double
-        if k > 0 && k < sz - 1 { dz = slope(here - plane, here + plane, 2) }
-        else if k > 0 { dz = slope(here - plane, here, 1) }
-        else if sz > 1 { dz = slope(here, here + plane, 1) }
+        if k > 0 && k < sz - 1 && known(here - plane) && known(here + plane) { dz = slope(here - plane, here + plane, 2) }
+        else if k > 0 && known(here - plane) { dz = slope(here - plane, here, 1) }
+        else if k < sz - 1 && known(here + plane) { dz = slope(here, here + plane, 1) }
         else { dz = 0 }
 
         return Vector3(dx, dy, dz)
