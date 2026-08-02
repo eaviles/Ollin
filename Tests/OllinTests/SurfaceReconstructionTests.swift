@@ -250,4 +250,90 @@ struct SurfaceReconstructionTests {
         let d = reconstructSurface(of: points, resolution: 32, orientedToward: eye)
         #expect(c.positions == d.positions && c.indices == d.indices)
     }
+
+    // MARK: The robust fitting
+
+    /// The robust fit rebuilds the same clean sphere the plane fit does:
+    /// watertight, the right volume, wound outward, on the sphere.
+    @Test
+    func robustFittingReconstructsClosed() {
+        let mesh = reconstructSurface(of: spherePoints(1600), resolution: 56,
+                                      maxGap: .infinity, fitting: .robust)
+        #expect(!mesh.positions.isEmpty)
+        #expect(edgeUse(mesh).values.allSatisfy { $0 == 2 }, "not watertight")
+        let volume = signedVolume(mesh)
+        let sphere = 4.0 / 3.0 * Double.pi
+        #expect(volume > 0, "wound inward: the orientation flipped")
+        #expect(abs(volume - sphere) / sphere < 0.06,
+                "sphere volume off: \(volume) vs \(sphere)")
+        for v in mesh.positions {
+            #expect(abs(v.length - 1) < 0.06, "surface off the sphere at radius \(v.length)")
+        }
+    }
+
+    /// On the same seeded noisy sphere, the robust blend lands at least as
+    /// close to the true surface as the piecewise planes: its whole point.
+    @Test
+    func robustFittingSmoothsNoiseAtLeastAsWellAsPlanes() {
+        var rng = SplitMix64(seed: 7)
+        let spacing = (4 * Double.pi / 2400).squareRoot()
+        let points = spherePoints(2400).map { p in
+            p + Vector3(Double.random(in: -1 ... 1, using: &rng),
+                        Double.random(in: -1 ... 1, using: &rng),
+                        Double.random(in: -1 ... 1, using: &rng)) * (spacing * 0.3)
+        }
+        func rms(_ mesh: Mesh) -> Double {
+            guard !mesh.positions.isEmpty else { return .infinity }
+            let sum = mesh.positions.reduce(0.0) {
+                let e = $1.length - 1
+                return $0 + e * e
+            }
+            return (sum / Double(mesh.positions.count)).squareRoot()
+        }
+        let planes = reconstructSurface(of: points, resolution: 48, maxGap: .infinity,
+                                        keepingLargestComponent: true)
+        let robust = reconstructSurface(of: points, resolution: 48, maxGap: .infinity,
+                                        fitting: .robust, keepingLargestComponent: true)
+        #expect(edgeUse(robust).values.allSatisfy { $0 == 2 })
+        #expect(rms(robust) <= rms(planes),
+                "robust \(rms(robust)) vs planes \(rms(planes))")
+    }
+
+    /// The default fitting is the plane fit, byte for byte: adding the robust
+    /// path may not move a single vertex of the shipped reconstruction.
+    @Test
+    func planesFittingIsTheDefault() {
+        let points = spherePoints(700)
+        let a = reconstructSurface(of: points, resolution: 32, maxGap: .infinity)
+        let b = reconstructSurface(of: points, resolution: 32, maxGap: .infinity,
+                                   fitting: .planes)
+        #expect(a.positions == b.positions && a.indices == b.indices)
+    }
+
+    /// The robust fit reproduces byte-identically too.
+    @Test
+    func robustFittingReproduces() {
+        let points = spherePoints(700)
+        let a = reconstructSurface(of: points, resolution: 32, maxGap: .infinity,
+                                   fitting: .robust)
+        let b = reconstructSurface(of: points, resolution: 32, maxGap: .infinity,
+                                   fitting: .robust)
+        #expect(a.positions == b.positions && a.indices == b.indices)
+        #expect(!a.positions.isEmpty)
+    }
+
+    /// Both fittings share one validity gate, so the robust fit keeps a data
+    /// hole open exactly as the planes do.
+    @Test
+    func robustFittingKeepsHolesOpen() {
+        let points = spherePoints(3200).filter { $0.y > 0.05 }
+        let mesh = reconstructSurface(of: points, resolution: 56, fitting: .robust)
+        #expect(!mesh.positions.isEmpty)
+        let boundary = edgeUse(mesh).values.filter { $0 == 1 }.count
+        #expect(boundary > 0, "the rim vanished: the hole was capped")
+        for v in mesh.positions {
+            let inDiscInterior = v.y < -0.15 || (abs(v.y) < 0.15 && (v.x * v.x + v.z * v.z) < 0.5)
+            #expect(!inDiscInterior, "a cap grew into the missing half at \(v)")
+        }
+    }
 }

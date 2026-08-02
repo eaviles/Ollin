@@ -98,6 +98,15 @@ struct RGBDFrame {
 
 `RGBDFrame` and `CameraIntrinsics` are **core** types (in `Ollin`), the source-agnostic shape every depth source produces, so beyond point clouds they also lift a single image point or a 2D body pose into metric 3D. See [RGBD frames and depth-lifted pose](../3D/RGBD.md).
 
+A recording also carries the sweep's camera path:
+
+```swift
+var poses: [simd_float4x4]                    // camera-to-world, one per frame
+func pose(at index: Int) -> simd_float4x4?    // nil past the recorded range
+```
+
+Each pose places that frame's camera-space cloud into the capture session's gravity-aligned world (y up, the first frame near the identity): apply it with `PointCloud.transformed(by:)`, fuse the placed frames with a [`WorldCloud`](../3D/RGBD.md), and the pose translations are the camera path [`reconstructSurface(orientedToward:)`](../Generators/SurfaceReconstruction.md) wants. One honest caveat: only clips captured with world tracking carry real motion. A recording made without it (a TrueDepth capture) stores every pose as the identity, so a sweep from such a clip cannot be re-registered after the fact; single frames still reconstruct fine.
+
 <a name="live-usb"></a>
 
 ### Live streaming over USB

@@ -33,6 +33,16 @@ public struct Mesh: Sendable {
     /// its base color. The built-in generators emit them where there's a natural
     /// parameterization (sphere, plane); a loaded model carries its own.
     public var uvs: [Vector2]
+    /// Per-vertex surface colors, paired with `positions` by index. Empty (the
+    /// default) leaves the surface in the current `fill` alone; a full, aligned
+    /// set *multiplies* the fill per vertex (the texture contract), so with the
+    /// default white fill the mesh shows its own colors untouched, and `fill`
+    /// stays a whole-mesh tint. Set them directly, with `colored(by:)`, or with
+    /// `colored(from:)` (a reconstructed cloud keeps its colors this way); a
+    /// count that doesn't match `positions` is ignored. Lighting shades a vertex
+    /// color exactly as it shades the fill; a wireframe (edges in the stroke
+    /// color) ignores them.
+    public var colors: [Color]
     /// The surface look — base color and optional texture — or `nil` for a plain
     /// surface drawn in the current `fill`. Set with `textured(_:)` or read from a
     /// model file. The texture maps through `uvs`.
@@ -40,14 +50,15 @@ public struct Mesh: Sendable {
 
     /// A mesh from explicit arrays. `normals` should match `positions` by index
     /// (defaulting empty leaves the surface flat-normaled toward +z); `indices`
-    /// are a triangle list (length a multiple of 3); `uvs`, when present, match
-    /// `positions` by index.
+    /// are a triangle list (length a multiple of 3); `uvs` and `colors`, when
+    /// present, match `positions` by index.
     public init(positions: [Vector3], normals: [Vector3] = [], indices: [UInt32],
-                uvs: [Vector2] = [], material: MeshMaterial? = nil) {
+                uvs: [Vector2] = [], colors: [Color] = [], material: MeshMaterial? = nil) {
         self.positions = positions
         self.normals = normals
         self.indices = indices
         self.uvs = uvs
+        self.colors = colors
         self.material = material
     }
 
@@ -95,7 +106,8 @@ public extension Mesh {
         let longest = Swift.max(s.x, Swift.max(s.y, s.z))
         let factor = longest > 1e-12 ? scale / longest : 1
         return Mesh(positions: positions.map { ($0 - c) * factor },
-                    normals: normals, indices: indices, uvs: uvs, material: material)
+                    normals: normals, indices: indices, uvs: uvs, colors: colors,
+                    material: material)
     }
 
     /// A copy wearing `image` as its texture (tinted by `baseColor`, default white).

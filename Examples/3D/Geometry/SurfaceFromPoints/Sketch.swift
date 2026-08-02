@@ -13,6 +13,8 @@ import Ollin
 ///
 /// `density` is how many samples the cloud keeps; watch the reconstruction
 /// hold on to the form as the skin goes lumpy when samples get scarce.
+/// `robustFit` swaps the reconstruction onto the robust blended fitting:
+/// smoother at low density, and the notch's torn rim sheds its stray shreds.
 @main
 final class SurfaceFromPoints: Sketch {
 
@@ -20,11 +22,12 @@ final class SurfaceFromPoints: Sketch {
     @Param(1 ... 4, icon: "drop") var blend = 2.0
     @Param(icon: "scissors") var notch = false
     @Param(icon: "sparkles") var polished = false
+    @Param(icon: "wand.and.stars") var robustFit = false
 
     private var cloud: [Vector3] = []
     private var skin = Mesh(positions: [], indices: [])
     private var rebuilt = Mesh(positions: [], indices: [])
-    private var builtFor: (density: Double, blend: Double, notch: Bool)?
+    private var builtFor: (density: Double, blend: Double, notch: Bool, robust: Bool)?
 
     override func draw() {
         background(Color(hex: 0x0A0B10))
@@ -32,9 +35,9 @@ final class SurfaceFromPoints: Sketch {
         lightingPreset(.studio)
         cameraShowcase(.autoOrbit(period: 36), radius: 5.6, elevation: 0.3)
 
-        if builtFor == nil || builtFor! != (density, blend, notch) {
+        if builtFor == nil || builtFor! != (density, blend, notch, robustFit) {
             rebuild()
-            builtFor = (density, blend, notch)
+            builtFor = (density, blend, notch, robustFit)
         }
 
         withState {
@@ -68,6 +71,7 @@ final class SurfaceFromPoints: Sketch {
         }
         skin = particleSurface(of: cloud, radius: 0.075, blend: blend, resolution: 88)
         rebuilt = reconstructSurface(of: cloud, resolution: 104,
+                                     fitting: robustFit ? .robust : .planes,
                                      keepingLargestComponent: true)
     }
 

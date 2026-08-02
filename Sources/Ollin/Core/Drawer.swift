@@ -1948,6 +1948,12 @@ final class Drawer {
         let pbr = !wireframe && currentMaterial.shading == .physicallyBased
         let metalW: Float = pbr ? Float(currentMaterial.metallic) : 0
         let posW: Float = wireframe ? Float(strokeWidth) : (pbr ? Float(currentMaterial.roughness) : 1)
+        // Per-vertex mesh colors multiply the resolved surface color (the texture
+        // contract: fill stays a whole-mesh tint). A wireframe draws its edges in
+        // the stroke color alone, so it ignores them; a count that doesn't match
+        // `positions` is ignored too (the `uvs` rule). An empty `colors` takes the
+        // constant-color path untouched, byte for byte.
+        let vertexColored = !wireframe && mesh.colors.count == mesh.positions.count
         meshVertices.reserveCapacity(meshVertices.count + mesh.indices.count)
         for idx in mesh.indices {
             let i = Int(idx)
@@ -1965,7 +1971,7 @@ final class Drawer {
                 let wn = simd_normalize(nm * SIMD3<Float>(Float(n.x), Float(n.y), Float(n.z)))
                 v.normal = SIMD4<Float>(wn.x, wn.y, wn.z, metalW)
             }
-            v.color = color
+            v.color = vertexColored ? color * mesh.colors[i].simd4 : color
             if textured {
                 let uv = mesh.uvs[i]
                 v.uv = SIMD2<Float>(Float(uv.x), Float(uv.y))

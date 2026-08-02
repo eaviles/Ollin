@@ -1,5 +1,6 @@
 import Foundation
 import Ollin
+import simd
 
 /// A recorded RGBD clip captured by the **Record3D** iOS app (an ARKit
 /// color-plus-depth recorder), opened on the Mac and turned into 3D point
@@ -42,6 +43,15 @@ public final class Record3DRecording {
     /// The clip's frame rate, frames per second (`0` if the recording didn't state one).
     public let fps: Double
 
+    /// Per-frame camera-to-world poses (one per captured frame, in capture
+    /// order), in the capture session's gravity-aligned world space: y up, the
+    /// first frame near the identity. Each pose places that frame's camera-space
+    /// cloud into the room (`PointCloud.transformed(by:)`), so a sweep fuses
+    /// into one `WorldCloud`; the translations are the camera path, which is
+    /// what `reconstructSurface(orientedToward:)` wants. Empty when the
+    /// recording carries no poses.
+    public let poses: [simd_float4x4]
+
     private var cachedIndex: Int?
     private var cachedFrame: RGBDFrame?
 
@@ -80,7 +90,14 @@ public final class Record3DRecording {
         guard let metadata = archive.data(named: "metadata") else {
             throw Record3DError.missingEntry("metadata")
         }
-        (captureIntrinsics, fps) = try Self.parseMetadata(metadata)
+        (captureIntrinsics, fps, poses) = try Self.parseMetadata(metadata)
+    }
+
+    /// The camera-to-world pose of frame `index`, or nil when the recording has
+    /// no pose for it. See `poses`.
+    public func pose(at index: Int) -> simd_float4x4? {
+        guard index >= 0, index < poses.count else { return nil }
+        return poses[index]
     }
 
     /// Open the recording at a filesystem `path`. Throws if no file exists there.
@@ -153,7 +170,7 @@ public final class Record3DRecording {
 
     // MARK: - Metadata
 
-    private static func parseMetadata(_ data: Data) throws -> (CameraIntrinsics, Double) {
+    private static func parseMetadata(_ data: Data) throws -> (CameraIntrinsics, Double, [simd_float4x4]) {
         guard let object = try? JSONSerialization.jsonObject(with: data),
               let json = object as? [String: Any] else {
             throw Record3DError.malformedMetadata("not a JSON object")
@@ -172,7 +189,26 @@ public final class Record3DRecording {
         // [fx, 0, 0,  0, fy, 0,  cx, cy, 1].
         let intrinsics = CameraIntrinsics(fx: k[0], fy: k[4], cx: k[6], cy: k[7],
                                           width: w, height: h)
-        return (intrinsics, fps)
+        // Per-frame camera-to-world poses, each a quaternion + translation as
+        // [qx, qy, qz, qw, tx, ty, tz] (the identity pose stores its 1 in the
+        // fourth slot). A malformed or missing entry becomes the identity so
+        // `poses` stays index-aligned with the frames.
+        var poses: [simd_float4x4] = []
+        if let list = json["poses"] as? [Any] {
+            poses.reserveCapacity(list.count)
+            for entry in list {
+                let v = (entry as? [Any])?.compactMap { ($0 as? NSNumber)?.floatValue } ?? []
+                guard v.count >= 7 else {
+                    poses.append(matrix_identity_float4x4)
+                    continue
+                }
+                let q = simd_quatf(ix: v[0], iy: v[1], iz: v[2], r: v[3])
+                var m = simd_float4x4(q.normalized)
+                m.columns.3 = simd_float4(v[4], v[5], v[6], 1)
+                poses.append(m)
+            }
+        }
+        return (intrinsics, fps, poses)
     }
 
     /// Find the (width, height) factor pair of `count` whose ratio is closest to

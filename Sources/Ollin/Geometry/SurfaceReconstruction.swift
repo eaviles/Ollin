@@ -1,5 +1,32 @@
 import Foundation
 
+/// How `reconstructSurface` turns the fitted sample neighborhoods into the
+/// signed distance the surface is pulled from.
+///
+/// - `planes` (the default): each evaluation reads its nearest sample's tangent
+///   plane. Fast and faithful to the sampling; on noisy or unevenly captured
+///   data the piecewise planes can read slightly faceted.
+/// - `robust(sharpness:iterations:)`: robust kernel regression over the same
+///   planes (the RIMLS method): every evaluation blends the nearby samples,
+///   then re-weights them a few times so samples that disagree with the local
+///   consensus (noise, outliers, the far side of a crease) fade out of the fit.
+///   The result is smoother where the surface is smooth and keeps its edges
+///   where it isn't. `sharpness` is how eagerly disagreeing samples are set
+///   aside: 1 is the balanced default, 2 the sharpest useful setting, below 1
+///   softer; `iterations` is the number of re-weighting passes (1 is a plain
+///   smooth blend with no re-weighting, a few is enough, the default is 3).
+///   Costs a few times the plane fit; both fittings honor holes identically.
+public enum SurfaceFitting: Sendable, Equatable {
+    /// Nearest tangent plane (the default).
+    case planes
+    /// Robust kernel regression (RIMLS): smoother, outlier-resistant,
+    /// feature-preserving. See `SurfaceFitting` for the two knobs.
+    case robust(sharpness: Double, iterations: Int)
+
+    /// The robust fit at its balanced defaults (`sharpness` 1, 3 iterations).
+    public static var robust: SurfaceFitting { .robust(sharpness: 1, iterations: 3) }
+}
+
 /// Rebuild the surface a point cloud sampled: from scattered points alone
 /// (a depth-camera room sweep, a scanned object, any generated sampling of a
 /// form) back to a triangle `Mesh` of the surface they came from.
@@ -51,6 +78,10 @@ import Foundation
 ///     everything, for clouds known to sample a closed surface.
 ///   - neighbors: How many nearby samples fit each plane. More smooths noise
 ///     and bridges thin gaps; fewer preserves fine detail.
+///   - fitting: How the fitted neighborhoods become a distance: `.planes` (the
+///     default) reads the nearest tangent plane; `.robust` blends and
+///     re-weights them (see `SurfaceFitting`). An artwork parameter like
+///     `resolution`: it changes the piece, so it never rides a quality tier.
 ///   - keepingLargestComponent: Drop every disconnected piece but the largest
 ///     (by area). Scan noise tends to leave small floating shells; this is
 ///     the broom for them. It keeps exactly one body, so a real separate
@@ -62,6 +93,7 @@ public func reconstructSurface(of points: [Vector3],
                                orientedToward viewpoints: [Vector3] = [],
                                maxGap: Double? = nil,
                                neighbors: Int = 16,
+                               fitting: SurfaceFitting = .planes,
                                keepingLargestComponent: Bool = false) -> Mesh {
     guard points.count >= 4, resolution >= 1 else { return Mesh(positions: [], indices: []) }
 
@@ -148,6 +180,16 @@ public func reconstructSurface(of points: [Vector3],
     }()
     let band = bandRadius.map { DilatedOccupancy(points: points, radius: $0) }
 
+    // The robust evaluator, when asked for. The validity gate below is the same
+    // for both fittings (validity is about data coverage, not the fit), so holes
+    // open and close identically; only the returned height changes.
+    let robust: RobustFit? = {
+        guard case .robust(let sharpness, let iterations) = fitting else { return nil }
+        return RobustFit(points: points, normals: normals, reach: reach,
+                         spacing: sampleSpacing, sharpness: sharpness,
+                         iterations: iterations)
+    }()
+
     var mesh = partialIsosurface(at: 0, in: bounds, resolution: resolution, field: { p in
         if let band, !band.mayHoldSurface(near: p) { return nil }
         guard let i = centerGrid.nearest(to: p) else { return nil }
@@ -156,6 +198,7 @@ public func reconstructSurface(of points: [Vector3],
         guard let j = grid.nearest(to: foot) else { return nil }
         let gap = maxGap ?? Swift.min(reach[j], gapCeiling)
         guard gap == .infinity || (foot - points[j]).lengthSquared <= gap * gap else { return nil }
+        if let robust { return robust.value(at: p, grid: grid).map { -$0 } }
         return -height
     })
 
@@ -163,19 +206,154 @@ public func reconstructSurface(of points: [Vector3],
     return mesh
 }
 
-/// `reconstructSurface` over a point cloud's positions.
+/// `reconstructSurface` over a point cloud's positions. The cloud's colors carry
+/// onto the mesh: each vertex takes its nearest sample's color (see
+/// `Mesh.colored(from:)`), so a captured scan rebuilds in the colors it was seen
+/// in. An all-white cloud skips the transfer and reconstructs exactly as the
+/// bare-positions form does.
 public func reconstructSurface(of cloud: PointCloud,
                                spacing: Double? = nil,
                                resolution: Int = 96,
                                orientedToward viewpoints: [Vector3] = [],
                                maxGap: Double? = nil,
                                neighbors: Int = 16,
+                               fitting: SurfaceFitting = .planes,
                                keepingLargestComponent: Bool = false) -> Mesh {
-    reconstructSurface(of: cloud.points.map(\.position),
-                       spacing: spacing, resolution: resolution,
-                       orientedToward: viewpoints, maxGap: maxGap,
-                       neighbors: neighbors,
-                       keepingLargestComponent: keepingLargestComponent)
+    let mesh = reconstructSurface(of: cloud.points.map(\.position),
+                                  spacing: spacing, resolution: resolution,
+                                  orientedToward: viewpoints, maxGap: maxGap,
+                                  neighbors: neighbors, fitting: fitting,
+                                  keepingLargestComponent: keepingLargestComponent)
+    guard cloud.points.contains(where: { $0.color != .white }) else { return mesh }
+    return mesh.colored(from: cloud)
+}
+
+// MARK: - The robust fit (RIMLS)
+
+/// Robust implicit moving least squares, written from the paper (Öztireli,
+/// Guennebaud, Gross 2009, "Feature Preserving Point Set Surfaces based on
+/// Non-Linear Kernel Regression"). The base is the implicit MLS distance: a
+/// kernel-weighted average of every nearby sample's plane height,
+///
+///     f(x) = sum_i phi_i(x) n_i·(x - p_i) / sum_i phi_i(x)
+///
+/// which iterative re-weighting then makes robust: after each pass, a sample
+/// is down-weighted by how far its plane height sits from the fitted value
+/// (the residual weight, a Gaussian of width `sigmaR` in units of the local
+/// kernel radius) and by how far its normal points from the fitted gradient
+/// (the normal weight, a Gaussian of width `sigmaN`). The first pass runs
+/// unweighted on purpose (a robust starting guess would break the surface's
+/// continuity), so `iterations` 1 is plain smooth IMLS. The gradient inside
+/// the iteration keeps the kernel-derivative terms; dropping them for the
+/// weighted normal average alone is the classic shortcut bug.
+///
+/// A class so the field closure can reuse its scratch buffers across
+/// evaluations (the marching walk is serial): per-lattice-point allocation is
+/// the debug-build trap the flat-scalar grid exists to avoid.
+private final class RobustFit {
+    // The samples, flat scalar arrays for the -Onone-transparent inner loops.
+    private let px: [Double], py: [Double], pz: [Double]
+    private let nx: [Double], ny: [Double], nz: [Double]
+    /// Per-sample kernel radius (squared alongside): the sample's neighborhood
+    /// reach, floored and capped in multiples of the global spacing, which
+    /// lands in the paper's 1.4x to 4x local-spacing range and adapts to
+    /// uneven density the same way the validity cutoff does.
+    private let h2: [Double]
+    private let hMax: Double
+    private let sigmaN: Double
+    private let iterations: Int
+    /// Residual-weight width, in units of each sample's kernel radius.
+    private let sigmaR = 0.5
+
+    // Scratch for one evaluation, reused across the serial marching walk.
+    private var hood: [Int32] = []
+    private var alpha: [Double] = []
+
+    init(points: [Vector3], normals: [Vector3], reach: [Double],
+         spacing: Double, sharpness: Double, iterations: Int) {
+        var sx = [Double](repeating: 0, count: points.count)
+        var sy = sx, sz = sx, mx = sx, my = sx, mz = sx, hh = sx
+        var maxH = 0.0
+        let floorH = spacing * 1.5, capH = spacing * 4
+        for i in points.indices {
+            sx[i] = points[i].x; sy[i] = points[i].y; sz[i] = points[i].z
+            mx[i] = normals[i].x; my[i] = normals[i].y; mz[i] = normals[i].z
+            let h = Swift.min(Swift.max(reach[i], floorH), capH)
+            hh[i] = h * h
+            if h > maxH { maxH = h }
+        }
+        px = sx; py = sy; pz = sz; nx = mx; ny = my; nz = mz; h2 = hh
+        hMax = maxH
+        // `sharpness` 1 is the paper's balanced sigmaN 1; 2 is its floor 0.5,
+        // below which the fit can genuinely disconnect, so it clamps there.
+        sigmaN = Swift.max(0.5, 1 / Swift.min(Swift.max(sharpness, 0.01), 2))
+        self.iterations = Swift.min(Swift.max(iterations, 1), 16)
+    }
+
+    /// The robust signed height at `p` (positive outside), or nil where no
+    /// sample's kernel covers it.
+    func value(at p: Vector3, grid: PointGrid3) -> Double? {
+        hood.removeAll(keepingCapacity: true)
+        grid.forNeighbors(of: p, within: hMax) { i, d2 in
+            if d2 < h2[i] { hood.append(Int32(i)) }
+        }
+        guard !hood.isEmpty else { return nil }
+        if alpha.count < hood.count {
+            alpha = [Double](repeating: 1, count: hood.count)
+        }
+        for k in hood.indices { alpha[k] = 1 }
+
+        let qx = p.x, qy = p.y, qz = p.z
+        let invSigmaN2 = 1 / (sigmaN * sigmaN)
+        var f = 0.0
+        for pass in 0 ..< iterations {
+            // One weighted fit: f from the plane heights, grad f from the
+            // quotient rule with the refit weights held fixed.
+            var sumW = 0.0, sumF = 0.0
+            var sumNx = 0.0, sumNy = 0.0, sumNz = 0.0
+            var sumGx = 0.0, sumGy = 0.0, sumGz = 0.0     // sum a_i grad phi_i
+            var sumGFx = 0.0, sumGFy = 0.0, sumGFz = 0.0  // ... times the height
+            for k in hood.indices {
+                let i = Int(hood[k])
+                let dx = qx - px[i], dy = qy - py[i], dz = qz - pz[i]
+                let d2 = dx * dx + dy * dy + dz * dz
+                let s = 1 - d2 / h2[i]
+                guard s > 0 else { continue }
+                let s2 = s * s
+                let phi = s2 * s2
+                let fx = nx[i] * dx + ny[i] * dy + nz[i] * dz
+                let a = alpha[k]
+                let w = a * phi
+                sumW += w
+                sumF += w * fx
+                sumNx += w * nx[i]; sumNy += w * ny[i]; sumNz += w * nz[i]
+                // grad phi = -(8 / h^2) s^3 (x - p_i)
+                let g = a * (-8 / h2[i]) * s2 * s
+                let gx = g * dx, gy = g * dy, gz = g * dz
+                sumGx += gx; sumGy += gy; sumGz += gz
+                sumGFx += gx * fx; sumGFy += gy * fx; sumGFz += gz * fx
+            }
+            guard sumW > 0 else { return nil }
+            f = sumF / sumW
+            if pass == iterations - 1 { break }
+            let gradX = (sumGFx - f * sumGx + sumNx) / sumW
+            let gradY = (sumGFy - f * sumGy + sumNy) / sumW
+            let gradZ = (sumGFz - f * sumGz + sumNz) / sumW
+            // Re-weight for the next pass: residual against the fit, normal
+            // against the gradient.
+            for k in hood.indices {
+                let i = Int(hood[k])
+                let dx = qx - px[i], dy = qy - py[i], dz = qz - pz[i]
+                let fx = nx[i] * dx + ny[i] * dy + nz[i] * dz
+                let r = fx - f
+                let rScale = sigmaR * sigmaR * h2[i]
+                let ex = nx[i] - gradX, ey = ny[i] - gradY, ez = nz[i] - gradZ
+                let dn2 = ex * ex + ey * ey + ez * ez
+                alpha[k] = exp(-(r * r) / rScale) * exp(-dn2 * invSigmaN2)
+            }
+        }
+        return f
+    }
 }
 
 // MARK: - The near-surface band
@@ -482,8 +660,10 @@ private func largestComponent(of mesh: Mesh) -> Mesh {
     var remap = [Int32](repeating: -1, count: mesh.positions.count)
     var positions: [Vector3] = []
     var normals: [Vector3] = []
+    var colors: [Color] = []
     var indices: [UInt32] = []
     let hasNormals = mesh.normals.count == mesh.positions.count
+    let hasColors = mesh.colors.count == mesh.positions.count
     for t in 0 ..< triangleCount {
         guard root(Int(mesh.indices[t * 3])) == keep else { continue }
         for corner in 0 ..< 3 {
@@ -492,10 +672,11 @@ private func largestComponent(of mesh: Mesh) -> Mesh {
                 remap[old] = Int32(positions.count)
                 positions.append(mesh.positions[old])
                 if hasNormals { normals.append(mesh.normals[old]) }
+                if hasColors { colors.append(mesh.colors[old]) }
             }
             indices.append(UInt32(remap[old]))
         }
     }
-    return hasNormals ? Mesh(positions: positions, normals: normals, indices: indices)
-                      : Mesh(positions: positions, indices: indices)
+    return Mesh(positions: positions, normals: hasNormals ? normals : [],
+                indices: indices, colors: hasColors ? colors : [])
 }

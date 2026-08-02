@@ -23,8 +23,10 @@ Both are deterministic given their inputs, both come back as ordinary meshes (ma
 
 - [Skinning points](#skin)
 - [Rebuilding a sampled surface](#reconstruct)
+- [The fitting: planes or robust](#fitting)
 - [Orientation: cameras first](#orientation)
 - [Holes are honest](#holes)
+- [Colors carry](#colors)
 - [Sweeping a room](#rooms)
 - [Cost and knobs](#cost)
 
@@ -44,9 +46,25 @@ There is no orientation problem and no hole concept here: the skin always closes
 
 #### Rebuilding a sampled surface
 
-`reconstructSurface(of:spacing:resolution:orientedToward:maxGap:neighbors:keepingLargestComponent:)` is the faithful tool. It fits a small plane to every point's neighborhood, turns the planes to agree on which side is outside, and pulls the surface out of the resulting signed distance field with marching cubes. The result passes through the samples' true positions (noise is averaged by the plane fits, not reproduced), keeps topology (a sampled knot comes back knotted), and reports missing data honestly.
+`reconstructSurface(of:spacing:resolution:orientedToward:maxGap:neighbors:fitting:keepingLargestComponent:)` is the faithful tool. It fits a small plane to every point's neighborhood, turns the planes to agree on which side is outside, and pulls the surface out of the resulting signed distance field with marching cubes. The result passes through the samples' true positions (noise is averaged by the plane fits, not reproduced), keeps topology (a sampled knot comes back knotted), and reports missing data honestly.
 
 `spacing` is the typical distance between neighboring samples. Leave it nil to have it estimated; if the cloud came from a [`WorldCloud`](../3D/RGBD.md), pass the accumulator's `voxelSize` (or slightly more), which is exactly that number.
+
+<a name="fitting"></a>
+
+#### The fitting: planes or robust
+
+`fitting:` chooses how the fitted neighborhoods become a distance, and it is an artwork parameter like `resolution`: it changes the piece, not just its cost.
+
+- **`.planes`** (the default): every evaluation reads its single nearest plane. Fast and faithful; on noisy or unevenly captured data the piecewise planes can read slightly faceted, and where coverage runs out, disagreeing planes can shed stray shreds of surface.
+- **`.robust`**: robust kernel regression over the same planes (the RIMLS method). Every evaluation blends all the nearby samples, then re-weights the blend a few times so samples that disagree with the local consensus (noise, outliers, the far side of a crease) fade out of the fit. The result is smoother where the surface is smooth, keeps its edges where it is not, and is markedly more resistant to phantom shreds around partially observed objects. It costs more than the plane fit (from a few percent on a real scan to roughly double on dense synthetic clouds).
+
+```swift
+let room = reconstructSurface(of: world.cloud, spacing: world.voxelSize * 2,
+                              orientedToward: path, fitting: .robust)
+```
+
+`.robust` takes two knobs when you want them: `.robust(sharpness:iterations:)`. `sharpness` is how eagerly disagreeing samples are set aside; 1 is the balanced default, 2 the sharpest useful setting (it clamps there, where the fit would start to disconnect), below 1 softer. `iterations` is the number of re-weighting passes; the first pass is always the plain unweighted blend, so `iterations: 1` is a smooth blend with no re-weighting at all, and the default 3 is enough for nearly everything.
 
 <a name="orientation"></a>
 
@@ -63,9 +81,27 @@ A plane fitted to points has two sides, and the reconstruction needs every plane
 
 Where the cloud has no samples, the reconstruction has no opinion: the distance field is *undefined* there rather than guessed, so an unscanned region stays an open hole instead of growing a fictitious cap. `maxGap` is the dial. Gaps smaller than it close; larger ones stay open; nil derives it per point from the local sampling density (roughly the neighborhood radius, capped so a region nobody sampled reads as a hole), which is the right default for scans. For a cloud known to sample a closed surface, pass `.infinity` and every gap closes.
 
-The flip side of honesty is that coverage is everything. A body observed from only one side keeps an unobserved back, and the rebuilt surface frays into a fringe just past where its data stops, because each fitted plane extends a little beyond its last samples. The fringe is not a knob problem; it is the shape of missing data. Sweep around the things you care about, and it goes away with the gap it marks.
+The flip side of honesty is that coverage is everything. A body observed from only one side keeps an unobserved back, and under the default plane fit the rebuilt surface frays into a fringe just past where its data stops, because each fitted plane extends a little beyond its last samples. The `.robust` fitting suppresses most of that fraying (on a staged partial-coverage scene it removed over 99% of the mid-air shreds while keeping every observed surface), so reach for it when a scan's open edges look torn. The honest fix is still coverage: sweep around the things you care about, and the fringe goes away with the gap it marks.
 
 Scan noise also tends to leave a few small shells floating off the real surface. `keepingLargestComponent: true` keeps only the largest connected piece, by area. It keeps exactly one: a real separate object in the scan (a ball whose contact with the floor fell below the sampling) goes out with the noise, so reach for it when the scan is one connected space.
+
+<a name="colors"></a>
+
+#### Colors carry
+
+Give `reconstructSurface` a `PointCloud` instead of bare positions and the cloud's colors carry onto the mesh: each vertex takes its nearest sample's color, so a captured scan rebuilds in the colors it was seen in. The colors ride the mesh as per-vertex `Mesh.colors`, which *multiply* the current `fill` at draw time (the texture contract): with the default white fill the scan shows its true colors untouched, and `fill` stays a whole-mesh tint, so `fill(Color(white: 0.5))` dims the room without touching its hues. An all-white cloud skips the transfer.
+
+The same transfer is available on any mesh as `colored(from:)`, and there is a procedural sibling, `colored(by:)`, that computes a color from each vertex's position and normal:
+
+```swift
+let skin = particleSurface(of: cloud, radius: 0.05).colored(from: cloud)
+
+let globe = Mesh.sphere(radius: 1).colored { p, _ in
+    p.y > 0 ? .white : Color(hex: 0x2B6CB0)
+}
+```
+
+Lighting shades a vertex color exactly as it shades the fill; a wireframe (edges in the stroke color) ignores them. Drop the colors with `mesh.colors = []` when you want the plain fill back.
 
 <a name="rooms"></a>
 
@@ -91,7 +127,9 @@ let room = reconstructSurface(of: world.cloud, spacing: world.voxelSize * 2,
                               keepingLargestComponent: true)
 ```
 
-The camera path is the orientation. Doorways, windows, and everything the sweep missed stay open, which is the truthful shape of a scan.
+The camera path is the orientation, and because the fused cloud carries the capture's colors, the room comes back colored. Doorways, windows, and everything the sweep missed stay open, which is the truthful shape of a scan.
+
+A recorded clip works the same way without the live tether: `Record3DRecording` exposes `poses` (camera-to-world, one per frame), so a sweep saved on the phone fuses frame by frame with `pose(at:)` and reconstructs with the pose translations as the camera path.
 
 <a name="cost"></a>
 
@@ -103,6 +141,7 @@ The camera path is the orientation. Doorways, windows, and everything the sweep 
 | `spacing` | the sampling density the cloud was taken at | nil estimates it; a `WorldCloud` knows it as `voxelSize` |
 | `neighbors` | how many samples fit each plane | more smooths noise; fewer preserves fine detail |
 | `maxGap` | how large a data gap still closes | nil adapts to local density; `.infinity` closes everything |
+| `fitting` | nearest plane, or the robust blend | `.planes` is fast and faithful; `.robust` smooths noise, keeps creases, and resists phantom shreds |
 | `blend` | (`particleSurface`) how far balls melt together | 1 is separate spheres; 2 to 3 is the liquid look |
 
 Cost concentrates in two places: one plane fit per point, and the field samples near the surface (the far grid is skipped cheaply). Both scale with what you ask for, so reconstruct once in `setup()` and keep the mesh, the way the other mesh generators are used.
