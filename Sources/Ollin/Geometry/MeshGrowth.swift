@@ -137,6 +137,21 @@ public final class MeshGrowth {
     /// or the pattern never gets ahead of the growth it is meant to be steering.
     public var chemistrySteps: Int = 8
 
+    /// How many steps' worth of chemistry run on their own before the first
+    /// growth step, when the driver is `.chemical`.
+    ///
+    /// The reaction has to organize into a pattern before it can steer
+    /// anything, so a chemical growth otherwise spends its opening steps barely
+    /// moving while the patches sort themselves out. Settling runs that opening
+    /// work all at once, the moment the first step is taken: the surface is
+    /// refined to the target triangle size (holding still), the chemistry
+    /// organizes on it, and growth answers a formed pattern from the first
+    /// step. Each unit is one growth step's ration of reaction
+    /// (`chemistrySteps` iterations), so a value of 60 hands the pattern the
+    /// head start it would have taken 60 steps to earn. 0, the default, skips
+    /// it; the other drivers ignore it.
+    public var settleSteps: Int = 0
+
     // MARK: State
 
     private var positions: [Vector3]
@@ -150,6 +165,7 @@ public final class MeshGrowth {
     private var incidence: [[Int]]
     private var rng: SplitMix64
     private var cachedMesh: Mesh?
+    private var hasSettled = false
 
     /// How many steps have run.
     public private(set) var stepCount = 0
@@ -248,6 +264,13 @@ public final class MeshGrowth {
     private func stepOnce() {
         guard positions.count >= 3, !triangles.isEmpty else { return }
 
+        // The settle runs once, all at once, so a live sketch never sits
+        // through frames of a still surface waiting for the pattern to form.
+        if !hasSettled {
+            hasSettled = true
+            if case let .chemical(settings) = driver, settleSteps > 0 { settle(settings) }
+        }
+
         let rings = ringTable()
         let normals = vertexNormals()
 
@@ -318,6 +341,25 @@ public final class MeshGrowth {
             }
         }
         channels = [substrate, values]
+    }
+
+    /// The head start `settleSteps` asks for: refine the surface to the target
+    /// triangle size, then run the opening chemistry on it all at once.
+    ///
+    /// The refinement is not optional. The reaction can only establish at the
+    /// scale it will run at: on the coarse seed cage the seeded patch is a
+    /// vertex or two wide and decays before igniting, so chemistry run there
+    /// dies at exactly zero and the settle is simply lost. The surface holds
+    /// still through all of it; only the triangulation changes.
+    private func settle(_ settings: SurfaceChemistry) {
+        var lastCount = -1
+        var passes = 0
+        while positions.count != lastCount, passes < 12 {
+            lastCount = positions.count
+            remesh()
+            passes += 1
+        }
+        for _ in 0 ..< settleSteps { advanceChemistry(settings) }
     }
 
     private func advanceChemistry(_ settings: SurfaceChemistry) {

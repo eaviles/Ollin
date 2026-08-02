@@ -329,4 +329,75 @@ struct MeshGrowthTests {
             #expect(abs(moved - pattern.values[v] * 0.2) < 1e-9)
         }
     }
+
+    // MARK: Settling
+
+    /// The point of `settleSteps`: by the first step, a settled growth's
+    /// chemistry is already an organized pattern rather than the fresh seed
+    /// patches, so growth answers a formed pattern from the start. The probe
+    /// that shaped the feature: chemistry settled on the *coarse seed cage*
+    /// dies at exactly zero (the patch is a vertex or two wide there), which is
+    /// why the settle refines the surface to the target edge length first.
+    @Test
+    func settleHandsTheChemicalDriverAFormedPattern() {
+        func chemistryMeanAfterOneStep(settle: Int) -> Double {
+            let growth = MeshGrowth(mesh: .icosphere(radius: 0.75, subdivisions: 3),
+                                    driver: .chemical(.coral), edgeLength: 0.085, seed: 5)
+            growth.settleSteps = settle
+            growth.step(1)
+            let chem = growth.chemistry
+            return chem.reduce(0, +) / Double(chem.count)
+        }
+        let fresh = chemistryMeanAfterOneStep(settle: 0)
+        let settled = chemistryMeanAfterOneStep(settle: 120)
+        #expect(settled > 0, "settled chemistry died, the coarse-cage failure")
+        #expect(settled > fresh * 2,
+                "settling did not develop the pattern: \(fresh) to \(settled)")
+    }
+
+    /// Settling refines and reacts but never grows: after the first step a
+    /// heavily settled surface still has essentially the seed's area. It may
+    /// sit slightly *under* it (refining a coarse sphere inscribes it, and
+    /// relaxation shrinks a touch), but a settle must never add area.
+    @Test
+    func settleLeavesTheSurfaceUngrown() {
+        let seedMesh = Mesh.icosphere(radius: 0.75, subdivisions: 3)
+        let growth = MeshGrowth(mesh: seedMesh, driver: .chemical(.coral),
+                                edgeLength: 0.085, seed: 5)
+        growth.settleSteps = 120
+        growth.step(1)
+        let before = surfaceArea(seedMesh)
+        let after = surfaceArea(growth.mesh)
+        #expect(after < before * 1.02,
+                "settling grew the surface: \(before) to \(after)")
+        #expect(after > before * 0.85,
+                "settling collapsed the surface: \(before) to \(after)")
+    }
+
+    /// The other drivers have nothing to settle, so the knob leaves them
+    /// byte-identical.
+    @Test
+    func settleLeavesOtherDriversUntouched() {
+        func positions(settle: Int) -> [Vector3] {
+            let growth = MeshGrowth(mesh: .icosphere(radius: 0.8, subdivisions: 2),
+                                    driver: .uniform, edgeLength: 0.2, seed: 9)
+            growth.settleSteps = settle
+            growth.step(15)
+            return growth.mesh.positions
+        }
+        #expect(positions(settle: 0) == positions(settle: 50))
+    }
+
+    /// A settled growth is as reproducible as an unsettled one.
+    @Test
+    func aSettledGrowthReproduces() {
+        func run() -> [Vector3] {
+            let growth = MeshGrowth(mesh: .icosphere(radius: 0.8, subdivisions: 2),
+                                    driver: .chemical(.coral), edgeLength: 0.16, seed: 11)
+            growth.settleSteps = 40
+            growth.step(12)
+            return growth.mesh.positions
+        }
+        #expect(run() == run())
+    }
 }

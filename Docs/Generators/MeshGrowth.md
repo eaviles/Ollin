@@ -85,6 +85,8 @@ drawMesh(pattern.displaced(by: 0.06))     // the pattern as relief
 
 `values` is the concentration at each vertex, matching `mesh.positions` by index, so you can drive anything with it; `displaced(by:)` is the quick way to see it.
 
+Two things about pace are worth knowing. The reaction has to organize into a pattern before it can steer anything, so a chemical growth's opening steps are steered mostly by noise; setting **`settleSteps`** runs that opening chemistry all at once when the first step is taken (the surface is refined to its target triangle size, holding still, and the pattern organizes on it), so the first folds land where the pattern says and `chemistry` reads as a formed pattern from step one. And the pattern only ever covers part of the surface, so at the same `growthAmount` a chemical growth makes area a few times slower than `.uniform`: budget more steps, or raise `growthAmount`, and that is a permanent character of the driver rather than something settling changes.
+
 Both weld coincident vertices first. Ollin's mesh generators emit flat-shaded geometry whose triangles share no vertices, so an icosphere is, by index, thousands of loose triangles: without welding, nothing can spread across it at all.
 
 <a name="knobs"></a>
@@ -98,6 +100,7 @@ Both weld coincident vertices first. Ollin's mesh generators emit flat-shaded ge
 | `stiffness` | resistance to bending | the fold size: raise for smooth open ruffles, drop toward 0 for crumpled |
 | `repulsionRadius` | how near separate parts may come | past about `3 × edgeLength` it starts pushing on neighbors that are legitimately that close, and the form inflates instead of folding |
 | `maxVertices` | the ceiling | growth stops when reached and the surface only relaxes, so it decides how far a form develops |
+| `settleSteps` | opening chemistry run all at once on the first step | `.chemical` only; the pattern arrives formed instead of organizing mid-growth |
 
 `edgeLength` defaults to the mean edge length of the mesh you start from, so a coarse seed grows coarse folds and a fine one grows fine ones, and passing a starting mesh is usually all the setup needed.
 

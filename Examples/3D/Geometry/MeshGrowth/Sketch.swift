@@ -72,7 +72,11 @@ final class MeshGrowthDemo: Sketch {
         case .chemistry:
             let growth = MeshGrowth(mesh: seedMesh, driver: .chemical(.coral),
                                     edgeLength: coarseness, seed: UInt64(variation))
+            // The chemistry's pattern covers only part of the surface where the
+            // other drivers push everywhere, so it earns a faster rate; the
+            // settle hands it a formed pattern to grow from on the first step.
             growth.growthAmount = 0.85
+            growth.settleSteps = 60
             return growth
 
         case .curvature:
