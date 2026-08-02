@@ -206,6 +206,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("multi-scale-turing", frame: 150,
                  note: "A multi-scale Turing SimField, unseeded (it self-organizes from its own noise) and read without a withField block, run to frame 150 and shaded as relief. Pins the whole dedicated pipeline: the seeded noise fill a fresh field starts from, the Gaussian blur pyramid and the disc gather that reads it two rungs finer (the rectilinear-lattice fix), the per-scale variation chain that lets coarse scales hold ground, the least-variation scale selection, the 4x4 min/max extent chain and the renormalization that keeps the field from running away, and the read-registers-the-field path that steps a sim nothing is drawn into.",
                  make: { MultiScaleTuringScene() }),
+    SnapshotCase("sandpile", frame: 120,
+                 note: "An Abelian sandpile on the classic protocol: a mountain dropped once on frame 1 (a fixed dot, no rng), caught mid-collapse at frame 120 so the picture holds both regimes at once, settled counts as lacework at the rim and cells still mid-topple at the hot core. Pins the parallel multiple-toppling gather (fract(q) plus floored neighbour quarters), the open boundary, the add-whole-grains inject with its rounding, the quarters state encoding whose flat levels the gradient map reads, and the render-every-frame headless warmup the collapse depends on. SandpileTests pins the rule itself against a sequential CPU reference (the abelian schedule-independence), which a whole-frame mean diff cannot.",
+                 make: { SandpileScene() }),
     SnapshotCase("effects-feedback", frame: 24,
                  note: "A feedback layer built up over 24 frames: each frame redraws the last, zoomed + spun + faded, plus a new dot. Pins the persistent ping-pong (previous read while writing back, the per-frame swap kept across frames) and the headless render-every-frame warmup the built-up state needs.",
                  make: { EffectsFeedback() }),
@@ -5124,6 +5127,33 @@ private final class MultiScaleTuringScene: Sketch {
     override func draw() {
         background(.black)
         drawImage(field.filtered(.relight(height: 0.35)).image, 0, 0)
+    }
+}
+
+/// An Abelian sandpile `SimField` dropped as one heavy mountain on frame 1 (no
+/// random, no time) and caught mid-collapse, recolored one color per grain count.
+/// Deterministic: the pour is a fixed mark, the toppling a pure gather.
+private final class SandpileScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var pile: SimField!
+
+    override func setup() { pile = simField(.sandpile(pour: 1024), scale: 1) }
+
+    override func draw() {
+        background(.black)
+        withField(pile) {
+            if frameCount == 1 {
+                noStroke()
+                fill(.white)
+                drawCircle(width / 2, height / 2, 4)
+            }
+        }
+        let counts = Ramp(stops: [(0.00, Color(hex: 0x10141F)),
+                                  (0.25, Color(hex: 0x2C6E91)),
+                                  (0.50, Color(hex: 0xE3A857)),
+                                  (0.75, Color(hex: 0xF2E9DC)),
+                                  (1.00, .white)])
+        drawImage(pile.filtered(.gradientMap(counts)).image, 0, 0)
     }
 }
 

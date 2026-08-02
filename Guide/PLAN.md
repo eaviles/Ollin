@@ -329,6 +329,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Artificial life: `ParticleLife`, `PPS`, `Physarum`, `SpatialHash` (`Simulation/ArtificialLife.md`) | Ch 16 | taught ("Crowds that organize themselves" with a three-panel figure: the neighbor-search problem `SpatialHash` solves, all three systems with their rules and calls, and the no-frame-exact-reproducibility caveat) |
 | Fluids & soft bodies: `ParticleFluid`, `SoftBodies` (`Simulation/Fluids.md`) | Ch 16 | taught ("Liquids and jellies" with a two-panel figure: SPH density-to-pressure explained, `stiffness`/`nearStiffness`/`gravity`, shape matching and `squish`, and grabbing with `pull`) |
 | Cellular automata: Lenia sim, `elementaryCA`/`totalisticCA`, `Turmite` (`Generators/CellularAutomata.md`) | Ch 16 | taught ("More ways to be an automaton": elementary rules as a numbered rule byte with rules 30/90/110, `totalisticCA` named, `Turmite`/Langton's ant held and stepped, and Lenia with its knobs and the dense-seed rule; two figures) |
+| `.sandpile` Abelian sandpile Sim (`Drawing/Effects.md`) | Ch 16 | taught ("A pile of sand" with a relaxed-pile figure: the four-grain toppling rule, order-independence as what licenses the GPU's parallel topplings, the drop-a-mountain protocol behind the classic figure versus the molten held torrent, the quarters state encoding and the one-color-per-count ramp, self-organized criticality as the discovery beyond the picture, and `topplings` as the pacing dial) |
 | Articulated & chaotic motion: `IKChain`, `DoublePendulum`, `NBody` (`Simulation/Motion.md`) | Ch 9 | taught (all three toured in "Three ready-made motion systems" with a three-panel figure: `reach`/`drag` and the solver/`maxBend` knobs, the pendulum's determinism-plus-sensitivity, and n-body's `theta`/`softening` and the seeded factories) |
 | Damped spring: `DampedSpring`, `@Sprung` (`Helpers/Animation.md`) | Ch 3 | taught (duration/bounce, the moving-target case that separates it from `@Eased`, and `kick`; `velocity` and `Vector2` springs pointed) |
 | `3D/3D.md` (camera, primitives, meshes, lights, materials) | Ch 17 | taught |
@@ -385,7 +386,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | More model examples (ModelTracker) | Ch 21 |
 | Generative-geometry refinements | Ch 11 |
 | Technique catalog: GPU-scale steering agents | Ch 16 |
-| Technique catalog: growth/morphogenesis (Turing patterns, sandpile, growth on meshes) | Ch 16/17 |
+| Technique catalog: growth/morphogenesis (growth on meshes) | Ch 17 |
 | Technique catalog: tiling/layout families | Ch 6 |
 | Technique catalog: meshing (point-cloud reconstruction, subdivision surfaces) | Ch 17 |
 | Project generator | Ch 1 |

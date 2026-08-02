@@ -806,9 +806,11 @@ extension MetalRenderer {
               let s1 = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return }
         let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
         // Inject the seed marks onto the current state (composited by the seed's
-        // alpha, or added, per the sim's inject fragment).
+        // alpha, or added, per the sim's inject fragment). The sim's parameter rows
+        // ride along for the injects that read one (the sandpile's pour); the rest
+        // never look past the texel row.
         encodeEffectFragment(sim.injectFragment, inputs: [state, seed], output: s0,
-                             params: [texel], into: cb)
+                             params: [texel] + sim.params, into: cb)
         // Step: read s0, ping-pong s0↔s1 between steps, write the final step into the
         // back buffer. Read and write are always distinct, so there's no in-pass hazard.
         var read = s0

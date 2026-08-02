@@ -647,13 +647,16 @@ layers, sim fields, and SSR ops alike.
 that runs a built-in `Sim` on its state each frame: the stateful sibling of the
 stateless `Filter`. `Sim` is a `Sendable` value catalog like `Filter`:
 `.reactionDiffusion(feed:kill:)` (Gray-Scott), `.gameOfLife` (Conway),
-`.lenia(...)`, `.ripples(...)`, `.multiScaleTuring(...)`, and `.fluid(...)`. A
-sketch draws into the field to seed or force it
+`.lenia(...)`, `.ripples(...)`, `.sandpile(...)`, `.multiScaleTuring(...)`, and
+`.fluid(...)`. A sketch draws into the field to seed or force it
 (`withField(_:_:)`, scoped like `withTarget`): the renderer renders the drawn
 marks into a transient seed texture, runs `ollin_sim_inject` to composite the
 seeds onto the front state, then steps the sim's `ollin_sim_*` fragment N
 sub-steps per frame (reaction-diffusion 14, Game of Life 1), ping-ponging pooled
-scratch into the back buffer (`runSimulation` in `MetalRenderer`).
+scratch into the back buffer (`runSimulation` in `MetalRenderer`). The inject
+pass binds the sim's parameter rows after the texel row, same as the step, for
+the injects that read one (the sandpile's pour); the pre-existing injects never
+look past the texel row, so the binding change was byte-identical for them.
 
 Sim fields reuse the feedback path: the `RenderTarget.Origin.simField(SimField)`
 case routes to the same persistent ping-pong storage (`FeedbackSlot`, whose
@@ -766,6 +769,67 @@ in `setup`, `drawImage` it in `draw`) would sit frozen. So `SimField.image` and
 makes that safe, since an unseeded frame renders a seed that composites nothing.
 Existing sketches register via `withField` first, so target order is unchanged
 and the whole snapshot suite passed unrecorded.
+
+#### Abelian sandpile (`.sandpile`)
+
+The Bak-Tang-Wiesenfeld toppling automaton (1987, the model that named
+self-organized criticality; credited in `ATTRIBUTION.md`), and the counterpoint
+to the Turing pipeline above: it is exactly the cheap, generic single-texture
+sim the step path was built for (one gather fragment, no dedicated pipeline).
+Each pass every cell holding at least four grains topples, *as many times as it
+can at once*: for every four grains it holds it sends one to each of its four
+neighbours and keeps the remainder, so in quarters the whole update is
+`q' = fract(q) + Σ floor(q_n) / 4`. Dhar's 1990 abelian-property result is what
+licenses any parallel schedule, single or k-fold, since topplings commute and
+the settled pile is the same in any order. The k-fold form matters and was
+found empirically (the first render used one toppling per pass): where every
+cell holds fewer than eight grains, the regime a critical pile lives in, the
+two are *identical*, but at a heavy source single toppling pools, because a
+saturated blob's interior is net zero (lose four, receive one from each of
+four toppling neighbours) and only its perimeter drains; a measured 800-frame
+run settled just 13% of what was poured, with the rest stacked at the source.
+The k-fold form drains a hot source exponentially instead, which is what makes
+the classic drop-a-mountain-and-let-it-collapse figure renderable in seconds.
+`SandpileTests` turns the abelian theorem into the verification: the GPU's
+parallel sweeps interleaved with pouring must match a sequential CPU
+stabilization *cell for cell*, which pins the threshold, the gather, the
+inject rounding, and (in the edge-block variant, verified red against its
+counterfactual) the open boundary.
+
+The GPU realization has four more load-bearing choices:
+
+- **Grains are stored in quarters** (one grain = 0.25) so a stable cell reads
+  0, ¼, ½, ¾ directly (`gradientMap`-ready, one flat level per count) while the
+  arithmetic stays exact: quarter steps in a half-float texel are exact to 2048
+  grains, far above what the clamped pour (≤ 1024/frame) can pool.
+- **Reads come from `.r` only.** The state is written to all three channels for
+  a readable gray image, but the step and inject read the one channel: a
+  luminance dot product is off by an ulp, and the step's `floor`/`fract` at the
+  toppling threshold are exact operations an ulp would break.
+- **The boundary is open, never wrapped or clamped.** A neighbour position off
+  the field contributes nothing, and a toppling cell always loses four, so
+  grains crossing the edge are simply gone. That dissipation is what lets a fed
+  pile keep settling (on a torus sand only accumulates until every cell topples
+  forever), and the guard must reject the position *before* sampling, or the
+  clamping sampler reads the edge texel back as its own neighbour: a reflecting
+  wall, the counterfactual `grainsFallOffTheOpenBoundary` was verified against.
+- **The inject rounds to whole grains.** A mark pours
+  `rint(luma × pour) / 4` onto the state (additive, like the ripples inject:
+  replacing would erase the pile), so a soft anti-aliased fringe pours whole
+  grains or none and the count never leaves the integer lattice; the rounding
+  also absorbs the ulp in a white mark's luminance. Nothing erases; easing off
+  the pour is the only way to stop.
+
+`topplings` is `subSteps`, a factory knob rather than a constant because an
+avalanche front moves one texel per pass, which makes it the pacing dial: watch
+single waves at 1, hurry a collapse at 128. The two pour protocols look very
+different and both are honest physics: the *classic relaxed figure* comes from
+dropping one heavy mark on one frame and letting the field settle (the
+`Sandpile` example and the Guide figure both do this), while a *held* heavy
+mark keeps a molten super-critical core for as long as the torrent runs,
+because each frame's pour re-fills the interior faster than the rim sheds; the
+display shows it honestly as the top of the ramp, not a defect to guard
+against.
 
 ### Compose DSL, combine ops, and `aside`
 

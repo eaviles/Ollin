@@ -33,7 +33,7 @@ A tier of classic generative-art building blocks that emit vector geometry (poin
 
 - **Agents and steering.** Scaling the steering behaviors onto the GPU compute path the particle and `SimField` systems already use (a million seekers and wanderers), plus **genetic / evolutionary** form-finding on the same path.
 - **Particle-interaction and artificial life.** More simple-per-particle-rule systems on the GPU over the spatial-hash neighbor search. Pushed toward self-replication, mutation, and selection, this is the open-ended-evolution territory the ALIEN environment (chrxh/alien) explores, studied as *techniques* and reimplemented in Metal compute (inspiration, not a port, credited in `ATTRIBUTION.md`).
-- **Growth and morphogenesis.** The Abelian sandpile, and the 3D forms of the 2D growth systems (differential growth and reaction-diffusion over a mesh surface, the coral genre), which want the subdivision work below.
+- **Growth and morphogenesis.** The 3D forms of the 2D growth systems (differential growth and reaction-diffusion over a mesh surface, the coral genre), which want the subdivision work below.
 - **Tiling and layout.** Force-directed graph layout, beside the Wave Function Collapse and Truchet builders in [generative geometry](#generative-geometry).
 - **Meshing and surfaces.** Surface reconstruction from a point cloud, and subdivision-surface smoothing (Catmull-Clark / Loop); these route to [3D mode](#3d-mode).
 

@@ -37,6 +37,7 @@ public struct Sim: Sendable {
         case ripples(speed: Double, damping: Double)
         case fluid(FluidConfig)
         case multiScaleTuring(scales: [TuringScale], seed: Double)
+        case sandpile(pour: Int, topplings: Int)
     }
 
     let kind: Kind
@@ -196,6 +197,38 @@ public struct Sim: Sendable {
         return Sim(kind: .multiScaleTuring(scales: clamped, seed: seed))
     }
 
+    /// The **Abelian sandpile**: grains pile up on a grid, and any cell holding four
+    /// or more topples, keeping the rest and sending one grain to each of its four
+    /// neighbours. A toppling can tip its neighbours over too, so one grain dropped
+    /// on a settled pile can set off an avalanche of any size (the model that named
+    /// *self-organized criticality*). All the unstable cells topple together each
+    /// pass, as many times as each can, which is safe because topplings commute
+    /// (the "abelian" in the name): however the work is ordered or batched, the
+    /// pile settles into the same configuration. Grains that topple over the
+    /// field's edge fall off and are gone; that slow leak is what lets a fed pile
+    /// keep settling instead of saturating.
+    ///
+    /// Draw into the field to pour sand: a full-white mark adds `pour` grains to
+    /// every texel it covers, each frame, scaled by the mark's brightness and
+    /// rounded to whole grains. Sand is only ever added (nothing erases; easing off
+    /// is how you stop). The classic circular figure with its self-similar lobes
+    /// comes from the drop-and-relax protocol: pour one heavy mark on a single
+    /// frame (`pour: 1024` under a small disc) and let the mountain collapse. A
+    /// mark *held* down is a torrent instead: its middle stays molten, cells at
+    /// four grains and above, for as long as you keep pouring, and crystallizes
+    /// into lacework when you stop.
+    ///
+    /// The state is the grain count in quarters: a stable cell reads 0, ¼, ½, or ¾
+    /// gray for 0…3 grains, and cells holding more flash brighter. Four flat levels
+    /// are made for `.filtered(.gradientMap(...))`: one color per count, the
+    /// classic way these piles are pictured. An avalanche front moves one texel per
+    /// toppling pass, so `topplings` is the pacing dial: a few passes per frame let
+    /// you watch each wave roll across the pile, 128 hurries a collapse.
+    public static func sandpile(pour: Int = 64, topplings: Int = 32) -> Sim {
+        Sim(kind: .sandpile(pour: max(1, min(1024, pour)),
+                            topplings: max(1, min(128, topplings))))
+    }
+
     // MARK: Renderer hooks (internal)
 
     /// Whether this sim runs the dedicated multi-field fluid pipeline (`runFluid`)
@@ -229,6 +262,9 @@ public struct Sim: Sendable {
                                             // back in substeps instead
         case .fluid:             return 1   // unused: the fluid runs its own pipeline
         case .multiScaleTuring:  return 1   // unused: Turing runs its own pipeline
+        case let .sandpile(_, topplings):
+            return topplings                // the pacing dial: an avalanche front
+                                            // moves one texel per pass
         }
     }
 
@@ -246,6 +282,7 @@ public struct Sim: Sendable {
                                                             // not a constant (a flat field is a
                                                             // fixed point of the rule), so the slot
                                                             // fills it with a seeded hash instead
+        case .sandpile:          return SIMD4(0, 0, 0, 1)   // an empty table
         }
     }
 
@@ -258,6 +295,7 @@ public struct Sim: Sendable {
         case .ripples:           return "ollin_sim_ripples"
         case .fluid:             return ""   // unused: the fluid dispatches its own fragments
         case .multiScaleTuring:  return ""   // unused: Turing dispatches its own fragments
+        case .sandpile:          return "ollin_sim_sandpile"
         }
     }
 
@@ -271,6 +309,7 @@ public struct Sim: Sendable {
         switch kind {
         case .ripples:          return "ollin_sim_inject_height"
         case .multiScaleTuring: return "ollin_sim_inject_luma"
+        case .sandpile:         return "ollin_sim_inject_sand"
         default:                return "ollin_sim_inject"
         }
     }
@@ -295,6 +334,8 @@ public struct Sim: Sendable {
             return []   // unused: the fluid binds per-pass parameters itself
         case .multiScaleTuring:
             return []   // unused: Turing binds per-pass parameters itself
+        case let .sandpile(pour, _):
+            return [SIMD4(Float(pour), 0, 0, 0)]   // read by the inject, not the step
         }
     }
 }

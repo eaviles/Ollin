@@ -8,7 +8,9 @@
 // A SimField renders the drawn seed marks into one texture, then the renderer runs
 // these passes on its persistent front buffer: `inject` composites the seeds onto the
 // state, then a step fragment advances it. params[0] is the texel size, params[1] the
-// sim's parameters. Neighbour reads wrap toroidally (fract of the uv).
+// sim's parameters. Neighbour reads wrap toroidally (fract of the uv), except where a
+// sim's physics forbids it: ripples clamp (rings don't teleport) and the sandpile is
+// open (grains fall off the edge).
 
 // inject: overwrite the field state where a seed mark was drawn (by the seed's alpha),
 // so drawing into a SimField seeds/forces it; undrawn texels keep their state and
@@ -37,6 +39,27 @@ fragment float4 ollin_sim_inject_height(PresentOut in [[stage_in]],
     float4 d = seed.sample(samp, in.uv);
     float drop = dot(d.rgb, float3(0.2126, 0.7152, 0.0722));
     return float4(s.r + drop, s.g, 0.0, 1.0);
+}
+
+// The sandpile inject: pouring, not painting. A drawn mark *adds* grains where it
+// lands: params[1].x grains per frame for a full-white texel, scaled by the mark's
+// brightness (the seed is premultiplied, so a soft-alpha mark pours less) and
+// rounded to whole grains, which keeps the count on the integer lattice the
+// toppling rule needs (a faint anti-aliased fringe rounds to nothing rather than
+// leaving fractional sand). The state stores grains in quarters (one grain = 0.25),
+// written to all three channels for a readable gray image but *read* from .r only:
+// a luminance dot product is off by an ulp, and the toppling threshold is an exact
+// comparison. Nothing erases; sand only leaves by toppling off the field's edge.
+fragment float4 ollin_sim_inject_sand(PresentOut in [[stage_in]],
+                                      texture2d<float> state [[texture(0)]],
+                                      texture2d<float> seed [[texture(1)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float q = state.sample(samp, in.uv).r;
+    float4 d = seed.sample(samp, in.uv);
+    float pour = dot(d.rgb, float3(0.2126, 0.7152, 0.0722)) * params[1].x;
+    float nq = q + rint(pour) * 0.25;
+    return float4(nq, nq, nq, 1.0);
 }
 
 // The interactive-water step: state is (height, velocity), both signed about
@@ -106,6 +129,50 @@ fragment float4 ollin_sim_life(PresentOut in [[stage_in]],
     float alive = (self > 0.5) ? ((n == 2.0 || n == 3.0) ? 1.0 : 0.0)
                                : ((n == 3.0) ? 1.0 : 0.0);
     return float4(float3(alive), 1.0);
+}
+
+// One sandpile neighbour's contribution: a quarter (one grain) per toppling it
+// performs this pass, i.e. floor of its stored quarters (a cell holding 4k...4k+3
+// grains topples k times at once; see the step below). Off the edge there is no
+// neighbour at all, so the guard must reject the position rather than let the
+// clamping sampler read the edge texel back as its own neighbour: the open
+// boundary is load-bearing. Grains toppled across it are simply gone, and that
+// dissipation is what lets a fed pile keep settling; on a wrapped field sand
+// only accumulates until every cell topples forever.
+static inline float ollin_sandpile_gives(texture2d<float> src, sampler samp, float2 p) {
+    if (p.x <= 0.0 || p.x >= 1.0 || p.y <= 0.0 || p.y >= 1.0) { return 0.0; }
+    return floor(src.sample(samp, p).r) * 0.25;
+}
+
+// The Abelian sandpile, the classic toppling automaton: the state is a grain
+// count stored in quarters (one grain = 0.25, so a stable cell reads 0, 1/4, 1/2,
+// or 3/4 gray), read from .r and written as gray. Each pass, every cell holding
+// at least four grains topples as many times as it can at once: for every four
+// grains it holds it sends one to each of its four neighbours, keeping the
+// remainder, so the update is q' = fract(q) + sum of floor(neighbour q) / 4.
+// Any parallel schedule is safe because topplings commute (Dhar's abelian
+// property): the settled pile is the same in any order, and toppling k times in
+// one pass is just the k-fold toppling operator. Where every cell holds fewer
+// than eight grains (the critical regime a fed pile lives in) this is exactly
+// one toppling per pass; the multiple form only differs at a hot source, which
+// it drains exponentially instead of pooling: under single toppling a saturated
+// blob's interior is net zero (lose four, receive four back) and a heavy pour
+// stacks up at the source for thousands of passes. Quarters in a half-float
+// texel stay exact to 2048 grains, above anything the clamped pour can stack in
+// a frame, so the arithmetic below (in float, on quarter steps) is exact.
+fragment float4 ollin_sim_sandpile(PresentOut in [[stage_in]],
+                                   texture2d<float> src [[texture(0)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float2 uv = in.uv;
+    float q = src.sample(samp, uv).r;
+    float nq = q - floor(q)
+             + ollin_sandpile_gives(src, samp, uv - float2(t.x, 0.0))
+             + ollin_sandpile_gives(src, samp, uv + float2(t.x, 0.0))
+             + ollin_sandpile_gives(src, samp, uv - float2(0.0, t.y))
+             + ollin_sandpile_gives(src, samp, uv + float2(0.0, t.y));
+    return float4(nq, nq, nq, 1.0);
 }
 
 // Lenia: the continuous Game of Life. The state is a smooth 0…1 mass in .r. Each step
