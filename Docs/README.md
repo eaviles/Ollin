@@ -73,6 +73,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Isolines`](./Generators/Isolines.md) - `isolines`, level curves of any scalar field or an image's tone by marching squares, from metaball outlines to contour maps
 - [`Isosurfaces`](./Generators/Isosurface.md) - `isosurface` / `Metaballs`, the surface where a field over space crosses a level, marched into a `Mesh`: soft spheres that fuse, noise volumes, gyroids
 - [`Subdivision surfaces`](./Generators/SubdivisionSurfaces.md) - `mesh.subdivided`, a low-poly control cage refined into a smooth solid by the Catmull-Clark or Loop rules, with welding and open-edge handling built in
+- [`Mesh growth`](./Generators/MeshGrowth.md) - `MeshGrowth` / `MeshReactionDiffusion`, a surface that grows more area than it has room for and folds: brain coral, branching coral, a ruffled leaf margin
 - [`Hulls`](./Generators/Hulls.md) - `concaveHull` / `alphaShape`, the tighter answers to "what shape are these points?": one gulf-hugging simple polygon, or the scatter's true footprint with islands and holes
 - [`Medial axis`](./Generators/MedialAxis.md) - `medialAxis`, a shape reduced to its skeleton, every point carrying its inscribed-disk radius
 - [`Straight skeleton`](./Generators/StraightSkeleton.md) - `straightSkeleton`, the shrinking-boundary ridge network with faces and exact mitered insets (`inset(by:)`), the topographic-contour ladder from one build

@@ -194,6 +194,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("subdivision-surfaces",
                  note: "A cube and an extruded star smoothed with mesh.subdivided under a fixed camera (no time, no random): the cube through the quad rules at levels 1 and 3 with its wireframe cage ghosted over the level-3 solid, the star through both the quad and triangle rules. Pins the whole pipeline: the positional weld of flat-shaded cage vertices, quad recovery from the generator triangle pattern, the Catmull-Clark and Loop masks with the limit push, and the smooth-normal output the lighting reads.",
                  make: { SubdivisionSurfaceScene() }),
+    SnapshotCase("mesh-growth",
+                 note: "Two seeded surfaces grown to a fixed step count under a fixed camera (no time, one pinned seed each): a sphere under the uniform driver, which folds evenly all over, and one under a banded field driver, which ruffles only where the band grows. Pins the growth pipeline end to end: the welded input topology, the growth springs and two-hop self-avoidance, the split/collapse/flip remeshing that keeps the surface a closed manifold while its topology churns, and the bending term that decides how big the folds come out.",
+                 make: { MeshGrowthScene() }),
     SnapshotCase("effects-simfield", frame: 60,
                  note: "A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame 60 and recoloured. Pins the stateful sim substrate end to end: the persistent ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and the headless render-every-frame warmup the built-up state depends on.",
                  make: { EffectsSimField() }),
@@ -5390,5 +5393,43 @@ private final class FractalFlameScene: Sketch {
     override func draw() {
         background(.black)
         if let picture { drawImage(picture, in: canvasRectangle) }
+    }
+}
+
+/// Two surfaces grown to a fixed step count: a sphere under even growth beside
+/// one grown only in a band around its equator. Fixed camera, fixed seeds, no
+/// time.
+private final class MeshGrowthScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0A0D12))
+        lightingPreset(.studio)
+        camera(Camera3D.orbiting(target: .zero, radius: 9.5,
+                                 azimuth: 0.6, elevation: 0.42, fieldOfView: .pi / 4))
+
+        let seedMesh = Mesh.icosphere(radius: 0.8, subdivisions: 2)
+
+        let even = MeshGrowth(mesh: seedMesh, driver: .uniform, edgeLength: 0.13, seed: 5)
+        even.maxVertices = 2400
+        even.step(70)
+
+        let banded = MeshGrowth(mesh: seedMesh,
+                                driver: .field { position, _ in
+                                    1 - smoothstep(0.08, 0.5, abs(position.y))
+                                },
+                                edgeLength: 0.13, seed: 5)
+        banded.maxVertices = 2400
+        banded.step(70)
+
+        fill(Color(hex: 0xE2603A))
+        withState {
+            translate(-2.3, 0, 0)
+            drawMesh(even.mesh)
+        }
+        withState {
+            translate(2.3, 0, 0)
+            drawMesh(banded.mesh)
+        }
     }
 }

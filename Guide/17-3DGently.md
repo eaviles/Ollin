@@ -295,6 +295,45 @@ Any mesh works as a cage with no preparation. The primitives, an extrusion, a la
 
 Like erosion below, this is `setup()`-shaped work: each level roughly quadruples the face count, so refine once, keep the mesh, and let `draw()` just draw it. Two or three levels is almost always enough.
 
+## A surface that outgrows itself
+
+Subdividing takes a shape you designed and smooths it. This does the opposite: it hands you a shape nobody designed, out of a rule you can say in one sentence.
+
+Take a mesh. Push its vertices apart, and split any triangle that stretches so the triangles stay a fixed size. The surface now has more area than it started with, and here is the part that matters: **nothing is pushing it outward**. The forces run along its own edges, and those lie in the surface. It cannot get bigger the way a balloon does. So the new area has to go somewhere, and the only direction left is sideways. It folds.
+
+```swift
+// setup(), and keep it:
+growth = MeshGrowth(mesh: .icosphere(subdivisions: 3), driver: .uniform, seed: 7)
+
+// draw():
+growth.step()
+drawMesh(growth.mesh)
+```
+
+<img src="Images/17-3DGently/GrowingSurface.jpg" alt="Three forms in a row against black: a smooth yellow sphere labelled the seed, an orange ball completely covered in even brain-like folds labelled everywhere, and a flattened orange form with a smooth top and a ruffled rim labelled at the equator" width="680">
+
+That middle one is a plain sphere that grew evenly, and it is worth sitting with, because nobody told it to make lobes. Grow a ball uniformly and it does not become a bigger ball; it becomes a brain. Every fold in it is the surface running out of room.
+
+The `driver` decides *where* the growth is fastest, and since every driver folds, what you are really choosing is **where the folds go**:
+
+```swift
+MeshGrowth(mesh: seed, driver: .uniform)      // evenly, all over
+MeshGrowth(mesh: seed, driver: .curvature)    // wherever it already bulges
+
+// Only near the equator, the way a leaf grows along its margin.
+MeshGrowth(mesh: seed, driver: .field { position, _ in
+    1 - smoothstep(0.1, 0.5, abs(position.y))
+})
+```
+
+The third panel is that last one: the poles never grew, so they stayed smooth, and everything the band made had to ruffle. It is the same rule as the lettuce leaf and the kale edge, which grow faster along the rim than through the middle and buckle for exactly this reason.
+
+The two knobs worth knowing early. `edgeLength` is the triangle size, so it sets the finest fold the surface can hold and it is where the cost lives. `stiffness` is how much the surface resists bending, and it decides how *big* the folds come out: a sheet with no stiffness buckles at the smallest scale it can and reads as crumpled paper, while more of it gathers the same growth into broader waves. If a result looks like foil someone sat on, that is the knob.
+
+There is a fourth driver, `.chemical`, that runs a reaction-diffusion pattern in the surface and grows where the pattern collects, so the chemistry decides where to add area and the new area gives the chemistry more room to spread. That is the branching-coral one, and the [reference page](../Docs/Generators/MeshGrowth.md) has it along with self-avoidance, open sheets that keep their rims, and the cost.
+
+Growth is slow on purpose: a form takes hundreds of steps, and stepping once a frame while you watch it develop is most of the pleasure. `maxVertices` is the ceiling that keeps it interactive, and it also decides how far a form gets before it settles.
+
 ## A landscape you grow
 
 Loading a mesh gets you a shape somebody else made. Generating one gets you a shape nobody has seen. Terrain is the friendliest place to start, because a landscape is just a height for every point on a grid, and Ollin has a type for exactly that.

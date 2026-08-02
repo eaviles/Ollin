@@ -540,6 +540,7 @@ let package = Package(
         example("3D/Geometry/Terrain"),
         example("3D/Geometry/Metaballs"),
         example("3D/Geometry/SubdivisionSurfaces"),
+        example("3D/Geometry/MeshGrowth"),
         example("3D/Camera/CameraControl"),
         example("3D/Camera/CameraMoves"),
         example("3D/Camera/SceneViews"),
