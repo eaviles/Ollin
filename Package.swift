@@ -625,6 +625,7 @@ let package = Package(
         example("Randomness/Walk"),
         example("Randomness/Variations"),
         example("Patterns/CliffordAttractor"),
+        example("Patterns/Bifurcation"),
         example("Patterns/DotGrid"),
         example("Patterns/Grid"),
         example("Patterns/Phyllotaxis"),

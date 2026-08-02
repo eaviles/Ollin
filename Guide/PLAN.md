@@ -41,7 +41,7 @@ Also tracked here so they aren't forgotten:
 
 - The figure runner stays a local gate rather than a CI job, and the reason is the runner rather than the cost. Scarce CI minutes were the original reason and no longer decide it, since a full run went from twenty minutes to about three. What decides it now is that a CI runner cannot do this job honestly. Two figures (`21-Seeing/MotionBrush` and `21-Seeing/FlowArrows`) measure optical flow through the same Vision request `build.yml` already skips, because the virtualized runner fails it, and rendered pixels are GPU-specific anyway, so a CI render could only report that a figure compiled and ran, never that it still looks right. Reopen this if those figures are ever reworked, or if the runner grows a compile-only mode, which would catch the real rot (an API rename breaking a figure) without needing a GPU at all.
 - The full run of 213 figures takes about three minutes cold and under a second when nothing changed, so run the whole suite rather than reaching for `--only`. It used to take twenty, which was long enough that a session could talk itself into skipping the gate; the cache and the worker shards that fixed it are described in *Figures* in [AUTHORING.md](AUTHORING.md).
-- The two figures that genuinely cannot reproduce (`16-Simulations/ArtificialLife` and `16-Simulations/FluidAndBlobs`, whose GPU sims are atomic-race-ordered and chaotic) carry `// figure: unstable`, so the runner verifies them without rewriting their images. There is no `git restore` step any more; a clean `git status` after a run is now the expected result, and churn under `Guide/Images` means something real changed.
+- The three figures that genuinely cannot reproduce (`16-Simulations/ArtificialLife` and `16-Simulations/FluidAndBlobs`, whose GPU sims are atomic-race-ordered and chaotic, and `21-Seeing/Trajectory`, whose Vision model's fitted parabola drifts in its low-order bits across model/OS updates while staying byte-identical within a session) carry `// figure: unstable`, so the runner verifies them without rewriting their images. There is no `git restore` step any more; a clean `git status` after a run is now the expected result, and churn under `Guide/Images` means something real changed.
 - A website (Guide + Docs + gallery) is a later project; keep all markdown portable (plain relative links, standard tables, no HTML beyond the sanctioned `<img width>` figure embed in AUTHORING.md).
 - Translations are out of scope for now.
 
@@ -132,11 +132,11 @@ Figures: branch-stack diagram; L-system expansion table + drawing per iteration;
 Draws from: `Docs/Generators/LSystem.md`, `Docs/Generators/SpaceColonization.md`, `Docs/Generators/DiffusionLimitedAggregation.md`, `Docs/Generators/WaveFunctionCollapse.md`; `Examples/Patterns/LSystem`, `Examples/Patterns/Venation`, `Examples/Patterns/Dendrite`, `Examples/Patterns/WaveFunctionCollapse`.
 
 **12. Fields and flow.**
-Teaches: a field as "an answer at every point" (the mental model shaders and SDFs later reuse); visualizing a field with arrows; `FlowField` from noise; level curves of a scalar field (`isolines`, marching squares, the stacked-levels contour map, the image form); tracing streamlines; evenly-spaced streamlines; advecting particles; strange attractors as found motion.
+Teaches: a field as "an answer at every point" (the mental model shaders and SDFs later reuse); visualizing a field with arrows; `FlowField` from noise; level curves of a scalar field (`isolines`, marching squares, the stacked-levels contour map, the image form); tracing streamlines; evenly-spaced streamlines; advecting particles; strange attractors as found motion; the logistic map and its bifurcation diagram (one dial's route to chaos).
 Assumes: Ch 5 (noise), Ch 8 (vectors).
 Payoff: a flow-field print (the Fidenza look, credited as such).
-Figures: field-of-arrows diagram; streamline tracing step diagram; even-spacing comparison; attractor plates; the print.
-Draws from: `Docs/Generators/FlowField.md`, `Docs/Drawing/Attractors.md`; `Examples/Patterns/Streamlines`, `Examples/3D/StrangeAttractor`.
+Figures: field-of-arrows diagram; streamline tracing step diagram; even-spacing comparison; attractor plates; the labeled bifurcation diagram; the print.
+Draws from: `Docs/Generators/FlowField.md`, `Docs/Drawing/Attractors.md`, `Docs/Generators/Bifurcation.md`; `Examples/Patterns/Streamlines`, `Examples/Patterns/Bifurcation`, `Examples/3D/StrangeAttractor`.
 
 **13. Shapes as material.**
 Teaches: `Path` and `Shape` (curves, contours, holes); booleans (union/subtract/intersect) as vocabulary; offsetting; Voronoi and Delaunay from scattered points; blue-noise scatter; circle and shape packing; hatching fills for pen plotters; SVG export.
@@ -277,6 +277,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Generators/WaveFunctionCollapse.md` | Ch 11 | taught |
 | `Generators/FlowField.md` (streamlines, advection) | Ch 12 | taught |
 | `Drawing/Attractors.md` (strange attractors, chaotic maps) | Ch 12 | taught |
+| `Generators/Bifurcation.md` (`IteratedMap`: the logistic/sine/tent/gauss families, bifurcation diagrams, cobwebs, Lyapunov exponents) | Ch 12 | taught ("One dial away from chaos" with the labeled diagram figure, the diagram read as a story, and the cobweb/exponent companions pointed at the example) |
 | `Drawing/Geometry.md`: `Path`, `Shape`, booleans, offset | Ch 13 | taught |
 | `Drawing/Voronoi.md` (+ Delaunay, Lloyd) | Ch 13 | taught |
 | `Generators/BlueNoise.md` | Ch 13 | taught |

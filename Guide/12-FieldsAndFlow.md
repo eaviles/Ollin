@@ -134,6 +134,21 @@ for _ in 0 ..< 30_000 {
 
 The plates accumulate on a canvas that never clears, with `blendMode(.add)`, so instead of painting over what's below, each faint dot *adds* its light, so the places the orbit revisits glow brighter, a first taste of the additive layering Chapter 14 develops. Every constant in `clifford(a:b:c:d:)` reshapes the ghost completely. Most values collapse to a dot or explode into static, and part of the craft is collecting constants that sing (the four plates are four such finds). The 3D members of this family, Lorenz and friends, live in `StrangeAttractor` and wait for Chapter 17's camera.
 
+## One dial away from chaos
+
+The maps above have fixed constants. Give a map a single dial instead and you can ask a bigger question: not "what does this formula draw" but "*when* does it fall apart". That's what the one-dimensional `IteratedMap` family is for. Its famous member is the logistic map, `x' = r·x·(1 − x)`, a toy model of a population: `x` is this year's crowding, `r` is how fast it breeds. Sweep the dial, let the orbit settle at each position, and plot where it landed:
+
+```swift
+let map = IteratedMap.logistic()                            // x' = r·x·(1 − x)
+let plate = map.bifurcationImage(width: 800, height: 460)   // sweeps r = 2.4...4
+```
+
+<img src="Images/12-FieldsAndFlow/Bifurcation.jpg" alt="The logistic map's bifurcation diagram in dark ink on white: a single settled line forks into two branches, then four, compressing into a gray band of chaos threaded with pale periodic windows, with the forks at 3.0 and 3.45 and the period-3 window at 3.83 labeled" width="680">
+
+The picture is the **bifurcation diagram**, and it reads left to right like a story. At low `r` the population settles to one steady value: a single line. At 3 the line forks, and the orbit flips between two values forever. The forks come faster and faster until, just past 3.57, they never stop coming and the orbit never repeats again. Nothing random was added anywhere in this picture; chaos here is a dial turned too far. The pale slots inside the gray are windows where order briefly returns, and the wide one near 3.83 holds the entire diagram again in miniature (sweep `over: 3.82...3.87` and see).
+
+Two companions complete the toolkit: `cobweb(at:steps:)` traces one orbit as the classic staircase between the map's curve and the diagonal (the way to *watch* a single dial position think), and `lyapunovExponent(at:)` scores one: negative means settling, positive means chaos. The [`Examples/Patterns/Bifurcation`](../Examples/Patterns/Bifurcation/Sketch.swift) example prints the diagram with the exponent traced beneath it, dipping below zero at every window.
+
 ## Putting it together: the print
 
 Everything above compresses into a surprisingly short piece with a long pedigree: evenly spaced streamlines, three ribbon weights, a warm palette, and cream paper. Make `MySketches/FlowPrint.swift`:
@@ -179,16 +194,17 @@ Then make it yours:
 
 ## Where this comes from
 
-Vector fields are old mathematics, since fluid dynamics and electromagnetism both run on them, and creative coding borrowed the flow field as a drawing device, with Processing-era sketches passing the recipe around. The evenly spaced tracing is Bruno Jobard and Wilfrid Lefer's 1997 streamline-placement algorithm from scientific visualization. Curl noise as a graphics tool is Robert Bridson's 2007 formulation. The print at the top tips its hat to Tyler Hobbs, whose flow-field work, above all *Fidenza* (2021), defined the look for a generation and whose essay "Flow Fields" generously teaches the craft. The Clifford attractor is named for Clifford Pickover and the de Jong attractor for Peter de Jong, both popularized through Paul Bourke's long-running fractal pages. Marching squares is the two-dimensional version of the marching cubes algorithm William Lorensen and Harvey Cline published in 1987 for medical imaging, which is where a great many of these techniques were born before artists found them. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Vector fields are old mathematics, since fluid dynamics and electromagnetism both run on them, and creative coding borrowed the flow field as a drawing device, with Processing-era sketches passing the recipe around. The evenly spaced tracing is Bruno Jobard and Wilfrid Lefer's 1997 streamline-placement algorithm from scientific visualization. Curl noise as a graphics tool is Robert Bridson's 2007 formulation. The print at the top tips its hat to Tyler Hobbs, whose flow-field work, above all *Fidenza* (2021), defined the look for a generation and whose essay "Flow Fields" generously teaches the craft. The Clifford attractor is named for Clifford Pickover and the de Jong attractor for Peter de Jong, both popularized through Paul Bourke's long-running fractal pages. The logistic map and its bifurcation diagram were made famous by Robert May's 1976 *Nature* paper "Simple mathematical models with very complicated dynamics", and the universal rhythm of its forks (the same cascade appears in the sine map, and in dripping faucets) is Mitchell Feigenbaum's discovery. Marching squares is the two-dimensional version of the marching cubes algorithm William Lorensen and Harvey Cline published in 1987 for medical imaging, which is where a great many of these techniques were born before artists found them. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Flow fields](../Docs/Generators/FlowField.md): the full `FlowField` reference, including advection and the transient-sugar rule.
 - [Attractors](../Docs/Drawing/Attractors.md): every built-in system, 2D and 3D, and how to supply your own equations.
+- [Chaotic maps & bifurcation](../Docs/Generators/Bifurcation.md): the one-dimensional families, the diagram's dot and density forms, cobwebs, and Lyapunov exponents.
 - [Noise](../Docs/Generators/Noise.md): the field the flow is made of.
 - [Isolines](../Docs/Generators/Isolines.md): the single-level and stacked-level forms, the image form, resolution, and what open versus closed contours mean.
 - [Steering](../Docs/Generators/Steering.md): creatures that *follow* a field instead of riding it (Chapter 10's `follow(_:)`).
-- Worked examples: [`Examples/Patterns/Streamlines`](../Examples/Patterns/Streamlines/Sketch.swift) (evenly spaced, hue drifting along the flow), [`Examples/Patterns/CliffordAttractor`](../Examples/Patterns/CliffordAttractor/Sketch.swift) (the density bloom, built up live), and [`Examples/Motion/FlowField`](../Examples/Motion/FlowField/Sketch.swift) (a curl field of drifting needles).
+- Worked examples: [`Examples/Patterns/Streamlines`](../Examples/Patterns/Streamlines/Sketch.swift) (evenly spaced, hue drifting along the flow), [`Examples/Patterns/CliffordAttractor`](../Examples/Patterns/CliffordAttractor/Sketch.swift) (the density bloom, built up live), [`Examples/Patterns/Bifurcation`](../Examples/Patterns/Bifurcation/Sketch.swift) (the logistic diagram with its Lyapunov trace, zoomable by knob), and [`Examples/Motion/FlowField`](../Examples/Motion/FlowField/Sketch.swift) (a curl field of drifting needles).
 
 ---
 

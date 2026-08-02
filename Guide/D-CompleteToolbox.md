@@ -131,6 +131,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Space colonization | Branching growth toward attraction points: veins and venation | [Ch 11](11-GrowingThings.md) | [SpaceColonization](../Docs/Generators/SpaceColonization.md) |
 | Diffusion-limited aggregation | Walkers that freeze on contact into dendrites and frost | [Ch 11](11-GrowingThings.md) | [DiffusionLimitedAggregation](../Docs/Generators/DiffusionLimitedAggregation.md) |
 | Strange attractors | Lorenz, Clifford, de Jong, and friends, as orbits you draw | [Ch 12](12-FieldsAndFlow.md) | [Attractors](../Docs/Drawing/Attractors.md) |
+| Chaotic maps & bifurcation | The logistic route to chaos: bifurcation diagrams, cobweb staircases, Lyapunov exponents | [Ch 12](12-FieldsAndFlow.md) | [Bifurcation](../Docs/Generators/Bifurcation.md) |
 | Cellular automata | `elementaryCA` / `totalisticCA` rules and `Turmite` ants: tiny rules, long runs | [Ch 16](16-Simulations.md) | [Cellular automata](../Docs/Generators/CellularAutomata.md) |
 | Lenia | `.lenia`: the continuous Game of Life, smooth mass that grows colonies and creatures | [Ch 16](16-Simulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
 

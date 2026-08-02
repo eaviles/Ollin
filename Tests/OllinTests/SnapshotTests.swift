@@ -236,6 +236,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("clifford-attractor", frame: 24,
                  note: "A Clifford map accumulated additively over several frames. Pins the iterated map plus the noClear density build-up.",
                  make: { CliffordAttractorScene() }),
+    SnapshotCase("bifurcation",
+                 note: "One-dimensional maps three ways: the logistic bifurcation diagram as a log-toned density image, the Gauss mouse diagram as swept dots, and a cobweb staircase over its curve and diagonal. Pins the sweep's column-center sampling, the density image's global log tone, the point mapping, and the cobweb/graph geometry. No rng and no time, so it is deterministic.",
+                 make: { BifurcationScene() }),
     SnapshotCase("solid-primitives-3d",
                  note: "The five solid primitives through a fixed camera. Pins the depth-tested mesh pipeline, the auto-lit default material (each fill shaded by the default rig), and the model-matrix + normal baking (each shape is placed/rotated by the 3D transform stack).",
                  make: { SolidPrimitives3DScene() }),
@@ -4606,6 +4609,45 @@ private final class CliffordAttractorScene: Sketch {
         fill(Color(red: 0.42, green: 0.74, blue: 1.0, alpha: 0.06))
         pointSize(1.0)
         drawPoints(points)
+    }
+}
+
+/// One-dimensional maps three ways: the logistic diagram as a density image,
+/// the Gauss mouse diagram as swept dots, and a cobweb over its curve and
+/// diagonal. Everything is a pure function of the maps, so one frame pins it.
+private final class BifurcationScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.white)
+
+        // The logistic diagram, log-toned ink on white, drawn 1:1.
+        let map = IteratedMap.logistic()
+        if let plate = map.bifurcationImage(width: 150, height: 256,
+                                            samplesPerColumn: 600, settle: 500) {
+            drawImage(plate, 0, 0)
+        }
+
+        // The Gauss mouse as swept dots through the drawing sugar.
+        noStroke()
+        fill(Color(hex: 0x1F2033).withAlpha(0.35))
+        pointSize(1)
+        drawBifurcation(IteratedMap.gauss(),
+                        in: Rectangle(x: 158, y: 6, width: 92, height: 112),
+                        columns: 92, perColumn: 90, settle: 400)
+
+        // A cobweb converging to the logistic 2-cycle at r = 3.4, over the
+        // curve and the diagonal.
+        let frame = Rectangle(x: 158, y: 152, width: 92, height: 92)
+        func place(_ p: Vector2) -> Vector2 { frame.point(u: p.x, v: 1 - p.y) }
+        noFill()
+        strokeWeight(1)
+        stroke(Color(hex: 0x9AA1B4))
+        drawLine(place(Vector2(0, 0)), place(Vector2(1, 1)))
+        stroke(Color(hex: 0x2E6E4E))
+        drawPolyline(map.graph(at: 3.4).map(place), closed: false)
+        stroke(Color(hex: 0xB0492C))
+        drawPolyline(map.cobweb(at: 3.4, steps: 28, from: 0.08).map(place), closed: false)
     }
 }
 

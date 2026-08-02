@@ -2301,6 +2301,37 @@ pendulum became its second caller. Examples `3D/StrangeAttractor` +
 `Patterns/CliffordAttractor`; snapshots `strange-attractor-3d` +
 `clifford-attractor`.
 
+`Geometry/Bifurcation.swift` adds the family's 1D member, `IteratedMap`:
+where `ChaoticMap` is a fixed rule, this is a parameterized *family*
+`x' = f(x, r)` (the closure takes `(x, r)`), because the bifurcation
+diagram is a sweep over `r`. Factories logistic / sine / tent /
+gauss(alpha:) carry an analytic `derivative` plus the canonical sweep
+window (`parameterRange`) and vertical axis (`valueRange`); readings are
+`orbit(at:)`, `graph(at:)` (the hump), `cobweb(at:steps:)` (the
+graphical-iteration staircase, `2·steps + 1` points from `(x₀, floor)`),
+`bifurcation(over:columns:perColumn:settle:)` as `(r, x)` points (the
+plotter-friendly form `drawBifurcation` maps into a rect), and
+`bifurcationImage` (per-column orbit binned into pixel rows, tone =
+`log1p(count)` normalized by one global peak factor, the fractal-flame
+one-log-factor rule, ink on white). `lyapunovExponent(at:)` averages
+`ln |f′|` along the orbit, using the analytic derivative when present and
+a central difference otherwise, flooring `|f′|` at 1e-12 so a superstable
+visit doesn't emit −∞; `BifurcationTests` pins it to the exact known
+values (`ln r` for the tent map termwise, `ln 2` for logistic r = 4 via
+the tent conjugacy) and pins the cascade itself (fixed point below 3, the
+2-cycle's closed form at 3.2, period 4 at 3.5, period 3 inside the
+1 + √8 window). Two numerical decisions are load-bearing: sweeps sample
+**column centers**, never the range endpoints, because some families are
+degenerate exactly there (the μ = 2 tent orbit collapses to 0 in binary
+floating point, one doubled bit per step, ~50 steps and it's gone); and
+the factory `start` values avoid the critical point 0.5, whose logistic
+orbit dies in two steps at exactly r = 4 (0.5 → 1 → 0). The gauss family
+genuinely holds two coexisting attractors over part of its window, so its
+diagram depends on `start`; that's the map, not a bug. Everything is
+rng-free and pure, so the diagram is render-once `setup()` work and the
+example holds it in a retained `Batch`. Example `Patterns/Bifurcation`;
+snapshot `bifurcation`; `BifurcationTests`.
+
 ### IK chains, the double pendulum, and N-body
 
 `Geometry/IKChain.swift` / `DoublePendulum.swift` / `NBody.swift`: three

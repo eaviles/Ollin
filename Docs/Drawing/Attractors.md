@@ -9,6 +9,8 @@ A strange attractor is the shape a chaotic system settles onto: a bounded path t
 - **`StrangeAttractor`** is a *continuous* system, a velocity field integrated over time with fourth-order Runge-Kutta. Its orbit is a `[Vector3]`, so it rides the [point-cloud](../3D/3D.md) path through the camera. Lorenz, Rössler, Aizawa, and friends.
 - **`ChaoticMap`** is a *discrete* iterated map, a `[Vector2]` orbit you plot as a scatter of points (prettiest accumulated additively into a density field). Clifford, Peter de Jong, Hénon.
 
+The family's one-dimensional members (the logistic map and friends, with their bifurcation diagrams, cobwebs, and Lyapunov exponents) live in [`IteratedMap`](../Generators/Bifurcation.md).
+
 Each orbit is a pure function of its starting point and parameters, so a run always reproduces. Pick a system from the built-in factories, or supply your own rule.
 
 ### Contents
@@ -150,4 +152,4 @@ let mine = ChaoticMap(start: .zero) { p in
 
 ---
 
-See also [`3D`](../3D/3D.md) for the `PointCloud` and camera the continuous orbits ride, [`Accumulation`](Accumulation.md) and [`HDR`](HDR.md) for the additive density build-up the 2D maps want, and [`Voronoi`](Voronoi.md)/[`Grid`](Geometry.md) for the other geometry helpers.
+See also [`Chaotic maps & bifurcation`](../Generators/Bifurcation.md) for the one-dimensional members of this family (`IteratedMap`: the logistic route to chaos, bifurcation diagrams, cobwebs, Lyapunov exponents), [`3D`](../3D/3D.md) for the `PointCloud` and camera the continuous orbits ride, [`Accumulation`](Accumulation.md) and [`HDR`](HDR.md) for the additive density build-up the 2D maps want, and [`Voronoi`](Voronoi.md)/[`Grid`](Geometry.md) for the other geometry helpers.

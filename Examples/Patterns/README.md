@@ -10,6 +10,7 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 | Example | What it shows |
 |---|---|
 | [Apollonian](Apollonian/Sketch.swift) | an Apollonian gasket: every three-way gap between kissing circles filled by the one circle that touches all three, color sweeping through the generations so the filling order shows (`apollonianGasket`) |
+| [Bifurcation](Bifurcation/Sketch.swift) | the logistic map's bifurcation diagram as an ink print, with the Lyapunov exponent traced beneath: the settled orbit forks, doubles into chaos, and opens its periodic windows as the growth rate sweeps; knobs zoom the window (`IteratedMap`, `drawBifurcation`, `makeBatch`) |
 | [BlueNoise](BlueNoise/Sketch.swift) | blue-noise stippling: `poissonDisk` scatters points no two closer than a radius (Bridson's dart-throwing), the even-but-organic coverage that reads as natural texture |
 | [Chladni](Chladni/Sketch.swift) | a ringing square plate stepping through its Chladni figures: sand gathers along the still nodal lines while the modes morph and the whole cycle loops (`chladni`) |
 | [CirclePacking](CirclePacking/Sketch.swift) | grow-to-touch circle packing, both flavors: a self-seeding gap-filling pack, and a foam grown from a blue-noise scatter (`packCircles`) |

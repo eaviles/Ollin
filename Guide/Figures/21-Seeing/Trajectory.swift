@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 unstable
 //
 // Guide diagram (Chapter 21): the trajectory detector. Left: every fourth
 // frame the detector was shown, laid over each other, so the ball's flight
@@ -8,6 +8,11 @@
 // ball actually went in the rest of the made-up clip, frames the detector was
 // never shown, so the prediction can be checked by eye. The detection is the
 // real Vision request, run once over the frame sequence.
+//
+// Unstable because the detection is Vision's own model: the fitted parabola's
+// low-order bits drift across environments (byte-identical within a session,
+// not across model or OS updates), which nudges the dashed arc by a hair. No
+// seed exists to pin; the runner verifies the render without rewriting it.
 import Ollin
 import OllinVision
 

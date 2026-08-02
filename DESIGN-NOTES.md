@@ -118,7 +118,7 @@ This is the umbrella the [generative-geometry](#generative-geometry) tier is one
 - **Field techniques** that read per-pixel (a new noise basis, an interference field) land as a GPU `Generator` (a no-input `ollin_gen_*` fragment) or a user shader, reusing the layered-effects substrate rather than the CPU geometry path.
 - **Simulations** (multi-scale Turing patterns, iterated function systems accumulated on the GPU) run on the compute and `SimField` paths already in place: persistent ping-pong buffers or textures stepped each frame, drawn through the instanced or image path.
 
-The **chaotic-systems** family still wants its 1D entry (the logistic map and its bifurcation diagram, sweeping the growth rate and plotting the settling values) and a GPU leg: an MSL form of each system's derivative for the million-particle compute path, spliced like the noise prelude. Both lean on the fixed-step fourth-order Runge-Kutta step already shared in `Math/`; and a long orbit is exactly the static, large geometry a retained `Batch` (`makeBatch`/`drawBatch`) holds well.
+The **chaotic-systems** family still wants a GPU leg: an MSL form of each system's derivative for the million-particle compute path, spliced like the noise prelude, leaning on the fixed-step fourth-order Runge-Kutta step already shared in `Math/`.
 
 The rest of the catalog follows the same shape: a canonical algorithm (Bak-Tang-Wiesenfeld for the sandpile) implemented from the published source, credited in `ATTRIBUTION.md`'s Techniques list, seeded for reproducibility, and shipped with an example, several of which pair naturally with a [recreation](#examples-folder) (an attractor plot, a flow field, a substrate).
 
