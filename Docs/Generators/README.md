@@ -18,6 +18,7 @@
 - [`Hulls`](./Hulls.md) - `concaveHull` / `alphaShape`, the tighter answers to "what shape are these points?": one gulf-hugging simple polygon, or the scatter's true footprint with islands and holes
 - [`Medial axis`](./MedialAxis.md) - `medialAxis`, a shape reduced to its skeleton, every point carrying its inscribed-disk radius
 - [`Straight skeleton`](./StraightSkeleton.md) - `straightSkeleton`, the shrinking-boundary ridge network with faces and exact mitered insets (`inset(by:)`)
+- [`Force-directed layout`](./ForceLayout.md) - `ForceLayout`, a graph untangling itself: repulsion between all nodes, attraction along edges, cooling to an even web you can grow, pin, and drag
 - [`Marbling`](./Marbling.md) - `Marbling` / `drawMarbling`, paper marbling in closed form: drops, tines, combs, and swirls raking vector ink outlines into feathered papers
 - [`Watercolor`](./Watercolor.md) - `Watercolor` / `drawWatercolor`, watercolor pigment from recursively deformed polygons stacked as translucent layers
 - [`Chladni figures`](./Chladni.md) - `chladni`, a ringing plate's standing-wave field in closed form, plus the `.chladni` generator's sand and wave readings and the mode-by-pitch audio join

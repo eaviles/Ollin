@@ -320,6 +320,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("straight-skeleton",
                  note: "A lobed blob with an off-center hole carrying its straight skeleton: corner arcs faint, interior ridges strong, and a ladder of mitered insets that rings the hole and splits between the lobes. Pins the wavefront simulation (edge and split events, the clustered simultaneous cases, the hole's LAV merge) and the face-plane inset extraction with its exact stitching. Seeded, no time, so it is deterministic.",
                  make: { StraightSkeletonScene() }),
+    SnapshotCase("force-graph",
+                 note: "A seeded scale-free web settled by the force-directed layout: hubs ringed by their spokes, chains at the rim, edges and nodes drawn plainly through drawGraph. Pins the force pass (all-pairs repulsion, edge attraction, the temperature cap and frame clamp) and the linear cooling to a frozen standstill. Seeded, no time, so it is deterministic.",
+                 make: { ForceGraphScene() }),
     SnapshotCase("marbling",
                  note: "A marbled paper built from fixed operations: a two-ink bull's-eye combed downward into feathers, a stylus pull, and a small vortex. Pins every closed-form transform (the area-preserving drop, the tine/comb falloff law, the swirl rotation), the stretch-driven outline refinement, and drawMarbling's oldest-first stacking. No rng and no time, so it is deterministic.",
                  make: { MarblingScene() }),
@@ -1392,6 +1395,48 @@ private final class MedialAxisScene: Sketch {
                 drawCircle(center: pair.0, radius: pair.1)
             }
         }
+    }
+}
+
+/// A seeded scale-free web settled to a standstill by the force-directed
+/// layout, drawn through `drawGraph`. Seeded and no `time`, so it's
+/// deterministic.
+private final class ForceGraphScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var layout: ForceLayout?
+
+    override func setup() {
+        var rng = SplitMix64(seed: 11)
+        var edges: [(Int, Int)] = [(0, 1), (1, 2), (2, 0)]
+        var stubs = [0, 1, 1, 2, 2, 0]
+        for i in 3 ..< 42 {
+            let parent = stubs[Int(Double.random(in: 0 ..< 1, using: &rng) * Double(stubs.count))]
+            edges.append((i, parent))
+            stubs.append(i)
+            stubs.append(parent)
+            if Double.random(in: 0 ..< 1, using: &rng) < 0.3 {
+                let second = stubs[Int(Double.random(in: 0 ..< 1, using: &rng) * Double(stubs.count))]
+                if second != i, second != parent {
+                    edges.append((i, second))
+                    stubs.append(i)
+                    stubs.append(second)
+                }
+            }
+        }
+        let settled = ForceLayout(count: 42, edges: edges,
+                                  in: canvasRectangle.inset(by: 20), seed: 11)
+        settled.idealDistance *= 1.5
+        settled.settle()
+        layout = settled
+    }
+
+    override func draw() {
+        guard let layout else { return }
+        background(Color(hex: 0xF5F2EA))
+        stroke(Color(hex: 0x1A1B26).withAlpha(0.6))
+        strokeWeight(0.9)
+        fill(Color(hex: 0x1A1B26))
+        drawGraph(layout, nodeRadius: 3)
     }
 }
 

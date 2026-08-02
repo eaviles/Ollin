@@ -2498,6 +2498,38 @@ following seeks a point further along the arc length; `closed:` wraps
 through the seam (`SteeringTests`). `drawVehicle(_:size:)` sugar. Example
 `Motion/Steering`; snapshot `steering` (`frame: 150`).
 
+### Force-directed graph layout
+
+`ForceLayout` (`Geometry/ForceLayout.swift`) is the Fruchterman-Reingold
+spring embedder, faithful to the 1991 pseudocode: repulsion `k²/d` between
+all node pairs (accumulated once per pair, equal-and-opposite, in fixed
+index order), attraction `d²/k` along edges (per-edge `weight` multiplies
+the pull), each node's move capped at `temperature` and clamped to
+`bounds`, the temperature cooling *linearly* to zero over `coolingSteps`
+from `initialTemperature` (a tenth of the frame's larger side, the paper's
+figure). `k` (`idealDistance`) defaults to `√(area/n)`. Two honest facts
+worth keeping straight. First, `k` is a scale constant, not a promised edge
+length: for a ring of n nodes the radial components of the crowd's
+repulsion sum to exactly `(n−1)k²/2R` regardless of angle, giving the
+equilibrium `R⁴ = (n−1)k³/16sin³(π/n)`, spacing well under `k`; the
+measured settle sits on that equilibrium (6× longer cooling moves the mean
+edge ~1.5%), so a fuller frame comes from raising `k` (FR's own `C`
+multiplier), not from more iterations. Second, the freeze is real: at
+`temperature` 0 `step()` early-returns, so a settled layout is free to
+leave in `draw()`, and `reheat(_:)` (restore a fraction of
+`initialTemperature`) is the one way anything moves again; it's the idiom
+for growth (`addNode`/`connect`, then a small reheat) and for dragging
+(pin the grabbed node, write its position, keep `reheat(0.15)` topped up
+so neighbors follow). `gravity` (default 0, byte-identical off) is a
+phantom edge from every node to the bounds center scaled by its value,
+quadratic in distance, so small values (~0.01) center disconnected
+components and big ones crush the web. Coincident nodes part along an
+index-derived direction (deterministic tie-break). Everything is arrays in
+index order: seeded `SplitMix64` placement, no Set/Dictionary walks, so a
+run replays exactly (`sameSeedReplaysExactly`). Example
+`Patterns/ForceGraph` (scale-free growth by degree-weighted stub picks,
+drag-to-pull); snapshot `force-graph`; `ForceLayoutTests`.
+
 ### Strange attractors and chaotic maps
 
 `Geometry/Attractors.swift`. `StrangeAttractor` integrates the 3D systems

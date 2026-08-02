@@ -146,6 +146,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Inverse kinematics | `IKChain`: a segmented limb that reaches for a target, or a rope dragged by its tip | [Ch 9](09-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
 | Double pendulum | `DoublePendulum`: the classic chaos machine, deterministic and wildly sensitive | [Ch 9](09-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
 | Gravity at scale | `NBody`: thousands of bodies pulling on each other, with seeded disk and cluster scenes | [Ch 9](09-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
+| Force-directed layout | `ForceLayout`: a graph untangling itself into an even web you can grow, pin, and drag | [Ch 9](09-ForcesAndPhysics.md) | [ForceLayout](../Docs/Generators/ForceLayout.md) |
 
 | Artificial life | `ParticleLife`, `PPS`, `Physarum` on the public `SpatialHash` neighbor search | [Ch 16](16-Simulations.md) | [Artificial life](../Docs/Simulation/ArtificialLife.md) |
 | Particle fluids | `ParticleFluid`: SPH liquid with a free surface, splashes, and grabbing | [Ch 16](16-Simulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |

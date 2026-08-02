@@ -22,6 +22,7 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 | [ElementaryCA](ElementaryCA/Sketch.swift) | 1D cellular automata stacked as rows, elementary and 3-color totalistic, the rule and code on knobs: one number flips the picture between order, fractals, and chaos (`elementaryCA`, `totalisticCA`) |
 | [EnergyGrid](EnergyGrid/Sketch.swift) | columns sized by a moving "energy" share (`translate`, `drawRect`) |
 | [Flocking](Flocking/Sketch.swift) | a few hundred boids, each steering only by its neighbors (separate, align, cohere), the flock swirling and regrouping with no leader (`Boids`) |
+| [ForceGraph](ForceGraph/Sketch.swift) | a growing network laying itself out live: repulsion spreads the nodes, edges pull, hubs emerge from rich-get-richer growth, and any node drags with the web reflowing around it (`ForceLayout`) |
 | [FractalFlame](FractalFlame/Sketch.swift) | a random fractal flame refining live: the chaos game with nonlinear variations, structural coloring, and the log-density display, accumulated slice by slice; click to reroll (`FractalFlame`, `FractalFlame.Renderer`) |
 | [Girih](Girih/Sketch.swift) | Islamic star patterns by polygons-in-contact: a honeycomb's strapwork morphing as the contact angle sweeps, under a decagon-and-pentagons girih-tile medallion at the classic 54 degrees (`girihPattern`, `Girih.Tile`) |
 | [Grid](Grid/Sketch.swift) | a 16×16 `Grid` showing both element kinds: `cells` outline the frames, `points` dot each center, with `padding` and `gutter` shaping the lattice |

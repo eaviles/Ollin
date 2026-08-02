@@ -110,11 +110,11 @@ Figures: arrow-arithmetic diagrams (add, scale, normalize); the position/velocit
 Draws from: `Docs/Drawing/Geometry.md`, `Docs/Helpers/Math.md`; `Examples/Motion/`.
 
 **9. Forces and physics.**
-Teaches: force → acceleration by intuition; hand-rolled gravity/drag on the Ch 8 mover; then the `World`: Verlet particles and springs (soft), bodies/colliders/joints (rigid); `grab` for mouse interaction; when to hand-roll vs simulate.
+Teaches: force → acceleration by intuition; hand-rolled gravity/drag on the Ch 8 mover; then the `World`: Verlet particles and springs (soft), bodies/colliders/joints (rigid); `grab` for mouse interaction; the three ready-made motion systems; forces as arrangement (`ForceLayout`: repulsion everywhere plus springs on edges, cooled to a frozen web you can grow, pin, and drag); when to hand-roll vs simulate.
 Assumes: Ch 8.
 Payoff: an interactive physics toy (a hanging chain or tumbling stack the mouse can grab).
-Figures: force-accumulation diagram; spring-rest-length diagram; soft-vs-rigid contact sheet; the toy.
-Draws from: `Docs/Simulation/Physics.md`; `Examples/Physics/`.
+Figures: force-accumulation diagram; spring-rest-length diagram; soft-vs-rigid contact sheet; the motion-systems three-panel; the graph-settling three-panel; the toy.
+Draws from: `Docs/Simulation/Physics.md`, `Docs/Simulation/Motion.md`, `Docs/Generators/ForceLayout.md`; `Examples/Physics/`, `Examples/Patterns/ForceGraph`.
 
 **10. Flocks and swarms.**
 (Retitled from "Agents", 2026-07-06: the field's classic word for these rule-following creatures now reads as AI assistants, and this guide will outlive the collision. The chapter still teaches the term: open with a one-sentence disambiguation, crediting Craig Reynolds' 1986 *autonomous agents*, coined decades before "agent" meant software wielding a chatbot, then speak in flock/boid/creature language. Never use "agent" bare in headings or the TOC.)
@@ -331,6 +331,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Cellular automata: Lenia sim, `elementaryCA`/`totalisticCA`, `Turmite` (`Generators/CellularAutomata.md`) | Ch 16 | taught ("More ways to be an automaton": elementary rules as a numbered rule byte with rules 30/90/110, `totalisticCA` named, `Turmite`/Langton's ant held and stepped, and Lenia with its knobs and the dense-seed rule; two figures) |
 | `.sandpile` Abelian sandpile Sim (`Drawing/Effects.md`) | Ch 16 | taught ("A pile of sand" with a relaxed-pile figure: the four-grain toppling rule, order-independence as what licenses the GPU's parallel topplings, the drop-a-mountain protocol behind the classic figure versus the molten held torrent, the quarters state encoding and the one-color-per-count ramp, self-organized criticality as the discovery beyond the picture, and `topplings` as the pacing dial) |
 | Articulated & chaotic motion: `IKChain`, `DoublePendulum`, `NBody` (`Simulation/Motion.md`) | Ch 9 | taught (all three toured in "Three ready-made motion systems" with a three-panel figure: `reach`/`drag` and the solver/`maxBend` knobs, the pendulum's determinism-plus-sensitivity, and n-body's `theta`/`softening` and the seeded factories) |
+| Force-directed layout: `ForceLayout`, `drawGraph` (`Generators/ForceLayout.md`) | Ch 9 | taught (the graph-layout section with a three-panel settling figure: repulsion between all nodes plus springs on edges, the temperature cap and linear cooling, the reheat/pin/drag interaction vocabulary, `idealDistance` as the size dial, and seeded starts for reproducible layouts; weights and gravity pointed) |
 | Damped spring: `DampedSpring`, `@Sprung` (`Helpers/Animation.md`) | Ch 3 | taught (duration/bounce, the moving-target case that separates it from `@Eased`, and `kick`; `velocity` and `Vector2` springs pointed) |
 | `3D/3D.md` (camera, primitives, meshes, lights, materials) | Ch 17 | taught |
 | `3D/Camera.md` (cameraControl, moves, showcase, views) | Ch 17 | taught |

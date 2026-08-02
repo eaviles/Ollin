@@ -680,6 +680,7 @@ let package = Package(
         example("Patterns/Spirograph"),
         example("Patterns/Roses"),
         example("Patterns/Flocking"),
+        example("Patterns/ForceGraph"),
         example("Patterns/Venation"),
         example("Patterns/Dendrite"),
         example("Patterns/HexGrid"),

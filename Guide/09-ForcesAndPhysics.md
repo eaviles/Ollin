@@ -311,6 +311,31 @@ Doing this honestly for a few thousand bodies would mean millions of pairs every
 
 Two seeded factories stage the usual scenes. `NBody.disk(...)` builds a spinning disk around a heavy center, starting each body on the circular orbit its radius calls for, which is the right panel above drawn as velocity streaks so the circulation shows. `NBody.cluster(...)` drops a motionless swarm that collapses, swings through itself, and puffs back out into a bound cloud. Because the factories roll from a seed and every step is a fixed size, a run reproduces exactly, so a fixed-frame export gives you the same galaxy twice. To stage a collision, build two disks and append one's `bodies` to the other's.
 
+## A graph that lays itself out
+
+Here's a different job for forces: not motion for its own sake, but *arrangement*. A graph is just nodes and the edges that join them, a friend network, a word web, a subway map, and the hard part has never been drawing it. It's deciding where everything goes. `ForceLayout` answers with the two forces you already know: every node pushes every other node apart, and every edge is a spring pulling its two ends together. Let those argue and the graph untangles itself. Nobody places a node; the forces place them all.
+
+You describe the graph as a count and index pairs, then step it like every other system in this chapter:
+
+```swift
+let ring = (0 ..< 24).map { ($0, ($0 + 1) % 24) }
+let layout = ForceLayout(count: 24, edges: ring, in: bounds, seed: 7)
+
+// each frame:
+layout.step()
+stroke(.black)
+fill(.black)
+drawGraph(layout)
+```
+
+The one new idea is *temperature*. Each step caps how far a node may move, and that cap cools from generous to zero over a few seconds: big bold swings early, when the tangle needs them, gentle nudges late, when the layout is nearly right, and then a freeze. Watching it run is watching annealing happen, and it's the middle of the figure below. Once settled, `step()` costs nothing, so it can stay in `draw()`.
+
+<img src="Images/09-ForcesAndPhysics/GraphSettles.jpg" alt="Three panels of the same 26-node graph: a huddle of tangled edges at the seeded random start, the web opening up mid-cooling, and the settled even web, with the highest-degree hub accented in orange" width="680">
+
+Because the freeze is real, change is a deliberate act: `reheat(0.3)` warms the temperature back up so the layout can absorb whatever you did. That's the whole interaction vocabulary. Growing a network is `addNode`, `connect`, reheat, and the web makes room. Dragging is `nearestNode(to:)` to pick one up, `pinned[i] = true` so the solver leaves it in your hand, its position written each frame with a little heat kept on so the neighbors follow, and an unpin on release. `idealDistance` is the size dial (raise it and the web opens up), and the seed picks which of the many equally good untanglings you get, so a graph piece has variations like any other seeded sketch.
+
+The worked example is [`Examples/Patterns/ForceGraph`](../Examples/Patterns/ForceGraph/Sketch.swift), a network that grows node by node with a preference for already-popular nodes, so hubs emerge while the layout reflows live, and any node drags with the web trailing behind.
+
 ## Putting it together: the wrecking ball
 
 Now assemble all of it: a tower of rigid bricks, a chain of hinged links with a heavy ball at the end, and a grab so you can swing it yourself. The chain starts hoisted up to one side, so the first demolition runs on its own. After that it's your turn. Hold the mouse near the ball to take it, drag, release to fling, and press space for a fresh tower. Make `MySketches/Wrecker.swift`:
@@ -462,12 +487,15 @@ Where does this leave the hand-rolled forces from the start of the chapter? Both
 
 The force half of this chapter walks the path Daniel Shiffman's *The Nature of Code* made standard: accumulate forces, divide by mass, let Newton do the rest. The soft half rests on Verlet integration, named for Loup Verlet, who used it to simulate molecules in 1967. Thomas Jakobsen's 2001 talk "Advanced Character Physics" showed game programmers how positions plus relaxation could make cloth, ropes, and ragdolls both simple and stable, and Ollin's particle solver follows that approach. The rigid half is Box2D by Erin Catto, released as open source in 2007 and still the reference 2D engine, which Ollin bundles and wraps in the same `World`.
 
+The self-arranging graph is the *spring embedder*, an idea Peter Eades published in 1984: replace the vertices with steel rings, the edges with springs, and let go. The version Ollin implements is Thomas Fruchterman and Edward Reingold's 1991 refinement "Graph Drawing by Force-Directed Placement", which added the even-spacing forces and the cooling temperature, and it is still the layout behind most of the network diagrams you've ever seen.
+
 The three ready-made systems each have a paper behind them. The default IK solver is FABRIK, from Andreas Aristidou and Joan Lasenby's 2011 paper "FABRIK: A fast, iterative solver for the Inverse Kinematics problem", and its alternative is cyclic coordinate descent, which comes out of robotics (Li-Chun Tommy Wang and Chih Cheng Chen, 1991) and reached graphics through the game-development writing of Jeff Lander and Ryan Juckett. The double pendulum has been the teaching example for chaos since the field got its name, and Ollin integrates the standard equations of motion in the form Erik Neumann documents at myphysicslab, checking itself against the energy it should be conserving. The n-body force approximation is the Barnes-Hut algorithm, published by Josh Barnes and Piet Hut in *Nature* in 1986, which is what took gravity simulations from a few hundred bodies to a few million. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Physics](../Docs/Simulation/Physics.md): the full `World` / `Particle` / `Spring` / `Body` reference, including the parts this chapter left out: masses and forces on particles, `strain` for tinting springs by stress, soft blobs, and the other joint kinds.
 - [Articulated and chaotic motion](../Docs/Simulation/Motion.md): the full `IKChain`, `DoublePendulum`, and `NBody` reference, including both IK solvers, `maxBend`, the pendulum's `energy` check, and the n-body factories.
+- [Force-directed layout](../Docs/Generators/ForceLayout.md): the full `ForceLayout` reference, including edge weights, gravity for disconnected graphs, the cooling schedule's knobs, and the pin-and-drag idiom.
 - Worked examples, in [`Examples/Physics/`](../Examples/Physics/): `Packing` (discs settling into a jar), `Blobs` (squishy soft bodies that bump), `Stack` (a pyramid to knock down), `Tumble` (mixed shapes in a drum), and `Chain` (hanging chains to grab and fling).
 - The ready-made systems at work, in [`Examples/Motion/`](../Examples/Motion/): `InverseKinematics` (five tentacles under a swimming lure, both IK knobs live), `DoublePendulum` (a fan of twenty-four pendulums pulling apart), and `NBody` (two galaxies on a grazing orbit).
 - A look ahead: the flocking in [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) is force accumulation too, with the forces coming from neighbors. Chapter 10 builds it.
