@@ -2084,6 +2084,88 @@ form (2√3−3)·R; BFS order doubles as generation age for tinting. Examples
 snapshots `tiling-grids` / `subdivision` / `maze` / `apollonian`;
 `TilingTests`.
 
+### Aperiodic tilings
+
+Penrose (`Geometry/Penrose.swift`): both tilings live as Robinson
+half-triangles (a `Half` is an acute/obtuse flag plus apex, axis, and free
+corners), deflated from a ten-half wheel at the chosen center and merged
+into whole tiles at the end: P2 halves pair across the apex-to-axis leg,
+P3 halves across the axis-to-free base, matched through a quantized edge
+key. Halves on the wheel's outer rim have no partner and are dropped, which
+is why the wheel over-covers the bounds by a few tile widths. The P3
+subdivision is the standard published one; the P2 rules were derived from
+the merge structure, and the derivation's load-bearing part is not the
+split points (golden sections of the legs) but each child's *ordering*:
+which corner is the axis corner decides how the next generation subdivides,
+a wrong choice only shows up as T-junctions one level later, and the
+crack-free test is what pins all six assignments.
+
+The arcs are corner-centered circles whose radius is a fraction of the two
+adjacent edges (equal in length at every chosen corner). P2's fractions
+fall straight out of the continuity constraints (kite nose 1/phi^2, kite
+144-corner 1/phi, dart both 1/phi^2). P3 hides a real subtlety: a rhomb's
+outline is only canonical up to its 2-fold rotation, and under any
+C2-symmetric arc placement the thick-thin meeting classes demand f = t and
+f = 1 - t at once, so midpoint crossings are the *only* solution family.
+The classic golden decoration needs each rhomb oriented beyond C2, and the
+merge already holds the datum: the two halves are mirror twins, so exactly
+one is positively wound, and leading the outline with that half's apex
+orients every rhomb intrinsically. A brute-force continuity solve over
+golden candidates (run at development time on a deflated patch) then
+yields a small family of exact solutions; the shipped constants are thick
+arcs at the apex pair at 1/phi^2 and thin arcs at the side pair at
+(1/phi^2, 1/phi), and the continuity test re-verifies them on every run.
+
+Wang tiles (`Geometry/WangTiles.swift`): the stochastic scanline of Cohen,
+Shade, Hiller, and Deussen. Each cell picks weight-proportionally among the
+tiles matching its west neighbor's right edge and north neighbor's bottom
+edge; `WangTiling.completeSet(colors:)` is the full colors^4 product set,
+which always has a candidate, while hand-built sets that dead-end get fresh
+attempts and then return nil (the WFC-style contract).
+
+Girih (`Geometry/Girih.swift`): Kaplan's inference algorithm from the
+polygons-in-contact paper. Two rays leave each edge midpoint at the contact
+angle, leaning into the polygon (interior side from the signed area);
+every crossing pair is costed by the summed origin-to-crossing distances
+(collinear facing pairs by their origin distance), sorted with a
+(cost, i, j) tie-break, and taken greedily, each ray used once; unmatched
+rays drop, which is the paper's behavior on awkward shapes. The five girih
+tiles are turtle walks over exterior-angle tables with unit steps, and
+`points(onEdge:_:)` re-runs the walk along a caller's segment, which is
+the exact composition primitive: the decagon-and-ten-pentagons flower in
+the example is each pentagon laid on a reversed decagon edge.
+
+Spectre (`Geometry/Spectre.swift`): the substitution system of the chiral
+aperiodic monotile paper. Tile(1,1) is a 14-step turtle on the 30-degree
+grid (the direction table in `edgeDirections`; quad anchors at vertices
+3, 5, 7, 11). Nine metatiles substitute through eight slot transforms per
+generation, built by chaining anchor matches through the rotation schedule
+(60, 0, 60, 60, 0, 60, -120) and then mirroring the entire generation:
+layout handedness alternates per level, every leaf path picks up exactly
+one mirror per level, so all tiles at a given depth share one handedness
+(the cyclic turn-sequence test pins it). Gamma is the mystic, carrying a
+second spectre translated to vertex 8 and rotated +30 degrees, surfaced as
+`isOdd`. The child tables and slot data are the paper's, cross-checked
+against the authors' reference app; the implementation (value types, the
+level walk, exactness tests) is Ollin's own. Sizing grows levels until the
+patch covers the bounds in tile units, then scales, recenters, and clips
+per-tile. The curved outline replaces every edge with the same flattened
+cubic bump, alternating sides edge to edge; 14 being even keeps the
+alternation cyclically consistent, and abutting tiles nest because odd
+edges always meet even edges in a spectre tiling, which is exactly the
+paper's chirality-forcing edge modification.
+
+`AperiodicTilingTests` covers all four: the crack-free scan (every edge
+shared at most twice, no corner strictly inside another edge), P2/P3 edge
+ratios and kind presence, the thick:thin ratio near phi, arc-endpoint
+pairing across interior edges, Wang constraint satisfaction and seed
+determinism, girih motif completeness and n-fold symmetry on regular
+polygons plus cross-tile joining, and the spectre's unit edges, congruent
+single-handedness, odd-tile sparsity, and determinism. Examples
+`Patterns/Penrose` / `WangTiles` / `Girih` / `Spectre`; snapshots
+`penrose` / `wang-tiles` / `girih` / `spectre`;
+`Docs/Drawing/AperiodicTilings.md`.
+
 ### Packing
 
 `Geometry/Packing.swift`. `packCircles(in:count:minRadius:maxRadius:padding:)`

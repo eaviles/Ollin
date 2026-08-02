@@ -91,7 +91,7 @@ Teaches: the `Grid` helper (points, cells, one loop instead of two); margins wit
 Assumes: Ch 1 to 5 (noise/random vary the repetition).
 Payoff: an endlessly varied tiling piece.
 Figures: grid anatomy diagram (padding, gutter, cell vs point); a transform-stack diagram; Truchet connectivity diagram; the finished piece.
-Draws from: `Docs/Drawing/Geometry.md` (Grid), `Docs/Drawing/Truchet.md`; `Examples/Patterns/`.
+Draws from: `Docs/Drawing/Geometry.md` (Grid), `Docs/Drawing/Truchet.md`, `Docs/Drawing/AperiodicTilings.md`; `Examples/Patterns/`.
 
 **7. Words and pictures.**
 Teaches: `drawText` and the three font kinds at a glance; text as geometry (`textToShapes`) and warping it; `loadImage`/`drawImage`; reading pixels (`Image[x, y]`) to drive drawing; `tint`; then the picture-as-input family that grows out of pixel reading: glyph mosaic and halftone (a mark per cell), stippling joined into a single-line tour or a spanning tree (line work for a plotter), and pixel sorting.
@@ -263,6 +263,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Drawing/Geometry.md`: `Grid`, `Insets` | Ch 6 | taught |
 | `Drawing/Truchet.md` | Ch 6 | taught |
 | `Drawing/Tiling.md` (HexGrid/TriangleGrid, subdivide, Maze, apollonianGasket) | Ch 6 | taught ("Grids that aren't square" with a four-panel figure: the other two regular tilings and why hexes keep their proportions, hex ring distance, recursion versus tabulation for layout, what makes a maze perfect and the algorithm as a texture knob, plus the gasket) |
+| `Drawing/AperiodicTilings.md` (penroseTiling, wangTiling, girihPattern, spectreTiling) | Ch 6 | taught ("Tiles that never repeat" with a four-panel figure: what aperiodicity is, the Penrose pair and its arc decoration, the spectre and the einstein problem, Wang edge matching as the historical root, and girih as the Truchet doorway idea generalized, with the angle dial; snippets for the rhombs and the hex-cell strapwork, lineage in "Where this comes from") |
 | `Drawing/Text.md` (three font kinds, textToShapes, atlas) | Ch 7 | taught (drawText/textSize/textAlign, the three kinds, perGlyph, textToShapes warp, atlas mode; on-path/box/metrics/variable axes named + pointed) |
 | `Drawing/Images.md` (Image, pixels, tint) | Ch 7 | taught (loadImage/drawImage/tint, blank-image authoring, the pixel subscript both ways; resource loading named) |
 | `Drawing/Geometry.md`: `Vector2`/`Vector3`, `Rectangle`, `Circle` | Ch 8, Ch 17 | taught (Vector2 arrows, +/−/scale, length/normalized/limited/distance/angle, with(x:y:) taught in Ch 8; dot/cross/lerp/rotated/projected pointed; Vector3 waits for Ch 17) |

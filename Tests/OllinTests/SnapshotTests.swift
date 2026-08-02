@@ -344,6 +344,18 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("truchet",
                  note: "A Truchet tiling: arc tiles in the top half, diagonal tiles in the bottom, each cell's orientation chosen by the seed. Pins both tile geometries and the cross-cell connectivity (the arcs meet at shared edge midpoints, the diagonals at corners). Seeded, no time, so the layout is deterministic.",
                  make: { TruchetScene() }),
+    SnapshotCase("penrose",
+                 note: "Penrose tilings, kites and darts left, rhombs right, each with the matching-rule arcs stroked on top. Pins both deflations (the derived P2 rules and the P3 rules), the half-tile merge, the rhombs' intrinsic orientation, and the arc fractions that make the decoration continuous across every edge. No rng and no time, so it is deterministic.",
+                 make: { PenroseScene() }),
+    SnapshotCase("wang-tiles",
+                 note: "A Wang tiling from the complete 2-color set, drawn as edge-color triangles. Pins the scanline fill (west/east and north/south edges always match), the weighted candidate choice's rng order, and the classic quadrant rendering. Seeded, no time, so the layout is deterministic.",
+                 make: { WangTilesScene() }),
+    SnapshotCase("girih",
+                 note: "Star patterns by polygons-in-contact: a honeycomb's strapwork at a fixed contact angle, and the girih-tile flower (a decagon ringed by ten edge-laid pentagons) at the classic 54 degrees. Pins the ray inference (greedy shortest-total-length pairing), cross-tile continuity at edge midpoints, and the exact edge-to-edge tile placement. No rng and no time, so it is deterministic.",
+                 make: { GirihScene() }),
+    SnapshotCase("spectre",
+                 note: "A spectre (einstein) patch with curved chiral edges, colored by metatile with the odd mystic partners accented. Pins the substitution system (slot transforms, per-level mirroring, the mystic pair), the bounds fit, and the alternating edge bumps. No rng and no time, so it is deterministic.",
+                 make: { SpectreScene() }),
     SnapshotCase("circle-packing",
                  note: "Circle packing, both grow-to-touch flavors: a self-seeding gap-filling pack in the top half (big circles first, smaller ones filling the gaps) and a blue-noise foam in the bottom half (a circle grown at each Poisson-disk point until it touches its nearest neighbor). Pins that circles never overlap and land the same way. Seeded, no time, so the layout is deterministic.",
                  make: { CirclePackingScene() }),
@@ -1731,6 +1743,114 @@ private final class PrintSeparationScene: Sketch {
 /// diagonal tiles in the bottom — exercising both tile geometries and the
 /// cross-cell connectivity (arcs meeting at shared edge midpoints, diagonals at
 /// corners). Seeded and `time`-free, so it's deterministic.
+/// Both Penrose variants side by side with their matching-rule arcs: pins the
+/// two deflations, the half-tile merge, and the arc continuity constants.
+private final class PenroseScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x14101E))
+        noStroke()
+
+        let left = Rectangle(x: 0, y: 0, width: 128, height: 256)
+        let right = Rectangle(x: 128, y: 0, width: 128, height: 256)
+
+        for (bounds, variant) in [(left, Penrose.Variant.kitesAndDarts),
+                                  (right, .rhombs)] {
+            let tiles = Penrose.tiles(variant, in: bounds, tileEdge: 26)
+            noStroke()
+            for tile in tiles {
+                switch tile.kind {
+                case .kite, .thick: fill(Color(hex: 0x342A58))
+                case .dart, .thin: fill(Color(hex: 0x181129))
+                }
+                drawShape(tile.shape)
+            }
+            noFill()
+            strokeWeight(1.5)
+            for tile in tiles {
+                for (i, arc) in tile.arcs.enumerated() {
+                    stroke(i == 0 ? Color(hex: 0xF2A65A) : Color(hex: 0x2EC4B6))
+                    drawPolyline(arc.points, closed: false)
+                }
+            }
+        }
+    }
+}
+
+/// A Wang tiling from the complete two-color set in the classic quadrant
+/// rendering: pins the scanline fill and its rng order.
+private final class WangTilesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0E1116))
+        seed(5)
+        noStroke()
+        if let tiling = wangTiling(WangTiling.completeSet(colors: 2),
+                                   columns: 8, rows: 8) {
+            drawWangTiling(tiling, colors: [Color(hex: 0x14213D), Color(hex: 0xFCA311)])
+        }
+    }
+}
+
+/// Hex-cell strapwork plus the girih-tile flower: pins the ray inference,
+/// cross-tile continuity, and edge-to-edge girih tile placement.
+private final class GirihScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101418))
+        noFill()
+        strokeCap(.round)
+
+        let expanded = Rectangle(center: Vector2(128, 128), width: 340, height: 340)
+        let hexes = HexGrid(in: expanded, columns: 6, rows: 5).cells.map(\.corners)
+        stroke(Color(hex: 0x2EC4B6).withAlpha(0.8))
+        strokeWeight(1.5)
+        drawGirih(over: hexes, angle: 60)
+
+        let decagon = Girih.Tile.decagon.points(edge: 13, at: Vector2(128, 128))
+        var flower = [decagon]
+        for i in decagon.indices {
+            let p = decagon[i], q = decagon[(i + 1) % decagon.count]
+            flower.append(Girih.Tile.pentagon.points(onEdge: q, p))
+        }
+        fill(Color(hex: 0x101418))
+        noStroke()
+        for tile in flower { drawPolygon(tile) }
+        noFill()
+        stroke(Color(hex: 0xFCA311))
+        strokeWeight(2)
+        drawGirih(over: flower, angle: 54)
+    }
+}
+
+/// A curved-edge spectre patch colored by metatile: pins the substitution
+/// system, the bounds fit, and the chiral edge bumps.
+private final class SpectreScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0F1214))
+        strokeWeight(1)
+        stroke(Color(hex: 0x0F1214))
+        for tile in spectreTiling(tileEdge: 13, curve: 0.5) {
+            if tile.isOdd {
+                fill(Color(hex: 0xF6511D))
+            } else {
+                switch tile.metatile {
+                case .gamma: fill(Color(hex: 0x35544F))
+                case .delta, .theta, .lambda: fill(Color(hex: 0x1C2B2D))
+                case .xi, .pi: fill(Color(hex: 0x24403D))
+                case .sigma, .phi, .psi: fill(Color(hex: 0x2C4A45))
+                }
+            }
+            drawShape(tile.shape)
+        }
+    }
+}
+
 private final class TruchetScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

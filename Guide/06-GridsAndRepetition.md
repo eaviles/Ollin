@@ -231,6 +231,33 @@ The arc tile touches its cell's boundary in only four places, the edge midpoints
 
 The tiling is drawn from the seeded `random`, so it's reproducible like everything since Chapter 4. Same seed, same maze. And when the plain white line-work isn't enough, `truchet(columns:rows:tile:)` hands you the raw strands instead of drawing them, one list of points per arc, which is exactly what the finished piece wants.
 
+## Tiles that never repeat
+
+Everything so far repeats. Slide a hex grid one cell over and it lands on itself; that regularity is most of its charm. But there are tile sets that *cannot* do this: however you lay them, the pattern never repeats, anywhere, ever. Order without repetition is a real, buildable thing.
+
+<img src="Images/06-GridsAndRepetition/AperiodicTiles.jpg" alt="Four panels: Penrose kites and darts with colored arcs, Penrose rhombs, a teal star pattern woven over a honeycomb, and curved spectre tiles with a few orange ones" width="680">
+
+The famous pair is the **Penrose tiling**: two shapes (kites and darts, or a thick and a thin rhombus) whose edge rules force endless variety with perfect five-fold poise. `penroseTiling` grows one to cover the canvas, and each tile tells you its `kind` and carries two `arcs`, the classic decoration whose ends meet across every edge, so the whole tiling becomes one weave of curves:
+
+```swift
+for tile in penroseTiling(.rhombs, tileEdge: 36) {
+    fill(tile.kind == .thick ? .indigo : .navy)
+    drawShape(tile.shape)
+    stroke(.orange)
+    for arc in tile.arcs { drawPolyline(arc.points, closed: false) }
+}
+```
+
+There's no randomness in it: the variety is the geometry's own. And since 2023 there's something stranger, the **spectre**, a *single* shape that tiles the plane and can never repeat (mathematicians called the search for it the einstein problem, "one stone"). `spectreTiling(tileEdge:curve:)` grows a patch; give `curve` about `0.5` and the edges bend so the tile can't even be flipped over. Each tile flags the rare `isOdd` misfits that sit rotated 30° from all the others, which are exactly the accent marks the pattern wants.
+
+Two more relatives round out the family, both on the [aperiodic tilings](../Docs/Drawing/AperiodicTilings.md) page. **Wang tiles** (`wangTiling`) are squares with colored edges that may only sit together where the colors agree; this is where never-repeating tilings were first discovered, and run the other way, with a seeded fill over a small friendly set, the edge rule turns independent random picks into one connected quilt. And **girih patterns** (`girihPattern`) take the Truchet doorway idea somewhere older and grander: from the midpoint of every tile edge, two rays walk into the tile at a chosen angle and stop where they meet another; keep the crossings, erase the tiles, and an Islamic star pattern remains. It works over *any* edge-to-edge polygons, including your hex grid's cells and the five traditional girih tile shapes, and the contact angle is one dial that morphs the whole design from spiky to woven:
+
+```swift
+let cells = hexGrid(columns: 9, rows: 8).cells.map(\.corners)
+stroke(.white); noFill()
+drawGirih(over: cells, angle: 60)   // 54° is the classic girih-tile angle
+```
+
 ## Putting it together: a meandering tangle
 
 Now you can build the image at the top. The plan is to lay Truchet arcs over a grid, then stroke every strand twice, a wide pass in a dark rim tone and a narrower colored pass on top, so the strands read as piping with a little depth. For the color, reach back to Chapter 5 and sample `noise` at each strand's midpoint, so neighbors wear neighboring colors and the palette drifts across the tangle like weather, slowly changing with `time`. Make a new file, `MySketches/Meander.swift`:
@@ -299,7 +326,7 @@ Before moving on, make it yours:
 
 ## Where this comes from
 
-Truchet tiles are named for Sébastien Truchet, a French Carmelite priest who published a memoir in 1704 on the patterns a single diagonally split tile can make, after watching ceramic tiles being laid for a château. The quarter-circle arc tile this chapter leans on is a later refinement by the metallurgist and historian Cyril Stanley Smith, from a 1987 paper revisiting Truchet's work and connecting it to how structure builds hierarchy in materials, and generative artists adopted it so thoroughly that "Truchet tiles" now usually *means* Smith's arcs. The diagonal tile has its own pop-culture monument: the Commodore 64 one-liner `10 PRINT CHR$(205.5+RND(1)); : GOTO 10`, a maze in thirty-eight characters, whose history got an entire (excellent) book, *10 PRINT*, by Nick Montfort and nine co-authors in 2012. The paper-moving transform model goes back to the earliest days of computer graphics and reached creative coding through Processing's `pushMatrix`/`popMatrix`. The pinwheel quilt is older than all of it, pieced by quilters long before anyone had a coordinate system to rotate. If the tangle left you wanting more, Christopher Carlson's multi-scale Truchet tiles (arcs at mixed cell sizes that still agree at the edges) are worth a look. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Truchet tiles are named for Sébastien Truchet, a French Carmelite priest who published a memoir in 1704 on the patterns a single diagonally split tile can make, after watching ceramic tiles being laid for a château. The quarter-circle arc tile this chapter leans on is a later refinement by the metallurgist and historian Cyril Stanley Smith, from a 1987 paper revisiting Truchet's work and connecting it to how structure builds hierarchy in materials, and generative artists adopted it so thoroughly that "Truchet tiles" now usually *means* Smith's arcs. The diagonal tile has its own pop-culture monument: the Commodore 64 one-liner `10 PRINT CHR$(205.5+RND(1)); : GOTO 10`, a maze in thirty-eight characters, whose history got an entire (excellent) book, *10 PRINT*, by Nick Montfort and nine co-authors in 2012. The paper-moving transform model goes back to the earliest days of computer graphics and reached creative coding through Processing's `pushMatrix`/`popMatrix`. The pinwheel quilt is older than all of it, pieced by quilters long before anyone had a coordinate system to rotate. The never-repeating tiles have their own lineage: Hao Wang conjectured in 1961 that his edge-matching squares could always be made periodic, his student Robert Berger proved him wrong, Roger Penrose got the tile count down to two in the 1970s, and the one-tile question stayed open until 2023, when David Smith, a retired print technician playing with paper cutouts, found the hat and then the spectre with Joseph Myers, Craig Kaplan, and Chaim Goodman-Strauss. The girih strapwork method is E. H. Hankin's polygons-in-contact technique, formalized for the computer by Craig Kaplan, and the five girih tiles decorate buildings from medieval Isfahan to Istanbul. If the tangle left you wanting more, Christopher Carlson's multi-scale Truchet tiles (arcs at mixed cell sizes that still agree at the edges) are worth a look. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -309,7 +336,8 @@ Truchet tiles are named for Sébastien Truchet, a French Carmelite priest who pu
 - [Clipping](../Docs/Drawing/Drawing.md#clip): the reference, including how clips interact with layers and what vector export does with them. The [`Shapes/Clipping`](../Examples/Shapes/Clipping/Sketch.swift) example sweeps a lens across a striped star.
 - [Truchet](../Docs/Drawing/Truchet.md): both tiles, the contour output, and feeding the strands to booleans, hatching, or SVG export.
 - [Tiling and layout](../Docs/Drawing/Tiling.md): every knob for `HexGrid`, `TriangleGrid`, `Subdivision`, `Maze`, and `apollonianGasket`, including hex orientation and picking, the quadtree split style, all three maze algorithms, and the longest-path helper.
-- Worked examples: [`Patterns/Grid`](../Examples/Patterns/Grid/Sketch.swift) (the grid helper's tour) and [`Patterns/Truchet`](../Examples/Patterns/Truchet/Sketch.swift) (both tiles, animated).
+- [Aperiodic tilings](../Docs/Drawing/AperiodicTilings.md): the full reference for `penroseTiling` (both variants and the arcs), `wangTiling` (tile sets, weights, the complete set), `girihPattern` (the contact angle, the five girih tiles, composing them edge to edge), and `spectreTiling`.
+- Worked examples: [`Patterns/Grid`](../Examples/Patterns/Grid/Sketch.swift) (the grid helper's tour), [`Patterns/Truchet`](../Examples/Patterns/Truchet/Sketch.swift) (both tiles, animated), [`Patterns/Penrose`](../Examples/Patterns/Penrose/Sketch.swift) (rhombs with breathing arcs), [`Patterns/WangTiles`](../Examples/Patterns/WangTiles/Sketch.swift) (the re-laying quilt), [`Patterns/Girih`](../Examples/Patterns/Girih/Sketch.swift) (the angle dial swept live, plus the decagon-and-pentagons medallion), and [`Patterns/Spectre`](../Examples/Patterns/Spectre/Sketch.swift) (the einstein with a drifting tide).
 - A teaser for later: [`Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift) plays the agree-at-the-edges game with *constraints*, tiles that refuse certain neighbors, and Chapter 11 watches it solve.
 
 ---
