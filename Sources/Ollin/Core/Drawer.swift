@@ -1060,6 +1060,20 @@ final class Drawer {
         withTarget(field.writeLayer, body)
     }
 
+    /// Register `field` so the renderer steps it this frame even though nothing was
+    /// drawn into it. A sim only evolves while its layer is among this frame's render
+    /// targets, and `withField` is what normally puts it there. That is right for a sim
+    /// you seed by drawing, but a self-organizing one (multi-scale Turing starts from
+    /// noise and needs nothing) would otherwise sit frozen and read black, with no hint
+    /// why. So reading the field registers it too, and the layer's clear color is what
+    /// makes that safe: an unseeded frame renders a transparent seed, which composites
+    /// nothing. Called from `SimField.image` and `SimField.filtered(_:)`.
+    func ensureFieldSteps(_ field: SimField) {
+        guard !isRecordingBatch, !renderTargets.contains(where: { $0 === field.writeLayer }) else { return }
+        field.writeLayer.clearColor = .clear
+        renderTargets.append(field.writeLayer)
+    }
+
     /// Whether this frame holds cross-frame state the renderer keeps in ping-pong textures:
     /// a `Feedback`/`SimField` layer, or a `.screenSpaceReflections` combine (its temporal
     /// resolve accumulates the reflection across frames). Like the accumulation surface, the

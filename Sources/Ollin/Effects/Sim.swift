@@ -36,6 +36,7 @@ public struct Sim: Sendable {
                    timeScale: Double, rings: [Double])
         case ripples(speed: Double, damping: Double)
         case fluid(FluidConfig)
+        case multiScaleTuring(scales: [TuringScale], seed: Double)
     }
 
     let kind: Kind
@@ -154,6 +155,47 @@ public struct Sim: Sendable {
             dt: 0.016)))
     }
 
+    /// **Multi-scale Turing patterns**: one substance, looked at through several
+    /// magnifications at once. Each scale averages the field over a small disc
+    /// (the *activator*) and a larger one (the *inhibitor*); where the small
+    /// average is the greater, the field brightens a little, otherwise it darkens.
+    /// Run at a single scale that rule alone grows the stripes and spots of a
+    /// zebra or a whale shark. Run at several, each pixel each step picks the
+    /// scale whose two averages *disagree least* and lets only that one act, so
+    /// broad forms and fine detail settle in the same picture and the result
+    /// looks strikingly like an electron micrograph of a diatom.
+    ///
+    /// The field starts as noise and organizes itself, so a Turing field needs no
+    /// seeding to get going. Drawing into it still works and is how you disturb a
+    /// settled pattern: a mark's brightness *replaces* the field where it covers
+    /// (white pushes toward the top of the range, black toward the bottom), and
+    /// the pattern heals around it over the next few hundred steps. Edges wrap, so
+    /// the picture tiles.
+    ///
+    /// The raw `image` is the field as grayscale, ready to recolor with
+    /// `.filtered(.gradientMap(...))` or to shade as relief with
+    /// `.filtered(.relight(...))`. That lit-from-above look is an accident of a
+    /// flat 2D algorithm, and it reads as depth.
+    ///
+    /// ```swift
+    /// var turing: SimField!
+    /// override func setup() { turing = simField(.multiScaleTuring(), scale: 0.5) }
+    /// override func draw() { drawImage(turing.filtered(.gradientMap(.magma)).image, 0, 0) }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - scales: The magnifications in play, in any order (up to six; see
+    ///     `TuringScale`). The default ladder doubles the radii from 2 to 32
+    ///     texels, the classic five-scale arrangement.
+    ///   - seed: Picks the starting noise, so the same seed replays the same
+    ///     pattern. Pass the sketch's `variation` to tie it to the seed the rest of
+    ///     the sketch uses.
+    public static func multiScaleTuring(scales: [TuringScale] = TuringScale.ladder,
+                                        seed: Double = 1) -> Sim {
+        let clamped = scales.isEmpty ? TuringScale.ladder : Array(scales.prefix(TuringScale.maxScales))
+        return Sim(kind: .multiScaleTuring(scales: clamped, seed: seed))
+    }
+
     // MARK: Renderer hooks (internal)
 
     /// Whether this sim runs the dedicated multi-field fluid pipeline (`runFluid`)
@@ -162,6 +204,15 @@ public struct Sim: Sendable {
 
     /// The fluid configuration, when this is a `.fluid` (else `nil`).
     var fluidConfig: FluidConfig? { if case let .fluid(c) = kind { return c }; return nil }
+
+    /// The multi-scale Turing configuration, when this is a `.multiScaleTuring`
+    /// (else `nil`). Like the fluid it runs its own multi-pass pipeline
+    /// (`runMultiScaleTuring`) rather than the single-texture step path, because a
+    /// step needs a blur pyramid and a whole-field extent before it can advance.
+    var turingConfig: (scales: [TuringScale], seed: Double)? {
+        if case let .multiScaleTuring(scales, seed) = kind { return (scales, seed) }
+        return nil
+    }
 
     /// How many kernel steps run per frame. Reaction-diffusion takes many small steps
     /// for a lively, stable integration; a cellular automaton is one discrete
@@ -177,6 +228,7 @@ public struct Sim: Sendable {
                                             // under its stability limit buys its pace
                                             // back in substeps instead
         case .fluid:             return 1   // unused: the fluid runs its own pipeline
+        case .multiScaleTuring:  return 1   // unused: Turing runs its own pipeline
         }
     }
 
@@ -190,6 +242,10 @@ public struct Sim: Sendable {
         case .lenia:             return SIMD4(0, 0, 0, 1)
         case .ripples:           return SIMD4(0, 0, 0, 1)   // a still surface
         case .fluid:             return SIMD4(0, 0, 0, 1)   // unused: runFluid clears its own fields
+        case .multiScaleTuring:  return SIMD4(0, 0, 0, 1)   // unused: the field starts as noise,
+                                                            // not a constant (a flat field is a
+                                                            // fixed point of the rule), so the slot
+                                                            // fills it with a seeded hash instead
         }
     }
 
@@ -201,6 +257,7 @@ public struct Sim: Sendable {
         case .lenia:             return "ollin_sim_lenia"
         case .ripples:           return "ollin_sim_ripples"
         case .fluid:             return ""   // unused: the fluid dispatches its own fragments
+        case .multiScaleTuring:  return ""   // unused: Turing dispatches its own fragments
         }
     }
 
@@ -212,8 +269,9 @@ public struct Sim: Sendable {
     /// (the drop model the wave equation wants).
     var injectFragment: String {
         switch kind {
-        case .ripples: return "ollin_sim_inject_height"
-        default:       return "ollin_sim_inject"
+        case .ripples:          return "ollin_sim_inject_height"
+        case .multiScaleTuring: return "ollin_sim_inject_luma"
+        default:                return "ollin_sim_inject"
         }
     }
 
@@ -235,6 +293,119 @@ public struct Sim: Sendable {
             return [SIMD4(Float(speed), Float(damping), 0, 0)]
         case .fluid:
             return []   // unused: the fluid binds per-pass parameters itself
+        case .multiScaleTuring:
+            return []   // unused: Turing binds per-pass parameters itself
         }
     }
+}
+
+/// One magnification in a `Sim.multiScaleTuring` field: a pair of averaging radii
+/// and how hard that scale pushes when it wins the step.
+///
+/// A scale is a Turing rule in miniature. It averages the field over a disc of
+/// `activatorRadius` and again over a larger disc of `inhibitorRadius`; the sign of
+/// the difference says which way to move, and `amount` says how far. What makes the
+/// picture multi-scale is that every pixel each step runs *all* the scales and only
+/// the one whose two averages are closest together gets to act, so a region settles
+/// into whichever magnification currently has the least to say about it.
+///
+/// The radii are in field texels, so they follow the `SimField`'s `scale`: a field at
+/// `scale: 0.5` on a 1080 canvas is 540 texels across, and a radius of 32 spans about
+/// 6% of it. Keep a clear gap between the scales (the default ladder doubles both
+/// radii each rung); scales that overlap closely tend to produce one blurred texture
+/// instead of distinct nested structure.
+public struct TuringScale: Sendable, Equatable {
+
+    /// How many scales one field can run. Six is a practical ceiling: the step
+    /// samples the blur pyramid twice per scale, times the symmetry count.
+    public static let maxScales = 6
+
+    /// Radius of the smaller, activating average, in field texels.
+    public var activatorRadius: Double
+    /// Radius of the larger, inhibiting average, in field texels. Larger than
+    /// `activatorRadius`; the ratio between them sets how separated the features are.
+    public var inhibitorRadius: Double
+    /// How far the field moves in one step when this scale wins, as a fraction of the
+    /// field's full range. Small is the point: large amounts race to a coarse
+    /// equilibrium and lose the fine structure, and they flicker in an animation.
+    public var amount: Double
+    /// Multiplies both averages before they are compared, so it scales this rule's say
+    /// in the least-variation contest: above 1 the scale wins more often, below 1 less.
+    /// A negative weight inverts the rule, which is what makes a scale carve dark
+    /// features where it would otherwise raise light ones.
+    public var weight: Double
+    /// Folds this scale's averages around the field's center with n-fold rotational
+    /// symmetry, by averaging each point with its n counterparts around the circle.
+    /// 0 or 1 leaves the scale free. Different symmetries on different scales is the
+    /// arrangement behind the diatom-like plates in McCabe's later figures.
+    public var symmetry: Int
+
+    /// The radius over which this scale's disagreement is averaged before the scales are
+    /// compared, in field texels. This is the knob that decides how large a region a
+    /// scale can claim, and it is load-bearing rather than a refinement: read at a single
+    /// point, a fine scale's disagreement passes through zero along every contour of its
+    /// own structure, and since the *least* disagreement wins, it would take a dense web
+    /// of pixels everywhere and bury the coarse scales. Averaging over the scale's own
+    /// neighbourhood removes those accidental zeros. Defaults to `inhibitorRadius`;
+    /// smaller sharpens the boundaries between scale regions, and 0 (single point) gives
+    /// the finest, most detailed picture, which is also the least multi-scale one.
+    public var variationRadius: Double
+
+    public init(activatorRadius: Double, inhibitorRadius: Double, amount: Double,
+                weight: Double = 1, symmetry: Int = 0, variationRadius: Double? = nil) {
+        self.activatorRadius = max(0.5, activatorRadius)
+        self.inhibitorRadius = max(self.activatorRadius + 0.5, inhibitorRadius)
+        self.amount = max(0, amount)
+        self.weight = weight
+        self.symmetry = max(0, min(24, symmetry))
+        self.variationRadius = max(0, variationRadius ?? self.inhibitorRadius)
+    }
+
+    /// The classic five-rung ladder: activator radii doubling from 2 to 32 texels, each
+    /// rung's inhibitor twice its activator, all pushing equally hard.
+    ///
+    /// The two choices worth knowing before changing them. **Equal amounts** are what
+    /// make the picture nest: whichever rung pushes hardest sets the field's range, and
+    /// after every step renormalizes, the rest are squeezed toward mid gray, so an uneven
+    /// ladder gives one scale's pattern with the others as a faint wash. **Starting at 2
+    /// rather than 1** keeps the finest features a few texels across; a rung at radius 1
+    /// works on single texels, and pixel-scale features read as speckle rather than as
+    /// detail.
+    public static let ladder: [TuringScale] = [
+        TuringScale(activatorRadius: 2,  inhibitorRadius: 4,  amount: 0.02),
+        TuringScale(activatorRadius: 4,  inhibitorRadius: 8,  amount: 0.02),
+        TuringScale(activatorRadius: 8,  inhibitorRadius: 16, amount: 0.02),
+        TuringScale(activatorRadius: 16, inhibitorRadius: 32, amount: 0.02),
+        TuringScale(activatorRadius: 32, inhibitorRadius: 64, amount: 0.02),
+    ]
+
+    /// The ladder folded into n-fold rotational symmetry, the arrangement that gives
+    /// the radially symmetric plates. Every scale takes the same fold.
+    public static func rosette(_ symmetry: Int) -> [TuringScale] {
+        ladder.map {
+            TuringScale(activatorRadius: $0.activatorRadius, inhibitorRadius: $0.inhibitorRadius,
+                        amount: $0.amount, weight: $0.weight, symmetry: symmetry,
+                        variationRadius: $0.variationRadius)
+        }
+    }
+
+    /// A coarser, sparser ladder: three widely separated scales, so the field settles into
+    /// big smooth lobes with just a little structure riding on them.
+    public static let broad: [TuringScale] = [
+        TuringScale(activatorRadius: 5,  inhibitorRadius: 12, amount: 0.02),
+        TuringScale(activatorRadius: 16, inhibitorRadius: 40, amount: 0.02),
+        TuringScale(activatorRadius: 48, inhibitorRadius: 110, amount: 0.02),
+    ]
+}
+
+/// The curated arrangements again on the array itself, so they can be written with
+/// leading-dot syntax where a `Sim.multiScaleTuring` expects a list of scales:
+/// `.multiScaleTuring(scales: .rosette(9))`.
+extension [TuringScale] {
+    /// See `TuringScale.ladder`.
+    public static var ladder: [TuringScale] { TuringScale.ladder }
+    /// See `TuringScale.broad`.
+    public static var broad: [TuringScale] { TuringScale.broad }
+    /// See `TuringScale.rosette(_:)`.
+    public static func rosette(_ symmetry: Int) -> [TuringScale] { TuringScale.rosette(symmetry) }
 }

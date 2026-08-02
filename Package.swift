@@ -484,6 +484,7 @@ let package = Package(
         example("Simulation/GrayScott"),
         example("Simulation/GameOfLife"),
         example("Simulation/Lenia"),
+        example("Simulation/MultiScaleTuring"),
         example("Simulation/Fluid"),
         example("Simulation/Ripples"),
         example("Simulation/ParticleLife"),

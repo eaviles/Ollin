@@ -188,7 +188,9 @@ extension MetalRenderer {
                     if let slot = fluidSlot(for: sf, width: pw, height: ph, into: cb) {
                         target.texture = slot.flipped ? slot.dyeB : slot.dyeA
                     }
-                } else if let slot = feedbackSlot(for: sf, width: pw, height: ph, into: cb) {
+                } else if let slot = feedbackSlot(for: sf, width: pw, height: ph,
+                                                  fill: turingNoiseFill(sf.sim, into: cb),
+                                                  into: cb) {
                     target.texture = slot.flipped ? slot.b : slot.a
                 }
                 continue
@@ -229,16 +231,26 @@ extension MetalRenderer {
                 target.texture = dyeBack
                 fluidUsedThisFrame.insert(ObjectIdentifier(sf))
             } else {
-                // Single-field sim (reaction-diffusion, Game of Life): one ping-pong pair.
+                // Single-field sim (reaction-diffusion, Game of Life, multi-scale Turing):
+                // one ping-pong pair. Turing steps through its own multi-pass pipeline,
+                // since one step needs a blur pyramid and a whole-field extent first, but
+                // its storage is the same single pair, so it shares the slot, the flip,
+                // and the repeat arm above.
                 let rest = sf.sim.restState
                 guard let slot = feedbackSlot(for: sf, width: pw, height: ph,
                                               restState: MTLClearColor(red: Double(rest.x), green: Double(rest.y),
                                                                        blue: Double(rest.z), alpha: Double(rest.w)),
+                                              fill: turingNoiseFill(sf.sim, into: cb),
                                               into: cb) else { continue }
                 let front = slot.flipped ? slot.b : slot.a
                 let back  = slot.flipped ? slot.a : slot.b
-                runSimulation(sf.sim, state: front, seed: seed, output: back,
-                              width: pw, height: ph, into: cb, pooled: pooled)
+                if let turing = sf.sim.turingConfig {
+                    runMultiScaleTuring(turing.scales, state: front, seed: seed, output: back,
+                                        width: pw, height: ph, into: cb, pooled: pooled)
+                } else {
+                    runSimulation(sf.sim, state: front, seed: seed, output: back,
+                                  width: pw, height: ph, into: cb, pooled: pooled)
+                }
                 target.texture = back
                 feedbackUsedThisFrame.insert(ObjectIdentifier(sf))
             }
@@ -865,6 +877,150 @@ extension MetalRenderer {
                              params: [texel, SIMD4(dt, config.densityDissipation, 0, 0)], into: cb)
     }
 
+    /// The starting-state fill a multi-scale Turing field needs (seeded white noise),
+    /// or `nil` for every other sim, which starts from a constant rest state. Handed to
+    /// `feedbackSlot` so it applies exactly once, when the pair is first allocated.
+    private func turingNoiseFill(_ sim: Sim, into cb: MTLCommandBuffer) -> ((MTLTexture) -> Void)? {
+        guard let turing = sim.turingConfig else { return nil }
+        return { tex in
+            let texel = SIMD4<Float>(1 / Float(tex.width), 1 / Float(tex.height), 0, 0)
+            self.encodeEffectFragment("ollin_sim_turing_seed", inputs: [], output: tex,
+                                      params: [texel, SIMD4(Float(turing.seed), 0, 0, 0)], into: cb)
+        }
+    }
+
+    /// One step of a multi-scale Turing field, McCabe's rule: at every pixel each scale
+    /// compares the field's average over a small disc against its average over a larger
+    /// one, the scale whose two averages differ least wins and nudges the pixel toward
+    /// whichever average is the greater, and the whole field is then stretched back
+    /// across its full range so the nudges cannot accumulate into a runaway.
+    ///
+    /// The passes, in order: inject the drawn seed marks; build a blur pyramid down to
+    /// 1x1 (each rung the 2x2 mean of the one above, so one texel holds the mean of a
+    /// 2^k box and any radius is a fractional rung); per scale, measure its disagreement
+    /// and run it down the same halving chain to the rung matching its variation radius;
+    /// step; reduce the stepped field to its minimum and maximum through a 4x4 chain;
+    /// normalize into the back buffer.
+    ///
+    /// The pyramid is what makes this real time. Gathering a disc of radius 32 costs
+    /// thousands of taps per pixel per scale, where a rung costs one, and the radii a
+    /// multi-scale field wants (doubling from 1 to 32 or beyond) are exactly the rungs a
+    /// halving pyramid produces. It also serves the variation averaging for free, so a
+    /// scale's disagreement is smoothed by the same chain that blurs the field.
+    private func runMultiScaleTuring(_ scales: [TuringScale], state: MTLTexture, seed: MTLTexture,
+                                     output: MTLTexture, width: Int, height: Int,
+                                     into cb: MTLCommandBuffer, pooled: Bool) {
+        guard !scales.isEmpty else { return }
+        func scratch(_ w: Int, _ h: Int) -> MTLTexture? {
+            acquireFilterTexture(width: w, height: h, pooled: pooled)
+        }
+        // Pyramid rung sizes, halving (rounding up, so an odd side keeps its last
+        // half-block) until 1x1. Rung 0 is the injected field itself, at full size.
+        var rungs: [(w: Int, h: Int)] = [(width, height)]
+        while rungs.count < MetalRenderer.turingPyramidLevels {
+            let last = rungs[rungs.count - 1]
+            guard last.w > 1 || last.h > 1 else { break }
+            rungs.append((max(1, (last.w + 1) / 2), max(1, (last.h + 1) / 2)))
+        }
+        // Extent chain sizes, quartering until 1x1, over the stepped field.
+        var extentSizes: [(w: Int, h: Int)] = []
+        var (ew, eh) = (width, height)
+        repeat {
+            ew = max(1, (ew + 3) / 4)
+            eh = max(1, (eh + 3) / 4)
+            extentSizes.append((ew, eh))
+        } while ew > 1 || eh > 1
+
+        // How many rungs down a radius sits: a radius r spans a box of side 2r, which is
+        // rung log2(2r). Kept in step with `ollin_turing_blur`.
+        func rung(for radius: Double) -> Int {
+            let level = (Foundation.log2(max(radius, 0.5) * 2)).rounded()
+            return min(max(Int(level), 0), rungs.count - 1)
+        }
+
+        // Acquire every texture before encoding anything, so a pool miss aborts the
+        // step cleanly rather than leaving a half-run pipeline.
+        guard let injected = scratch(width, height), let stepped = scratch(width, height)
+        else { return }
+        var levels: [MTLTexture] = [injected]
+        for rung in rungs.dropFirst() {
+            guard let tex = scratch(rung.w, rung.h) else { return }
+            levels.append(tex)
+        }
+        // Each scale's variation chain: measured at full size, then halved down to the
+        // rung its variation radius names, so a fine scale's chain is short.
+        var variationChains: [[MTLTexture]] = []
+        for scale in scales {
+            var chain: [MTLTexture] = []
+            for depth in 0...rung(for: scale.variationRadius) {
+                guard let tex = scratch(rungs[depth].w, rungs[depth].h) else { return }
+                chain.append(tex)
+            }
+            variationChains.append(chain)
+        }
+        var extents: [MTLTexture] = []
+        for size in extentSizes {
+            guard let tex = scratch(size.w, size.h) else { return }
+            extents.append(tex)
+        }
+
+        let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
+        let frame = SIMD4<Float>(1 / Float(width), 1 / Float(height),
+                                 Float(width) / Float(height), Float(levels.count))
+        encodeEffectFragment("ollin_sim_inject_luma", inputs: [state, seed], output: injected,
+                             params: [texel], into: cb)
+        for i in 1..<levels.count {
+            let src = rungs[i - 1], dst = rungs[i]
+            encodeEffectFragment("ollin_sim_turing_downsample", inputs: [levels[i - 1]], output: levels[i],
+                                 params: [SIMD4(1 / Float(src.w), 1 / Float(src.h),
+                                                Float(dst.w), Float(dst.h))], into: cb)
+        }
+        // The passes read a fixed-width binding, so a shallow pyramid repeats its top
+        // rung to fill it; `levelCount` keeps the shader off the padding.
+        var boundLevels = levels
+        while boundLevels.count < MetalRenderer.turingPyramidLevels {
+            boundLevels.append(levels[levels.count - 1])
+        }
+        for (i, scale) in scales.enumerated() {
+            let chain = variationChains[i]
+            encodeEffectFragment("ollin_sim_turing_variation", inputs: boundLevels, output: chain[0],
+                                 params: [frame, SIMD4(Float(scale.activatorRadius),
+                                                       Float(scale.inhibitorRadius),
+                                                       Float(scale.symmetry), Float(scale.weight))],
+                                 into: cb)
+            for depth in 1..<chain.count {
+                let src = rungs[depth - 1], dst = rungs[depth]
+                encodeEffectFragment("ollin_sim_turing_downsample", inputs: [chain[depth - 1]],
+                                     output: chain[depth],
+                                     params: [SIMD4(1 / Float(src.w), 1 / Float(src.h),
+                                                    Float(dst.w), Float(dst.h))], into: cb)
+            }
+        }
+        var params: [SIMD4<Float>] = [frame, SIMD4(Float(scales.count), 0, 0, 0)]
+        for scale in scales {
+            params.append(SIMD4(Float(scale.activatorRadius), Float(scale.inhibitorRadius),
+                                Float(scale.amount), Float(scale.weight)))
+            params.append(SIMD4(Float(scale.symmetry), 0, 0, 0))
+        }
+        var boundVariations = variationChains.map { $0[$0.count - 1] }
+        while boundVariations.count < TuringScale.maxScales {
+            boundVariations.append(boundVariations[boundVariations.count - 1])
+        }
+        encodeEffectFragment("ollin_sim_turing_step", inputs: boundLevels + boundVariations,
+                             output: stepped, params: params, into: cb)
+        var source = stepped
+        var sourceSize = (w: width, h: height)
+        for (i, tex) in extents.enumerated() {
+            encodeEffectFragment("ollin_sim_turing_extent", inputs: [source], output: tex,
+                                 params: [SIMD4(1 / Float(sourceSize.w), 1 / Float(sourceSize.h),
+                                                Float(extentSizes[i].w), Float(extentSizes[i].h))], into: cb)
+            source = tex
+            sourceSize = extentSizes[i]
+        }
+        encodeEffectFragment("ollin_sim_turing_normalize", inputs: [stepped, source], output: output,
+                             params: [texel], into: cb)
+    }
+
     /// Fill a generator's layer: one fullscreen fragment pass that reads no input,
     /// just its parameters. `aspect` lets the fragment keep cells square.
     private func encodeGenerator(_ generator: Generator, output: MTLTexture,
@@ -1167,8 +1323,14 @@ extension MetalRenderer {
     /// `fb`'s persistent ping-pong slot, allocating both textures (and clearing them
     /// to transparent, so the very first frame's `previous` reads clean) on first use,
     /// a size change, or after the address was reused by a different layer.
+    ///
+    /// `fill` overrides the constant clear for a field whose starting state is not
+    /// uniform: a multi-scale Turing field must begin as noise, because a constant
+    /// field is a fixed point of its rule (every average equal, so no scale ever
+    /// fires) and it would sit there forever.
     private func feedbackSlot(for fb: AnyObject, width: Int, height: Int,
                               restState: MTLClearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0),
+                              fill: ((MTLTexture) -> Void)? = nil,
                               into cb: MTLCommandBuffer) -> FeedbackSlot? {
         let id = ObjectIdentifier(fb)
         if let slot = feedbackSlots[id], slot.owner === fb, slot.w == width, slot.h == height {
@@ -1178,8 +1340,13 @@ extension MetalRenderer {
               let b = makeFloatResolve(width: width, height: height) else { return nil }
         // A freshly allocated pair starts at the owner's rest state (transparent for a
         // feedback layer, the sim's substrate for a SimField) rather than undefined.
-        clearFloatTexture(a, color: restState, into: cb)
-        clearFloatTexture(b, color: restState, into: cb)
+        if let fill {
+            fill(a)
+            fill(b)
+        } else {
+            clearFloatTexture(a, color: restState, into: cb)
+            clearFloatTexture(b, color: restState, into: cb)
+        }
         let slot = FeedbackSlot(a: a, b: b, w: width, h: height, owner: fb)
         feedbackSlots[id] = slot
         return slot

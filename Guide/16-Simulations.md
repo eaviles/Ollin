@@ -103,6 +103,41 @@ Seeding is drawing, same as before, and it's worth watching what one mark become
 
 One more habit is worth forming here. The raw field is *data*, not a picture. Reaction-diffusion's state reads as dim red-green, so you give it a look by filtering, using the same catalog as everything else: `dish.filtered(.gradientMap(.viridis))`, a `.threshold` for hard ink, or Chapter 14's `.relight` to light it as matter.
 
+## The same rule at many sizes
+
+Turing's idea has another descendant worth knowing, and it takes a different turn. Instead of two chemicals, it uses one substance, and instead of one scale, it runs several at once.
+
+Start with the single-scale version, because the whole thing is built from it. Take an average of the field over a small disc, take another over a larger disc, and compare them. Where the small average is the greater, brighten the pixel a little; otherwise darken it. The small disc is called the *activator* and the large one the *inhibitor*, and that one comparison, run over and over, grows the stripes on a zebra.
+
+Now run five of those rules side by side, with radii doubling from small to large. At every pixel, every step, you ask which of the five has its two averages closest together, and let only that one act. Jonathan McCabe's insight is that "closest together" means *this is the scale that has the least to say here*, and letting it act is what lets each part of the picture settle at its own size:
+
+<img src="Images/16-Simulations/TuringScales.jpg" alt="Two fields side by side, both shaded as gray relief. The left is a uniform maze of equal-width ridges at one size. The right has broad smooth lobes and dark winding channels, with much finer maze-like detail packed inside them" width="720">
+
+```swift
+var field: SimField!
+
+override func setup() {
+    field = simField(.multiScaleTuring(), scale: 0.5)
+}
+
+override func draw() {
+    background(.black)
+    drawImage(field.filtered(.relight(height: 0.35)).image, 0, 0)
+}
+```
+
+That's the whole sketch, and the missing piece is the point: there's no `withField` block, because this is the first sim in the chapter that needs no seeding. It starts from noise and organizes itself. Reading the field is what keeps it stepping, so `drawImage` alone is enough. Draw into it if you want to *disturb* a settled pattern, and it will heal around the mark.
+
+The look is worth a word. People usually reach for `.gradientMap` on a grayscale field, but try `.relight` first here. The algorithm is flat and two-dimensional and knows nothing about light, yet the result reads convincingly like something photographed under a microscope. McCabe noticed this too, and the resemblance to electron micrographs of diatoms is what the pictures are known for.
+
+Two knobs repay understanding, because each one is the difference between the pattern and a near-miss. Keep the **amounts equal** across scales: every step renormalizes the field to fill its range, so whichever scale pushes hardest sets that range and squeezes the others toward mid gray, leaving you one scale's pattern with the rest as a faint wash. And **`variationRadius`** decides how large a region a scale can claim, by setting how far each scale's disagreement is averaged before the scales are compared. Read at a single point, a fine scale's disagreement passes through zero along every contour of its own structure, and since *least* disagreement wins, it takes a dense web of pixels across the whole field and buries the coarse scales entirely.
+
+Add `symmetry` and the field folds around its center. `.rosette(n)` does it to every rung at once, which is where the diatom resemblance becomes uncanny:
+
+```swift
+field = simField(.multiScaleTuring(scales: .rosette(9)), scale: 0.5)
+```
+
 ## Water you can stir
 
 The third built-in sim is a real fluid: an incompressible flow that carries color. Marks inject dye, and `withField`'s `force:` pushes the flow where the marks land, so a moving brush stirs what it paints:
@@ -373,6 +408,8 @@ Then make it yours:
 ## Where this comes from
 
 The Game of Life is John Horton Conway's, from 1970, and reached the world through Martin Gardner's *Scientific American* column; it remains the standard demonstration that computation and life-like behavior need almost nothing to start. Reaction-diffusion begins with Alan Turing's 1952 paper *The Chemical Basis of Morphogenesis*, and the two-chemical model Ollin ships is the Gray-Scott variant, and the feed/kill map figure follows the territory John Pearson charted in his 1993 classification of its patterns (Karl Sims' interactive tutorial later made that map a creative-coding staple). The real-time fluid descends from Jos Stam's 1999 *Stable Fluids* and the GPU formulation popularized by Mark Harris. The Mandelbrot set is named for Benoit Mandelbrot, who first plotted it in 1980, on the mathematics of Gaston Julia's 1918 sets. GPU particle systems are a demoscene and games inheritance, and the additive light-deposit rendering they power here is as old as long-exposure photography.
+
+The multi-scale patterns are Jonathan McCabe's, from his 2010 Bridges paper "Cyclic Symmetric Multi-Scale Turing Patterns", which takes Turing's idea in a different direction from Gray-Scott: one substance rather than two, and several scales competing to act rather than one. He has been making artwork from the method for years, and it is his images, not the algorithm, that made it well known.
 
 The newer arrivals have their own names attached. The 256 elementary rules were catalogued and numbered by Stephen Wolfram in 1983, and turmites generalize Christopher Langton's 1986 ant. Lenia is Bert Wang-Chak Chan's continuous generalization of the Game of Life, from his 2019 paper "Lenia: Biology of Artificial Life", and Ollin implements the exponential kernel and growth rule it describes, with the paper's Orbium creature as the defaults. Particle Life descends from Jeffrey Ventrella's *Clusters*, and the Primordial Particle System is Thomas Schmickl, Martin Stefanec, and Karl Crailsheim's, published in *Scientific Reports* in 2016. The slime-mold agents follow Jeff Jones's 2010 model of *Physarum polycephalum* transport networks. The fluid is Matthias Müller and colleagues' 2003 particle-based formulation with the near-density anti-clumping term Simon Clavet, Philippe Beaudoin, and Pierre Poulin added in 2005, and the jellies use Müller's 2005 meshless shape matching.
 

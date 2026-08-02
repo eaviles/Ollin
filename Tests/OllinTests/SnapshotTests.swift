@@ -203,6 +203,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("lenia", frame: 60,
                  note: "A Lenia SimField seeded with a fixed grid of graded-alpha dots, evolved to frame 60 and recoloured. Pins the continuous-CA step end to end: the ring-kernel convolution with in-loop normalization, the bell-curve growth mapping, the dt integration and clip, and the params rows riding after the texel size.",
                  make: { LeniaScene() }),
+    SnapshotCase("multi-scale-turing", frame: 150,
+                 note: "A multi-scale Turing SimField, unseeded (it self-organizes from its own noise) and read without a withField block, run to frame 150 and shaded as relief. Pins the whole dedicated pipeline: the seeded noise fill a fresh field starts from, the Gaussian blur pyramid and the disc gather that reads it two rungs finer (the rectilinear-lattice fix), the per-scale variation chain that lets coarse scales hold ground, the least-variation scale selection, the 4x4 min/max extent chain and the renormalization that keeps the field from running away, and the read-registers-the-field path that steps a sim nothing is drawn into.",
+                 make: { MultiScaleTuringScene() }),
     SnapshotCase("effects-feedback", frame: 24,
                  note: "A feedback layer built up over 24 frames: each frame redraws the last, zoomed + spun + faded, plus a new dot. Pins the persistent ping-pong (previous read while writing back, the per-frame swap kept across frames) and the headless render-every-frame warmup the built-up state needs.",
                  make: { EffectsFeedback() }),
@@ -5106,6 +5109,21 @@ private final class TurmiteScene: Sketch {
         for ant in machine.antPositions {
             drawCircle((Double(ant.column) + 0.5) * cell, (Double(ant.row) + 0.5) * cell, cell * 1.5)
         }
+    }
+}
+
+/// A multi-scale Turing `SimField` left entirely alone: it starts from its own seeded
+/// noise and organizes itself, so there is nothing to draw into it and no `withField`
+/// block at all. Pins the dedicated pipeline and the read-registers-the-field path.
+private final class MultiScaleTuringScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var field: SimField!
+
+    override func setup() { field = simField(.multiScaleTuring(seed: 4), scale: 0.5) }
+
+    override func draw() {
+        background(.black)
+        drawImage(field.filtered(.relight(height: 0.35)).image, 0, 0)
     }
 }
 

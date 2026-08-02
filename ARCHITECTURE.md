@@ -646,8 +646,9 @@ layers, sim fields, and SSR ops alike.
 `simField(_:scale:)` returns a persistent `SimField` (`Effects/SimField.swift`)
 that runs a built-in `Sim` on its state each frame: the stateful sibling of the
 stateless `Filter`. `Sim` is a `Sendable` value catalog like `Filter`:
-`.reactionDiffusion(feed:kill:)` (Gray-Scott), `.gameOfLife` (Conway), and
-`.fluid(...)`. A sketch draws into the field to seed or force it
+`.reactionDiffusion(feed:kill:)` (Gray-Scott), `.gameOfLife` (Conway),
+`.lenia(...)`, `.ripples(...)`, `.multiScaleTuring(...)`, and `.fluid(...)`. A
+sketch draws into the field to seed or force it
 (`withField(_:_:)`, scoped like `withTarget`): the renderer renders the drawn
 marks into a transient seed texture, runs `ollin_sim_inject` to composite the
 seeds onto the front state, then steps the sim's `ollin_sim_*` fragment N
@@ -681,6 +682,90 @@ single-field path byte-identical (verified: no `effects-simfield` or
 `effects-feedback` re-record). The brush model is one global `force` per field
 per frame; `SimField.image` is the dye, recolorable and bloomable like any
 layer.
+
+#### Multi-scale Turing (`.multiScaleTuring`)
+
+McCabe's rule (written from the Bridges 2010 paper, credited in
+`ATTRIBUTION.md`): one substance in `0...1`, and at each scale an *activator*
+average over a small disc against an *inhibitor* average over a larger one. The
+scale whose two averages differ least wins that pixel and nudges it toward the
+greater of the two; the field is then renormalized to fill its range again,
+which is what stops the nudges accumulating into a runaway. Like `.fluid` it
+needs more than one pass, so it runs its own `runMultiScaleTuring` pipeline, but
+unlike the fluid its storage is a single ping-pong pair, so it shares
+`FeedbackSlot` and inherits the flip, the prune, and the
+`statefulEncodeIsRepeat` arm unchanged.
+
+The passes: inject the drawn seeds; build a blur pyramid down to 1×1; per scale,
+measure `|activator − inhibitor|` at full size and run it down the same halving
+chain to the rung its `variationRadius` names; step; reduce the stepped field to
+its minimum and maximum through a 4×4 chain; normalize into the back buffer.
+Precomputing the variations means the step recomputes only the *winner's* two
+averages, which is what keeps a symmetric field affordable (one scale's fold per
+pixel rather than every scale's).
+
+Four things about the GPU realization are load-bearing, and each was a real
+defect first, found by bisecting a single scale against the paper's figures
+rather than by reading the output as a whole:
+
+- **The field starts as seeded noise, not a constant.** A uniform field has every
+  average equal at every scale, so no scale ever fires: it is a fixed point, and
+  a constant rest state leaves the sketch black forever with no hint why. This is
+  why `feedbackSlot` grew a `fill:` override beside `restState`.
+- **The pyramid is Gaussian (Burt-Adelson binomial), not a 2×2 box mean.** A
+  square kernel has square preferred directions, and the labyrinth came out
+  rectilinear, all right angles. The separable `(1,3,3,1)/8` about the block
+  center is four bilinear taps at ±0.75 source texels with equal weight, the same
+  cost as the box, and repeated down the rungs it converges on a true Gaussian.
+- **A radius gathers a nine-tap disc two rungs *finer* than the radius match,
+  never a single tap at the matching rung.** This is the subtle one. The matching
+  rung has the right blur *width* but holds only one sample per feature, so the
+  reconstruction between samples has nothing to go on and the pattern locks to
+  the lattice. No amount of kernel smoothing fixes it, because the information is
+  not there; the pyramid has to be oversampled relative to the blur. Two rungs
+  finer puts the lattice at a quarter of the blur width, and the ring rebuilds
+  the disc isotropically (each tap is itself a smooth Gaussian about a quarter of
+  the radius, so the taps overlap rather than reading as a ring of blobs).
+  `MultiScaleTuringTests.patternIsIsotropicRatherThanLockedToTheLattice` measures
+  the gradient-energy-weighted mean of `cos(4θ)`: the defect scores 0.63, the
+  shipped gather 0.11, and the counterfactual was run to confirm the test fails
+  on the defect rather than merely passing on the fix.
+- **Variation is averaged over a per-scale `variationRadius`, not read at a
+  point.** Read at a point, a fine scale's disagreement passes through zero along
+  every contour of its own structure, and since *least* disagreement wins it
+  claims a dense web of pixels across the whole field and buries the coarse
+  scales. (Softology's write-up notes single-point variation gives "the sharpest
+  most detailed images", which is the same observation from the other side.)
+  Measuring the winner distribution directly, by temporarily routing the winning
+  index into a colour channel, is what separated this from the amount question
+  below: the coarsest scale was already winning 68% of pixels in contiguous
+  regions, so selection was never the problem.
+
+Two *parameter* facts are equally load-bearing, because renormalization couples
+the scales to each other: the rungs want **equal amounts** (whichever pushes
+hardest sets the field's range, and the rest are squeezed toward mid gray, so an
+uneven ladder gives one scale's pattern with the others as a faint wash), and the
+ladder **starts at radius 2** (a rung at radius 1 works on single texels, and
+pixel-scale features read as speckle rather than detail).
+
+Two constants are paired across the language boundary: `TuringScale.maxScales`
+(6) with `OLLIN_TURING_MAX_SCALES`, and `MetalRenderer.turingPyramidLevels` (12)
+with `OLLIN_TURING_LEVELS`, which sizes the `array<texture2d<float>, N>` binding;
+a shallower pyramid repeats its top rung to fill it and `levelCount` keeps the
+shader off the padding. Deliberate v1 cut: the winning-scale index is *not*
+carried in the state, so colour-by-scale (McCabe's coloured plates) is not
+available; it would mean spending a channel that both the display and the extent
+reduce read as gray.
+
+This sim is also what surfaced `Drawer.ensureFieldSteps`. A sim only evolves
+while its layer is one of the frame's render targets, which `withField` is what
+normally arranges. That is right for a sim you seed by drawing, but a
+self-organizing one needs nothing drawn into it, and the natural sketch (make it
+in `setup`, `drawImage` it in `draw`) would sit frozen. So `SimField.image` and
+`.filtered(_:)` register the field too; the layer's transparent clear is what
+makes that safe, since an unseeded frame renders a seed that composites nothing.
+Existing sketches register via `withField` first, so target order is unchanged
+and the whole snapshot suite passed unrecorded.
 
 ### Compose DSL, combine ops, and `aside`
 

@@ -292,3 +292,241 @@ fragment float4 ollin_fluid_advect(PresentOut in [[stage_in]],
     float4 result = quantity.sample(samp, in.uv - dt * v * t);
     return float4(result.rgb / (1.0 + dissipation * dt), result.a);
 }
+
+// MARK: - Multi-scale Turing patterns
+//
+// One substance in the red channel, held in 0...1 (the state's rgb are all the same
+// value, so the raw image reads as grayscale). A step averages the field over a small
+// disc and a larger one at each of several scales; the scale whose two averages differ
+// least wins that pixel and nudges it up or down by its own small amount. The field is
+// then renormalized to fill 0...1 again, which is what keeps it from running away.
+//
+// Averaging over a disc of any radius, several times per scale, is far too expensive
+// to do by gathering texels, so the radii are served from a blur pyramid: level k is a
+// 2x2-mean reduction of level k-1, so one texel there holds the mean of a 2^k box, and
+// a radius resolves to a fractional level sampled from the two nearest rungs. It is a
+// square-ish kernel rather than a true disc, and bilinear filtering softens it further
+// toward a tent, both of which the pattern is indifferent to.
+//
+// Edges wrap: the field is periodic (that is what keeps the pattern from pinning to the
+// borders), which is why these passes use their own repeat-addressed samplers rather
+// than the clamped one bound at sampler(0).
+
+constexpr sampler ollin_turing_wrap(coord::normalized, filter::linear, address::repeat);
+constexpr sampler ollin_turing_wrap_point(coord::normalized, filter::nearest, address::repeat);
+
+// How many pyramid rungs the step can be handed. 12 covers a field up to 4096 texels
+// on its longest side; the renderer builds only as many as the field needs and repeats
+// the top one to fill the rest of the binding.
+#define OLLIN_TURING_LEVELS 12
+
+// The step's loop bound, matching TuringScale.maxScales. It caps how far the step
+// reads into the parameter rows, so it must not exceed what Swift packs.
+#define OLLIN_TURING_MAX_SCALES 6
+
+// inject: replace the field with a drawn mark's brightness where it covers, so drawing
+// into a Turing field disturbs the pattern rather than tinting it. The seed arrives
+// premultiplied, so un-premultiply before reading luminance: white pushes the field to
+// the top of its range, black to the bottom.
+fragment float4 ollin_sim_inject_luma(PresentOut in [[stage_in]],
+                                      texture2d<float> state [[texture(0)]],
+                                      texture2d<float> seed [[texture(1)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float v = state.sample(samp, in.uv).r;
+    float4 d = seed.sample(samp, in.uv);
+    float mark = ollin_luma(ollin_unpremul(d));
+    return float4(float3(mix(v, mark, d.a)), 1.0);
+}
+
+// seed: fill a fresh field with white noise. A Turing field cannot start flat: a
+// constant field has every average equal at every scale, so no scale ever fires and
+// nothing happens. params[1].x picks the noise, so a seed replays exactly.
+fragment float4 ollin_sim_turing_seed(PresentOut in [[stage_in]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float seed = params[1].x;
+    float2 cell = floor(in.uv / max(t, float2(1e-6)));
+    float n = hash12(cell + float2(seed * 0.7331, seed * 1.3197));
+    return float4(float3(n), 1.0);
+}
+
+// downsample: one pyramid rung, a binomial (Gaussian) reduction of the rung below.
+//
+// The kernel is load-bearing, not a refinement. A plain 2x2 mean makes each rung a
+// square box average, and a square kernel has square preferred directions: the pattern
+// comes out rectilinear, all right angles and axis-aligned strokes, where a Turing
+// labyrinth should wander isotropically. The fix is the standard Gaussian-pyramid
+// reduce: the separable binomial (1,3,3,1)/8 about the block center, which is four
+// bilinear taps at +/-0.75 source texels with equal weight (each tap blending two texels
+// 1:3, which is what reproduces those weights). Repeated down the rungs it converges on
+// a true Gaussian, so the deep rungs the coarse scales read are round.
+//
+// Blocks are addressed by index rather than by offsetting the uv, so an odd source size
+// still tiles exactly (the trailing half-block wraps onto column 0, which is what a
+// periodic field wants). params[0] = (1/srcW, 1/srcH, dstW, dstH).
+fragment float4 ollin_sim_turing_downsample(PresentOut in [[stage_in]],
+                                            texture2d<float> src [[texture(0)]],
+                                            constant float4 *params [[buffer(0)]]) {
+    float2 srcTexel = params[0].xy;
+    float2 dstSize = params[0].zw;
+    // The 2x2 block's center, in source texels: block j spans texels 2j and 2j+1, whose
+    // centers are 2j+0.5 and 2j+1.5, so the center sits at 2j+1.
+    float2 center = (floor(in.uv * dstSize) * 2.0 + 1.0) * srcTexel;
+    float sum = 0.0;
+    for (int dy = 0; dy < 2; dy++) {
+        for (int dx = 0; dx < 2; dx++) {
+            float2 offset = (float2(float(dx), float(dy)) * 2.0 - 1.0) * 0.75 * srcTexel;
+            sum += src.sample(ollin_turing_wrap, center + offset).r;
+        }
+    }
+    return float4(float3(sum * 0.25), 1.0);
+}
+
+// The field averaged over a disc of `radius` texels, gathered off the pyramid.
+//
+// The rung choice is load-bearing. Reading the rung whose texel *is* the blur width
+// (log2(2r)) is the obvious thing and it is wrong: that rung holds one sample per
+// feature, so the reconstruction between samples has nothing to go on and the pattern
+// locks to the lattice, coming out as right angles and axis-aligned strokes no amount of
+// kernel smoothing removes (the information is simply not there). So this reads two rungs
+// finer, where the lattice is four times finer than the blur, and rebuilds the disc from
+// a ring of nine taps. Isotropic by construction, and each tap is itself already a smooth
+// Gaussian about a quarter of the radius wide, so the taps overlap and the result is
+// smooth rather than a ring of blobs.
+//
+// The two rungs either side of the fractional level are mixed, so the radius stays
+// continuous and can be animated without stepping.
+static inline float ollin_turing_disc(array<texture2d<float>, OLLIN_TURING_LEVELS> levels,
+                                      int levelCount, float2 uv, float radius, float2 texel) {
+    float lv = clamp(log2(max(radius, 0.5) * 2.0) - 2.0, 0.0, float(levelCount - 1));
+    int lo = int(floor(lv));
+    int hi = min(lo + 1, levelCount - 1);
+    float f = lv - float(lo);
+    float2 reach = radius * texel * 0.7;
+    float sum = mix(levels[lo].sample(ollin_turing_wrap, uv).r,
+                    levels[hi].sample(ollin_turing_wrap, uv).r, f);
+    for (int i = 0; i < 8; i++) {
+        float a = 6.283185307179586 * (float(i) + 0.5) / 8.0;
+        float2 p = uv + float2(cos(a), sin(a)) * reach;
+        sum += mix(levels[lo].sample(ollin_turing_wrap, p).r,
+                   levels[hi].sample(ollin_turing_wrap, p).r, f);
+    }
+    return sum / 9.0;
+}
+
+// The same average, folded into n-fold rotational symmetry about the field's center by
+// averaging each point with its n counterparts around the circle. Rotation happens in
+// aspect-corrected coordinates so a non-square field folds into round petals rather
+// than sheared ones. Returned signed (-1...1), the convention the rule is stated in.
+static inline float ollin_turing_average(array<texture2d<float>, OLLIN_TURING_LEVELS> levels,
+                                         int levelCount, float2 uv, float radius,
+                                         int symmetry, float aspect, float2 texel) {
+    if (symmetry < 2) return 2.0 * ollin_turing_disc(levels, levelCount, uv, radius, texel) - 1.0;
+    float2 skew = float2(aspect, 1.0);
+    float2 p = (uv - 0.5) * skew;
+    float sum = 0.0;
+    for (int k = 0; k < symmetry; k++) {
+        float a = 6.283185307179586 * float(k) / float(symmetry);
+        float c = cos(a), s = sin(a);
+        float2 r = float2(p.x * c - p.y * s, p.x * s + p.y * c);
+        sum += ollin_turing_disc(levels, levelCount, r / skew + 0.5, radius, texel);
+    }
+    return 2.0 * (sum / float(symmetry)) - 1.0;
+}
+
+// variation: one scale's disagreement, |activator - inhibitor|, at full resolution. The
+// renderer then averages it by running it down the same halving chain the field uses, to
+// the rung matching that scale's variation radius, and the step compares those averages.
+// Averaging is what makes the picture multi-scale: read at a single point, a fine scale's
+// disagreement passes through zero along every contour of its own structure, and since
+// least disagreement wins, it would claim a dense web of pixels across the whole field.
+// params[0] = (1/w, 1/h, aspect, 0),
+// params[1] = (activatorRadius, inhibitorRadius, symmetry, weight).
+fragment float4 ollin_sim_turing_variation(PresentOut in [[stage_in]],
+                                           array<texture2d<float>, OLLIN_TURING_LEVELS> levels [[texture(0)]],
+                                           constant float4 *params [[buffer(0)]]) {
+    float aspect = params[0].z;
+    int levelCount = int(params[0].w);
+    float4 row = params[1];
+    int symmetry = int(row.z);
+    float weight = row.w;
+    float activator = weight * ollin_turing_average(levels, levelCount, in.uv, row.x, symmetry, aspect, params[0].xy);
+    float inhibitor = weight * ollin_turing_average(levels, levelCount, in.uv, row.y, symmetry, aspect, params[0].xy);
+    return float4(float3(abs(activator - inhibitor)), 1.0);
+}
+
+// step: let the scale whose averaged disagreement is smallest here act, and move the
+// field by that scale's amount toward whichever of its two averages is the greater. The
+// disagreements arrive precomputed, so only the winner's two averages are recomputed,
+// which is what keeps a symmetric field affordable (one scale's fold, not every scale's).
+// Writes the stepped value into all three channels so the extent reduce can read a
+// minimum from .r and a maximum from .g uniformly.
+// texture(0..11) the field pyramid, texture(12..17) each scale's averaged variation.
+// params[0] = (1/w, 1/h, aspect, levelCount), params[1] = (scaleCount, 0, 0, 0),
+// params[2 + 2i] = (activatorRadius, inhibitorRadius, amount, weight),
+// params[3 + 2i] = (symmetry, 0, 0, 0).
+fragment float4 ollin_sim_turing_step(PresentOut in [[stage_in]],
+                                      array<texture2d<float>, OLLIN_TURING_LEVELS> levels [[texture(0)]],
+                                      array<texture2d<float>, OLLIN_TURING_MAX_SCALES> variations [[texture(OLLIN_TURING_LEVELS)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float aspect = params[0].z;
+    int levelCount = int(params[0].w);
+    int scaleCount = int(params[1].x);
+    float center = levels[0].sample(ollin_turing_wrap, in.uv).r;
+
+    int best = 0;
+    float bestVariation = 1e20;
+    for (int i = 0; i < OLLIN_TURING_MAX_SCALES; i++) {
+        if (i >= scaleCount) break;
+        float variation = variations[i].sample(ollin_turing_wrap, in.uv).r;
+        if (variation < bestVariation) {
+            bestVariation = variation;
+            best = i;
+        }
+    }
+    float4 row = params[2 + 2 * best];
+    int symmetry = int(params[3 + 2 * best].x);
+    float weight = row.w;
+    float activator = weight * ollin_turing_average(levels, levelCount, in.uv, row.x, symmetry, aspect, params[0].xy);
+    float inhibitor = weight * ollin_turing_average(levels, levelCount, in.uv, row.y, symmetry, aspect, params[0].xy);
+    return float4(float3(center + (activator > inhibitor ? row.z : -row.z)), 1.0);
+}
+
+// extent: 4x4 min/max reduce, chained to 1x1 to find the stepped field's range. Blocks
+// are addressed by index like the downsample, and the sampler is point-filtered because
+// a linear tap would average pairs and report a range narrower than the real one.
+// Carries the running minimum in .r and maximum in .g, so the first pass in the chain
+// reads the step's uniform rgb correctly with no special case.
+// params[0] = (1/srcW, 1/srcH, dstW, dstH).
+fragment float4 ollin_sim_turing_extent(PresentOut in [[stage_in]],
+                                        texture2d<float> src [[texture(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float2 srcTexel = params[0].xy;
+    float2 dstSize = params[0].zw;
+    float2 block = floor(in.uv * dstSize) * 4.0;
+    float lo = 1e20, hi = -1e20;
+    for (int dy = 0; dy < 4; dy++) {
+        for (int dx = 0; dx < 4; dx++) {
+            float2 uv = (block + float2(float(dx), float(dy)) + 0.5) * srcTexel;
+            float2 s = src.sample(ollin_turing_wrap_point, uv).rg;
+            lo = min(lo, s.r);
+            hi = max(hi, s.g);
+        }
+    }
+    return float4(lo, hi, 0.0, 1.0);
+}
+
+// normalize: stretch the stepped field back across the full 0...1 range, the step that
+// stops it drifting off after enough nudges in one direction. The 1x1 end of the extent
+// chain holds the range, read at its center.
+fragment float4 ollin_sim_turing_normalize(PresentOut in [[stage_in]],
+                                           texture2d<float> field [[texture(0)]],
+                                           texture2d<float> extent [[texture(1)]],
+                                           sampler samp [[sampler(0)]],
+                                           constant float4 *params [[buffer(0)]]) {
+    float2 e = extent.sample(samp, float2(0.5, 0.5)).rg;
+    float range = max(e.y - e.x, 1e-5);
+    float v = clamp((field.sample(samp, in.uv).r - e.x) / range, 0.0, 1.0);
+    return float4(float3(v), 1.0);
+}

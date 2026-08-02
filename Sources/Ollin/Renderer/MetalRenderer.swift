@@ -652,6 +652,12 @@ final class MetalRenderer {
     var fluidSlots: [ObjectIdentifier: FluidSlot] = [:]
     var fluidUsedThisFrame: Set<ObjectIdentifier> = []
 
+    /// How many blur-pyramid rungs a multi-scale Turing step is handed. Must stay equal
+    /// to `OLLIN_TURING_LEVELS` in `ShaderSim.metal`, which sizes the texture binding:
+    /// twelve rungs cover a field up to 4096 texels on its longest side, and a shallower
+    /// pyramid repeats its top rung to fill the binding.
+    static let turingPyramidLevels = 12
+
     /// One screen-space-reflections layer's temporal-accumulation history: the ping-pong pair
     /// carrying the reflection across frames (the back is written this frame and becomes the
     /// front next frame), plus the previous frame's scene view·projection used to reproject it,

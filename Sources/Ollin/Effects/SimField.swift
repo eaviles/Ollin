@@ -73,15 +73,27 @@ public final class SimField {
         self.writeLayer.origin = .simField(self)
     }
 
-    /// The evolved field this frame, as a drawable `Image` — the raw state, resolved
+    /// The evolved field this frame, as a drawable `Image`: the raw state, resolved
     /// lazily at draw time. Reaction-diffusion reads reddish (A in red, B in green);
     /// recolor it with `field.filtered(.gradientMap(...))`. Game of Life is already
     /// crisp black-and-white.
-    public var image: Image { writeLayer.image }
+    ///
+    /// Reading the field also keeps it running: a sim steps while its layer is one of the
+    /// frame's render targets, which `withField` does when you draw seeds into it, and
+    /// this does when you only read. A field that self-organizes (multi-scale Turing) then
+    /// needs nothing but a `drawImage` to run.
+    public var image: Image {
+        drawer?.ensureFieldSteps(self)
+        return writeLayer.image
+    }
 
     /// Recolor or post-process the evolved field through a `Filter`, returning a new
     /// layer to composite. The raw sim state is data, so `field.filtered(.gradientMap(...))`
-    /// or `.threshold(...)` turns it into the look you want — the same effects substrate
-    /// the rest of the catalog uses.
-    public func filtered(_ filter: Filter) -> RenderTarget { writeLayer.filtered(filter) }
+    /// or `.threshold(...)` turns it into the look you want, through the same effects
+    /// substrate the rest of the catalog uses. Like `image`, reading through a filter
+    /// keeps the field stepping.
+    public func filtered(_ filter: Filter) -> RenderTarget {
+        drawer?.ensureFieldSteps(self)
+        return writeLayer.filtered(filter)
+    }
 }
