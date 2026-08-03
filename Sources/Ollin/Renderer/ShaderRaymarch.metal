@@ -745,6 +745,15 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
         lit.rgb += ollin_ibl_flat_ambient(baseRGB, n, light, iblIrradiance);
     }
 
+    // Atmosphere: fog the shaded hit to its own depth, the mesh fragments' rule, so a
+    // field and a mesh at the same distance haze identically. The march's pixel jitter
+    // uses this pass's own pixel grid (full-res inline or the reduced pre-pass), which
+    // the upsample then magnifies with the rest of the image.
+    if (light.fogColor.w > 0.0) {
+        lit.rgb = ollin_apply_fog(lit.rgb, pw, in.position.xy, light,
+                                  shadowMap, shadowSamp, iesProfiles, cookies);
+    }
+
     // Depth: the world hit point through the *same* view-projection the meshes use, so
     // marched and rasterized geometry z-test in one space (Metal NDC z is already [0,1]).
     float4 clip = u.projection * (u.view * float4(pw, 1.0));

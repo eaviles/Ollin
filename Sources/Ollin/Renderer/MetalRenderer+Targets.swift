@@ -445,6 +445,23 @@ extension MetalRenderer {
         }
     }
 
+    /// Resolve the volumetric-light quality intent to the in-scatter march's **step budget**
+    /// (steps along each view ray, one shadow-map compare each). Cheap texture taps on any
+    /// GPU, so the budget is hardware-independent like the PCSS taps. Export/headless lands
+    /// on `.detail` via `effectiveQuality`, so exported beams never march coarser than live.
+    func resolveVolumetricSteps(_ setting: VolumetricQualitySetting) -> Int {
+        switch setting {
+        case .absolute(let n):
+            return min(max(n, 8), 128)
+        case .tier(let quality):
+            switch effectiveQuality(quality) {
+            case .performance: return 16
+            case .default:     return 32
+            case .detail:      return 64
+            }
+        }
+    }
+
     /// Map a feature's requested quality through the automatic fallback: `.default` means
     /// "unset", so it resolves to `automaticQuality`; anything else is an explicit choice and
     /// passes through. (Live keeps `.default` as `.default`; export lifts it to `.detail`.)
@@ -675,6 +692,11 @@ extension MetalRenderer {
             lighting.cookieEnabled = ensureCookieArray(drawer.usedLightCookies) ? 1 : 0
         }
         if reflectAccelPresent { lighting.rtReflections = 1 }
+        // Atmosphere, same mirroring: the reduced-res field pass fogs its hits and marches
+        // its shafts with the same step budget as the main pass.
+        if lighting.fogColor.w > 0 {
+            lighting.fogParams2.x = Float(resolveVolumetricSteps(drawer.volumetricQualitySetting))
+        }
         return (lighting, shadowMap ?? ensureDummyShadowMap(), shadowCube ?? ensureDummyPointShadowMap())
     }
 

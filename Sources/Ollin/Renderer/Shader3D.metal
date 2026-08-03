@@ -400,6 +400,218 @@ static inline void ollin_apply_light_shaping(thread OllinLight &L,
     L.specular.rgb *= tint;
 }
 
+// MARK: - Atmosphere (fog + volumetric light)
+//
+// Participating-media single scattering over the frame's atmosphere constants
+// (`light.fogColor` / `.fogParams` / `.fogParams2`, gated by `fogColor.w`): every
+// 3D-shading fragment dims toward the fog color by the exact transmittance along its
+// own eye-to-surface path (the closed-form height-fog integral), and, with a
+// volumetric gain set, adds the light actually scattered into that path: a ray march
+// with one un-filtered shadow-map tap per step, so cones, cookies, IES profiles, and
+// cast shadows become beams and shafts in the air. The air itself is covered by a
+// fullscreen backdrop draw (see ShaderIBL) marching the same integrand out to the far
+// plane; the depth-tested surfaces, each fogged to its own depth, composite over it,
+// so the two halves agree without any stored scene depth. Deterministic by
+// construction: the march's start jitter is a pure function of pixel position, so
+// exports and snapshots reproduce with no temporal history.
+
+// Optical depth of the height-shaped medium along [0, t] of the ray o + s·r: density
+// falls off with altitude as d·e^(−h·y), whose line integral has a closed form; the
+// h = 0 (uniform) and horizontal-ray cases take its limits so the value is continuous
+// there (a ray grazing the horizon must not pop).
+static inline float ollin_fog_optical_depth(float3 o, float3 r, float t,
+                                            float density, float falloff) {
+    if (density <= 0.0 || t <= 0.0) return 0.0;
+    if (falloff <= 1e-5) return density * t;
+    float base = density * exp(-falloff * o.y);
+    float k = falloff * r.y;
+    if (fabs(k) < 1e-4) return base * t;
+    return base * (1.0 - exp(-k * t)) / k;
+}
+
+// Henyey-Greenstein phase, normalized so the isotropic case (g = 0) is 1: the gain
+// dial then reads comparably at any anisotropy. `c` is the cosine between the
+// direction to the light and the view ray, so forward scattering peaks when the view
+// looks into the light.
+static inline float ollin_hg_phase(float c, float g) {
+    float g2 = g * g;
+    float denom = 1.0 + g2 - 2.0 * g * c;
+    return (1.0 - g2) / (denom * sqrt(max(denom, 1e-6)));
+}
+
+// Interleaved gradient noise: the march's per-pixel start offset, turning step
+// banding into fine structured noise the present pass's dither absorbs. A pure
+// function of pixel position (no frame term), so every export path reproduces.
+static inline float ollin_ign(float2 p) {
+    return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
+}
+
+// One un-filtered shadow-map visibility tap for a march sample. The sample sits in
+// the air, so there is no surface normal to bias along; the small constant depth
+// bias alone suffices (an air sample is never its own occluder). Outside the
+// caster's box nothing was rendered, so the air there counts as lit.
+static inline float ollin_fog_shadow_tap(float3 p, float4x4 lightVP,
+                                         depth2d<float> shadowMap, sampler shadowSamp) {
+    float4 lc = lightVP * float4(p, 1.0);
+    if (lc.w <= 0.0) return 1.0;
+    float3 ndc = lc.xyz / lc.w;
+    if (ndc.x < -1.0 || ndc.x > 1.0 || ndc.y < -1.0 || ndc.y > 1.0 || ndc.z > 1.0) return 1.0;
+    float2 uv = ndc.xy * float2(0.5, -0.5) + 0.5;
+    return shadowMap.sample_compare(shadowSamp, uv, ndc.z - 0.0015);
+}
+
+// The view ray's crossing of a spot's outer cone: the t-interval of o + t*r inside
+// the cone, clipped to [0, tEnd], written to `span`. Bounding the march to this
+// interval is what keeps a thin beam resolvable: strata spread over the whole ray
+// straddle a beam a fraction of a stratum wide, and the beam dissolves into noise
+// (or, un-jittered, vanishes outright, the observed failure). Only the transverse
+// case is bounded; a ray running within the cone's angle of its axis sees a long
+// glow anyway, so it keeps the full range (and the integrand's own cone test stays
+// the arbiter of what actually contributes, so a loose span only costs samples).
+static inline bool ollin_ray_cone_span(float3 o, float3 r, float tEnd,
+                                       float3 apex, float3 axis, float cosOuter,
+                                       thread float2 &span) {
+    float3 co = o - apex;
+    float rd = dot(r, axis);
+    float cd = dot(co, axis);
+    float cos2 = cosOuter * cosOuter;
+    float a = rd * rd - cos2;
+    if (a >= -1e-6) { span = float2(0.0, tEnd); return true; }  // riding the beam
+    float b = 2.0 * (rd * cd - cos2 * dot(co, r));
+    float c = cd * cd - cos2 * dot(co, co);
+    float disc = b * b - 4.0 * a * c;
+    if (disc <= 0.0) return false;                              // never crosses the cone
+    float sq = sqrt(disc);
+    float t0 = (-b - sq) / (2.0 * a);
+    float t1 = (-b + sq) / (2.0 * a);
+    span = float2(max(min(t0, t1), 0.0), min(max(t0, t1), tEnd));
+    if (span.y <= span.x) return false;
+    // The interval is one nappe of the double cone; reject the mirror one behind
+    // the apex (its samples would all fail the cone test anyway).
+    float tm = 0.5 * (span.x + span.y);
+    return cd + tm * rd > 0.0;
+}
+
+// The light scattered into the eye along [0, tEnd] of the view ray o + s*r: the
+// volumetric march, one bounded sub-march per participating light. Directional and
+// spot lights participate (a spot's cone, IES profile, and cookie shape the beam;
+// the 2D-map caster's shadow carves the shafts); the point and area kinds sit out,
+// because the punctual no-attenuation convention gives their air glow no distance
+// shape to march. Each sample weights the light scattered at that depth by the
+// transmittance back to the eye, so near air glows over far. When the frame set no
+// fog, a small reference density stands in for the scattering coefficient and the
+// light leg's extinction, so beams still form (and still bound) while the view
+// path keeps zero dimming (the dark-stage look).
+static inline float3 ollin_fog_inscatter(float3 o, float3 r, float tEnd, float2 pixel,
+                                         constant OllinLighting &light,
+                                         depth2d<float> shadowMap, sampler shadowSamp,
+                                         texture2d_array<float> iesProfiles,
+                                         texture2d_array<float> cookies) {
+    float gain = light.fogParams.z;
+    if (gain <= 0.0 || tEnd <= 1e-5 || light.enabled == 0) return float3(0.0);
+    int steps = clamp(int(light.fogParams2.x), 4, 160);
+    float g = light.fogParams.w;
+    float extinction = light.fogParams.x;
+    float scatterBase = extinction > 0.0 ? extinction : 0.05;
+    float falloff = light.fogParams.y;
+    bool caster2D = (light.shadowLight >= 0 && light.shadowKind == 0);
+    float3 sum = float3(0.0);
+    for (int li = 0; li < light.lightCount; li++) {
+        OllinLight L0 = light.lights[li];
+        if (L0.kind != 0 && L0.kind != 2) continue;
+        // The sub-march range: a transverse spot crossing is bounded to the
+        // ray-cone interval so every stratum lands where the beam is; anything
+        // else (directional, or riding a beam) marches the whole ray under a
+        // quadratic warp t = tEnd*u*u that crowds samples into the near field,
+        // where the glow subtends the most screen (uniform steps over a long air
+        // ray starve the foreground into visible noise).
+        float2 span = float2(0.0, tEnd);
+        bool bounded = false;
+        float3 spotAxis = float3(0.0);
+        if (L0.kind == 2) {
+            spotAxis = normalize(L0.direction.xyz);
+            if (!ollin_ray_cone_span(o, r, tEnd, L0.position.xyz, spotAxis,
+                                     clamp(L0.cosOuter, 0.05, 0.9995), span)) continue;
+            bounded = span.y < tEnd || span.x > 0.0;
+        }
+        for (int i = 0; i < steps; i++) {
+            // Each stratum draws its own jitter (the gradient noise re-read at a
+            // per-step pixel shift): one shared offset per ray moves every stratum
+            // together, and that coherent error reprints the jitter pattern as a
+            // woven lattice across the beam; independent strata break it into fine
+            // grain. Still a pure function of (pixel, step), so exports reproduce.
+            float ji = ollin_ign(pixel + float(i) * 5.588238);
+            float u = (float(i) + ji) / float(steps);
+            float t, w;
+            if (bounded) {
+                t = mix(span.x, span.y, u);
+                w = (span.y - span.x) / float(steps);
+            } else {
+                t = tEnd * u * u;
+                w = 2.0 * tEnd * u / float(steps);
+            }
+            float3 p = o + r * t;
+            float T = exp(-ollin_fog_optical_depth(o, r, t, extinction, falloff));
+            if (T <= 1e-4) continue;   // fogged out; nothing left to add here
+            float sigma = scatterBase * (falloff > 1e-5 ? exp(-falloff * p.y) : 1.0);
+            OllinLight L = L0;
+            float3 toLight;
+            float atten = 1.0;
+            if (L.kind == 0) {
+                toLight = normalize(L.direction.xyz);
+                // The light leg for a directional source: under height fog the slant
+                // path from the sky has a finite closed-form optical depth, so rays
+                // dim the deeper they reach into the mist (the crepuscular look).
+                // Uniform fog has no finite sky path; the leg is skipped there.
+                if (falloff > 1e-5 && toLight.y > 0.02) {
+                    atten = exp(-scatterBase * exp(-falloff * p.y) / (falloff * toLight.y));
+                }
+            } else {
+                float3 toL = L.position.xyz - p;
+                float distPL = length(toL);
+                toLight = toL / max(distPL, 1e-5);
+                float cone = smoothstep(L.cosOuter, L.cosInner, dot(spotAxis, -toLight));
+                if (cone <= 0.0) continue;
+                // The light leg: the beam itself extincts through the medium on the
+                // way to this sample, so a cone dims along its length and the
+                // in-scatter integral stays bounded (without this leg a ray riding
+                // inside a cone accumulates without limit, washing the frame out).
+                atten = cone * exp(-ollin_fog_optical_depth(p, toLight, distPL,
+                                                            scatterBase, falloff));
+                if (atten <= 1e-4) continue;
+                ollin_apply_light_shaping(L, light, toLight, p, iesProfiles, cookies);
+            }
+            float vis = (caster2D && li == light.shadowLight)
+                      ? ollin_fog_shadow_tap(p, light.lightViewProjection, shadowMap, shadowSamp)
+                      : 1.0;
+            if (vis <= 0.0) continue;
+            float phase = ollin_hg_phase(dot(toLight, r), g);
+            sum += L.color.rgb * (atten * vis * phase * T * sigma * w);
+        }
+    }
+    return sum * gain;
+}
+
+// Fog + shafts over a shaded surface fragment: the exact transmittance along the
+// eye-to-surface path dims the shaded color toward the fog's ambient in-scatter, and
+// the marched term adds what the lights scatter into that same path. Callers gate on
+// `light.fogColor.w` (0 leaves the branch untaken, byte-identical).
+static inline float3 ollin_apply_fog(float3 rgb, float3 worldPos, float2 pixel,
+                                     constant OllinLighting &light,
+                                     depth2d<float> shadowMap, sampler shadowSamp,
+                                     texture2d_array<float> iesProfiles,
+                                     texture2d_array<float> cookies) {
+    float3 o = light.cameraPosition.xyz;
+    float3 v = worldPos - o;
+    float t = length(v);
+    if (t <= 1e-5) return rgb;
+    float3 r = v / t;
+    float T = exp(-ollin_fog_optical_depth(o, r, t, light.fogParams.x, light.fogParams.y));
+    float3 inscatter = ollin_fog_inscatter(o, r, t, pixel, light, shadowMap, shadowSamp,
+                                           iesProfiles, cookies);
+    return rgb * T + light.fogColor.rgb * (1.0 - T) + inscatter;
+}
+
 #if OLLIN_RT_SHADOWS
 // One shadow ray from `origin` toward `target`: 1 if that light point is visible, 0 if an
 // occluder lies between. The structure is built opaque, so an opaque triangle hit commits
@@ -739,6 +951,18 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
     float3 diffuse = s1.albedo * irradianceTex.sample(cubeSamp, rot * s1.N).rgb
                    + ollin_rt_direct(s1, light, -R, ltcAmp, iesProfiles, cookies);
     col += diffuse * (1.0 - s1.metal);
+    // Atmosphere: the reflected leg crosses the same medium, so the hit's radiance
+    // fogs by the surface-to-hit path (analytic extinction + ambient only; the shaft
+    // march is not traced into reflections). Shared by the inline and deferred paths,
+    // so a mirror never shows a crisply un-fogged copy of a hazed scene. The primary
+    // eye-to-surface leg is fogged by the receiving fragment on its composed color;
+    // an environment miss keeps the environment's clarity (the documented envelope).
+    if (light.fogColor.w > 0.0) {
+        float tHit = length(s1.P - r.origin);
+        float T = exp(-ollin_fog_optical_depth(r.origin, R, tHit,
+                                               light.fogParams.x, light.fogParams.y));
+        col = col * T + light.fogColor.rgb * (1.0 - T);
+    }
     return float4(col, 1.0);
 }
 
@@ -1843,6 +2067,12 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
         c.rgb += ollin_ibl_flat_ambient(base, normalize(in.normal), light, iblIrradiance);
     }
+    // Atmosphere last: fog dims the fully shaded surface (reflections and ambient
+    // included) along the eye path, then the marched in-scatter adds the air's glow.
+    if (light.fogColor.w > 0.0) {
+        c.rgb = ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,
+                                shadowMap, shadowSamp, iesProfiles, cookies);
+    }
     return c;
 }
 
@@ -2045,6 +2275,11 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                        );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
         c.rgb += ollin_ibl_flat_ambient(base, normalize(in.normal), light, iblIrradiance);
+    }
+    // Atmosphere last, as on the solid path.
+    if (light.fogColor.w > 0.0) {
+        c.rgb = ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,
+                                shadowMap, shadowSamp, iesProfiles, cookies);
     }
     return c;
 }

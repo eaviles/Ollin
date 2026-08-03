@@ -238,6 +238,30 @@ The window on the right is the second shaper: a **cookie**, an image a spot proj
 
 Two habits worth keeping. A profile ends where its measurements end, so a downlight file that stops at 90° sends nothing above the fixture's own horizon; to wash a wall, tilt the light's `axis:` at it, the way the real fixture would be aimed. And both shapers are made-once values: the profile parses its file and the cookie resamples its image at construction, so build them in `setup()` and hand the same value to the light every frame. The `3D/Lighting/LightShaping` example stages a downlight, a batwing, a wallwasher, and this same window over one floor, with its three `.ies` files riding beside the sketch as bundled resources.
 
+## Air you can see
+
+Everything so far shows a light only where it lands. Real air shows the light on its way: dust and haze catch a beam mid-flight, which is why a projector's cone hangs visibly over a cinema audience and sun through a window is a slanted block of bright air. Two calls give a scene that air.
+
+```swift
+fog(Color(hex: 0xB4BDC9), density: 0.16, heightFalloff: 0.55)
+```
+
+`fog` fades every surface toward its color with distance, so near things stay crisp while far things dissolve, and depth reads at a glance. `density` is the thickness; the `heightFalloff` thins it with altitude, which is the morning-mist look, mist pooling low while tall things rise clear of it. It costs almost nothing (the fade is an exact formula, not a blur pass), so animating the density is just a number moving. The `3D/Effects/Fog` example is a colonnade standing in exactly this mist.
+
+```swift
+castShadows()
+volumetricLight()
+fog(Color(hex: 0x0A0E18), density: 0.02)   // a whisper of haze for the beams to live in
+```
+
+`volumetricLight()` is the beam half: it watches the air along every line of sight and adds the light the haze scatters toward you, so directional and spot lights become *visible in flight*. The point is that everything a light already carries shapes its beam. The spot's cone becomes the projector cone; a cookie's panes read as tilted bars of bright air before they land as a window on the floor; an IES profile's throw shows its real shape; and with `castShadows()` on, anything standing in the beam carves a dark shaft out of it, the crepuscular rays of a forest morning.
+
+<img src="Images/17-3DGently/VisibleAir.jpg" alt="A dark set under a warm window-gobo beam slanting down from the upper left: the panes read as bars of bright air, land as a window of light on the floor, and a cylinder, sphere, and box carve dark shafts out of the beam. A faint cool beam crosses low behind the props" width="680">
+
+The `anisotropy` knob (−1…1) is how strongly the haze throws light forward: near 1, a beam flares when the view swings toward its source, the headlights-in-fog effect; 0 glows evenly from every side. And the two calls compose either way: with `fog`, the beams live in the fog's own thickness; without it, the air stays clear and *only* the beams appear, which is the dark-stage look of `3D/Lighting/VolumetricLight`. **The air is part of the scene, and light crossing it is something you can draw.**
+
+One habit: the beam march has a quality dial like the shadows do (`volumetricQuality`, three tiers), and the default already does the right thing, frame-rate-safe live, lifted to full quality on export.
+
 ## Materials
 
 A material is a surface's whole way of catching light, picked by name. The color still comes from `fill`; the *finish* comes from `material`:
@@ -542,6 +566,7 @@ The camera-on-an-orbit model is the shared convention of 3D tools everywhere, fr
 - [Combining 3D features](../Docs/3D/Combining.md): the practical map of what stacks with what (which geometry takes materials, casts shadows, appears in reflections).
 - Lens and grounding effects: draw a 3D scene into a render target and its depth layer feeds Chapter 14's combine effects, `.defocus` for camera-like depth of field, `.ambientOcclusion` to darken contacts and crevices, `.screenSpaceReflections` for glossy floors on any Mac. See [Effects](../Docs/Drawing/Effects.md#combined) and the `3D/SceneDefocus` example.
 - [Shadows in full](../Docs/3D/3D.md#shadows): how each caster kind works, the soft-shadow quality dials, and the frustum fitting you never have to touch.
+- [Atmosphere](../Docs/3D/Atmosphere.md): the full fog and volumetric-light reference, what participates and what sits out, and the quality dial's exact step counts.
 - Textures and wireframes: [`Mesh.textured(_:)`](../Docs/3D/3D.md#textures) also takes a `baseColor` for tinting a shared texture, and [`Mesh.uvs`](../Docs/3D/3D.md) is where the coordinates live if you're generating your own geometry.
 - [The 26 built-in matcaps](../Docs/3D/3D.md#the-built-in-matcaps), listed by family, plus `Matcap.shaded` for baking one from a color.
 - [Terrain](../Docs/Generators/Terrain.md): building heightfields from noise or subdivision, every erosion knob, and reading a field out as a mesh, an image, or samples.

@@ -1675,6 +1675,79 @@ path with inline-authored fixtures. All bundled `.ies` files are authored
 for Ollin; manufacturer files are freely *distributed* but not clearly
 *licensed*, so none ship.
 
+### Atmosphere (fog and volumetric light)
+
+`fog(_:density:heightFalloff:)` and `volumetricLight(_:anisotropy:)` are per-frame
+drawer state packed into three `OllinLighting` tail fields (`fogColor` with the
+gate in `.w`, `fogParams`, `fogParams2`), so the constants reach every lit carrier
+plus the deferred reflection trace with no new plumbing; the gate at 0 leaves every
+branch untaken (whole suite byte-identical, verified). The packing sits *ahead of*
+`makeLighting`'s `.off` early return on purpose: fog is a property of the air, so a
+`noLights()` scene still fogs (only the shaft march needs the lights).
+
+**The compositing model respects call order with no stored scene depth.** Every 3D
+shading fragment fogs *itself* over its own eye-to-surface path (the exact
+closed-form height-fog transmittance from Quilez, with series limits at zero
+falloff and horizontal rays so nothing pops at the horizon), applied after the full
+shading tail so reflections and IBL ambient dim too. The empty air is a fullscreen
+draw in the skybox slot (`PipelineKey.fogAir`, the same always-pass/no-write
+recipe, encoded right after the skybox): it marches to each pixel's own far-plane
+distance and outputs premultiplied `(ambient + in-scatter, 1 − T)`, so the
+backdrop shows through by exactly the transmittance, meshes depth-composite over
+it, and 2D drawn later is untouched. Splats and particles alpha-composite over the
+beam-painted backdrop, which is why beams read through a point cloud that itself
+takes no fog term. The RT reflection hit shade applies the analytic leg to the
+surface-to-hit path inside the *shared* trace (`ollin_rt_reflection_trace`), so
+the inline and deferred paths can't disagree; an environment miss keeps the sky
+clear (documented envelope).
+
+**The march (`ollin_fog_inscatter`) is the Tóth-Umenhoffer single-scattering
+integral, and three of its pieces are load-bearing, each a real observed failure
+first.** (1) *Per-spot ray∩cone span bounding*: strata spread over the whole ray
+straddle a beam a fraction of a stratum wide, and the beam dissolves into a woven
+noise lattice (or, un-jittered, vanishes outright); bounding the sub-march to the
+analytic cone crossing puts every stratum where the beam is. Only the transverse
+case is bounded (a ray running within the cone angle of the axis takes the full
+range under a quadratic near-field warp `t = tEnd·u²`), and the mirror-nappe
+interval is rejected by an axis-side test. (2) *The light-leg extinction*: without
+`exp(−τ(light→sample))` a ray riding inside a cone accumulates without limit and
+the frame washes out; with it the integral is bounded by ~σs/σt. Beams-only mode
+(no `fog`) substitutes a 0.05 reference density for both the scattering
+coefficient and that leg, so beams still form and still bound while the view path
+keeps zero dimming. A directional light takes the leg only under height falloff
+(the slant path from the sky then has a finite closed form: the crepuscular
+dimming); uniform fog has no finite sky path, so it is skipped there. (3)
+*Per-step jitter decorrelation*: one shared per-pixel offset moves all strata
+together, and that coherent error reprints the jitter pattern as a lattice across
+the beam, so each step re-reads the gradient noise at a per-step pixel shift. The
+jitter stays a pure function of (pixel, step): exports and snapshots reproduce
+with no temporal history and no warmup.
+
+Per step, a spot evaluates its cone falloff and the shared
+`ollin_apply_light_shaping` (IES profile + cookie on the light's local copy), so
+a gobo's panes read as bars of bright air with the same projector-convention
+mapping the surfaces use; visibility is one un-filtered `sample_compare` tap
+(`ollin_fog_shadow_tap`, constant bias only: an air sample has no normal and is
+never its own occluder; outside the caster's box counts as lit). Directional and
+spot participate; point and area kinds sit out (no distance falloff means an
+omnidirectional glow has no shape to march), and only the 2D-map caster carves
+shafts, the same one-caster rule as surfaces.
+
+**Budgets and encode sites.** The step budget rides `fogParams2.x`, resolved by
+the renderer (`resolveVolumetricSteps`: 16/32/64 by tier through
+`effectiveQuality`, absolute 8…128) at *both* lighting-resolution sites: the main
+`encode` and `resolveFieldLighting`, so the half-res field tier marches like the
+full-res pass. The air cap rides `fogParams2.y` (the camera far plane, packed by
+the drawer). A frame with no batches at all early-outs of `encode` before the air
+draw, so beams need at least one mesh in frame (documented). Measured M2 1080²
+export tier: the two-spot example costs ~6 ms/frame over its no-volumetrics
+sibling; the analytic-fog-only path is arithmetic in the fragment tail
+(`fog` snapshot unchanged in cost). Verification: `VolumetricStateTests` (packing,
+resets, clamps), `FogRenderProbes` / `VolumetricLightRenderProbes` (distance and
+height ordering, the air wash, unlit fog, cone confinement, the carved shaft via
+on/off differencing, beams-only leaving off-beam surfaces alone), and the `fog` +
+`volumetric-light` snapshots.
+
 ### The IBL bake
 
 `environment(_:)` lights the PBR materials from a surrounding HDRI via the

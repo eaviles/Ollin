@@ -111,6 +111,14 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_ibl_skybox_vertex", fragment: "ollin_ibl_skybox_fragment",
                         depthFormat: depth)
         }
+        // the air fog backdrop (atmosphere): a fullscreen march of each view ray through
+        // the fog + the frame's lights, composited right after the skybox with the same
+        // no-depth recipe. Premultiplied source-over: rgb = in-scatter, alpha = 1 −
+        // transmittance, so the backdrop shows through by exactly T.
+        static func fogAir(depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_ibl_skybox_vertex", fragment: "ollin_fog_air_fragment",
+                        premultiplied: true, depthFormat: depth)
+        }
 
         // tessellated triangles (rects, lines, polygons, arcs)
         static func solid(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {

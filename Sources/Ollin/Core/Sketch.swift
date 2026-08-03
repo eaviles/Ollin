@@ -810,14 +810,14 @@ open class Sketch {
     /// environment reflection remains. Pass `false` to turn it back off.
     public func rayTracedReflections(_ on: Bool = true) { drawer.rayTracedReflections(on) }
 
-    /// Set the soft-shadow quality — how many rays the ray-traced point caster traces per
-    /// pixel — as a **hardware-relative** tier (the dial to trade frame rate for nicer
-    /// shadows). The tier scales with the GPU, like a game's Low/Medium/High: `.medium` (the
-    /// default) is the frame-rate-safe choice on a software-ray-tracing GPU (M1/M2) and a
-    /// richer one on a hardware-RT GPU (M3 and up), so better hardware lifts your shadows with
-    /// no code change; `.high`/`.ultra` shift up from there. A persistent setting — set it once
-    /// in `setup()` or `draw()`. Only the ray-traced point path reads it; directional/spot
-    /// shadows and the non-RT cube fallback are unaffected.
+    /// Set the soft-shadow quality (how many rays the ray-traced point caster traces per
+    /// pixel) as a **hardware-relative** tier: the dial to trade frame rate for nicer
+    /// shadows. The tier scales with the GPU, like a game's quality presets: `.default` is
+    /// the frame-rate-safe choice on a software-ray-tracing GPU (M1/M2) and a richer one on
+    /// a hardware-RT GPU (M3 and up), so better hardware lifts your shadows with no code
+    /// change; `.detail` shifts up from there, `.performance` down. A persistent setting;
+    /// set it once in `setup()` or `draw()`. Only the ray-traced point path reads it;
+    /// directional/spot shadows and the non-RT cube fallback are unaffected.
     public func shadowQuality(_ quality: RenderQuality = .default) { drawer.shadowQuality(quality) }
 
     /// Set the soft-shadow ray count to an **exact** value (1…64), the hardware-independent
@@ -863,6 +863,54 @@ open class Sketch {
     /// (meshes still occlude it). Unlike the automatic tier default, an explicit fraction is
     /// honored on `--export` too. Persistent.
     public func raymarchResolution(_ fraction: Double) { drawer.raymarchResolution(fraction) }
+
+    // MARK: 3D atmosphere (fog & volumetric light)
+
+    /// Wrap this frame's 3D scene in fog: every surface fades toward the fog color with
+    /// distance, and the air itself washes over the backdrop, so depth reads at a glance
+    /// and far geometry recedes into atmosphere. `density` is how thick the air is (in
+    /// inverse world units: at the 0.08 default a surface ~9 units away reads about half
+    /// fog; double it for soup, halve it for haze). A `heightFalloff` above 0 thins the
+    /// fog with altitude (`density · e^(−falloff·height)`), the low-lying morning-mist
+    /// look: ground stays wrapped while peaks rise clear. Per-frame state like the
+    /// lights and camera, so call it in `draw()`; `noFog()` turns it back off. 2D
+    /// drawing never fogs. Pairs with `volumetricLight()` to make the beams in the air
+    /// visible too.
+    public func fog(_ color: Color, density: Double = 0.08, heightFalloff: Double = 0) {
+        drawer.fog(color, density: density, heightFalloff: heightFalloff)
+    }
+
+    /// Clear the fog (the default).
+    public func noFog() { drawer.noFog() }
+
+    /// Make this frame's directional and spot lights visible **in the air**: a per-pixel
+    /// march accumulates the light scattered toward the eye, so a spot's cone becomes a
+    /// stage beam, a cookie projects lace through the haze, an IES profile's throw shows
+    /// its real shape, and (with `castShadows()`) occluders carve crepuscular light
+    /// shafts. `amount` scales the glow; `anisotropy` (−1…1) is how strongly the medium
+    /// scatters forward: near 1 the beams flare when you look toward the light, 0 glows
+    /// evenly from every angle. Works with or without `fog(_:density:heightFalloff:)`:
+    /// alone, the air stays clear and only the beams appear (the dark-stage look); with
+    /// fog, the beams ride its density and color. Directional and spot lights
+    /// participate; point and area lights light surfaces only. Per-frame state, so call
+    /// it in `draw()`; `noVolumetricLight()` turns it back off.
+    public func volumetricLight(_ amount: Double = 1, anisotropy: Double = 0.5) {
+        drawer.volumetricLight(amount, anisotropy: anisotropy)
+    }
+
+    /// Turn the volumetric march back off (the default).
+    public func noVolumetricLight() { drawer.noVolumetricLight() }
+
+    /// Set the volumetric march's quality tier: the step count along each view ray
+    /// (`.performance` 16, `.default` 32, `.detail` 64). With the automatic `.default`,
+    /// `--export` and headless renders resolve to `.detail`, so exported beams are never
+    /// steppier than the live window. A persistent setting, set once in `setup()` or
+    /// `draw()`.
+    public func volumetricQuality(_ quality: RenderQuality = .default) { drawer.volumetricQuality(quality) }
+
+    /// Set the volumetric march's step count to an **exact** value (8…128), the
+    /// hardware-independent alternative to `volumetricQuality`. Persistent.
+    public func volumetricSteps(_ count: Int) { drawer.volumetricSteps(count) }
 
     // MARK: 3D — solid primitives & meshes
 

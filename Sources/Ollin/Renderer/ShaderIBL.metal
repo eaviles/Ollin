@@ -348,3 +348,37 @@ fragment float4 ollin_ibl_skybox_fragment(OllinSkyboxOut in [[stage_in]],
     // 0 is sharp, higher samples a coarser level for a soft-focus backdrop.
     return float4(ollin_equirect_bicubic(equirect, s, ollin_ibl_equirect_uv(rot * rd), params.z) * params.y, 1.0);
 }
+
+// MARK: - Air fog backdrop (atmosphere)
+//
+// With atmosphere on, the air itself scatters: this fullscreen draw marches each
+// view ray through the fog and the frame's lights out to the far plane, filling the
+// frame with the air's own glow right after the skybox (same recipe: always-pass
+// depth, no write, before the geometry). The depth-tested surfaces, each fogging
+// themselves to their own depth, then composite in front, so beams hang in empty air
+// and break correctly against geometry without any stored scene depth. Premultiplied
+// out under the `.normal` blend: rgb = ambient + shaft in-scatter, alpha = one minus
+// the transmittance, leaving `src + backdrop · T` (the clear color or sky seen
+// through the air). With no fog set (beams only), the extinction is zero, so alpha
+// is 0 and the beams add over an untouched backdrop.
+fragment float4 ollin_fog_air_fragment(OllinSkyboxOut in [[stage_in]],
+                                       constant Uniforms3D &u [[buffer(0)]],
+                                       constant OllinLighting &light [[buffer(1)]],
+                                       depth2d<float> shadowMap [[texture(1)]],
+                                       sampler shadowSamp [[sampler(1)]],
+                                       texture2d_array<float> iesProfiles [[texture(10)]],
+                                       texture2d_array<float> cookies [[texture(11)]]) {
+    float4 nearH = u.inverseViewProjection * float4(in.clipXY, 0.0, 1.0);
+    float4 farH  = u.inverseViewProjection * float4(in.clipXY, 1.0, 1.0);
+    float3 ro = nearH.xyz / nearH.w;
+    float3 farW = farH.xyz / farH.w;
+    // March to this pixel's own far-plane point (per-pixel exact; a frustum corner's
+    // path through the air really is longer than the center's).
+    float tEnd = length(farW - ro);
+    float3 rd = (farW - ro) / max(tEnd, 1e-5);
+    float T = exp(-ollin_fog_optical_depth(ro, rd, tEnd,
+                                           light.fogParams.x, light.fogParams.y));
+    float3 inscatter = ollin_fog_inscatter(ro, rd, tEnd, in.position.xy, light,
+                                           shadowMap, shadowSamp, iesProfiles, cookies);
+    return float4(light.fogColor.rgb * (1.0 - T) + inscatter, 1.0 - T);
+}

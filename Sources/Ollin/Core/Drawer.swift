@@ -387,6 +387,25 @@ final class Drawer {
     /// only by the raymarch path; `.tier(.default)` reproduces the pre-dial constants.
     private(set) var raymarchQualitySetting: RaymarchQualitySetting = .tier(.default)
 
+    /// Atmosphere (`fog`): the fog's ambient in-scatter color, or nil while this frame set
+    /// none. Per-frame state like the lights (set in `draw()`, reset each frame).
+    private(set) var fogColor: Color? = nil
+    /// The fog's extinction density at height 0, in inverse world units (0.1 fades a surface
+    /// about halfway to the fog color over 7 units). Meaningful while `fogColor` is set.
+    private(set) var fogDensity: Double = 0
+    /// How the fog thins with world height y (density is `fogDensity · e^(−falloff·y)`);
+    /// 0 = the same thickness everywhere.
+    private(set) var fogHeightFalloff: Double = 0
+    /// Volumetric light (`volumetricLight`): the in-scatter gain on the shaft march; 0 = no
+    /// march. Per-frame like the lights.
+    private(set) var volumetricAmount: Double = 0
+    /// The shaft march's Henyey-Greenstein anisotropy, −1…1: positive scatters forward
+    /// (beams glow looking toward the light), 0 is even in every direction.
+    private(set) var volumetricAnisotropy: Double = 0.5
+    /// The volumetric march's step budget: a `RenderQuality` tier the renderer resolves per
+    /// path (live vs export), or an exact step count. Persistent like `shadowQualitySetting`.
+    private(set) var volumetricQualitySetting: VolumetricQualitySetting = .tier(.default)
+
     /// The shadow map resolution the renderer renders the depth pass into. Kept here
     /// only to size the normal-offset bias in world units (`shadowTexelWorld`); the
     /// renderer owns the actual texture and must use the same value (`MetalRenderer`).
@@ -1663,6 +1682,43 @@ final class Drawer {
     /// the fraction applies at full screen coverage, a smaller field traces denser). Persistent.
     func raymarchResolution(_ fraction: Double) { raymarchQualitySetting = .resolution(min(1.0, max(0.1, fraction))) }
 
+    /// Wrap this frame's 3D scene in fog. Per-frame state like the lights; set it in
+    /// `draw()`. Every 3D surface fades toward the fog color with distance (and, with a
+    /// height falloff, with depth below the fog's thinning), and the air itself washes
+    /// over the backdrop. (`noFog()` turns it back off.)
+    func fog(_ color: Color, density: Double, heightFalloff: Double) {
+        fogColor = color
+        fogDensity = max(0, density)
+        fogHeightFalloff = max(0, heightFalloff)
+    }
+
+    /// Clear the fog (the default). Per-frame state.
+    func noFog() {
+        fogColor = nil
+        fogDensity = 0
+        fogHeightFalloff = 0
+    }
+
+    /// Make this frame's directional and spot lights visible in the air: a per-pixel march
+    /// accumulates the light scattered toward the eye, so cones, cookies, IES profiles, and
+    /// cast shadows become beams and shafts. Per-frame state like the lights. Works with or
+    /// without `fog` (alone, the air stays clear and only the beams appear).
+    func volumetricLight(_ amount: Double, anisotropy: Double) {
+        volumetricAmount = max(0, amount)
+        volumetricAnisotropy = min(0.99, max(-0.99, anisotropy))
+    }
+
+    /// Turn the volumetric march back off (the default). Per-frame state.
+    func noVolumetricLight() { volumetricAmount = 0 }
+
+    /// Set the volumetric march's quality to a tier (the renderer resolves the step budget;
+    /// exports resolve `.default` up to `.detail`). Persistent like `shadowQuality`.
+    func volumetricQuality(_ quality: RenderQuality) { volumetricQualitySetting = .tier(quality) }
+
+    /// Set the volumetric march's step count to an exact value, clamped to 8…128
+    /// (hardware-independent). Persistent.
+    func volumetricSteps(_ count: Int) { volumetricQualitySetting = .absolute(max(8, min(count, 128))) }
+
     /// Pack this frame's effective lighting into the GPU uniform. The mode decides
     /// the source: `.off` shades nothing (flat unlit, `enabled == 0`), `.auto` uses
     /// the default rig (the out-of-box shaded look), `.custom` uses the sketch's own
@@ -1676,6 +1732,22 @@ final class Drawer {
         usedLightCookies.removeAll(keepingCapacity: true)
         if let eye = camera3D?.eye {
             u.cameraPosition = SIMD4<Float>(Float(eye.x), Float(eye.y), Float(eye.z), 0)
+        }
+        // Atmosphere: the fog/volumetric constants gate every carrier's fog branch
+        // (w = 0 leaves it untaken, byte-identical). Packed ahead of the `.off` early
+        // return below on purpose: fog is a property of the air, so an unlit
+        // (`noLights()`) scene still fogs; only the shaft march needs the lights.
+        if fogColor != nil || volumetricAmount > 0 {
+            let c = fogColor ?? .black
+            u.fogColor = SIMD4<Float>(Float(Color.srgbToLinear(c.red)),
+                                      Float(Color.srgbToLinear(c.green)),
+                                      Float(Color.srgbToLinear(c.blue)), 1)
+            u.fogParams = SIMD4<Float>(Float(fogDensity), Float(fogHeightFalloff),
+                                       Float(volumetricAmount), Float(volumetricAnisotropy))
+            // x (the march's step budget) stays 0 here: the renderer owns the
+            // quality-to-budget mapping and fills it at encode time. y caps the air
+            // backdrop's march at the camera's far plane.
+            u.fogParams2 = SIMD4<Float>(0, Float(camera3D?.far ?? 0), 0, 0)
         }
         let ambient: Color
         let activeLights: [Light]
@@ -2214,6 +2286,12 @@ final class Drawer {
         environment = nil
         castsShadows = false
         rayTracedReflectionsEnabled = false
+        // Atmosphere is per-frame like the lights (the quality setting persists).
+        fogColor = nil
+        fogDensity = 0
+        fogHeightFalloff = 0
+        volumetricAmount = 0
+        volumetricAnisotropy = 0.5
         hasDepthScene = false
         // The 2D depth is camera-derived (a clip-z against this frame's camera), so
         // it resets with the camera each frame — set it from `draw()` after the

@@ -62,3 +62,12 @@ enum RaymarchQualitySetting: Sendable, Equatable {
     case absolute(Int)        // an exact camera-march step count (full resolution)
     case resolution(Double)   // an exact live-preview resolution fraction, 0…1 (default steps)
 }
+
+/// The volumetric-light march quality intent a sketch sets (`volumetricQuality` /
+/// `volumetricSteps`): a `RenderQuality` tier the renderer resolves to a step budget for the
+/// in-scatter march (one shadow-map tap per step), or an exact step count. Default is
+/// `.tier(.default)`.
+enum VolumetricQualitySetting: Sendable, Equatable {
+    case tier(RenderQuality)
+    case absolute(Int)
+}

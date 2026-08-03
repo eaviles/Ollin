@@ -540,6 +540,17 @@ typedef struct {
                                   // byte-identical. Both flags follow the `ltcEnabled` discipline:
                                   // default 0, textures always bound (real or stand-in), the branch
                                   // skipped so a featureless frame executes the prior instructions.
+    simd_float4 fogColor;         // atmosphere (`fog` / `volumetricLight`): the fog's linear ambient
+                                  // in-scatter color; w = 1 while the frame set either (the gate:
+                                  // 0 leaves every carrier's fog branch untaken, byte-identical).
+    simd_float4 fogParams;        // x = extinction density at height 0 (inverse world units; 0 = no
+                                  // dimming, beams only), y = height falloff (density is
+                                  // x·e^(−y·height); 0 = uniform), z = the volumetric in-scatter
+                                  // gain (0 = no shaft march), w = the Henyey-Greenstein
+                                  // anisotropy g, −1…1 (forward-leaning positive).
+    simd_float4 fogParams2;       // x = the shaft march's step budget (a RenderQuality tier the
+                                  // renderer resolves; the drawer packs 0), y = the camera's far
+                                  // plane (the air backdrop's march cap), z/w reserved.
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

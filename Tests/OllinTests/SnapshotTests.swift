@@ -299,6 +299,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("procedural-sky",
                  note: "PBR balls + a floor lit by a procedural Hosek-Wilkie sky (no asset): pins the .sky path (the CPU coefficient cook (vendored model), the GPU sky-equirect generation, and the same equirect->cube / irradiance / GGX-prefilter bake + skybox the HDRI path uses). Fixed sun elevation + camera, no time, so the generation and bake are deterministic.",
                  make: { ProceduralSkyScene() }),
+    SnapshotCase("fog",
+                 note: "Height fog over a fixed colonnade: near columns crisp, far ones dissolving, the mist pooling low. Pins the closed-form height-fog transmittance on the mesh carriers, the fog gate, and the fullscreen air backdrop washing the empty sky. Fixed camera, no time, no rng.",
+                 make: { FogScene() }),
+    SnapshotCase("volumetric-light",
+                 note: "A window-gobo spot and a bare crossing spot marched as beams through thin haze over a dark set, the props carving shadow shafts. Pins the cone-bounded volumetric march (ray-cone span), the light-leg extinction, cookie/cone/IES shaping evaluated in air, the per-step shadow taps, and the deterministic per-pixel jitter. Fixed camera, no time.",
+                 make: { VolumetricLightScene() }),
     SnapshotCase("matcap-mesh",
                  note: "Three spheres wearing built-in matcaps (chrome/clay/toon). Pins the matcap pipeline: the view-space normal sampled into the sphere texture, bypassing the scene lights and material model, tinted by fill(.white). No time.",
                  make: { MatcapMeshScene() }),
@@ -1096,6 +1102,97 @@ private final class AreaLightsScene: Sketch {
             specular(0.6)
             shininess(64)
             drawBox(size: 1.1)
+        }
+    }
+}
+
+/// Height fog over a fixed colonnade (no rng: the grid placement is arithmetic), so
+/// near columns stay crisp while far ones dissolve and the mist pools low. Pins the
+/// analytic fog on the mesh carriers plus the fullscreen air-backdrop draw.
+private final class FogScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        let tint = Color(hex: 0xB4BDC9)
+        background(tint)
+        camera(.orbiting(target: Vector3(0, 1.0, 0), radius: 11,
+                         azimuth: 0.35, elevation: 0.2, fieldOfView: .pi / 4))
+        directionalLight(Color(white: 1.0), direction: Vector3(0.5, 0.85, 0.3), intensity: 0.9)
+        ambientLight(Color(white: 0.22))
+        fog(tint, density: 0.16, heightFalloff: 0.55)
+        fill(Color(white: 0.45))
+        withState {
+            translate(0, -0.5, 0)
+            drawBox(width: 40, height: 1, depth: 40)
+        }
+        for i in 0..<5 {
+            for j in 0..<5 {
+                if i == 2 && j == 2 { continue }
+                let h = 1.0 + Double((i * 7 + j * 3) % 9) * 0.45
+                withState {
+                    translate(Double(i - 2) * 3.0, h / 2, Double(j - 2) * 3.0)
+                    fill(Color(white: 0.4 + Double((i + j) % 4) * 0.1))
+                    drawCylinder(radius: 0.32, height: h)
+                }
+            }
+        }
+    }
+}
+
+/// The volumetric march under a fixed camera: a window-gobo key spot and a faint
+/// crossing rim beam through thin haze, `castShadows()` carving prop shafts. The
+/// gobo is authored inline (the LightShapingScene pattern). No `time`.
+private final class VolumetricLightScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    static let gobo: LightCookie = {
+        var frame = Image(width: 64, height: 64, color: .black)
+        for y in 0..<64 {
+            for x in 0..<64 {
+                let inFrame = x > 4 && x < 59 && y > 4 && y < 59
+                let onMullion = abs(x - 32) < 3 || abs(y - 32) < 3
+                if inFrame && !onMullion { frame[x, y] = .white }
+            }
+        }
+        return LightCookie(frame)!
+    }()
+
+    override func draw() {
+        background(Color(hex: 0x04050A))
+        camera(.orbiting(target: Vector3(0, 0.9, 0), radius: 10.5,
+                         azimuth: 0.2, elevation: 0.16, fieldOfView: .pi / 4.2))
+        ambientLight(Color(white: 0.015))
+        spotLight(Color(hue: 0.10, saturation: 0.28, brightness: 1.0),
+                  at: Vector3(-4.6, 6.0, 2.6), direction: Vector3(0.62, -0.74, -0.28),
+                  angle: .pi / 8, penumbra: 0.22, intensity: 3.2,
+                  cookie: VolumetricLightScene.gobo, roll: 0.18)
+        spotLight(Color(hue: 0.58, saturation: 0.45, brightness: 1.0),
+                  at: Vector3(5.6, 2.6, -4.8), direction: Vector3(-0.92, -0.18, 0.36),
+                  angle: .pi / 10, penumbra: 0.5, intensity: 0.7)
+        castShadows()
+        volumetricLight(0.9, anisotropy: 0.45)
+        fog(Color(hex: 0x0A0E18), density: 0.02)
+
+        fill(Color(hex: 0x2E3138))
+        withState {
+            translate(0, -0.55, 0)
+            drawBox(width: 22, height: 1.1, depth: 22)
+        }
+        fill(Color(hex: 0x8A8478))
+        withState {
+            translate(-0.4, 1.35, -0.3)
+            drawCylinder(radius: 0.42, height: 2.7)
+        }
+        fill(Color(hex: 0x707A86))
+        withState {
+            translate(1.7, 0.62, 1.3)
+            drawSphere(radius: 0.62)
+        }
+        fill(Color(hex: 0x66605A))
+        withState {
+            translate(-2.1, 0.85, 1.8)
+            rotateY(0.5)
+            drawBox(width: 0.75, height: 1.7, depth: 0.75)
         }
     }
 }

@@ -1616,6 +1616,12 @@ extension MetalRenderer {
         if lighting.enabled != 0, !drawer.usedLightCookies.isEmpty {
             lighting.cookieEnabled = ensureCookieArray(drawer.usedLightCookies) ? 1 : 0
         }
+        // Atmosphere: the renderer owns the quality-to-budget mapping, so the volumetric
+        // march's step count resolves here (export lifts the automatic `.default` to
+        // `.detail` through `effectiveQuality`, like the PCSS taps).
+        if lighting.fogColor.w > 0 {
+            lighting.fogParams2.x = Float(resolveVolumetricSteps(drawer.volumetricQualitySetting))
+        }
         // Skybox backdrop: when the environment shows as the scene's background, fill the
         // frame with it (a fullscreen view-ray cube sample) before the geometry, with depth
         // disabled, so the depth-tested meshes composite in front and a mirror's reflection
@@ -1704,6 +1710,27 @@ extension MetalRenderer {
         let traceAccel = shadowAccel ?? reflectAccel
         let shadowAccelStructure = rayTracedShadows ? (traceAccel ?? ensureDummyShadowAccel()) : nil
         let geoOffsetsBuffer = rayTracedShadows ? (reflectGeoOffsets ?? ensureDummyGeoOffsets()) : nil
+
+        // Air fog backdrop: with atmosphere on, fill the frame with the air's own glow
+        // (ambient fog + marched light shafts) right after the skybox, with the same
+        // no-depth recipe, so beams hang in empty air; the depth-tested surfaces, which
+        // fog themselves to their own depth, composite in front. Premultiplied
+        // source-over, so with no fog density (beams only) the backdrop is untouched.
+        // The per-batch loop resets the pipeline + depth state, like the skybox.
+        var airKey = PipelineKey.fogAir(depth: depthFormat)
+        if hasStencil { airKey.stencilFormat = .stencil8 }
+        if lighting.fogColor.w > 0, var airUniforms = uniforms3D,
+           let airPipe = try? pipeline(airKey) {
+            encoder.setRenderPipelineState(airPipe)
+            encoder.setDepthStencilState(noDepthState)
+            encoder.setFragmentBytes(&airUniforms, length: MemoryLayout<Uniforms3D>.stride, index: 0)
+            encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
+            encoder.setFragmentTexture(shadowTexture, index: 1)
+            if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
+            encoder.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
+            encoder.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        }
 
         // The strip must be bound whenever the SDF fragment runs (it references
         // the texture even for all-solid frames), so resolve it once per encode.
