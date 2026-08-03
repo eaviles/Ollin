@@ -48,7 +48,16 @@ import COllinShaders
 /// / `.dielectric(roughness:)` helpers and the `.brushedMetal` / `.polishedMetal` /
 /// `.smoothPlastic` / `.roughPlastic` built-ins). It shades through the same lights;
 /// reflections of the surroundings layer on once an environment is set (image-based
-/// lighting). *Glass* (refraction, real transparency) remains a later tier.
+/// lighting).
+///
+/// **Glass** is the physically-based finish with `transmission` turned up (use the
+/// `.glass(...)` helper or the `.frostedGlass` built-in): light passes through the
+/// surface, refracting the environment, and, with `rayTracedReflections()` on a
+/// ray-tracing GPU, the actual scene behind it. Transmission needs an environment set
+/// (`environment(_:)`) to have something to transmit; without one the material shades
+/// as a plain physically-based dielectric. The `fill` tints what shows through, `ior`
+/// bends it, `thickness` makes the body solid (with `attenuationColor` /
+/// `attenuationDistance` deepening the tint the farther light travels inside).
 public struct Material: Equatable, Sendable {
 
     /// How the diffuse term is shaded.
@@ -85,6 +94,33 @@ public struct Material: Equatable, Sendable {
     /// sharp reflection), `1` is fully rough (a broad, soft one). Ignored unless `shading
     /// == .physicallyBased`.
     public var roughness: Double
+
+    /// Physically-based shading: how much light passes *through* the surface, `0…1`.
+    /// At `0` the surface is opaque (the default); at `1` it's clear glass, the diffuse
+    /// body replaced by whatever shows through, tinted by the `fill` and blurred by
+    /// `roughness` (frosting). Needs an environment set to have something to transmit.
+    /// Distinct from a translucent `fill` alpha: transmission refracts and tints the
+    /// light behind the surface instead of fading the whole surface out.
+    /// Ignored unless `shading == .physicallyBased`.
+    public var transmission: Double
+    /// Index of refraction for the transmitted light: how strongly the body bends what
+    /// shows through (and how reflective the surface is head-on). `1` doesn't bend at
+    /// all; `1.33` is water, `1.5` common glass (the default), `2.42` diamond.
+    public var ior: Double
+    /// How thick the transmissive body is, in world units. `0` (the default) treats the
+    /// surface as thin-walled, a soap-film shell that tints without displacing what's
+    /// behind it; a positive thickness treats it as a solid whose interior bends the
+    /// view and absorbs light along the way (see `attenuationColor`). For a solid
+    /// sphere, its diameter is the natural value.
+    public var thickness: Double
+    /// The color white light becomes after traveling `attenuationDistance` through a
+    /// solid body (Beer-Lambert absorption): a pale green makes thick glass edges go
+    /// bottle-green. White (the default) absorbs nothing. Only applies when
+    /// `thickness > 0`.
+    public var attenuationColor: Color
+    /// The travel distance (world units) at which white light has faded to
+    /// `attenuationColor`. `0` (the default) turns absorption off.
+    public var attenuationDistance: Double
 
     /// Specular highlight strength: `0` matte, `~0.5` glossy, `1` a bright hotspot.
     public var specular: Double
@@ -134,6 +170,9 @@ public struct Material: Equatable, Sendable {
     /// when you set them.
     public init(shading: Shading = .standard, toonBands: Double = 4,
                 metallic: Double = 0, roughness: Double = 0.5,
+                transmission: Double = 0, ior: Double = 1.5,
+                thickness: Double = 0, attenuationColor: Color = .white,
+                attenuationDistance: Double = 0,
                 specular: Double = 0, shininess: Double = 32,
                 iridescence: Double = 0, iridescenceScale: Double = 1,
                 sparkle: Double = 0, sparkleSize: Double = 1,
@@ -146,6 +185,11 @@ public struct Material: Equatable, Sendable {
         self.toonBands = max(1, toonBands)
         self.metallic = min(1, max(0, metallic))
         self.roughness = min(1, max(0, roughness))
+        self.transmission = min(1, max(0, transmission))
+        self.ior = max(1, ior)
+        self.thickness = max(0, thickness)
+        self.attenuationColor = attenuationColor
+        self.attenuationDistance = max(0, attenuationDistance)
         self.specular = max(0, specular)
         self.shininess = max(1, shininess)
         self.iridescence = min(1, max(0, iridescence))
@@ -190,6 +234,18 @@ public struct Material: Equatable, Sendable {
         m.roughness = Float(roughness)
         m.sparkleSize = Float(sparkleSize)
         m.sparkleSharpness = Float(sparkleSharpness)
+        m.transmission = Float(transmission)
+        m.ior = Float(ior)
+        m.thickness = Float(thickness)
+        // Beer-Lambert exponentiates the attenuation color, so floor each channel just
+        // above zero: pow(0, 0) is NaN territory under fast math, and a floored channel
+        // still reads as "absorbs (almost) everything".
+        let att = Material.linear(attenuationColor, alpha: attenuationDistance)
+        m.attenuation = SIMD4<Float>(max(att.x, 1e-4), max(att.y, 1e-4), max(att.z, 1e-4), att.w)
+        // Normal-incidence Fresnel from the IOR. The shader used to hard-code 0.04; pack
+        // that exact literal at the default 1.5 so pre-glass frames stay bit-identical
+        // (the computed ((0.5)/(2.5))^2 rounds to a different float than 0.04).
+        m.f0 = ior == 1.5 ? 0.04 : Float(((ior - 1) / (ior + 1)) * ((ior - 1) / (ior + 1)))
         return m
     }
 
@@ -323,4 +379,28 @@ public extension Material {
 
     /// Rough plastic / matte paint: a physically-based dielectric with a broad, soft sheen.
     static let roughPlastic = Material(shading: .physicallyBased, metallic: 0, roughness: 0.7)
+
+    // Glass (transmission) family: physically-based dielectrics that let light through.
+    // The `fill` tints what shows through; an environment must be set for there to be
+    // anything to transmit, and `rayTracedReflections()` upgrades the view through the
+    // glass from the environment to the actual scene on a ray-tracing GPU.
+
+    /// **Glass** of the given roughness (`0` clear … higher frosts the view through it).
+    /// `thickness` `0` is a thin wall (a pane, a bubble); a positive thickness makes the
+    /// body solid, bending the view and, with an `attenuationColor` short of white,
+    /// absorbing light along the interior path (`attenuationDistance` sets how fast).
+    /// The surface tint stays the current `fill`.
+    static func glass(roughness: Double = 0, ior: Double = 1.5, thickness: Double = 0,
+                      attenuationColor: Color = .white,
+                      attenuationDistance: Double = 0) -> Material {
+        Material(shading: .physicallyBased, metallic: 0, roughness: roughness,
+                 transmission: 1, ior: ior, thickness: thickness,
+                 attenuationColor: attenuationColor,
+                 attenuationDistance: attenuationDistance)
+    }
+
+    /// Frosted glass: fully transmissive, but rough enough that what shows through
+    /// blurs to a soft glow. A thin wall; give it a `thickness` for a solid body.
+    static let frostedGlass = Material(shading: .physicallyBased, metallic: 0,
+                                       roughness: 0.35, transmission: 1)
 }

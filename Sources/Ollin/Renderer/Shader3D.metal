@@ -778,7 +778,8 @@ struct OllinRTSurface {
 static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<triangle_data> &q,
                                                     const device OllinMeshVertex *verts,
                                                     const device uint *geoOffsets,
-                                                    float3 origin, float3 dir) {
+                                                    float3 origin, float3 dir,
+                                                    thread bool &backface) {
     // Fetch the hit triangle from the flat mesh buffer and interpolate its attributes.
     uint base = geoOffsets[q.get_committed_geometry_id()] + q.get_committed_primitive_id() * 3u;
     OllinMeshVertex a = verts[base + 0u];
@@ -791,7 +792,10 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<tr
     // An open mesh's back face (or a ray that started inside geometry) hits with
     // its normal pointing away from the ray; flip it toward the ray so Fresnel and
     // irradiance shade the visible side instead of blowing out white at NoV 0.
-    if (dot(s.N, dir) > 0.0) s.N = -s.N;
+    // The refraction walk reads the raw facing (`backface`): a back face is a surface
+    // the ray is *leaving*, which is what tells an interior ray it found its exit.
+    backface = dot(s.N, dir) > 0.0;
+    if (backface) s.N = -s.N;
     // Vertex color is straight sRGB (the baked `fill`), like the rasterized fragment.
     s.albedo = srgbToLinear(w.x * a.color.rgb + w.y * b.color.rgb + w.z * c.color.rgb);
     // Metalness + roughness are baked per vertex into the spare w slots (constant across
@@ -800,6 +804,28 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<tr
     s.rough = clamp(a.position.w, 0.045, 1.0);
     s.P = origin + dir * q.get_committed_distance();
     return s;
+}
+
+static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<triangle_data> &q,
+                                                    const device OllinMeshVertex *verts,
+                                                    const device uint *geoOffsets,
+                                                    float3 origin, float3 dir) {
+    bool backface = false;
+    return ollin_rt_fetch_surface(q, verts, geoOffsets, origin, dir, backface);
+}
+
+// Run one closest-hit query: reset, drain the candidates, and report whether a triangle
+// committed. The three ray walks below (reflection first + second bounce, refraction)
+// share it so their traversal loops cannot drift.
+static inline bool ollin_rt_query(thread intersection_query<triangle_data> &q, ray r,
+                                  primitive_acceleration_structure accel) {
+    intersection_params params;           // default = closest hit (no accept_any)
+    q.reset(r, accel, params);
+    while (q.next()) {
+        if (q.get_candidate_intersection_type() == intersection_type::triangle)
+            q.commit_triangle_intersection();
+    }
+    return q.get_committed_intersection_type() == intersection_type::triangle;
 }
 
 // The exact LTC diffuse integral for one area light; defined with the LTC block below
@@ -874,6 +900,73 @@ static inline float3 ollin_rt_env_lobe(texturecube<float> prefilterTex, sampler 
 // surface instead dims the corner by the product of the two surfaces' own reflectances,
 // exactly as a real mirror corner does. The second bounce terminates at the environment
 // (no third trace); both env samples use the grazing-aware lobe width above.
+// Shade one committed hit surface `s1` seen along `rayDir` from `rayOrigin`: the
+// two-bounce, metalness-aware hit shade shared by the reflection trace and the
+// refraction walk (one shade, so a surface reads the same in a mirror and through
+// glass). Un-exposed radiance; the caller scales by the IBL intensity.
+static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, float3 rayDir,
+                                           float eps,
+                                           primitive_acceleration_structure accel,
+                                           const device OllinMeshVertex *verts,
+                                           const device uint *geoOffsets,
+                                           constant OllinLighting &light,
+                                           texturecube<float> irradianceTex,
+                                           texturecube<float> prefilterTex,
+                                           sampler cubeSamp, float3x3 rot,
+                                           texture2d<float> ltcAmp,
+                                           texture2d_array<float> iesProfiles,
+                                           texture2d_array<float> cookies) {
+    float3 F0 = mix(float3(0.04), s1.albedo, s1.metal);
+    float NoV = max(dot(s1.N, -rayDir), 0.0);
+    float3 F = F0 + (max(float3(1.0 - s1.rough), F0) - F0) * pow(1.0 - NoV, 5.0);
+
+    // The first hit's specular: trace its mirror direction. A miss sees the environment;
+    // a hit shades the second surface (env-terminated, no third trace).
+    float3 secDir = reflect(rayDir, s1.N);
+    ray r2;
+    r2.origin = s1.P + s1.N * eps;
+    r2.direction = secDir;
+    r2.min_distance = eps * 0.05;         // same corner rule as the first trace
+    r2.max_distance = 1e9;
+    intersection_query<triangle_data> q2;
+    float3 envAtHit;
+    if (ollin_rt_query(q2, r2, accel)) {
+        OllinRTSurface s2 = ollin_rt_fetch_surface(q2, verts, geoOffsets, r2.origin, secDir);
+        float3 F0b = mix(float3(0.04), s2.albedo, s2.metal);
+        float NoVb = max(dot(s2.N, -secDir), 0.0);
+        float3 Fb = F0b + (max(float3(1.0 - s2.rough), F0b) - F0b) * pow(1.0 - NoVb, 5.0);
+        float3 env2 = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, reflect(secDir, s2.N),
+                                        s2.rough, NoVb, light.iblMaxMip);
+        float3 diffuse2 = s2.albedo * irradianceTex.sample(cubeSamp, rot * s2.N).rgb
+                        + ollin_rt_direct(s2, light, -secDir, ltcAmp, iesProfiles, cookies);
+        envAtHit = env2 * Fb + diffuse2 * (1.0 - s2.metal);
+    } else {
+        envAtHit = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, secDir,
+                                     s1.rough, NoV, light.iblMaxMip);
+    }
+
+    // First hit: specular (the traced second bounce, F0-tinted, so a metal reads as a
+    // colour-tinted mirror rather than a flat blob) + diffuse (the environment's
+    // irradiance + the scene's direct lights as Lambert, faded out as metalness rises).
+    float3 col = envAtHit * F;
+    float3 diffuse = s1.albedo * irradianceTex.sample(cubeSamp, rot * s1.N).rgb
+                   + ollin_rt_direct(s1, light, -rayDir, ltcAmp, iesProfiles, cookies);
+    col += diffuse * (1.0 - s1.metal);
+    // Atmosphere: the reflected leg crosses the same medium, so the hit's radiance
+    // fogs by the surface-to-hit path (analytic extinction + ambient only; the shaft
+    // march is not traced into reflections). Shared by the inline and deferred paths,
+    // so a mirror never shows a crisply un-fogged copy of a hazed scene. The primary
+    // eye-to-surface leg is fogged by the receiving fragment on its composed color;
+    // an environment miss keeps the environment's clarity (the documented envelope).
+    if (light.fogColor.w > 0.0) {
+        float tHit = length(s1.P - rayOrigin);
+        float T = exp(-ollin_fog_optical_depth(rayOrigin, rayDir, tHit,
+                                               light.fogParams.x, light.fogParams.y));
+        col = col * T + light.fogColor.rgb * (1.0 - T);
+    }
+    return col;
+}
+
 static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3 R,
                                                primitive_acceleration_structure accel,
                                                const device OllinMeshVertex *verts,
@@ -897,72 +990,14 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
     // and every contact edge grows a 1-2px black seam no anti-aliasing can remove.
     r.min_distance = eps * 0.05;
     r.max_distance = 1e9;                 // exact trace; a long ray is no costlier than a short one
-    intersection_params params;           // default = closest hit (no accept_any)
     intersection_query<triangle_data> q;
-    q.reset(r, accel, params);
-    while (q.next()) {
-        if (q.get_candidate_intersection_type() == intersection_type::triangle)
-            q.commit_triangle_intersection();
-    }
-    if (q.get_committed_intersection_type() != intersection_type::triangle)
+    if (!ollin_rt_query(q, r, accel))
         return float4(0.0);               // the ray left the scene -> the environment (caller's fallback)
 
     OllinRTSurface s1 = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, R);
-    float3 F0 = mix(float3(0.04), s1.albedo, s1.metal);
-    float NoV = max(dot(s1.N, -R), 0.0);
-    float3 F = F0 + (max(float3(1.0 - s1.rough), F0) - F0) * pow(1.0 - NoV, 5.0);
-
-    // The first hit's specular: trace its mirror direction. A miss sees the environment;
-    // a hit shades the second surface (env-terminated, no third trace).
-    float3 secDir = reflect(R, s1.N);
-    ray r2;
-    r2.origin = s1.P + s1.N * eps;
-    r2.direction = secDir;
-    r2.min_distance = eps * 0.05;         // same corner rule as the first trace
-    r2.max_distance = 1e9;
-    intersection_query<triangle_data> q2;
-    q2.reset(r2, accel, params);
-    while (q2.next()) {
-        if (q2.get_candidate_intersection_type() == intersection_type::triangle)
-            q2.commit_triangle_intersection();
-    }
-    float3 envAtHit;
-    if (q2.get_committed_intersection_type() == intersection_type::triangle) {
-        OllinRTSurface s2 = ollin_rt_fetch_surface(q2, verts, geoOffsets, r2.origin, secDir);
-        float3 F0b = mix(float3(0.04), s2.albedo, s2.metal);
-        float NoVb = max(dot(s2.N, -secDir), 0.0);
-        float3 Fb = F0b + (max(float3(1.0 - s2.rough), F0b) - F0b) * pow(1.0 - NoVb, 5.0);
-        float3 env2 = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, reflect(secDir, s2.N),
-                                        s2.rough, NoVb, light.iblMaxMip);
-        float3 diffuse2 = s2.albedo * irradianceTex.sample(cubeSamp, rot * s2.N).rgb
-                        + ollin_rt_direct(s2, light, -secDir, ltcAmp, iesProfiles, cookies);
-        envAtHit = env2 * Fb + diffuse2 * (1.0 - s2.metal);
-    } else {
-        envAtHit = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, secDir,
-                                     s1.rough, NoV, light.iblMaxMip);
-    }
-
-    // First hit: specular (the traced second bounce, F0-tinted, so a metal reads as a
-    // colour-tinted mirror rather than a flat blob) + diffuse (the environment's
-    // irradiance + the scene's direct lights as Lambert, faded out as metalness rises).
-    // Un-exposed radiance; the caller scales the whole reflection by the IBL intensity,
-    // so hit and miss stay consistent.
-    float3 col = envAtHit * F;
-    float3 diffuse = s1.albedo * irradianceTex.sample(cubeSamp, rot * s1.N).rgb
-                   + ollin_rt_direct(s1, light, -R, ltcAmp, iesProfiles, cookies);
-    col += diffuse * (1.0 - s1.metal);
-    // Atmosphere: the reflected leg crosses the same medium, so the hit's radiance
-    // fogs by the surface-to-hit path (analytic extinction + ambient only; the shaft
-    // march is not traced into reflections). Shared by the inline and deferred paths,
-    // so a mirror never shows a crisply un-fogged copy of a hazed scene. The primary
-    // eye-to-surface leg is fogged by the receiving fragment on its composed color;
-    // an environment miss keeps the environment's clarity (the documented envelope).
-    if (light.fogColor.w > 0.0) {
-        float tHit = length(s1.P - r.origin);
-        float T = exp(-ollin_fog_optical_depth(r.origin, R, tHit,
-                                               light.fogParams.x, light.fogParams.y));
-        col = col * T + light.fogColor.rgb * (1.0 - T);
-    }
+    float3 col = ollin_rt_hit_radiance(s1, r.origin, R, eps, accel, verts, geoOffsets,
+                                       light, irradianceTex, prefilterTex, cubeSamp, rot,
+                                       ltcAmp, iesProfiles, cookies);
     return float4(col, 1.0);
 }
 
@@ -988,6 +1023,130 @@ static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, fl
                                            ltcAmp, iesProfiles, cookies);
     float3 col = mix(envReflection, hit.rgb, hit.a);
     return mix(col, envReflection, smoothstep(0.12, 0.55, rough));
+}
+
+// The view *through* a transmissive surface, traced against the actual scene: the
+// refraction upgrade that rides the same `rayTracedReflections()` opt-in (and accel
+// structure) as the mirror trace, replacing the environment-refraction sample the way
+// the reflection trace replaces the prefilter sample. `envTransmitted` is that sample,
+// the miss fallback and the glossy blend target (a single ray can't blur, the
+// reflection rule).
+//
+// Two walks by body type:
+// - **Solid** (thickness > 0): refract into the body at the entry interface and trace
+//   the interior leg. A *back face* hit is the surface the ray is leaving, i.e. the
+//   body's real exit (no analytic thickness march needed; the traced interior span also
+//   feeds Beer-Lambert exactly): refract again there and trace on into the scene. A
+//   *front face* hit inside is an embedded object seen through the entry interface;
+//   shade it where it is. Total internal reflection at the exit carries straight on
+//   (bounded fudge; a real internal bounce would recurse unboundedly).
+// - **Thin** (thickness 0): a pane or shell displaces the view imperceptibly, so the
+//   walk continues the straight view ray, passing through back faces (its own far
+//   shell) and shading the first front face it meets. Bounded hops so nested shells
+//   can't loop forever.
+// Hits shade through the shared two-bounce hit shade, so a surface reads the same
+// through glass as in a mirror; glass seen through glass shades as the opaque surface
+// it would be without its own transmission (the documented v1 envelope).
+static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewDir,
+                                         constant OllinMaterial &mat,
+                                         primitive_acceleration_structure accel,
+                                         const device OllinMeshVertex *verts,
+                                         const device uint *geoOffsets,
+                                         constant OllinLighting &light,
+                                         texturecube<float> irradianceTex,
+                                         texturecube<float> prefilterTex,
+                                         sampler cubeSamp, float3x3 rot,
+                                         float3 envTransmitted,
+                                         texture2d<float> ltcAmp,
+                                         texture2d_array<float> iesProfiles,
+                                         texture2d_array<float> cookies) {
+    float eps = max(light.rtReflectionBias, 1e-4);
+    float rough = clamp((float)mat.roughness, 0.045, 1.0);
+    float3 col = envTransmitted;
+    float3 absorb = float3(1.0);
+
+    if (mat.thickness > 0.0) {
+        // Solid: into the body along the refracted direction.
+        float3 rr = refract(-viewDir, n, 1.0 / mat.ior);
+        ray r;
+        r.origin = worldPos + rr * eps;   // the refracted ray points into the surface's
+        r.direction = rr;                 // back half-space, so it can't re-hit the entry plane
+        r.min_distance = eps * 0.05;
+        r.max_distance = 1e9;
+        intersection_query<triangle_data> q;
+        if (ollin_rt_query(q, r, accel)) {
+            bool backface = false;
+            OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, rr, backface);
+            // Beer-Lambert over the *traced* interior span (the real geometry, not the
+            // analytic thickness estimate the environment path has to settle for).
+            if (mat.attenuation.w > 0.0)
+                absorb = pow(mat.attenuation.rgb, length(s.P - worldPos) / mat.attenuation.w);
+            if (backface) {
+                // The body's exit: refract back out (the fetched normal faces the
+                // interior ray, exactly the side refract() wants) and trace the scene.
+                float3 exitDir = refract(rr, s.N, mat.ior);
+                if (length_squared(exitDir) < 1e-6) exitDir = rr;   // TIR: carry on
+                ray r2;
+                r2.origin = s.P + exitDir * eps;
+                r2.direction = exitDir;
+                r2.min_distance = eps * 0.05;
+                r2.max_distance = 1e9;
+                intersection_query<triangle_data> q2;
+                if (ollin_rt_query(q2, r2, accel)) {
+                    OllinRTSurface s2 = ollin_rt_fetch_surface(q2, verts, geoOffsets,
+                                                               r2.origin, exitDir);
+                    col = ollin_rt_hit_radiance(s2, r2.origin, exitDir, eps, accel, verts,
+                                                geoOffsets, light, irradianceTex, prefilterTex,
+                                                cubeSamp, rot, ltcAmp, iesProfiles, cookies);
+                } else {
+                    col = prefilterTex.sample(cubeSamp, rot * exitDir,
+                                              level(rough * light.iblMaxMip)).rgb;
+                }
+            } else {
+                // A front face inside the body: an embedded object, seen through the
+                // entry interface alone.
+                col = ollin_rt_hit_radiance(s, r.origin, rr, eps, accel, verts, geoOffsets,
+                                            light, irradianceTex, prefilterTex, cubeSamp, rot,
+                                            ltcAmp, iesProfiles, cookies);
+            }
+        } else {
+            // Nothing along the interior ray at all (an open mesh posing as a solid):
+            // the environment along the refracted direction is the honest answer.
+            col = prefilterTex.sample(cubeSamp, rot * rr,
+                                      level(rough * light.iblMaxMip)).rgb;
+        }
+    } else {
+        // Thin: continue the straight view ray, hopping through our own (and any
+        // nested) back faces until a real surface or the sky.
+        float3 dir = -viewDir;
+        float3 origin = worldPos + dir * eps;
+        for (int hop = 0; hop < 4; hop++) {
+            ray r;
+            r.origin = origin;
+            r.direction = dir;
+            r.min_distance = eps * 0.05;
+            r.max_distance = 1e9;
+            intersection_query<triangle_data> q;
+            if (!ollin_rt_query(q, r, accel)) {
+                col = envTransmitted;     // left the scene: the environment sample
+                break;
+            }
+            bool backface = false;
+            OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, origin, dir, backface);
+            if (backface) {
+                origin = s.P + dir * eps; // our own far shell: pass through
+                continue;
+            }
+            col = ollin_rt_hit_radiance(s, origin, dir, eps, accel, verts, geoOffsets,
+                                        light, irradianceTex, prefilterTex, cubeSamp, rot,
+                                        ltcAmp, iesProfiles, cookies);
+            break;
+        }
+    }
+
+    // A single ray can't frost: blend the traced result toward the (mip-blurred)
+    // environment sample by roughness, the reflection wrapper's rule and constants.
+    return mix(col * absorb, envTransmitted, smoothstep(0.12, 0.55, rough));
 }
 #endif
 
@@ -1578,6 +1737,13 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     int model = mat.shadingModel;            // 0 standard, 1 toon, 2 Gooch
     float bands = max(mat.toonBands, 1.0);
     bool wantsSSS = mat.subsurfaceColor.a > 0.0;
+    // Transmission swaps the physically-based diffuse body for the transmitted lobe the
+    // IBL ambient adds, so the direct lights' diffuse scales down with it. Only when an
+    // environment supplies that lobe: with no IBL, transmission is inert (the surface
+    // shades as the plain dielectric it would otherwise be), and at transmission 0 the
+    // factor is exactly 1 (byte-identical).
+    float diffKeep = (model == 3 && light.iblEnabled != 0)
+                   ? (1.0 - mat.transmission * (1.0 - mat.metallic)) : 1.0;
 
     // Gooch sets its own diffuse tone below; the others start from the flat ambient term.
     // A physically-based metal has no diffuse, so its flat ambient is killed by metalness
@@ -1666,9 +1832,9 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 // GGX response (F0 blends the two channels); diffuse is the exact
                 // Lambert integral over the shape, with the usual metallic kill. Both
                 // ride the light's diffuse color, like the punctual microfacet path.
-                float3 F0 = mix(float3(0.04), base, mat.metallic);
+                float3 F0 = mix(float3(mat.f0), base, mat.metallic);
                 float3 spec = (F0 * lt2.x + (float3(1.0) - F0) * lt2.y) * specI;
-                float3 diff = base * ((1.0 - mat.metallic) * diffI);
+                float3 diff = base * ((1.0 - mat.metallic) * diffI * diffKeep);
                 lit += (diff + spec) * L.color.rgb;
             } else {
                 // Standard: Lambert diffuse through the exact integral; the highlight
@@ -1769,13 +1935,13 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 float NoV = max(dot(n, viewDir), 1e-4);
                 float NoH = max(dot(n, h), 0.0);
                 float VoH = max(dot(viewDir, h), 0.0);
-                float3 F0 = mix(float3(0.04), base, mat.metallic);
+                float3 F0 = mix(float3(mat.f0), base, mat.metallic);
                 float  D   = ollin_pbr_D_GGX(NoH, rough);
                 float  Vis = ollin_pbr_V_SmithGGX(NoV, NoL, rough);
                 float3 F   = ollin_pbr_F_Schlick(VoH, F0);
                 float3 spec = D * Vis * F;
                 float3 kD   = (float3(1.0) - F) * (1.0 - mat.metallic);
-                float3 diff = kD * base * (1.0 / 3.14159265);
+                float3 diff = kD * base * (diffKeep / 3.14159265);
                 lit += (diff + spec) * L.color.rgb * (atten * NoL);
             }
         } else {
@@ -1902,13 +2068,55 @@ fragment float4 ollin_mesh_point_shadow_fragment(MeshCubeShadowOut in [[stage_in
     return float4(dist, dist, 0.0, 0.0);
 }
 
+// The environment seen *through* a transmissive physically-based surface: real-time
+// refraction against the environment map, the base path every GPU gets (the ray-traced
+// walk above upgrades it to the actual scene). Refract the view ray at the entry
+// interface; a solid body (thickness > 0) marches the analytic interior span and
+// refracts back out through a curvature-blended exit normal (an approximation of the
+// far interface a rasterizer can't see), while a thin wall (thickness 0) exits parallel
+// to the view ray, leaving only the microfacet blur and the tint. The transmitted
+// sample reuses the GGX-prefiltered mips, so frosting rides the same lod ramp as
+// reflection gloss; as the IOR nears 1 the microfacets stop deflecting rays, so the
+// blur roughness fades to sharp independent of the surface's own roughness. A solid
+// absorbs along the interior span by Beer-Lambert (`mat.attenuation`: what white
+// becomes after w units of travel). Written from the published technique (README
+// Techniques list).
+static inline float3 ollin_env_refraction(float3 n, float3 viewDir,
+                                          constant OllinMaterial &mat,
+                                          constant OllinLighting &light,
+                                          texturecube<float> prefilterTex,
+                                          sampler cubeSamp, float3x3 rot) {
+    float etaIR = 1.0 / mat.ior;
+    float rough = clamp((float)mat.roughness, 0.0, 1.0);
+    rough = mix(rough, 0.0, saturate(etaIR * 3.0 - 2.0));
+    float3 dir;
+    float span = 0.0;
+    if (mat.thickness > 0.0) {
+        float3 rr = refract(-viewDir, n, etaIR);
+        float NoR = dot(n, rr);                        // negative heading in
+        span = mat.thickness * -NoR;                   // the analytic interior span
+        float3 n1 = normalize(NoR * rr - n * 0.5);     // curvature-blended exit normal
+        dir = refract(rr, n1, mat.ior);
+        if (length_squared(dir) < 1e-6) dir = rr;      // total internal reflection: carry on
+    } else {
+        dir = -viewDir;                                // thin wall: exit parallel to the view
+    }
+    float3 t = prefilterTex.sample(cubeSamp, rot * dir, level(rough * light.iblMaxMip)).rgb;
+    if (span > 0.0 && mat.attenuation.w > 0.0)
+        t *= pow(mat.attenuation.rgb, span / mat.attenuation.w);
+    return t;
+}
+
 // The image-based-lighting ambient for a physically-based surface: the split-sum
 // approximation (Karis), gathering the environment's diffuse irradiance and its
 // GGX-prefiltered specular reflection, recombined through the BRDF integration LUT. Added
 // by the lit mesh fragments on top of `meshLitColor`'s direct lighting when an environment
 // is set (`light.iblEnabled`) and the material is physically-based (shading model 3). The
 // three textures are the baked irradiance cube, the prefiltered specular mip-cube, and the
-// 2D BRDF LUT. `base` is the linear albedo. Written from the published technique (README
+// 2D BRDF LUT. `base` is the linear albedo. A transmissive material swaps its diffuse
+// term for the refracted view through the body (`ollin_env_refraction`, upgraded to the
+// traced scene under ray-traced reflections), tinted by the albedo and weighted by the
+// energy the specular lobe leaves over. Written from the published technique (README
 // Techniques list).
 static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir,
                                            constant OllinMaterial &mat,
@@ -1945,7 +2153,9 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     // Spin the sample directions about Y by the environment rotation.
     float cs = cos(light.iblRotation), sn = sin(light.iblRotation);
     float3x3 rot = float3x3(float3(cs, 0.0, -sn), float3(0.0, 1.0, 0.0), float3(sn, 0.0, cs));
-    float3 F0 = mix(float3(0.04), base, mat.metallic);
+    // Normal-incidence reflectance comes packed from the material's IOR (bit-equal to
+    // the old hard-coded 0.04 at the default 1.5).
+    float3 F0 = mix(float3(mat.f0), base, mat.metallic);
     // Roughness-aware Fresnel so rough grazing angles don't blow out.
     float3 F = F0 + (max(float3(1.0 - rough), F0) - F0) * pow(1.0 - NoV, 5.0);
     float3 kD = (float3(1.0) - F) * (1.0 - mat.metallic);
@@ -1973,7 +2183,24 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
 #endif
     float2 brdf = brdfTex.sample(lutSamp, float2(NoV, rough)).rg;
     float3 specular = prefiltered * (F0 * brdf.x + brdf.y);
-    return (kD * diffuse + specular) * light.iblIntensity;
+    float3 diffusePart = kD * diffuse;
+    // Transmission swaps the diffuse body for the view through it: the refracted
+    // environment (or the traced scene), tinted by the albedo and weighted by the
+    // energy the specular lobe leaves over. Metals transmit nothing. Inert at 0.
+    float trans = mat.transmission * (1.0 - mat.metallic);
+    if (trans > 0.0) {
+        float3 Ft = ollin_env_refraction(n, viewDir, mat, light, prefilterTex, cubeSamp, rot);
+#if OLLIN_RT_SHADOWS
+        if (light.rtReflections != 0) {
+            Ft = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
+                                     meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                     cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies);
+        }
+#endif
+        float3 E = F0 * brdf.x + brdf.y;   // the specular lobe's share of the energy
+        diffusePart = mix(diffusePart, Ft * (float3(1.0) - E) * base, trans);
+    }
+    return (diffusePart + specular) * light.iblIntensity;
 }
 
 // Environment ambient for the non-physically-based materials (standard/toon): the

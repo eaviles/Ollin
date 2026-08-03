@@ -75,6 +75,8 @@ The two asymmetries that surprise people:
 - **Screen-space reflections mirror the *picture*, so everything visible appears in them**, point clouds and wireframes included. Ray-traced reflections trace the *mesh geometry*, so only solid meshes appear inside a traced mirror image.
 - **A raymarched field can show traced reflections on its own surface** (give it a PBR finish), but it doesn't *appear* in another object's traced reflection, because it isn't part of the mesh index the rays test. If you need a merged-blob sculpture visible in a chrome sphere, build it from meshes instead.
 
+And [glass](./3D.md#glass) adds two of its own: a glass mesh still **casts a solid shadow** (the shadow passes don't read transmission), and glass **appears opaque inside a mirror or through other glass** (a traced hit shades as the surface it struck without re-entering the transmission math). The view *through* a glass surface you look at directly is the full story: the environment everywhere, and the actual scene on a ray-tracing GPU with `rayTracedReflections()` on.
+
 <a id="depth-effects"></a>
 ### Effects that read depth
 

@@ -1962,6 +1962,55 @@ in *Deferred ray-traced reflection AA* below. The integration facts live here:
   per-hit-material gap is closed for the PBR finish via the baked vertex slots;
   the non-PBR stylized finishes still shade as plain diffuse in a reflection.
 
+### Glass: transmission and refraction
+
+The transmissive material rides the PBR finish (shading model 3), not a new
+model: `transmission` / `ior` / `thickness` / `attenuation` ride the
+`OllinMaterial` tail, every new branch gates on `transmission > 0`, and the
+normal-incidence Fresnel moved from a hard-coded `0.04` to a CPU-packed
+`mat.f0` that packs the *exact literal* `0.04` at the default IOR 1.5 (the
+computed `((0.5)/(2.5))^2` rounds to a different float; `MaterialTests` pins
+it), so every pre-glass frame is bit-identical. The moving parts:
+
+- **The transmitted lobe replaces the diffuse one** (the glTF
+  `KHR_materials_transmission` form): in `ollin_pbr_ibl_ambient` the diffuse
+  part becomes `mix(kD·diffuse, Ft·(1−E)·base, transmission·(1−metallic))`
+  where `E = F0·brdf.x + brdf.y` is the specular lobe's share of the energy,
+  and `meshLitColor`'s punctual + LTC diffuse scale by the same `diffKeep`
+  factor. `diffKeep` engages **only when `iblEnabled` is up**: with no
+  environment there is nothing to transmit, so transmission is inert and the
+  material shades as the plain dielectric (pinned byte-equal by
+  `GlassRenderProbes.withoutAnEnvironmentGlassIsAPlainDielectric`).
+- **The base path is environment refraction** (`ollin_env_refraction`, all
+  GPUs): refract at entry; a solid (`thickness > 0`) marches the analytic
+  interior span `thickness · −(N·R)` and refracts back out through a
+  curvature-blended exit normal (`normalize((N·R)·rr − n·0.5)`, the published
+  rasterizer approximation of the unseen far interface), a thin wall exits
+  parallel to the view ray; the sample reuses the GGX-prefiltered mips at the
+  material's roughness with the blur fading as IOR → 1 (`mix(rough, 0,
+  saturate(3/ior − 2))`); Beer-Lambert absorption is `pow(attColor, span /
+  attDistance)` with the attenuation color floored at 1e-4 per channel on the
+  CPU (a zero channel would hit `pow(0, 0)` NaNs under fast math).
+- **The RT upgrade rides the same `rayTracedReflections()` opt-in**, one
+  switch upgrading mirrors and glass together. `ollin_rt_refraction` traces the
+  *refracted* entry ray through the same accel: a solid's interior leg
+  finding a **back face** found its real exit (refract out there and trace on;
+  the traced interior span feeds Beer-Lambert exactly), a **front face** inside
+  is an embedded object seen through one interface (shade it where it is); a
+  thin wall continues the straight view ray, hopping through its own shell's
+  back faces (bounded at 4 hops). Total internal reflection at an exit carries
+  straight on (a bounded fudge; a real internal bounce recurses without
+  bound). Hits shade through `ollin_rt_hit_radiance`, the hit shade *extracted
+  from* `ollin_rt_reflection_trace` so mirror and glass shading cannot drift.
+- **Documented v1 envelope:** the refraction trace is inline (single-ray) even
+  when reflections run deferred; refracted content is usually minified, so
+  aliasing stays acceptable where a mirror's would not (revisit if glass
+  shimmer shows up in motion). A traced hit does not re-enter transmission, so
+  glass seen in a mirror or through other glass reads as an opaque shiny body,
+  and glass still casts an opaque shadow (a transmission-aware shadow term is
+  a follow-up). Roughness on the traced path blends toward the env-refraction
+  sample by the reflection wrapper's constants (a single ray cannot frost).
+
 ---
 
 ## Deferred ray-traced reflection AA

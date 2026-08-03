@@ -290,6 +290,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("pbr-ibl",
                  note: "Physically-based balls lit by a bundled HDRI environment (image-based lighting): pins the whole IBL path (the equirect->cube / irradiance / GGX-prefilter / BRDF-LUT bake, the split-sum ambient on the mesh fragment, and the skybox backdrop). Fixed camera + environment, no time, so the bake is deterministic.",
                  make: { IBLScene() }),
+    SnapshotCase("glass-materials",
+                 note: "Transmissive (glass) physically-based spheres over a bundled environment, no ray tracing: pins the environment-refraction base path every GPU gets (the entry refract + analytic interior span + curvature-blended exit for a solid, the parallel thin exit, the IOR-remapped frosting lod, Beer-Lambert absorption, the f0-from-IOR packing, and the transmitted-for-diffuse swap in the IBL ambient and the direct-light diffKeep). Fixed camera + environment, no time.",
+                 make: { GlassScene() }),
     SnapshotCase("area-lights",
                  note: "A rect panel, a disk, and a tube (the LTC area lights) over a glossy floor and a roughness row: pins the bundled LTC table load, the horizon-clipped rect integral, the disk's ellipse/cubic path, the tube's line integral, the physical falloff, and the Blinn-Phong shininess-to-roughness mapping on the standard-material box. Fixed camera, no time.",
                  make: { AreaLightsScene() }),
@@ -518,6 +521,9 @@ private let snapshotRaytracingCases: [SnapshotCase] = [
     SnapshotCase("rt-reflections-3d",
                  note: "A near-mirror metal floor under fixed metal spheres + a cube, lit by an environment, with rayTracedReflections() on. Pins the hybrid reflection path: the per-pixel closest-hit trace against the caster acceleration structure, the barycentric attribute fetch + 1-bounce hit shade, and the environment miss fallback composited through the PBR IBL specular. RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.",
                  make: { RayTracedReflectionsScene() }),
+    SnapshotCase("rt-refraction-3d",
+                 note: "Glass bodies in front of colored pillars with rayTracedReflections() on: pins the traced refraction walk (the solid's interior leg finding its real exit back face and refracting out, the thin walk hopping through its own shell, Beer-Lambert over the traced span, the shared hit shade, and the environment miss fallback). RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.",
+                 make: { GlassRefractionScene() }),
     SnapshotCase("area-shadows",
                  note: "A box and a sphere over a floor, lit by one rect strip panel with castShadows() on. On a ray-tracing GPU the area caster traces visibility to the panel's actual surface, which the reference is recorded against: pins the traced-panel path (the antithetic R2 samples over the rect, the shadowSoftness scale on the extent, the anisotropic penumbra a strip throws) and the shadow dimming inside the LTC area branch. The non-RT spot-style PCSS map differs and is probe-tested instead. Fixed camera, no time.",
                  make: { AreaShadowsScene() }),
@@ -1331,6 +1337,70 @@ private final class IBLScene: Sketch {
         ]
         for (m, c, x) in balls {
             withState { translate(x, 0, 0); fill(c); material(m); drawSphere(radius: 0.8) }
+        }
+    }
+}
+
+private final class GlassScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        toneMap(.aces)
+        camera(.orbiting(target: Vector3(0, 0.4, 0), radius: 6.5,
+                         azimuth: 0.3, elevation: 0.12, fieldOfView: .pi / 3.4))
+        environment(.studio)
+        // A solid clear lens, a solid absorbing (bottle-green) body, a frosted solid,
+        // and a thin-walled tinted bubble; a matte floor grounds them.
+        let bodies: [(Color, Material, Double)] = [
+            (.white, .glass(thickness: 1.6), -2.4),
+            (.white, .glass(thickness: 1.6, attenuationColor: Color(hex: 0x2e8f5b),
+                            attenuationDistance: 1.2), -0.8),
+            (.white, .glass(roughness: 0.45, thickness: 1.6), 0.8),
+            (Color(hex: 0xcfe4ff), .glass(), 2.4),
+        ]
+        for (c, m, x) in bodies {
+            withState { translate(x, 0.4, 0); fill(c); material(m); drawSphere(radius: 0.8) }
+        }
+        withState {
+            translate(0, -0.6, 0); fill(Color(white: 0.5)); material(.roughPlastic)
+            drawBox(width: 20, height: 0.3, depth: 20)
+        }
+    }
+}
+
+private final class GlassRefractionScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x14171d))
+        camera(.orbiting(target: Vector3(0, 0.8, 0), radius: 8,
+                         azimuth: 0.15, elevation: 0.14,
+                         fieldOfView: .pi / 4, near: 2, far: 24))
+        environment(.studio.intensity(1.1))
+        directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.7)
+        rayTracedReflections()
+        // The content the glass has to transmit: a floor and three colored pillars.
+        withState {
+            material(.dielectric(roughness: 0.8)); fill(Color(hex: 0x3a3f4c))
+            translate(0, -0.55, 0); drawBox(width: 24, height: 1.0, depth: 14)
+        }
+        for (i, c) in [Color(hex: 0xe6533c), Color(hex: 0x4fb477), Color(hex: 0x3f7fd6)].enumerated() {
+            withState {
+                material(.dielectric(roughness: 0.6)); fill(c)
+                translate((Double(i) - 1) * 1.8, 1.5, -2.6)
+                drawBox(width: 1.2, height: 4.0, depth: 0.5)
+            }
+        }
+        // A solid clear lens, a solid absorbing body, and a thin bubble in front.
+        let bodies: [(Color, Material, Double)] = [
+            (.white, .glass(thickness: 1.8), -2.0),
+            (.white, .glass(thickness: 1.8, attenuationColor: Color(hex: 0x2e8f5b),
+                            attenuationDistance: 1.2), 0),
+            (Color(hex: 0xcfe4ff), .glass(), 2.0),
+        ]
+        for (c, m, x) in bodies {
+            withState { translate(x, 0.9, 0.8); fill(c); material(m); drawSphere(radius: 0.9) }
         }
     }
 }

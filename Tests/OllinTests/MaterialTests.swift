@@ -96,4 +96,46 @@ struct MaterialTests {
         m.iridescence = 0.3
         #expect(m != Material.glossy)
     }
+
+    @Test func glassClampsAndDefaultsInert() {
+        // The default material transmits nothing and carries the canonical glass IOR,
+        // so every pre-glass material packs the same bytes it always did.
+        let d = Material()
+        #expect(d.transmission == 0 && d.ior == 1.5 && d.thickness == 0)
+        #expect(d.attenuationDistance == 0)
+        let m = Material(transmission: 3, ior: 0.5, thickness: -2, attenuationDistance: -1)
+        #expect(m.transmission == 1)         // 0...1
+        #expect(m.ior == 1)                  // >= 1
+        #expect(m.thickness == 0)            // >= 0
+        #expect(m.attenuationDistance == 0)  // >= 0
+    }
+
+    @Test func f0PacksExactlyAtTheDefaultIor() {
+        // The shader used to hard-code 0.04; the packed f0 must be that exact float at
+        // ior 1.5 (the computed ((0.5)/(2.5))^2 rounds to a *different* float), so
+        // existing physically-based frames stay bit-identical.
+        #expect(Material().gpuMaterial().f0 == Float(0.04))
+        #expect(Material.glass().gpuMaterial().f0 == Float(0.04))
+        // Off the default it's the real Fresnel form: ior 3 -> ((2)/(4))^2 = 0.25.
+        #expect(close(Material(ior: 3).gpuMaterial().f0, 0.25))
+    }
+
+    @Test func glassPacksTransmissionAndAttenuation() {
+        let m = Material.glass(roughness: 0.2, ior: 1.33, thickness: 1.8,
+                               attenuationColor: Color(white: 0.5),
+                               attenuationDistance: 0.7)
+        #expect(m.shading == .physicallyBased && m.transmission == 1)
+        let g = m.gpuMaterial()
+        #expect(close(g.transmission, 1) && close(g.ior, 1.33) && close(g.thickness, 1.8))
+        #expect(close(g.attenuation.w, 0.7))
+        // Attenuation color is linearized (sRGB 0.5 -> ~0.214), and a black channel is
+        // floored just above zero so the shader's pow() can't hit pow(0, 0) NaNs.
+        #expect(g.attenuation.x < 0.5 && g.attenuation.x > 0)
+        let black = Material.glass(attenuationColor: .black, attenuationDistance: 1).gpuMaterial()
+        #expect(black.attenuation.x > 0 && close(black.attenuation.x, 1e-4))
+        // The default is inert: no transmission, no attenuation.
+        let d = Material().gpuMaterial()
+        #expect(close(d.transmission, 0) && close(d.attenuation.w, 0))
+        #expect(Material.frostedGlass.transmission == 1)
+    }
 }

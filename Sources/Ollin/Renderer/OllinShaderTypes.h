@@ -361,6 +361,10 @@ typedef struct {
 // Shading model 3 swaps the diffuse+Blinn-Phong term for a Cook-Torrance microfacet BRDF
 // driven by `metallic`/`roughness` (the surface color stays the baked vertex color =
 // `fill`); the other models ignore those two fields, so they're unchanged.
+// The transmission tail (`transmission`/`ior`/`thickness`/`attenuation`) turns a
+// physically-based dielectric into glass: the transmitted lobe replaces the diffuse one,
+// refracting the environment (or the traced scene under ray-traced reflections). Inert at
+// transmission 0 and inactive without an environment, so every existing frame is unchanged.
 // Colors are linear (sRGB→linear CPU-side).
 typedef struct {
     simd_float4 rimColor;         // rgb linear rim color; a = rim strength (0 = no rim)
@@ -379,6 +383,14 @@ typedef struct {
     float roughness;              // PBR (shading model 3): 0 mirror-smooth … 1 fully rough; ignored otherwise
     float sparkleSize;            // flake cell size, relative to the scene framing (1 = fine glitter)
     float sparkleSharpness;       // flake flash exponent (higher = rarer, harder flashes)
+    simd_float4 attenuation;      // Beer-Lambert medium: rgb = linear attenuation color (what white
+                                  // light becomes after `w` of travel); w = attenuation distance in
+                                  // world units (0 = no attenuation). Volumetric only (thickness > 0).
+    float transmission;           // PBR: fraction of light transmitted through the surface (0 = opaque)
+    float ior;                    // PBR: index of refraction (>= 1; 1.5 = common glass)
+    float thickness;              // PBR transmission: 0 = thin-walled; > 0 = solid, world units
+    float f0;                     // PBR: normal-incidence Fresnel reflectance, packed CPU-side from
+                                  // `ior` (exactly 0.04 at the default 1.5, keeping old frames bit-equal)
 } OllinMaterial;
 
 // Parameters for the live ground-grid overlay (`ollin_grid_fragment`): a shader-drawn
