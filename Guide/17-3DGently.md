@@ -158,9 +158,7 @@ castShadows()
 
 A **directional** light is the sun, parallel rays from a direction, with no position of its own, lighting everything evenly. A **point** light is a bulb at a place, so nearby things catch it strongly. A **spot** is a point light narrowed to an aimed cone, with a `penumbra` for how soft its edge falls. The `ambientLight` is a flat wash added to every surface so the unlit sides aren't pure black. Each light takes an `intensity`, and in the figure each has its own color so you can see who's doing what: the warm key shades everything, the cyan bulb blooms on the surfaces near it, the magenta cone pools on the floor.
 
-Two smaller dials finish the surface's response to light: `specular(_:)` sets how strong the highlight is (0 is matte) and `shininess(_:)` how tight. But mostly you won't set those by hand, because of what's next. First, though, there is that one extra line in the listing above to account for.
-
-All three of those lights are infinitesimal points; a fourth family gives light a *body*. `rectLight` is a glowing panel (a softbox, a window), `diskLight` a glowing circle, `tubeLight` a glowing cylinder strung between two points (a neon). A light with a body behaves differently on purpose: its highlight is a reflection of its shape, its shading wraps gradually instead of cutting at a terminator, and its brightness falls off with distance, because `intensity` is the glow of the surface itself. A big dim panel and a small bright one light a scene differently, the way real softboxes do, and a thin neon needs an intensity in the tens because a thin tube is a small piece of sky. The `3D/Lighting/AreaLights` example stages all three over a glossy floor; put it beside `3D/Lighting/Lighting` and the difference between a bulb and a panel is the whole studio-photography look.
+Two smaller dials finish the surface's response to light: `specular(_:)` sets how strong the highlight is (0 is matte) and `shininess(_:)` how tight. But mostly you won't set those by hand, because of the materials library below. First, though, there is that one extra line in the listing above to account for.
 
 ## Shadows, and what they tell you
 
@@ -185,12 +183,35 @@ Some practical notes, in the order they tend to bite:
 
 - **You need something to catch a shadow.** A sphere alone in space casts into nothing. A floor, or another object, is what makes the shadow visible.
 - **It's opt-in and per-frame.** A sketch that never calls `castShadows()` pays nothing at all, so shadows cost you only when you ask. Call it in `draw()` alongside the lights, and `noShadows()` turns it back off.
-- **One light does the casting**, chosen for you: the first directional light, or a spot if there's no directional, or a point light failing that. The default rig's key light is directional, so a scene you haven't relit already works.
+- **One light does the casting**, chosen for you: the first directional light, or a spot if there's no directional, or a point light failing that. (A glowing panel can cast too; that's the next section.) The default rig's key light is directional, so a scene you haven't relit already works.
 - **Nothing needs aiming.** The shadow's frame auto-fits around whatever the camera is looking at.
 
 The three kinds of light cast by different routes, which mostly matters because it explains the cost. A directional or spot light renders the scene once from the light's own viewpoint and darkens whatever that view can't see. A point light casts in every direction at once, so on Apple silicon it instead traces actual rays from each lit pixel toward the light, which is exact (no bias artifacts) but the most expensive of the three. On a GPU that can't trace rays it falls back to a depth map sampled by direction, so point shadows still work everywhere and your sketch doesn't change either way.
 
 If a penumbra looks grainy rather than smooth, that's the sample count, not the softness: `shadowQuality(.detail)` asks for more samples relative to whatever GPU is running, and `shadowSamples(16)` sets an exact number.
+
+## A light with a body
+
+The three kinds above are infinitesimal points. A fourth family gives light a *body*: `rectLight` is a glowing panel (a softbox, a window), `diskLight` a glowing circle, `tubeLight` a glowing cylinder strung between two points (a neon). `intensity` means something different here, and it's worth a moment: it is the glow of the surface itself, so brightness falls off with distance on its own, a bigger panel pours more light at the same glow, and a thin neon needs an intensity in the tens because a thin tube is a small piece of sky.
+
+What a body buys you is easiest to see by changing its size and nothing else:
+
+```swift
+let side = 1.0 + pingPong(over: 6) * 2.2
+let facing = Vector3(0.55, -0.58, 0.6)          // aimed down across the set
+rectLight(Color(hue: 0.09, saturation: 0.22, brightness: 1.0),
+          at: Vector3(-3.4, 4.8, -1.2), direction: facing,
+          width: side, height: side, intensity: 70 / (side * side))
+castShadows()
+```
+
+<img src="Images/17-3DGently/LightWithABody.gif" alt="A teal pillar and an orange sphere on a gray floor under one warm glowing panel that slowly grows and shrinks. When the panel is small the sphere's highlight is a tight spot and both shadows are crisp; as it grows the highlight widens into a sheen, the shading wraps, and the shadows spread into soft pools while the scene's overall brightness stays the same" width="560">
+
+The listing divides the panel's glow by its area as it grows, so the light poured on the set never changes and you can watch what size alone does. Three things move together. The highlight on the sphere is the panel's own reflection, so it grows from a small window into a broad sheen. The shading wraps further around each form, because more of each surface can see some part of the panel. And the cast shadows, sharp when the panel is small, spread into soft-edged pools, still crisp where the box meets the floor and wider the farther they fall. The size of the light is the softness of the picture, and here it's one number.
+
+Shadows work the way the last section said, with the panel's size standing in for a light's position: a rect or disk panel is picked as the caster when no punctual light claims the job, and its penumbra comes from the panel's real extent, nothing to set. `shadowSoftness(_:)` scales that extent rather than some separate size: `0` hard, the `0.5` default the panel's true size, `1` twice as soft. A tube never casts; it glows in every direction, so there is no side to draw a shadow from. One practical note from the figure's own listing: lights are invisible, so the glowing slab you see is a drawn prop, placed a step *behind* the emitting plane, because a casting panel treats any geometry in front of that plane, its own prop included, as an occluder.
+
+The `3D/Lighting/AreaLights` example stages all three shapes over a glossy floor; put it beside `3D/Lighting/Lighting` and the difference between a bulb and a panel is the whole studio-photography look. `3D/Lighting/AreaShadows` is the breathing softbox.
 
 ## Materials
 
