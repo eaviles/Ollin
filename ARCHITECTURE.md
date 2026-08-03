@@ -2404,6 +2404,92 @@ third-party license.
 
 ---
 
+## The USD parser core (OllinUSD)
+
+USD is Ollin's chosen native scene format, read by Ollin's own parser rather
+than the platform importer (which drops lights, animation, and skinning,
+alphabetizes children, and reads colors as display values). The parser core
+in `Sources/Ollin/3D/USD/` is the first stage of that arc: it opens all three
+containers and yields one raw prim/attribute tree, `USDStage` (layer metadata
+plus `USDPrim`s carrying metadata, `USDAttribute`s with defaults / time
+samples / connections, `USDRelationship`s, and children, all in authored
+order). It is **internal**: the shipped Model I/O path (`SceneLoaderUSD`)
+keeps serving `loadScene` until the later stages consume this tree, and no
+public API changes. The supported envelope, verified against real exports,
+is flattened single-layer files and self-contained packages, variants at
+their defaults, no cross-file composition. Everything is clean-room from the
+OpenUSD source's *structure* (credited in `ATTRIBUTION.md`, never
+translated); the study notes live in the format facts below.
+
+The raw tree keeps the file's own shape rather than applying USD semantics:
+tuples (vectors, quaternions, matrices) are component lists in file order,
+tuple arrays are flat component arrays with an arity (`point3f[]` →
+`.floatTupleArray(3, …)`), scalar widths widen (half/float → `double`, every
+int width → `int`/`uint`) but float-typed *arrays* keep `Float` so bulk
+geometry preserves exact bits for cross-checking, and a type the parser
+doesn't decode records `.unsupported(typeName)` and moves on. One
+consequence worth knowing: an *untyped* metadata value keeps the literal's
+shape, so the same field can arrive `.stringArray` from text and
+`.tokenArray` from crate; consumers normalize, the raw tier doesn't.
+
+- **`USDTextParser`** (`.usda`) is a recursive-descent byte scanner,
+  deliberately a *superset* of the grammar (newlines are free where the spec
+  requires them; `;` and newline both separate statements). Values coerce by
+  the declared attribute type; nested tuples flatten (a `matrix4d`'s rows).
+  It parses all three comment forms, the full escape table (`\x` hex, octal,
+  unknown-escape-drops-backslash), triple-quoted strings and `@@@…@@@` asset
+  literals, `attr.timeSamples = { t: v, … }` blocks, `.connect` targets, and
+  list-edit qualifiers. Out-of-envelope constructs are consumed
+  string-aware and recorded `.unsupported`, never a throw: variantSet
+  blocks, references/payload/inherits/specializes/subLayers, relocates,
+  splines, array edits.
+- **`USDCrateReader`** (`.usdc`, versions 0.8-0.10; the three versions share
+  one structural layout, 0.9/0.10 only add value types) reads the bootstrap
+  (`PXR-USDC` magic, version bytes, TOC offset), the TOC's six sections
+  (TOKENS/STRINGS/FIELDS/FIELDSETS/PATHS/SPECS), and value data addressed by
+  64-bit ValueReps (bits 63/62/61 = array/inlined/compressed, bits 48-55 the
+  type, low 48 the payload: an inline value or an absolute offset).
+  Structural sections are LZ4-wrapped (`USDLZ4`: a chunk-count byte, then
+  raw LZ4 blocks Apple Compression decodes as `COMPRESSION_LZ4_RAW`) and
+  mostly integer-coded (`USDIntegerCoding`: a running sum of deltas, each
+  the shared common value or an explicit int picked by a 2-bit code stream;
+  the 64-bit variant's widths are int16/int32/int64, one step *wider* than
+  the 32-bit variant's). The PATHS section is a pre-order traversal
+  (`jumps` of -2/-1/0/+n for leaf/child-only/sibling-only/both; a negative
+  element-token index marks a property path), decoded iteratively with an
+  explicit stack so deep scenes can't overflow. Authored order comes from
+  traversal order, overridden by the `primChildren` / `properties` token
+  vectors when present. Format traps pinned by the study and honored in
+  code: an inlined AssetPath scalar carries a *token* index while its array
+  elements carry *string* indexes; Vec2h is the one vector that inlines
+  with raw half bits (the others inline as signed per-component int8s,
+  matrices as int8 diagonals); TimeSamples is doubly indirected (a forward
+  offset to the times rep, then a forward offset to the per-sample rep
+  list); compressed float arrays are either all-integers (`'i'`) or a
+  lookup table plus indexes (`'t'`); an array rep with payload 0 is the
+  empty array; a sub-16-element "compressed" array stores raw.
+- **`USDZipArchive`** (`.usdz`) parses the zip central directory itself
+  (stored entries per the usdz spec, deflate tolerated, ZIP64 out of
+  scope); the package's default layer is the first entry with a usd
+  extension in archive order. `USDStage.load` sniffs content, never the
+  file extension.
+
+Verification is all local (`USDParserTests`), leaning on the fact that
+**Model I/O exports both `.usda` and `.usdc` (crate 0.8)**: the same asset
+is exported both ways and the two independent parser paths must agree
+(structure exactly, floats to text precision), and both must agree with what
+Model I/O reads back (vertex counts, transforms). System vectors cover crate
+0.9 (the CoreUSDEdit shaderball) and 0.8 packages (the PencilKit pen usdz
+files); a reparse is pinned byte-deterministic through a canonical dump. One
+oracle lesson encoded in the tests: for a file Model I/O didn't author, its
+`MDLMesh.vertexCount` is the *expanded* per-face-corner count (equal to our
+`faceVertexIndices` count), not the authored `points` count, which stays
+internally consistent (max index + 1 == point count). The shaderball also
+demonstrates the arc's premise: Model I/O alphabetizes the children our
+reader returns in authored order.
+
+---
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in
