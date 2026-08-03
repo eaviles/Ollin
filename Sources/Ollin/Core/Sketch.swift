@@ -922,6 +922,14 @@ open class Sketch {
     /// The primitive calls below are sugar over this.
     public func drawMesh(_ mesh: Mesh) { drawer.drawMesh(mesh) }
 
+    /// Draw a loaded `Scene`: every node's mesh at its authored place, the node
+    /// transforms composed down the tree and onto the 3D transform stack (so
+    /// `translate`/`rotate`/`scale` before this call move the whole scene). The
+    /// scene's authored cameras and lights are data you apply yourself:
+    /// `camera(scene.camera ?? .orbiting(radius: 6))`, then `light(_:)` each of
+    /// `scene.lights`. Load one with `loadScene`; a no-op without a camera.
+    public func drawScene(_ scene: Scene) { drawer.drawScene(scene) }
+
     /// Draw a box centered at the model origin, `width` (x) × `height` (y) ×
     /// `depth` (z) world units. Position it with the transform stack.
     public func drawBox(width: Double, height: Double, depth: Double) {

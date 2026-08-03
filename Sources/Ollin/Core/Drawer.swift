@@ -2185,6 +2185,27 @@ final class Drawer {
         }
     }
 
+    /// Draw every node of a loaded `Scene` at its authored place: walk the node
+    /// tree, composing each node's local transform onto the 3D model matrix, and
+    /// `drawMesh` each node's geometry. Every mesh rule applies unchanged (fill
+    /// tint, materials, lights, shadows, reflections); the scene's cameras and
+    /// lights are data the sketch applies itself (`camera(_:)` / `light(_:)`).
+    /// A no-op without a camera, like `drawMesh`.
+    func drawScene(_ scene: Scene) {
+        for node in scene.nodes { drawSceneNode(node) }
+    }
+
+    private func drawSceneNode(_ node: SceneNode) {
+        let saved = modelMatrix
+        let savedIdentity = modelIsIdentity
+        modelMatrix = modelMatrix * node.localTransform
+        modelIsIdentity = false
+        if let mesh = node.mesh { drawMesh(mesh) }
+        for child in node.children { drawSceneNode(child) }
+        modelMatrix = saved
+        modelIsIdentity = savedIdentity
+    }
+
     /// The base color baked into a mesh's vertices: the current solid `fill`, or
     /// white for a gradient/`noFill` (mesh surfaces take a solid color — gradient
     /// paint isn't supported on the 3D path). It's the surface color, flat without

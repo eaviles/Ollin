@@ -1,0 +1,408 @@
+import Foundation
+import simd
+
+/// A 3D scene loaded from a file with its *structure* kept: a tree of named nodes,
+/// each with its authored transform and an optional `Mesh`, plus the cameras and
+/// lights the scene was authored with. The complement of `loadMesh`, which merges
+/// everything to one mesh; `loadScene` keeps the graph so a sketch can draw the
+/// whole arrangement in place (`drawScene`), open on the authored view
+/// (`camera(scene.camera!)`, `light(...)` each of `scene.lights`), and reach one
+/// node by name to drive it from `draw()`:
+///
+/// ```swift
+/// var scene: Scene!
+/// override func setup() { scene = loadScene("Stage.gltf")! }
+/// override func draw() {
+///     camera(scene.camera ?? .orbiting(radius: 6))
+///     for l in scene.lights { light(l) }
+///     scene["sculpture"]?.rotate(0.01, axis: .unitY)
+///     drawScene(scene)
+/// }
+/// ```
+///
+/// Everything decomposes into the existing core types: `camera` is a `Camera3D`
+/// for `camera(_:)`, `lights` are `Light`s for `light(_:)`, and each node's `mesh`
+/// is an ordinary `Mesh` (in the node's local space) that also draws standalone.
+/// Structure comes from glTF/GLB files (the node graph, cameras from the core
+/// spec, lights from the punctual-lights extension); the other mesh formats
+/// (`.obj`, `.usdz`, `.stl`, …) have no scene graph to keep, so they load as a
+/// single-node scene with no cameras or lights, exactly `loadMesh` in a wrapper.
+public struct Scene: Sendable {
+
+    /// The root nodes of the scene graph, in document order.
+    public var nodes: [SceneNode]
+    /// Every camera the file authored, resolved to world space in traversal order.
+    /// glTF cameras carry no aspect ratio worth honoring here: the projection uses
+    /// the sketch's canvas aspect, like every other `Camera3D`.
+    public var cameras: [Camera3D]
+    /// Every light the file authored, resolved to world space in traversal order.
+    /// Ollin's punctual lights have no distance falloff, so the file's physical
+    /// intensities (lux, candela) can't carry over as-is: within each light kind
+    /// they are scaled so the brightest is 1, keeping relative balance. Tweak per
+    /// light after loading if the mix needs it.
+    public var lights: [Light]
+    /// The scene's authored name, when the file gave it one.
+    public var name: String?
+
+    /// An empty scene, or one composed by hand from nodes you build yourself.
+    public init(nodes: [SceneNode] = [], cameras: [Camera3D] = [],
+                lights: [Light] = [], name: String? = nil) {
+        self.nodes = nodes
+        self.cameras = cameras
+        self.lights = lights
+        self.name = name
+    }
+
+    /// The scene's main camera: the first one the file authored, or `nil` for a
+    /// file with none (fall back to your own, `camera(scene.camera ?? .orbiting(...))`).
+    public var camera: Camera3D? { cameras.first }
+
+    /// The first node named `name`, searching the whole tree depth-first. Returns a
+    /// *copy* (nodes are values); to mutate a node in place, use the subscript:
+    /// `scene["lamp"]?.rotate(0.01, axis: .unitY)`.
+    public func node(_ name: String) -> SceneNode? {
+        Scene.find(name, in: nodes)
+    }
+
+    /// Get or mutate the first node named `name` (depth-first), in place:
+    /// `scene["propeller"]?.rotate(0.1, axis: .unitZ)` spins it about its own
+    /// pivot each frame. Reading a missing name gives `nil`; writing to one (or
+    /// writing `nil`) changes nothing.
+    public subscript(_ name: String) -> SceneNode? {
+        get { Scene.find(name, in: nodes) }
+        set {
+            guard let newValue else { return }
+            _ = Scene.replace(name, in: &nodes, with: newValue)
+        }
+    }
+
+    /// The world-space axis-aligned bounds over every node's mesh, composing the
+    /// node transforms. `(.zero, .zero)` for a scene with no geometry.
+    public var bounds: (min: Vector3, max: Vector3) {
+        var lo = Vector3(.infinity, .infinity, .infinity)
+        var hi = Vector3(-.infinity, -.infinity, -.infinity)
+        var any = false
+        func visit(_ node: SceneNode, parent: simd_float4x4) {
+            let world = parent * node.localTransform
+            if let mesh = node.mesh, !mesh.isEmpty {
+                let b = mesh.bounds
+                // The world AABB of the local AABB: transform its 8 corners.
+                for corner in 0..<8 {
+                    let c = Vector3(corner & 1 == 0 ? b.min.x : b.max.x,
+                                    corner & 2 == 0 ? b.min.y : b.max.y,
+                                    corner & 4 == 0 ? b.min.z : b.max.z)
+                    let w = world * SIMD4<Float>(Float(c.x), Float(c.y), Float(c.z), 1)
+                    let p = Vector3(Double(w.x), Double(w.y), Double(w.z))
+                    lo = Vector3(Swift.min(lo.x, p.x), Swift.min(lo.y, p.y), Swift.min(lo.z, p.z))
+                    hi = Vector3(Swift.max(hi.x, p.x), Swift.max(hi.y, p.y), Swift.max(hi.z, p.z))
+                    any = true
+                }
+            }
+            for child in node.children { visit(child, parent: world) }
+        }
+        for node in nodes { visit(node, parent: matrix_identity_float4x4) }
+        return any ? (lo, hi) : (.zero, .zero)
+    }
+
+    private static func find(_ name: String, in nodes: [SceneNode]) -> SceneNode? {
+        for node in nodes {
+            if node.name == name { return node }
+            if let hit = find(name, in: node.children) { return hit }
+        }
+        return nil
+    }
+
+    private static func replace(_ name: String, in nodes: inout [SceneNode],
+                                with newNode: SceneNode) -> Bool {
+        for i in nodes.indices {
+            if nodes[i].name == name { nodes[i] = newNode; return true }
+            if replace(name, in: &nodes[i].children, with: newNode) { return true }
+        }
+        return false
+    }
+}
+
+/// One node of a loaded `Scene`: a name, an authored local transform, an optional
+/// `Mesh` (in the node's *local* space, positioned by the transform when drawn),
+/// and child nodes that inherit the transform. A value type: mutate one through
+/// the scene's subscript (`scene["lamp"]?.position += Vector3(0, 0.1, 0)`) and the
+/// change shows on the next `drawScene`.
+public struct SceneNode: Sendable {
+
+    /// The node's authored name (empty when the file gave it none). Names are how
+    /// `scene.node(_:)` and the subscript reach a node; duplicates resolve to the
+    /// first match depth-first.
+    public var name: String
+    /// The node's geometry in its own local space, or `nil` for a pure grouping
+    /// node. An ordinary `Mesh`: it draws standalone with `drawMesh` too, at the
+    /// world origin, without this node's transform.
+    public var mesh: Mesh?
+    /// Child nodes, drawn inside this node's transform.
+    public var children: [SceneNode]
+    /// The authored local transform (translation, rotation, scale composed), kept
+    /// verbatim as a matrix so nothing is lost to decomposition. The typed accessors
+    /// below (`position`, `rotate`, `scale`) edit it.
+    var localTransform: simd_float4x4
+
+    /// A node built by hand: `name`, an optional `mesh`, a `position` for its local
+    /// translation, and `children`. For composing a scene in code; loaded scenes
+    /// carry their authored transforms.
+    public init(name: String = "", mesh: Mesh? = nil, position: Vector3 = .zero,
+                children: [SceneNode] = []) {
+        self.name = name
+        self.mesh = mesh
+        self.children = children
+        var m = matrix_identity_float4x4
+        m.columns.3 = SIMD4<Float>(Float(position.x), Float(position.y), Float(position.z), 1)
+        self.localTransform = m
+    }
+
+    init(name: String, mesh: Mesh?, children: [SceneNode], localTransform: simd_float4x4) {
+        self.name = name
+        self.mesh = mesh
+        self.children = children
+        self.localTransform = localTransform
+    }
+
+    /// The node's local position: its translation relative to the parent node.
+    /// Settable, so `scene["lamp"]?.position += Vector3(0, 0.1, 0)` lifts the lamp
+    /// (and its children) without touching its rotation or scale.
+    public var position: Vector3 {
+        get {
+            Vector3(Double(localTransform.columns.3.x),
+                    Double(localTransform.columns.3.y),
+                    Double(localTransform.columns.3.z))
+        }
+        set {
+            localTransform.columns.3 = SIMD4<Float>(Float(newValue.x), Float(newValue.y),
+                                                    Float(newValue.z), 1)
+        }
+    }
+
+    /// Rotate the node by `radians` about `axis`, in its *own* local frame, so it
+    /// turns about its authored pivot. Composes with the authored transform:
+    /// calling it every frame accumulates into a spin. A no-op for a zero axis.
+    public mutating func rotate(_ radians: Double, axis: Vector3) {
+        let a = axis.normalized
+        guard a.lengthSquared > 0 else { return }
+        localTransform = localTransform * Drawer.rotation3(Float(radians), axis: a.simd3)
+    }
+
+    /// Scale the node (and its children) uniformly by `factor` about its own pivot,
+    /// composing with the authored transform.
+    public mutating func scale(by factor: Double) {
+        let f = Float(factor)
+        localTransform = localTransform * simd_float4x4(diagonal: SIMD4<Float>(f, f, f, 1))
+    }
+}
+
+// MARK: - Loading
+
+extension Scene {
+
+    /// Load a scene from a file, keeping its structure. `.gltf`/`.glb` files keep
+    /// the full graph: named nodes with transforms, cameras, and punctual lights.
+    /// Any other format `loadMesh` reads (`.obj`, `.usdz`, `.stl`, …) has no scene
+    /// graph, so it loads as one node named after the file, with no cameras or
+    /// lights. Returns `nil` if the file can't be read or holds no geometry.
+    /// Mirrors `Mesh(contentsOf:)`.
+    public init?(contentsOf url: URL) {
+        switch url.pathExtension.lowercased() {
+        case "gltf", "glb":
+            guard let scene = Scene.loadGLTFScene(url) else { return nil }
+            self = scene
+        default:
+            guard let mesh = Mesh(contentsOf: url) else { return nil }
+            self = Scene(nodes: [SceneNode(name: url.deletingPathExtension().lastPathComponent,
+                                           mesh: mesh)])
+        }
+    }
+
+    /// Load a scene from a file `path`. Sugar over `Scene(contentsOf:)`.
+    public init?(path: String) { self.init(contentsOf: URL(fileURLWithPath: path)) }
+
+    /// Load a scene bundled as a resource. Mirrors `Mesh(resource:extension:in:)`;
+    /// `in:` has no default, since a default argument would resolve to *Ollin's*
+    /// bundle, not the caller's.
+    public init?(resource name: String, extension ext: String?, in bundle: Bundle) {
+        guard let url = bundle.url(forResource: name, withExtension: ext) else { return nil }
+        self.init(contentsOf: url)
+    }
+
+    /// Read a glTF/GLB file's default scene with structure kept: the node tree
+    /// (names, local transforms, per-node meshes merged from their primitives),
+    /// cameras from the core spec, and lights from the punctual-lights extension,
+    /// both resolved through their node's world transform.
+    static func loadGLTFScene(_ url: URL) -> Scene? {
+        guard let doc = GLTFDocument(contentsOf: url) else { return nil }
+        let gltf = doc.gltf
+        let gltfNodes = gltf.nodes ?? []
+
+        // Build the value-typed node tree. glTF forbids cycles, but the file is
+        // untrusted input, so a visited set turns a malformed loop into a skip.
+        var building = Set<Int>()
+        func build(_ ni: Int) -> SceneNode? {
+            guard ni >= 0, ni < gltfNodes.count, !building.contains(ni) else { return nil }
+            building.insert(ni)
+            defer { building.remove(ni) }
+            let n = gltfNodes[ni]
+            let children = (n.children ?? []).compactMap(build)
+            return SceneNode(name: n.name ?? "",
+                             mesh: n.mesh.flatMap(doc.localMesh),
+                             children: children,
+                             localTransform: n.localMatrix)
+        }
+        let roots = doc.rootNodes.compactMap(build)
+
+        var scene = Scene(nodes: roots)
+        if let si = gltf.scene ?? (gltf.scenes?.isEmpty == false ? 0 : nil),
+           gltf.scenes?.indices.contains(si) == true {
+            scene.name = gltf.scenes?[si].name
+        }
+
+        // Resolve cameras and lights: walk the same tree composing world
+        // transforms, collecting each in traversal order.
+        let center = scene.nodes.isEmpty ? nil : scene.bounds
+        var cameras: [(def: GLTF.CameraDef, world: simd_float4x4)] = []
+        var lightRefs: [(def: GLTF.PunctualLightDef, world: simd_float4x4)] = []
+        let lightDefs = gltf.extensions?.KHR_lights_punctual?.lights ?? []
+        var visiting = Set<Int>()
+        func visit(_ ni: Int, parent: simd_float4x4) {
+            guard ni >= 0, ni < gltfNodes.count, !visiting.contains(ni) else { return }
+            visiting.insert(ni)
+            defer { visiting.remove(ni) }
+            let n = gltfNodes[ni]
+            let world = parent * n.localMatrix
+            if let ci = n.camera, let defs = gltf.cameras, defs.indices.contains(ci) {
+                cameras.append((defs[ci], world))
+            }
+            if let li = n.extensions?.KHR_lights_punctual?.light, lightDefs.indices.contains(li) {
+                lightRefs.append((lightDefs[li], world))
+            }
+            for c in n.children ?? [] { visit(c, parent: world) }
+        }
+        for r in doc.rootNodes { visit(r, parent: matrix_identity_float4x4) }
+
+        let sceneCenter = center.map { ($0.min + $0.max) * 0.5 }
+        scene.cameras = cameras.compactMap { Scene.resolveCamera($0.def, world: $0.world,
+                                                                 sceneCenter: sceneCenter) }
+        scene.lights = Scene.resolveLights(lightRefs)
+        return scene
+    }
+
+    /// A `Camera3D` from an authored camera and its node's world transform. The
+    /// node's -z axis is the view direction (the glTF convention, same as Ollin's
+    /// camera space); the world up column keeps any authored roll. `Camera3D` wants
+    /// a target point, so the eye looks at the scene's center projected onto the
+    /// view direction (an orbit-friendly pivot), or one unit ahead when the scene
+    /// is empty or behind the camera.
+    static func resolveCamera(_ def: GLTF.CameraDef, world: simd_float4x4,
+                              sceneCenter: Vector3?) -> Camera3D? {
+        let eye = Vector3(Double(world.columns.3.x), Double(world.columns.3.y),
+                          Double(world.columns.3.z))
+        var back = Vector3(Double(world.columns.2.x), Double(world.columns.2.y),
+                           Double(world.columns.2.z))
+        back = back.lengthSquared > 1e-12 ? back.normalized : .unitZ
+        let forward = Vector3(-back.x, -back.y, -back.z)
+        var up = Vector3(Double(world.columns.1.x), Double(world.columns.1.y),
+                         Double(world.columns.1.z))
+        up = up.lengthSquared > 1e-12 ? up.normalized : .unitY
+
+        let projection: Camera3D.Projection
+        var near: Double
+        var far: Double
+        switch def.type {
+        case "perspective":
+            guard let p = def.perspective else { return nil }
+            projection = .perspective(fieldOfView: min(max(p.yfov, 0.01), .pi - 0.01))
+            near = max(p.znear, 1e-4)
+            far = p.zfar ?? 1000
+        case "orthographic":
+            guard let o = def.orthographic else { return nil }
+            projection = .orthographic(height: 2 * o.ymag)
+            near = o.znear
+            far = o.zfar
+        default:
+            return nil
+        }
+        if far <= near { far = near + 1000 }
+
+        var focus = 1.0
+        if let c = sceneCenter {
+            let d = (c - eye).dot(forward)
+            if d > near { focus = d }
+        }
+        return Camera3D(eye: eye, target: eye + forward * focus, up: up,
+                        near: near, far: far, projection: projection)
+    }
+
+    /// `Light`s from the authored punctual lights and their nodes' world
+    /// transforms. A light shines down its node's -z axis (directional and spot);
+    /// a point light sits at the node's world position. Colors arrive linear and
+    /// re-encode to sRGB (the base-color-factor treatment). Physical intensities
+    /// (lux for directional, candela for point and spot) have no meaning without
+    /// distance falloff, which Ollin's punctual lights don't model, so each kind
+    /// normalizes to its brightest: relative balance survives, absolute units
+    /// don't. The spot's outer cone half-angle doubles into Ollin's full
+    /// `coneAngle`; the inner-to-outer soft band becomes `penumbra`.
+    static func resolveLights(_ refs: [(def: GLTF.PunctualLightDef, world: simd_float4x4)]) -> [Light] {
+        guard !refs.isEmpty else { return [] }
+
+        // Per-kind intensity normalization (see above).
+        var maxIntensity: [String: Double] = [:]
+        for r in refs {
+            let i = max(r.def.intensity ?? 1, 0)
+            maxIntensity[r.def.type] = Swift.max(maxIntensity[r.def.type] ?? 0, i)
+        }
+
+        var lights: [Light] = []
+        for r in refs {
+            let world = r.world
+            let position = Vector3(Double(world.columns.3.x), Double(world.columns.3.y),
+                                   Double(world.columns.3.z))
+            var direction = Vector3(-Double(world.columns.2.x), -Double(world.columns.2.y),
+                                    -Double(world.columns.2.z))
+            direction = direction.lengthSquared > 1e-12 ? direction.normalized : Vector3(0, -1, 0)
+
+            var color = Color.white
+            if let c = r.def.color, c.count == 3 {
+                func enc(_ x: Double) -> Double { Color.linearToSrgb(min(max(x, 0), 1)) }
+                color = Color(red: enc(c[0]), green: enc(c[1]), blue: enc(c[2]))
+            }
+            let rawIntensity = max(r.def.intensity ?? 1, 0)
+            let kindMax = maxIntensity[r.def.type] ?? 0
+            let intensity = kindMax > 0 ? rawIntensity / kindMax : 1
+
+            switch r.def.type {
+            case "directional":
+                lights.append(.directional(color, direction: direction, intensity: intensity))
+            case "point":
+                lights.append(.point(color, at: position, intensity: intensity))
+            case "spot":
+                let outer = r.def.spot?.outerConeAngle ?? .pi / 4
+                let inner = min(r.def.spot?.innerConeAngle ?? 0, outer)
+                let penumbra = outer > 0 ? min(max(1 - inner / outer, 0), 1) : 0
+                lights.append(.spot(color, at: position, direction: direction,
+                                    angle: 2 * outer, penumbra: penumbra,
+                                    intensity: intensity))
+            default:
+                continue
+            }
+        }
+        return lights
+    }
+}
+
+// MARK: - Sketch sugar
+
+extension Sketch {
+
+    /// Load a 3D scene from a file `path`, keeping its structure (named nodes,
+    /// cameras, lights). Returns `nil` if it can't be read. Call it in `setup()`
+    /// and keep the result in a property. Sugar over `Scene(contentsOf:)`; the
+    /// merged-geometry complement is `loadMesh`.
+    public func loadScene(_ path: String) -> Scene? { Scene(path: path) }
+
+    /// Load a scene from a file `url`. Sugar over `Scene(contentsOf:)`.
+    public func loadScene(_ url: URL) -> Scene? { Scene(contentsOf: url) }
+}

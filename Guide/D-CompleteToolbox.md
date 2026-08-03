@@ -192,6 +192,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Solid primitives | Box, sphere, torus, knots, Platonic solids, lathes, extrusions, and more | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
 | Terrain | `Heightfield`: landscapes grown from noise or diamond-square, weathered by simulated rain and gravity, read out as a mesh, an image, or samples | [Ch 17](17-3DGently.md) | [Terrain](../Docs/Generators/Terrain.md) |
 | Meshes from file | OBJ, glTF, USDZ, STL, PLY, with materials and textures; `normalized(scale:)` recenters and fits whatever arrives | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
+| Scenes from file | `loadScene` keeps a glTF's structure: named nodes drawn in place with `drawScene`, the authored camera and lights as ready values, one node reached by name to animate | [Ch 17](17-3DGently.md) | [Scenes](../Docs/3D/Scenes.md) |
 | Lights | Directional, point, spot, ambient, glowing panels, disks, and tubes, plus curated lighting presets | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
 | Light shaping | A real fixture's measured throw on a light (IES files), and an image projected through a spot (a cookie, the stage gobo) | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md#light-shaping-ies-profiles-and-cookies) |
 | Atmosphere | Fog that fades surfaces with distance and pools low with a height falloff, and volumetric light that turns spot cones, cookies, and cast shadows into visible beams and shafts | [Ch 17](17-3DGently.md) | [Atmosphere](../Docs/3D/Atmosphere.md) |

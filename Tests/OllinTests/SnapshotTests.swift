@@ -479,6 +479,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("camera-move", frame: 30,
                  note: "A ring of solids viewed through a .turntable cinematic move, captured at a fixed frame, pins the cameraMove() rig (its pose -> Camera3D.orbiting) and the deterministic per-frame dt accumulation (the headless driver advances 1/60).",
                  make: { CameraMoveScene() }),
+    SnapshotCase("loaded-scene",
+                 note: "A hand-composed Scene (floor, a pedestal whose child torus is tipped and spun through the subscript, an orb) drawn via drawScene through the scene's own camera and three lights. Pins the node-tree walk composing local transforms onto the model matrix, the subscript's in-place mutation, and applying a Scene's camera/lights as ordinary state. Fixed angles, no time, deterministic. (The glTF scene *loader* is pinned by SceneLoaderTests.)",
+                 make: { LoadedSceneScene() }),
     SnapshotCase("symmetry",
                  note: "One wedge of drawing folded by symmetry(6, mirrored: true) around an off-axis pivot, over every replicated 2D path: an SDF circle and star, a tessellated polygon fill with its fringe outline, a stroked polyline, a smooth-union SDF field, and bitmap text; a center dot lands once after noSymmetry(). Pins the CTM-conjugated fold matrices, the per-path replication (instances, range copies, group instances), and the on/off scoping. No time, deterministic.",
                  make: { SymmetryScene() }),
@@ -562,6 +565,43 @@ private final class CameraMoveScene: Sketch {
             }
         }
         withState { fill(Color(white: 0.35)); translate(0, -0.8, 0); drawPlane(width: 8, depth: 8) }
+    }
+}
+
+private final class LoadedSceneScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        var stage = Ollin.Scene(
+            nodes: [
+                SceneNode(name: "floor", mesh: .box(width: 6, height: 0.1, depth: 6),
+                          position: Vector3(0, -0.05, 0)),
+                SceneNode(name: "pedestal", mesh: .box(width: 0.8, height: 1, depth: 0.8),
+                          position: Vector3(0, 0.5, 0), children: [
+                              SceneNode(name: "sculpture", mesh: .torus(radius: 0.34, tube: 0.13),
+                                        position: Vector3(0, 0.95, 0)),
+                          ]),
+                SceneNode(name: "orb", mesh: .sphere(radius: 0.25), position: Vector3(1.2, 0.25, 0.6)),
+            ],
+            cameras: [.perspective(eye: Vector3(2.4, 1.8, 3.1), target: Vector3(0, 0.8, 0),
+                                   fieldOfView: 0.7)],
+            lights: [
+                .point(Color(hex: 0xFFC780), at: Vector3(-1.4, 2.0, -0.4), intensity: 0.9),
+                .spot(.white, at: Vector3(1.9, 2.7, 1.6), direction: Vector3(-1.9, -1.7, -1.6),
+                      angle: 1.1, penumbra: 0.5),
+                .directional(Color(hex: 0x9FB3E6), direction: Vector3(0.4, -0.8, -0.45),
+                             intensity: 0.35),
+            ])
+        // Reach the nested node through the subscript: tip the torus upright, then
+        // spin it a fixed angle about its own pivot.
+        stage["sculpture"]?.rotate(.pi / 2, axis: .unitX)
+        stage["sculpture"]?.rotate(0.8, axis: .unitY)
+
+        camera(stage.camera ?? .orbiting(radius: 6))
+        for l in stage.lights { light(l) }
+        fill(.white)
+        drawScene(stage)
     }
 }
 

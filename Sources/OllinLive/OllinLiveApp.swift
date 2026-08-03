@@ -68,7 +68,7 @@ struct OllinLiveApp: App {
             displayName: pathArg, keepClock: keepClock))
     }
 
-    var body: some Scene {
+    var body: some SwiftUI.Scene {
         // A `Window` (not `WindowGroup`): the live host is one window by design.
         // A second window would share the single `LiveSession` — its runner
         // would clobber the first's on attach — and the title-bar accessories

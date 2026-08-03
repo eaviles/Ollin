@@ -1784,7 +1784,7 @@ public extension OllinApp {
 struct OllinSketchApp: App {
     @NSApplicationDelegateAdaptor(StandaloneAppDelegate.self) private var delegate
 
-    var body: some Scene {
+    var body: some SwiftUI.Scene {
         Settings { EmptyView() }
             .commands {
                 CommandGroup(replacing: .appSettings) {}

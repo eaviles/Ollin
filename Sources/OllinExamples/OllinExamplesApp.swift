@@ -39,7 +39,7 @@ struct OllinExamplesApp: App {
         self.examples = examples
     }
 
-    var body: some Scene {
+    var body: some SwiftUI.Scene {
         // A `Window` (not `WindowGroup`): the gallery is one window by design.
         // The title-bar accessories assume one window to bind to, and a second
         // gallery compiling the same sketches buys nothing.

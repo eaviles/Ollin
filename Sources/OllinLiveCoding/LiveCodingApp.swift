@@ -49,7 +49,7 @@ struct LiveCodingApp: App {
         ActivePerformance.session = session
     }
 
-    var body: some Scene {
+    var body: some SwiftUI.Scene {
         // A `Window` (not `WindowGroup`): one performance, one window. Unlike
         // the sibling hosts there is no `.windowResizability(.contentSize)`;
         // the stage flexes with the window (and fullscreen), and the letterbox
