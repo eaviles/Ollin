@@ -337,7 +337,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Force-directed layout: `ForceLayout`, `drawGraph` (`Generators/ForceLayout.md`) | Ch 9 | taught (the graph-layout section with a three-panel settling figure: repulsion between all nodes plus springs on edges, the temperature cap and linear cooling, the reheat/pin/drag interaction vocabulary, `idealDistance` as the size dial, and seeded starts for reproducible layouts; weights and gravity pointed) |
 | Damped spring: `DampedSpring`, `@Sprung` (`Helpers/Animation.md`) | Ch 3 | taught (duration/bounce, the moving-target case that separates it from `@Eased`, and `kick`; `velocity` and `Vector2` springs pointed) |
 | `3D/3D.md` (camera, primitives, meshes, lights, materials) | Ch 17 | taught |
-| `3D/Scenes.md` (loadScene, drawScene, named nodes, authored cameras/lights, authored animations via `apply(_:at:)`) | Ch 17 | shown ("A mesh from a file" teaches the loadScene shape: the file's camera and lights as ordinary values, `scene["name"]` driving one node, `apply(_:at:)` playing an authored animation on the sketch clock; worked examples `3D/Geometry/LoadedScene` + `AnimatedScene`) |
+| `3D/Scenes.md` (loadScene, drawScene, named nodes, authored cameras/lights, authored animations via `apply(_:at:)`, skins and morph targets posed by drawScene) | Ch 17 | shown ("A mesh from a file" teaches the loadScene shape: the file's camera and lights as ordinary values, `scene["name"]` driving one node, `apply(_:at:)` playing an authored animation on the sketch clock, the deforming tier (skins, morph `weights` as a hand-drivable node property); worked examples `3D/Geometry/LoadedScene` + `AnimatedScene` + `SkinnedScene`) |
 | `3D/Camera.md` (cameraControl, moves, showcase, views) | Ch 17 | taught |
 | `3D/Combining.md` (what stacks with what) | Ch 17/18 | taught (the concept in Ch 17's bearings section: several kinds of 3D thing reach the screen by different routes, so finishes apply unevenly, with the table pointed for lookup) |
 | Area lights: `rectLight`/`diskLight`/`tubeLight` (`3D/3D.md`) | Ch 17 | taught ("A light with a body" with a breathing-softbox GIF: the three shapes, intensity as the surface's own glow, a flux-normalized size change moving highlight, shading wrap, and shadow softness together, the panel-extent cast shadows with `shadowSoftness` as a scale on the true size, why a tube never casts, and the prop-behind-the-emitting-plane occluder note) |
@@ -401,7 +401,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Technique catalog: meshing (point-cloud reconstruction) | Ch 17 |
 | Project generator | Ch 1 |
 | iPhone sensor array (scene mesh, drift correction) | Ch 19 |
-| 3D: skinned/morphing scene animation, live camera environment, 3D rigid bodies | Ch 17 (bodies also Ch 9) |
+| 3D: USD scene reader, live camera environment, 3D rigid bodies | Ch 17 (bodies also Ch 9) |
 | Photorealistic 3D tier | Ch 17/18, likely a new chapter when substantial |
 | Sound synthesis, spatial audio, algorithmic composition | Ch 20, likely splitting into its own chapter |
 | Tempo sync: Ableton Link | Ch 20 |

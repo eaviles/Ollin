@@ -2187,21 +2187,58 @@ final class Drawer {
 
     /// Draw every node of a loaded `Scene` at its authored place: walk the node
     /// tree, composing each node's local transform onto the 3D model matrix, and
-    /// `drawMesh` each node's geometry. Every mesh rule applies unchanged (fill
-    /// tint, materials, lights, shadows, reflections); the scene's cameras and
-    /// lights are data the sketch applies itself (`camera(_:)` / `light(_:)`).
-    /// A no-op without a camera, like `drawMesh`.
+    /// `drawMesh` each node's geometry. A node with morph targets draws its
+    /// blended shape, and a skinned node draws posed by its skin's joints. Every
+    /// mesh rule applies unchanged (fill tint, materials, lights, shadows,
+    /// reflections); the scene's cameras and lights are data the sketch applies
+    /// itself (`camera(_:)` / `light(_:)`). A no-op without a camera, like
+    /// `drawMesh`.
     func drawScene(_ scene: Scene) {
-        for node in scene.nodes { drawSceneNode(node) }
+        // Skinning reads joints anywhere in the tree, so a scene with skins
+        // resolves every node's root-relative transform in one walk up front;
+        // a skinless scene skips the walk.
+        let worlds = scene.skins.isEmpty ? nil : scene.nodeWorldTransforms()
+        // A skinned mesh's placement comes entirely from its joints (its own
+        // node chain is ignored, the format's rule), so it draws under the model
+        // matrix of this call, not the walk's composed one.
+        let root = modelMatrix
+        let rootIsIdentity = modelIsIdentity
+        for node in scene.nodes {
+            drawSceneNode(node, scene: scene, worlds: worlds,
+                          root: root, rootIsIdentity: rootIsIdentity)
+        }
     }
 
-    private func drawSceneNode(_ node: SceneNode) {
+    private func drawSceneNode(_ node: SceneNode, scene: Scene,
+                               worlds: [Int: simd_float4x4]?,
+                               root: simd_float4x4, rootIsIdentity: Bool) {
         let saved = modelMatrix
         let savedIdentity = modelIsIdentity
         modelMatrix = modelMatrix * node.localTransform
         modelIsIdentity = false
-        if let mesh = node.mesh { drawMesh(mesh) }
-        for child in node.children { drawSceneNode(child) }
+        if let mesh = node.mesh {
+            let shaped = node.morphedMesh() ?? mesh
+            if let si = node.skinIndex, let worlds {
+                if scene.skins.indices.contains(si),
+                   let posed = node.skinnedMesh(shaped, skin: scene.skins[si],
+                                                worlds: worlds) {
+                    modelMatrix = root
+                    modelIsIdentity = rootIsIdentity
+                    drawMesh(posed)
+                    modelMatrix = saved * node.localTransform
+                    modelIsIdentity = false
+                } else {
+                    noteOnce("a skinned node's skin or vertex weights don't line up; drawing \"\(node.name)\" undeformed.")
+                    drawMesh(shaped)
+                }
+            } else {
+                drawMesh(shaped)
+            }
+        }
+        for child in node.children {
+            drawSceneNode(child, scene: scene, worlds: worlds,
+                          root: root, rootIsIdentity: rootIsIdentity)
+        }
         modelMatrix = saved
         modelIsIdentity = savedIdentity
     }

@@ -485,6 +485,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("animated-scene",
                  note: "The bundled orrery asset posed by its authored \"spin\" animation at a fixed 3.2 s: the planet arm swung 144 deg on spherically-blended LINEAR quaternion keys, the moon arm counter-turned, the marker orb mid-descent on its CUBICSPLINE bob, and the base pointer four STEP ticks around. Pins the glTF animation parse (channels grouped to tracks), all three sampler modes, and apply() rebuilding node TRS local transforms drawn through drawScene with the scene's own camera and lights. Fixed sample time, no shadows, deterministic.",
                  make: { AnimatedSceneScene() }),
+    SnapshotCase("skinned-scene",
+                 note: "The bundled tidepool asset posed by its authored \"sway\" animation at a fixed 1.9 s: three kelp blades bent by their four-joint skins (per-vertex JOINTS_0/WEIGHTS_0 blends, u8 joints, shared inverse-bind accessor) and the anemone mid-pulse on its two morph targets (a dense puff and a sparse-accessor ripple) via the morph-weights track. Pins the skin parse, the scene-root joint-matrix pose, the ignored-skinned-node-transform rule on the draw path, sparse displacement decode, and weights-channel sampling, drawn through drawScene with the scene's own camera and lights. Fixed sample time, no shadows, deterministic.",
+                 make: { SkinnedSceneScene() }),
     SnapshotCase("symmetry",
                  note: "One wedge of drawing folded by symmetry(6, mirrored: true) around an off-axis pivot, over every replicated 2D path: an SDF circle and star, a tessellated polygon fill with its fringe outline, a stroked polyline, a smooth-union SDF field, and bitmap text; a center dot lands once after noSymmetry(). Pins the CTM-conjugated fold matrices, the per-path replication (instances, range copies, group instances), and the on/off scoping. No time, deterministic.",
                  make: { SymmetryScene() }),
@@ -597,6 +600,35 @@ private final class AnimatedSceneScene: Sketch {
         }
         fill(.white)
         drawScene(orrery)
+    }
+}
+
+/// The bundled tidepool asset, its "sway" animation applied at a fixed time,
+/// drawn through the scene's own camera and lights (no shadows: the asset
+/// carries a point light, whose caster would resolve differently on RT and
+/// non-RT GPUs).
+private final class SkinnedSceneScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var tidepool: Ollin.Scene!
+
+    override func setup() {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // OllinTests
+            .deletingLastPathComponent()   // Tests
+            .deletingLastPathComponent()   // repo root
+            .appendingPathComponent("Examples/3D/Geometry/SkinnedScene/scene.gltf")
+        tidepool = Ollin.Scene(contentsOf: url)
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(tidepool.camera ?? .orbiting(target: Vector3(0, 0.6, 0), radius: 5))
+        for l in tidepool.lights { light(l) }
+        if let sway = tidepool.animations.first {
+            tidepool.apply(sway, at: 1.9)
+        }
+        fill(.white)
+        drawScene(tidepool)
     }
 }
 

@@ -2,8 +2,9 @@ import Foundation
 import simd
 
 /// One authored animation of a loaded `Scene`: named keyframe tracks that move
-/// nodes by translation, rotation, and scale. Sample it onto the scene at any
-/// time with `scene.apply(_:at:)`, driven by the sketch's own clock:
+/// nodes by translation, rotation, and scale, and blend their meshes' morph
+/// targets by weight. Sample it onto the scene at any time with
+/// `scene.apply(_:at:)`, driven by the sketch's own clock:
 ///
 /// ```swift
 /// var stage: Scene!
@@ -49,6 +50,7 @@ public struct SceneAnimation: Sendable {
         var translation: Sampler?
         var rotation: Sampler?
         var scale: Sampler?
+        var weights: WeightsSampler?
     }
 
     /// One keyframe curve: timestamps plus values, sampled by the authored
@@ -146,6 +148,57 @@ public struct SceneAnimation: Sendable {
             return (sin(a * (1 - t)) / sin(a)) * q0 + (s * sin(a * t) / sin(a)) * q1
         }
     }
+
+    /// A morph-weights keyframe curve: `count` scalars per keyframe (one per
+    /// morph target), flattened in the file's layout. For a cubic spline each
+    /// keyframe stores three groups of `count` scalars: every target's
+    /// in-tangent, then every value, then every out-tangent.
+    struct WeightsSampler: Sendable {
+        var times: [Double]
+        var values: [Float]
+        var count: Int
+        var mode: Sampler.Mode
+
+        /// The stored value of target `c` at keyframe `k` (skipping tangents).
+        private func value(_ k: Int, _ c: Int) -> Float {
+            mode == .cubicSpline ? values[(3 * k + 1) * count + c] : values[k * count + c]
+        }
+
+        /// Sample every target's weight at `time`, clamping outside the
+        /// keyframe range like the vector samplers.
+        func sample(at time: Double) -> [Double] {
+            guard time > times[0] else { return (0..<count).map { Double(value(0, $0)) } }
+            guard time < times[times.count - 1] else {
+                return (0..<count).map { Double(value(times.count - 1, $0)) }
+            }
+            var lo = 0, hi = times.count - 1
+            while hi - lo > 1 {
+                let mid = (lo + hi) / 2
+                if times[mid] <= time { lo = mid } else { hi = mid }
+            }
+            let td = times[lo + 1] - times[lo]
+            let t = Float((time - times[lo]) / td)
+            switch mode {
+            case .step:
+                return (0..<count).map { Double(value(lo, $0)) }
+            case .linear:
+                return (0..<count).map {
+                    Double((1 - t) * value(lo, $0) + t * value(lo + 1, $0))
+                }
+            case .cubicSpline:
+                let t2 = t * t, t3 = t2 * t
+                let ftd = Float(td)
+                return (0..<count).map { c in
+                    let vk = values[(3 * lo + 1) * count + c]
+                    let bk = values[(3 * lo + 2) * count + c]
+                    let ak1 = values[3 * (lo + 1) * count + c]
+                    let vk1 = values[(3 * (lo + 1) + 1) * count + c]
+                    return Double((2 * t3 - 3 * t2 + 1) * vk + ftd * (t3 - 2 * t2 + t) * bk
+                        + (-2 * t3 + 3 * t2) * vk1 + ftd * (t3 - t2) * ak1)
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Applying to a scene
@@ -187,10 +240,15 @@ extension Scene {
 extension SceneNode {
 
     /// Rebuild this node's local transform from its authored TRS components with
-    /// the track's sampled values swapped in. A node authored with an explicit
-    /// matrix has no components to recompose (the spec forbids animating one),
-    /// so it stays untouched.
+    /// the track's sampled values swapped in, and sample any morph-weights
+    /// channel into `weights`. A node authored with an explicit matrix has no
+    /// components to recompose (the spec forbids animating one), so its
+    /// transform stays untouched, and a weights-only track leaves the transform
+    /// alone entirely.
     mutating func apply(_ track: SceneAnimation.Track, at time: Double) {
+        if let s = track.weights { weights = s.sample(at: time) }
+        guard track.translation != nil || track.rotation != nil || track.scale != nil
+        else { return }
         guard var pose = trs else { return }
         if let s = track.translation {
             let v = s.sample(at: time)
@@ -222,9 +280,9 @@ extension SceneNode {
 extension SceneAnimation {
 
     /// Every playable animation in the document: channels grouped into per-node
-    /// tracks (sorted by node index, so output order is deterministic), morph
-    /// weight channels and unreadable samplers skipped, an animation with no
-    /// usable track dropped.
+    /// tracks (sorted by node index, so output order is deterministic), TRS and
+    /// morph-weights paths read, unreadable samplers skipped, an animation with
+    /// no usable track dropped.
     static func load(from doc: GLTFDocument) -> [SceneAnimation] {
         (doc.gltf.animations ?? []).compactMap { def in
             var byNode: [Int: Track] = [:]
@@ -242,6 +300,27 @@ extension SceneAnimation {
                 guard let times = doc.readFloats(s.input), !times.isEmpty,
                       mode != .cubicSpline || times.count >= 2 else { continue }
 
+                if channel.target.path == "weights" {
+                    // Morph weights: `k` scalars per keyframe, `k` the target
+                    // count of the node's mesh (its first primitive; the format
+                    // requires every primitive to agree). A channel with no
+                    // morphing mesh to drive, or a mis-sized output, is dropped.
+                    let gltfNodes = doc.gltf.nodes ?? []
+                    let meshes = doc.gltf.meshes ?? []
+                    guard ni >= 0, ni < gltfNodes.count, let mi = gltfNodes[ni].mesh,
+                          mi >= 0, mi < meshes.count,
+                          let k = meshes[mi].primitives.first?.targets?.count, k > 0,
+                          let flat = doc.readFloats(s.output),
+                          flat.count == (mode == .cubicSpline ? 3 : 1) * times.count * k
+                    else { continue }
+                    var track = byNode[ni] ?? Track(nodeIndex: ni)
+                    track.weights = WeightsSampler(times: times, values: flat.map(Float.init),
+                                                   count: k, mode: mode)
+                    byNode[ni] = track
+                    end = max(end, times[times.count - 1])
+                    continue
+                }
+
                 let values: [SIMD4<Float>]?
                 switch channel.target.path {
                 case "translation", "scale":
@@ -251,7 +330,7 @@ extension SceneAnimation {
                 case "rotation":
                     values = doc.readVec4(s.output)
                 default:
-                    values = nil          // "weights" (no morph targets) and unknown paths
+                    values = nil          // unknown paths
                 }
                 let expected = mode == .cubicSpline ? 3 * times.count : times.count
                 guard let values, values.count == expected else { continue }

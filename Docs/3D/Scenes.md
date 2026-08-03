@@ -32,6 +32,7 @@ Everything decomposes into the core types you already use: `scene.camera` is a [
 - [Drawing](#drawing) - `drawScene`, fill and materials
 - [Reaching nodes](#nodes) - `node(_:)`, the subscript, animating a node
 - [Playing authored animations](#animation) - `apply(_:at:)`, looping, one-shots
+- [Skins and morph targets](#deforming) - bending meshes, blend shapes, `weights`
 - [The authored camera](#cameras) - what carries over, and how
 - [The authored lights](#lights) - the three punctual kinds, intensity normalization
 - [Building a scene in code](#in-code) - `Scene` and `SceneNode` are plain values
@@ -87,7 +88,29 @@ The sketch's clock drives playback, so speed, looping, scrubbing, and playing ba
 
 Applying is **absolute, not additive**: the same time always produces the same pose, so calling it every frame in `draw()` just works, and applying twice changes nothing. Each animated node's transform rebuilds from its authored components with the sampled ones swapped in; a component no track animates keeps its authored value, and a `position` you set by hand survives a rotation-only track. (A hand `rotate(_:axis:)` on an *animated* node, though, is overwritten by the next `apply`; compose your own motion on nodes the animation doesn't drive.)
 
-All three of the format's interpolation modes play as authored: stepped holds, linear blends (rotations along the shortest arc), and eased cubic splines. Skinning and morph-target (`weights`) tracks aren't read.
+All three of the format's interpolation modes play as authored: stepped holds, linear blends (rotations along the shortest arc), and eased cubic splines. That covers *rigid* motion, whole nodes moving; the deforming tier, meshes that bend and blend, is next.
+
+<a id="deforming"></a>
+### Skins and morph targets
+
+The deforming half of a file's animation plays too, and it needs no new API: `apply(_:at:)` samples it, `drawScene` poses it.
+
+A **skin** bends a mesh through a joint hierarchy: the file binds each vertex to up to four joint nodes with blend weights, and as an animation (or your own node mutation) moves the joints, the mesh follows smoothly, an arm bending at the elbow rather than a rigid forearm swap. The joints are ordinary nodes in the tree, so `scene["shoulder"]?.rotate(...)` poses a skinned character by hand exactly like any other node drive. One rule from the format worth knowing: a skinned mesh's *own* node transform is ignored, its placement comes entirely from where its joints are, so move the joints' parent (usually the character root), not the mesh node.
+
+**Morph targets** blend a mesh between authored shapes: the file stores per-vertex displacements for each target (a smile, a blink, a puffed body), and the node's **`weights`** mix them, one weight per target, `0` leaving a target out and `1` adding its whole displacement. A `weights` animation track drives them from `apply(_:at:)`, and they're also just a node property you can set directly, live blend-shape posing from a slider or any signal:
+
+```swift
+tank["anemone"]?.weights = [breath, 0.2]   // puff by `breath`, a light ripple held
+```
+
+A node's authored default weights load with the scene (the node's own if it has them, else the mesh's). Morphs apply before skinning, so a character can smile while it walks.
+
+```swift
+if let sway = tank.animations.first {
+    tank.apply(sway, at: time.truncatingRemainder(dividingBy: sway.duration))
+}
+drawScene(tank)   // skins and morphs pose here, automatically
+```
 
 <a id="cameras"></a>
 ### The authored camera
@@ -126,7 +149,8 @@ drawScene(stage)
 ### Notes
 
 - **First material per node.** A glTF node's mesh may hold several primitives with different materials; until per-material submeshes land, each node's mesh wears its first material (preferring a textured one), the same rule `loadMesh` applies per file. Splitting the scene across nodes in the design tool sidesteps it entirely.
-- **Node TRS animation only.** Authored keyframe tracks that translate, rotate, and scale nodes play through `apply(_:at:)`; skinning and morph targets aren't read.
+- **Deformation is CPU posing, per frame.** A skinned or morphing node re-derives its vertices each frame it draws (only such nodes pay; everything else is untouched). Typical character and creature meshes are cheap at this scale; a film-density mesh will tell you.
+- **Morph targets displace positions and normals.** Tangent displacements aren't read (nothing consumes tangents yet), and a target's normals fall back to the base mesh's when the file authored none.
 - **Cameras and lights are resolved at load** into `scene.cameras` / `scene.lights` (world space). Moving a node afterward, by hand or by an animation, moves its geometry, not a light that rode it in the file.
 - **Duplicated names** resolve to the first match, depth-first. Unnamed nodes have an empty name.
-- The bundled demos are full worked examples: `3D/Geometry/LoadedScene` (a static stage, `scene.gltf` generated by `Scripts/make-sample-scene.swift`) and `3D/Geometry/AnimatedScene` (an orrery playing its authored "spin", generated by `Scripts/make-animated-scene.swift`); point `OLLIN_SCENE` at any glTF of your own to try either.
+- The bundled demos are full worked examples: `3D/Geometry/LoadedScene` (a static stage, `scene.gltf` generated by `Scripts/make-sample-scene.swift`), `3D/Geometry/AnimatedScene` (an orrery playing its authored "spin", generated by `Scripts/make-animated-scene.swift`), and `3D/Geometry/SkinnedScene` (a tidepool whose kelp sways on skins while an anemone pulses on morph targets, generated by `Scripts/make-skinned-scene.swift`); point `OLLIN_SCENE` at any glTF of your own to try any of them.

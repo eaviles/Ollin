@@ -540,6 +540,7 @@ let package = Package(
         example("3D/Geometry/LoadedMesh", resources: [.copy("model.gltf"), .copy("model.obj")]),
         example("3D/Geometry/LoadedScene", resources: [.copy("scene.gltf")]),
         example("3D/Geometry/AnimatedScene", resources: [.copy("scene.gltf")]),
+        example("3D/Geometry/SkinnedScene", resources: [.copy("scene.gltf")]),
         example("3D/Geometry/ShapeFactory"),
         example("3D/Geometry/Terrain"),
         example("3D/Geometry/Metaballs"),

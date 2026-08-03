@@ -48,6 +48,9 @@ public struct Scene: Sendable {
     public var animations: [SceneAnimation]
     /// The scene's authored name, when the file gave it one.
     public var name: String?
+    /// The file's skins: joint hierarchies that pose skinned meshes. `drawScene`
+    /// reads them; a node references one by index.
+    var skins: [SceneSkin]
 
     /// An empty scene, or one composed by hand from nodes you build yourself.
     public init(nodes: [SceneNode] = [], cameras: [Camera3D] = [],
@@ -57,6 +60,7 @@ public struct Scene: Sendable {
         self.lights = lights
         self.animations = []
         self.name = name
+        self.skins = []
     }
 
     /// The scene's main camera: the first one the file authored, or `nil` for a
@@ -158,6 +162,23 @@ public struct SceneNode: Sendable {
     /// decomposing `localTransform`. `nil` for a matrix-authored node, which no
     /// track may target.
     var trs: (t: SIMD3<Float>, r: SIMD4<Float>, s: SIMD3<Float>)?
+    /// This node's morph-target weights, one per target of its mesh, blending
+    /// each target's displacement into the drawn shape (0 leaves it out, 1 adds
+    /// it whole). Loaded from the file's authored weights; a weights animation
+    /// track writes them, and a sketch can set them directly to pose a blend
+    /// shape by hand (`scene["face"]?.weights = [0.8, 0.1]`). Empty, and inert,
+    /// for a node whose mesh has no morph targets.
+    public var weights: [Double] = []
+    /// The scene skin posing this node's mesh (an index into `Scene.skins`), or
+    /// `nil` for an unskinned node.
+    var skinIndex: Int?
+    /// Per-vertex joint indices and blend weights, aligned with the mesh's
+    /// `positions` (empty when unskinned). Indices select into the skin's
+    /// `joints` array.
+    var vertexJoints: [SIMD4<UInt16>] = []
+    var vertexWeights: [SIMD4<Float>] = []
+    /// The mesh's morph targets: per-vertex displacements `weights` blends in.
+    var morphTargets: [SceneMorphTarget] = []
 
     /// A node built by hand: `name`, an optional `mesh`, a `position` for its local
     /// translation, and `children`. For composing a scene in code; loaded scenes
@@ -267,16 +288,37 @@ extension Scene {
             defer { building.remove(ni) }
             let n = gltfNodes[ni]
             let children = (n.children ?? []).compactMap(build)
-            return SceneNode(name: n.name ?? "",
-                             mesh: n.mesh.flatMap(doc.localMesh),
-                             children: children,
-                             localTransform: n.localMatrix,
-                             sourceIndex: ni,
-                             trs: n.authoredTRS)
+            let meshData = n.mesh.flatMap(doc.localMeshData)
+            var node = SceneNode(name: n.name ?? "",
+                                 mesh: meshData?.mesh,
+                                 children: children,
+                                 localTransform: n.localMatrix,
+                                 sourceIndex: ni,
+                                 trs: n.authoredTRS)
+            if let meshData {
+                if !meshData.targets.isEmpty {
+                    node.morphTargets = meshData.targets
+                    // The instance's weights: the node's own, else the mesh's
+                    // authored defaults (the format's precedence).
+                    node.weights = n.weights ?? meshData.defaultWeights
+                }
+                if let si = n.skin, !meshData.joints.isEmpty {
+                    node.skinIndex = si
+                    node.vertexJoints = meshData.joints
+                    node.vertexWeights = meshData.weights
+                }
+            }
+            return node
         }
         let roots = doc.rootNodes.compactMap(build)
 
         var scene = Scene(nodes: roots)
+        // The skins, resolved to file node indices plus their inverse bind
+        // matrices (identity where the file authored none).
+        scene.skins = (gltf.skins ?? []).map { def in
+            let inverseBind = def.inverseBindMatrices.flatMap(doc.readMat4) ?? []
+            return SceneSkin(joints: def.joints, inverseBind: inverseBind)
+        }
         if let si = gltf.scene ?? (gltf.scenes?.isEmpty == false ? 0 : nil),
            gltf.scenes?.indices.contains(si) == true {
             scene.name = gltf.scenes?[si].name

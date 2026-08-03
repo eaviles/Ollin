@@ -8,9 +8,12 @@ import simd
 // with no axis flip; only the node hierarchy's transforms need baking in. This reads
 // the common mesh subset (POSITION + NORMAL + TEXCOORD_0 + triangle indices, float
 // positions/normals/UVs, embedded or external buffers) plus the base-color material
-// (factor + texture) and the node TRS keyframe animations the scene loader plays;
-// skinning, morph targets, and the other PBR channels (metallic/roughness, normal,
-// emissive) are not read.
+// (factor + texture), the node TRS keyframe animations the scene loader plays, and
+// the deforming tier the scene loader poses: skins (JOINTS_0/WEIGHTS_0 + inverse
+// bind matrices) and morph targets (sparse-accessor displacements included). The
+// other PBR channels (metallic/roughness, normal, emissive) are not read, and the
+// merged `Mesh.loadGLTF` below keeps its bind-pose bake (deformation is the
+// structure-preserving Scene path's job).
 //
 // The file-and-buffer plumbing lives in `GLTFDocument`, shared by two consumers with
 // different contracts: `Mesh.loadGLTF` below bakes every node's world transform in and
@@ -193,29 +196,97 @@ struct GLTFDocument {
             : Array(0..<nodes.count)
     }
 
-    /// Read a VEC3-of-float accessor (positions, normals) as `[Vector3]`, honoring
-    /// the buffer view's byte offset and (interleaved) stride.
+    /// Read a VEC3-of-float accessor (positions, normals, morph displacements) as
+    /// `[Vector3]`, honoring the buffer view's byte offset and (interleaved) stride.
+    /// An accessor with no buffer view reads as zeros, and a sparse accessor
+    /// substitutes its values at its indices: together, the layout morph-target
+    /// exporters lean on (most displacements are zero, so only the moved
+    /// vertices are stored).
     func readVec3(_ index: Int) -> [Vector3]? {
         let accessors = gltf.accessors ?? []
         let views = gltf.bufferViews ?? []
         guard index >= 0, index < accessors.count else { return nil }
         let a = accessors[index]
         guard a.type == "VEC3", a.componentType == 5126,         // VEC3, FLOAT
-              let bvi = a.bufferView, bvi < views.count else { return nil }
-        let bv = views[bvi]
+              a.count > 0 else { return nil }
+        var out: [Vector3]
+        if let bvi = a.bufferView {
+            guard bvi < views.count else { return nil }
+            let bv = views[bvi]
+            guard bv.buffer < buffers.count else { return nil }
+            let buf = buffers[bv.buffer]
+            let stride = bv.byteStride ?? 12
+            let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
+            guard start + (a.count - 1) * stride + 12 <= buf.count else { return nil }
+            var read = [Vector3](); read.reserveCapacity(a.count)
+            buf.withUnsafeBytes { raw in
+                for i in 0..<a.count {
+                    let o = start + i * stride
+                    let x = raw.loadUnaligned(fromByteOffset: o, as: Float.self)
+                    let y = raw.loadUnaligned(fromByteOffset: o + 4, as: Float.self)
+                    let z = raw.loadUnaligned(fromByteOffset: o + 8, as: Float.self)
+                    read.append(Vector3(Double(x), Double(y), Double(z)))
+                }
+            }
+            out = read
+        } else {
+            out = [Vector3](repeating: .zero, count: a.count)
+        }
+        if let sp = a.sparse {
+            guard let idx = sparseIndices(sp),
+                  let values = packedVec3(view: sp.values.bufferView,
+                                          offset: sp.values.byteOffset ?? 0,
+                                          count: sp.count) else { return nil }
+            for (k, i) in idx.enumerated() where i < out.count { out[i] = values[k] }
+        }
+        return out
+    }
+
+    /// A sparse accessor's substitution indices: `count` tightly-packed unsigned
+    /// ints (u8/u16/u32) from its own buffer view.
+    private func sparseIndices(_ sp: GLTF.Sparse) -> [Int]? {
+        let views = gltf.bufferViews ?? []
+        guard sp.indices.bufferView >= 0, sp.indices.bufferView < views.count else { return nil }
+        let bv = views[sp.indices.bufferView]
         guard bv.buffer < buffers.count else { return nil }
         let buf = buffers[bv.buffer]
-        let stride = bv.byteStride ?? 12
-        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
-        guard a.count > 0, start + (a.count - 1) * stride + 12 <= buf.count else { return nil }
-        var out = [Vector3](); out.reserveCapacity(a.count)
+        let size: Int
+        switch sp.indices.componentType {
+        case 5121: size = 1; case 5123: size = 2; case 5125: size = 4; default: return nil
+        }
+        let start = (bv.byteOffset ?? 0) + (sp.indices.byteOffset ?? 0)
+        guard sp.count > 0, start + sp.count * size <= buf.count else { return nil }
+        var out = [Int](); out.reserveCapacity(sp.count)
         buf.withUnsafeBytes { raw in
-            for i in 0..<a.count {
-                let o = start + i * stride
-                let x = raw.loadUnaligned(fromByteOffset: o, as: Float.self)
-                let y = raw.loadUnaligned(fromByteOffset: o + 4, as: Float.self)
-                let z = raw.loadUnaligned(fromByteOffset: o + 8, as: Float.self)
-                out.append(Vector3(Double(x), Double(y), Double(z)))
+            for i in 0..<sp.count {
+                let o = start + i * size
+                switch size {
+                case 1: out.append(Int(raw.loadUnaligned(fromByteOffset: o, as: UInt8.self)))
+                case 2: out.append(Int(raw.loadUnaligned(fromByteOffset: o, as: UInt16.self)))
+                default: out.append(Int(raw.loadUnaligned(fromByteOffset: o, as: UInt32.self)))
+                }
+            }
+        }
+        return out
+    }
+
+    /// `count` tightly-packed float VEC3 elements straight from a buffer view (a
+    /// sparse accessor's values, which carry no accessor of their own).
+    private func packedVec3(view: Int, offset: Int, count: Int) -> [Vector3]? {
+        let views = gltf.bufferViews ?? []
+        guard view >= 0, view < views.count else { return nil }
+        let bv = views[view]
+        guard bv.buffer < buffers.count else { return nil }
+        let buf = buffers[bv.buffer]
+        let start = (bv.byteOffset ?? 0) + offset
+        guard count > 0, start + count * 12 <= buf.count else { return nil }
+        var out = [Vector3](); out.reserveCapacity(count)
+        buf.withUnsafeBytes { raw in
+            for i in 0..<count {
+                let o = start + i * 12
+                out.append(Vector3(Double(raw.loadUnaligned(fromByteOffset: o, as: Float.self)),
+                                   Double(raw.loadUnaligned(fromByteOffset: o + 4, as: Float.self)),
+                                   Double(raw.loadUnaligned(fromByteOffset: o + 8, as: Float.self))))
             }
         }
         return out
@@ -342,6 +413,72 @@ struct GLTFDocument {
         return out
     }
 
+    /// Read a MAT4-of-float accessor (a skin's inverse bind matrices) as
+    /// column-major `simd_float4x4`s, honoring offset and stride.
+    func readMat4(_ index: Int) -> [simd_float4x4]? {
+        let accessors = gltf.accessors ?? []
+        let views = gltf.bufferViews ?? []
+        guard index >= 0, index < accessors.count else { return nil }
+        let a = accessors[index]
+        guard a.type == "MAT4", a.componentType == 5126,          // MAT4, FLOAT
+              let bvi = a.bufferView, bvi < views.count else { return nil }
+        let bv = views[bvi]
+        guard bv.buffer < buffers.count else { return nil }
+        let buf = buffers[bv.buffer]
+        let stride = bv.byteStride ?? 64
+        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
+        guard a.count > 0, start + (a.count - 1) * stride + 64 <= buf.count else { return nil }
+        var out = [simd_float4x4](); out.reserveCapacity(a.count)
+        buf.withUnsafeBytes { raw in
+            for i in 0..<a.count {
+                let o = start + i * stride
+                func column(_ c: Int) -> SIMD4<Float> {
+                    SIMD4<Float>(raw.loadUnaligned(fromByteOffset: o + c * 16, as: Float.self),
+                                 raw.loadUnaligned(fromByteOffset: o + c * 16 + 4, as: Float.self),
+                                 raw.loadUnaligned(fromByteOffset: o + c * 16 + 8, as: Float.self),
+                                 raw.loadUnaligned(fromByteOffset: o + c * 16 + 12, as: Float.self))
+                }
+                out.append(simd_float4x4(columns: (column(0), column(1), column(2), column(3))))
+            }
+        }
+        return out
+    }
+
+    /// Read a VEC4 joint-index accessor (JOINTS_0: unsigned byte or unsigned
+    /// short) as `[SIMD4<UInt16>]`, each component an index into the skin's
+    /// `joints` array.
+    func readJointIndices(_ index: Int) -> [SIMD4<UInt16>]? {
+        let accessors = gltf.accessors ?? []
+        let views = gltf.bufferViews ?? []
+        guard index >= 0, index < accessors.count else { return nil }
+        let a = accessors[index]
+        let size: Int
+        switch a.componentType {
+        case 5121: size = 1                                       // UNSIGNED_BYTE
+        case 5123: size = 2                                       // UNSIGNED_SHORT
+        default: return nil
+        }
+        guard a.type == "VEC4", let bvi = a.bufferView, bvi < views.count else { return nil }
+        let bv = views[bvi]
+        guard bv.buffer < buffers.count else { return nil }
+        let buf = buffers[bv.buffer]
+        let stride = bv.byteStride ?? size * 4
+        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
+        guard a.count > 0, start + (a.count - 1) * stride + size * 4 <= buf.count else { return nil }
+        var out = [SIMD4<UInt16>](); out.reserveCapacity(a.count)
+        buf.withUnsafeBytes { raw in
+            for i in 0..<a.count {
+                let o = start + i * stride
+                func component(_ c: Int) -> UInt16 {
+                    size == 1 ? UInt16(raw.loadUnaligned(fromByteOffset: o + c, as: UInt8.self))
+                              : raw.loadUnaligned(fromByteOffset: o + c * 2, as: UInt16.self)
+                }
+                out.append(SIMD4<UInt16>(component(0), component(1), component(2), component(3)))
+            }
+        }
+        return out
+    }
+
     /// The raw bytes of an image: an embedded base64 data-URI, an external file
     /// beside the .gltf, or a slice of a buffer view (a .glb-embedded texture).
     func imageData(_ imageIndex: Int) -> Data? {
@@ -409,7 +546,23 @@ struct GLTFDocument {
     /// has them, the mesh wears its first material preferring a textured one, and a
     /// primitive without normals gets smooth ones. Returns `nil` when the mesh index
     /// is invalid or no triangles result.
-    func localMesh(at meshIndex: Int) -> Mesh? {
+    func localMesh(at meshIndex: Int) -> Mesh? { localMeshData(at: meshIndex)?.mesh }
+
+    /// A merged local mesh together with its deformation data, aligned with the
+    /// merged vertex order: per-vertex skin joints and weights (kept only when
+    /// *every* primitive carries them, the UV rule), the morph-target
+    /// displacements (kept only when every primitive declares the same target
+    /// count, which the format requires), and the mesh's authored default morph
+    /// weights.
+    struct LocalMeshData {
+        var mesh: Mesh
+        var joints: [SIMD4<UInt16>] = []
+        var weights: [SIMD4<Float>] = []
+        var targets: [SceneMorphTarget] = []
+        var defaultWeights: [Double] = []
+    }
+
+    func localMeshData(at meshIndex: Int) -> LocalMeshData? {
         let meshes = gltf.meshes ?? []
         guard meshIndex >= 0, meshIndex < meshes.count else { return nil }
         var positions: [Vector3] = []
@@ -419,6 +572,18 @@ struct GLTFDocument {
         var allHaveUV = true
         var chosenMaterial: Int?
         var chosenHasTexture = false
+
+        var joints: [SIMD4<UInt16>] = []
+        var weights: [SIMD4<Float>] = []
+        var allHaveSkin = true
+        // Every primitive of a morphing mesh must declare the same target count
+        // (the format's rule); a mismatch drops the morph data whole rather than
+        // misaligning it.
+        let targetCount = meshes[meshIndex].primitives.first?.targets?.count ?? 0
+        var targetsAgree = targetCount > 0
+        var targetPositions = [[Vector3]](repeating: [], count: targetCount)
+        var targetNormals = [[Vector3]](repeating: [], count: targetCount)
+        var anyNormalDeltas = [Bool](repeating: false, count: targetCount)
 
         for prim in meshes[meshIndex].primitives {
             guard (prim.mode ?? 4) == 4, let posIndex = prim.attributes["POSITION"],
@@ -443,6 +608,44 @@ struct GLTFDocument {
                 uvs.append(contentsOf: repeatElement(Vector2.zero, count: localPos.count))
             }
 
+            // Skin attributes, all-or-nothing like UVs: a primitive missing either
+            // half pads with zeros and forfeits skinning for the merged mesh.
+            if let ji = prim.attributes["JOINTS_0"], let localJoints = readJointIndices(ji),
+               localJoints.count == localPos.count,
+               let wi = prim.attributes["WEIGHTS_0"], let localWeights = readVec4(wi),
+               localWeights.count == localPos.count {
+                joints.append(contentsOf: localJoints)
+                weights.append(contentsOf: localWeights)
+            } else {
+                allHaveSkin = false
+                joints.append(contentsOf: repeatElement(SIMD4<UInt16>(), count: localPos.count))
+                weights.append(contentsOf: repeatElement(SIMD4<Float>(), count: localPos.count))
+            }
+
+            // Morph-target displacements, aligned per target across primitives; a
+            // target without an attribute contributes zero displacement.
+            if targetsAgree {
+                if (prim.targets?.count ?? 0) != targetCount {
+                    targetsAgree = false
+                } else if let targets = prim.targets {
+                    for (t, target) in targets.enumerated() {
+                        if let pi = target["POSITION"], let deltas = readVec3(pi),
+                           deltas.count == localPos.count {
+                            targetPositions[t].append(contentsOf: deltas)
+                        } else {
+                            targetPositions[t].append(contentsOf: repeatElement(.zero, count: localPos.count))
+                        }
+                        if let ni = target["NORMAL"], let deltas = readVec3(ni),
+                           deltas.count == localPos.count {
+                            targetNormals[t].append(contentsOf: deltas)
+                            anyNormalDeltas[t] = true
+                        } else {
+                            targetNormals[t].append(contentsOf: repeatElement(.zero, count: localPos.count))
+                        }
+                    }
+                }
+            }
+
             if let mi = prim.material {
                 if chosenMaterial == nil { chosenMaterial = mi }
                 if !chosenHasTexture, materialHasTexture(mi) { chosenMaterial = mi; chosenHasTexture = true }
@@ -458,8 +661,22 @@ struct GLTFDocument {
         }
 
         guard !positions.isEmpty, !indices.isEmpty else { return nil }
-        return Mesh(positions: positions, normals: normals, indices: indices,
-                    uvs: allHaveUV ? uvs : [], material: chosenMaterial.flatMap(resolveMaterial))
+        let mesh = Mesh(positions: positions, normals: normals, indices: indices,
+                        uvs: allHaveUV ? uvs : [], material: chosenMaterial.flatMap(resolveMaterial))
+        var data = LocalMeshData(mesh: mesh)
+        if allHaveSkin, !joints.isEmpty {
+            data.joints = joints
+            data.weights = weights
+        }
+        if targetsAgree {
+            data.targets = (0..<targetCount).map {
+                SceneMorphTarget(positionDeltas: targetPositions[$0],
+                                 normalDeltas: anyNormalDeltas[$0] ? targetNormals[$0] : [])
+            }
+            data.defaultWeights = meshes[meshIndex].weights
+                ?? [Double](repeating: 0, count: targetCount)
+        }
+        return data
     }
 
     /// Split a `.glb` container into its JSON chunk and (optional) BIN chunk.
@@ -494,6 +711,8 @@ struct GLTF: Decodable {
         var children: [Int]?
         var mesh: Int?
         var camera: Int?
+        var skin: Int?
+        var weights: [Double]?
         var matrix: [Double]?
         var translation: [Double]?
         var rotation: [Double]?
@@ -546,8 +765,17 @@ struct GLTF: Decodable {
         var indices: Int?
         var mode: Int?
         var material: Int?
+        var targets: [[String: Int]]?
     }
-    struct MeshDef: Decodable { var primitives: [Primitive] }
+    struct MeshDef: Decodable {
+        var primitives: [Primitive]
+        var weights: [Double]?
+    }
+    struct Skin: Decodable {
+        var inverseBindMatrices: Int?
+        var joints: [Int]
+        var name: String?
+    }
     struct Material: Decodable {
         var pbrMetallicRoughness: PBRMetallicRoughness?
     }
@@ -564,6 +792,14 @@ struct GLTF: Decodable {
         var componentType: Int
         var count: Int
         var type: String
+        var sparse: Sparse?
+    }
+    struct Sparse: Decodable {
+        struct Indices: Decodable { var bufferView: Int; var byteOffset: Int?; var componentType: Int }
+        struct Values: Decodable { var bufferView: Int; var byteOffset: Int? }
+        var count: Int
+        var indices: Indices
+        var values: Values
     }
     struct BufferView: Decodable {
         var buffer: Int
@@ -622,6 +858,7 @@ struct GLTF: Decodable {
     var scenes: [SceneDef]?
     var nodes: [Node]?
     var meshes: [MeshDef]?
+    var skins: [Skin]?
     var accessors: [Accessor]?
     var bufferViews: [BufferView]?
     var buffers: [BufferDef]?
