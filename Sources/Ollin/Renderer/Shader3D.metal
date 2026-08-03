@@ -1983,8 +1983,10 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
             // the film toward the bottom of the surface (the local "down" read off
             // the normal's y), quadratic so the interference contours crowd into
             // fine bands near the bottom while the upper body stays broad, plus
-            // (b) a domain-warped drifting swirl (one simplex field shearing a
-            // second, the marble look) in scene-scaled cells, advected by the
+            // (b) a domain-warped *fractal* drifting swirl in scene-scaled cells:
+            // a fbm field displaced by a vector of two more fbm reads (the classic
+            // marble warp), so the contours shear into layered wisps across several
+            // scales instead of smooth single-octave blobs, advected by the
             // material's own phase clock (no hidden time: exports reproduce).
             // The color is the reflected two-beam interference evaluated per RGB
             // wavelength (rates lambdaR/lambda for ~685/564/472 nm): zero thickness
@@ -1993,16 +1995,18 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
             // rolloff washes thick film toward pale, which is what a real film
             // under white light does. `iridescenceScale` sets how many orders the
             // field spans; `iridescenceFlow` the swirl's share of the thickness.
-            float cell = max(light.sceneScale, 1e-4) * 0.35;
+            float cell = max(light.sceneScale, 1e-4) * 0.35 * mat.iridescenceFlowSize;
             float3 q = worldPos / cell;
             float t = mat.iridescencePhase;
-            float w1 = simplexNoise(q * 0.6 + float3(0.12 * t, -0.30 * t, 0.0));
-            float w2 = simplexNoise(q * 1.1 + float3(-0.22 * t, -0.50 * t, 0.09 * t)
-                                    + w1 * 1.8);
+            float3 d1 = float3(0.12 * t, -0.30 * t, 0.0);
+            float3 d2 = float3(-0.22 * t, -0.50 * t, 0.09 * t);
+            float wa = fbm(q * 1.2 + d1) * 2.0 - 1.0;
+            float wb = fbm(q * 1.2 + d1 + float3(4.7, 9.1, 2.3)) * 2.0 - 1.0;
+            float wm = fbm(q * 2.3 + d2 + float3(wa, wb, 0.5 * (wa - wb)) * 3.2) * 2.0 - 1.0;
             float head = 0.5 - 0.5 * clamp(n.y, -1.0, 1.0);      // 0 top ... 1 bottom
             float d = mat.iridescenceScale
                     * max(0.18 + 1.1 * head * head
-                              + mat.iridescenceFlow * (0.45 * w1 + 0.25 * w2), 0.0);
+                              + mat.iridescenceFlow * (0.35 * wa + 0.55 * wm), 0.0);
             float3 rate = float3(1.0, 1.2146, 1.4513);           // lambdaR / lambda(R,G,B)
             float3 wave = 0.5 - 0.5 * cos(6.2831853 * d * rate);
             float coh = exp(-0.18 * d);

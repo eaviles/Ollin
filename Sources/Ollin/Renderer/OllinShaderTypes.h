@@ -395,6 +395,8 @@ typedef struct {
                                   // iridescent sheen reads (0 = the plain view-angle rim sheen)
     float iridescencePhase;       // the film swirl's animation clock, sketch-driven (no hidden time,
                                   // so exports reproduce); only read when iridescenceFlow > 0
+    float iridescenceFlowSize;    // the swirl's feature size, relative to the scene framing (the
+                                  // sparkle sizing rule): 1 = default, smaller = finer marbling
 } OllinMaterial;
 
 // Parameters for the live ground-grid overlay (`ollin_grid_fragment`): a shader-drawn

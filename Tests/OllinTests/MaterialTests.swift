@@ -145,12 +145,16 @@ struct MaterialTests {
         // clock, not a strength).
         let d = Material()
         #expect(d.iridescenceFlow == 0 && d.iridescencePhase == 0)
-        let m = Material(iridescence: 0.8, iridescenceFlow: -2, iridescencePhase: -3.5)
+        #expect(d.iridescenceFlowSize == 1)
+        let m = Material(iridescence: 0.8, iridescenceFlow: -2, iridescencePhase: -3.5,
+                         iridescenceFlowSize: 0)
         #expect(m.iridescenceFlow == 0)
         #expect(m.iridescencePhase == -3.5)
+        #expect(m.iridescenceFlowSize == 0.05)   // floored, like sparkleSize
         let g = Material(iridescence: 0.8, iridescenceFlow: 1.5,
-                         iridescencePhase: 7.25).gpuMaterial()
+                         iridescencePhase: 7.25, iridescenceFlowSize: 0.4).gpuMaterial()
         #expect(close(g.iridescenceFlow, 1.5) && close(g.iridescencePhase, 7.25))
+        #expect(close(g.iridescenceFlowSize, 0.4))
         #expect(close(Material().gpuMaterial().iridescenceFlow, 0))
     }
 }

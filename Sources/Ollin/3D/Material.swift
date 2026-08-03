@@ -147,6 +147,11 @@ public struct Material: Equatable, Sendable {
     /// so the swirling stays under the sketch's control and exports reproduce. Only
     /// read when `iridescenceFlow > 0`.
     public var iridescencePhase: Double
+    /// The film swirl's feature size, relative to the scene's framing (the sparkle
+    /// sizing rule, so the default reads alike at any scene scale): `1` is the
+    /// default, smaller is finer marbling. A small bubble seen from afar wants
+    /// `0.3`-ish so the wisps stay visible on its surface.
+    public var iridescenceFlowSize: Double
 
     /// Sparkle (metallic-flake) strength, `0…1`: the surface is peppered with tiny
     /// mirror flakes that flash in and out as the view, object, or light moves
@@ -191,6 +196,7 @@ public struct Material: Equatable, Sendable {
                 specular: Double = 0, shininess: Double = 32,
                 iridescence: Double = 0, iridescenceScale: Double = 1,
                 iridescenceFlow: Double = 0, iridescencePhase: Double = 0,
+                iridescenceFlowSize: Double = 1,
                 sparkle: Double = 0, sparkleSize: Double = 1,
                 sparkleSharpness: Double = 48, sparkleColor: Color = .white,
                 rim: Double = 0, rimPower: Double = 2, rimColor: Color = .white,
@@ -212,6 +218,7 @@ public struct Material: Equatable, Sendable {
         self.iridescenceScale = max(0, iridescenceScale)
         self.iridescenceFlow = max(0, iridescenceFlow)
         self.iridescencePhase = iridescencePhase
+        self.iridescenceFlowSize = max(0.05, iridescenceFlowSize)
         self.sparkle = min(1, max(0, sparkle))
         self.sparkleSize = max(0.05, sparkleSize)
         self.sparkleSharpness = max(1, sparkleSharpness)
@@ -257,6 +264,7 @@ public struct Material: Equatable, Sendable {
         m.thickness = Float(thickness)
         m.iridescenceFlow = Float(iridescenceFlow)
         m.iridescencePhase = Float(iridescencePhase)
+        m.iridescenceFlowSize = Float(iridescenceFlowSize)
         // Beer-Lambert exponentiates the attenuation color, so floor each channel just
         // above zero: pow(0, 0) is NaN territory under fast math, and a floored channel
         // still reads as "absorbs (almost) everything".

@@ -85,6 +85,7 @@ Mixing in OKLab/OKLCH (interpolate, then convert back) gives even lightness and 
 | `float valueNoise(float2 p)` | smoothed interpolation of per-cell hashes. |
 | `float valueNoise(float3 p)` | the 3D form (trilinear); animate by sliding `z`. |
 | `float fbm(float2 p)` | four-octave fractal sum of `valueNoise`. |
+| `float fbm(float3 p)` | the 3D form, over the 3D `valueNoise`; animate by sliding `z`. Mirrors the CPU `fbm(x, y, z)`. |
 | `float gradientNoise(float2 p)` | Perlin-style gradient noise (smoother, signed). |
 | `float simplexNoise(float2 p)` | simplex-lattice gradient noise in ~`[-1, 1]`: rounder, more even grain with no axis-aligned bias. Mirrors the CPU `simplexNoise`. |
 | `float simplexNoise(float3 p)` | the 3D form; animate by sliding `z`. |

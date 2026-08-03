@@ -161,6 +161,15 @@ static inline float ollin_fbm(float2 p) {
 static inline float valueNoise(float2 p) { return ollin_vnoise(p); }   // public-facing name
 static inline float fbm(float2 p) { return ollin_fbm(p); }             // public-facing name
 
+// 3D FBM over the 3D value noise below: four octaves, normalized to [0, 1],
+// the volumetric sibling of fbm(float2) (and of the CPU fbm(x, y, z)).
+static inline float valueNoise(float3 p);
+static inline float fbm(float3 p) {
+    float v = 0.0, amp = 0.5;
+    for (int i = 0; i < 4; i++) { v += amp * valueNoise(p); p *= 2.0; amp *= 0.5; }
+    return v / 0.9375;   // sum of amplitudes (0.5+0.25+0.125+0.0625)
+}
+
 // 3D value noise: trilinear interpolation of per-corner hashes.
 static inline float valueNoise(float3 p) {
     float3 i = floor(p), f = fract(p);

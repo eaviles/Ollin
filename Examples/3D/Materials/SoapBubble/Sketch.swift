@@ -10,7 +10,7 @@ import Ollin
 ///
 /// ```swift
 /// var film = Material.glass()          // a thin see-through shell
-/// film.iridescence = 0.9               // the interference sheen
+/// film.iridescence = 0.8               // the interference sheen
 /// film.iridescenceFlow = 1.0           // film-thickness swirl (the bubble look)
 /// film.iridescencePhase = time * 0.35  // you drive the clock, so exports reproduce
 /// material(film)
@@ -59,10 +59,11 @@ final class SoapBubble: Sketch {
             let w = sin(time * 2.1 + b.wobble) * 0.05
 
             var film = Material.glass()
-            film.iridescence = 0.9
+            film.iridescence = 0.8
             film.iridescenceScale = 1.3
             film.iridescenceFlow = 1.0
             film.iridescencePhase = time * 0.35 + b.film
+            film.iridescenceFlowSize = 0.45  // fine wisps on small, distant bubbles
             withState {
                 material(film)
                 fill(.white)
