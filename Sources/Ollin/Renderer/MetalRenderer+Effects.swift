@@ -1606,6 +1606,16 @@ extension MetalRenderer {
            drawer.lights.contains(where: { $0.kind == .rect || $0.kind == .disk || $0.kind == .tube }) {
             lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
         }
+        // Light shaping (IES profiles / cookies): bake the frame's arrays once so the
+        // gates open only when a packed light references a layer. The `makeLighting`
+        // call above rebuilt `usedIESProfiles`/`usedLightCookies`, so the lists match
+        // the packed indices. Same stand-in-binding discipline as the LTC tables.
+        if lighting.enabled != 0, !drawer.usedIESProfiles.isEmpty {
+            lighting.iesEnabled = ensureIESArray(drawer.usedIESProfiles) ? 1 : 0
+        }
+        if lighting.enabled != 0, !drawer.usedLightCookies.isEmpty {
+            lighting.cookieEnabled = ensureCookieArray(drawer.usedLightCookies) ? 1 : 0
+        }
         // Skybox backdrop: when the environment shows as the scene's background, fill the
         // frame with it (a fullscreen view-ray cube sample) before the geometry, with depth
         // disabled, so the depth-tested meshes composite in front and a mirror's reflection
@@ -1891,6 +1901,10 @@ extension MetalRenderer {
                 // unloaded (`lighting.ltcEnabled` gates the read).
                 encoder.setFragmentTexture(ltcMatTexture ?? strip, index: 8)
                 encoder.setFragmentTexture(ltcAmpTexture ?? strip, index: 9)
+                // The light-shaping arrays (tex 10/11: IES profiles + cookies); the array
+                // stand-in when the frame carries none (`iesEnabled`/`cookieEnabled` gate).
+                encoder.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
+                encoder.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
                 // The mesh acceleration structure at buffer 5 so a marched field receives a mesh's
                 // cast shadow under a ray-traced point caster (it traces toward the light, the
                 // reverse of the cast). A dummy when shadowKind != 2, never traced; the cube path
@@ -2035,6 +2049,10 @@ extension MetalRenderer {
                     // unloaded (`lighting.ltcEnabled` gates the read).
                     encoder.setFragmentTexture(ltcMatTexture ?? strip, index: 8)
                     encoder.setFragmentTexture(ltcAmpTexture ?? strip, index: 9)
+                    // The light-shaping arrays (tex 10/11: IES profiles + cookies); the
+                    // array stand-in otherwise (`iesEnabled`/`cookieEnabled` gate).
+                    encoder.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
+                    encoder.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
                     // The pre-traced reflection layer (tex 7) when the deferred path is on;
                     // a never-sampled stand-in otherwise (`rtReflectionDeferred` gates the
                     // read). Only part of the RT-compiled fragment signature.

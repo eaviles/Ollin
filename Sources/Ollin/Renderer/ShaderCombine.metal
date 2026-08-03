@@ -833,6 +833,8 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
                                        texturecube<float> irradianceTex [[texture(4)]],
                                        texturecube<float> prefilterTex [[texture(5)]],
                                        texture2d<float> ltcAmp [[texture(9)]],
+                                       texture2d_array<float> iesProfiles [[texture(10)]],
+                                       texture2d_array<float> cookies [[texture(11)]],
                                        sampler samp [[sampler(0)]],
                                        constant float4 *params [[buffer(0)]],
                                        constant OllinLighting &light [[buffer(1)]],
@@ -879,7 +881,8 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
         // sample counts reads as sparkle on brushed metals; integrating it properly
         // needs a spatial resolve/denoise stage first (a follow-up).
         acc += ollin_rt_reflection_trace(P, n, R, accel, verts, geoOffsets, light,
-                                         irradianceTex, prefilterTex, cubeSamp, rot, ltcAmp);
+                                         irradianceTex, prefilterTex, cubeSamp, rot, ltcAmp,
+                                         iesProfiles, cookies);
     }
     return acc / float(samples);
 }

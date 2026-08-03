@@ -31,6 +31,10 @@ import Foundation
 /// `intensity`. An area light instead falls off physically (its surface fills
 /// less of the sky as it recedes), and its `color` × `intensity` is the
 /// surface's *radiance*, so a bigger panel casts more light into the scene.
+///
+/// A point or spot light can also be *shaped*: an `IESProfile` (a real
+/// fixture's measured angular throw) sculpts where the intensity goes, and a
+/// spot can project a `LightCookie` image through its cone (a gobo, a gel).
 public struct Light: Equatable, Sendable {
 
     /// Which light model this is.
@@ -85,6 +89,20 @@ public struct Light: Equatable, Sendable {
     /// Rect and disk lights: `true` emits from both faces of the panel; `false`
     /// (the default) lights only what the panel faces. A tube always emits radially.
     public var twoSided: Bool
+    /// An IES photometric profile shaping where this light sends its intensity
+    /// (point and spot only; `nil`, the default, keeps the plain falloff). The
+    /// profile's 0° aims along the light's axis: a spot's `direction`, or the
+    /// `direction` a point light is given as its fixture axis (straight down
+    /// by default). See `IESProfile`.
+    public var profile: IESProfile?
+    /// A projected image (spot only; `nil`, the default, projects nothing).
+    /// The image's edges land at the outer cone, its color multiplies the
+    /// light (black blocks, color tints), and `roll` spins it. See `LightCookie`.
+    public var cookie: LightCookie?
+    /// Rotation about the beam axis, in radians: spins an asymmetric
+    /// `profile`'s azimuth and a `cookie`'s image together, the way rotating
+    /// a real fixture in its yoke turns both. Ignored with neither set.
+    public var roll: Double
 
     /// The most general initializer; prefer the `.directional`/`.point`/`.spot`/
     /// `.rect`/`.disk`/`.tube` factories, which fill in the fields that don't
@@ -94,7 +112,9 @@ public struct Light: Equatable, Sendable {
                 position: Vector3 = .zero, direction: Vector3 = Vector3(0, -1, 0),
                 coneAngle: Double = .pi / 6, penumbra: Double = 0.2,
                 width: Double = 1, height: Double = 1, radius: Double = 0.5,
-                length: Double = 1, up: Vector3 = .unitY, twoSided: Bool = false) {
+                length: Double = 1, up: Vector3 = .unitY, twoSided: Bool = false,
+                profile: IESProfile? = nil, cookie: LightCookie? = nil,
+                roll: Double = 0) {
         self.kind = kind
         self.color = color
         self.intensity = intensity
@@ -110,6 +130,9 @@ public struct Light: Equatable, Sendable {
         self.length = max(0, length)
         self.up = up
         self.twoSided = twoSided
+        self.profile = profile
+        self.cookie = cookie
+        self.roll = roll
     }
 
     /// A directional light (parallel rays, like sunlight). `direction` is the way
@@ -125,25 +148,36 @@ public struct Light: Equatable, Sendable {
 
     /// A point light: an omnidirectional source at a world position. `specular`
     /// (default `nil` = `color`) tints its highlight; `softness` (`0…1`) softens the
-    /// terminator.
+    /// terminator. An IES `profile` shapes the falloff by angle, aimed along
+    /// `axis` (the fixture's hanging direction, straight down by default) and
+    /// spun about it by `roll`.
     public static func point(_ color: Color, at position: Vector3,
                              intensity: Double = 1,
-                             specular: Color? = nil, softness: Double = 0) -> Light {
+                             specular: Color? = nil, softness: Double = 0,
+                             profile: IESProfile? = nil,
+                             axis: Vector3 = Vector3(0, -1, 0),
+                             roll: Double = 0) -> Light {
         Light(kind: .point, color: color, intensity: intensity,
-              specular: specular, softness: softness, position: position)
+              specular: specular, softness: softness, position: position,
+              direction: axis, profile: profile, roll: roll)
     }
 
     /// A spot light: a point source at `position` narrowed to a cone aimed along
     /// `direction`, with a `penumbra` soft edge (`0` hard, up to `1`). `specular`
     /// (default `nil` = `color`) tints its highlight; `softness` (`0…1`) softens the
-    /// terminator.
+    /// terminator. An IES `profile` shapes the throw inside the cone, a
+    /// `cookie` projects an image through it, and `roll` spins both about
+    /// the beam.
     public static func spot(_ color: Color, at position: Vector3, direction: Vector3,
                             angle: Double = .pi / 6, penumbra: Double = 0.2,
                             intensity: Double = 1,
-                            specular: Color? = nil, softness: Double = 0) -> Light {
+                            specular: Color? = nil, softness: Double = 0,
+                            profile: IESProfile? = nil, cookie: LightCookie? = nil,
+                            roll: Double = 0) -> Light {
         Light(kind: .spot, color: color, intensity: intensity,
               specular: specular, softness: softness,
-              position: position, direction: direction, coneAngle: angle, penumbra: penumbra)
+              position: position, direction: direction, coneAngle: angle, penumbra: penumbra,
+              profile: profile, cookie: cookie, roll: roll)
     }
 
     /// A rect area light: a glowing `width` × `height` panel centered at `position`,

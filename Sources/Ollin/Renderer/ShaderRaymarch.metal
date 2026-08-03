@@ -559,7 +559,9 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  texturecube<float> iblPrefilter [[texture(5)]],
                                                  texture2d<float> iblBRDF [[texture(6)]],
                                                  texture2d<float> ltcMat [[texture(8)]],
-                                                 texture2d<float> ltcAmp [[texture(9)]]
+                                                 texture2d<float> ltcAmp [[texture(9)]],
+                                                 texture2d_array<float> iesProfiles [[texture(10)]],
+                                                 texture2d_array<float> cookies [[texture(11)]]
 #if OLLIN_RT_SHADOWS
                                                  , primitive_acceleration_structure accel [[buffer(5)]]
                                                  // The reflection-trace inputs (see ollin_rt_reflection),
@@ -717,7 +719,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // stands in for the map sampling there; pass a lit (1.0) ray-traced point factor.
     float4 lit = meshLitColor(baseRGB, baseA, n, pw, mat, light,
                               shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                              ltcMat, ltcAmp
+                              ltcMat, ltcAmp, iesProfiles, cookies
 #if OLLIN_RT_SHADOWS
                               , 1.0
 #endif
@@ -736,7 +738,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                          // Fields always trace inline (their lighting never sets
                                          // rtReflectionDeferred), so no deferred sample to pass.
                                          , pw, accel, meshVerts, meshGeoOffsets, float4(0.0),
-                                         ltcAmp
+                                         ltcAmp, iesProfiles, cookies
 #endif
                                          );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {

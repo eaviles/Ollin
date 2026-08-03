@@ -330,6 +330,16 @@ final class Drawer {
     /// surface (see `ambientLight`). Per-frame state; `nil` means none.
     private(set) var ambientLightColor: Color?
 
+    /// The distinct IES profiles this frame's packed lights reference, in layer
+    /// order (a packed light's `shaping.x` indexes this list). Rebuilt by every
+    /// `makeLighting` call from the active lights, so repeated calls within a
+    /// frame agree; the renderer bakes its profile texture array from it.
+    private(set) var usedIESProfiles: [IESProfile] = []
+
+    /// The distinct light cookies this frame's packed spots reference, in layer
+    /// order (`shaping.y`); the cookie-array sibling of `usedIESProfiles`.
+    private(set) var usedLightCookies: [LightCookie] = []
+
     /// How the 3D mesh material is lit this frame.
     enum LightingMode {
         case auto    // nothing set → the default rig (solids look shaded out of the box)
@@ -1660,6 +1670,10 @@ final class Drawer {
     func makeLighting() -> OllinLighting {
         var u = OllinLighting()
         u.shadowLight = -1   // no shadows unless a caster is found below
+        // Rebuilt below while packing; cleared first so the `.off`/`.auto` paths
+        // leave no stale layers for the renderer's texture-array caches.
+        usedIESProfiles.removeAll(keepingCapacity: true)
+        usedLightCookies.removeAll(keepingCapacity: true)
         if let eye = camera3D?.eye {
             u.cameraPosition = SIMD4<Float>(Float(eye.x), Float(eye.y), Float(eye.z), 0)
         }
@@ -1705,7 +1719,31 @@ final class Drawer {
         // typed pointer rather than naming each element.
         withUnsafeMutablePointer(to: &u.lights) { tuplePtr in
             tuplePtr.withMemoryRebound(to: OllinLight.self, capacity: Int(OLLIN_MAX_LIGHTS)) { buf in
-                for i in 0..<count { buf[i] = Drawer.packLight(activeLights[i]) }
+                for i in 0..<count {
+                    let light = activeLights[i]
+                    // Light shaping rides two texture arrays; the packed layer
+                    // index is the profile/cookie's position in the frame's
+                    // deduped list (the renderer bakes the arrays from these).
+                    var profileLayer = -1, cookieLayer = -1
+                    if light.kind == .point || light.kind == .spot, let p = light.profile {
+                        if let found = usedIESProfiles.firstIndex(of: p) {
+                            profileLayer = found
+                        } else {
+                            usedIESProfiles.append(p)
+                            profileLayer = usedIESProfiles.count - 1
+                        }
+                    }
+                    if light.kind == .spot, let c = light.cookie {
+                        if let found = usedLightCookies.firstIndex(of: c) {
+                            cookieLayer = found
+                        } else {
+                            usedLightCookies.append(c)
+                            cookieLayer = usedLightCookies.count - 1
+                        }
+                    }
+                    buf[i] = Drawer.packLight(light, profileLayer: profileLayer,
+                                              cookieLayer: cookieLayer)
+                }
             }
         }
         // Shadow caster: the first directional light, or, when the scene has no
@@ -1854,8 +1892,14 @@ final class Drawer {
 
     /// Convert a `Light` into its GPU form: linearized intensity-scaled color, the
     /// vectors a directional/point/spot light needs, and a spot's cone cosines.
-    private static func packLight(_ light: Light) -> OllinLight {
+    private static func packLight(_ light: Light, profileLayer: Int = -1,
+                                  cookieLayer: Int = -1) -> OllinLight {
         var l = OllinLight()
+        // Light shaping: the layer indices into the frame's IES/cookie texture
+        // arrays (-1 = none; a zero-initialized struct would wrongly point at
+        // layer 0) and the roll about the beam axis.
+        l.shaping = SIMD4<Float>(Float(profileLayer), Float(cookieLayer),
+                                 Float(light.roll), 0)
         let i = light.intensity
         l.color = SIMD4<Float>(Float(Color.srgbToLinear(light.color.red) * i),
                                Float(Color.srgbToLinear(light.color.green) * i),
@@ -1877,6 +1921,11 @@ final class Drawer {
             l.kind = 1
             l.position = SIMD4<Float>(Float(light.position.x), Float(light.position.y),
                                       Float(light.position.z), 0)
+            // The fixture axis an IES profile aims along (straight down by
+            // default) rides the otherwise-unused direction slot.
+            let axis = light.direction.length > 0 ? light.direction.normalized
+                                                  : Vector3(0, -1, 0)
+            l.direction = SIMD4<Float>(Float(axis.x), Float(axis.y), Float(axis.z), 0)
         case .spot:
             l.kind = 2
             l.position = SIMD4<Float>(Float(light.position.x), Float(light.position.y),

@@ -320,6 +320,89 @@ extension MetalRenderer {
         return true
     }
 
+    /// The baked IES-profile texture resolution: vertical angle 0…π across the
+    /// width, azimuth 0…2π down the height (the shader's sampler wraps it).
+    static let iesBakeWidth = 256
+    static let iesBakeHeight = 64
+
+    /// Bake the frame's distinct IES profiles (from `Drawer.usedIESProfiles`, whose
+    /// order the packed `shaping.x` layer indices follow) into an `r16Float`
+    /// `texture2d_array`, one layer per profile. Cached by the profiles' content
+    /// hashes; a change allocates a fresh texture (never replaced in place). Returns
+    /// `false` only if the device can't make the texture.
+    func ensureIESArray(_ profiles: [IESProfile]) -> Bool {
+        guard !profiles.isEmpty else { return false }
+        let key = profiles.map(\.contentHash)
+        if key == iesArrayKey, iesArrayTexture != nil { return true }
+        let w = Self.iesBakeWidth, h = Self.iesBakeHeight
+        let desc = MTLTextureDescriptor()
+        desc.textureType = .type2DArray
+        desc.pixelFormat = .r16Float
+        desc.width = w
+        desc.height = h
+        desc.arrayLength = profiles.count
+        desc.usage = .shaderRead
+        desc.storageMode = .shared
+        guard let texture = device.makeTexture(descriptor: desc) else { return false }
+        for (layer, profile) in profiles.enumerated() {
+            let half = profile.bakedTable(width: w, height: h).map(Float16.init)
+            half.withUnsafeBytes { raw in
+                texture.replace(region: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0,
+                                slice: layer, withBytes: raw.baseAddress!,
+                                bytesPerRow: w * MemoryLayout<Float16>.size,
+                                bytesPerImage: w * h * MemoryLayout<Float16>.size)
+            }
+        }
+        iesArrayTexture = texture
+        iesArrayKey = key
+        return true
+    }
+
+    /// Upload the frame's distinct light cookies (from `Drawer.usedLightCookies`,
+    /// the `shaping.y` order) into an sRGB `texture2d_array`; each `LightCookie`
+    /// already resampled itself to the shared square at init, so a layer is one
+    /// byte copy. Same fresh-texture cache discipline as the profiles.
+    func ensureCookieArray(_ cookies: [LightCookie]) -> Bool {
+        guard !cookies.isEmpty else { return false }
+        let key = cookies.map(\.contentHash)
+        if key == cookieArrayKey, cookieArrayTexture != nil { return true }
+        let side = LightCookie.resolution
+        let desc = MTLTextureDescriptor()
+        desc.textureType = .type2DArray
+        desc.pixelFormat = .rgba8Unorm_srgb
+        desc.width = side
+        desc.height = side
+        desc.arrayLength = cookies.count
+        desc.usage = .shaderRead
+        desc.storageMode = .shared
+        guard let texture = device.makeTexture(descriptor: desc) else { return false }
+        for (layer, cookie) in cookies.enumerated() {
+            cookie.pixels.withUnsafeBytes { raw in
+                texture.replace(region: MTLRegionMake2D(0, 0, side, side), mipmapLevel: 0,
+                                slice: layer, withBytes: raw.baseAddress!,
+                                bytesPerRow: side * 4, bytesPerImage: side * side * 4)
+            }
+        }
+        cookieArrayTexture = texture
+        cookieArrayKey = key
+        return true
+    }
+
+    /// The never-sampled 1×1×1 array stand-in for the light-shaping texture slots
+    /// (10/11) when a frame has no profile or cookie bound there.
+    func shapingStandIn() -> MTLTexture? {
+        if let existing = lightShapingStandIn { return existing }
+        let desc = MTLTextureDescriptor()
+        desc.textureType = .type2DArray
+        desc.pixelFormat = .r8Unorm
+        desc.width = 1
+        desc.height = 1
+        desc.arrayLength = 1
+        desc.usage = .shaderRead
+        lightShapingStandIn = device.makeTexture(descriptor: desc)
+        return lightShapingStandIn
+    }
+
     private func bakeIBL(_ environment: Environment, equirectTexture loaded: MTLTexture,
                          avgLuminance: Float, fastSky: Bool = false,
                          commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {

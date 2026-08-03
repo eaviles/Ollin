@@ -645,23 +645,33 @@ open class Sketch {
 
     /// Add a point light: an omnidirectional source at a world position. `specular`
     /// (default `nil` = `color`) tints its highlight; `softness` (`0…1`) softens the
-    /// terminator.
+    /// terminator. An IES `profile` shapes the falloff by angle, aimed along `axis`
+    /// (the fixture's hanging direction, straight down by default) and spun about
+    /// it by `roll`.
     public func pointLight(_ color: Color, at position: Vector3, intensity: Double = 1,
-                           specular: Color? = nil, softness: Double = 0) {
+                           specular: Color? = nil, softness: Double = 0,
+                           profile: IESProfile? = nil,
+                           axis: Vector3 = Vector3(0, -1, 0), roll: Double = 0) {
         drawer.addLight(.point(color, at: position, intensity: intensity,
-                               specular: specular, softness: softness))
+                               specular: specular, softness: softness,
+                               profile: profile, axis: axis, roll: roll))
     }
 
     /// Add a spot light: a point source at `position` aimed along `direction`,
     /// narrowed to a cone of full angle `angle` (radians) with a `penumbra` soft
     /// edge (`0` hard … `1` very soft). `specular` (default `nil` = `color`) tints its
-    /// highlight; `softness` (`0…1`) softens the terminator.
+    /// highlight; `softness` (`0…1`) softens the terminator. An IES `profile`
+    /// shapes the throw inside the cone, a `cookie` projects an image through it
+    /// (a gobo, a gel), and `roll` spins both about the beam.
     public func spotLight(_ color: Color, at position: Vector3, direction: Vector3,
                           angle: Double = .pi / 6, penumbra: Double = 0.2, intensity: Double = 1,
-                          specular: Color? = nil, softness: Double = 0) {
+                          specular: Color? = nil, softness: Double = 0,
+                          profile: IESProfile? = nil, cookie: LightCookie? = nil,
+                          roll: Double = 0) {
         drawer.addLight(.spot(color, at: position, direction: direction,
                               angle: angle, penumbra: penumbra, intensity: intensity,
-                              specular: specular, softness: softness))
+                              specular: specular, softness: softness,
+                              profile: profile, cookie: cookie, roll: roll))
     }
 
     /// Add a rect area light: a glowing `width` × `height` panel centered at `position`,

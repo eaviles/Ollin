@@ -213,6 +213,31 @@ Shadows work the way the last section said, with the panel's size standing in fo
 
 The `3D/Lighting/AreaLights` example stages all three shapes over a glossy floor; put it beside `3D/Lighting/Lighting` and the difference between a bulb and a panel is the whole studio-photography look. `3D/Lighting/AreaShadows` is the breathing softbox.
 
+## The shape of the throw
+
+A bare point light pours the same brightness in every direction, and a spot is just that pour with a cone cut into it. Real fixtures are choosier. A recessed downlight pools a hot disc with a faint ring of spill around it; a street lamp throws sideways in two wings so the bright spot isn't the foot of its own pole; a wallwasher climbs the wall and leaves the room alone. Lighting manufacturers measure exactly where each fixture sends its light and publish the measurement as an **IES file**, a small text file of brightness-by-angle, and a light can wear one:
+
+```swift
+let ring = IESProfile(string: ringFile)!     // or IESProfile(resource: "downlight", in: .module)!
+
+pointLight(Color(hue: 0.09, saturation: 0.35, brightness: 1.0),
+           at: Vector3(-2.6, 2.4, 0.4), intensity: 1.4, profile: ring)
+
+let rock = sin(loopProgress(over: 6) * .tau) * 0.16
+spotLight(Color(hue: 0.12, saturation: 0.25, brightness: 1.0),
+          at: Vector3(3.6, 4.6, 4.2), direction: Vector3(-0.32, -0.66, -0.55),
+          angle: 0.85, penumbra: 0.12, intensity: 1.25,
+          cookie: window, roll: rock)
+```
+
+<img src="Images/17-3DGently/ShapedLight.gif" alt="A dark room with a sphere and a low slab. On the left an orange downlight pools a hot disc around the sphere with a faint ring of spill just outside it. On the right, warm window panes with a cross of mullion shadow lie across the floor and climb over the slab, rocking slowly from side to side" width="560">
+
+The left pool is the profile at work: a hot center, a dip, then the spill ring, all read from a dozen numbers in the file. The profile's `0°` aims along the light's axis (a spot uses its `direction`; a point light takes an `axis:`, straight down unless you say otherwise), its brightest direction is normalized to `1` so `intensity` still means what it always means, and anywhere the file didn't measure is dark, exactly as the fixture is. Parse the file once in `setup()` and keep it; it's plain data, and `IESProfile(resource:in:)`, `(contentsOf:)`, `(data:)`, and `(string:)` all read the same format. The throw is the fixture's signature, and the file is how you borrow a real one.
+
+The window on the right is the second shaper: a **cookie**, an image a spot projects through its cone (stage crews call the physical version a gobo, a stencil slid in front of the light). `LightCookie(image)` wraps any `Image` once, in `setup()`; black blocks, white passes, color tints like a gel, and the image's edges land at the spot's outer cone, so a wider cone throws the same picture larger. The `roll:` in the listing is what rocks the panes: one knob spins an asymmetric profile and the cookie together about the beam, the way a fixture turns in its yoke.
+
+Two habits worth keeping. A profile ends where its measurements end, so a downlight file that stops at 90° sends nothing above the fixture's own horizon; to wash a wall, tilt the light's `axis:` at it, the way the real fixture would be aimed. And both shapers are made-once values: the profile parses its file and the cookie resamples its image at construction, so build them in `setup()` and hand the same value to the light every frame. The `3D/Lighting/LightShaping` example stages a downlight, a batwing, a wallwasher, and this same window over one floor, with its three `.ies` files riding beside the sketch as bundled resources.
+
 ## Materials
 
 A material is a surface's whole way of catching light, picked by name. The color still comes from `fill`; the *finish* comes from `material`:

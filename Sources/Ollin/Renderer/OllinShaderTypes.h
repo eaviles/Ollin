@@ -436,6 +436,11 @@ typedef struct {
                              // tube: the unit axis, w = the half-length. Unused for kinds 0-2.
     simd_float4 axisB;       // rect/disk: unit bitangent (the height axis), w = half-height (disk: radius);
                              // tube: xyz unused, w = the tube radius. Unused for kinds 0-2.
+    simd_float4 shaping;     // light shaping (point/spot): x = IES profile layer in the array at
+                             // fragment texture 10 (-1 = none), y = cookie layer in the array at
+                             // fragment texture 11 (-1 = none, spot only), z = roll about the beam
+                             // axis in radians (spins profile azimuth + cookie together), w unused.
+                             // The point kind's fixture axis rides `direction` (unused before).
 } OllinLight;
 
 // Shadow mapping (opt-in, `castShadows()`): one light casts. The caster's
@@ -526,6 +531,15 @@ typedef struct {
                                   // (set by the renderer once the bundled tables load), so the area
                                   // light kinds (3-5) shade; 0 = area kinds contribute nothing (the
                                   // loader logs the failure once). Kinds 0-2 never read it.
+    int   iesEnabled;             // 1 = the baked IES profile array is bound at fragment texture 10
+                                  // (set by the renderer once a frame light carries a profile), so a
+                                  // light with shaping.x >= 0 samples it; 0 = no light has a profile
+                                  // and the punctual path is byte-identical.
+    int   cookieEnabled;          // 1 = the cookie array is bound at fragment texture 11 (a frame
+                                  // spot carries a cookie), so shaping.y >= 0 projects it; 0 = none,
+                                  // byte-identical. Both flags follow the `ltcEnabled` discipline:
+                                  // default 0, textures always bound (real or stand-in), the branch
+                                  // skipped so a featureless frame executes the prior instructions.
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

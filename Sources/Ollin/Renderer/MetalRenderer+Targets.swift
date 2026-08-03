@@ -666,6 +666,14 @@ extension MetalRenderer {
            drawer.lights.contains(where: { $0.kind == .rect || $0.kind == .disk || $0.kind == .tube }) {
             lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
         }
+        // Light shaping, same mirroring (the profile/cookie lists were rebuilt by this
+        // pass's own `makeLighting`, so the layer indices agree with the packed lights).
+        if lighting.enabled != 0, !drawer.usedIESProfiles.isEmpty {
+            lighting.iesEnabled = ensureIESArray(drawer.usedIESProfiles) ? 1 : 0
+        }
+        if lighting.enabled != 0, !drawer.usedLightCookies.isEmpty {
+            lighting.cookieEnabled = ensureCookieArray(drawer.usedLightCookies) ? 1 : 0
+        }
         if reflectAccelPresent { lighting.rtReflections = 1 }
         return (lighting, shadowMap ?? ensureDummyShadowMap(), shadowCube ?? ensureDummyPointShadowMap())
     }
@@ -769,6 +777,10 @@ extension MetalRenderer {
         // stand-ins when unloaded (`lighting.ltcEnabled` gates the read).
         enc.setFragmentTexture(ltcMatTexture ?? strip, index: 8)
         enc.setFragmentTexture(ltcAmpTexture ?? strip, index: 9)
+        // The light-shaping arrays (tex 10/11), matching the main pass; the array
+        // stand-in otherwise (`iesEnabled`/`cookieEnabled` gate).
+        enc.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
+        enc.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
         // The mesh acceleration structure at buffer 5, matching the main pass: RT point
         // shadows received by the field, and the reflection trace when `rtReflections`
         // is set. A dummy when neither is active, never traced.
@@ -1015,6 +1027,14 @@ extension MetalRenderer {
            drawer.lights.contains(where: { $0.kind == .rect || $0.kind == .disk || $0.kind == .tube }) {
             lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
         }
+        // Light shaping, the same mirroring: without it a profiled or cookied spot
+        // would lose its pattern only in deferred reflections.
+        if lighting.iesEnabled == 0, !drawer.usedIESProfiles.isEmpty {
+            lighting.iesEnabled = ensureIESArray(drawer.usedIESProfiles) ? 1 : 0
+        }
+        if lighting.cookieEnabled == 0, !drawer.usedLightCookies.isEmpty {
+            lighting.cookieEnabled = ensureCookieArray(drawer.usedLightCookies) ? 1 : 0
+        }
 
         // 1. The G-buffer: re-render the main canvas's solid meshes (the same batch walk
         // as the mesh-normal pass; wireframes and the grid chrome carry no reflective
@@ -1085,6 +1105,10 @@ extension MetalRenderer {
         // G-buffer normal is the never-sampled stand-in when the tables aren't
         // loaded (`ltcEnabled` gates every read, matching the mesh fragments).
         trace.setFragmentTexture(ltcAmpTexture ?? gbuf.normal, index: 9)
+        // The light-shaping arrays (tex 10/11), so the hit shade keeps a shaped
+        // light's pattern; the array stand-in otherwise (the gates guard the reads).
+        trace.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
+        trace.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
         trace.setFragmentSamplerState(imageSampler, index: 0)
         var traceParams = SIMD4<Float>(1 / Float(width), 1 / Float(height), Float(samples), seed)
         trace.setFragmentBytes(&traceParams, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)

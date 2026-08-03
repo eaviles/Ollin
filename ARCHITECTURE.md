@@ -1589,6 +1589,92 @@ head-on view (V ≈ N) takes a deterministic fallback tangent instead of
 normalizing a zero vector (the reference leaves this case unguarded; the
 head-on LUT row is fitted isotropic, so any tangent is exact).
 
+### Light shaping (IES profiles and cookies)
+
+A point or spot light can carry an `IESProfile` (a fixture's measured angular
+intensity, parsed from the industry's LM-63 photometric files) and a spot a
+`LightCookie` (a projected image). Both are per-light data that end up as
+layers of two `texture2d_array`s bound at fragment textures 10/11 on every
+lit carrier, sampled inside `meshLitColor`'s punctual branch and the
+`ollin_rt_direct` hit shade.
+
+**The parser treats the file as a number stream, not lines.** LM-63 nominally
+caps lines at 132 characters, but real exports break that freely (Lagarde's
+survey found 4,000-character candela lines), so `IESProfile` finds the
+`TILT=` line, tokenizes every whitespace/comma-separated number after it, and
+counts: a skipped `TILT=INCLUDE` block, the 10 + 3 header fields, the two
+angle lists, then one candela block per horizontal angle with the vertical
+angle varying fastest. Lateral symmetry rides the *last* horizontal angle
+(0 = axially symmetric, 90 = quadrant, 180 = bilateral, 360 = full wrap, plus
+the rare 90-first/270-last plane), expanded at sample time by folding the
+query azimuth into the stored wedge. Only Type C photometry parses (the
+architectural convention; A/B are automotive/floodlight aiming conventions
+Ashdown reports never meeting in practice), values normalize to peak 1 (the
+light's `intensity` stays the brightness knob, unitless like the rest of the
+punctual model), and every failure path returns `nil` with a one-line stderr
+reason, including header counts, which go through a guarded `Double`→`Int`
+conversion because a malformed exponent would otherwise trap the process.
+
+**The bake resamples the wedge onto a uniform sphere.** The CPU sampler
+interpolates the non-uniform measured angles piecewise-linearly; `bakedTable`
+evaluates it at texel centers into a 256×64 (θ 0…π across, φ 0…2π down)
+`r16Float` layer. The shader then needs no knowledge of symmetry or angle
+lists: u clamps, v wraps (the sampler's `t_address::repeat` carries
+`atan2`'s signed azimuth straight through). Directions outside a file's
+measured vertical range are dark *by design*: a downlight file ending at
+90° sends nothing above the fixture's horizon, which is why the example's
+wallwasher tilts its whole axis at the wall the way a real one aims, rather
+than expecting azimuthal data to reach up.
+
+**`LightCookie` is a value, not an `Image` reference.** `Light` is
+`Equatable, Sendable`; `Image` is neither, so the cookie resamples the
+image's premultiplied pixels bilinearly into its own fixed 512² buffer at
+init (with a precomputed content hash for cheap equality and caching) and
+carries no reference back. That one decision keeps `Light` a plain value,
+makes the GPU upload a byte copy into an array layer, and pins the "build it
+once in `setup()`" usage shape. A GPU-backed image has no CPU pixels and
+fails to wrap (snapshot it first).
+
+**Frame plumbing follows the LTC pattern exactly.** `makeLighting` dedupes
+the frame's profiles and cookies into `Drawer.usedIESProfiles` /
+`usedLightCookies` (rebuilt on every call, so the several per-frame
+`makeLighting` invocations agree) and packs each light's layer indices plus
+its roll into the new `OllinLight.shaping` float4 (-1 = none; a
+zero-initialized struct would silently point at layer 0). The renderer bakes
+the arrays keyed by content-hash lists (an unchanged frame rebinds the same
+textures; a changed one gets a *fresh* allocation, never replaced in place,
+since in-flight command buffers retain the old) and raises `iesEnabled` /
+`cookieEnabled` at the same three sites `ltcEnabled` is resolved (the main
+encode, `resolveFieldLighting`, and `encodeReflectionPass`, the last because
+the deferred trace builds its own lighting and would otherwise lose the
+pattern only in reflections). The stand-in for an empty slot is a dedicated
+1×1 `texture2d_array`; the 2D gradient-strip stand-in the other slots use
+is type-invalid where the shader declares an array.
+
+**Sampling applies to the light's local copy.** `ollin_apply_light_shaping`
+multiplies the profile's scalar and the cookie's rgb into the loop-local
+`L.color`/`L.specular`, so every shading model below (standard, toon, Gooch,
+PBR), the SSS wrap, and the `incoming` sheen accumulation pick the shaping up
+with no per-model edits, and `ollin_rt_direct` reuses the same helper so
+reflections can't drift. The tangent frame (`ollin_light_frame`) uses the
+shadow code's up-reference convention but winds `right = axis × ref`, the
+**projector convention**, under which a cookie reads un-mirrored as seen from
+the light looking along its beam; the first cut wound it `cross(ref, axis)`
+and the probe caught the mirrored image. The cookie maps the outer cone's
+footprint to the texture square (`tan` of the half-angle recovered from the
+packed `cosOuter`), so its edges land exactly at the cone edge and the edge
+clamp is invisible: every point outside the [0,1]² square is also outside
+the cone the `smoothstep` already zeroed. One `roll` spins profile azimuth
+and cookie together, like turning a fixture in its yoke.
+
+Pinned by `IESProfileTests` (parse, symmetry folds, candela ordering, bake,
+packing) and `LightShapingRenderProbes` (the ring profile darkening the axis
+while lighting its ring, the half-black cookie's orientation, and a
+half-turn roll swapping it); the `light-shaping` snapshot covers the whole
+path with inline-authored fixtures. All bundled `.ies` files are authored
+for Ollin; manufacturer files are freely *distributed* but not clearly
+*licensed*, so none ship.
+
 ### The IBL bake
 
 `environment(_:)` lights the PBR materials from a surrounding HDRI via the

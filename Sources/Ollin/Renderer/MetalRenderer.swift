@@ -754,6 +754,21 @@ final class MetalRenderer {
     /// A failed table load (a corrupt bundle) logs once and stays failed; area lights then
     /// contribute nothing rather than shading through garbage.
     var ltcLoadFailed = false
+    /// The frame's baked IES-profile array (one layer per distinct profile among the
+    /// lights, in `Drawer.usedIESProfiles` order), bound at mesh fragment texture 10;
+    /// `iesArrayKey` is the content-hash list it was baked from, so an unchanged frame
+    /// reuses it and a changed one gets a *fresh* texture (never replaced in place; an
+    /// in-flight frame may still read the old one, which its command buffer retains).
+    var iesArrayTexture: MTLTexture?
+    var iesArrayKey: [Int] = []
+    /// The cookie sibling (`Drawer.usedLightCookies` order), bound at texture 11.
+    var cookieArrayTexture: MTLTexture?
+    var cookieArrayKey: [Int] = []
+    /// A 1×1×1 `texture2d_array` stand-in for the two light-shaping slots when a frame
+    /// carries none (the declared array samplers must always be bound; never sampled
+    /// with the gates down). The 2D `strip` stand-in can't serve here: the slot's
+    /// declared type is an array, and Metal validation rejects a plain 2D texture.
+    var lightShapingStandIn: MTLTexture?
     /// Processed equirect pixels ready to bake, keyed by source. A heavy `.url` HDRI decodes
     /// off the render thread (live) and lands here for the next frame to upload + bake; the
     /// bundled placeholder shows meanwhile. Locked because the background decode writes it.

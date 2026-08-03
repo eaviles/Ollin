@@ -658,3 +658,119 @@ struct LightingPresetFacadeTests {
         #expect(close(u.ambient.x, Float(Color.srgbToLinear(preset.ambient.red))))
     }
 }
+
+/// Behavioral probes for light shaping: an IES profile reshaping a point light's
+/// throw and a cookie masking (and orienting, and rolling) a spot's projection,
+/// each read off a rendered frame against its unshaped counterpart. Metal-gated;
+/// the shaped paths are identical across RT and non-RT devices.
+@Suite
+@MainActor
+struct LightShapingRenderProbes {
+
+    private func pixels(_ sketch: Sketch) throws -> (data: [UInt8], w: Int, h: Int) {
+        let image = try #require(OllinApp.image(of: sketch, frame: 1))
+        let w = image.width, h = image.height
+        var data = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        return (data, w, h)
+    }
+
+    private func red(_ p: (data: [UInt8], w: Int, h: Int), _ x: Int, _ y: Int) -> Int {
+        Int(p.data[(y * p.w + x) * 4])
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aProfileReshapesTheThrow() throws {
+        // Unshaped: the point light's peak lands at the quad's center.
+        let plain = try pixels(LightShapingProbe.make(.plainPoint))
+        let plainCenter = red(plain, plain.w / 2, plain.h / 2)
+        #expect(plainCenter > 100, "expected a lit center without a profile, got \(plainCenter)")
+
+        // The ring profile is dark on axis and bright in a 30-degree band, so the
+        // center goes dark while a ring of the same row lights up.
+        let ringed = try pixels(LightShapingProbe.make(.ringProfile))
+        let ringedCenter = red(ringed, ringed.w / 2, ringed.h / 2)
+        #expect(ringedCenter < 12, "the profile's dark axis still lit the center: \(ringedCenter)")
+        let row = ringed.h / 2
+        let rowMax = (0..<ringed.w).map { red(ringed, $0, row) }.max() ?? 0
+        #expect(rowMax > 80, "expected the profile's bright ring in the row, got max \(rowMax)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aCookieMasksAndOrientsTheProjection() throws {
+        // The cookie's left half is black, right half white; the projector
+        // convention lands the image un-mirrored for the camera behind the light,
+        // so the rendered right half is lit and the left dark.
+        let p = try pixels(LightShapingProbe.make(.halfCookie))
+        let left = red(p, p.w / 4, p.h / 2)
+        let right = red(p, 3 * p.w / 4, p.h / 2)
+        #expect(right > 80, "the cookie's white half should light, got \(right)")
+        #expect(left < 12, "the cookie's black half should block, got \(left)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func rollSpinsTheProjection() throws {
+        // A half-turn of roll swaps the cookie's halves.
+        let p = try pixels(LightShapingProbe.make(.halfCookieRolled))
+        let left = red(p, p.w / 4, p.h / 2)
+        let right = red(p, 3 * p.w / 4, p.h / 2)
+        #expect(left > 80, "after a half-turn roll the left half should light, got \(left)")
+        #expect(right < 12, "after a half-turn roll the right half should block, got \(right)")
+    }
+}
+
+/// The light-shaping render probe: the camera-facing white quad from the area
+/// probes, lit by one shaped point or spot light. The ring IES fixture is
+/// authored here (dark on axis, bright in a band around 30 degrees).
+private final class LightShapingProbe: Sketch {
+    enum Mode { case plainPoint, ringProfile, halfCookie, halfCookieRolled }
+    var mode = Mode.plainPoint
+
+    static let ringIES = """
+    IESNA:LM-63-2002
+    [TEST] Ollin probe fixture
+    TILT=NONE
+    1 1000 1 8 1 1 2 0.1 0.1 0.1
+    1.0 1.0 100
+    0 10 20 30 40 50 60 90
+    0
+    0 0 800 1000 800 200 0 0
+    """
+
+    static func make(_ mode: Mode) -> LightShapingProbe {
+        let probe = LightShapingProbe()
+        probe.mode = mode
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(radius: 3))
+        switch mode {
+        case .plainPoint:
+            pointLight(.white, at: Vector3(0, 0, 1.5), intensity: 1.2,
+                       axis: Vector3(0, 0, -1))
+        case .ringProfile:
+            let profile = IESProfile(string: LightShapingProbe.ringIES)!
+            pointLight(.white, at: Vector3(0, 0, 1.5), intensity: 1.2,
+                       profile: profile, axis: Vector3(0, 0, -1))
+        case .halfCookie, .halfCookieRolled:
+            var gobo = Image(width: 8, height: 8, color: .black)
+            for y in 0..<8 { for x in 4..<8 { gobo[x, y] = .white } }
+            spotLight(.white, at: Vector3(0, 0, 2), direction: Vector3(0, 0, -1),
+                      angle: 1.9, penumbra: 0.1, intensity: 1.2,
+                      cookie: LightCookie(gobo),
+                      roll: mode == .halfCookieRolled ? .pi : 0)
+        }
+        fill(.white)
+        drawMesh(Mesh(positions: [Vector3(-1, -1, 0), Vector3(1, -1, 0),
+                                  Vector3(1, 1, 0), Vector3(-1, 1, 0)],
+                      normals: [.unitZ, .unitZ, .unitZ, .unitZ],
+                      indices: [0, 1, 2, 0, 2, 3]))
+    }
+}

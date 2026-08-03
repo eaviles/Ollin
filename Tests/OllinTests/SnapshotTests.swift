@@ -293,6 +293,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("area-lights",
                  note: "A rect panel, a disk, and a tube (the LTC area lights) over a glossy floor and a roughness row: pins the bundled LTC table load, the horizon-clipped rect integral, the disk's ellipse/cubic path, the tube's line integral, the physical falloff, and the Blinn-Phong shininess-to-roughness mapping on the standard-material box. Fixed camera, no time.",
                  make: { AreaLightsScene() }),
+    SnapshotCase("light-shaping",
+                 note: "Light shaping: a ring-profiled IES point light, a rolled asymmetric profile, and a window-gobo cookie spot over a floor + wall. Pins the LM-63 parse, the theta/phi bake + texture-array sampling, the projector-convention cookie mapping, the roll, and the iesEnabled/cookieEnabled gates. Fixed camera, no time.",
+                 make: { LightShapingScene() }),
     SnapshotCase("procedural-sky",
                  note: "PBR balls + a floor lit by a procedural Hosek-Wilkie sky (no asset): pins the .sky path (the CPU coefficient cook (vendored model), the GPU sky-equirect generation, and the same equirect->cube / irradiance / GGX-prefilter bake + skybox the HDRI path uses). Fixed sun elevation + camera, no time, so the generation and bake are deterministic.",
                  make: { ProceduralSkyScene() }),
@@ -1093,6 +1096,87 @@ private final class AreaLightsScene: Sketch {
             specular(0.6)
             shininess(64)
             drawBox(size: 1.1)
+        }
+    }
+}
+
+/// Light shaping under a fixed camera: a ring-profiled point light pooling on the
+/// floor, an asymmetric bilateral profile rolled toward the wall, and a spot
+/// projecting a window-frame cookie. All profile data is authored inline, so the
+/// scene pins the parser, the bake, the array sampling, and the projector-convention
+/// cookie orientation in one image. No `time`.
+private final class LightShapingScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    static let ring = IESProfile(string: """
+    IESNA:LM-63-2002
+    TILT=NONE
+    1 1000 1 8 1 1 2 0.1 0.1 0.1
+    1.0 1.0 100
+    0 10 20 30 40 50 60 90
+    0
+    1000 700 200 350 600 250 40 0
+    """)!
+
+    static let fan = IESProfile(string: """
+    IESNA:LM-63-2002
+    TILT=NONE
+    1 1000 1 6 4 1 2 0.1 0.1 0.1
+    1.0 1.0 100
+    0 20 40 60 80 90
+    0 60 120 180
+    500 900 1000 700 200 0
+    400 700 750 450 120 0
+    150 250 260 150 40 0
+    40 60 60 30 8 0
+    """)!
+
+    static let gobo: LightCookie = {
+        var frame = Image(width: 64, height: 64, color: .black)
+        for y in 0..<64 {
+            for x in 0..<64 {
+                let inFrame = x > 4 && x < 59 && y > 4 && y < 59
+                let onMullion = abs(x - 32) < 3 || abs(y - 32) < 3
+                if inFrame && !onMullion { frame[x, y] = .white }
+            }
+        }
+        return LightCookie(frame)!
+    }()
+
+    override func draw() {
+        background(Color(white: 0.02))
+        camera(.orbiting(target: Vector3(0, -0.3, 0), radius: 9,
+                         azimuth: 0.1, elevation: 0.32, fieldOfView: .pi / 3.4))
+        ambientLight(Color(white: 0.015))
+        pointLight(Color(hue: 0.09, saturation: 0.4, brightness: 1.0),
+                   at: Vector3(-2.4, 0.9, 0.6), intensity: 1.3,
+                   profile: LightShapingScene.ring)
+        pointLight(Color(hue: 0.58, saturation: 0.35, brightness: 1.0),
+                   at: Vector3(2.6, 1.6, 0.8), intensity: 1.5,
+                   profile: LightShapingScene.fan,
+                   axis: Vector3(0, -0.6, -1), roll: .pi / 2)
+        spotLight(Color(hue: 0.13, saturation: 0.3, brightness: 1.0),
+                  at: Vector3(-3.4, 2.8, 3.6), direction: Vector3(0.55, -0.6, -0.5),
+                  angle: 0.75, penumbra: 0.15, intensity: 1.3,
+                  cookie: LightShapingScene.gobo, roll: 0.15)
+
+        withState {
+            translate(0, -1.2, 0)
+            fill(Color(white: 0.6))
+            material(.dielectric(roughness: 0.75))
+            drawPlane(width: 14, depth: 12)
+        }
+        withState {
+            translate(0, 1.0, -3.0)
+            fill(Color(white: 0.55))
+            material(.dielectric(roughness: 0.85))
+            drawBox(width: 14, height: 4.4, depth: 0.25)
+        }
+        withState {
+            translate(-2.4, -0.7, 0.6)
+            fill(Color(white: 0.85))
+            material(.dielectric(roughness: 0.45))
+            drawSphere(radius: 0.55)
         }
     }
 }

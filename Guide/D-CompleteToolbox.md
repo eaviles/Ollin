@@ -192,7 +192,8 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Solid primitives | Box, sphere, torus, knots, Platonic solids, lathes, extrusions, and more | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
 | Terrain | `Heightfield`: landscapes grown from noise or diamond-square, weathered by simulated rain and gravity, read out as a mesh, an image, or samples | [Ch 17](17-3DGently.md) | [Terrain](../Docs/Generators/Terrain.md) |
 | Meshes from file | OBJ, glTF, USDZ, STL, PLY, with materials and textures; `normalized(scale:)` recenters and fits whatever arrives | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
-| Lights | Directional, point, spot, ambient, plus curated lighting presets | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
+| Lights | Directional, point, spot, ambient, glowing panels, disks, and tubes, plus curated lighting presets | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md) |
+| Light shaping | A real fixture's measured throw on a light (IES files), and an image projected through a spot (a cookie, the stage gobo) | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md#light-shaping-ies-profiles-and-cookies) |
 | Materials | Stylized finishes (toon, iridescent, velvet, sparkle), and physically based metal and gloss from just metalness and roughness | [Ch 17](17-3DGently.md), [Ch 18](18-SculptingWithFields.md) | [3D](../Docs/3D/3D.md) |
 | Matcaps | Shading read from a picture of a lit sphere: chrome, clay, car paint, in one call and no lights | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md#matcap-materials) |
 | Environments | HDRI image-based lighting (eight bundled, twelve downloading) plus a zero-asset procedural sky; the surroundings become the light | [Ch 18](18-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#environment-lighting) |

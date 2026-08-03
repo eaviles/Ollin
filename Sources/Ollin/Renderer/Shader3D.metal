@@ -302,6 +302,104 @@ static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
     return lit / 20.0;
 }
 
+// MARK: - Light shaping (IES profiles + cookies)
+//
+// A point/spot light can carry an IES photometric profile (a real fixture's
+// measured angular intensity, baked to a layer of the texture2d_array at
+// fragment texture 10) and a spot can project a cookie image (a gobo/gel,
+// a layer of the array at fragment texture 11). The packed layer indices ride
+// `L.shaping.x/.y` (-1 = none) with the roll about the beam axis in `.z`, and
+// the whole feature is gated by `light.iesEnabled`/`light.cookieEnabled` so a
+// frame without it executes the exact prior instruction stream.
+
+// The profile bake spans vertical 0…π across u (clamped) and azimuth 0…2π
+// down v (wrapping, so atan2's signed angle samples straight through).
+constexpr sampler ollinIESSampler(filter::linear, s_address::clamp_to_edge,
+                                  t_address::repeat);
+constexpr sampler ollinCookieSampler(filter::linear, address::clamp_to_edge);
+
+// The light's tangent frame about its beam axis: a deterministic basis (the
+// same up-reference convention the shadow framing uses) spun by the fixture's
+// roll. Shared by the profile's azimuth and the cookie projection so one roll
+// turns both, the way rotating a real fixture in its yoke does. The winding
+// (`right = axis × ref`) is the projector convention: the cookie reads
+// un-mirrored as seen from the light looking along its beam, like a slide in
+// a projector, pinned by the cookie orientation probe.
+static inline void ollin_light_frame(float3 axis, float roll,
+                                     thread float3 &right, thread float3 &up) {
+    float3 ref = (fabs(axis.y) > 0.99) ? float3(0.0, 0.0, 1.0) : float3(0.0, 1.0, 0.0);
+    right = normalize(cross(axis, ref));
+    up = cross(right, axis);
+    if (roll != 0.0) {
+        float c = cos(roll), s = sin(roll);
+        float3 spun = right * c + up * s;
+        up = up * c - right * s;
+        right = spun;
+    }
+}
+
+// The profile's intensity toward this surface: the vertical angle is measured
+// off the light's axis (a spot's cone axis; a point light's packed fixture
+// axis), the azimuth around it. Normalized 0…1 (1 = the fixture's brightest
+// direction), multiplying the light's own intensity.
+static inline float ollin_ies_sample(texture2d_array<float> profiles,
+                                     OllinLight L, float3 toLight) {
+    float3 axis = normalize(L.direction.xyz);
+    float3 d = -toLight;                       // light → surface direction
+    float u = acos(clamp(dot(d, axis), -1.0, 1.0)) * (1.0 / M_PI_F);
+    float3 right, up;
+    ollin_light_frame(axis, L.shaping.z, right, up);
+    float v = atan2(dot(d, up), dot(d, right)) * (0.5 / M_PI_F);
+    return profiles.sample(ollinIESSampler, float2(u, v), (uint)max(L.shaping.x, 0.0)).r;
+}
+
+// The cookie texel this surface sits behind: project onto the plane one unit
+// down the beam and map the outer cone's footprint to the texture square, so
+// the image's edges land at the cone edge and a wider cone projects it larger.
+// Every point outside the square is also outside the cone (the square contains
+// the cone's circle), so the edge clamp is never visible. Returns the linear
+// rgb multiplier (premultiplied over black: transparent blocks like a gobo's
+// metal). Behind the light there is no projection: black.
+static inline float3 ollin_cookie_sample(texture2d_array<float> cookies,
+                                         OllinLight L, float3 worldPos) {
+    float3 axis = normalize(L.direction.xyz);
+    float3 d = worldPos - L.position.xyz;
+    float z = dot(d, axis);
+    if (z <= 1e-6) return float3(0.0);
+    float3 right, up;
+    ollin_light_frame(axis, L.shaping.z, right, up);
+    // tan of the outer half-angle from its packed cosine (clamped so an
+    // ultra-wide cone keeps a finite footprint).
+    float cosO = clamp(L.cosOuter, 0.05, 0.9995);
+    float invSpan = cosO / (sqrt(max(1.0 - cosO * cosO, 1e-8)) * z);
+    float uu = dot(d, right) * invSpan * 0.5 + 0.5;
+    float vv = 0.5 - dot(d, up) * invSpan * 0.5;   // +up reads as the image's top
+    return cookies.sample(ollinCookieSampler, float2(uu, vv),
+                          (uint)max(L.shaping.y, 0.0)).rgb;
+}
+
+// The combined shaping on one punctual light's local copy: the profile scales
+// intensity, the cookie tints diffuse + specular (both already premultiplied
+// into the packed colors, so scaling the copy touches every shading model at
+// once). Skipped entirely when the frame carries no shaping (the gates).
+static inline void ollin_apply_light_shaping(thread OllinLight &L,
+                                             constant OllinLighting &light,
+                                             float3 toLight, float3 worldPos,
+                                             texture2d_array<float> iesProfiles,
+                                             texture2d_array<float> cookies) {
+    if (L.kind < 1 || L.kind > 2) return;
+    float scale = 1.0;
+    if (light.iesEnabled != 0 && L.shaping.x >= 0.0) {
+        scale = ollin_ies_sample(iesProfiles, L, toLight);
+    }
+    float3 tint = float3(scale);
+    if (light.cookieEnabled != 0 && L.kind == 2 && L.shaping.y >= 0.0) {
+        tint *= ollin_cookie_sample(cookies, L, worldPos);
+    }
+    L.color.rgb *= tint;
+    L.specular.rgb *= tint;
+}
+
 #if OLLIN_RT_SHADOWS
 // One shadow ray from `origin` toward `target`: 1 if that light point is visible, 0 if an
 // occluder lies between. The structure is built opaque, so an opaque triangle hit commits
@@ -508,7 +606,9 @@ static inline float ollin_ltc_diffuse(OllinLight L, float3 n, float3 viewDir,
 // so a lit surface seen in a mirror matches the same surface seen directly (the
 // bundled environments' normalization ranges to ~12x).
 static inline float3 ollin_rt_direct(OllinRTSurface s, constant OllinLighting &light,
-                                     float3 viewDir, texture2d<float> ltcAmp) {
+                                     float3 viewDir, texture2d<float> ltcAmp,
+                                     texture2d_array<float> iesProfiles,
+                                     texture2d_array<float> cookies) {
     float3 direct = float3(0.0);
     for (int i = 0; i < light.lightCount; i++) {
         OllinLight L = light.lights[i];
@@ -522,6 +622,9 @@ static inline float3 ollin_rt_direct(OllinRTSurface s, constant OllinLighting &l
         float3 toLight = (L.kind == 0) ? L.direction.xyz : normalize(L.position.xyz - s.P);
         float atten = 1.0;
         if (L.kind == 2) atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
+        // The same profile/cookie shaping the primary path applies, so a
+        // shaped light's pattern survives into its reflections.
+        ollin_apply_light_shaping(L, light, toLight, s.P, iesProfiles, cookies);
         direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten);
     }
     return direct / max(light.iblIntensity, 1e-3);
@@ -567,7 +670,9 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
                                                texturecube<float> irradianceTex,
                                                texturecube<float> prefilterTex,
                                                sampler cubeSamp, float3x3 rot,
-                                               texture2d<float> ltcAmp) {
+                                               texture2d<float> ltcAmp,
+                                               texture2d_array<float> iesProfiles,
+                                               texture2d_array<float> cookies) {
     float eps = max(light.rtReflectionBias, 1e-4);
     ray r;
     r.origin = worldPos + n * eps;        // lift off the surface (self-hit guard)
@@ -618,7 +723,7 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
         float3 env2 = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, reflect(secDir, s2.N),
                                         s2.rough, NoVb, light.iblMaxMip);
         float3 diffuse2 = s2.albedo * irradianceTex.sample(cubeSamp, rot * s2.N).rgb
-                        + ollin_rt_direct(s2, light, -secDir, ltcAmp);
+                        + ollin_rt_direct(s2, light, -secDir, ltcAmp, iesProfiles, cookies);
         envAtHit = env2 * Fb + diffuse2 * (1.0 - s2.metal);
     } else {
         envAtHit = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, secDir,
@@ -632,7 +737,7 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
     // so hit and miss stay consistent.
     float3 col = envAtHit * F;
     float3 diffuse = s1.albedo * irradianceTex.sample(cubeSamp, rot * s1.N).rgb
-                   + ollin_rt_direct(s1, light, -R, ltcAmp);
+                   + ollin_rt_direct(s1, light, -R, ltcAmp, iesProfiles, cookies);
     col += diffuse * (1.0 - s1.metal);
     return float4(col, 1.0);
 }
@@ -651,10 +756,12 @@ static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, fl
                                          texturecube<float> prefilterTex,
                                          sampler cubeSamp, float3x3 rot,
                                          float3 envReflection,
-                                         texture2d<float> ltcAmp) {
+                                         texture2d<float> ltcAmp,
+                                         texture2d_array<float> iesProfiles,
+                                         texture2d_array<float> cookies) {
     float4 hit = ollin_rt_reflection_trace(worldPos, n, R, accel, verts, geoOffsets,
                                            light, irradianceTex, prefilterTex, cubeSamp, rot,
-                                           ltcAmp);
+                                           ltcAmp, iesProfiles, cookies);
     float3 col = mix(envReflection, hit.rgb, hit.a);
     return mix(col, envReflection, smoothstep(0.12, 0.55, rough));
 }
@@ -1219,7 +1326,12 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   texturecube<float> shadowCube, sampler shadowCubeSamp,
                                   // The two LTC lookup tables (fragment textures 8/9),
                                   // read only by the area light kinds.
-                                  texture2d<float> ltcMat, texture2d<float> ltcAmp
+                                  texture2d<float> ltcMat, texture2d<float> ltcAmp,
+                                  // The light-shaping arrays (fragment textures 10/11):
+                                  // baked IES profiles + cookie images, read only when
+                                  // the frame's gates are up (stand-ins otherwise).
+                                  texture2d_array<float> iesProfiles,
+                                  texture2d_array<float> cookies
 #if OLLIN_RT_SHADOWS
                                   , float rtShadow
 #endif
@@ -1366,6 +1478,13 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 // cosine against the axis fades over the inner→outer penumbra.
                 float cosA = dot(-toLight, L.direction.xyz);
                 atten = smoothstep(L.cosOuter, L.cosInner, cosA);
+            }
+            // Light shaping: an IES profile scales this light's intensity by the
+            // emission angle, a spot cookie tints it by the projected image texel
+            // (both on the local copy, so every shading model below picks it up).
+            // Gated per frame; a featureless frame never enters.
+            if (light.iesEnabled != 0 || light.cookieEnabled != 0) {
+                ollin_apply_light_shaping(L, light, toLight, worldPos, iesProfiles, cookies);
             }
         }
         // Dim only the casting light where this surface is in shadow (ambient stays).
@@ -1587,7 +1706,11 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                            const device OllinMeshVertex *meshVerts,
                                            const device uint *meshGeoOffsets,
                                            float4 deferredReflection,
-                                           texture2d<float> ltcAmp
+                                           texture2d<float> ltcAmp,
+                                           // The light-shaping arrays, so a shaped light's
+                                           // pattern survives into the inline hit shade.
+                                           texture2d_array<float> iesProfiles,
+                                           texture2d_array<float> cookies
 #endif
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
@@ -1619,7 +1742,8 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
         } else {
             prefiltered = ollin_rt_reflection(worldPos, n, R, rough, reflAccel, meshVerts,
                                               meshGeoOffsets, light, irradianceTex, prefilterTex,
-                                              cubeSamp, rot, prefiltered, ltcAmp);
+                                              cubeSamp, rot, prefiltered, ltcAmp,
+                                              iesProfiles, cookies);
         }
     }
 #endif
@@ -1657,7 +1781,9 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     texturecube<float> iblPrefilter [[texture(5)]],
                                     texture2d<float> iblBRDF [[texture(6)]],
                                     texture2d<float> ltcMat [[texture(8)]],
-                                    texture2d<float> ltcAmp [[texture(9)]]
+                                    texture2d<float> ltcAmp [[texture(9)]],
+                                    texture2d_array<float> iesProfiles [[texture(10)]],
+                                    texture2d_array<float> cookies [[texture(11)]]
 #if OLLIN_RT_SHADOWS
                                     , primitive_acceleration_structure shadowAccel [[buffer(3)]]
                                     // The flat mesh buffer + its per-geometry base-vertex offsets, so a
@@ -1682,11 +1808,13 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
+                            iesProfiles, cookies,
                             rtShadow, -1.0, meshFieldShadow);
 #else
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
+                            iesProfiles, cookies,
                             -1.0, meshFieldShadow);
 #endif
     // Physically-based surfaces gather their ambient + reflections from the environment;
@@ -1709,7 +1837,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                        iblIrradiance, iblPrefilter, iblBRDF
 #if OLLIN_RT_SHADOWS
                                        , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
-                                       deferredRefl, ltcAmp
+                                       deferredRefl, ltcAmp, iesProfiles, cookies
 #endif
                                        );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
@@ -1865,7 +1993,9 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              texturecube<float> iblPrefilter [[texture(5)]],
                                              texture2d<float> iblBRDF [[texture(6)]],
                                              texture2d<float> ltcMat [[texture(8)]],
-                                             texture2d<float> ltcAmp [[texture(9)]]
+                                             texture2d<float> ltcAmp [[texture(9)]],
+                                             texture2d_array<float> iesProfiles [[texture(10)]],
+                                             texture2d_array<float> cookies [[texture(11)]]
 #if OLLIN_RT_SHADOWS
                                              , primitive_acceleration_structure shadowAccel [[buffer(3)]]
                                              , const device OllinMeshVertex *meshVerts [[buffer(6)]]
@@ -1886,11 +2016,13 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                            ltcMat, ltcAmp, rtShadow, -1.0, meshFieldShadow);
+                            ltcMat, ltcAmp, iesProfiles, cookies,
+                            rtShadow, -1.0, meshFieldShadow);
 #else
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                            ltcMat, ltcAmp, -1.0, meshFieldShadow);
+                            ltcMat, ltcAmp, iesProfiles, cookies,
+                            -1.0, meshFieldShadow);
 #endif
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
@@ -1908,7 +2040,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                        iblIrradiance, iblPrefilter, iblBRDF
 #if OLLIN_RT_SHADOWS
                                        , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
-                                       deferredRefl, ltcAmp
+                                       deferredRefl, ltcAmp, iesProfiles, cookies
 #endif
                                        );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {

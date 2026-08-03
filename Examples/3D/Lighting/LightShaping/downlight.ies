@@ -1,0 +1,10 @@
+IESNA:LM-63-2002
+[TEST] Authored for Ollin's LightShaping example
+[MANUFAC] Ollin
+[LUMINAIRE] Recessed can: hot center with a spill ring
+TILT=NONE
+1 1000 1 10 1 1 2 0.11 0.11 0.1
+1.0 1.0 60
+0 5 10 15 20 25 30 38 46 90
+0
+1000 960 780 320 130 300 520 160 25 0
