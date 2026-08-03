@@ -1234,6 +1234,41 @@ static inline float3 ollin_pbr_F_Schlick(float VoH, float3 F0) {
     return F0 + (float3(1.0) - F0) * f;
 }
 
+// The two layered physically-based lobes. **Clear coat** is a second Cook-Torrance
+// specular lobe over the base: GGX at the coat's own roughness, the cheap Kelemen
+// visibility, and Schlick Fresnel at a fixed 0.04 (an IOR-1.5 lacquer film). The base
+// layer dims by (1 - Fc), the energy the coat reflects away, and its normal-incidence
+// reflectance re-derives for a coat-to-surface interface instead of air. **Sheen** is
+// the inverted-alpha sine distribution with the cloth visibility term: a soft fuzz
+// lobe that rims silhouettes, no Fresnel, tinted directly by the sheen color; its
+// directional albedo E (baked once into the sheen LUT, fragment texture 12) scales
+// the base down so the layering conserves energy. Both written from the published
+// techniques (README Techniques list).
+static inline float ollin_pbr_V_Kelemen(float LoH) {
+    return 0.25 / max(LoH * LoH, 1e-4);
+}
+
+static inline float ollin_pbr_D_Charlie(float NoH, float roughness) {
+    float a = max(roughness * roughness, 1e-3);   // α (linear roughness)
+    float invA = 1.0 / a;
+    float sin2h = max(1.0 - NoH * NoH, 0.0078125);
+    return (2.0 + invA) * pow(sin2h, invA * 0.5) / (2.0 * 3.14159265);
+}
+
+static inline float ollin_pbr_V_Neubelt(float NoV, float NoL) {
+    return 1.0 / max(4.0 * (NoL + NoV - NoL * NoV), 1e-4);
+}
+
+// The base layer's F0 seen through the coat: light reaching the base has already
+// refracted through the IOR-1.5 film, so its normal-incidence reflectance re-derives
+// for that interface (componentwise; the call sites blend by the coat intensity, so
+// no coat keeps the exact original F0).
+static inline float3 ollin_pbr_coat_f0(float3 f0) {
+    float3 s = sqrt(clamp(f0, 0.0, 0.98));
+    float3 r = (float3(1.0) - 5.0 * s) / (float3(5.0) - s);
+    return r * r;
+}
+
 // MARK: - Area lights (linearly transformed cosines)
 //
 // A panel, disk, or tube of light has no closed-form shading integral for a microfacet
@@ -1714,7 +1749,10 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   // baked IES profiles + cookie images, read only when
                                   // the frame's gates are up (stand-ins otherwise).
                                   texture2d_array<float> iesProfiles,
-                                  texture2d_array<float> cookies
+                                  texture2d_array<float> cookies,
+                                  // The sheen directional-albedo LUT (fragment texture 12),
+                                  // read only by a physically-based material with sheen.
+                                  texture2d<float> sheenLUT
 #if OLLIN_RT_SHADOWS
                                   , float rtShadow
 #endif
@@ -1744,6 +1782,22 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     // factor is exactly 1 (byte-identical).
     float diffKeep = (model == 3 && light.iblEnabled != 0)
                    ? (1.0 - mat.transmission * (1.0 - mat.metallic)) : 1.0;
+    // The layered physically-based lobes, resolved once per pixel: the coat intensity
+    // and roughness, and the sheen's directional albedo E (from the baked LUT), which
+    // both scales the base down and sets the sheen's own strength. Zero coat and zero
+    // sheen skip every new term, so existing materials shade byte-identically.
+    float coat = (model == 3) ? mat.clearcoat : 0.0;
+    float coatRough = clamp((float)mat.clearcoatRoughness, 0.045, 1.0);
+    float3 sheenTint = mat.sheenColor.rgb;
+    bool hasSheen = (model == 3) && (sheenTint.x + sheenTint.y + sheenTint.z > 0.0);
+    float sheenRough = 1.0, sheenE = 0.0, sheenScale = 1.0;
+    if (hasSheen) {
+        constexpr sampler sheenSamp(filter::linear, address::clamp_to_edge);
+        sheenRough = clamp((float)mat.sheenColor.w, 0.045, 1.0);
+        float sheenNoV = saturate(dot(n, viewDir));
+        sheenE = sheenLUT.sample(sheenSamp, float2(sheenNoV, sheenRough)).r;
+        sheenScale = 1.0 - max(sheenTint.x, max(sheenTint.y, sheenTint.z)) * sheenE;
+    }
 
     // Gooch sets its own diffuse tone below; the others start from the flat ambient term.
     // A physically-based metal has no diffuse, so its flat ambient is killed by metalness
@@ -1833,9 +1887,31 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 // Lambert integral over the shape, with the usual metallic kill. Both
                 // ride the light's diffuse color, like the punctual microfacet path.
                 float3 F0 = mix(float3(mat.f0), base, mat.metallic);
+                if (coat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), coat);
                 float3 spec = (F0 * lt2.x + (float3(1.0) - F0) * lt2.y) * specI;
                 float3 diff = base * ((1.0 - mat.metallic) * diffI * diffKeep);
-                lit += (diff + spec) * L.color.rgb;
+                float3 term = diff + spec;
+                // Sheen under a panel: the lobe is broad, so its response is its
+                // directional albedo times the panel's exact cosine integral.
+                if (hasSheen) term = term * sheenScale + sheenTint * (sheenE * diffI);
+                if (coat > 0.0) {
+                    // The coat runs its own LTC fetch at the coat roughness (a second,
+                    // narrower lobe over the same panel); its norm + average-Fresnel
+                    // split carries the film's fixed 0.04 reflectance, and the base
+                    // dims by the coat's view Fresnel like the punctual path.
+                    float2 uvC = ollin_ltc_uv(coatRough, NoV);
+                    float4 c1 = ltcMat.sample(ollinLTCSampler, uvC);
+                    float4 c2 = ltcAmp.sample(ollinLTCSampler, uvC);
+                    float3x3 MinvC = float3x3(float3(c1.x, 0.0, c1.y),
+                                              float3(0.0, 1.0, 0.0),
+                                              float3(c1.z, 0.0, c1.w));
+                    float diffC = 0.0, specC = 0.0;
+                    ollin_ltc_light(L, n, viewDir, worldPos, MinvC, ltcAmp, diffC, specC);
+                    float Fc = (0.04 + 0.96 * pow(1.0 - NoV, 5.0)) * coat;
+                    term = term * (1.0 - Fc)
+                         + float3((0.04 * c2.x + 0.96 * c2.y) * (specC * atten) * coat);
+                }
+                lit += term * L.color.rgb;
             } else {
                 // Standard: Lambert diffuse through the exact integral; the highlight
                 // takes the norm channel scaled by the material's specular strength
@@ -1936,13 +2012,29 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 float NoH = max(dot(n, h), 0.0);
                 float VoH = max(dot(viewDir, h), 0.0);
                 float3 F0 = mix(float3(mat.f0), base, mat.metallic);
+                // Under a coat the base's reflectance re-derives for the film interface.
+                if (coat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), coat);
                 float  D   = ollin_pbr_D_GGX(NoH, rough);
                 float  Vis = ollin_pbr_V_SmithGGX(NoV, NoL, rough);
                 float3 F   = ollin_pbr_F_Schlick(VoH, F0);
                 float3 spec = D * Vis * F;
                 float3 kD   = (float3(1.0) - F) * (1.0 - mat.metallic);
                 float3 diff = kD * base * (diffKeep / 3.14159265);
-                lit += (diff + spec) * L.color.rgb * (atten * NoL);
+                float3 term = diff + spec;
+                // Layering order: sheen over the base (the base scaled by 1 - max(tint)·E
+                // to conserve energy), then the coat over both, dimming them by its own
+                // Fresnel while adding the film's polished highlight.
+                if (hasSheen) {
+                    term = term * sheenScale
+                         + sheenTint * (ollin_pbr_D_Charlie(NoH, sheenRough)
+                                        * ollin_pbr_V_Neubelt(NoV, NoL));
+                }
+                if (coat > 0.0) {
+                    float Fc = (0.04 + 0.96 * pow(1.0 - VoH, 5.0)) * coat;
+                    term = term * (1.0 - Fc)
+                         + ollin_pbr_D_GGX(NoH, coatRough) * ollin_pbr_V_Kelemen(VoH) * Fc;
+                }
+                lit += term * L.color.rgb * (atten * NoL);
             }
         } else {
             // Standard Lambert diffuse + Blinn-Phong specular.
@@ -2163,7 +2255,10 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                            constant OllinLighting &light,
                                            texturecube<float> irradianceTex,
                                            texturecube<float> prefilterTex,
-                                           texture2d<float> brdfTex
+                                           texture2d<float> brdfTex,
+                                           // The sheen directional-albedo LUT (texture 12),
+                                           // read only when the material carries sheen.
+                                           texture2d<float> sheenLUT
 #if OLLIN_RT_SHADOWS
                                            // The reflection trace's inputs (see ollin_rt_reflection):
                                            // the world position + the caster accel + the flat mesh
@@ -2194,8 +2289,10 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     float cs = cos(light.iblRotation), sn = sin(light.iblRotation);
     float3x3 rot = float3x3(float3(cs, 0.0, -sn), float3(0.0, 1.0, 0.0), float3(sn, 0.0, cs));
     // Normal-incidence reflectance comes packed from the material's IOR (bit-equal to
-    // the old hard-coded 0.04 at the default 1.5).
+    // the old hard-coded 0.04 at the default 1.5). Under a clear coat the base's
+    // reflectance re-derives for the film interface, blended by the coat intensity.
     float3 F0 = mix(float3(mat.f0), base, mat.metallic);
+    if (mat.clearcoat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), mat.clearcoat);
     // Roughness-aware Fresnel so rough grazing angles don't blow out.
     float3 F = F0 + (max(float3(1.0 - rough), F0) - F0) * pow(1.0 - NoV, 5.0);
     float3 kD = (float3(1.0) - F) * (1.0 - mat.metallic);
@@ -2240,7 +2337,39 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
         float3 E = F0 * brdf.x + brdf.y;   // the specular lobe's share of the energy
         diffusePart = mix(diffusePart, Ft * (float3(1.0) - E) * base, trans);
     }
-    return (diffusePart + specular) * light.iblIntensity;
+    float3 color = diffusePart + specular;
+    // Sheen: its own broad prefiltered gather at the sheen roughness, weighted by the
+    // directional albedo E, with the base scaled down by 1 - max(tint)·E to conserve
+    // energy. The sheen lobe keeps the environment sample even under ray-traced
+    // reflections: it's wide enough that the prefiltered env is the honest integral.
+    float3 sheenTint = mat.sheenColor.rgb;
+    if (sheenTint.x + sheenTint.y + sheenTint.z > 0.0) {
+        float sheenRough = clamp((float)mat.sheenColor.w, 0.045, 1.0);
+        float sheenE = sheenLUT.sample(lutSamp, float2(NoV, sheenRough)).r;
+        float3 sheenRad = prefilterTex.sample(cubeSamp, rot * R,
+                                              level(sheenRough * light.iblMaxMip)).rgb;
+        color = color * (1.0 - max(sheenTint.x, max(sheenTint.y, sheenTint.z)) * sheenE)
+              + sheenTint * (sheenE * sheenRad);
+    }
+    // Clear coat: a second, smoother gather along the same reflection ray, added by the
+    // coat's view Fresnel, with everything beneath dimmed by what the coat reflected
+    // away. Under ray-traced reflections the coat reuses the traced radiance (the same
+    // mirror direction; the coat is usually the smoother lobe, so the traced scene is
+    // the better answer than a second prefiltered env sample would be).
+    if (mat.clearcoat > 0.0) {
+        float coatRough = clamp((float)mat.clearcoatRoughness, 0.045, 1.0);
+        float Fc = (0.04 + 0.96 * pow(1.0 - NoV, 5.0)) * mat.clearcoat;
+#if OLLIN_RT_SHADOWS
+        float3 coatRad = (light.rtReflections != 0)
+            ? prefiltered
+            : prefilterTex.sample(cubeSamp, rot * R, level(coatRough * light.iblMaxMip)).rgb;
+#else
+        float3 coatRad = prefilterTex.sample(cubeSamp, rot * R,
+                                             level(coatRough * light.iblMaxMip)).rgb;
+#endif
+        color = color * (1.0 - Fc) + coatRad * Fc;
+    }
+    return color * light.iblIntensity;
 }
 
 // Environment ambient for the non-physically-based materials (standard/toon): the
@@ -2274,7 +2403,8 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     texture2d<float> ltcMat [[texture(8)]],
                                     texture2d<float> ltcAmp [[texture(9)]],
                                     texture2d_array<float> iesProfiles [[texture(10)]],
-                                    texture2d_array<float> cookies [[texture(11)]]
+                                    texture2d_array<float> cookies [[texture(11)]],
+                                    texture2d<float> sheenLUT [[texture(12)]]
 #if OLLIN_RT_SHADOWS
                                     , primitive_acceleration_structure shadowAccel [[buffer(3)]]
                                     // The flat mesh buffer + its per-geometry base-vertex offsets, so a
@@ -2299,13 +2429,13 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
-                            iesProfiles, cookies,
+                            iesProfiles, cookies, sheenLUT,
                             rtShadow, -1.0, meshFieldShadow);
 #else
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
-                            iesProfiles, cookies,
+                            iesProfiles, cookies, sheenLUT,
                             -1.0, meshFieldShadow);
 #endif
     // Physically-based surfaces gather their ambient + reflections from the environment;
@@ -2325,7 +2455,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
         }
 #endif
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
-                                       iblIrradiance, iblPrefilter, iblBRDF
+                                       iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
 #if OLLIN_RT_SHADOWS
                                        , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
                                        deferredRefl, ltcAmp, iesProfiles, cookies
@@ -2492,7 +2622,8 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              texture2d<float> ltcMat [[texture(8)]],
                                              texture2d<float> ltcAmp [[texture(9)]],
                                              texture2d_array<float> iesProfiles [[texture(10)]],
-                                             texture2d_array<float> cookies [[texture(11)]]
+                                             texture2d_array<float> cookies [[texture(11)]],
+                                             texture2d<float> sheenLUT [[texture(12)]]
 #if OLLIN_RT_SHADOWS
                                              , primitive_acceleration_structure shadowAccel [[buffer(3)]]
                                              , const device OllinMeshVertex *meshVerts [[buffer(6)]]
@@ -2513,12 +2644,12 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                            ltcMat, ltcAmp, iesProfiles, cookies,
+                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
                             rtShadow, -1.0, meshFieldShadow);
 #else
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                            ltcMat, ltcAmp, iesProfiles, cookies,
+                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
                             -1.0, meshFieldShadow);
 #endif
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
@@ -2534,7 +2665,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
         }
 #endif
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
-                                       iblIrradiance, iblPrefilter, iblBRDF
+                                       iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
 #if OLLIN_RT_SHADOWS
                                        , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
                                        deferredRefl, ltcAmp, iesProfiles, cookies

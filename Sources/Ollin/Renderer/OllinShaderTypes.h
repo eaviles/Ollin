@@ -365,6 +365,10 @@ typedef struct {
 // physically-based dielectric into glass: the transmitted lobe replaces the diffuse one,
 // refracting the environment (or the traced scene under ray-traced reflections). Inert at
 // transmission 0 and inactive without an environment, so every existing frame is unchanged.
+// Two layered physically-based lobes ride the same model: `clearcoat` adds a thin polished
+// lacquer layer (a second specular lobe at its own roughness, the base attenuated by what
+// the coat reflects), and `sheenColor` a soft fabric rim (retroreflective fuzz at grazing
+// angles, the base scaled down by the sheen's directional albedo). Both inert at zero.
 // Colors are linear (sRGB→linear CPU-side).
 typedef struct {
     simd_float4 rimColor;         // rgb linear rim color; a = rim strength (0 = no rim)
@@ -383,6 +387,8 @@ typedef struct {
     float roughness;              // PBR (shading model 3): 0 mirror-smooth … 1 fully rough; ignored otherwise
     float sparkleSize;            // flake cell size, relative to the scene framing (1 = fine glitter)
     float sparkleSharpness;       // flake flash exponent (higher = rarer, harder flashes)
+    float clearcoat;              // PBR: clear-coat layer intensity (0 = no coat); the coat's own
+                                  // specular lobe adds on top and the base dims by what it reflects
     simd_float4 attenuation;      // Beer-Lambert medium: rgb = linear attenuation color (what white
                                   // light becomes after `w` of travel); w = attenuation distance in
                                   // world units (0 = no attenuation). Volumetric only (thickness > 0).
@@ -397,6 +403,9 @@ typedef struct {
                                   // so exports reproduce); only read when iridescenceFlow > 0
     float iridescenceFlowSize;    // the swirl's feature size, relative to the scene framing (the
                                   // sparkle sizing rule): 1 = default, smaller = finer marbling
+    float clearcoatRoughness;     // PBR: the coat layer's own perceptual roughness (0 = polished)
+    simd_float4 sheenColor;       // PBR sheen: rgb = linear sheen tint premultiplied by strength
+                                  // (0,0,0 = no sheen); w = the sheen lobe's perceptual roughness
 } OllinMaterial;
 
 // Parameters for the live ground-grid overlay (`ollin_grid_fragment`): a shader-drawn

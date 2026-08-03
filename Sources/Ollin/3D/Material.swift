@@ -58,6 +58,12 @@ import COllinShaders
 /// as a plain physically-based dielectric. The `fill` tints what shows through, `ior`
 /// bends it, `thickness` makes the body solid (with `attenuationColor` /
 /// `attenuationDistance` deepening the tint the farther light travels inside).
+///
+/// Two more layered lobes ride the physically-based finish: **clearcoat** (a thin
+/// polished lacquer over the base, at its own `clearcoatRoughness`: car paint, piano
+/// lacquer; use the `.carPaint(roughness:)` helper or the `.lacquer` built-in) and
+/// **sheen** (soft fabric fuzz catching light at the silhouette, tinted by
+/// `sheenColor`: the `.satin` / `.felt` built-ins). Both are inert at `0`.
 public struct Material: Equatable, Sendable {
 
     /// How the diffuse term is shaded.
@@ -121,6 +127,30 @@ public struct Material: Equatable, Sendable {
     /// The travel distance (world units) at which white light has faded to
     /// `attenuationColor`. `0` (the default) turns absorption off.
     public var attenuationDistance: Double
+
+    /// Physically-based shading: a thin transparent lacquer layer over the base surface,
+    /// `0…1` (car paint, piano lacquer, varnished wood). The coat adds its own polished
+    /// highlight and reflection on top of whatever the base is doing (a rough metal
+    /// under a glassy coat is the car-paint look), and the base dims slightly by what
+    /// the coat reflects away. `0` (the default) is no coat.
+    /// Ignored unless `shading == .physicallyBased`.
+    public var clearcoat: Double
+    /// The coat layer's own roughness, `0…1`, independent of the base `roughness`:
+    /// `0` (the default) is a freshly-polished gloss; raise it toward a matte varnish.
+    public var clearcoatRoughness: Double
+
+    /// Physically-based shading: fabric sheen strength, `0…1`, the soft rim glow of
+    /// velvet, satin, felt, or moss, where stray fibers catch light at grazing angles.
+    /// The sheen brightens silhouettes in `sheenColor` and the base dims to keep the
+    /// energy honest. `0` (the default) is off.
+    /// Ignored unless `shading == .physicallyBased`.
+    public var sheen: Double
+    /// The sheen tint (white by default). A tint different from the `fill` gives the
+    /// two-tone shot-fabric look: a deep red body rimmed in orange reads as velvet.
+    public var sheenColor: Color
+    /// The sheen lobe's roughness, `0…1`: lower pulls the glow into a tighter satin
+    /// band near the silhouette, higher spreads it into a dry, felty haze.
+    public var sheenRoughness: Double
 
     /// Specular highlight strength: `0` matte, `~0.5` glossy, `1` a bright hotspot.
     public var specular: Double
@@ -193,6 +223,9 @@ public struct Material: Equatable, Sendable {
                 transmission: Double = 0, ior: Double = 1.5,
                 thickness: Double = 0, attenuationColor: Color = .white,
                 attenuationDistance: Double = 0,
+                clearcoat: Double = 0, clearcoatRoughness: Double = 0,
+                sheen: Double = 0, sheenColor: Color = .white,
+                sheenRoughness: Double = 0.5,
                 specular: Double = 0, shininess: Double = 32,
                 iridescence: Double = 0, iridescenceScale: Double = 1,
                 iridescenceFlow: Double = 0, iridescencePhase: Double = 0,
@@ -212,6 +245,11 @@ public struct Material: Equatable, Sendable {
         self.thickness = max(0, thickness)
         self.attenuationColor = attenuationColor
         self.attenuationDistance = max(0, attenuationDistance)
+        self.clearcoat = min(1, max(0, clearcoat))
+        self.clearcoatRoughness = min(1, max(0, clearcoatRoughness))
+        self.sheen = min(1, max(0, sheen))
+        self.sheenColor = sheenColor
+        self.sheenRoughness = min(1, max(0, sheenRoughness))
         self.specular = max(0, specular)
         self.shininess = max(1, shininess)
         self.iridescence = min(1, max(0, iridescence))
@@ -274,6 +312,13 @@ public struct Material: Equatable, Sendable {
         // that exact literal at the default 1.5 so pre-glass frames stay bit-identical
         // (the computed ((0.5)/(2.5))^2 rounds to a different float than 0.04).
         m.f0 = ior == 1.5 ? 0.04 : Float(((ior - 1) / (ior + 1)) * ((ior - 1) / (ior + 1)))
+        m.clearcoat = Float(clearcoat)
+        m.clearcoatRoughness = Float(clearcoatRoughness)
+        // The sheen strength premultiplies the tint (the shader tests the rgb sum, so
+        // strength 0 reads as "no sheen" whatever the tint); w carries the roughness.
+        let sc = Material.linear(sheenColor, alpha: sheenRoughness)
+        m.sheenColor = SIMD4<Float>(sc.x * Float(sheen), sc.y * Float(sheen),
+                                    sc.z * Float(sheen), sc.w)
         return m
     }
 
@@ -431,4 +476,31 @@ public extension Material {
     /// blurs to a soft glow. A thin wall; give it a `thickness` for a solid body.
     static let frostedGlass = Material(shading: .physicallyBased, metallic: 0,
                                        roughness: 0.35, transmission: 1)
+
+    // Layered physically-based finishes: a clear lacquer coat over the base
+    // (`clearcoat`), and fabric sheen at the silhouette (`sheen`).
+
+    /// **Car paint**: a metallic base of the given roughness under a polished clear
+    /// coat, so the body keeps a soft satin depth while the coat carries a glassy
+    /// reflection. The paint color is the `fill`; layer `sparkle` on top for the
+    /// metallic-flake version.
+    static func carPaint(roughness: Double = 0.45) -> Material {
+        Material(shading: .physicallyBased, metallic: 1, roughness: roughness,
+                 clearcoat: 1, clearcoatRoughness: 0.04)
+    }
+
+    /// Piano lacquer / varnished wood: a matte dielectric body under a deep glassy
+    /// coat. Reads best over a dark `fill`.
+    static let lacquer = Material(shading: .physicallyBased, metallic: 0, roughness: 0.5,
+                                  clearcoat: 1, clearcoatRoughness: 0.03)
+
+    /// Satin: a smooth woven sheen pulled into a tight band near the silhouette,
+    /// over a soft body.
+    static let satin = Material(shading: .physicallyBased, metallic: 0, roughness: 0.55,
+                                sheen: 0.5, sheenRoughness: 0.3)
+
+    /// Felt / velour: a dry, fuzzy fabric whose silhouette catches a broad haze of
+    /// light. Tint `sheenColor` away from the `fill` for the two-tone velvet look.
+    static let felt = Material(shading: .physicallyBased, metallic: 0, roughness: 0.9,
+                               sheen: 0.9, sheenRoughness: 0.75)
 }

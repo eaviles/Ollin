@@ -749,6 +749,12 @@ final class MetalRenderer {
     /// baking gigabytes.
     var iblCacheBudgetOverride: Int?
     var iblBRDFLUT: MTLTexture?
+    /// The sheen directional-albedo LUT, environment-independent like the BRDF LUT but
+    /// needed with plain lights too, so it bakes on its own trigger: the first frame
+    /// whose batches carry a sheen material (`ensureSheenLUT`). Bound at mesh fragment
+    /// texture 12 whenever real (a never-sampled stand-in otherwise; the material's
+    /// sheen color gates the read).
+    var sheenLUT: MTLTexture?
     var currentIBL: IBLMaps?
     /// A 1×1 cube bound at the IBL texture slots when no environment is set, so the mesh
     /// fragment's declared cube samplers are always bound (never sampled in that case).
@@ -937,6 +943,7 @@ final class MetalRenderer {
         // Bake the IBL environment maps (once, cached) ahead of the geometry pass, so the
         // mesh fragments can sample them. A no-op when no environment is set.
         _ = resolveIBL(for: drawer.environment, commandBuffer: commandBuffer)
+        ensureSheenLUT(for: drawer, commandBuffer: commandBuffer)
         // Shadow depth pass from the casting light, ahead of the geometry pass in the
         // same command buffer (a no-op returning nil when this frame casts no shadow).
         // It shares the mesh vertex buffer the geometry pass uses.
@@ -1288,6 +1295,7 @@ final class MetalRenderer {
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
         // Export blocks on a remote-environment download so the exported frame is full-res.
         _ = resolveIBL(for: drawer.environment, commandBuffer: commandBuffer, blocking: true)
+        ensureSheenLUT(for: drawer, commandBuffer: commandBuffer)
         // Shadow depth pass (nil when this frame casts no shadow), sharing the export
         // mesh buffer; so the headless/snapshot path shadows exactly like the window.
         let meshBuf = exportMeshBuffer(for: drawer.meshVertices.count)
@@ -1438,6 +1446,7 @@ final class MetalRenderer {
             guard let cb = commandQueue.makeCommandBuffer() else { continue }
             encodeCompute(drawer, into: cb)
             _ = resolveIBL(for: drawer.environment, commandBuffer: cb)   // bake IBL once
+            ensureSheenLUT(for: drawer, commandBuffer: cb)
             let renderedShadow = encodeShadowPass(
                 drawer, into: cb, meshBuffer: meshBuf,
                 sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode)

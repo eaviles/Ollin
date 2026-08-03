@@ -296,6 +296,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("glass-materials",
                  note: "Transmissive (glass) physically-based spheres over a bundled environment, no ray tracing: pins the environment-refraction base path every GPU gets (the entry refract + analytic interior span + curvature-blended exit for a solid, the parallel thin exit, the IOR-remapped frosting lod, Beer-Lambert absorption, the f0-from-IOR packing, and the transmitted-for-diffuse swap in the IBL ambient and the direct-light diffKeep). Fixed camera + environment, no time.",
                  make: { GlassScene() }),
+    SnapshotCase("coat-sheen",
+                 note: "The layered physically-based lobes over a bundled environment plus a point light: a coated red metal beside its bare twin (the clear-coat Cook-Torrance lobe, the Kelemen visibility, the coat-interface F0 remap, and the coat's smooth IBL gather), a piano-black lacquer, a white-sheen felt beside its bare twin (the inverted-alpha sine sheen lobe, the cloth visibility, the sheen-LUT energy scaling, and the sheen's own prefiltered gather), and a two-tone velvet. Fixed camera + environment, no time.",
+                 make: { CoatSheenScene() }),
     SnapshotCase("area-lights",
                  note: "A rect panel, a disk, and a tube (the LTC area lights) over a glossy floor and a roughness row: pins the bundled LTC table load, the horizon-clipped rect integral, the disk's ellipse/cubic path, the tube's line integral, the physical falloff, and the Blinn-Phong shininess-to-roughness mapping on the standard-material box. Fixed camera, no time.",
                  make: { AreaLightsScene() }),
@@ -1388,6 +1391,35 @@ private final class GlassScene: Sketch {
         withState {
             translate(0, -0.6, 0); fill(Color(white: 0.5)); material(.roughPlastic)
             drawBox(width: 20, height: 0.3, depth: 20)
+        }
+    }
+}
+
+private final class CoatSheenScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: .zero, radius: 7.2,
+                         azimuth: 0.25, elevation: 0.15, fieldOfView: .pi / 3.4))
+        environment(.studio)
+        pointLight(.white, at: Vector3(3, 4, 5), intensity: 1.2)
+        let red = Color(hue: 0.99, saturation: 0.82, brightness: 0.72)
+        let blue = Color(hue: 0.62, saturation: 0.65, brightness: 0.45)
+        var velvet = Material.felt
+        velvet.sheenColor = Color(hue: 0.07, saturation: 0.9, brightness: 0.95)
+        // Top row: coated red metal, its bare twin, piano-black lacquer. Bottom row:
+        // white-sheen felt, its bare twin, two-tone velvet.
+        let bodies: [(Color, Material, Double, Double)] = [
+            (red, .carPaint(roughness: 0.45), -2.0, 1.05),
+            (red, .metal(roughness: 0.45), 0, 1.05),
+            (Color(white: 0.05), .lacquer, 2.0, 1.05),
+            (blue, .felt, -2.0, -1.05),
+            (blue, .dielectric(roughness: 0.9), 0, -1.05),
+            (Color(hue: 0.99, saturation: 0.9, brightness: 0.3), velvet, 2.0, -1.05),
+        ]
+        for (c, m, x, y) in bodies {
+            withState { translate(x, y, 0); fill(c); material(m); drawSphere(radius: 0.9) }
         }
     }
 }

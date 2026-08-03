@@ -803,6 +803,9 @@ extension MetalRenderer {
         // stand-in otherwise (`iesEnabled`/`cookieEnabled` gate).
         enc.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
         enc.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
+        // The sheen directional-albedo LUT (tex 12), matching the main pass; a
+        // never-sampled stand-in unless a material carries sheen.
+        enc.setFragmentTexture(sheenLUT ?? strip, index: 12)
         // The mesh acceleration structure at buffer 5, matching the main pass: RT point
         // shadows received by the field, and the reflection trace when `rtReflections`
         // is set. A dummy when neither is active, never traced.

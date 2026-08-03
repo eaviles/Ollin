@@ -53,6 +53,9 @@ extension MetalRenderer {
     private static let iblPrefilterFace = 256   // mirror (roughness 0) reflection sharpness
     private static let iblPrefilterMips = 6
     private static let iblBRDFSize = 256
+    /// The sheen directional-albedo LUT edge: E is smooth in both axes, so a small
+    /// table linearly sampled is exact to well under a shading step.
+    private static let sheenLUTSize = 64
     private static let iblTargetLuminance: Float = 0.4   // auto-exposure target average
     /// A neutral midday sky used to light a scene while a non-bundled HDRI downloads, instead
     /// of leaving it unlit (see resolveEnvironmentSources). The env's own intensity/rotation
@@ -627,6 +630,33 @@ extension MetalRenderer {
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
         iblBRDFLUT = lut
+    }
+
+    /// Bake the sheen directional-albedo LUT once, the first frame whose batches carry a
+    /// sheen material. Environment-independent like the BRDF LUT, but a sheen surface
+    /// needs it under plain lights too, so it triggers off the frame's materials rather
+    /// than the environment bake. A frame with no sheen (or one already baked) is a no-op.
+    func ensureSheenLUT(for drawer: Drawer, commandBuffer cb: MTLCommandBuffer) {
+        guard sheenLUT == nil,
+              drawer.batches.contains(where: {
+                  $0.finish.sheenColor.x + $0.finish.sheenColor.y + $0.finish.sheenColor.z > 0
+              }) else { return }
+        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r16Float,
+                                                            width: Self.sheenLUTSize,
+                                                            height: Self.sheenLUTSize, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        guard let lut = device.makeTexture(descriptor: desc),
+              let pipe = try? pipeline(.ibl("ollin_ibl_sheen_lut", color: .r16Float)) else { return }
+        let rp = MTLRenderPassDescriptor()
+        rp.colorAttachments[0].texture = lut
+        rp.colorAttachments[0].loadAction = .dontCare
+        rp.colorAttachments[0].storeAction = .store
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: rp) else { return }
+        enc.setRenderPipelineState(pipe)
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        enc.endEncoding()
+        sheenLUT = lut
     }
 
     /// The processed equirect pixels for a `.resource`/`.url` env: a cached blob if present (a

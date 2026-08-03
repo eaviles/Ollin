@@ -139,6 +139,32 @@ struct MaterialTests {
         #expect(Material.frostedGlass.transmission == 1)
     }
 
+    @Test func coatAndSheenClampAndPack() {
+        // Both layered lobes are inert by default (no coat, a zero sheen tint), so
+        // every pre-coat material packs the same shading it always did.
+        let d = Material()
+        #expect(d.clearcoat == 0 && d.clearcoatRoughness == 0)
+        #expect(d.sheen == 0 && d.sheenRoughness == 0.5)
+        let dg = d.gpuMaterial()
+        #expect(close(dg.clearcoat, 0) && close(dg.clearcoatRoughness, 0))
+        #expect(close(dg.sheenColor.x, 0) && close(dg.sheenColor.y, 0) && close(dg.sheenColor.z, 0))
+        // Everything clamps to 0...1.
+        let m = Material(clearcoat: 2, clearcoatRoughness: -1, sheen: 3, sheenRoughness: 9)
+        #expect(m.clearcoat == 1 && m.clearcoatRoughness == 0)
+        #expect(m.sheen == 1 && m.sheenRoughness == 1)
+        // The sheen strength premultiplies the linearized tint (so strength 0 packs a
+        // zero tint whatever the color); w carries the sheen roughness.
+        let g = Material(sheen: 0.5, sheenColor: .white, sheenRoughness: 0.75).gpuMaterial()
+        #expect(close(g.sheenColor.x, 0.5) && close(g.sheenColor.w, 0.75))
+        #expect(close(Material(sheen: 0, sheenColor: .white).gpuMaterial().sheenColor.x, 0))
+        // The presets read as their names.
+        let paint = Material.carPaint()
+        #expect(paint.shading == .physicallyBased && paint.metallic == 1 && paint.clearcoat == 1)
+        #expect(Material.lacquer.clearcoat == 1 && Material.lacquer.metallic == 0)
+        #expect(Material.satin.sheen > 0 && Material.felt.sheen > 0)
+        #expect(Material.felt.sheenRoughness > Material.satin.sheenRoughness)
+    }
+
     @Test func soapFilmClampsAndPacks() {
         // The film swirl is inert by default (0 flow: the plain rim sheen), the flow
         // clamps non-negative, and the phase clock passes through signed (it's a

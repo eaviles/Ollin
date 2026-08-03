@@ -2011,6 +2011,53 @@ it), so every pre-glass frame is bit-identical. The moving parts:
   a follow-up). Roughness on the traced path blends toward the env-refraction
   sample by the reflection wrapper's constants (a single ray cannot frost).
 
+### Clearcoat and sheen
+
+The two layered lobes on the physically-based finish (`Material.clearcoat` /
+`Material.sheen`), pure shading additions in `meshLitColor` + `ollin_pbr_ibl_ambient`
+with no new pipeline. Both branch on their packed fields, so a material carrying
+neither shades byte-identically (verified against the whole snapshot suite).
+
+- **Clear coat** is a second Cook-Torrance lobe: GGX at the coat's own perceptual
+  roughness, the cheap Kelemen visibility `1/(4·LoH²)`, Schlick Fresnel at a fixed
+  0.04 (an IOR-1.5 lacquer film). The base's direct + ambient terms scale by
+  `1 − Fc` (the energy the film reflects away), and the base's F0 re-derives for a
+  coat-to-surface interface, `((1 − 5√f0)/(5 − √f0))²` blended by the coat
+  intensity. **That remap sends the default dielectric 0.04 to exactly 0** (an
+  IOR-1.5 base under an IOR-1.5 film has no interface), which is physically right
+  and practically surprising: a fully-coated rough dielectric *loses* its broad
+  base specular and gains a narrow film highlight, so its disc-mean brightness
+  goes *down*. The render probes compare **peak** brightness for exactly this
+  reason (the first mean-based drafts failed on correct physics).
+- **Sheen** is the inverted-alpha sine distribution ("Charlie") with the cloth
+  visibility denominator, no Fresnel, tinted directly by the sheen color (strength
+  premultiplied into the packed rgb; roughness in w). Layering follows the
+  directional-albedo scaling: the base scales by `1 − max(tint)·E(NoV, roughness)`
+  and the lobe itself rides E in the ambient, which is what keeps a strong white
+  sheen from adding energy out of nowhere.
+- **The sheen LUT** carries E: there is no closed form, so it bakes by numerical
+  integration (uniform hemisphere, 1024 samples) into a 64² `r16Float` texture,
+  `ollin_ibl_sheen_lut` in the IBL bake family. It is environment-independent but
+  needed under plain lights too, so it triggers off the frame's *materials* rather
+  than the environment bake: `ensureSheenLUT` sits beside the three `resolveIBL`
+  call sites and scans the drawer's batches for a nonzero packed sheen color. It
+  binds at **fragment texture 12 on every `meshLitColor` carrier** (solid /
+  textured / raymarch / half-res), stand-in strip otherwise, the LTC/IES/cookie
+  discipline.
+- **Area lights:** the coat runs a second LTC fetch + integral at the coat
+  roughness (its norm + average-Fresnel split evaluated at F0 0.04), gated so a
+  coatless material pays nothing; the sheen lobe is too broad for the GGX-fitted
+  tables, so it takes `E · diffI`: the directional albedo times the panel's
+  exact cosine integral, honest because a near-Lambertian lobe's response to a
+  panel *is* its albedo times the cosine-weighted solid angle.
+- **Ray-traced reflections:** the coat's ambient gather reuses the frame's traced
+  radiance (same mirror direction; the coat is usually the smoother lobe, so the
+  traced scene beats a second prefiltered sample; no second trace is cast). Sheen
+  keeps the prefiltered environment sample under RT (a wide lobe's honest
+  integral). The RT *hit* shade carries neither lobe (per-vertex data has no
+  room for them), so a coated or sheened surface seen in a mirror shades as its
+  base material there, the glass-in-glass envelope's sibling.
+
 ---
 
 ## Deferred ray-traced reflection AA

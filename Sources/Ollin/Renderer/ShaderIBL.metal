@@ -286,6 +286,35 @@ fragment float2 ollin_ibl_brdf_lut(OllinIBLVaryings in [[stage_in]]) {
     return float2(a, b) / float(N);
 }
 
+// 5) Sheen directional-albedo LUT: E(NdotV = uv.x, sheen roughness = uv.y) for the
+// physically-based sheen lobe, integrated by uniform hemisphere sampling (the sheen
+// distribution is too broad for GGX importance sampling to help). The shading tail
+// reads it both to scale the base layer down (energy conservation under the fuzz)
+// and as the sheen's own response to wide light. Environment-independent, baked once
+// per device the first frame a material carries sheen. Output to a 2D R target.
+fragment float ollin_ibl_sheen_lut(OllinIBLVaryings in [[stage_in]]) {
+    float ndv = max(in.uv.x, 1e-4);
+    float rough = clamp(in.uv.y, 0.045, 1.0);
+    float3 v = float3(sqrt(1.0 - ndv * ndv), 0.0, ndv);
+    float e = 0.0;
+    const uint N = 1024u;
+    for (uint i = 0u; i < N; i++) {
+        float2 xi = ollin_ibl_hammersley(i, N);
+        float phi = 2.0 * OLLIN_IBL_PI * xi.x;
+        float ct = 1.0 - xi.y;                        // uniform in cos θ
+        float st = sqrt(max(1.0 - ct * ct, 0.0));
+        float3 l = float3(cos(phi) * st, sin(phi) * st, ct);
+        float3 h = normalize(v + l);
+        float ndl = l.z;
+        if (ndl > 0.0) {
+            e += ollin_pbr_D_Charlie(max(h.z, 0.0), rough)
+               * ollin_pbr_V_Neubelt(ndv, ndl) * ndl;
+        }
+    }
+    // Uniform hemisphere pdf is 1/2π, so the estimator scales by 2π/N.
+    return e * (2.0 * OLLIN_IBL_PI / float(N));
+}
+
 // Bicubic (Catmull-Rom) reconstruction of a 2D texture, four bilinear taps. A fullscreen
 // backdrop magnifies a low-resolution slice of the environment heavily, and the hardware's
 // default bilinear filter shows that as a grid of blocks; the smooth cubic reconstruction

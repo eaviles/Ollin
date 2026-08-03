@@ -1932,6 +1932,9 @@ extension MetalRenderer {
                 // stand-in when the frame carries none (`iesEnabled`/`cookieEnabled` gate).
                 encoder.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
                 encoder.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
+                // The sheen directional-albedo LUT (tex 12); a never-sampled stand-in
+                // unless a material carries sheen (its sheen color gates the read).
+                encoder.setFragmentTexture(sheenLUT ?? strip, index: 12)
                 // The mesh acceleration structure at buffer 5 so a marched field receives a mesh's
                 // cast shadow under a ray-traced point caster (it traces toward the light, the
                 // reverse of the cast). A dummy when shadowKind != 2, never traced; the cube path
@@ -2080,6 +2083,9 @@ extension MetalRenderer {
                     // array stand-in otherwise (`iesEnabled`/`cookieEnabled` gate).
                     encoder.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
                     encoder.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
+                    // The sheen directional-albedo LUT (tex 12); a never-sampled stand-in
+                    // unless a material carries sheen (its sheen color gates the read).
+                    encoder.setFragmentTexture(sheenLUT ?? strip, index: 12)
                     // The pre-traced reflection layer (tex 7) when the deferred path is on;
                     // a never-sampled stand-in otherwise (`rtReflectionDeferred` gates the
                     // read). Only part of the RT-compiled fragment signature.

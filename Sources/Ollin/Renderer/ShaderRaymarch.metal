@@ -561,7 +561,8 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  texture2d<float> ltcMat [[texture(8)]],
                                                  texture2d<float> ltcAmp [[texture(9)]],
                                                  texture2d_array<float> iesProfiles [[texture(10)]],
-                                                 texture2d_array<float> cookies [[texture(11)]]
+                                                 texture2d_array<float> cookies [[texture(11)]],
+                                                 texture2d<float> sheenLUT [[texture(12)]]
 #if OLLIN_RT_SHADOWS
                                                  , primitive_acceleration_structure accel [[buffer(5)]]
                                                  // The reflection-trace inputs (see ollin_rt_reflection),
@@ -719,7 +720,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // stands in for the map sampling there; pass a lit (1.0) ray-traced point factor.
     float4 lit = meshLitColor(baseRGB, baseA, n, pw, mat, light,
                               shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                              ltcMat, ltcAmp, iesProfiles, cookies
+                              ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT
 #if OLLIN_RT_SHADOWS
                               , 1.0
 #endif
@@ -733,7 +734,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - pw);
         lit.rgb += ollin_pbr_ibl_ambient(baseRGB, n, viewDir, mat, light,
-                                         iblIrradiance, iblPrefilter, iblBRDF
+                                         iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
 #if OLLIN_RT_SHADOWS
                                          // Fields always trace inline (their lighting never sets
                                          // rtReflectionDeferred), so no deferred sample to pass.

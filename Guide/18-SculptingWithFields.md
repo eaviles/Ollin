@@ -278,6 +278,26 @@ And the one glass object everyone knows is a soap bubble, which is thin glass pl
 
 Two honest edges, so they don't puzzle you later: glass still casts a solid shadow, and glass seen *inside a mirror* (or through other glass) reads as a shiny opaque ball, because a traced ray doesn't re-enter the transmission math. Both are the standard real-time compromises, and both have follow-ups on the roadmap.
 
+## Paint and cloth
+
+Two more finishes are built by *layering* rather than by choosing numbers for one surface, because that's how the real things are made. Car paint is a metallic base under a thin polished lacquer. Velvet is a matte body under a haze of stray fibers. Each layer gets its own knob on the physically based material, and each has presets so you can start from the name.
+
+```swift
+fill(Color(hue: 0.99, saturation: 0.8, brightness: 0.7))
+material(.carPaint(roughness: 0.45))    // a satin red metal under a polished coat
+
+fill(Color(hue: 0.62, saturation: 0.6, brightness: 0.42))
+material(.felt)                         // a dry, fuzzy blue
+```
+
+<img src="Images/18-SculptingWithFields/PaintAndCloth.jpg" alt="Four spheres in a row labeled car paint, bare metal, felt, and bare cloth. The car-paint sphere is a deep red with both a soft satin sheen and a small sharp white highlight; the bare metal beside it has only the satin sheen. The felt sphere is a pale-rimmed dusty blue that brightens toward its edge; the bare cloth beside it is the same blue, flat and matte" width="680">
+
+Look at the first pair. The bare metal has one soft satin highlight, the widest its roughness allows. The coated one keeps that satin body and adds a second, sharper reflection floating over it: **two finishes on one surface, which no single roughness can make.** That's `clearcoat`, and the same idea covers piano lacquer (`.lacquer`: a near-black matte body under a deep gloss film) and varnished wood. `clearcoatRoughness` sets the film's own polish, independent of the base, and the base dims slightly under a coat, by exactly the light the film reflects away, so the layering never invents brightness. Add `sparkle` from Chapter 17 on top of `.carPaint` and you have metal-flake paint.
+
+Now the second pair. The felt sphere is the same blue as its neighbor, but its silhouette glows: fabric is covered in fibers that lean every direction, and where the surface turns away from you those fibers catch the light edge-on. That's `sheen`. The face stays matte while the rim brightens, and the body gives up a little light to pay for it. `sheenRoughness` sets how tight the rim band is (`.satin` pulls it close to the edge, `.felt` spreads it into a haze), and `sheenColor` tints it: leave it white for dusty cloth, or tint it away from the `fill` for shot fabric, the deep red velvet rimmed in orange that the [`CoatAndCloth` example](../Examples/3D/Materials/CoatAndCloth/Sketch.swift) ends on.
+
+Both layers work under ordinary lights, under the area-light panels of Chapter 17, and from an environment; under `rayTracedReflections()` the coat's reflection upgrades to the traced scene along with everything else. The one honest edge matches glass: seen *inside a mirror*, a coated or fuzzed surface shows only its base there.
+
 ## Putting it together: molten
 
 The finished piece is a single body of four melted lobes, twisted a little, finished as glass under studio light, breathing slowly over a floor that catches its shadow. Make `MySketches/Molten.swift`:
