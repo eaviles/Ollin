@@ -160,6 +160,8 @@ A **directional** light is the sun, parallel rays from a direction, with no posi
 
 Two smaller dials finish the surface's response to light: `specular(_:)` sets how strong the highlight is (0 is matte) and `shininess(_:)` how tight. But mostly you won't set those by hand, because of what's next. First, though, there is that one extra line in the listing above to account for.
 
+All three of those lights are infinitesimal points; a fourth family gives light a *body*. `rectLight` is a glowing panel (a softbox, a window), `diskLight` a glowing circle, `tubeLight` a glowing cylinder strung between two points (a neon). A light with a body behaves differently on purpose: its highlight is a reflection of its shape, its shading wraps gradually instead of cutting at a terminator, and its brightness falls off with distance, because `intensity` is the glow of the surface itself. A big dim panel and a small bright one light a scene differently, the way real softboxes do, and a thin neon needs an intensity in the tens because a thin tube is a small piece of sky. The `3D/Lighting/AreaLights` example stages all three over a glossy floor; put it beside `3D/Lighting/Lighting` and the difference between a bulb and a panel is the whole studio-photography look.
+
 ## Shadows, and what they tell you
 
 **`castShadows()`** is what plants objects in a scene. Without it, a floating sphere and a resting sphere look the same, because nothing in the picture says where either one is. A shadow answers that.

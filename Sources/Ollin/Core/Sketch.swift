@@ -664,6 +664,43 @@ open class Sketch {
                               specular: specular, softness: softness))
     }
 
+    /// Add a rect area light: a glowing `width` × `height` panel centered at `position`,
+    /// facing along `direction` (its travel direction, like a spot's axis), the height
+    /// axis oriented by the `up` hint. A panel shades like studio lighting: highlights
+    /// stretch into its reflection, shading softens with its size, and brightness falls
+    /// off with distance (`color` × `intensity` is the panel's radiance, so a bigger
+    /// panel casts more light). `twoSided` makes both faces emit.
+    public func rectLight(_ color: Color, at position: Vector3, direction: Vector3,
+                          width: Double, height: Double, up: Vector3 = .unitY,
+                          twoSided: Bool = false, intensity: Double = 1,
+                          specular: Color? = nil) {
+        drawer.addLight(.rect(color, at: position, direction: direction,
+                              width: width, height: height, up: up,
+                              twoSided: twoSided, intensity: intensity, specular: specular))
+    }
+
+    /// Add a disk area light: a glowing circular panel of `radius` centered at
+    /// `position`, facing along `direction` (a ring light's face, a recessed ceiling
+    /// can). Shades and falls off like the rect panel; `twoSided` makes both faces emit.
+    public func diskLight(_ color: Color, at position: Vector3, direction: Vector3,
+                          radius: Double, twoSided: Bool = false, intensity: Double = 1,
+                          specular: Color? = nil) {
+        drawer.addLight(.disk(color, at: position, direction: direction,
+                              radius: radius, twoSided: twoSided,
+                              intensity: intensity, specular: specular))
+    }
+
+    /// Add a tube area light: a glowing cylinder of `radius` running `from` one point
+    /// `to` another (a fluorescent or neon tube), emitting radially all around.
+    /// `color` × `intensity` is the tube surface's radiance, so a thin tube wants a
+    /// high intensity (a real neon is a very bright surface).
+    public func tubeLight(_ color: Color, from: Vector3, to: Vector3,
+                          radius: Double = 0.1, intensity: Double = 1,
+                          specular: Color? = nil) {
+        drawer.addLight(.tube(color, from: from, to: to, radius: radius,
+                              intensity: intensity, specular: specular))
+    }
+
     /// Set the ambient light — a flat term added to every lit surface, so the side
     /// facing away from the lights isn't pure black. Setting an ambient alone also
     /// counts as lighting the scene (a flat, unshaded fill of the surface color).

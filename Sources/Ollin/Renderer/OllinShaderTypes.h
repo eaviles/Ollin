@@ -414,17 +414,28 @@ typedef struct {
 #define OLLIN_MAX_LIGHTS 8
 
 // One light. `kind`: 0 directional (parallel rays), 1 point (omni from a position),
-// 2 spot (point gated by a cone). Colors are linear (sRGB→linear on the CPU) and
-// premultiplied by intensity. There's no distance attenuation in this model.
+// 2 spot (point gated by a cone), 3 rect / 4 disk / 5 tube (area lights, shaded with
+// Linearly Transformed Cosines through the fitted LUTs at fragment textures 8/9).
+// Colors are linear (sRGB→linear on the CPU) and premultiplied by intensity. The
+// punctual kinds (0-2) have no distance attenuation; the area kinds fall off
+// physically (the shape's solid angle shrinks with distance), with `color` as the
+// emitting surface's radiance, so a bigger panel casts more light.
 typedef struct {
     simd_float4 color;       // rgb = linear *diffuse* color × intensity; a unused
-    simd_float4 position;    // point/spot: world-space position; w unused
-    simd_float4 direction;   // directional: unit direction *to* the light; spot: unit cone axis (light's travel direction); w unused
-    int   kind;              // 0 directional, 1 point, 2 spot
+    simd_float4 position;    // point/spot: world-space position; rect/disk/tube: the shape's center; w unused
+    simd_float4 direction;   // directional: unit direction *to* the light; spot: unit cone axis (light's
+                             // travel direction); rect/disk: the panel's unit normal (the way it faces);
+                             // tube: unused. w: rect/disk two-sided flag (1 = emits both faces, 0 = front only)
+    int   kind;              // 0 directional, 1 point, 2 spot, 3 rect, 4 disk, 5 tube
     float cosInner;          // spot: cosine of the inner half-angle (full brightness within)
     float cosOuter;          // spot: cosine of the outer half-angle (zero beyond); inner→outer is the soft penumbra
-    float softness;          // diffuse wrap, 0…1: softens the terminator (0 = hard Lambert, byte-identical to before)
+    float softness;          // diffuse wrap, 0…1: softens the terminator (0 = hard Lambert, byte-identical to
+                             // before). Punctual kinds only; an area kind's softness is its real extent.
     simd_float4 specular;    // rgb = linear *specular* color × intensity (defaults to `color`, so a single-color light is unchanged); a unused
+    simd_float4 axisA;       // rect/disk: unit tangent (the width axis), w = half-width (disk: radius);
+                             // tube: the unit axis, w = the half-length. Unused for kinds 0-2.
+    simd_float4 axisB;       // rect/disk: unit bitangent (the height axis), w = half-height (disk: radius);
+                             // tube: xyz unused, w = the tube radius. Unused for kinds 0-2.
 } OllinLight;
 
 // Shadow mapping (opt-in, `castShadows()`): one light casts. The caster's
@@ -503,6 +514,10 @@ typedef struct {
                                   // shadow framing and rtReflectionBias also derive from): sizes the
                                   // sparkle finish's flake cells so they read the same at any scene
                                   // scale. 0 when no camera; only the sparkle path reads it.
+    int   ltcEnabled;             // 1 = the LTC lookup tables are bound at fragment textures 8/9
+                                  // (set by the renderer once the bundled tables load), so the area
+                                  // light kinds (3-5) shade; 0 = area kinds contribute nothing (the
+                                  // loader logs the failure once). Kinds 0-2 never read it.
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

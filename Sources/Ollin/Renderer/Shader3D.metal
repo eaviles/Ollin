@@ -450,6 +450,25 @@ static inline float3 ollin_rt_direct(OllinRTSurface s, constant OllinLighting &l
         float3 toLight = (L.kind == 0) ? L.direction.xyz : normalize(L.position.xyz - s.P);
         float atten = 1.0;
         if (L.kind == 2) atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
+        if (L.kind >= 3) {
+            // Area kinds: a surface seen in a mirror keeps the panel's light, as a
+            // centroid emitter with the shape's physical falloff (radiance × projected
+            // area over π·d², softened near the source by the area itself). The exact
+            // LTC evaluation isn't worth a LUT bind in a secondary bounce; this keeps
+            // the reflected image within a few percent of the primary shading.
+            float3 d = L.position.xyz - s.P;
+            float dist2 = dot(d, d);
+            float area, facing;
+            if (L.kind == 5) {
+                area = 2.0 * L.axisB.w * (2.0 * L.axisA.w);   // the tube's projected strip
+                facing = 0.785398;                            // its mean projected cosine (π/4)
+            } else {
+                area = (L.kind == 3 ? 4.0 : 3.14159265) * L.axisA.w * L.axisB.w;
+                float c = dot(-toLight, L.direction.xyz);
+                facing = (L.direction.w > 0.5) ? abs(c) : max(c, 0.0);
+            }
+            atten = area * facing / (3.14159265 * dist2 + area);
+        }
         direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten);
     }
     return direct / max(light.iblIntensity, 1e-3);
@@ -669,6 +688,432 @@ static inline float3 ollin_pbr_F_Schlick(float VoH, float3 F0) {
     return F0 + (float3(1.0) - F0) * f;
 }
 
+// MARK: - Area lights (linearly transformed cosines)
+//
+// A panel, disk, or tube of light has no closed-form shading integral for a microfacet
+// lobe, but a *linearly transformed cosine* does: a 3x3 transform of the clamped-cosine
+// distribution both approximates the GGX lobe well and still integrates analytically
+// over the light's shape (the Heitz/Dupuy/Hill/Neubelt technique; the sphere/disk and
+// line extensions are Heitz/Dupuy and Heitz/Hill). The fitted transforms ship as two
+// 64x64 float tables (`Resources/LTC/ltc_tables.bin`, provenance + license in the
+// notice beside it): table 1 the inverse transform per (perceptual roughness,
+// sqrt(1 - cos view angle)) texel, stored sparse (m00, m02, m20, m22, normalized by
+// the middle element); table 2 the (BRDF norm, average Schlick Fresnel, unused,
+// horizon-clipped sphere form factor) terms. Bound at fragment textures 8/9 on every
+// pipeline that shades through `meshLitColor`, gated by `light.ltcEnabled`.
+
+constexpr sampler ollinLTCSampler(filter::linear, address::clamp_to_edge);
+
+// The half-texel LUT mapping: the tables span their domains inclusive of both ends,
+// so sampling remaps [0, 1] onto texel centers (no half-texel wobble at the edges).
+static inline float2 ollin_ltc_uv(float roughness, float NoV) {
+    const float size = 64.0;
+    float2 uv = float2(roughness, sqrt(saturate(1.0 - NoV)));
+    return uv * ((size - 1.0) / size) + (0.5 / size);
+}
+
+// One polygon edge's contribution to the vector irradiance integral. The analytic
+// form needs the edge arc's theta/sin(theta); the rational fit below replaces the
+// acos (the technique's standard fit, stable at the +-1 poles).
+static inline float3 ollin_ltc_edge(float3 v1, float3 v2) {
+    float x = dot(v1, v2);
+    float y = abs(x);
+    float a = 0.8543985 + (0.4965155 + 0.0145206 * y) * y;
+    float b = 3.4175940 + (4.1616724 + y) * y;
+    float v = a / b;
+    float thetaSinTheta = (x > 0.0) ? v : 0.5 * rsqrt(max(1.0 - x * x, 1e-7)) - v;
+    return cross(v1, v2) * thetaSinTheta;
+}
+
+// Clip a quad (in the shading frame, z up) to the z >= 0 horizon. The 16 sign
+// configurations each have a fixed clipped polygon (3-5 vertices); `n` returns the
+// count, with L[3]/L[4] closing the loop for the 3- and 4-vertex cases.
+static inline void ollin_ltc_clip_quad(thread float3 *L, thread int &n) {
+    int config = 0;
+    if (L[0].z > 0.0) config += 1;
+    if (L[1].z > 0.0) config += 2;
+    if (L[2].z > 0.0) config += 4;
+    if (L[3].z > 0.0) config += 8;
+
+    n = 0;
+    if (config == 0) {
+        // all below the horizon
+    } else if (config == 1) {
+        n = 3;
+        L[1] = -L[1].z * L[0] + L[0].z * L[1];
+        L[2] = -L[3].z * L[0] + L[0].z * L[3];
+    } else if (config == 2) {
+        n = 3;
+        L[0] = -L[0].z * L[1] + L[1].z * L[0];
+        L[2] = -L[2].z * L[1] + L[1].z * L[2];
+    } else if (config == 3) {
+        n = 4;
+        L[2] = -L[2].z * L[1] + L[1].z * L[2];
+        L[3] = -L[3].z * L[0] + L[0].z * L[3];
+    } else if (config == 4) {
+        n = 3;
+        L[0] = -L[3].z * L[2] + L[2].z * L[3];
+        L[1] = -L[1].z * L[2] + L[2].z * L[1];
+    } else if (config == 5) {
+        n = 0;   // opposite corners only: degenerate, treated as fully clipped
+    } else if (config == 6) {
+        n = 4;
+        L[0] = -L[0].z * L[1] + L[1].z * L[0];
+        L[3] = -L[3].z * L[2] + L[2].z * L[3];
+    } else if (config == 7) {
+        n = 5;
+        L[4] = -L[3].z * L[0] + L[0].z * L[3];
+        L[3] = -L[3].z * L[2] + L[2].z * L[3];
+    } else if (config == 8) {
+        n = 3;
+        L[0] = -L[0].z * L[3] + L[3].z * L[0];
+        L[1] = -L[2].z * L[3] + L[3].z * L[2];
+        L[2] = L[3];
+    } else if (config == 9) {
+        n = 4;
+        L[1] = -L[1].z * L[0] + L[0].z * L[1];
+        L[2] = -L[2].z * L[3] + L[3].z * L[2];
+    } else if (config == 10) {
+        n = 0;   // opposite corners only: degenerate, treated as fully clipped
+    } else if (config == 11) {
+        n = 5;
+        L[4] = L[3];
+        L[3] = -L[2].z * L[3] + L[3].z * L[2];
+        L[2] = -L[2].z * L[1] + L[1].z * L[2];
+    } else if (config == 12) {
+        n = 4;
+        L[1] = -L[1].z * L[2] + L[2].z * L[1];
+        L[0] = -L[0].z * L[3] + L[3].z * L[0];
+    } else if (config == 13) {
+        n = 5;
+        L[4] = L[3];
+        L[3] = L[2];
+        L[2] = -L[1].z * L[2] + L[2].z * L[1];
+        L[1] = -L[1].z * L[0] + L[0].z * L[1];
+    } else if (config == 14) {
+        n = 5;
+        L[4] = -L[0].z * L[3] + L[3].z * L[0];
+        L[0] = -L[0].z * L[1] + L[1].z * L[0];
+    } else if (config == 15) {
+        n = 4;
+    }
+    if (n == 3) L[3] = L[0];
+    if (n == 4) L[4] = L[0];
+}
+
+// A deterministic tangent when the view sits exactly on the normal (V == N leaves
+// nothing to project): any tangent is exact there (the head-on LUT row is fitted
+// isotropic), so pick a stable one instead of normalizing a zero vector into NaNs.
+static inline float3 ollin_ltc_any_tangent(float3 N) {
+    float3 axis = (abs(N.y) < 0.999) ? float3(0.0, 1.0, 0.0) : float3(1.0, 0.0, 0.0);
+    return normalize(cross(axis, N));
+}
+
+// The view-aligned shading frame every LTC evaluation transforms into: T1 toward the
+// view, T2 = N x T1, rows of the returned matrix (so M * v rotates world into frame).
+static inline float3x3 ollin_ltc_frame(float3 N, float3 V) {
+    float3 T1 = V - N * dot(V, N);
+    float len = length(T1);
+    float3 t1 = (len > 1e-6) ? T1 / len : ollin_ltc_any_tangent(N);
+    float3 t2 = cross(N, t1);
+    return transpose(float3x3(t1, t2, N));
+}
+
+// The exact rect evaluation: transform the four corners into clamped-cosine space,
+// clip the polygon to the shading horizon, and sum the edge integrals. Returns the
+// transformed lobe's integral over the panel (0...~1). The corner winding is chosen so
+// the sum is positive on the side the light faces; `twoSided` folds the back side's
+// negative integral in (abs) instead of clamping it away.
+static inline float ollin_ltc_rect(float3 N, float3 V, float3 P, float3x3 Minv,
+                                   float3 p0, float3 p1, float3 p2, float3 p3,
+                                   bool twoSided) {
+    float3x3 W = Minv * ollin_ltc_frame(N, V);
+
+    float3 L[5];
+    L[0] = W * (p0 - P);
+    L[1] = W * (p1 - P);
+    L[2] = W * (p2 - P);
+    L[3] = W * (p3 - P);
+
+    int n;
+    ollin_ltc_clip_quad(L, n);
+    if (n == 0) return 0.0;
+
+    L[0] = normalize(L[0]);
+    L[1] = normalize(L[1]);
+    L[2] = normalize(L[2]);
+    L[3] = normalize(L[3]);
+    L[4] = normalize(L[4]);
+
+    float sum = 0.0;
+    sum += ollin_ltc_edge(L[0], L[1]).z;
+    sum += ollin_ltc_edge(L[1], L[2]).z;
+    sum += ollin_ltc_edge(L[2], L[3]).z;
+    if (n >= 4) sum += ollin_ltc_edge(L[3], L[4]).z;
+    if (n == 5) sum += ollin_ltc_edge(L[4], L[0]).z;
+
+    return twoSided ? abs(sum) : max(0.0, sum);
+}
+
+// Three real roots of a cubic with a known-all-real spectrum, by the split
+// Algorithm A / Algorithm D form of the trigonometric method (the numerically
+// robust variant the disk evaluation below depends on; naive single-formula
+// roots lose the small root's precision and the ellipse clipping visibly bands).
+static inline float3 ollin_ltc_solve_cubic(float4 c) {
+    // Normalize to x^3 + 3Bx^2 + 3Cx + D, dividing the middle terms by three.
+    c.xyz /= c.w;
+    c.yz /= 3.0;
+
+    float B = c.z;
+    float C = c.y;
+    float D = c.x;
+
+    // Hessian coefficients and the (scaled) discriminant. This spectrum is all-real,
+    // so the discriminant and the negated Hessian terms are non-negative in exact
+    // math; the clamps below only absorb float round-off (a value dipping a few ulps
+    // under zero feeds sqrt a negative and the NaN reads as black speckle where a
+    // surface grazes the disk's plane).
+    float3 delta = float3(-c.z * c.z + c.y,
+                          -c.y * c.z + c.x,
+                          dot(float2(c.z, -c.y), c.xy));
+    float discriminant = max(dot(float2(4.0 * delta.x, -delta.y), delta.zy), 0.0);
+
+    float2 xlc, xsc;
+
+    // Algorithm A: the largest root, from the depressed cubic at B.
+    {
+        float C_a = delta.x;
+        float D_a = -2.0 * B * delta.x + delta.y;
+        float theta = atan2(sqrt(discriminant), -D_a) / 3.0;
+        float x_1a = 2.0 * sqrt(max(-C_a, 0.0)) * cos(theta);
+        float x_3a = 2.0 * sqrt(max(-C_a, 0.0)) * cos(theta + (2.0 / 3.0) * 3.14159265);
+        float xl = (x_1a + x_3a > 2.0 * B) ? x_1a : x_3a;
+        xlc = float2(xl - B, 1.0);
+    }
+
+    // Algorithm D: the smallest root, from the reciprocal cubic at C.
+    {
+        float C_d = delta.z;
+        float D_d = -D * delta.y + 2.0 * C * delta.z;
+        float theta = atan2(D * sqrt(discriminant), -D_d) / 3.0;
+        float x_1d = 2.0 * sqrt(max(-C_d, 0.0)) * cos(theta);
+        float x_3d = 2.0 * sqrt(max(-C_d, 0.0)) * cos(theta + (2.0 / 3.0) * 3.14159265);
+        float xs = (x_1d + x_3d < 2.0 * C) ? x_1d : x_3d;
+        xsc = float2(-D, xs + C);
+    }
+
+    // The middle root from the two, then all three as ratios.
+    float E = xlc.y * xsc.y;
+    float F = -xlc.x * xsc.y - xlc.y * xsc.x;
+    float G = xlc.x * xsc.x;
+    float2 xmc = float2(C * F - B * G, -B * F + C * E);
+
+    float3 root = float3(xsc.x / xsc.y, xmc.x / xmc.y, xlc.x / xlc.y);
+    if (root.x < root.y && root.x < root.z) {
+        root.xyz = root.yxz;
+    } else if (root.z < root.x && root.z < root.y) {
+        root.xyz = root.xzy;
+    }
+    return root;
+}
+
+// The disk evaluation: the disk's bounding quad transforms into clamped-cosine space,
+// where it becomes an arbitrary ellipse; an eigendecomposition finds the ellipse's
+// axes, a cubic solve its horizon clipping, and the tabulated horizon-clipped sphere
+// (table 2's w channel) turns the resulting form factor into the final integral.
+static inline float ollin_ltc_disk(float3 N, float3 V, float3 P, float3x3 Minv,
+                                   float3 center, float3 ex, float3 ey, bool twoSided,
+                                   texture2d<float> ltcAmp) {
+    float3x3 R = ollin_ltc_frame(N, V);
+
+    // Three corners of the bounding quad (the same winding as the rect path), then
+    // the ellipse's center and spanning axes in the shading frame.
+    float3 L0 = R * (center - ex - ey - P);
+    float3 L1 = R * (center - ex + ey - P);
+    float3 L2 = R * (center + ex + ey - P);
+
+    float3 C  = 0.5 * (L0 + L2);
+    float3 V1 = 0.5 * (L1 - L2);
+    float3 V2 = 0.5 * (L1 - L0);
+
+    C  = Minv * C;
+    V1 = Minv * V1;
+    V2 = Minv * V2;
+
+    // The one-sided front test: with this winding cross(V1, V2) points against the
+    // panel's facing normal, so a lit (front) point sees a non-negative determinant.
+    if (!twoSided && dot(cross(V1, V2), C) < 0.0) return 0.0;
+
+    // Eigenvectors of the ellipse's moment matrix give its principal axes.
+    float a, b;
+    float d11 = dot(V1, V1);
+    float d22 = dot(V2, V2);
+    float d12 = dot(V1, V2);
+    if (abs(d12) / sqrt(d11 * d22) > 0.0001) {
+        float tr = d11 + d22;
+        // Non-negative in exact math (Cauchy-Schwarz; tr - 2·det is (√d11 - √d22)²
+        // when d12 vanishes): the clamps absorb float round-off, as in the cubic.
+        float det = sqrt(max(-d12 * d12 + d11 * d22, 0.0));
+        float u = 0.5 * sqrt(max(tr - 2.0 * det, 0.0));
+        float v = 0.5 * sqrt(max(tr + 2.0 * det, 0.0));
+        float eMax = (u + v) * (u + v);
+        float eMin = (u - v) * (u - v);
+
+        float3 V1_, V2_;
+        if (d11 > d22) {
+            V1_ = d12 * V1 + (eMax - d11) * V2;
+            V2_ = d12 * V1 + (eMin - d11) * V2;
+        } else {
+            V1_ = d12 * V2 + (eMax - d22) * V1;
+            V2_ = d12 * V2 + (eMin - d22) * V1;
+        }
+        a = 1.0 / eMax;
+        b = 1.0 / eMin;
+        V1 = normalize(V1_);
+        V2 = normalize(V2_);
+    } else {
+        a = 1.0 / dot(V1, V1);
+        b = 1.0 / dot(V2, V2);
+        V1 *= sqrt(a);
+        V2 *= sqrt(b);
+    }
+
+    float3 V3 = cross(V1, V2);
+    if (dot(C, V3) < 0.0) V3 *= -1.0;
+
+    float dist = dot(V3, C);
+    if (dist <= 0.0) return 0.0;   // the ellipse plane passes through the shading point
+    float x0 = dot(V1, C) / dist;
+    float y0 = dot(V2, C) / dist;
+
+    a *= dist * dist;
+    b *= dist * dist;
+
+    // The horizon-clipping cubic over the projected ellipse.
+    float c0 = a * b;
+    float c1 = a * b * (1.0 + x0 * x0 + y0 * y0) - a - b;
+    float c2 = 1.0 - a * (1.0 + x0 * x0) - b * (1.0 + y0 * y0);
+    float c3 = 1.0;
+
+    float3 roots = ollin_ltc_solve_cubic(float4(c0, c1, c2, c3));
+    float e1 = roots.x;
+    float e2 = roots.y;
+    float e3 = roots.z;
+
+    float3 avgDir = float3(a * x0 / (a - e2), b * y0 / (b - e2), 1.0);
+    avgDir = normalize(float3x3(V1, V2, V3) * avgDir);
+
+    // e2 <= 0 <= e3 and e1 < 0 for a visible ellipse; clamped like the sqrts above.
+    float len1 = sqrt(max(-e2 / e3, 0.0));
+    float len2 = sqrt(max(-e2 / e1, 0.0));
+    float formFactor = len1 * len2 * rsqrt((1.0 + len1 * len1) * (1.0 + len2 * len2));
+
+    // The tabulated horizon-clipped sphere with that form factor and mean elevation.
+    const float size = 64.0;
+    float2 uv = float2(avgDir.z * 0.5 + 0.5, formFactor);
+    uv = uv * ((size - 1.0) / size) + (0.5 / size);
+    float scale = ltcAmp.sample(ollinLTCSampler, uv).w;
+    return formFactor * scale;
+}
+
+// The line evaluation's two antiderivatives (the position and tangent halves of the
+// analytic line integral).
+static inline float ollin_ltc_fpo(float d, float l) {
+    return l / (d * (d * d + l * l)) + atan(l / d) / (d * d);
+}
+
+static inline float ollin_ltc_fwt(float d, float l) {
+    return l * l / (d * (d * d + l * l));
+}
+
+// The clamped-cosine integral along a line segment (endpoints in the shading frame),
+// clipped to the horizon by moving a below-horizon endpoint to the crossing.
+static inline float ollin_ltc_line_diffuse(float3 p1, float3 p2) {
+    float3 wt = normalize(p2 - p1);
+    if (p1.z <= 0.0 && p2.z <= 0.0) return 0.0;
+    if (p1.z < 0.0) p1 = (+p1 * p2.z - p2 * p1.z) / (+p2.z - p1.z);
+    if (p2.z < 0.0) p2 = (-p1 * p2.z + p2 * p1.z) / (-p2.z + p1.z);
+
+    float l1 = dot(p1, wt);
+    float l2 = dot(p2, wt);
+    float3 po = p1 - l1 * wt;
+    // The perpendicular distance to the line; floored so a surface point exactly on
+    // the extended axis (a tube passing through geometry) can't divide by zero.
+    float d = max(length(po), 1e-4);
+
+    float I = (ollin_ltc_fpo(d, l2) - ollin_ltc_fpo(d, l1)) * po.z +
+              (ollin_ltc_fwt(d, l2) - ollin_ltc_fwt(d, l1)) * wt.z;
+    return I / 3.14159265;
+}
+
+// The transformed line integral: run the diffuse form in clamped-cosine space, then
+// scale by the width factor (how the transform stretches directions across the line).
+// The inverse-transpose falls out of the columns' cross products (the normal-matrix
+// identity), so the sparse matrix never needs a general inverse.
+static inline float ollin_ltc_line(float3 p1, float3 p2, float3x3 Minv) {
+    float3 p1o = Minv * p1;
+    float3 p2o = Minv * p2;
+    float I = ollin_ltc_line_diffuse(p1o, p2o);
+
+    // A shading point on the extended axis sees the segment edge-on (the cross of its
+    // endpoints vanishes); the width factor is moot there, so fall back to 1 instead
+    // of normalizing a zero vector into NaNs.
+    float3 cr = cross(p1, p2);
+    float crLen = length(cr);
+    if (crLen < 1e-7) return I;
+    float3 ortho = cr / crLen;
+    float3 c0 = Minv[0], c1 = Minv[1], c2 = Minv[2];
+    float det = dot(c0, cross(c1, c2));
+    float3 invT = float3x3(cross(c1, c2), cross(c2, c0), cross(c0, c1)) * ortho / det;
+    float w = 1.0 / max(length(invT), 1e-7);
+    return w * I;
+}
+
+// One area light's diffuse and specular integrals at a surface point: the shared
+// dispatch over the three shapes (rect / disk / tube), diffuse with the identity
+// transform (an untransformed clamped cosine is exact Lambert), specular with the
+// fitted inverse transform for this (roughness, view angle) texel. Intensity rides
+// the light color as the emitting surface's radiance, so the result is scaled by
+// the caller like any other light's N.L term.
+static inline void ollin_ltc_light(OllinLight L, float3 n, float3 viewDir,
+                                   float3 worldPos, float3x3 Minv,
+                                   texture2d<float> ltcAmp,
+                                   thread float &diffuse, thread float &specular,
+                                   bool flipNormal = false) {
+    float3 N = flipNormal ? -n : n;
+    const float3x3 identity = float3x3(1.0);
+    if (L.kind == 5) {
+        // Tube: the analytic line integral times the tube radius. No end caps: a lit
+        // tube reads without them, and a cap term would be a separate evaluation.
+        float3x3 B = ollin_ltc_frame(N, viewDir);
+        float3 axis = L.axisA.xyz * L.axisA.w;
+        float3 p1 = B * (L.position.xyz - axis - worldPos);
+        float3 p2 = B * (L.position.xyz + axis - worldPos);
+        float radius = L.axisB.w;
+        diffuse  = radius * ollin_ltc_line(p1, p2, identity);
+        specular = radius * ollin_ltc_line(p1, p2, Minv);
+    } else if (L.kind == 4) {
+        float3 ex = L.axisA.xyz * L.axisA.w;
+        float3 ey = L.axisB.xyz * L.axisB.w;
+        bool twoSided = L.direction.w > 0.5;
+        diffuse  = ollin_ltc_disk(N, viewDir, worldPos, identity, L.position.xyz, ex, ey, twoSided, ltcAmp);
+        specular = ollin_ltc_disk(N, viewDir, worldPos, Minv,     L.position.xyz, ex, ey, twoSided, ltcAmp);
+    } else {
+        // Rect corners, wound so the integral is positive on the side the panel faces
+        // (position + tangent frame packed by the CPU, facing normal = axisA x axisB).
+        float3 ex = L.axisA.xyz * L.axisA.w;
+        float3 ey = L.axisB.xyz * L.axisB.w;
+        float3 c = L.position.xyz;
+        float3 p0 = c - ex - ey;
+        float3 p1 = c - ex + ey;
+        float3 p2 = c + ex + ey;
+        float3 p3 = c + ex - ey;
+        bool twoSided = L.direction.w > 0.5;
+        diffuse  = ollin_ltc_rect(N, viewDir, worldPos, identity, p0, p1, p2, p3, twoSided);
+        specular = ollin_ltc_rect(N, viewDir, worldPos, Minv,     p0, p1, p2, p3, twoSided);
+    }
+}
+
 // The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
 // surface `normal`, `worldPos`, and the per-batch `mat` finish. It composes a base
 // shading model (standard Lambert / toon cel / Gooch warm–cool / physically-based) with
@@ -684,7 +1129,10 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   float3 worldPos, constant OllinMaterial &mat,
                                   constant OllinLighting &light,
                                   depth2d<float> shadowMap, sampler shadowSamp,
-                                  texturecube<float> shadowCube, sampler shadowCubeSamp
+                                  texturecube<float> shadowCube, sampler shadowCubeSamp,
+                                  // The two LTC lookup tables (fragment textures 8/9),
+                                  // read only by the area light kinds.
+                                  texture2d<float> ltcMat, texture2d<float> ltcAmp
 #if OLLIN_RT_SHADOWS
                                   , float rtShadow
 #endif
@@ -724,6 +1172,70 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
 
     for (int i = 0; i < light.lightCount; i++) {
         OllinLight L = light.lights[i];
+
+        // Area kinds (rect / disk / tube) shade through the LTC integrals and skip the
+        // whole punctual path below, so a frame with no area light is byte-identical.
+        // Gated on the tables being bound (`ltcEnabled`; the loader logs a failure once).
+        if (L.kind >= 3) {
+            if (light.ltcEnabled == 0) continue;
+            float3 toCenter = normalize(L.position.xyz - worldPos);
+            if (!haveKey) { keyToLight = toCenter; haveKey = true; }
+
+            // The LUT texel for this surface: the physically-based model brings its own
+            // perceptual roughness; the Blinn-Phong models map their exponent onto the
+            // equivalent GGX lobe width (alpha = sqrt(2/(shininess + 2)), so perceptual
+            // roughness is its square root).
+            float rough = (model == 3) ? clamp((float)mat.roughness, 0.045, 1.0)
+                                       : clamp(sqrt(sqrt(2.0 / (shininess + 2.0))), 0.045, 1.0);
+            float NoV = saturate(dot(n, viewDir));
+            float2 ltcUV = ollin_ltc_uv(rough, NoV);
+            float4 lt1 = ltcMat.sample(ollinLTCSampler, ltcUV);
+            float4 lt2 = ltcAmp.sample(ollinLTCSampler, ltcUV);
+            float3x3 Minv = float3x3(float3(lt1.x, 0.0, lt1.y),
+                                     float3(0.0,  1.0, 0.0),
+                                     float3(lt1.z, 0.0, lt1.w));
+
+            float diffI = 0.0, specI = 0.0;
+            ollin_ltc_light(L, n, viewDir, worldPos, Minv, ltcAmp, diffI, specI);
+
+            if (model == 1) {
+                // Toon: cel bands on the area diffuse; the highlight stays smooth (a
+                // soft light's stretched blob has no hard cel edge to snap to).
+                float d = ceil(saturate(diffI) * bands) / bands;
+                lit += L.color.rgb * base * d + L.specular.rgb * (specI * lt2.x * specStrength);
+            } else if (model == 2) {
+                // Gooch: the tone comes from the key axis after the loop; the light
+                // still adds its highlight, like the punctual path.
+                lit += L.specular.rgb * (specI * lt2.x * specStrength);
+            } else if (model == 3) {
+                // Physically based: the fitted norm + Fresnel split reconstructs the
+                // GGX response (F0 blends the two channels); diffuse is the exact
+                // Lambert integral over the shape, with the usual metallic kill. Both
+                // ride the light's diffuse color, like the punctual microfacet path.
+                float3 F0 = mix(float3(0.04), base, mat.metallic);
+                float3 spec = (F0 * lt2.x + (float3(1.0) - F0) * lt2.y) * specI;
+                float3 diff = base * ((1.0 - mat.metallic) * diffI);
+                lit += (diff + spec) * L.color.rgb;
+            } else {
+                // Standard: Lambert diffuse through the exact integral; the highlight
+                // takes the norm channel scaled by the material's specular strength
+                // (inert at 0, the finish rule) in the light's specular tint.
+                lit += L.color.rgb * base * diffI + L.specular.rgb * (specI * lt2.x * specStrength);
+            }
+            incoming += L.color.rgb * diffI;
+
+            // Subsurface: what the panel pours onto the *back* face, seen through the
+            // body. The flipped-normal integral is the area analogue of the punctual
+            // wrap term and carries the panel's real falloff with it.
+            if (wantsSSS) {
+                float back = pow(max(dot(viewDir, -toCenter), 0.0), 3.0);
+                float diffBack = 0.0, specBack = 0.0;
+                ollin_ltc_light(L, n, viewDir, worldPos, Minv, ltcAmp, diffBack, specBack, true);
+                sssAccum += L.color.rgb * (back * diffBack);
+            }
+            continue;
+        }
+
         float3 toLight;     // unit vector from the surface toward the light
         float atten = 1.0;
         if (L.kind == 0) {
@@ -1023,7 +1535,9 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     texture2d<float> fieldShadowTex [[texture(3)]],
                                     texturecube<float> iblIrradiance [[texture(4)]],
                                     texturecube<float> iblPrefilter [[texture(5)]],
-                                    texture2d<float> iblBRDF [[texture(6)]]
+                                    texture2d<float> iblBRDF [[texture(6)]],
+                                    texture2d<float> ltcMat [[texture(8)]],
+                                    texture2d<float> ltcAmp [[texture(9)]]
 #if OLLIN_RT_SHADOWS
                                     , primitive_acceleration_structure shadowAccel [[buffer(3)]]
                                     // The flat mesh buffer + its per-geometry base-vertex offsets, so a
@@ -1047,11 +1561,13 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
-                            shadowCube, shadowCubeSamp, rtShadow, -1.0, meshFieldShadow);
+                            shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
+                            rtShadow, -1.0, meshFieldShadow);
 #else
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
-                            shadowCube, shadowCubeSamp, -1.0, meshFieldShadow);
+                            shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
+                            -1.0, meshFieldShadow);
 #endif
     // Physically-based surfaces gather their ambient + reflections from the environment;
     // the other lit materials take the diffuse irradiance as their ambient (Gooch excepted).
@@ -1227,7 +1743,9 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              texture2d<float> fieldShadowTex [[texture(3)]],
                                              texturecube<float> iblIrradiance [[texture(4)]],
                                              texturecube<float> iblPrefilter [[texture(5)]],
-                                             texture2d<float> iblBRDF [[texture(6)]]
+                                             texture2d<float> iblBRDF [[texture(6)]],
+                                             texture2d<float> ltcMat [[texture(8)]],
+                                             texture2d<float> ltcAmp [[texture(9)]]
 #if OLLIN_RT_SHADOWS
                                              , primitive_acceleration_structure shadowAccel [[buffer(3)]]
                                              , const device OllinMeshVertex *meshVerts [[buffer(6)]]
@@ -1247,10 +1765,12 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
 #if OLLIN_RT_SHADOWS
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
-                            shadowMap, shadowSamp, shadowCube, shadowCubeSamp, rtShadow, -1.0, meshFieldShadow);
+                            shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
+                            ltcMat, ltcAmp, rtShadow, -1.0, meshFieldShadow);
 #else
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
-                            shadowMap, shadowSamp, shadowCube, shadowCubeSamp, -1.0, meshFieldShadow);
+                            shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
+                            ltcMat, ltcAmp, -1.0, meshFieldShadow);
 #endif
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);

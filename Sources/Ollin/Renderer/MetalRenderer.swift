@@ -745,6 +745,15 @@ final class MetalRenderer {
     /// A 1×1 cube bound at the IBL texture slots when no environment is set, so the mesh
     /// fragment's declared cube samplers are always bound (never sampled in that case).
     var iblPlaceholderCube: MTLTexture?
+    /// The two 64×64 LTC lookup tables for area-light shading (`ensureLTCTables()`), loaded
+    /// once from the bundled fit (`Resources/LTC/ltc_tables.bin`). Bound at mesh fragment
+    /// textures 8/9 whenever real (with a never-sampled stand-in otherwise); the read is
+    /// gated by `OllinLighting.ltcEnabled`, so a frame with no area light never samples them.
+    var ltcMatTexture: MTLTexture?
+    var ltcAmpTexture: MTLTexture?
+    /// A failed table load (a corrupt bundle) logs once and stays failed; area lights then
+    /// contribute nothing rather than shading through garbage.
+    var ltcLoadFailed = false
     /// Processed equirect pixels ready to bake, keyed by source. A heavy `.url` HDRI decodes
     /// off the render thread (live) and lands here for the next frame to upload + bake; the
     /// bundled placeholder shows meanwhile. Locked because the background decode writes it.

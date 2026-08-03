@@ -290,6 +290,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("pbr-ibl",
                  note: "Physically-based balls lit by a bundled HDRI environment (image-based lighting): pins the whole IBL path (the equirect->cube / irradiance / GGX-prefilter / BRDF-LUT bake, the split-sum ambient on the mesh fragment, and the skybox backdrop). Fixed camera + environment, no time, so the bake is deterministic.",
                  make: { IBLScene() }),
+    SnapshotCase("area-lights",
+                 note: "A rect panel, a disk, and a tube (the LTC area lights) over a glossy floor and a roughness row: pins the bundled LTC table load, the horizon-clipped rect integral, the disk's ellipse/cubic path, the tube's line integral, the physical falloff, and the Blinn-Phong shininess-to-roughness mapping on the standard-material box. Fixed camera, no time.",
+                 make: { AreaLightsScene() }),
     SnapshotCase("procedural-sky",
                  note: "PBR balls + a floor lit by a procedural Hosek-Wilkie sky (no asset): pins the .sky path (the CPU coefficient cook (vendored model), the GPU sky-equirect generation, and the same equirect->cube / irradiance / GGX-prefilter bake + skybox the HDRI path uses). Fixed sun elevation + camera, no time, so the generation and bake are deterministic.",
                  make: { ProceduralSkyScene() }),
@@ -976,6 +979,55 @@ private final class PBRMaterialsScene: Sketch {
                     drawSphere(radius: 0.65)
                 }
             }
+        }
+    }
+}
+
+/// The three area-light kinds over a glossy floor: a warm rect panel from the left,
+/// a cool disk from the right, and a bright thin tube along the front, on
+/// physically-based spheres (roughness row) plus one standard-material box (the
+/// Blinn-Phong shininess-to-roughness LUT mapping). Fixed camera, no `time`.
+private final class AreaLightsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.03))
+        camera(.orbiting(target: Vector3(0, -0.3, 0), radius: 9,
+                         azimuth: 0.15, elevation: 0.3, fieldOfView: .pi / 3.4))
+        ambientLight(Color(white: 0.02))
+        rectLight(Color(hue: 0.09, saturation: 0.32, brightness: 1.0),
+                  at: Vector3(-3.0, 1.2, -1.6), direction: Vector3(0.6, -0.35, 0.7),
+                  width: 2.6, height: 1.8, intensity: 7)
+        diskLight(Color(hue: 0.55, saturation: 0.5, brightness: 1.0),
+                  at: Vector3(3.2, 1.4, -0.8), direction: Vector3(-0.62, -0.4, 0.68),
+                  radius: 1.0, intensity: 5)
+        tubeLight(Color(hue: 0.87, saturation: 0.55, brightness: 1.0),
+                  from: Vector3(-3.2, -1.0, 2.4), to: Vector3(3.2, -1.0, 2.4),
+                  radius: 0.05, intensity: 24)
+
+        withState {
+            translate(0, -1.2, 0)
+            fill(Color(white: 0.55))
+            material(.dielectric(roughness: 0.15))
+            drawPlane(width: 14, depth: 12)
+        }
+        for (i, r) in [0.06, 0.25, 0.6].enumerated() {
+            withState {
+                translate(-2.2 + Double(i) * 2.2, -0.5, 0.6)
+                fill(Color(white: 0.9))
+                material(.dielectric(roughness: r))
+                drawSphere(radius: 0.7)
+            }
+        }
+        // The one non-PBR solid: the standard material's area response (the
+        // shininess-to-roughness mapping plus the norm-channel specular).
+        withState {
+            translate(0, -0.65, -1.8)
+            rotateY(0.5)
+            fill(Color(hue: 0.6, saturation: 0.35, brightness: 0.8))
+            specular(0.6)
+            shininess(64)
+            drawBox(size: 1.1)
         }
     }
 }

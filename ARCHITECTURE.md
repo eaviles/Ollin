@@ -1501,6 +1501,84 @@ no diffuse). Structurally it is `shadingModel 3`: one new `case` in
 `meshLitColor`'s switch plus two `OllinMaterial` fields (`metallic`/`roughness`)
 that every other model ignores, so all non-PBR materials render byte-identical.
 
+### Area lights (linearly transformed cosines)
+
+`rectLight` / `diskLight` / `tubeLight` (`Light.rect/.disk/.tube`, GPU kinds
+3-5) shade a glowing surface analytically: a linearly transformed cosine (a 3×3
+transform of the clamped-cosine distribution) approximates the GGX lobe per
+(perceptual roughness, view angle) and still integrates in closed form over the
+light's shape (Heitz/Dupuy/Hill/Neubelt's technique; per-shape citations in
+`ATTRIBUTION.md`). The fitted inverse transforms and their (norm, average
+Fresnel, clipped-sphere form factor) terms ship as two 64×64 float32 tables
+bundled from the authors' BSD-3 reference release
+(`Sources/Ollin/Resources/LTC/`, provenance + conversion recipe in the notice
+beside them; the `ltc.js` export carries more precision than the repo's
+half-float `.dds`). `ensureLTCTables()` loads them once into `rgba32Float`
+textures bound at fragment textures 8/9 on every `meshLitColor` carrier (the
+solid and textured mesh fragments, the raymarch fragment, and the half-res
+field tier), with a never-sampled stand-in when absent and
+`OllinLighting.ltcEnabled` gating the read, so a frame with no area light is
+byte-identical and a corrupt bundle degrades to a one-time stderr note instead
+of garbage shading.
+
+Per shape, in the shader (`Shader3D.metal`, the `ollin_ltc_*` block):
+
+- **Rect** uses the paper's *exact* path: transform the four corners into the
+  view-aligned shading frame and clamped-cosine space, clip the polygon to the
+  horizon (the 16-configuration table), and sum the analytic edge integrals
+  (the rational theta/sin-theta fit replacing `acos`). The corner winding is
+  chosen so the integral is positive on the side the light faces, which is why
+  `packLight`'s frame must stay right-handed (`tangent × bitangent = facing`);
+  `twoSided` folds the back side in as `abs(sum)`. The clipless
+  vector-form-factor variant (cheaper, approximate near the horizon) was
+  deliberately not used: the exact clip is the reference demo's default and the
+  per-pixel branch cost is fine at eight lights.
+- **Disk** transforms the disk's bounding quad, where it becomes an arbitrary
+  ellipse: an eigendecomposition finds the principal axes, a cubic solve (the
+  numerically robust split form of the trigonometric method) its horizon
+  clipping, and the tabulated horizon-clipped sphere (table 2's `w` channel)
+  maps the resulting form factor to the final integral. **The sqrt arguments
+  clamp at zero**: they are provably non-negative in exact math (the
+  discriminant of an all-real spectrum, Cauchy-Schwarz on the moment matrix,
+  the root signs of a visible ellipse), but where a receiving surface grazes
+  the disk's plane the float versions dip a few ulps under zero and every NaN
+  reads as black speckle scattered over the grazing region (a real bug, found
+  by a median-outlier sweep over the first example render and bisected to the
+  disk path; the clamps cleared 1086 outlier pixels to the 73-pixel geometric
+  baseline with no other change).
+- **Tube** runs the analytic line integral (horizon-clamping the segment,
+  then the position/tangent antiderivative pair) in clamped-cosine space,
+  scaled by the transform's width factor, times the tube radius. The width
+  factor needs the transform's inverse-transpose, taken from the columns'
+  cross products (the normal-matrix identity), so the sparse matrix never
+  needs a general inverse. No end caps, matching the reference default. Two
+  guards the reference lacks: the perpendicular-foot distance floors at 1e-4
+  (a surface point on the extended axis divides by zero) and a vanishing
+  endpoint cross product skips the width factor (the segment seen edge-on).
+
+Diffuse always evaluates with the identity transform (an untransformed clamped
+cosine is exact Lambert), so only the specular half reads table 1. In
+`meshLitColor`'s loop the area branch `continue`s past the whole punctual path:
+the PBR model blends table 2's norm and Fresnel channels by F0; the standard
+model maps `shininess` onto the equivalent GGX width (`alpha = sqrt(2/(s+2))`,
+so perceptual roughness is its fourth root) and scales the norm channel by
+`mat.specular` (inert at zero, the finish rule); toon quantizes the soft
+diffuse into its cel bands (the highlight stays smooth; a soft light has no
+hard cel edge); Gooch takes highlight only, keying its tone axis off the
+panel's direction. The subsurface finish's back term re-evaluates the diffuse
+integral with the normal flipped, so the translucent bleed carries the panel's
+real falloff. `intensity × color` is the emitting surface's radiance (the
+LTC-native convention: a full surrounding hemisphere of radiance 1 returns the
+albedo exactly), which is why area lights fall off physically while the
+punctual kinds keep their no-attenuation model, and why a thin tube runs at
+intensities in the tens. Area lights never cast shadows (the caster search
+covers the punctual kinds; the area-extent caster is the roadmap's *Light
+shaping* item), and the RT-reflection hit shade approximates them as centroid
+emitters with an area/(π·d² + area) falloff rather than binding the LUTs in a
+secondary bounce. The head-on view (V ≈ N) takes a deterministic fallback
+tangent instead of normalizing a zero vector (the reference leaves this case
+unguarded; the head-on LUT row is fitted isotropic, so any tangent is exact).
+
 ### The IBL bake
 
 `environment(_:)` lights the PBR materials from a surrounding HDRI via the

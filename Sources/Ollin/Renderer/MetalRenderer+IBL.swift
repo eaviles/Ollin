@@ -278,6 +278,48 @@ extension MetalRenderer {
     var currentIBLNormalization: Float { currentIBL?.normalization ?? 1 }
     var iblBRDFLUTTexture: MTLTexture? { iblBRDFLUT }
 
+    /// Load the two 64×64 LTC lookup tables for area-light shading from the bundled
+    /// fit (`Resources/LTC/ltc_tables.bin`: table 1 then table 2, RGBA float32 rows;
+    /// provenance and license in the notice beside it). Returns `true` once both
+    /// textures exist. A failed load (a corrupt bundle) logs once and stays failed,
+    /// so area lights contribute nothing rather than shading through garbage.
+    @discardableResult
+    func ensureLTCTables() -> Bool {
+        if ltcMatTexture != nil && ltcAmpTexture != nil { return true }
+        if ltcLoadFailed { return false }
+        let side = 64
+        let tableBytes = side * side * 4 * MemoryLayout<Float>.size
+        guard let url = Bundle.module.url(forResource: "ltc_tables", withExtension: "bin",
+                                          subdirectory: "LTC"),
+              let data = try? Data(contentsOf: url),
+              data.count == 2 * tableBytes else {
+            ltcLoadFailed = true
+            FileHandle.standardError.write(Data(
+                "Ollin: the bundled LTC tables failed to load; area lights (rectLight/diskLight/tubeLight) will not shade.\n".utf8))
+            return false
+        }
+        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float,
+                                                            width: side, height: side,
+                                                            mipmapped: false)
+        desc.usage = .shaderRead
+        guard let mat = device.makeTexture(descriptor: desc),
+              let amp = device.makeTexture(descriptor: desc) else {
+            ltcLoadFailed = true
+            return false
+        }
+        let bytesPerRow = side * 4 * MemoryLayout<Float>.size
+        data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+            let base = raw.baseAddress!
+            mat.replace(region: MTLRegionMake2D(0, 0, side, side), mipmapLevel: 0,
+                        withBytes: base, bytesPerRow: bytesPerRow)
+            amp.replace(region: MTLRegionMake2D(0, 0, side, side), mipmapLevel: 0,
+                        withBytes: base + tableBytes, bytesPerRow: bytesPerRow)
+        }
+        ltcMatTexture = mat
+        ltcAmpTexture = amp
+        return true
+    }
+
     private func bakeIBL(_ environment: Environment, equirectTexture loaded: MTLTexture,
                          avgLuminance: Float, fastSky: Bool = false,
                          commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {

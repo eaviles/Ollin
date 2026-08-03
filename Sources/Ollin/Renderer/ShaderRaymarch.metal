@@ -557,7 +557,9 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  // takes the same ambient a mesh does.
                                                  texturecube<float> iblIrradiance [[texture(4)]],
                                                  texturecube<float> iblPrefilter [[texture(5)]],
-                                                 texture2d<float> iblBRDF [[texture(6)]]
+                                                 texture2d<float> iblBRDF [[texture(6)]],
+                                                 texture2d<float> ltcMat [[texture(8)]],
+                                                 texture2d<float> ltcAmp [[texture(9)]]
 #if OLLIN_RT_SHADOWS
                                                  , primitive_acceleration_structure accel [[buffer(5)]]
                                                  // The reflection-trace inputs (see ollin_rt_reflection),
@@ -714,7 +716,8 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // unlit field shows its colors). The marched field's own shadow factor (`fieldShadow` >= 0)
     // stands in for the map sampling there; pass a lit (1.0) ray-traced point factor.
     float4 lit = meshLitColor(baseRGB, baseA, n, pw, mat, light,
-                              shadowMap, shadowSamp, shadowCube, shadowCubeSamp
+                              shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
+                              ltcMat, ltcAmp
 #if OLLIN_RT_SHADOWS
                               , 1.0
 #endif

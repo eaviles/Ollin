@@ -1,0 +1,66 @@
+Linearly Transformed Cosines lookup tables
+==========================================
+
+`ltc_tables.bin` bundles the fitted lookup tables for area-light shading with
+Linearly Transformed Cosines, from the reference implementation accompanying
+the paper:
+
+  Real-Time Polygonal-Light Shading with Linearly Transformed Cosines.
+  Eric Heitz, Jonathan Dupuy, Stephen Hill and David Neubelt.
+  ACM Transactions on Graphics (Proceedings of ACM SIGGRAPH 2016) 35(4), 2016.
+  Project page: https://eheitzresearch.wordpress.com/415-2/
+
+Provenance
+----------
+
+  Upstream:   https://github.com/selfshadow/ltc_code
+  Commit:     31e5e96b54f98f33098f8503003119ba2231a1c6
+  Fetched:    2026-08-02
+  Source:     fit/results/ltc.js (the float32 export of the fit; the repo's
+              .dds export of the same data is half-float, so the .js carries
+              more precision)
+
+Conversion: the two arrays in ltc.js (`g_ltc_1`, `g_ltc_2`, each 64x64 RGBA
+float32, memory order index = roughnessColumn + angleRow * 64) were parsed and
+written back-to-back as little-endian float32 with no reordering:
+bytes 0..65535 are table 1, bytes 65536..131071 are table 2.
+
+Table 1 holds the fitted inverse LTC matrix per (perceptual roughness,
+sqrt(1 - cos(view angle))) texel, normalized by its middle element and stored
+sparse (m00, m02, m20, m22). Table 2 holds (BRDF norm, average Schlick
+Fresnel, unused, horizon-clipped sphere form factor).
+
+License (upstream LICENSE, reproduced verbatim)
+-----------------------------------------------
+
+Copyright (c) 2017, Eric Heitz, Jonathan Dupuy, Stephen Hill and David Neubelt.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* If you use (or adapt) the source code in your own work, please include a
+  reference to the paper:
+
+  Real-Time Polygonal-Light Shading with Linearly Transformed Cosines.
+  Eric Heitz, Jonathan Dupuy, Stephen Hill and David Neubelt.
+  ACM Transactions on Graphics (Proceedings of ACM SIGGRAPH 2016) 35(4), 2016.
+  Project page: https://eheitzresearch.wordpress.com/415-2/
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

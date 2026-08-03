@@ -439,7 +439,8 @@ let package = Package(
                 // runtime by Environment.studio/sunset/… (equirectangular EXR, half-float
                 // PIZ so ImageIO decodes them). CC0; per-file provenance + credits in the
                 // resource LICENSE file and THIRD-PARTY-NOTICES.md.
-                .copy("Resources/Environments")
+                .copy("Resources/Environments"),
+                .copy("Resources/LTC")
             ]
         ),
         // Examples: one runnable sketch per executable target, grouped into
@@ -546,6 +547,7 @@ let package = Package(
         example("3D/Camera/CameraMoves"),
         example("3D/Camera/SceneViews"),
         example("3D/Lighting/Lighting"),
+        example("3D/Lighting/AreaLights"),
         example("3D/Lighting/LightingPresets"),
         example("3D/Materials/Materials"),
         example("3D/Materials/PhysicalMaterials"),

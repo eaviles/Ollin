@@ -108,6 +108,82 @@ struct LightingTests {
         #expect(close(l.color.x, Float(Color.srgbToLinear(1.0) * 0.5)))
     }
 
+    // MARK: Area lights
+
+    @Test func rectPacksAnOrthonormalFrame() {
+        let d = freshDrawer()
+        d.addLight(.rect(.white, at: Vector3(1, 2, 3), direction: Vector3(0, 0, 1),
+                         width: 4, height: 2))
+        let l = d.makeLighting().lights.0
+        #expect(l.kind == 3)
+        #expect(close(l.position.x, 1) && close(l.position.y, 2) && close(l.position.z, 3))
+        #expect(close(l.direction.z, 1))
+        #expect(close(l.axisA.w, 2) && close(l.axisB.w, 1))   // half-extents
+        let t = SIMD3<Float>(l.axisA.x, l.axisA.y, l.axisA.z)
+        let b = SIMD3<Float>(l.axisB.x, l.axisB.y, l.axisB.z)
+        let n = SIMD3<Float>(l.direction.x, l.direction.y, l.direction.z)
+        #expect(close(simd_length(t), 1) && close(simd_length(b), 1))
+        #expect(close(simd_dot(t, n), 0) && close(simd_dot(b, n), 0))
+        // Right-handed: tangent × bitangent is the facing normal (the shader's
+        // corner winding depends on it).
+        let cr = simd_cross(t, b)
+        #expect(close(cr.x, n.x) && close(cr.y, n.y) && close(cr.z, n.z))
+    }
+
+    @Test func rectTwoSidedRidesDirectionW() {
+        let d = freshDrawer()
+        d.addLight(.rect(.white, at: .zero, direction: Vector3(0, 0, 1),
+                         width: 1, height: 1, twoSided: true))
+        d.addLight(.rect(.white, at: .zero, direction: Vector3(0, 0, 1),
+                         width: 1, height: 1))
+        let u = d.makeLighting()
+        #expect(close(u.lights.0.direction.w, 1))
+        #expect(close(u.lights.1.direction.w, 0))
+    }
+
+    @Test func rectDegenerateUpStillPacksAFrame() {
+        // A panel facing straight down is parallel to the default up hint; the
+        // packer falls back to a stable axis instead of a NaN frame.
+        let d = freshDrawer()
+        d.addLight(.rect(.white, at: .zero, direction: Vector3(0, -1, 0),
+                         width: 2, height: 2))
+        let l = d.makeLighting().lights.0
+        let t = SIMD3<Float>(l.axisA.x, l.axisA.y, l.axisA.z)
+        let b = SIMD3<Float>(l.axisB.x, l.axisB.y, l.axisB.z)
+        #expect(t.x.isFinite && b.x.isFinite)
+        #expect(close(simd_length(t), 1) && close(simd_length(b), 1))
+        #expect(close(simd_dot(t, b), 0))
+    }
+
+    @Test func diskPacksRadiusInBothHalfExtents() {
+        let d = freshDrawer()
+        d.addLight(.disk(.white, at: .zero, direction: Vector3(0, 0, 1), radius: 1.5))
+        let l = d.makeLighting().lights.0
+        #expect(l.kind == 4)
+        #expect(close(l.axisA.w, 1.5) && close(l.axisB.w, 1.5))
+    }
+
+    @Test func tubePacksCenterAxisHalfLengthRadius() {
+        let d = freshDrawer()
+        d.addLight(.tube(.white, from: Vector3(-2, 1, 0), to: Vector3(4, 1, 0), radius: 0.25))
+        let l = d.makeLighting().lights.0
+        #expect(l.kind == 5)
+        #expect(close(l.position.x, 1) && close(l.position.y, 1) && close(l.position.z, 0))
+        #expect(close(l.axisA.x, 1) && close(l.axisA.y, 0) && close(l.axisA.z, 0))
+        #expect(close(l.axisA.w, 3))     // half-length
+        #expect(close(l.axisB.w, 0.25))  // tube radius
+    }
+
+    @Test func areaLightsNeverCastShadows() {
+        // The caster search covers the punctual kinds only (area casting is a
+        // follow-up), so an area-only scene under castShadows() stays unshadowed.
+        let d = freshDrawer()
+        d.addLight(.rect(.white, at: Vector3(0, 3, 0), direction: Vector3(0, -1, 0),
+                         width: 2, height: 2))
+        d.castShadows()
+        #expect(d.makeLighting().shadowLight == -1)
+    }
+
     // MARK: Shadow casters
 
     @Test func directionalCasterUsesThe2DMap() {
@@ -249,6 +325,92 @@ struct LightingTests {
         }
         // Ambient is the shadow floor, not the key brightness — left untouched.
         #expect(dimmed.ambient == LightingPreset.studio.ambient)
+    }
+}
+
+/// Rendered probes for the area-light shading contract: a panel lights the side
+/// it faces (and only that side unless two-sided), and brightness falls off with
+/// distance (unlike the punctual kinds). Pixel probes, not snapshots: the claims
+/// are directional, so a tolerance-banded pixel is the discriminating check.
+@Suite
+@MainActor
+struct AreaLightRenderProbes {
+
+    private func centerPixel(_ mode: AreaLightProbe.Mode) throws -> Int {
+        let image = try #require(OllinApp.image(of: AreaLightProbe.make(mode), frame: 1))
+        let w = image.width, h = image.height
+        var data = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        let i = (h / 2 * w + w / 2) * 4
+        return Int(data[i])   // the quad is white-lit, so red suffices
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aPanelLightsWhatItFaces() throws {
+        let lit = try centerPixel(.front)
+        #expect(lit > 100, "expected a clearly lit surface, got \(lit)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aOneSidedPanelLeavesItsBackDark() throws {
+        let dark = try centerPixel(.facingAway)
+        #expect(dark < 12, "a panel facing away from the surface still lit it: \(dark)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aTwoSidedPanelLightsBothSides() throws {
+        let lit = try centerPixel(.facingAwayTwoSided)
+        #expect(lit > 100, "expected the two-sided back face to light, got \(lit)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func brightnessFallsOffWithDistance() throws {
+        let near = try centerPixel(.front)
+        let far = try centerPixel(.far)
+        #expect(far < near - 30, "expected a distant panel dimmer: near \(near), far \(far)")
+    }
+}
+
+/// The render probe: a white camera-facing quad lit by one rect panel, placed per
+/// mode, at a small canvas for speed. The default material (specular 0) keeps the
+/// reading a pure diffuse term.
+private final class AreaLightProbe: Sketch {
+    enum Mode { case front, facingAway, facingAwayTwoSided, far }
+    var mode = Mode.front
+
+    static func make(_ mode: Mode) -> AreaLightProbe {
+        let probe = AreaLightProbe()
+        probe.mode = mode
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(radius: 3))
+        switch mode {
+        case .front:
+            rectLight(.white, at: Vector3(0, 0, 2), direction: Vector3(0, 0, -1),
+                      width: 2, height: 2, intensity: 2)
+        case .facingAway:
+            rectLight(.white, at: Vector3(0, 0, 2), direction: Vector3(0, 0, 1),
+                      width: 2, height: 2, intensity: 2)
+        case .facingAwayTwoSided:
+            rectLight(.white, at: Vector3(0, 0, 2), direction: Vector3(0, 0, 1),
+                      width: 2, height: 2, twoSided: true, intensity: 2)
+        case .far:
+            rectLight(.white, at: Vector3(0, 0, 6), direction: Vector3(0, 0, -1),
+                      width: 2, height: 2, intensity: 2)
+        }
+        fill(.white)
+        drawMesh(Mesh(positions: [Vector3(-1, -1, 0), Vector3(1, -1, 0),
+                                  Vector3(1, 1, 0), Vector3(-1, 1, 0)],
+                      normals: [.unitZ, .unitZ, .unitZ, .unitZ],
+                      indices: [0, 1, 2, 0, 2, 3]))
     }
 }
 

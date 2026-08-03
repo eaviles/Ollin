@@ -1838,6 +1838,39 @@ final class Drawer {
             // Penumbra narrows the full-bright inner cone toward the center.
             let inner = half * (1 - max(0, min(1, light.penumbra)))
             l.cosInner = Float(cos(inner))
+        case .rect, .disk:
+            // A flat panel: center + unit normal (the way it faces, like a spot's axis)
+            // + an orthonormal tangent frame with the half-extents riding the w slots.
+            // The frame is right-handed (tangent × bitangent = the facing normal), which
+            // the shader's corner winding depends on for its one-sided front test.
+            l.kind = light.kind == .rect ? 3 : 4
+            l.position = SIMD4<Float>(Float(light.position.x), Float(light.position.y),
+                                      Float(light.position.z), 0)
+            let n = simd_normalize(light.direction.normalized.simd3)
+            var up = light.up.simd3
+            // Degenerate up hint (zero, or parallel to the normal): fall back to an axis
+            // that isn't, so a straight-down panel still gets a stable frame.
+            if simd_length(up) < 1e-6 { up = SIMD3<Float>(0, 1, 0) }
+            up = simd_normalize(up)
+            if abs(simd_dot(up, n)) > 0.999 {
+                up = abs(n.y) > 0.999 ? SIMD3<Float>(0, 0, 1) : SIMD3<Float>(0, 1, 0)
+            }
+            let t = simd_normalize(simd_cross(up, n))
+            let b = simd_cross(n, t)
+            let halfW = Float(light.kind == .rect ? light.width / 2 : light.radius)
+            let halfH = Float(light.kind == .rect ? light.height / 2 : light.radius)
+            l.direction = SIMD4<Float>(n.x, n.y, n.z, light.twoSided ? 1 : 0)
+            l.axisA = SIMD4<Float>(t.x, t.y, t.z, halfW)
+            l.axisB = SIMD4<Float>(b.x, b.y, b.z, halfH)
+        case .tube:
+            // A glowing cylinder: center + unit axis with the half-length in w, and the
+            // tube radius in axisB.w. Emits radially, so there's no facing normal.
+            l.kind = 5
+            l.position = SIMD4<Float>(Float(light.position.x), Float(light.position.y),
+                                      Float(light.position.z), 0)
+            let axis = simd_normalize(light.direction.normalized.simd3)
+            l.axisA = SIMD4<Float>(axis.x, axis.y, axis.z, Float(light.length / 2))
+            l.axisB = SIMD4<Float>(0, 0, 0, Float(max(light.radius, 1e-4)))
         }
         return l
     }

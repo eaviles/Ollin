@@ -1599,6 +1599,13 @@ extension MetalRenderer {
         } else {
             lighting.iblEnabled = 0   // noLights() stays flat; no environment → flat ambient
         }
+        // Area lights (rect/disk/tube) shade through the LTC tables: resolve them once per
+        // frame so `ltcEnabled` gates the fragment's reads. The tables bind below with a
+        // never-sampled stand-in when absent, so the declared textures are never missing.
+        if lighting.enabled != 0,
+           drawer.lights.contains(where: { $0.kind == .rect || $0.kind == .disk || $0.kind == .tube }) {
+            lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
+        }
         // Skybox backdrop: when the environment shows as the scene's background, fill the
         // frame with it (a fullscreen view-ray cube sample) before the geometry, with depth
         // disabled, so the depth-tested meshes composite in front and a mirror's reflection
@@ -1874,6 +1881,10 @@ extension MetalRenderer {
                 encoder.setFragmentTexture(currentIBLIrradiance ?? iblPlaceholderCube, index: 4)
                 encoder.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
                 encoder.setFragmentTexture(iblBRDFLUTTexture ?? strip, index: 6)
+                // The LTC tables (tex 8/9) for area lights; never-sampled stand-ins when
+                // unloaded (`lighting.ltcEnabled` gates the read).
+                encoder.setFragmentTexture(ltcMatTexture ?? strip, index: 8)
+                encoder.setFragmentTexture(ltcAmpTexture ?? strip, index: 9)
                 // The mesh acceleration structure at buffer 5 so a marched field receives a mesh's
                 // cast shadow under a ray-traced point caster (it traces toward the light, the
                 // reverse of the cast). A dummy when shadowKind != 2, never traced; the cube path
@@ -2014,6 +2025,10 @@ extension MetalRenderer {
                     encoder.setFragmentTexture(currentIBLIrradiance ?? iblPlaceholderCube, index: 4)
                     encoder.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
                     encoder.setFragmentTexture(iblBRDFLUTTexture ?? strip, index: 6)
+                    // The LTC tables (tex 8/9) for area lights; never-sampled stand-ins when
+                    // unloaded (`lighting.ltcEnabled` gates the read).
+                    encoder.setFragmentTexture(ltcMatTexture ?? strip, index: 8)
+                    encoder.setFragmentTexture(ltcAmpTexture ?? strip, index: 9)
                     // The pre-traced reflection layer (tex 7) when the deferred path is on;
                     // a never-sampled stand-in otherwise (`rtReflectionDeferred` gates the
                     // read). Only part of the RT-compiled fragment signature.

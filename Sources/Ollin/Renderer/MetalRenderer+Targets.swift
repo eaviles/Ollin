@@ -642,6 +642,12 @@ extension MetalRenderer {
         } else {
             lighting.iblEnabled = 0
         }
+        // Area lights, mirroring the main encode's LTC resolve, so a field marched at
+        // half resolution takes the same panel light as the full-res inline march.
+        if lighting.enabled != 0,
+           drawer.lights.contains(where: { $0.kind == .rect || $0.kind == .disk || $0.kind == .tube }) {
+            lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
+        }
         if reflectAccelPresent { lighting.rtReflections = 1 }
         return (lighting, shadowMap ?? ensureDummyShadowMap(), shadowCube ?? ensureDummyPointShadowMap())
     }
@@ -741,6 +747,10 @@ extension MetalRenderer {
         enc.setFragmentTexture(currentIBLIrradiance ?? iblPlaceholderCube, index: 4)
         enc.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
         enc.setFragmentTexture(iblBRDFLUTTexture ?? strip, index: 6)
+        // The LTC tables (tex 8/9) for area lights, matching the main pass; never-sampled
+        // stand-ins when unloaded (`lighting.ltcEnabled` gates the read).
+        enc.setFragmentTexture(ltcMatTexture ?? strip, index: 8)
+        enc.setFragmentTexture(ltcAmpTexture ?? strip, index: 9)
         // The mesh acceleration structure at buffer 5, matching the main pass: RT point
         // shadows received by the field, and the reflection trace when `rtReflections`
         // is set. A dummy when neither is active, never traced.

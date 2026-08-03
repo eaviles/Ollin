@@ -14,17 +14,33 @@ import Foundation
 /// - **spot** — a point source narrowed to a cone (a stage light), with a soft
 ///   inner→outer edge.
 ///
-/// Build them with the factories (`.directional`, `.point`, `.spot`) or use the
-/// bare calls on `Sketch` (`directionalLight`, `pointLight`, `spotLight`,
-/// `ambientLight`). There's no distance attenuation in this first model — a point
-/// and a spot light reach equally far — so brightness is set by `intensity`.
+/// Beyond those three punctual kinds, a light can be an **area**: a glowing
+/// surface rather than an infinitesimal source, shaded analytically (the
+/// linearly-transformed-cosine technique), so highlights stretch into the
+/// shape's reflection and shading softens the way studio lighting does:
+///
+/// - **rect**: a flat rectangular panel (a softbox, a window).
+/// - **disk**: a flat circular panel (a ring light's face, a recessed ceiling can).
+/// - **tube**: a glowing cylinder between two points (a fluorescent or neon tube).
+///
+/// Build them with the factories (`.directional`, `.point`, `.spot`, `.rect`,
+/// `.disk`, `.tube`) or use the bare calls on `Sketch` (`directionalLight`,
+/// `pointLight`, `spotLight`, `rectLight`, `diskLight`, `tubeLight`,
+/// `ambientLight`). There's no distance attenuation in the punctual model (a
+/// point and a spot light reach equally far), so brightness is set by
+/// `intensity`. An area light instead falls off physically (its surface fills
+/// less of the sky as it recedes), and its `color` × `intensity` is the
+/// surface's *radiance*, so a bigger panel casts more light into the scene.
 public struct Light: Equatable, Sendable {
 
-    /// Which of the three light models this is.
+    /// Which light model this is.
     public enum Kind: Equatable, Sendable {
         case directional
         case point
         case spot
+        case rect
+        case disk
+        case tube
     }
 
     /// The kind of light (directional / point / spot).
@@ -54,13 +70,31 @@ public struct Light: Equatable, Sendable {
     /// Spot light only: the soft-edge fraction, `0…1`. `0` is a hard cone edge;
     /// larger values fade the cone in from `coneAngle` toward its center.
     public var penumbra: Double
+    /// Rect light only: the panel's full width, in world units.
+    public var width: Double
+    /// Rect light only: the panel's full height, in world units.
+    public var height: Double
+    /// Disk and tube lights: the disk's radius / the tube's thickness radius.
+    public var radius: Double
+    /// Tube light only: the tube's full length along `direction`.
+    public var length: Double
+    /// Rect light only: an up hint that orients the panel's height axis (like a
+    /// camera's up vector). Ignored by every other kind; a disk is round, so it
+    /// needs no orientation beyond `direction`.
+    public var up: Vector3
+    /// Rect and disk lights: `true` emits from both faces of the panel; `false`
+    /// (the default) lights only what the panel faces. A tube always emits radially.
+    public var twoSided: Bool
 
-    /// The most general initializer; prefer the `.directional`/`.point`/`.spot`
-    /// factories, which fill in the fields that don't apply to a kind.
+    /// The most general initializer; prefer the `.directional`/`.point`/`.spot`/
+    /// `.rect`/`.disk`/`.tube` factories, which fill in the fields that don't
+    /// apply to a kind.
     public init(kind: Kind, color: Color, intensity: Double = 1,
                 specular: Color? = nil, softness: Double = 0,
                 position: Vector3 = .zero, direction: Vector3 = Vector3(0, -1, 0),
-                coneAngle: Double = .pi / 6, penumbra: Double = 0.2) {
+                coneAngle: Double = .pi / 6, penumbra: Double = 0.2,
+                width: Double = 1, height: Double = 1, radius: Double = 0.5,
+                length: Double = 1, up: Vector3 = .unitY, twoSided: Bool = false) {
         self.kind = kind
         self.color = color
         self.intensity = intensity
@@ -70,6 +104,12 @@ public struct Light: Equatable, Sendable {
         self.direction = direction
         self.coneAngle = coneAngle
         self.penumbra = penumbra
+        self.width = max(0, width)
+        self.height = max(0, height)
+        self.radius = max(0, radius)
+        self.length = max(0, length)
+        self.up = up
+        self.twoSided = twoSided
     }
 
     /// A directional light (parallel rays, like sunlight). `direction` is the way
@@ -104,5 +144,48 @@ public struct Light: Equatable, Sendable {
         Light(kind: .spot, color: color, intensity: intensity,
               specular: specular, softness: softness,
               position: position, direction: direction, coneAngle: angle, penumbra: penumbra)
+    }
+
+    /// A rect area light: a glowing `width` × `height` panel centered at `position`,
+    /// facing along `direction` (its travel direction, like a spot's axis), the height
+    /// axis oriented by the `up` hint. `twoSided` makes both faces emit. Highlights
+    /// stretch into the panel's reflection and brightness falls off with distance;
+    /// `color` × `intensity` is the panel's radiance, so a bigger panel casts more
+    /// light. `specular` (default `nil` = `color`) tints its highlight.
+    public static func rect(_ color: Color, at position: Vector3, direction: Vector3,
+                            width: Double, height: Double, up: Vector3 = .unitY,
+                            twoSided: Bool = false, intensity: Double = 1,
+                            specular: Color? = nil) -> Light {
+        Light(kind: .rect, color: color, intensity: intensity, specular: specular,
+              position: position, direction: direction,
+              width: width, height: height, up: up, twoSided: twoSided)
+    }
+
+    /// A disk area light: a glowing circular panel of `radius` centered at `position`,
+    /// facing along `direction`. `twoSided` makes both faces emit. Falls off with
+    /// distance like the rect; `color` × `intensity` is the disk's radiance.
+    /// `specular` (default `nil` = `color`) tints its highlight.
+    public static func disk(_ color: Color, at position: Vector3, direction: Vector3,
+                            radius: Double, twoSided: Bool = false, intensity: Double = 1,
+                            specular: Color? = nil) -> Light {
+        Light(kind: .disk, color: color, intensity: intensity, specular: specular,
+              position: position, direction: direction,
+              radius: radius, twoSided: twoSided)
+    }
+
+    /// A tube area light: a glowing cylinder of `radius` running `from` one point `to`
+    /// another (a fluorescent or neon tube), emitting radially all around. Falls off
+    /// with distance; `color` × `intensity` is the tube surface's radiance, so a thin
+    /// tube wants a high intensity (a real neon is a very bright surface). `specular`
+    /// (default `nil` = `color`) tints its highlight.
+    public static func tube(_ color: Color, from: Vector3, to: Vector3,
+                            radius: Double = 0.1, intensity: Double = 1,
+                            specular: Color? = nil) -> Light {
+        let axis = to - from
+        let len = axis.length
+        return Light(kind: .tube, color: color, intensity: intensity, specular: specular,
+                     position: (from + to) * 0.5,
+                     direction: len > 0 ? axis * (1 / len) : Vector3(1, 0, 0),
+                     radius: radius, length: len)
     }
 }

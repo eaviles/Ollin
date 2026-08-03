@@ -170,6 +170,23 @@ redistributed inside this repository.
 
 ---
 
+## LTC lookup tables
+
+- **Used for:** area-light shading (`rectLight` / `diskLight` / `tubeLight`): the fitted linearly-transformed-cosine tables the lit-mesh fragments sample to approximate the GGX response of a glowing rectangle, disk, or tube.
+- **Location in this repo:** [`Sources/Ollin/Resources/LTC/ltc_tables.bin`](Sources/Ollin/Resources/LTC/ltc_tables.bin) (conversion recipe + provenance in [`Sources/Ollin/Resources/LTC/LTC-NOTICE.txt`](Sources/Ollin/Resources/LTC/LTC-NOTICE.txt))
+- **Upstream:** https://github.com/selfshadow/ltc_code (commit `31e5e96`), the reference implementation accompanying *Real-Time Polygonal-Light Shading with Linearly Transformed Cosines* (Eric Heitz, Jonathan Dupuy, Stephen Hill, and David Neubelt, SIGGRAPH 2016). The two 64×64 float tables from `fit/results/ltc.js`, repacked as raw little-endian float32 with no reordering.
+- **License:** BSD 3-Clause; full text at [`Sources/Ollin/Resources/LTC/LTC-NOTICE.txt`](Sources/Ollin/Resources/LTC/LTC-NOTICE.txt)
+
+> Copyright (c) 2017, Eric Heitz, Jonathan Dupuy, Stephen Hill and David Neubelt.
+> All rights reserved.
+>
+> Redistribution and use in source and binary forms, with or without modification,
+> are permitted provided that the conditions in the upstream license are met,
+> including reproducing the copyright notice and referencing the paper… (see
+> `LTC-NOTICE.txt` for the full text, including the warranty disclaimer).
+
+---
+
 ## Marble Madness (example font)
 
 - **Used for:** the `PlaydateFont` example sketch only — a sample Playdate `.fnt` font, loaded at runtime to demonstrate the loader. Not part of the Ollin framework; Ollin bundles no `.fnt` fonts itself.
