@@ -557,6 +557,7 @@ let package = Package(
         example("3D/Materials/Materials"),
         example("3D/Materials/PhysicalMaterials"),
         example("3D/Materials/Glass"),
+        example("3D/Materials/SoapBubble"),
         example("3D/Environments/ImageBasedLighting"),
         example("3D/Environments/EnvironmentGallery"),
         example("3D/Environments/ProceduralSky"),

@@ -138,4 +138,19 @@ struct MaterialTests {
         #expect(close(d.transmission, 0) && close(d.attenuation.w, 0))
         #expect(Material.frostedGlass.transmission == 1)
     }
+
+    @Test func soapFilmClampsAndPacks() {
+        // The film swirl is inert by default (0 flow: the plain rim sheen), the flow
+        // clamps non-negative, and the phase clock passes through signed (it's a
+        // clock, not a strength).
+        let d = Material()
+        #expect(d.iridescenceFlow == 0 && d.iridescencePhase == 0)
+        let m = Material(iridescence: 0.8, iridescenceFlow: -2, iridescencePhase: -3.5)
+        #expect(m.iridescenceFlow == 0)
+        #expect(m.iridescencePhase == -3.5)
+        let g = Material(iridescence: 0.8, iridescenceFlow: 1.5,
+                         iridescencePhase: 7.25).gpuMaterial()
+        #expect(close(g.iridescenceFlow, 1.5) && close(g.iridescencePhase, 7.25))
+        #expect(close(Material().gpuMaterial().iridescenceFlow, 0))
+    }
 }

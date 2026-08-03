@@ -274,6 +274,8 @@ Two more knobs do what you'd hope: `roughness` frosts the glass (the view throug
 
 Glass needs an `environment(_:)`, for the same reason a mirror did: there has to be something on the other side to show. On its own it refracts the environment, and that already reads as glass. Add `rayTracedReflections()` on a Mac that traces and the view through the glass upgrades to the actual scene, which is what the figure shows: those bars appear *through* the spheres because rays really pass through and hit them. One call upgrades mirrors and glass together.
 
+And the one glass object everyone knows is a soap bubble, which is thin glass plus one more idea: a *film* whose thickness drains and swirls, coloring the surface with marbled interference bands that drift while you watch. That's the iridescence finish's soap-film mode, `iridescenceFlow`, composed straight onto the glass (`iridescencePhase` is the clock, and you drive it with `time`, so exports reproduce). The [`SoapBubble` example](../Examples/3D/Materials/SoapBubble/Sketch.swift) is a handful of them rising and wobbling.
+
 Two honest edges, so they don't puzzle you later: glass still casts a solid shadow, and glass seen *inside a mirror* (or through other glass) reads as a shiny opaque ball, because a traced ray doesn't re-enter the transmission math. Both are the standard real-time compromises, and both have follow-ups on the roadmap.
 
 ## Putting it together: molten

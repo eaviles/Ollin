@@ -290,6 +290,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("pbr-ibl",
                  note: "Physically-based balls lit by a bundled HDRI environment (image-based lighting): pins the whole IBL path (the equirect->cube / irradiance / GGX-prefilter / BRDF-LUT bake, the split-sum ambient on the mesh fragment, and the skybox backdrop). Fixed camera + environment, no time, so the bake is deterministic.",
                  make: { IBLScene() }),
+    SnapshotCase("soap-film",
+                 note: "A thin glass sphere in the iridescence finish's soap-film mode (iridescenceFlow) at a fixed phase: pins the drainage-plus-warped-swirl thickness field, the per-wavelength interference palette (dark thin film, the straw/magenta/cyan orders, the broadband rolloff toward pale), and the scene-scaled swirl cells. Fixed camera + environment + phase, no time.",
+                 make: { SoapFilmScene() }),
     SnapshotCase("glass-materials",
                  note: "Transmissive (glass) physically-based spheres over a bundled environment, no ray tracing: pins the environment-refraction base path every GPU gets (the entry refract + analytic interior span + curvature-blended exit for a solid, the parallel thin exit, the IOR-remapped frosting lod, Beer-Lambert absorption, the f0-from-IOR packing, and the transmitted-for-diffuse swap in the IBL ambient and the direct-light diffKeep). Fixed camera + environment, no time.",
                  make: { GlassScene() }),
@@ -1338,6 +1341,26 @@ private final class IBLScene: Sketch {
         for (m, c, x) in balls {
             withState { translate(x, 0, 0); fill(c); material(m); drawSphere(radius: 0.8) }
         }
+    }
+}
+
+private final class SoapFilmScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.03))
+        camera(.orbiting(target: .zero, radius: 4.6, azimuth: 0.0, elevation: 0.02,
+                         fieldOfView: .pi / 4.2))
+        environment(.studio.intensity(0.9).lightingOnly())
+        directionalLight(.white, direction: Vector3(-0.5, -0.6, -0.6), intensity: 1.0)
+        var film = Material.glass()
+        film.iridescence = 1.0
+        film.iridescenceScale = 1.4
+        film.iridescenceFlow = 1.0
+        film.iridescencePhase = 2.7
+        material(film)
+        fill(.white)
+        drawSphere(radius: 1.5)
     }
 }
 

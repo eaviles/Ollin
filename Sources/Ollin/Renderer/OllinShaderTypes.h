@@ -391,6 +391,10 @@ typedef struct {
     float thickness;              // PBR transmission: 0 = thin-walled; > 0 = solid, world units
     float f0;                     // PBR: normal-incidence Fresnel reflectance, packed CPU-side from
                                   // `ior` (exactly 0.04 at the default 1.5, keeping old frames bit-equal)
+    float iridescenceFlow;        // soap-film mode: strength of the drifting film-thickness swirl the
+                                  // iridescent sheen reads (0 = the plain view-angle rim sheen)
+    float iridescencePhase;       // the film swirl's animation clock, sketch-driven (no hidden time,
+                                  // so exports reproduce); only read when iridescenceFlow > 0
 } OllinMaterial;
 
 // Parameters for the live ground-grid overlay (`ollin_grid_fragment`): a shader-drawn

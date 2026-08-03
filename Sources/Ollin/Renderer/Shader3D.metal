@@ -1972,13 +1972,49 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     // Iridescent sheen (thin-film-style): a view-angle rainbow that strengthens toward
     // grazing angles, the hue cycling through a cosine palette. It's a reflected-
     // light effect, so it's scaled by the light reaching the surface (with a faint floor
-    // so it still reads in shadow) — not pure emission. Inert when strength is 0.
+    // so it still reads in shadow), not pure emission. Inert when strength is 0.
     if (mat.iridescence > 0.0) {
         float fres = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), 3.0);
-        float phase = fres * mat.iridescenceScale;
-        float3 rainbow = 0.5 + 0.5 * cos(6.2831853 * (phase + float3(0.0, 0.3333, 0.6667)));
         float irrad = dot(incoming, float3(0.299, 0.587, 0.114));
-        lit += mat.iridescence * fres * rainbow * (0.15 + 0.85 * irrad);
+        if (mat.iridescenceFlow > 0.0) {
+            // Soap-film mode: the sheen's color comes from a *film thickness*, the way
+            // a real bubble's does, so the marbling falls out of the physics instead
+            // of a hue wheel. The thickness field is (a) drainage, gravity stacking
+            // the film toward the bottom of the surface (the local "down" read off
+            // the normal's y), quadratic so the interference contours crowd into
+            // fine bands near the bottom while the upper body stays broad, plus
+            // (b) a domain-warped drifting swirl (one simplex field shearing a
+            // second, the marble look) in scene-scaled cells, advected by the
+            // material's own phase clock (no hidden time: exports reproduce).
+            // The color is the reflected two-beam interference evaluated per RGB
+            // wavelength (rates lambdaR/lambda for ~685/564/472 nm): zero thickness
+            // goes dark (the black film of a bubble about to pop), the first orders
+            // give the straw/magenta/cyan Newton series, and a broadband coherence
+            // rolloff washes thick film toward pale, which is what a real film
+            // under white light does. `iridescenceScale` sets how many orders the
+            // field spans; `iridescenceFlow` the swirl's share of the thickness.
+            float cell = max(light.sceneScale, 1e-4) * 0.35;
+            float3 q = worldPos / cell;
+            float t = mat.iridescencePhase;
+            float w1 = simplexNoise(q * 0.6 + float3(0.12 * t, -0.30 * t, 0.0));
+            float w2 = simplexNoise(q * 1.1 + float3(-0.22 * t, -0.50 * t, 0.09 * t)
+                                    + w1 * 1.8);
+            float head = 0.5 - 0.5 * clamp(n.y, -1.0, 1.0);      // 0 top ... 1 bottom
+            float d = mat.iridescenceScale
+                    * max(0.18 + 1.1 * head * head
+                              + mat.iridescenceFlow * (0.45 * w1 + 0.25 * w2), 0.0);
+            float3 rate = float3(1.0, 1.2146, 1.4513);           // lambdaR / lambda(R,G,B)
+            float3 wave = 0.5 - 0.5 * cos(6.2831853 * d * rate);
+            float coh = exp(-0.18 * d);
+            float3 filmC = mix(float3(0.5), wave, coh);
+            float body = mix(0.35, 1.0, fres);
+            lit += mat.iridescence * body * filmC * (0.15 + 0.85 * irrad);
+        } else {
+            // The plain finish: a view-angle rim sheen through a cosine palette.
+            float phase = fres * mat.iridescenceScale;
+            float3 rainbow = 0.5 + 0.5 * cos(6.2831853 * (phase + float3(0.0, 0.3333, 0.6667)));
+            lit += mat.iridescence * fres * rainbow * (0.15 + 0.85 * irrad);
+        }
     }
 
     // Sparkle (metallic flake): the surface is peppered with tiny mirror flakes, one

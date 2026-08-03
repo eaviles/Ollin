@@ -132,6 +132,21 @@ public struct Material: Equatable, Sendable {
     /// Iridescence band scale: how many hue cycles the sheen runs through from head-on
     /// to grazing (low = a few broad bands, high = many fine ones).
     public var iridescenceScale: Double
+    /// Soap-film mode for the iridescence: with flow above `0` the sheen stops being a
+    /// view-angle rim glow and becomes a real *film*, its color read off a thickness
+    /// field the way a bubble's is. The film drains downward (broad marbled patches on
+    /// the body, fine stacked bands toward the bottom, a darkening cap where it thins)
+    /// and a domain-warped swirl drifts through it as `iridescencePhase` advances; the
+    /// colors follow the interference series (straw, magenta, cyan, washing pale where
+    /// thick, going dark where thin) rather than a rainbow wheel. `iridescenceFlow`
+    /// sets the swirl's share of the thickness (`1` is the natural look); in this mode
+    /// `iridescenceScale` sets how many interference orders the film spans. Compose
+    /// with `.glass()` for a soap bubble.
+    public var iridescenceFlow: Double
+    /// The film swirl's animation clock: advance it yourself (`time * 0.3` reads well)
+    /// so the swirling stays under the sketch's control and exports reproduce. Only
+    /// read when `iridescenceFlow > 0`.
+    public var iridescencePhase: Double
 
     /// Sparkle (metallic-flake) strength, `0…1`: the surface is peppered with tiny
     /// mirror flakes that flash in and out as the view, object, or light moves
@@ -175,6 +190,7 @@ public struct Material: Equatable, Sendable {
                 attenuationDistance: Double = 0,
                 specular: Double = 0, shininess: Double = 32,
                 iridescence: Double = 0, iridescenceScale: Double = 1,
+                iridescenceFlow: Double = 0, iridescencePhase: Double = 0,
                 sparkle: Double = 0, sparkleSize: Double = 1,
                 sparkleSharpness: Double = 48, sparkleColor: Color = .white,
                 rim: Double = 0, rimPower: Double = 2, rimColor: Color = .white,
@@ -194,6 +210,8 @@ public struct Material: Equatable, Sendable {
         self.shininess = max(1, shininess)
         self.iridescence = min(1, max(0, iridescence))
         self.iridescenceScale = max(0, iridescenceScale)
+        self.iridescenceFlow = max(0, iridescenceFlow)
+        self.iridescencePhase = iridescencePhase
         self.sparkle = min(1, max(0, sparkle))
         self.sparkleSize = max(0.05, sparkleSize)
         self.sparkleSharpness = max(1, sparkleSharpness)
@@ -237,6 +255,8 @@ public struct Material: Equatable, Sendable {
         m.transmission = Float(transmission)
         m.ior = Float(ior)
         m.thickness = Float(thickness)
+        m.iridescenceFlow = Float(iridescenceFlow)
+        m.iridescencePhase = Float(iridescencePhase)
         // Beer-Lambert exponentiates the attenuation color, so floor each channel just
         // above zero: pow(0, 0) is NaN territory under fast math, and a floored channel
         // still reads as "absorbs (almost) everything".
