@@ -454,9 +454,14 @@ typedef struct {
 // `shadowDepthA` carries the cube's far plane (to denormalize the sampled distance), with
 // the light position from `lights[shadowLight].position`. A ray-tracing device instead
 // uses `shadowKind` 2 for a point caster: the renderer traces a visibility ray against a
-// per-frame acceleration structure (no cube, no depth compare — exact, no acne/peter-pan),
+// per-frame acceleration structure (no cube, no depth compare: exact, no acne/peter-pan),
 // and `shadowDepthB` carries the area-light radius that softens it (`shadowTexelWorld`
-// reused as the self-hit normal-offset). `shadowDepthB` is 0 / unused for the other kinds.
+// reused as the self-hit normal-offset). A rect/disk **area** caster rides the same two
+// paths by the panel's real extent: kind 0 renders a spot-style map from the panel's
+// center whose PCSS penumbra radius is sized from that extent, and a ray-tracing device
+// flips it to kind 2, tracing visibility to the panel's actual surface (`shadowDepthB`
+// then carries the softness scale on the extent, not a radius). `shadowDepthB` is 0 /
+// unused for the remaining kinds.
 typedef struct {
     simd_float4 ambient;          // rgb linear ambient (lights every surface flatly); a unused
     simd_float4 cameraPosition;   // world-space eye xyz (for the specular view direction); w unused
@@ -467,13 +472,16 @@ typedef struct {
     float shadowStrength;         // 0…1 darkening applied to the caster where occluded
     simd_float4x4 lightViewProjection;  // world -> shadow-caster clip space (2D kind)
     float shadowTexelWorld;       // world-space size of one shadow-map texel (bias / PCF-spread unit)
-    int   shadowKind;             // 0 = 2D map (directional/spot), 1 = cube map (point), 2 = ray-traced point
+    int   shadowKind;             // 0 = 2D map (directional/spot/area), 1 = cube map (point),
+                                  // 2 = ray-traced (point or area; the caster entry's kind splits them)
     float shadowDepthA;           // cube kind: the far plane; 2D kind: the PCSS penumbra radius
-                                  // in texels (0 = the hard legacy 3x3 path); ray-traced: unused
-    float shadowDepthB;           // ray-traced kind: the area-light radius (softness); 2D kind:
+                                  // in texels (0 = the hard legacy 3x3 path; an area caster sizes
+                                  // it from the panel's extent); ray-traced: unused
+    float shadowDepthB;           // ray-traced kind: a point caster's area radius (softness) or an
+                                  // area caster's softness scale on the sampled panel; 2D kind:
                                   // the perspective projection's [2][2] term to linearize a spot
-                                  // map's depth for the penumbra ratio (0 = an ortho/directional
-                                  // map, the sentinel for plain separation); cube kind: unused
+                                  // or area map's depth for the penumbra ratio (0 = an ortho/
+                                  // directional map, the sentinel for plain separation); cube: unused
     int   shadowSamples;          // ray-traced kind: rays per pixel; 2D kind: the PCSS tap budget
                                   // (split blocker search / PCF); cube kind: unused (default 0)
     int   fieldCasterCount;       // number of raymarched SDF fields casting onto meshes under a

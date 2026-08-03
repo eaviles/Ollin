@@ -509,6 +509,9 @@ private let snapshotRaytracingCases: [SnapshotCase] = [
     SnapshotCase("rt-reflections-3d",
                  note: "A near-mirror metal floor under fixed metal spheres + a cube, lit by an environment, with rayTracedReflections() on. Pins the hybrid reflection path: the per-pixel closest-hit trace against the caster acceleration structure, the barycentric attribute fetch + 1-bounce hit shade, and the environment miss fallback composited through the PBR IBL specular. RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.",
                  make: { RayTracedReflectionsScene() }),
+    SnapshotCase("area-shadows",
+                 note: "A box and a sphere over a floor, lit by one rect strip panel with castShadows() on. On a ray-tracing GPU the area caster traces visibility to the panel's actual surface, which the reference is recorded against: pins the traced-panel path (the antithetic R2 samples over the rect, the shadowSoftness scale on the extent, the anisotropic penumbra a strip throws) and the shadow dimming inside the LTC area branch. The non-RT spot-style PCSS map differs and is probe-tested instead. Fixed camera, no time.",
+                 make: { AreaShadowsScene() }),
 ]
 
 // MARK: - Fixtures
@@ -802,6 +805,35 @@ private final class MeshShadowsScene: Sketch {
                          azimuth: 0.5, elevation: 0.45, fieldOfView: .pi / 3.6))
         ambientLight(Color(white: 0.15))
         directionalLight(.white, direction: Vector3(-0.5, -0.85, -0.35), intensity: 1.0)
+        castShadows()
+        withState { fill(Color(white: 0.8)); specular(0.05); drawPlane(width: 10, depth: 10) }
+        withState {
+            fill(Color(hue: 0.03, saturation: 0.6, brightness: 0.95)); specular(0.3); shininess(40)
+            translate(-1.1, 1.0, 0); rotateY(0.5); drawBox(size: 1.6)
+        }
+        withState {
+            fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); shininess(40)
+            translate(1.3, 1.3, 0.3); drawSphere(radius: 1.1)
+        }
+    }
+}
+
+/// The same still life lit by one rect *strip* panel with `castShadows()` on, through
+/// the same fixed camera. The scene has no punctual light, so the panel is the caster;
+/// on a ray-tracing GPU (this snapshot's gate) each lit pixel traces visibility rays
+/// to the panel's actual surface, so the strip's shadow spreads mostly along its long
+/// axis (the anisotropy a scalar penumbra can't make). No `time`, so it's deterministic.
+private final class AreaShadowsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: Vector3(0, 0.6, 0), radius: 7,
+                         azimuth: 0.5, elevation: 0.45, fieldOfView: .pi / 3.6))
+        ambientLight(Color(white: 0.1))
+        rectLight(Color(hue: 0.09, saturation: 0.2, brightness: 1.0),
+                  at: Vector3(-1.5, 4.5, 1.2), direction: Vector3(0.3, -1, -0.25),
+                  width: 4.0, height: 0.8, intensity: 4)
         castShadows()
         withState { fill(Color(white: 0.8)); specular(0.05); drawPlane(width: 10, depth: 10) }
         withState {

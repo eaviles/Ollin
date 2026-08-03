@@ -1642,11 +1642,17 @@ extension MetalRenderer {
         if shadowMap == nil && shadowCube == nil && shadowAccel == nil && drawer.sdf3DGroups.isEmpty {
             lighting.shadowLight = -1
         }
-        // A ray-traced point caster: switch the fragment to the RT path (shadowKind 2) and
-        // resolve the sketch's quality tier to a concrete ray count for this GPU.
+        // A ray-traced point or area caster: switch the fragment to the RT path (shadowKind 2)
+        // and resolve the sketch's quality tier to a concrete ray count for this GPU.
         if shadowAccel != nil {
             lighting.shadowKind = 2
             lighting.shadowSamples = resolveShadowSamples(drawer.shadowQualitySetting)
+            // A traced *panel* caster reads `shadowDepthB` as the sampled panel's scale
+            // about its center (the shadowSoftness dial; 0.5 default = the physical
+            // extent); the packing left the 2D map's linearization term there.
+            if casterGPUKind(lighting) >= 3 {
+                lighting.shadowDepthB = Float(drawer.shadowSoftnessAmount * 2)
+            }
         } else if lighting.shadowLight >= 0 && lighting.shadowKind == 0 {
             // A directional/spot 2D caster runs PCSS (soft shadows): it budgets texture taps,
             // not rays, and the count is hardware-independent (cheap samples on any GPU).

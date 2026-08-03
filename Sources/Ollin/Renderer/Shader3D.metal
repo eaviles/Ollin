@@ -362,17 +362,71 @@ static inline float shadowFactorRayTraced(float3 worldPos, float3 n, float3 ligh
     return lit / float(n_samples);
 }
 
-// The ray-traced point-shadow factor for a lit mesh fragment, or 1 (lit) when this
-// frame's caster isn't a ray-traced point light (`shadowKind != 2`) — shared by the
-// solid and textured fragments so they stay in step. The light position comes from
-// the caster entry; `shadowDepthB` carries the soft-shadow light radius and
-// `shadowTexelWorld` the self-hit normal-offset (both packed in `makeLighting`).
+// Shadow factor for an area (rect / disk) caster via inline ray tracing: visibility
+// rays sample the panel's *actual surface*, so the penumbra takes the panel's true
+// size and shape (a wide softbox blurs wide, a strip blurs mostly along its length).
+// `scale` widens or narrows the sampled panel about its center: the shadowSoftness
+// dial, whose 0.5 default lands scale 1, the physical extent exactly; 0 collapses
+// every ray to the center (a hard shadow). Deterministic sample points (antithetic
+// pairs of the R2 low-discrepancy lattice for a rect, each point with its mirror
+// through the center, so any budget stays balanced; the golden-angle Vogel disk,
+// laid in the panel's own plane, for a disk) keep the result reproducible like the
+// point path.
+static inline float shadowFactorRayTracedArea(float3 worldPos, float3 n, OllinLight L,
+                                              float scale, float eps, int samples,
+                                              primitive_acceleration_structure accel) {
+    float3 origin = worldPos + n * eps;            // lift off the surface (self-hit guard)
+    intersection_params params;
+    params.accept_any_intersection(true);
+    int n_samples = max(samples, 1);               // rays/pixel (the resolved quality tier)
+    float lit = 0.0;
+    if (L.kind == 4) {
+        // Disk: Vogel samples in the panel's own plane (axisA/axisB span it).
+        float radius = L.axisA.w * scale;
+        for (int i = 0; i < n_samples; i++) {
+            float fi = (float(i) + 0.5) / float(n_samples);
+            float rr = sqrt(fi) * radius;
+            float th = float(i) * 2.39996323;      // golden angle
+            float3 t = L.position.xyz + L.axisA.xyz * (cos(th) * rr)
+                                      + L.axisB.xyz * (sin(th) * rr);
+            lit += traceShadowRay(origin, t, eps, accel, params);
+        }
+    } else {
+        // Rect: the R2 lattice over the panel, emitted as +p / -p pairs about the
+        // center (an odd budget adds the center itself), so the sample set's mean
+        // sits on the panel center at any count.
+        int pairs = n_samples / 2;
+        if (n_samples % 2 == 1) lit += traceShadowRay(origin, L.position.xyz, eps, accel, params);
+        for (int i = 0; i < pairs; i++) {
+            float u = fract(0.25 + float(i) * 0.7548776662) * 2.0 - 1.0;
+            float v = fract(0.25 + float(i) * 0.5698402910) * 2.0 - 1.0;
+            float3 offset = L.axisA.xyz * (L.axisA.w * scale * u)
+                          + L.axisB.xyz * (L.axisB.w * scale * v);
+            lit += traceShadowRay(origin, L.position.xyz + offset, eps, accel, params);
+            lit += traceShadowRay(origin, L.position.xyz - offset, eps, accel, params);
+        }
+    }
+    return lit / float(n_samples);
+}
+
+// The ray-traced shadow factor for a lit mesh fragment, or 1 (lit) when this frame's
+// caster isn't ray-traced (`shadowKind != 2`), shared by the solid and textured
+// fragments so they stay in step. A point caster samples a small perpendicular disk
+// around the light position (`shadowDepthB` = its world radius); an area caster
+// samples the panel's own surface (`shadowDepthB` = the softness scale on its
+// extent). `shadowTexelWorld` is the self-hit normal-offset for both.
 static inline float meshRTShadow(float3 worldPos, float3 normal,
                                  constant OllinLighting &light,
                                  primitive_acceleration_structure accel) {
     if (light.shadowKind != 2) return 1.0;
+    OllinLight caster = light.lights[light.shadowLight];
+    if (caster.kind >= 3) {
+        return shadowFactorRayTracedArea(worldPos, normalize(normal), caster,
+                                         light.shadowDepthB, light.shadowTexelWorld,
+                                         light.shadowSamples, accel);
+    }
     return shadowFactorRayTraced(worldPos, normalize(normal),
-                                 light.lights[light.shadowLight].position.xyz,
+                                 caster.position.xyz,
                                  light.shadowDepthB, light.shadowTexelWorld,
                                  light.shadowSamples, accel);
 }
@@ -1181,6 +1235,33 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
             float3 toCenter = normalize(L.position.xyz - worldPos);
             if (!haveKey) { keyToLight = toCenter; haveKey = true; }
 
+            // Dim the casting panel where the receiver is occluded, mirroring the
+            // punctual casters below: the traced path samples the panel's own surface
+            // (shadowKind 2); the 2D path reads the spot-style map from the panel's
+            // center through PCSS with the penumbra sized by the panel's extent.
+            // Ambient stays; only this light's integrals dim.
+            float atten = 1.0;
+            if (i == light.shadowLight) {
+                float lit01;
+                if (fieldShadow >= 0.0) {
+                    lit01 = fieldShadow;   // a marched field self-shadows (it isn't in the maps)
+                } else {
+#if OLLIN_RT_SHADOWS
+                    if (light.shadowKind == 2) lit01 = rtShadow;
+                    else
+#endif
+                    lit01 = (light.shadowDepthA > 0.0)
+                        ? shadowFactorPCSS(worldPos, n, toCenter, light.lightViewProjection,
+                                           light.shadowTexelWorld, light.shadowDepthA,
+                                           light.shadowDepthB, light.shadowSamples,
+                                           shadowMap, shadowSamp, shadowCubeSamp)
+                        : shadowFactor(worldPos, n, toCenter, light.lightViewProjection,
+                                       light.shadowTexelWorld, shadowMap, shadowSamp);
+                    lit01 *= meshFieldShadow;   // also occluded by the marched fields (RT; 1.0 otherwise)
+                }
+                atten = mix(1.0, lit01, light.shadowStrength);
+            }
+
             // The LUT texel for this surface: the physically-based model brings its own
             // perceptual roughness; the Blinn-Phong models map their exponent onto the
             // equivalent GGX lobe width (alpha = sqrt(2/(shininess + 2)), so perceptual
@@ -1197,6 +1278,10 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
 
             float diffI = 0.0, specI = 0.0;
             ollin_ltc_light(L, n, viewDir, worldPos, Minv, ltcAmp, diffI, specI);
+            // The shadow scales both integrals (and `incoming` below picks it up), so
+            // every shading model's area term dims consistently; 1.0 with no caster.
+            diffI *= atten;
+            specI *= atten;
 
             if (model == 1) {
                 // Toon: cel bands on the area diffuse; the highlight stays smooth (a
@@ -1231,7 +1316,7 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 float back = pow(max(dot(viewDir, -toCenter), 0.0), 3.0);
                 float diffBack = 0.0, specBack = 0.0;
                 ollin_ltc_light(L, n, viewDir, worldPos, Minv, ltcAmp, diffBack, specBack, true);
-                sssAccum += L.color.rgb * (back * diffBack);
+                sssAccum += atten * L.color.rgb * (back * diffBack);
             }
             continue;
         }

@@ -61,7 +61,7 @@ It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divid
 
 The high-end, well-curated realism tier, opt-in on the existing PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. The techniques that separate a polished product render or film still from "CG," each Metal-native and written from the published technique (credited in `ATTRIBUTION.md`'s Techniques list):
 
-- **Light shaping.** IES photometric profiles and light cookies / gobos (a projected texture on a spot) for realistic falloff and textured light, plus cast shadows from the area lights' real extents.
+- **Light shaping.** IES photometric profiles and light cookies / gobos (a projected texture on a spot) for realistic falloff and textured light.
 - **Real-time global illumination.** Indirect bounce light beyond the IBL ambient term: light probes / irradiance volumes, screen-space GI, or a dynamic-diffuse-GI scheme (DDGI). The single biggest "it looks real" lever after direct lighting.
 - **Volumetrics and atmosphere.** Volumetric lighting (god rays / light shafts through participating media), height and distance fog, atmospheric / aerial-perspective scattering, and raymarched volumetric clouds over the procedural sky.
 - **Advanced materials.** Glass and **transmission / refraction** (frosted, thin-film, the glTF `KHR_materials_transmission` / `_volume` set), **clearcoat** (car paint and lacquer's second specular lobe), real **subsurface scattering** (skin, wax, jade, beyond the stylized finish), **sheen** (fabric and velvet), and surface detail (parallax-occlusion and displacement, triplanar and detail maps, decals).

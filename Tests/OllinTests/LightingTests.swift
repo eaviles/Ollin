@@ -174,12 +174,68 @@ struct LightingTests {
         #expect(close(l.axisB.w, 0.25))  // tube radius
     }
 
-    @Test func areaLightsNeverCastShadows() {
-        // The caster search covers the punctual kinds only (area casting is a
-        // follow-up), so an area-only scene under castShadows() stays unshadowed.
+    @Test func rectCasterPacksASpotStyleMap() {
+        // A rect panel with no punctual light casts: a spot-style perspective map
+        // from the panel's center (shadowKind 0), the PCSS penumbra sized from the
+        // panel's extent (shadowDepthA > 0 at the default softness) and the
+        // perspective linearization term negative (the spot-path flag).
         let d = freshDrawer()
         d.addLight(.rect(.white, at: Vector3(0, 3, 0), direction: Vector3(0, -1, 0),
                          width: 2, height: 2))
+        d.castShadows()
+        let u = d.makeLighting()
+        #expect(u.shadowKind == 0)
+        #expect(u.shadowLight == 0)
+        #expect(u.shadowDepthA > 0)
+        #expect(u.shadowDepthB < 0)
+    }
+
+    @Test func panelExtentSizesThePenumbra() {
+        // The PCSS penumbra radius comes from the panel's own extent, so doubling
+        // the panel doubles the packed texel radius (same position, same frustum;
+        // small panels, clear of the 40-texel kernel cap).
+        func penumbra(_ side: Double) -> Float {
+            let d = freshDrawer()
+            d.addLight(.rect(.white, at: Vector3(0, 3, 0), direction: Vector3(0, -1, 0),
+                             width: side, height: side))
+            d.castShadows()
+            return d.makeLighting().shadowDepthA
+        }
+        let small = penumbra(0.2)
+        let big = penumbra(0.4)
+        #expect(small > 0)
+        #expect(close(big, small * 2, 1e-3))
+    }
+
+    @Test func softnessZeroKeepsTheAreaCasterHard() {
+        // shadowSoftness(0) routes every caster to the hard legacy 3x3, the area
+        // kind included (shadowDepthA == 0 is the shader's hard-path sentinel).
+        let d = freshDrawer()
+        d.addLight(.disk(.white, at: Vector3(0, 3, 0), direction: Vector3(0, -1, 0),
+                         radius: 1))
+        d.castShadows()
+        d.shadowSoftness(0)
+        #expect(d.makeLighting().shadowDepthA == 0)
+    }
+
+    @Test func punctualCastersStayPreferredOverArea() {
+        // The caster search appends the area kinds after the punctual ones, so a
+        // scene holding both casts from its point light, not the panel.
+        let d = freshDrawer()
+        d.addLight(.rect(.white, at: Vector3(0, 3, 0), direction: Vector3(0, -1, 0),
+                         width: 2, height: 2))
+        d.addLight(.point(.white, at: Vector3(0, 3, 0)))
+        d.castShadows()
+        let u = d.makeLighting()
+        #expect(u.shadowKind == 1)
+        #expect(u.shadowLight == 1)     // the point's index, not the rect's
+    }
+
+    @Test func aTubeNeverCasts() {
+        // A tube emits radially (no facing axis to render a map from), so a
+        // tube-only scene under castShadows() stays unshadowed.
+        let d = freshDrawer()
+        d.addLight(.tube(.white, from: Vector3(-1, 2, 0), to: Vector3(1, 2, 0)))
         d.castShadows()
         #expect(d.makeLighting().shadowLight == -1)
     }
@@ -411,6 +467,98 @@ private final class AreaLightProbe: Sketch {
                                   Vector3(1, 1, 0), Vector3(-1, 1, 0)],
                       normals: [.unitZ, .unitZ, .unitZ, .unitZ],
                       indices: [0, 1, 2, 0, 2, 3]))
+    }
+}
+
+/// Behavioral probes for the area-light *cast shadow*: a floor under a hovering slab,
+/// lit by one overhead rect panel, rendered with and without `castShadows()` so the
+/// per-pixel difference isolates the shadow. They read the same on either device path
+/// (the traced panel on an RT GPU, the spot-style PCSS map elsewhere), so they gate on
+/// Metal only.
+@Suite
+@MainActor
+struct AreaShadowRenderProbes {
+
+    private func pixels(_ sketch: Sketch) throws -> [UInt8] {
+        let image = try #require(OllinApp.image(of: sketch, frame: 1))
+        let w = image.width, h = image.height
+        var data = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        return data
+    }
+
+    /// Red-channel difference per pixel (lit-minus-shadowed; the scene is grayscale).
+    private func shadowDiff(panelSide: Double) throws -> [Int] {
+        let lit = try pixels(AreaShadowProbe.make(panelSide: panelSide, casts: false))
+        let shadowed = try pixels(AreaShadowProbe.make(panelSide: panelSide, casts: true))
+        return stride(from: 0, to: lit.count, by: 4).map { Int(lit[$0]) - Int(shadowed[$0]) }
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aPanelCasterDropsAShadow() throws {
+        let diff = try shadowDiff(panelSide: 1.0)
+        let darkened = diff.filter { $0 > 20 }.count
+        #expect(darkened > 200, "expected a clear shadow patch, got \(darkened) darkened pixels")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aBiggerPanelSoftensTheShadow() throws {
+        // The penumbra comes from the panel's real extent: growing the panel (its
+        // radiance scaled down to keep the poured flux comparable) shrinks the
+        // fully-dark core and widens the partial band. Both counts are normalized
+        // to each render's own deepest shadow, so the two sizes compare fairly.
+        func bands(_ side: Double) throws -> (umbra: Int, penumbra: Int) {
+            let diff = try shadowDiff(panelSide: side)
+            let maxDiff = diff.max() ?? 0
+            guard maxDiff > 30 else { return (0, 0) }
+            let umbra = diff.filter { $0 > Int(0.8 * Double(maxDiff)) }.count
+            let penumbra = diff.filter {
+                $0 > Int(0.15 * Double(maxDiff)) && $0 < Int(0.6 * Double(maxDiff))
+            }.count
+            return (umbra, penumbra)
+        }
+        let small = try bands(0.5)
+        let big = try bands(2.5)
+        #expect(big.umbra < small.umbra,
+                "expected the umbra to shrink as the panel grows: small \(small), big \(big)")
+        #expect(big.penumbra > small.penumbra,
+                "expected the partial band to widen as the panel grows: small \(small), big \(big)")
+    }
+}
+
+/// The shadow probe scene: a gray floor, a slab hovering over it, one overhead rect
+/// panel. `casts` flips `castShadows()` with everything else identical, so a pixel
+/// difference is the cast shadow alone. Radiance scales down with panel area so a
+/// bigger panel pours a comparable total flux (the lit-floor level stays put).
+private final class AreaShadowProbe: Sketch {
+    var casts = true
+    var panelSide = 1.0
+
+    static func make(panelSide: Double, casts: Bool) -> AreaShadowProbe {
+        let probe = AreaShadowProbe()
+        probe.panelSide = panelSide
+        probe.casts = casts
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(radius: 8, elevation: 0.9))
+        rectLight(.white, at: Vector3(0, 5, 0), direction: Vector3(0, -1, 0),
+                  width: panelSide, height: panelSide,
+                  intensity: 6 / (panelSide * panelSide))
+        if casts { castShadows() }
+        fill(Color(white: 0.85))
+        drawPlane(width: 20, depth: 20)
+        withState {
+            translate(0, 1.5, 0)
+            drawBox(width: 1.4, height: 0.15, depth: 1.4)
+        }
     }
 }
 

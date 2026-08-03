@@ -1571,13 +1571,15 @@ real falloff. `intensity × color` is the emitting surface's radiance (the
 LTC-native convention: a full surrounding hemisphere of radiance 1 returns the
 albedo exactly), which is why area lights fall off physically while the
 punctual kinds keep their no-attenuation model, and why a thin tube runs at
-intensities in the tens. Area lights never cast shadows (the caster search
-covers the punctual kinds; the area-extent caster is the roadmap's *Light
-shaping* item), and the RT-reflection hit shade approximates them as centroid
-emitters with an area/(π·d² + area) falloff rather than binding the LUTs in a
-secondary bounce. The head-on view (V ≈ N) takes a deterministic fallback
-tangent instead of normalizing a zero vector (the reference leaves this case
-unguarded; the head-on LUT row is fitted isotropic, so any tangent is exact).
+intensities in the tens. Rect and disk panels cast shadows from their real
+extent (the caster search reaches them after the punctual kinds; see
+*Shadows* below), where a tube never casts (radial emission has no facing
+axis to shadow from). The RT-reflection hit shade approximates area lights as
+centroid emitters with an area/(π·d² + area) falloff rather than binding the
+LUTs in a secondary bounce. The head-on view (V ≈ N) takes a deterministic
+fallback tangent instead of normalizing a zero vector (the reference leaves
+this case unguarded; the head-on LUT row is fitted isotropic, so any tangent
+is exact).
 
 ### The IBL bake
 
@@ -1691,7 +1693,37 @@ re-bake.
 `castShadows()` routes by light type: directional/spot render a 2D shadow map;
 a point light is ray-traced on an RT GPU (inline `intersection_query` behind
 the `OLLIN_RT_SHADOWS` compile gate) with a mid-point cube fallback elsewhere;
+a rect/disk area panel is ray-traced on an RT GPU with a 2D-map fallback (below);
 `shadowQuality(_:)` maps hardware-relative ray counts through `RenderQuality`.
+
+**Area (rect/disk) casters shadow from the panel's real extent.** The caster
+search reaches them after the punctual kinds (directional → spot → point →
+rect/disk), so every existing scene keeps its caster. On an RT device each lit
+pixel traces visibility rays to deterministic points spread over the panel's
+actual surface (`shadowFactorRayTracedArea`: the golden-angle Vogel disk laid
+in a disk's own plane; antithetic ±p pairs of the R2 low-discrepancy lattice
+over a rect, so any sample budget stays mean-centered on the panel), which
+also reproduces a strip's anisotropic penumbra. Elsewhere the panel renders a
+spot-style perspective map from its center, aimed at the camera target (a
+panel lights its whole front hemisphere, so unlike a spot there is no cone to
+aim by; the same framing proxy as the directional box) with the frustum fit to
+the scene sphere, and the PCSS penumbra radius is the panel's half-extent in
+map texels (a disk's radius; a rect's geometric-mean half-extent, so a thin
+strip doesn't blur like a square of its long side), capped at 40 texels where
+the fixed tap budget would spread into dither. `shadowSoftness` stays the one
+dial across every caster: for an area caster it scales the *physical* extent
+(0 → the hard legacy 3×3 / all rays at the center, 0.5 default → the true
+size, 1 → twice), packed CPU-side into `shadowDepthA` for the map path and
+swapped into `shadowDepthB` when the renderer flips the caster to the traced
+path (`shadowKind` 2), since the map path needs that slot for the perspective
+linearization term. The shadow dims the LTC integrals inside the area branch
+of `meshLitColor` (both `diffI`/`specI`, so every shading model and the SSS
+back term dim consistently); a no-caster frame multiplies by exactly 1.0 and
+stays byte-identical. Tubes never cast: radial emission has no facing axis to
+render a map from, and the caster search skips them. The traced path is
+pinned by the RT-gated `area-shadows` snapshot; the map path (unreachable on
+an RT machine) by the path-agnostic `AreaShadowRenderProbes`, which compare
+castShadows()-on/off renders so the per-pixel difference isolates the shadow.
 
 **PCSS (soft shadows).** `shadowSoftness(_:)` (0 hard, 0.5 default
 contact-hardening, 1 very soft) runs the directional/spot 2D map through

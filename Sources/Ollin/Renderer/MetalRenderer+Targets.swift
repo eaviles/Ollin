@@ -258,6 +258,18 @@ extension MetalRenderer {
             return ShadowMaps(cube: cube)
         }
 
+        // An area (rect/disk) caster on a ray-tracing device: trace visibility to the
+        // panel's actual surface instead of rendering the spot-style map (the exact
+        // penumbra, including a rect's anisotropy). Elsewhere it falls through to the
+        // 2D map below, whose PCSS penumbra the packing already sized from the panel's
+        // extent, so both devices soften by the same physical size.
+        if lighting.shadowLight >= 0, casterGPUKind(lighting) >= 3, rayTracedShadows,
+           let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) {
+            return ShadowMaps(accel: built.accel,
+                              reflectAccel: wantReflect ? built.accel : nil,
+                              reflectGeoOffsets: wantReflect ? built.offsets : nil)
+        }
+
         // Reflections with no shadow-casting light: build only the reflection accel.
         if lighting.shadowLight < 0 {
             guard let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer)
@@ -628,6 +640,12 @@ extension MetalRenderer {
         if shadowAccelPresent {
             lighting.shadowKind = 2
             lighting.shadowSamples = resolveShadowSamples(drawer.shadowQualitySetting)
+            // A traced *panel* caster reads `shadowDepthB` as the sampled panel's scale
+            // about its center (the shadowSoftness dial; 0.5 default = the physical
+            // extent); the packing left the 2D map's linearization term there.
+            if casterGPUKind(lighting) >= 3 {
+                lighting.shadowDepthB = Float(drawer.shadowSoftnessAmount * 2)
+            }
         } else if lighting.shadowLight >= 0 && lighting.shadowKind == 0 {
             lighting.shadowSamples = resolveShadowTaps2D(drawer.shadowQualitySetting)
         }
@@ -801,6 +819,19 @@ extension MetalRenderer {
     func resolveFieldCasterCount(_ lighting: OllinLighting, _ drawer: Drawer) -> Int32 {
         (lighting.shadowLight >= 0 && lighting.shadowKind != 0 && !drawer.sdf3DGroups.isEmpty)
             ? Int32(drawer.sdf3DGroups.count) : 0
+    }
+
+    /// The GPU kind of this frame's shadow-casting light (0 directional / 1 point / 2 spot /
+    /// 3 rect / 4 disk), or -1 with no caster. The routing that differs by caster shape (an
+    /// area caster traces the panel on an RT device, else renders the spot-style 2D map)
+    /// reads it from the packed uniform's fixed-size light array.
+    func casterGPUKind(_ lighting: OllinLighting) -> Int32 {
+        guard lighting.shadowLight >= 0 else { return -1 }
+        return withUnsafePointer(to: lighting.lights) { ptr in
+            ptr.withMemoryRebound(to: OllinLight.self, capacity: Int(OLLIN_MAX_LIGHTS)) { buf in
+                buf[Int(lighting.shadowLight)].kind
+            }
+        }
     }
 
     /// The point/RT field-cast shadow is per-receiver-pixel (the lit mesh fragments march the field

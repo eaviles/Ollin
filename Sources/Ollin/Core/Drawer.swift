@@ -1796,6 +1796,57 @@ final class Drawer {
                 u.shadowDepthB = dist * 0.06 * Float(shadowSoftnessAmount)
                 // `shadowSamples` (rays/pixel) is resolved by the renderer from the GPU's
                 // capability + the sketch's quality tier; left 0 here (it has no device).
+            } else if let caster = (0..<count).first(where: {
+                activeLights[$0].kind == .rect || activeLights[$0].kind == .disk
+            }) {
+                // Rect/disk area caster: a spot-style perspective map rendered from the
+                // panel's center, aimed at the scene (the camera target, the same framing
+                // proxy the directional box uses; a panel lights its whole front
+                // hemisphere, so unlike a spot it has no cone to aim by), its PCSS
+                // penumbra sized by the panel's *real extent* rather than the knob-only
+                // size, so a bigger softbox casts a proportionally softer shadow. The map
+                // is a from-the-center approximation of the panel; on a ray-tracing
+                // device the renderer traces visibility to the panel's actual surface
+                // instead (which also captures a rect's anisotropic penumbra). A tube
+                // emits radially (no facing axis to render a map from), so it never
+                // casts. Receivers outside the fitted frustum shade lit, the same
+                // envelope as the other 2D casters.
+                let light = activeLights[caster]
+                let eye = light.position.simd3
+                let toTarget = target - eye
+                let span = simd_length(toTarget)
+                let dist = max(span, 1)
+                // A panel sitting on the target aims along its own facing normal instead.
+                let axis = span > 1e-5 ? toTarget / span
+                                       : simd_normalize(light.direction.normalized.simd3)
+                let up: SIMD3<Float> = abs(axis.y) > 0.99 ? SIMD3<Float>(0, 0, 1) : SIMD3<Float>(0, 1, 0)
+                let view = Camera3D.lookAt(eye: eye, center: eye + axis * dist, up: up)
+                // Cover the scene sphere around the target (a margin past the framing
+                // radius), clamped like the spot frustum; a panel inside the scene clamps
+                // wide and loses depth precision (the documented envelope).
+                let fovY = Float(min(Double(2 * atan(1.2 * r / dist)), Double.pi - 0.05))
+                let proj = Camera3D.perspective(fovY: fovY, aspect: 1,
+                                                near: max(0.1, dist - 1.5 * r), far: dist + 1.5 * r)
+                u.lightViewProjection = proj * view
+                u.shadowLight = Int32(caster)
+                u.shadowStrength = 1
+                u.shadowTexelWorld = (2 * tan(fovY * 0.5) * dist) / Float(Drawer.shadowMapResolution)
+                // The PCSS penumbra radius is the panel's own half-extent (the disk's
+                // radius; a rect's geometric-mean half-extent, so a thin strip doesn't
+                // blur like a square of its long side) in map texels. `shadowSoftness`
+                // stays the one dial across every caster: 0 routes to the hard legacy
+                // 3×3, the 0.5 default is the physical extent exactly, 1 doubles it.
+                // The radius caps at 40 texels; past that the fixed tap budget spreads
+                // too thin and the penumbra dissolves into dither.
+                let halfExtent = light.kind == .disk
+                    ? light.radius
+                    : (light.width * light.height).squareRoot() / 2
+                let sizeTexels = Float(halfExtent) / u.shadowTexelWorld * Float(shadowSoftnessAmount * 2)
+                u.shadowDepthA = min(max(sizeTexels, 0), 40)
+                // The perspective linearization term for the PCSS ratio, like the spot.
+                // On a ray-tracing device the renderer overwrites this with the traced
+                // panel's sampling scale when it flips `shadowKind` to 2.
+                u.shadowDepthB = proj.columns.2.z
             }
         }
         return u
