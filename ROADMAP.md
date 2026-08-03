@@ -82,6 +82,7 @@ The integration tier reaches other software (Syphon, OSC, MIDI, the virtual came
 
 - **Serial and Bluetooth LE.** A `SerialPort` for USB microcontrollers (sensors in, servos and LEDs out) and Bluetooth LE peripheral reads, each surfaced the way OSC and MIDI already read: a latest-value cache, a message drain, `@Param` binding.
 - **DMX lighting over Art-Net / sACN.** Drive stage lights and dimmers from `draw()`; both protocols are published UDP wire specs, so this is the written-from-spec posture OSC set. **LED mapping** rides on it: sample canvas regions onto addressable LED strips and matrices, so a sketch's pixels leave the screen.
+- **Laser projection.** Drive a show laser from `draw()`: a galvo laser traces resampled vector paths, which is nearly what a `Contour` already is, so the geometry-first core supplies the raw material. Consumer laser DACs speak published protocols, repeating the written-from-spec recipe; the craft is the point optimizer between shapes and beam (corner dwell, blanking, point budgets, path ordering) and a safety-first output gate.
 - **NDI.** The network sibling of Syphon: send and receive live video between machines, the standard in VJ and broadcast rigs. Its SDK is binary-only under its own license, so unlike the source-vendored tier it needs a licensing review before any code; that review decides whether and how it ships.
 
 All of it is the interop posture: play in someone's existing rig, not replace it. See the [design notes](DESIGN-NOTES.md#live-rigs-physical-computing-lighting-and-network-video).
@@ -94,6 +95,7 @@ More of the platform's live signals, each a `FrameSource` or a simple value read
 - **Voice and sound events.** Speech recognition as drawable live captions, and sound-event classification (a clap, a genre, a bark) as a trigger, the audio analogue of the vision trackers.
 - **Rich controllers.** Game controllers (gyro, triggers, touchpad), and, on the iOS leg, Apple Pencil tilt and azimuth.
 - **Body and world data.** Heart rate from a paired Watch for biofeedback, and real-world ambient data (weather, location) as a slow live input.
+- **Data as input.** The classic data-loading staple: CSV / TSV / JSON from a file or URL as simple typed rows and values a sketch reads in `setup()`, so data-driven drawing is one line rather than hand-rolled networking and decoding.
 
 Several overlap the [iPhone sensor array](#iphone-as-a-sensor-array); these are the Mac-side direct sources. See the [design notes](DESIGN-NOTES.md#new-input-sources).
 
@@ -117,7 +119,7 @@ Deeper use of the Metal core and Apple displays, all opt-in so the 2D path stays
 - **GPU-driven rendering.** Indirect command buffers and mesh shaders to scale past instancing: many more distinct, GPU-encoded or GPU-generated objects with the CPU out of the per-object loop.
 - **Film-quality export.** An offline path-traced render path a sketch can switch to for gallery-grade stills and sequences, from the same scene tuned live (an extension of the ray-tracing direction noted under [3D mode](#3d-mode)).
 
-See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most speculative items here, spectral rendering, AI frame interpolation, and optical-flow self-warp, sit under [Further out / exploratory](#further-out--exploratory).)
+See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most speculative items here, spectral rendering, AI frame interpolation, optical-flow self-warp, and print color management, sit under [Further out / exploratory](#further-out--exploratory).)
 
 ## Authoring and editor tooling
 
@@ -163,6 +165,7 @@ Lower-confidence ideas kept on record but deliberately not near-term: each is pl
 - **Spectral rendering.** Composite in spectra rather than RGB, for physically-correct subtractive color mixing, thin-film iridescence, and diffraction. (Detail under [rendering and color frontier](DESIGN-NOTES.md#rendering-and-color-frontier).)
 - **AI frame interpolation.** Render at a lower frame rate and ship smooth slow-motion via an on-device interpolation model.
 - **Optical-flow self-warp.** Feed the sketch's own motion field, from the existing Vision optical flow, back into its history for flow and glitch looks.
+- **Print color management.** CMYK process separation through real ICC profiles, plus a soft-proof filter previewing the canvas as a chosen printer profile reproduces it: the offset-print sibling of the spot-ink `printInks` separations. (Detail under [rendering and color frontier](DESIGN-NOTES.md#rendering-and-color-frontier).)
 - **Text-to-image as a material.** On-device diffusion a sketch could invoke as an optional, labelled material. The one to weigh hardest against the AI boundary, since it sits closest to the contested use, so it lives here rather than in the planned [authoring tier](#authoring-and-editor-tooling); see the AI stance stated there.
 - **SharePlay co-creation.** Two people tuning one sketch together over a FaceTime call (GroupActivities). The most speculative of the [collaboration](#collaboration-and-multi-device) ideas.
 
