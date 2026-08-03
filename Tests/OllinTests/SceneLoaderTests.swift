@@ -193,6 +193,168 @@ struct SceneLoaderTests {
         #expect(abs(sun.intensity - 1) < 1e-9)
     }
 
+    // MARK: The USD reader
+
+    /// Write a USD text fixture to a temp file and load it as a `Scene`.
+    private func loadUSDScene(_ usda: String) throws -> Ollin.Scene? {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usda")
+        try usda.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+        return Scene(contentsOf: url)
+    }
+
+    /// The USD sibling of the glTF stage: a "rig" root translated (1,0,0)
+    /// carrying a unit-quad mesh on a child "part" at (0,2,0) with a preview-
+    /// surface material; a translated camera; and a light prim, which the
+    /// platform importer does not translate.
+    private var courtUSDA: String {
+        """
+        #usda 1.0
+        (
+            defaultPrim = "Stage"
+            upAxis = "Y"
+        )
+
+        def Xform "Stage"
+        {
+            def Xform "rig"
+            {
+                double3 xformOp:translate = (1, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Mesh "part"
+                {
+                    double3 xformOp:translate = (0, 2, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                    uniform token subdivisionScheme = "none"
+                    point3f[] points = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                    rel material:binding = </Stage/Materials/orange>
+                }
+            }
+
+            def Camera "cam"
+            {
+                double3 xformOp:translate = (0, 1, 5)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+                float focalLength = 35
+                float horizontalAperture = 20.955
+                float verticalAperture = 15.2908
+                float2 clippingRange = (0.25, 50)
+            }
+
+            def SphereLight "warm"
+            {
+                float inputs:intensity = 30
+            }
+
+            def Scope "Materials"
+            {
+                def Material "orange"
+                {
+                    token outputs:surface.connect = </Stage/Materials/orange/pbr.outputs:surface>
+
+                    def Shader "pbr"
+                    {
+                        uniform token info:id = "UsdPreviewSurface"
+                        color3f inputs:diffuseColor = (0.9, 0.4, 0.1)
+                        token outputs:surface
+                    }
+                }
+            }
+        }
+        """
+    }
+
+    @Test func usdSceneKeepsHierarchyAndLocalMeshes() throws {
+        let scene = try #require(try loadUSDScene(courtUSDA))
+
+        // The tree shape survives: "part" rides "rig", not flattened away, and
+        // each keeps its authored local translation.
+        let rig = try #require(scene.node("rig"))
+        #expect(rig.mesh == nil)
+        #expect(rig.children.map(\.name) == ["part"])
+        #expect(rig.position == Vector3(1, 0, 0))
+        let part = try #require(scene.node("part"))
+        #expect(part.position == Vector3(0, 2, 0))
+
+        // The quad arrives triangulated, in *local* coordinates (the parent
+        // transforms are not baked into the vertices), wearing the authored
+        // preview-surface color.
+        let mesh = try #require(part.mesh)
+        #expect(mesh.triangleCount == 2)
+        #expect(mesh.positions.map(\.x).max() == 1)
+        #expect(mesh.positions.map(\.y).max() == 1)
+        let color = try #require(mesh.material?.baseColor)
+        #expect(abs(color.red - 0.9) < 1e-5 && abs(color.green - 0.4) < 1e-5
+                && abs(color.blue - 0.1) < 1e-5)
+
+        // Transform composition: rig (1,0,0) + part (0,2,0) place the unit quad
+        // at x 1...2, y 2...3.
+        let b = scene.bounds
+        #expect(abs(b.min.x - 1) < 1e-5 && abs(b.max.x - 2) < 1e-5)
+        #expect(abs(b.min.y - 2) < 1e-5 && abs(b.max.y - 3) < 1e-5)
+    }
+
+    @Test func usdSceneResolvesPerspectiveCamera() throws {
+        let scene = try #require(try loadUSDScene(courtUSDA))
+        #expect(scene.cameras.count == 1)
+        let cam = try #require(scene.camera)
+        #expect((cam.eye - Vector3(0, 1, 5)).length < 1e-5)
+        // No rotation: the camera looks down -z, targeting the scene center's
+        // depth along the view direction (center z = 0, so 5 units ahead).
+        #expect((cam.target - Vector3(0, 1, 0)).length < 1e-4)
+        #expect((cam.up - Vector3.unitY).length < 1e-5)
+        #expect(cam.near == 0.25)
+        #expect(cam.far == 50)
+        guard case .perspective(let fov) = cam.projection else {
+            Issue.record("expected a perspective projection"); return
+        }
+        // The importer derives the vertical angle from focal length over
+        // vertical aperture.
+        #expect(abs(fov - 2 * atan(15.2908 / 70)) < 1e-4)
+    }
+
+    @Test func usdSceneResolvesOrthographicCamera() throws {
+        let usda = """
+        #usda 1.0
+        (
+            defaultPrim = "cam"
+        )
+
+        def Camera "cam"
+        {
+            token projection = "orthographic"
+            float horizontalAperture = 300
+            float verticalAperture = 200
+            float2 clippingRange = (0.5, 20)
+            double3 xformOp:translate = (0, 0, 5)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        """
+        let scene = try #require(try loadUSDScene(usda))
+        let cam = try #require(scene.camera)
+        guard case .orthographic(let height) = cam.projection else {
+            Issue.record("expected an orthographic projection"); return
+        }
+        // A USD orthographic aperture is spelled in tenths of a world unit.
+        #expect(height == 20)
+        #expect(cam.near == 0.5)
+        #expect(cam.far == 20)
+    }
+
+    @Test func usdSceneCarriesNoLights() throws {
+        // The documented importer limitation: the authored SphereLight arrives
+        // as a bare grouping node, never a `Light`, so a USD scene is lit by
+        // the sketch. (If this ever starts failing with lights present, the
+        // platform importer learned to translate them, drop the limitation.)
+        let scene = try #require(try loadUSDScene(courtUSDA))
+        #expect(scene.lights.isEmpty)
+        #expect(scene.node("warm") != nil)
+    }
+
     // MARK: Format fallback
 
     @Test func meshOnlyFormatLoadsAsSingleNodeScene() throws {

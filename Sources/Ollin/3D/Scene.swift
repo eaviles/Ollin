@@ -25,9 +25,12 @@ import simd
 /// for `camera(_:)`, `lights` are `Light`s for `light(_:)`, and each node's `mesh`
 /// is an ordinary `Mesh` (in the node's local space) that also draws standalone.
 /// Structure comes from glTF/GLB files (the node graph, cameras from the core
-/// spec, lights from the punctual-lights extension); the other mesh formats
-/// (`.obj`, `.usdz`, `.stl`, …) have no scene graph to keep, so they load as a
-/// single-node scene with no cameras or lights, exactly `loadMesh` in a wrapper.
+/// spec, lights from the punctual-lights extension, animations, skins) and from
+/// the USD family (`.usdz`/`.usdc`/`.usda`/`.usd`: the node graph and cameras;
+/// USD lights and animations don't survive the platform importer, so light those
+/// scenes yourself); the remaining mesh formats (`.obj`, `.stl`, …) have no
+/// scene graph to keep, so they load as a single-node scene with no cameras or
+/// lights, exactly `loadMesh` in a wrapper.
 public struct Scene: Sendable {
 
     /// The root nodes of the scene graph, in document order.
@@ -243,15 +246,22 @@ extension Scene {
 
     /// Load a scene from a file, keeping its structure. `.gltf`/`.glb` files keep
     /// the full graph: named nodes with transforms, cameras, and punctual lights.
-    /// Any other format `loadMesh` reads (`.obj`, `.usdz`, `.stl`, …) has no scene
-    /// graph, so it loads as one node named after the file, with no cameras or
-    /// lights. Returns `nil` if the file can't be read or holds no geometry.
-    /// Mirrors `Mesh(contentsOf:)`.
+    /// The USD family (`.usdz`, `.usdc`, `.usda`, `.usd`) keeps its graph too,
+    /// named nodes, transforms, and cameras, though not its lights or animations
+    /// (see `loadModelIOScene`). Any other format `loadMesh` reads (`.obj`,
+    /// `.stl`, …) has no scene graph, so it loads as one node named after the
+    /// file, with no cameras or lights. Returns `nil` if the file can't be read
+    /// or holds nothing. Mirrors `Mesh(contentsOf:)`.
     public init?(contentsOf url: URL) {
         switch url.pathExtension.lowercased() {
         case "gltf", "glb":
             guard let scene = Scene.loadGLTFScene(url) else { return nil }
             self = scene
+        #if canImport(ModelIO)
+        case "usdz", "usdc", "usda", "usd":
+            guard let scene = Scene.loadModelIOScene(url) else { return nil }
+            self = scene
+        #endif
         default:
             guard let mesh = Mesh(contentsOf: url) else { return nil }
             self = Scene(nodes: [SceneNode(name: url.deletingPathExtension().lastPathComponent,
@@ -363,19 +373,9 @@ extension Scene {
     /// is empty or behind the camera.
     static func resolveCamera(_ def: GLTF.CameraDef, world: simd_float4x4,
                               sceneCenter: Vector3?) -> Camera3D? {
-        let eye = Vector3(Double(world.columns.3.x), Double(world.columns.3.y),
-                          Double(world.columns.3.z))
-        var back = Vector3(Double(world.columns.2.x), Double(world.columns.2.y),
-                           Double(world.columns.2.z))
-        back = back.lengthSquared > 1e-12 ? back.normalized : .unitZ
-        let forward = Vector3(-back.x, -back.y, -back.z)
-        var up = Vector3(Double(world.columns.1.x), Double(world.columns.1.y),
-                         Double(world.columns.1.z))
-        up = up.lengthSquared > 1e-12 ? up.normalized : .unitY
-
         let projection: Camera3D.Projection
-        var near: Double
-        var far: Double
+        let near: Double
+        let far: Double
         switch def.type {
         case "perspective":
             guard let p = def.perspective else { return nil }
@@ -390,6 +390,27 @@ extension Scene {
         default:
             return nil
         }
+        return resolveCamera(projection: projection, near: near, far: far,
+                             world: world, sceneCenter: sceneCenter)
+    }
+
+    /// The pose half of camera resolution, shared by every format: eye, view
+    /// direction, and up from the node's world transform (both formats aim down
+    /// the node's -z), the target found by projecting the scene center onto the
+    /// view axis (see above).
+    static func resolveCamera(projection: Camera3D.Projection, near: Double, far: Double,
+                              world: simd_float4x4, sceneCenter: Vector3?) -> Camera3D {
+        let eye = Vector3(Double(world.columns.3.x), Double(world.columns.3.y),
+                          Double(world.columns.3.z))
+        var back = Vector3(Double(world.columns.2.x), Double(world.columns.2.y),
+                           Double(world.columns.2.z))
+        back = back.lengthSquared > 1e-12 ? back.normalized : .unitZ
+        let forward = Vector3(-back.x, -back.y, -back.z)
+        var up = Vector3(Double(world.columns.1.x), Double(world.columns.1.y),
+                         Double(world.columns.1.z))
+        up = up.lengthSquared > 1e-12 ? up.normalized : .unitY
+
+        var far = far
         if far <= near { far = near + 1000 }
 
         var focus = 1.0

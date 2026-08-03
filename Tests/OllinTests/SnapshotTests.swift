@@ -485,6 +485,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("animated-scene",
                  note: "The bundled orrery asset posed by its authored \"spin\" animation at a fixed 3.2 s: the planet arm swung 144 deg on spherically-blended LINEAR quaternion keys, the moon arm counter-turned, the marker orb mid-descent on its CUBICSPLINE bob, and the base pointer four STEP ticks around. Pins the glTF animation parse (channels grouped to tracks), all three sampler modes, and apply() rebuilding node TRS local transforms drawn through drawScene with the scene's own camera and lights. Fixed sample time, no shadows, deterministic.",
                  make: { AnimatedSceneScene() }),
+    SnapshotCase("usd-scene",
+                 note: "The bundled USD sculpture court loaded from the repo (the structure-preserving Model I/O walk: named nodes, nested plinth transforms, node-local meshes wearing their authored preview-surface colors) drawn through the file's own camera under fixed sketch lights (a USD scene carries none through the importer, the documented limitation). No shadows, no time, deterministic.",
+                 make: { USDSceneScene() }),
     SnapshotCase("skinned-scene",
                  note: "The bundled tidepool asset posed by its authored \"sway\" animation at a fixed 1.9 s: three kelp blades bent by their four-joint skins (per-vertex JOINTS_0/WEIGHTS_0 blends, u8 joints, shared inverse-bind accessor) and the anemone mid-pulse on its two morph targets (a dense puff and a sparse-accessor ripple) via the morph-weights track. Pins the skin parse, the scene-root joint-matrix pose, the ignored-skinned-node-transform rule on the draw path, sparse displacement decode, and weights-channel sampling, drawn through drawScene with the scene's own camera and lights. Fixed sample time, no shadows, deterministic.",
                  make: { SkinnedSceneScene() }),
@@ -600,6 +603,32 @@ private final class AnimatedSceneScene: Sketch {
         }
         fill(.white)
         drawScene(orrery)
+    }
+}
+
+/// The committed USDScene example asset, loaded from the repo and drawn through
+/// its authored camera under fixed sketch lights (the importer carries no USD
+/// lights). Static, no shadows, no time.
+private final class USDSceneScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var court: Ollin.Scene!
+
+    override func setup() {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // OllinTests
+            .deletingLastPathComponent()   // Tests
+            .deletingLastPathComponent()   // repo root
+            .appendingPathComponent("Examples/3D/Geometry/USDScene/stage.usda")
+        court = Ollin.Scene(contentsOf: url)
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(court.camera ?? .orbiting(target: Vector3(0, 1, 0), radius: 7))
+        ambientLight(Color(white: 0.2))
+        directionalLight(.white, direction: Vector3(-0.5, -0.8, -0.4), intensity: 0.9)
+        fill(.white)
+        drawScene(court)
     }
 }
 

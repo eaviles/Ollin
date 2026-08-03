@@ -242,6 +242,19 @@ extension Mesh {
 #if canImport(ModelIO)
 extension Mesh {
 
+    /// One `MDLMesh`'s payload, read in the mesh's own local space: the unit of
+    /// work `loadViaModelIO` merges and the structure-preserving scene reader
+    /// keeps per node. `uvs` is `nil` when the mesh carries no texture
+    /// coordinates (the merged loader needs the distinction to drop UVs unless
+    /// every mesh has them).
+    struct MDLMeshData {
+        var positions: [Vector3]
+        var normals: [Vector3]
+        var uvs: [Vector2]?
+        var indices: [UInt32]
+        var material: MeshMaterial?
+    }
+
     /// Read positions, normals, triangle indices, texture coordinates, and the
     /// base-color material out of any container Model I/O can open. Every `MDLMesh` in
     /// the asset is merged into one `Mesh`; a mesh with no normals has them generated.
@@ -261,67 +274,93 @@ extension Mesh {
         var material: MeshMaterial?
 
         for mdl in mdlMeshes {
-            let normalAttr = mdl.vertexDescriptor.attributeNamed(MDLVertexAttributeNormal)
-            if normalAttr == nil || normalAttr?.format == MDLVertexFormat.invalid {
-                mdl.addNormals(withAttributeNamed: MDLVertexAttributeNormal, creaseThreshold: 0.2)
-            }
-            guard let posAttr = mdl.vertexAttributeData(forAttributeNamed: MDLVertexAttributePosition,
-                                                        as: .float3) else { continue }
-            let nrmAttr = mdl.vertexAttributeData(forAttributeNamed: MDLVertexAttributeNormal, as: .float3)
-            let uvAttr = mdl.vertexAttributeData(forAttributeNamed: MDLVertexAttributeTextureCoordinate, as: .float2)
+            guard let data = readMDLMesh(mdl) else { continue }
             let base = UInt32(positions.count)
-            let count = mdl.vertexCount
-
-            // Positions and normals are read three floats at a time from each vertex's
-            // stride, `SIMD3<Float>` is 16-byte-padded, so a packed float3 buffer must
-            // be read float-by-float, not as a SIMD3.
-            for i in 0..<count {
-                let p = posAttr.dataStart.advanced(by: i * posAttr.stride).assumingMemoryBound(to: Float.self)
-                positions.append(Vector3(Double(p[0]), Double(p[1]), Double(p[2])))
-            }
-            if let nrmAttr {
-                for i in 0..<count {
-                    let n = nrmAttr.dataStart.advanced(by: i * nrmAttr.stride).assumingMemoryBound(to: Float.self)
-                    normals.append(Vector3(Double(n[0]), Double(n[1]), Double(n[2])))
-                }
-            } else {
-                normals.append(contentsOf: repeatElement(.unitY, count: count))
-            }
-            if let uvAttr {
-                for i in 0..<count {
-                    let t = uvAttr.dataStart.advanced(by: i * uvAttr.stride).assumingMemoryBound(to: Float.self)
-                    uvs.append(Vector2(Double(t[0]), Double(t[1])))
-                }
+            positions.append(contentsOf: data.positions)
+            normals.append(contentsOf: data.normals)
+            if let meshUVs = data.uvs {
+                uvs.append(contentsOf: meshUVs)
             } else {
                 allHaveUV = false
-                uvs.append(contentsOf: repeatElement(.zero, count: count))
+                uvs.append(contentsOf: repeatElement(.zero, count: data.positions.count))
             }
-
-            for case let submesh as MDLSubmesh in mdl.submeshes ?? [] {
-                if material == nil, let m = submesh.material { material = readMaterial(m) }
-                guard submesh.geometryType == .triangles else { continue }
-                let map = submesh.indexBuffer.map()
-                let raw = map.bytes
-                switch submesh.indexType {
-                case .uInt32:
-                    let p = raw.assumingMemoryBound(to: UInt32.self)
-                    for i in 0..<submesh.indexCount { indices.append(base + p[i]) }
-                case .uInt16:
-                    let p = raw.assumingMemoryBound(to: UInt16.self)
-                    for i in 0..<submesh.indexCount { indices.append(base + UInt32(p[i])) }
-                case .uInt8:
-                    let p = raw.assumingMemoryBound(to: UInt8.self)
-                    for i in 0..<submesh.indexCount { indices.append(base + UInt32(p[i])) }
-                default:
-                    continue
-                }
-            }
+            indices.append(contentsOf: data.indices.map { base + $0 })
+            if material == nil { material = data.material }
         }
 
         guard !positions.isEmpty, !indices.isEmpty else { return nil }
-        let unit = normals.map { $0.lengthSquared > 1e-12 ? $0.normalized : .unitY }
-        return Mesh(positions: positions, normals: unit, indices: indices,
+        return Mesh(positions: positions, normals: normals, indices: indices,
                     uvs: allHaveUV ? uvs : [], material: material)
+    }
+
+    /// Read one `MDLMesh`'s vertices, triangle indices, and first readable
+    /// material, generating normals when the file has none and re-unitizing the
+    /// ones it does have (some exporters write non-unit vectors). Returns `nil`
+    /// for a mesh with no position data.
+    static func readMDLMesh(_ mdl: MDLMesh) -> MDLMeshData? {
+        let normalAttr = mdl.vertexDescriptor.attributeNamed(MDLVertexAttributeNormal)
+        if normalAttr == nil || normalAttr?.format == MDLVertexFormat.invalid {
+            mdl.addNormals(withAttributeNamed: MDLVertexAttributeNormal, creaseThreshold: 0.2)
+        }
+        guard let posAttr = mdl.vertexAttributeData(forAttributeNamed: MDLVertexAttributePosition,
+                                                    as: .float3) else { return nil }
+        let nrmAttr = mdl.vertexAttributeData(forAttributeNamed: MDLVertexAttributeNormal, as: .float3)
+        let uvAttr = mdl.vertexAttributeData(forAttributeNamed: MDLVertexAttributeTextureCoordinate, as: .float2)
+        let count = mdl.vertexCount
+
+        var positions: [Vector3] = []
+        var normals: [Vector3] = []
+        var uvs: [Vector2]?
+        var indices: [UInt32] = []
+        var material: MeshMaterial?
+
+        // Positions and normals are read three floats at a time from each vertex's
+        // stride, `SIMD3<Float>` is 16-byte-padded, so a packed float3 buffer must
+        // be read float-by-float, not as a SIMD3.
+        for i in 0..<count {
+            let p = posAttr.dataStart.advanced(by: i * posAttr.stride).assumingMemoryBound(to: Float.self)
+            positions.append(Vector3(Double(p[0]), Double(p[1]), Double(p[2])))
+        }
+        if let nrmAttr {
+            for i in 0..<count {
+                let n = nrmAttr.dataStart.advanced(by: i * nrmAttr.stride).assumingMemoryBound(to: Float.self)
+                normals.append(Vector3(Double(n[0]), Double(n[1]), Double(n[2])))
+            }
+        } else {
+            normals.append(contentsOf: repeatElement(.unitY, count: count))
+        }
+        if let uvAttr {
+            var read: [Vector2] = []
+            for i in 0..<count {
+                let t = uvAttr.dataStart.advanced(by: i * uvAttr.stride).assumingMemoryBound(to: Float.self)
+                read.append(Vector2(Double(t[0]), Double(t[1])))
+            }
+            uvs = read
+        }
+
+        for case let submesh as MDLSubmesh in mdl.submeshes ?? [] {
+            if material == nil, let m = submesh.material { material = readMaterial(m) }
+            guard submesh.geometryType == .triangles else { continue }
+            let map = submesh.indexBuffer.map()
+            let raw = map.bytes
+            switch submesh.indexType {
+            case .uInt32:
+                let p = raw.assumingMemoryBound(to: UInt32.self)
+                for i in 0..<submesh.indexCount { indices.append(p[i]) }
+            case .uInt16:
+                let p = raw.assumingMemoryBound(to: UInt16.self)
+                for i in 0..<submesh.indexCount { indices.append(UInt32(p[i])) }
+            case .uInt8:
+                let p = raw.assumingMemoryBound(to: UInt8.self)
+                for i in 0..<submesh.indexCount { indices.append(UInt32(p[i])) }
+            default:
+                continue
+            }
+        }
+
+        let unit = normals.map { $0.lengthSquared > 1e-12 ? $0.normalized : .unitY }
+        return MDLMeshData(positions: positions, normals: unit, uvs: uvs,
+                           indices: indices, material: material)
     }
 
     /// Read an `MDLMaterial`'s base color: a texture (decoded to an `Image`) or a solid

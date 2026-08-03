@@ -4,7 +4,7 @@
 
 ## Scenes (structure-preserving import)
 
-Bring a whole composed scene into a sketch, not just its geometry. Where [`loadMesh`](./3D.md#meshes-from-file) merges a file into one `Mesh` (the right thing for a prop you place yourself), **`loadScene`** keeps the file's *structure*: a tree of **named nodes**, each with its authored transform and an optional mesh, plus the **cameras** and **lights** the scene was authored with. Compose a layout in a 3D design tool, export glTF, and open the sketch on the exact framing and lighting you built there, while still reaching any node by name to drive it from `draw()`.
+Bring a whole composed scene into a sketch, not just its geometry. Where [`loadMesh`](./3D.md#meshes-from-file) merges a file into one `Mesh` (the right thing for a prop you place yourself), **`loadScene`** keeps the file's *structure*: a tree of **named nodes**, each with its authored transform and an optional mesh, plus the **cameras** and **lights** the scene was authored with. Compose a layout in a 3D design tool, export glTF or USD, and open the sketch on the exact framing you built there, while still reaching any node by name to drive it from `draw()`.
 
 ```swift
 final class Stage: Sketch {
@@ -47,7 +47,12 @@ let scene = Scene(contentsOf: url)                             // URL
 let scene = Scene(resource: "scene", extension: "gltf", in: .module)   // bundled
 ```
 
-Structure comes from **`.gltf` / `.glb`** files: the node graph with names and per-node transforms, cameras (part of the core glTF spec), and lights (the standard punctual-lights extension, which most exporters write). Any other format `loadMesh` reads (`.obj`, `.usdz`, `.stl`, `.ply`, …) has no scene graph Ollin preserves, so it loads honestly as a **single-node scene**, the merged mesh on one node named after the file, with no cameras or lights. Every loader returns `nil` if the file can't be read or holds no geometry.
+Structure comes from two families:
+
+- **`.gltf` / `.glb`**: the node graph with names and per-node transforms, cameras (part of the core glTF spec), lights (the standard punctual-lights extension, which most exporters write), animations, and skins. The full-featured path.
+- **`.usdz` / `.usdc` / `.usda` / `.usd`**: the node graph with names and per-node transforms, node-local meshes wearing their authored preview-surface colors and textures, and cameras (perspective and orthographic). An exported `.usdz` from a Mac or iOS design tool drops straight in. What the platform importer doesn't carry, a `Scene` can't keep: USD **lights** arrive as bare named nodes (so `scene.lights` is empty, light the scene yourself), and USD **animations and skinning** aren't read, authored animation stays a glTF feature.
+
+Any other format `loadMesh` reads (`.obj`, `.stl`, `.ply`, …) has no scene graph Ollin preserves, so it loads honestly as a **single-node scene**, the merged mesh on one node named after the file, with no cameras or lights. Every loader returns `nil` if the file can't be read or holds nothing.
 
 A multi-scene glTF loads its default scene. Exporting from Blender: the glTF exporter includes cameras and punctual lights when their export options are ticked (they're off by default in some versions).
 
@@ -126,7 +131,7 @@ The camera is plain data. Start from it and move on: seed a [`cameraControl()`](
 <a id="lights"></a>
 ### The authored lights
 
-`scene.lights` holds the file's punctual lights, all three kinds, each resolved through its node's world transform: **directional** (aims down the node's forward axis), **point** (sits at the node's position), and **spot** (position + aim + cone, the inner-to-outer soft edge becoming `penumbra`). Apply them with `light(_:)`; they're ordinary `Light` values, so tweak one before applying it.
+`scene.lights` holds a glTF file's punctual lights, all three kinds, each resolved through its node's world transform: **directional** (aims down the node's forward axis), **point** (sits at the node's position), and **spot** (position + aim + cone, the inner-to-outer soft edge becoming `penumbra`). Apply them with `light(_:)`; they're ordinary `Light` values, so tweak one before applying it. (USD scenes arrive with `lights` empty, see [Loading](#loading).)
 
 One deliberate conversion: glTF stores physical intensities (lux, candela), which only mean something with distance falloff, and Ollin's punctual lights don't attenuate with distance. So within each kind, intensities are **normalized to the brightest** (it becomes 1, the rest keep their ratio). The authored balance survives; absolute photometric units don't. If a light lands too dim or too hot, scale its `intensity` after loading.
 
@@ -153,4 +158,4 @@ drawScene(stage)
 - **Morph targets displace positions and normals.** Tangent displacements aren't read (nothing consumes tangents yet), and a target's normals fall back to the base mesh's when the file authored none.
 - **Cameras and lights are resolved at load** into `scene.cameras` / `scene.lights` (world space). Moving a node afterward, by hand or by an animation, moves its geometry, not a light that rode it in the file.
 - **Duplicated names** resolve to the first match, depth-first. Unnamed nodes have an empty name.
-- The bundled demos are full worked examples: `3D/Geometry/LoadedScene` (a static stage, `scene.gltf` generated by `Scripts/make-sample-scene.swift`), `3D/Geometry/AnimatedScene` (an orrery playing its authored "spin", generated by `Scripts/make-animated-scene.swift`), and `3D/Geometry/SkinnedScene` (a tidepool whose kelp sways on skins while an anemone pulses on morph targets, generated by `Scripts/make-skinned-scene.swift`); point `OLLIN_SCENE` at any glTF of your own to try any of them.
+- The bundled demos are full worked examples: `3D/Geometry/LoadedScene` (a static stage, `scene.gltf` generated by `Scripts/make-sample-scene.swift`), `3D/Geometry/AnimatedScene` (an orrery playing its authored "spin", generated by `Scripts/make-animated-scene.swift`), `3D/Geometry/SkinnedScene` (a tidepool whose kelp sways on skins while an anemone pulses on morph targets, generated by `Scripts/make-skinned-scene.swift`), and `3D/Geometry/USDScene` (a sculpture court from `stage.usda`, generated by `Scripts/make-usd-scene.swift`); point `OLLIN_SCENE` at any scene file of your own to try any of them.
