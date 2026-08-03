@@ -512,6 +512,9 @@ private let snapshotRaytracingCases: [SnapshotCase] = [
     SnapshotCase("area-shadows",
                  note: "A box and a sphere over a floor, lit by one rect strip panel with castShadows() on. On a ray-tracing GPU the area caster traces visibility to the panel's actual surface, which the reference is recorded against: pins the traced-panel path (the antithetic R2 samples over the rect, the shadowSoftness scale on the extent, the anisotropic penumbra a strip throws) and the shadow dimming inside the LTC area branch. The non-RT spot-style PCSS map differs and is probe-tested instead. Fixed camera, no time.",
                  make: { AreaShadowsScene() }),
+    SnapshotCase("area-reflections",
+                 note: "A panel-lit white wall seen in a near-mirror metal floor with rayTracedReflections() on: pins the exact LTC diffuse in the traced hit shade (ollin_ltc_diffuse through ollin_rt_direct), the deferred trace pass's amp-table bind and LTC resolve, and the panel's glow carrying into the mirror with the same spread as the direct view. Fixed camera, bundled environment, no time.",
+                 make: { AreaReflectionsScene() }),
 ]
 
 // MARK: - Fixtures
@@ -814,6 +817,36 @@ private final class MeshShadowsScene: Sketch {
         withState {
             fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); shininess(40)
             translate(1.3, 1.3, 0.3); drawSphere(radius: 1.1)
+        }
+    }
+}
+
+/// A warm strip panel over a white diffuse wall, seen in a near-mirror metal floor
+/// under a bundled environment with `rayTracedReflections()` on: the mirrored wall's
+/// glow is the traced hit shade's exact LTC area-light diffuse. No `time`, so it's
+/// deterministic (the export path averages a fixed in-frame ray set).
+private final class AreaReflectionsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(target: Vector3(0, 0.8, 0), radius: 9,
+                         azimuth: 0.2, elevation: 0.35))
+        environment(.night)
+        rayTracedReflections()
+        rectLight(Color(hue: 0.09, saturation: 0.3, brightness: 1.0),
+                  at: Vector3(0, 2.2, -1.0), direction: Vector3(0, -0.35, -1),
+                  width: 3.0, height: 0.8, intensity: 10)
+        withState {
+            fill(Color(white: 0.9))
+            material(.metal(roughness: 0.05))
+            drawPlane(width: 16, depth: 12)
+        }
+        withState {
+            translate(0, 1.6, -2.6)
+            fill(.white)
+            material(.dielectric(roughness: 0.85))
+            drawBox(width: 5.0, height: 3.2, depth: 0.25)
         }
     }
 }

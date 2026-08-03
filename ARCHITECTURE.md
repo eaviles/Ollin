@@ -1574,12 +1574,20 @@ punctual kinds keep their no-attenuation model, and why a thin tube runs at
 intensities in the tens. Rect and disk panels cast shadows from their real
 extent (the caster search reaches them after the punctual kinds; see
 *Shadows* below), where a tube never casts (radial emission has no facing
-axis to shadow from). The RT-reflection hit shade approximates area lights as
-centroid emitters with an area/(π·d² + area) falloff rather than binding the
-LUTs in a secondary bounce. The head-on view (V ≈ N) takes a deterministic
-fallback tangent instead of normalizing a zero vector (the reference leaves
-this case unguarded; the head-on LUT row is fitted isotropic, so any tangent
-is exact).
+axis to shadow from). The RT-reflection hit shade evaluates the **exact LTC
+diffuse** per area light (`ollin_ltc_diffuse`, the identity-transform
+integrals kept in step with `ollin_ltc_light`'s dispatch), so a panel-lit
+surface reads the same in a mirror as head-on: only the disk's
+horizon-clipped-sphere factor reads a table, so the single amp texture rides
+the trace (threaded through `ollin_pbr_ibl_ambient` to the inline path, and
+bound at texture 9 of the deferred trace pass, whose lighting also resolves
+`ltcEnabled`, or the panel would go dark only in its deferred reflection).
+Specular at a hit stays the traced second bounce, matching the punctual
+lights' Lambert-only hit treatment. Pinned by the RT-gated `area-reflections`
+snapshot and the panel-on/off `AreaReflectionRenderProbes` differential. The
+head-on view (V ≈ N) takes a deterministic fallback tangent instead of
+normalizing a zero vector (the reference leaves this case unguarded; the
+head-on LUT row is fitted isotropic, so any tangent is exact).
 
 ### The IBL bake
 

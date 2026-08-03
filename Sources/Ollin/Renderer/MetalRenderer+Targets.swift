@@ -1008,6 +1008,13 @@ extension MetalRenderer {
         lighting.iblIntensity = Float(drawer.environment?.intensity ?? 1) * currentIBLNormalization
         lighting.iblMaxMip = Float(currentIBLMaxMip)
         lighting.iblRotation = Float(drawer.environment?.rotation ?? 0)
+        // Area lights, mirroring the main encode's LTC resolve: the hit shade's exact
+        // area-light diffuse gates on `ltcEnabled`, so without this a panel-lit surface
+        // would go dark in its deferred reflection while staying lit inline.
+        if lighting.ltcEnabled == 0,
+           drawer.lights.contains(where: { $0.kind == .rect || $0.kind == .disk || $0.kind == .tube }) {
+            lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
+        }
 
         // 1. The G-buffer: re-render the main canvas's solid meshes (the same batch walk
         // as the mesh-normal pass; wireframes and the grid chrome carry no reflective
@@ -1074,6 +1081,10 @@ extension MetalRenderer {
         trace.setFragmentTexture(gbuf.depth, index: 2)
         trace.setFragmentTexture(irradiance, index: 4)
         trace.setFragmentTexture(prefilter, index: 5)
+        // The LTC amp table feeds the hit shade's exact area-light diffuse; the
+        // G-buffer normal is the never-sampled stand-in when the tables aren't
+        // loaded (`ltcEnabled` gates every read, matching the mesh fragments).
+        trace.setFragmentTexture(ltcAmpTexture ?? gbuf.normal, index: 9)
         trace.setFragmentSamplerState(imageSampler, index: 0)
         var traceParams = SIMD4<Float>(1 / Float(width), 1 / Float(height), Float(samples), seed)
         trace.setFragmentBytes(&traceParams, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)

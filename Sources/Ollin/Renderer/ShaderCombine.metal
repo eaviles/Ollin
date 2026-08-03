@@ -824,13 +824,15 @@ static inline float2 ollin_rt_reflect_jitter(float2 px, float n) {
 }
 
 // params[0] = (texel.xy, sample count, jitter seed). Textures/buffers mirror the lit
-// mesh fragment's reflection bindings (IBL cubes at 4/5, accel at 3, mesh at 6/7).
+// mesh fragment's reflection bindings (IBL cubes at 4/5, accel at 3, mesh at 6/7, the
+// LTC amp table at 9, feeding the hit shade's exact area-light diffuse).
 fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
                                        texture2d<float> normalTex [[texture(0)]],
                                        texture2d<float> materialTex [[texture(1)]],
                                        depth2d<float> depthTex [[texture(2)]],
                                        texturecube<float> irradianceTex [[texture(4)]],
                                        texturecube<float> prefilterTex [[texture(5)]],
+                                       texture2d<float> ltcAmp [[texture(9)]],
                                        sampler samp [[sampler(0)]],
                                        constant float4 *params [[buffer(0)]],
                                        constant OllinLighting &light [[buffer(1)]],
@@ -877,7 +879,7 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
         // sample counts reads as sparkle on brushed metals; integrating it properly
         // needs a spatial resolve/denoise stage first (a follow-up).
         acc += ollin_rt_reflection_trace(P, n, R, accel, verts, geoOffsets, light,
-                                         irradianceTex, prefilterTex, cubeSamp, rot);
+                                         irradianceTex, prefilterTex, cubeSamp, rot, ltcAmp);
     }
     return acc / float(samples);
 }

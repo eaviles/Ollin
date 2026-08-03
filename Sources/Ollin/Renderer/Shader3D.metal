@@ -492,37 +492,36 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<tr
     return s;
 }
 
-// The scene's direct lights on a traced surface, as Lambert. They are already in
-// display-linear units, but the caller scales the whole reflection by the IBL intensity
-// (user intensity x per-environment auto-exposure), which converts the *un-exposed
-// environment* terms alone; pre-divide so a lit surface seen in a mirror matches the
-// same surface seen directly (the bundled environments' normalization ranges to ~12x).
-static inline float3 ollin_rt_direct(OllinRTSurface s, constant OllinLighting &light) {
+// The exact LTC diffuse integral for one area light; defined with the LTC block below
+// (which this ray-tracing block precedes in the concatenated compile unit).
+static inline float ollin_ltc_diffuse(OllinLight L, float3 n, float3 viewDir,
+                                      float3 worldPos, texture2d<float> ltcAmp);
+
+// The scene's direct lights on a traced surface, as Lambert. An area light adds its
+// exact LTC diffuse integral (the identity transform is exact Lambert over the shape,
+// the same term the primary shading computes), so a panel-lit surface reads the same
+// in a mirror as head-on; only the disk's horizon factor reads a table (the amp
+// texture, bound on every carrier), and the gate matches the primary path: no tables,
+// no area light. All terms are already in display-linear units, but the caller scales
+// the whole reflection by the IBL intensity (user intensity x per-environment
+// auto-exposure), which converts the *un-exposed environment* terms alone; pre-divide
+// so a lit surface seen in a mirror matches the same surface seen directly (the
+// bundled environments' normalization ranges to ~12x).
+static inline float3 ollin_rt_direct(OllinRTSurface s, constant OllinLighting &light,
+                                     float3 viewDir, texture2d<float> ltcAmp) {
     float3 direct = float3(0.0);
     for (int i = 0; i < light.lightCount; i++) {
         OllinLight L = light.lights[i];
+        if (L.kind >= 3) {
+            if (light.ltcEnabled != 0) {
+                direct += s.albedo * L.color.rgb
+                        * ollin_ltc_diffuse(L, s.N, viewDir, s.P, ltcAmp);
+            }
+            continue;
+        }
         float3 toLight = (L.kind == 0) ? L.direction.xyz : normalize(L.position.xyz - s.P);
         float atten = 1.0;
         if (L.kind == 2) atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
-        if (L.kind >= 3) {
-            // Area kinds: a surface seen in a mirror keeps the panel's light, as a
-            // centroid emitter with the shape's physical falloff (radiance × projected
-            // area over π·d², softened near the source by the area itself). The exact
-            // LTC evaluation isn't worth a LUT bind in a secondary bounce; this keeps
-            // the reflected image within a few percent of the primary shading.
-            float3 d = L.position.xyz - s.P;
-            float dist2 = dot(d, d);
-            float area, facing;
-            if (L.kind == 5) {
-                area = 2.0 * L.axisB.w * (2.0 * L.axisA.w);   // the tube's projected strip
-                facing = 0.785398;                            // its mean projected cosine (π/4)
-            } else {
-                area = (L.kind == 3 ? 4.0 : 3.14159265) * L.axisA.w * L.axisB.w;
-                float c = dot(-toLight, L.direction.xyz);
-                facing = (L.direction.w > 0.5) ? abs(c) : max(c, 0.0);
-            }
-            atten = area * facing / (3.14159265 * dist2 + area);
-        }
         direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten);
     }
     return direct / max(light.iblIntensity, 1e-3);
@@ -567,7 +566,8 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
                                                constant OllinLighting &light,
                                                texturecube<float> irradianceTex,
                                                texturecube<float> prefilterTex,
-                                               sampler cubeSamp, float3x3 rot) {
+                                               sampler cubeSamp, float3x3 rot,
+                                               texture2d<float> ltcAmp) {
     float eps = max(light.rtReflectionBias, 1e-4);
     ray r;
     r.origin = worldPos + n * eps;        // lift off the surface (self-hit guard)
@@ -618,7 +618,7 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
         float3 env2 = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, reflect(secDir, s2.N),
                                         s2.rough, NoVb, light.iblMaxMip);
         float3 diffuse2 = s2.albedo * irradianceTex.sample(cubeSamp, rot * s2.N).rgb
-                        + ollin_rt_direct(s2, light);
+                        + ollin_rt_direct(s2, light, -secDir, ltcAmp);
         envAtHit = env2 * Fb + diffuse2 * (1.0 - s2.metal);
     } else {
         envAtHit = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, secDir,
@@ -632,7 +632,7 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
     // so hit and miss stay consistent.
     float3 col = envAtHit * F;
     float3 diffuse = s1.albedo * irradianceTex.sample(cubeSamp, rot * s1.N).rgb
-                   + ollin_rt_direct(s1, light);
+                   + ollin_rt_direct(s1, light, -R, ltcAmp);
     col += diffuse * (1.0 - s1.metal);
     return float4(col, 1.0);
 }
@@ -650,9 +650,11 @@ static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, fl
                                          texturecube<float> irradianceTex,
                                          texturecube<float> prefilterTex,
                                          sampler cubeSamp, float3x3 rot,
-                                         float3 envReflection) {
+                                         float3 envReflection,
+                                         texture2d<float> ltcAmp) {
     float4 hit = ollin_rt_reflection_trace(worldPos, n, R, accel, verts, geoOffsets,
-                                           light, irradianceTex, prefilterTex, cubeSamp, rot);
+                                           light, irradianceTex, prefilterTex, cubeSamp, rot,
+                                           ltcAmp);
     float3 col = mix(envReflection, hit.rgb, hit.a);
     return mix(col, envReflection, smoothstep(0.12, 0.55, rough));
 }
@@ -1168,6 +1170,37 @@ static inline void ollin_ltc_light(OllinLight L, float3 n, float3 viewDir,
     }
 }
 
+// The diffuse half alone (the identity transform, exact Lambert over the shape), for
+// callers that carry no specular term: the ray-traced reflection's hit shade, which
+// adds the scene's direct lights as Lambert. Kept in step with `ollin_ltc_light`'s
+// per-shape dispatch above; declared ahead of the ray-tracing block, which precedes
+// this one in the concatenated compile unit. Only the disk path samples `ltcAmp`
+// (the tabulated horizon-clipped sphere); the rect and tube integrals are closed-form.
+static inline float ollin_ltc_diffuse(OllinLight L, float3 n, float3 viewDir,
+                                      float3 worldPos, texture2d<float> ltcAmp) {
+    const float3x3 identity = float3x3(1.0);
+    if (L.kind == 5) {
+        float3x3 B = ollin_ltc_frame(n, viewDir);
+        float3 axis = L.axisA.xyz * L.axisA.w;
+        float3 p1 = B * (L.position.xyz - axis - worldPos);
+        float3 p2 = B * (L.position.xyz + axis - worldPos);
+        return L.axisB.w * ollin_ltc_line(p1, p2, identity);
+    }
+    float3 ex = L.axisA.xyz * L.axisA.w;
+    float3 ey = L.axisB.xyz * L.axisB.w;
+    bool twoSided = L.direction.w > 0.5;
+    if (L.kind == 4) {
+        return ollin_ltc_disk(n, viewDir, worldPos, identity, L.position.xyz, ex, ey,
+                              twoSided, ltcAmp);
+    }
+    float3 c = L.position.xyz;
+    float3 p0 = c - ex - ey;
+    float3 p1 = c - ex + ey;
+    float3 p2 = c + ex + ey;
+    float3 p3 = c + ex - ey;
+    return ollin_ltc_rect(n, viewDir, worldPos, identity, p0, p1, p2, p3, twoSided);
+}
+
 // The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
 // surface `normal`, `worldPos`, and the per-batch `mat` finish. It composes a base
 // shading model (standard Lambert / toon cel / Gooch warm–cool / physically-based) with
@@ -1548,11 +1581,13 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                            // is the pre-traced screen-space sample (premultiplied
                                            // radiance, alpha = hit coverage) the caller read when
                                            // `light.rtReflectionDeferred` is set; zero otherwise.
+                                           // `ltcAmp` feeds the hit shade's exact area-light diffuse.
                                            , float3 worldPos,
                                            primitive_acceleration_structure reflAccel,
                                            const device OllinMeshVertex *meshVerts,
                                            const device uint *meshGeoOffsets,
-                                           float4 deferredReflection
+                                           float4 deferredReflection,
+                                           texture2d<float> ltcAmp
 #endif
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
@@ -1584,7 +1619,7 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
         } else {
             prefiltered = ollin_rt_reflection(worldPos, n, R, rough, reflAccel, meshVerts,
                                               meshGeoOffsets, light, irradianceTex, prefilterTex,
-                                              cubeSamp, rot, prefiltered);
+                                              cubeSamp, rot, prefiltered, ltcAmp);
         }
     }
 #endif
@@ -1674,7 +1709,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                        iblIrradiance, iblPrefilter, iblBRDF
 #if OLLIN_RT_SHADOWS
                                        , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
-                                       deferredRefl
+                                       deferredRefl, ltcAmp
 #endif
                                        );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
@@ -1873,7 +1908,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                        iblIrradiance, iblPrefilter, iblBRDF
 #if OLLIN_RT_SHADOWS
                                        , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
-                                       deferredRefl
+                                       deferredRefl, ltcAmp
 #endif
                                        );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {

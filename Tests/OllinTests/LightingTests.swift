@@ -562,6 +562,81 @@ private final class AreaShadowProbe: Sketch {
     }
 }
 
+/// Behavioral probe for area light seen *in a ray-traced reflection*: the hit shade
+/// evaluates the exact LTC diffuse, so a panel-lit wall must stay lit in a mirror.
+/// Rendered with the panel on and off, everything else identical, so the mirrored
+/// region's difference isolates the panel's reflected light; pins the deferred trace's
+/// LTC resolve + amp-table bind (losing either goes dark only in the reflection).
+/// RT-gated: without ray tracing there is no traced reflection to probe.
+@Suite
+@MainActor
+struct AreaReflectionRenderProbes {
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aPanelLitWallStaysLitInAMirror() throws {
+        func mirroredMean(panelOn: Bool) throws -> Double {
+            let image = try #require(OllinApp.image(of: AreaReflectionProbe.make(panelOn: panelOn),
+                                                    frame: 1))
+            let w = image.width, h = image.height
+            var data = [UInt8](repeating: 0, count: w * h * 4)
+            let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                                bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+            // The mirrored wall sits in the lower-middle band of the frame.
+            var sum = 0, count = 0
+            for y in (h * 55 / 100)..<(h * 72 / 100) {
+                for x in (w * 36 / 100)..<(w * 70 / 100) {
+                    sum += Int(data[(y * w + x) * 4]); count += 1
+                }
+            }
+            return Double(sum) / Double(count)
+        }
+        let lit = try mirroredMean(panelOn: true)
+        let dark = try mirroredMean(panelOn: false)
+        #expect(lit - dark > 40,
+                "expected the panel's light in the mirrored wall: on \(lit), off \(dark)")
+    }
+}
+
+/// The reflection probe scene: a warm strip panel over a white diffuse wall, seen in
+/// a near-mirror metal floor under a bundled environment with ray-traced reflections.
+private final class AreaReflectionProbe: Sketch {
+    var panelOn = true
+
+    static func make(panelOn: Bool) -> AreaReflectionProbe {
+        let probe = AreaReflectionProbe()
+        probe.panelOn = panelOn
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(target: Vector3(0, 0.8, 0), radius: 9,
+                         azimuth: 0.2, elevation: 0.35))
+        environment(.night)
+        rayTracedReflections()
+        if panelOn {
+            rectLight(Color(hue: 0.09, saturation: 0.3, brightness: 1.0),
+                      at: Vector3(0, 2.2, -1.0), direction: Vector3(0, -0.35, -1),
+                      width: 3.0, height: 0.8, intensity: 10)
+        }
+        withState {
+            fill(Color(white: 0.9))
+            material(.metal(roughness: 0.05))
+            drawPlane(width: 16, depth: 12)
+        }
+        withState {
+            translate(0, 1.6, -2.6)
+            fill(.white)
+            material(.dielectric(roughness: 0.85))
+            drawBox(width: 5.0, height: 3.2, depth: 0.25)
+        }
+    }
+}
+
 /// `lightingPreset(_:)` is the bare facade; checks here go through `Drawer` to pin
 /// that a preset packs as a custom (sketch-controlled) rig.
 @Suite

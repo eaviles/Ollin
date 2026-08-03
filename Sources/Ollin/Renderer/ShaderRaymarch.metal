@@ -735,7 +735,8 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
 #if OLLIN_RT_SHADOWS
                                          // Fields always trace inline (their lighting never sets
                                          // rtReflectionDeferred), so no deferred sample to pass.
-                                         , pw, accel, meshVerts, meshGeoOffsets, float4(0.0)
+                                         , pw, accel, meshVerts, meshGeoOffsets, float4(0.0),
+                                         ltcAmp
 #endif
                                          );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
