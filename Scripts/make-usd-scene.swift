@@ -3,14 +3,18 @@ import Foundation
 
 // Generates an Ollin-original sample *scene* as a self-contained USD text file:
 // a small sculpture court (a round dais, a colonnade arc, and three plinths
-// carrying an orb, a gem, and a standing ring, each a child of its plinth), plus
-// an authored camera. The bundled demo asset for the 3D/USDScene example;
-// everything is authored here, so the asset carries no third-party license.
+// carrying an orb, a gem, and a standing ring, each a child of its plinth), an
+// authored camera, and a UsdLux lighting rig covering every mapped light kind
+// (a distant sunset key, a sphere fill, a cone-shaped sphere beam on the gem, a
+// rect backlight panel, an overhead disk pool, and a cylinder floor glow). The
+// bundled demo asset for the 3D/USDScene example; everything is authored here,
+// so the asset carries no third-party license.
 //
-// Two deliberate choices, both bounded by what the platform importer exposes:
-// no lights (USD light prims don't survive the import, so the example lights
-// the court itself), and diffuse colors authored as the *display* values the
-// scene reader hands back (the reader takes them as-is).
+// One deliberate choice, bounded by what the platform importer exposes: diffuse
+// colors are authored as the *display* values the scene reader hands back (the
+// reader takes them as-is). Light colors, by contrast, are linear per UsdLux
+// and re-encode on load; since Ollin normalizes each kind's brightest light to
+// intensity 1, the rig's visual balance rides the authored colors.
 // Re-run to regenerate:
 //
 //     swift Scripts/make-usd-scene.swift Examples/3D/Geometry/USDScene/stage.usda
@@ -235,6 +239,34 @@ func materialPrim(_ name: String, color: (Float, Float, Float), roughness: Float
     """
 }
 
+/// A UsdLux light prim: type, transform ops (translate outermost, then rotate),
+/// the shared color/intensity inputs, plus per-kind extras.
+func lightPrim(_ type: String, _ name: String, color: (Float, Float, Float),
+               intensity: Float, translate: V3? = nil, rotate: V3? = nil,
+               extras: [String] = []) -> String {
+    let pad = "        "
+    var lines: [String] = []
+    lines.append("\(pad)def \(type) \"\(name)\"")
+    lines.append("\(pad){")
+    var order: [String] = []
+    if let t = translate {
+        lines.append("\(pad)    double3 xformOp:translate = (\(fmt(t.x)), \(fmt(t.y)), \(fmt(t.z)))")
+        order.append("\"xformOp:translate\"")
+    }
+    if let r = rotate {
+        lines.append("\(pad)    float3 xformOp:rotateXYZ = (\(fmt(r.x)), \(fmt(r.y)), \(fmt(r.z)))")
+        order.append("\"xformOp:rotateXYZ\"")
+    }
+    if !order.isEmpty {
+        lines.append("\(pad)    uniform token[] xformOpOrder = [\(order.joined(separator: ", "))]")
+    }
+    lines.append("\(pad)    color3f inputs:color = (\(fmt(color.0)), \(fmt(color.1)), \(fmt(color.2)))")
+    lines.append("\(pad)    float inputs:intensity = \(fmt(intensity))")
+    for extra in extras { lines.append("\(pad)    \(extra)") }
+    lines.append("\(pad)}")
+    return lines.joined(separator: "\n")
+}
+
 // MARK: The court.
 
 let daisHeight: Float = 0.18
@@ -271,6 +303,39 @@ let cameraPrim = """
         float2 clippingRange = (0.1, 100)
     }
 """
+
+// The lighting rig: one light of every mapped UsdLux kind. Lights emit along
+// their local -z, so each aim is a rotateXYZ swinging -z onto the wanted
+// direction; the visual balance rides the linear colors (see the header note).
+let lightPrims = [
+    // The warm key, matching the sketch-lit look this rig replaced:
+    // rotate (-49, 57.5) sends -z to about (-0.55, -0.75, -0.35).
+    lightPrim("DistantLight", "sunset", color: (0.85, 0.72, 0.55), intensity: 60000,
+              rotate: (-49, 57.5, 0),
+              extras: ["float inputs:angle = 0.53"]),
+    // A cool fill floating high on the camera's right.
+    lightPrim("SphereLight", "fill", color: (0.16, 0.21, 0.37), intensity: 8,
+              translate: (2.5, 3.2, 2.8),
+              extras: ["float inputs:radius = 0.3"]),
+    // The shaped beam: a sphere light with a cone, pitched -36 deg onto the gem.
+    lightPrim("SphereLight", "beam", color: (0.9, 0.78, 0.55), intensity: 20,
+              translate: (0, 3.4, 2.2), rotate: (-36, 0, 0),
+              extras: ["float inputs:radius = 0.1",
+                       "float inputs:shaping:cone:angle = 14",
+                       "float inputs:shaping:cone:softness = 0.35"]),
+    // A teal backlight panel behind the colonnade, turned back at the court.
+    lightPrim("RectLight", "panel", color: (0.2, 0.3, 0.28), intensity: 5,
+              translate: (-2.8, 1.5, -2.8), rotate: (-7, -135, 0),
+              extras: ["float inputs:width = 2.6", "float inputs:height = 1.4"]),
+    // An overhead pool centered on the dais, facing straight down.
+    lightPrim("DiskLight", "halo", color: (0.32, 0.3, 0.27), intensity: 6,
+              translate: (0, 4.2, 0), rotate: (-90, 0, 0),
+              extras: ["float inputs:radius = 1.1"]),
+    // A verdigris floor glow lying along x behind the plinths.
+    lightPrim("CylinderLight", "glow", color: (0.12, 0.45, 0.36), intensity: 12,
+              translate: (0, 0.12, -1.6),
+              extras: ["float inputs:length = 3.2", "float inputs:radius = 0.04"]),
+]
 
 let usda = """
 #usda 1.0
@@ -329,6 +394,11 @@ def Xform "Court"
     }
 
 \(cameraPrim)
+
+    def Scope "Lights"
+    {
+\(lightPrims.joined(separator: "\n\n"))
+    }
 
     def Scope "Materials"
     {

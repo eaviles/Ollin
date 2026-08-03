@@ -76,6 +76,14 @@ struct USDParserTests {
         let daisIndex = try #require(court.children.firstIndex { $0.name == "dais" })
         let plinthsIndex = try #require(court.children.firstIndex { $0.name == "plinths" })
         #expect(daisIndex < plinthsIndex)
+
+        // The lighting rig parses: one prim per mapped UsdLux kind, the
+        // multi-segment shaping attribute name intact.
+        let lights = try #require(court.child("Lights"))
+        #expect(lights.children.count == 6)
+        let beam = try #require(lights.child("beam"))
+        #expect(beam.typeName == "SphereLight")
+        #expect(beam.attribute("inputs:shaping:cone:angle")?.value == .double(14))
     }
 
     /// The grammar's corners: all three comment forms, escapes, triple-quoted

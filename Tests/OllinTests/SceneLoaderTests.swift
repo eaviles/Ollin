@@ -345,14 +345,232 @@ struct SceneLoaderTests {
         #expect(cam.far == 20)
     }
 
-    @Test func usdSceneCarriesNoLights() throws {
-        // The documented importer limitation: the authored SphereLight arrives
-        // as a bare grouping node, never a `Light`, so a USD scene is lit by
-        // the sketch. (If this ever starts failing with lights present, the
-        // platform importer learned to translate them, drop the limitation.)
+    @Test func usdSceneCarriesItsAuthoredLight() throws {
+        // The platform importer drops light prims (the node arrives bare), so
+        // Ollin's own parser resolves them: the authored SphereLight arrives
+        // as a point `Light` while its node keeps its place in the tree.
         let scene = try #require(try loadUSDScene(courtUSDA))
-        #expect(scene.lights.isEmpty)
+        #expect(scene.lights.count == 1)
+        #expect(scene.lights.first?.kind == .point)
+        #expect(scene.lights.first?.intensity == 1)
         #expect(scene.node("warm") != nil)
+    }
+
+    /// The UsdLux rig: every mapped light kind, with transforms, colors, the
+    /// shaping cone, the `inputs:` prefix and one bare pre-2021 fallback,
+    /// exposure, and per-kind normalization all exercised. The quad mesh keeps
+    /// the platform importer fed alongside the lights.
+    private var lightsUSDA: String {
+        """
+        #usda 1.0
+        (
+            defaultPrim = "Stage"
+            upAxis = "Y"
+        )
+
+        def Xform "Stage"
+        {
+            def Mesh "part"
+            {
+                uniform token subdivisionScheme = "none"
+                point3f[] points = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)]
+                int[] faceVertexCounts = [4]
+                int[] faceVertexIndices = [0, 1, 2, 3]
+            }
+
+            def Xform "rig"
+            {
+                double3 xformOp:translate = (1, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def SphereLight "warm"
+                {
+                    double3 xformOp:translate = (0, 5, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
+                    float inputs:intensity = 30
+                    color3f inputs:color = (1, 0.2140411, 0.0331048)
+                }
+            }
+
+            def SphereLight "key"
+            {
+                float3 xformOp:rotateXYZ = (0, -90, 0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+                float inputs:intensity = 120
+                float inputs:shaping:cone:angle = 28.64789
+                float inputs:shaping:cone:softness = 0.5
+            }
+
+            def DistantLight "sun"
+            {
+            }
+
+            def SphereLight "warm2"
+            {
+                float intensity = 7.5
+                float inputs:exposure = 1
+            }
+
+            def RectLight "panel"
+            {
+                double3 xformOp:translate = (0, 3, 4)
+                float3 xformOp:rotateXYZ = (-90, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+                float inputs:width = 4
+                float inputs:height = 2
+            }
+
+            def DiskLight "halo"
+            {
+                double3 xformOp:scale = (2, 2, 2)
+                uniform token[] xformOpOrder = ["xformOp:scale"]
+                float inputs:radius = 0.75
+            }
+
+            def CylinderLight "neon"
+            {
+                double3 xformOp:translate = (0, 2, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+                float inputs:length = 4
+                float inputs:radius = 0.1
+            }
+        }
+        """
+    }
+
+    @Test func usdSceneResolvesUsdLuxLights() throws {
+        let scene = try #require(try loadUSDScene(lightsUSDA))
+        #expect(scene.lights.count == 7)
+
+        // The sphere light rides its prim's *world* transform: rig (1,0,0) +
+        // (0,5,0); its linear color re-encodes to sRGB (1, 0.5, 0.2).
+        let warm = scene.lights[0]
+        #expect(warm.kind == .point)
+        #expect((warm.position - Vector3(1, 5, 0)).length < 1e-5)
+        #expect(abs(warm.color.red - 1) < 1e-3)
+        #expect(abs(warm.color.green - 0.5) < 1e-3)
+        #expect(abs(warm.color.blue - 0.2) < 1e-3)
+
+        // A cone-shaped sphere light is a spot: the -z axis rotated -90 deg
+        // about y aims +x; the 28.64789-degree half-angle doubles into a
+        // 1-radian cone; the softness is the penumbra.
+        let key = scene.lights[1]
+        #expect(key.kind == .spot)
+        #expect((key.direction - Vector3(1, 0, 0)).length < 1e-4)
+        #expect(abs(key.coneAngle - 1.0) < 1e-5)
+        #expect(abs(key.penumbra - 0.5) < 1e-6)
+
+        // An unrotated distant light travels down -z.
+        let sun = scene.lights[2]
+        #expect(sun.kind == .directional)
+        #expect((sun.direction - Vector3(0, 0, -1)).length < 1e-6)
+        #expect(abs(sun.intensity - 1) < 1e-9)
+
+        // Per-kind normalization over intensity × 2^exposure, with the bare
+        // pre-2021 `intensity` spelling honored: 7.5 × 2 = 15 is half of 30.
+        #expect(abs(warm.intensity - 1) < 1e-9)
+        #expect(abs(scene.lights[3].intensity - 0.5) < 1e-9)
+
+        // The rect panel: rotateX(-90) aims it straight down, the height axis
+        // (its up hint) landing on -z; width and height span local x and y.
+        let panel = scene.lights[4]
+        #expect(panel.kind == .rect)
+        #expect((panel.position - Vector3(0, 3, 4)).length < 1e-5)
+        #expect((panel.direction - Vector3(0, -1, 0)).length < 1e-5)
+        #expect(abs(panel.width - 4) < 1e-6)
+        #expect(abs(panel.height - 2) < 1e-6)
+        #expect((panel.up - Vector3(0, 0, -1)).length < 1e-5)
+
+        // The disk's radius scales with its prim's transform.
+        let halo = scene.lights[5]
+        #expect(halo.kind == .disk)
+        #expect(abs(halo.radius - 1.5) < 1e-6)
+
+        // The cylinder runs along local x: endpoints straddle its position.
+        let neon = scene.lights[6]
+        #expect(neon.kind == .tube)
+        #expect((neon.position - Vector3(0, 2, 0)).length < 1e-6)
+        #expect((neon.direction - Vector3(1, 0, 0)).length < 1e-6)
+        #expect(abs(neon.length - 4) < 1e-6)
+        #expect(abs(neon.radius - 0.1) < 1e-6)
+    }
+
+    @Test func usdzPackageCarriesLightsThrough() throws {
+        // The package path: the lights usda zipped as a stored usdz (64-byte
+        // aligned per the spec) resolves the same rig.
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usdz")
+        try Self.storedZip([("stage.usda", Data(lightsUSDA.utf8))]).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let lights = Scene.loadUSDLights(contentsOf: url)
+        #expect(lights.count == 7)
+        #expect(lights[1].kind == .spot)
+        #expect(lights[4].kind == .rect)
+
+        // The whole scene read agrees: Model I/O takes the package's structure
+        // while the lights come from Ollin's parser.
+        let scene = try #require(Scene(contentsOf: url))
+        #expect(scene.lights.count == 7)
+        #expect(scene.node("part")?.mesh != nil)
+    }
+
+    /// A ZIP with every entry stored uncompressed, file data aligned to the
+    /// 64-byte boundaries the usdz spec requires (padding rides the local
+    /// header's extra field, the reference writer's scheme).
+    private static func storedZip(_ entries: [(name: String, data: Data)]) -> Data {
+        var out = [UInt8]()
+        var central = [UInt8]()
+        for (name, data) in entries {
+            let nameBytes = Array(name.utf8)
+            let crc = crc32(data)
+            let bytes = [UInt8](data)
+            let offset = UInt32(out.count)
+
+            // Pad so the entry's data starts 64-byte aligned; the padding is a
+            // well-formed extra-field block (4-byte header + filler).
+            let dataStart = out.count + 30 + nameBytes.count
+            var padding = (64 - dataStart % 64) % 64
+            if padding > 0, padding < 4 { padding += 64 }
+            var extra = [UInt8]()
+            if padding > 0 {
+                extra += le16(0x1986) + le16(UInt16(padding - 4))
+                extra += [UInt8](repeating: 0, count: padding - 4)
+            }
+
+            out += le32(0x0403_4b50)
+            out += le16(20) + le16(0) + le16(0) + le16(0) + le16(0)   // version, flags, method, time, date
+            out += le32(crc) + le32(UInt32(bytes.count)) + le32(UInt32(bytes.count))
+            out += le16(UInt16(nameBytes.count)) + le16(UInt16(extra.count))
+            out += nameBytes + extra + bytes
+
+            central += le32(0x0201_4b50)
+            central += le16(20) + le16(20) + le16(0) + le16(0) + le16(0) + le16(0)
+            central += le32(crc) + le32(UInt32(bytes.count)) + le32(UInt32(bytes.count))
+            central += le16(UInt16(nameBytes.count)) + le16(0) + le16(0)
+            central += le16(0) + le16(0) + le32(0)
+            central += le32(offset) + nameBytes
+        }
+        let cdOffset = UInt32(out.count)
+        out += central
+        out += le32(0x0605_4b50) + le16(0) + le16(0)
+        out += le16(UInt16(entries.count)) + le16(UInt16(entries.count))
+        out += le32(UInt32(central.count)) + le32(cdOffset) + le16(0)
+        return Data(out)
+    }
+
+    private static func le16(_ v: UInt16) -> [UInt8] { [UInt8(v & 0xff), UInt8(v >> 8)] }
+    private static func le32(_ v: UInt32) -> [UInt8] {
+        [UInt8(v & 0xff), UInt8((v >> 8) & 0xff), UInt8((v >> 16) & 0xff), UInt8((v >> 24) & 0xff)]
+    }
+
+    private static func crc32(_ data: Data) -> UInt32 {
+        var crc: UInt32 = 0xFFFF_FFFF
+        for byte in data {
+            crc ^= UInt32(byte)
+            for _ in 0..<8 { crc = (crc & 1) != 0 ? (crc >> 1) ^ 0xEDB8_8320 : crc >> 1 }
+        }
+        return crc ^ 0xFFFF_FFFF
     }
 
     // MARK: Format fallback

@@ -2488,6 +2488,73 @@ internally consistent (max index + 1 == point count). The shaderball also
 demonstrates the arc's premise: Model I/O alphabetizes the children our
 reader returns in authored order.
 
+### The xformOp evaluator and UsdLux lights (stage 2)
+
+The first consumer of the raw tree is the transform evaluator
+(`USDXform.swift`, internal): `USDPrim.localXform()` composes a prim's
+authored xformOps per `xformOpOrder` into one column-vector matrix, and
+`USDStage.visitPrims` walks the tree handing every prim its world transform
+(skipping abstract `class` prims). The conventions it encodes, each verified
+against the reference implementation's structure and pinned by
+`USDXformTests`:
+
+- **`xformOpOrder` lists ops outermost first** (`["translate", "rotateXYZ"]`
+  rotates, then translates), which with column-vector matrices means
+  composing the listed ops left to right. Ops authored on the prim but
+  absent from the order don't apply; no order means the identity.
+- **USD matrices are row-vector** (translation in the fourth row), so a
+  `matrix4d`'s four rows load directly as simd columns; the convention
+  transpose falls out of the flat read.
+- **Rotation angles are degrees**, and a three-axis rotate's value is always
+  (x, y, z) angles; the op name (`rotateXYZ` … `rotateZYX`) only picks the
+  application order, name order first.
+- The **`!invert!` prefix** inverts its op (the `translate:pivot` /
+  `!invert!translate:pivot` idiom is the pivot mechanism), and
+  **`!resetXformStack!`** discards both the inherited stack and any ops
+  listed before it. Single-axis forms (`translateX`, `scaleY`, `rotateZ` …)
+  and arbitrary `xformOp:<type>:<suffix>` names are handled; a dangling
+  op token is skipped, never fatal.
+- **`orient` quaternions are (real, i, j, k)** in the raw tree. That is the
+  text authoring order, and a crate amendment keeps the containers agreeing:
+  crate files store quats as the raw in-memory struct, *imaginary first*
+  (i, j, k, w), the one tuple shape where the two containers genuinely
+  diverged, so the crate reader reorders scalar and array quats to
+  real-first at decode (no local tool authors a crate `orient`, so this leg
+  is spec-derived; the composition itself is pinned in text form).
+
+The cross-oracle for the whole stack: Model I/O composes the example
+stage's camera ops itself, and `USDXformTests` pins our matrix against its
+`MDLObject.transform.matrix` element for element.
+
+The evaluator exists because of **UsdLux lights** (stage 2 of the arc):
+light prims don't survive the platform importer at all, so
+`SceneLoaderUSDLights.swift` runs `USDStage.load` over the same file
+`loadModelIOScene` reads, collects the light prims with their world
+transforms, and resolves them into ordinary `Light` values on
+`Scene.lights`. The mapping is complete over Ollin's light kinds:
+
+| UsdLux prim | Ollin light |
+| --- | --- |
+| `SphereLight` | `.point` |
+| `SphereLight` + `shaping:cone:angle` | `.spot` (half-angle in degrees × 2 → `coneAngle`; `shaping:cone:softness` → `penumbra`) |
+| `DistantLight` | `.directional` |
+| `RectLight` (`width` × `height`) | `.rect` (extents scale with the prim's transform; local y is the `up` hint) |
+| `DiskLight` (`radius`) | `.disk` |
+| `CylinderLight` (`length`, `radius`) | `.tube` (the length runs along local x) |
+
+Every kind emits along its prim's local -z (the camera convention, same as
+glTF). Attributes read the `inputs:` prefix with bare pre-21.02 fallbacks;
+schema defaults apply (intensity 1, except DistantLight's sunlight-scale
+50000; disk/sphere/cylinder radius 0.5; rect 1 × 1; cylinder length 1).
+The glTF punctual treatment carries over: colors re-encode linear → sRGB,
+and each kind normalizes intensity × 2^exposure to its brightest = 1
+(photometric units mean nothing without distance falloff). The usdz leg is
+covered by a test-built stored zip (64-byte aligned via the extra-field
+padding scheme the reference writer uses), which both our reader and Model
+I/O accept; `SceneLoaderTests` pins the full rig, and the example stage's
+authored rig (one light of every mapped kind, `make-usd-scene.swift`) rides
+the `usd-scene` snapshot.
+
 ---
 
 ## The geometry and generator catalog

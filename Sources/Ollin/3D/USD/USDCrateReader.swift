@@ -463,9 +463,12 @@ final class USDCrateReader {
             let dim = rep.type - 11  // 2, 3, 4
             if rep.isInlined { return .tuple(Self.inlinedDiagonal(rep.inlined, dim: dim)) }
             return .tuple(try loadArray(at: rep.offset, count: dim * dim, as: Double.self))
-        case 16: return .tuple(try loadArray(at: rep.offset, count: 4, as: Double.self))
-        case 17: return .tuple(try loadArray(at: rep.offset, count: 4, as: Float.self).map(Double.init))
-        case 18: return .tuple(try loadHalves(at: rep.offset, count: 4).map(Double.init))
+        // Quats store the in-memory struct: imaginary first, real last. Text
+        // authors them real-first, so reorder here to keep the two containers
+        // agreeing on one shape (real, i, j, k).
+        case 16: return .tuple(Self.quatRealFirst(try loadArray(at: rep.offset, count: 4, as: Double.self)))
+        case 17: return .tuple(Self.quatRealFirst(try loadArray(at: rep.offset, count: 4, as: Float.self).map(Double.init)))
+        case 18: return .tuple(Self.quatRealFirst(try loadHalves(at: rep.offset, count: 4).map(Double.init)))
         case 19, 20, 22, 23, 24, 26, 27, 28, 30, 25, 29:
             return .tuple(try vectorComponents(rep))
         case 21:
@@ -573,6 +576,24 @@ final class USDCrateReader {
         return m
     }
 
+    /// One quat's file components (i, j, k, real) reordered to (real, i, j, k).
+    private static func quatRealFirst<T>(_ q: [T]) -> [T] {
+        q.count == 4 ? [q[3], q[0], q[1], q[2]] : q
+    }
+
+    /// A flat quat array's components, each element reordered real-first.
+    private static func quatsRealFirst<T>(_ flat: [T]) -> [T] {
+        guard flat.count.isMultiple(of: 4) else { return flat }
+        var out = flat
+        for base in stride(from: 0, to: flat.count, by: 4) {
+            out[base] = flat[base + 3]
+            out[base + 1] = flat[base]
+            out[base + 2] = flat[base + 1]
+            out[base + 3] = flat[base + 2]
+        }
+        return out
+    }
+
     // MARK: - Arrays
 
     private func unpackArray(_ rep: Rep) throws -> USDValue {
@@ -608,9 +629,14 @@ final class USDCrateReader {
             let dim = rep.type - 11
             return .doubleTupleArray(dim * dim,
                                      try loadArray(at: body, count: count * dim * dim, as: Double.self))
-        case 16: return .doubleTupleArray(4, try loadArray(at: body, count: count * 4, as: Double.self))
-        case 17: return .floatTupleArray(4, try loadArray(at: body, count: count * 4, as: Float.self))
-        case 18: return .floatTupleArray(4, try loadHalves(at: body, count: count * 4))
+        // Quat elements are in-memory structs (imaginary first); reorder each
+        // to the real-first shape text authors (see the scalar cases).
+        case 16: return .doubleTupleArray(4, Self.quatsRealFirst(
+            try loadArray(at: body, count: count * 4, as: Double.self)))
+        case 17: return .floatTupleArray(4, Self.quatsRealFirst(
+            try loadArray(at: body, count: count * 4, as: Float.self)))
+        case 18: return .floatTupleArray(4, Self.quatsRealFirst(
+            try loadHalves(at: body, count: count * 4)))
         case 19...30:
             let (arity, kind) = Self.vectorShape(rep.type)
             switch kind {

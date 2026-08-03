@@ -26,8 +26,9 @@ import simd
 /// is an ordinary `Mesh` (in the node's local space) that also draws standalone.
 /// Structure comes from glTF/GLB files (the node graph, cameras from the core
 /// spec, lights from the punctual-lights extension, animations, skins) and from
-/// the USD family (`.usdz`/`.usdc`/`.usda`/`.usd`: the node graph and cameras;
-/// USD lights and animations don't survive the platform importer, so light those
+/// the USD family (`.usdz`/`.usdc`/`.usda`/`.usd`: the node graph, cameras, and
+/// the authored UsdLux lights, sphere/distant/shaped-cone/rect/disk/cylinder,
+/// read by Ollin's own parser; USD animations don't carry yet, so drive those
 /// scenes yourself); the remaining mesh formats (`.obj`, `.stl`, …) have no
 /// scene graph to keep, so they load as a single-node scene with no cameras or
 /// lights, exactly `loadMesh` in a wrapper.
@@ -246,12 +247,12 @@ extension Scene {
 
     /// Load a scene from a file, keeping its structure. `.gltf`/`.glb` files keep
     /// the full graph: named nodes with transforms, cameras, and punctual lights.
-    /// The USD family (`.usdz`, `.usdc`, `.usda`, `.usd`) keeps its graph too,
-    /// named nodes, transforms, and cameras, though not its lights or animations
-    /// (see `loadModelIOScene`). Any other format `loadMesh` reads (`.obj`,
-    /// `.stl`, …) has no scene graph, so it loads as one node named after the
-    /// file, with no cameras or lights. Returns `nil` if the file can't be read
-    /// or holds nothing. Mirrors `Mesh(contentsOf:)`.
+    /// The USD family (`.usdz`, `.usdc`, `.usda`, `.usd`) keeps its graph too:
+    /// named nodes, transforms, cameras, and the authored UsdLux lights, though
+    /// not its animations (see `loadModelIOScene`). Any other format `loadMesh`
+    /// reads (`.obj`, `.stl`, …) has no scene graph, so it loads as one node
+    /// named after the file, with no cameras or lights. Returns `nil` if the
+    /// file can't be read or holds nothing. Mirrors `Mesh(contentsOf:)`.
     public init?(contentsOf url: URL) {
         switch url.pathExtension.lowercased() {
         case "gltf", "glb":

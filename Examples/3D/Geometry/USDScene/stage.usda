@@ -208,6 +208,70 @@ def Xform "Court"
         float2 clippingRange = (0.1, 100)
     }
 
+    def Scope "Lights"
+    {
+        def DistantLight "sunset"
+        {
+            float3 xformOp:rotateXYZ = (-49.0, 57.5, 0.0)
+            uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+            color3f inputs:color = (0.85, 0.72, 0.55)
+            float inputs:intensity = 60000.0
+            float inputs:angle = 0.53
+        }
+
+        def SphereLight "fill"
+        {
+            double3 xformOp:translate = (2.5, 3.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            color3f inputs:color = (0.16, 0.21, 0.37)
+            float inputs:intensity = 8.0
+            float inputs:radius = 0.3
+        }
+
+        def SphereLight "beam"
+        {
+            double3 xformOp:translate = (0.0, 3.4, 2.2)
+            float3 xformOp:rotateXYZ = (-36.0, 0.0, 0.0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+            color3f inputs:color = (0.9, 0.78, 0.55)
+            float inputs:intensity = 20.0
+            float inputs:radius = 0.1
+            float inputs:shaping:cone:angle = 14
+            float inputs:shaping:cone:softness = 0.35
+        }
+
+        def RectLight "panel"
+        {
+            double3 xformOp:translate = (-2.8, 1.5, -2.8)
+            float3 xformOp:rotateXYZ = (-7.0, -135.0, 0.0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+            color3f inputs:color = (0.2, 0.3, 0.28)
+            float inputs:intensity = 5.0
+            float inputs:width = 2.6
+            float inputs:height = 1.4
+        }
+
+        def DiskLight "halo"
+        {
+            double3 xformOp:translate = (0.0, 4.2, 0.0)
+            float3 xformOp:rotateXYZ = (-90.0, 0.0, 0.0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+            color3f inputs:color = (0.32, 0.3, 0.27)
+            float inputs:intensity = 6.0
+            float inputs:radius = 1.1
+        }
+
+        def CylinderLight "glow"
+        {
+            double3 xformOp:translate = (0.0, 0.12, -1.6)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            color3f inputs:color = (0.12, 0.45, 0.36)
+            float inputs:intensity = 12.0
+            float inputs:length = 3.2
+            float inputs:radius = 0.04
+        }
+    }
+
     def Scope "Materials"
     {
         def Material "stone"

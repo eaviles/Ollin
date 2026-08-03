@@ -15,10 +15,12 @@ import ModelIO
 //   alphabetized rather than in authored order.
 // - Cameras arrive as typed camera objects (vertical field of view in degrees;
 //   an orthographic aperture in tenths of a world unit).
-// - Lights do *not* arrive: light prims come back as bare grouping nodes with
-//   even their transforms dropped, so a USD scene loads with `lights` empty and
-//   the sketch lights it. Animation is likewise not carried, and skinning
-//   arrives pre-baked at bind pose; those stay glTF features.
+// - Lights do *not* survive the importer (light prims come back as bare
+//   grouping nodes with even their transforms dropped), so `lights` fills from
+//   Ollin's own parser instead: `loadUSDLights` reads the same file's UsdLux
+//   prims through the raw OllinUSD tree (see `SceneLoaderUSDLights.swift`).
+//   Animation is not carried, and skinning arrives pre-baked at bind pose;
+//   those stay glTF features for now.
 
 #if canImport(ModelIO)
 extension Scene {
@@ -26,8 +28,8 @@ extension Scene {
     /// Read a USD file's default layer with structure kept: the node tree (names,
     /// local transforms, per-node meshes in node-local space) plus the authored
     /// cameras resolved through their node's world transform, exactly the glTF
-    /// treatment. Lights don't survive the platform importer (see above), so
-    /// `lights` is empty. Returns `nil` when the file can't be read or holds no
+    /// treatment, and the authored UsdLux lights read by Ollin's own parser
+    /// (see above). Returns `nil` when the file can't be read or holds no
     /// objects at all.
     static func loadModelIOScene(_ url: URL) -> Scene? {
         let asset = MDLAsset(url: url)
@@ -51,6 +53,7 @@ extension Scene {
         let sceneCenter = center.map { ($0.min + $0.max) * 0.5 }
         scene.cameras = cameraRefs.map { resolveCamera($0.camera, world: $0.world,
                                                        sceneCenter: sceneCenter) }
+        scene.lights = loadUSDLights(contentsOf: url)
         return scene
     }
 
