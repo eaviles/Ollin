@@ -2,8 +2,9 @@ import Foundation
 import simd
 
 /// A 3D scene loaded from a file with its *structure* kept: a tree of named nodes,
-/// each with its authored transform and an optional `Mesh`, plus the cameras and
-/// lights the scene was authored with. The complement of `loadMesh`, which merges
+/// each with its authored transform and an optional `Mesh`, plus the cameras,
+/// lights, and animations the scene was authored with (play one with
+/// `apply(_:at:)`). The complement of `loadMesh`, which merges
 /// everything to one mesh; `loadScene` keeps the graph so a sketch can draw the
 /// whole arrangement in place (`drawScene`), open on the authored view
 /// (`camera(scene.camera!)`, `light(...)` each of `scene.lights`), and reach one
@@ -41,6 +42,10 @@ public struct Scene: Sendable {
     /// they are scaled so the brightest is 1, keeping relative balance. Tweak per
     /// light after loading if the mix needs it.
     public var lights: [Light]
+    /// Every animation the file authored, in document order: keyframe tracks that
+    /// pose the nodes. Play one with `apply(_:at:)`, or find one by name with
+    /// `animation(_:)`.
+    public var animations: [SceneAnimation]
     /// The scene's authored name, when the file gave it one.
     public var name: String?
 
@@ -50,6 +55,7 @@ public struct Scene: Sendable {
         self.nodes = nodes
         self.cameras = cameras
         self.lights = lights
+        self.animations = []
         self.name = name
     }
 
@@ -143,6 +149,15 @@ public struct SceneNode: Sendable {
     /// verbatim as a matrix so nothing is lost to decomposition. The typed accessors
     /// below (`position`, `rotate`, `scale`) edit it.
     var localTransform: simd_float4x4
+    /// The file's node index, the identity animation tracks target; `nil` for a
+    /// hand-built node.
+    var sourceIndex: Int?
+    /// The authored translation/rotation/scale components (rotation as the raw
+    /// xyzw quaternion) for a node the file gave TRS rather than a matrix: the
+    /// base an animation swaps sampled components into, never derived by
+    /// decomposing `localTransform`. `nil` for a matrix-authored node, which no
+    /// track may target.
+    var trs: (t: SIMD3<Float>, r: SIMD4<Float>, s: SIMD3<Float>)?
 
     /// A node built by hand: `name`, an optional `mesh`, a `position` for its local
     /// translation, and `children`. For composing a scene in code; loaded scenes
@@ -157,11 +172,15 @@ public struct SceneNode: Sendable {
         self.localTransform = m
     }
 
-    init(name: String, mesh: Mesh?, children: [SceneNode], localTransform: simd_float4x4) {
+    init(name: String, mesh: Mesh?, children: [SceneNode], localTransform: simd_float4x4,
+         sourceIndex: Int? = nil,
+         trs: (t: SIMD3<Float>, r: SIMD4<Float>, s: SIMD3<Float>)? = nil) {
         self.name = name
         self.mesh = mesh
         self.children = children
         self.localTransform = localTransform
+        self.sourceIndex = sourceIndex
+        self.trs = trs
     }
 
     /// The node's local position: its translation relative to the parent node.
@@ -176,6 +195,7 @@ public struct SceneNode: Sendable {
         set {
             localTransform.columns.3 = SIMD4<Float>(Float(newValue.x), Float(newValue.y),
                                                     Float(newValue.z), 1)
+            trs?.t = SIMD3<Float>(Float(newValue.x), Float(newValue.y), Float(newValue.z))
         }
     }
 
@@ -250,7 +270,9 @@ extension Scene {
             return SceneNode(name: n.name ?? "",
                              mesh: n.mesh.flatMap(doc.localMesh),
                              children: children,
-                             localTransform: n.localMatrix)
+                             localTransform: n.localMatrix,
+                             sourceIndex: ni,
+                             trs: n.authoredTRS)
         }
         let roots = doc.rootNodes.compactMap(build)
 
@@ -287,6 +309,7 @@ extension Scene {
         scene.cameras = cameras.compactMap { Scene.resolveCamera($0.def, world: $0.world,
                                                                  sceneCenter: sceneCenter) }
         scene.lights = Scene.resolveLights(lightRefs)
+        scene.animations = SceneAnimation.load(from: doc)
         return scene
     }
 

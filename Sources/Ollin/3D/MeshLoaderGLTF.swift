@@ -8,8 +8,9 @@ import simd
 // with no axis flip; only the node hierarchy's transforms need baking in. This reads
 // the common mesh subset (POSITION + NORMAL + TEXCOORD_0 + triangle indices, float
 // positions/normals/UVs, embedded or external buffers) plus the base-color material
-// (factor + texture); skeletal animation, morph targets, and the other PBR channels
-// (metallic/roughness, normal, emissive) are not read.
+// (factor + texture) and the node TRS keyframe animations the scene loader plays;
+// skinning, morph targets, and the other PBR channels (metallic/roughness, normal,
+// emissive) are not read.
 //
 // The file-and-buffer plumbing lives in `GLTFDocument`, shared by two consumers with
 // different contracts: `Mesh.loadGLTF` below bakes every node's world transform in and
@@ -249,6 +250,70 @@ struct GLTFDocument {
         return out
     }
 
+    /// Read a SCALAR-of-float accessor (animation keyframe times) as `[Double]`.
+    func readFloats(_ index: Int) -> [Double]? {
+        let accessors = gltf.accessors ?? []
+        let views = gltf.bufferViews ?? []
+        guard index >= 0, index < accessors.count else { return nil }
+        let a = accessors[index]
+        guard a.type == "SCALAR", a.componentType == 5126,        // SCALAR, FLOAT
+              let bvi = a.bufferView, bvi < views.count else { return nil }
+        let bv = views[bvi]
+        guard bv.buffer < buffers.count else { return nil }
+        let buf = buffers[bv.buffer]
+        let stride = bv.byteStride ?? 4
+        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
+        guard a.count > 0, start + (a.count - 1) * stride + 4 <= buf.count else { return nil }
+        var out = [Double](); out.reserveCapacity(a.count)
+        buf.withUnsafeBytes { raw in
+            for i in 0..<a.count {
+                out.append(Double(raw.loadUnaligned(fromByteOffset: start + i * stride, as: Float.self)))
+            }
+        }
+        return out
+    }
+
+    /// Read a VEC4 accessor (rotation quaternions) as `[SIMD4<Float>]`: float, or
+    /// any of the four normalized-integer encodings the spec allows for rotation
+    /// output, decoded by the spec's int-to-float equations.
+    func readVec4(_ index: Int) -> [SIMD4<Float>]? {
+        let accessors = gltf.accessors ?? []
+        let views = gltf.bufferViews ?? []
+        guard index >= 0, index < accessors.count else { return nil }
+        let a = accessors[index]
+        guard a.type == "VEC4", let bvi = a.bufferView, bvi < views.count else { return nil }
+        let size: Int
+        switch a.componentType {
+        case 5126: size = 4                                       // FLOAT
+        case 5120, 5121: size = 1                                 // BYTE, UNSIGNED_BYTE
+        case 5122, 5123: size = 2                                 // SHORT, UNSIGNED_SHORT
+        default: return nil
+        }
+        let bv = views[bvi]
+        guard bv.buffer < buffers.count else { return nil }
+        let buf = buffers[bv.buffer]
+        let stride = bv.byteStride ?? size * 4
+        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
+        guard a.count > 0, start + (a.count - 1) * stride + size * 4 <= buf.count else { return nil }
+        var out = [SIMD4<Float>](); out.reserveCapacity(a.count)
+        buf.withUnsafeBytes { raw in
+            for i in 0..<a.count {
+                let o = start + i * stride
+                func component(_ c: Int) -> Float {
+                    switch a.componentType {
+                    case 5120: return max(Float(raw.loadUnaligned(fromByteOffset: o + c, as: Int8.self)) / 127, -1)
+                    case 5121: return Float(raw.loadUnaligned(fromByteOffset: o + c, as: UInt8.self)) / 255
+                    case 5122: return max(Float(raw.loadUnaligned(fromByteOffset: o + c * 2, as: Int16.self)) / 32767, -1)
+                    case 5123: return Float(raw.loadUnaligned(fromByteOffset: o + c * 2, as: UInt16.self)) / 65535
+                    default: return raw.loadUnaligned(fromByteOffset: o + c * 4, as: Float.self)
+                    }
+                }
+                out.append(SIMD4<Float>(component(0), component(1), component(2), component(3)))
+            }
+        }
+        return out
+    }
+
     /// Read a VEC2-of-float accessor (texture coordinates) as `[Vector2]`. Only
     /// float UVs are read (the common export); a normalized-integer TEXCOORD comes
     /// back nil, so that primitive is treated as having no UVs.
@@ -456,6 +521,21 @@ struct GLTF: Decodable {
             let scaleM = simd_float4x4(diagonal: SIMD4<Float>(s.x, s.y, s.z, 1))
             return translationM * simd_float4x4(q) * scaleM
         }
+
+        /// The node's authored translation/rotation/scale components (rotation as
+        /// the raw xyzw quaternion), with the spec defaults filled in; `nil` for a
+        /// node authored with an explicit `matrix`, which the spec forbids as an
+        /// animation target and which can't be recomposed per component.
+        var authoredTRS: (t: SIMD3<Float>, r: SIMD4<Float>, s: SIMD3<Float>)? {
+            guard matrix == nil else { return nil }
+            var t = SIMD3<Float>(0, 0, 0)
+            if let tr = translation, tr.count == 3 { t = SIMD3(Float(tr[0]), Float(tr[1]), Float(tr[2])) }
+            var r = SIMD4<Float>(0, 0, 0, 1)
+            if let ro = rotation, ro.count == 4 { r = SIMD4(Float(ro[0]), Float(ro[1]), Float(ro[2]), Float(ro[3])) }
+            var s = SIMD3<Float>(1, 1, 1)
+            if let sc = scale, sc.count == 3 { s = SIMD3(Float(sc[0]), Float(sc[1]), Float(sc[2])) }
+            return (t, r, s)
+        }
     }
     struct NodeExtensions: Decodable {
         var KHR_lights_punctual: NodeLightRef?
@@ -529,6 +609,14 @@ struct GLTF: Decodable {
         var KHR_lights_punctual: KHRLightsPunctual?
     }
     struct KHRLightsPunctual: Decodable { var lights: [PunctualLightDef]? }
+    struct AnimationDef: Decodable {
+        struct Channel: Decodable { var sampler: Int; var target: Target }
+        struct Target: Decodable { var node: Int?; var path: String }
+        struct SamplerDef: Decodable { var input: Int; var output: Int; var interpolation: String? }
+        var name: String?
+        var channels: [Channel]
+        var samplers: [SamplerDef]
+    }
 
     var scene: Int?
     var scenes: [SceneDef]?
@@ -541,5 +629,6 @@ struct GLTF: Decodable {
     var textures: [TextureDef]?
     var images: [ImageDef]?
     var cameras: [CameraDef]?
+    var animations: [AnimationDef]?
     var extensions: Extensions?
 }

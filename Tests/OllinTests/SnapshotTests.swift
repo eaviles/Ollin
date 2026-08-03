@@ -482,6 +482,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("loaded-scene",
                  note: "A hand-composed Scene (floor, a pedestal whose child torus is tipped and spun through the subscript, an orb) drawn via drawScene through the scene's own camera and three lights. Pins the node-tree walk composing local transforms onto the model matrix, the subscript's in-place mutation, and applying a Scene's camera/lights as ordinary state. Fixed angles, no time, deterministic. (The glTF scene *loader* is pinned by SceneLoaderTests.)",
                  make: { LoadedSceneScene() }),
+    SnapshotCase("animated-scene",
+                 note: "The bundled orrery asset posed by its authored \"spin\" animation at a fixed 3.2 s: the planet arm swung 144 deg on spherically-blended LINEAR quaternion keys, the moon arm counter-turned, the marker orb mid-descent on its CUBICSPLINE bob, and the base pointer four STEP ticks around. Pins the glTF animation parse (channels grouped to tracks), all three sampler modes, and apply() rebuilding node TRS local transforms drawn through drawScene with the scene's own camera and lights. Fixed sample time, no shadows, deterministic.",
+                 make: { AnimatedSceneScene() }),
     SnapshotCase("symmetry",
                  note: "One wedge of drawing folded by symmetry(6, mirrored: true) around an off-axis pivot, over every replicated 2D path: an SDF circle and star, a tessellated polygon fill with its fringe outline, a stroked polyline, a smooth-union SDF field, and bitmap text; a center dot lands once after noSymmetry(). Pins the CTM-conjugated fold matrices, the per-path replication (instances, range copies, group instances), and the on/off scoping. No time, deterministic.",
                  make: { SymmetryScene() }),
@@ -565,6 +568,35 @@ private final class CameraMoveScene: Sketch {
             }
         }
         withState { fill(Color(white: 0.35)); translate(0, -0.8, 0); drawPlane(width: 8, depth: 8) }
+    }
+}
+
+/// The committed AnimatedScene example asset, loaded from the repo and posed by
+/// its authored animation at a fixed time, drawn through its own camera and
+/// lights (no shadows: a point-light caster would resolve differently on RT and
+/// non-RT GPUs).
+private final class AnimatedSceneScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var orrery: Ollin.Scene!
+
+    override func setup() {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // OllinTests
+            .deletingLastPathComponent()   // Tests
+            .deletingLastPathComponent()   // repo root
+            .appendingPathComponent("Examples/3D/Geometry/AnimatedScene/scene.gltf")
+        orrery = Ollin.Scene(contentsOf: url)
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(orrery.camera ?? .orbiting(target: Vector3(0, 1, 0), radius: 6))
+        for l in orrery.lights { light(l) }
+        if let spin = orrery.animations.first {
+            orrery.apply(spin, at: 3.2)
+        }
+        fill(.white)
+        drawScene(orrery)
     }
 }
 

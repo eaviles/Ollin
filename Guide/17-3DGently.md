@@ -347,6 +347,16 @@ drawScene(stage)                               // every node, in its authored pl
 
 A scene is a tree of named nodes, and everything unpacks into things you already know: the file's camera is a `Camera3D`, its lights are `Light`s, each node's geometry is a `Mesh`. `drawScene` draws the whole layout where the tool put it, and `stage["sculpture"]` reaches one node by name so a single piece moves while the rest holds still. Bring the set over from the design tool; keep the choreography in the sketch. The `3D/Geometry/LoadedScene` example is a small stage to poke at, and [Scenes](../Docs/3D/Scenes.md) has the details.
 
+If the file was animated in the tool, that motion carries over too. `stage.animations` holds the authored keyframe tracks, and applying one poses the scene at whatever moment you ask for:
+
+```swift
+if let spin = stage.animation("spin") {
+    stage.apply(spin, at: time.truncatingRemainder(dividingBy: spin.duration))
+}
+```
+
+The file remembers its motion; the sketch decides when time passes. `apply` takes any time you hand it, so wrapping `time` loops the animation, `time * 0.5` plays it at half speed, and a knob's value scrubs it. The `3D/Geometry/AnimatedScene` example plays a small orrery's authored spin this way, one seamless 8-second lap.
+
 Whether a mesh came from a file or a generator, there are two other ways to dress it besides lighting a solid surface.
 
 <img src="Images/17-3DGently/SurfaceKinds.jpg" alt="Three spheres side by side: a solid glossy teal one, the same sphere drawn as a pale cyan net of triangle edges, and one wrapped in an orange and cream checker whose squares narrow toward the poles" width="680">
