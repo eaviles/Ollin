@@ -63,7 +63,7 @@ public final class Character3D {
     ///
     /// It is not in `world.bodies` (a drawing loop never asked for a capsule
     /// where the sketch draws its own figure), and its `position` is the
-    /// stand-in's centre rather than the character's feet, which
+    /// stand-in's center rather than the character's feet, which
     /// `character.position` reports.
     public private(set) var body: Body3D!
 
@@ -181,8 +181,13 @@ public final class Character3D {
     }
 
     deinit {
+        guard !isDestroyed else { return }
         cjolt_character_destroy(world.handle, handle)
     }
+
+    /// Set by the world on its way out, so a character a sketch still holds
+    /// after its world is gone tears nothing down twice.
+    var isDestroyed = false
 
     // MARK: Driving it
 

@@ -619,6 +619,57 @@ if lookout.isTouching(walker.body) { /* you're on the platform */ }
 
 So the trigger you built for balls works for people, unchanged. The playable version, an eroded island with stairs up to a lookout that lights as you arrive, is the [`3D/Physics/Stroll`](../Examples/3D/Physics/Stroll/) example.
 
+## Something to drive
+
+A character walks. A **vehicle** is the other thing you operate: a body carried on sprung wheels, with an engine behind the pedal. Same idea as the character, one step further out. You don't push it and you don't steer it by force. You press things.
+
+```swift
+car = world.addVehicle(.box(width: 1.8, height: 0.7, depth: 4),
+                       at: Vector3(0, 2, 0),
+                       wheels: [
+                           .wheel(at: Vector3( 0.9, -0.15,  1.3), steers: true),
+                           .wheel(at: Vector3(-0.9, -0.15,  1.3), steers: true),
+                           .wheel(at: Vector3( 0.9, -0.15, -1.3), driven: true, handBrake: true),
+                           .wheel(at: Vector3(-0.9, -0.15, -1.3), driven: true, handBrake: true),
+                       ])
+```
+
+Read that list once and you have the whole machine. Four wheels, bolted where you say, in the chassis's own coordinates. The front two turn. The back two are the ones the engine reaches, and the ones the hand brake grabs. Nothing else about a car needs saying, and the two flags you did say are the ones that decide how it feels.
+
+Driving it is the same shape as walking:
+
+```swift
+car.throttle = isKeyDown(.upArrow) ? 1 : (isKeyDown(.downArrow) ? -1 : 0)
+car.steering = (isKeyDown(.rightArrow) ? 1 : 0) - (isKeyDown(.leftArrow) ? 1 : 0)
+car.handBrake = isKeyDown(" ") ? 1 : 0
+
+world.step(dt: deltaTime)
+
+withBody(car.body) { drawBox(width: 1.8, height: 0.7, depth: 4) }
+for wheel in car.wheels {
+    withWheel(wheel) { drawCylinder(radius: wheel.radius, height: wheel.width) }
+}
+```
+
+`withWheel` is `withBody` for a wheel, and it knows where the suspension put it, how far it has rolled, and which way it is pointing. Draw a cylinder in that block and you get a tire, turned and spinning, without ever computing any of it.
+
+Press the throttle and hold a full lock, and the thing you were about to type by hand happens on its own: the car leans, the inside front wheel goes light, the back tires start sliding, and it comes round. Pull the hand brake in the middle of it and only the back wheels lock, because they are the ones you gave a hand brake to. That's the figure below, one frame out of a scripted lap.
+
+<img src="Images/17-3DGently/Joyride.jpg" alt="A red car sliding sideways through a corner marked by a curve of colored cubes, its front wheels turned into the turn and a rear tire glowing yellow where it is spinning" width="560">
+
+The glowing tire is one line: `wheel.slip` is how much that tire is sliding rather than rolling, and coloring by it turns a number into something you can feel.
+
+```swift
+fill(Color.mix(Color(hex: 0x232B36), Color(hex: 0xF2A93B),
+               t: min(1, wheel.slip)))
+```
+
+The car drives along its chassis's **+z**, so model whatever you draw facing that way. Two settings are worth breaking things with. `suspensionFrequency` on each wheel is the spring, in hertz: around 1.5 is a road car, and at 3 you feel every stone. `topSpeed` is the gearing rather than a promise, the speed the machine tops out at on a flat straight; wind it down and the car pulls harder off the line and runs out of legs sooner. Both can be changed while you drive, so put them on `@Param` sliders and feel the same corner three ways.
+
+Two wheels work too. `balances: true` adds the controller that holds a motorcycle up and leans it into turns, and the one thing it needs that a car doesn't is a raked front fork, `casterAngle` around 30°. Without the rake it flops over at the first correction, which is also true of real bicycles and is the nicest small piece of physics in this chapter.
+
+The driveable version, a car over the same kind of eroded island the walker got, is the [`3D/Physics/Joyride`](../Examples/3D/Physics/Joyride/) example.
+
 ## What the depth buffer is for
 
 Chapter 14 filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has: for every pixel, how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.

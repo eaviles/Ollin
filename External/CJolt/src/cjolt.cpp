@@ -19,6 +19,7 @@
 #include <Jolt/Physics/Collision/Shape/CylinderShape.h>
 #include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
+#include <Jolt/Physics/Collision/Shape/OffsetCenterOfMassShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
@@ -31,6 +32,10 @@
 #include <Jolt/Physics/Constraints/SliderConstraint.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
+#include <Jolt/Physics/Vehicle/MotorcycleController.h>
+#include <Jolt/Physics/Vehicle/VehicleCollisionTester.h>
+#include <Jolt/Physics/Vehicle/VehicleConstraint.h>
+#include <Jolt/Physics/Vehicle/WheeledVehicleController.h>
 #include <Jolt/RegisterTypes.h>
 
 #include <algorithm>
@@ -133,6 +138,22 @@ public:
 /// surface to hit, so picking with the cursor looks straight through one.
 class NonSensorBodyFilter final : public BodyFilter {
 public:
+    bool ShouldCollideLocked(const Body &inBody) const override {
+        return !inBody.IsSensor();
+    }
+};
+
+/// A vehicle's wheels see the solid scene except their own chassis: the same
+/// sensor rule as a ray cast, plus the self-collision the collision tester's
+/// default filter would otherwise have handled on its own.
+class VehicleGroundFilter final : public BodyFilter {
+public:
+    BodyID chassis;
+
+    bool ShouldCollide(const BodyID &inBodyID) const override {
+        return inBodyID != chassis;
+    }
+
     bool ShouldCollideLocked(const Body &inBody) const override {
         return !inBody.IsSensor();
     }
@@ -258,6 +279,16 @@ struct CJoltCharacter {
     float stickToFloor = 0.0f;
 };
 
+/// A vehicle: the constraint that owns the wheels, the three collision testers
+/// it can switch between, the filter they all share, and the driven-wheel
+/// radius the top-speed gearing is solved against.
+struct CJoltVehicle {
+    JPH::Ref<JPH::VehicleConstraint> constraint;
+    JPH::Ref<JPH::VehicleCollisionTester> testers[3];
+    VehicleGroundFilter groundFilter;
+    float drivenWheelRadius = 0.3f;
+};
+
 struct CJoltWorld {
     JPH::TempAllocatorImpl tempAllocator;
     JPH::JobSystemThreadPool jobSystem;
@@ -273,6 +304,7 @@ struct CJoltWorld {
     // against each other through this list, which each one is registered in.
     JPH::CharacterVsCharacterCollisionSimple characterCollision;
     std::vector<CJoltCharacter *> characters;
+    std::vector<CJoltVehicle *> vehicles;
 
     CJoltWorld()
         : tempAllocator(16 * 1024 * 1024),
@@ -434,6 +466,14 @@ CJoltWorld *cjolt_world_create(float gravityX, float gravityY, float gravityZ,
 
 void cjolt_world_destroy(CJoltWorld *world) {
     if (world == nullptr) { return; }
+    // Vehicles first: each is a constraint *and* a step listener, and both
+    // registrations have to come off while the system is still alive.
+    for (CJoltVehicle *vehicle : world->vehicles) {
+        world->physics.RemoveStepListener(vehicle->constraint);
+        world->physics.RemoveConstraint(vehicle->constraint);
+        delete vehicle;
+    }
+    world->vehicles.clear();
     for (CJoltConstraint *constraint : world->constraints) {
         world->physics.RemoveConstraint(constraint->constraint);
         delete constraint;
@@ -466,6 +506,16 @@ void cjolt_world_optimize(CJoltWorld *world) { world->physics.OptimizeBroadPhase
 CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
     Ref<Shape> shape = makeShape(desc->shape);
     if (shape == nullptr) { return CJOLT_BODY_INVALID; }
+
+    // Moving the center of mass wraps the finished shape rather than changing
+    // it: the body's reported position stays the shape's origin, so whatever
+    // the sketch draws is unmoved while the mass hangs somewhere else.
+    const Vec3 centerOfMass = vec3(desc->centerOfMass);
+    if (centerOfMass.LengthSq() > 0) {
+        Shape::ShapeResult offset =
+            OffsetCenterOfMassShapeSettings(centerOfMass, shape).Create();
+        if (!offset.HasError()) { shape = offset.Get(); }
+    }
 
     EMotionType motion = EMotionType::Static;
     ObjectLayer layer = Layers::NON_MOVING;
@@ -510,6 +560,13 @@ CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
     // creation compute mass properties, which a mesh or height field cannot
     // provide (a real trap inside the library, not just a bad number).
     settings.mAllowDynamicOrKinematic = !shape->MustBeStatic();
+    // An explicit mass replaces the one the shape's volume and density give,
+    // with the inertia recomputed for the shape at that mass (a car is 1500 kg
+    // however big the box around it is).
+    if (desc->mass > 0 && motion == EMotionType::Dynamic) {
+        settings.mOverrideMassProperties = EOverrideMassProperties::CalculateInertia;
+        settings.mMassPropertiesOverride.mMass = desc->mass;
+    }
 
     BodyID id = world->physics.GetBodyInterface().CreateAndAddBody(
         settings, motion == EMotionType::Static ? EActivation::DontActivate
@@ -1092,6 +1149,317 @@ void cjolt_character_refresh_contacts(CJoltWorld *world, CJoltCharacter *charact
         world->physics.GetDefaultBroadPhaseLayerFilter(Layers::MOVING),
         world->physics.GetDefaultLayerFilter(Layers::MOVING), {}, {},
         world->tempAllocator);
+}
+
+// Vehicles ------------------------------------------------------------------
+
+namespace {
+
+/// The gearing that makes top gear at the engine's redline turn a wheel of
+/// `radius` at `topSpeed`. Engine and wheel are separated by the gearbox ratio
+/// times the differential ratio, so with the gearbox fixed there is one number
+/// left to solve for.
+float solveDifferentialRatio(float maxRPM, float topGear, float topSpeed,
+                             float radius) {
+    if (topSpeed <= 0 || radius <= 0 || topGear <= 0) { return 3.42f; }
+    const float wheelOmega = topSpeed / radius;                     // rad/s
+    const float engineOmega = maxRPM * (2.0f * JPH_PI / 60.0f);     // rad/s
+    return std::clamp(engineOmega / (wheelOmega * topGear), 0.05f, 200.0f);
+}
+
+WheeledVehicleController *controllerOf(const CJoltVehicle *vehicle) {
+    return static_cast<WheeledVehicleController *>(
+        vehicle->constraint->GetController());
+}
+
+/// Writes a wheel description onto a wheel's settings. Every one of these is
+/// read again on each step, so the same function serves the initial build and
+/// a live retune. The friction curves are rebuilt from the library's own tire
+/// before grip scales them, so repeated calls cannot compound.
+void applyWheelDesc(WheelSettingsWV &wheel, const CJoltWheelDesc &desc) {
+    wheel.mPosition = vec3(desc.position);
+    wheel.mRadius = std::max(desc.radius, 1.0e-3f);
+    wheel.mWidth = std::max(desc.width, 1.0e-3f);
+    wheel.mSuspensionMaxLength = std::max(desc.suspensionMaxLength, 0.0f);
+    wheel.mSuspensionMinLength =
+        std::clamp(desc.suspensionMinLength, 0.0f, wheel.mSuspensionMaxLength);
+    wheel.mSuspensionSpring = SpringSettings(ESpringMode::FrequencyAndDamping,
+                                             std::max(desc.suspensionFrequency, 0.01f),
+                                             std::max(desc.suspensionDamping, 0.0f));
+    // Raking the fork back tilts the suspension and the steering axis
+    // together, which is the trail that lets a two-wheeler hold a line.
+    if (desc.casterAngle != 0) {
+        const float rake = std::clamp(desc.casterAngle, -1.4f, 1.4f);
+        wheel.mSuspensionDirection = Vec3(0, -1, std::tan(rake)).Normalized();
+        wheel.mSteeringAxis = -wheel.mSuspensionDirection;
+    } else {
+        wheel.mSuspensionDirection = Vec3(0, -1, 0);
+        wheel.mSteeringAxis = Vec3(0, 1, 0);
+    }
+    wheel.mMaxSteerAngle = std::clamp(desc.maxSteerAngle, 0.0f, 0.5f * JPH_PI);
+    wheel.mMaxBrakeTorque = std::max(desc.maxBrakeTorque, 0.0f);
+    wheel.mMaxHandBrakeTorque = std::max(desc.maxHandBrakeTorque, 0.0f);
+
+    // Grip scales the tire's own friction curves; the ground body's friction
+    // is combined with them by the solver on top of this.
+    const WheelSettingsWV tire;
+    wheel.mLongitudinalFriction = tire.mLongitudinalFriction;
+    wheel.mLateralFriction = tire.mLateralFriction;
+    if (desc.grip > 0 && desc.grip != 1.0f) {
+        for (LinearCurve::Point &p : wheel.mLongitudinalFriction.mPoints) {
+            p.mY *= desc.grip;
+        }
+        for (LinearCurve::Point &p : wheel.mLateralFriction.mPoints) {
+            p.mY *= desc.grip;
+        }
+    }
+}
+
+} // namespace
+
+CJoltVehicle *cjolt_vehicle_create(CJoltWorld *world, CJoltBodyID chassisID,
+                                   const CJoltVehicleDesc *desc) {
+    if (world == nullptr || desc == nullptr || desc->wheels == nullptr ||
+        desc->wheelCount < 1 || chassisID == CJOLT_BODY_INVALID) {
+        return nullptr;
+    }
+    Body *chassis = resolveBody(world, chassisID);
+    if (chassis == nullptr) { return nullptr; }
+
+    VehicleConstraintSettings vehicle;
+    vehicle.mUp = Vec3::sAxisY();
+    vehicle.mForward = Vec3::sAxisZ();
+    vehicle.mMaxPitchRollAngle =
+        desc->maxPitchRollAngle > 0 ? desc->maxPitchRollAngle : JPH_PI;
+
+    float narrowest = FLT_MAX;
+    for (int32_t i = 0; i < desc->wheelCount; ++i) {
+        WheelSettingsWV *wheel = new WheelSettingsWV();
+        applyWheelDesc(*wheel, desc->wheels[i]);
+        narrowest = std::min(narrowest, wheel->mWidth);
+        vehicle.mWheels.push_back(wheel);
+    }
+
+    const bool leans = desc->leans;
+    WheeledVehicleControllerSettings *controller =
+        leans ? new MotorcycleControllerSettings()
+              : new WheeledVehicleControllerSettings();
+    controller->mEngine.mMaxTorque = std::max(desc->maxEngineTorque, 1.0f);
+    if (leans) {
+        MotorcycleControllerSettings *bike =
+            static_cast<MotorcycleControllerSettings *>(controller);
+        bike->mMaxLeanAngle = std::clamp(desc->maxLeanAngle, 0.0f, 0.5f * JPH_PI);
+    }
+
+    // Which axles the engine turns, and how big their wheels are: the
+    // differential ratio is solved once against that radius so every driven
+    // axle shares one gearing.
+    const auto wheelInRange = [&](int32_t index) {
+        return index >= 0 && index < desc->wheelCount;
+    };
+    int drivenAxles = 0;
+    float drivenRadius = 0;
+    int drivenWheels = 0;
+    for (int32_t i = 0; i < desc->axleCount; ++i) {
+        const CJoltAxleDesc &axle = desc->axles[i];
+        if (!axle.driven) { continue; }
+        ++drivenAxles;
+        for (int32_t index : {axle.leftWheel, axle.rightWheel}) {
+            if (wheelInRange(index)) {
+                drivenRadius += vehicle.mWheels[index]->mRadius;
+                ++drivenWheels;
+            }
+        }
+    }
+    drivenRadius = drivenWheels > 0 ? drivenRadius / float(drivenWheels)
+                                    : vehicle.mWheels[0]->mRadius;
+    const Array<float> &gears = controller->mTransmission.mGearRatios;
+    const float ratio = solveDifferentialRatio(
+        controller->mEngine.mMaxRPM, gears.empty() ? 1.0f : gears.back(),
+        desc->topSpeed, drivenRadius);
+
+    for (int32_t i = 0; i < desc->axleCount; ++i) {
+        const CJoltAxleDesc &axle = desc->axles[i];
+        const int32_t left = wheelInRange(axle.leftWheel) ? axle.leftWheel : -1;
+        const int32_t right = wheelInRange(axle.rightWheel) ? axle.rightWheel : -1;
+        if (left < 0 && right < 0) { continue; }
+        if (axle.driven) {
+            VehicleDifferentialSettings differential;
+            differential.mLeftWheel = left;
+            differential.mRightWheel = right;
+            differential.mDifferentialRatio = ratio;
+            differential.mEngineTorqueRatio = 1.0f / float(drivenAxles);
+            controller->mDifferentials.push_back(differential);
+        }
+        // An anti-roll bar ties a pair together so the outside wheel's
+        // compression lifts the inside one, which is what keeps a car flat
+        // through a corner. A lone wheel has nothing to tie to.
+        if (left >= 0 && right >= 0 && desc->antiRollStiffness > 0) {
+            VehicleAntiRollBar bar;
+            bar.mLeftWheel = left;
+            bar.mRightWheel = right;
+            bar.mStiffness = desc->antiRollStiffness;
+            vehicle.mAntiRollBars.push_back(bar);
+        }
+    }
+    // The controller's torque ratios must add up over at least one driven
+    // differential, so a vehicle always has something the engine turns; the
+    // caller picks which axle rather than leaving it to chance.
+    if (controller->mDifferentials.empty()) { return nullptr; }
+
+    vehicle.mController = controller;
+
+    CJoltVehicle *wrapper = new CJoltVehicle();
+    wrapper->drivenWheelRadius = drivenRadius;
+    wrapper->groundFilter.chassis = chassis->GetID();
+    wrapper->testers[0] = new VehicleCollisionTesterRay(Layers::MOVING);
+    wrapper->testers[1] =
+        new VehicleCollisionTesterCastSphere(Layers::MOVING, 0.5f * narrowest);
+    wrapper->testers[2] = new VehicleCollisionTesterCastCylinder(Layers::MOVING);
+    for (Ref<VehicleCollisionTester> &tester : wrapper->testers) {
+        // Overriding the body filter replaces the default one that hides the
+        // vehicle from itself, so this filter has to do that job too.
+        tester->SetBodyFilter(&wrapper->groundFilter);
+    }
+    wrapper->constraint = new VehicleConstraint(*chassis, vehicle);
+    cjolt_vehicle_set_wheel_contact(wrapper, desc->contact);
+
+    world->physics.AddConstraint(wrapper->constraint);
+    // Without the step listener the wheels are never collided or driven: the
+    // vehicle keeps its shape and simply never moves. (Upstream's own header
+    // warns about exactly this.)
+    world->physics.AddStepListener(wrapper->constraint);
+    world->vehicles.push_back(wrapper);
+    return wrapper;
+}
+
+void cjolt_vehicle_destroy(CJoltWorld *world, CJoltVehicle *vehicle) {
+    if (world == nullptr || vehicle == nullptr) { return; }
+    world->physics.RemoveStepListener(vehicle->constraint);
+    world->physics.RemoveConstraint(vehicle->constraint);
+    world->vehicles.erase(
+        std::remove(world->vehicles.begin(), world->vehicles.end(), vehicle),
+        world->vehicles.end());
+    delete vehicle;
+}
+
+void cjolt_vehicle_set_input(CJoltWorld *world, CJoltVehicle *vehicle,
+                             float forward, float right, float brake,
+                             float handBrake) {
+    if (vehicle == nullptr) { return; }
+    controllerOf(vehicle)->SetDriverInput(std::clamp(forward, -1.0f, 1.0f),
+                                          std::clamp(right, -1.0f, 1.0f),
+                                          std::clamp(brake, 0.0f, 1.0f),
+                                          std::clamp(handBrake, 0.0f, 1.0f));
+    // A settled vehicle is allowed to sleep, but one being driven never is.
+    if (world != nullptr &&
+        (forward != 0 || right != 0 || brake != 0 || handBrake != 0)) {
+        world->physics.GetBodyInterface().ActivateBody(
+            vehicle->constraint->GetVehicleBody()->GetID());
+    }
+}
+
+void cjolt_vehicle_set_wheel_settings(CJoltVehicle *vehicle, int32_t index,
+                                      const CJoltWheelDesc *desc) {
+    if (vehicle == nullptr || desc == nullptr || index < 0 ||
+        index >= int32_t(vehicle->constraint->GetWheels().size())) {
+        return;
+    }
+    // The settings object belongs to this constraint alone (the bridge builds
+    // one per wheel and hands it to nothing else), and the solver reads every
+    // field of it fresh on each step, so writing through the wheel's const
+    // handle is safe and takes effect next step.
+    const Wheel *wheel = vehicle->constraint->GetWheel(uint(index));
+    WheelSettingsWV *settings = const_cast<WheelSettingsWV *>(
+        static_cast<const WheelSettingsWV *>(wheel->GetSettings()));
+    applyWheelDesc(*settings, *desc);
+}
+
+void cjolt_vehicle_set_engine_torque(CJoltVehicle *vehicle, float maxTorque) {
+    if (vehicle == nullptr) { return; }
+    controllerOf(vehicle)->GetEngine().mMaxTorque = std::max(maxTorque, 1.0f);
+}
+
+void cjolt_vehicle_set_top_speed(CJoltVehicle *vehicle, float metersPerSecond) {
+    if (vehicle == nullptr) { return; }
+    WheeledVehicleController *controller = controllerOf(vehicle);
+    const Array<float> &gears = controller->GetTransmission().mGearRatios;
+    const float ratio = solveDifferentialRatio(
+        controller->GetEngine().mMaxRPM, gears.empty() ? 1.0f : gears.back(),
+        metersPerSecond, vehicle->drivenWheelRadius);
+    for (VehicleDifferentialSettings &d : controller->GetDifferentials()) {
+        d.mDifferentialRatio = ratio;
+    }
+}
+
+void cjolt_vehicle_set_wheel_contact(CJoltVehicle *vehicle,
+                                     CJoltWheelContact contact) {
+    if (vehicle == nullptr) { return; }
+    int index = contact == CJOLT_WHEEL_CONTACT_RAY      ? 0
+                : contact == CJOLT_WHEEL_CONTACT_SPHERE ? 1
+                                                        : 2;
+    vehicle->constraint->SetVehicleCollisionTester(vehicle->testers[index]);
+}
+
+void cjolt_vehicle_set_max_pitch_roll(CJoltVehicle *vehicle, float radians) {
+    if (vehicle == nullptr) { return; }
+    vehicle->constraint->SetMaxPitchRollAngle(
+        std::clamp(radians, 0.0f, JPH_PI));
+}
+
+void cjolt_vehicle_set_anti_roll(CJoltVehicle *vehicle, float stiffness) {
+    if (vehicle == nullptr) { return; }
+    for (VehicleAntiRollBar &bar : vehicle->constraint->GetAntiRollBars()) {
+        bar.mStiffness = std::max(stiffness, 0.0f);
+    }
+}
+
+int32_t cjolt_vehicle_get_wheel_count(const CJoltVehicle *vehicle) {
+    if (vehicle == nullptr) { return 0; }
+    return int32_t(vehicle->constraint->GetWheels().size());
+}
+
+void cjolt_vehicle_get_wheel(const CJoltVehicle *vehicle, int32_t index,
+                             CJoltWheelState *out) {
+    if (out == nullptr) { return; }
+    *out = CJoltWheelState{};
+    out->contactBody = CJOLT_BODY_INVALID;
+    if (vehicle == nullptr || index < 0 ||
+        index >= int32_t(vehicle->constraint->GetWheels().size())) {
+        return;
+    }
+    VehicleConstraint *constraint = vehicle->constraint;
+    const Wheel *wheel = constraint->GetWheel(uint(index));
+
+    // The transform poses a cylinder modeled along +y, so the wheel's own
+    // rotational axis (its "right") is that y and its "up" is x.
+    RMat44 transform = constraint->GetWheelWorldTransform(
+        uint(index), Vec3::sAxisY(), Vec3::sAxisX());
+    store(Vec3(transform.GetTranslation()), out->position);
+    store(transform.GetQuaternion().Normalized(), out->rotation);
+
+    out->steerAngle = wheel->GetSteerAngle();
+    out->rotationAngle = wheel->GetRotationAngle();
+    out->angularVelocity = wheel->GetAngularVelocity();
+    out->suspensionLength = wheel->GetSuspensionLength();
+    out->hasContact = wheel->HasContact();
+    if (out->hasContact) {
+        out->contactBody = wheel->GetContactBodyID().GetIndexAndSequenceNumber();
+        store(wheel->GetContactNormal(), out->contactNormal);
+    }
+    const WheelWV *wv = static_cast<const WheelWV *>(wheel);
+    out->longitudinalSlip = wv->mLongitudinalSlip;
+    out->lateralSlip = wv->mLateralSlip;
+}
+
+float cjolt_vehicle_get_rpm(const CJoltVehicle *vehicle) {
+    if (vehicle == nullptr) { return 0; }
+    return controllerOf(vehicle)->GetEngine().GetCurrentRPM();
+}
+
+int32_t cjolt_vehicle_get_gear(const CJoltVehicle *vehicle) {
+    if (vehicle == nullptr) { return 0; }
+    return int32_t(controllerOf(vehicle)->GetTransmission().GetCurrentGear());
 }
 
 // Queries -------------------------------------------------------------------

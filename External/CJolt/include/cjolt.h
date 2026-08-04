@@ -88,6 +88,14 @@ typedef struct {
     float linearDamping;  // >= 0
     float angularDamping; // >= 0
     float gravityFactor;  // 1 = normal gravity
+    /// Total mass in kg, overriding what the shape and density would give;
+    /// <= 0 computes it from the shape. Ignored by non-dynamic bodies.
+    float mass;
+    /// Where the center of mass sits relative to the shape's origin, in the
+    /// body's local space. Lowering it is what keeps a tall body (a car on its
+    /// suspension) from rolling over. The body's reported position stays the
+    /// shape origin, so drawing is unaffected.
+    float centerOfMass[3];
     bool allowSleep;
     /// A detector volume: it reports overlaps through the contact buffer but
     /// never pushes anything and is never pushed. Overrides `motion` (a sensor
@@ -318,6 +326,126 @@ void cjolt_character_update(CJoltWorld *world, CJoltCharacter *character,
 
 /// Re-reads what the character is standing on after it has been teleported.
 void cjolt_character_refresh_contacts(CJoltWorld *world, CJoltCharacter *character);
+
+// Vehicles ------------------------------------------------------------------
+
+/// Opaque vehicle handle: a *constraint* on an ordinary chassis body, not a
+/// body of its own. It owns the wheels, the suspension springs, and the engine
+/// and gearbox that turn a throttle into wheel torque, and it is registered as
+/// a step listener so its wheels are collided and driven inside every step.
+typedef struct CJoltVehicle CJoltVehicle;
+
+/// How a wheel finds the ground each step: a downward ray (cheapest, and a
+/// narrow wheel drops into gaps it should ride over), a swept sphere, or a
+/// swept cylinder (the wheel's real footprint, and the steadiest over rough
+/// terrain).
+typedef enum {
+    CJOLT_WHEEL_CONTACT_RAY = 0,
+    CJOLT_WHEEL_CONTACT_SPHERE = 1,
+    CJOLT_WHEEL_CONTACT_CYLINDER = 2,
+} CJoltWheelContact;
+
+typedef struct {
+    /// Where the suspension is bolted to the chassis, in the body's local
+    /// space (the same space the collider is described in).
+    float position[3];
+    float radius, width;
+    /// How far below the mounting point the wheel center sits at full
+    /// compression and at full droop; the spring's natural length is the max.
+    float suspensionMinLength, suspensionMaxLength;
+    float suspensionFrequency, suspensionDamping;
+    /// How far the suspension (and with it the steering axis) is raked back
+    /// from vertical, in radians. A two-wheeler needs it to steer stably.
+    float casterAngle;
+    float maxSteerAngle;      // radians; 0 = fixed straight ahead
+    float maxBrakeTorque;     // N·m
+    float maxHandBrakeTorque; // N·m
+    /// Scales the tire's friction curves; 1 keeps the library's own tire.
+    float grip;
+} CJoltWheelDesc;
+
+/// One axle: the wheels that share it (either index may be -1 for a single
+/// wheel, as a two-wheeler's are), and whether the engine drives it. A pair
+/// with both wheels present is also tied together by an anti-roll bar.
+typedef struct {
+    int32_t leftWheel, rightWheel;
+    bool driven;
+} CJoltAxleDesc;
+
+typedef struct {
+    const CJoltWheelDesc *wheels;
+    int32_t wheelCount;
+    const CJoltAxleDesc *axles;
+    int32_t axleCount;
+    float maxEngineTorque; // N·m
+    /// The speed the gearing tops out at, in m/s: the differential ratio is
+    /// solved so that top gear at the engine's max RPM turns the driven wheels
+    /// this fast. <= 0 keeps the library's own ratio.
+    float topSpeed;
+    float antiRollStiffness; // N/m across an axle's pair; 0 = no bars
+    /// The furthest the chassis may tilt from the world up, in radians;
+    /// >= pi lets it roll over freely.
+    float maxPitchRollAngle;
+    CJoltWheelContact contact;
+    /// A two-wheeler that balances itself: adds the lean controller, which
+    /// steers into a turn and holds the machine up.
+    bool leans;
+    float maxLeanAngle; // radians
+} CJoltVehicleDesc;
+
+/// Everything a wheel knows about itself after a step.
+typedef struct {
+    /// The wheel's center in world space, and the rotation that poses a
+    /// cylinder modeled along +y onto it (steering and spin included).
+    float position[3];
+    float rotation[4]; // quaternion x, y, z, w
+    float steerAngle;      // radians, positive turns left
+    float rotationAngle;   // how far the wheel has rolled, radians [0, 2pi)
+    float angularVelocity; // rad/s, positive rolls the vehicle forward
+    float suspensionLength;
+    bool hasContact;
+    CJoltBodyID contactBody;
+    float contactNormal[3];
+    /// How much the tire is sliding: along the wheel (spin against the road)
+    /// and across it (the slip angle, in radians).
+    float longitudinalSlip, lateralSlip;
+} CJoltWheelState;
+
+/// Builds a vehicle on an existing chassis body. Returns NULL if the body is
+/// stale or the description has no wheels.
+CJoltVehicle *cjolt_vehicle_create(CJoltWorld *world, CJoltBodyID chassis,
+                                   const CJoltVehicleDesc *desc);
+void cjolt_vehicle_destroy(CJoltWorld *world, CJoltVehicle *vehicle);
+
+/// The driver's controls for the coming step. `forward` is -1…1 (the gearbox
+/// picks reverse for a negative value), `right` -1…1, `brake` and `handBrake`
+/// 0…1. Any nonzero input wakes the chassis, so a parked vehicle may sleep
+/// but a driven one never does.
+void cjolt_vehicle_set_input(CJoltWorld *world, CJoltVehicle *vehicle,
+                             float forward, float right, float brake,
+                             float handBrake);
+
+/// Re-applies a wheel's description to a live vehicle: the solver reads these
+/// every step, so suspension, steering lock, brakes, and grip can all be
+/// tuned while it drives. Which wheels the engine turns is not among them
+/// (that is the gearbox, fixed when the vehicle is built).
+void cjolt_vehicle_set_wheel_settings(CJoltVehicle *vehicle, int32_t index,
+                                      const CJoltWheelDesc *desc);
+
+void cjolt_vehicle_set_engine_torque(CJoltVehicle *vehicle, float maxTorque);
+/// Re-solves the differential ratio for a new top speed (m/s).
+void cjolt_vehicle_set_top_speed(CJoltVehicle *vehicle, float metersPerSecond);
+void cjolt_vehicle_set_wheel_contact(CJoltVehicle *vehicle,
+                                     CJoltWheelContact contact);
+void cjolt_vehicle_set_max_pitch_roll(CJoltVehicle *vehicle, float radians);
+void cjolt_vehicle_set_anti_roll(CJoltVehicle *vehicle, float stiffness);
+
+int32_t cjolt_vehicle_get_wheel_count(const CJoltVehicle *vehicle);
+void cjolt_vehicle_get_wheel(const CJoltVehicle *vehicle, int32_t index,
+                             CJoltWheelState *out);
+float cjolt_vehicle_get_rpm(const CJoltVehicle *vehicle);
+/// The gear the box has picked: -1 reverse, 0 neutral, 1 first, and up.
+int32_t cjolt_vehicle_get_gear(const CJoltVehicle *vehicle);
 
 // Queries -------------------------------------------------------------------
 

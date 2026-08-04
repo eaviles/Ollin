@@ -6,7 +6,7 @@
 
 Rigid bodies inside the 3D scene: crates that stack and topple, balls that roll, chains that swing, all with real contact response. This is the spatial sibling of the [2D physics world](Physics.md)'s rigid side, and it keeps the same shape: build a [`World3D`](#world3d) once, add [`Body3D`](#body3d)s, step it each frame, and draw each body from its pose. It lives in the same satellite, so `import OllinPhysics` brings both.
 
-Beside the bodies there is one thing that isn't one: a [`Character3D`](#characters), a walking figure you steer from `draw()` rather than push around with forces.
+Beside the bodies there are two things that aren't ones: a [`Character3D`](#characters), a walking figure you steer from `draw()` rather than push around with forces, and a [`Vehicle3D`](#vehicles), a chassis on sprung wheels you drive.
 
 The solver behind it is [Jolt Physics](https://github.com/jrouwe/JoltPhysics), vendored and wrapped the way Box2D backs the 2D side; nothing of it leaks into the API.
 
@@ -52,6 +52,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Contacts](#contacts) - what hit what this step, and how hard
 - [Sensors](#sensors) - regions that detect without colliding
 - [Characters](#characters) - a walking figure you steer from `draw()`
+- [Vehicles](#vehicles) - a chassis on sprung wheels you drive from `draw()`
 - [Grabbing with the mouse](#grabbing) - ray-picking and dragging bodies through the camera
 - [Drawing bodies](#drawing) - `withBody` and matching meshes to colliders
 
@@ -112,7 +113,7 @@ body.applyTorque(Vector3(0, 5, 0))      // spin about each axis
 
 ### Collider3D
 
-The local shape of a body, centred on its origin; position and orientation come from the body.
+The local shape of a body, centered on its origin; position and orientation come from the body.
 
 ```swift
 .sphere(radius: 0.5)
@@ -152,7 +153,7 @@ Draw a compound the way it was built: `withBody` poses the whole body, then tran
 
 ### Terrain and scenery
 
-`.heightfield` turns a [`Heightfield`](../Generators/Terrain.md) into solid ground, sized exactly like its `mesh(width:depth:height:)`: a `width` × `depth` grid centred on the body's origin, each sample lifted to `height · value`. Collider and drawn mesh trace one surface, so what rolls matches what renders:
+`.heightfield` turns a [`Heightfield`](../Generators/Terrain.md) into solid ground, sized exactly like its `mesh(width:depth:height:)`: a `width` × `depth` grid centered on the body's origin, each sample lifted to `height · value`. Collider and drawn mesh trace one surface, so what rolls matches what renders:
 
 ```swift
 let land = Heightfield.diamondSquare(size: 257, roughness: 0.55, seed: 7)
@@ -337,7 +338,7 @@ override func draw() {
 
 `step(dt:)` sweeps every character forward along with the bodies, so there is no second update call to remember. `move(_:)` sets the horizontal velocity the character is *trying* to walk at and holds it until changed; falling and jumping are the world's business, so the vertical part is ignored. `jump(_:)` is granted only if the character is on the ground on the next step, which means calling it every frame while a key is held gives a hop each time it lands rather than flight.
 
-**Position is the feet.** `walker.position` is the point the capsule stands on, so a figure modelled standing at the origin lands where it should. `withCharacter(_:)` moves the 3D transform stack there and turns it by `facing`, the mirror of `withBody(_:)`.
+**Position is the feet.** `walker.position` is the point the capsule stands on, so a figure modeled standing at the origin lands where it should. `withCharacter(_:)` moves the 3D transform stack there and turns it by `facing`, the mirror of `withBody(_:)`.
 
 #### What it can get past
 
@@ -384,6 +385,131 @@ The stand-in is deliberately kept out of `world.bodies`, the same way the ground
 Teleport with `position`, which also re-reads what is underfoot on the spot, and `stop()` clears both the walking velocity and any speed carried from a fall. Characters collide with each other as well as with the scenery.
 
 The worked example is [`3D/Physics/Stroll`](../../Examples/3D/Physics/Stroll/): an eroded island with stairs up to a lookout that lights as you arrive.
+
+<a name="vehicles"></a>
+
+### Vehicles
+
+A `Vehicle3D` is a machine you operate rather than a body you push: a chassis carried on sprung wheels, with an engine and a gearbox behind the throttle. You set four numbers each frame and the wheels do the rest, finding their own grip on whatever they are rolling over.
+
+```swift
+let world = World3D()
+var car: Vehicle3D!
+
+override func setup() {
+    world.ground = 0
+    car = world.addVehicle(.box(width: 1.8, height: 0.7, depth: 4),
+                           at: Vector3(0, 2, 0),
+                           wheels: [
+                               .wheel(at: Vector3( 0.9, -0.15,  1.3), steers: true),
+                               .wheel(at: Vector3(-0.9, -0.15,  1.3), steers: true),
+                               .wheel(at: Vector3( 0.9, -0.15, -1.3), driven: true, handBrake: true),
+                               .wheel(at: Vector3(-0.9, -0.15, -1.3), driven: true, handBrake: true),
+                           ])
+}
+
+override func draw() {
+    car.throttle = isKeyDown(.upArrow) ? 1 : (isKeyDown(.downArrow) ? -1 : 0)
+    car.steering = (isKeyDown(.rightArrow) ? 1 : 0) - (isKeyDown(.leftArrow) ? 1 : 0)
+    car.handBrake = isKeyDown(" ") ? 1 : 0
+
+    world.step(dt: deltaTime)
+
+    withBody(car.body) { drawBox(width: 1.8, height: 0.7, depth: 4) }
+    for wheel in car.wheels {
+        withWheel(wheel) { drawCylinder(radius: wheel.radius, height: wheel.width) }
+    }
+}
+```
+
+`step(dt:)` hands each vehicle's controls to the solver along with everything else, so there is no second update call. **The vehicle drives along the chassis's local +z**, with +y up, so model whatever you draw facing that way; positive `steering` turns it to its own right.
+
+The chassis is an ordinary `Body3D`. `car.body` collides, takes impulses, reports contacts, and is in `world.bodies` like anything the sketch added; what makes it a vehicle is the constraint on top, which owns the wheels. Its weight is `mass` (1500 kg by default) rather than the shape's volume, and by default its center of mass drops to the height of the wheel mounts, which is what stops a car rolling over the first time it turns hard.
+
+#### The controls
+
+| | |
+| --- | --- |
+| `throttle` | The gas pedal, `-1…1`. Positive drives forward, negative reverses. |
+| `steering` | Where the wheels point, `-1` hard left … `1` hard right. |
+| `brake` | The brake pedal, `0…1`: slows every wheel that has `brakeTorque`. |
+| `handBrake` | `0…1`: locks only the wheels with `handBrakeTorque`, which is what makes the back step out. |
+
+All four hold until changed, so set them every frame. `drive(throttle:steering:brake:)` sets three at once and `coast()` lifts everything off.
+
+Asking for the other direction while the vehicle is still rolling brakes first and takes the new direction only once it has stopped, which is how a car with an automatic gearbox behaves. Press "back" at speed and you get the brakes; press it again from a standstill and you reverse.
+
+#### The wheels
+
+A `Wheel3D` says where a wheel is bolted on and what it does. Build them, hand them over, and afterwards the same objects report where each wheel actually ended up:
+
+```swift
+let front = Wheel3D.wheel(at: Vector3(0.9, -0.15, 1.3), radius: 0.35, steers: true)
+front.suspensionFrequency = 2.2       // a stiffer spring
+front.grip = 0.4                      // and a slick tire
+```
+
+| | |
+| --- | --- |
+| `position` | Where the suspension is bolted to the chassis, in its local space. The wheel hangs `suspensionLength` below this. |
+| `radius` / `width` | The tire. `width` is also the height of the cylinder you draw for it. |
+| `steers` | Whether steering turns it, up to `maxSteerAngle` (30° by default). |
+| `driven` | Whether the engine turns it. |
+| `suspensionLength` / `suspensionTravel` | How far the wheel hangs with nothing pressing on it, and how much further up it can be pushed before the chassis takes the hit. |
+| `suspensionFrequency` / `suspensionDamping` | The spring, in the same hertz-and-ratio pair a joint's `drive(to:frequency:damping:)` takes. Around 1.5 Hz is a road car, 3 and up feels every stone. |
+| `brakeTorque` / `handBrakeTorque` | How hard each brake bites on this wheel, in newton-metres. Leave `handBrakeTorque` at zero on the front pair. |
+| `grip` | Scales the tire's own friction: `1` is normal, lower is slick. The ground's friction combines with it, so slippery ground still slides a grippy tire. |
+| `casterAngle` | How far the fork is raked back. A car leaves it at `0`; a two-wheeler needs a real rake (see below). |
+
+**Wheels level with each other along the vehicle share an axle**, worked out from where they sit rather than the order you listed them, and an axle with any driven wheel is turned by the engine, so marking one of a pair marks its pair. A lone wheel, as a two-wheeler's are, is an axle by itself. Each full pair is also tied by an anti-roll bar (`antiRollStiffness`, 1000 N/m by default, `0` to untie them), which is what keeps the vehicle flat through a corner.
+
+Everything on a wheel except `driven` can be changed while the vehicle drives, so a slider on the springs or the grip is felt on the next step. `driven` is the gearbox rather than the wheel, and is fixed once the vehicle is built.
+
+#### The engine
+
+Two numbers stand in for the whole drivetrain:
+
+- **`engineTorque`** (500 N·m by default) is how hard the engine pulls. More of it spins the wheels sooner rather than accelerating harder: grip is the ceiling, not power.
+- **`topSpeed`** (30 units/s) is the gearing. Top gear at the engine's redline turns the driven wheels this fast, so it is a ceiling the vehicle approaches on a flat straight rather than a promise. Winding it down gears the vehicle for pull instead of pace.
+
+Both can be changed while driving. The gearbox shifts itself; `gear` reads which one it picked (`-1` reverse, `0` neutral, `1` first, and up) and `rpm` how fast the engine is turning, which is what to drive an engine sound from.
+
+#### Reading it back
+
+| | |
+| --- | --- |
+| `speed` | How fast it is travelling along its own forward axis; negative in reverse. |
+| `forward` / `up` | The chassis's axes in world space. A chase camera wants `forward`; `up` tips as the vehicle leans. |
+| `isOnGround` | Whether any wheel is touching. `false` means nothing the driver does will change anything. |
+| `wheel.center` | Where the wheel is now, suspension travel included. |
+| `wheel.spin` / `wheel.steerAngle` | How far it has rolled and how far it is turned. |
+| `wheel.isOnGround` / `wheel.groundBody` / `wheel.groundNormal` | What that tire is on. |
+| `wheel.suspensionCompression` | `0` fully extended … `1` bottomed out: watch a car squat under power and dive under braking. |
+| `wheel.slip` / `wheel.slideAngle` | How much the tire is sliding along itself and across itself. Color a wheel by `slip` and a spinning one lights up. |
+
+`withWheel(_:)` moves the 3D transform stack to a wheel's pose, steering and spin included, the way `withBody(_:)` does for a body. A tire modeled as a cylinder along +y lands right.
+
+Two more knobs sit on the vehicle. `maxTilt` caps how far the chassis may lean from upright (`nil` by default, so it rolls over like anything else; around `.pi / 3` keeps a car on its wheels over rough ground). `wheelContact` picks how the wheels find the ground: `.cylinder` (the default) sweeps the tire's real footprint and is the steadiest over terrain, `.sphere` rounds off edges, and `.ray` is a single cheap ray that can drop a narrow wheel into a gap it should have ridden over.
+
+#### Two wheels
+
+A two-wheeler is the same call with `balances: true`, which adds the controller that holds it up and leans it into turns. It needs one thing a car doesn't: a real `casterAngle` on the front wheel, because the trail that comes with a raked fork is what lets it hold a line instead of flopping over at the first correction.
+
+```swift
+let front = Wheel3D.wheel(at: Vector3(0, -0.27, 0.75), radius: 0.31,
+                          width: 0.05, steers: true)
+front.casterAngle = 30 * .pi / 180
+let back = Wheel3D.wheel(at: Vector3(0, -0.27, -0.75), radius: 0.31,
+                         width: 0.05, driven: true)
+let bike = world.addVehicle(.box(width: 0.4, height: 0.6, depth: 0.8),
+                            at: Vector3(0, 1, 0), wheels: [front, back],
+                            mass: 240, engineTorque: 150, topSpeed: 30,
+                            centerOfMass: Vector3(0, -0.3, 0), balances: true)
+```
+
+Running dead straight even an unbalanced two-wheeler stays up, because nothing tips it; the balancing shows the moment something does. Start it leaned over and it stands back up, and it leans into a corner rather than falling out of it.
+
+The worked example is [`3D/Physics/Joyride`](../../Examples/3D/Physics/Joyride/): a car you drive over an eroded island, with the springs and the grip on live sliders.
 
 <a name="grabbing"></a>
 

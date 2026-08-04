@@ -740,7 +740,7 @@ rather than by reading the output as a whole:
   scales. (Softology's write-up notes single-point variation gives "the sharpest
   most detailed images", which is the same observation from the other side.)
   Measuring the winner distribution directly, by temporarily routing the winning
-  index into a colour channel, is what separated this from the amount question
+  index into a color channel, is what separated this from the amount question
   below: the coarsest scale was already winning 68% of pixels in contiguous
   regions, so selection was never the problem.
 
@@ -756,7 +756,7 @@ Two constants are paired across the language boundary: `TuringScale.maxScales`
 with `OLLIN_TURING_LEVELS`, which sizes the `array<texture2d<float>, N>` binding;
 a shallower pyramid repeats its top rung to fill it and `levelCount` keeps the
 shader off the padding. Deliberate v1 cut: the winning-scale index is *not*
-carried in the state, so colour-by-scale (McCabe's coloured plates) is not
+carried in the state, so color-by-scale (McCabe's colored plates) is not
 available; it would mean spending a channel that both the display and the extent
 reduce read as gray.
 
@@ -1202,10 +1202,10 @@ sub-pixel band of in-between depth:
   neighbourhood max consumes it, while a real in-focus subject is thick enough to
   keep its near-zero size.
 - **Scatter** is the min over the immediate neighbourhood. Where the band instead
-  lands in the *fully defocused* range it flings the colour beneath it across the
+  lands in the *fully defocused* range it flings the color beneath it across the
   entire blur radius, and because the whole rim shares one depth it cuts off at
   one radius too: a perfectly in-focus object came out ringed by a faint,
-  hard-edged, concentrically ridged halo of its own colour (7 to 10% of the
+  hard-edged, concentrically ridged halo of its own color (7 to 10% of the
   object's brightness against a dark backdrop, out to `maxBlur`). A rim texel
   always has a low-blur neighbour on the object side, so the min erases it, while
   a genuinely defocused region keeps its size. The radius is 2px, not 1, so the
@@ -1220,12 +1220,12 @@ rather than zero, so every tap counts. This both kills grain (no variance from a
 varying effective sample count, so no per-pixel jitter is needed) and blends
 overlapping bokeh. Three details of the accumulation are load-bearing:
 
-- **Both fields seed with the centre texel.** Seeding the near field with black
+- **Both fields seed with the center texel.** Seeding the near field with black
   instead (the obvious "nothing here yet" value) leaves its running average
   converging *from* black, weighted `1/(taps+1)` per reaching tap, so a partly
   covered foreground composites that bias over the background. A uniformly white
   layer with a near disc in its depth map came back with a ~12% dark ring.
-- **Alpha rides the gather with the colour.** The layers are premultiplied, so
+- **Alpha rides the gather with the color.** The layers are premultiplied, so
   blurring rgb past a sharp alpha stops the result being premultiplied at all: a
   shape on a transparent layer kept a razor silhouette however much blur was
   asked for. An opaque layer is unaffected either way.
@@ -1237,12 +1237,12 @@ overlapping bokeh. Three details of the accumulation are load-bearing:
   overlapping bokeh still merges instead of hard-cutting along a silhouette.
 
 **Near/far separation is the load-bearing idea**, and it is the thing a plain
-single-pass gather cannot do. The far side resolves first (the sharp centre
+single-pass gather cannot do. The far side resolves first (the sharp center
 blended toward its own bokeh by how defocused it is), then the foreground field
 composites *over* that by its coverage, so a defocused foreground spreads over
 and hides an in-focus subject behind it instead of leaving a sharp crescent, and
 an in-focus subject otherwise stays crisp and correctly occludes what is behind
-it. Folding the two into one `mix(centre, mix(bg, fg, a), max(dof, a))` applies
+it. Folding the two into one `mix(center, mix(bg, fg, a), max(dof, a))` applies
 the coverage twice and leaves a half-covered sharp subject a quarter more of its
 sharp self than it should have.
 
@@ -1294,7 +1294,7 @@ stays readable), and its snapshot pins the overlapping hard-depth case.
 The pixel snapshots passed within tolerance across every one of the fixes above,
 because a mean-per-channel comparison averages away defects that live in a band
 around each silhouette, which is where all of them live. `DefocusTests` pins them
-directly instead: a near spread invents no colour, a sharp subject rejects the
+directly instead: a near spread invents no color, a sharp subject rejects the
 backdrop, a lightly defocused midground keeps its edge, a foreground silhouette
 softens on both sides, transparency blurs its coverage, and `maxBlur` 0 is a
 pass-through. Reach for a behavioral probe here, not a whole-frame diff.
@@ -3039,7 +3039,7 @@ defines the surface as `offset + scale · (x, h[z·n+x], z)`, so `Collider3D`
 resamples the `Heightfield` bilinearly onto the smallest power of two
 covering the source grid's cells (4…1024 per side; a 257-sample
 diamond-square field lands on its natural 256) and derives offset/scale to
-reproduce `mesh(width:depth:height:)`'s centred sizing exactly, storing 16
+reproduce `mesh(width:depth:height:)`'s centered sizing exactly, storing 16
 bits per sample so the collider tracks the drawn mesh to well under a visible
 error. Per-part densities ride each child's own desc (the body's relative
 density multiplies the part's). Scene colliders are a walk over the
@@ -3131,7 +3131,7 @@ run along the character's own up axis, which must match the world's y-up.
 Two geometry decisions make the API pleasant. The capsule is built
 bottom-at-origin (a `RotatedTranslatedShape` lifting a `CapsuleShape` by
 `halfHeight + radius`), so `position` is the character's **feet**: a figure
-modelled standing at the origin stands on the ground in the world, and
+modeled standing at the origin stands on the ground in the world, and
 `withCharacter` is a plain translate. And `mSupportingVolume` is
 `Plane(up, -radius)`, so only contacts against the lower cap can hold the
 character up; without it a hand brushing a wall counts as ground. `isOnGround`
@@ -3192,6 +3192,100 @@ alone, the same crate scatters or blocks by `pushStrength` alone. Around those
 sit the standing/falling/steep readbacks, jump-only-from-the-ground, a platform
 carrying the character exactly as far as it travels, a sensor reporting the
 walk-through, teleporting re-reading the ground, and identical replays.
+
+### Vehicles
+
+`Vehicle3D` wraps Jolt's `VehicleConstraint` plus its `WheeledVehicleController`
+(or the `MotorcycleController` subclass). The shape of the tier follows from
+one fact: **a vehicle is a constraint on a body, not a body.** The chassis is
+an ordinary `Body3D` created through the same path as everything else, so it
+collides, takes impulses, reports contacts, is ray-pickable, and lives in
+`world.bodies`; the constraint on top owns the wheels, the suspension springs,
+and the drivetrain. Creating one therefore does three registrations, and
+missing the third is the classic mistake (upstream's own header warns about
+it): `AddConstraint`, then `AddStepListener`, because the wheels are collided
+and driven inside `PhysicsStepListener::OnStep` and a vehicle without that
+listener keeps its shape and simply never moves. Teardown reverses both, and
+`World3D.remove(_:)` destroys the constraint *before* the chassis body, since a
+constraint may not outlive a body it holds.
+
+Two fields were added to `CJoltBodyDesc` for the chassis and are used only
+there so far: an explicit `mass` (`EOverrideMassProperties::CalculateInertia`,
+so a 1500 kg car is 1500 kg whatever its box's volume) and a `centerOfMass`
+offset, applied by wrapping the finished shape in an
+`OffsetCenterOfMassShape`. The wrapper is load-bearing for drivability (weight
+at roof height levers a car over in the first corner) and free for drawing,
+because Jolt's `GetPosition()`/`GetWorldTransform()` report the *shape origin*
+rather than the center of mass, so `withBody` is unaffected. `addVehicle`
+defaults the offset to the mean height of the wheel mounts, which reproduces
+the reference sample's hand-picked value for a normal layout.
+
+**Axles are derived from geometry, not from list order.** The public surface is
+per-wheel (`steers`, `driven`), but Jolt wants differentials and anti-roll bars
+addressed as left/right index pairs. `Vehicle3D.axles(of:)` sorts wheels by
+`(z, x, index)` (deterministic, the catalog rule), clusters them where their
+`z` agree within a quarter of the wheelbase, and pairs within a cluster; a lone
+wheel becomes a single-wheel axle with the other index `-1`, which is how a
+two-wheeler's front and back come out right where pairing by list order would
+have made one nonsense "axle" out of them. An axle with any driven wheel gets a
+differential (engine torque split evenly across driven axles), and every full
+pair gets an anti-roll bar. **At least one axle must be driven**: with zero
+differentials the controller's own debug assert on the torque split fires (the
+ratios sum to 0 rather than 1), so with nothing marked the rear axle takes it.
+
+**Gearing is solved from a speed rather than exposed as ratios.** The gearbox
+keeps the library's default gear ratios, and the differential ratio is derived
+in the bridge (where those ratios live) from `topSpeed`: top gear at the
+engine's max RPM must turn a driven wheel of the measured radius that fast.
+That turns an opaque number into one a sketch understands, and it stays live,
+since `GetDifferentials()` is writable between steps. Ollin does **not** adopt
+the sample's `SetTireMaxImpulseCallback` 10× longitudinal hack, which exists
+only to preserve the feel of settings tuned against an old bug; the library's
+physically-correct Coulomb limit is used, and the defaults (500 N·m against a
+30 units/s top speed) were picked by measuring a torque sweep, not by copying
+the sample's numbers. That sweep is also what settled `suspensionTravel`'s
+0.3 default: at 1.5 Hz a 1500 kg car sags ~0.11 m, so 0.2 sat too close to the
+bump stops.
+
+**Everything on a wheel except `driven` is live.** `applyWheelDesc` writes a
+whole `CJoltWheelDesc` onto a `WheelSettingsWV`, and the same function serves
+the initial build and a retune through `cjolt_vehicle_set_wheel_settings`,
+which `const_cast`s the wheel's settings handle. That is safe here and nowhere
+else: the bridge news one settings object per wheel and shares it with nothing,
+and the solver re-reads every field on each step. The friction curves are
+rebuilt from a default-constructed tire before `grip` scales them, so repeated
+pushes cannot compound. `driven` is the gearbox rather than the wheel (it
+would mean adding or removing a differential, and a zero-ratio differential
+still leaks torque through the limited-slip blend), so it is refused after
+construction with a one-time note.
+
+Three smaller decisions. The wheels' collision tester gets a body filter that
+rejects both the chassis and any sensor, because overriding the filter replaces
+the default one that hides the vehicle from itself, and a detector volume is a
+region to drive through rather than a surface to ride on. All three testers
+(ray, sphere, cylinder) are built up front and switched by reference, so
+`wheelContact` costs nothing. And the wheel pose comes back as a position plus
+a quaternion posing a **+y-aligned cylinder** (`GetWheelWorldTransform(i,
+Vec3::sAxisY(), Vec3::sAxisX())`), which is the axis convention `drawCylinder`
+already uses, so `withWheel` is a translate and a rotate with no fixups.
+
+The motorcycle sibling is the same call with `balances: true`. Getting it to
+work took one thing the car does not need: `casterAngle`, which rakes both
+`mSuspensionDirection` and `mSteeringAxis` back on the front wheel. Without
+it the balance controller cannot hold a line and the machine goes over within a
+second; with 30° of rake it rides, and leans into a corner. Note that a
+two-wheeler running dead straight stays up even with the controller *off*,
+because nothing perturbs it, so the counterfactual test starts it leaned over.
+
+`Vehicle3DTests` pins the tier behaviorally, each knob against a counterfactual
+twin. The sharpest is the drive-routing one: two identical cars with slick
+front tires, differing only in which axle is driven, travel 2× apart, which
+pins where the torque goes rather than merely that there is some. Around it sit
+the suspension sag (soft vs stiff), braking distance vs coasting, the hand
+brake locking only the wheels that have one, reverse braking through a stop,
+the top-speed gearing ceiling, wheels-in-the-air, the axle grouping as a pure
+CPU test, a leaned two-wheeler righting itself where the unbalanced twin falls,
+and identical replays.
 
 ## The geometry and generator catalog
 

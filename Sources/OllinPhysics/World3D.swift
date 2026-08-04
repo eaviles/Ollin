@@ -76,6 +76,10 @@ public final class World3D {
     /// is swept forward by `step(dt:)` along with the bodies.
     public private(set) var characters: [Character3D] = []
 
+    /// Every `Vehicle3D` in the world, in the order added. Each one's controls
+    /// are handed to the solver by `step(dt:)`.
+    public private(set) var vehicles: [Vehicle3D] = []
+
     /// Every touch that started or stopped during the most recent `step(dt:)`,
     /// including bodies entering and leaving a sensor. Poll it in `draw()` the
     /// way mouse state is polled; the list is replaced by the next step, and
@@ -115,6 +119,12 @@ public final class World3D {
     }
 
     deinit {
+        // A sketch may still be holding a character or a vehicle when its
+        // world goes. Both tear their solver object down in their own deinit,
+        // which would reach into a world that no longer exists, so they are
+        // told here that the whole thing is already gone.
+        for character in characters { character.isDestroyed = true }
+        for vehicle in vehicles { vehicle.isDestroyed = true }
         cjolt_world_destroy(handle)
     }
 
@@ -139,6 +149,22 @@ public final class World3D {
                         rotated angle: Double = 0, axis: Vector3 = .unitY,
                         density: Double = 1, friction: Double = 0.5,
                         restitution: Double? = nil) -> Body3D {
+        addBody(collider, at: position, kind: kind, isSensor: isSensor,
+                rotated: angle, axis: axis, density: density, friction: friction,
+                restitution: restitution, mass: nil, centerOfMass: .zero)
+    }
+
+    /// The full body-creation path, with the two extras only a vehicle chassis
+    /// needs so far: a mass that replaces what the shape's volume would give,
+    /// and a center of mass moved off the shape's origin (which is what keeps
+    /// a car from rolling over). The body's reported position stays the shape
+    /// origin either way, so drawing is unaffected.
+    @discardableResult
+    func addBody(_ collider: Collider3D, at position: Vector3,
+                 kind: Body3D.Kind, isSensor: Bool, rotated angle: Double,
+                 axis: Vector3, density: Double, friction: Double,
+                 restitution: Double?, mass: Double?,
+                 centerOfMass: Vector3) -> Body3D {
         var desc = CJoltBodyDesc()
         let p = meters(from: position)
         desc.position = (p.0, p.1, p.2)
@@ -155,6 +181,9 @@ public final class World3D {
         desc.gravityFactor = 1
         desc.allowSleep = true
         desc.isSensor = isSensor
+        desc.mass = Float(mass ?? 0)
+        let com = meters(from: centerOfMass)
+        desc.centerOfMass = (com.0, com.1, com.2)
 
         // The collider's flat data (hull points, mesh indices, height samples,
         // compound children) lives in the arena for the span of the create.
@@ -244,6 +273,81 @@ public final class World3D {
                                     pushStrength: pushStrength)!
         characters.append(character)
         return character
+    }
+
+    /// Add a `Vehicle3D`: a chassis body carried on sprung wheels, with an
+    /// engine behind the throttle. Drive it from `draw()` by setting its
+    /// `throttle`, `steering`, and `brake`, and draw it from its `body` and
+    /// its `wheels`.
+    ///
+    /// ```swift
+    /// let car = world.addVehicle(.box(width: 1.8, height: 0.6, depth: 4),
+    ///                            at: Vector3(0, 2, 0),
+    ///                            wheels: [
+    ///                                .wheel(at: Vector3( 0.9, -0.1,  1.3), steers: true),
+    ///                                .wheel(at: Vector3(-0.9, -0.1,  1.3), steers: true),
+    ///                                .wheel(at: Vector3( 0.9, -0.1, -1.3), driven: true, handBrake: true),
+    ///                                .wheel(at: Vector3(-0.9, -0.1, -1.3), driven: true, handBrake: true),
+    ///                            ])
+    /// ```
+    ///
+    /// The vehicle drives along the chassis's local **+z**.
+    ///
+    /// - Parameters:
+    ///   - chassis: the body's shape. Anything a `Body3D` can wear.
+    ///   - wheels: where the wheels are bolted on and what each one does.
+    ///     Wheels level with each other along the vehicle share an axle.
+    ///   - mass: the whole machine's weight in kilograms, whatever the
+    ///     chassis shape's volume would otherwise give.
+    ///   - engineTorque: how hard the engine pulls, in newton-metres.
+    ///   - topSpeed: the speed the gearing tops out at, in world units per
+    ///     second. Lower gears the vehicle down for more pull.
+    ///   - centerOfMass: where the weight hangs, in the chassis's local space.
+    ///     `nil` (the default) drops it to the height of the wheel mounts,
+    ///     which is what keeps a vehicle from rolling over in a turn.
+    ///   - balances: a two-wheeler that holds itself up, leaning into turns
+    ///     instead of falling over.
+    @discardableResult
+    public func addVehicle(_ chassis: Collider3D, at position: Vector3,
+                           wheels: [Wheel3D], mass: Double = 1500,
+                           engineTorque: Double = 500, topSpeed: Double = 30,
+                           centerOfMass: Vector3? = nil,
+                           rotated angle: Double = 0, axis: Vector3 = .unitY,
+                           friction: Double = 0.5,
+                           balances: Bool = false,
+                           maxLeanAngle: Double = 45 * .pi / 180) -> Vehicle3D? {
+        guard !wheels.isEmpty else {
+            noteOnce("a vehicle needs at least one wheel")
+            return nil
+        }
+        // Weight that hangs at axle height is what stops a vehicle from
+        // toppling: it is high enough to be inside the body and low enough
+        // that cornering cannot lever it over.
+        let hang = centerOfMass
+            ?? Vector3(0, wheels.map(\.position.y).reduce(0, +) / Double(wheels.count), 0)
+        let body = addBody(chassis, at: position, kind: .dynamic, isSensor: false,
+                           rotated: angle, axis: axis, density: 1,
+                           friction: friction, restitution: nil, mass: mass,
+                           centerOfMass: hang)
+        guard let vehicle = Vehicle3D(world: self, chassis: body, wheels: wheels,
+                                      engineTorque: engineTorque,
+                                      topSpeed: topSpeed,
+                                      antiRollStiffness: 1000, leans: balances,
+                                      maxLeanAngle: maxLeanAngle) else {
+            remove(body)
+            noteOnce("the vehicle could not be built; check its wheels")
+            return nil
+        }
+        vehicles.append(vehicle)
+        return vehicle
+    }
+
+    /// Remove a vehicle and its chassis body from the world.
+    public func remove(_ vehicle: Vehicle3D) {
+        // The constraint holds the chassis, so it comes off first.
+        vehicle.destroyBackingVehicle()
+        vehicles.removeAll { $0 === vehicle }
+        remove(vehicle.body)
     }
 
     /// Remove a walking character from the world.
@@ -357,9 +461,12 @@ public final class World3D {
 
     /// Empty the world.
     public func removeAll() {
-        // Joints before bodies: destroying a body would invalidate its joints.
+        // Joints and vehicles before bodies: both are constraints on bodies,
+        // and destroying a body would invalidate them.
         for joint in joints { joint.destroyBackingConstraint() }
         joints.removeAll()
+        for vehicle in vehicles { vehicle.destroyBackingVehicle() }
+        vehicles.removeAll()
         // Characters own their inner bodies and destroy them on release.
         characters.removeAll()
         for body in bodies { cjolt_body_destroy(handle, body.id) }
@@ -396,6 +503,9 @@ public final class World3D {
         // so they move first, against the world as it stands: the order the
         // library's own character update runs in.
         for character in characters { character.advance(dt: clamped) }
+        // A vehicle's wheels are collided and driven by the solver's own step
+        // listener, so all it needs beforehand is this frame's controls.
+        for vehicle in vehicles { vehicle.advance() }
         // One collision pass per ~60 Hz of simulated time keeps long frames
         // stable without costing short ones anything.
         let passes = max(1, Int((clamped * 60).rounded(.up)))

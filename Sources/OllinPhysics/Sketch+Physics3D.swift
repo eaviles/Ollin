@@ -48,6 +48,24 @@ extension Sketch {
         }
     }
 
+    /// Run `draw` with the 3D transform stack moved to `wheel`'s pose, so the
+    /// block draws in the wheel's local space: steered, spinning, and riding
+    /// its suspension. A tire modeled as a cylinder along +y lands right:
+    ///
+    /// ```swift
+    /// for wheel in car.wheels {
+    ///     withWheel(wheel) { drawCylinder(height: wheel.width, radius: wheel.radius) }
+    /// }
+    /// ```
+    public func withWheel(_ wheel: Wheel3D, _ draw: () -> Void) {
+        withState {
+            translate(wheel.center)
+            let angle = wheel.rotationAngle
+            if abs(angle) > 1e-6 { rotate(angle, axis: wheel.rotationAxis) }
+            draw()
+        }
+    }
+
     /// The dynamic body under a canvas point, seen through the active camera,
     /// with the world point where the ray touched it. `nil` when nothing is
     /// there (or no camera is active). Use it to probe; use
