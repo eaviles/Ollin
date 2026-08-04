@@ -34,7 +34,8 @@ final class USDSkinnedScene: Sketch {
     override func draw() {
         background(Color(hex: 0x0D1218))
 
-        camera(pond.camera ?? .orbiting(target: Vector3(0, 0.8, 0), radius: 6, elevation: 0.25))
+        cameraControl(from: pond.camera ?? .orbiting(target: Vector3(0, 0.8, 0),
+                                                     radius: 6, elevation: 0.25))
         ambientLight(Color(white: 0.2))
         for l in pond.lights { light(l) }
         castShadows()

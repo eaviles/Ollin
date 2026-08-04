@@ -35,7 +35,8 @@ final class SkinnedScene: Sketch {
     override func draw() {
         background(Color(hex: 0x081016))
 
-        camera(tidepool.camera ?? .orbiting(target: Vector3(0, 0.6, 0), radius: 5, elevation: 0.3))
+        cameraControl(from: tidepool.camera ?? .orbiting(target: Vector3(0, 0.6, 0),
+                                                         radius: 5, elevation: 0.3))
         for l in tidepool.lights { light(l) }
         castShadows()
 

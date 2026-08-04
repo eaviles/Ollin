@@ -32,7 +32,8 @@ final class AnimatedScene: Sketch {
     override func draw() {
         background(Color(hex: 0x0E1117))
 
-        camera(orrery.camera ?? .orbiting(target: Vector3(0, 1, 0), radius: 6, elevation: 0.3))
+        cameraControl(from: orrery.camera ?? .orbiting(target: Vector3(0, 1, 0),
+                                                       radius: 6, elevation: 0.3))
         for l in orrery.lights { light(l) }
         castShadows()
 

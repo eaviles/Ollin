@@ -34,7 +34,8 @@ final class USDAnimatedScene: Sketch {
     override func draw() {
         background(Color(hex: 0x11141A))
 
-        camera(mobile.camera ?? .orbiting(target: Vector3(0, 1.6, 0), radius: 7, elevation: 0.2))
+        cameraControl(from: mobile.camera ?? .orbiting(target: Vector3(0, 1.6, 0),
+                                                       radius: 7, elevation: 0.2))
         ambientLight(Color(white: 0.2))
         for l in mobile.lights { light(l) }
         castShadows()
