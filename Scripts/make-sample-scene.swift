@@ -5,7 +5,9 @@ import Foundation
 // a small studio stage (floor, a pedestal carrying a torus sculpture as its child
 // node, an orb, and a floor lamp whose warm point light is a child of the lamp
 // group), plus an authored camera, a key spot, and a cool directional fill via the
-// punctual-lights extension. The bundled demo asset for the 3D/LoadedScene example;
+// punctual-lights extension. The pedestal is one mesh of *two primitives* (a body
+// and a darker cap lip, each with its own material), so the asset exercises
+// per-material submeshes. The bundled demo asset for the 3D/LoadedScene example;
 // everything is authored here, so the asset carries no third-party license.
 // Re-run to regenerate:
 //
@@ -213,7 +215,7 @@ func addMaterial(name: String, srgb: (Double, Double, Double),
     return materials.count - 1
 }
 
-func addMesh(_ g: Geometry, material: Int) -> Int {
+func primitive(_ g: Geometry, material: Int) -> [String: Any] {
     let count = g.positions.count / 3
     var lo: [Float] = [.infinity, .infinity, .infinity]
     var hi: [Float] = [-.infinity, -.infinity, -.infinity]
@@ -234,15 +236,33 @@ func addMesh(_ g: Geometry, material: Int) -> Int {
     accessors.append(["bufferView": idxView, "componentType": 5123,
                       "count": g.indices.count, "type": "SCALAR"])
     let idxAcc = accessors.count - 1
-    meshes.append(["primitives": [[
-        "attributes": ["POSITION": posAcc, "NORMAL": normAcc],
-        "indices": idxAcc, "mode": 4, "material": material,
-    ]]])
+    return ["attributes": ["POSITION": posAcc, "NORMAL": normAcc],
+            "indices": idxAcc, "mode": 4, "material": material]
+}
+
+func addMesh(_ g: Geometry, material: Int) -> Int {
+    meshes.append(["primitives": [primitive(g, material: material)]])
     return meshes.count - 1
+}
+
+/// One mesh of several primitives, each wearing its own material (the
+/// multi-material shape `drawScene` splits into per-material parts).
+func addMesh(parts: [(geometry: Geometry, material: Int)]) -> Int {
+    meshes.append(["primitives": parts.map { primitive($0.geometry, material: $0.material) }])
+    return meshes.count - 1
+}
+
+/// A copy of `g` lifted by `y` (authoring several primitives into one mesh's
+/// shared local space).
+func shifted(_ g: Geometry, y: Float) -> Geometry {
+    var out = g
+    for i in stride(from: 1, to: out.positions.count, by: 3) { out.positions[i] += y }
+    return out
 }
 
 let floorMat = addMaterial(name: "Floor", srgb: (0.23, 0.23, 0.26), roughness: 0.95)
 let pedestalMat = addMaterial(name: "Pedestal", srgb: (0.76, 0.72, 0.65))
+let capMat = addMaterial(name: "PedestalCap", srgb: (0.33, 0.31, 0.36), roughness: 0.55)
 let sculptureMat = addMaterial(name: "Sculpture", srgb: (0.87, 0.63, 0.21),
                                metallic: 1, roughness: 0.35)
 let orbMat = addMaterial(name: "Orb", srgb: (0.22, 0.55, 0.55), roughness: 0.4)
@@ -250,7 +270,12 @@ let postMat = addMaterial(name: "LampPost", srgb: (0.16, 0.16, 0.18), roughness:
 let shadeMat = addMaterial(name: "LampShade", srgb: (0.85, 0.42, 0.3), roughness: 0.8)
 
 let floorMesh = addMesh(box(6, 0.1, 6), material: floorMat)
-let pedestalMesh = addMesh(box(0.8, 1.0, 0.8), material: pedestalMat)
+// The pedestal is one mesh of two primitives: the body, and a slightly wider
+// darker cap lip under the sculpture, each with its own material.
+let pedestalMesh = addMesh(parts: [
+    (shifted(box(0.8, 0.92, 0.8), y: -0.04), pedestalMat),
+    (shifted(box(0.86, 0.08, 0.86), y: 0.46), capMat),
+])
 let sculptureMesh = addMesh(torus(radius: 0.34, tube: 0.13, segments: 48, rings: 24),
                             material: sculptureMat)
 let orbMesh = addMesh(sphere(radius: 0.22, segments: 32, rings: 16), material: orbMat)

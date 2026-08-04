@@ -560,6 +560,10 @@ struct GLTFDocument {
         var weights: [SIMD4<Float>] = []
         var targets: [SceneMorphTarget] = []
         var defaultWeights: [Double] = []
+        /// Per-material slices of the merged mesh, filled only when the
+        /// primitives wear two or more distinct materials (`drawScene` then
+        /// draws each with its own); empty for a single-material mesh.
+        var parts: [SceneMeshPart] = []
     }
 
     func localMeshData(at meshIndex: Int) -> LocalMeshData? {
@@ -572,6 +576,10 @@ struct GLTFDocument {
         var allHaveUV = true
         var chosenMaterial: Int?
         var chosenHasTexture = false
+        // Each primitive's slice of the merged index buffer with its material
+        // index (nil for a material-less primitive), the raw material for the
+        // per-material parts below.
+        var primitiveSpans: [(material: Int?, span: Range<Int>)] = []
 
         var joints: [SIMD4<UInt16>] = []
         var weights: [SIMD4<Float>] = []
@@ -652,7 +660,9 @@ struct GLTFDocument {
             }
 
             let primIndices = prim.indices.flatMap(readIndices) ?? Array(0..<UInt32(localPos.count))
+            let spanStart = indices.count
             for idx in primIndices { indices.append(base + idx) }
+            primitiveSpans.append((material: prim.material, span: spanStart..<indices.count))
 
             if prim.attributes["NORMAL"] == nil {
                 Mesh.smoothNormals(into: &normals, positions: positions, indices: indices,
@@ -661,9 +671,41 @@ struct GLTFDocument {
         }
 
         guard !positions.isEmpty, !indices.isEmpty else { return nil }
+
+        // Group the primitive spans by material (nil is its own, material-less
+        // look), in first-appearance order. Two or more distinct materials make
+        // the mesh multi-material: each group becomes a `SceneMeshPart` so
+        // `drawScene` draws it with its own material, while the merged mesh
+        // keeps wearing one material (the first, preferring a textured one) for
+        // standalone draws. Each material resolves once, shared with the merged
+        // mesh's own resolution, so a texture never decodes twice here.
+        var resolvedByIndex: [Int: MeshMaterial?] = [:]
+        func resolved(_ key: Int?) -> MeshMaterial? {
+            guard let key else { return nil }
+            if let hit = resolvedByIndex[key] { return hit }
+            let material = resolveMaterial(key)
+            resolvedByIndex[key] = material
+            return material
+        }
+        var keyOrder: [Int?] = []
+        var spansByKey: [Int?: [Range<Int>]] = [:]
+        for entry in primitiveSpans where !entry.span.isEmpty {
+            if spansByKey[entry.material] == nil { keyOrder.append(entry.material) }
+            spansByKey[entry.material, default: []].append(entry.span)
+        }
+        var parts: [SceneMeshPart] = []
+        if keyOrder.count >= 2 {
+            parts = keyOrder.map { key in
+                var slice: [UInt32] = []
+                for span in spansByKey[key] ?? [] { slice.append(contentsOf: indices[span]) }
+                return SceneMeshPart(indices: slice, material: resolved(key))
+            }
+        }
+
         let mesh = Mesh(positions: positions, normals: normals, indices: indices,
-                        uvs: allHaveUV ? uvs : [], material: chosenMaterial.flatMap(resolveMaterial))
+                        uvs: allHaveUV ? uvs : [], material: resolved(chosenMaterial))
         var data = LocalMeshData(mesh: mesh)
+        data.parts = parts
         if allHaveSkin, !joints.isEmpty {
             data.joints = joints
             data.weights = weights

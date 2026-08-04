@@ -2224,15 +2224,15 @@ final class Drawer {
                                                 worlds: worlds) {
                     modelMatrix = root
                     modelIsIdentity = rootIsIdentity
-                    drawMesh(posed)
+                    drawNodeMesh(posed, node: node)
                     modelMatrix = saved * node.localTransform
                     modelIsIdentity = false
                 } else {
                     noteOnce("a skinned node's skin or vertex weights don't line up; drawing \"\(node.name)\" undeformed.")
-                    drawMesh(shaped)
+                    drawNodeMesh(shaped, node: node)
                 }
             } else {
-                drawMesh(shaped)
+                drawNodeMesh(shaped, node: node)
             }
         }
         for child in node.children {
@@ -2241,6 +2241,28 @@ final class Drawer {
         }
         modelMatrix = saved
         modelIsIdentity = savedIdentity
+    }
+
+    /// Draw a node's shaped (morphed and posed) mesh: one `drawMesh` per
+    /// material slice when the loader split the mesh into `meshParts`, else the
+    /// whole mesh in one call. Each slice is an ordinary mesh sharing the shaped
+    /// vertex arrays (copy-on-write, so no geometry is duplicated) with its own
+    /// triangle list and material, which keeps every mesh rule (fill tint,
+    /// lighting, shadows, reflections) applying per slice with no new machinery.
+    /// A mesh swapped under the node no longer matches the parts and draws
+    /// whole with its own material (the skin-alignment treatment).
+    private func drawNodeMesh(_ shaped: Mesh, node: SceneNode) {
+        guard !node.meshParts.isEmpty,
+              node.partsVertexCount == shaped.positions.count else {
+            drawMesh(shaped)
+            return
+        }
+        for part in node.meshParts {
+            var slice = shaped
+            slice.indices = part.indices
+            slice.material = part.material
+            drawMesh(slice)
+        }
     }
 
     /// The base color baked into a mesh's vertices: the current solid `fill`, or

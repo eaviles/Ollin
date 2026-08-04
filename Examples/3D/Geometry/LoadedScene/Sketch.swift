@@ -15,7 +15,10 @@ import Foundation
 /// orbit, scroll to dolly, right-drag to pan. Lights ride their nodes, so a
 /// light's carrier moved from `draw()` (or by a scene animation) carries its
 /// light along. The bundled `scene.gltf` is a small stage authored by the
-/// project itself (regenerate it with `Scripts/make-sample-scene.swift`).
+/// project itself (regenerate it with `Scripts/make-sample-scene.swift`); its
+/// pedestal is one mesh of two primitives with different materials (a body and
+/// a darker cap lip), which `drawScene` renders as authored, each slice in its
+/// own material.
 ///
 /// Point this at any glTF scene by setting `OLLIN_SCENE` to its path. Files from
 /// mesh-only formats (`.obj`, `.stl`, …) load too, as a single-node scene with no

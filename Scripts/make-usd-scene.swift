@@ -7,8 +7,11 @@ import Foundation
 // authored camera, and a UsdLux lighting rig covering every mapped light kind
 // (a distant sunset key, a sphere fill, a cone-shaped sphere beam on the gem, a
 // rect backlight panel, an overhead disk pool, and a cylinder floor glow). The
-// bundled demo asset for the 3D/USDScene example; everything is authored here,
-// so the asset carries no third-party license.
+// gem is two-tone: a material-binding GeomSubset gives its lower (pavilion)
+// facets a garnet material while the crown keeps the mesh's own amber binding,
+// so the asset exercises per-material submeshes and the subset-remainder
+// inheritance. The bundled demo asset for the 3D/USDScene example; everything
+// is authored here, so the asset carries no third-party license.
 //
 // One deliberate choice, bounded by what the platform importer exposes: diffuse
 // colors are authored as the *display* values the scene reader hands back (the
@@ -199,7 +202,9 @@ func triples(_ pts: [V3]) -> String {
 }
 
 func meshPrim(_ name: String, _ geo: Geo, translate: V3? = nil,
-              material: String, indent: Int) -> String {
+              material: String,
+              subsets: [(name: String, faces: [Int], material: String)] = [],
+              indent: Int) -> String {
     let pad = String(repeating: "    ", count: indent)
     var lines: [String] = []
     lines.append("\(pad)def Mesh \"\(name)\"")
@@ -216,6 +221,18 @@ func meshPrim(_ name: String, _ geo: Geo, translate: V3? = nil,
     lines.append("\(pad)    int[] faceVertexCounts = [\(geo.counts.map(String.init).joined(separator: ", "))]")
     lines.append("\(pad)    int[] faceVertexIndices = [\(geo.indices.map(String.init).joined(separator: ", "))]")
     lines.append("\(pad)    rel material:binding = </Court/Materials/\(material)>")
+    // Material-binding subsets: the named faces wear their own material, the
+    // rest keep the mesh's binding above.
+    for subset in subsets {
+        lines.append("")
+        lines.append("\(pad)    def GeomSubset \"\(subset.name)\"")
+        lines.append("\(pad)    {")
+        lines.append("\(pad)        uniform token elementType = \"face\"")
+        lines.append("\(pad)        uniform token familyName = \"materialBind\"")
+        lines.append("\(pad)        int[] indices = [\(subset.faces.map(String.init).joined(separator: ", "))]")
+        lines.append("\(pad)        rel material:binding = </Court/Materials/\(subset.material)>")
+        lines.append("\(pad)    }")
+    }
     lines.append("\(pad)}")
     return lines.joined(separator: "\n")
 }
@@ -379,7 +396,9 @@ def Xform "Court"
 
 \(meshPrim("base", plinthTall, material: "stone", indent: 3))
 
-\(meshPrim("gem", stone, translate: (0, 0.97, 0), material: "amber", indent: 3))
+\(meshPrim("gem", stone, translate: (0, 0.97, 0), material: "amber",
+           subsets: [("pavilion", Array(stride(from: 1, to: 12, by: 2)), "garnet")],
+           indent: 3))
         }
 
         def Xform "plinthRing"
@@ -417,6 +436,8 @@ def Xform "Court"
 \(materialPrim("lapis", color: (0.16, 0.3, 0.62), roughness: 0.35))
 
 \(materialPrim("amber", color: (0.92, 0.62, 0.18), roughness: 0.25))
+
+\(materialPrim("garnet", color: (0.56, 0.14, 0.2), roughness: 0.3))
 
 \(materialPrim("verdigris", color: (0.35, 0.62, 0.55), roughness: 0.4, metallic: 0.6))
     }

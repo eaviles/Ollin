@@ -131,11 +131,17 @@ extension Scene {
         }
 
         var mesh: Mesh?
+        var meshParts: [SceneMeshPart] = []
         if prim.typeName == "Mesh", !renderSkipped {
             // A deforming mesh must keep the authored points indexed: every
             // skel primvar and blend-shape offset is authored against them.
-            mesh = buildUSDMesh(prim, keepIndexed: prim.isSkelDeforming,
-                                material: resolveUSDMaterial(for: prim, build: &build))
+            let base = resolveUSDMaterial(for: prim, build: &build)
+            let subsets = usdMaterialSubsets(of: prim, base: base, build: &build)
+            if let built = buildUSDMesh(prim, keepIndexed: prim.isSkelDeforming,
+                                        material: base, subsets: subsets) {
+                mesh = built.mesh
+                meshParts = built.parts
+            }
         }
 
         let index = build.nextIndex
@@ -151,6 +157,10 @@ extension Scene {
         }
         var node = SceneNode(name: prim.name, mesh: mesh, children: children,
                              localTransform: f4x4(local), sourceIndex: index)
+        if let mesh, !meshParts.isEmpty {
+            node.meshParts = meshParts
+            node.partsVertexCount = mesh.positions.count
+        }
         // Cameras and lights ride their nodes: the projection / emission
         // halves attach here and the pose resolves from the node's world
         // transform on every `cameras` / `lights` read.
@@ -206,6 +216,13 @@ extension Scene {
 
     // MARK: - Meshes
 
+    /// One material-binding GeomSubset resolved for the mesh build: the
+    /// authored face indices and the material those faces wear.
+    struct USDMaterialSubset {
+        var faces: [Int]
+        var material: MeshMaterial?
+    }
+
     /// A Mesh prim's geometry from its authored data. The indexed form keeps
     /// the authored points (vertex-interpolated normals and texture
     /// coordinates honored, anything else smoothed or dropped); the general
@@ -213,9 +230,14 @@ extension Scene {
     /// faceVarying or per-face, so those looks survive. Faces
     /// fan-triangulate in authored winding (reversed under a `leftHanded`
     /// orientation); a face with a bad index is skipped whole rather than
-    /// mis-wound. Returns `nil` when the geometry is unreadable.
-    static func buildUSDMesh(_ prim: USDPrim, keepIndexed: Bool,
-                             material: MeshMaterial?) -> Mesh? {
+    /// mis-wound. `subsets` partitions the faces into per-material `parts`
+    /// (first claim wins on an overlap; faces no subset names keep the mesh's
+    /// own `material` as the remainder part), empty when the mesh authored
+    /// none or no subset claims a face. Returns `nil` when the geometry is
+    /// unreadable.
+    static func buildUSDMesh(_ prim: USDPrim, keepIndexed: Bool, material: MeshMaterial?,
+                             subsets: [USDMaterialSubset] = [])
+        -> (mesh: Mesh, parts: [SceneMeshPart])? {
         guard let pointsFlat = prim.attribute("points")?.authoredValue?.usdFlatTuples(arity: 3),
               case .intArray(let counts)? = prim.attribute("faceVertexCounts")?.authoredValue,
               case .intArray(let rawIndices)? = prim.attribute("faceVertexIndices")?.authoredValue
@@ -242,40 +264,83 @@ extension Scene {
                                     defaultInterpolation: nil, pointCount: pointCount,
                                     cornerCount: cornerCount, faceCount: faceCount)
 
+        // Material-binding subsets assign each authored face a part slot
+        // (first claim wins on an overlap, out-of-range face indices are
+        // ignored); the faces no subset claims form a remainder slot wearing
+        // the mesh's own material. No claimed face at all means no parts:
+        // the mesh draws whole, exactly the subset-less path.
+        var slotOfFace: [Int]?
+        var partMaterials: [MeshMaterial?] = []
+        if !subsets.isEmpty {
+            var assignment = [Int](repeating: -1, count: faceCount)
+            var claimed = false
+            for (s, subset) in subsets.enumerated() {
+                for f in subset.faces where f >= 0 && f < faceCount && assignment[f] == -1 {
+                    assignment[f] = s
+                    claimed = true
+                }
+            }
+            if claimed {
+                partMaterials = subsets.map(\.material)
+                if assignment.contains(-1) {
+                    let remainder = subsets.count
+                    partMaterials.append(material)
+                    for i in assignment.indices where assignment[i] == -1 {
+                        assignment[i] = remainder
+                    }
+                }
+                slotOfFace = assignment
+            }
+        }
+
         // Per-corner and per-face data can't ride shared vertices; expand
         // unless the mesh must stay indexed (the deforming form, where such a
         // set drops instead).
         let expand = !keepIndexed && (normalsSpec?.needsExpansion == true
             || stSpec?.needsExpansion == true)
-        return expand
+        let built = expand
             ? expandedUSDMesh(points: points, counts: counts, rawIndices: rawIndices,
                               leftHanded: leftHanded, normalsSpec: normalsSpec, stSpec: stSpec,
-                              material: material)
+                              material: material, slotOfFace: slotOfFace,
+                              slotCount: partMaterials.count)
             : indexedUSDMesh(points: points, counts: counts, rawIndices: rawIndices,
                              leftHanded: leftHanded, normalsSpec: normalsSpec, stSpec: stSpec,
-                             material: material)
+                             material: material, slotOfFace: slotOfFace,
+                             slotCount: partMaterials.count)
+        guard let built else { return nil }
+        // A slot whose faces all skipped (bad indices) contributes nothing.
+        let parts = zip(built.partIndices, partMaterials)
+            .filter { !$0.0.isEmpty }
+            .map { SceneMeshPart(indices: $0.0, material: $0.1) }
+        return (built.mesh, parts)
     }
 
     /// The indexed form: the mesh on its authored points.
     private static func indexedUSDMesh(points: [Vector3], counts: [Int64],
                                        rawIndices: [Int64], leftHanded: Bool,
                                        normalsSpec: USDPrimvarSpec?, stSpec: USDPrimvarSpec?,
-                                       material: MeshMaterial?) -> Mesh? {
+                                       material: MeshMaterial?, slotOfFace: [Int]?,
+                                       slotCount: Int)
+        -> (mesh: Mesh, partIndices: [[UInt32]])? {
         let pointCount = points.count
         var indices: [UInt32] = []
+        var partIndices = [[UInt32]](repeating: [], count: slotCount)
         var cursor = 0
+        var faceIndex = -1
         for count in counts {
+            faceIndex += 1
             let c = Int(count)
             defer { cursor += c }
             guard c >= 3, cursor + c <= rawIndices.count else { continue }
             let face = Array(rawIndices[cursor..<(cursor + c)])
             guard face.allSatisfy({ $0 >= 0 && $0 < pointCount }) else { continue }
+            let slot = slotOfFace?[faceIndex]
             for k in 1..<(c - 1) {
-                if leftHanded {
-                    indices += [UInt32(face[0]), UInt32(face[k + 1]), UInt32(face[k])]
-                } else {
-                    indices += [UInt32(face[0]), UInt32(face[k]), UInt32(face[k + 1])]
-                }
+                let i0 = UInt32(face[0])
+                let i1 = UInt32(face[leftHanded ? k + 1 : k])
+                let i2 = UInt32(face[leftHanded ? k : k + 1])
+                indices += [i0, i1, i2]
+                if let slot { partIndices[slot] += [i0, i1, i2] }
             }
         }
         guard !indices.isEmpty else { return nil }
@@ -294,8 +359,8 @@ extension Scene {
         if let spec = stSpec, spec.interpolation == .vertex {
             for i in 0..<pointCount { uvs.append(uv(spec.element(at: i))) }
         }
-        return Mesh(positions: points, normals: normals, indices: indices,
-                    uvs: uvs, material: material)
+        return (Mesh(positions: points, normals: normals, indices: indices,
+                     uvs: uvs, material: material), partIndices)
     }
 
     /// The expanded form: one vertex per face corner, so per-corner and
@@ -303,12 +368,15 @@ extension Scene {
     private static func expandedUSDMesh(points: [Vector3], counts: [Int64],
                                         rawIndices: [Int64], leftHanded: Bool,
                                         normalsSpec: USDPrimvarSpec?, stSpec: USDPrimvarSpec?,
-                                        material: MeshMaterial?) -> Mesh? {
+                                        material: MeshMaterial?, slotOfFace: [Int]?,
+                                        slotCount: Int)
+        -> (mesh: Mesh, partIndices: [[UInt32]])? {
         let pointCount = points.count
         var positions: [Vector3] = []
         var normals: [Vector3] = []
         var uvs: [Vector2] = []
         var indices: [UInt32] = []
+        var partIndices = [[UInt32]](repeating: [], count: slotCount)
         var haveAllNormals = normalsSpec != nil
         var haveAllUVs = stSpec != nil
 
@@ -353,12 +421,13 @@ extension Scene {
                     haveAllUVs = false
                 }
             }
+            let slot = slotOfFace?[faceIndex]
             for k in 1..<(c - 1) {
-                if leftHanded {
-                    indices += [first, first + UInt32(k + 1), first + UInt32(k)]
-                } else {
-                    indices += [first, first + UInt32(k), first + UInt32(k + 1)]
-                }
+                let i0 = first
+                let i1 = first + UInt32(leftHanded ? k + 1 : k)
+                let i2 = first + UInt32(leftHanded ? k : k + 1)
+                indices += [i0, i1, i2]
+                if let slot { partIndices[slot] += [i0, i1, i2] }
             }
         }
         guard !indices.isEmpty else { return nil }
@@ -368,8 +437,8 @@ extension Scene {
             Mesh.smoothNormals(into: &normals, positions: positions, indices: indices,
                                vertexRange: 0..<positions.count)
         }
-        return Mesh(positions: positions, normals: normals, indices: indices,
-                    uvs: haveAllUVs ? uvs : [], material: material)
+        return (Mesh(positions: positions, normals: normals, indices: indices,
+                     uvs: haveAllUVs ? uvs : [], material: material), partIndices)
     }
 
     private static func unitNormal(_ c: [Double]?) -> Vector3 {
@@ -394,23 +463,52 @@ extension Scene {
     /// when none of those are authored.
     private static func resolveUSDMaterial(for prim: USDPrim,
                                            build: inout USDBuild) -> MeshMaterial? {
-        if let target = prim.relationship("material:binding")?.targets.first {
-            let path = usdPrimPath(ofPropertyPath: target)
-            if let cached = build.materials[path] {
-                if let cached { return cached }
-            } else {
-                let resolved = build.stage.prim(atPath: path).flatMap {
-                    resolvePreviewSurface($0, build: &build)
-                }
-                build.materials[path] = resolved
-                if let resolved { return resolved }
-            }
-        }
+        if let bound = boundMaterial(of: prim, build: &build) { return bound }
         if let flat = prim.attribute("primvars:displayColor")?.authoredValue?
             .usdFlatTuples(arity: 3), flat.count >= 3 {
             return MeshMaterial(baseColor: encodedColor(flat[0], flat[1], flat[2]))
         }
         return nil
+    }
+
+    /// The material bound to `prim` (a mesh or one of its GeomSubsets) through
+    /// its `material:binding` relationship, resolved once per material path
+    /// through the build's cache. `nil` when nothing is bound or the target
+    /// resolves to nothing.
+    private static func boundMaterial(of prim: USDPrim,
+                                      build: inout USDBuild) -> MeshMaterial? {
+        guard let target = prim.relationship("material:binding")?.targets.first
+        else { return nil }
+        let path = usdPrimPath(ofPropertyPath: target)
+        if let cached = build.materials[path] { return cached }
+        let resolved = build.stage.prim(atPath: path).flatMap {
+            resolvePreviewSurface($0, build: &build)
+        }
+        build.materials[path] = resolved
+        return resolved
+    }
+
+    /// The mesh prim's material-binding GeomSubset children, in authored
+    /// order: each subset's authored face indices plus the material its own
+    /// binding resolves to. Only the `materialBind` family partitions
+    /// materials (a physics or other family is ignored), and only face
+    /// subsets can (the schema's default `elementType`); a subset with no
+    /// resolvable binding keeps the mesh's own material for its faces (the
+    /// schema's binding inheritance).
+    private static func usdMaterialSubsets(of prim: USDPrim, base: MeshMaterial?,
+                                           build: inout USDBuild) -> [USDMaterialSubset] {
+        var out: [USDMaterialSubset] = []
+        for child in prim.children where child.typeName == "GeomSubset" {
+            guard child.attribute("familyName")?.authoredValue?.usdToken == "materialBind"
+            else { continue }
+            if let element = child.attribute("elementType")?.authoredValue?.usdToken,
+               element != "face" { continue }
+            guard case .intArray(let faces)? = child.attribute("indices")?.authoredValue
+            else { continue }
+            out.append(USDMaterialSubset(faces: faces.map(Int.init),
+                                         material: boundMaterial(of: child, build: &build) ?? base))
+        }
+        return out
     }
 
     /// The first `UsdPreviewSurface` shader in the material's subtree

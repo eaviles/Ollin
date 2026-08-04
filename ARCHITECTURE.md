@@ -2263,6 +2263,30 @@ batch/export/combine gating all apply with zero new rules, and
 `SceneLoaderTests.drawSceneMatchesManualTransforms` pins that a drawn scene is
 byte-identical to the equivalent manual transform-stack calls.
 
+**Per-material submeshes.** A multi-material mesh (glTF primitives with
+distinct materials; a USD mesh partitioned by `materialBind` `GeomSubset`
+children) keeps its node's `mesh` *whole*, one merged vertex order, and adds
+internal `SceneMeshPart`s on the node: per-material triangle lists indexing
+that same mesh, plus the material each wears. The one-vertex-order design is
+what keeps deformation untouched: morph deltas and skin weights stay aligned
+with the merged positions, posing happens once, and the draw then emits one
+ordinary `drawMesh` per part, a struct copy of the posed mesh with the part's
+`indices` and `material` swapped in (the vertex arrays share storage through
+copy-on-write, so nothing is duplicated). Loaders build parts only when the
+split is real: the glTF merge records each primitive's index span and groups
+spans by material index in first-appearance order, emitting parts for two or
+more distinct looks (each material resolves once, shared with the merged
+mesh's own pick); the USD build maps authored faces to part slots (first
+subset claims a contested face, out-of-range face indices are ignored,
+unclaimed faces form a remainder wearing the mesh's own binding, and a subset
+family other than `materialBind` never partitions) and collects each face's
+fan triangles into its slot during the one triangulation walk, in both the
+indexed and the expanded forms. A single-material node carries no parts and
+draws on the untouched path, byte-identical, which the unchanged snapshot
+corpus pins; `partsVertexCount` guards a mesh swapped under the node back to
+the whole-mesh draw (the skin-alignment treatment), pinned by render probe
+beside the parts-vs-manual byte-equality probe in `SceneLoaderTests`.
+
 **Resolution choices, and why:**
 
 - **Cameras.** Eye = the node's world translation; the view direction is the

@@ -269,6 +269,17 @@ public struct SceneNode: Sendable {
     var vertexWeights: [SIMD4<Float>] = []
     /// The mesh's morph targets: per-vertex displacements `weights` blends in.
     var morphTargets: [SceneMorphTarget] = []
+    /// The mesh's per-material slices: index groups into the mesh's own vertex
+    /// arrays, each wearing one of the file's materials. Loaders fill these
+    /// only when a mesh genuinely carries more than one material binding
+    /// (glTF primitives with distinct materials, USD material-binding
+    /// GeomSubsets); `drawScene` then draws each slice with its material.
+    /// Empty for a single-material mesh, which draws whole, untouched.
+    var meshParts: [SceneMeshPart] = []
+    /// The vertex count `meshParts` was built against: the alignment guard, so
+    /// a mesh swapped under the node draws whole (with its own material)
+    /// rather than mis-indexing stale parts.
+    var partsVertexCount = 0
     /// The authored light riding this node, in the node's own frame (emitting
     /// down local -z, extents at authored size, intensity already normalized);
     /// `Scene.lights` resolves it through the node's world transform on every
@@ -334,6 +345,18 @@ public struct SceneNode: Sendable {
         let f = Float(factor)
         localTransform = localTransform * simd_float4x4(diagonal: SIMD4<Float>(f, f, f, 1))
     }
+}
+
+/// One per-material slice of a node's mesh: the triangles (as indices into the
+/// node mesh's vertex arrays) that wear one material. The mesh itself stays
+/// whole, one vertex order the deform data (morph targets, skin weights)
+/// aligns with, so posing happens once and each slice draws from the posed
+/// arrays.
+struct SceneMeshPart: Sendable {
+    /// Triangle list into the node mesh's `positions`/`normals`/`uvs`.
+    var indices: [UInt32]
+    /// The slice's material; `nil` draws the plain current `fill`.
+    var material: MeshMaterial?
 }
 
 // MARK: - Node-riding light and camera payloads
@@ -469,6 +492,10 @@ extension Scene {
                                  sourceIndex: ni,
                                  trs: n.authoredTRS)
             if let meshData {
+                if !meshData.parts.isEmpty {
+                    node.meshParts = meshData.parts
+                    node.partsVertexCount = meshData.mesh.positions.count
+                }
                 if !meshData.targets.isEmpty {
                     node.morphTargets = meshData.targets
                     // The instance's weights: the node's own, else the mesh's

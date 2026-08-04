@@ -924,6 +924,220 @@ struct SceneLoaderTests {
         #expect((node.position - Vector3(3, 0, 0)).length < 1e-6)
     }
 
+    // MARK: Per-material parts
+
+    /// Channel-tolerance color check: the linear-to-sRGB re-encode lands a
+    /// hair off exact literals (1 arrives as 0.999…).
+    private func matches(_ color: Color?, red: Double, green: Double, blue: Double) -> Bool {
+        guard let color else { return false }
+        return abs(color.red - red) < 1e-6 && abs(color.green - green) < 1e-6
+            && abs(color.blue - blue) < 1e-6
+    }
+
+    /// Two glTF primitives on the shared triangle buffer wearing distinct
+    /// materials (red, then blue), plus a `materials` override hook for the
+    /// shared-material variant.
+    private func duoJSON(materials: String = """
+        [{"pbrMetallicRoughness": {"baseColorFactor": [1, 0, 0, 1]}},
+         {"pbrMetallicRoughness": {"baseColorFactor": [0, 0, 1, 1]}}]
+        """, secondMaterial: Int = 1) -> String {
+        """
+        { "asset": {"version": "2.0"},
+          "scene": 0,
+          "scenes": [{"nodes": [0]}],
+          "nodes": [{"name": "duo", "mesh": 0}],
+          "meshes": [{"primitives": [
+            {"attributes": {"POSITION": 0}, "indices": 1, "mode": 4, "material": 0},
+            {"attributes": {"POSITION": 0}, "indices": 1, "mode": 4, "material": \(secondMaterial)}
+          ]}],
+          "materials": \(materials),
+          "accessors": [
+            {"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3"},
+            {"bufferView": 1, "componentType": 5123, "count": 3, "type": "SCALAR"}],
+          "bufferViews": [
+            {"buffer": 0, "byteOffset": 0, "byteLength": 36},
+            {"buffer": 0, "byteOffset": 36, "byteLength": 6}],
+          "buffers": [{"uri": "data:application/octet-stream;base64,\(Self.triangleBufferB64)",
+                       "byteLength": 42}]
+        }
+        """
+    }
+
+    @Test func gltfMultiMaterialMeshSplitsIntoParts() throws {
+        let scene = try #require(try loadScene(duoJSON()))
+        let node = try #require(scene.node("duo"))
+        let mesh = try #require(node.mesh)
+
+        // Each primitive's slice keeps its own material; together the parts
+        // partition the merged index buffer exactly, and the merged mesh still
+        // wears the first material for standalone draws.
+        #expect(node.meshParts.count == 2)
+        #expect(node.meshParts.map(\.indices) == [[0, 1, 2], [3, 4, 5]])
+        #expect(node.meshParts.flatMap(\.indices) == mesh.indices)
+        #expect(node.partsVertexCount == mesh.positions.count)
+        #expect(matches(node.meshParts[0].material?.baseColor, red: 1, green: 0, blue: 0))
+        #expect(matches(node.meshParts[1].material?.baseColor, red: 0, green: 0, blue: 1))
+        #expect(matches(mesh.material?.baseColor, red: 1, green: 0, blue: 0))
+    }
+
+    @Test func gltfSharedMaterialPrimitivesCarryNoParts() throws {
+        // Both primitives wear material 0: one look, so nothing to split.
+        let scene = try #require(try loadScene(duoJSON(secondMaterial: 0)))
+        let node = try #require(scene.node("duo"))
+        #expect(node.mesh != nil)
+        #expect(node.meshParts.isEmpty)
+    }
+
+    /// A four-triangle USD sheet with two material-binding subsets (red faces
+    /// 0 and 2, a blue face 1) and one unclaimed face keeping the mesh's own
+    /// green display color. `family` parameterizes the family-name gate.
+    private func sheetUSDA(family: String = "materialBind") -> String {
+        """
+        #usda 1.0
+        (
+            defaultPrim = "Stage"
+        )
+
+        def Xform "Stage"
+        {
+            def Mesh "sheet"
+            {
+                uniform token subdivisionScheme = "none"
+                point3f[] points = [(0, 0, 0), (1, 0, 0), (0, 1, 0),
+                                    (2, 0, 0), (3, 0, 0), (2, 1, 0),
+                                    (4, 0, 0), (5, 0, 0), (4, 1, 0),
+                                    (6, 0, 0), (7, 0, 0), (6, 1, 0)]
+                int[] faceVertexCounts = [3, 3, 3, 3]
+                int[] faceVertexIndices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+                color3f[] primvars:displayColor = [(0, 1, 0)]
+
+                def GeomSubset "reds"
+                {
+                    uniform token elementType = "face"
+                    uniform token familyName = "\(family)"
+                    int[] indices = [0, 2]
+                    rel material:binding = </Stage/Materials/red>
+                }
+
+                def GeomSubset "blues"
+                {
+                    uniform token elementType = "face"
+                    uniform token familyName = "\(family)"
+                    int[] indices = [1]
+                    rel material:binding = </Stage/Materials/blue>
+                }
+            }
+
+            def Scope "Materials"
+            {
+                def Material "red"
+                {
+                    token outputs:surface.connect = </Stage/Materials/red/pbr.outputs:surface>
+
+                    def Shader "pbr"
+                    {
+                        uniform token info:id = "UsdPreviewSurface"
+                        color3f inputs:diffuseColor = (1, 0, 0)
+                        token outputs:surface
+                    }
+                }
+
+                def Material "blue"
+                {
+                    token outputs:surface.connect = </Stage/Materials/blue/pbr.outputs:surface>
+
+                    def Shader "pbr"
+                    {
+                        uniform token info:id = "UsdPreviewSurface"
+                        color3f inputs:diffuseColor = (0, 0, 1)
+                        token outputs:surface
+                    }
+                }
+            }
+        }
+        """
+    }
+
+    @Test func usdMaterialSubsetsSplitIntoParts() throws {
+        let scene = try #require(try loadUSDScene(sheetUSDA()))
+        let node = try #require(scene.node("sheet"))
+        let mesh = try #require(node.mesh)
+
+        // Subsets in authored order, then the remainder: faces 0 and 2 wear
+        // red, face 1 blue, and the unclaimed face 3 keeps the mesh's own
+        // display color. Together the parts cover the whole index buffer.
+        #expect(node.meshParts.count == 3)
+        #expect(node.meshParts.map(\.indices)
+                == [[0, 1, 2, 6, 7, 8], [3, 4, 5], [9, 10, 11]])
+        #expect(node.meshParts.flatMap(\.indices).sorted() == mesh.indices.sorted())
+        #expect(node.partsVertexCount == mesh.positions.count)
+        #expect(matches(node.meshParts[0].material?.baseColor, red: 1, green: 0, blue: 0))
+        #expect(matches(node.meshParts[1].material?.baseColor, red: 0, green: 0, blue: 1))
+        #expect(matches(node.meshParts[2].material?.baseColor, red: 0, green: 1, blue: 0))
+
+        // A GeomSubset is consumed by the mesh read, never a node of its own.
+        #expect(scene.node("reds") == nil)
+    }
+
+    @Test func usdSubsetCoveringAllFacesOverridesTheBaseBinding() throws {
+        // One subset claims every face: its material wins for the whole
+        // surface (the mesh's own display color never shows).
+        let scene = try #require(try loadUSDScene("""
+        #usda 1.0
+        (
+            defaultPrim = "Stage"
+        )
+
+        def Xform "Stage"
+        {
+            def Mesh "pane"
+            {
+                uniform token subdivisionScheme = "none"
+                point3f[] points = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)]
+                int[] faceVertexCounts = [3, 3]
+                int[] faceVertexIndices = [0, 1, 2, 0, 2, 3]
+                color3f[] primvars:displayColor = [(0, 1, 0)]
+
+                def GeomSubset "all"
+                {
+                    uniform token familyName = "materialBind"
+                    int[] indices = [0, 1]
+                    rel material:binding = </Stage/Materials/red>
+                }
+            }
+
+            def Scope "Materials"
+            {
+                def Material "red"
+                {
+                    token outputs:surface.connect = </Stage/Materials/red/pbr.outputs:surface>
+
+                    def Shader "pbr"
+                    {
+                        uniform token info:id = "UsdPreviewSurface"
+                        color3f inputs:diffuseColor = (1, 0, 0)
+                        token outputs:surface
+                    }
+                }
+            }
+        }
+        """))
+        let node = try #require(scene.node("pane"))
+        let mesh = try #require(node.mesh)
+        #expect(node.meshParts.count == 1)
+        #expect(node.meshParts[0].indices == mesh.indices)
+        #expect(matches(node.meshParts[0].material?.baseColor, red: 1, green: 0, blue: 0))
+    }
+
+    @Test func usdNonMaterialBindSubsetsAreIgnored() throws {
+        // A physics (or any non-materialBind) family doesn't partition
+        // materials: the mesh stays whole.
+        let scene = try #require(try loadUSDScene(sheetUSDA(family: "physicsCollision")))
+        let node = try #require(scene.node("sheet"))
+        #expect(node.mesh != nil)
+        #expect(node.meshParts.isEmpty)
+    }
+
     // MARK: The draw path
 
     /// `drawScene` must place geometry exactly as the equivalent manual
@@ -934,6 +1148,35 @@ struct SceneLoaderTests {
         let viaScene = try #require(OllinApp.image(of: DrawScenePlacement.make(.scene), frame: 1))
         let manual = try #require(OllinApp.image(of: DrawScenePlacement.make(.manual), frame: 1))
         #expect(rgba(viaScene) == rgba(manual))
+    }
+
+    /// A multi-material node draws one ordinary mesh per part: byte-identical
+    /// to the same slices drawn by hand with their materials, and both looks
+    /// genuinely reach the frame.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func drawSceneDrawsEachMaterialPart() throws {
+        let viaScene = try #require(OllinApp.image(of: DrawMaterialParts.make(.scene), frame: 1))
+        let manual = try #require(OllinApp.image(of: DrawMaterialParts.make(.manual), frame: 1))
+        let scenePixels = rgba(viaScene)
+        #expect(scenePixels == rgba(manual))
+
+        // Guard against an all-background equality: a red-dominant and a
+        // blue-dominant pixel both exist.
+        var sawRed = false, sawBlue = false
+        for i in stride(from: 0, to: scenePixels.count, by: 4) {
+            if scenePixels[i] > 128, scenePixels[i + 2] < 64 { sawRed = true }
+            if scenePixels[i + 2] > 128, scenePixels[i] < 64 { sawBlue = true }
+        }
+        #expect(sawRed && sawBlue)
+    }
+
+    /// A mesh swapped under a parted node no longer matches the parts and must
+    /// draw whole with its own material, never through the stale slices.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSwappedMeshDrawsWholeThroughItsOwnMaterial() throws {
+        let swapped = try #require(OllinApp.image(of: DrawMaterialParts.make(.swapped), frame: 1))
+        let plain = try #require(OllinApp.image(of: DrawMaterialParts.make(.swappedManual), frame: 1))
+        #expect(rgba(swapped) == rgba(plain))
     }
 
     private func rgba(_ image: CGImage) -> [UInt8] {
@@ -988,6 +1231,88 @@ private final class DrawScenePlacement: Sketch {
                 translate(-0.9, 0.3, 0)
                 drawMesh(.sphere(radius: 0.5))
             }
+        }
+        noLoop()
+    }
+}
+
+/// The per-material-part probe: one node whose mesh splits into a red left quad
+/// and a blue right quad, drawn through `drawScene` or as the equivalent manual
+/// per-part meshes. The swapped modes replace the node's mesh after the split,
+/// where the stale parts must not be consulted.
+private final class DrawMaterialParts: Sketch {
+    enum Mode { case scene, manual, swapped, swappedManual }
+    private var mode: Mode = .scene
+
+    static func make(_ mode: Mode) -> DrawMaterialParts {
+        let sketch = DrawMaterialParts()
+        sketch.mode = mode
+        return sketch
+    }
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    /// Two unit quads side by side, facing +z, no material of their own.
+    private static var twoQuads: Mesh {
+        var positions: [Vector3] = []
+        var normals: [Vector3] = []
+        var indices: [UInt32] = []
+        for xo in [-1.2, 0.2] {
+            let base = UInt32(positions.count)
+            positions += [Vector3(xo, -0.5, 0), Vector3(xo + 1, -0.5, 0),
+                          Vector3(xo + 1, 0.5, 0), Vector3(xo, 0.5, 0)]
+            normals += [Vector3](repeating: Vector3(0, 0, 1), count: 4)
+            indices += [base, base + 1, base + 2, base, base + 2, base + 3]
+        }
+        return Mesh(positions: positions, normals: normals, indices: indices)
+    }
+
+    /// A single green quad with a *different* vertex count than `twoQuads`.
+    private static var greenQuad: Mesh {
+        var mesh = Mesh(positions: [Vector3(-0.5, -0.5, 0), Vector3(0.5, -0.5, 0),
+                                    Vector3(0.5, 0.5, 0), Vector3(-0.5, 0.5, 0)],
+                        normals: [Vector3](repeating: Vector3(0, 0, 1), count: 4),
+                        indices: [0, 1, 2, 0, 2, 3])
+        mesh.material = MeshMaterial(baseColor: Color(red: 0, green: 1, blue: 0))
+        return mesh
+    }
+
+    private static func partedNode() -> SceneNode {
+        let mesh = twoQuads
+        var node = SceneNode(name: "duo", mesh: mesh)
+        node.meshParts = [
+            SceneMeshPart(indices: Array(mesh.indices[0..<6]),
+                          material: MeshMaterial(baseColor: Color(red: 1, green: 0, blue: 0))),
+            SceneMeshPart(indices: Array(mesh.indices[6..<12]),
+                          material: MeshMaterial(baseColor: Color(red: 0, green: 0, blue: 1))),
+        ]
+        node.partsVertexCount = mesh.positions.count
+        return node
+    }
+
+    override func draw() {
+        background(Color(white: 0.06))
+        camera(.orbiting(radius: 4, elevation: 0.2))
+        directionalLight(.white, direction: Vector3(-0.3, -0.5, -0.8))
+        switch mode {
+        case .scene:
+            drawScene(Ollin.Scene(nodes: [Self.partedNode()]))
+        case .manual:
+            let mesh = Self.twoQuads
+            var left = mesh
+            left.indices = Array(mesh.indices[0..<6])
+            left.material = MeshMaterial(baseColor: Color(red: 1, green: 0, blue: 0))
+            var right = mesh
+            right.indices = Array(mesh.indices[6..<12])
+            right.material = MeshMaterial(baseColor: Color(red: 0, green: 0, blue: 1))
+            drawMesh(left)
+            drawMesh(right)
+        case .swapped:
+            var node = Self.partedNode()
+            node.mesh = Self.greenQuad
+            drawScene(Ollin.Scene(nodes: [node]))
+        case .swappedManual:
+            drawMesh(Self.greenQuad)
         }
         noLoop()
     }

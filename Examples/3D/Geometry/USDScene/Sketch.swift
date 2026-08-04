@@ -13,6 +13,9 @@ import Foundation
 /// every mapped kind: a distant sunset key, a sphere fill, a cone-shaped sphere
 /// beam on the gem, a rect backlight panel, an overhead disk pool, and a
 /// cylinder floor glow (regenerate it with `Scripts/make-usd-scene.swift`). The
+/// gem is two-tone: a material-binding GeomSubset gives its lower facets a
+/// garnet material while the crown keeps the mesh's own amber binding, and
+/// `drawScene` renders each slice in its material. The
 /// gem turns about its own pivot through the name subscript, its authored
 /// plinth transform composing underneath, and the view opens on the authored
 /// camera then hands you the orbit (`cameraControl(from:)`).
