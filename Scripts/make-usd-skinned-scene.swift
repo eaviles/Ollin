@@ -261,6 +261,13 @@ func discPrim(_ name: String, radius: Double, height: Double, segments: Int,
     """
 }
 
+/// A designed display (sRGB) component re-encoded to the linear value a
+/// preview surface authors; readers re-encode it back, so the designed look
+/// holds.
+func linear(_ x: Double) -> Double {
+    x <= 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4)
+}
+
 func materialPrim(_ name: String, color: (Double, Double, Double), roughness: Double,
                   metallic: Double = 0) -> String {
     """
@@ -271,7 +278,7 @@ func materialPrim(_ name: String, color: (Double, Double, Double), roughness: Do
                 def Shader "pbr"
                 {
                     uniform token info:id = "UsdPreviewSurface"
-                    color3f inputs:diffuseColor = (\(fmt(color.0)), \(fmt(color.1)), \(fmt(color.2)))
+                    color3f inputs:diffuseColor = (\(fmt(linear(color.0))), \(fmt(linear(color.1))), \(fmt(linear(color.2))))
                     float inputs:roughness = \(fmt(roughness))
                     float inputs:metallic = \(fmt(metallic))
                     token outputs:surface

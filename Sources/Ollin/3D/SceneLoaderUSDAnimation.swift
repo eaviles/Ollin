@@ -1,9 +1,9 @@
 import Foundation
 import simd
 
-// The animation leg of USD scene import: no platform importer carries a USD
-// file's timeSamples, so `loadModelIOScene` resolves them from the raw tree,
-// the same read that supplies the lights.
+// The animation leg of USD scene import: the authored xformOp timeSamples
+// become `SceneAnimation` tracks, from the same raw-tree read that builds the
+// node tree.
 //
 // A flattened USD layer has no named clips; the layer's whole timeline is one
 // animation, so a stage with any sampled xformOp yields exactly one (unnamed)
@@ -18,37 +18,45 @@ import simd
 // keeps only its TRS part. Time codes convert to seconds through the layer's
 // `timeCodesPerSecond` (falling back to `framesPerSecond`, then the spec
 // default 24), offset by `startTimeCode`, so a timeline authored to open at
-// frame 101 (a common DCC convention) still starts at zero. Sample interpolation is a runtime choice the format
-// never authors (linear is the universal default), so baked tracks are
-// LINEAR; a non-lerpable value type holds between samples, which is the
-// held/STEP semantic exactly where it can occur.
+// frame 101 (a common DCC convention) still starts at zero. Sample
+// interpolation is a runtime choice the format never authors (linear is the
+// universal default), so baked tracks are LINEAR; a non-lerpable value type
+// holds between samples, which is the held/STEP semantic exactly where it
+// can occur.
 //
-// Tracks bind by node *name* for now: the platform importer that builds the
-// node tree keeps no prim identity to index into, so a track finds the first
-// node of its prim's name depth-first (a duplicated name animates its first
-// match, the subscript's rule). The native scene walk (stage 5 of the arc)
-// replaces name binding with real per-prim identity.
+// Each track is keyed by its prim's absolute path; the scene walk maps paths
+// onto the per-prim node identity (`SceneNode.sourceIndex`) it assigned, so a
+// name duplicated across branches animates exactly the prim that authored
+// the samples.
 
 extension Scene {
 
     typealias RestPose = (t: SIMD3<Float>, r: SIMD4<Float>, s: SIMD3<Float>)
 
-    /// The stage's authored transform animation as one `SceneAnimation`, plus
-    /// each animated prim's rest pose (the decomposed op stack at rest, the
-    /// TRS base `apply(_:at:)` swaps sampled components into), in traversal
+    /// One animated prim's bake: its absolute path (the binding key), its
+    /// keyframe track (`nodeIndex` unassigned until the scene walk maps it),
+    /// and its rest pose (the decomposed op stack at rest, the TRS base
+    /// `apply(_:at:)` swaps sampled components into).
+    struct USDBakedTrack {
+        var path: String
+        var track: SceneAnimation.Track
+        var rest: RestPose
+    }
+
+    /// The stage's authored transform animation, baked per prim in traversal
     /// order. Nil when no xformOp carries time samples.
     static func resolveUSDAnimation(_ stage: USDStage)
-        -> (animation: SceneAnimation, restPoses: [(name: String, pose: RestPose)])? {
+        -> (duration: Double, entries: [USDBakedTrack])? {
         let tcps = metadataScalar(stage, "timeCodesPerSecond")
             ?? metadataScalar(stage, "framesPerSecond") ?? 24
         guard tcps > 0 else { return nil }
         let start = metadataScalar(stage, "startTimeCode") ?? 0
 
-        var tracks: [SceneAnimation.Track] = []
-        var restPoses: [(name: String, pose: RestPose)] = []
+        var entries: [USDBakedTrack] = []
         var end = 0.0
-        func walk(_ prim: USDPrim) {
+        func walk(_ prim: USDPrim, parentPath: String) {
             if prim.specifier == .class { return }
+            let path = parentPath + "/" + prim.name
             let times = animatedSampleTimes(prim)
             if !times.isEmpty {
                 var translations: [SIMD4<Float>] = []
@@ -68,31 +76,20 @@ extension Scene {
                     scales.append(SIMD4<Float>(s, 0))
                 }
                 let seconds = times.map { ($0 - start) / tcps }
-                tracks.append(SceneAnimation.Track(
-                    nodeIndex: -1, nodeName: prim.name,
+                let track = SceneAnimation.Track(
+                    nodeIndex: -1,
                     translation: .init(times: seconds, values: translations, mode: .linear),
                     rotation: .init(times: seconds, values: rotations, mode: .linear),
-                    scale: .init(times: seconds, values: scales, mode: .linear)))
-                restPoses.append((prim.name, decomposeTRS(prim.localXform().matrix)))
+                    scale: .init(times: seconds, values: scales, mode: .linear))
+                entries.append(USDBakedTrack(path: path, track: track,
+                                             rest: decomposeTRS(prim.localXform().matrix)))
                 end = Swift.max(end, seconds[seconds.count - 1])
             }
-            for child in prim.children { walk(child) }
+            for child in prim.children { walk(child, parentPath: path) }
         }
-        for prim in stage.prims { walk(prim) }
-        guard !tracks.isEmpty else { return nil }
-        return (SceneAnimation(name: "", duration: end, tracks: tracks), restPoses)
-    }
-
-    /// Install `pose` as the TRS base of the first node named `name`
-    /// (depth-first), the same binding its track will use.
-    @discardableResult
-    static func installRestPose(_ name: String, _ pose: RestPose,
-                                in nodes: inout [SceneNode]) -> Bool {
-        for i in nodes.indices {
-            if nodes[i].name == name { nodes[i].trs = pose; return true }
-            if installRestPose(name, pose, in: &nodes[i].children) { return true }
-        }
-        return false
+        for prim in stage.prims { walk(prim, parentPath: "") }
+        guard !entries.isEmpty else { return nil }
+        return (end, entries)
     }
 
     /// The union of authored sample times over the ops the prim's
@@ -136,11 +133,6 @@ extension Scene {
     }
 
     static func metadataScalar(_ stage: USDStage, _ key: String) -> Double? {
-        switch stage.metadata[key] {
-        case .double(let d): d
-        case .int(let i): Double(i)
-        case .uint(let u): Double(u)
-        default: nil
-        }
+        stage.metadata[key]?.usdScalar
     }
 }

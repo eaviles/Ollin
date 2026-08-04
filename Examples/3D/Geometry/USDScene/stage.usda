@@ -281,7 +281,7 @@ def Xform "Court"
             def Shader "pbr"
             {
                 uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.64, 0.62, 0.58)
+                color3f inputs:diffuseColor = (0.36725, 0.34239, 0.2957)
                 float inputs:roughness = 0.85
                 float inputs:metallic = 0.0
                 token outputs:surface
@@ -295,7 +295,7 @@ def Xform "Court"
             def Shader "pbr"
             {
                 uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.78, 0.76, 0.72)
+                color3f inputs:diffuseColor = (0.57048, 0.53824, 0.477)
                 float inputs:roughness = 0.9
                 float inputs:metallic = 0.0
                 token outputs:surface
@@ -309,7 +309,7 @@ def Xform "Court"
             def Shader "pbr"
             {
                 uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.16, 0.3, 0.62)
+                color3f inputs:diffuseColor = (0.02198, 0.07324, 0.34239)
                 float inputs:roughness = 0.35
                 float inputs:metallic = 0.0
                 token outputs:surface
@@ -323,7 +323,7 @@ def Xform "Court"
             def Shader "pbr"
             {
                 uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.92, 0.62, 0.18)
+                color3f inputs:diffuseColor = (0.82757, 0.34239, 0.02721)
                 float inputs:roughness = 0.25
                 float inputs:metallic = 0.0
                 token outputs:surface
@@ -337,7 +337,7 @@ def Xform "Court"
             def Shader "pbr"
             {
                 uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.35, 0.62, 0.55)
+                color3f inputs:diffuseColor = (0.10048, 0.34239, 0.26327)
                 float inputs:roughness = 0.4
                 float inputs:metallic = 0.6
                 token outputs:surface

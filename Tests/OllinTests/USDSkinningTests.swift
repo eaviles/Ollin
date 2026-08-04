@@ -11,8 +11,8 @@ import Testing
 /// Skeleton prim synthesized into joint nodes, the deforming mesh rebuilt on
 /// its authored points, the skel primvars expanded into per-vertex influences
 /// (elementSize, rigid constant bindings, the skel:joints remap), blend-shape
-/// offsets landed dense and sparse, SkelAnimation channels bound by joint
-/// identity and blend-shape weights by node name, and the whole path from
+/// offsets landed dense and sparse, SkelAnimation channels and blend-shape
+/// weights bound by node identity, and the whole path from
 /// `Scene(contentsOf:)` through `apply(_:at:)` to hand-derived skinned
 /// positions. The crate container is pinned against the system usdcat writer,
 /// and the bind-matrix decode against the platform importer's own skeleton
@@ -22,8 +22,7 @@ import Testing
 struct USDSkinningTests {
 
     /// Write a usda string to a temp file and load it as a `Scene` (the
-    /// platform-importer walk plus the raw-tree lights/animation/skinning
-    /// read).
+    /// native walk plus the skinning attach).
     private func loadUSDScene(_ usda: String) throws -> Ollin.Scene? {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usda")
@@ -276,8 +275,9 @@ struct USDSkinningTests {
 
     @Test func xformAndSkelTracksMergeIntoOneAnimation() throws {
         // A spinning prop beside the skinned arm: one animation carries the
-        // name-bound xform track and the identity-bound joint tracks, its
-        // duration the later of the two timelines.
+        // prop's xform track, the joint tracks, and the weights track, every
+        // one bound by node identity, its duration the later of the two
+        // timelines.
         let combined = arm.replacingOccurrences(
             of: "def Mesh \"Arm\" (",
             with: """
@@ -296,9 +296,12 @@ struct USDSkinningTests {
         #expect(scene.animations.count == 1)
         let animation = try #require(scene.animations.first)
         #expect(animation.duration == 2)
-        #expect(animation.tracks.contains { $0.nodeName == "prop" })
-        #expect(animation.tracks.contains { $0.nodeName == nil && $0.rotation != nil })
-        #expect(animation.tracks.contains { $0.weights != nil })
+        let prop = try #require(scene.node("prop"))
+        let tip = try #require(scene.node("Tip"))
+        let armNode = try #require(scene.node("Arm"))
+        #expect(animation.tracks.contains { $0.nodeIndex == prop.sourceIndex })
+        #expect(animation.tracks.contains { $0.rotation != nil && $0.nodeIndex == tip.sourceIndex })
+        #expect(animation.tracks.contains { $0.weights != nil && $0.nodeIndex == armNode.sourceIndex })
     }
 
     // MARK: The crate container
@@ -346,7 +349,7 @@ struct USDSkinningTests {
         #expect(textAnim.duration == crateAnim.duration)
         #expect(textAnim.tracks.count == crateAnim.tracks.count)
         for (a, b) in zip(textAnim.tracks, crateAnim.tracks) {
-            #expect(a.nodeIndex == b.nodeIndex && a.nodeName == b.nodeName)
+            #expect(a.nodeIndex == b.nodeIndex)
             #expect(a.translation?.values == b.translation?.values)
             #expect(a.rotation?.values == b.rotation?.values)
             #expect(a.scale?.values == b.scale?.values)

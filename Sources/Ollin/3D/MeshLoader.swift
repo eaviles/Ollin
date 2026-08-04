@@ -4,20 +4,21 @@ import simd
 import ModelIO
 #endif
 
-// Loading a `Mesh` from a file. Two paths, chosen by extension: Ollin's own reader
-// for Wavefront `.obj` (a small, well-understood text format, the same write-our-
+// Loading a `Mesh` from a file. Three paths, chosen by extension: Ollin's own
+// readers for Wavefront `.obj`, glTF, and the USD family (the same write-our-
 // own-parser approach the bitmap/stroke fonts and the wire formats take), and
-// Apple's Model I/O for the binary container formats (the USD family, STL, PLY).
+// Apple's Model I/O for the remaining binary containers (STL, PLY, Alembic).
 // A loaded model arrives in its author's own coordinates and scale; `normalized(scale:)`
 // (see `Mesh`) fits it for drawing the way the built-in generators already are.
 
 extension Mesh {
 
-    /// Load a 3D model from a file, dispatching on the extension: `.obj` is parsed by
-    /// Ollin's own reader; `.usdz`/`.usdc`/`.usda`/`.usd`, `.stl`, `.ply`, and `.abc`
-    /// go through Apple's Model I/O. Returns `nil` if the file can't be read or holds
-    /// no triangles. The model keeps its own coordinates and scale, call
-    /// `normalized(scale:)` to fit it. Mirrors `Image(contentsOf:)`.
+    /// Load a 3D model from a file, dispatching on the extension: `.obj`, glTF, and
+    /// the USD family (`.usdz`/`.usdc`/`.usda`/`.usd`) are parsed by Ollin's own
+    /// readers; `.stl`, `.ply`, and `.abc` go through Apple's Model I/O. Returns
+    /// `nil` if the file can't be read or holds no triangles. The model keeps its
+    /// own coordinates and scale, call `normalized(scale:)` to fit it. Mirrors
+    /// `Image(contentsOf:)`.
     public init?(contentsOf url: URL) {
         switch url.pathExtension.lowercased() {
         case "obj":
@@ -26,8 +27,11 @@ extension Mesh {
         case "gltf", "glb":
             guard let mesh = Mesh.loadGLTF(url) else { return nil }
             self = mesh
+        case "usdz", "usdc", "usda", "usd":
+            guard let mesh = Mesh.loadUSD(url) else { return nil }
+            self = mesh
         #if canImport(ModelIO)
-        case "usdz", "usdc", "usda", "usd", "stl", "ply", "abc":
+        case "stl", "ply", "abc":
             guard let mesh = Mesh.loadViaModelIO(url) else { return nil }
             self = mesh
         #endif
@@ -237,7 +241,60 @@ extension Mesh {
     }
 }
 
-// MARK: - Model I/O (USD family, STL, PLY, Alembic)
+// MARK: - USD (merged)
+
+extension Mesh {
+
+    /// A USD file merged to one `Mesh`: the native scene read
+    /// (`Scene.loadUSDScene`) walked with node transforms *baked into* the
+    /// vertices, so a multi-part file's placement survives the merge, exactly
+    /// the glTF merged-loader treatment. The merged mesh wears the first
+    /// authored material (in traversal order) carrying a color or texture;
+    /// UVs are kept only when every part has them (a partial set can't map).
+    static func loadUSD(_ url: URL) -> Mesh? {
+        guard let scene = Scene.loadUSDScene(url) else { return nil }
+
+        var positions: [Vector3] = []
+        var normals: [Vector3] = []
+        var uvs: [Vector2] = []
+        var indices: [UInt32] = []
+        var allHaveUV = true
+        var material: MeshMaterial?
+
+        func visit(_ node: SceneNode, parent: simd_float4x4) {
+            let world = parent * node.localTransform
+            if let mesh = node.mesh, !mesh.positions.isEmpty, !mesh.indices.isEmpty {
+                let normalMatrix = world.normalMatrix
+                let base = UInt32(positions.count)
+                for p in mesh.positions {
+                    let w = world * SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), 1)
+                    positions.append(Vector3(Double(w.x), Double(w.y), Double(w.z)))
+                }
+                for n in mesh.normals {
+                    let w = normalMatrix * SIMD3<Float>(Float(n.x), Float(n.y), Float(n.z))
+                    let v = Vector3(Double(w.x), Double(w.y), Double(w.z))
+                    normals.append(v.lengthSquared > 1e-12 ? v.normalized : .unitY)
+                }
+                if mesh.uvs.count == mesh.positions.count {
+                    uvs.append(contentsOf: mesh.uvs)
+                } else {
+                    allHaveUV = false
+                    uvs.append(contentsOf: repeatElement(.zero, count: mesh.positions.count))
+                }
+                indices.append(contentsOf: mesh.indices.map { base + $0 })
+                if material == nil { material = mesh.material }
+            }
+            for child in node.children { visit(child, parent: world) }
+        }
+        for node in scene.nodes { visit(node, parent: matrix_identity_float4x4) }
+
+        guard !positions.isEmpty, !indices.isEmpty else { return nil }
+        return Mesh(positions: positions, normals: normals, indices: indices,
+                    uvs: allHaveUV ? uvs : [], material: material)
+    }
+}
+
+// MARK: - Model I/O (STL, PLY, Alembic)
 
 #if canImport(ModelIO)
 extension Mesh {

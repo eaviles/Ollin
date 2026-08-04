@@ -44,16 +44,12 @@ public struct SceneAnimation: Sendable {
     }
 
     /// Every channel targeting one node, grouped so the node's pose rebuilds once
-    /// per application. glTF tracks bind by the file's node index (matched against
-    /// `SceneNode.sourceIndex`); USD tracks bind by node *name* instead (the
-    /// platform importer that builds the node tree keeps no prim identity), so a
-    /// name duplicated across branches animates its first depth-first match, the
-    /// subscript's rule. The native USD scene walk will replace name binding with
-    /// real per-prim identity.
+    /// per application. Tracks bind by the file's node identity, matched against
+    /// `SceneNode.sourceIndex`: the glTF node index, or the USD walk's per-prim
+    /// index (joints included), so a name duplicated across branches animates
+    /// exactly the node whose prim authored the samples.
     struct Track: Sendable {
         var nodeIndex: Int
-        /// The target node's name, for tracks bound by name rather than index.
-        var nodeName: String? = nil
         var translation: Sampler?
         var rotation: Sampler?
         var scale: Sampler?
@@ -234,9 +230,7 @@ extension Scene {
     private static func apply(_ track: SceneAnimation.Track, at time: Double,
                               in nodes: inout [SceneNode]) -> Bool {
         for i in nodes.indices {
-            let matches = track.nodeName.map { nodes[i].name == $0 }
-                ?? (nodes[i].sourceIndex == track.nodeIndex)
-            if matches {
+            if nodes[i].sourceIndex == track.nodeIndex {
                 nodes[i].apply(track, at: time)
                 return true
             }

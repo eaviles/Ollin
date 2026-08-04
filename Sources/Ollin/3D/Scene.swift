@@ -251,9 +251,10 @@ extension Scene {
     /// Load a scene from a file, keeping its structure. `.gltf`/`.glb` files keep
     /// the full graph: named nodes with transforms, cameras, and punctual lights.
     /// The USD family (`.usdz`, `.usdc`, `.usda`, `.usd`) keeps its graph too:
-    /// named nodes, transforms, cameras, the authored UsdLux lights, the
-    /// authored transform animation, and the UsdSkel skins and blend shapes
-    /// (see `loadModelIOScene`). Any other format
+    /// named nodes in authored order, transforms, cameras, the authored UsdLux
+    /// lights, the authored transform animation, and the UsdSkel skins and
+    /// blend shapes, all read by Ollin's own parser (see `loadUSDScene`). Any
+    /// other format
     /// `loadMesh` reads (`.obj`, `.stl`, …) has no scene graph, so it loads as
     /// one node named after the file, with no cameras or lights. Returns `nil`
     /// if the file can't be read or holds nothing. Mirrors `Mesh(contentsOf:)`.
@@ -262,11 +263,9 @@ extension Scene {
         case "gltf", "glb":
             guard let scene = Scene.loadGLTFScene(url) else { return nil }
             self = scene
-        #if canImport(ModelIO)
         case "usdz", "usdc", "usda", "usd":
-            guard let scene = Scene.loadModelIOScene(url) else { return nil }
+            guard let scene = Scene.loadUSDScene(url) else { return nil }
             self = scene
-        #endif
         default:
             guard let mesh = Mesh(contentsOf: url) else { return nil }
             self = Scene(nodes: [SceneNode(name: url.deletingPathExtension().lastPathComponent,

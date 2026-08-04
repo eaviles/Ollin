@@ -303,7 +303,7 @@ def Xform "Mobile"
             def Shader "pbr"
             {
                 uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.6, 0.59, 0.56)
+                color3f inputs:diffuseColor = (0.31855, 0.307, 0.27384)
                 float inputs:roughness = 0.85
                 float inputs:metallic = 0.0
                 token outputs:surface
@@ -317,7 +317,7 @@ def Xform "Mobile"
             def Shader "pbr"
             {
                 uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.72, 0.58, 0.3)
+                color3f inputs:diffuseColor = (0.477, 0.2957, 0.07324)
                 float inputs:roughness = 0.4
                 float inputs:metallic = 0.7
                 token outputs:surface
@@ -331,7 +331,7 @@ def Xform "Mobile"
             def Shader "pbr"
             {
                 uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.75, 0.77, 0.8)
+                color3f inputs:diffuseColor = (0.52252, 0.55422, 0.60383)
                 float inputs:roughness = 0.3
                 float inputs:metallic = 0.8
                 token outputs:surface
@@ -345,7 +345,7 @@ def Xform "Mobile"
             def Shader "pbr"
             {
                 uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.17, 0.3, 0.6)
+                color3f inputs:diffuseColor = (0.02452, 0.07324, 0.31855)
                 float inputs:roughness = 0.35
                 float inputs:metallic = 0.0
                 token outputs:surface
@@ -359,7 +359,7 @@ def Xform "Mobile"
             def Shader "pbr"
             {
                 uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.92, 0.62, 0.18)
+                color3f inputs:diffuseColor = (0.82757, 0.34239, 0.02721)
                 float inputs:roughness = 0.25
                 float inputs:metallic = 0.0
                 token outputs:surface
@@ -373,7 +373,7 @@ def Xform "Mobile"
             def Shader "pbr"
             {
                 uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.35, 0.62, 0.55)
+                color3f inputs:diffuseColor = (0.10048, 0.34239, 0.26327)
                 float inputs:roughness = 0.4
                 float inputs:metallic = 0.6
                 token outputs:surface

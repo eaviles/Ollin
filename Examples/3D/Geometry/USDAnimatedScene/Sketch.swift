@@ -3,9 +3,9 @@ import Foundation
 
 /// Play a USD file's authored transform animation on the sketch clock.
 ///
-/// A USD scene's xformOp timeSamples load as a `SceneAnimation` (read by
-/// Ollin's own parser; no platform importer carries them), one animation for
-/// the layer's whole timeline, its tracks bound to nodes by name.
+/// A USD scene's xformOp timeSamples load as a `SceneAnimation`, one
+/// animation for the layer's whole timeline, each track bound to the exact
+/// prim that authored its samples.
 /// `apply(_:at:)` samples it at a time of your choosing, so speed, looping,
 /// and scrubbing stay in the sketch's hands: here the 8-second lap loops by
 /// wrapping `time` over its `duration`. The bundled kinetic mobile

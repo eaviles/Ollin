@@ -1,11 +1,11 @@
 import Foundation
 import simd
 
-// The lights leg of USD scene import: the platform importer drops light prims
-// entirely (they arrive as bare nodes), so `loadModelIOScene` runs Ollin's own
-// parser over the same file and resolves the authored UsdLux lights into
-// ordinary `Light` values on `Scene.lights`. Structure and meshes stay on the
-// platform path for now; this reads only what it can't provide.
+// The lights leg of USD scene import: the authored UsdLux lights resolve into
+// ordinary `Light` values on `Scene.lights`, from the same raw-tree read that
+// builds the node tree (`loadUSDScene` collects the light prims with their
+// world transforms during its walk, so visibility and purpose gate them the
+// way they gate meshes).
 //
 // The mapping, each USD light kind onto the Ollin light it is:
 //
@@ -30,15 +30,26 @@ import simd
 
 extension Scene {
 
+    /// The prim type names of the mapped UsdLux kinds, shared with the scene
+    /// walk that collects them.
+    static let usdLightTypeNames: Set<String> = ["SphereLight", "DistantLight", "RectLight",
+                                                "DiskLight", "CylinderLight"]
+
     /// The authored UsdLux lights of `stage`, resolved through their prims'
-    /// world transforms.
+    /// world transforms. (The scene walk passes its own collected refs
+    /// instead, so hidden prims stay dark; this whole-stage form reads every
+    /// light prim.)
     static func resolveUSDLights(_ stage: USDStage) -> [Light] {
-        let lightTypes: Set<String> = ["SphereLight", "DistantLight", "RectLight",
-                                       "DiskLight", "CylinderLight"]
         var refs: [(prim: USDPrim, world: simd_double4x4)] = []
         stage.visitPrims { prim, world in
-            if lightTypes.contains(prim.typeName) { refs.append((prim, world)) }
+            if usdLightTypeNames.contains(prim.typeName) { refs.append((prim, world)) }
         }
+        return resolveUSDLights(refs: refs)
+    }
+
+    /// The collected light prims resolved into `Light` values, with the
+    /// per-kind brightest-is-1 intensity normalization.
+    static func resolveUSDLights(refs: [(prim: USDPrim, world: simd_double4x4)]) -> [Light] {
         guard !refs.isEmpty else { return [] }
 
         var lights: [Light] = []

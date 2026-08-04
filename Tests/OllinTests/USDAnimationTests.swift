@@ -9,7 +9,7 @@ import Testing
 /// (timeCodesPerSecond, its framesPerSecond fallback, the startTimeCode
 /// offset), the per-attribute sampling rules (linear componentwise,
 /// quaternion slerp, non-lerpable holds), the union-of-times bake across a
-/// prim's ops (the pivot idiom included), name-bound track application, the
+/// prim's ops (the pivot idiom included), per-prim identity binding, the
 /// crate container agreeing with text through the system usdcat writer, and
 /// the whole path from `Scene(contentsOf:)` through `apply(_:at:)`.
 @Suite
@@ -21,7 +21,7 @@ struct USDAnimationTests {
     }
 
     /// Write a usda string to a temp file and load it as a `Scene` (the
-    /// platform-importer walk plus the raw-tree lights/animation read).
+    /// native walk plus the raw-tree lights/animation read).
     private func loadUSDScene(_ usda: String) throws -> Ollin.Scene? {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usda")
@@ -49,15 +49,14 @@ struct USDAnimationTests {
             uniform token[] xformOpOrder = ["xformOp:translate"]
         }
         """)
-        let (animation, rests) = try #require(Scene.resolveUSDAnimation(s))
-        #expect(animation.tracks.count == 1)
-        #expect(rests.count == 1 && rests[0].name == "mover")
-        let track = animation.tracks[0]
-        #expect(track.nodeName == "mover")
-        let sampler = try #require(track.translation)
+        let baked = try #require(Scene.resolveUSDAnimation(s))
+        #expect(baked.entries.count == 1)
+        let entry = baked.entries[0]
+        #expect(entry.path == "/mover")
+        let sampler = try #require(entry.track.translation)
         #expect(sampler.times == [0, 0.5, 1])
         #expect(sampler.values.map(\.x) == [0, 1, 4])
-        #expect(animation.duration == 1)
+        #expect(baked.duration == 1)
     }
 
     @Test func startTimeCodeShiftsTheTimelineToZero() throws {
@@ -78,10 +77,10 @@ struct USDAnimationTests {
             uniform token[] xformOpOrder = ["xformOp:translate"]
         }
         """)
-        let (animation, _) = try #require(Scene.resolveUSDAnimation(s))
-        let sampler = try #require(animation.tracks[0].translation)
+        let baked = try #require(Scene.resolveUSDAnimation(s))
+        let sampler = try #require(baked.entries[0].track.translation)
         #expect(sampler.times == [0, 2])
-        #expect(animation.duration == 2)
+        #expect(baked.duration == 2)
     }
 
     @Test func framesPerSecondIsTheFallbackTimebase() throws {
@@ -100,8 +99,8 @@ struct USDAnimationTests {
             uniform token[] xformOpOrder = ["xformOp:translate"]
         }
         """)
-        let (animation, _) = try #require(Scene.resolveUSDAnimation(s))
-        #expect(animation.tracks[0].translation?.times == [0, 1])
+        let baked = try #require(Scene.resolveUSDAnimation(s))
+        #expect(baked.entries[0].track.translation?.times == [0, 1])
     }
 
     // MARK: Attribute sampling
@@ -188,8 +187,8 @@ struct USDAnimationTests {
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateY"]
         }
         """)
-        let (animation, _) = try #require(Scene.resolveUSDAnimation(s))
-        let track = animation.tracks[0]
+        let baked = try #require(Scene.resolveUSDAnimation(s))
+        let track = baked.entries[0].track
         #expect(track.translation?.times == [0, 1, 2])
         #expect(track.translation?.values.map(\.x) == [0, 2, 4])
     }
@@ -210,15 +209,15 @@ struct USDAnimationTests {
             uniform token[] xformOpOrder = ["xformOp:translate:pivot", "xformOp:rotateY", "!invert!xformOp:translate:pivot"]
         }
         """)
-        let (animation, rests) = try #require(Scene.resolveUSDAnimation(s))
-        let track = animation.tracks[0]
+        let baked = try #require(Scene.resolveUSDAnimation(s))
+        let track = baked.entries[0].track
         let t = try #require(track.translation)
         #expect(simd_length(t.values[0] - SIMD4<Float>(0, 0, 0, 0)) < 1e-6)
         #expect(simd_length(t.values[1] - SIMD4<Float>(2, 0, 0, 0)) < 1e-5)
         let r = try #require(track.rotation)
         #expect(abs(r.values[1].y) > 0.9999)   // the half-turn about y
         // The rest pose is the stack at rest: the identity here.
-        #expect(simd_length(rests[0].pose.t) < 1e-6)
+        #expect(simd_length(baked.entries[0].rest.t) < 1e-6)
     }
 
     @Test func consecutiveQuaternionKeysStayOnOneHemisphere() throws {
@@ -239,8 +238,8 @@ struct USDAnimationTests {
             uniform token[] xformOpOrder = ["xformOp:rotateY"]
         }
         """)
-        let (animation, _) = try #require(Scene.resolveUSDAnimation(s))
-        let r = try #require(animation.tracks[0].rotation)
+        let baked = try #require(Scene.resolveUSDAnimation(s))
+        let r = try #require(baked.entries[0].track.rotation)
         for k in 1..<r.values.count {
             #expect(simd_dot(r.values[k - 1], r.values[k]) > -1e-6)
         }
@@ -300,9 +299,10 @@ struct USDAnimationTests {
         #expect(posed.node("spinner")?.localTransform == m)
     }
 
-    @Test func tracksBindTheFirstNodeOfTheirNameDepthFirst() throws {
-        // Two prims named "arm" in different branches: the track (and its
-        // rest pose) lands on the first match, the subscript's rule.
+    @Test func tracksBindByPrimIdentityNotName() throws {
+        // Two prims named "arm" in different branches, the *second* one
+        // animated: the track lands on exactly the prim that authored the
+        // samples (name binding could only ever reach the first match).
         let scene = try #require(try loadUSDScene("""
         #usda 1.0
         (
@@ -315,11 +315,6 @@ struct USDAnimationTests {
             {
                 def Xform "arm"
                 {
-                    double3 xformOp:translate.timeSamples = {
-                        0: (0, 0, 0),
-                        24: (0, 3, 0),
-                    }
-                    uniform token[] xformOpOrder = ["xformOp:translate"]
                 }
             }
 
@@ -327,6 +322,11 @@ struct USDAnimationTests {
             {
                 def Xform "arm"
                 {
+                    double3 xformOp:translate.timeSamples = {
+                        0: (0, 0, 0),
+                        24: (0, 3, 0),
+                    }
+                    uniform token[] xformOpOrder = ["xformOp:translate"]
                 }
             }
         }
@@ -336,8 +336,8 @@ struct USDAnimationTests {
         posed.apply(animation, at: animation.duration)
         let left = posed.node("left")?.children.first
         let right = posed.node("right")?.children.first
-        #expect(abs((left?.localTransform.columns.3.y ?? 0) - 3) < 1e-5)
-        #expect(abs(right?.localTransform.columns.3.y ?? 0) < 1e-6)
+        #expect(abs(left?.localTransform.columns.3.y ?? 0) < 1e-6)
+        #expect(abs((right?.localTransform.columns.3.y ?? 0) - 3) < 1e-5)
     }
 
     // MARK: The loop wrap
@@ -427,14 +427,14 @@ struct USDAnimationTests {
         let fromText = try #require(Scene.resolveUSDAnimation(textStage))
         let fromCrate = try #require(Scene.resolveUSDAnimation(crateStage))
 
-        #expect(fromText.animation.duration == fromCrate.animation.duration)
-        #expect(fromText.animation.tracks.count == fromCrate.animation.tracks.count)
-        for (a, b) in zip(fromText.animation.tracks, fromCrate.animation.tracks) {
-            #expect(a.nodeName == b.nodeName)
-            #expect(a.translation?.times == b.translation?.times)
-            #expect(a.translation?.values == b.translation?.values)
-            #expect(a.rotation?.values == b.rotation?.values)
-            #expect(a.scale?.values == b.scale?.values)
+        #expect(fromText.duration == fromCrate.duration)
+        #expect(fromText.entries.count == fromCrate.entries.count)
+        for (a, b) in zip(fromText.entries, fromCrate.entries) {
+            #expect(a.path == b.path)
+            #expect(a.track.translation?.times == b.track.translation?.times)
+            #expect(a.track.translation?.values == b.track.translation?.values)
+            #expect(a.track.rotation?.values == b.track.rotation?.values)
+            #expect(a.track.scale?.values == b.track.scale?.values)
         }
     }
 }

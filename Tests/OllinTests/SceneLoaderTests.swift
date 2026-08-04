@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import simd
 @testable import Ollin
 import Testing
@@ -206,8 +207,7 @@ struct SceneLoaderTests {
 
     /// The USD sibling of the glTF stage: a "rig" root translated (1,0,0)
     /// carrying a unit-quad mesh on a child "part" at (0,2,0) with a preview-
-    /// surface material; a translated camera; and a light prim, which the
-    /// platform importer does not translate.
+    /// surface material; a translated camera; and a light prim.
     private var courtUSDA: String {
         """
         #usda 1.0
@@ -282,14 +282,16 @@ struct SceneLoaderTests {
 
         // The quad arrives triangulated, in *local* coordinates (the parent
         // transforms are not baked into the vertices), wearing the authored
-        // preview-surface color.
+        // preview-surface color, which is linear and re-encodes to sRGB (the
+        // treatment every loader's authored color gets).
         let mesh = try #require(part.mesh)
         #expect(mesh.triangleCount == 2)
         #expect(mesh.positions.map(\.x).max() == 1)
         #expect(mesh.positions.map(\.y).max() == 1)
         let color = try #require(mesh.material?.baseColor)
-        #expect(abs(color.red - 0.9) < 1e-5 && abs(color.green - 0.4) < 1e-5
-                && abs(color.blue - 0.1) < 1e-5)
+        #expect(abs(color.red - Color.linearToSrgb(0.9)) < 1e-5
+                && abs(color.green - Color.linearToSrgb(0.4)) < 1e-5
+                && abs(color.blue - Color.linearToSrgb(0.1)) < 1e-5)
 
         // Transform composition: rig (1,0,0) + part (0,2,0) place the unit quad
         // at x 1...2, y 2...3.
@@ -346,9 +348,8 @@ struct SceneLoaderTests {
     }
 
     @Test func usdSceneCarriesItsAuthoredLight() throws {
-        // The platform importer drops light prims (the node arrives bare), so
-        // Ollin's own parser resolves them: the authored SphereLight arrives
-        // as a point `Light` while its node keeps its place in the tree.
+        // The authored SphereLight arrives as a point `Light` while its prim
+        // keeps its place in the tree as a grouping node.
         let scene = try #require(try loadUSDScene(courtUSDA))
         #expect(scene.lights.count == 1)
         #expect(scene.lights.first?.kind == .point)
@@ -508,8 +509,8 @@ struct SceneLoaderTests {
         #expect(lights[1].kind == .spot)
         #expect(lights[4].kind == .rect)
 
-        // The whole scene read agrees: Model I/O takes the package's structure
-        // while the lights come from Ollin's parser.
+        // The whole scene read agrees: structure, meshes, and lights all
+        // resolve from the one package parse.
         let scene = try #require(Scene(contentsOf: url))
         #expect(scene.lights.count == 7)
         #expect(scene.node("part")?.mesh != nil)
@@ -571,6 +572,244 @@ struct SceneLoaderTests {
             for _ in 0..<8 { crc = (crc & 1) != 0 ? (crc >> 1) ^ 0xEDB8_8320 : crc >> 1 }
         }
         return crc ^ 0xFFFF_FFFF
+    }
+
+    // MARK: The native USD walk
+
+    @Test func usdSceneKeepsAuthoredChildOrder() throws {
+        // Children arrive in the file's own order, never alphabetized, each
+        // node carrying real per-prim identity.
+        let scene = try #require(try loadUSDScene("""
+        #usda 1.0
+        (
+            defaultPrim = "Root"
+        )
+
+        def Xform "Root"
+        {
+            def Xform "zebra"
+            {
+            }
+
+            def Xform "apple"
+            {
+            }
+
+            def Xform "mango"
+            {
+            }
+        }
+        """))
+        let root = try #require(scene.nodes.first)
+        #expect(root.children.map(\.name) == ["zebra", "apple", "mango"])
+        let indices = root.children.compactMap(\.sourceIndex)
+        #expect(indices.count == 3 && Set(indices).count == 3)
+    }
+
+    /// The system shaderball, the file that demonstrates the alphabetization
+    /// the native walk fixes: its neutral_objects group authors core, base,
+    /// sss_bars in that order (sorted would lead with base).
+    @Test func systemShaderballKeepsAuthoredChildOrder() throws {
+        let url = URL(fileURLWithPath:
+            "/System/Library/PrivateFrameworks/CoreUSDEdit.framework/Versions/A/Resources/shaderball.usdz")
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        let loaded = Ollin.Scene(contentsOf: url)
+        let scene = try #require(loaded)
+        let group = try #require(scene.node("neutral_objects"))
+        #expect(group.children.map(\.name) == ["core", "base", "sss_bars"])
+        #expect(group.children.allSatisfy { $0.mesh != nil })
+    }
+
+    @Test func usdInvisibleAndGuidePrimsSkipRender() throws {
+        // visibility = "invisible" hides its subtree (nodes stay, nothing
+        // renders, its lights stay dark); a guide/proxy purpose skips
+        // rendering the same way.
+        let scene = try #require(try loadUSDScene("""
+        #usda 1.0
+        (
+            defaultPrim = "Root"
+        )
+
+        def Xform "Root"
+        {
+            def Mesh "hidden"
+            {
+                token visibility = "invisible"
+                uniform token subdivisionScheme = "none"
+                point3f[] points = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)]
+                int[] faceVertexCounts = [4]
+                int[] faceVertexIndices = [0, 1, 2, 3]
+            }
+
+            def Xform "guides"
+            {
+                uniform token purpose = "guide"
+
+                def Mesh "helper"
+                {
+                    uniform token subdivisionScheme = "none"
+                    point3f[] points = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                }
+            }
+
+            def Mesh "shown"
+            {
+                uniform token subdivisionScheme = "none"
+                point3f[] points = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)]
+                int[] faceVertexCounts = [4]
+                int[] faceVertexIndices = [0, 1, 2, 3]
+            }
+
+            def SphereLight "dark"
+            {
+                token visibility = "invisible"
+            }
+
+            def SphereLight "lit"
+            {
+            }
+        }
+        """))
+        #expect(scene.node("hidden") != nil && scene.node("hidden")?.mesh == nil)
+        #expect(scene.node("helper") != nil && scene.node("helper")?.mesh == nil)
+        #expect(scene.node("shown")?.mesh != nil)
+        #expect(scene.lights.count == 1)
+    }
+
+    @Test func usdFaceVaryingAttributesExpandPerCorner() throws {
+        // Two quads sharing an edge with faceVarying texture coordinates:
+        // the mesh expands to one vertex per corner so the seam's corners
+        // keep their own values (v flips to the top-left convention).
+        let scene = try #require(try loadUSDScene("""
+        #usda 1.0
+        (
+            defaultPrim = "Root"
+        )
+
+        def Xform "Root"
+        {
+            def Mesh "strip"
+            {
+                uniform token subdivisionScheme = "none"
+                point3f[] points = [(0, 0, 0), (1, 0, 0), (2, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0)]
+                int[] faceVertexCounts = [4, 4]
+                int[] faceVertexIndices = [0, 1, 4, 3, 1, 2, 5, 4]
+                texCoord2f[] primvars:st = [(0, 0), (0.5, 0), (0.5, 1), (0, 1), (0.5, 0), (1, 0), (1, 1), (0.5, 1)] (
+                    interpolation = "faceVarying"
+                )
+            }
+        }
+        """))
+        let mesh = try #require(scene.node("strip")?.mesh)
+        #expect(mesh.positions.count == 8)
+        #expect(mesh.triangleCount == 4)
+        #expect(mesh.uvs.count == 8)
+        #expect((mesh.uvs[1] - Vector2(0.5, 1)).length < 1e-6)
+        // The shared point (1, 0, 0) appears once per face.
+        #expect(mesh.positions.filter { ($0 - Vector3(1, 0, 0)).length < 1e-9 }.count == 2)
+    }
+
+    @Test func usdVertexAttributesStayOnAuthoredPoints() throws {
+        // Vertex-interpolated texture coordinates need no expansion: the
+        // mesh keeps its authored points shared.
+        let scene = try #require(try loadUSDScene("""
+        #usda 1.0
+        (
+            defaultPrim = "Root"
+        )
+
+        def Xform "Root"
+        {
+            def Mesh "strip"
+            {
+                uniform token subdivisionScheme = "none"
+                point3f[] points = [(0, 0, 0), (1, 0, 0), (2, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0)]
+                int[] faceVertexCounts = [4, 4]
+                int[] faceVertexIndices = [0, 1, 4, 3, 1, 2, 5, 4]
+                texCoord2f[] primvars:st = [(0, 0), (0.5, 0), (1, 0), (0, 1), (0.5, 1), (1, 1)] (
+                    interpolation = "vertex"
+                )
+            }
+        }
+        """))
+        let mesh = try #require(scene.node("strip")?.mesh)
+        #expect(mesh.positions.count == 6)
+        #expect(mesh.triangleCount == 4)
+        #expect(mesh.uvs.count == 6)
+        #expect((mesh.uvs[4] - Vector2(0.5, 0)).length < 1e-6)
+    }
+
+    @Test func usdzTextureResolvesThroughThePackage() throws {
+        // A UsdUVTexture connected to the diffuse input reads its image file
+        // out of the package's entries, relative to the default layer.
+        let layer = """
+        #usda 1.0
+        (
+            defaultPrim = "Root"
+        )
+
+        def Xform "Root"
+        {
+            def Mesh "tile"
+            {
+                uniform token subdivisionScheme = "none"
+                point3f[] points = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)]
+                int[] faceVertexCounts = [4]
+                int[] faceVertexIndices = [0, 1, 2, 3]
+                texCoord2f[] primvars:st = [(0, 0), (1, 0), (1, 1), (0, 1)] (
+                    interpolation = "vertex"
+                )
+                rel material:binding = </Root/mat>
+            }
+
+            def Material "mat"
+            {
+                token outputs:surface.connect = </Root/mat/pbr.outputs:surface>
+
+                def Shader "pbr"
+                {
+                    uniform token info:id = "UsdPreviewSurface"
+                    color3f inputs:diffuseColor.connect = </Root/mat/tex.outputs:rgb>
+                    token outputs:surface
+                }
+
+                def Shader "tex"
+                {
+                    uniform token info:id = "UsdUVTexture"
+                    asset inputs:file = @textures/swatch.png@
+                    float3 outputs:rgb
+                }
+            }
+        }
+        """
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usdz")
+        try Self.storedZip([("scene.usda", Data(layer.utf8)),
+                            ("textures/swatch.png", Self.pngData(r: 200, g: 40, b: 90))])
+            .write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let scene = try #require(Scene(contentsOf: url))
+        let mesh = try #require(scene.node("tile")?.mesh)
+        let texture = try #require(mesh.material?.texture)
+        #expect(texture.width == 1 && texture.height == 1)
+        #expect(mesh.uvs.count == 4)
+    }
+
+    /// A one-pixel PNG of the given color, for package-texture fixtures.
+    private static func pngData(r: UInt8, g: UInt8, b: UInt8) -> Data {
+        var pixel: [UInt8] = [r, g, b, 255]
+        let ctx = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8,
+                            bytesPerRow: 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let image = ctx.makeImage()!
+        let out = NSMutableData()
+        let dest = CGImageDestinationCreateWithData(out, "public.png" as CFString, 1, nil)!
+        CGImageDestinationAddImage(dest, image, nil)
+        CGImageDestinationFinalize(dest)
+        return out as Data
     }
 
     // MARK: Format fallback

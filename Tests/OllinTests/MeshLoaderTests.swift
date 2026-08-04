@@ -240,10 +240,58 @@ struct MeshLoaderTests {
         return out as Data
     }
 
-    // MARK: Model I/O (USD)
+    // MARK: USD (merged)
 
-    /// Round-trip a box through Model I/O: build one, export to USD, read it back as a
-    /// `Mesh`. Soft-skips if this toolchain can't export USD.
+    /// The merged USD read bakes node transforms into the vertices, so a
+    /// multi-part file's placement survives the merge (the glTF treatment).
+    @Test func usdMergedMeshBakesNodeTransforms() throws {
+        let usda = """
+        #usda 1.0
+        (
+            defaultPrim = "Root"
+        )
+
+        def Xform "Root"
+        {
+            def Xform "mover"
+            {
+                double3 xformOp:translate = (3, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+
+                def Mesh "quad"
+                {
+                    uniform token subdivisionScheme = "none"
+                    point3f[] points = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)]
+                    int[] faceVertexCounts = [4]
+                    int[] faceVertexIndices = [0, 1, 2, 3]
+                }
+            }
+
+            def Mesh "home"
+            {
+                uniform token subdivisionScheme = "none"
+                point3f[] points = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)]
+                int[] faceVertexCounts = [4]
+                int[] faceVertexIndices = [0, 1, 2, 3]
+            }
+        }
+        """
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usda")
+        try usda.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let mesh = try #require(Mesh(contentsOf: url))
+        #expect(mesh.triangleCount == 4)
+        let b = mesh.bounds
+        #expect(abs(b.min.x) < 1e-5 && abs(b.max.x - 4) < 1e-5)
+    }
+
+    // MARK: Model I/O (USD round-trip)
+
+    /// Round-trip a box through Model I/O: build one, export to USD, and read it
+    /// back through the native USD reader. Soft-skips if this toolchain can't
+    /// export USD.
     @Test func modelIORoundTripsABox() throws {
         #if canImport(ModelIO)
         guard MDLAsset.canExportFileExtension("usdc") else { return }

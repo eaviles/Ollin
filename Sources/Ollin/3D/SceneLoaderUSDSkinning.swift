@@ -2,32 +2,26 @@ import Foundation
 import simd
 
 // The skinning leg of USD scene import: UsdSkel skeletons, skin bindings, and
-// blend shapes, resolved from the same raw-tree read that serves lights and
-// transform animation into the deforming tier `drawScene` already poses
+// blend shapes, resolved from the same raw-tree read that builds the node
+// tree into the deforming tier `drawScene` already poses
 // (`SceneSkinning.swift`), so a rigged USD file bends and blends with no new
 // user API.
 //
-// The platform importer can't carry this tier: its joint vertex attributes
-// come back scrambled, and a deforming mesh's vertex layout is whatever it
-// chose (authored points kept here, expanded per face corner there, split
-// again by normal generation), so per-point data (joint weights, blend-shape
-// offsets) has nothing stable to align with. A deforming mesh is therefore
-// rebuilt from the raw tree itself: authored points kept indexed (the layout
-// every skel primvar and blend-shape offset is authored against), faces
-// fan-triangulated, authored vertex-interpolated normals honored (smoothed
-// across faces otherwise), vertex-interpolated `primvars:st` carried (v
-// flipped to the top-left convention), and the bound preview-surface diffuse
-// color read raw, matching how the platform path colors the file's unskinned
-// meshes (the spec-correct color pass belongs to the native swap).
+// The scene walk already rebuilt each deforming mesh on its authored points,
+// kept indexed (the layout every skel primvar and blend-shape offset is
+// authored against), so this pass only *attaches*: per-point joint
+// influences from the skel primvars, blend-shape targets, and the
+// SkelAnimation channels.
 //
 // Joints become ordinary `SceneNode`s: each Skeleton prim synthesizes a
 // container node at the prim's world transform holding one node per joint,
 // nested by the joint paths' own hierarchy, each node's TRS base its local
-// rest transform. Synthesized nodes carry real identity (`sourceIndex`), so
-// SkelAnimation tracks bind by index rather than name, and hand-posing a
-// joint works like any node (`scene["tip"]?.rotate(...)`). The skinning math
-// then falls out of the shipped pose path: a joint's scene-root world is
-// skelWorld · jointSkelSpace, and each binding's inverse-bind entry is
+// rest transform. Synthesized nodes carry real identity (`sourceIndex`,
+// numbered past every prim index), so SkelAnimation tracks bind by index
+// like every other track, and hand-posing a joint works like any node
+// (`scene["tip"]?.rotate(...)`). The skinning math then falls out of the
+// shipped pose path: a joint's scene-root world is skelWorld ·
+// jointSkelSpace, and each binding's inverse-bind entry is
 // inv(bindTransform) · geomBindTransform, so worlds[joint] · inverseBind ·
 // point is exactly the UsdSkel skinning equation, the skinned node's own
 // chain ignored (the shipped rule, shared with glTF).
@@ -54,18 +48,19 @@ extension Scene {
     }
 
     /// UsdSkel resolution over the raw tree: synthesizes each Skeleton prim's
-    /// joints as nodes, rebuilds each deforming mesh from its authored points
-    /// with skin and blend-shape data attached, and returns the SkelAnimation
-    /// tracks (joint TRS by node identity, blend-shape weights by node name)
-    /// with their timeline end, for the caller to merge into the stage's one
-    /// animation.
-    static func resolveUSDSkinning(_ stage: USDStage, into scene: inout Scene)
+    /// joints as nodes (identities numbered from `firstJointIndex`, past
+    /// every prim's), attaches skin and blend-shape data to each deforming
+    /// mesh's node, and returns the SkelAnimation tracks (joint TRS and
+    /// blend-shape weights, all bound by node identity) with their timeline
+    /// end, for the caller to merge into the stage's one animation.
+    static func resolveUSDSkinning(_ stage: USDStage, into scene: inout Scene,
+                                   indexOfPath: [String: Int], firstJointIndex: Int)
         -> (tracks: [SceneAnimation.Track], duration: Double) {
 
         var skeletons: [String: USDSkeletonRecord] = [:]
         var skeletonOrder: [String] = []
-        var meshes: [(prim: USDPrim, animSource: String?)] = []
-        var nextJointIndex = 0
+        var meshes: [(prim: USDPrim, path: String, animSource: String?)] = []
+        var nextJointIndex = firstJointIndex
 
         walkPrims(stage) { prim, path, world, animSource in
             switch prim.typeName {
@@ -77,9 +72,8 @@ extension Scene {
                     skeletonOrder.append(path)
                 }
             case "Mesh":
-                if prim.relationship("skel:skeleton") != nil
-                    || prim.relationship("skel:blendShapeTargets") != nil {
-                    meshes.append((prim, animSource))
+                if prim.isSkelDeforming {
+                    meshes.append((prim, path, animSource))
                 }
             default:
                 break
@@ -93,8 +87,7 @@ extension Scene {
         var tracks: [SceneAnimation.Track] = []
         var duration = 0.0
 
-        // Skeleton subtrees join the scene after the platform nodes, so
-        // name-bound lookups keep finding tree nodes first.
+        // Skeleton subtrees join the scene after the tree nodes.
         for path in skeletonOrder {
             scene.nodes.append(skeletons[path]!.container)
         }
@@ -108,14 +101,13 @@ extension Scene {
                               tracks: &tracks, duration: &duration)
         }
 
-        // Deforming meshes: rebuild from authored points, attach skin and
-        // blend-shape data to the tree node of the prim's name, and bind the
-        // weights channel by that same name.
-        for (prim, inheritedSource) in meshes {
-            resolveDeformingMesh(prim, stage: stage, skeletons: skeletons,
+        // Deforming meshes: attach skin and blend-shape data to each prim's
+        // node, and bind the weights channel by that same identity.
+        for (prim, path, inheritedSource) in meshes {
+            resolveDeformingMesh(prim, path: path, stage: stage, skeletons: skeletons,
                                  inheritedAnimSource: inheritedSource,
-                                 tcps: tcps, start: start, into: &scene,
-                                 tracks: &tracks, duration: &duration)
+                                 tcps: tcps, start: start, indexOfPath: indexOfPath,
+                                 into: &scene, tracks: &tracks, duration: &duration)
         }
         return (tracks, duration)
     }
@@ -156,13 +148,13 @@ extension Scene {
     private static func resolveSkeleton(_ prim: USDPrim, world: simd_double4x4,
                                         animSource: String?, firstJointIndex: Int)
         -> USDSkeletonRecord? {
-        guard case .tokenArray(let jointPaths)? = prim.attribute("joints")?.authoredValue,
+        guard let jointPaths = prim.attribute("joints")?.authoredValue?.usdTokenArray,
               !jointPaths.isEmpty,
-              let bind = matrixArray(prim.attribute("bindTransforms")?.authoredValue,
-                                     count: jointPaths.count)
+              let bind = prim.attribute("bindTransforms")?.authoredValue?
+                  .usdMatrixArray(count: jointPaths.count)
         else { return nil }
-        let rest = matrixArray(prim.attribute("restTransforms")?.authoredValue,
-                               count: jointPaths.count)
+        let rest = prim.attribute("restTransforms")?.authoredValue?
+            .usdMatrixArray(count: jointPaths.count)
 
         var indexOfPath: [String: Int] = [:]
         for (i, p) in jointPaths.enumerated() where indexOfPath[p] == nil { indexOfPath[p] = i }
@@ -220,7 +212,7 @@ extension Scene {
                                           tcps: Double, start: Double,
                                           tracks: inout [SceneAnimation.Track],
                                           duration: inout Double) {
-        guard case .tokenArray(let animJoints)? = anim.attribute("joints")?.authoredValue,
+        guard let animJoints = anim.attribute("joints")?.authoredValue?.usdTokenArray,
               !animJoints.isEmpty else { return }
         let t = channel(anim.attribute("translations"), arity: 3,
                         joints: animJoints.count, tcps: tcps, start: start)
@@ -257,7 +249,7 @@ extension Scene {
         var times: [Double] = []
         var samples: [[Double]] = []
         for (time, value) in raw {
-            guard let flat = flatTuples(value, arity: arity),
+            guard let flat = value.usdFlatTuples(arity: arity),
                   flat.count == joints * arity else { continue }
             times.append((time - start) / tcps)
             samples.append(flat)
@@ -291,16 +283,22 @@ extension Scene {
 
     // MARK: - Deforming meshes
 
-    private static func resolveDeformingMesh(_ prim: USDPrim, stage: USDStage,
+    private static func resolveDeformingMesh(_ prim: USDPrim, path: String, stage: USDStage,
                                              skeletons: [String: USDSkeletonRecord],
                                              inheritedAnimSource: String?,
                                              tcps: Double, start: Double,
+                                             indexOfPath: [String: Int],
                                              into scene: inout Scene,
                                              tracks: inout [SceneAnimation.Track],
                                              duration: inout Double) {
-        guard let built = buildDeformingMesh(prim, stage: stage),
-              var node = scene.node(prim.name) else { return }
-        node.mesh = built.mesh
+        // The walk built (or, for a hidden prim, skipped) the mesh; the
+        // authored point count is the layout every attachment aligns with.
+        guard let index = indexOfPath[path] else { return }
+        var hasMesh = false
+        Scene.withNode(sourceIndex: index, in: &scene.nodes) { hasMesh = $0.mesh != nil }
+        guard hasMesh else { return }
+        let pointCount = prim.authoredPointCount
+        guard pointCount > 0 else { return }
 
         // The skin binding: mesh-local joint order (skel:joints remaps into
         // the skeleton's order when authored), per-point influences from the
@@ -310,20 +308,21 @@ extension Scene {
            let record = skeletons[target] {
             boundSkeleton = record
         }
+        var skinAttachment: (index: Int, joints: [SIMD4<UInt16>], weights: [SIMD4<Float>])?
         if let record = boundSkeleton,
-           let (joints, weights) = skinPrimvars(prim, pointCount: built.pointCount) {
+           let (joints, weights) = skinPrimvars(prim, pointCount: pointCount) {
             let slots: [Int]
-            if case .tokenArray(let meshJoints)? = prim.attribute("skel:joints")?.authoredValue {
-                var indexOfPath: [String: Int] = [:]
-                for (i, p) in record.jointPaths.enumerated() where indexOfPath[p] == nil {
-                    indexOfPath[p] = i
+            if let meshJoints = prim.attribute("skel:joints")?.authoredValue?.usdTokenArray {
+                var indexOfJoint: [String: Int] = [:]
+                for (i, p) in record.jointPaths.enumerated() where indexOfJoint[p] == nil {
+                    indexOfJoint[p] = i
                 }
-                slots = meshJoints.map { indexOfPath[$0] ?? -1 }
+                slots = meshJoints.map { indexOfJoint[$0] ?? -1 }
             } else {
                 slots = Array(0..<record.jointPaths.count)
             }
-            let geomBind = matrix(prim.attribute("primvars:skel:geomBindTransform")?.authoredValue)
-                ?? matrix_identity_double4x4
+            let geomBind = prim.attribute("primvars:skel:geomBindTransform")?.authoredValue?
+                .usdMatrix ?? matrix_identity_double4x4
             var skinJoints: [Int] = []
             var inverseBind: [simd_float4x4] = []
             for slot in slots {
@@ -338,40 +337,43 @@ extension Scene {
                 inverseBind.append(f4x4(record.bind[slot].inverse * geomBind))
             }
             scene.skins.append(SceneSkin(joints: skinJoints, inverseBind: inverseBind))
-            node.skinIndex = scene.skins.count - 1
-            node.vertexJoints = joints
-            node.vertexWeights = weights
+            skinAttachment = (scene.skins.count - 1, joints, weights)
         }
 
         // Blend shapes: names pair with target prims by position; offsets
         // expand onto the authored points (sparse via pointIndices).
         var shapeNames: [String] = []
         var morphTargets: [SceneMorphTarget] = []
-        if case .tokenArray(let names)? = prim.attribute("skel:blendShapes")?.authoredValue,
+        if let names = prim.attribute("skel:blendShapes")?.authoredValue?.usdTokenArray,
            let rel = prim.relationship("skel:blendShapeTargets") {
             for (name, target) in zip(names, rel.targets) {
                 guard let shape = stage.prim(atPath: target),
-                      let morph = resolveBlendShape(shape, pointCount: built.pointCount)
+                      let morph = resolveBlendShape(shape, pointCount: pointCount)
                 else { continue }
                 shapeNames.append(name)
                 morphTargets.append(morph)
             }
         }
-        if !morphTargets.isEmpty {
-            node.morphTargets = morphTargets
-            node.weights = [Double](repeating: 0, count: morphTargets.count)
+        Scene.withNode(sourceIndex: index, in: &scene.nodes) { node in
+            if let (si, joints, weights) = skinAttachment {
+                node.skinIndex = si
+                node.vertexJoints = joints
+                node.vertexWeights = weights
+            }
+            if !morphTargets.isEmpty {
+                node.morphTargets = morphTargets
+                node.weights = [Double](repeating: 0, count: morphTargets.count)
+            }
         }
-        scene[prim.name] = node
 
         // The weights channel: the animation bound to the mesh's skeleton (or
         // inherited down the prim chain) drives the targets by shape name; a
-        // shape the animation doesn't name stays 0. The mesh's node is a
-        // platform node with no prim identity, so this one track kind binds
-        // by name, like the xformOp tracks.
+        // shape the animation doesn't name stays 0. The track binds by the
+        // mesh's node identity, like every other track.
         guard tcps > 0, !shapeNames.isEmpty,
               let animPath = boundSkeleton?.animSource ?? inheritedAnimSource,
               let anim = stage.prim(atPath: animPath),
-              case .tokenArray(let animShapes)? = anim.attribute("blendShapes")?.authoredValue,
+              let animShapes = anim.attribute("blendShapes")?.authoredValue?.usdTokenArray,
               let weightsAttr = anim.attribute("blendShapeWeights") else { return }
         var raw = weightsAttr.timeSamples.map { ($0.time, $0.value) }
         if raw.isEmpty, let v = weightsAttr.value { raw = [(start, v)] }
@@ -380,96 +382,18 @@ extension Scene {
         var times: [Double] = []
         var flat: [Float] = []
         for (time, value) in raw {
-            guard let sample = floats(value), sample.count == animShapes.count else { continue }
+            guard let sample = value.usdFloats, sample.count == animShapes.count else { continue }
             times.append((time - start) / tcps)
             for name in shapeNames {
                 flat.append(indexOfShape[name].map { sample[$0] } ?? 0)
             }
         }
         guard !times.isEmpty else { return }
-        var track = SceneAnimation.Track(nodeIndex: -1, nodeName: prim.name)
+        var track = SceneAnimation.Track(nodeIndex: index)
         track.weights = SceneAnimation.WeightsSampler(times: times, values: flat,
                                                       count: shapeNames.count, mode: .linear)
         tracks.append(track)
         duration = Swift.max(duration, times[times.count - 1])
-    }
-
-    /// The prim's mesh rebuilt from its authored data, keeping the authored
-    /// points indexed: the layout every skel primvar and blend-shape offset
-    /// aligns with. Nil when the geometry is unreadable (the caller leaves
-    /// the platform node untouched, an undeformed but honest draw).
-    private static func buildDeformingMesh(_ prim: USDPrim, stage: USDStage)
-        -> (mesh: Mesh, pointCount: Int)? {
-        guard let pointsFlat = flatTuples(prim.attribute("points")?.authoredValue, arity: 3),
-              case .intArray(let counts)? = prim.attribute("faceVertexCounts")?.authoredValue,
-              case .intArray(let rawIndices)? = prim.attribute("faceVertexIndices")?.authoredValue
-        else { return nil }
-        let pointCount = pointsFlat.count / 3
-        guard pointCount > 0 else { return nil }
-        var positions = [Vector3]()
-        positions.reserveCapacity(pointCount)
-        for i in 0..<pointCount {
-            positions.append(Vector3(pointsFlat[i * 3], pointsFlat[i * 3 + 1],
-                                     pointsFlat[i * 3 + 2]))
-        }
-
-        // Fan-triangulate the authored faces, keeping the authored winding
-        // (reversed for a leftHanded orientation); a face with a bad index is
-        // skipped whole rather than mis-wound.
-        let leftHanded = metaToken(prim.attribute("orientation")?.authoredValue) == "leftHanded"
-        var indices: [UInt32] = []
-        var cursor = 0
-        for count in counts {
-            let c = Int(count)
-            defer { cursor += c }
-            guard c >= 3, cursor + c <= rawIndices.count else { continue }
-            let face = Array(rawIndices[cursor..<(cursor + c)])
-            guard face.allSatisfy({ $0 >= 0 && $0 < pointCount }) else { continue }
-            for k in 1..<(c - 1) {
-                if leftHanded {
-                    indices += [UInt32(face[0]), UInt32(face[k + 1]), UInt32(face[k])]
-                } else {
-                    indices += [UInt32(face[0]), UInt32(face[k]), UInt32(face[k + 1])]
-                }
-            }
-        }
-        guard !indices.isEmpty else { return nil }
-
-        // Authored vertex-interpolated normals ride (the attribute's default
-        // interpolation); anything else (faceVarying, missing, mis-sized)
-        // smooths across faces, the loadMesh treatment.
-        var normals = [Vector3](repeating: .zero, count: pointCount)
-        var haveNormals = false
-        if let attr = prim.attribute("normals"),
-           let flat = flatTuples(attr.authoredValue, arity: 3),
-           flat.count == pointCount * 3,
-           (metaToken(attr.metadata["interpolation"]) ?? "vertex") == "vertex" {
-            for i in 0..<pointCount {
-                let v = Vector3(flat[i * 3], flat[i * 3 + 1], flat[i * 3 + 2])
-                normals[i] = v.lengthSquared > 1e-12 ? v.normalized : .unitY
-            }
-            haveNormals = true
-        }
-        if !haveNormals {
-            Mesh.smoothNormals(into: &normals, positions: positions, indices: indices,
-                               vertexRange: 0..<pointCount)
-        }
-
-        // Vertex-interpolated primvars:st carries (v flipped to the top-left
-        // convention); a faceVarying set can't ride an indexed mesh and drops.
-        var uvs: [Vector2] = []
-        if let attr = prim.attribute("primvars:st"),
-           let flat = flatTuples(attr.authoredValue, arity: 2),
-           flat.count == pointCount * 2,
-           metaToken(attr.metadata["interpolation"]) == "vertex" {
-            for i in 0..<pointCount {
-                uvs.append(Vector2(flat[i * 2], 1 - flat[i * 2 + 1]))
-            }
-        }
-
-        let mesh = Mesh(positions: positions, normals: normals, indices: indices,
-                        uvs: uvs, material: deformingMaterial(prim, stage: stage))
-        return (mesh, pointCount)
     }
 
     /// The per-point joint influences from the skel primvars: `elementSize`
@@ -481,10 +405,10 @@ extension Scene {
         guard let ji = prim.attribute("primvars:skel:jointIndices"),
               let jw = prim.attribute("primvars:skel:jointWeights"),
               case .intArray(let rawIndices)? = ji.authoredValue,
-              let rawWeights = floats(jw.authoredValue),
+              let rawWeights = jw.authoredValue?.usdFloats,
               rawWeights.count == rawIndices.count else { return nil }
-        let elementSize = Swift.max(metaInt(ji.metadata["elementSize"]) ?? 1, 1)
-        let constant = metaToken(ji.metadata["interpolation"]) == "constant"
+        let elementSize = Swift.max(ji.metadata["elementSize"]?.usdInt ?? 1, 1)
+        let constant = ji.metadata["interpolation"]?.usdToken == "constant"
         let expected = constant ? elementSize : pointCount * elementSize
         guard rawIndices.count == expected else { return nil }
 
@@ -517,10 +441,11 @@ extension Scene {
     /// they pair one-to-one with the offsets.
     private static func resolveBlendShape(_ prim: USDPrim, pointCount: Int)
         -> SceneMorphTarget? {
-        guard let offsets = flatTuples(prim.attribute("offsets")?.authoredValue, arity: 3)
+        guard let offsets = prim.attribute("offsets")?.authoredValue?.usdFlatTuples(arity: 3)
         else { return nil }
         let offsetCount = offsets.count / 3
-        let normalOffsets = flatTuples(prim.attribute("normalOffsets")?.authoredValue, arity: 3)
+        let normalOffsets = prim.attribute("normalOffsets")?.authoredValue?
+            .usdFlatTuples(arity: 3)
         let haveNormals = normalOffsets?.count == offsets.count && !offsets.isEmpty
 
         func vec(_ flat: [Double], _ i: Int) -> Vector3 {
@@ -545,98 +470,5 @@ extension Scene {
             }
         }
         return SceneMorphTarget(positionDeltas: positions, normalDeltas: normals)
-    }
-
-    /// The bound preview surface's diffuse color, read raw (a display value,
-    /// matching the platform path's treatment of the file's other meshes), or
-    /// the first authored displayColor. Nil when neither is authored.
-    private static func deformingMaterial(_ prim: USDPrim, stage: USDStage) -> MeshMaterial? {
-        if let target = prim.relationship("material:binding")?.targets.first,
-           let material = stage.prim(atPath: target),
-           let color = previewSurfaceColor(material) {
-            return MeshMaterial(baseColor: color)
-        }
-        if let attr = prim.attribute("primvars:displayColor"),
-           let flat = flatTuples(attr.authoredValue, arity: 3), flat.count >= 3 {
-            return MeshMaterial(baseColor: Color(red: flat[0], green: flat[1], blue: flat[2]))
-        }
-        return nil
-    }
-
-    private static func previewSurfaceColor(_ material: USDPrim) -> Color? {
-        if case .token("UsdPreviewSurface")? = material.attribute("info:id")?.authoredValue,
-           case .tuple(let c)? = material.attribute("inputs:diffuseColor")?.authoredValue,
-           c.count == 3 {
-            return Color(red: c[0], green: c[1], blue: c[2])
-        }
-        for child in material.children {
-            if let color = previewSurfaceColor(child) { return color }
-        }
-        return nil
-    }
-
-    // MARK: - Value helpers
-
-    /// A tuple array's flat components widened to `Double`, when the arity
-    /// matches.
-    private static func flatTuples(_ v: USDValue?, arity: Int) -> [Double]? {
-        switch v {
-        case .floatTupleArray(let a, let f) where a == arity: f.map(Double.init)
-        case .doubleTupleArray(let a, let d) where a == arity: d
-        default: nil
-        }
-    }
-
-    private static func floats(_ v: USDValue?) -> [Float]? {
-        switch v {
-        case .floatArray(let f): f
-        case .doubleArray(let d): d.map(Float.init)
-        default: nil
-        }
-    }
-
-    /// A single matrix4d value as a column-vector matrix (rows load as
-    /// columns, the row-vector convention).
-    private static func matrix(_ v: USDValue?) -> simd_double4x4? {
-        guard case .tuple(let m)? = v, m.count == 16 else { return nil }
-        return simd_double4x4(columns: (SIMD4(m[0], m[1], m[2], m[3]),
-                                        SIMD4(m[4], m[5], m[6], m[7]),
-                                        SIMD4(m[8], m[9], m[10], m[11]),
-                                        SIMD4(m[12], m[13], m[14], m[15])))
-    }
-
-    /// A matrix4d array as column-vector matrices, requiring exactly `count`.
-    private static func matrixArray(_ v: USDValue?, count: Int) -> [simd_double4x4]? {
-        guard let flat = flatTuples(v, arity: 16), flat.count == count * 16 else { return nil }
-        return (0..<count).map { i in
-            let m = Array(flat[i * 16..<(i + 1) * 16])
-            return simd_double4x4(columns: (SIMD4(m[0], m[1], m[2], m[3]),
-                                            SIMD4(m[4], m[5], m[6], m[7]),
-                                            SIMD4(m[8], m[9], m[10], m[11]),
-                                            SIMD4(m[12], m[13], m[14], m[15])))
-        }
-    }
-
-    /// Attribute metadata keeps the file's shape (a token from crate, a bare
-    /// string from text), so consumers accept both.
-    private static func metaToken(_ v: USDValue?) -> String? {
-        switch v {
-        case .token(let t): t
-        case .string(let s): s
-        default: nil
-        }
-    }
-
-    private static func metaInt(_ v: USDValue?) -> Int? {
-        switch v {
-        case .int(let i): Int(i)
-        case .uint(let u): Int(u)
-        default: nil
-        }
-    }
-
-    private static func f4x4(_ m: simd_double4x4) -> simd_float4x4 {
-        simd_float4x4(columns: (SIMD4<Float>(m.columns.0), SIMD4<Float>(m.columns.1),
-                                SIMD4<Float>(m.columns.2), SIMD4<Float>(m.columns.3)))
     }
 }

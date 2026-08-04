@@ -5,10 +5,10 @@ import Foundation
 /// camera and lights.
 ///
 /// The USD family (`.usdz`, `.usdc`, `.usda`, `.usd`) loads through `loadScene`
-/// the way glTF does: a tree of named nodes with their authored transforms,
-/// node-local meshes wearing their authored materials, the file's cameras, and
-/// its UsdLux lights (read by Ollin's own parser, since no platform importer
-/// carries them), all as the ordinary core types. The bundled `stage.usda` is a
+/// the way glTF does: a tree of named nodes with their authored transforms in
+/// authored order, node-local meshes wearing their authored materials, the
+/// file's cameras, and its UsdLux lights, all read by Ollin's own parser into
+/// the ordinary core types. The bundled `stage.usda` is a
 /// small sculpture court authored by the project itself, lit by one light of
 /// every mapped kind: a distant sunset key, a sphere fill, a cone-shaped sphere
 /// beam on the gem, a rect backlight panel, an overhead disk pool, and a

@@ -10,6 +10,15 @@ import Foundation
 /// tree's metadata but not composed.
 extension USDStage {
 
+    /// A parsed stage plus its container context: the package archive and the
+    /// default layer's entry name when the file was a `.usdz`, so consumers
+    /// can resolve asset paths (textures) against the package.
+    struct Opened {
+        var stage: USDStage
+        var archive: USDZipArchive?
+        var defaultLayerName: String?
+    }
+
     /// Parse the USD file at `url` (usda, usdc, or usdz).
     static func load(contentsOf url: URL) throws -> USDStage {
         try load(data: Data(contentsOf: url))
@@ -17,8 +26,13 @@ extension USDStage {
 
     /// Parse USD `data` in any of the three containers.
     static func load(data: Data) throws -> USDStage {
+        try open(data: data).stage
+    }
+
+    /// Parse USD `data`, keeping the package context alongside the stage.
+    static func open(data: Data) throws -> Opened {
         if USDCrateReader.matches(data) {
-            return try USDCrateReader(data: data).readStage()
+            return Opened(stage: try USDCrateReader(data: data).readStage())
         }
         if USDZipArchive.matches(data) {
             let archive = try USDZipArchive(data: data)
@@ -27,13 +41,16 @@ extension USDStage {
             for name in archive.entryNames {
                 let ext = (name as NSString).pathExtension.lowercased()
                 if ["usd", "usda", "usdc"].contains(ext), let bytes = archive.data(named: name) {
-                    return try load(data: bytes)
+                    var opened = try open(data: bytes)
+                    opened.archive = archive
+                    opened.defaultLayerName = name
+                    return opened
                 }
             }
             throw USDError.malformed("usdz: no usd layer in package")
         }
         if let text = Self.usdaText(from: data) {
-            return try USDTextParser(text: text).parseStage()
+            return Opened(stage: try USDTextParser(text: text).parseStage())
         }
         throw USDError.unrecognizedFormat
     }
