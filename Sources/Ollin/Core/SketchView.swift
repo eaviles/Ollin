@@ -559,12 +559,23 @@ private final class OllinMTKView: MTKView {
     override func mouseMoved(with event: NSEvent) { reportPointer(event) }
     override func mouseDragged(with event: NSEvent) {
         reportPointer(event)
-        reportPressure(event)
+        // While a pressure-event stream is live, drag events must stay quiet: a
+        // pressure-sensing trackpad's drag events carry the legacy constant 1 in
+        // `pressure`, and reporting it would flap the sketch's value between the
+        // true press and 1.0 on alternating events. Devices that never send
+        // pressure events (tablet points, plain mice) keep this path.
+        if !pressureStreamLive { reportPressure(event) }
     }
     override func mouseDown(with event: NSEvent) {
         // A click reclaims keyboard focus (e.g. after a click on an inspector
         // control moved first responder away), so the canvas keeps the keys.
         window?.makeFirstResponder(self)
+        // The hosting layer's gesture recognizers install their own deep-click
+        // pressure configuration, which takes precedence over the view property
+        // for the press that is starting: re-claim the drawing gesture for this
+        // stream (one stage, smooth 0…1, no force-click firing mid-stroke).
+        pressureStreamLive = false
+        pressureConfiguration?.set()
         reportPointer(event)
         reportPressure(event)
         sketch?.mouseIsPressed = true
@@ -578,8 +589,11 @@ private final class OllinMTKView: MTKView {
     }
 
     /// A pressure-sensing device keeps sending pressure while the press deepens
-    /// without the pointer moving, so a still hand still swells the mark.
+    /// without the pointer moving, so a still hand still swells the mark. Inside
+    /// the SwiftUI hosts this never fires (see the monitor in
+    /// `viewDidMoveToWindow`); it stays for plain AppKit embeddings.
     override func pressureChange(with event: NSEvent) {
+        pressureStreamLive = true
         reportPressure(event)
     }
 
@@ -591,8 +605,22 @@ private final class OllinMTKView: MTKView {
     /// Only valid on mouse down/up/drag, tablet-point, and pressure events: reading
     /// `pressure` on anything else (a plain `mouseMoved`) raises.
     private func reportPressure(_ event: NSEvent) {
-        sketch?.setPressure(Double(event.pressure),
-                            canVary: event.associatedEventsMask.contains(.pressure))
+        // A pressure event is its own capability proof: only a device that can
+        // vary sends them. It must also be the only path that trusts the value,
+        // and `associatedEventsMask` must never be read here: on a pressure
+        // event that access raises, and AppKit's dispatch swallows the raise,
+        // silently abandoning the report (verified by hand).
+        if event.type == .pressure {
+            sketch?.setPressure(Double(event.pressure), canVary: true)
+            return
+        }
+        // A mouse event from a pressure-sensing device (the mask's pressure
+        // bit) carries the legacy constant 1 in `pressure`; the truth arrives
+        // on the pressure-event stream, whose curve starts near zero. Seed
+        // zero until that stream speaks, so a stroke never opens on a
+        // one-frame full-force blip. A plain mouse keeps its honest flat 1.
+        let canVary = event.associatedEventsMask.contains(.pressure)
+        sketch?.setPressure(canVary ? 0 : Double(event.pressure), canVary: canVary)
     }
 
     // The secondary (right) button drives the camera-control pan (alongside a
@@ -624,8 +652,31 @@ private final class OllinMTKView: MTKView {
     /// Required for the view to receive `keyDown`/`keyUp`.
     override var acceptsFirstResponder: Bool { true }
 
+    /// Whether the current drag has a live pressure-event stream. Set by the
+    /// first pressure event after a mouse down; while true, drag events stop
+    /// reporting pressure (see `mouseDragged`).
+    private var pressureStreamLive = false
+
+    /// Pressure events reach the app but the SwiftUI hosting layer's gesture
+    /// plumbing consumes them before responder dispatch, so `pressureChange`
+    /// never fires inside the hosts (verified by hand: every event visible at
+    /// the app level, none delivered to the view). A local monitor feeds them
+    /// to the sketch instead; the `pressureChange` override stays for plain
+    /// AppKit embeddings, where delivery works and the monitor double-reports
+    /// the same value harmlessly.
+    private var pressureMonitor: Any?
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        if pressureMonitor == nil {
+            pressureMonitor = NSEvent.addLocalMonitorForEvents(matching: .pressure) { [weak self] event in
+                guard let self, event.window === self.window,
+                      self.sketch?.mouseIsPressed == true else { return event }
+                self.pressureStreamLive = true
+                self.reportPressure(event)
+                return event
+            }
+        }
         // Take keyboard focus once we're in a window, so a sketch reacts to keys
         // without the user clicking the canvas first. A host whose window has its
         // own keyboard surface (the gallery's example list) opts out; there a
@@ -645,6 +696,13 @@ private final class OllinMTKView: MTKView {
         super.viewWillMove(toWindow: newWindow)
         if newWindow == nil, window?.firstResponder === self {
             window?.makeFirstResponder(nil)
+        }
+        // The pressure monitor's teardown lives here (not deinit, which is
+        // nonisolated and can't touch main-actor state); leaving the window
+        // uninstalls it, and `viewDidMoveToWindow` reinstalls on re-attach.
+        if newWindow == nil, let pressureMonitor {
+            NSEvent.removeMonitor(pressureMonitor)
+            self.pressureMonitor = nil
         }
     }
 

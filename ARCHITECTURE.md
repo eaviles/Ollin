@@ -3734,6 +3734,51 @@ is a `ModifierKeys` option set mapped from `NSEvent.ModifierFlags` behind the
 AppKit seam (like `KeyCode`); plus `rightMouseIsPressed` and the `mouseWheel()`
 hook.
 
+### Trackpad pressure delivery
+
+`Sketch.pressure` / `pressureIsAvailable` are the platform surface (documented
+in `Docs/Drawing/Marks.md`); how the values actually arrive was rebuilt once
+the first hand test on a Force Touch trackpad showed a stroke that never varied
+(the feature had shipped verified by CPU tests only, and two masked defects hid
+each other). The working delivery, each piece load-bearing:
+
+- **Delivery is a view-owned local event monitor, not the `pressureChange`
+  responder override.** Inside the SwiftUI hosts, `.pressure` events reach the
+  app but the hosting layer consumes them before responder dispatch: verified
+  by hand with an app-level monitor (every event visible, 239/239) against the
+  view override (zero delivered). `OllinMTKView` installs
+  `NSEvent.addLocalMonitorForEvents(matching: .pressure)` in
+  `viewDidMoveToWindow`, guarded to its own window and an active canvas press,
+  and uninstalls in `viewWillMove(toWindow: nil)` (a nonisolated `deinit`
+  cannot touch main-actor state). The responder override stays for plain
+  AppKit embeddings, where dispatch works and the monitor's double report of
+  the same value is harmless.
+- **`mouseDown` re-claims the stream with `pressureConfiguration?.set()`.**
+  The hosting layer's gesture recognizers install their own deep-click
+  configuration, which takes precedence over the view's `.primaryGeneric`
+  property for the press (observed effective behavior 5, deep click, where the
+  whole normal force range reads about 0). `set()` during `mouseDown` is the
+  documented way to re-claim the active stream; after it the events arrive as
+  behavior 2, one stage, smooth 0...1, and no force click fires mid-stroke.
+- **Never read `associatedEventsMask` on a `.pressure` event.** The access
+  raises, and AppKit's event dispatch swallows the raise, silently abandoning
+  the rest of the handler: the report dies with no crash and no log line
+  (pinned by step-tracing: 118 monitor-fed calls entered the reporter, every
+  one vanished at the mask read). A pressure event is its own capability proof,
+  so that path reports `canVary: true` unconditionally; the mask is read only
+  on mouse events, where it separates a pressure-capable device from a plain
+  mouse.
+- **Mouse events from a pressure-capable device seed zero, and drag events go
+  quiet once the stream is live.** Their `pressure` field is the legacy
+  constant 1; the true curve arrives only on the pressure stream and starts
+  near zero. Without the seed a stroke opens on a one-frame full-force blip;
+  without the drag gate (`pressureStreamLive`, reset each `mouseDown`) the
+  value flaps between the true press and 1.0 on alternating events. A plain
+  mouse keeps its honest flat 1 while a button is down.
+- A feel note for anyone testing by hand: the generic curve saturates at
+  moderate force, so the analog range lives in the light-touch zone. A firm
+  press reads 1.0 throughout, which is easy to misread as "pressure is stuck".
+
 ### Scene inspection views (`cameraView` / `resetCamera`)
 
 `cameraView(_:)` snaps the rig to canonical angles: `.reset` restores the
