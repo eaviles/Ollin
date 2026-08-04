@@ -30,6 +30,24 @@ extension Sketch {
         }
     }
 
+    /// Run `draw` with the 3D transform stack moved to `character`'s feet and
+    /// turned to its `facing`, so the block draws a figure standing on the
+    /// ground at the origin:
+    ///
+    /// ```swift
+    /// withCharacter(walker) {
+    ///     translate(0, 0.9, 0)                 // the capsule's middle
+    ///     drawCapsule(height: 1.2, radius: 0.3)
+    /// }
+    /// ```
+    public func withCharacter(_ character: Character3D, _ draw: () -> Void) {
+        withState {
+            translate(character.position)
+            if character.facing != 0 { rotate(character.facing, axis: .unitY) }
+            draw()
+        }
+    }
+
     /// The dynamic body under a canvas point, seen through the active camera,
     /// with the world point where the ray touched it. `nil` when nothing is
     /// there (or no camera is active). Use it to probe; use

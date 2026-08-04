@@ -6,6 +6,8 @@
 
 Rigid bodies inside the 3D scene: crates that stack and topple, balls that roll, chains that swing, all with real contact response. This is the spatial sibling of the [2D physics world](Physics.md)'s rigid side, and it keeps the same shape: build a [`World3D`](#world3d) once, add [`Body3D`](#body3d)s, step it each frame, and draw each body from its pose. It lives in the same satellite, so `import OllinPhysics` brings both.
 
+Beside the bodies there is one thing that isn't one: a [`Character3D`](#characters), a walking figure you steer from `draw()` rather than push around with forces.
+
 The solver behind it is [Jolt Physics](https://github.com/jrouwe/JoltPhysics), vendored and wrapped the way Box2D backs the 2D side; nothing of it leaks into the API.
 
 ```swift
@@ -49,6 +51,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Motors, limits, and springs](#motors) - powered hinges and sliders, travel stops, springy ends
 - [Contacts](#contacts) - what hit what this step, and how hard
 - [Sensors](#sensors) - regions that detect without colliding
+- [Characters](#characters) - a walking figure you steer from `draw()`
 - [Grabbing with the mouse](#grabbing) - ray-picking and dragging bodies through the camera
 - [Drawing bodies](#drawing) - `withBody` and matching meshes to colliders
 
@@ -300,6 +303,87 @@ let load = tray.touching.count        // still right once they doze off
 Because it never falls, a sensor stays where it is put; move one by setting its `position` (to make a detector follow something, drive it from that body's pose each frame). Sensors are also invisible to `body(under:in:)` and `grabBody(at:in:)`: the cursor's ray looks straight through them to the solid scene behind.
 
 Sensors detect *moving* bodies (dynamic and kinematic), not static scenery, and not each other, so a trigger volume laid over the ground doesn't spend every step reporting the ground.
+
+<a name="characters"></a>
+
+### Characters
+
+A `Character3D` is a walking figure: a capsule that goes where you steer it, climbs steps, is stopped by walls and by slopes too steep to hold it, and jumps. It is not a rigid body. Nothing tumbles it and nothing knocks it over, which is exactly what you want for something a person drives, and it is why walking is a `draw()` poll rather than a pile of forces.
+
+```swift
+let world = World3D()
+var walker: Character3D!
+
+override func setup() {
+    world.ground = 0
+    walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 2, 0))
+}
+
+override func draw() {
+    var east = 0.0, south = 0.0
+    if isKeyDown(.leftArrow)  { east -= 1 }
+    if isKeyDown(.rightArrow) { east += 1 }
+    if isKeyDown(.upArrow)    { south -= 1 }
+    if isKeyDown(.downArrow)  { south += 1 }
+
+    let heading = Vector3(east, 0, south)
+    walker.move(heading.length > 0 ? heading.normalized * 3 : .zero)
+    if isKeyDown(" ") { walker.jump() }
+
+    world.step(dt: deltaTime)
+    withCharacter(walker) { drawCapsule(radius: 0.3, height: 1.2) }
+}
+```
+
+`step(dt:)` sweeps every character forward along with the bodies, so there is no second update call to remember. `move(_:)` sets the horizontal velocity the character is *trying* to walk at and holds it until changed; falling and jumping are the world's business, so the vertical part is ignored. `jump(_:)` is granted only if the character is on the ground on the next step, which means calling it every frame while a key is held gives a hop each time it lands rather than flight.
+
+**Position is the feet.** `walker.position` is the point the capsule stands on, so a figure modelled standing at the origin lands where it should. `withCharacter(_:)` moves the 3D transform stack there and turns it by `facing`, the mirror of `withBody(_:)`.
+
+#### What it can get past
+
+Three settings decide what the geometry does to the character, and each has a visible edge:
+
+| | what it means |
+| --- | --- |
+| `stepHeight` | The tallest step it walks up without jumping (0.4 by default): a stair, a kerb, a ledge. Set it to `0` and the same stairs become a wall. |
+| `maxSlope` | The steepest slope it can climb, in radians (50° by default). A steeper face still holds it up, but it can't get any further up. |
+| `pushStrength` | The hardest it can shove a dynamic body sideways, in newtons (100 by default). At `0` crates become immovable walls to walk around. |
+
+`stepHeight` is the distance the character probes upward, not a hard ceiling: because the capsule's rounded foot rides the edge a little first, a ledge somewhat taller than the setting may still be climbed. Give it a clear margin rather than tuning to the exact centimetre.
+
+Whether a push actually shifts something is a contest between `pushStrength` and what the body weighs. A 4 kg crate on an ordinary floor slides under the default 100 N; a 43 kg one doesn't, because ground friction alone asks for more than that. Make crates light if you want them scattered.
+
+#### Reading it back
+
+| | |
+| --- | --- |
+| `isOnGround` | Standing on ground it can walk on: the test to gate a jump or swap a walk cycle for a falling pose. |
+| `groundState` | The full answer: `.onGround`, `.onSteepSlope` (held, but too steep to climb), `.notSupported` (touching something that can't hold it), `.inAir`. |
+| `groundNormal` | The surface under its feet, to lean a drawn figure into a slope. |
+| `groundBody` | What it is standing on, or `nil` in the air. A moving platform carries the character along with it. |
+| `velocity` | What it is *trying* to do: intent, including the fall and the jump. |
+| `actualVelocity` | What the world let it do, measured from the ground actually covered. |
+
+Those last two are the pair worth knowing. Walk into a wall and `velocity` still reads a full walking pace while `actualVelocity` reads nothing, so a walk cycle driven by `actualVelocity` stops its legs when the character stops moving:
+
+```swift
+let pace = Vector2(walker.actualVelocity.x, walker.actualVelocity.z).length
+stride += pace * deltaTime * 3.4        // legs stall against a wall
+```
+
+#### Among the ordinary bodies
+
+A character is swept through the world by hand rather than simulated as a body, so it isn't in the scene by itself. It carries a stand-in that is: `walker.body`, a kinematic `Body3D` moving inside the capsule. That is what makes the character visible to everything else in this page. Sensors see it walk in, `world.contacts` names it, and `body(under:in:)` can pick it:
+
+```swift
+if lookout.isTouching(walker.body) { /* standing on the platform */ }
+```
+
+The stand-in is deliberately kept out of `world.bodies`, the same way the ground slab is, so a drawing loop over the bodies doesn't render a capsule where the sketch draws its own figure. Its `position` is the stand-in's center; read `walker.position` for the feet.
+
+Teleport with `position`, which also re-reads what is underfoot on the spot, and `stop()` clears both the walking velocity and any speed carried from a fall. Characters collide with each other as well as with the scenery.
+
+The worked example is [`3D/Physics/Stroll`](../../Examples/3D/Physics/Stroll/): an eroded island with stairs up to a lookout that lights as you arrive.
 
 <a name="grabbing"></a>
 

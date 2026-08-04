@@ -12,12 +12,14 @@
 #include <Jolt/Physics/Collision/CastResult.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Collision/Shape/CylinderShape.h>
 #include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 #include <Jolt/Physics/Collision/Shape/TaperedCapsuleShape.h>
@@ -247,6 +249,15 @@ struct CJoltConstraint {
     JPH::BodyID grabbedBody = JPH::BodyID();
 };
 
+/// A walking character: a capsule the library sweeps by hand, plus the two
+/// distances the combined update needs (they are arguments to ExtendedUpdate,
+/// not state on the character, so the wrapper keeps them).
+struct CJoltCharacter {
+    JPH::Ref<JPH::CharacterVirtual> character;
+    float stepHeight = 0.0f;
+    float stickToFloor = 0.0f;
+};
+
 struct CJoltWorld {
     JPH::TempAllocatorImpl tempAllocator;
     JPH::JobSystemThreadPool jobSystem;
@@ -258,6 +269,10 @@ struct CJoltWorld {
     ContactRecorder contacts;
     JPH::PhysicsSystem physics;
     std::vector<CJoltConstraint *> constraints;
+    // Characters are not in the broad phase, so they can only be collided
+    // against each other through this list, which each one is registered in.
+    JPH::CharacterVsCharacterCollisionSimple characterCollision;
+    std::vector<CJoltCharacter *> characters;
 
     CJoltWorld()
         : tempAllocator(16 * 1024 * 1024),
@@ -424,6 +439,13 @@ void cjolt_world_destroy(CJoltWorld *world) {
         delete constraint;
     }
     world->constraints.clear();
+    // Characters before the world: releasing one destroys its inner body
+    // through the physics system, which has to still be alive to hear it.
+    for (CJoltCharacter *character : world->characters) {
+        world->characterCollision.Remove(character->character);
+        delete character;
+    }
+    world->characters.clear();
     delete world;
 }
 
@@ -891,6 +913,185 @@ int32_t cjolt_world_contact_count(const CJoltWorld *world) {
 int32_t cjolt_world_drain_contacts(CJoltWorld *world, CJoltContactEvent *out,
                                    int32_t capacity) {
     return world->contacts.drain(out, capacity);
+}
+
+// Characters ----------------------------------------------------------------
+
+namespace {
+
+/// The capsule a character wears, built so the bottom of the shape sits at the
+/// origin: the library measures a character from its feet, which is also the
+/// point a sketch wants to place and draw from. `height` is the whole standing
+/// height including both caps, so the cylinder between them is what is left
+/// after the two hemispheres.
+Ref<Shape> makeCharacterShape(float radius, float height) {
+    const float r = std::max(radius, 1.0e-3f);
+    const float cylinderHalf = std::max(0.5f * height - r, 1.0e-3f);
+    return RotatedTranslatedShapeSettings(Vec3(0, cylinderHalf + r, 0),
+                                          Quat::sIdentity(),
+                                          new CapsuleShape(cylinderHalf, r))
+        .Create()
+        .Get();
+}
+
+} // namespace
+
+CJoltCharacter *cjolt_character_create(CJoltWorld *world,
+                                       const CJoltCharacterDesc *desc) {
+    if (world == nullptr || desc == nullptr) { return nullptr; }
+    const float radius = std::max(desc->radius, 1.0e-3f);
+    Ref<Shape> shape = makeCharacterShape(radius, desc->height);
+    if (shape == nullptr) { return nullptr; }
+
+    Ref<CharacterVirtualSettings> settings = new CharacterVirtualSettings();
+    settings->mShape = shape;
+    settings->mUp = Vec3::sAxisY();
+    settings->mMaxSlopeAngle = desc->maxSlopeAngle;
+    settings->mMass = std::max(0.0f, desc->mass);
+    settings->mMaxStrength = std::max(0.0f, desc->maxStrength);
+    settings->mPredictiveContactDistance = desc->predictiveContactDistance;
+    settings->mPenetrationRecoverySpeed = desc->penetrationRecoverySpeed;
+    // Only contacts against the lower sphere of the capsule may hold the
+    // character up; a hand brushing a wall higher up is something it collides
+    // with, not something it stands on.
+    settings->mSupportingVolume = Plane(Vec3::sAxisY(), -radius);
+    // Mesh scenery is the character's usual floor, and its internal edges are
+    // exactly what a swept capsule catches on.
+    settings->mEnhancedInternalEdgeRemoval = true;
+    // The inner body is what gives the character presence among the ordinary
+    // bodies: ray picks find it, the contact listener reports it, sensors see
+    // it walk in, and fast bodies cannot pass through it in one step. It is
+    // slightly smaller than the character so it never collides before the
+    // swept shape does.
+    settings->mInnerBodyShape = makeCharacterShape(0.9f * radius, 0.9f * desc->height);
+    settings->mInnerBodyLayer = Layers::MOVING;
+
+    CJoltCharacter *wrapper = new CJoltCharacter();
+    wrapper->character = new CharacterVirtual(settings, RVec3(vec3(desc->position)),
+                                              quat(desc->rotation), 0, &world->physics);
+    wrapper->stepHeight = std::max(0.0f, desc->stepHeight);
+    wrapper->stickToFloor = std::max(0.0f, desc->stickToFloor);
+    // Characters live outside the broad phase, so they can only see each other
+    // through the world's list.
+    wrapper->character->SetCharacterVsCharacterCollision(&world->characterCollision);
+    world->characterCollision.Add(wrapper->character);
+    world->characters.push_back(wrapper);
+    return wrapper;
+}
+
+void cjolt_character_destroy(CJoltWorld *world, CJoltCharacter *character) {
+    if (world == nullptr || character == nullptr) { return; }
+    world->characterCollision.Remove(character->character);
+    world->characters.erase(
+        std::remove(world->characters.begin(), world->characters.end(), character),
+        world->characters.end());
+    // Releasing the last reference destroys the inner body through the system.
+    delete character;
+}
+
+void cjolt_character_get_position(const CJoltCharacter *character, float out[3]) {
+    store(Vec3(character->character->GetPosition()), out);
+}
+
+void cjolt_character_set_position(CJoltCharacter *character, const float pos[3]) {
+    character->character->SetPosition(RVec3(vec3(pos)));
+}
+
+void cjolt_character_get_rotation(const CJoltCharacter *character, float out[4]) {
+    store(character->character->GetRotation(), out);
+}
+
+void cjolt_character_set_rotation(CJoltCharacter *character, const float q[4]) {
+    character->character->SetRotation(quat(q));
+}
+
+void cjolt_character_get_velocity(const CJoltCharacter *character, float out[3]) {
+    store(character->character->GetLinearVelocity(), out);
+}
+
+void cjolt_character_set_velocity(CJoltCharacter *character, const float v[3]) {
+    character->character->SetLinearVelocity(vec3(v));
+}
+
+void cjolt_character_set_max_slope(CJoltCharacter *character, float radians) {
+    character->character->SetMaxSlopeAngle(radians);
+}
+
+void cjolt_character_set_step_height(CJoltCharacter *character, float height) {
+    character->stepHeight = std::max(0.0f, height);
+}
+
+void cjolt_character_set_stick_to_floor(CJoltCharacter *character, float distance) {
+    character->stickToFloor = std::max(0.0f, distance);
+}
+
+void cjolt_character_set_mass(CJoltCharacter *character, float mass) {
+    character->character->SetMass(std::max(0.0f, mass));
+}
+
+void cjolt_character_set_max_strength(CJoltCharacter *character, float newtons) {
+    character->character->SetMaxStrength(std::max(0.0f, newtons));
+}
+
+CJoltGroundState cjolt_character_get_ground_state(const CJoltCharacter *character) {
+    switch (character->character->GetGroundState()) {
+    case CharacterBase::EGroundState::OnGround: return CJOLT_GROUND_ON_GROUND;
+    case CharacterBase::EGroundState::OnSteepGround: return CJOLT_GROUND_ON_STEEP;
+    case CharacterBase::EGroundState::NotSupported: return CJOLT_GROUND_NOT_SUPPORTED;
+    case CharacterBase::EGroundState::InAir: break;
+    }
+    return CJOLT_GROUND_IN_AIR;
+}
+
+void cjolt_character_get_ground_normal(const CJoltCharacter *character, float out[3]) {
+    store(character->character->GetGroundNormal(), out);
+}
+
+void cjolt_character_get_ground_velocity(const CJoltCharacter *character, float out[3]) {
+    store(character->character->GetGroundVelocity(), out);
+}
+
+CJoltBodyID cjolt_character_get_ground_body(const CJoltCharacter *character) {
+    const BodyID id = character->character->GetGroundBodyID();
+    return id.IsInvalid() ? CJOLT_BODY_INVALID : id.GetIndexAndSequenceNumber();
+}
+
+CJoltBodyID cjolt_character_get_inner_body(const CJoltCharacter *character) {
+    const BodyID id = character->character->GetInnerBodyID();
+    return id.IsInvalid() ? CJOLT_BODY_INVALID : id.GetIndexAndSequenceNumber();
+}
+
+bool cjolt_character_is_slope_too_steep(const CJoltCharacter *character,
+                                        const float normal[3]) {
+    return character->character->IsSlopeTooSteep(vec3(normal));
+}
+
+void cjolt_character_update(CJoltWorld *world, CJoltCharacter *character, float dt,
+                            const float gravity[3]) {
+    if (world == nullptr || character == nullptr || dt <= 0.0f) { return; }
+    CharacterVirtual *self = character->character;
+    const Vec3 up = self->GetUp();
+
+    // ExtendedUpdate is the combined move: it sweeps the shape, then tries to
+    // step onto anything shorter than the step height, then pulls the
+    // character back down onto a floor it would otherwise skip off. Both
+    // distances run along the character's own up axis.
+    CharacterVirtual::ExtendedUpdateSettings settings;
+    settings.mStickToFloorStepDown = -up * character->stickToFloor;
+    settings.mWalkStairsStepUp = up * character->stepHeight;
+
+    self->ExtendedUpdate(dt, vec3(gravity), settings,
+                         world->physics.GetDefaultBroadPhaseLayerFilter(Layers::MOVING),
+                         world->physics.GetDefaultLayerFilter(Layers::MOVING), {}, {},
+                         world->tempAllocator);
+}
+
+void cjolt_character_refresh_contacts(CJoltWorld *world, CJoltCharacter *character) {
+    if (world == nullptr || character == nullptr) { return; }
+    character->character->RefreshContacts(
+        world->physics.GetDefaultBroadPhaseLayerFilter(Layers::MOVING),
+        world->physics.GetDefaultLayerFilter(Layers::MOVING), {}, {},
+        world->tempAllocator);
 }
 
 // Queries -------------------------------------------------------------------

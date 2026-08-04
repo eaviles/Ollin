@@ -44,6 +44,7 @@ See the [3D physics reference](../../Docs/Simulation/Physics3D.md).
 | [Windmill](Physics/Windmill/) | A motored blade cross batting balls through spring-shut swing gates; space cuts the power and friction coasts it down. `.compound` bodies, `drive(at:)`/`drive(to:)`, limits, `softenLimits`. |
 | [Rockslide](Physics/Rockslide/) | Rocks tumbling down an eroded mountainside, the collider tracing the same surface the mesh draws. The `.heightfield` collider over a generated `Heightfield`. |
 | [Trigger](Physics/Trigger/) | Balls through a scoring hoop into a tray that lights with its load, each knock ringing at the speed it landed. Contact events (`world.contacts`) and sensor bodies (`isSensor`). |
+| [Stroll](Physics/Stroll/) | Walk a figure over an eroded island: arrows or WASD to go, space to jump, stairs up to a lookout that lights as you arrive. `addCharacter`, `move`/`jump`, `stepHeight`, `withCharacter`. |
 
 ### Camera
 

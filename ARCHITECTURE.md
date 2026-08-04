@@ -3109,6 +3109,90 @@ report two, impact speed tracks √(2gh) across drop heights, the list survives
 being read twice and empties on a quiet step, a removed body leaves no stale
 touches, and two identical worlds log identical event sequences.
 
+### Characters
+
+`Character3D` wraps Jolt's `CharacterVirtual`, which is a different kind of
+object from everything above it: not a body the solver integrates, but a shape
+the library sweeps through the world by hand on demand. It is not in the broad
+phase, nothing collides with it by default, and the `PhysicsSystem` does not
+know it exists. That shape drives every structural decision in the tier.
+
+It needs its own bridge object and its own update call. `CJoltCharacter` holds
+the `Ref<CharacterVirtual>` plus the two distances the combined update takes
+(`stepHeight`, `stickToFloor`): those are *arguments* to `ExtendedUpdate`
+rather than state on the character, so the wrapper is where they live.
+`World3D.step(dt:)` advances every character **before** `cjolt_world_step`,
+which is the order the library's own sample runs in: the character sweeps
+against the world as it currently stands, then the solver integrates the
+bodies. `ExtendedUpdate` is the update to call rather than `Update`, because
+it is the one that also walks stairs and sticks to the floor; both distances
+run along the character's own up axis, which must match the world's y-up.
+
+Two geometry decisions make the API pleasant. The capsule is built
+bottom-at-origin (a `RotatedTranslatedShape` lifting a `CapsuleShape` by
+`halfHeight + radius`), so `position` is the character's **feet**: a figure
+modelled standing at the origin stands on the ground in the world, and
+`withCharacter` is a plain translate. And `mSupportingVolume` is
+`Plane(up, -radius)`, so only contacts against the lower cap can hold the
+character up; without it a hand brushing a wall counts as ground. `isOnGround`
+reads `GetGroundState()` rather than testing a normal, because the library
+already distinguishes *supported by ground you may walk on* from *supported by
+a slope you may not* from *touching something that cannot hold you*.
+
+**The velocity composition is the library's recipe, and it lives in Swift.**
+`Character3D.advance(dt:)` reproduces the sample's `HandleInput`: on the
+ground the character inherits `GetGroundVelocity()` rather than keeping its own
+fall speed (which is what makes a moving platform carry it, and is the only
+moment a jump may be added), in the air it keeps just its vertical velocity so
+gravity accumulates, gravity is added, and the walking velocity is added last
+and always. Ollin takes the no-inertia, air-control-on branch: the sketch owns
+input feel, and Ollin already has easing and springs for anyone who wants
+smoothing. Keeping the composition on the Swift side leaves the C bridge a
+thin mechanical wrapper and the policy visible where Ollin's DX decisions live.
+
+**`velocity` is intent; `actualVelocity` is outcome.** The library never
+writes the achieved velocity back into `mLinearVelocity`, so a character pinned
+against a wall still reads a full walking pace. The sample derives an
+"effective velocity" from the position delta across the update, and
+`Character3D` does the same, publishing it as `actualVelocity`. The pair is
+worth having rather than tidying away: `velocity` is the right thing to read
+for what the character is attempting, and `actualVelocity` is the only correct
+input to a walk cycle, which otherwise skates on the spot against a wall.
+
+**Every character always carries an inner rigid body.** `CharacterVirtual`
+supports an optional `mInnerBodyShape`, and Ollin makes it mandatory rather
+than a flag: it is what gives the character presence among the ordinary
+bodies, so ray picking finds it, the stage-4 `ContactRecorder` reports it,
+sensors see it walk in, and a fast body cannot pass through it in one step. It
+is created kinematic in `Layers::MOVING` at 0.9× scale so it never collides
+before the swept shape does, and the library filters it out of the character's
+own queries. On the Swift side it surfaces as `character.body`, registered in
+`bodyByID` (so a `Contact3D` can name it) but deliberately kept out of
+`world.bodies`, the `groundBody` precedent: a drawing loop over the bodies
+should not render a capsule where the sketch draws its own figure. Characters
+also register in the world's `CharacterVsCharacterCollisionSimple`, since
+otherwise they would pass through each other.
+
+Three envelope facts, each measured rather than assumed. `stepHeight` is the
+distance the stair walk probes upward, not a hard ceiling: the capsule's
+rounded foot rides an edge slightly before the probe runs, so a ledge roughly a
+quarter taller than the setting may still be climbed (0.4 climbs 0.5, stops at
+0.6). That is inherent to the algorithm, so it is documented rather than
+compensated for, and the tests use a clear margin. Whether `pushStrength`
+actually shifts something is a contest with ground friction, not just mass: a
+4 kg crate slides under the default 100 N while a 43 kg one does not, because
+friction alone asks for more. And a slope *just* past `maxSlope` reads
+`.onSteepSlope` while a near-vertical face reads `.notSupported`, because at
+that angle nothing supports the capsule at all.
+
+`Character3DTests` pins the tier behaviorally, each knob against a
+counterfactual twin that isolates it: the same 40° ramp is climbed or refused
+by `maxSlope` alone, the same 0.3 ledge is a step or a wall by `stepHeight`
+alone, the same crate scatters or blocks by `pushStrength` alone. Around those
+sit the standing/falling/steep readbacks, jump-only-from-the-ground, a platform
+carrying the character exactly as far as it travels, a sensor reporting the
+walk-through, teleporting re-reading the ground, and identical replays.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

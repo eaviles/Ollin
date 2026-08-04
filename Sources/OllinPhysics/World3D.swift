@@ -72,6 +72,10 @@ public final class World3D {
     /// Every joint between bodies, in the order added.
     public private(set) var joints: [Joint3D] = []
 
+    /// Every walking `Character3D` in the world, in the order added. Each one
+    /// is swept forward by `step(dt:)` along with the bodies.
+    public private(set) var characters: [Character3D] = []
+
     /// Every touch that started or stopped during the most recent `step(dt:)`,
     /// including bodies entering and leaving a sensor. Poll it in `draw()` the
     /// way mouse state is polled; the list is replaced by the next step, and
@@ -208,6 +212,49 @@ public final class World3D {
         return added
     }
 
+    /// Add a walking `Character3D`: a capsule standing on its feet at
+    /// `position` that walks over the scenery, climbs steps, and jumps, driven
+    /// from `draw()`. Unlike a body it is never tumbled or thrown; it goes
+    /// where you steer it and stops where the geometry says it must.
+    ///
+    /// ```swift
+    /// let walker = world.addCharacter(radius: 0.3, height: 1.8,
+    ///                                 at: Vector3(0, 3, 0))
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - radius: how wide the capsule is; also how far it stays off walls.
+    ///   - height: the whole standing height, both caps included.
+    ///   - stepHeight: the tallest step it walks up without jumping.
+    ///   - maxSlope: the steepest slope it can climb, in radians.
+    ///   - mass: what it presses down with, in kilograms.
+    ///   - pushStrength: the hardest it can shove a dynamic body, in newtons
+    ///     (`0` to make crates immovable).
+    @discardableResult
+    public func addCharacter(radius: Double = 0.3, height: Double = 1.8,
+                             at position: Vector3, stepHeight: Double = 0.4,
+                             stickToFloorDistance: Double = 0.5,
+                             maxSlope: Double = 50 * .pi / 180,
+                             mass: Double = 70,
+                             pushStrength: Double = 100) -> Character3D {
+        let character = Character3D(world: self, radius: radius, height: height,
+                                    position: position, stepHeight: stepHeight,
+                                    stickToFloorDistance: stickToFloorDistance,
+                                    maxSlope: maxSlope, mass: mass,
+                                    pushStrength: pushStrength)!
+        characters.append(character)
+        return character
+    }
+
+    /// Remove a walking character from the world.
+    public func remove(_ character: Character3D) {
+        let innerID = character.body.id
+        bodyByID[innerID] = nil
+        forgetTouches(of: innerID)
+        contacts.removeAll { $0.involves(character.body) }
+        characters.removeAll { $0 === character }
+    }
+
     /// Link two rigid bodies with a `Joint3D` and return it: a hinge, a
     /// ball-and-socket, a rod, a weld, or a slider (see `JointKind3D`).
     /// Anchors are world points at the moment of connecting.
@@ -313,11 +360,15 @@ public final class World3D {
         // Joints before bodies: destroying a body would invalidate its joints.
         for joint in joints { joint.destroyBackingConstraint() }
         joints.removeAll()
+        // Characters own their inner bodies and destroy them on release.
+        characters.removeAll()
         for body in bodies { cjolt_body_destroy(handle, body.id) }
         bodies.removeAll()
         bodyByID.removeAll()
         touchingIDs.removeAll()
         contacts.removeAll()
+        // `bodyByID` was just emptied; put the floor slab back in it.
+        if let groundBody { bodyByID[groundBody.id] = groundBody }
     }
 
     /// Destroy a joint (called by `Joint3D.remove()`).
@@ -341,6 +392,10 @@ public final class World3D {
         // or the unit scale between steps always takes effect.
         let g = meters(from: gravity)
         cjolt_world_set_gravity(handle, g.0, g.1, g.2)
+        // Characters are swept by hand rather than integrated by the solver,
+        // so they move first, against the world as it stands: the order the
+        // library's own character update runs in.
+        for character in characters { character.advance(dt: clamped) }
         // One collision pass per ~60 Hz of simulated time keeps long frames
         // stable without costing short ones anything.
         let passes = max(1, Int((clamped * 60).rounded(.up)))

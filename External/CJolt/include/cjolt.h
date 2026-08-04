@@ -248,6 +248,77 @@ int32_t cjolt_world_contact_count(const CJoltWorld *world);
 int32_t cjolt_world_drain_contacts(CJoltWorld *world, CJoltContactEvent *out,
                                    int32_t capacity);
 
+// Characters ----------------------------------------------------------------
+
+/// Opaque character handle: a capsule the library sweeps by hand each update
+/// rather than a body the solver integrates. It is not in the broad phase, so
+/// it carries an inner kinematic body to give it presence (ray casts, contact
+/// events, sensors) among the ordinary bodies.
+typedef struct CJoltCharacter CJoltCharacter;
+
+/// Where a character's feet are, which decides whether it may walk.
+typedef enum {
+    CJOLT_GROUND_ON_GROUND = 0,   // supported, free to move
+    CJOLT_GROUND_ON_STEEP = 1,    // supported by a slope too steep to climb
+    CJOLT_GROUND_NOT_SUPPORTED = 2, // touching something that can't hold it
+    CJOLT_GROUND_IN_AIR = 3,      // touching nothing
+} CJoltGroundState;
+
+typedef struct {
+    /// A capsule standing on its feet: `radius` and the TOTAL height including
+    /// both caps, so the shape spans `position` … `position + height` on +y.
+    float radius, height;
+    float position[3]; // the feet, in meters
+    float rotation[4]; // quaternion x, y, z, w (facing; identity = 0,0,0,1)
+    float maxSlopeAngle;  // radians; slopes past it can't be climbed
+    float stepHeight;     // tallest stair the character steps onto; 0 = off
+    float stickToFloor;   // how far down it may be pulled back onto the floor; 0 = off
+    float mass;           // kg, the weight it presses down with
+    float maxStrength;    // N, the hardest it can shove a dynamic body; 0 = never
+    float predictiveContactDistance;
+    float penetrationRecoverySpeed;
+} CJoltCharacterDesc;
+
+/// Creates a character. Returns NULL if the description is unusable.
+CJoltCharacter *cjolt_character_create(CJoltWorld *world,
+                                       const CJoltCharacterDesc *desc);
+void cjolt_character_destroy(CJoltWorld *world, CJoltCharacter *character);
+
+void cjolt_character_get_position(const CJoltCharacter *character, float out[3]);
+void cjolt_character_set_position(CJoltCharacter *character, const float pos[3]);
+void cjolt_character_get_rotation(const CJoltCharacter *character, float out[4]);
+void cjolt_character_set_rotation(CJoltCharacter *character, const float quat[4]);
+void cjolt_character_get_velocity(const CJoltCharacter *character, float out[3]);
+void cjolt_character_set_velocity(CJoltCharacter *character, const float v[3]);
+
+/// Live tuning: the knobs a sketch may change between steps.
+void cjolt_character_set_max_slope(CJoltCharacter *character, float radians);
+void cjolt_character_set_step_height(CJoltCharacter *character, float height);
+void cjolt_character_set_stick_to_floor(CJoltCharacter *character, float distance);
+void cjolt_character_set_mass(CJoltCharacter *character, float mass);
+void cjolt_character_set_max_strength(CJoltCharacter *character, float newtons);
+
+CJoltGroundState cjolt_character_get_ground_state(const CJoltCharacter *character);
+void cjolt_character_get_ground_normal(const CJoltCharacter *character, float out[3]);
+void cjolt_character_get_ground_velocity(const CJoltCharacter *character, float out[3]);
+/// The body the character stands on, or CJOLT_BODY_INVALID in the air.
+CJoltBodyID cjolt_character_get_ground_body(const CJoltCharacter *character);
+/// The inner kinematic body that represents the character among the bodies.
+CJoltBodyID cjolt_character_get_inner_body(const CJoltCharacter *character);
+/// Whether a surface with this normal is too steep for the character to walk
+/// on (the library's own test, which also honors "no slope limit").
+bool cjolt_character_is_slope_too_steep(const CJoltCharacter *character,
+                                        const float normal[3]);
+
+/// Sweeps the character through the world by its current velocity, climbing
+/// steps and sticking to the floor on the way. Call once per step, before
+/// `cjolt_world_step`, with the same dt.
+void cjolt_character_update(CJoltWorld *world, CJoltCharacter *character,
+                            float dt, const float gravity[3]);
+
+/// Re-reads what the character is standing on after it has been teleported.
+void cjolt_character_refresh_contacts(CJoltWorld *world, CJoltCharacter *character);
+
 // Queries -------------------------------------------------------------------
 
 /// Casts a ray (direction scaled by length) against the moving bodies.

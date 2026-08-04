@@ -561,6 +561,64 @@ That tray is also why sensors are built the way they are. A ball that settles in
 
 You don't animate a pile; you drop one.
 
+## Someone to be in there
+
+Everything so far you watch. A **character** is something you *are*: a figure that walks where you steer it, climbs what it can climb, and stops at what it can't.
+
+You might reach for a body with a capsule collider and start pushing it around with forces. Don't. A body is at the mercy of the simulation, which is the whole point of a body and exactly wrong here: shove it and it tips over, land it awkwardly and it rolls away, and you spend the evening fighting torques to keep a person upright. A character is a different thing on purpose. It has a shape and it collides, but nothing tumbles it and nothing knocks it down. You hand it a direction and it goes.
+
+```swift
+walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 2, 0))
+```
+
+Steering it is a `draw()` poll, like the mouse:
+
+```swift
+var east = 0.0, south = 0.0
+if isKeyDown(.leftArrow)  { east -= 1 }
+if isKeyDown(.rightArrow) { east += 1 }
+if isKeyDown(.upArrow)    { south -= 1 }
+if isKeyDown(.downArrow)  { south += 1 }
+
+let heading = Vector3(east, 0, south)
+walker.move(heading.length > 0 ? heading.normalized * 3 : .zero)
+if isKeyDown(" ") { walker.jump() }
+
+world.step(dt: deltaTime)
+withCharacter(walker) { drawCapsule(radius: 0.3, height: 1.2) }
+```
+
+That's a walkable scene: eight lines and a `step`. The same `world.step` moves the character along with the crates, so there's no second update to forget. `move` sets the speed it's *trying* to walk at and keeps it until you say otherwise; falling and jumping stay the world's business, which is why you only give it a horizontal direction. `jump` is granted only if it's on the ground when the step comes round, so holding the key hops rather than flies.
+
+<img src="Images/17-3DGently/Walker.jpg" alt="A small orange figure with a pink cap brim mid-stride on the second of four pale steps, legs apart in a walking pose, two crates it has shouldered aside sitting on the green floor beside the stair" width="560">
+
+`withCharacter` is `withBody`'s twin, and it puts the origin at the character's **feet**. That's the detail that makes drawing one pleasant: model your figure standing on the floor at the origin, and it stands on the floor in the world.
+
+Three numbers decide what the scenery does to it, and each is worth meeting by breaking it:
+
+```swift
+walker.stepHeight = 0.4        // the tallest step it walks up: a kerb, a stair
+walker.maxSlope = 50 * .pi / 180  // the steepest hill it can climb
+walker.pushStrength = 100      // how hard it can shove a crate, in newtons
+```
+
+Set `stepHeight` to zero and the stairs in the figure become a wall it stands against forever. Wind `maxSlope` down and a hill it strolled up last run holds it halfway. Set `pushStrength` to zero and those two crates stop being scenery it walks through and start being furniture it walks around. None of that is scripted anywhere; it's the same walk meeting different limits.
+
+Two velocities are worth telling apart. `walker.velocity` is what it's *trying* to do, and `walker.actualVelocity` is what the world let it do. Walk into a wall and the first still reads a brisk pace while the second reads nothing. Drive a walk cycle from the second and the legs stop when the figure stops, which is the difference between a character and a puppet skating on the spot:
+
+```swift
+let pace = Vector2(walker.actualVelocity.x, walker.actualVelocity.z).length
+stride += pace * deltaTime * 3.4
+```
+
+One last thing, and it's the one that connects this section to the last. A character is swept through the world by hand rather than simulated, so strictly it isn't in the scene. It carries a stand-in that is: `walker.body`, an ordinary kinematic body riding inside the capsule. That's what lets everything else notice it, sensors included:
+
+```swift
+if lookout.isTouching(walker.body) { /* you're on the platform */ }
+```
+
+So the trigger you built for balls works for people, unchanged. The playable version, an eroded island with stairs up to a lookout that lights as you arrive, is the [`3D/Physics/Stroll`](../Examples/3D/Physics/Stroll/) example.
+
 ## What the depth buffer is for
 
 Chapter 14 filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has: for every pixel, how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.
