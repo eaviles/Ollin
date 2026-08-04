@@ -47,6 +47,8 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Terrain and scenery](#terrain) - heightfield ground and `Scene` colliders
 - [Joints](#joints) - hinges, ball-and-sockets, rods, welds, sliders
 - [Motors, limits, and springs](#motors) - powered hinges and sliders, travel stops, springy ends
+- [Contacts](#contacts) - what hit what this step, and how hard
+- [Sensors](#sensors) - regions that detect without colliding
 - [Grabbing with the mouse](#grabbing) - ray-picking and dragging bodies through the camera
 - [Drawing bodies](#drawing) - `withBody` and matching meshes to colliders
 
@@ -228,6 +230,77 @@ gate.softenLimits(frequency: 3, damping: 0.5)   // springy end stops
 
 `friction` is the stiff old hinge: a constant resistance the joint's motion must overcome while no motor is powering it, which is also what winds a spinning wheel down after `stopMotor()`. `softenLimits` swaps the hard stops for springs, so a gate thrown against its limit gives a little and bounces back; `frequency` 0 restores the wall. The other joint kinds have no axis to power, so the motor calls on a `.ball`, `.distance`, or `.weld` note once and do nothing (`.distance` has its own spring: the `stiffness` on the case).
 
+<a name="contacts"></a>
+
+### Contacts
+
+Touches are polled, not delivered. Each `step` fills `world.contacts` with everything that started or stopped touching during it, and `draw()` reads the list the way it reads mouse state:
+
+```swift
+world.step(dt: deltaTime)
+for contact in world.contacts where contact.phase == .began {
+    sparks.append(Spark(at: contact.point, size: contact.speed))
+}
+```
+
+A `Contact3D` carries the pair (`a` and `b`, always in the same order, not "the one that moved"), where they met (`point`), the `normal` pointing from `a` toward `b`, and `speed`, how fast they were closing when they met. `speed` is measured *before* the solver answers the collision, so it reads the force of the impact rather than what survived the bounce, which is what you want for the volume of a clink or the size of a spark. Two helpers save the "which one is mine" dance:
+
+```swift
+contact.involves(ball)          // is this ball in it?
+contact.other(than: ball)       // what did it hit?
+```
+
+Contacts are per body **pair**. A crate resting on a mesh floor touches it along many triangles and a compound body touches on several of its parts, but that is one `began` when it lands and one `ended` when it lifts.
+
+An `ended` contact carries only the pair: by the time the solver notices a touch is over there is nothing left to measure, and the other body may already have been removed, so `point`, `normal`, and `speed` are zero there.
+
+Each body can be asked directly, out of the same list:
+
+```swift
+ball.contacts                   // this step's events involving this ball
+ball.entered                    // bodies that started touching it this step
+ball.exited                     // bodies that stopped
+ball.touching                   // everything it is in contact with right now
+ball.isTouching(floor)
+```
+
+The floor from `world.ground` is a body too, just not one in `bodies` (nothing added it, and a drawing loop shouldn't have to skip a 1000-unit slab). It answers to `world.groundBody`, so a landing is recognisable:
+
+```swift
+if contact.other(than: ball) === world.groundBody { thud() }
+```
+
+One thing to know about `touching`: the solver lets a settled body sleep, and a sleeping body stops reporting contacts, so a stack that has come to rest reads as touching nothing. That is the right answer for events (nothing is happening) and a surprising one for occupancy. When the question is "what is resting in this region", use a sensor, which stays awake.
+
+<a name="sensors"></a>
+
+### Sensors
+
+A sensor is a region rather than a solid: things pass straight through it, and it reports them.
+
+```swift
+let goal = world.addBody(.cylinder(height: 0.5, radius: 1), at: hoopCenter,
+                         isSensor: true)
+
+// in draw(), after step:
+score += goal.entered.count           // balls that crossed this step
+let inside = !goal.touching.isEmpty   // one is crossing right now
+```
+
+Sensors push nothing and are pushed by nothing, so a ball falls through one exactly as it would through empty air, and a sensor can share space with solid geometry (the hoop above is a solid rim of beads with a sensor disc filling the ring: the rim is what a ball clatters off, the sensor is the hole).
+
+A sensor sets its own motion: it is kinematic and never sleeps, whatever `kind` was asked for, so it goes on reporting bodies that have settled and fallen asleep inside it. That is what makes a tray or a pressure plate work:
+
+```swift
+let tray = world.addBody(.box(width: 3, height: 0.7, depth: 3),
+                         at: Vector3(0, 0.55, 0), isSensor: true)
+let load = tray.touching.count        // still right once they doze off
+```
+
+Because it never falls, a sensor stays where it is put; move one by setting its `position` (to make a detector follow something, drive it from that body's pose each frame). Sensors are also invisible to `body(under:in:)` and `grabBody(at:in:)`: the cursor's ray looks straight through them to the solid scene behind.
+
+Sensors detect *moving* bodies (dynamic and kinematic), not static scenery, and not each other, so a trigger volume laid over the ground doesn't spend every step reporting the ground.
+
 <a name="grabbing"></a>
 
 ### Grabbing with the mouse
@@ -275,4 +348,4 @@ for body in world.bodies {
 
 The simulation is deterministic within a build: the same setup stepped the same way reproduces exactly, which is what the seeded-variations story needs live. Exact poses can shift across toolchain rebuilds, so physics scenes aren't pinned by pixel snapshots; the behavioral test suite pins the solver instead.
 
-Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven compound blade cross batting balls through limited, spring-shut swing gates), and [`3D/Physics/Rockslide`](../../Examples/3D/Physics/Rockslide/) (rocks tumbling down eroded heightfield terrain).
+Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven compound blade cross batting balls through limited, spring-shut swing gates), [`3D/Physics/Rockslide`](../../Examples/3D/Physics/Rockslide/) (rocks tumbling down eroded heightfield terrain), and [`3D/Physics/Trigger`](../../Examples/3D/Physics/Trigger/) (a scoring hoop and a loaded tray, both sensors, with every knock ringing at the speed it landed).

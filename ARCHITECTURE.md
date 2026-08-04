@@ -3053,6 +3053,62 @@ neighbours (a cone weighs a third of its cylinder), the flat and non-square
 height-field mappings, the off-the-edge void, the scene-collider transform
 composition, and a byte-identical compound-on-terrain replay.
 
+**Contact events and sensors** (stage 4) surface the solver's collision
+callbacks without letting a callback anywhere near Swift. Jolt's
+`ContactListener` fires on the job system's worker threads *during* `Update`,
+several at once, with every body locked, so the bridge's `ContactRecorder`
+(owned by `CJoltWorld`, declared *before* the `PhysicsSystem` that holds a
+pointer to it, so it outlives every step that could still be writing) buffers
+flat-POD `CJoltContactEvent`s under a `std::mutex`, and
+`cjolt_world_drain_contacts` empties that buffer on the main thread after
+`cjolt_world_step` returns. This is the C cousin of the render-thread-closure
+rule: the listener only ever reads what it is handed.
+
+Three decisions inside the recorder are load-bearing. First, **the buffer
+speaks in body pairs, not sub-shapes**: a compound's parts and a mesh's
+triangles each report their own contact, so the listener reference-counts each
+pair (keyed on the two `BodyID`s packed into a `uint64`) and emits one `began`
+as the count leaves zero and one `ended` as it returns, which is the
+granularity a sketch asks about; without it a crate landing on terrain would
+report a landing per triangle. Second, **the drain sorts before it copies**
+(by pair, then phase): worker threads record in whatever order they finish, so
+an unsorted list would replay differently run to run and break the catalog's
+determinism rule (the Swift-side `touching` lists are sorted arrays rather
+than `Set`s for the same reason). Third, **`speed` is computed in
+`OnContactAdded`, where the velocities are still pre-solve**: the manifold
+normal moves body 2 out of collision, so it points from body 1 toward body 2,
+and the solver's own measure of a pair's relative velocity is `v2 - v1` along
+that normal, negative while they approach, which makes the closing speed
+`(v1 - v2) · n` clamped at zero. `OnContactRemoved` receives only a
+`SubShapeIDPair` and may not touch the bodies at all (one may already have
+been destroyed), which is why an `ended` event carries no point or normal, and
+why an event naming a body Swift can no longer resolve is dropped after its
+bookkeeping is applied rather than handed over half-resolved.
+
+Sensors ride `BodyCreationSettings::mIsSensor` plus a fourth object layer
+(`SENSOR`) that pairs only with `MOVING`, so a trigger volume never spends a
+step colliding against static scenery or another sensor. The DX decision here
+came from the library's own note: a *static* sensor only detects **active**
+bodies, and Jolt drops the contact the moment a body falls asleep, so a
+pressure plate would report empty the instant its load settled. A sensor is
+therefore created **kinematic and activated** whatever `kind` was asked for
+(`Body::UpdateSleepState` exempts sensors from sleeping outright), which is
+what makes `sensor.touching` answer the standing occupancy question that
+`Body3D.touching` on ordinary solids cannot: a settled pile sleeps and stops
+reporting, pinned deliberately by `aSleepingPileStopsReportingItsTouches`
+against its sensor counterfactual. Ray casts take a `NonSensorBodyFilter` so
+the cursor looks through a trigger to the solid scene, and `Body3D.kind`
+refuses to change a sensor's motion (with a `noteOnce`) rather than silently
+turning it solid. The `ground` slab became a registered-but-unlisted `Body3D`
+(`world.groundBody`, in `bodyByID` so a contact can name it, out of `bodies`
+so no drawing loop has to skip a 1000-unit box). `Contact3DTests` pins the
+tier behaviorally, each against its twin: a sensor passes a ball through to
+exactly the height an empty scene would while a solid one catches it, a
+compound's simultaneous foot contacts report one event where two loose boxes
+report two, impact speed tracks √(2gh) across drop heights, the list survives
+being read twice and empties on a quiet step, a removed body leaves no stale
+touches, and two identical worlds log identical event sequences.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

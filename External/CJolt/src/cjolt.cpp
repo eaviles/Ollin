@@ -10,6 +10,7 @@
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
@@ -35,6 +36,7 @@
 #include <cmath>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "../include/cjolt.h"
@@ -43,14 +45,38 @@ namespace {
 
 using namespace JPH;
 
-// Object layers: statics only pair with moving bodies, and the ghost layer
-// (grab anchors) pairs with nothing, so a grab can never nudge the scene by
-// collision, only through its constraint.
+Vec3 vec3(const float v[3]) { return Vec3(v[0], v[1], v[2]); }
+
+Quat quat(const float q[4]) {
+    Quat value(q[0], q[1], q[2], q[3]);
+    if (value.LengthSq() < 1.0e-12f) { return Quat::sIdentity(); }
+    return value.Normalized();
+}
+
+void store(Vec3Arg v, float out[3]) {
+    out[0] = v.GetX();
+    out[1] = v.GetY();
+    out[2] = v.GetZ();
+}
+
+void store(QuatArg q, float out[4]) {
+    out[0] = q.GetX();
+    out[1] = q.GetY();
+    out[2] = q.GetZ();
+    out[3] = q.GetW();
+}
+
+// Object layers: statics only pair with moving bodies, the ghost layer (grab
+// anchors) pairs with nothing, so a grab can never nudge the scene by
+// collision, only through its constraint, and the sensor layer pairs only
+// with moving bodies, since a detector volume has nothing to report about
+// scenery that never moves or about another detector.
 namespace Layers {
 constexpr ObjectLayer NON_MOVING = 0;
 constexpr ObjectLayer MOVING = 1;
 constexpr ObjectLayer GHOST = 2;
-constexpr ObjectLayer NUM_LAYERS = 3;
+constexpr ObjectLayer SENSOR = 3;
+constexpr ObjectLayer NUM_LAYERS = 4;
 } // namespace Layers
 
 namespace BroadPhaseLayers {
@@ -81,6 +107,7 @@ public:
         switch (inLayer1) {
         case Layers::NON_MOVING: return inLayer2 == BroadPhaseLayers::MOVING;
         case Layers::MOVING: return true;
+        case Layers::SENSOR: return inLayer2 == BroadPhaseLayers::MOVING;
         default: return false; // ghosts collide with nothing
         }
     }
@@ -90,11 +117,114 @@ class ObjectLayerPairFilterImpl final : public ObjectLayerPairFilter {
 public:
     bool ShouldCollide(ObjectLayer inObject1, ObjectLayer inObject2) const override {
         if (inObject1 == Layers::GHOST || inObject2 == Layers::GHOST) { return false; }
+        if (inObject1 == Layers::SENSOR || inObject2 == Layers::SENSOR) {
+            return inObject1 == Layers::MOVING || inObject2 == Layers::MOVING;
+        }
         if (inObject1 == Layers::NON_MOVING && inObject2 == Layers::NON_MOVING) {
             return false;
         }
         return true;
     }
+};
+
+/// Ray casts see the solid scene: a sensor is a region to be inside, never a
+/// surface to hit, so picking with the cursor looks straight through one.
+class NonSensorBodyFilter final : public BodyFilter {
+public:
+    bool ShouldCollideLocked(const Body &inBody) const override {
+        return !inBody.IsSensor();
+    }
+};
+
+// Contact events are recorded on the solver's worker threads while a step is
+// running, several at once, with every body locked: the listener may only read
+// what it is handed, and it may never call anything of Ollin's. So it buffers
+// into a mutex-guarded list, which the main thread drains once the step has
+// returned (the C cousin of the render-thread-closure rule).
+//
+// The buffer speaks in body *pairs*, not sub-shapes. A compound's parts and a
+// mesh's triangles each report their own contact, so the listener counts a
+// pair's live contacts and emits one began as the count leaves zero and one
+// ended as it returns, which is the granularity a sketch asks about.
+class ContactRecorder final : public ContactListener {
+public:
+    void OnContactAdded(const Body &inBody1, const Body &inBody2,
+                        const ContactManifold &inManifold,
+                        ContactSettings &) override {
+        // The manifold's normal moves body 2 out of collision, so it points
+        // from body 1 toward body 2, and the pair is closing when its relative
+        // velocity (v2 - v1, the solver's own measure) runs against it. Both
+        // velocities are still pre-solve here, so this is the impact's own
+        // speed rather than what is left after the bounce.
+        const RVec3 point = inManifold.mRelativeContactPointsOn1.empty()
+                                ? inManifold.mBaseOffset
+                                : inManifold.GetWorldSpaceContactPointOn1(0);
+        const Vec3 closing =
+            inBody1.GetPointVelocity(point) - inBody2.GetPointVelocity(point);
+
+        std::lock_guard<std::mutex> lock(mMutex);
+        if (mPairs[pairKey(inBody1.GetID(), inBody2.GetID())]++ > 0) {
+            return; // another sub shape of a pair already touching
+        }
+        CJoltContactEvent event{};
+        event.phase = CJOLT_CONTACT_BEGAN;
+        event.bodyA = inBody1.GetID().GetIndexAndSequenceNumber();
+        event.bodyB = inBody2.GetID().GetIndexAndSequenceNumber();
+        store(Vec3(point), event.point);
+        store(inManifold.mWorldSpaceNormal, event.normal);
+        event.speed = std::max(0.0f, closing.Dot(inManifold.mWorldSpaceNormal));
+        mEvents.push_back(event);
+    }
+
+    void OnContactRemoved(const SubShapeIDPair &inPair) override {
+        // Nothing here may touch the bodies: one of them may already have been
+        // destroyed. Only the ids are safe, which is why an ended event
+        // carries no point or normal.
+        std::lock_guard<std::mutex> lock(mMutex);
+        auto entry = mPairs.find(pairKey(inPair.GetBody1ID(), inPair.GetBody2ID()));
+        if (entry == mPairs.end() || --entry->second > 0) { return; }
+        mPairs.erase(entry);
+        CJoltContactEvent event{};
+        event.phase = CJOLT_CONTACT_ENDED;
+        event.bodyA = inPair.GetBody1ID().GetIndexAndSequenceNumber();
+        event.bodyB = inPair.GetBody2ID().GetIndexAndSequenceNumber();
+        mEvents.push_back(event);
+    }
+
+    int32_t count() {
+        std::lock_guard<std::mutex> lock(mMutex);
+        return int32_t(mEvents.size());
+    }
+
+    int32_t drain(CJoltContactEvent *outEvents, int32_t inCapacity) {
+        std::lock_guard<std::mutex> lock(mMutex);
+        // Worker threads record in whatever order they finish, so the list is
+        // put in pair order before it leaves: a replayed simulation then reads
+        // its events in the same order every run.
+        std::sort(mEvents.begin(), mEvents.end(),
+                  [](const CJoltContactEvent &l, const CJoltContactEvent &r) {
+                      if (l.bodyA != r.bodyA) { return l.bodyA < r.bodyA; }
+                      if (l.bodyB != r.bodyB) { return l.bodyB < r.bodyB; }
+                      return int(l.phase) < int(r.phase);
+                  });
+        const int32_t written = std::min(inCapacity, int32_t(mEvents.size()));
+        if (outEvents != nullptr && written > 0) {
+            std::copy(mEvents.begin(), mEvents.begin() + written, outEvents);
+        }
+        mEvents.clear();
+        return written;
+    }
+
+private:
+    static uint64_t pairKey(const BodyID &inA, const BodyID &inB) {
+        const uint64_t a = inA.GetIndexAndSequenceNumber();
+        const uint64_t b = inB.GetIndexAndSequenceNumber();
+        return a <= b ? (a << 32) | b : (b << 32) | a;
+    }
+
+    std::mutex mMutex;
+    std::unordered_map<uint64_t, int> mPairs;
+    std::vector<CJoltContactEvent> mEvents;
 };
 
 // Library-wide setup: allocator, RTTI factory, and the type registry are
@@ -106,27 +236,6 @@ void ensureLibraryInitialized() {
         Factory::sInstance = new Factory();
         RegisterTypes();
     });
-}
-
-Vec3 vec3(const float v[3]) { return Vec3(v[0], v[1], v[2]); }
-
-Quat quat(const float q[4]) {
-    Quat value(q[0], q[1], q[2], q[3]);
-    if (value.LengthSq() < 1.0e-12f) { return Quat::sIdentity(); }
-    return value.Normalized();
-}
-
-void store(Vec3Arg v, float out[3]) {
-    out[0] = v.GetX();
-    out[1] = v.GetY();
-    out[2] = v.GetZ();
-}
-
-void store(QuatArg q, float out[4]) {
-    out[0] = q.GetX();
-    out[1] = q.GetY();
-    out[2] = q.GetZ();
-    out[3] = q.GetW();
 }
 
 } // namespace
@@ -144,6 +253,9 @@ struct CJoltWorld {
     BPLayerInterfaceImpl broadPhaseLayers;
     ObjectVsBroadPhaseLayerFilterImpl objectVsBroadPhase;
     ObjectLayerPairFilterImpl objectPairs;
+    // Declared before the physics system, which holds a pointer to it, so the
+    // recorder outlives every step that could still be writing into it.
+    ContactRecorder contacts;
     JPH::PhysicsSystem physics;
     std::vector<CJoltConstraint *> constraints;
 
@@ -301,6 +413,7 @@ CJoltWorld *cjolt_world_create(float gravityX, float gravityY, float gravityZ,
                         world->broadPhaseLayers, world->objectVsBroadPhase,
                         world->objectPairs);
     world->physics.SetGravity(Vec3(gravityX, gravityY, gravityZ));
+    world->physics.SetContactListener(&world->contacts);
     return world;
 }
 
@@ -345,15 +458,25 @@ CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
         layer = Layers::MOVING;
         break;
     }
+    // A sensor is a detector volume, not a solid: it goes in the layer that
+    // pairs only with moving bodies, and it is kinematic and kept awake so it
+    // keeps reporting a body that falls asleep inside it (a static sensor
+    // only ever sees active bodies, and the contact is dropped the moment one
+    // settles, which is the wrong answer for a pressure plate).
+    if (desc->isSensor) {
+        motion = EMotionType::Kinematic;
+        layer = Layers::SENSOR;
+    }
     // A dynamic body cannot ride a static-only shape (mesh, height field, or
     // a compound containing one); keep the body but pin it in place.
     if (shape->MustBeStatic() && motion != EMotionType::Static) {
         motion = EMotionType::Static;
-        layer = Layers::NON_MOVING;
+        layer = desc->isSensor ? Layers::SENSOR : Layers::NON_MOVING;
     }
 
     BodyCreationSettings settings(shape, RVec3(vec3(desc->position)),
                                   quat(desc->rotation), motion, layer);
+    settings.mIsSensor = desc->isSensor;
     settings.mFriction = std::max(0.0f, desc->friction);
     settings.mRestitution = std::clamp(desc->restitution, 0.0f, 1.0f);
     settings.mLinearDamping = std::max(0.0f, desc->linearDamping);
@@ -759,6 +882,17 @@ void cjolt_grab_end(CJoltWorld *world, CJoltConstraint *grab) {
     }
 }
 
+// Contacts ------------------------------------------------------------------
+
+int32_t cjolt_world_contact_count(const CJoltWorld *world) {
+    return const_cast<CJoltWorld *>(world)->contacts.count();
+}
+
+int32_t cjolt_world_drain_contacts(CJoltWorld *world, CJoltContactEvent *out,
+                                   int32_t capacity) {
+    return world->contacts.drain(out, capacity);
+}
+
 // Queries -------------------------------------------------------------------
 
 bool cjolt_world_ray_cast(const CJoltWorld *world, const float origin[3],
@@ -770,8 +904,9 @@ bool cjolt_world_ray_cast(const CJoltWorld *world, const float origin[3],
     // Filter as a moving body would: statics stay visible, ghosts never hit.
     DefaultBroadPhaseLayerFilter broadPhaseFilter(w->objectVsBroadPhase, Layers::MOVING);
     DefaultObjectLayerFilter objectFilter(w->objectPairs, Layers::MOVING);
+    NonSensorBodyFilter bodyFilter;
     if (!w->physics.GetNarrowPhaseQuery().CastRay(ray, hit, broadPhaseFilter,
-                                                  objectFilter)) {
+                                                  objectFilter, bodyFilter)) {
         return false;
     }
     if (outBody != nullptr) { *outBody = hit.mBodyID.GetIndexAndSequenceNumber(); }

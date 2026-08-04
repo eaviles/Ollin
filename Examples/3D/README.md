@@ -41,6 +41,9 @@ See the [3D physics reference](../../Docs/Simulation/Physics3D.md).
 | [Stack](Physics/Stack/) | A crate pyramid on a floor; click to fire a heavy ball from the camera and knock it down, space rebuilds. `addBody`, `ground`, opening `velocity`. |
 | [Tumble](Physics/Tumble/) | A rain of mixed solids (boxes, balls, capsules, drums) piling up; drag any shape to fling it. The `Collider3D` catalog plus `grabBody`/`dragGrab`. |
 | [Chain](Physics/Chain/) | A wrecking ball on a chain of capsule links, each a `.ball` joint; drag it back, let it swing into the crates. `connect` and the joint kinds. |
+| [Windmill](Physics/Windmill/) | A motored blade cross batting balls through spring-shut swing gates; space cuts the power and friction coasts it down. `.compound` bodies, `drive(at:)`/`drive(to:)`, limits, `softenLimits`. |
+| [Rockslide](Physics/Rockslide/) | Rocks tumbling down an eroded mountainside, the collider tracing the same surface the mesh draws. The `.heightfield` collider over a generated `Heightfield`. |
+| [Trigger](Physics/Trigger/) | Balls through a scoring hoop into a tray that lights with its load, each knock ringing at the speed it landed. Contact events (`world.contacts`) and sensor bodies (`isSensor`). |
 
 ### Camera
 

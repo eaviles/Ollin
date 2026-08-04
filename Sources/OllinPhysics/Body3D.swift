@@ -40,6 +40,11 @@ public final class Body3D {
     /// The relative density the body was created with.
     public let density: Double
 
+    /// Whether this body is a detector volume rather than a solid one: it
+    /// reports what overlaps it and pushes nothing. Fixed when the body is
+    /// added (see `World3D.addBody(_:at:kind:isSensor:)`).
+    public let isSensor: Bool
+
     /// Free-form tag so a sketch can hang its own data off a body (its colour,
     /// its mesh, a group id) without a parallel array.
     public var userData: Any?
@@ -48,12 +53,13 @@ public final class Body3D {
     private var storedKind: Kind
 
     init(world: World3D, id: CJoltBodyID, collider: Collider3D, kind: Kind,
-         density: Double) {
+         density: Double, isSensor: Bool = false) {
         self.world = world
         self.id = id
         self.collider = collider
         self.storedKind = kind
         self.density = density
+        self.isSensor = isSensor
     }
 
     /// The body's centre, in world units.
@@ -132,6 +138,13 @@ public final class Body3D {
     public var kind: Kind {
         get { storedKind }
         set {
+            // A sensor holds its own motion type: it is kinematic and awake so
+            // that a body asleep inside it keeps being reported.
+            guard !isSensor else {
+                world.noteOnce("a sensor body's kind is fixed; move it by "
+                               + "setting its position")
+                return
+            }
             storedKind = newValue
             cjolt_body_set_motion(world.handle, id, newValue.cjolt)
         }
@@ -139,6 +152,47 @@ public final class Body3D {
 
     /// Whether the body is awake (a settled body sleeps until touched).
     public var isAwake: Bool { cjolt_body_is_active(world.handle, id) }
+
+    // MARK: Touching
+
+    /// Every body currently in contact with this one, in a stable order. For a
+    /// sensor that is everything inside it, including bodies that have settled
+    /// and fallen asleep there:
+    ///
+    /// ```swift
+    /// let load = plate.touching.count      // how many crates are on the plate
+    /// ```
+    public var touching: [Body3D] {
+        (world.touchingIDs[id] ?? []).compactMap { world.bodyByID[$0] }
+    }
+
+    /// Whether the two bodies are touching right now (for a sensor, whether
+    /// `other` is inside it).
+    public func isTouching(_ other: Body3D) -> Bool {
+        world.touchingIDs[id]?.contains(other.id) ?? false
+    }
+
+    /// The touches involving this body that started or stopped during the last
+    /// `step`, out of the world's whole list.
+    public var contacts: [Contact3D] {
+        world.contacts.filter { $0.involves(self) }
+    }
+
+    /// Bodies that started touching this one during the last `step`: the
+    /// arrivals. For a sensor, what just came in.
+    ///
+    /// ```swift
+    /// score += goal.entered.count
+    /// ```
+    public var entered: [Body3D] {
+        world.contacts.compactMap { $0.phase == .began ? $0.other(than: self) : nil }
+    }
+
+    /// Bodies that stopped touching this one during the last `step`: the
+    /// departures. For a sensor, what just left.
+    public var exited: [Body3D] {
+        world.contacts.compactMap { $0.phase == .ended ? $0.other(than: self) : nil }
+    }
 
     /// Push the body's centre of mass with a steady force (units/s² · mass),
     /// accumulated for the next `step`. Use for thrust, wind, attraction.

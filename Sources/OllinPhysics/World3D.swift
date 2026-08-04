@@ -59,21 +59,50 @@ public final class World3D {
         didSet { rebuildGround() }
     }
 
-    /// Every rigid body in the simulation, in the order added.
+    /// Every rigid body in the simulation, in the order added. The slab behind
+    /// `ground` is not one of them (nothing added it), so a drawing loop over
+    /// `bodies` draws only what the sketch built; it is `groundBody`.
     public private(set) var bodies: [Body3D] = []
+
+    /// The static slab behind `ground`, so a contact can be recognised as a
+    /// landing: `contact.other(than: ball) === world.groundBody`. `nil` when
+    /// the world has no ground.
+    public private(set) var groundBody: Body3D?
 
     /// Every joint between bodies, in the order added.
     public private(set) var joints: [Joint3D] = []
 
+    /// Every touch that started or stopped during the most recent `step(dt:)`,
+    /// including bodies entering and leaving a sensor. Poll it in `draw()` the
+    /// way mouse state is polled; the list is replaced by the next step, and
+    /// reading it twice reads the same events.
+    ///
+    /// ```swift
+    /// world.step(dt: deltaTime)
+    /// for contact in world.contacts where contact.phase == .began {
+    ///     ping(at: contact.point, loudness: contact.speed)
+    /// }
+    /// ```
+    public internal(set) var contacts: [Contact3D] = []
+
     /// The underlying solver world.
     let handle: OpaquePointer
+
+    /// Bodies by solver handle, so a contact event can name the `Body3D` the
+    /// sketch holds rather than a number.
+    var bodyByID: [CJoltBodyID: Body3D] = [:]
+
+    /// Who is currently touching whom, kept up to date from the drained
+    /// contact events (sorted, so `Body3D.touching` reads the same order every
+    /// run).
+    var touchingIDs: [CJoltBodyID: [CJoltBodyID]] = [:]
 
     /// The timestep used on the previous `step`, so a grab drag knows how fast
     /// the hand is allowed to move its anchor.
     var lastTimestep: Double = 1.0 / 60
 
-    /// The static slab backing `ground`, if any.
-    private var groundBody: CJoltBodyID = CJOLT_BODY_INVALID
+    /// The solver handle of the slab backing `ground`, if any.
+    private var groundID: CJoltBodyID = CJOLT_BODY_INVALID
 
     /// Creates an empty world. `maxBodies` bounds how many bodies can ever be
     /// live at once (the solver reserves its tables up front).
@@ -91,6 +120,10 @@ public final class World3D {
     /// - Parameters:
     ///   - kind: `.dynamic` (default) is moved by forces; `.static` is
     ///     immovable; `.kinematic` follows only the velocity you set.
+    ///   - isSensor: make it a detector volume instead of a solid: it reports
+    ///     what overlaps it through `contacts` and `Body3D.touching` but never
+    ///     pushes anything, never falls, and can't be grabbed. A sensor sets
+    ///     its own `kind`.
     ///   - rotated: an opening rotation about `axis`, in radians.
     ///   - density: relative mass per volume (`1` is the default material);
     ///     heavier bodies shove lighter ones.
@@ -98,7 +131,7 @@ public final class World3D {
     ///   - restitution: bounciness `0…1`; defaults to the world's `bounce`.
     @discardableResult
     public func addBody(_ collider: Collider3D, at position: Vector3,
-                        kind: Body3D.Kind = .dynamic,
+                        kind: Body3D.Kind = .dynamic, isSensor: Bool = false,
                         rotated angle: Double = 0, axis: Vector3 = .unitY,
                         density: Double = 1, friction: Double = 0.5,
                         restitution: Double? = nil) -> Body3D {
@@ -117,6 +150,7 @@ public final class World3D {
         desc.angularDamping = 0.05
         desc.gravityFactor = 1
         desc.allowSleep = true
+        desc.isSensor = isSensor
 
         // The collider's flat data (hull points, mesh indices, height samples,
         // compound children) lives in the arena for the span of the create.
@@ -134,9 +168,13 @@ public final class World3D {
             }
         }
 
-        let body = Body3D(world: self, id: id, collider: collider, kind: kind,
-                          density: density)
+        // A sensor is kinematic whatever was asked for, so it stays awake and
+        // keeps reporting bodies that fall asleep inside it.
+        let body = Body3D(world: self, id: id, collider: collider,
+                          kind: isSensor ? .kinematic : kind, density: density,
+                          isSensor: isSensor)
         bodies.append(body)
+        bodyByID[id] = body
         return body
     }
 
@@ -265,6 +303,9 @@ public final class World3D {
         joints.removeAll { $0.a == body.id || $0.b == body.id }
         cjolt_body_destroy(handle, body.id)
         bodies.removeAll { $0 === body }
+        bodyByID[body.id] = nil
+        forgetTouches(of: body.id)
+        contacts.removeAll { $0.involves(body) }
     }
 
     /// Empty the world.
@@ -274,6 +315,9 @@ public final class World3D {
         joints.removeAll()
         for body in bodies { cjolt_body_destroy(handle, body.id) }
         bodies.removeAll()
+        bodyByID.removeAll()
+        touchingIDs.removeAll()
+        contacts.removeAll()
     }
 
     /// Destroy a joint (called by `Joint3D.remove()`).
@@ -288,6 +332,9 @@ public final class World3D {
     /// once per frame with `deltaTime`.
     public func step(dt: Double) {
         let clamped = min(max(dt, 0), maxTimestep)
+        // A skipped step leaves the last one's contacts standing rather than
+        // silently emptying them, so a paused frame reads what a paused world
+        // is still touching.
         guard clamped > 0 else { return }
         lastTimestep = clamped
         // Gravity re-syncs every step (the 2D world's model), so changing it
@@ -298,6 +345,9 @@ public final class World3D {
         // stable without costing short ones anything.
         let passes = max(1, Int((clamped * 60).rounded(.up)))
         _ = cjolt_world_step(handle, Float(clamped), Int32(passes))
+        // The solver's worker threads filled a buffer while it ran; empty it
+        // here, on the one thread the sketch reads from.
+        drainContacts()
     }
 
     /// Drive a grab joint's anchor toward its `target` (called from the
@@ -313,9 +363,12 @@ public final class World3D {
 
     /// (Re)build the static floor from `ground`.
     private func rebuildGround() {
-        if groundBody != CJOLT_BODY_INVALID {
-            cjolt_body_destroy(handle, groundBody)
-            groundBody = CJOLT_BODY_INVALID
+        if groundID != CJOLT_BODY_INVALID {
+            cjolt_body_destroy(handle, groundID)
+            bodyByID[groundID] = nil
+            forgetTouches(of: groundID)
+            groundID = CJOLT_BODY_INVALID
+            groundBody = nil
         }
         guard let level = ground else { return }
 
@@ -334,7 +387,16 @@ public final class World3D {
         desc.restitution = Float(bounce)
         desc.allowSleep = true
         desc.gravityFactor = 1
-        groundBody = withUnsafePointer(to: &desc) { cjolt_body_create(handle, $0) }
+        groundID = withUnsafePointer(to: &desc) { cjolt_body_create(handle, $0) }
+        // Registered so contacts with the floor name a body, but kept out of
+        // `bodies`: a sketch's drawing loop never asked for a 1000-unit slab.
+        let slab = Body3D(world: self, id: groundID,
+                          collider: .box(width: 2 * extent * unitsPerMeter,
+                                         height: thickness * unitsPerMeter,
+                                         depth: 2 * extent * unitsPerMeter),
+                          kind: .static, density: 1)
+        bodyByID[groundID] = slab
+        groundBody = slab
     }
 
     // MARK: One-time notes

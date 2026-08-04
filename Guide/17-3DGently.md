@@ -530,6 +530,35 @@ world.addBody(.heightfield(land, width: 14, depth: 14, height: 4.2),
 
 The rocks are spheres, boxes, and cones dropped along the ridge, and the ravines the rain carved are the same ravines that funnel them down. For scenery that arrives as a file instead of a field, `world.addStaticColliders(from: scene)` walks a loaded `Scene` and turns every mesh into a static collider at its authored place, so a ball can roll through the hall you imported. The interactive slide, with its perpetual rock feed and a dice knob that regrows the mountain, is the [`3D/Physics/Rockslide`](../Examples/3D/Physics/Rockslide/) example.
 
+## Asking what hit what
+
+So far the world has been something to watch. To make it something to *play*, you need to know when things happen: a ball reached the goal, a crate landed hard, the plate has something on it. Ollin hands that over the way it hands over the mouse. Every `step` leaves a list on the world, and `draw()` reads it:
+
+```swift
+world.step(dt: deltaTime)
+for contact in world.contacts where contact.phase == .began {
+    knocks.append(Knock(at: contact.point, strength: contact.speed))
+}
+```
+
+No callbacks, and nothing that fires at an awkward moment: just a list that belongs to the step that filled it. Each `Contact3D` says which two bodies met (`a` and `b`, with `contact.other(than: ball)` to save you the guessing), where, which way the surfaces faced, and `speed`, how fast they were closing when they met. That last one is the useful one. It's measured before the solver answers the collision, so it's the size of the *impact*, which means one number can set the volume of a clink, the size of a spark, or the brightness of a flash. Touches are per pair of bodies, so a crate landing on a mesh floor is one arrival, not one per triangle it happens to rest on.
+
+The other half is a body that isn't solid at all. Pass `isSensor: true` and you get a region: things fall through it untouched, and it tells you who's inside.
+
+```swift
+let goal = world.addBody(.cylinder(height: 0.5, radius: 1),
+                         at: hoopCenter, isSensor: true)
+
+score += goal.entered.count           // crossed during this step
+let crossing = !goal.touching.isEmpty // one is in there right now
+```
+
+<img src="Images/17-3DGently/Trigger.jpg" alt="A gold-lit ring floating above a teal tray on a dark floor, one orange ball falling away below the ring, four balls resting in the tray, and a thin white circle marking a knock on the ring's rim" width="560">
+
+The hoop in the figure is two bodies in the same place, which is the trick worth stealing: a solid rim of beads a ball can clatter off, and a sensor disc filling the hole. Only a ball that gets *through* enters the sensor, so `goal.entered` is a scoreboard, and the ring lights while one is crossing. The tray below is a sensor too, and its color is `touching.count`.
+
+That tray is also why sensors are built the way they are. A ball that settles in it stops moving, and the solver, sensibly, puts anything that has stopped moving to sleep to save the work; a sleeping body reports no contacts, so a still stack reads as touching nothing. A sensor never sleeps, so it goes on counting what's parked in it long after the balls have dozed off. Events are for the moment something happens; a sensor is for the standing question of what's in here. The playable version, where you can drag a ball and post it through the hoop by hand, is the [`3D/Physics/Trigger`](../Examples/3D/Physics/Trigger/) example.
+
 You don't animate a pile; you drop one.
 
 ## What the depth buffer is for

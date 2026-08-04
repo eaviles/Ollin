@@ -89,6 +89,12 @@ typedef struct {
     float angularDamping; // >= 0
     float gravityFactor;  // 1 = normal gravity
     bool allowSleep;
+    /// A detector volume: it reports overlaps through the contact buffer but
+    /// never pushes anything and is never pushed. Overrides `motion` (a sensor
+    /// is kinematic and stays awake, so bodies asleep inside one keep
+    /// reporting) and lands in its own object layer, which pairs only with
+    /// moving bodies.
+    bool isSensor;
 } CJoltBodyDesc;
 
 typedef enum {
@@ -207,10 +213,46 @@ CJoltConstraint *cjolt_grab_begin(CJoltWorld *world, CJoltBodyID body,
 void cjolt_grab_move(CJoltWorld *world, CJoltConstraint *grab, const float target[3]);
 void cjolt_grab_end(CJoltWorld *world, CJoltConstraint *grab);
 
+// Contacts ------------------------------------------------------------------
+
+typedef enum {
+    CJOLT_CONTACT_BEGAN = 0,
+    CJOLT_CONTACT_ENDED = 1,
+} CJoltContactPhase;
+
+/// One touch event between two bodies, buffered during a step. Events are per
+/// *body pair*: the shapes of a compound or the triangles of a mesh may touch
+/// in many places, but a pair reports one began when the first of them lands
+/// and one ended when the last of them lifts.
+typedef struct {
+    CJoltContactPhase phase;
+    /// The pair, always ordered so `bodyA` < `bodyB`.
+    CJoltBodyID bodyA, bodyB;
+    /// Where they touched, in world space (zero for an ended event: the
+    /// solver reports only the pair once a contact is gone).
+    float point[3];
+    /// Unit normal pointing from `bodyA` toward `bodyB` (zero when ended).
+    float normal[3];
+    /// Closing speed along the normal at the moment of touch, in m/s, before
+    /// the solver answers the collision; 0 when ended.
+    float speed;
+} CJoltContactEvent;
+
+/// How many contact events are buffered from the last step.
+int32_t cjolt_world_contact_count(const CJoltWorld *world);
+
+/// Copies up to `capacity` buffered events into `out` and empties the buffer.
+/// Events come out in a fixed order (by pair, then phase) rather than the
+/// order the solver's worker threads happened to record them, so a replay of
+/// the same simulation reads the same list. Returns how many were written.
+int32_t cjolt_world_drain_contacts(CJoltWorld *world, CJoltContactEvent *out,
+                                   int32_t capacity);
+
 // Queries -------------------------------------------------------------------
 
 /// Casts a ray (direction scaled by length) against the moving bodies.
-/// On a hit, writes the body and the fraction along the ray.
+/// Sensors are transparent to it. On a hit, writes the body and the fraction
+/// along the ray.
 bool cjolt_world_ray_cast(const CJoltWorld *world, const float origin[3],
                           const float direction[3], CJoltBodyID *outBody,
                           float *outFraction);
