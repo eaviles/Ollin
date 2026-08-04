@@ -24,7 +24,7 @@ import Metal
 /// renders this frame's drawn seeds onto the current state, runs the sim's steps, and
 /// the result becomes both `image` and next frame's state. A reference type, for the
 /// same reason `Feedback`/`RenderTarget` are: it names GPU resources the renderer fills.
-public final class SimField {
+public class SimField {
 
     /// The field's logical size in canvas points (the size `image` draws at and the
     /// coordinate space a `withField` block uses).

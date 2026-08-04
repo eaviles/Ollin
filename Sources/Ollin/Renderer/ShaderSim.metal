@@ -597,3 +597,534 @@ fragment float4 ollin_sim_turing_normalize(PresentOut in [[stage_in]],
     float v = clamp((field.sample(samp, in.uv).r - e.x) / range, 0.0, 1.0);
     return float4(float3(v), 1.0);
 }
+
+// MARK: - Watercolor (wet paint on rough paper: the classic three-layer wash model)
+//
+// A multi-field stateful sim like the fluid, driven by the renderer's
+// `runWatercolor`. Three persistent fields ride one texel grid:
+//
+//   flow  = (u, v, p, M): water velocity on a staggered grid (u lives on the
+//           texel's right face, v on its top face), pressure at the center, and
+//           the wet-area mask M (1 where the paper has been touched by water).
+//   pig   = (g1, g2, g3, s): pigment suspended in the water, one channel per
+//           palette pigment, plus the paper's capillary saturation s in alpha.
+//   dep   = (d1, d2, d3, 1): pigment settled onto the paper.
+//   paper = (h, 0, 0, 1): the sheet's height field, generated once per field.
+//
+// Each main step: the shallow-water velocities update inside the mask (slope of
+// the paper steers them, viscosity smooths, drag brakes), the divergence relaxes
+// out so local additions push water everywhere, the wet edge sheds pressure so
+// flow drifts outward and pigment piles into the signature dark rim, pigment
+// advects upwind along the flow, settles/lifts by each pigment's density,
+// staining, and granulation against the paper height, and (backruns on) water
+// seeps through the paper's pores, expanding the mask into damp regions as a
+// branching bloom. The render pass composites suspended + settled pigment as
+// optical layers (Kubelka-Munk) over the dried-glaze stack and the paper color.
+//
+// Conventions: params[0].xy is the texel size; later rows are per-pass (noted on
+// each fragment). Off-canvas is dry paper: every flow/pig tap goes through a
+// bounds-rejecting helper (the clamp sampler would reflect the edge back as its
+// own neighbour), which is also what zeroes velocities at the canvas edge.
+// Reflectance channels are display-space sRGB throughout the optical passes (the
+// space the pigment coefficients are specified in); the render pass converts to
+// linear only at output.
+
+// A flow tap that treats everything off-canvas as dry, motionless paper.
+static inline float4 ollin_wash_flow(texture2d<float> t, sampler s, float2 uv) {
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return float4(0.0); }
+    return t.sample(s, uv);
+}
+
+// A pigment/saturation tap: off-canvas paper holds no pigment and no moisture.
+static inline float4 ollin_wash_pig(texture2d<float> t, sampler s, float2 uv) {
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return float4(0.0); }
+    return t.sample(s, uv);
+}
+
+// paper generation: the height field h in .r, strictly inside (0, 1) so slope,
+// granulation, and dry-brush thresholds all have room. Fibrous noise (fbm) over
+// cellular bumps (worley) reads convincingly as cold-press tooth.
+// params[1] = (seed, grain in texels, 0, 0).
+fragment float4 ollin_wash_paper(PresentOut in [[stage_in]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float seed = params[1].x, grain = max(params[1].y, 2.0);
+    float2 p = (in.uv / texel) / grain + seed * float2(13.7, 7.31);
+    float fibers = fbm(p * 2.3);
+    float bumps  = worley(p);
+    float h = 0.55 * fibers + 0.45 * bumps;
+    return float4(mix(0.06, 0.94, clamp(h, 0.0, 1.0)), 0.0, 0.0, 1.0);
+}
+
+// inject (flow half): where a mark landed, wet the mask and add its water as
+// pressure (alpha is water). Dry-brush skips texels whose paper sits below the
+// threshold, so strokes break across the tooth. params[1] = (pressureAdd,
+// dryBrushThreshold, 0, 0).
+fragment float4 ollin_wash_inject_flow(PresentOut in [[stage_in]],
+                                       texture2d<float> flow [[texture(0)]],
+                                       texture2d<float> seed [[texture(1)]],
+                                       texture2d<float> paper [[texture(2)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 *params [[buffer(0)]]) {
+    float4 f = flow.sample(samp, in.uv);
+    float4 d = seed.sample(samp, in.uv);
+    float h = paper.sample(samp, in.uv).r;
+    float dry = params[1].y;
+    if (d.a > 0.02 && (dry <= 0.0 || h >= dry)) {
+        f.w = 1.0;
+        f.z = min(f.z + d.a * params[1].x, 4.0);
+    }
+    return f;
+}
+
+// inject (pigment half): add the mark's premultiplied color channels as pigment
+// concentrations (premultiplication is the dilution: a wetter stroke carries its
+// load thinner). Saturation rides through untouched. The dry-brush gate applies
+// here too: a dry brush deposits pigment only on the peaks it wets, or the gaps
+// would hold flat, unsimulated stamps. params[1] = (pressureAdd, dryBrush, 0, 0),
+// shared with the flow inject.
+fragment float4 ollin_wash_inject_pigment(PresentOut in [[stage_in]],
+                                          texture2d<float> pig [[texture(0)]],
+                                          texture2d<float> seed [[texture(1)]],
+                                          texture2d<float> paper [[texture(2)]],
+                                          sampler samp [[sampler(0)]],
+                                          constant float4 *params [[buffer(0)]]) {
+    float4 g = pig.sample(samp, in.uv);
+    float4 d = seed.sample(samp, in.uv);
+    float h = paper.sample(samp, in.uv).r;
+    float dry = params[1].y;
+    if (dry <= 0.0 || h >= dry) {
+        g.rgb = min(g.rgb + d.rgb, 8.0);
+    }
+    return g;
+}
+
+// One Euler substep of the shallow-water velocities on the staggered grid.
+// A is the advection term (the momentum the flow carries into this face), B the
+// five-point Laplacian. The update is A + mu*B: the model's continuous equation
+// carries +mu*laplacian(u) and demands damped flow, so the Laplacian must smooth
+// (its sign is famously easy to get backwards here, and anti-diffusion detonates
+// the wash within seconds). Pressure differences drive flow from high to low,
+// drag brakes everything, and on the first substep of each main step the paper's
+// slope deflects the flow downhill (streaks that follow the sheet's tooth).
+// A face bordering a dry cell is pinned to zero (water stays inside the mask;
+// with the off-canvas taps reading dry, the canvas edge is a wall for free).
+// params[1] = (mu, kappa, dt, slopeOn).
+fragment float4 ollin_wash_velocity(PresentOut in [[stage_in]],
+                                    texture2d<float> flow [[texture(0)]],
+                                    texture2d<float> paper [[texture(1)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float mu = params[1].x, kappa = params[1].y, dt = params[1].z, slopeOn = params[1].w;
+    float2 uv = in.uv;
+    float4 f  = ollin_wash_flow(flow, samp, uv);
+    float4 fL = ollin_wash_flow(flow, samp, uv - float2(t.x, 0.0));
+    float4 fR = ollin_wash_flow(flow, samp, uv + float2(t.x, 0.0));
+    float4 fB = ollin_wash_flow(flow, samp, uv - float2(0.0, t.y));
+    float4 fT = ollin_wash_flow(flow, samp, uv + float2(0.0, t.y));
+    float4 fRB = ollin_wash_flow(flow, samp, uv + float2(t.x, -t.y));
+    float4 fLT = ollin_wash_flow(flow, samp, uv + float2(-t.x, t.y));
+
+    float u = f.x, v = f.y;
+    if (slopeOn > 0.5) {
+        float h  = paper.sample(samp, uv).r;
+        float hR = paper.sample(samp, uv + float2(t.x, 0.0)).r;
+        float hT = paper.sample(samp, uv + float2(0.0, t.y)).r;
+        u -= (hR - h);
+        v -= (hT - h);
+    }
+
+    // u at (i+.5, j): cell-centred u to its left and right, corner (uv) products.
+    float uC = 0.5 * (fL.x + u);            // u_{i,j}
+    float uR = 0.5 * (u + fR.x);            // u_{i+1,j}
+    float uvTop = 0.5 * (u + fT.x) * 0.5 * (f.y + fR.y);      // (uv)_{i+.5,j+.5}
+    float uvBot = 0.5 * (u + fB.x) * 0.5 * (fB.y + fRB.y);    // (uv)_{i+.5,j-.5}
+    float A = uC * uC - uR * uR + uvBot - uvTop;
+    float B = fR.x + fL.x + fT.x + fB.x - 4.0 * u;
+    float un = u + dt * (A + mu * B + (f.z - fR.z) - kappa * u);
+
+    // v at (i, j+.5), symmetric.
+    float vC = 0.5 * (fB.y + v);            // v_{i,j}
+    float vT = 0.5 * (v + fT.y);            // v_{i,j+1}
+    float uvRight = 0.5 * (u + fT.x) * 0.5 * (v + fR.y);      // (uv)_{i+.5,j+.5}
+    float uvLeft  = 0.5 * (fL.x + fLT.x) * 0.5 * (v + fL.y);  // (uv)_{i-.5,j+.5}
+    float A2 = vC * vC - vT * vT + uvLeft - uvRight;
+    float B2 = fT.y + fB.y + fR.y + fL.y - 4.0 * v;
+    float vn = v + dt * (A2 + mu * B2 + (f.z - fT.z) - kappa * v);
+
+    // Boundary conditions + the CFL clamp the pigment advection relies on.
+    float wetU = (f.w > 0.5 && fR.w > 0.5) ? 1.0 : 0.0;
+    float wetV = (f.w > 0.5 && fT.w > 0.5) ? 1.0 : 0.0;
+    un = clamp(un, -1.0, 1.0) * wetU;
+    vn = clamp(vn, -1.0, 1.0) * wetV;
+    return float4(un, vn, f.z, f.w);
+}
+
+// One divergence-relaxation sweep: each wet cell measures its net outflow and
+// nudges its pressure and its four faces to cancel it, so water added anywhere
+// pushes water everywhere (the condition that makes a wash feel like one body
+// of liquid). Gather form: a face carries its own cell's correction minus its
+// right/top neighbour's. Faces on the mask boundary stay pinned to zero.
+// params[1] = (xi, 0, 0, 0).
+fragment float4 ollin_wash_relax(PresentOut in [[stage_in]],
+                                 texture2d<float> flow [[texture(0)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float xi = params[1].x;
+    float2 uv = in.uv;
+    float4 f  = ollin_wash_flow(flow, samp, uv);
+    float4 fL = ollin_wash_flow(flow, samp, uv - float2(t.x, 0.0));
+    float4 fR = ollin_wash_flow(flow, samp, uv + float2(t.x, 0.0));
+    float4 fB = ollin_wash_flow(flow, samp, uv - float2(0.0, t.y));
+    float4 fT = ollin_wash_flow(flow, samp, uv + float2(0.0, t.y));
+    float4 fRB = ollin_wash_flow(flow, samp, uv + float2(t.x, -t.y));
+    float4 fLT = ollin_wash_flow(flow, samp, uv + float2(-t.x, t.y));
+
+    float dC = (f.w > 0.5) ? -xi * ((f.x - fL.x) + (f.y - fB.y)) : 0.0;
+    float dR = (fR.w > 0.5) ? -xi * ((fR.x - f.x) + (fR.y - fRB.y)) : 0.0;
+    float dT = (fT.w > 0.5) ? -xi * ((fT.x - fLT.x) + (fT.y - f.y)) : 0.0;
+
+    float wetU = (f.w > 0.5 && fR.w > 0.5) ? 1.0 : 0.0;
+    float wetV = (f.w > 0.5 && fT.w > 0.5) ? 1.0 : 0.0;
+    float un = clamp(f.x + dC - dR, -1.0, 1.0) * wetU;
+    float vn = clamp(f.y + dC - dT, -1.0, 1.0) * wetV;
+    return float4(un, vn, f.z + dC, f.w);
+}
+
+// Horizontal half of the Gaussian blur of the wet-area mask (the distance-to-edge
+// estimate the edge darkening reads). params[1] = (radius, sigma, 0, 0).
+fragment float4 ollin_wash_blur_h(PresentOut in [[stage_in]],
+                                  texture2d<float> flow [[texture(0)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    int r = int(params[1].x);
+    float sigma = max(params[1].y, 0.5);
+    float sum = 0.0, wsum = 0.0;
+    for (int i = -r; i <= r; i += 1) {
+        float w = exp(-float(i * i) / (2.0 * sigma * sigma));
+        sum += w * ollin_wash_flow(flow, samp, in.uv + float2(float(i) * t.x, 0.0)).w;
+        wsum += w;
+    }
+    return float4(sum / wsum, 0.0, 0.0, 1.0);
+}
+
+// Vertical half; reads the horizontal pass's .x. params[1] = (radius, sigma, 0, 0).
+fragment float4 ollin_wash_blur_v(PresentOut in [[stage_in]],
+                                  texture2d<float> half1 [[texture(0)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    int r = int(params[1].x);
+    float sigma = max(params[1].y, 0.5);
+    float sum = 0.0, wsum = 0.0;
+    for (int i = -r; i <= r; i += 1) {
+        float w = exp(-float(i * i) / (2.0 * sigma * sigma));
+        float2 uv = in.uv + float2(0.0, float(i) * t.y);
+        float m = (uv.y < 0.0 || uv.y > 1.0) ? 0.0 : half1.sample(samp, uv).x;
+        sum += w * m;
+        wsum += w;
+    }
+    return float4(sum / wsum, 0.0, 0.0, 1.0);
+}
+
+// Edge darkening: cells near the wet boundary (where the blurred mask falls off)
+// shed a little pressure every step, so the interior stays higher and the flow
+// drifts outward, ferrying pigment to the rim, where it settles as the dark
+// deposit a real wet-on-dry stroke dries with. The floor keeps a long-lived wash
+// from winding pressure down forever. params[1] = (eta, 0, 0, 0).
+fragment float4 ollin_wash_outward(PresentOut in [[stage_in]],
+                                   texture2d<float> flow [[texture(0)]],
+                                   texture2d<float> blurred [[texture(1)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float4 f = flow.sample(samp, in.uv);
+    float mBlur = blurred.sample(samp, in.uv).x;
+    f.z = max(f.z - params[1].x * (1.0 - mBlur) * f.w, -2.0);
+    return f;
+}
+
+// One upwind advection substep of the suspended pigment: each cell sends a
+// fraction of its pigment across each face flowing outward and receives what its
+// neighbours send in. With velocities clamped to one texel per unit time and
+// dt = 1/4, the four outflows can never exceed the cell's pigment, so
+// concentrations stay non-negative and the total is conserved (both sides of a
+// face compute the same transfer from the same snapshot). Dry faces carry zero
+// velocity, so pigment never leaves the mask. params[1] = (dt, 0, 0, 0).
+fragment float4 ollin_wash_pigment(PresentOut in [[stage_in]],
+                                   texture2d<float> pig [[texture(0)]],
+                                   texture2d<float> flow [[texture(1)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float dt = params[1].x;
+    float2 uv = in.uv;
+    float4 f  = ollin_wash_flow(flow, samp, uv);
+    float4 fL = ollin_wash_flow(flow, samp, uv - float2(t.x, 0.0));
+    float4 fB = ollin_wash_flow(flow, samp, uv - float2(0.0, t.y));
+    float4 g  = pig.sample(samp, uv);
+    float3 gL = ollin_wash_pig(pig, samp, uv - float2(t.x, 0.0)).rgb;
+    float3 gR = ollin_wash_pig(pig, samp, uv + float2(t.x, 0.0)).rgb;
+    float3 gB = ollin_wash_pig(pig, samp, uv - float2(0.0, t.y)).rgb;
+    float3 gT = ollin_wash_pig(pig, samp, uv + float2(0.0, t.y)).rgb;
+
+    float outR = clamp(max(0.0,  f.x) * dt, 0.0, 0.25);   // across my right face
+    float outL = clamp(max(0.0, -fL.x) * dt, 0.0, 0.25);  // across my left face
+    float outT = clamp(max(0.0,  f.y) * dt, 0.0, 0.25);
+    float outB = clamp(max(0.0, -fB.y) * dt, 0.0, 0.25);
+    float inL = clamp(max(0.0,  fL.x) * dt, 0.0, 0.25);   // my left neighbour, rightward
+    float inR = clamp(max(0.0, -f.x) * dt, 0.0, 0.25);    // my right neighbour, leftward
+    float inB = clamp(max(0.0,  fB.y) * dt, 0.0, 0.25);
+    float inT = clamp(max(0.0, -f.y) * dt, 0.0, 0.25);
+
+    float3 gn = g.rgb * (1.0 - (outR + outL + outT + outB))
+              + gL * inL + gR * inR + gB * inB + gT * inT;
+    return float4(gn, g.a);
+}
+
+// Pigment settling and lifting, per pigment: settled deposit grows by
+// density-scaled settling, biased into the paper's hollows by granulation, and
+// shrinks by lifting, which staining resists. Both directions cap at a full
+// unit layer, per the model. Runs only under water (M = 1). The paper's
+// capillary absorption folds in here (the first phase of the backrun layer):
+// wet paper drinks toward its height-scaled capacity, and damp paper left
+// behind dries slowly. params[1] = (alpha, cmin, cmax, dryRate);
+// params[2 + k] = (density, staining, granulation, 0) per pigment.
+static inline void ollin_wash_exchange(float h, float3 g, float3 d,
+                                       constant float4 *params,
+                                       thread float3 &down, thread float3 &up) {
+    for (int k = 0; k < 3; k += 1) {
+        float rho = params[2 + k].x, omega = params[2 + k].y, gamma = params[2 + k].z;
+        float dn = g[k] * (1.0 - h * gamma) * rho;
+        float uq = d[k] * (1.0 + (h - 1.0) * gamma) * rho / max(omega, 1e-3);
+        if (d[k] + dn > 1.0) { dn = max(0.0, 1.0 - d[k]); }
+        if (g[k] + uq > 1.0) { uq = max(0.0, 1.0 - g[k]); }
+        down[k] = dn;
+        up[k] = uq;
+    }
+}
+
+fragment float4 ollin_wash_transfer_pig(PresentOut in [[stage_in]],
+                                        texture2d<float> pig [[texture(0)]],
+                                        texture2d<float> dep [[texture(1)]],
+                                        texture2d<float> paper [[texture(2)]],
+                                        texture2d<float> flow [[texture(3)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float4 g = pig.sample(samp, in.uv);
+    float4 f = flow.sample(samp, in.uv);
+    float h = paper.sample(samp, in.uv).r;
+    float alpha = params[1].x, cmin = params[1].y, cmax = params[1].z, dryRate = params[1].w;
+    if (f.w > 0.5) {
+        float3 d = dep.sample(samp, in.uv).rgb;
+        float3 down, up;
+        ollin_wash_exchange(h, g.rgb, d, params, down, up);
+        g.rgb += up - down;
+        float c = cmin + h * (cmax - cmin);
+        g.a += max(0.0, min(alpha, c - g.a));
+    } else {
+        g.a *= dryRate;   // damp paper left behind dries slowly
+    }
+    return g;
+}
+
+// The deposit half of the same exchange, computed from the same snapshot (both
+// passes derive identical transfers, so the pair conserves pigment exactly).
+fragment float4 ollin_wash_transfer_dep(PresentOut in [[stage_in]],
+                                        texture2d<float> pig [[texture(0)]],
+                                        texture2d<float> dep [[texture(1)]],
+                                        texture2d<float> paper [[texture(2)]],
+                                        texture2d<float> flow [[texture(3)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float3 d = dep.sample(samp, in.uv).rgb;
+    float4 f = flow.sample(samp, in.uv);
+    if (f.w > 0.5) {
+        float4 g = pig.sample(samp, in.uv);
+        float h = paper.sample(samp, in.uv).r;
+        float3 down, up;
+        ollin_wash_exchange(h, g.rgb, d, params, down, up);
+        d += down - up;
+    }
+    return float4(d, 1.0);
+}
+
+// Capillary diffusion (the backrun layer): moisture seeps from wetter paper into
+// drier paper *that is already damp* (a receiver below the dampness threshold
+// takes nothing, which is why a bloom stops at dry paper), each transfer capped
+// by the receiver's remaining height-scaled capacity. Pure gather: both cells of
+// a pair compute the same transfer. params[1] = (epsilon, delta, cmin, cmax).
+fragment float4 ollin_wash_capillary(PresentOut in [[stage_in]],
+                                     texture2d<float> pig [[texture(0)]],
+                                     texture2d<float> paper [[texture(1)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float eps = params[1].x, delta = params[1].y, cmin = params[1].z, cmax = params[1].w;
+    float2 uv = in.uv;
+    float sC = pig.sample(samp, uv).a;
+    float hC = paper.sample(samp, uv).r;
+    float cC = cmin + hC * (cmax - cmin);
+    float4 g = pig.sample(samp, uv);
+    float2 offs[4] = { float2(-t.x, 0.0), float2(t.x, 0.0), float2(0.0, -t.y), float2(0.0, t.y) };
+    float s = sC;
+    for (int n = 0; n < 4; n += 1) {
+        float2 nuv = uv + offs[n];
+        if (nuv.x < 0.0 || nuv.x > 1.0 || nuv.y < 0.0 || nuv.y > 1.0) { continue; }
+        float sN = pig.sample(samp, nuv).a;
+        float hN = paper.sample(samp, nuv).r;
+        float cN = cmin + hN * (cmax - cmin);
+        if (sC > eps && sC > sN && sN > delta) {          // I give
+            s -= max(0.0, min(sC - sN, cN - sN) * 0.25);
+        }
+        if (sN > eps && sN > sC && sC > delta) {          // I receive
+            s += max(0.0, min(sN - sC, cC - sC) * 0.25);
+        }
+    }
+    return float4(g.rgb, max(s, 0.0));
+}
+
+// Mask expansion, the visible half of a backrun: paper saturated past the
+// threshold joins the wet area, so the shallow-water flow (and its edge
+// darkening) claims the newly damp ground. params[1] = (sigmaThreshold, 0, 0, 0).
+fragment float4 ollin_wash_expand(PresentOut in [[stage_in]],
+                                  texture2d<float> flow [[texture(0)]],
+                                  texture2d<float> pig [[texture(1)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float4 f = flow.sample(samp, in.uv);
+    float s = pig.sample(samp, in.uv).a;
+    if (s > params[1].x) { f.w = 1.0; }
+    return f;
+}
+
+// Kubelka-Munk optics of one pigment layer of thickness x (per RGB channel):
+// reflectance R and transmittance T from absorption K and scattering S. The
+// b -> 0 limit (a pure scatterer) is taken explicitly per channel. Mirrors the
+// CPU reference in WatercolorSim.swift; keep the two in step.
+static inline void ollin_wash_km_layer(float3 K, float3 S, float x,
+                                       thread float3 &R, thread float3 &T) {
+    if (x <= 1e-5) { R = float3(0.0); T = float3(1.0); return; }
+    float3 Ss = max(S, float3(1e-6));
+    float3 a = 1.0 + K / Ss;
+    float3 b = sqrt(max(a * a - 1.0, 0.0));
+    float3 bsx = min(b * Ss * x, 30.0);
+    float3 sh = sinh(bsx), ch = cosh(bsx);
+    float3 c = a * sh + b * ch;
+    float3 general = sh / max(c, 1e-9);
+    float3 generalT = b / max(c, 1e-9);
+    float3 sx = Ss * x;
+    float3 pureR = sx / (1.0 + sx);
+    float3 pureT = 1.0 / (1.0 + sx);
+    R = select(general, pureR, b < 1e-6);
+    T = select(generalT, pureT, b < 1e-6);
+}
+
+// The wet wash (suspended + settled pigment) as one optical layer: thicknesses
+// x_k = g_k + d_k, coefficients blended in proportion to each pigment's share.
+// params[2 + 2k] = pigment k's K (rgb); params[3 + 2k] = its S (rgb).
+static inline void ollin_wash_layer_rt(float3 g, float3 d, constant float4 *params,
+                                       thread float3 &R, thread float3 &T) {
+    float3 xk = max(g + d, 0.0);
+    float x = xk.x + xk.y + xk.z;
+    if (x <= 1e-5) { R = float3(0.0); T = float3(1.0); return; }
+    float3 K = (xk.x * params[2].xyz + xk.y * params[4].xyz + xk.z * params[6].xyz) / x;
+    float3 S = (xk.x * params[3].xyz + xk.y * params[5].xyz + xk.z * params[7].xyz) / x;
+    ollin_wash_km_layer(K, S, x, R, T);
+}
+
+// Kubelka's optical compositing of an upper layer over a lower one.
+static inline void ollin_wash_km_composite(float3 R1, float3 T1, float3 R2, float3 T2,
+                                           thread float3 &R, thread float3 &T) {
+    float3 inter = max(1.0 - R1 * R2, float3(1e-6));
+    R = R1 + T1 * T1 * R2 / inter;
+    T = T1 * T2 / inter;
+}
+
+// Render the painting: the wet wash composites over the dried-glaze stack, and
+// the whole stack over the sheet's own reflectance. All display-space sRGB (the
+// space the pigment coefficients live in); converted to linear at output, where
+// the layer system expects premultiplied linear (opaque, so straight = premul).
+// params[1] = paper color (rgb); params[2..7] = the K/S rows above.
+fragment float4 ollin_wash_render(PresentOut in [[stage_in]],
+                                  texture2d<float> pig [[texture(0)]],
+                                  texture2d<float> dep [[texture(1)]],
+                                  texture2d<float> driedR [[texture(2)]],
+                                  texture2d<float> driedT [[texture(3)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float3 g = pig.sample(samp, in.uv).rgb;
+    float3 d = dep.sample(samp, in.uv).rgb;
+    float3 R, T;
+    ollin_wash_layer_rt(g, d, params, R, T);
+    float3 Rd = driedR.sample(samp, in.uv).rgb;
+    float3 Td = driedT.sample(samp, in.uv).rgb;
+    float3 Rs, Ts;
+    ollin_wash_km_composite(R, T, Rd, Td, Rs, Ts);
+    float3 Rp = params[1].xyz;
+    float3 final = Rs + Ts * Ts * Rp / max(1.0 - Rs * Rp, float3(1e-6));
+    return float4(srgbToLinear(clamp(final, 0.0, 1.0)), 1.0);
+}
+
+// Dry the current wash into the glaze stack: the wet layer composites onto the
+// dried R (this pass) and T (the next), after which the runner clears the wash.
+// Same params layout as the render pass.
+fragment float4 ollin_wash_dry_r(PresentOut in [[stage_in]],
+                                 texture2d<float> pig [[texture(0)]],
+                                 texture2d<float> dep [[texture(1)]],
+                                 texture2d<float> driedR [[texture(2)]],
+                                 texture2d<float> driedT [[texture(3)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float3 R, T;
+    ollin_wash_layer_rt(pig.sample(samp, in.uv).rgb, dep.sample(samp, in.uv).rgb, params, R, T);
+    float3 Rs, Ts;
+    ollin_wash_km_composite(R, T, driedR.sample(samp, in.uv).rgb,
+                            driedT.sample(samp, in.uv).rgb, Rs, Ts);
+    return float4(Rs, 1.0);
+}
+
+fragment float4 ollin_wash_dry_t(PresentOut in [[stage_in]],
+                                 texture2d<float> pig [[texture(0)]],
+                                 texture2d<float> dep [[texture(1)]],
+                                 texture2d<float> driedR [[texture(2)]],
+                                 texture2d<float> driedT [[texture(3)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float3 R, T;
+    ollin_wash_layer_rt(pig.sample(samp, in.uv).rgb, dep.sample(samp, in.uv).rgb, params, R, T);
+    float3 Rs, Ts;
+    ollin_wash_km_composite(R, T, driedR.sample(samp, in.uv).rgb,
+                            driedT.sample(samp, in.uv).rgb, Rs, Ts);
+    return float4(Ts, 1.0);
+}
+
+// After the dry bake: the wash resets but the paper stays damp, so the next wet
+// stroke can bloom back into it (the wet-on-damp backrun). Loose pigment, water,
+// and the mask clear; saturation carries but drops below the mask-expansion
+// threshold. That cap is load-bearing: a fully saturated sheet left above the
+// threshold would re-wet the whole old wash on the very next step and dry()
+// would never stick, while capped-damp paper waits for a fresh stroke's
+// moisture to push it back over the line.
+fragment float4 ollin_wash_dry_pig(PresentOut in [[stage_in]],
+                                   texture2d<float> pig [[texture(0)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    return float4(0.0, 0.0, 0.0, min(pig.sample(samp, in.uv).a, 0.3));
+}
+
+// Blotting: the standing water lifts (the runner clears the flow field) but the
+// pigment stays where it lies, suspended and settled alike, and the sheet stays
+// damp below the re-wet threshold. This is the "drying but still damp" state
+// the classic backrun needs: paint a wash, blot it, then touch water to it, and
+// the flood re-claims the damp ground cell by cell, pushing the parked pigment
+// ahead of it into a branching, darkened edge.
+fragment float4 ollin_wash_blot_pig(PresentOut in [[stage_in]],
+                                    texture2d<float> pig [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float4 g = pig.sample(samp, in.uv);
+    return float4(g.rgb, min(g.a, 0.3));
+}

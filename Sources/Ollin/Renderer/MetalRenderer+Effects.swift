@@ -184,7 +184,11 @@ extension MetalRenderer {
             if statefulEncodeIsRepeat {
                 // The sim already stepped (and flipped) for this frame; re-stepping
                 // would run it at 2x speed while recording. Serve the stepped state.
-                if sf.sim.fluidConfig != nil {
+                if sf.sim.watercolorConfig != nil {
+                    if let slot = watercolorSlots[ObjectIdentifier(sf)] {
+                        target.texture = slot.display
+                    }
+                } else if sf.sim.fluidConfig != nil {
                     if let slot = fluidSlot(for: sf, width: pw, height: ph, into: cb) {
                         target.texture = slot.flipped ? slot.dyeB : slot.dyeA
                     }
@@ -217,7 +221,17 @@ extension MetalRenderer {
                        depthFormat: nil, stencil: passHasStencil, target: target)
                 enc.endEncoding()
             }
-            if let config = sf.sim.fluidConfig {
+            if let config = sf.sim.watercolorConfig {
+                // Watercolor: its own persistent flow / pigment / deposit pairs plus
+                // paper and the dried-glaze stack, evolved by the dedicated wash
+                // pipeline. `image` resolves to the rendered painting.
+                guard let slot = watercolorSlot(for: sf, config: config,
+                                                width: pw, height: ph, into: cb) else { continue }
+                runWatercolor(config, field: sf as? WatercolorField, seed: seed, slot: slot,
+                              width: pw, height: ph, into: cb, pooled: pooled)
+                target.texture = slot.display
+                watercolorUsedThisFrame.insert(ObjectIdentifier(sf))
+            } else if let config = sf.sim.fluidConfig {
                 // Multi-field fluid: its own persistent velocity + dye pairs, evolved by
                 // the dedicated solver. `image` resolves to the freshly advected dye.
                 guard let slot = fluidSlot(for: sf, width: pw, height: ph, into: cb) else { continue }
@@ -290,6 +304,11 @@ extension MetalRenderer {
         fluidUsedThisFrame.removeAll(keepingCapacity: true)
         if fluidSlots.contains(where: { $0.value.owner == nil }) {
             fluidSlots = fluidSlots.filter { $0.value.owner != nil }
+        }
+        for id in watercolorUsedThisFrame { watercolorSlots[id]?.flipped.toggle() }
+        watercolorUsedThisFrame.removeAll(keepingCapacity: true)
+        if watercolorSlots.contains(where: { $0.value.owner == nil }) {
+            watercolorSlots = watercolorSlots.filter { $0.value.owner != nil }
         }
         // Advance each SSR temporal history drawn this frame (its back becomes next frame's
         // front). Slots aren't pruned here (`ssrHistorySlot` bounds the map on allocation),
@@ -877,6 +896,235 @@ extension MetalRenderer {
                              params: [texel, SIMD4(dt, config.velocityDissipation, 0, 0)], into: cb)
         encodeEffectFragment("ollin_fluid_advect", inputs: [velBack, dyeSplat], output: dyeBack,
                              params: [texel, SIMD4(dt, config.densityDissipation, 0, 0)], into: cb)
+    }
+
+    /// Evolve a watercolor `SimField` one frame: the classic three-layer wash model.
+    /// Each main step moves water in the shallow-water layer (velocity substeps with
+    /// the paper's slope, divergence relaxation so local additions push globally, and
+    /// the edge-darkening pressure shed at the wet rim), advects the suspended
+    /// pigment along the flow, exchanges pigment with the deposit layer by each
+    /// pigment's density/staining/granulation, and (backruns on) seeps moisture
+    /// through the paper's pores, expanding the wet mask into damp ground. A pending
+    /// `dry()` first bakes last frame's wash into the dried-glaze stack (fresh
+    /// textures, swapped in; the old ones stay valid for any in-flight frame) and
+    /// restarts the wash on the still-damp sheet. The passes chain through pooled
+    /// scratch, landing each field's final state in its persistent back buffer, and
+    /// the finished painting (Kubelka-Munk layers over glazes over paper) renders
+    /// into the slot's display texture, which the field's `image` serves.
+    private func runWatercolor(_ config: Sim.WatercolorConfig, field: WatercolorField?,
+                               seed: MTLTexture, slot: WatercolorSlot,
+                               width: Int, height: Int, into cb: MTLCommandBuffer, pooled: Bool) {
+        func scratch() -> MTLTexture? { acquireFilterTexture(width: width, height: height, pooled: pooled) }
+        guard let f0 = scratch(), let f1 = scratch(), let p0 = scratch(), let p1 = scratch(),
+              let d0 = scratch(), let d1 = scratch(),
+              let blurA = scratch(), let blurB = scratch() else { return }
+        let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
+
+        let flowFront = slot.flipped ? slot.flowB : slot.flowA
+        let flowBack  = slot.flipped ? slot.flowA : slot.flowB
+        let pigFront  = slot.flipped ? slot.pigB : slot.pigA
+        let pigBack   = slot.flipped ? slot.pigA : slot.pigB
+        let depFront  = slot.flipped ? slot.depB : slot.depA
+        let depBack   = slot.flipped ? slot.depA : slot.depB
+        var flowRead = flowFront
+        var pigRead = pigFront
+        var depRead = depFront
+
+        // The optical rows the render/dry passes share: params[2+2k] = pigment k's
+        // absorption, params[3+2k] = its scattering. Unused palette slots are inert
+        // (zero coefficients give an invisible layer).
+        var kmRows: [SIMD4<Float>] = []
+        for k in 0..<3 {
+            if k < config.pigments.count {
+                let p = config.pigments[k]
+                kmRows.append(SIMD4(Float(p.k.x), Float(p.k.y), Float(p.k.z), 0))
+                kmRows.append(SIMD4(Float(p.s.x), Float(p.s.y), Float(p.s.z), 0))
+            } else {
+                kmRows.append(SIMD4(0, 0, 0, 0))
+                kmRows.append(SIMD4(0, 0, 0, 0))
+            }
+        }
+        let paperRow = SIMD4<Float>(config.paperColor.x, config.paperColor.y, config.paperColor.z, 0)
+
+        // A pending dry(): bake last frame's wash (the state the sketch saw when it
+        // called dry()) into the glaze stack, then start this frame's wash from clean
+        // water on the still-damp sheet, so a following wet stroke can bloom back.
+        if let field, field.pendingDry {
+            field.pendingDry = false
+            if let newR = makeFloatResolve(width: width, height: height),
+               let newT = makeFloatResolve(width: width, height: height),
+               let cleanPig = scratch(), let cleanFlow = scratch(), let cleanDep = scratch() {
+                let bake = [texel, paperRow] + kmRows
+                encodeEffectFragment("ollin_wash_dry_r", inputs: [pigRead, depRead, slot.driedR, slot.driedT],
+                                     output: newR, params: bake, into: cb)
+                encodeEffectFragment("ollin_wash_dry_t", inputs: [pigRead, depRead, slot.driedR, slot.driedT],
+                                     output: newT, params: bake, into: cb)
+                encodeEffectFragment("ollin_wash_dry_pig", inputs: [pigRead], output: cleanPig,
+                                     params: [texel], into: cb)
+                clearFloatTexture(cleanFlow, into: cb)
+                clearFloatTexture(cleanDep, into: cb)
+                slot.driedR = newR
+                slot.driedT = newT
+                flowRead = cleanFlow
+                pigRead = cleanPig
+                depRead = cleanDep
+            }
+        }
+        // A pending blot(): lift the standing water but keep the pigment parked
+        // (the "drying but still damp" state a backrun starts from). Nothing is
+        // baked; the next wet touch can still move this paint.
+        if let field, field.pendingBlot {
+            field.pendingBlot = false
+            if let dampPig = scratch(), let stillFlow = scratch() {
+                encodeEffectFragment("ollin_wash_blot_pig", inputs: [pigRead], output: dampPig,
+                                     params: [texel], into: cb)
+                clearFloatTexture(stillFlow, into: cb)
+                flowRead = stillFlow
+                pigRead = dampPig
+            }
+        }
+
+        func nextFlow() -> MTLTexture { flowRead === f0 ? f1 : f0 }
+        func nextPig() -> MTLTexture { pigRead === p0 ? p1 : p0 }
+
+        // 1. Inject this frame's marks: alpha wets the mask and adds pressure
+        //    (dry-brush gates by paper height), color channels add pigment.
+        var dest = nextFlow()
+        encodeEffectFragment("ollin_wash_inject_flow", inputs: [flowRead, seed, slot.paper], output: dest,
+                             params: [texel, SIMD4(1.0, config.dryBrush, 0, 0)], into: cb)
+        flowRead = dest
+        dest = nextPig()
+        encodeEffectFragment("ollin_wash_inject_pigment", inputs: [pigRead, seed, slot.paper], output: dest,
+                             params: [texel, SIMD4(1.0, config.dryBrush, 0, 0)], into: cb)
+        pigRead = dest
+
+        let transferRow = SIMD4<Float>(config.backruns ? config.absorbency * 0.05 : 0,
+                                       0.3, 0.9, 0.997)   // (absorb, cmin, cmax, damp-dry rate)
+        var pigmentRows: [SIMD4<Float>] = []
+        for k in 0..<3 {
+            if k < config.pigments.count {
+                let p = config.pigments[k]
+                pigmentRows.append(SIMD4(Float(p.density), Float(p.staining), Float(p.granulation), 0))
+            } else {
+                pigmentRows.append(SIMD4(0, 1, 0, 0))
+            }
+        }
+
+        let steps = max(1, config.speed)
+        for step in 0..<steps {
+            let final = step == steps - 1
+            // 2. Shallow water: four CFL substeps (slope enters on the first), then
+            //    the divergence relaxes out.
+            for sub in 0..<4 {
+                let out = nextFlow()
+                encodeEffectFragment("ollin_wash_velocity", inputs: [flowRead, slot.paper], output: out,
+                                     params: [texel, SIMD4(config.viscosity, config.drag, 0.25,
+                                                           sub == 0 ? 1 : 0)], into: cb)
+                flowRead = out
+            }
+            for _ in 0..<max(1, config.relaxation) {
+                let out = nextFlow()
+                encodeEffectFragment("ollin_wash_relax", inputs: [flowRead], output: out,
+                                     params: [texel, SIMD4(0.1, 0, 0, 0)], into: cb)
+                flowRead = out
+            }
+            // 3. Edge darkening: blur the mask, shed pressure where it falls off.
+            let blurParams = [texel, SIMD4<Float>(max(1, (config.edgeWidth / 2).rounded()),
+                                                  config.edgeWidth / 3, 0, 0)]
+            encodeEffectFragment("ollin_wash_blur_h", inputs: [flowRead], output: blurA,
+                                 params: blurParams, into: cb)
+            encodeEffectFragment("ollin_wash_blur_v", inputs: [blurA], output: blurB,
+                                 params: blurParams, into: cb)
+            let flowAfterOutward = (final && !config.backruns) ? flowBack : nextFlow()
+            encodeEffectFragment("ollin_wash_outward", inputs: [flowRead, blurB], output: flowAfterOutward,
+                                 params: [texel, SIMD4(config.edgeDarkening, 0, 0, 0)], into: cb)
+            flowRead = flowAfterOutward
+            // 4. Pigment rides the flow: four upwind substeps matching the CFL clamp.
+            for _ in 0..<4 {
+                let out = nextPig()
+                encodeEffectFragment("ollin_wash_pigment", inputs: [pigRead, flowRead], output: out,
+                                     params: [texel, SIMD4(0.25, 0, 0, 0)], into: cb)
+                pigRead = out
+            }
+            // 5. Settling and lifting: both halves read the same snapshot (encode
+            //    before advancing either read), so the exchange conserves pigment.
+            let transferParams = [texel, transferRow] + pigmentRows
+            let depDest = final ? depBack : (depRead === d0 ? d1 : d0)
+            let pigAfterTransfer = (final && !config.backruns) ? pigBack : nextPig()
+            encodeEffectFragment("ollin_wash_transfer_dep", inputs: [pigRead, depRead, slot.paper, flowRead],
+                                 output: depDest, params: transferParams, into: cb)
+            encodeEffectFragment("ollin_wash_transfer_pig", inputs: [pigRead, depRead, slot.paper, flowRead],
+                                 output: pigAfterTransfer, params: transferParams, into: cb)
+            depRead = depDest
+            pigRead = pigAfterTransfer
+            // 6. Backruns: moisture seeps through damp paper, and paper saturated
+            //    past the threshold joins the wet area.
+            if config.backruns {
+                let pigDest = final ? pigBack : nextPig()
+                encodeEffectFragment("ollin_wash_capillary", inputs: [pigRead, slot.paper], output: pigDest,
+                                     params: [texel, SIMD4(0.02, 0.01, 0.3, 0.9)], into: cb)
+                pigRead = pigDest
+                let flowDest = final ? flowBack : nextFlow()
+                encodeEffectFragment("ollin_wash_expand", inputs: [flowRead, pigRead], output: flowDest,
+                                     params: [texel, SIMD4(0.4, 0, 0, 0)], into: cb)
+                flowRead = flowDest
+            }
+        }
+        // 7. Render the painting: wet wash over dried glazes over the sheet.
+        encodeEffectFragment("ollin_wash_render", inputs: [pigRead, depRead, slot.driedR, slot.driedT],
+                             output: slot.display, params: [texel, paperRow] + kmRows, into: cb)
+    }
+
+    /// `sf`'s persistent watercolor slot, allocating the three ping-pong pairs, the
+    /// paper, the dried-glaze stack, and the display texture on first use, a size
+    /// change, or address reuse; the paper regenerates in place when its seed or
+    /// grain was retuned live (same command buffer, so every later pass reads the
+    /// fresh sheet). A new slot starts as bare paper: clean stack (reflectance 0,
+    /// transmittance 1), dry fields, and the display rendered once so a field read
+    /// before its first step already shows the sheet.
+    private func watercolorSlot(for sf: AnyObject, config: Sim.WatercolorConfig,
+                                width: Int, height: Int, into cb: MTLCommandBuffer) -> WatercolorSlot? {
+        let id = ObjectIdentifier(sf)
+        let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
+        let paperParams = [texel, SIMD4<Float>(config.paperSeed, config.grain, 0, 0)]
+        if let slot = watercolorSlots[id], slot.owner === sf, slot.w == width, slot.h == height {
+            if slot.paperSeed != config.paperSeed || slot.paperGrain != config.grain {
+                encodeEffectFragment("ollin_wash_paper", inputs: [], output: slot.paper,
+                                     params: paperParams, into: cb)
+                slot.paperSeed = config.paperSeed
+                slot.paperGrain = config.grain
+            }
+            return slot
+        }
+        guard let flowA = makeFloatResolve(width: width, height: height),
+              let flowB = makeFloatResolve(width: width, height: height),
+              let pigA = makeFloatResolve(width: width, height: height),
+              let pigB = makeFloatResolve(width: width, height: height),
+              let depA = makeFloatResolve(width: width, height: height),
+              let depB = makeFloatResolve(width: width, height: height),
+              let paper = makeFloatResolve(width: width, height: height),
+              let driedR = makeFloatResolve(width: width, height: height),
+              let driedT = makeFloatResolve(width: width, height: height),
+              let display = makeFloatResolve(width: width, height: height) else { return nil }
+        let zero = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        for tex in [flowA, flowB, pigA, pigB, depA, depB, driedR] {
+            clearFloatTexture(tex, color: zero, into: cb)
+        }
+        clearFloatTexture(driedT, color: MTLClearColor(red: 1, green: 1, blue: 1, alpha: 1), into: cb)
+        encodeEffectFragment("ollin_wash_paper", inputs: [], output: paper,
+                             params: paperParams, into: cb)
+        let emptyRows = [SIMD4<Float>](repeating: SIMD4(0, 0, 0, 0), count: 6)
+        encodeEffectFragment("ollin_wash_render", inputs: [pigA, depA, driedR, driedT], output: display,
+                             params: [texel,
+                                      SIMD4(config.paperColor.x, config.paperColor.y, config.paperColor.z, 0)]
+                                     + emptyRows, into: cb)
+        let slot = WatercolorSlot(flowA: flowA, flowB: flowB, pigA: pigA, pigB: pigB,
+                                  depA: depA, depB: depB, paper: paper,
+                                  driedR: driedR, driedT: driedT, display: display,
+                                  w: width, h: height,
+                                  paperSeed: config.paperSeed, paperGrain: config.grain, owner: sf)
+        watercolorSlots[id] = slot
+        return slot
     }
 
     /// The starting-state fill a multi-scale Turing field needs (seeded white noise),

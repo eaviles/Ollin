@@ -660,6 +660,44 @@ final class MetalRenderer {
     var fluidSlots: [ObjectIdentifier: FluidSlot] = [:]
     var fluidUsedThisFrame: Set<ObjectIdentifier> = []
 
+    /// One watercolor `SimField`'s persistent state: three ping-pong pairs (flow =
+    /// velocity/pressure/wet mask, pig = suspended pigment + paper saturation, dep =
+    /// settled pigment), the generated paper height field, the dried-glaze stack
+    /// (Kubelka-Munk reflectance and transmittance, rebuilt wholesale by `dry()`:
+    /// fresh textures each bake, never rewritten in place while a frame may read
+    /// them), and the rendered painting the field's `image` serves. `paperSeed` /
+    /// `paperGrain` remember what the paper was generated from, so retuning either
+    /// live regenerates the sheet without touching the painting's state.
+    final class WatercolorSlot {
+        let flowA: MTLTexture, flowB: MTLTexture
+        let pigA: MTLTexture, pigB: MTLTexture
+        let depA: MTLTexture, depB: MTLTexture
+        let paper: MTLTexture
+        var driedR: MTLTexture, driedT: MTLTexture
+        let display: MTLTexture
+        let w: Int, h: Int
+        var paperSeed: Float, paperGrain: Float
+        var flipped = false
+        weak var owner: AnyObject?
+        init(flowA: MTLTexture, flowB: MTLTexture, pigA: MTLTexture, pigB: MTLTexture,
+             depA: MTLTexture, depB: MTLTexture, paper: MTLTexture,
+             driedR: MTLTexture, driedT: MTLTexture, display: MTLTexture,
+             w: Int, h: Int, paperSeed: Float, paperGrain: Float, owner: AnyObject) {
+            self.flowA = flowA; self.flowB = flowB
+            self.pigA = pigA; self.pigB = pigB
+            self.depA = depA; self.depB = depB
+            self.paper = paper
+            self.driedR = driedR; self.driedT = driedT
+            self.display = display
+            self.w = w; self.h = h
+            self.paperSeed = paperSeed; self.paperGrain = paperGrain
+            self.owner = owner
+        }
+    }
+    /// Persistent watercolor storage, kept and pruned like `fluidSlots`.
+    var watercolorSlots: [ObjectIdentifier: WatercolorSlot] = [:]
+    var watercolorUsedThisFrame: Set<ObjectIdentifier> = []
+
     /// How many blur-pyramid rungs a multi-scale Turing step is handed. Must stay equal
     /// to `OLLIN_TURING_LEVELS` in `ShaderSim.metal`, which sizes the texture binding:
     /// twelve rungs cover a field up to 4096 texels on its longest side, and a shallower

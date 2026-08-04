@@ -38,6 +38,7 @@ public struct Sim: Sendable {
         case fluid(FluidConfig)
         case multiScaleTuring(scales: [TuringScale], seed: Double)
         case sandpile(pour: Int, topplings: Int)
+        case watercolor(WatercolorConfig)
     }
 
     let kind: Kind
@@ -265,6 +266,7 @@ public struct Sim: Sendable {
         case let .sandpile(_, topplings):
             return topplings                // the pacing dial: an avalanche front
                                             // moves one texel per pass
+        case .watercolor:        return 1   // unused: watercolor runs its own pipeline
         }
     }
 
@@ -283,6 +285,7 @@ public struct Sim: Sendable {
                                                             // fixed point of the rule), so the slot
                                                             // fills it with a seeded hash instead
         case .sandpile:          return SIMD4(0, 0, 0, 1)   // an empty table
+        case .watercolor:        return SIMD4(0, 0, 0, 0)   // unused: runWatercolor clears its own fields
         }
     }
 
@@ -296,6 +299,7 @@ public struct Sim: Sendable {
         case .fluid:             return ""   // unused: the fluid dispatches its own fragments
         case .multiScaleTuring:  return ""   // unused: Turing dispatches its own fragments
         case .sandpile:          return "ollin_sim_sandpile"
+        case .watercolor:        return ""   // unused: watercolor dispatches its own fragments
         }
     }
 
@@ -310,6 +314,7 @@ public struct Sim: Sendable {
         case .ripples:          return "ollin_sim_inject_height"
         case .multiScaleTuring: return "ollin_sim_inject_luma"
         case .sandpile:         return "ollin_sim_inject_sand"
+        case .watercolor:       return ""   // unused: watercolor runs its own two injects
         default:                return "ollin_sim_inject"
         }
     }
@@ -336,6 +341,8 @@ public struct Sim: Sendable {
             return []   // unused: Turing binds per-pass parameters itself
         case let .sandpile(pour, _):
             return [SIMD4(Float(pour), 0, 0, 0)]   // read by the inject, not the step
+        case .watercolor:
+            return []   // unused: watercolor binds per-pass parameters itself
         }
     }
 }

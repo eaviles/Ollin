@@ -831,6 +831,88 @@ because each frame's pour re-fills the interior faster than the rim sheds; the
 display shows it honestly as the top of the ramp, not a defect to guard
 against.
 
+### The watercolor wash (`Sim.watercolor` / `WatercolorField`)
+
+The third dedicated multi-pass sim beside the fluid and Turing, and the largest:
+the classic three-layer wash model (shallow water flowing above the paper,
+pigment settling onto it, moisture creeping through it; see `ATTRIBUTION.md`
+for the source paper and the division of credit). `runWatercolor` drives it
+over a `WatercolorSlot` of ten persistent textures: three ping-pong pairs
+(`flow` = velocity/pressure/wet mask, `pig` = suspended pigment + paper
+saturation, `dep` = settled pigment), the generated `paper` height field, the
+dried-glaze stack (`driedR`/`driedT`, Kubelka-Munk reflectance and
+transmittance), and the `display` texture the field's `image` serves (also the
+repeat-encode answer: a second encode of the same sketch frame reads it back
+instead of re-stepping).
+
+**The grid and its packing.** One texel carries a staggered (MAC) cell: `u` on
+its right face, `v` on its top face, pressure and the wet mask at the center.
+Every flow or pigment tap goes through a bounds-rejecting helper that reads
+off-canvas as dry, motionless paper; the clamp sampler would reflect the edge
+texel back as its own neighbour, and the rejection is also what pins velocities
+at the canvas edge for free. A face bordering a dry cell is pinned to zero in
+every pass that writes velocities, which is the paper's boundary condition
+(water never leaves the mask) applied at write time rather than as a separate
+pass.
+
+**Two sign decisions are load-bearing.** The velocity update applies the
+viscous term as `A + μB` (B is the five-point Laplacian): the model's
+continuous equations carry `+μ∇²u` and its own design conditions demand damped
+flow, while the printed pseudocode's sign reads inverted, and anti-diffusion
+detonates the wash within seconds. The divergence relaxation likewise runs in
+the divergence-*reducing* direction (`δ = −ξ·div`), in gather form: a face
+carries its own cell's correction minus its right/top neighbour's, and the
+per-cell corrections also accumulate into pressure, so water added anywhere
+pushes water everywhere.
+
+**Time stepping.** The paper's adaptive Euler step (Δt chosen so no velocity
+crosses a texel) becomes four fixed substeps of dt = 1/4 with velocities
+clamped to ±1, the ripples precedent. That pairing is what lets the pigment
+advection be a pure nine-tap gather with no conservation rescale: each face
+moves at most a quarter of a cell per substep, so the four outflows can never
+exceed the cell's own pigment, concentrations stay non-negative, and both
+sides of a face compute the same transfer from the same snapshot. The
+settle/lift exchange with the deposit layer is split into two passes
+(`transfer_dep`, `transfer_pig`) that read one snapshot and derive identical
+per-pigment deltas, so the pair conserves pigment exactly; the capillary
+absorption folds into the pigment half (wet paper drinks toward its
+height-scaled capacity, damp paper left behind dries slowly).
+
+**Backruns and the two lifecycle verbs.** The capillary layer is the paper's:
+moisture diffuses from wetter to drier paper *that is already damp* (a
+receiver below the dampness threshold takes nothing, so blooms stop at dry
+paper), and paper saturated past a threshold joins the wet mask. Two
+calibration facts matter. `dry()` bakes the wash into the glaze stack
+(compositing the wet layer onto `driedR`/`driedT` as *fresh* textures swapped
+into the slot, never rewritten in place under an in-flight frame) and must cap
+the remaining saturation *below* the mask-expansion threshold, or the fully
+saturated sheet re-wets its whole old footprint on the next step and `dry()`
+never sticks. And a baked wash has nothing left to push, which is why the
+paper's backrun needs its own staging verb: `blot()` lifts the standing water
+but leaves the pigment parked and the sheet damp (the paper authors this state
+as initial conditions), and a *held* clean-water touch then floods back
+through the damp paint, pushing it into the pale bloom with the dark branching
+rim. A single tap only nudges, because one frame's pressure equalizes through
+the relaxation almost immediately; the held brush is a sustained pressure
+source, and interactively that is exactly how a wet brush behaves.
+
+**Rendering.** The optical passes run in display-space sRGB, the space the
+pigment coefficients are specified in (and the space the source work's own
+arithmetic ran in), converting to linear only at the output write; the CPU
+reference (`KubelkaMunk` in `WatercolorSim.swift`, which also powers the
+`overWhite:`/`overBlack:` inversion and the tests) and `ollin_wash_km_layer`
+are the same closed forms and must stay in step. A layer's coefficients blend
+across the palette in proportion to each pigment's share of the total
+thickness (`x_k = g_k + d_k`); the wet layer composites over the dried stack,
+and the whole stack over the sheet's own reflectance. The pipeline is
+deterministic end to end (the paper generates from a seeded fragment; every
+pass is a fixed function of state), so unlike the atomic-scatter compute sims
+it carries a pixel snapshot (`watercolor-sim`), with `WatercolorSimTests`
+pinning what a mean diff averages away: the darkened edge, the dry-brush gaps
+(the inject's height gate applies to *both* halves, or dry-brush gaps hold
+flat unsimulated pigment), the freeze after `dry()`, the backrun-vs-off
+counterfactual, and byte-exact replay.
+
 ### Compose DSL, combine ops, and `aside`
 
 `compose { layer { ... }.post(_:).blend(_:).scale(_:) ... }` is the declarative

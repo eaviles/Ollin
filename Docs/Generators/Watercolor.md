@@ -4,7 +4,7 @@
 
 ## Watercolor
 
-Watercolor pigment from nothing but polygon deformation and translucency. A **`Watercolor`** base is one irregular polygon wobbled into character by recursive edge subdivision; each painted **layer** wobbles it a little further and fills at a few percent opacity; a few dozen stacked layers read as pigment pooling on wet paper, dense in the middle and fading unevenly at the edge. The one-liner is **`drawWatercolor`**; the typed base is for interleaving pigments and reusing a blob's character.
+Watercolor pigment from nothing but polygon deformation and translucency. A **`Watercolor`** base is one irregular polygon wobbled into character by recursive edge subdivision; each painted **layer** wobbles it a little further and fills at a few percent opacity; a few dozen stacked layers read as pigment pooling on wet paper, dense in the middle and fading unevenly at the edge. The one-liner is **`drawWatercolor`**; the typed base is for interleaving pigments and reusing a blob's character. (This is the *geometric* take, cheap and plotter-friendly; for actual wet paint that flows, dries with darkened edges, and glazes optically, see the [watercolor simulation](../Simulation/Watercolor.md).)
 
 ```
   base polygon        one layer           forty layers

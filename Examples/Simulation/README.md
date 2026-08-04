@@ -14,6 +14,8 @@ Systems that evolve on the GPU each frame: the built-in `Sim` field catalog (sta
 | [MultiScaleTuring](MultiScaleTuring/Sketch.swift) | McCabe's multi-scale Turing patterns: five scales competing per pixel, self-organizing from noise into diatom-like relief, foldable into a rosette (`simField(.multiScaleTuring(...))`) |
 | [Sandpile](Sandpile/Sketch.swift) | the Abelian sandpile: a dropped mountain collapsing four grains at a time into the classic fractal pile, one color per grain count, hold to pour another (`simField(.sandpile(...))`) |
 | [Fluid](Fluid/Sketch.swift) | a real-time incompressible fluid carrying colour, drag to swirl (`simField(.fluid(...))`) |
+| [Ripples](Ripples/Sketch.swift) | a rain-swept water surface: the 2D wave equation shaded as liquid, click to drop (`simField(.ripples(...))`) |
+| [Watercolor](Watercolor/Sketch.swift) | wet paint on rough paper: a scripted wash, wet-in-wet charge, backrun bloom, and glaze you can take over with the mouse (`watercolor(pigments:)`) |
 | [ParticleLife](ParticleLife/Sketch.swift) | attraction/repulsion matrices growing membranes, chasers, and worms (`particleLife(...)`) |
 | [PrimordialParticles](PrimordialParticles/Sketch.swift) | one turning rule growing dividing cells (`primordialParticles(...)`) |
 | [Physarum](Physarum/Sketch.swift) | slime-mold agents growing branching trail networks (`physarum(...)`) |

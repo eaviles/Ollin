@@ -241,6 +241,36 @@ Two things about dropping follow from that, and both are easy to get wrong. The 
 
 The other thing worth knowing is that this field's raw `image` is not a picture of water. It stores height in the red channel and velocity in green, both signed, which makes it a debugging view. Shading it is a separate step, and `.relight` is the natural one because it reads the height as a real surface and lights it.
 
+## Paint that behaves
+
+Every sim so far has been a system you seed and watch. The watercolor field is a sim about a *material*: a sheet of rough paper where water flows, carries pigment, and dries the way real paint does. You don't imitate watercolor's look with filters; you lay down wet paint and the physics produces the look.
+
+```swift
+var paint: WatercolorField!
+
+override func setup() {
+    paint = watercolor(pigments: [.frenchUltramarine, .quinacridoneRose])
+}
+
+override func draw() {
+    withField(paint) {
+        noStroke()
+        if mouseIsPressed { fill(paint.ink(0)); drawCircle(mouseX, mouseY, 24) }
+    }
+    drawImage(paint.image, 0, 0)
+}
+```
+
+Painting is drawing into the field, with the palette riding the color channels: red is the first pigment, green the second, blue the third, and **alpha is water**. `paint.ink(0)` builds the brush color for the first pigment, `paint.water()` is a clean wet brush, and `noStroke()` matters more than usual, because a stroked mark would ring every stamp with its stroke color, and black is water with no pigment in it.
+
+<img src="Images/16-Simulations/WetPaint.jpg" alt="A simulated watercolor painting: a horizontal ultramarine wash with a darkened edge and rose charged into its middle, a pale backrun bloom with branching ridges where water was dropped, and a vertical yellow band glazed across everything, turning green where it crosses the blue" width="560">
+
+Leave a stroke alone and its edge darkens on its own: the wet rim sheds water, the interior refills it, and that slow one-way traffic ferries pigment to the boundary, which is the dark rim every real wet-on-dry stroke dries with. Paint a loaded stroke into a wash that's still wet and it spreads soft and feathery instead. Each pigment keeps its own habits along the way: dense paints settle where you put them, granulating ones like `.frenchUltramarine` collect in the paper's hollows and dry speckled, staining ones grip and won't lift.
+
+Two verbs manage the sheet between washes. `paint.dry()` bakes everything so far into a fixed glaze; the next wash paints over it without disturbing it, and the layers mix like light through stained glass rather than like ink (hansa yellow over ultramarine makes the muted green those real paints actually mix). `paint.blot()` lifts only the standing water and leaves the pigment sitting damp, which is the state a *backrun* wants: hold a clean-water touch in a blotted wash and the water floods back through the damp paint, shoving pigment ahead of it into a pale bloom with a dark branching rim. A single tap only nudges; holding the wet brush is what blooms. The water does the painting, and your job is deciding where it lands.
+
+There are knobs for the paper too: `dryBrush` above zero makes strokes skip across the raised tooth and break up, `grain` sizes the tooth, and `paperSeed` picks the sheet. A pigment you can't find in the twelve presets you can invent by describing it: `WatercolorPigment(overWhite:overBlack:)` takes the color a layer shows over white and over black paper and works out the optics from those two swatches. The full model, effect by effect, is on the [watercolor page](../Docs/Simulation/Watercolor.md).
+
 ## Standing waves
 
 Not every wave needs simulating. In 1787 Ernst Chladni scattered sand on a metal plate and drew a bow across its edge, and the sand skipped away from the parts that were moving and settled along the lines that weren't. Those lines are the plate's nodes, and the figures they make are beautiful enough that Chladni toured Europe demonstrating them.
@@ -461,7 +491,7 @@ The two waves in this chapter are older than any of it. The ripple pool integrat
 - [Artificial life](../Docs/Simulation/ArtificialLife.md): all three systems with every knob, plus building your own on the public `SpatialHash`.
 - [Fluids & soft bodies](../Docs/Simulation/Fluids.md): the SPH and shape-matching knobs, grabbing, and the substep model.
 - [Chladni figures](../Docs/Generators/Chladni.md): the closed form, the `.chladni` generator's two styles, the degenerate cases, and pulling nodal lines out as vector contours.
-- Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/GameOfLife`](../Examples/Simulation/GameOfLife/Sketch.swift), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Sandpile`](../Examples/Simulation/Sandpile/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift), [`Examples/Audio/ChladniResonance`](../Examples/Audio/ChladniResonance/Sketch.swift), [`Examples/Effects/Fractals`](../Examples/Effects/Fractals/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
+- Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/GameOfLife`](../Examples/Simulation/GameOfLife/Sketch.swift), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Sandpile`](../Examples/Simulation/Sandpile/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift), [`Examples/Audio/ChladniResonance`](../Examples/Audio/ChladniResonance/Sketch.swift), [`Examples/Effects/Fractals`](../Examples/Effects/Fractals/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
 
 ---
 

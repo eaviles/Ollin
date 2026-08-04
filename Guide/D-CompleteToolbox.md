@@ -171,6 +171,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Feedback | A layer that remembers last frame: trails, tunnels, video feedback | [Ch 14](14-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Simulation fields | Game of Life, Gray-Scott reaction-diffusion, Lenia, the ripple pool, and real-time fluid, all seeded by drawing into them | [Ch 16](16-Simulations.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Ripple pool | `.ripples`: the wave equation as an interactive water surface; drawn marks add height, rings spread and reflect | [Ch 16](16-Simulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
+| Watercolor wash | `watercolor(pigments:)`: wet paint on rough paper, with real pigment behavior, darkened edges, backruns, dry-brush, and optical glazing | [Ch 16](16-Simulations.md) | [Watercolor](../Docs/Simulation/Watercolor.md) |
 | Chladni figures | The standing-wave patterns of a driven plate in closed form, as a field, a generator, or nodal contours | [Ch 16](16-Simulations.md) | [Chladni](../Docs/Generators/Chladni.md) |
 
 ## Shaders and compute

@@ -111,6 +111,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Physics`](./Simulation/Physics.md) - `import OllinPhysics` for a `World` you step each frame so motion comes from simulation: a soft Verlet side (particles, springs, disk collisions) and a rigid side (bodies, colliders, joints, backed by Box2D)
 - [`Artificial life`](./Simulation/ArtificialLife.md) - three emergent-behavior systems on the GPU: `ParticleLife`, the `PPS` turning rule, and `Physarum` slime mold, the first two over a GPU `SpatialHash` neighbor search you can also build your own sims on
 - [`Fluids & soft bodies`](./Simulation/Fluids.md) - GPU particle dynamics: `ParticleFluid` (smoothed-particle hydrodynamics) and `SoftBodies` (shape-matched jelly blobs), both in a walled box you can splash and knead with the mouse
+- [`Watercolor`](./Simulation/Watercolor.md) - wet paint on rough paper: the three-layer wash simulation (`watercolor(pigments:)`) with real pigment behavior and Kubelka-Munk glazing; paint with any drawing call, `dry()` between washes, `blot()` for backrun blooms
 - [`Articulated & chaotic motion`](./Simulation/Motion.md) - CPU motion systems you step each frame: `IKChain` (inverse-kinematics tentacles and limbs), `DoublePendulum` (the classic chaos machine), and `NBody` (quadtree gravity for orbits, galaxies, and collisions)
 
 ### Integration

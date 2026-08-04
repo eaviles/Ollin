@@ -540,10 +540,25 @@ override func draw() {
 }
 ```
 
+- **`.watercolor(pigments:...)`** wet paint on rough paper: the classic three-layer wash simulation (shallow water above the sheet, pigment settling onto it, moisture creeping through it), rendered by optical Kubelka-Munk layer compositing so washes glow and glazes mix like real paint. Its field is a `WatercolorField` (made with `watercolor(...)` rather than `simField`), whose palette maps onto the mark's color channels, with **alpha as water**: `paint.ink(0)` and `paint.water()` build brush colors, `paint.dry()` bakes the wash into a dried glaze for wet-on-dry layering, and `paint.blot()` lifts the water while the pigment stays movable (the backrun setup). Edge darkening, dry-brush, backruns, granulation, wet-in-wet flow, and glazing all come out of the simulation. The whole model has [its own page](../Simulation/Watercolor.md); see the `Simulation/Watercolor` example.
+
+```swift
+var paint: WatercolorField!
+override func setup() { paint = watercolor(pigments: [.frenchUltramarine, .burntUmber]) }
+
+override func draw() {
+    withField(paint) {
+        noStroke()
+        if mouseIsPressed { fill(paint.ink(0)); drawCircle(mouseX, mouseY, 24) }
+    }
+    drawImage(paint.image, 0, 0)                         // the painting, over its paper
+}
+```
+
 - `withField(field, force:) { … }` draws into the field's state (scoped like `withTarget`), and an empty block lets it evolve untouched. `force` (canvas points per frame) is the velocity a `.fluid` receives where the marks land, and the single-field sims ignore it.
 - `field.image` is the evolved field, and `field.filtered(_:)` recolors or post-processes it like any layer.
 - `scale` sets the field's internal resolution: lower it for broader reaction-diffusion features, chunkier automaton cells, and a cheaper, softer fluid.
-- See `Simulation/GrayScott` (reaction-diffusion), `Simulation/GameOfLife`, and `Simulation/Fluid`.
+- See `Simulation/GrayScott` (reaction-diffusion), `Simulation/GameOfLife`, `Simulation/Fluid`, and `Simulation/Watercolor`.
 
 <a id="compose"></a>
 ### compose(_:) and layer(_:)

@@ -218,6 +218,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("sandpile", frame: 120,
                  note: "An Abelian sandpile on the classic protocol: a mountain dropped once on frame 1 (a fixed dot, no rng), caught mid-collapse at frame 120 so the picture holds both regimes at once, settled counts as lacework at the rim and cells still mid-topple at the hot core. Pins the parallel multiple-toppling gather (fract(q) plus floored neighbour quarters), the open boundary, the add-whole-grains inject with its rounding, the quarters state encoding whose flat levels the gradient map reads, and the render-every-frame headless warmup the collapse depends on. SandpileTests pins the rule itself against a sequential CPU reference (the abelian schedule-independence), which a whole-frame mean diff cannot.",
                  make: { SandpileScene() }),
+    SnapshotCase("watercolor-sim", frame: 140,
+                 note: "A watercolor SimField painted by a fixed script: an ultramarine wash laid on frame 1 (its edge darkening as it sits), rose charged into it wet-in-wet on frame 30, the sheet dried on frame 60, and a hansa-yellow band glazed across everything on frame 62, caught at frame 140. Pins the whole three-layer wash pipeline: the staggered-grid shallow-water step with the paper's slope, the divergence relaxation, the blurred-mask edge darkening, upwind pigment advection, the density/staining/granulation exchange with the deposit layer, the capillary re-wet of damp paper, the dry() bake into the glaze stack, and the Kubelka-Munk rendering (wet wash over dried glazes over paper) whose optical mixing the crossing shows. WatercolorSimTests pins the behaviors a mean diff averages away.",
+                 make: { WatercolorSimScene() }),
     SnapshotCase("effects-feedback", frame: 24,
                  note: "A feedback layer built up over 24 frames: each frame redraws the last, zoomed + spun + faded, plus a new dot. Pins the persistent ping-pong (previous read while writing back, the per-frame swap kept across frames) and the headless render-every-frame warmup the built-up state needs.",
                  make: { EffectsFeedback() }),
@@ -5905,6 +5908,47 @@ private final class LeniaScene: Sketch {
             }
         }
         drawImage(life.filtered(.gradientMap(.magma)).image, 0, 0)
+    }
+}
+
+/// A scripted watercolor painting on a fixed sheet of paper: wash, wet-in-wet
+/// charge, dry, glaze. Fixed paper seed, fixed frames, no rng: deterministic.
+private final class WatercolorSimScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var paint: WatercolorField!
+
+    override func setup() {
+        paint = watercolor(.watercolor(pigments: [.frenchUltramarine, .quinacridoneRose, .hansaYellow],
+                                       paperSeed: 7),
+                           scale: 1)
+    }
+
+    override func draw() {
+        withField(paint) {
+            noStroke()
+            switch frameCount {
+            case 1:
+                fill(paint.ink(0, load: 0.5))
+                for i in 0 ... 8 {
+                    let t = Double(i) / 8
+                    drawCircle(48 + t * 160, 96 + sin(t * .tau) * 8, 34)
+                }
+            case 30:
+                fill(paint.ink(1, load: 0.6, water: 0.6))
+                for i in 0 ... 4 {
+                    drawCircle(88 + Double(i) * 20, 100, 16)
+                }
+            case 60:
+                paint.dry()
+            case 62:
+                fill(paint.ink(2, load: 0.4))
+                for i in 0 ... 8 {
+                    drawCircle(150, 30 + Double(i) * 25, 26)
+                }
+            default: break
+            }
+        }
+        drawImage(paint.image, 0, 0)
     }
 }
 
