@@ -10,9 +10,10 @@ add a depth buffer and draw 3D geometry through the camera. World space is
 right-handed and y-up.
 
 The section is large, so the sketches are grouped by topic:
-[Geometry](#geometry) · [Camera](#camera) · [Materials](#materials) ·
-[Lighting](#lighting) · [Environments](#environments) · [Effects](#effects) ·
-[Raymarching](#raymarching) · [Depth](#depth) · [Phone](#phone)
+[Geometry](#geometry) · [Physics](#physics) · [Camera](#camera) ·
+[Materials](#materials) · [Lighting](#lighting) · [Environments](#environments) ·
+[Effects](#effects) · [Raymarching](#raymarching) · [Depth](#depth) ·
+[Phone](#phone)
 
 ### Geometry
 
@@ -28,6 +29,18 @@ Meshes, point clouds, and the 3D transform stack.
 | [LoadedMesh](Geometry/LoadedMesh/) | A mesh loaded from a file (`.obj`/`.usdz`/`.gltf`/…); drop one in with `OLLIN_MESH=<path>` (or use the bundled crystal), recentered, scaled to fit, and lit. |
 | [TexturedMesh](Geometry/TexturedMesh/) | A UV-gridded globe textured with an image over a base-color-tinted floor, both lit. |
 | [Wireframe](Geometry/Wireframe/) | Orbiting solids drawn as their triangle edges (`wireframe()`), faces see-through. |
+
+### Physics
+
+Rigid bodies inside the scene: a Jolt-backed `World3D` stepped each frame
+(`import OllinPhysics`), every body drawn from its pose with `withBody`.
+See the [3D physics reference](../../Docs/Simulation/Physics3D.md).
+
+| Sketch | What it shows |
+| --- | --- |
+| [Stack](Physics/Stack/) | A crate pyramid on a floor; click to fire a heavy ball from the camera and knock it down, space rebuilds. `addBody`, `ground`, opening `velocity`. |
+| [Tumble](Physics/Tumble/) | A rain of mixed solids (boxes, balls, capsules, drums) piling up; drag any shape to fling it. The `Collider3D` catalog plus `grabBody`/`dragGrab`. |
+| [Chain](Physics/Chain/) | A wrecking ball on a chain of capsule links, each a `.ball` joint; drag it back, let it swing into the crates. `connect` and the joint kinds. |
 
 ### Camera
 

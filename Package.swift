@@ -250,6 +250,36 @@ let package = Package(
                 .headerSearchPath("include")
             ]
         ),
+        // Vendored Jolt Physics (Jorrit Rouwe's multi-core 3D rigid-body
+        // engine, C++17), the solver behind OllinPhysics' 3D `World3D`/`Body3D`
+        // API. Bundled third-party C++ source under its own MIT license; see
+        // External/CJolt/README.md and the repo-root THIRD-PARTY-NOTICES.md.
+        // Wrapped behind Ollin's own API: Swift imports only the C bridge in
+        // include/ (no C++ interop), so the `JPH` symbols stay off Ollin's
+        // public surface. The upstream Jolt/ subtree is preserved so its
+        // `#include <Jolt/...>` directives resolve via the `.` header search
+        // path; the GPU compute backends, HLSL shaders, and debug renderer are
+        // present on disk but excluded from the build (their `JPH_USE_*` and
+        // `JPH_DEBUG_RENDERER` gates stay off).
+        .target(
+            name: "CJolt",
+            path: "External/CJolt",
+            exclude: [
+                "LICENSE", "README.md",
+                "Jolt/Jolt.cmake", "Jolt/Jolt.natvis",
+                "Jolt/Physics/Collision/Shape/TaperedCapsuleShape.gliffy",
+                "Jolt/Shaders", "Jolt/Renderer",
+                "Jolt/Compute/MTL", "Jolt/Compute/DX12", "Jolt/Compute/VK",
+                "Jolt/Compute/CPU",
+            ],
+            publicHeadersPath: "include",
+            cxxSettings: [
+                .headerSearchPath(".")
+            ],
+            linkerSettings: [
+                .linkedLibrary("c++")
+            ]
+        ),
         // Vendored Syphon Framework (Metal subset) — the IOSurface-backed GPU
         // frame-sharing engine behind `OllinSyphon`. Bundled third-party
         // Objective-C source under its own BSD 2-Clause license — see
@@ -315,7 +345,7 @@ let package = Package(
         // for the `Vector2`/`Rectangle` geometry types, no other framework.
         .target(
             name: "OllinPhysics",
-            dependencies: ["Ollin", "CBox2D"]
+            dependencies: ["Ollin", "CBox2D", "CJolt"]
         ),
         // Computer vision: the Mac's camera over AVFoundation plus Apple Vision /
         // Core ML perception, wrapped behind Ollin's own typed trackers and result
@@ -518,6 +548,11 @@ let package = Package(
         example("3D/Geometry/StrangeAttractor"),
         example("3D/Geometry/Transforms"),
         example("3D/Geometry/Solids"),
+        // 3D rigid bodies (Jolt-backed World3D): a crate pyramid under cannon
+        // fire, a mixed-solid pile you can drag, and a wrecking-ball chain.
+        example("3D/Physics/Stack", [.physics]),
+        example("3D/Physics/Tumble", [.physics]),
+        example("3D/Physics/Chain", [.physics]),
         example("3D/Raymarching/RaymarchedSDF"),
         example("3D/Raymarching/RaymarchedShapes"),
         example("3D/Raymarching/RaymarchedSculpt"),
@@ -910,7 +945,7 @@ let package = Package(
         // GPU, so it runs in CI.
         .testTarget(
             name: "OllinPhysicsTests",
-            dependencies: ["OllinPhysics", "CBox2D"]
+            dependencies: ["OllinPhysics", "CBox2D", "CJolt"]
         ),
         // Vision correctness: the normalized↔canvas coordinate mapping (pure, runs
         // everywhere) plus a soft-skipping still-image face detection (renders a

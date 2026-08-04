@@ -57,6 +57,23 @@ redistributed inside this repository.
 
 ---
 
+## Jolt Physics
+
+- **Used for:** the 3D rigid-body solver behind `OllinPhysics` (bodies with full 3D rotation, box/sphere/capsule/cylinder/hull/mesh colliders, joints, stacking, and grabbing), wrapped behind Ollin's own `World3D`/`Body3D` API.
+- **Location in this repo:** [`External/CJolt/`](External/CJolt/)
+- **Upstream:** https://github.com/jrouwe/JoltPhysics
+- **Version:** v5.6.0, commit `e77f175595e64cb44218cc9d9d56fc365ad0e36a` (2026-08-04)
+- **License:** MIT, full text at [`External/CJolt/LICENSE`](External/CJolt/LICENSE)
+
+> Copyright 2021 Jorrit Rouwe
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy of
+> this software and associated documentation files (the "Software"), to deal in the
+> Software without restriction… (see `LICENSE` for the full text, including the
+> warranty disclaimer).
+
+---
+
 ## Clipper2
 
 - **Used for:** polygon clipping and offsetting, behind `Shape`'s boolean set operations (`union`, `intersection`, `subtracting`, `symmetricDifference`) and `Shape.offset(by:join:)` — wrapped behind Ollin's own API.

@@ -462,6 +462,41 @@ Once the field is shaped, it reads out three ways. `mesh(width:depth:height:)` g
 
 One practical note carries all of this. Erosion is genuine work, tens of thousands of drops each walking dozens of steps, so it belongs in `setup()`. Grow the field, weather it, keep the mesh, and let `draw()` just draw it.
 
+## Things with weight
+
+Chapter 9 dropped flat shapes into a physics world and let gravity do the animating. The same world exists in 3D, and it fits the scene you've been building all chapter: crates that stack, balls that roll, chains that swing, with real contact response, under the same lights and shadows as everything else. It comes with `import OllinPhysics`, like its 2D sibling, and it keeps the shape you already know: build a `World3D` once, add bodies, step it every frame.
+
+```swift
+let world = World3D()
+
+override func setup() {
+    world.ground = 0                     // a static floor at y = 0
+    for level in 0 ..< 6 {
+        world.addBody(.box(width: 1, height: 1, depth: 1),
+                      at: Vector3(0, 0.6 + Double(level) * 1.04, 0))
+    }
+}
+
+override func draw() {
+    background(.black)
+    cameraShowcase()
+    world.step(dt: deltaTime)
+    for body in world.bodies {
+        withBody(body) { drawBox(width: 1, height: 1, depth: 1) }
+    }
+}
+```
+
+The one new move is `withBody`. In Chapter 9 you drew a body by translating to its `position` and rotating by its `angle`; a 3D body's orientation is a full spatial rotation, not one number, so `withBody(body) { }` moves the whole transform stack to the body's pose and lets the block draw in body-local space. Whatever you draw there (a box matched to the collider, a loaded mesh, a whole small assembly) rides the body, and it stays ordinary drawing, so materials, shadows, and export all apply untouched.
+
+<img src="Images/17-3DGently/CrateFall.jpg" alt="A pyramid of colored crates caught mid-collapse on a dark floor, crates tumbling and skidding away to the right, the topmost purple crate still in the air" width="560">
+
+The figure is the whole idea in one frame: a crate pyramid built in `setup()` (each crate one `addBody` with a `.box` collider), a dense steel ball thrown at it with an opening `velocity`, and frame 92 of the collapse. Nothing in it is animated by hand, and nothing in it is random either; the solver is deterministic, so this exact wreck replays every run.
+
+Colliders come from a small catalog: `.box`, `.sphere`, `.capsule`, `.cylinder`, a convex `.hull` of your own points, and a static `.mesh` for scenery a body can't be. `connect` links bodies with joints, the 2D kinds plus `.ball`, the free-swiveling socket a hanging chain is made of. And the cursor reaches through the camera: `grabBody(at:in:)` ray-picks the body under the mouse and `dragGrab(_:to:)` slides it across the view at the depth it was picked, which is how you rummage through a pile in a running sketch.
+
+You don't animate a pile; you drop one.
+
 ## What the depth buffer is for
 
 Chapter 14 filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has: for every pixel, how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.
@@ -596,6 +631,7 @@ The camera-on-an-orbit model is the shared convention of 3D tools everywhere, fr
 - Textures and wireframes: [`Mesh.textured(_:)`](../Docs/3D/3D.md#textures) also takes a `baseColor` for tinting a shared texture, and [`Mesh.uvs`](../Docs/3D/3D.md) is where the coordinates live if you're generating your own geometry.
 - [The 26 built-in matcaps](../Docs/3D/3D.md#the-built-in-matcaps), listed by family, plus `Matcap.shaded` for baking one from a color.
 - [Terrain](../Docs/Generators/Terrain.md): building heightfields from noise or subdivision, every erosion knob, and reading a field out as a mesh, an image, or samples.
+- [3D physics](../Docs/Simulation/Physics3D.md): the full `World3D` reference, every collider and joint kind, forces and impulses, and the camera-grab machinery, with the `3D/Physics` examples (a tower under cannon fire, a pile you can rummage through, a wrecking ball on a chain).
 - Worked examples: [`Examples/3D/Geometry/Solids`](../Examples/3D/Geometry/Solids/Sketch.swift), [`Examples/3D/Geometry/ShapeFactory`](../Examples/3D/Geometry/ShapeFactory/Sketch.swift), [`Examples/3D/Geometry/Transforms`](../Examples/3D/Geometry/Transforms/Sketch.swift), [`Examples/3D/Lighting/LightingPresets`](../Examples/3D/Lighting/LightingPresets/Sketch.swift), [`Examples/3D/Lighting/Shadows`](../Examples/3D/Lighting/Shadows/Sketch.swift), [`Examples/3D/Materials/Materials`](../Examples/3D/Materials/Materials/Sketch.swift), [`Examples/3D/Materials/Matcap`](../Examples/3D/Materials/Matcap/Sketch.swift), [`Examples/3D/Geometry/LoadedMesh`](../Examples/3D/Geometry/LoadedMesh/Sketch.swift), [`Examples/3D/Geometry/LoadedScene`](../Examples/3D/Geometry/LoadedScene/Sketch.swift), and [`Examples/3D/Geometry/Terrain`](../Examples/3D/Geometry/Terrain/Sketch.swift).
 
 ---

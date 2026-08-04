@@ -171,11 +171,11 @@ Draws from: `Docs/Shaders/Compute.md`, `Docs/Drawing/Effects.md` (sim fields); `
 ### Part IV: The third dimension
 
 **17. 3D, gently.**
-Teaches: the camera as an orbiting eye (`cameraShowcase`, drag to look); depth; solid primitives; the 3D transform stack; lights and materials by playing (presets, then individual lights); matcap as "shading from a picture"; loading a mesh; growing a landscape (`Heightfield`, diamond-square, hydraulic and thermal erosion, the three read-outs); casting shadows; the scene-inspection views.
-Assumes: Part I; Ch 8 (vectors; `Vector3` is introduced as "the same, plus z").
+Teaches: the camera as an orbiting eye (`cameraShowcase`, drag to look); depth; solid primitives; the 3D transform stack; lights and materials by playing (presets, then individual lights); matcap as "shading from a picture"; loading a mesh; growing a landscape (`Heightfield`, diamond-square, hydraulic and thermal erosion, the three read-outs); rigid bodies inside the scene (`World3D`, `withBody`, the deterministic collapse); casting shadows; the scene-inspection views.
+Assumes: Part I; Ch 8 (vectors; `Vector3` is introduced as "the same, plus z"); Ch 9 (the physics world's shape).
 Payoff: a rotating sculptural scene the viewer can orbit.
-Figures: camera-orbit diagram; primitive catalog sheet; lighting-preset contact sheet; material sweep; the scene.
-Draws from: `Docs/3D/3D.md`, `Docs/3D/Camera.md`, `Docs/3D/Combining.md`; `Examples/3D/`.
+Figures: camera-orbit diagram; primitive catalog sheet; lighting-preset contact sheet; material sweep; the crate collapse; the scene.
+Draws from: `Docs/3D/3D.md`, `Docs/3D/Camera.md`, `Docs/3D/Combining.md`, `Docs/Simulation/Physics3D.md`; `Examples/3D/`.
 
 **18. Sculpting with fields.**
 Teaches: signed distance as "how far, and which side" (one diagram); the 2D combinators (`SDF`, smooth union as melting) built on Ch 12's field model; then the same idea raymarched in 3D (`SDF3D`, `drawSDF3D`); domain tricks (mirror, repeat) as space folding; a light touch of environments/PBR for the finish (pointers to Docs for depth).
@@ -268,6 +268,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Drawing/Images.md` (Image, pixels, tint) | Ch 7 | taught (loadImage/drawImage/tint, blank-image authoring, the pixel subscript both ways; resource loading named) |
 | `Drawing/Geometry.md`: `Vector2`/`Vector3`, `Rectangle`, `Circle` | Ch 8, Ch 17 | taught (Vector2 arrows, +/−/scale, length/normalized/limited/distance/angle, with(x:y:) taught in Ch 8; dot/cross/lerp/rotated/projected pointed; Vector3 waits for Ch 17) |
 | `Simulation/Physics.md` (Verlet + rigid World) | Ch 9 | taught (forces by hand + accumulate/divide-by-mass; World/step, particle collisions, bounds/bounce/drag, springs/rest length/stiffness, pin/place, Body/colliders/friction/density/restitution, .static, the revolute joint, grab; push/strain/soft blobs/other joints named + pointed) |
+| `Simulation/Physics3D.md` (World3D, Body3D, Collider3D, joints, camera grab) | Ch 17 | taught ("Things with weight" with the CrateFall figure: World3D/ground/addBody/step, withBody as the one new move vs Ch 9's translate+rotate, determinism of the replayed collapse; collider catalog, `.ball` joints, and grabBody/dragGrab named; joints in depth + the mouse-grab wiring pointed to the docs and the 3D/Physics examples) |
 | `Generators/Boids.md` | Ch 10 | taught |
 | `Generators/Steering.md` | Ch 10 | taught |
 | `Generators/DifferentialGrowth.md` | Ch 10 | taught |
@@ -402,7 +403,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Technique catalog: meshing (point-cloud reconstruction) | Ch 17 |
 | Project generator | Ch 1 |
 | iPhone sensor array (scene mesh, drift correction) | Ch 19 |
-| 3D: USD scene reader, live camera environment, 3D rigid bodies | Ch 17 (bodies also Ch 9) |
+| 3D: live camera environment; richer 3D physics (motors, character, vehicles, ragdolls, 3D soft bodies) | Ch 17 (soft bodies also Ch 16) |
 | Photorealistic 3D tier | Ch 17/18, likely a new chapter when substantial |
 | Sound synthesis, spatial audio, algorithmic composition | Ch 20, likely splitting into its own chapter |
 | Tempo sync: Ableton Link | Ch 20 |

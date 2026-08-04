@@ -2914,6 +2914,72 @@ swap unrecorded.
 
 ---
 
+## The 3D physics bridge
+
+The 3D rigid-body world (`World3D` / `Body3D` / `Joint3D` in `OllinPhysics`)
+is backed by vendored Jolt Physics (`External/CJolt`, MIT), reached through an
+Ollin-authored C bridge rather than Swift C++ interop: `include/cjolt.h` is a
+flat-POD `extern "C"` surface (opaque world/constraint pointers, a `uint32`
+body handle, tagged-union shape and constraint descriptors carrying plain
+float arrays), and `src/cjolt.cpp` is the only compilation unit in the repo
+that includes a Jolt header. That containment is what makes Jolt's
+define-consistency requirement (every unit including its headers must agree on
+all `JPH_*` configuration macros, or structs silently change layout) hold by
+construction: the macros live in one target, and Swift only ever imports the C
+module. The vendored tree is the upstream `Jolt/` subtree verbatim; the GPU
+compute backends, HLSL shaders, and debug renderer are on disk (so their
+gated `#include`s resolve) but excluded from the SwiftPM build, since their
+`JPH_USE_*` / `JPH_DEBUG_RENDERER` gates stay off.
+
+Inside the bridge, each `CJoltWorld` owns the whole solver stack: a 16 MB temp
+allocator, a `JobSystemThreadPool` (threads clamped to 1…8 from the core
+count; Jolt's simulation is deterministic across thread counts, which the
+test suite pins by stepping two identical worlds to byte-equal poses), the
+three broad-phase/object-layer filter implementations, and the
+`PhysicsSystem`. The layer scheme is the canonical two-layer setup
+(NON_MOVING statics that only pair with MOVING) plus a GHOST layer that pairs
+with nothing, reserved for any future collision-less helper body. Library
+globals (allocator, RTTI factory, type registry) initialize once per process
+behind `std::call_once`; there is no global *world* pool, which is why the 3D
+tests run parallel where Box2D's need `@Suite(.serialized)`.
+
+Two hard-won rules live here. First, **marshaling**: the C API's `float[3]` /
+`float[4]` parameters map to Swift homogeneous tuples, and the one legal way
+to hand a tuple's storage across is `withUnsafe(Mutable)Bytes(of:)` over the
+whole tuple (the `CJoltInterop.swift` helpers). The original code took
+`withUnsafeMutablePointer(to: &out.0)`, which is only valid for that single
+element; the compiler materialized a temporary for it, the C side's writes to
+elements 1 and 2 landed in dead stack memory, and positions read back with x
+correct while y and z stayed 0, while the simulation itself ran perfectly (the
+pendulum's x swung on schedule). The diagnostic that cracked it was printing
+poses over time rather than staring at final asserts.
+
+Second, **the grab is Jolt's own reference drag model, reproduced exactly**
+(`Samples/SamplesApp.cpp` in the upstream tree): the anchor is a *static*
+body that is created but never *added* to the world (nothing can collide with
+it, it lives in no broad-phase), it is *teleported* to each new target with
+`SetPositionAndRotation` so its velocity is always zero, and the dragged body
+hangs on a `DistanceConstraint` with coincident points and a soft limit
+spring (frequency 2 Hz, damping 1). Both deviations tried first were real
+bugs: a rigid `PointConstraint` on a hand-driven anchor rings undamped, and a
+*kinematic* anchor driven by `MoveKinematic` arrives carrying velocity that
+the constraint solver dutifully matches, pumping the body into a widening
+orbit (measured at ±40 units/s around the target). A zero-velocity anchor
+plus a critically-damped spring can only ever bleed energy. The Swift-side
+sugar (`grabBody(at:in:)` / `dragGrab(_:to:)`) adds the camera ray
+(perspective and orthographic branches over the public `Camera3D` fields) and
+remembers the picked point's depth along the view axis, so dragging moves the
+body in the screen-parallel plane through the grab point.
+
+Stepping clamps `dt` to `maxTimestep` (1/30 s) and runs
+`⌈dt·60⌉` collision passes, so a hitch slows the world rather than
+detonating a stack. Snapshot policy follows the artificial-life precedent: the
+solver is deterministic *per binary* (pinned behaviorally), but a toolchain
+rebuild may move ulps and a toppling stack amplifies them, so 3D physics
+scenes are pinned by `RigidBody3DTests`' behavioral asserts (settling
+heights, joint arm lengths, grab convergence, byte-equal replays) and not by
+pixel references.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in
