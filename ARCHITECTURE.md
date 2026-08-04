@@ -2980,6 +2980,39 @@ scenes are pinned by `RigidBody3DTests`' behavioral asserts (settling
 heights, joint arm lengths, grab convergence, byte-equal replays) and not by
 pixel references.
 
+**Joint motors, limits, and springs** (stage 2 of the arc) surface the hinge
+and slider constraints' powered side through four bridge calls that mutate a
+live constraint: `cjolt_constraint_set_motor` (state + target + servo spring +
+effort cap in one call), `_set_friction`, `_set_limit_spring`, and
+`_current` (the angle/offset readback). Each switches on
+`Constraint::GetSubType()` and no-ops on every other kind, so the Swift side
+never needs a downcast or a kind check to stay safe. The design follows the
+solver's own model rather than inventing one: a *velocity* motor is
+`SetMotorState(Velocity)` + a target rate capped by the motor's torque/force
+limits, and a *position* motor is `SetMotorState(Position)` + a target driven
+by the `MotorSettings` spring (frequency in Hz, damping as a ratio, the
+upstream defaults 2/1 kept as `drive(to:)`'s defaults), which is what
+`Joint3D.drive(at:)` / `drive(to:)` map onto one-to-one. Three facts here are
+load-bearing. Hinge limits must be authored min ∈ [-π, 0], max ∈ [0, π]
+*relative to the connect pose* (the constraint defines angle 0 as the relative
+orientation at creation because the bridge sets both bodies' constraint frames
+identically in world space); `connect` clamps the user's range to that window
+rather than letting the solver assert. `set_motor` ends by activating both
+constraint bodies (`ActivateBody` skips statics internally): a settled body
+sleeps, a sleeping pair never feels a motor change, and a door whose closer
+engages after the scene has gone quiet would otherwise hang open forever with
+no error anywhere. And the friction knob (`SetMaxFrictionTorque` /
+`SetMaxFrictionForce`) applies only while the motor is *off*, per the solver's
+contract, which is exactly what lets one number serve as both the stiff-hinge
+drag and the coast-down brake after `stopMotor()`. Units cross the bridge the
+same way everything else does: angles and rad/s pass through untouched, slider
+targets/offsets convert by `unitsPerMeter`, and the effort caps stay in the
+solver's N·m / N (documented, defaulted to unlimited via a non-finite
+sentinel the bridge maps to ±FLT_MAX). `JointMotor3DTests` pins each knob
+behaviorally, always against its counterfactual twin (a capped motor against
+an unlimited one, a limited pendulum against a free one, soft limits against
+hard), the same discipline as the rest of the suite.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

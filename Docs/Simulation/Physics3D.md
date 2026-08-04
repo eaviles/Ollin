@@ -44,6 +44,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Body3D](#body3d) - a rigid body: pose, velocity, forces
 - [Collider3D](#collider3d) - the shape catalog
 - [Joints](#joints) - hinges, ball-and-sockets, rods, welds, sliders
+- [Motors, limits, and springs](#motors) - powered hinges and sliders, travel stops, springy ends
 - [Grabbing with the mouse](#grabbing) - ray-picking and dragging bodies through the camera
 - [Drawing bodies](#drawing) - `withBody` and matching meshes to colliders
 
@@ -133,6 +134,50 @@ world.connect(carriage, rail, .prismatic(at: p, axis: .unitX))
 
 `.ball` is the 3D-only kind: a ball-and-socket that rotates freely in every direction, the joint of hanging chains and ragdolls. A hinge (`.revolute`) allows rotation only about its axis. Cut any joint with `joint.remove()`.
 
+<a name="motors"></a>
+
+### Motors, limits, and springs
+
+Hinges and sliders can do more than swing free: bound their travel, power them, and spring their stops. Together they make doors that close themselves, windmills that turn, drawers that stop at the end of their rails.
+
+**Limits** ride the joint kind. Both are measured from the pose at the moment of connecting (that pose is 0), so the range must straddle zero:
+
+```swift
+// A door that opens 100° one way from where it hangs now:
+let door = world.connect(frame, panel,
+    .revolute(at: hingePoint, axis: .unitY,
+              limits: -0.01 ... (100 * .pi / 180)))    // radians; ±π at most
+
+// A drawer that pulls out 2 units:
+let drawer = world.connect(cabinet, tray,
+    .prismatic(at: p, axis: .unitZ, limits: -0.01 ... 2))   // world units
+```
+
+**Motors** are two calls on the returned `Joint3D`, one per intent:
+
+```swift
+mill.drive(at: 2.5)          // constant rate: rad/s (hinge), units/s (slider)
+door.drive(to: 0)            // seek a target angle / offset and hold it
+door.stopMotor()             // cut power; the joint swings free again
+```
+
+`drive(to:)` is a spring servo: `frequency` is how fast it pulls (2 is a lazy door closer, 20 a snappy robot servo) and `damping` at 1 settles clean, lower overshoots and bounces. Both forms take `strength`, a cap on the motor's torque (N·m) or force (N); the unlimited default just reaches its target, while a small value gives the motor something to lose against, like a door closer a rolling ball can barge through:
+
+```swift
+door.drive(to: 0, frequency: 1.2, strength: 60)
+```
+
+Driving is stateful: set it once and the motor keeps pulling every step until `stopMotor()` or a new `drive`. Where the joint sits right now reads back as `door.angle` (radians) or `drawer.offset` (world units), both 0 at the connect pose.
+
+Two passive knobs finish the set:
+
+```swift
+hinge.friction = 80                          // drag torque/force when unpowered
+gate.softenLimits(frequency: 3, damping: 0.5)   // springy end stops
+```
+
+`friction` is the stiff old hinge: a constant resistance the joint's motion must overcome while no motor is powering it, which is also what winds a spinning wheel down after `stopMotor()`. `softenLimits` swaps the hard stops for springs, so a gate thrown against its limit gives a little and bounces back; `frequency` 0 restores the wall. The other joint kinds have no axis to power, so the motor calls on a `.ball`, `.distance`, or `.weld` note once and do nothing (`.distance` has its own spring: the `stiffness` on the case).
+
 <a name="grabbing"></a>
 
 ### Grabbing with the mouse
@@ -180,4 +225,4 @@ for body in world.bodies {
 
 The simulation is deterministic within a build: the same setup stepped the same way reproduces exactly, which is what the seeded-variations story needs live. Exact poses can shift across toolchain rebuilds, so physics scenes aren't pinned by pixel snapshots; the behavioral test suite pins the solver instead.
 
-Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), and [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain).
+Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), and [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven mill batting balls through limited, spring-shut swing gates).

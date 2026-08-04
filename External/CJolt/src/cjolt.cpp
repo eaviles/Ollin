@@ -27,6 +27,8 @@
 #include <Jolt/RegisterTypes.h>
 
 #include <algorithm>
+#include <cfloat>
+#include <cmath>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -534,6 +536,102 @@ void cjolt_constraint_destroy(CJoltWorld *world, CJoltConstraint *constraint) {
         std::remove(world->constraints.begin(), world->constraints.end(), constraint),
         world->constraints.end());
     delete constraint;
+}
+
+void cjolt_constraint_set_motor(CJoltWorld *world, CJoltConstraint *wrapper,
+                                CJoltMotorState state, float target,
+                                float frequency, float damping, float maxEffort) {
+    if (wrapper == nullptr) { return; }
+    Constraint *constraint = wrapper->constraint;
+    const EMotorState motorState =
+        state == CJOLT_MOTOR_VELOCITY   ? EMotorState::Velocity
+        : state == CJOLT_MOTOR_POSITION ? EMotorState::Position
+                                        : EMotorState::Off;
+    const SpringSettings servo(ESpringMode::FrequencyAndDamping,
+                               std::max(frequency, 0.0f), std::max(damping, 0.0f));
+    const bool limited = std::isfinite(maxEffort) && maxEffort > 0;
+
+    switch (constraint->GetSubType()) {
+    case EConstraintSubType::Hinge: {
+        HingeConstraint *hinge = static_cast<HingeConstraint *>(constraint);
+        MotorSettings &motor = hinge->GetMotorSettings();
+        motor.mSpringSettings = servo;
+        if (limited) { motor.SetTorqueLimit(maxEffort); }
+        else { motor.SetTorqueLimits(-FLT_MAX, FLT_MAX); }
+        hinge->SetTargetAngularVelocity(state == CJOLT_MOTOR_VELOCITY ? target : 0);
+        if (state == CJOLT_MOTOR_POSITION) { hinge->SetTargetAngle(target); }
+        hinge->SetMotorState(motorState);
+        break;
+    }
+    case EConstraintSubType::Slider: {
+        SliderConstraint *slider = static_cast<SliderConstraint *>(constraint);
+        MotorSettings &motor = slider->GetMotorSettings();
+        motor.mSpringSettings = servo;
+        if (limited) { motor.SetForceLimit(maxEffort); }
+        else { motor.SetForceLimits(-FLT_MAX, FLT_MAX); }
+        slider->SetTargetVelocity(state == CJOLT_MOTOR_VELOCITY ? target : 0);
+        if (state == CJOLT_MOTOR_POSITION) { slider->SetTargetPosition(target); }
+        slider->SetMotorState(motorState);
+        break;
+    }
+    default:
+        return;
+    }
+
+    // A sleeping pair never feels a motor change; wake both ends (activation
+    // skips static bodies internally).
+    TwoBodyConstraint *pair = static_cast<TwoBodyConstraint *>(constraint);
+    BodyInterface &bodies = world->physics.GetBodyInterface();
+    bodies.ActivateBody(pair->GetBody1()->GetID());
+    bodies.ActivateBody(pair->GetBody2()->GetID());
+}
+
+void cjolt_constraint_set_friction(CJoltWorld *, CJoltConstraint *wrapper,
+                                   float friction) {
+    if (wrapper == nullptr) { return; }
+    Constraint *constraint = wrapper->constraint;
+    const float drag = std::max(friction, 0.0f);
+    switch (constraint->GetSubType()) {
+    case EConstraintSubType::Hinge:
+        static_cast<HingeConstraint *>(constraint)->SetMaxFrictionTorque(drag);
+        break;
+    case EConstraintSubType::Slider:
+        static_cast<SliderConstraint *>(constraint)->SetMaxFrictionForce(drag);
+        break;
+    default:
+        break;
+    }
+}
+
+void cjolt_constraint_set_limit_spring(CJoltWorld *, CJoltConstraint *wrapper,
+                                       float frequency, float damping) {
+    if (wrapper == nullptr) { return; }
+    Constraint *constraint = wrapper->constraint;
+    const SpringSettings spring(ESpringMode::FrequencyAndDamping,
+                                std::max(frequency, 0.0f), std::max(damping, 0.0f));
+    switch (constraint->GetSubType()) {
+    case EConstraintSubType::Hinge:
+        static_cast<HingeConstraint *>(constraint)->SetLimitsSpringSettings(spring);
+        break;
+    case EConstraintSubType::Slider:
+        static_cast<SliderConstraint *>(constraint)->SetLimitsSpringSettings(spring);
+        break;
+    default:
+        break;
+    }
+}
+
+float cjolt_constraint_current(const CJoltWorld *, const CJoltConstraint *wrapper) {
+    if (wrapper == nullptr) { return 0; }
+    const Constraint *constraint = wrapper->constraint.GetPtr();
+    switch (constraint->GetSubType()) {
+    case EConstraintSubType::Hinge:
+        return static_cast<const HingeConstraint *>(constraint)->GetCurrentAngle();
+    case EConstraintSubType::Slider:
+        return static_cast<const SliderConstraint *>(constraint)->GetCurrentPosition();
+    default:
+        return 0;
+    }
 }
 
 // Grab ----------------------------------------------------------------------

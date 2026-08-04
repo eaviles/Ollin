@@ -154,12 +154,20 @@ public final class World3D {
     public func connect(_ a: Body3D, _ b: Body3D, _ kind: JointKind3D) -> Joint3D {
         var desc = CJoltConstraintDesc()
         switch kind {
-        case .revolute(let at, let axis):
+        case .revolute(let at, let axis, let limits):
             desc.type = CJOLT_CONSTRAINT_HINGE
             let p = meters(from: at)
             desc.anchorA = (p.0, p.1, p.2)
             let unit = axis.normalized
             desc.axis = (Float(unit.x), Float(unit.y), Float(unit.z))
+            if let limits {
+                // The solver wants the swing measured from the connect pose,
+                // min in [-pi, 0] and max in [0, pi]; clamp so a range that
+                // misses 0 still creates a working hinge.
+                desc.hasLimits = true
+                desc.limitMin = Float(min(max(limits.lowerBound, -.pi), 0))
+                desc.limitMax = Float(max(min(limits.upperBound, .pi), 0))
+            }
 
         case .ball(let at):
             desc.type = CJOLT_CONSTRAINT_POINT
@@ -186,18 +194,25 @@ public final class World3D {
         case .weld:
             desc.type = CJOLT_CONSTRAINT_FIXED
 
-        case .prismatic(let at, let axis):
+        case .prismatic(let at, let axis, let limits):
             desc.type = CJOLT_CONSTRAINT_SLIDER
             let p = meters(from: at)
             desc.anchorA = (p.0, p.1, p.2)
             let unit = axis.normalized
             desc.axis = (Float(unit.x), Float(unit.y), Float(unit.z))
+            if let limits {
+                // Travel is measured from the connect pose, min <= 0 <= max.
+                desc.hasLimits = true
+                desc.limitMin = Float(min(limits.lowerBound / unitsPerMeter, 0))
+                desc.limitMax = Float(max(limits.upperBound / unitsPerMeter, 0))
+            }
         }
 
         let constraint = withUnsafePointer(to: &desc) {
             cjolt_constraint_create(handle, a.id, b.id, $0)
         }
-        let joint = Joint3D(world: self, constraint: constraint, a: a.id, b: b.id)
+        let joint = Joint3D(world: self, constraint: constraint, a: a.id, b: b.id,
+                            kind: kind)
         joints.append(joint)
         return joint
     }
@@ -297,6 +312,18 @@ public final class World3D {
         desc.allowSleep = true
         desc.gravityFactor = 1
         groundBody = withUnsafePointer(to: &desc) { cjolt_body_create(handle, $0) }
+    }
+
+    // MARK: One-time notes
+
+    /// Messages printed once per world for calls a joint can't honor (a motor
+    /// on a ball joint, say), keyed by message so each prints once rather than
+    /// every frame.
+    private var worldNotes = Set<String>()
+    func noteOnce(_ message: String) {
+        guard !worldNotes.contains(message) else { return }
+        worldNotes.insert(message)
+        print("Ollin: \(message)")
     }
 
     // MARK: Unit conversion (world units = meters · unitsPerMeter)

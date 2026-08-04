@@ -495,6 +495,12 @@ The figure is the whole idea in one frame: a crate pyramid built in `setup()` (e
 
 Colliders come from a small catalog: `.box`, `.sphere`, `.capsule`, `.cylinder`, a convex `.hull` of your own points, and a static `.mesh` for scenery a body can't be. `connect` links bodies with joints, the 2D kinds plus `.ball`, the free-swiveling socket a hanging chain is made of. And the cursor reaches through the camera: `grabBody(at:in:)` ray-picks the body under the mouse and `dragGrab(_:to:)` slides it across the view at the depth it was picked, which is how you rummage through a pile in a running sketch.
 
+Hinges and sliders can also be *powered*. Give one `limits` when you connect it (measured from the pose it was built in, so 0 means "as built") and the returned joint carries a small motor: `drive(at: 2.5)` turns it at a steady rate, `drive(to: 0)` is a spring servo that seeks a pose and holds it, `stopMotor()` cuts the power, and `friction` is the drag that winds a freewheeling hinge down. The servo's `strength` is a torque cap, and a weak one is a *character* knob, not a compromise: it's what makes a door closer something a thrown ball can still barge through.
+
+<img src="Images/17-3DGently/Windmill.jpg" alt="A four-bladed windmill mid-turn on a dark ground, colored balls scattered across the floor, and two low swing gates on either side both pushed open by balls rolling through them" width="560">
+
+One motored hinge does all the animating here: the blades are welded to a hub, the hub rides a `.revolute` driven at a constant rate, and the balls it bats away shove through swing gates on either side, each a limited hinge with springy stops (`softenLimits`) held shut by a `drive(to: 0)` closer too weak to argue with a rolling ball. The interactive version is the [`3D/Physics/Windmill`](../Examples/3D/Physics/Windmill/) example, where the space bar cuts the motor and you can watch hinge friction coast the mill to a stop.
+
 You don't animate a pile; you drop one.
 
 ## What the depth buffer is for

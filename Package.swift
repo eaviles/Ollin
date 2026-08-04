@@ -549,10 +549,12 @@ let package = Package(
         example("3D/Geometry/Transforms"),
         example("3D/Geometry/Solids"),
         // 3D rigid bodies (Jolt-backed World3D): a crate pyramid under cannon
-        // fire, a mixed-solid pile you can drag, and a wrecking-ball chain.
+        // fire, a mixed-solid pile you can drag, a wrecking-ball chain, and a
+        // motor-driven windmill with spring-shut gates.
         example("3D/Physics/Stack", [.physics]),
         example("3D/Physics/Tumble", [.physics]),
         example("3D/Physics/Chain", [.physics]),
+        example("3D/Physics/Windmill", [.physics]),
         example("3D/Raymarching/RaymarchedSDF"),
         example("3D/Raymarching/RaymarchedShapes"),
         example("3D/Raymarching/RaymarchedSculpt"),

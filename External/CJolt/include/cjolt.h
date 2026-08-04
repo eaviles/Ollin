@@ -142,6 +142,37 @@ CJoltConstraint *cjolt_constraint_create(CJoltWorld *world, CJoltBodyID bodyA,
                                          const CJoltConstraintDesc *desc);
 void cjolt_constraint_destroy(CJoltWorld *world, CJoltConstraint *constraint);
 
+typedef enum {
+    CJOLT_MOTOR_OFF = 0,
+    CJOLT_MOTOR_VELOCITY = 1,
+    CJOLT_MOTOR_POSITION = 2,
+} CJoltMotorState;
+
+/// Powers a hinge or slider motor (a no-op on the other constraint kinds) and
+/// wakes both bodies. `target` is rad/s (hinge) or m/s (slider) for a velocity
+/// motor, radians or meters for a position motor. `frequency` (Hz) and
+/// `damping` (ratio) shape the position servo's spring; a velocity motor
+/// ignores them. `maxEffort` caps the torque (N·m) or force (N) the motor may
+/// apply; a non-finite or non-positive value leaves it unlimited.
+void cjolt_constraint_set_motor(CJoltWorld *world, CJoltConstraint *constraint,
+                                CJoltMotorState state, float target,
+                                float frequency, float damping, float maxEffort);
+
+/// Passive resistance while a hinge/slider motor is off: a drag torque (N·m)
+/// or force (N) the joint's motion must overcome.
+void cjolt_constraint_set_friction(CJoltWorld *world, CJoltConstraint *constraint,
+                                   float friction);
+
+/// Softens a hinge/slider's limits: past an end a spring at `frequency`/
+/// `damping` pulls back instead of a hard stop. `frequency` <= 0 restores the
+/// hard stop.
+void cjolt_constraint_set_limit_spring(CJoltWorld *world, CJoltConstraint *constraint,
+                                       float frequency, float damping);
+
+/// The hinge's current angle (radians) or the slider's current offset (meters)
+/// relative to the pose the constraint was created at; 0 for other kinds.
+float cjolt_constraint_current(const CJoltWorld *world, const CJoltConstraint *constraint);
+
 // Grab (mouse drag) ---------------------------------------------------------
 
 /// Hangs `body` on a soft drag spring anchored at a world-space point.
