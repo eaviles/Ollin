@@ -670,6 +670,48 @@ Two wheels work too. `balances: true` adds the controller that holds a motorcycl
 
 The driveable version, a car over the same kind of eroded island the walker got, is the [`3D/Physics/Joyride`](../Examples/3D/Physics/Joyride/) example.
 
+## Letting a figure fall
+
+Back in "A mesh from a file" a skinned figure moved because a keyframe track told every joint where to be. That's animation: the same pose every time, whatever else is happening. A **ragdoll** is the other answer. Hand `addRagdoll` the same loaded scene and it reads the skeleton, builds a rigid body for every joint, and hangs each one off its parent on a cone-limited ball joint. Then the world decides where the limbs go.
+
+```swift
+figure = loadScene("figure.gltf")!
+ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
+```
+
+Each limb's shape is fitted to the figure's own mesh rather than guessed from bone lengths: the vertices a joint pulls hardest on get gathered up and a capsule is laid along the way they spread. That's why a torso comes out thick and a forearm thin, from two bones of similar length. You never say how wide anything is.
+
+Then the loop, which is one line longer than an animation's:
+
+```swift
+world.step(dt: deltaTime)
+figure.apply(ragdoll)     // the pose the solver just found
+drawScene(figure)
+```
+
+`figure.apply(ragdoll)` is `apply(_:at:)` run backwards. Instead of a keyframe track posing the joints, the simulated bodies do, and everything downstream (the skin, the materials, the shadows) carries on as if a track had. Drop the figure and it falls like something with weight in it, because it is.
+
+That figure will lie where it lands forever, which is the thing people mean by "ragdoll" and also its limit. `drive(toward:)` is the other half:
+
+```swift
+target.apply(walk, at: time)             // where the animation wants the limbs
+ragdoll.drive(toward: target, strength: effort)
+world.step(dt: deltaTime)
+figure.apply(ragdoll)                    // where they actually ended up
+```
+
+Every joint grows a motor pulling toward the pose the target scene is holding. Now the animation is a *request*, and the world gets a vote. Push the figure and it resists, gives, and comes back. The figure below is one drop, run twice, changing exactly one thing.
+
+<img src="Images/17-3DGently/Ragdolls.jpg" alt="Two identical figures dropped onto a dark floor: the left one lies sprawled on its back, the right one stands upright with its arms out" width="560">
+
+Keep two copies of the scene: one the animation poses (the target) and one the solver poses (the drawn one). A `Scene` is a value type, so that's one assignment, and it matters, because a figure driven toward the scene it was just posed from has nowhere left to pull.
+
+`strength` is the knob to play with. It's the most torque a joint may use, in newton-metres. High and the figure will not be moved; low and the heavy limbs sag out of the pose, which is how a figure reads as tired rather than switched off. Sweep it and you get a whole range of characters out of one number.
+
+Nothing drives the root, so a powered figure still falls over as a whole: the motors hold its shape, not its place. Pin the hips (`ragdoll.limbs[0].body.kind = .kinematic`) and it stands there like a puppet on a hook, which is what the [`3D/Physics/Ragdoll`](../Examples/3D/Physics/Ragdoll/) example does. Press space there and the hips let go.
+
+Two more things worth knowing. Every limb is an ordinary body, so you can grab one with the mouse and drag the figure around by an arm. And each figure gets its own collision group, so a thigh never fights the pelvis it sits inside, while two figures still knock into each other properly.
+
 ## What the depth buffer is for
 
 Chapter 14 filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has: for every pixel, how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.

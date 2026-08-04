@@ -30,8 +30,10 @@
 #include <Jolt/Physics/Constraints/HingeConstraint.h>
 #include <Jolt/Physics/Constraints/PointConstraint.h>
 #include <Jolt/Physics/Constraints/SliderConstraint.h>
+#include <Jolt/Physics/Constraints/SwingTwistConstraint.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
+#include <Jolt/Physics/Ragdoll/Ragdoll.h>
 #include <Jolt/Physics/Vehicle/MotorcycleController.h>
 #include <Jolt/Physics/Vehicle/VehicleCollisionTester.h>
 #include <Jolt/Physics/Vehicle/VehicleConstraint.h>
@@ -289,6 +291,14 @@ struct CJoltVehicle {
     float drivenWheelRadius = 0.3f;
 };
 
+/// A ragdoll: the library's own body-per-joint figure, kept alive together with
+/// the settings that built it (they carry the body-to-constraint map the pose
+/// drivers walk).
+struct CJoltRagdoll {
+    JPH::Ref<JPH::RagdollSettings> settings;
+    JPH::Ref<JPH::Ragdoll> ragdoll;
+};
+
 struct CJoltWorld {
     JPH::TempAllocatorImpl tempAllocator;
     JPH::JobSystemThreadPool jobSystem;
@@ -305,6 +315,11 @@ struct CJoltWorld {
     JPH::CharacterVsCharacterCollisionSimple characterCollision;
     std::vector<CJoltCharacter *> characters;
     std::vector<CJoltVehicle *> vehicles;
+    std::vector<CJoltRagdoll *> ragdolls;
+    // Every ragdoll gets its own collision group, so the filter table that
+    // stops one figure's limbs from fighting each other never stops two
+    // figures from colliding.
+    uint32_t nextRagdollGroup = 1;
 
     CJoltWorld()
         : tempAllocator(16 * 1024 * 1024),
@@ -479,6 +494,13 @@ void cjolt_world_destroy(CJoltWorld *world) {
         delete constraint;
     }
     world->constraints.clear();
+    // Ragdolls own constraints *and* bodies, and both leave through the
+    // system, so they come off while it is still alive too.
+    for (CJoltRagdoll *ragdoll : world->ragdolls) {
+        ragdoll->ragdoll->RemoveFromPhysicsSystem();
+        delete ragdoll;
+    }
+    world->ragdolls.clear();
     // Characters before the world: releasing one destroys its inner body
     // through the physics system, which has to still be alive to hear it.
     for (CJoltCharacter *character : world->characters) {
@@ -789,6 +811,31 @@ CJoltConstraint *cjolt_constraint_create(CJoltWorld *world, CJoltBodyID bodyA,
         constraint = settings.Create(*a, *b);
         break;
     }
+    case CJOLT_CONSTRAINT_SWING_TWIST: {
+        SwingTwistConstraintSettings settings;
+        settings.mSpace = EConstraintSpace::WorldSpace;
+        settings.mPosition1 = settings.mPosition2 = RVec3(vec3(desc->anchorA));
+        Vec3 axis = vec3(desc->axis);
+        if (axis.LengthSq() < 1.0e-12f) { axis = Vec3::sAxisY(); }
+        axis = axis.Normalized();
+        settings.mTwistAxis1 = settings.mTwistAxis2 = axis;
+        settings.mPlaneAxis1 = settings.mPlaneAxis2 = axis.GetNormalizedPerpendicular();
+        // A circular cone: the axis may lean the same amount in every
+        // direction, so which perpendicular the plane axis landed on doesn't
+        // change the shape of the limit.
+        const float cone = std::clamp(desc->coneAngle, 0.0f, JPH_PI);
+        settings.mNormalHalfConeAngle = cone;
+        settings.mPlaneHalfConeAngle = cone;
+        if (desc->hasLimits) {
+            settings.mTwistMinAngle = std::clamp(desc->limitMin, -JPH_PI, 0.0f);
+            settings.mTwistMaxAngle = std::clamp(desc->limitMax, 0.0f, JPH_PI);
+        } else {
+            settings.mTwistMinAngle = -JPH_PI;
+            settings.mTwistMaxAngle = JPH_PI;
+        }
+        constraint = settings.Create(*a, *b);
+        break;
+    }
     }
     if (constraint == nullptr) { return nullptr; }
 
@@ -868,6 +915,9 @@ void cjolt_constraint_set_friction(CJoltWorld *, CJoltConstraint *wrapper,
     case EConstraintSubType::Slider:
         static_cast<SliderConstraint *>(constraint)->SetMaxFrictionForce(drag);
         break;
+    case EConstraintSubType::SwingTwist:
+        static_cast<SwingTwistConstraint *>(constraint)->SetMaxFrictionTorque(drag);
+        break;
     default:
         break;
     }
@@ -899,6 +949,15 @@ float cjolt_constraint_current(const CJoltWorld *, const CJoltConstraint *wrappe
         return static_cast<const HingeConstraint *>(constraint)->GetCurrentAngle();
     case EConstraintSubType::Slider:
         return static_cast<const SliderConstraint *>(constraint)->GetCurrentPosition();
+    case EConstraintSubType::SwingTwist: {
+        // How far the joint is bent: the swing half of the relative rotation,
+        // as an unsigned angle, which is the number the cone limit bounds.
+        Quat swing, twist;
+        static_cast<const SwingTwistConstraint *>(constraint)
+            ->GetRotationInConstraintSpace()
+            .GetSwingTwist(swing, twist);
+        return 2.0f * ACos(std::clamp(std::abs(swing.GetW()), 0.0f, 1.0f));
+    }
     default:
         return 0;
     }
@@ -1460,6 +1519,306 @@ float cjolt_vehicle_get_rpm(const CJoltVehicle *vehicle) {
 int32_t cjolt_vehicle_get_gear(const CJoltVehicle *vehicle) {
     if (vehicle == nullptr) { return 0; }
     return int32_t(controllerOf(vehicle)->GetTransmission().GetCurrentGear());
+}
+
+// Ragdolls ------------------------------------------------------------------
+
+namespace {
+
+/// A column-major 4x4 read out of 16 floats.
+Mat44 matrix4(const float *m) {
+    return Mat44(Vec4(m[0], m[1], m[2], m[3]), Vec4(m[4], m[5], m[6], m[7]),
+                 Vec4(m[8], m[9], m[10], m[11]), Vec4(m[12], m[13], m[14], m[15]));
+}
+
+/// The limb shape pushed out along its bone: the body's origin is the joint, so
+/// the capsule that fills the bone sits off-center inside it.
+Ref<Shape> makeRagdollPartShape(const CJoltRagdollPartDesc &part) {
+    Ref<Shape> shape = makeShape(part.shape);
+    if (shape == nullptr) { return nullptr; }
+    const Vec3 offset = vec3(part.shapeOffset);
+    const Quat rotation = quat(part.shapeRotation);
+    if (offset.LengthSq() < 1.0e-12f && rotation.IsClose(Quat::sIdentity())) {
+        return shape;
+    }
+    Shape::ShapeResult result =
+        RotatedTranslatedShapeSettings(offset, rotation, shape).Create();
+    if (result.HasError()) { return shape; }
+    return result.Get();
+}
+
+} // namespace
+
+CJoltRagdoll *cjolt_ragdoll_create(CJoltWorld *world,
+                                   const CJoltRagdollPartDesc *parts,
+                                   int32_t partCount, float friction,
+                                   float restitution) {
+    if (parts == nullptr || partCount <= 0) { return nullptr; }
+
+    Ref<Skeleton> skeleton = new Skeleton;
+    for (int32_t i = 0; i < partCount; ++i) {
+        // Parents must already be in the array: every algorithm that walks a
+        // skeleton relies on it, and the caller builds the list by a top-down
+        // walk, so a backward reference is a bug rather than a shape to honor.
+        const int parent = parts[i].parent;
+        if (parent >= i) { return nullptr; }
+        char name[16];
+        snprintf(name, sizeof(name), "j%d", int(i));
+        skeleton->AddJoint(name, parent);
+    }
+
+    Ref<RagdollSettings> settings = new RagdollSettings;
+    settings->mSkeleton = skeleton;
+    settings->mParts.resize(size_t(partCount));
+    Array<Mat44> jointMatrices;
+    jointMatrices.reserve(size_t(partCount));
+
+    for (int32_t i = 0; i < partCount; ++i) {
+        const CJoltRagdollPartDesc &desc = parts[i];
+        Ref<Shape> shape = makeRagdollPartShape(desc);
+        if (shape == nullptr || shape->MustBeStatic()) { return nullptr; }
+
+        RagdollSettings::Part &part = settings->mParts[size_t(i)];
+        part.SetShape(shape);
+        part.mPosition = RVec3(vec3(desc.position));
+        part.mRotation = quat(desc.rotation);
+        part.mMotionType = EMotionType::Dynamic;
+        part.mObjectLayer = Layers::MOVING;
+        part.mFriction = std::max(0.0f, friction);
+        part.mRestitution = std::clamp(restitution, 0.0f, 1.0f);
+        part.mLinearDamping = 0.05f;
+        part.mAngularDamping = 0.05f;
+        // A limp figure may be switched to kinematic to follow an animation
+        // exactly, so every part keeps the right to change motion type.
+        part.mAllowDynamicOrKinematic = true;
+        if (desc.mass > 0) {
+            part.mOverrideMassProperties = EOverrideMassProperties::CalculateInertia;
+            part.mMassPropertiesOverride.mMass = desc.mass;
+        }
+        jointMatrices.push_back(Mat44::sRotationTranslation(part.mRotation,
+                                                            Vec3(part.mPosition)));
+
+        if (desc.parent < 0) { continue; }
+        SwingTwistConstraintSettings *constraint = new SwingTwistConstraintSettings;
+        constraint->mSpace = EConstraintSpace::WorldSpace;
+        constraint->mPosition1 = constraint->mPosition2 = RVec3(vec3(desc.pivot));
+        Vec3 twist = vec3(desc.twistAxis);
+        twist = twist.LengthSq() > 1.0e-12f ? twist.Normalized() : Vec3::sAxisY();
+        Vec3 plane = vec3(desc.planeAxis);
+        plane = plane.LengthSq() > 1.0e-12f
+                    ? (plane - twist * plane.Dot(twist)) : Vec3::sZero();
+        plane = plane.LengthSq() > 1.0e-12f ? plane.Normalized()
+                                            : twist.GetNormalizedPerpendicular();
+        constraint->mTwistAxis1 = constraint->mTwistAxis2 = twist;
+        constraint->mPlaneAxis1 = constraint->mPlaneAxis2 = plane;
+        const float cone = std::clamp(desc.swingLimit, 0.0f, JPH_PI);
+        constraint->mNormalHalfConeAngle = cone;
+        constraint->mPlaneHalfConeAngle = cone;
+        constraint->mTwistMinAngle = std::clamp(desc.twistMin, -JPH_PI, 0.0f);
+        constraint->mTwistMaxAngle = std::clamp(desc.twistMax, 0.0f, JPH_PI);
+        settings->mParts[size_t(i)].mToParent = constraint;
+    }
+
+    // Balance the masses down the tree and grow each parent's inertia to carry
+    // its children: without it a light hand on a heavy arm makes the solver
+    // fight itself and the figure jitters apart.
+    settings->Stabilize();
+    // Joints nearer the root are solved first, so the heavy end of the figure
+    // settles before the light one hangs off it.
+    settings->CalculateConstraintPriorities();
+    // Neighbouring limbs (and any pair that already overlaps in this pose)
+    // stop colliding, while limbs of *other* ragdolls still do.
+    settings->DisableParentChildCollisions(jointMatrices.data(), 0.0f);
+    settings->CalculateBodyIndexToConstraintIndex();
+
+    Ragdoll *created =
+        settings->CreateRagdoll(world->nextRagdollGroup++, 0, &world->physics);
+    if (created == nullptr) { return nullptr; }
+
+    CJoltRagdoll *wrapper = new CJoltRagdoll();
+    wrapper->settings = settings;
+    wrapper->ragdoll = created;
+    wrapper->ragdoll->AddToPhysicsSystem(EActivation::Activate);
+    world->ragdolls.push_back(wrapper);
+    return wrapper;
+}
+
+void cjolt_ragdoll_destroy(CJoltWorld *world, CJoltRagdoll *ragdoll) {
+    if (ragdoll == nullptr) { return; }
+    // The constraints hold the bodies, so the whole set leaves the world before
+    // the ragdoll's own destructor destroys them.
+    ragdoll->ragdoll->RemoveFromPhysicsSystem();
+    world->ragdolls.erase(
+        std::remove(world->ragdolls.begin(), world->ragdolls.end(), ragdoll),
+        world->ragdolls.end());
+    delete ragdoll;
+}
+
+int32_t cjolt_ragdoll_part_count(const CJoltRagdoll *ragdoll) {
+    if (ragdoll == nullptr) { return 0; }
+    return int32_t(ragdoll->ragdoll->GetBodyCount());
+}
+
+CJoltBodyID cjolt_ragdoll_get_body(const CJoltRagdoll *ragdoll, int32_t index) {
+    if (ragdoll == nullptr || index < 0 ||
+        index >= int32_t(ragdoll->ragdoll->GetBodyCount())) {
+        return CJOLT_BODY_INVALID;
+    }
+    return ragdoll->ragdoll->GetBodyID(index).GetIndexAndSequenceNumber();
+}
+
+void cjolt_ragdoll_set_limits(CJoltRagdoll *ragdoll, int32_t index,
+                              float swingLimit, float twistMin, float twistMax) {
+    if (ragdoll == nullptr) { return; }
+    const int constraintIndex =
+        ragdoll->settings->GetConstraintIndexForBodyIndex(index);
+    if (constraintIndex < 0) { return; }
+    TwoBodyConstraint *constraint = ragdoll->ragdoll->GetConstraint(constraintIndex);
+    if (constraint->GetSubType() != EConstraintSubType::SwingTwist) { return; }
+    SwingTwistConstraint *joint = static_cast<SwingTwistConstraint *>(constraint);
+    const float cone = std::clamp(swingLimit, 0.0f, JPH_PI);
+    joint->SetNormalHalfConeAngle(cone);
+    joint->SetPlaneHalfConeAngle(cone);
+    joint->SetTwistMinAngle(std::clamp(twistMin, -JPH_PI, 0.0f));
+    joint->SetTwistMaxAngle(std::clamp(twistMax, 0.0f, JPH_PI));
+}
+
+void cjolt_ragdoll_drive_to_pose(CJoltWorld *, CJoltRagdoll *ragdoll,
+                                 const float *localRotations, float frequency,
+                                 float damping, float maxTorque) {
+    if (ragdoll == nullptr || localRotations == nullptr) { return; }
+    const SpringSettings servo(ESpringMode::FrequencyAndDamping,
+                               std::max(frequency, 0.0f), std::max(damping, 0.0f));
+    const bool limited = std::isfinite(maxTorque) && maxTorque > 0;
+    const int count = int(ragdoll->ragdoll->GetBodyCount());
+    for (int i = 0; i < count; ++i) {
+        const int constraintIndex =
+            ragdoll->settings->GetConstraintIndexForBodyIndex(i);
+        if (constraintIndex < 0) { continue; }
+        TwoBodyConstraint *constraint = ragdoll->ragdoll->GetConstraint(constraintIndex);
+        if (constraint->GetSubType() != EConstraintSubType::SwingTwist) { continue; }
+        SwingTwistConstraint *joint = static_cast<SwingTwistConstraint *>(constraint);
+        for (MotorSettings *motor :
+             {&joint->GetSwingMotorSettings(), &joint->GetTwistMotorSettings()}) {
+            motor->mSpringSettings = servo;
+            if (limited) { motor->SetTorqueLimit(maxTorque); }
+            else { motor->SetTorqueLimits(-FLT_MAX, FLT_MAX); }
+        }
+        joint->SetSwingMotorState(EMotorState::Position);
+        joint->SetTwistMotorState(EMotorState::Position);
+        joint->SetTargetOrientationBS(quat(localRotations + 4 * i));
+    }
+    // A sleeping figure never feels its motors change.
+    ragdoll->ragdoll->Activate();
+}
+
+void cjolt_ragdoll_stop_motors(CJoltRagdoll *ragdoll) {
+    if (ragdoll == nullptr) { return; }
+    const int count = int(ragdoll->ragdoll->GetConstraintCount());
+    for (int i = 0; i < count; ++i) {
+        TwoBodyConstraint *constraint = ragdoll->ragdoll->GetConstraint(i);
+        if (constraint->GetSubType() != EConstraintSubType::SwingTwist) { continue; }
+        SwingTwistConstraint *joint = static_cast<SwingTwistConstraint *>(constraint);
+        joint->SetSwingMotorState(EMotorState::Off);
+        joint->SetTwistMotorState(EMotorState::Off);
+    }
+}
+
+void cjolt_ragdoll_set_pose(CJoltWorld *world, CJoltRagdoll *ragdoll,
+                            const float *worldMatrices) {
+    if (ragdoll == nullptr || worldMatrices == nullptr) { return; }
+    BodyInterface &bodies = world->physics.GetBodyInterface();
+    const int count = int(ragdoll->ragdoll->GetBodyCount());
+    for (int i = 0; i < count; ++i) {
+        const Mat44 pose = matrix4(worldMatrices + 16 * i);
+        bodies.SetPositionAndRotation(ragdoll->ragdoll->GetBodyID(i),
+                                      RVec3(pose.GetTranslation()),
+                                      pose.GetQuaternion(), EActivation::Activate);
+    }
+    // The impulses the solver warm-started from belong to the old pose.
+    ragdoll->ragdoll->ResetWarmStart();
+}
+
+void cjolt_ragdoll_move_to_pose(CJoltWorld *world, CJoltRagdoll *ragdoll,
+                                const float *worldMatrices, float dt) {
+    if (ragdoll == nullptr || worldMatrices == nullptr || dt <= 0) { return; }
+    BodyInterface &bodies = world->physics.GetBodyInterface();
+    const int count = int(ragdoll->ragdoll->GetBodyCount());
+    for (int i = 0; i < count; ++i) {
+        const Mat44 pose = matrix4(worldMatrices + 16 * i);
+        bodies.MoveKinematic(ragdoll->ragdoll->GetBodyID(i),
+                             RVec3(pose.GetTranslation()), pose.GetQuaternion(), dt);
+    }
+}
+
+void cjolt_ragdoll_set_motion(CJoltWorld *world, CJoltRagdoll *ragdoll,
+                              CJoltMotionType motion) {
+    if (ragdoll == nullptr) { return; }
+    EMotionType type = EMotionType::Dynamic;
+    ObjectLayer layer = Layers::MOVING;
+    switch (motion) {
+    case CJOLT_MOTION_STATIC:
+        type = EMotionType::Static;
+        layer = Layers::NON_MOVING;
+        break;
+    case CJOLT_MOTION_KINEMATIC: type = EMotionType::Kinematic; break;
+    case CJOLT_MOTION_DYNAMIC: break;
+    }
+    BodyInterface &bodies = world->physics.GetBodyInterface();
+    const int count = int(ragdoll->ragdoll->GetBodyCount());
+    for (int i = 0; i < count; ++i) {
+        const BodyID id = ragdoll->ragdoll->GetBodyID(i);
+        bodies.SetMotionType(id, type,
+                             type == EMotionType::Static ? EActivation::DontActivate
+                                                         : EActivation::Activate);
+        bodies.SetObjectLayer(id, layer);
+    }
+}
+
+void cjolt_ragdoll_activate(CJoltWorld *, CJoltRagdoll *ragdoll) {
+    if (ragdoll == nullptr) { return; }
+    ragdoll->ragdoll->Activate();
+}
+
+bool cjolt_ragdoll_is_active(const CJoltWorld *, const CJoltRagdoll *ragdoll) {
+    if (ragdoll == nullptr) { return false; }
+    return ragdoll->ragdoll->IsActive();
+}
+
+void cjolt_ragdoll_add_impulse(CJoltWorld *world, CJoltRagdoll *ragdoll,
+                               const float impulse[3]) {
+    if (ragdoll == nullptr) { return; }
+    // One impulse for the whole figure, split between the limbs by their share
+    // of its mass, so every limb takes the same change in velocity and the
+    // figure leaves in one piece. (The library's own AddImpulse gives each body
+    // the impulse whole, which shoves the light limbs much harder than the
+    // heavy ones and pulls the figure apart as it goes.)
+    BodyInterface &bodies = world->physics.GetBodyInterface();
+    const int count = int(ragdoll->ragdoll->GetBodyCount());
+    float total = 0;
+    for (int i = 0; i < count; ++i) {
+        BodyLockRead lock(world->physics.GetBodyLockInterface(),
+                          ragdoll->ragdoll->GetBodyID(i));
+        if (!lock.Succeeded()) { continue; }
+        const MotionProperties *motion = lock.GetBody().GetMotionPropertiesUnchecked();
+        if (lock.GetBody().IsDynamic() && motion != nullptr) {
+            total += 1.0f / motion->GetInverseMass();
+        }
+    }
+    if (total <= 0) { return; }
+    ragdoll->ragdoll->Activate();
+    for (int i = 0; i < count; ++i) {
+        const BodyID id = ragdoll->ragdoll->GetBodyID(i);
+        float mass = 0;
+        {
+            BodyLockRead lock(world->physics.GetBodyLockInterface(), id);
+            if (!lock.Succeeded() || !lock.GetBody().IsDynamic()) { continue; }
+            const MotionProperties *motion = lock.GetBody().GetMotionPropertiesUnchecked();
+            if (motion == nullptr) { continue; }
+            mass = 1.0f / motion->GetInverseMass();
+        }
+        bodies.AddImpulse(id, vec3(impulse) * (mass / total));
+    }
 }
 
 // Queries -------------------------------------------------------------------

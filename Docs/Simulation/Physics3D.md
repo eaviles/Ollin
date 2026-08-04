@@ -53,6 +53,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Sensors](#sensors) - regions that detect without colliding
 - [Characters](#characters) - a walking figure you steer from `draw()`
 - [Vehicles](#vehicles) - a chassis on sprung wheels you drive from `draw()`
+- [Ragdolls](#ragdolls) - a skinned figure given weight, limp or powered
 - [Grabbing with the mouse](#grabbing) - ray-picking and dragging bodies through the camera
 - [Drawing bodies](#drawing) - `withBody` and matching meshes to colliders
 
@@ -188,7 +189,17 @@ world.connect(a, b, .weld)                                // rigid at current po
 world.connect(carriage, rail, .prismatic(at: p, axis: .unitX))
 ```
 
-`.ball` is the 3D-only kind: a ball-and-socket that rotates freely in every direction, the joint of hanging chains and ragdolls. A hinge (`.revolute`) allows rotation only about its axis. Cut any joint with `joint.remove()`.
+`.ball` is the 3D-only kind: a ball-and-socket that rotates freely in every direction, the joint of hanging chains. A hinge (`.revolute`) allows rotation only about its axis. Cut any joint with `joint.remove()`.
+
+`.swingTwist` is the ball-and-socket with limits, and the joint a body is made of. Give it the bone's direction and it lets that bone lean away from where it started by at most `swing` radians in any direction (tracing a cone) while rolling about itself within `twist`:
+
+```swift
+world.connect(chest, upperArm,
+              .swingTwist(at: shoulder, axis: Vector3(-1, 0, 0),
+                          swing: 80 * .pi / 180, twist: -0.6...0.6))
+```
+
+A shoulder is a wide cone with a little twist; a knee is a narrow one. `swing: 0` locks the bone straight, `.pi` frees it entirely. Its `angle` reads how far the joint is currently bent, and `friction` gives it the stiffness of an old hinge. It is what `addRagdoll` hangs every limb on.
 
 <a name="motors"></a>
 
@@ -511,6 +522,80 @@ Running dead straight even an unbalanced two-wheeler stays up, because nothing t
 
 The worked example is [`3D/Physics/Joyride`](../../Examples/3D/Physics/Joyride/): a car you drive over an eroded island, with the springs and the grip on live sliders.
 
+<a name="ragdolls"></a>
+
+### Ragdolls
+
+A `Ragdoll3D` gives a skinned figure weight. Hand `addRagdoll(from:)` a loaded `Scene` that has a skin and it reads the skeleton, builds one rigid body per joint, and sizes each one from the part of the mesh that joint actually moves. Stepping the world then answers a question the animation cannot: where do the limbs end up when the world has a say?
+
+```swift
+var figure: Scene!
+var ragdoll: Ragdoll3D!
+
+override func setup() {
+    figure = loadScene("figure.gltf")!
+    world.ground = 0
+    ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
+}
+
+override func draw() {
+    world.step(dt: deltaTime)
+    figure.apply(ragdoll)     // the pose the solver just found
+    drawScene(figure)
+}
+```
+
+`scene.apply(ragdoll)` is `apply(_:at:)` run backwards: instead of a keyframe track posing the joints, the simulated bodies do. It is exact, because each limb's body stands *at* its joint rather than in the middle of the bone, so writing the pose back has nothing to undo. Everything downstream (skinning, morph targets, per-material parts, materials, shadows, export) works as it always did.
+
+The figure simulates in world space, so draw the scene without a transform of your own if you want it to land where the bodies are.
+
+**What the fit finds.** The shape of each limb comes from the mesh, not from bone lengths: the vertices a joint pulls hardest on are gathered in that joint's own frame, and a capsule is fitted along the direction they spread. A torso comes out thick and a forearm thin even though the two bones are a similar length. `ragdoll.limbs` reports what it found (`name`, `body`, `parent`, `collider`, and where the shape sits inside the body), and `withLimb(_:)` poses the transform stack onto a limb's fitted shape so you can draw the capsules beside the skin:
+
+```swift
+for limb in ragdoll.limbs {
+    withLimb(limb) {
+        if case .capsule(let height, let radius) = limb.collider {
+            drawCapsule(radius: radius, height: height)
+        }
+    }
+}
+```
+
+**Limp or powered.** Left alone, the joints have limits and nothing else: this is the figure that falls downstairs. `drive(toward:)` gives it back some will, growing a motor on every joint that pulls toward the pose a scene is currently holding:
+
+```swift
+target.apply(walk, at: time)          // where the animation wants the limbs
+ragdoll.drive(toward: target, strength: effort)
+world.step(dt: deltaTime)
+figure.apply(ragdoll)                 // where they actually ended up
+```
+
+Keep the target scene and the drawn scene apart (a `Scene` is a value type, so a second copy is one assignment). A figure driven toward the scene it was just posed from has nowhere to pull, and the pose it is chasing has to be re-established each frame.
+
+`strength` is the most torque a joint may use, in newton-metres, and is the expressive knob: high and the figure will not be moved, low and heavy limbs sag out of the pose, which is how a figure reads as tired rather than switched off. `goLimp()` cuts the power, and `pose(from:)` puts every limb back where a scene has it, which is how a figure is stood up again.
+
+Nothing drives the root, so a powered figure still falls as a whole: the motors hold its *shape*, not its place. To keep one on its feet, make the root limb kinematic (`ragdoll.limbs[0].body.kind = .kinematic`) and it hangs from its hips like a puppet. Setting `ragdoll.kind = .kinematic` instead makes the whole figure follow the driven pose exactly, shoving whatever is in its way.
+
+**Limits and joints.** Every joint is a `.swingTwist`, opened at the `swing` and `twist` the call was given and retunable one at a time while the figure hangs:
+
+```swift
+world.addRagdoll(from: figure, swing: 50 * .pi / 180, twist: -0.3...0.3)
+ragdoll.limit("forearmL", swing: 10 * .pi / 180)     // an elbow, not a shoulder
+```
+
+A dense rig (a hand with twenty finger bones) does not need twenty bodies. Name the joints that should get one and the rest ride the nearest limb above them rigidly, keeping their pose and their share of the flesh:
+
+```swift
+world.addRagdoll(from: figure,
+                 joints: ["hips", "spine", "chest", "head",
+                          "armL", "forearmL", "armR", "forearmR",
+                          "legL", "shinL", "legR", "shinR"])
+```
+
+**Among the other bodies.** A ragdoll's limbs are ordinary bodies: they collide, they turn up in `world.contacts`, and they can be picked and dragged with `grabBody(at:in:)`. They are kept out of `world.bodies`, since a sketch draws the figure's mesh rather than the capsules under it; `ragdoll.bodies` is the list. Each figure gets its own collision group, so a limb never fights the one it hangs off (a thigh sits inside the pelvis and they simply ignore each other) while two figures collide normally. `applyImpulse(_:)` shoves the whole figure at once, and `world.remove(ragdoll)` takes it and its limbs away together.
+
+The worked example is [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/): a figure that stands and waves while its joints are powered, collapses when they are not, and can be dragged around by an arm either way.
+
 <a name="grabbing"></a>
 
 ### Grabbing with the mouse
@@ -558,4 +643,4 @@ for body in world.bodies {
 
 The simulation is deterministic within a build: the same setup stepped the same way reproduces exactly, which is what the seeded-variations story needs live. Exact poses can shift across toolchain rebuilds, so physics scenes aren't pinned by pixel snapshots; the behavioral test suite pins the solver instead.
 
-Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven compound blade cross batting balls through limited, spring-shut swing gates), [`3D/Physics/Rockslide`](../../Examples/3D/Physics/Rockslide/) (rocks tumbling down eroded heightfield terrain), and [`3D/Physics/Trigger`](../../Examples/3D/Physics/Trigger/) (a scoring hoop and a loaded tray, both sensors, with every knock ringing at the speed it landed).
+Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven compound blade cross batting balls through limited, spring-shut swing gates), [`3D/Physics/Rockslide`](../../Examples/3D/Physics/Rockslide/) (rocks tumbling down eroded heightfield terrain), [`3D/Physics/Trigger`](../../Examples/3D/Physics/Trigger/) (a scoring hoop and a loaded tray, both sensors, with every knock ringing at the speed it landed), and [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/) (a skinned figure that stands and waves, or collapses, depending on whether its joints are powered).

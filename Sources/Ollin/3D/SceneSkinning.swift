@@ -28,7 +28,7 @@ extension Scene {
     /// Every file-indexed node's transform relative to the scene root, composed
     /// in one walk of the tree: the pose the skinning pass reads joints from.
     /// Hand-built nodes carry no source index, so they can't act as joints.
-    func nodeWorldTransforms() -> [Int: simd_float4x4] {
+    package func nodeWorldTransforms() -> [Int: simd_float4x4] {
         var worlds: [Int: simd_float4x4] = [:]
         func visit(_ node: SceneNode, parent: simd_float4x4) {
             let world = parent * node.localTransform

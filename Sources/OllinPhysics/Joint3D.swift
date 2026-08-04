@@ -87,8 +87,9 @@ public final class Joint3D {
     }
 
     /// Passive resistance while the motor is off: a constant drag torque
-    /// (N·m, hinge) or force (N, slider) the joint's motion must overcome.
-    /// The stiff old hinge; the drawer that stays put. Default 0 (free).
+    /// (N·m, hinge and swing-twist) or force (N, slider) the joint's motion
+    /// must overcome. The stiff old hinge; the drawer that stays put; the
+    /// shoulder that does not flop. Default 0 (free).
     public var friction: Double = 0 {
         didSet {
             guard let constraint else { return }
@@ -107,10 +108,17 @@ public final class Joint3D {
     }
 
     /// A hinge's current angle in radians from the pose at connect (positive
-    /// per the right-hand rule about its axis); 0 for the other kinds.
+    /// per the right-hand rule about its axis), or a swing-twist's current
+    /// swing away from its axis (unsigned, the number its cone bounds); 0 for
+    /// the other kinds.
     public var angle: Double {
-        guard case .revolute? = kind, let constraint else { return 0 }
-        return Double(cjolt_constraint_current(world.handle, constraint))
+        guard let constraint else { return 0 }
+        switch kind {
+        case .revolute?, .swingTwist?:
+            return Double(cjolt_constraint_current(world.handle, constraint))
+        default:
+            return 0
+        }
     }
 
     /// A slider's current offset in world units from the pose at connect
@@ -130,6 +138,12 @@ public final class Joint3D {
             return 1
         case .prismatic?:
             return 1 / world.unitsPerMeter
+        case .swingTwist?:
+            // A swing-twist motor pulls toward a whole orientation, not a
+            // number, which is what a ragdoll's `drive(toward:)` hands it.
+            world.noteOnce("\(call) drives only .revolute and .prismatic joints; a "
+                           + "swing-twist is powered by driving a Ragdoll3D toward a pose.")
+            return nil
         default:
             world.noteOnce("\(call) drives only .revolute and .prismatic joints; ignoring.")
             return nil
@@ -169,8 +183,27 @@ public enum JointKind3D {
     case revolute(at: Vector3, axis: Vector3, limits: ClosedRange<Double>? = nil)
 
     /// A ball-and-socket: both bodies share the pivot `at` and rotate freely
-    /// about it in every direction. The 3D pendulum and ragdoll joint.
+    /// about it in every direction. The 3D pendulum, and the joint a limb
+    /// hangs off when nothing should stop it.
     case ball(at: Vector3)
+
+    /// A ball-and-socket with limits: the second body's `axis` (the bone
+    /// direction, pointing away from the pivot) may lean away from where it
+    /// started by at most `swing` radians in any direction, tracing a cone,
+    /// while twisting about that axis within `twist`. The shoulder, the hip,
+    /// the neck: everything that bends a long way but not all the way, and
+    /// only rolls a little.
+    ///
+    /// ```swift
+    /// world.connect(chest, upperArm,
+    ///               .swingTwist(at: shoulder, axis: Vector3(-1, 0, 0),
+    ///                           swing: 80 * .pi / 180, twist: -0.6...0.6))
+    /// ```
+    ///
+    /// A `swing` of 0 locks the bone straight and π frees it, which is `.ball`
+    /// with a twist limit. The solver caps each side of `twist` at a half turn.
+    case swingTwist(at: Vector3, axis: Vector3, swing: Double,
+                    twist: ClosedRange<Double> = -0.3...0.3)
 
     /// A rod holding the world anchors `from` (on the first body) and `to` (on
     /// the second) a fixed distance apart. `length` defaults to their current

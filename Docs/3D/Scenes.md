@@ -102,6 +102,8 @@ The deforming half of a file's animation plays too, and it needs no new API: `ap
 
 A **skin** bends a mesh through a joint hierarchy: the file binds each vertex to up to four joint nodes with blend weights, and as an animation (or your own node mutation) moves the joints, the mesh follows smoothly, an arm bending at the elbow rather than a rigid forearm swap. The joints are ordinary nodes in the tree, so `scene["shoulder"]?.rotate(...)` poses a skinned character by hand exactly like any other node drive. In a glTF they're the file's own nodes; in a USD, each Skeleton prim's joints arrive as a node subtree named after the skeleton, one node per joint, same idea. One rule from the format worth knowing: a skinned mesh's *own* node transform is ignored, its placement comes entirely from where its joints are, so move the joints' parent (the character root in a glTF, the skeleton's nodes in a USD), not the mesh node.
 
+Anything that can pose those joints can drive the figure. Besides an animation track and your own node mutation, there is [`addRagdoll`](../Simulation/Physics3D.md#ragdolls): it builds a rigid body per joint, and `scene.apply(ragdoll)` writes the simulated pose back, which is `apply(_:at:)` run backwards.
+
 **Morph targets** blend a mesh between authored shapes: the file stores per-vertex displacements for each target (a smile, a blink, a puffed body), and the node's **`weights`** mix them, one weight per target, `0` leaving a target out and `1` adding its whole displacement. A `weights` animation track drives them from `apply(_:at:)`, and they're also just a node property you can set directly, live blend-shape posing from a slider or any signal:
 
 ```swift

@@ -111,17 +111,21 @@ typedef enum {
     CJOLT_CONSTRAINT_DISTANCE = 2, // anchorA on A, anchorB on B; limits = min/max distance
     CJOLT_CONSTRAINT_SLIDER = 3,   // anchorA + axis; optional translation limits
     CJOLT_CONSTRAINT_FIXED = 4,    // weld at current relative pose
+    CJOLT_CONSTRAINT_SWING_TWIST = 5, // anchorA + axis; cone + twist limits
 } CJoltConstraintType;
 
 typedef struct {
     CJoltConstraintType type;
     float anchorA[3]; // world space
     float anchorB[3]; // world space (distance only)
-    float axis[3];    // world space (hinge/slider)
+    float axis[3];    // world space (hinge/slider/swing-twist twist axis)
     bool hasLimits;
-    float limitMin, limitMax; // hinge: radians; slider: length; distance: min/max
+    float limitMin, limitMax; // hinge/swing-twist: radians; slider: length; distance: min/max
     /// Distance-constraint spring; frequency <= 0 keeps the limits rigid.
     float frequency, damping;
+    /// Swing-twist only: the half angle of the cone the twist axis may swing
+    /// inside, in radians (0 locks the swing, pi frees it).
+    float coneAngle;
 } CJoltConstraintDesc;
 
 // World ---------------------------------------------------------------------
@@ -208,7 +212,8 @@ void cjolt_constraint_set_friction(CJoltWorld *world, CJoltConstraint *constrain
 void cjolt_constraint_set_limit_spring(CJoltWorld *world, CJoltConstraint *constraint,
                                        float frequency, float damping);
 
-/// The hinge's current angle (radians) or the slider's current offset (meters)
+/// The hinge's current angle (radians), the slider's current offset (meters),
+/// or a swing-twist's current swing away from its twist axis (radians),
 /// relative to the pose the constraint was created at; 0 for other kinds.
 float cjolt_constraint_current(const CJoltWorld *world, const CJoltConstraint *constraint);
 
@@ -446,6 +451,96 @@ void cjolt_vehicle_get_wheel(const CJoltVehicle *vehicle, int32_t index,
 float cjolt_vehicle_get_rpm(const CJoltVehicle *vehicle);
 /// The gear the box has picked: -1 reverse, 0 neutral, 1 first, and up.
 int32_t cjolt_vehicle_get_gear(const CJoltVehicle *vehicle);
+
+// Ragdolls ------------------------------------------------------------------
+
+/// Opaque ragdoll handle: a tree of rigid bodies, one per skeleton joint, hung
+/// off each other by swing-twist constraints. Its bodies are ordinary bodies
+/// (they collide, report contacts, and can be picked), but they are created and
+/// destroyed as a set, share a collision group so neighbouring limbs don't
+/// fight, and can be driven together toward a pose.
+typedef struct CJoltRagdoll CJoltRagdoll;
+
+/// One limb of a ragdoll: a body standing at its joint's frame, wearing a shape
+/// that is offset inside it to fill the bone, plus the constraint to its
+/// parent. Parts must be ordered parents before children.
+typedef struct {
+    /// Index of the parent part, or -1 for the root (which has no constraint).
+    int32_t parent;
+    /// The limb's shape, and where it sits inside the body. The body's own
+    /// origin is the *joint*, so the shape is pushed out along the bone.
+    CJoltShapeDesc shape;
+    float shapeOffset[3];
+    float shapeRotation[4]; // quaternion x, y, z, w (identity = 0,0,0,1)
+    /// The body's world pose: the joint's frame in the pose the ragdoll is
+    /// built from.
+    float position[3];
+    float rotation[4];
+    /// The limb's mass in kg; <= 0 takes what the shape and density give.
+    float mass;
+    /// The swing-twist constraint to the parent, in world space at the build
+    /// pose (ignored for the root). The bone runs along `twistAxis`, and the
+    /// joint may swing that axis anywhere inside a cone of `swingLimit` while
+    /// twisting about it between `twistMin` and `twistMax`.
+    float pivot[3];
+    float twistAxis[3];
+    float planeAxis[3];
+    float swingLimit;
+    float twistMin, twistMax;
+} CJoltRagdollPartDesc;
+
+/// Builds a ragdoll and adds it to the world. Masses are balanced across the
+/// tree and collisions between each part and its parent (and between parts that
+/// already overlap in the build pose) are switched off, so the figure holds
+/// together instead of shaking itself apart. Returns NULL if the parts are
+/// unusable.
+CJoltRagdoll *cjolt_ragdoll_create(CJoltWorld *world,
+                                   const CJoltRagdollPartDesc *parts,
+                                   int32_t partCount, float friction,
+                                   float restitution);
+void cjolt_ragdoll_destroy(CJoltWorld *world, CJoltRagdoll *ragdoll);
+
+int32_t cjolt_ragdoll_part_count(const CJoltRagdoll *ragdoll);
+/// The body standing at part `index`'s joint.
+CJoltBodyID cjolt_ragdoll_get_body(const CJoltRagdoll *ragdoll, int32_t index);
+
+/// Retune one part's constraint limits while it hangs (no effect on the root).
+void cjolt_ragdoll_set_limits(CJoltRagdoll *ragdoll, int32_t index,
+                              float swingLimit, float twistMin, float twistMax);
+
+/// Powers every constraint's motors toward a pose given as one quaternion per
+/// part (x, y, z, w), each the part's rotation *relative to its parent*. The
+/// spring is shaped by `frequency` (Hz) and `damping`; `maxTorque` (N·m) caps
+/// how hard a joint may pull, and a non-finite or non-positive value leaves it
+/// unlimited. The root has no constraint, so a powered figure still falls as a
+/// whole: the motors hold its shape, not its place.
+void cjolt_ragdoll_drive_to_pose(CJoltWorld *world, CJoltRagdoll *ragdoll,
+                                 const float *localRotations, float frequency,
+                                 float damping, float maxTorque);
+
+/// Cuts motor power: the figure goes limp and only its limits hold it.
+void cjolt_ragdoll_stop_motors(CJoltRagdoll *ragdoll);
+
+/// Places every part instantly at a pose given as one column-major 4x4 world
+/// matrix per part (16 floats each).
+void cjolt_ragdoll_set_pose(CJoltWorld *world, CJoltRagdoll *ragdoll,
+                            const float *worldMatrices);
+
+/// Drives a kinematic ragdoll toward that same pose over `dt` seconds, so it
+/// arrives carrying the velocity that took it there and shoves what it hits.
+void cjolt_ragdoll_move_to_pose(CJoltWorld *world, CJoltRagdoll *ragdoll,
+                                const float *worldMatrices, float dt);
+
+/// Switches every part between static, kinematic, and dynamic at once.
+void cjolt_ragdoll_set_motion(CJoltWorld *world, CJoltRagdoll *ragdoll,
+                              CJoltMotionType motion);
+void cjolt_ragdoll_activate(CJoltWorld *world, CJoltRagdoll *ragdoll);
+bool cjolt_ragdoll_is_active(const CJoltWorld *world, const CJoltRagdoll *ragdoll);
+/// Shoves the whole figure with one impulse (N·s), split between the limbs by
+/// their share of its mass so every limb takes the same change in velocity and
+/// it leaves in one piece.
+void cjolt_ragdoll_add_impulse(CJoltWorld *world, CJoltRagdoll *ragdoll,
+                               const float impulse[3]);
 
 // Queries -------------------------------------------------------------------
 

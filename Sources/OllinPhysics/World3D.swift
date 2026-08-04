@@ -80,6 +80,11 @@ public final class World3D {
     /// are handed to the solver by `step(dt:)`.
     public private(set) var vehicles: [Vehicle3D] = []
 
+    /// Every `Ragdoll3D` in the world, in the order added. Their limb bodies
+    /// are simulated with everything else; they are not in `bodies`, since a
+    /// sketch draws the figure's mesh rather than the capsules under it.
+    public private(set) var ragdolls: [Ragdoll3D] = []
+
     /// Every touch that started or stopped during the most recent `step(dt:)`,
     /// including bodies entering and leaving a sensor. Poll it in `draw()` the
     /// way mouse state is polled; the list is replaced by the next step, and
@@ -125,6 +130,7 @@ public final class World3D {
         // told here that the whole thing is already gone.
         for character in characters { character.isDestroyed = true }
         for vehicle in vehicles { vehicle.isDestroyed = true }
+        for ragdoll in ragdolls { ragdoll.isDestroyed = true }
         cjolt_world_destroy(handle)
     }
 
@@ -342,6 +348,57 @@ public final class World3D {
         return vehicle
     }
 
+    /// Add a `Ragdoll3D`: a skinned figure from a loaded `Scene` given weight,
+    /// one rigid body per skeleton joint with a shape fitted to the mesh that
+    /// joint carries. Step the world, then write the simulated pose back onto
+    /// the scene with `scene.apply(ragdoll)` and draw it.
+    ///
+    /// ```swift
+    /// var figure = loadScene("figure.gltf")!
+    /// let ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
+    /// ```
+    ///
+    /// Returns `nil` for a scene with no skin.
+    ///
+    /// - Parameters:
+    ///   - scene: the figure, in the pose the ragdoll is built from (usually as
+    ///     loaded, its rest pose).
+    ///   - at: where to stand its root joint; `nil` keeps the pose the file
+    ///     authored.
+    ///   - joints: the names of the joints that get their own body. `nil` (the
+    ///     default) gives every joint one. A named subset always keeps the
+    ///     root, and every joint left out rides the nearest one that is in, so
+    ///     naming a dozen joints of a hundred-bone rig makes a figure with a
+    ///     dozen limbs rather than a broken one.
+    ///   - swing: how far a joint's bone may lean off where it started, in
+    ///     radians: a cone. The default is a loose 50°.
+    ///   - twist: how far a joint may roll about its own bone, in radians.
+    ///   - mass: the whole figure's weight in kilograms, split between the
+    ///     limbs by how much of the mesh each one fills. `0` leaves it to the
+    ///     shapes' own volume.
+    ///   - friction: the limbs' surface friction, `0` slick … `1` grippy.
+    @discardableResult
+    public func addRagdoll(from scene: Scene, at position: Vector3? = nil,
+                           joints: [String]? = nil,
+                           swing: Double = 50 * .pi / 180,
+                           twist: ClosedRange<Double> = -0.3...0.3,
+                           mass: Double = 70,
+                           friction: Double = 0.5) -> Ragdoll3D? {
+        guard let ragdoll = Ragdoll3D(world: self, scene: scene, at: position,
+                                      joints: joints, swing: swing, twist: twist,
+                                      mass: mass, friction: friction) else {
+            return nil
+        }
+        ragdolls.append(ragdoll)
+        return ragdoll
+    }
+
+    /// Remove a figure and every limb body it owns from the world.
+    public func remove(_ ragdoll: Ragdoll3D) {
+        ragdoll.destroyBackingRagdoll()
+        ragdolls.removeAll { $0 === ragdoll }
+    }
+
     /// Remove a vehicle and its chassis body from the world.
     public func remove(_ vehicle: Vehicle3D) {
         // The constraint holds the chassis, so it comes off first.
@@ -385,6 +442,19 @@ public final class World3D {
             desc.type = CJOLT_CONSTRAINT_POINT
             let p = meters(from: at)
             desc.anchorA = (p.0, p.1, p.2)
+
+        case .swingTwist(let at, let axis, let swing, let twist):
+            desc.type = CJOLT_CONSTRAINT_SWING_TWIST
+            let p = meters(from: at)
+            desc.anchorA = (p.0, p.1, p.2)
+            let unit = axis.normalized
+            desc.axis = (Float(unit.x), Float(unit.y), Float(unit.z))
+            desc.coneAngle = Float(min(max(swing, 0), .pi))
+            // Twist is measured from the connect pose, so its range straddles
+            // 0 the way a hinge's limits do.
+            desc.hasLimits = true
+            desc.limitMin = Float(min(max(twist.lowerBound, -.pi), 0))
+            desc.limitMax = Float(max(min(twist.upperBound, .pi), 0))
 
         case .distance(let from, let to, let length, let stiffness):
             desc.type = CJOLT_CONSTRAINT_DISTANCE
@@ -467,6 +537,10 @@ public final class World3D {
         joints.removeAll()
         for vehicle in vehicles { vehicle.destroyBackingVehicle() }
         vehicles.removeAll()
+        // Ragdolls are constraints on bodies they own, so they come off before
+        // the loose bodies do.
+        for ragdoll in ragdolls { ragdoll.destroyBackingRagdoll() }
+        ragdolls.removeAll()
         // Characters own their inner bodies and destroy them on release.
         characters.removeAll()
         for body in bodies { cjolt_body_destroy(handle, body.id) }

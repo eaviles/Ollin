@@ -559,6 +559,7 @@ let package = Package(
         example("3D/Physics/Stroll", [.physics]),
         example("3D/Physics/Trigger", [.physics]),
         example("3D/Physics/Joyride", [.physics]),
+        example("3D/Physics/Ragdoll", [.physics], resources: [.copy("figure.gltf")]),
         example("3D/Raymarching/RaymarchedSDF"),
         example("3D/Raymarching/RaymarchedShapes"),
         example("3D/Raymarching/RaymarchedSculpt"),

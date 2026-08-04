@@ -3287,6 +3287,91 @@ the top-speed gearing ceiling, wheels-in-the-air, the axle grouping as a pure
 CPU test, a leaned two-wheeler righting itself where the unbalanced twin falls,
 and identical replays.
 
+### Ragdolls
+
+A `Ragdoll3D` (`Sources/OllinPhysics/Ragdoll3D.swift`, the fitting in
+`RagdollFit.swift`) turns a skinned `Scene` into a tree of rigid bodies and
+writes the simulated pose back onto the skin. It is built on the library's own
+`RagdollSettings` / `Ragdoll` pair rather than on loose bodies and constraints,
+which buys three things the loose form would have to reinvent: `Stabilize()`
+(the Havok mass-ratio and inertia treatment, without which a light hand on a
+heavy arm makes the solver fight itself), `CalculateConstraintPriorities()` (the
+root solved before the leaves), and `DisableParentChildCollisions()` (the group
+filter that stops a thigh from fighting the pelvis it sits inside).
+
+**The layout decision everything else follows from: a limb's body stands at its
+joint, not in the middle of its bone.** The shape is pushed out along the bone
+inside the body instead, through the same `RotatedTranslatedShape` the character
+capsule uses. That makes the body's world transform *identical* to the joint's
+world transform, so reading the pose back is an assignment with nothing to
+undo (the write-back test pins node positions equal to body positions to 1e-5),
+and the local rotation a motor is aimed at is exactly the skeleton's own local
+rotation. The alternative (bodies centred on the bones, as the library's own
+sample authors them by hand) would need a per-joint offset carried through every
+read and write.
+
+**The skeleton seam lives in the core**, since satellites never depend on each
+other: `Scene.skeleton()` flattens the first skin's joints (name, file identity,
+parent within the skin, current world transform, inverse bind matrix),
+`Scene.skinnedVertices()` hands over the mesh in bind space with its joint
+weights, and `Scene.setJointWorlds(_:)` is the write-back, all `package` in
+`Sources/Ollin/3D/SceneSkeleton.swift`. `setJointWorlds` walks top-down so a
+joint it writes is what its children are placed against, preserves whatever
+scale a node carries (a rigid pose has none, and dividing it out would shrink
+the mesh), and re-syncs a node's TRS animation base to the posed transform so a
+rotation-only track applied next frame does not drag the node back to its
+authored translation. Joints it is not given keep their local transform and ride
+their parent, which is what makes a partial ragdoll (one that skips the fingers)
+carry the rest of the figure rigidly.
+
+**Shapes are fitted to the mesh, not derived from bone lengths.** Each vertex is
+assigned to the limb whose weight over it is largest (summed over the joints
+that limb absorbed), transformed into that joint's frame by its inverse bind
+matrix, and a capsule is fitted: the axis is the dominant eigenvector of the
+covariance (power iteration seeded from the largest-variance world axis, so the
+start can never sit at right angles to the answer), the radius the 85th
+percentile of the perpendicular distances, and the ends the 2nd and 98th
+percentiles along the axis. Percentiles rather than extremes, because one stray
+vertex should not decide how thick an arm is; the axis is flipped to point away
+from the parent joint so the twist convention is consistent. A limb with too
+little mesh falls back to the bone to its children, and one with neither to a
+small ball. The measured result on the bundled figure: a torso radius of 0.157
+against a forearm's 0.051, from bones of similar length. Mass is split by fitted
+volume and then rebalanced by `Stabilize()`, which preserves each chain's total,
+so the figure weighs what the call asked for.
+
+**Powered figures.** `drive(toward:)` reads the target scene's joint worlds,
+converts each to the child's rotation relative to its ragdoll parent, and hands
+the whole array to `cjolt_ragdoll_drive_to_pose`, which sets both motors of
+every swing-twist to `Position` and calls `SetTargetOrientationBS`. The spring
+(frequency, damping) and the torque cap are re-applied on every call, so
+`strength` is live. The root has no constraint, so a powered figure holds its
+*shape* and still falls as a whole; pinning the root limb kinematic is the
+puppet-on-a-hook answer, and `ragdoll.kind = .kinematic` routes `drive(toward:)`
+to `MoveKinematic` instead, giving the figure arrival velocities so it shoves
+what it walks through.
+
+**Bodies in, but not in `bodies`.** Each limb is wrapped in an ordinary `Body3D`
+and registered in `world.bodyByID` (so contacts, sensors, and ray picking name
+it) while staying out of `world.bodies`, the `groundBody` / `character.body`
+precedent: a sketch draws the figure's mesh, not the capsules. Making that
+useful needed one fix elsewhere: `body(under:in:)` looked its hit up in
+`world.bodies`, so it could never find a limb; it now looks up `bodyByID`, which
+also makes a character's stand-in and the ground slab pickable.
+
+`Ragdoll3DTests` pins the tier behaviorally (no pixel snapshots, the physics
+policy). The headline counterfactual is the same figure dropped twice, once
+driven toward its rest pose and once limp: the shape error (per-limb offset from
+the built pose, measured in the root's own frame so falling over does not count
+as deforming) is 0.48 limp against 0.034 powered. Around it sit the fit
+proportions, mass split, placement, the named-joint subset and what the skipped
+joints do, the exact write-back, `pose(from:)` as a reset, a weaker motor
+sagging further, the kinematic figure shoving a crate out of its way, a
+cone-limited joint stopping where a `.ball` keeps going, a tighter cone holding
+a figure straighter, per-joint retuning, limbs naming the floor they land on,
+parent-child pairs never reporting a touch while two figures do, and identical
+replays.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

@@ -66,6 +66,29 @@ extension Sketch {
         }
     }
 
+    /// Run `draw` with the 3D transform stack moved to a ragdoll limb's fitted
+    /// *shape*: its body's pose, then the offset and turn that put the capsule
+    /// on the bone. A capsule modeled along +y lands exactly where the solver
+    /// thinks the limb is, which is how a figure's collision shapes are drawn
+    /// beside the mesh they carry:
+    ///
+    /// ```swift
+    /// for limb in ragdoll.limbs {
+    ///     withLimb(limb) {
+    ///         if case .capsule(let height, let radius) = limb.collider {
+    ///             drawCapsule(height: height, radius: radius)
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    public func withLimb(_ limb: Ragdoll3D.Limb, _ draw: () -> Void) {
+        withBody(limb.body) {
+            translate(limb.shapeCenter)
+            if abs(limb.shapeAngle) > 1e-9 { rotate(limb.shapeAngle, axis: limb.shapeAxis) }
+            draw()
+        }
+    }
+
     /// The dynamic body under a canvas point, seen through the active camera,
     /// with the world point where the ray touched it. `nil` when nothing is
     /// there (or no camera is active). Use it to probe; use
@@ -85,9 +108,10 @@ extension Sketch {
                 hit = cjolt_world_ray_cast(world.handle, op, dp, &hitBody, &fraction)
             }
         }
-        guard hit, let body = world.bodies.first(where: { $0.id == hitBody }) else {
-            return nil
-        }
+        // Looked up by solver handle rather than in `bodies`, so the ones the
+        // world keeps out of that list (a ragdoll's limbs, a character's
+        // stand-in, the ground slab) are pickable too.
+        guard hit, let body = world.bodyByID[hitBody] else { return nil }
         let point = ray.origin + reach * Double(fraction)
         return (body, point)
     }
