@@ -117,7 +117,8 @@ extension Scene {
     /// (an xyzw quaternion), and scale, assuming the T·R·S shape every
     /// shear-free op stack composes to. A mirrored basis folds its flip into
     /// the x scale (the standard convention), keeping the rotation proper.
-    private static func decomposeTRS(_ m: simd_double4x4) -> RestPose {
+    /// (Shared with the skinning leg, which decomposes joint rest transforms.)
+    static func decomposeTRS(_ m: simd_double4x4) -> RestPose {
         let t = SIMD3<Float>(Float(m.columns.3.x), Float(m.columns.3.y), Float(m.columns.3.z))
         let c0 = SIMD3(m.columns.0.x, m.columns.0.y, m.columns.0.z)
         let c1 = SIMD3(m.columns.1.x, m.columns.1.y, m.columns.1.z)
@@ -134,7 +135,7 @@ extension Scene {
                 SIMD3<Float>(Float(sx), Float(sy), Float(sz)))
     }
 
-    private static func metadataScalar(_ stage: USDStage, _ key: String) -> Double? {
+    static func metadataScalar(_ stage: USDStage, _ key: String) -> Double? {
         switch stage.metadata[key] {
         case .double(let d): d
         case .int(let i): Double(i)

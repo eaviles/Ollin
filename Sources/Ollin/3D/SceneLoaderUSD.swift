@@ -16,12 +16,16 @@ import ModelIO
 // - Cameras arrive as typed camera objects (vertical field of view in degrees;
 //   an orthographic aperture in tenths of a world unit).
 // - Lights do *not* survive the importer (light prims come back as bare
-//   grouping nodes with even their transforms dropped), and neither does
-//   animation, so both fill from Ollin's own parser instead: one raw-tree
-//   read resolves the UsdLux prims onto `lights`
-//   (`SceneLoaderUSDLights.swift`) and the authored xformOp timeSamples onto
-//   `animations` (`SceneLoaderUSDAnimation.swift`). Skinning arrives
-//   pre-baked at bind pose; that stays a glTF feature for now.
+//   grouping nodes with even their transforms dropped), and neither do
+//   animation or skinning, so all three fill from Ollin's own parser
+//   instead: one raw-tree read resolves the UsdLux prims onto `lights`
+//   (`SceneLoaderUSDLights.swift`), the authored xformOp timeSamples onto
+//   `animations` (`SceneLoaderUSDAnimation.swift`), and the UsdSkel tier
+//   (skeletons, skin bindings, blend shapes, SkelAnimation channels) onto
+//   the deforming node data `drawScene` poses
+//   (`SceneLoaderUSDSkinning.swift`, which also rebuilds each deforming
+//   mesh from its authored points, since per-point skin data has nothing
+//   stable to align with in the importer's vertex layout).
 
 #if canImport(ModelIO)
 extension Scene {
@@ -37,7 +41,9 @@ extension Scene {
         guard asset.count > 0 else { return nil }
 
         var roots: [SceneNode] = []
-        for i in 0..<asset.count { roots.append(buildNode(asset.object(at: i))) }
+        for i in 0..<asset.count where !(asset.object(at: i) is MDLSkeleton) {
+            roots.append(buildNode(asset.object(at: i)))
+        }
         var scene = Scene(nodes: roots)
 
         // Cameras: walk again composing world transforms, collecting each in
@@ -55,16 +61,26 @@ extension Scene {
         scene.cameras = cameraRefs.map { resolveCamera($0.camera, world: $0.world,
                                                        sceneCenter: sceneCenter) }
 
-        // One raw-tree read serves what the importer drops: lights and the
+        // One raw-tree read serves what the importer drops: lights, the
         // authored transform animation (whose tracks bind by node name; each
-        // animated prim's rest pose becomes the node's TRS base).
+        // animated prim's rest pose becomes the node's TRS base), and the
+        // UsdSkel tier. Rest poses install before the skinning pass appends
+        // its skeleton subtrees, so a name-bound install can only land on a
+        // tree node; the merged tracks form the stage's one animation.
         if let stage = try? USDStage.load(contentsOf: url) {
             scene.lights = resolveUSDLights(stage)
-            if let (animation, restPoses) = resolveUSDAnimation(stage) {
-                scene.animations = [animation]
-                for (name, pose) in restPoses {
+            let baked = resolveUSDAnimation(stage)
+            if let baked {
+                for (name, pose) in baked.restPoses {
                     installRestPose(name, pose, in: &scene.nodes)
                 }
+            }
+            let skel = resolveUSDSkinning(stage, into: &scene)
+            var tracks = baked?.animation.tracks ?? []
+            tracks += skel.tracks
+            let duration = Swift.max(baked?.animation.duration ?? 0, skel.duration)
+            if !tracks.isEmpty {
+                scene.animations = [SceneAnimation(name: "", duration: duration, tracks: tracks)]
             }
         }
         return scene
@@ -72,7 +88,9 @@ extension Scene {
 
     /// One Model I/O object as a `SceneNode`: name, local transform, a node-local
     /// `Mesh` when the object carries triangles, children recursed. A light or
-    /// other untranslated prim becomes a bare named grouping node.
+    /// other untranslated prim becomes a bare named grouping node. Skeleton
+    /// objects are skipped: the skinning pass synthesizes the real joint
+    /// subtree from the raw tree, and a bare stand-in would shadow its name.
     private static func buildNode(_ obj: MDLObject) -> SceneNode {
         var mesh: Mesh?
         if let mdl = obj as? MDLMesh, let data = Mesh.readMDLMesh(mdl), !data.positions.isEmpty,
@@ -80,7 +98,7 @@ extension Scene {
             mesh = Mesh(positions: data.positions, normals: data.normals, indices: data.indices,
                         uvs: data.uvs ?? [], material: data.material)
         }
-        let children = obj.children.objects.map(buildNode)
+        let children = obj.children.objects.filter { !($0 is MDLSkeleton) }.map(buildNode)
         return SceneNode(name: obj.name, mesh: mesh, children: children,
                          localTransform: localMatrix(of: obj))
     }

@@ -543,6 +543,7 @@ let package = Package(
         example("3D/Geometry/SkinnedScene", resources: [.copy("scene.gltf")]),
         example("3D/Geometry/USDScene", resources: [.copy("stage.usda")]),
         example("3D/Geometry/USDAnimatedScene", resources: [.copy("stage.usda")]),
+        example("3D/Geometry/USDSkinnedScene", resources: [.copy("stage.usda")]),
         example("3D/Geometry/ShapeFactory"),
         example("3D/Geometry/Terrain"),
         example("3D/Geometry/Metaballs"),

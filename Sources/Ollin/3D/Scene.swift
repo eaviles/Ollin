@@ -27,11 +27,12 @@ import simd
 /// Structure comes from glTF/GLB files (the node graph, cameras from the core
 /// spec, lights from the punctual-lights extension, animations, skins) and from
 /// the USD family (`.usdz`/`.usdc`/`.usda`/`.usd`: the node graph, cameras, the
-/// authored UsdLux lights, sphere/distant/shaped-cone/rect/disk/cylinder, and
-/// the authored transform animation, timeSamples baked into keyframe tracks,
-/// all read by Ollin's own parser); the remaining mesh formats (`.obj`, `.stl`, …) have no
-/// scene graph to keep, so they load as a single-node scene with no cameras or
-/// lights, exactly `loadMesh` in a wrapper.
+/// authored UsdLux lights, sphere/distant/shaped-cone/rect/disk/cylinder, the
+/// authored transform animation, timeSamples baked into keyframe tracks, and
+/// the UsdSkel deforming tier, skeletons/skins/blend shapes with their
+/// SkelAnimation channels, all read by Ollin's own parser); the remaining mesh
+/// formats (`.obj`, `.stl`, …) have no scene graph to keep, so they load as a
+/// single-node scene with no cameras or lights, exactly `loadMesh` in a wrapper.
 public struct Scene: Sendable {
 
     /// The root nodes of the scene graph, in document order.
@@ -250,8 +251,9 @@ extension Scene {
     /// Load a scene from a file, keeping its structure. `.gltf`/`.glb` files keep
     /// the full graph: named nodes with transforms, cameras, and punctual lights.
     /// The USD family (`.usdz`, `.usdc`, `.usda`, `.usd`) keeps its graph too:
-    /// named nodes, transforms, cameras, the authored UsdLux lights, and the
-    /// authored transform animation (see `loadModelIOScene`). Any other format
+    /// named nodes, transforms, cameras, the authored UsdLux lights, the
+    /// authored transform animation, and the UsdSkel skins and blend shapes
+    /// (see `loadModelIOScene`). Any other format
     /// `loadMesh` reads (`.obj`, `.stl`, …) has no scene graph, so it loads as
     /// one node named after the file, with no cameras or lights. Returns `nil`
     /// if the file can't be read or holds nothing. Mirrors `Mesh(contentsOf:)`.

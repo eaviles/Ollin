@@ -51,6 +51,21 @@ enum USDSpecifier: Equatable {
     case def, over, `class`
 }
 
+extension USDStage {
+    /// The prim at an absolute path (`/Model/Skel`), or nil. Relationship
+    /// targets are authored as absolute prim paths in a flattened layer, so
+    /// this is how consumers resolve them.
+    func prim(atPath path: String) -> USDPrim? {
+        let parts = path.split(separator: "/")
+        guard let first = parts.first else { return nil }
+        var current = prims.first { $0.name == first }
+        for name in parts.dropFirst() {
+            current = current?.child(String(name))
+        }
+        return current
+    }
+}
+
 /// An attribute: declared type, optional default value, optional time samples.
 struct USDAttribute: Equatable {
     var name: String

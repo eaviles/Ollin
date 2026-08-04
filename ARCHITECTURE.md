@@ -2614,6 +2614,104 @@ snapshot at a fixed sample time, and a Metal-gated probe renders frames one
 authored lap apart byte-identical (the loop-wrap guarantee the example's
 `loopDuration` promises).
 
+### UsdSkel skinning and blend shapes (stage 4)
+
+The third consumer of the raw tree is the UsdSkel tier
+(`SceneLoaderUSDSkinning.swift`): skeletons, skin bindings, and blend
+shapes resolve into the deforming node data `drawScene` already poses
+(`SceneSkinning.swift`), so a rigged USD file bends and blends with no new
+user API and no new pose math.
+
+A probe settled the architecture before any code. The platform importer
+does surface UsdSkel API (an `MDLSkeleton` object with correct joint paths
+and bind matrices, a packed joint animation, a morph-deformer component),
+but two findings disqualify it as the data path. First, the joint vertex
+attributes it reports are wrong: an elementSize-1 binding authored as
+`[0, 0, 0, 0, 1, 1, 1, 1]` with unit weights came back as scrambled
+four-wide garbage (`[1, 0, 0, 1]` weights and the like). Second, its
+vertex layout for a deforming mesh is unstable ground: it keeps the
+authored points for a skinned mesh but expands per face corner for an
+unskinned one, and Ollin's own normal generation
+(`addNormals(creaseThreshold:)` in `readMDLMesh`) then splits vertices
+freely (8 authored points became 36), so per-point data (joint weights and
+blend-shape offsets, all authored against the points array) has nothing
+stable to land on.
+
+So a deforming mesh is **rebuilt from the raw tree** on its authored
+points, kept indexed: faces fan-triangulated in authored winding (reversed
+under a `leftHanded` orientation), authored vertex-interpolated normals
+honored (anything else smooths across faces, the `loadMesh` treatment),
+vertex-interpolated `primvars:st` carried with v flipped to the top-left
+convention, and the bound preview surface's diffuse color read raw, a
+display value, deliberately matching how the platform path colors the
+file's unskinned meshes so one file's meshes agree; the spec-correct
+linear→sRGB pass belongs to the native swap. This is the first slice of
+the native mesh read pulled forward, taken only for meshes that deform
+(everything else stays byte-identical on the platform path).
+
+**Joints synthesize into ordinary `SceneNode`s.** Each Skeleton prim
+becomes a container node at the prim's evaluator world transform, holding
+one node per joint nested by the joint paths' own hierarchy (parent = the
+longest strict prefix present in the list), each node's TRS base its local
+rest transform: authored `restTransforms`, or derived from the world-space
+binds (`inv(bind[parent]) · bind[joint]`, the root against the skeleton
+world) when a file authors none. Containers append *after* the platform
+nodes, so every name-bound lookup (xform tracks, rest-pose installs, the
+subscript) keeps finding tree nodes first; `MDLSkeleton` objects are
+filtered out of the platform walk so a bare stand-in never shadows the
+synthesized subtree. Because the synthesized nodes carry real identity
+(`sourceIndex`, a namespace the platform walk never uses), SkelAnimation
+joint tracks bind **by index**, the first USD track kind with real
+identity ahead of the stage-5 switch, and a joint poses by hand like any
+node (`scene["elbow"]?.rotate(...)`).
+
+The skinning math then falls out of the shipped pose path with no new
+code: a joint's scene-root world is skelWorld · jointSkelSpace, and each
+binding's inverse-bind entry is authored as
+`inv(bindTransform) · geomBindTransform`, so the shipped
+`worlds[joint] · inverseBind · point` is exactly the UsdSkel skinning
+equation (bind transforms are world-space at bind; the geometry bind
+transform maps the mesh's authored points to world at bind), and the
+skinned node's own chain stays ignored, the rule glTF already established.
+The skel primvars expand per point: `elementSize` influences each
+(`constant` interpolation is the rigid binding, one shared element riding
+every point), the `skel:joints` remap reordering mesh-local indices into
+skeleton order when authored, influences past the pose path's four dropped
+heaviest-first (the blend renormalizes over what's used).
+
+SkelAnimation channels need no bake, because the schema is already
+TRS-shaped (`translations`/`rotations`/`scales`, each an array over the
+animation's own joint list per sample), so each joint's samplers slice
+directly out of the channels: LINEAR per the interpolation rule stage 3
+pinned, quats real-first from both containers per the parser rule, a
+static (default-only) channel becoming a single held key. Blend shapes
+pair `skel:blendShapes` names with `skel:blendShapeTargets` prims by
+position; offsets land dense or through the sparse `pointIndices` form
+(zeros elsewhere), `normalOffsets` riding when they pair one-to-one. The
+weights channel gathers the animation's `blendShapes` token order into the
+mesh's own target order by name (an unnamed shape holds 0) and binds by
+mesh-prim name (the mesh's node is a platform node with no identity yet),
+joining the joint tracks and the stage-3 xform tracks in the stage's one
+merged animation. The animation source resolves like the spec binds it:
+the `skel:animationSource` relationship on the skeleton or inherited down
+the prim hierarchy, which is also what lets a blend-shape-only mesh with
+no skeleton at all play its weights (the bundled lotus).
+
+Verification: `USDSkinningTests` pins hand-derived skinned positions
+through the full `Scene(contentsOf:)` → `apply` → pose path (a two-joint
+arm bending 90°, the two-influence midpoint, the rigid binding, whose
+expected position also pins morph-before-skin ordering, and the remap
+reproducing the unremapped pose); the usdcat-converted crate must resolve
+identically to the text authoring (matrix4d[] binds, primvar metadata, the
+sparse shape, every channel); and the platform importer's one trustworthy
+skeleton output serves as a second oracle: our inverse binds must invert
+to its `jointBindTransforms`. The bundled pond
+(`make-usd-skinned-scene.swift`: a sea serpent on a five-joint chain with
+two blended influences per point and a geometry bind transform; a lotus
+breathing on a dense-with-normals bloom and a sparse tip curl) rides the
+`usd-skinned-scene` snapshot at a fixed sample time, with the same
+Metal-gated loop-wrap probe the mobile has.
+
 ---
 
 ## The geometry and generator catalog

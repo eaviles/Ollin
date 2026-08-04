@@ -491,6 +491,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("usd-animated-scene",
                  note: "The bundled USD kinetic mobile posed by its authored timeSamples animation at a fixed 2.7 s: the beam mid-turn, the child beam counter-rotated, the moon mid-bob on translation keys, the gem tumbled on quaternion (orient) keys, the pendulum ring swung off vertical through the baked pivot idiom, and the counterweight mid-breath on scale keys. Pins the raw-tree timeSamples read, the union-of-times bake with its TRS decomposition, the timeCodesPerSecond mapping, name-bound track application, and drawScene under the file's own camera and UsdLux lights. Fixed sample time, no shadows, deterministic.",
                  make: { USDAnimatedSceneScene() }),
+    SnapshotCase("usd-skinned-scene",
+                 note: "The bundled USD pond posed by its UsdSkel rig at a fixed 2.6 s: the serpent bent by its five-joint skinned chain (two blended influences per point, joint tracks bound by synthesized node identity, a geomBindTransform mapping the local points) and the lotus mid-breath on its two blend shapes (the dense bloom with normal offsets, the sparse tip curl) via the name-bound weights track from an animation bound with no skeleton. Pins the Skeleton synthesis, the raw-tree deforming-mesh rebuild, the primvar expansion, and drawScene posing it all under the file's own camera and UsdLux lights. Fixed sample time, no shadows, deterministic.",
+                 make: { USDSkinnedSceneScene() }),
     SnapshotCase("skinned-scene",
                  note: "The bundled tidepool asset posed by its authored \"sway\" animation at a fixed 1.9 s: three kelp blades bent by their four-joint skins (per-vertex JOINTS_0/WEIGHTS_0 blends, u8 joints, shared inverse-bind accessor) and the anemone mid-pulse on its two morph targets (a dense puff and a sparse-accessor ripple) via the morph-weights track. Pins the skin parse, the scene-root joint-matrix pose, the ignored-skinned-node-transform rule on the draw path, sparse displacement decode, and weights-channel sampling, drawn through drawScene with the scene's own camera and lights. Fixed sample time, no shadows, deterministic.",
                  make: { SkinnedSceneScene() }),
@@ -662,6 +665,37 @@ private final class USDAnimatedSceneScene: Sketch {
         }
         fill(.white)
         drawScene(mobile)
+    }
+}
+
+/// The committed USDSkinnedScene pond asset, its UsdSkel deformation applied
+/// at a fixed time: the serpent bent by its five-joint skinned chain, the
+/// lotus mid-breath on its two blend-shape weights (no shadows: the asset
+/// carries a sphere light, whose point caster would resolve differently on RT
+/// and non-RT GPUs).
+private final class USDSkinnedSceneScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var pond: Ollin.Scene!
+
+    override func setup() {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // OllinTests
+            .deletingLastPathComponent()   // Tests
+            .deletingLastPathComponent()   // repo root
+            .appendingPathComponent("Examples/3D/Geometry/USDSkinnedScene/stage.usda")
+        pond = Ollin.Scene(contentsOf: url)
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(pond.camera ?? .orbiting(target: Vector3(0, 0.8, 0), radius: 6))
+        ambientLight(Color(white: 0.2))
+        for l in pond.lights { light(l) }
+        if let lap = pond.animations.first {
+            pond.apply(lap, at: 2.6)
+        }
+        fill(.white)
+        drawScene(pond)
     }
 }
 
