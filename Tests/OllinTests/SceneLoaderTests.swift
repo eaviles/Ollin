@@ -503,7 +503,7 @@ struct SceneLoaderTests {
         try Self.storedZip([("stage.usda", Data(lightsUSDA.utf8))]).write(to: url)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let lights = Scene.loadUSDLights(contentsOf: url)
+        let lights = Scene.resolveUSDLights(try USDStage.load(contentsOf: url))
         #expect(lights.count == 7)
         #expect(lights[1].kind == .spot)
         #expect(lights[4].kind == .rect)

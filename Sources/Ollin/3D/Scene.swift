@@ -26,10 +26,10 @@ import simd
 /// is an ordinary `Mesh` (in the node's local space) that also draws standalone.
 /// Structure comes from glTF/GLB files (the node graph, cameras from the core
 /// spec, lights from the punctual-lights extension, animations, skins) and from
-/// the USD family (`.usdz`/`.usdc`/`.usda`/`.usd`: the node graph, cameras, and
-/// the authored UsdLux lights, sphere/distant/shaped-cone/rect/disk/cylinder,
-/// read by Ollin's own parser; USD animations don't carry yet, so drive those
-/// scenes yourself); the remaining mesh formats (`.obj`, `.stl`, …) have no
+/// the USD family (`.usdz`/`.usdc`/`.usda`/`.usd`: the node graph, cameras, the
+/// authored UsdLux lights, sphere/distant/shaped-cone/rect/disk/cylinder, and
+/// the authored transform animation, timeSamples baked into keyframe tracks,
+/// all read by Ollin's own parser); the remaining mesh formats (`.obj`, `.stl`, …) have no
 /// scene graph to keep, so they load as a single-node scene with no cameras or
 /// lights, exactly `loadMesh` in a wrapper.
 public struct Scene: Sendable {
@@ -164,7 +164,9 @@ public struct SceneNode: Sendable {
     /// xyzw quaternion) for a node the file gave TRS rather than a matrix: the
     /// base an animation swaps sampled components into, never derived by
     /// decomposing `localTransform`. `nil` for a matrix-authored node, which no
-    /// track may target.
+    /// track may target. (An animated USD node's base decomposes from its own
+    /// authored op stack at rest instead; its baked tracks overwrite all three
+    /// components at every sample, so the base never shows through.)
     var trs: (t: SIMD3<Float>, r: SIMD4<Float>, s: SIMD3<Float>)?
     /// This node's morph-target weights, one per target of its mesh, blending
     /// each target's displacement into the drawn shape (0 leaves it out, 1 adds
@@ -248,11 +250,11 @@ extension Scene {
     /// Load a scene from a file, keeping its structure. `.gltf`/`.glb` files keep
     /// the full graph: named nodes with transforms, cameras, and punctual lights.
     /// The USD family (`.usdz`, `.usdc`, `.usda`, `.usd`) keeps its graph too:
-    /// named nodes, transforms, cameras, and the authored UsdLux lights, though
-    /// not its animations (see `loadModelIOScene`). Any other format `loadMesh`
-    /// reads (`.obj`, `.stl`, …) has no scene graph, so it loads as one node
-    /// named after the file, with no cameras or lights. Returns `nil` if the
-    /// file can't be read or holds nothing. Mirrors `Mesh(contentsOf:)`.
+    /// named nodes, transforms, cameras, the authored UsdLux lights, and the
+    /// authored transform animation (see `loadModelIOScene`). Any other format
+    /// `loadMesh` reads (`.obj`, `.stl`, …) has no scene graph, so it loads as
+    /// one node named after the file, with no cameras or lights. Returns `nil`
+    /// if the file can't be read or holds nothing. Mirrors `Mesh(contentsOf:)`.
     public init?(contentsOf url: URL) {
         switch url.pathExtension.lowercased() {
         case "gltf", "glb":

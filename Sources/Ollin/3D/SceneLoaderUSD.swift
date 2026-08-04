@@ -16,11 +16,12 @@ import ModelIO
 // - Cameras arrive as typed camera objects (vertical field of view in degrees;
 //   an orthographic aperture in tenths of a world unit).
 // - Lights do *not* survive the importer (light prims come back as bare
-//   grouping nodes with even their transforms dropped), so `lights` fills from
-//   Ollin's own parser instead: `loadUSDLights` reads the same file's UsdLux
-//   prims through the raw OllinUSD tree (see `SceneLoaderUSDLights.swift`).
-//   Animation is not carried, and skinning arrives pre-baked at bind pose;
-//   those stay glTF features for now.
+//   grouping nodes with even their transforms dropped), and neither does
+//   animation, so both fill from Ollin's own parser instead: one raw-tree
+//   read resolves the UsdLux prims onto `lights`
+//   (`SceneLoaderUSDLights.swift`) and the authored xformOp timeSamples onto
+//   `animations` (`SceneLoaderUSDAnimation.swift`). Skinning arrives
+//   pre-baked at bind pose; that stays a glTF feature for now.
 
 #if canImport(ModelIO)
 extension Scene {
@@ -28,9 +29,9 @@ extension Scene {
     /// Read a USD file's default layer with structure kept: the node tree (names,
     /// local transforms, per-node meshes in node-local space) plus the authored
     /// cameras resolved through their node's world transform, exactly the glTF
-    /// treatment, and the authored UsdLux lights read by Ollin's own parser
-    /// (see above). Returns `nil` when the file can't be read or holds no
-    /// objects at all.
+    /// treatment, and the authored UsdLux lights and transform animation read
+    /// by Ollin's own parser (see above). Returns `nil` when the file can't be
+    /// read or holds no objects at all.
     static func loadModelIOScene(_ url: URL) -> Scene? {
         let asset = MDLAsset(url: url)
         guard asset.count > 0 else { return nil }
@@ -53,7 +54,19 @@ extension Scene {
         let sceneCenter = center.map { ($0.min + $0.max) * 0.5 }
         scene.cameras = cameraRefs.map { resolveCamera($0.camera, world: $0.world,
                                                        sceneCenter: sceneCenter) }
-        scene.lights = loadUSDLights(contentsOf: url)
+
+        // One raw-tree read serves what the importer drops: lights and the
+        // authored transform animation (whose tracks bind by node name; each
+        // animated prim's rest pose becomes the node's TRS base).
+        if let stage = try? USDStage.load(contentsOf: url) {
+            scene.lights = resolveUSDLights(stage)
+            if let (animation, restPoses) = resolveUSDAnimation(stage) {
+                scene.animations = [animation]
+                for (name, pose) in restPoses {
+                    installRestPose(name, pose, in: &scene.nodes)
+                }
+            }
+        }
         return scene
     }
 

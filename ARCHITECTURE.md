@@ -2555,6 +2555,65 @@ I/O accept; `SceneLoaderTests` pins the full rig, and the example stage's
 authored rig (one light of every mapped kind, `make-usd-scene.swift`) rides
 the `usd-scene` snapshot.
 
+### Transform animation (stage 3)
+
+The second consumer of the raw tree is transform animation
+(`SceneLoaderUSDAnimation.swift`): the xformOp `timeSamples` no platform
+importer carries become ordinary `SceneAnimation` tracks, so the shipped
+`apply(_:at:)` plays a USD file on the sketch clock with no new user API. A
+flattened layer has no named clips, so a stage with any sampled xformOp
+yields exactly one (unnamed) animation for its whole timeline;
+`scene.animations.first` is the way in.
+
+The design choice, made over mapping plain translate/orient/scale ops
+one-to-one onto track kinds: **bake**. For each animated prim, the composed
+local matrix is evaluated at the union of the prim's authored sample times
+and decomposed into translation/rotation/scale keys (mirrored basis folded
+into a negative x scale; consecutive quaternion keys kept on one hemisphere
+so the sampler's shortest arc is the baked arc). Baking reuses the stage-2
+evaluator wholesale (`localXform(at:)` samples each op's attribute at a time
+code instead of reading `authoredValue`), which is what lets *every* authored
+op form play through the existing three track kinds: pivot pairs
+(`translate:pivot` + `!invert!`, whose baked translation keys orbit),
+single-axis ops, mixed orders, whole-matrix ops. The one envelope edge: an op
+stack whose composition genuinely shears (matrix ops interleaved with
+non-uniform scales) keeps only its TRS part. Each animated prim's rest pose
+(the decomposed stack at rest) installs as the node's TRS base, the field
+`apply` requires; since every baked track carries all three samplers, the
+base never actually shows through.
+
+Per-attribute sampling (`USDAttribute.sampled(at:)`) encodes a spec fact
+worth pinning: **interpolation is a runtime stage setting, never authored in
+a file** (`UsdStage::SetInterpolationType`; linear is the default every
+consumer sees), so baked tracks are LINEAR. Under linear interpolation the
+lerp-capable types blend componentwise, quaternion types slerp (the
+reference's rule for `GfQuat*`), and everything else holds, which is the
+held/STEP semantic exactly where it can occur. Time codes convert to seconds
+through the layer's `timeCodesPerSecond` (falling back to `framesPerSecond`,
+then the spec default 24), offset by `startTimeCode`, so a Maya-style
+frame-101 opening still starts at zero.
+
+**Tracks bind by node name for now**, not index: `SceneAnimation.Track` grew
+an optional `nodeName` beside the glTF `nodeIndex`, because the platform
+importer that still builds the node tree keeps no prim identity to index
+into. A track (and its rest-pose install) finds the first node of its prim's
+name depth-first, the subscript's rule, so a name duplicated across branches
+animates its first match; the native scene walk (stage 5) replaces name
+binding with real per-prim identity.
+
+Verification closed the stage-3 vector gap: macOS ships `/usr/bin/usdcat`,
+a *reference crate writer*, so `USDAnimationTests` converts a hand-authored
+animated usda to a real crate 0.8 file at test time (tool-gated, like the
+system-asset vectors) and pins the two containers baking identical tracks,
+which exercises the crate TimeSamples decode (the doubly-indirected layout,
+previously spec-only) against reference output. The bundled kinetic mobile
+(`make-usd-animated-scene.swift`, one part per authored form: rotateXYZ
+spin, nested counter-spin, translate bob, quaternion orient tumble, the
+pivot-idiom pendulum, scale breathing) rides the `usd-animated-scene`
+snapshot at a fixed sample time, and a Metal-gated probe renders frames one
+authored lap apart byte-identical (the loop-wrap guarantee the example's
+`loopDuration` promises).
+
 ---
 
 ## The geometry and generator catalog

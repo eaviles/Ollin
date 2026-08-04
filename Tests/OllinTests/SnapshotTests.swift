@@ -488,6 +488,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("usd-scene",
                  note: "The bundled USD sculpture court loaded from the repo (the structure-preserving Model I/O walk: named nodes, nested plinth transforms, node-local meshes wearing their authored preview-surface colors) drawn through the file's own camera and its authored UsdLux rig, one light of every mapped kind (distant/sphere/shaped-cone/rect/disk/cylinder), resolved by Ollin's parser through each prim's xformOps. No shadows, no time, deterministic.",
                  make: { USDSceneScene() }),
+    SnapshotCase("usd-animated-scene",
+                 note: "The bundled USD kinetic mobile posed by its authored timeSamples animation at a fixed 2.7 s: the beam mid-turn, the child beam counter-rotated, the moon mid-bob on translation keys, the gem tumbled on quaternion (orient) keys, the pendulum ring swung off vertical through the baked pivot idiom, and the counterweight mid-breath on scale keys. Pins the raw-tree timeSamples read, the union-of-times bake with its TRS decomposition, the timeCodesPerSecond mapping, name-bound track application, and drawScene under the file's own camera and UsdLux lights. Fixed sample time, no shadows, deterministic.",
+                 make: { USDAnimatedSceneScene() }),
     SnapshotCase("skinned-scene",
                  note: "The bundled tidepool asset posed by its authored \"sway\" animation at a fixed 1.9 s: three kelp blades bent by their four-joint skins (per-vertex JOINTS_0/WEIGHTS_0 blends, u8 joints, shared inverse-bind accessor) and the anemone mid-pulse on its two morph targets (a dense puff and a sparse-accessor ripple) via the morph-weights track. Pins the skin parse, the scene-root joint-matrix pose, the ignored-skinned-node-transform rule on the draw path, sparse displacement decode, and weights-channel sampling, drawn through drawScene with the scene's own camera and lights. Fixed sample time, no shadows, deterministic.",
                  make: { SkinnedSceneScene() }),
@@ -629,6 +632,36 @@ private final class USDSceneScene: Sketch {
         for l in court.lights { light(l) }
         fill(.white)
         drawScene(court)
+    }
+}
+
+/// The committed USDAnimatedScene example asset, its authored timeSamples
+/// animation applied at a fixed time, drawn through its own camera and UsdLux
+/// lights (no shadows: a point-light caster would resolve differently on RT
+/// and non-RT GPUs).
+private final class USDAnimatedSceneScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var mobile: Ollin.Scene!
+
+    override func setup() {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // OllinTests
+            .deletingLastPathComponent()   // Tests
+            .deletingLastPathComponent()   // repo root
+            .appendingPathComponent("Examples/3D/Geometry/USDAnimatedScene/stage.usda")
+        mobile = Ollin.Scene(contentsOf: url)
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(mobile.camera ?? .orbiting(target: Vector3(0, 1.6, 0), radius: 7))
+        ambientLight(Color(white: 0.2))
+        for l in mobile.lights { light(l) }
+        if let lap = mobile.animations.first {
+            mobile.apply(lap, at: 2.7)
+        }
+        fill(.white)
+        drawScene(mobile)
     }
 }
 

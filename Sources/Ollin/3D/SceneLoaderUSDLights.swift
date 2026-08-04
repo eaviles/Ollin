@@ -30,13 +30,8 @@ import simd
 
 extension Scene {
 
-    /// The authored UsdLux lights of the USD file at `url`, resolved through
-    /// their prims' world transforms. An unreadable file resolves to none.
-    static func loadUSDLights(contentsOf url: URL) -> [Light] {
-        guard let stage = try? USDStage.load(contentsOf: url) else { return [] }
-        return resolveUSDLights(stage)
-    }
-
+    /// The authored UsdLux lights of `stage`, resolved through their prims'
+    /// world transforms.
     static func resolveUSDLights(_ stage: USDStage) -> [Light] {
         let lightTypes: Set<String> = ["SphereLight", "DistantLight", "RectLight",
                                        "DiskLight", "CylinderLight"]

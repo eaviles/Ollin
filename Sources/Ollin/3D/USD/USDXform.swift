@@ -25,24 +25,26 @@ import simd
 
 extension USDPrim {
 
+    /// The authored `xformOpOrder` tokens, or empty when the prim has none
+    /// (in which case no op applies).
+    var xformOpOrderTokens: [String] {
+        switch attribute("xformOpOrder")?.authoredValue {
+        case .tokenArray(let t): t
+        case .stringArray(let s): s
+        default: []
+        }
+    }
+
     /// The prim's local transform composed from its authored xformOps per
     /// `xformOpOrder`, as a column-vector matrix, plus whether the stack
     /// resets (ignores every inherited transform). No `xformOpOrder` means
-    /// the identity: authored ops outside the order don't apply.
-    func localXform() -> (matrix: simd_double4x4, resetsStack: Bool) {
-        guard let order = attribute("xformOpOrder")?.authoredValue else {
-            return (matrix_identity_double4x4, false)
-        }
-        let tokens: [String]
-        switch order {
-        case .tokenArray(let t): tokens = t
-        case .stringArray(let s): tokens = s
-        default: return (matrix_identity_double4x4, false)
-        }
-
+    /// the identity: authored ops outside the order don't apply. Passing a
+    /// time code samples each op's attribute there (`sampled(at:)`); nil
+    /// reads the rest values (`authoredValue`).
+    func localXform(at time: Double? = nil) -> (matrix: simd_double4x4, resetsStack: Bool) {
         var matrix = matrix_identity_double4x4
         var resets = false
-        for token in tokens {
+        for token in xformOpOrderTokens {
             if token == "!resetXformStack!" {
                 // Ops listed before the reset belong to the discarded stack.
                 matrix = matrix_identity_double4x4
@@ -55,7 +57,9 @@ extension USDPrim {
                 name = String(name.dropFirst("!invert!".count))
                 inverted = true
             }
-            guard let value = attribute(name)?.authoredValue,
+            let attr = attribute(name)
+            let value = time.map { t in attr?.sampled(at: t) } ?? attr?.authoredValue
+            guard let value,
                   let op = Self.opMatrix(opName: name, value: value, inverted: inverted)
             else { continue }  // a dangling or undecodable op is skipped, not fatal
             matrix *= op
@@ -186,6 +190,56 @@ extension USDAttribute {
     /// The value the attribute holds "now": its default, or the first time
     /// sample when only samples were authored (an animated prim's rest shape).
     var authoredValue: USDValue? { value ?? timeSamples.first?.value }
+
+    /// The value at time code `time`: the bracketing samples interpolated the
+    /// way the reference runtime's default (linear) stage setting does,
+    /// componentwise for scalars and tuples, along the arc for quaternion
+    /// types, held for everything else, clamped to the end samples outside
+    /// the sampled range. (Interpolation is a runtime choice, never authored
+    /// in a file; linear is the default every consumer sees.) An attribute
+    /// with no samples answers with its default value at every time.
+    func sampled(at time: Double) -> USDValue? {
+        guard let first = timeSamples.first, let last = timeSamples.last else { return value }
+        if time <= first.time { return first.value }
+        if time >= last.time { return last.value }
+        // Binary search: the last sample at or before `time` (samples ascend).
+        var lo = 0, hi = timeSamples.count - 1
+        while hi - lo > 1 {
+            let mid = (lo + hi) / 2
+            if timeSamples[mid].time <= time { lo = mid } else { hi = mid }
+        }
+        let s0 = timeSamples[lo], s1 = timeSamples[lo + 1]
+        let span = s1.time - s0.time
+        guard span > 0 else { return s0.value }
+        return Self.interpolate(s0.value, s1.value, (time - s0.time) / span,
+                                isQuaternion: typeName.hasPrefix("quat"))
+    }
+
+    /// Linear interpolation between two sampled values where the type
+    /// supports it (scalars, matching-arity tuples, quaternions spherically);
+    /// a non-lerpable or shape-mismatched pair holds the earlier sample, the
+    /// reference rule for types outside the lerp set.
+    private static func interpolate(_ a: USDValue, _ b: USDValue, _ f: Double,
+                                    isQuaternion: Bool) -> USDValue {
+        switch (a, b) {
+        case (.double(let x), .double(let y)):
+            return .double(x + (y - x) * f)
+        case (.tuple(let x), .tuple(let y)) where x.count == y.count:
+            if isQuaternion, x.count == 4 { return .tuple(slerpComponents(x, y, f)) }
+            return .tuple(zip(x, y).map { $0 + ($1 - $0) * f })
+        default:
+            return a
+        }
+    }
+
+    /// Spherical interpolation of two (real, i, j, k) component lists.
+    private static func slerpComponents(_ a: [Double], _ b: [Double], _ f: Double) -> [Double] {
+        let qa = simd_quatd(ix: a[1], iy: a[2], iz: a[3], r: a[0])
+        let qb = simd_quatd(ix: b[1], iy: b[2], iz: b[3], r: b[0])
+        guard qa.length > 1e-12, qb.length > 1e-12 else { return a }
+        let q = simd_slerp(qa.normalized, qb.normalized, f)
+        return [q.real, q.imag.x, q.imag.y, q.imag.z]
+    }
 }
 
 extension USDStage {
