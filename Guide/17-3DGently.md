@@ -493,13 +493,42 @@ The one new move is `withBody`. In Chapter 9 you drew a body by translating to i
 
 The figure is the whole idea in one frame: a crate pyramid built in `setup()` (each crate one `addBody` with a `.box` collider), a dense steel ball thrown at it with an opening `velocity`, and frame 92 of the collapse. Nothing in it is animated by hand, and nothing in it is random either; the solver is deterministic, so this exact wreck replays every run.
 
-Colliders come from a small catalog: `.box`, `.sphere`, `.capsule`, `.cylinder`, a convex `.hull` of your own points, and a static `.mesh` for scenery a body can't be. `connect` links bodies with joints, the 2D kinds plus `.ball`, the free-swiveling socket a hanging chain is made of. And the cursor reaches through the camera: `grabBody(at:in:)` ray-picks the body under the mouse and `dragGrab(_:to:)` slides it across the view at the depth it was picked, which is how you rummage through a pile in a running sketch.
+Colliders come from a small catalog: `.box`, `.sphere`, `.capsule`, `.cylinder`, their tapered cousins (`.cone`, `.taperedCylinder`, `.taperedCapsule`), a convex `.hull` of your own points, and a static `.mesh` for scenery a body can't be. `connect` links bodies with joints, the 2D kinds plus `.ball`, the free-swiveling socket a hanging chain is made of. And the cursor reaches through the camera: `grabBody(at:in:)` ray-picks the body under the mouse and `dragGrab(_:to:)` slides it across the view at the depth it was picked, which is how you rummage through a pile in a running sketch.
+
+A body doesn't have to be one shape, either. `.compound` fuses several colliders into a single rigid body, each part posed in the body's local space, and the mass, balance, and spin all come from the whole assembly:
+
+```swift
+var parts: [Collider3D.Part] = [
+    .part(.cylinder(height: 0.2, radius: 0.32),
+          rotated: .pi / 2, axis: .unitX, density: 2),   // the metal hub
+]
+for arm in 0 ..< 4 {
+    let angle = Double(arm) * .pi / 2
+    parts.append(.part(.box(width: 1.5, height: 0.26, depth: 0.08),
+                       at: Vector3(cos(angle), sin(angle), 0) * 1.11,
+                       rotated: angle, axis: .unitZ))    // a blade
+}
+let cross = world.addBody(.compound(parts), at: hubCenter)
+```
+
+That's a windmill's blade cross: five shapes, one body. A part's own `density` weighs it against the rest, which is how a hammer gets a head that leads its swing, and `withBody` still draws the whole thing; translate to each part's pose inside the block and draw its shape.
 
 Hinges and sliders can also be *powered*. Give one `limits` when you connect it (measured from the pose it was built in, so 0 means "as built") and the returned joint carries a small motor: `drive(at: 2.5)` turns it at a steady rate, `drive(to: 0)` is a spring servo that seeks a pose and holds it, `stopMotor()` cuts the power, and `friction` is the drag that winds a freewheeling hinge down. The servo's `strength` is a torque cap, and a weak one is a *character* knob, not a compromise: it's what makes a door closer something a thrown ball can still barge through.
 
 <img src="Images/17-3DGently/Windmill.jpg" alt="A four-bladed windmill mid-turn on a dark ground, colored balls scattered across the floor, and two low swing gates on either side both pushed open by balls rolling through them" width="560">
 
-One motored hinge does all the animating here: the blades are welded to a hub, the hub rides a `.revolute` driven at a constant rate, and the balls it bats away shove through swing gates on either side, each a limited hinge with springy stops (`softenLimits`) held shut by a `drive(to: 0)` closer too weak to argue with a rolling ball. The interactive version is the [`3D/Physics/Windmill`](../Examples/3D/Physics/Windmill/) example, where the space bar cuts the motor and you can watch hinge friction coast the mill to a stop.
+One motored hinge does all the animating here: the compound blade cross from above rides a `.revolute` driven at a constant rate, and the balls it bats away shove through swing gates on either side, each a limited hinge with springy stops (`softenLimits`) held shut by a `drive(to: 0)` closer too weak to argue with a rolling ball. The interactive version is the [`3D/Physics/Windmill`](../Examples/3D/Physics/Windmill/) example, where the space bar cuts the motor and you can watch hinge friction coast the mill to a stop.
+
+And the landscape you grew a few pages back can hold all of this up. `.heightfield` takes a `Heightfield` directly, sized exactly like its `mesh(width:depth:height:)`, so the collider and the drawn mesh trace one surface:
+
+```swift
+world.addBody(.heightfield(land, width: 14, depth: 14, height: 4.2),
+              at: .zero, kind: .static)
+```
+
+<img src="Images/17-3DGently/Rockslide.jpg" alt="Brightly colored rocks, spheres, boxes, and cones, spread mid-slide down a pale eroded mountainside, a gold box caught mid-tumble, green scrub at the foot of the slope" width="560">
+
+The rocks are spheres, boxes, and cones dropped along the ridge, and the ravines the rain carved are the same ravines that funnel them down. For scenery that arrives as a file instead of a field, `world.addStaticColliders(from: scene)` walks a loaded `Scene` and turns every mesh into a static collider at its authored place, so a ball can roll through the hall you imported. The interactive slide, with its perpetual rock feed and a dice knob that regrows the mountain, is the [`3D/Physics/Rockslide`](../Examples/3D/Physics/Rockslide/) example.
 
 You don't animate a pile; you drop one.
 

@@ -32,15 +32,29 @@ typedef enum {
 } CJoltMotionType;
 
 typedef enum {
-    CJOLT_SHAPE_BOX = 0,         // a, b, c = half extents
-    CJOLT_SHAPE_SPHERE = 1,      // a = radius
-    CJOLT_SHAPE_CAPSULE = 2,     // a = cylinder half height, b = radius
-    CJOLT_SHAPE_CYLINDER = 3,    // a = half height, b = radius
-    CJOLT_SHAPE_CONVEX_HULL = 4, // points/pointCount
-    CJOLT_SHAPE_MESH = 5,        // points + indices (static bodies only)
+    CJOLT_SHAPE_BOX = 0,              // a, b, c = half extents
+    CJOLT_SHAPE_SPHERE = 1,           // a = radius
+    CJOLT_SHAPE_CAPSULE = 2,          // a = cylinder half height, b = radius
+    CJOLT_SHAPE_CYLINDER = 3,         // a = half height, b = radius
+    CJOLT_SHAPE_CONVEX_HULL = 4,      // points/pointCount
+    CJOLT_SHAPE_MESH = 5,             // points + indices (static bodies only)
+    CJOLT_SHAPE_TAPERED_CAPSULE = 6,  // a = cap-center half height, b = top radius, c = bottom radius (both > 0)
+    CJOLT_SHAPE_TAPERED_CYLINDER = 7, // a = half height, b = top radius, c = bottom radius (a cone at b = 0)
+    CJOLT_SHAPE_HEIGHT_FIELD = 8,     // heights/sampleCount + fieldOffset/fieldScale (static bodies only)
+    CJOLT_SHAPE_COMPOUND = 9,         // children/childCount
 } CJoltShapeType;
 
+typedef struct CJoltShapeDesc CJoltShapeDesc;
+
+/// One child of a compound shape: a shape at a fixed local pose inside the
+/// body. Children may themselves be compounds (the tree is built recursively).
 typedef struct {
+    const CJoltShapeDesc *shape;
+    float position[3];
+    float rotation[4]; // quaternion x, y, z, w (identity = 0,0,0,1)
+} CJoltShapeChild;
+
+struct CJoltShapeDesc {
     CJoltShapeType type;
     float a, b, c;
     /// Hull/mesh vertices as xyz triples; pointCount is the vertex count.
@@ -49,9 +63,20 @@ typedef struct {
     /// Mesh triangle indices, 3 per triangle; indexCount is the index count.
     const uint32_t *indices;
     int32_t indexCount;
+    /// Height-field samples: sampleCount * sampleCount heights, row major with
+    /// the row index running along +z. The surface is
+    /// fieldOffset + fieldScale * (x, heights[z * sampleCount + x], z);
+    /// sampleCount must be a multiple of 2 (a power of 2 stores best).
+    const float *heights;
+    int32_t sampleCount;
+    float fieldOffset[3];
+    float fieldScale[3];
+    /// Compound children (used when type is CJOLT_SHAPE_COMPOUND).
+    const CJoltShapeChild *children;
+    int32_t childCount;
     /// kg/m³ for dynamic mass; <= 0 uses the library default (1000).
     float density;
-} CJoltShapeDesc;
+};
 
 typedef struct {
     CJoltShapeDesc shape;

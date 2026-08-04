@@ -3013,6 +3013,46 @@ behaviorally, always against its counterfactual twin (a capped motor against
 an unlimited one, a limited pendulum against a free one, soft limits against
 hard), the same discipline as the rest of the suite.
 
+**Compound bodies and world-geometry colliders** (stage 3) widen the shape
+catalog without touching the API's shape: `CJoltShapeDesc` grew a recursive
+child array (`CJoltShapeChild`, a desc pointer plus a local pose), a
+height-field leg (samples plus offset/scale), and the tapered forms, and
+`makeShape` recurses through `StaticCompoundShapeSettings::AddShape` (whose
+`Create` collapses a single posed child to a rotated/translated shape and a
+single unposed child to the child itself, which is why an offset single shape
+costs nothing extra). Marshaling moved from the fixed two-deep
+`withUnsafeBufferPointer` nesting to a `ShapeDescArena` (plain allocations
+owned by an object held across the create call with `withExtendedLifetime`),
+because a compound makes the number of pinned buffers data-dependent, which
+static scope nesting cannot express. Two facts here are load-bearing. First,
+`mAllowDynamicOrKinematic` must be `false` for any shape whose
+`MustBeStatic()` is true (mesh, height field, a compound containing either):
+allowing the switch makes body creation compute mass properties, which those
+shapes cannot provide, and the library *traps*; this was a latent stage-1 bug
+(nothing had ever actually created a `.mesh`-collider body) that the stage-3
+tests exposed. The static pin now asks the created shape rather than
+pattern-matching the descriptor type, `cjolt_body_set_motion` refuses the
+switch for the same shapes, and the Swift side notes once when a dynamic body
+gets pinned. Second, the height-field mapping: the solver wants an n×n sample
+grid with n a multiple of its block size (a power of two stores best) and
+defines the surface as `offset + scale · (x, h[z·n+x], z)`, so `Collider3D`
+resamples the `Heightfield` bilinearly onto the smallest power of two
+covering the source grid's cells (4…1024 per side; a 257-sample
+diamond-square field lands on its natural 256) and derives offset/scale to
+reproduce `mesh(width:depth:height:)`'s centred sizing exactly, storing 16
+bits per sample so the collider tracks the drawn mesh to well under a visible
+error. Per-part densities ride each child's own desc (the body's relative
+density multiplies the part's). Scene colliders are a walk over the
+package-visible `Scene.visitWorlds`: each mesh node's composed world
+transform is baked into its triangles (general matrices, scale and shear
+included, which a body pose could not carry) and added as one static mesh
+body at identity, followed by an `OptimizeBroadPhase`. `Collider3DTests`
+pins the tier: compound mass sums and balance against a counterfactual twin,
+offset and rotated part poses, tapered-shape masses against their analytic
+neighbours (a cone weighs a third of its cylinder), the flat and non-square
+height-field mappings, the off-the-edge void, the scene-collider transform
+composition, and a byte-identical compound-on-terrain replay.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

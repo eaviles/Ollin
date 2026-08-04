@@ -1,9 +1,10 @@
 // figure: frame=260
 //
-// Guide listing (Chapter 17): joint motors. A hinge driven at a constant rate
-// spins the blade cross, staged balls drop into the sweep and get batted at
-// the swing gates, each a limited hinge held shut by a weak position motor.
-// No random anywhere, so the moment replays identically.
+// Guide listing (Chapter 17): joint motors and compound bodies. The blade
+// cross is ONE compound body (hub plus four blades, posed as parts) on a
+// hinge driven at a constant rate; staged balls drop into the sweep and get
+// batted at the swing gates, each a limited hinge held shut by a weak
+// position motor. No random anywhere, so the moment replays identically.
 import Ollin
 import OllinPhysics
 
@@ -23,19 +24,19 @@ final class Windmill: Sketch {
         let tower = world.addBody(.box(width: 0.4, height: 2.9, depth: 0.3),
                                   at: Vector3(0, 1.45, -0.5), kind: .static)
         tower.userData = Color(hex: 0x6B5A48)
-        let hub = world.addBody(.cylinder(height: 0.2, radius: 0.32),
-                                at: hubCenter, rotated: .pi / 2, axis: .unitX,
-                                density: 2)
+        var parts: [Collider3D.Part] = [
+            .part(.cylinder(height: 0.2, radius: 0.32),
+                  rotated: .pi / 2, axis: .unitX, density: 2),
+        ]
         for arm in 0 ..< 4 {
             let angle = Double(arm) * .pi / 2
             let direction = Vector3(cos(angle), sin(angle), 0)
-            let blade = world.addBody(.box(width: 1.5, height: 0.26, depth: 0.08),
-                                      at: hubCenter + direction * 1.11,
-                                      rotated: angle, axis: .unitZ)
-            blade.userData = Color(hex: 0xE8DCC5)
-            world.connect(hub, blade, .weld)
+            parts.append(.part(.box(width: 1.5, height: 0.26, depth: 0.08),
+                               at: direction * 1.11, rotated: angle, axis: .unitZ))
         }
-        let mill = world.connect(tower, hub, .revolute(at: hubCenter, axis: .unitZ))
+        let cross = world.addBody(.compound(parts), at: hubCenter)
+        cross.userData = Color(hex: 0xE8DCC5)
+        let mill = world.connect(tower, cross, .revolute(at: hubCenter, axis: .unitZ))
         mill.drive(at: 2.5, strength: 500)
 
         for x in [3.4, -3.4] {
@@ -82,23 +83,35 @@ final class Windmill: Sketch {
 
         for body in world.bodies {
             withBody(body) {
-                switch body.collider {
-                case .box(let w, let h, let d):
-                    fill(body.userData as? Color ?? .white)
-                    material(.dielectric(roughness: 0.6))
-                    drawBox(width: w, height: h, depth: d)
-                case .cylinder(let h, let r):
-                    fill(Color(hex: 0xB8C0CC))
-                    material(.metal(roughness: 0.35))
-                    drawCylinder(radius: r, height: h)
-                case .sphere(let r):
-                    fill(body.userData as? Color ?? .white)
-                    material(.dielectric(roughness: 0.3))
-                    drawSphere(radius: r)
-                default:
-                    break
+                drawCollider(body.collider, tint: body.userData as? Color)
+            }
+        }
+    }
+
+    func drawCollider(_ collider: Collider3D, tint: Color?) {
+        switch collider {
+        case .box(let w, let h, let d):
+            fill(tint ?? .white)
+            material(.dielectric(roughness: 0.6))
+            drawBox(width: w, height: h, depth: d)
+        case .cylinder(let h, let r):
+            fill(Color(hex: 0xB8C0CC))
+            material(.metal(roughness: 0.35))
+            drawCylinder(radius: r, height: h)
+        case .sphere(let r):
+            fill(tint ?? .white)
+            material(.dielectric(roughness: 0.3))
+            drawSphere(radius: r)
+        case .compound(let parts):
+            for part in parts {
+                withState {
+                    translate(part.position)
+                    if part.angle != 0 { rotate(part.angle, axis: part.axis) }
+                    drawCollider(part.collider, tint: tint)
                 }
             }
+        default:
+            break
         }
     }
 }

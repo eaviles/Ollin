@@ -35,6 +35,34 @@ func withFloats3(_ values: (Float, Float, Float),
     }
 }
 
+/// Scratch storage for a shape description's flat data (hull points, mesh
+/// indices, height-field samples, compound child descriptors): plain
+/// allocations the arena owns and frees, pinned for as long as the arena
+/// lives. Compound colliders make the number of buffers data-dependent (one
+/// per child, recursively), which rules out the fixed
+/// `withUnsafeBufferPointer` nesting the simple shapes used; keep the arena
+/// alive across the create call with `withExtendedLifetime`.
+final class ShapeDescArena {
+    private var deallocators: [() -> Void] = []
+
+    /// Copies `values` into arena-owned storage and returns its base pointer
+    /// (`nil` for an empty array).
+    func store<T>(_ values: [T]) -> UnsafePointer<T>? {
+        guard !values.isEmpty else { return nil }
+        let buffer = UnsafeMutableBufferPointer<T>.allocate(capacity: values.count)
+        _ = buffer.initialize(fromContentsOf: values)
+        deallocators.append {
+            buffer.deinitialize()
+            buffer.deallocate()
+        }
+        return UnsafePointer(buffer.baseAddress!)
+    }
+
+    deinit {
+        for free in deallocators { free() }
+    }
+}
+
 func withFloats4(_ values: (Float, Float, Float, Float),
                  _ body: (UnsafePointer<Float>) -> Void) {
     withUnsafeBytes(of: values) {

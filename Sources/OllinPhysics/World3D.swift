@@ -1,4 +1,5 @@
 import Foundation
+import simd
 import Ollin
 internal import CJolt
 
@@ -117,27 +118,19 @@ public final class World3D {
         desc.gravityFactor = 1
         desc.allowSleep = true
 
-        // The collider's flat vertex data must stay alive across the create
-        // call; both arrays are bound inside one scope below.
-        let (shape, points, indices) = collider.shapeDesc(unitsPerMeter: unitsPerMeter)
-        desc.shape = shape
-        // `density` is relative (1 = the default material); the solver works in
-        // kg/m³, where the default material is water-like at 1000.
-        desc.shape.density = Float(max(0.0001, density) * 1000)
-        let id = points.withUnsafeBufferPointer { pointBuffer in
-            indices.withUnsafeBufferPointer { indexBuffer in
-                var bound = desc
-                if !points.isEmpty {
-                    bound.shape.points = pointBuffer.baseAddress
-                    bound.shape.pointCount = Int32(points.count / 3)
-                }
-                if !indices.isEmpty {
-                    bound.shape.indices = indexBuffer.baseAddress
-                    bound.shape.indexCount = Int32(indices.count)
-                }
-                return withUnsafePointer(to: &bound) {
-                    cjolt_body_create(handle, $0)
-                }
+        // The collider's flat data (hull points, mesh indices, height samples,
+        // compound children) lives in the arena for the span of the create.
+        let arena = ShapeDescArena()
+        desc.shape = collider.shapeDesc(unitsPerMeter: unitsPerMeter,
+                                        density: density, arena: arena)
+        if kind == .dynamic, collider.mustBeStatic {
+            noteOnce("mesh and heightfield colliders are static-only; the body "
+                     + "is pinned in place (use hull or a compound of solid "
+                     + "shapes for moving bodies)")
+        }
+        let id = withExtendedLifetime(arena) {
+            withUnsafePointer(to: &desc) {
+                cjolt_body_create(handle, $0)
             }
         }
 
@@ -145,6 +138,36 @@ public final class World3D {
                           density: density)
         bodies.append(body)
         return body
+    }
+
+    /// Add every mesh in a loaded `Scene` as static scenery the dynamic bodies
+    /// collide with: one static mesh body per mesh node, its triangles baked
+    /// at the node's world transform (nested nodes, authored rotations, and
+    /// scales all compose). Colliders take each mesh as authored, at rest:
+    /// skins and morph targets aren't posed. Returns the bodies, mostly to
+    /// ignore; the scene keeps drawing through `drawScene(_:)`.
+    ///
+    /// ```swift
+    /// let hall = loadScene("hall.usdz")!
+    /// world.addStaticColliders(from: hall)
+    /// ```
+    @discardableResult
+    public func addStaticColliders(from scene: Scene, friction: Double = 0.5,
+                                   restitution: Double? = nil) -> [Body3D] {
+        var added: [Body3D] = []
+        Scene.visitWorlds(scene.nodes, parent: matrix_identity_float4x4) { node, world in
+            guard var mesh = node.mesh, !mesh.isEmpty else { return }
+            mesh.positions = mesh.positions.map { position in
+                let w = world * SIMD4<Float>(Float(position.x), Float(position.y),
+                                             Float(position.z), 1)
+                return Vector3(Double(w.x), Double(w.y), Double(w.z))
+            }
+            added.append(addBody(.mesh(mesh), at: .zero, kind: .static,
+                                 friction: friction, restitution: restitution))
+        }
+        // Many statics arrived at once; rebuild the broad-phase tree.
+        cjolt_world_optimize(handle)
+        return added
     }
 
     /// Link two rigid bodies with a `Joint3D` and return it: a hinge, a

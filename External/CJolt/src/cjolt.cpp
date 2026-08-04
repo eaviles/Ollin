@@ -15,8 +15,12 @@
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Collision/Shape/CylinderShape.h>
+#include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
+#include <Jolt/Physics/Collision/Shape/TaperedCapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/TaperedCylinderShape.h>
 #include <Jolt/Physics/Constraints/DistanceConstraint.h>
 #include <Jolt/Physics/Constraints/FixedConstraint.h>
 #include <Jolt/Physics/Constraints/HingeConstraint.h>
@@ -225,6 +229,61 @@ Ref<Shape> makeShape(const CJoltShapeDesc &desc) {
         if (result.HasError()) { return nullptr; }
         return result.Get();
     }
+    case CJOLT_SHAPE_TAPERED_CAPSULE: {
+        // Both cap radii must be positive; a fully-contained cap collapses to
+        // a sphere inside the library, which is the right degenerate answer.
+        TaperedCapsuleShapeSettings settings(std::max(desc.a, 0.0f),
+                                             std::max(desc.b, 1.0e-3f),
+                                             std::max(desc.c, 1.0e-3f));
+        settings.SetDensity(density);
+        Shape::ShapeResult result = settings.Create();
+        if (result.HasError()) { return nullptr; }
+        return result.Get();
+    }
+    case CJOLT_SHAPE_TAPERED_CYLINDER: {
+        // A zero top radius is a cone. The convex radius may not exceed the
+        // smaller cap radius (the library clamps it again internally).
+        float halfHeight = std::max(desc.a, 1.0e-3f);
+        float top = std::max(desc.b, 0.0f);
+        float bottom = std::max(desc.c, 0.0f);
+        if (std::max(top, bottom) < 1.0e-3f) { return nullptr; }
+        float convexRadius =
+            std::min(cDefaultConvexRadius, 0.5f * std::min(halfHeight, std::max(top, bottom)));
+        TaperedCylinderShapeSettings settings(halfHeight, top, bottom, convexRadius);
+        settings.SetDensity(density);
+        Shape::ShapeResult result = settings.Create();
+        if (result.HasError()) { return nullptr; }
+        return result.Get();
+    }
+    case CJOLT_SHAPE_HEIGHT_FIELD: {
+        if (desc.heights == nullptr || desc.sampleCount < 4) { return nullptr; }
+        HeightFieldShapeSettings settings(desc.heights, vec3(desc.fieldOffset),
+                                          vec3(desc.fieldScale),
+                                          uint32(desc.sampleCount));
+        // Full-precision samples: heights quantize per block against its own
+        // min/max, and 16 bits makes the surface match the source field to
+        // well under a visible error at any terrain scale.
+        settings.mBitsPerSample = 16;
+        Shape::ShapeResult result = settings.Create();
+        if (result.HasError()) { return nullptr; }
+        return result.Get();
+    }
+    case CJOLT_SHAPE_COMPOUND: {
+        if (desc.children == nullptr || desc.childCount < 1) { return nullptr; }
+        StaticCompoundShapeSettings settings;
+        for (int32_t i = 0; i < desc.childCount; ++i) {
+            const CJoltShapeChild &child = desc.children[i];
+            if (child.shape == nullptr) { return nullptr; }
+            Ref<Shape> childShape = makeShape(*child.shape);
+            if (childShape == nullptr) { return nullptr; }
+            settings.AddShape(vec3(child.position), quat(child.rotation), childShape);
+        }
+        // A single posed child becomes a rotated/translated shape and a single
+        // unposed child becomes the child itself (the library's collapse).
+        Shape::ShapeResult result = settings.Create();
+        if (result.HasError()) { return nullptr; }
+        return result.Get();
+    }
     }
     return nullptr;
 }
@@ -286,8 +345,9 @@ CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
         layer = Layers::MOVING;
         break;
     }
-    // A dynamic mesh body cannot exist; keep the body but pin it in place.
-    if (desc->shape.type == CJOLT_SHAPE_MESH && motion == EMotionType::Dynamic) {
+    // A dynamic body cannot ride a static-only shape (mesh, height field, or
+    // a compound containing one); keep the body but pin it in place.
+    if (shape->MustBeStatic() && motion != EMotionType::Static) {
         motion = EMotionType::Static;
         layer = Layers::NON_MOVING;
     }
@@ -301,7 +361,10 @@ CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
     settings.mGravityFactor = desc->gravityFactor;
     settings.mAllowSleeping = desc->allowSleep;
     // Bodies may switch motion type later (a static anchor released to fall).
-    settings.mAllowDynamicOrKinematic = true;
+    // Not with a static-only shape, though: allowing the switch makes body
+    // creation compute mass properties, which a mesh or height field cannot
+    // provide (a real trap inside the library, not just a bad number).
+    settings.mAllowDynamicOrKinematic = !shape->MustBeStatic();
 
     BodyID id = world->physics.GetBodyInterface().CreateAndAddBody(
         settings, motion == EMotionType::Static ? EActivation::DontActivate
@@ -407,6 +470,11 @@ float cjolt_body_get_mass(const CJoltWorld *world, CJoltBodyID body) {
 void cjolt_body_set_motion(CJoltWorld *world, CJoltBodyID body, CJoltMotionType motion) {
     BodyInterface &bodies = world->physics.GetBodyInterface();
     BodyID id{body};
+    // A static-only shape (mesh, height field) can never start moving.
+    if (motion != CJOLT_MOTION_STATIC) {
+        RefConst<Shape> shape = bodies.GetShape(id);
+        if (shape != nullptr && shape->MustBeStatic()) { return; }
+    }
     EMotionType type = EMotionType::Static;
     ObjectLayer layer = Layers::NON_MOVING;
     switch (motion) {

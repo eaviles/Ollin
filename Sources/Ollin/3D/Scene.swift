@@ -139,9 +139,11 @@ public struct Scene: Sendable {
 
     // MARK: - Node-riding cameras and lights
 
-    /// Walk the tree depth-first, handing each node its composed world transform.
-    static func visitWorlds(_ nodes: [SceneNode], parent: simd_float4x4,
-                            _ body: (SceneNode, simd_float4x4) -> Void) {
+    /// Walk the tree depth-first, handing each node its composed world
+    /// transform. Package-visible: the physics satellite walks it to bake
+    /// static colliders from a scene's meshes.
+    package static func visitWorlds(_ nodes: [SceneNode], parent: simd_float4x4,
+                                    _ body: (SceneNode, simd_float4x4) -> Void) {
         for node in nodes {
             let world = parent * node.localTransform
             body(node, world)

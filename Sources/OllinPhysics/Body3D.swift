@@ -193,6 +193,18 @@ public enum Collider3D {
     case capsule(height: Double, radius: Double)
     /// A flat-capped cylinder standing along the body's y axis.
     case cylinder(height: Double, radius: Double)
+    /// A capsule whose two caps differ in radius (a club, a bowling-pin
+    /// segment): cap centres at `±height/2` along y, the wall sloping between
+    /// `bottomRadius` and `topRadius`. Both radii must be positive; a cap the
+    /// other fully contains collapses to that sphere.
+    case taperedCapsule(height: Double, topRadius: Double, bottomRadius: Double)
+    /// A flat-capped cylinder whose radius slopes from `bottomRadius` at
+    /// `-height/2` to `topRadius` at `+height/2` (a frustum; equal radii make
+    /// a plain cylinder).
+    case taperedCylinder(height: Double, topRadius: Double, bottomRadius: Double)
+    /// A cone standing on its base: the base disk at `-height/2` tapering to
+    /// an apex at `+height/2`, matching `drawCone`.
+    case cone(height: Double, radius: Double)
     /// The convex hull of local-space points. Pass at least four points that
     /// aren't all on one plane.
     case hull([Vector3])
@@ -201,15 +213,69 @@ public enum Collider3D {
     /// dynamic body created with one is pinned in place. Use `hull` (or a
     /// compound of primitives) for moving shapes.
     case mesh(Mesh)
+    /// A `Heightfield` as solid terrain, sized exactly like its
+    /// `mesh(width:depth:height:)`: a `width` × `depth` grid centred on the
+    /// body's origin in the ground plane, each sample lifted to
+    /// `height · value` on +y, so the collider and the drawn mesh trace one
+    /// surface. The field is resampled onto a square power-of-two grid (at
+    /// least the source resolution, capped at 1024 per side). Static bodies
+    /// only, like `mesh`.
+    case heightfield(Heightfield, width: Double, depth: Double, height: Double)
+    /// Several colliders fused rigidly into one body (a hammer, a table, a
+    /// blade cross), each part posed in the body's local space. Mass, balance,
+    /// and inertia come from the whole assembly (see `Part.density` for
+    /// heavy-headed tools). Parts should be solid shapes: `mesh` and
+    /// `heightfield` parts pin the body in place, like a bare `mesh` does.
+    case compound([Part])
+
+    /// One shape of a `compound` collider: a child collider at a fixed
+    /// position and rotation inside the body. Build parts with
+    /// `.part(_:at:rotated:axis:density:)`.
+    public struct Part {
+        /// The part's shape (any collider; a nested compound is allowed).
+        public var collider: Collider3D
+        /// The part's centre in the body's local space.
+        public var position: Vector3
+        /// The part's local rotation: `angle` radians about `axis`.
+        public var angle: Double
+        public var axis: Vector3
+        /// The part's relative density, multiplying the body's own: `10` makes
+        /// a hammer head heavy against a `1` handle.
+        public var density: Double
+
+        /// A part for a `compound` collider, posed in the body's local space.
+        public static func part(_ collider: Collider3D, at position: Vector3 = .zero,
+                                rotated angle: Double = 0, axis: Vector3 = .unitY,
+                                density: Double = 1) -> Part {
+            Part(collider: collider, position: position, angle: angle, axis: axis,
+                 density: density)
+        }
+    }
 }
 
 extension Collider3D {
-    /// The C shape description plus the flat vertex/index storage it points
-    /// into (returned so the caller can keep the arrays alive while binding).
-    func shapeDesc(unitsPerMeter: Double) -> (CJoltShapeDesc, [Float], [UInt32]) {
+    /// Whether the solver can only hold this shape still (a mesh or height
+    /// field anywhere in it): a dynamic body created with one is pinned.
+    var mustBeStatic: Bool {
+        switch self {
+        case .mesh, .heightfield:
+            return true
+        case .compound(let parts):
+            return parts.contains { $0.collider.mustBeStatic }
+        default:
+            return false
+        }
+    }
+
+    /// The C shape description, in solver meters. Flat data (hull points, mesh
+    /// indices, height samples, child descriptors) lands in `arena`, which the
+    /// caller must keep alive across the create call.
+    func shapeDesc(unitsPerMeter: Double, density: Double,
+                   arena: ShapeDescArena) -> CJoltShapeDesc {
         var desc = CJoltShapeDesc()
-        var points: [Float] = []
-        var indices: [UInt32] = []
+        // `density` is relative (1 = the default material); the solver works
+        // in kg/m³, where the default material is water-like at 1000.
+        desc.density = Float(max(0.0001, density) * 1000)
         let m = { (v: Double) in Float(v / unitsPerMeter) }
         switch self {
         case .sphere(let radius):
@@ -228,26 +294,101 @@ extension Collider3D {
             desc.type = CJOLT_SHAPE_CYLINDER
             desc.a = m(height / 2)
             desc.b = m(radius)
+        case .taperedCapsule(let height, let topRadius, let bottomRadius):
+            desc.type = CJOLT_SHAPE_TAPERED_CAPSULE
+            desc.a = m(height / 2)
+            desc.b = m(topRadius)
+            desc.c = m(bottomRadius)
+        case .taperedCylinder(let height, let topRadius, let bottomRadius):
+            desc.type = CJOLT_SHAPE_TAPERED_CYLINDER
+            desc.a = m(height / 2)
+            desc.b = m(topRadius)
+            desc.c = m(bottomRadius)
+        case .cone(let height, let radius):
+            desc.type = CJOLT_SHAPE_TAPERED_CYLINDER
+            desc.a = m(height / 2)
+            desc.b = 0
+            desc.c = m(radius)
         case .hull(let corners):
-            desc.type = CJOLT_SHAPE_CONVEX_HULL
+            var points: [Float] = []
             points.reserveCapacity(corners.count * 3)
             for corner in corners {
                 points.append(m(corner.x))
                 points.append(m(corner.y))
                 points.append(m(corner.z))
             }
+            desc.type = CJOLT_SHAPE_CONVEX_HULL
+            desc.points = arena.store(points)
+            desc.pointCount = Int32(corners.count)
         case .mesh(let mesh):
-            desc.type = CJOLT_SHAPE_MESH
+            var points: [Float] = []
             points.reserveCapacity(mesh.positions.count * 3)
             for position in mesh.positions {
                 points.append(m(position.x))
                 points.append(m(position.y))
                 points.append(m(position.z))
             }
-            indices = mesh.indices.isEmpty
+            let indices = mesh.indices.isEmpty
                 ? Array(0 ..< UInt32(mesh.positions.count))
                 : mesh.indices
+            desc.type = CJOLT_SHAPE_MESH
+            desc.points = arena.store(points)
+            desc.pointCount = Int32(mesh.positions.count)
+            desc.indices = arena.store(indices)
+            desc.indexCount = Int32(indices.count)
+        case .heightfield(let field, let width, let depth, let height):
+            // Resample onto the square grid the solver stores: bilinear reads
+            // of the source field at n × n normalized coordinates.
+            let n = Collider3D.heightfieldSamples(for: field)
+            var heights = [Float]()
+            heights.reserveCapacity(n * n)
+            for iz in 0 ..< n {
+                let v = Double(iz) / Double(n - 1)
+                for ix in 0 ..< n {
+                    heights.append(Float(field.value(atU: Double(ix) / Double(n - 1),
+                                                     v: v)))
+                }
+            }
+            desc.type = CJOLT_SHAPE_HEIGHT_FIELD
+            desc.heights = arena.store(heights)
+            desc.sampleCount = Int32(n)
+            // Surface = offset + scale · (ix, height, iz): centred like the
+            // drawn mesh, sample heights scaled by the mesh's own `height`.
+            desc.fieldOffset = (m(-width / 2), 0, m(-depth / 2))
+            desc.fieldScale = (m(width / Double(n - 1)), m(height),
+                               m(depth / Double(n - 1)))
+        case .compound(let parts):
+            var children: [CJoltShapeChild] = []
+            children.reserveCapacity(parts.count)
+            for part in parts {
+                let child = part.collider.shapeDesc(unitsPerMeter: unitsPerMeter,
+                                                    density: density * part.density,
+                                                    arena: arena)
+                let unit = part.axis.normalized
+                let half = part.angle / 2
+                let s = sin(half)
+                var posed = CJoltShapeChild()
+                posed.shape = arena.store([child])
+                posed.position = (m(part.position.x), m(part.position.y),
+                                  m(part.position.z))
+                posed.rotation = (Float(unit.x * s), Float(unit.y * s),
+                                  Float(unit.z * s), Float(cos(half)))
+                children.append(posed)
+            }
+            desc.type = CJOLT_SHAPE_COMPOUND
+            desc.children = arena.store(children)
+            desc.childCount = Int32(parts.count)
         }
-        return (desc, points, indices)
+        return desc
+    }
+
+    /// The square sample count a `heightfield` collider stores: the smallest
+    /// power of two covering the source grid's cells, clamped to 4…1024 (a
+    /// 257-sample diamond-square field maps onto its natural 256).
+    static func heightfieldSamples(for field: Heightfield) -> Int {
+        let target = max(field.columns, field.rows) - 1
+        var n = 4
+        while n < target && n < 1024 { n *= 2 }
+        return n
     }
 }

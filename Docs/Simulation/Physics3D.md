@@ -43,6 +43,8 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [World3D](#world3d) - the simulation, its ground, and the per-frame `step`
 - [Body3D](#body3d) - a rigid body: pose, velocity, forces
 - [Collider3D](#collider3d) - the shape catalog
+- [Compound bodies](#compound) - several shapes fused into one body
+- [Terrain and scenery](#terrain) - heightfield ground and `Scene` colliders
 - [Joints](#joints) - hinges, ball-and-sockets, rods, welds, sliders
 - [Motors, limits, and springs](#motors) - powered hinges and sliders, travel stops, springy ends
 - [Grabbing with the mouse](#grabbing) - ray-picking and dragging bodies through the camera
@@ -112,11 +114,59 @@ The local shape of a body, centred on its origin; position and orientation come 
 .box(width: 1, height: 0.6, depth: 0.8)
 .capsule(height: 0.8, radius: 0.2)      // straight section + rounded caps, y axis
 .cylinder(height: 0.8, radius: 0.3)     // flat caps, y axis
+.taperedCapsule(height: 0.8, topRadius: 0.15, bottomRadius: 0.3)   // a club
+.taperedCylinder(height: 0.8, topRadius: 0.1, bottomRadius: 0.3)   // a frustum
+.cone(height: 0.8, radius: 0.3)         // base down, apex up, matches drawCone
 .hull([Vector3])                        // convex hull of at least 4 points
 .mesh(mesh)                             // exact triangles; static bodies only
+.heightfield(land, width: 14, depth: 14, height: 4)   // terrain; static, see below
+.compound([.part(...), .part(...)])     // several shapes as one body, see below
 ```
 
-`capsule` and `cylinder` stand along the body's y axis (rotate the body to orient them), and their `height` matches `drawCapsule`/`drawCylinder`, so the mesh call takes the collider's own numbers. A `.mesh` collider is for scenery (terrain, a loaded set piece): it has no volume for mass, so a dynamic body created with one is pinned in place; moving shapes want `.hull` or a primitive.
+The upright shapes all stand along the body's y axis (rotate the body to orient them), and their `height` matches the matching draw call (`drawCapsule`, `drawCylinder`, `drawCone`), so the mesh call takes the collider's own numbers. The tapered pair slope between two radii: a `taperedCylinder` keeps flat caps (equal radii make a plain cylinder, a zero top radius is exactly `.cone`), and a `taperedCapsule` rounds both ends with caps of different sizes, both radii positive. A `.mesh` collider is for scenery (a loaded set piece, an exact sculpted form): it has no volume for mass, so a dynamic body created with one is pinned in place; moving shapes want `.hull`, a primitive, or a `.compound` of them.
+
+<a name="compound"></a>
+
+### Compound bodies
+
+`.compound` fuses several colliders into one rigid body: a hammer, a table, a windmill's blade cross. Each part is a child collider posed in the body's local space, and the body's mass, balance, and inertia come from the whole assembly, so a lopsided tool tumbles the way a lopsided tool should.
+
+```swift
+let hammer = world.addBody(.compound([
+    .part(.capsule(height: 0.9, radius: 0.06)),          // the handle
+    .part(.box(width: 0.3, height: 0.14, depth: 0.14),
+          at: Vector3(0, 0.52, 0), density: 8),          // the head, leading the swing
+]), at: Vector3(0, 3, 0))
+```
+
+`.part(_:at:rotated:axis:density:)` places any collider at a position and rotation inside the body; everything defaults to "at the origin, unrotated", so a single offset part is also how you shift a shape off its body's origin. A part's `density` is relative and multiplies the body's own, which is what makes the hammer's head heavy against its handle. Parts can nest (a compound inside a compound), and they should be solid shapes: a `.mesh` or `.heightfield` part pins the body in place, the same as using one bare.
+
+Draw a compound the way it was built: `withBody` poses the whole body, then translate and rotate to each part's pose and draw its shape. The [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) example does exactly that with a small recursive helper.
+
+<a name="terrain"></a>
+
+### Terrain and scenery
+
+`.heightfield` turns a [`Heightfield`](../Generators/Terrain.md) into solid ground, sized exactly like its `mesh(width:depth:height:)`: a `width` × `depth` grid centred on the body's origin, each sample lifted to `height · value`. Collider and drawn mesh trace one surface, so what rolls matches what renders:
+
+```swift
+let land = Heightfield.diamondSquare(size: 257, roughness: 0.55, seed: 7)
+    .eroded(.hydraulic(), seed: 7)
+world.addBody(.heightfield(land, width: 14, depth: 14, height: 4),
+              at: .zero, kind: .static)
+drawMesh(land.mesh(width: 14, depth: 14, height: 4))   // the same numbers
+```
+
+The field is resampled onto a square power-of-two grid for the solver (at least the source resolution, capped at 1024 samples per side), so any grid shape works; beyond the field's edges there is nothing, and bodies roll off into the void. Like `.mesh`, a heightfield can only be static.
+
+For scenery that arrives as a file, one call colliders a whole [`Scene`](../3D/Scenes.md):
+
+```swift
+let hall = loadScene("hall.usdz")!
+world.addStaticColliders(from: hall)
+```
+
+It walks the node tree and adds one static mesh body per mesh node, with the node's world transform (nested groups, authored rotations and scales included) baked into the triangles. Colliders take each mesh as authored, at rest: skins and morph targets aren't posed. `friction:` and `restitution:` apply to all of them, and the scene itself keeps drawing through `drawScene(_:)`.
 
 <a name="joints"></a>
 
@@ -225,4 +275,4 @@ for body in world.bodies {
 
 The simulation is deterministic within a build: the same setup stepped the same way reproduces exactly, which is what the seeded-variations story needs live. Exact poses can shift across toolchain rebuilds, so physics scenes aren't pinned by pixel snapshots; the behavioral test suite pins the solver instead.
 
-Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), and [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven mill batting balls through limited, spring-shut swing gates).
+Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven compound blade cross batting balls through limited, spring-shut swing gates), and [`3D/Physics/Rockslide`](../../Examples/3D/Physics/Rockslide/) (rocks tumbling down eroded heightfield terrain).
